@@ -1,0 +1,32 @@
+symbolDeclaration
+  = annotation "\n" symbolDefinition
+
+
+annotation
+  = n:symbolName _ ":" _ ts:type { return {symbolName: n, type: ts}; }
+
+
+symbolDefinition
+  = n:symbolName args:(_ symbolName)* _ "=" { return {
+      symbolName: n,
+      args: args.map(a => a[1]),
+    };}
+
+
+type
+  = h:typeName t:toType* { return [h].concat(t);}
+
+
+toType
+  = _ "->" _ n:typeName { return n; }
+
+
+
+symbolName
+  = h:[a-z]t:[a-zA-Z_0-9]* { return h + t.join(''); }
+
+_
+  = " "*
+
+typeName
+  = h:[A-Z]t:[a-zA-Z_0-9]* { return h + t.join(''); }

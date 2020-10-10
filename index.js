@@ -1,50 +1,46 @@
 
-const initialGrammar = `
-grammar!
-`
-
-
-const initialCode = `
-code!
-`
-
-
-
 function run(grammar, code) {
 
+  let parser;
   try {
-    const parser = peg.generate(grammar);
+    parser = peg.generate(grammar);
   } catch (e) {
     return { code: "nope", grammar: e.message };
   }
 
+  let parsed;
   try {
-    const parsed = parser.parse(code);
+    parsed = parser.parse(code);
   } catch (e) {
     return { code: e.message, grammar: 'Ok' };
   }
 
-  return { code: parsed, gramamr: 'Ok' }
+  return { code: JSON.stringify(parsed, null, 2), gramamr: 'Ok' }
 }
 
 
 window.onload = () => {
   const grammarTextarea = document.querySelector('.grammar textarea');
   const codeTextarea = document.querySelector('.code textarea');
-  const grammarP = document.querySelector('.grammar p');
-  const codeP = document.querySelector('.code p');
+  const grammarP = document.querySelector('.grammar .output');
+  const codeP = document.querySelector('.code .output');
 
   grammarTextarea.addEventListener('input', onChange);
   codeTextarea.addEventListener('input', onChange);
 
-  grammarTextarea.innerText = initialGrammar;
-  codeTextarea.innerText = initialCode;
+  grammarTextarea.value = localStorage.grammar;
+  codeTextarea.value = localStorage.code;
   onChange();
 
   function onChange() {
-    const result = run(grammarTextarea.innerText, codeTextarea.innerText);
-    grammarP.innerText = result.grammar;
-    codeP.innerText = result.code;
+    const g = grammarTextarea.value;
+    const c = codeTextarea.value;
+    localStorage.grammar = g;
+    localStorage.code = c;
+
+    const result = run(g, c);
+    grammarP.innerHTML = result.grammar;
+    codeP.innerHTML = result.code;
   }
 }
 
