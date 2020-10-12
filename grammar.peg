@@ -1,5 +1,53 @@
+{ var indentLevel = 0;
+}
+
+
+start =
+  module
+
+////
+///
+//
+
+_ = " "*
+
+EOL = "\n"
+
+EOF = !.
+
+EOLF = EOL / EOF
+
+emptyLine = " "* EOL { return "--"; }
+
+
+////
+/// Module
+//
+module =
+ s:(emptyLine* symbolDeclaration)* emptyLine* { return s.map(i => i[1][1]); }
+
+
+
+////
+/// Indent
+//
+indentStart
+  = EOL &{ indentLevel++; return true; }
+
+indentEnd
+  = &{ indentLevel--; return true; }
+
+currentIndent
+  = spaces:" "* &{ return spaces.length === indentLevel * 2; }
+
+
+
+////
+/// Symbols (ie, variables and functions)
+//
 symbolDeclaration
-  = annotation "\n" symbolDefinition
+  = currentIndent a:annotation EOL currentIndent s:symbolDefinition { return {a, s}; }
+  / currentIndent symbolDefinition
 
 
 annotation
@@ -7,14 +55,33 @@ annotation
 
 
 symbolDefinition
-  = n:symbolName args:(_ symbolName)* _ "=" { return {
-      symbolName: n,
+  = name:symbolName args:(_ symbolName)* _ "=" _ body:symbolBody _ EOLF
+
+    { return {
+      name,
       args: args.map(a => a[1]),
+      body,
     };}
 
+symbolBody
+  = expr:expr r:( _ "return")? { return { expr, ret: !!r }; }
+  / indentStart s:statement+ indentEnd { return s; }
 
+
+////
+/// Statements
+//
+statement
+  = emptyLine* e:expr EOLF emptyLine* { return e; }
+  / emptyLine* s:symbolDeclaration emptyLine* { return s; }
+
+
+
+////
+/// Types
+//
 type
-  = h:typeName t:toType* { return [h].concat(t);}
+  = h:typeName t:toType* { return [h].concat(t); }
 
 
 toType
@@ -25,8 +92,10 @@ toType
 symbolName
   = h:[a-z]t:[a-zA-Z_0-9]* { return h + t.join(''); }
 
-_
-  = " "*
 
 typeName
   = h:[A-Z]t:[a-zA-Z_0-9]* { return h + t.join(''); }
+
+
+expr =
+   currentIndent d:[0-9]+ { return d.join(""); }

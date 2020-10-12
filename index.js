@@ -12,10 +12,14 @@ function run(grammar, code) {
   try {
     parsed = parser.parse(code);
   } catch (e) {
-    return { code: e.message, grammar: 'Ok' };
+    window.parseError = e
+    return {
+      code: `line ${e.location.start.line}, col ${e.location.start.column}: ${e.message}`,
+      grammar: 'Ok'
+    };
   }
 
-  return { code: JSON.stringify(parsed, null, 2), gramamr: 'Ok' }
+  return { code: JSON.stringify(parsed, null, 2), grammar: 'Ok' }
 }
 
 
