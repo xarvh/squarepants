@@ -1,40 +1,43 @@
 inp = `
 
-b {- -}
+b {- inline comment -} "hhhhhh"
 
-{- --
-    {-
-    -}
+{- preceding comment
 -}
-   b
-   -- blah
+   b -- blah
   b
-  -- {-
 
-b{- bb-}b
+bb
   b
 `
 
 
 function parseComments(code) {
+
+  const chunkType = {
+    Content: 'u',
+    InLineComment: 'ic',
+    FullLineComment: 'fc',
+    MultiLineComment: 0,
+    SoftQuotedString: 'ss',
+    HardQuotedString: 'hs',
+  }
+
   let chunks = [];
 
-  let currentContext = 'content';
-
   let currentChunk = {
-    type: 'u',
+    type: chunkType.Content,
     start: 0,
     end: 0,
   };
 
-  function newContext(context) {
-    currentContext = context;
 
-    let newType;
-    switch (context) {
-      case 'content': newType = 'u'; break;
-      case 'line-comment': newType = 'l'; break;
-      default: newType = 'm'; break;
+  function newChunk(newType) {
+
+    if (newType > -1 && currentChunk.type > -1) {
+      // We're inside a multi-line comment, so just keep track of depth.
+      currentChunk.type = newType;
+      return;
     }
 
     if (newType === currentChunk.type)
@@ -46,11 +49,9 @@ function parseComments(code) {
       end: currentChunk.end,
     }
 
-    // TODO push only if start > end
     chunks.push(currentChunk);
     currentChunk = newChunk;
   }
-
 
 
   function test(s) {
@@ -61,42 +62,34 @@ function parseComments(code) {
   }
 
   // if the token marks the start of a new context, it belongs to the NEW chunk
-  function test_changeContext_thenConsume(token, context) {
+  function test_changeContext_thenConsume(token, blockType) {
     if (!test(token)) return false;
 
-    newContext(context);
-    currentChunk.end += token.length
+    newChunk(blockType);
+    currentChunk.end += token.length;
     return true;
   }
 
   // if the token marks the end of a context, it belongs to the OLD chunk
-  function test_consume_thenChangeContext(token, context) {
+  function test_consume_thenChangeContext(token, blockType) {
     if (!test(token)) return false;
 
-    console.error('end', chunkToString(currentChunk))
-    currentChunk.end += token.length
-    newContext(context);
+    currentChunk.end += token.length;
+    newChunk(blockType);
     return true;
   }
 
 
 
-  const testForStartOfLineComment = () =>
-    test_changeContext_thenConsume('--', 'line-comment');
-
-  const testForEndOfLineComment = () =>
-    test_consume_thenChangeContext('\n', 'content');
-
   const testForStartOfMultiComment = () =>
-    test_changeContext_thenConsume('{-', (+currentContext || 0) + 1);
+    test_changeContext_thenConsume('{-', (+currentChunk.type || 0) + 1);
 
   const testForEndOfMultiComment = () =>
     test_consume_thenChangeContext('-}',
-      +currentContext > 0
-        ? (currentContext === 1 ? 'content' : currentContext - 1)
+      +currentChunk.type > 0
+        ? (currentChunk.type === 1 ? chunkType.Content : currentChunk.type - 1)
         : new Error('-} without {- =(')
     );
-
 
   function run(...fs) {
     if (!fs.some(f => f())) currentChunk.end += 1;
@@ -104,15 +97,31 @@ function parseComments(code) {
 
   while (currentChunk.end < code.length) {
 
-    switch (currentContext) {
-      case 'content':
-        run(testForStartOfLineComment, testForStartOfMultiComment);
+    switch (currentChunk.type) {
+      case chunkType.Content:
+        run(
+          testForStartOfMultiComment,
+          () => test_changeContext_thenConsume('--', chunkType.FullLineComment),
+          () => test_changeContext_thenConsume('"""', chunkType.HardQuotedString),
+          () => test_changeContext_thenConsume('"', chunkType.SoftQuotedString),
+        );
         break;
-      case 'line-comment':
-        run(testForEndOfLineComment);
+      case chunkType.FullLineComment:
+        run(() => test_consume_thenChangeContext('\n', chunkType.Content));
         break;
+      case chunkType.SoftQuotedString:
+        // TODO cannot contain \n?
+        // TODO error if you meet a triple string?
+        run(() => test_consume_thenChangeContext('"', chunkType.Content));
+        break
+      case chunkType.HardQuotedString:
+        run(() => test_consume_thenChangeContext('"""', chunkType.Content));
+        break
       default:
-        run(testForStartOfMultiComment, testForEndOfMultiComment);
+        run(
+          testForStartOfMultiComment,
+          testForEndOfMultiComment
+        );
         break;
     }
   }
@@ -167,7 +176,7 @@ function parseX(lines) {
 
 
 function chunkToString(c) {
- return { t: c.type, s: inp.slice(c.start, c.end) };
+ return { t: '' + c.type, s: inp.slice(c.start, c.end) };
 }
 
 
