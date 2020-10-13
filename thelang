@@ -1,0 +1,151 @@
+
+? operator overloading: only for algebraic binops?
+
+? function polymorphism:
+       vec4(1) = 1, 1, 1, 1
+       vec4(vec3(0), 1) = 0, 0, 0, 1
+       vec4(0, vec3(1)) = 0, 1, 1, 1
+
+? Try statement
+    * `try(SomeType) ... else ...` will extract the Type from an ADT
+    * `try ... else ...` will extract the first Type from an ADT
+    * `try!` and `try!(SomeType)` without `else` will panic
+
+? Enums / Union Types
+    * One syntax for both
+    ? Like Elm
+    ? Constructors should be scoped to the type
+      `type Blah = A | B` => `Blah.A, Blah.B`
+    ? Do we want opaque types? Can we find a better solution?
+    ? How does this affect pattern matching
+      ```
+      case maybe of
+          -- We know that `expression` is of a certain Type
+          Namespace:Namespace:Module.Type.Constructor ->
+            doStuffWith someValueOfTypeX
+      ```
+
+
+# Modules
+  - No mutable globals
+  - No side effects on module load
+    > Does this mean I need a way to mark functions that produce side effects? AREWEMONADYET
+
+
+# Targets
+    * Should transpile to JavaScript, V and GLSL
+    ? GLSL can't implement a lot of features. How do you mark a piece of code as GLSL compatible?
+
+# Operators
+    * `=` is for declaring a new symbol
+    * `:=` is for assigning a new value to an existing mutable variable
+    * not-equal: `=/=`
+    ? use `and`, `or` instead of `&&` `||`
+
+# Closures
+    * Easy to implement because both JS and V have them?
+    ! Pain in the ass to implement in GLSL
+
+# Type inference
+    * Is very good for fast prototyping, allows to write faster
+    ? How will longer compile time affect fast prototyping
+
+# Reserved words
+    * fn
+    * return
+    * if then else
+    * try
+
+# Statements vs Expressions
+    * A function declaration consists of a list of statements
+    * Statements can be:
+      - Variable or function declarations
+      - Variable mutations
+      - function calls where the return value is ignored
+      - `return` followed or not by an expression
+    * Mutations and declarations DO NOT have a value and cannot be used inside expressions
+    * `return` can be omitted in single-statement functions
+    * `return` can be put at the end of any other statement
+      - `Array.forEach (fn element = element += 1 return) anArray`
+
+# Anonymous Functions
+    * Declared with the `fn` keyword in place of the name
+    ```
+    someFunction =
+        fn a b c =
+            a + b + c
+
+    someMoreConvolutedFunction =
+        fn a b c =
+            fn z =
+                a + b + c + z
+
+    Array.mapInPlace (fn element = element + 1) anArray
+    ```
+
+
+# Examples
+
+
+```
+impureFunction : MutableStuff! -> NonMutableStuff -> Void
+impureFunction mut nonmut =
+    mut += 3
+    -- return is necessary because the line above is not an expression
+    return
+
+impureFunction : MutableStuff! -> NonMutableStuff -> Void
+impureFunction mut nonmut =
+    mut += 3
+    mut += 5
+```
+
+
+```
+rectFragmentShader : Attributes -> Uniforms -> Varying -> Maybe Color
+rectFragmentShader attributes uniforms varying =
+
+    // TODO: transform into `pixelSize`, make it a uniform
+
+    pixelsPerTile =
+        30.0
+
+    e =
+        0.5 / pixelsPerTile
+
+    /*
+     *     0               1                            1                     0
+     *     |------|--------|----------------------------|----------|----------|
+     *  -edge-e  -edge  -edge+e                      edge-e      edge      edge+e
+     */
+    mirrorStep : Float -> Float -> Float
+    mirrorStep edge p =
+        (smoothstep (-edge - e) (-edge + e), p) - (smoothstep (edge - e) (edge + e) p)
+
+    strokeSize =
+        uniforms.dimensions / 2.0 + uniforms.strokeWidth
+
+    fillSize =
+        uniforms.dimensions / 2.0 - uniforms.strokeWidth
+
+    alpha =
+        (mirrorStep strokeSize.x localPosition.x) * (mirrorStep strokeSize.y localPosition.y)
+
+    strokeVsFill =
+        (mirrorStep fillSize.x localPosition.x) * (mirrorStep fillSize.y localPosition.y)
+
+    color =
+        mix stroke fill strokeVsFill
+
+    return Just <| opacity * alpha * (vec4 color 1.0)
+```
+
+
+
+
+
+
+
+
+
+
