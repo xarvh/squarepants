@@ -35,13 +35,14 @@ a pathological
 b {- inline comment -} "hhhhhh"
   indented
     moarindented
+    b -- blah
+  b
 
 {- preceding comment
 {- preceding comment
 -}
 -}
-   b -- blah
-  b
+
 
 bb
   b
@@ -81,6 +82,17 @@ function append(leafToAdd, parent) {
     parent.children.push(leafToAdd);
   }
 
+
+
+function getLineIndent(chunks) {
+    // TODO find a less dumb algorithm
+    let l = chunks.map(chunkToString).join('');
+    for (var i = 0; l[i] === ' '; i++);
+//    console.log(i, l);
+    return i;
+  }
+
+
 function sortIndent(lines) {
 
   let root = {
@@ -92,6 +104,9 @@ function sortIndent(lines) {
 
   let lastAdded = root;
 
+
+  // TODO empty lines or lines that add only comments should not
+  // modify the indent
 
   lines.forEach(chunks => {
     let leaf = {
@@ -105,14 +120,6 @@ function sortIndent(lines) {
     lastAdded = leaf;
   });
 
-
-  function getLineIndent(chunks) {
-    // TODO find a less dumb algorithm
-    let l = chunks.map(chunkToString).join('');
-    for (var i = 0; l[i] === ' '; i++);
-//    console.log(i, l);
-    return i;
-  }
 
 
 
@@ -134,7 +141,7 @@ function groupChunksIntoLines(code, chunks) {
 
   chunks.forEach(c => {
     lastLine.push(c);
-    if (c.type === chunkType.ContentLine && code[c.end - 1] === '\n') {
+    if ([chunkType.ContentLine, chunkType.FullLineComment].includes(c.type) && code[c.end - 1] === '\n') {
       lines.push(lastLine);
       lastLine = [];
     }
@@ -178,7 +185,8 @@ function parseCommentsAndStrings(code) {
       end: currentChunk.end,
     }
 
-    chunks.push(currentChunk);
+    if (currentChunk.end > currentChunk.start)
+      chunks.push(currentChunk);
     currentChunk = newChunk;
   }
 
@@ -228,16 +236,7 @@ function parseCommentsAndStrings(code) {
 
     switch (currentChunk.type) {
       case chunkType.ContentLine:
-        /*
         // TODO error on tabs
-        if (insideIndent) {
-           if (test(' ')) indent += 1;
-           else
-        }
-        if (insideIndent &&
-
-        }
-        */
 
         run(
           testForStartOfMultiComment,
@@ -292,27 +291,6 @@ function codeToLines(code) {
 
 
 
-function parseX(lines) {
-
-  let commentDepth = 0;
-
-
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-
-    if (line.startsWith('{-'))
-      commentDepth += 1;
-
-    if (commentDepth > 0 || line.startsWith('--'))
-      line.isComment = true
-
-    if (line.endsWith('-}'))
-      commentDepth -= 1;
-  }
-
-
-
-}
 
 
 
@@ -335,5 +313,6 @@ function descend(indent, node) {
 }
 
 
+//console.log(chunks.map(chunkToString))
+//lines.forEach(l => console.log(getLineIndent(l), l.map(chunkToString)));
 descend(-1, tree)
-
