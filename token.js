@@ -23,13 +23,12 @@ a pathological
 b {- inline comment -} "hhhhhh"
   indented
     moarindented
+{- preceding comment
+{- preceding comment
+-}
+-}
     b -- blah
   b
-
-{- preceding comment
-{- preceding comment
--}
--}
 
 
 bb
@@ -80,36 +79,45 @@ function getLineIndent(chunks) {
   }
 
 
+
+function chunkIsEmptyOrComment(chunk) {
+  return (chunk.type !== chunkType.ContentLine) || /^[ ]*\n?$/.test(chunkToString(chunk));
+}
+
+
 function sortIndent(lines) {
 
   let root = {
     chunks: [],
     parent: null,
     indent: -1,
+    // TODO make clear that these lines *precede* the leaf?
+    commentLines: [],
     children: [],
   };
 
   let lastAdded = root;
-
-
-  // TODO empty lines or lines that add only comments should not
-  // modify the indent
+  let commentLinesAccumulator = [];
 
   lines.forEach(chunks => {
-    let leaf = {
-      chunks: chunks,
-      indent: getLineIndent(chunks),
-      parent: null,
-      children: [],
-    };
+    if (chunks.every(chunkIsEmptyOrComment)) {
+      commentLinesAccumulator.push(chunks);
+    } else {
 
-    searchTowardsRoot(leaf, lastAdded);
-    lastAdded = leaf;
+      let leaf = {
+        chunks: chunks,
+        indent: getLineIndent(chunks),
+        parent: null,
+        commentLines: [],
+        children: [],
+      };
+
+      searchTowardsRoot(leaf, lastAdded);
+      leaf.commentLines = commentLinesAccumulator;
+      commentLinesAccumulator = [];
+      lastAdded = leaf;
+    }
   });
-
-
-
-
 
   return root;
 }
@@ -276,8 +284,12 @@ let tree = sortIndent(lines);
 
 
 function descend(indent, node) {
+
+  const chunksToString = (cs) => cs.map(chunkToString).join('').replace('\n', '..');
+
   let i = '    '.repeat(Math.max(0, indent));
-  let s = node.chunks.map(chunkToString).join('').replace('\n', '..');
+  let s = chunksToString(node.chunks);
+  node.commentLines.forEach(cs => console.log(chunksToString(cs)));
   console.log(i + s.trim());
   node.children.forEach(c => descend(indent + 1, c));
 }
