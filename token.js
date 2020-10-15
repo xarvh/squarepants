@@ -19,8 +19,6 @@
 
 
 inp = `
-
-
 something
   something indented
   something {- with comment -} indented
@@ -51,7 +49,7 @@ bb
 
 
 const chunkType = {
-  Content: 'u',
+  ContentLine: 'l',
   InLineComment: 'ic',
   FullLineComment: 'fc',
   // TODO: remove hacky way of keeping track of multiline comments nesting depth.
@@ -62,32 +60,91 @@ const chunkType = {
 
 
 
+function searchTowardsRoot(leafToAdd, targetLeaf) {
 
-function parseIndentation(chunksIn) {
-  let chunksOut = [];
+    if (leafToAdd.indent < targetLeaf.indent) {
+      if (leafToAdd.indent > targetLeaf.parent.indent) {
+        throw new Error('bad indent!');
+      }
 
-  for (let c = 0; c < chunksIn.length; c++) {
+      searchTowardsRoot(leafToAdd, targetLeaf.parent);
 
-    if chunk is Content
-      lines = chunk.content.split('\n')
+    } else if (leafToAdd.indent === targetLeaf.indent) {
+      append(leafToAdd, targetLeaf.parent);
+    } else {
+      append(leafToAdd, targetLeaf);
+    }
+  }
 
-      take first line
-          if there is a comment right before
+function append(leafToAdd, parent) {
+    leafToAdd.parent = parent;
+    parent.children.push(leafToAdd);
+  }
+
+function sortIndent(lines) {
+
+  let root = {
+    chunks: [],
+    parent: null,
+    indent: -1,
+    children: [],
+  };
+
+  let lastAdded = root;
 
 
+  lines.forEach(chunks => {
+    let leaf = {
+      chunks: chunks,
+      indent: getLineIndent(chunks),
+      parent: null,
+      children: [],
+    };
+
+    searchTowardsRoot(leaf, lastAdded);
+    lastAdded = leaf;
+  });
 
 
+  function getLineIndent(chunks) {
+    // TODO find a less dumb algorithm
+    let l = chunks.map(chunkToString).join('');
+    for (var i = 0; l[i] === ' '; i++);
+//    console.log(i, l);
+    return i;
   }
 
 
 
 
-
-
+  return root;
 }
 
 
 
+
+
+
+
+function groupChunksIntoLines(code, chunks) {
+  // TODO merge with parseCommentsAndStrings()?
+
+  let lines = [];
+  let lastLine = [];
+
+  chunks.forEach(c => {
+    lastLine.push(c);
+    if (c.type === chunkType.ContentLine && code[c.end - 1] === '\n') {
+      lines.push(lastLine);
+      lastLine = [];
+    }
+  });
+
+  if (lastLine.length)
+    lines.push(lastLine);
+
+  return lines;
+}
 
 
 
@@ -98,7 +155,7 @@ function parseCommentsAndStrings(code) {
   let chunks = [];
 
   let currentChunk = {
-    type: chunkType.Content,
+    type: chunkType.ContentLine,
     start: 0,
     end: 0,
   };
@@ -111,7 +168,8 @@ function parseCommentsAndStrings(code) {
       return;
     }
 
-    if (newType === currentChunk.type)
+    // Don't create multiple chunks for nested multiline comments
+    if (newType === chunkType.MultiLineComment && newType === currentChunk.type)
       return;
 
     let newChunk = {
@@ -158,7 +216,7 @@ function parseCommentsAndStrings(code) {
   const testForEndOfMultiComment = () =>
     test_consume_thenChangeContext('-}',
       +currentChunk.type > 0
-        ? (currentChunk.type === 1 ? chunkType.Content : currentChunk.type - 1)
+        ? (currentChunk.type === 1 ? chunkType.ContentLine : currentChunk.type - 1)
         : new Error('-} without {- =(')
     );
 
@@ -169,24 +227,36 @@ function parseCommentsAndStrings(code) {
   while (currentChunk.end < code.length) {
 
     switch (currentChunk.type) {
-      case chunkType.Content:
+      case chunkType.ContentLine:
+        /*
+        // TODO error on tabs
+        if (insideIndent) {
+           if (test(' ')) indent += 1;
+           else
+        }
+        if (insideIndent &&
+
+        }
+        */
+
         run(
           testForStartOfMultiComment,
+          () => test_consume_thenChangeContext('\n', chunkType.ContentLine),
           () => test_changeContext_thenConsume('--', chunkType.FullLineComment),
           () => test_changeContext_thenConsume('"""', chunkType.HardQuotedString),
           () => test_changeContext_thenConsume('"', chunkType.SoftQuotedString),
         );
         break;
       case chunkType.FullLineComment:
-        run(() => test_consume_thenChangeContext('\n', chunkType.Content));
+        run(() => test_consume_thenChangeContext('\n', chunkType.ContentLine));
         break;
       case chunkType.SoftQuotedString:
         // TODO cannot contain \n?
         // TODO error if you meet a triple string?
-        run(() => test_consume_thenChangeContext('"', chunkType.Content));
+        run(() => test_consume_thenChangeContext('"', chunkType.ContentLine));
         break
       case chunkType.HardQuotedString:
-        run(() => test_consume_thenChangeContext('"""', chunkType.Content));
+        run(() => test_consume_thenChangeContext('"""', chunkType.ContentLine));
         break
       default:
         run(
@@ -247,8 +317,23 @@ function parseX(lines) {
 
 
 function chunkToString(c) {
- return { t: '' + c.type, s: inp.slice(c.start, c.end) };
+// return { t: '' + c.type, s: inp.slice(c.start, c.end) };
+ return inp.slice(c.start, c.end);
 }
 
 
-console.log(parseCommentsAndStrings(inp).map(chunkToString))
+let chunks = parseCommentsAndStrings(inp);
+let lines = groupChunksIntoLines(inp, chunks);
+let tree = sortIndent(lines);
+
+
+function descend(indent, node) {
+  let i = '    '.repeat(Math.max(0, indent));
+  let s = node.chunks.map(chunkToString).join('').replace('\n', '..');
+  console.log(i + s.trim());
+  node.children.forEach(c => descend(indent + 1, c));
+}
+
+
+descend(-1, tree)
+
