@@ -1,8 +1,46 @@
+
+/*
+1. How does the AST represent comments?
+
+2. what if I pretend that comments are spaces?
+
+1. -> if the last line in a Content chunk
+        is not empty
+        and
+        is followed by a comment
+
+   -> if the first line in a Content chunk
+        is not empty
+        and
+        is preceded by a comment
+
+*/
+
+
+
 inp = `
 
+
+something
+  something indented
+  something {- with comment -} indented
+    and moar indentation
+
+
+a pathological
+  case {-
+-} that should throw an error
+    or not?
+
+
+
 b {- inline comment -} "hhhhhh"
+  indented
+    moarindented
 
 {- preceding comment
+{- preceding comment
+-}
 -}
    b -- blah
   b
@@ -12,16 +50,50 @@ bb
 `
 
 
-function parseComments(code) {
+const chunkType = {
+  Content: 'u',
+  InLineComment: 'ic',
+  FullLineComment: 'fc',
+  // TODO: remove hacky way of keeping track of multiline comments nesting depth.
+  MultiLineComment: 1,
+  SoftQuotedString: 'ss',
+  HardQuotedString: 'hs',
+}
 
-  const chunkType = {
-    Content: 'u',
-    InLineComment: 'ic',
-    FullLineComment: 'fc',
-    MultiLineComment: 0,
-    SoftQuotedString: 'ss',
-    HardQuotedString: 'hs',
+
+
+
+function parseIndentation(chunksIn) {
+  let chunksOut = [];
+
+  for (let c = 0; c < chunksIn.length; c++) {
+
+    if chunk is Content
+      lines = chunk.content.split('\n')
+
+      take first line
+          if there is a comment right before
+
+
+
+
   }
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+function parseCommentsAndStrings(code) {
 
   let chunks = [];
 
@@ -30,7 +102,6 @@ function parseComments(code) {
     start: 0,
     end: 0,
   };
-
 
   function newChunk(newType) {
 
@@ -180,4 +251,4 @@ function chunkToString(c) {
 }
 
 
-console.log(parseComments(inp).map(chunkToString))
+console.log(parseCommentsAndStrings(inp).map(chunkToString))
