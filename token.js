@@ -261,7 +261,9 @@ function parseCommentsAndStrings(code) {
     }
   }
 
-  chunks.push(currentChunk);
+  if (currentChunk.end > currentChunk.start)
+    chunks.push(currentChunk);
+
   return chunks;
 }
 
