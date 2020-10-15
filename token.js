@@ -2,18 +2,6 @@
 /*
 1. How does the AST represent comments?
 
-2. what if I pretend that comments are spaces?
-
-1. -> if the last line in a Content chunk
-        is not empty
-        and
-        is followed by a comment
-
-   -> if the first line in a Content chunk
-        is not empty
-        and
-        is preceded by a comment
-
 */
 
 
@@ -88,7 +76,6 @@ function getLineIndent(chunks) {
     // TODO find a less dumb algorithm
     let l = chunks.map(chunkToString).join('');
     for (var i = 0; l[i] === ' '; i++);
-//    console.log(i, l);
     return i;
   }
 
@@ -270,23 +257,6 @@ function parseCommentsAndStrings(code) {
   return chunks;
 }
 
-
-
-
-
-
-function codeToLines(code) {
-  return code
-    .split('\n')
-    .map((indentedContent, index) => {
-      var [s, spaces, content] = indentedContent.match(/([ ]*)(.*)/);
-      return {
-        lineNumber: index + 1,
-        indent: spaces.length,
-        content,
-      };
-    });
-}
 
 
 
