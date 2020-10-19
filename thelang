@@ -1,4 +1,23 @@
 
+* Performance
+  - Must be able to transpile to GLSL without significant performance penalty
+
+* Readability
+  - minimalist design
+  - no "magic"
+  - no global state
+  - human-friendly symbol names
+
+* Fast iteration
+  - user code CAN decide where to have its tech burden
+
+* Reliablity
+  - no exceptions, no nulls
+  - published libraries can't use escape hatches
+
+
+
+
 ? operator overloading: only for algebraic binops?
 
 ? function polymorphism:
@@ -24,6 +43,42 @@
           Namespace:Namespace:Module.Type.Constructor ->
             doStuffWith someValueOfTypeX
       ```
+
+? How do I flag GLSL-friendly functions?
+? How do I flag pure functions?
+
+
+
+
+
+# for-loops
+  - Use functions
+  - They should be used only for performance
+  - These function should stay in some module like Fast. or GLSL. ?
+```
+
+loop : state -> (state -> Bool) -> (state -> state) -> (state -> BreakOrContinue) -> Void
+
+
+loopFrom 0 (until 10) (adding 1) (fn x =
+  print x
+)
+
+
+loop 0 (fn x = !abort || x < 10) (adding 1) (fn x =
+  if someCondition x then
+    return Break
+  else
+    doStuffWith x
+    return Continue
+
+
+
+
+repeat 10 (fn x =
+  print x
+)
+```
 
 
 # Modules
