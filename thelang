@@ -20,6 +20,10 @@
 
 ? operator overloading: only for algebraic binops?
 
+
+? Operators can never accept Void
+? Functions can only return Void
+
 ? function polymorphism:
        vec4(1) = 1, 1, 1, 1
        vec4(vec3(0), 1) = 0, 0, 0, 1
