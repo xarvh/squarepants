@@ -1,25 +1,24 @@
 
+const { chunkType } = require('./CommentsAndStrings')
 
 
 
+function consumeOneTokenFromChunk(remainingChunkAsString) {
 
-
-
-
-
-function ContentLineToTokens(chunkAsString) {
-
-  const trimmed = chunkAsString.trimStart();
+  const trimmed = remainingChunkAsString.trimStart();
   if (!trimmed) return
 
   let types = [{
     regex: /^[a-zA-Z._][a-zA-Z._0-9]*/,
     id: 'Word',
   }, {
+    regex: /^[0-9]+[.]?[0-9]*/,
+    id: 'NumberLiteral',
+  }, {
     regex: /^[,()\[\]{}]/,
     id: 'Parens',
   }, {
-    regex: /^[=+\-*/:><!^|]/,
+    regex: /^[=+\-*/:><!^|]+/,
     id: 'Operator',
   }];
 
@@ -32,8 +31,10 @@ function ContentLineToTokens(chunkAsString) {
     if (!match) return re();
 
     return {
-      content: match[0],
-      type: type.id,
+      token: {
+        content: match[0],
+        type: type.id,
+      },
       rest: trimmed.slice(match[0].length),
     };
   }
@@ -42,15 +43,72 @@ function ContentLineToTokens(chunkAsString) {
 }
 
 
+function contentChunkToTokens(code, chunk) {
+
+  let chunkAsString = code.slice(chunk.start, chunk.end);
+//  console.log('ssss', chunk, '#', chunkAsString, '#');
+
+  let tokens = [];
+
+  let result;
+  while (result = consumeOneTokenFromChunk(chunkAsString)) {
+    chunkAsString = result.rest;
+    tokens.push(result.token);
+  }
+
+  return tokens;
+}
 
 
 
-console.log(ContentLineToTokens(' asdf + - sdf.asasd_asdf'))
+
+
+function lineChunksToTokens(code, chunks) {
+
+  let tokens = [];
+
+  chunks.forEach(chunk => {
+    switch (chunk.type) {
+      case chunkType.ContentLine:
+        tokens.push(...contentChunkToTokens(code, chunk))
+        break;
+
+      case chunkType.SoftQuotedString:
+      case chunkType.HardQuotedString:
+        tokens.push({
+          content: code.slice(chunk.start, chunk.end),
+          type: 'StringLiteral',
+        });
+        break;
+    };
+  });
+
+  return tokens;
+}
+
+
+
+
+function indentTreeToTokenTree(code, indentNode) {
+  return {
+    tokens: lineChunksToTokens(code, indentNode.chunks),
+    commentLines: indentNode.commentLines,
+    children: indentNode.children.map(child => indentTreeToTokenTree(code, child)),
+  };
+}
 
 
 
 
 
+
+//
+// Export
+//
+module.exports = {
+  lineChunksToTokens,
+  indentTreeToTokenTree,
+};
 
 
 
@@ -80,7 +138,6 @@ inp = `
 
 `
 
-[ 'Uppercase', 'op:ModuleAccess', 'lowercase', 'parens:Open', 'literal:Int', 'op:Plus', 'literal:Int'
 
 
 

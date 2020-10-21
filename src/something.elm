@@ -24,23 +24,6 @@ type Line = Line (List Token) (List Line)
 -------
 
 
-words = /[a-zA-Z._][a-zA-Z._0-9]*/
-parens = /[,()[]{}]/
-ops = /[=+-*/:><!^|]/
-
-
-
-function chunkToTokens(chunkAsString) {
-
-  let s = chunkAsString.trimStart();
-
-  s.match();
-
-
-
-
-}
-
 
 
 chunkToTokens c accum =
