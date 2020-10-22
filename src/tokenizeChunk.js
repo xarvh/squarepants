@@ -115,7 +115,6 @@ module.exports = {
 
 
 
-/*
 
 
 //Se riduco a token, poi posso scasinare con il formato come cazzo mi pare e rendere piú facile ?
@@ -158,6 +157,53 @@ function makeInitialState() {
 
 
 
+
+
+function parseIfThenElse(siblingLines) {
+
+  line([
+    'if',
+    expression,
+    'then',
+    expression | indentedBlock,
+    ('else', expression | indentedBlock)?
+  ])
+
+  line(
+    ['if', expression, 'then', childrenStart, (expression)+, childrenEnd]
+    ['else', childrenStart, (expression)+, childrenEnd]?
+  )
+
+
+
+  return chain(
+      word('if'),
+      expression,
+      word('then'),
+      expression,
+      word('else'),
+      expression,
+  );
+
+
+  return chain(
+      word('if'),
+      expression,
+      word('then'),
+      expression,
+      word('else'),
+      expression,
+  );
+
+
+}
+
+
+
+
+
+
+
 function resolveNesting(state, chunk) {
 
   switch (toString(chunk)) {
@@ -181,13 +227,3 @@ function resolveNesting(state, chunk) {
   }
 
 }
-
-
-
-
-
-
-
-
-
-*/

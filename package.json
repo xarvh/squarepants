@@ -1,5 +1,26 @@
 {
   "dependencies": {
     "pegjs": "^0.10.0"
+  },
+  "name": "vier",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "live": "elm-live Main.elm -o",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xarvh/vier.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/xarvh/vier/issues"
+  },
+  "homepage": "https://github.com/xarvh/vier#readme",
+  "description": "",
+  "devDependencies": {
+    "elm-live": "^4.0.2"
   }
 }
