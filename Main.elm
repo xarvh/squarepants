@@ -1,8 +1,8 @@
 module Main exposing (..)
 
 import Browser
+import Chunks
 import Html exposing (..)
-import StringToTokens
 
 
 init =
@@ -46,12 +46,21 @@ rectFragmentShader attributes uniforms varying =
     """
 
 
+type alias Model =
+    String
+
+
 update msg model =
     model
 
 
 view model =
-    case StringToTokens.stringToChunks model of
+    viewChunks model
+
+
+viewChunks : Model -> Html msg
+viewChunks model =
+    case Chunks.fromString model of
         Err err ->
             err
                 |> Debug.toString
@@ -59,13 +68,7 @@ view model =
 
         Ok chunks ->
             chunks
-                |> List.map
-                    (\c ->
-                        Html.li []
-                            --[ Html.div [] [ Html.text <| Debug.toString <| c.t ]
-                            [ Html.div [] [ Html.text <| String.slice c.start c.end model ]
-                            ]
-                    )
+                |> List.map (\c -> Html.li [] [ Html.code [] [ Html.text <| String.slice c.start c.end model ] ])
                 |> Html.ul []
 
 

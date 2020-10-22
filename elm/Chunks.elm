@@ -1,4 +1,4 @@
-module StringToTokens exposing (..)
+module Chunks exposing (..)
 
 import Array exposing (Array)
 
@@ -14,11 +14,6 @@ type alias Error =
     , t : ErrorType
     }
 
-
-
-----
---- Chunks
---
 
 
 type ChunkType
@@ -47,8 +42,8 @@ type alias State =
     }
 
 
-stringToChunks : String -> Result Error (List Chunk)
-stringToChunks codeAsString =
+fromString : String -> Result Error (List Chunk)
+fromString codeAsString =
     { position = 0
     , chunks = []
     , chunkType = ContentLine
@@ -82,10 +77,6 @@ finaliseCurrentChunk newChunkType state =
 
 stringToChunksRec : State -> Result Error State
 stringToChunksRec state =
-    let
-        q =
-            Debug.log "" ( Array.length state.code, state.position )
-    in
     if state.position >= Array.length state.code then
         -- ContentLine is not really used
         state
@@ -191,7 +182,8 @@ consumeChars length state =
 
 {-| Compare a string with a position in State
 
-TODO I assume this is particularly slow
+TODO This is so tragically slow in Elm.
+Should at least convert to Array once rather than once per Char. XD
 
 -}
 compare : String -> State -> Bool
