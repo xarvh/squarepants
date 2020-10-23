@@ -92,37 +92,18 @@ fromString code =
         |> Result.map (.chunks >> List.reverse)
 
 
-finaliseCurrentChunk : ChunkType -> State -> State
-finaliseCurrentChunk newChunkType state =
-    { state
-        | chunkStart = state.position
-        , chunkType = newChunkType
-        , chunks =
-            -- indents are useful even when they're empty
-            if state.position == state.chunkStart && state.chunkType /= Indent then
-                state.chunks
-
-            else
-                { t = state.chunkType
-                , start = state.chunkStart
-                , end = state.position
-                }
-                    :: state.chunks
-    }
-
-
 stringToChunksRec : State -> Result Error State
 stringToChunksRec state =
     if state.position >= Array.length state.code then
-        -- ContentLine is not really used
         state
-            |> finaliseCurrentChunk ContentLine
+          -- ContentLine is not really used
+            |> addCurrentChunk 0 ContentLine
             |> Ok
 
     else
         let
             indent_Start =
-                compare_consume_thenChangeChunkType "\n" Indent
+                compare_discardAndChangeChunkType "\n" Indent
 
             indent_End =
                 notSpace_dontConsume
@@ -131,7 +112,7 @@ stringToChunksRec state =
                 compare_changeChunkType_thenConsume "--" SingleLineComment
 
             lineComment_End =
-                compare_consume_thenChangeChunkType "\n" Indent
+                compare_discardAndChangeChunkType "\n" Indent
 
             hardQuotedString_Start =
                 compare_changeChunkType_thenConsume "\"\"\"" HardQuotedString
@@ -196,6 +177,25 @@ stringToChunksRec state =
                         [ hardQuotedString_End ]
         in
         matchFirst state tests
+
+addCurrentChunk : Int -> ChunkType -> State -> State
+addCurrentChunk skipOffset newChunkType state =
+    { state
+        | chunkStart = state.position + skipOffset
+        , chunkType = newChunkType
+        , chunks =
+            -- indents are useful even when they're empty
+            if state.position == state.chunkStart && state.chunkType /= Indent then
+                state.chunks
+
+            else
+                { t = state.chunkType
+                , start = state.chunkStart
+                , end = state.position
+                }
+                    :: state.chunks
+    }
+
 
 
 matchFirst : State -> List (State -> Maybe (Result Error State)) -> Result Error State
@@ -278,10 +278,24 @@ notSpace_dontConsume state =
 
             else
                 state
-                    |> finaliseCurrentChunk ContentLine
+                    |> addCurrentChunk 0 ContentLine
                     -- do not consume!!
                     |> Ok
                     |> Just
+
+
+compare_discardAndChangeChunkType : String -> ChunkType -> State -> Maybe (Result Error State)
+compare_discardAndChangeChunkType target chunkType state =
+    if compare target state then
+        state
+            |> addCurrentChunk (String.length target) chunkType
+            |> consumeChars (String.length target)
+            |> Ok
+            |> Just
+
+    else
+        Nothing
+
 
 
 compare_consume_thenChangeChunkType : String -> ChunkType -> State -> Maybe (Result Error State)
@@ -289,7 +303,7 @@ compare_consume_thenChangeChunkType target chunkType state =
     if compare target state then
         state
             |> consumeChars (String.length target)
-            |> finaliseCurrentChunk chunkType
+            |> addCurrentChunk 0 chunkType
             |> Ok
             |> Just
 
@@ -301,7 +315,7 @@ compare_changeChunkType_thenConsume : String -> ChunkType -> State -> Maybe (Res
 compare_changeChunkType_thenConsume target chunkType state =
     if compare target state then
         state
-            |> finaliseCurrentChunk chunkType
+            |> addCurrentChunk 0 chunkType
             |> consumeChars (String.length target)
             |> Ok
             |> Just
