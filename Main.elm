@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Array exposing (Array)
 import Browser
 import Chunks
 import Html exposing (..)
@@ -58,9 +59,27 @@ view model =
     viewChunks model
 
 
+
+{-
+   viewLines : Model -> Html msg
+   viewLines model =
+       let
+           code =
+               model
+                   |> String.toList
+                   |> Array.fromList
+
+       in
+                 code
+                   |> Chunks.fromString
+                   |> Result.map (Chunks.toLines code)
+                   |> List.map (\c -> Html.li [] [ Html.code [] [ Html.text <| String.slice c.start c.end model ] ])
+-}
+
+
 viewChunks : Model -> Html msg
 viewChunks model =
-    case Chunks.fromString model of
+    case model |> String.toList |> Array.fromList |> Chunks.fromString of
         Err err ->
             err
                 |> Debug.toString
@@ -70,6 +89,30 @@ viewChunks model =
             chunks
                 |> List.map (\c -> Html.li [] [ Html.code [] [ Html.text <| String.slice c.start c.end model ] ])
                 |> Html.ul []
+
+
+charIndexToLineCol : String -> Int -> ( Int, Int )
+charIndexToLineCol s index =
+    let
+        before =
+            String.slice 0 index s
+
+        newLineIndices =
+            String.indices "\n" before
+
+        lineNumber =
+            List.length newLineIndices + 1
+
+        lastNewLineIndex =
+            newLineIndices
+                |> List.reverse
+                |> List.head
+                |> Maybe.withDefault 0
+
+        colNumber =
+            index - lastNewLineIndex
+    in
+    ( lineNumber, colNumber )
 
 
 main =

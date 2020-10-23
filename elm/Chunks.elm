@@ -15,7 +15,6 @@ type alias Error =
     }
 
 
-
 type ChunkType
     = ContentLine
     | SingleLineComment
@@ -31,6 +30,56 @@ type alias Chunk =
     }
 
 
+
+----
+--- Chunks to Lines
+--
+
+
+toLines : Array Char -> List Chunk -> List (List Chunk)
+toLines code chunks =
+    let
+        codeEnd =
+            Array.length code
+
+        init =
+            { lines = []
+            , lastLine = []
+            }
+
+        codeAt position =
+            Maybe.withDefault '\u{0000}' <| Array.get position code
+
+        addChunkToAccum chunk accum =
+            let
+                lastLine =
+                    chunk :: accum.lastLine
+
+                chunkEndsLine =
+                    (chunk.end == codeEnd)
+                        || (chunk.t == SingleLineComment)
+                        || (chunk.t == ContentLine && codeAt chunk.end == '\n')
+            in
+            if chunkEndsLine then
+                { lines = List.reverse lastLine :: accum.lines
+                , lastLine = []
+                }
+
+            else
+                { accum | lastLine = lastLine }
+    in
+    chunks
+        |> List.foldl addChunkToAccum init
+        |> .lines
+        |> List.reverse
+
+
+
+----
+--- String (Array Char) to Chunks
+--
+
+
 type alias State =
     { position : Int
     , chunks : List Chunk
@@ -42,16 +91,13 @@ type alias State =
     }
 
 
-fromString : String -> Result Error (List Chunk)
-fromString codeAsString =
+fromString : Array Char -> Result Error (List Chunk)
+fromString code =
     { position = 0
     , chunks = []
     , chunkType = ContentLine
     , chunkStart = 0
-    , code =
-        codeAsString
-            |> String.toList
-            |> Array.fromList
+    , code = code
     }
         |> stringToChunksRec
         |> Result.map (.chunks >> List.reverse)
