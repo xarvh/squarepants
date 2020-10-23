@@ -17,6 +17,7 @@ type alias Error =
 
 type ChunkType
     = ContentLine
+    | Indent
     | SingleLineComment
     | MultiLineComment Int
     | SoftQuotedString
@@ -36,37 +37,25 @@ type alias Chunk =
 --
 
 
-toLines : Array Char -> List Chunk -> List (List Chunk)
-toLines code chunks =
+toSemanticLines : List Chunk -> List (List Chunk)
+toSemanticLines chunks =
     let
-        codeEnd =
-            Array.length code
-
         init =
             { lines = []
             , lastLine = []
             }
 
-        codeAt position =
-            Maybe.withDefault '\u{0000}' <| Array.get position code
-
         addChunkToAccum chunk accum =
-            let
-                lastLine =
-                    chunk :: accum.lastLine
+            case chunk.t of
+                Indent ->
+                    { lines = List.reverse accum.lastLine :: accum.lines
+                    , lastLine = [ chunk ]
+                    }
 
-                chunkEndsLine =
-                    (chunk.end == codeEnd)
-                        || (chunk.t == SingleLineComment)
-                        || (chunk.t == ContentLine && codeAt chunk.end == '\n')
-            in
-            if chunkEndsLine then
-                { lines = List.reverse lastLine :: accum.lines
-                , lastLine = []
-                }
-
-            else
-                { accum | lastLine = lastLine }
+                _ ->
+                    { accum
+                        | lastLine = chunk :: accum.lastLine
+                    }
     in
     chunks
         |> List.foldl addChunkToAccum init
@@ -95,7 +84,7 @@ fromString : Array Char -> Result Error (List Chunk)
 fromString code =
     { position = 0
     , chunks = []
-    , chunkType = ContentLine
+    , chunkType = Indent
     , chunkStart = 0
     , code = code
     }
@@ -109,7 +98,8 @@ finaliseCurrentChunk newChunkType state =
         | chunkStart = state.position
         , chunkType = newChunkType
         , chunks =
-            if state.position == state.chunkStart then
+            -- indents are useful even when they're empty
+            if state.position == state.chunkStart && state.chunkType /= Indent then
                 state.chunks
 
             else
@@ -131,14 +121,17 @@ stringToChunksRec state =
 
     else
         let
-            newLine =
-                compare_consume_thenChangeChunkType "\n" ContentLine
+            indent_Start =
+                compare_consume_thenChangeChunkType "\n" Indent
+
+            indent_End =
+                notSpace_dontConsume
 
             lineComment_Start =
                 compare_changeChunkType_thenConsume "--" SingleLineComment
 
             lineComment_End =
-                compare_consume_thenChangeChunkType "\n" ContentLine
+                compare_consume_thenChangeChunkType "\n" Indent
 
             hardQuotedString_Start =
                 compare_changeChunkType_thenConsume "\"\"\"" HardQuotedString
@@ -163,7 +156,7 @@ stringToChunksRec state =
                     )
 
             multiComment_End depth =
-                compare_changeChunkType_thenConsume "-}"
+                compare_consume_thenChangeChunkType "-}"
                     (if depth == 0 then
                         ContentLine
 
@@ -173,10 +166,13 @@ stringToChunksRec state =
 
             tests =
                 case state.chunkType of
+                    Indent ->
+                        [ indent_End ]
+
                     ContentLine ->
                         [ errorOn "\t" ErrorTab
                         , multiComment_Start state.chunkType
-                        , newLine
+                        , indent_Start
                         , lineComment_Start
                         , hardQuotedString_Start
                         , softQuotedString_Start
@@ -268,6 +264,24 @@ errorOn target errorType state =
 
     else
         Nothing
+
+
+notSpace_dontConsume : State -> Maybe (Result Error State)
+notSpace_dontConsume state =
+    case Array.get state.position state.code of
+        Nothing ->
+            Debug.todo "does this even happen?"
+
+        Just char ->
+            if char == ' ' then
+                Nothing
+
+            else
+                state
+                    |> finaliseCurrentChunk ContentLine
+                    -- do not consume!!
+                    |> Ok
+                    |> Just
 
 
 compare_consume_thenChangeChunkType : String -> ChunkType -> State -> Maybe (Result Error State)

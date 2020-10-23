@@ -2,8 +2,9 @@ module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
-import Chunks
+import Chunks exposing (Chunk)
 import Html exposing (..)
+import Html.Attributes exposing (class, style)
 
 
 init =
@@ -77,17 +78,53 @@ view model =
 -}
 
 
+viewChunk : String -> Chunk -> Html msg
+viewChunk code chunk =
+    Html.code
+        [ style "border" "1px solid lightgray"
+        , class <| Debug.toString chunk.t
+        , case chunk.t of
+            Chunks.Indent ->
+                style "color" "lightgray"
+
+            _ ->
+                class ""
+        , Html.Attributes.id <| String.fromInt chunk.start ++ "-" ++ String.fromInt chunk.end
+        ]
+        [ Html.text
+            (case chunk.t of
+                Chunks.Indent ->
+                    (chunk.end - chunk.start)
+                        |> List.range 0
+                        |> List.map String.fromInt
+                        |> String.join ""
+                        |> (\s -> s ++ " ")
+
+                _ ->
+                    String.slice chunk.start chunk.end code
+            )
+        ]
+
+
 viewChunks : Model -> Html msg
 viewChunks model =
-    case model |> String.toList |> Array.fromList |> Chunks.fromString of
+    let
+        resultSemLines =
+            model
+                |> String.toList
+                |> Array.fromList
+                |> Chunks.fromString
+                |> Result.map Chunks.toSemanticLines
+    in
+    case resultSemLines of
         Err err ->
             err
                 |> Debug.toString
                 |> Html.text
 
-        Ok chunks ->
-            chunks
-                |> List.map (\c -> Html.li [] [ Html.code [] [ Html.text <| String.slice c.start c.end model ] ])
+        Ok semLines ->
+            semLines
+                |> List.map (List.map (viewChunk model) >> Html.li [])
                 |> Html.ul []
 
 
