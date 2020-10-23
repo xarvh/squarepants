@@ -18,6 +18,13 @@
 
 
 
+? module aliases
+  - Disallow module aliases
+    The first path items in module A.B.C.D can be omitted if it doesn't cause any ambiguity:
+      `module Webbhuset.Control` can be referenced just as `Control` if no other module ends with `.Control`
+
+
+
 ? operator overloading: only for algebraic binops?
 
 

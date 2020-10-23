@@ -80,29 +80,41 @@ view model =
 
 viewChunk : String -> Chunk -> Html msg
 viewChunk code chunk =
+    let
+        content =
+            String.slice chunk.start chunk.end code
+
+        isIndent =
+            chunk.t == Chunks.Indent
+    in
     Html.code
         [ style "border" "1px solid lightgray"
         , class <| Debug.toString chunk.t
-        , case chunk.t of
-            Chunks.Indent ->
-                style "color" "lightgray"
+        , if isIndent then
+            style "color" "lightgray"
 
-            _ ->
-                class ""
+          else
+            class ""
         , Html.Attributes.id <| String.fromInt chunk.start ++ "-" ++ String.fromInt chunk.end
         ]
         [ Html.text
-            (case chunk.t of
-                Chunks.Indent ->
-                    (chunk.end - chunk.start)
-                        |> List.range 0
-                        |> List.map String.fromInt
-                        |> String.join ""
-                        |> (\s -> s ++ " ")
+            (if isIndent then
+                (chunk.end - chunk.start)
+                    |> List.range 0
+                    |> List.map String.fromInt
+                    |> String.join ""
+                    |> (\s -> s ++ " ")
 
-                _ ->
-                    String.slice chunk.start chunk.end code
+             else
+                String.slice chunk.start chunk.end code
             )
+        , if chunk.t == Chunks.ContentLine && String.endsWith "\n" content then
+            Html.span
+                [ style "background-color" "orange" ]
+                [ Html.text "\\n" ]
+
+          else
+            Html.text ""
         ]
 
 
