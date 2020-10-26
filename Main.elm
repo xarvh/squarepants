@@ -3,13 +3,104 @@ module Main exposing (..)
 import Array exposing (Array)
 import Browser
 import Chunks exposing (Chunk)
-import Html exposing (..)
+import Html exposing (Html)
 import Html.Attributes exposing (class, style)
+import ParseIndent exposing (IndentedChunk(..))
 
 
 init =
     """
-rectFragmentShader : Attributes -> Uniforms -> Varying -> Maybe Color
+
+
+someSideEffect : () #> Void
+someSideEffect () =
+  print "a String"
+
+
+readStuff : () #> Result Error String
+readStuff () =
+  try! readFile "stuff.json"
+
+
+modifyThisVariable : Int! -> Void
+modifyThisVariable v =
+  v += 1
+
+
+someOtherFunction : Int String #> Void
+someOtherFunction n s =
+
+  someSideEffect ()
+
+  x = readStuff ()
+
+  return
+"""
+
+
+
+{-
+
+
+The block:
+```
+x =
+  writeFile "blah.json"
+  return 0
+
+x
+
+x
+```
+
+Executes the write once, when x is declared.
+Subsequent references to x will not execute anything, but maybe someone may expect that it would.
+So the compiler should catch these useless references and tell the user that they don't do anything
+
+
+
+
+
+
+Too many ambiguous symbols?
+
+mutable type : `#Int`
+effect functions : `#>`
+glsl-friendly function : `_>`
+
+debug only : `try!!!`, `log!!!`
+not : `!` `!=`
+
+
+~>
+
+->
+
+#>
+
+
+
+
+A `->` function is always compatible with a `#>`, but not vice vice versa.
+
+
+
+
+  -> you CANNOT mutate variables outside of function scope (ie, closures or globals), you need to pass them as args.
+
+-}
+
+
+
+
+
+
+
+
+
+
+
+rectFragmentShader : Attributes Uniforms Varying -> Maybe Color
 rectFragmentShader attributes uniforms varying =
 
     -- TODO: transform into pixelSize, make it a uniform
@@ -57,25 +148,13 @@ update msg model =
 
 
 view model =
-    viewChunks model
+    viewIndentedChunks model
 
 
 
-{-
-   viewLines : Model -> Html msg
-   viewLines model =
-       let
-           code =
-               model
-                   |> String.toList
-                   |> Array.fromList
-
-       in
-                 code
-                   |> Chunks.fromString
-                   |> Result.map (Chunks.toLines code)
-                   |> List.map (\c -> Html.li [] [ Html.code [] [ Html.text <| String.slice c.start c.end model ] ])
--}
+----
+--- Chunks
+--
 
 
 viewChunk : String -> Chunk -> Html msg
@@ -138,6 +217,86 @@ viewChunks model =
             semLines
                 |> List.map (List.map (viewChunk model) >> Html.li [])
                 |> Html.ul []
+
+
+
+----
+--- Indented Chunks
+--
+
+
+
+TODO NOW: unify in a single Error
+type Error
+    = ChunkError Chunks.Error
+    | IndentError ParseIndent.Error
+
+
+viewIndentedChunks : Model -> Html msg
+viewIndentedChunks model =
+    let
+        resultIndentedChunks =
+            model
+                |> String.toList
+                |> Array.fromList
+                |> Chunks.fromString
+                |> Result.mapError ChunkError
+                |> Result.andThen (ParseIndent.indentChunks >> Result.mapError IndentError)
+    in
+    case resultIndentedChunks of
+        Err err ->
+            err
+                |> Debug.toString
+                |> Html.text
+
+        Ok indentedChunks ->
+            indentedChunks
+                |> List.foldl (viewIndentedChunk model) ( 0, [], [] )
+                |> (\( depth, chunks, html ) -> html)
+                |> Html.ul []
+
+
+viewIndentedChunk : String -> IndentedChunk -> ( Int, List Chunk, List (Html msg) ) -> ( Int, List Chunk, List (Html msg) )
+viewIndentedChunk code ic ( depth, chunks, html ) =
+    case ic of
+        NormalChunk chunk ->
+            ( depth, chunk :: chunks, html )
+
+        NewLine ->
+            ( depth
+            , []
+            , (chunks
+                |> List.reverse
+                |> List.map (viewChunk code)
+                |> (::)
+                    (Html.code
+                        [ style "color" "#eee" ]
+                        [ depth
+                            |> List.range 0
+                            |> List.map String.fromInt
+                            |> String.join ""
+                            |> Html.text
+                        ]
+                    )
+                |> Html.li []
+              )
+                :: html
+            )
+
+        BlockStart ->
+            ( depth + 1, chunks, html )
+
+        BlockEnd ->
+            ( depth - 1, chunks, html )
+
+
+
+----
+---
+--
+----
+---
+--
 
 
 charIndexToLineCol : String -> Int -> ( Int, Int )

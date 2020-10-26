@@ -1,22 +1,145 @@
 
+Main goals
+----------
+
 * Performance
   - Must be able to transpile to GLSL without significant performance penalty
+  - Must be able to mutate values in place
 
 * Readability
-  - minimalist design
-  - no "magic"
-  - no global state
-  - human-friendly symbol names
+  - Minimalist design
+  - No "magic", explicit is better than implicit
+  - No global state
+  - Human-friendly symbol names
 
 * Fast iteration
-  - user code CAN decide where to have its tech burden
+  - User code CAN use escape hatches
 
 * Reliablity
-  - no exceptions, no nulls
-  - published libraries can't use escape hatches
+  - No exceptions, no nulls, no undefined
+  - Libraries can't be published if they use escape hatches
+
+* Make escape hatches viable but just slightly annoying to use
+
+* Transpile to GLSL, JavaScript, (Go | V | Rust..?)
+
+* Can be used for scripting, compiled at run-time and executed in a safe environment
 
 
 
+More or less established features
+---------------------------------
+
+* Reserved words
+    * fn
+    * return
+    * if is then else
+    * risk
+    * log
+
+* `risk unionTypeValue`
+    * Extract the first constructor of a Union Type, crash if not available
+    * Prone to error if the constructos change order, but this is a YOLO feature
+
+* case..of
+    * if value is pattern then ... else ...
+
+    * if value is
+          pattern then
+              ...
+          pattern then
+              ...
+          else
+              ...
+
+* Functions
+  * Cannot mutate anything outside their scope
+  * Declared as `$functionName : $space-separated-arguments $arrow $return type
+  * Arrows:
+    * `@>` functions depend entirely on their arguments and are compatible with GLSL
+    * `->` functions depend entirely on their arguments
+    * `#>` functions have IO effects
+
+    * `@>` functions can be used in place of any function
+    * `->` functions can be used in place of `#>` functions
+
+* Union Types
+  * Constructors are scoped to the type: `type Blah = A | B` => `Blah.A, Blah.B`
+
+* Modules
+  - No mutable globals
+  - No side effects on module load
+
+* Operators
+    * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
+    * Assignment binops return Void
+    * `=` is for declaring a new symbol
+    * `:=` is for assigning a new value to an existing mutable variable
+    * not-equal: `=/=`
+    ? use `and`, `or` instead of `&&` `||`
+
+* Swizzling
+    Allowed, as exception, for all Vector types
+
+* Function overloading
+    Not available.
+    One Vector constructor for each possibility, probably called vec4_121 or something like that.
+
+* Libraries
+    LocalStorage: readable and writable
+    BulkStorage: read only
+
+* Anonymous Functions
+    * Declared with the `fn` keyword in place of the name
+    ```
+    someFunction =
+        fn a b c =
+            a + b + c
+
+    someMoreConvolutedFunction =
+        fn a b c =
+            fn z =
+                a + b + c + z
+
+    Array.mapInPlace (fn element = element + 1) anArray
+    ```
+
+* Type inference
+    Is necessary for coding fast?
+
+
+
+Problems still to solve
+-----------------------
+
+* Currying
+    doesn't solve too many problems and creates a few, so for the time being don't support it?
+
+
+
+# Statements vs Expressions
+    * A function declaration consists of a list of statements
+    * Statements can be:
+      - Variable or function declarations
+      - Variable mutations
+      - function calls where the return value is ignored
+      - `return` followed or not by an expression
+    * Mutations and declarations DO NOT have a value and cannot be used inside expressions
+    * `return` can be omitted in single-statement functions
+    * `return` can be put at the end of any other statement
+      - `Array.forEach (fn element = element += 1 return) anArray`
+
+
+# Closures
+    * Easy to implement because both JS and V have them?
+    ! Pain in the ass to implement in GLSL
+
+# Type inference
+    * Is very good for fast prototyping, allows to write faster
+    ? How will longer compile time affect fast prototyping
+
+
+? System for string interpolation?
 
 ? module aliases
   - Disallow module aliases
@@ -24,40 +147,10 @@
       `module Webbhuset.Control` can be referenced just as `Control` if no other module ends with `.Control`
 
 
+? Do we want opaque types? Can we find a better solution?
 
-? operator overloading: only for algebraic binops?
 
-
-? Operators can never accept Void
-? Functions can only return Void
-
-? function polymorphism:
-       vec4(1) = 1, 1, 1, 1
-       vec4(vec3(0), 1) = 0, 0, 0, 1
-       vec4(0, vec3(1)) = 0, 1, 1, 1
-
-? Try statement
-    * `try(SomeType) ... else ...` will extract the Type from an ADT
-    * `try ... else ...` will extract the first Type from an ADT
-    * `try!` and `try!(SomeType)` without `else` will panic
-
-? Enums / Union Types
-    * One syntax for both
-    ? Like Elm
-    ? Constructors should be scoped to the type
-      `type Blah = A | B` => `Blah.A, Blah.B`
-    ? Do we want opaque types? Can we find a better solution?
-    ? How does this affect pattern matching
-      ```
-      case maybe of
-          -- We know that `expression` is of a certain Type
-          Namespace:Namespace:Module.Type.Constructor ->
-            doStuffWith someValueOfTypeX
-      ```
-
-? How do I flag GLSL-friendly functions?
-? How do I flag pure functions?
-
+? type alias vs alias vs type...? `type SomeAlias = SomeType`?
 
 
 
@@ -76,7 +169,11 @@ loopFrom 0 (until 10) (adding 1) (fn x =
 )
 
 
-loop 0 (fn x = !abort || x < 10) (adding 1) (fn x =
+loopAlong (List.length list) (fn index =
+  ....
+)
+
+loop 0 (fn x = x < 10) (fn x = x + 1) (fn x =
   if someCondition x then
     return Break
   else
@@ -92,86 +189,15 @@ repeat 10 (fn x =
 ```
 
 
-# Modules
-  - No mutable globals
-  - No side effects on module load
-    > Does this mean I need a way to mark functions that produce side effects? AREWEMONADYET
-
-
-# Targets
-    * Should transpile to JavaScript, V and GLSL
-    ? GLSL can't implement a lot of features. How do you mark a piece of code as GLSL compatible?
-
-# Operators
-    * `=` is for declaring a new symbol
-    * `:=` is for assigning a new value to an existing mutable variable
-    * not-equal: `=/=`
-    ? use `and`, `or` instead of `&&` `||`
-
-# Closures
-    * Easy to implement because both JS and V have them?
-    ! Pain in the ass to implement in GLSL
-
-# Type inference
-    * Is very good for fast prototyping, allows to write faster
-    ? How will longer compile time affect fast prototyping
-
-# Reserved words
-    * fn
-    * return
-    * if then else
-    * try
-
-# Statements vs Expressions
-    * A function declaration consists of a list of statements
-    * Statements can be:
-      - Variable or function declarations
-      - Variable mutations
-      - function calls where the return value is ignored
-      - `return` followed or not by an expression
-    * Mutations and declarations DO NOT have a value and cannot be used inside expressions
-    * `return` can be omitted in single-statement functions
-    * `return` can be put at the end of any other statement
-      - `Array.forEach (fn element = element += 1 return) anArray`
-
-# Anonymous Functions
-    * Declared with the `fn` keyword in place of the name
-    ```
-    someFunction =
-        fn a b c =
-            a + b + c
-
-    someMoreConvolutedFunction =
-        fn a b c =
-            fn z =
-                a + b + c + z
-
-    Array.mapInPlace (fn element = element + 1) anArray
-    ```
-
 
 # Examples
 
 
 ```
-impureFunction : MutableStuff! -> NonMutableStuff -> Void
-impureFunction mut nonmut =
-    mut += 3
-    -- return is necessary because the line above is not an expression
-    return
-
-impureFunction : MutableStuff! -> NonMutableStuff -> Void
-impureFunction mut nonmut =
-    mut += 3
-    mut += 5
-```
-
-
-```
-rectFragmentShader : Attributes -> Uniforms -> Varying -> Maybe Color
+rectFragmentShader : Attributes Uniforms Varying @> Maybe Color
 rectFragmentShader attributes uniforms varying =
 
-    // TODO: transform into `pixelSize`, make it a uniform
+    -- TODO: transform into `pixelSize`, make it a uniform
 
     pixelsPerTile =
         30.0
@@ -184,7 +210,7 @@ rectFragmentShader attributes uniforms varying =
      *     |------|--------|----------------------------|----------|----------|
      *  -edge-e  -edge  -edge+e                      edge-e      edge      edge+e
      */
-    mirrorStep : Float -> Float -> Float
+    mirrorStep : Float Float @> Float
     mirrorStep edge p =
         (smoothstep (-edge - e) (-edge + e), p) - (smoothstep (edge - e) (edge + e) p)
 
