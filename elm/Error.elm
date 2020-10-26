@@ -23,6 +23,16 @@ toString code error =
         l =
             String.length code
 
+        {- TODO: search 3 newline prior and 3 newlines after, then output a record:
+           { before : String
+           , target : String
+           , after : String
+           , line : Int
+           , col : Int
+           , message : String
+           }
+
+        -}
         a =
             error.position - 10 |> clamp 0 l
 

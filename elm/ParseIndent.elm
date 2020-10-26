@@ -38,51 +38,54 @@ process state =
         chunk :: tail ->
             case chunk.t of
                 Indent ->
-                    --                     if firstChunkIsIndent tail then
-                    --                         -- discard empty lines
-                    --                         process { state | chunksToRead = tail }
-                    --
-                    --                     else
-                    let
-                        currentIndent =
-                            state.indentStack
-                                |> List.head
-                                |> Maybe.withDefault 0
-
-                        indentLength =
-                            chunk.end - chunk.start
-
-                        chunksWithIndent =
-                            NewLine :: state.chunksWithIndent
-                    in
-                    if indentLength > currentIndent then
-                        process
-                            { chunksToRead = tail
-                            , chunksWithIndent = NormalChunk chunk :: BlockStart :: chunksWithIndent
-                            , indentStack = indentLength :: state.indentStack
-                            }
-
-                    else if indentLength == currentIndent then
-                        process
-                            { chunksToRead = tail
-                            , chunksWithIndent = NormalChunk chunk :: chunksWithIndent
-                            , indentStack = state.indentStack
-                            }
+                    if firstChunkIsIndent tail then
+                        -- discard empty lines
+                        process { state | chunksToRead = tail }
 
                     else
-                        case findInStack indentLength state.indentStack chunksWithIndent of
-                            Nothing ->
-                                Err
-                                    { kind = Error.BadIndent { length = indentLength, stack = state.indentStack }
-                                    , position = chunk.end
-                                    }
+                        let
+                            currentIndent =
+                                state.indentStack
+                                    |> List.head
+                                    |> Maybe.withDefault 0
 
-                            Just ( reducedStack, chunksAndBlockEnds ) ->
-                                process
-                                    { chunksToRead = tail
-                                    , chunksWithIndent = NormalChunk chunk :: chunksAndBlockEnds
-                                    , indentStack = reducedStack
-                                    }
+                            indentLength =
+                                chunk.end - chunk.start
+
+                            chunksWithIndent =
+                                NewLine :: state.chunksWithIndent
+                        in
+                        if indentLength > currentIndent then
+                            process
+                                { chunksToRead = tail
+                                --, chunksWithIndent = NormalChunk chunk :: BlockStart :: chunksWithIndent
+                                , chunksWithIndent = BlockStart :: chunksWithIndent
+                                , indentStack = indentLength :: state.indentStack
+                                }
+
+                        else if indentLength == currentIndent then
+                            process
+                                { chunksToRead = tail
+                                --, chunksWithIndent = NormalChunk chunk :: chunksWithIndent
+                                , chunksWithIndent = chunksWithIndent
+                                , indentStack = state.indentStack
+                                }
+
+                        else
+                            case findInStack indentLength state.indentStack chunksWithIndent of
+                                Nothing ->
+                                    Err
+                                        { kind = Error.BadIndent { length = indentLength, stack = state.indentStack }
+                                        , position = chunk.end
+                                        }
+
+                                Just ( reducedStack, chunksAndBlockEnds ) ->
+                                    process
+                                        { chunksToRead = tail
+                                        --, chunksWithIndent = NormalChunk chunk :: chunksAndBlockEnds
+                                        , chunksWithIndent = chunksAndBlockEnds
+                                        , indentStack = reducedStack
+                                        }
 
                 _ ->
                     process
@@ -95,7 +98,11 @@ process state =
 findInStack : Int -> List Int -> List IndentedChunk -> Maybe ( List Int, List IndentedChunk )
 findInStack indentLength stack ccs =
     case stack of
-        currentIndent :: parentIndent :: rest ->
+        currentIndent :: rest ->
+            let
+                parentIndent =
+                    List.head rest |> Maybe.withDefault 0
+            in
             -- we know already that `indentLength < currentIndent`
             if indentLength > parentIndent then
                 {- This is an error:
@@ -115,10 +122,10 @@ findInStack indentLength stack ccs =
                    indentLength
                    ```
                 -}
-                Just ( parentIndent :: rest, BlockEnd :: ccs )
+                Just ( rest, BlockEnd :: ccs )
 
             else
-                findInStack indentLength (parentIndent :: rest) (BlockEnd :: ccs)
+                findInStack indentLength rest (BlockEnd :: ccs)
 
         _ ->
             Just ( [], BlockEnd :: ccs )

@@ -152,29 +152,11 @@ viewIndentedChunks model =
 
         Ok indentedChunks ->
             indentedChunks
---                 |> List.map (viewIndChunk model)
---                 |> List.map (\c -> Html.li [] [c ])
                 |> List.foldl (addIndentedChunk model) ( 0, [], [] )
                 |> (\( depth, chunks, html ) -> html)
                 |> List.reverse
                 |> Html.ul []
 
-
-
-viewIndChunk : String -> IndentedChunk -> Html msg
-viewIndChunk code ic =
-  case ic of
-        NormalChunk chunk ->
-            viewChunk code chunk
-
-        NewLine ->
-            Html.text "NEWLINE"
-
-        BlockStart ->
-            Html.text "{"
-
-        BlockEnd ->
-            Html.text "}"
 
 
 
