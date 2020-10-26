@@ -2,6 +2,7 @@ module ParseIndent exposing (..)
 
 import Array exposing (Array)
 import Chunks exposing (Chunk, ChunkType(..))
+import Error exposing (Error)
 
 
 type IndentedChunk
@@ -9,16 +10,6 @@ type IndentedChunk
     | NewLine
     | BlockStart
     | BlockEnd
-
-
-type ErrorType
-    = ErrorIndent { length : Int, stack : List Int }
-
-
-type alias Error =
-    { t : ErrorType
-    , position : Int
-    }
 
 
 type alias State =
@@ -35,7 +26,7 @@ indentChunks chunks =
     , indentStack = []
     }
         |> process
-        |> Result.map .chunksWithIndent
+        |> Result.map (.chunksWithIndent >> List.reverse)
 
 
 process : State -> Result Error State
@@ -47,51 +38,51 @@ process state =
         chunk :: tail ->
             case chunk.t of
                 Indent ->
---                     if firstChunkIsIndent tail then
---                         -- discard empty lines
---                         process { state | chunksToRead = tail }
--- 
---                     else
-                        let
-                            currentIndent =
-                                state.indentStack
-                                    |> List.head
-                                    |> Maybe.withDefault 0
+                    --                     if firstChunkIsIndent tail then
+                    --                         -- discard empty lines
+                    --                         process { state | chunksToRead = tail }
+                    --
+                    --                     else
+                    let
+                        currentIndent =
+                            state.indentStack
+                                |> List.head
+                                |> Maybe.withDefault 0
 
-                            indentLength =
-                                chunk.end - chunk.start
+                        indentLength =
+                            chunk.end - chunk.start
 
-                            chunksWithIndent =
-                                NewLine :: state.chunksWithIndent
-                        in
-                        if indentLength > currentIndent then
-                            process
-                                { chunksToRead = tail
-                                , chunksWithIndent = NormalChunk chunk :: BlockStart :: chunksWithIndent
-                                , indentStack = indentLength :: state.indentStack
-                                }
+                        chunksWithIndent =
+                            NewLine :: state.chunksWithIndent
+                    in
+                    if indentLength > currentIndent then
+                        process
+                            { chunksToRead = tail
+                            , chunksWithIndent = NormalChunk chunk :: BlockStart :: chunksWithIndent
+                            , indentStack = indentLength :: state.indentStack
+                            }
 
-                        else if indentLength == currentIndent then
-                            process
-                                { chunksToRead = tail
-                                , chunksWithIndent = NormalChunk chunk :: chunksWithIndent
-                                , indentStack = state.indentStack
-                                }
+                    else if indentLength == currentIndent then
+                        process
+                            { chunksToRead = tail
+                            , chunksWithIndent = NormalChunk chunk :: chunksWithIndent
+                            , indentStack = state.indentStack
+                            }
 
-                        else
-                            case findInStack indentLength state.indentStack chunksWithIndent of
-                                Nothing ->
-                                    Err
-                                        { t = ErrorIndent { length = indentLength, stack = state.indentStack }
-                                        , position = chunk.end
-                                        }
+                    else
+                        case findInStack indentLength state.indentStack chunksWithIndent of
+                            Nothing ->
+                                Err
+                                    { kind = Error.BadIndent { length = indentLength, stack = state.indentStack }
+                                    , position = chunk.end
+                                    }
 
-                                Just ( reducedStack, chunksAndBlockEnds ) ->
-                                    process
-                                        { chunksToRead = tail
-                                        , chunksWithIndent = NormalChunk chunk :: chunksAndBlockEnds
-                                        , indentStack = reducedStack
-                                        }
+                            Just ( reducedStack, chunksAndBlockEnds ) ->
+                                process
+                                    { chunksToRead = tail
+                                    , chunksWithIndent = NormalChunk chunk :: chunksAndBlockEnds
+                                    , indentStack = reducedStack
+                                    }
 
                 _ ->
                     process
@@ -130,7 +121,7 @@ findInStack indentLength stack ccs =
                 findInStack indentLength (parentIndent :: rest) (BlockEnd :: ccs)
 
         _ ->
-            Nothing
+            Just ( [], BlockEnd :: ccs )
 
 
 firstChunkIsIndent : List Chunk -> Bool

@@ -1,18 +1,7 @@
 module Chunks exposing (..)
 
 import Array exposing (Array)
-
-
-type ErrorType
-    = ErrorTab
-    | ErrorNewlineInsideSoftQuote
-    | ErrorHardQuoteClosesSoftQuote
-
-
-type alias Error =
-    { position : Int
-    , t : ErrorType
-    }
+import Error exposing (Error)
 
 
 type ChunkType
@@ -96,7 +85,7 @@ stringToChunksRec : State -> Result Error State
 stringToChunksRec state =
     if state.position >= Array.length state.code then
         state
-          -- ContentLine is not really used
+            -- ContentLine is not really used
             |> addCurrentChunk 0 ContentLine
             |> Ok
 
@@ -151,7 +140,7 @@ stringToChunksRec state =
                         [ indent_End ]
 
                     ContentLine ->
-                        [ errorOn "\t" ErrorTab
+                        [ errorOn "\t" Error.Tab
                         , multiComment_Start state.chunkType
                         , indent_Start
                         , lineComment_Start
@@ -168,8 +157,8 @@ stringToChunksRec state =
                         ]
 
                     SoftQuotedString ->
-                        [ errorOn "\n" ErrorNewlineInsideSoftQuote
-                        , errorOn "\"\"\"" ErrorHardQuoteClosesSoftQuote
+                        [ errorOn "\n" Error.NewlineInsideSoftQuote
+                        , errorOn "\"\"\"" Error.HardQuoteClosesSoftQuote
                         , softQuotedString_End
                         ]
 
@@ -177,6 +166,7 @@ stringToChunksRec state =
                         [ hardQuotedString_End ]
         in
         matchFirst state tests
+
 
 addCurrentChunk : Int -> ChunkType -> State -> State
 addCurrentChunk skipOffset newChunkType state =
@@ -195,7 +185,6 @@ addCurrentChunk skipOffset newChunkType state =
                 }
                     :: state.chunks
     }
-
 
 
 matchFirst : State -> List (State -> Maybe (Result Error State)) -> Result Error State
@@ -257,10 +246,10 @@ compare targetAsString state =
     compareRec 0
 
 
-errorOn : String -> ErrorType -> State -> Maybe (Result Error State)
-errorOn target errorType state =
+errorOn : String -> Error.Kind -> State -> Maybe (Result Error State)
+errorOn target errorKind state =
     if compare target state then
-        Just <| Err { t = errorType, position = state.position }
+        Just <| Err { kind = errorKind, position = state.position }
 
     else
         Nothing
@@ -295,7 +284,6 @@ compare_discardAndChangeChunkType target chunkType state =
 
     else
         Nothing
-
 
 
 compare_consume_thenChangeChunkType : String -> ChunkType -> State -> Maybe (Result Error State)

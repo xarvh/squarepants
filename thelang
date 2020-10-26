@@ -37,11 +37,12 @@ More or less established features
     * risk
     * log
 
-* `risk unionTypeValue`
+* `risk` monop
+    * `risk unionTypeValue`
     * Extract the first constructor of a Union Type, crash if not available
     * Prone to error if the constructos change order, but this is a YOLO feature
 
-* case..of
+* Pattern Matching
     * if value is pattern then ... else ...
 
     * if value is
@@ -53,6 +54,13 @@ More or less established features
               ...
 
 * Functions
+  * Must have at least one argument, anything without arguments is evaluated at once.
+    * Maybe catch attempts at calling a function without arguments?
+      ```
+      x = ...
+
+      x
+      ```
   * Cannot mutate anything outside their scope
   * Declared as `$functionName : $space-separated-arguments $arrow $return type
   * Arrows:
