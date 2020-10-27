@@ -50,6 +50,7 @@ toSemanticLines chunks =
         |> List.foldl addChunkToAccum init
         |> .lines
         |> List.reverse
+        |> List.drop 1
 
 
 

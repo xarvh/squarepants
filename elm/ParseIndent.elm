@@ -5,11 +5,15 @@ import Chunks exposing (Chunk, ChunkType(..))
 import Error exposing (Error)
 
 
-type IndentedChunk
-    = NormalChunk Chunk
+type Indented chunk
+    = NormalChunk chunk
     | NewLine
     | BlockStart
     | BlockEnd
+
+
+type alias IndentedChunk =
+    Indented Chunk
 
 
 type alias State =
@@ -58,6 +62,7 @@ process state =
                         if indentLength > currentIndent then
                             process
                                 { chunksToRead = tail
+
                                 --, chunksWithIndent = NormalChunk chunk :: BlockStart :: chunksWithIndent
                                 , chunksWithIndent = BlockStart :: chunksWithIndent
                                 , indentStack = indentLength :: state.indentStack
@@ -66,6 +71,7 @@ process state =
                         else if indentLength == currentIndent then
                             process
                                 { chunksToRead = tail
+
                                 --, chunksWithIndent = NormalChunk chunk :: chunksWithIndent
                                 , chunksWithIndent = chunksWithIndent
                                 , indentStack = state.indentStack
@@ -82,6 +88,7 @@ process state =
                                 Just ( reducedStack, chunksAndBlockEnds ) ->
                                     process
                                         { chunksToRead = tail
+
                                         --, chunksWithIndent = NormalChunk chunk :: chunksAndBlockEnds
                                         , chunksWithIndent = chunksAndBlockEnds
                                         , indentStack = reducedStack

@@ -6,12 +6,13 @@ import Chunks exposing (Chunk)
 import Error exposing (Error)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
-import ParseIndent exposing (IndentedChunk(..))
+import Html.Events
+import ParseIndent exposing (Indented(..), IndentedChunk)
+import Token exposing (IndentedToken, OpenOrClosed(..), Token(..))
 
 
-init =
+initialCode =
     """
-
 readStuff : () #> Result Error String
 readStuff () =
   if readFile "stuff.json" is Ok string then string else ""
@@ -41,19 +42,182 @@ someOtherFunction n s =
 
 
 type alias Model =
-    String
+    { code : String
+    }
 
 
+type Msg
+    = OnInput String
+
+
+init : Model
+init =
+    Model initialCode
+
+
+update : Msg -> Model -> Model
 update msg model =
-    model
+    case msg of
+        OnInput code ->
+            { model | code = code }
 
 
+view : Model -> Html Msg
 view model =
     Html.div
-        []
-        [ viewIndentedChunks model
-        , viewChunks model
+        [ style "display" "flex" ]
+        [ Html.textarea
+            [ style "width" "50%"
+            , style "height" "99vh"
+            , Html.Events.onInput OnInput
+            ]
+            [ Html.text model.code ]
+        , Html.div
+            []
+            [ viewTokens model.code
+            , Html.hr [] []
+            , viewIndentedChunks model.code
+            , Html.hr [] []
+            , viewChunks model.code
+            ]
         ]
+
+
+
+----
+--- Chunks
+--
+
+
+viewTokens : String -> Html msg
+viewTokens code =
+    let
+        resultTokens =
+            code
+                |> String.toList
+                |> Array.fromList
+                |> Chunks.fromString
+                |> Result.andThen ParseIndent.indentChunks
+                |> Result.andThen (Token.chunksToTokens code)
+    in
+    case resultTokens of
+        Err err ->
+            Html.pre []
+                [ Html.code []
+                    [ err
+                        |> Error.toString code
+                        |> Html.text
+                    ]
+                ]
+
+        Ok tokens ->
+            tokens
+                |> List.foldl addToken ( 0, [], [] )
+                |> (\( depth, ts, html ) -> html)
+                |> List.reverse
+                |> Html.div []
+
+
+addToken : IndentedToken -> ( Int, List Token, List (Html msg) ) -> ( Int, List Token, List (Html msg) )
+addToken indentedToken ( depth, lineTokens, html ) =
+    case indentedToken of
+        NormalChunk token ->
+            ( depth, token :: lineTokens, html )
+
+        NewLine ->
+            ( depth
+            , []
+            , (lineTokens
+                |> List.reverse
+                |> List.map viewToken
+                --                 |> (::) (viewDepth depth)
+                --                 |> Html.li []
+                |> Html.div [ style "margin-left" <| String.fromInt (depth * 3) ++ "em" ]
+              )
+                :: html
+            )
+
+        BlockStart ->
+            ( depth + 1, lineTokens, html )
+
+        BlockEnd ->
+            ( depth - 1, lineTokens, html )
+
+
+viewToken : Token -> Html msg
+viewToken token =
+    let
+        key s =
+            ( s, s, "blue" )
+
+        ( content, className, color ) =
+            case token of
+                StringLiteral s ->
+                    ( s, "string", "pink" )
+
+                NumberLiteral s ->
+                    ( s, "number", "pink" )
+
+                Symbol s ->
+                    ( s
+                    , "symbol"
+                    , if startsWithUpper s then
+                        "green"
+
+                      else
+                        "#222"
+                    )
+
+                If ->
+                    key "if"
+
+                Is ->
+                    key "is"
+
+                Then ->
+                    key "then"
+
+                Else ->
+                    key "else"
+
+                Return ->
+                    key "return"
+
+                Binop s ->
+                    ( s, "binop", "orange" )
+
+                Unop s ->
+                    ( s, "unop", "red" )
+
+                RoundParen Open ->
+                    ( "(", "paren", "purple" )
+
+                RoundParen Closed ->
+                    ( ")", "paren", "purple" )
+
+                _ ->
+                    ( Debug.toString token, "", "" )
+    in
+    Html.span
+        []
+        [ Html.code
+            [ style "border" "1px solid #eee"
+            , style "color" color
+            , style "margin-left" "0.5em"
+            , class className
+            ]
+            [ Html.text content ]
+        ]
+
+
+startsWithUpper : String -> Bool
+startsWithUpper s =
+    case String.uncons s of
+        Just ( char, rest ) ->
+            char >= 'A' && char <= 'Z'
+
+        Nothing ->
+            False
 
 
 
@@ -102,11 +266,11 @@ viewChunk code chunk =
         ]
 
 
-viewChunks : Model -> Html msg
-viewChunks model =
+viewChunks : String -> Html msg
+viewChunks code =
     let
         resultSemLines =
-            model
+            code
                 |> String.toList
                 |> Array.fromList
                 |> Chunks.fromString
@@ -120,7 +284,7 @@ viewChunks model =
 
         Ok semLines ->
             semLines
-                |> List.map (List.map (viewChunk model) >> Html.li [])
+                |> List.map (List.map (viewChunk code) >> Html.li [])
                 |> Html.ul []
 
 
@@ -130,11 +294,11 @@ viewChunks model =
 --
 
 
-viewIndentedChunks : Model -> Html msg
-viewIndentedChunks model =
+viewIndentedChunks : String -> Html msg
+viewIndentedChunks code =
     let
         resultIndentedChunks =
-            model
+            code
                 |> String.toList
                 |> Array.fromList
                 |> Chunks.fromString
@@ -145,19 +309,17 @@ viewIndentedChunks model =
             Html.pre []
                 [ Html.code []
                     [ err
-                        |> Error.toString model
+                        |> Error.toString code
                         |> Html.text
                     ]
                 ]
 
         Ok indentedChunks ->
             indentedChunks
-                |> List.foldl (addIndentedChunk model) ( 0, [], [] )
+                |> List.foldl (addIndentedChunk code) ( 0, [], [] )
                 |> (\( depth, chunks, html ) -> html)
                 |> List.reverse
                 |> Html.ul []
-
-
 
 
 viewDepth : Int -> Html msg

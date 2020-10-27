@@ -12,6 +12,7 @@ type Kind
     | Tab
     | NewlineInsideSoftQuote
     | HardQuoteClosesSoftQuote
+    | InvalidToken { token : String }
 
 
 toString : String -> Error -> String
