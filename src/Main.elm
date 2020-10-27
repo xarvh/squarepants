@@ -2,13 +2,13 @@ module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
-import Chunks exposing (Chunk)
-import Error exposing (Error)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
-import ParseIndent exposing (Indented(..), IndentedChunk)
-import Token exposing (IndentedToken, OpenOrClosed(..), Token(..))
+import Parse.Chunks exposing (Chunk)
+import Parse.Error exposing (Error)
+import Parse.Indent exposing (Indented(..), IndentedChunk)
+import Parse.Token exposing (IndentedToken, OpenOrClosed(..), Token(..))
 
 
 initialCode =
@@ -96,16 +96,16 @@ viewTokens code =
             code
                 |> String.toList
                 |> Array.fromList
-                |> Chunks.fromString
-                |> Result.andThen ParseIndent.indentChunks
-                |> Result.andThen (Token.chunksToTokens code)
+                |> Parse.Chunks.fromString
+                |> Result.andThen Parse.Indent.indentChunks
+                |> Result.andThen (Parse.Token.chunksToTokens code)
     in
     case resultTokens of
         Err err ->
             Html.pre []
                 [ Html.code []
                     [ err
-                        |> Error.toString code
+                        |> Parse.Error.toString code
                         |> Html.text
                     ]
                 ]
@@ -233,7 +233,7 @@ viewChunk code chunk =
             String.slice chunk.start chunk.end code
 
         isIndent =
-            chunk.t == Chunks.Indent
+            chunk.t == Parse.Chunks.Indent
     in
     Html.code
         [ style "border" "1px solid lightgray"
@@ -256,7 +256,7 @@ viewChunk code chunk =
              else
                 String.slice chunk.start chunk.end code
             )
-        , if chunk.t == Chunks.ContentLine && String.endsWith "\n" content then
+        , if chunk.t == Parse.Chunks.ContentLine && String.endsWith "\n" content then
             Html.span
                 [ style "background-color" "orange" ]
                 [ Html.text "\\n" ]
@@ -273,8 +273,8 @@ viewChunks code =
             code
                 |> String.toList
                 |> Array.fromList
-                |> Chunks.fromString
-                |> Result.map Chunks.toSemanticLines
+                |> Parse.Chunks.fromString
+                |> Result.map Parse.Chunks.toSemanticLines
     in
     case resultSemLines of
         Err err ->
@@ -301,15 +301,15 @@ viewIndentedChunks code =
             code
                 |> String.toList
                 |> Array.fromList
-                |> Chunks.fromString
-                |> Result.andThen ParseIndent.indentChunks
+                |> Parse.Chunks.fromString
+                |> Result.andThen Parse.Indent.indentChunks
     in
     case resultIndentedChunks of
         Err err ->
             Html.pre []
                 [ Html.code []
                     [ err
-                        |> Error.toString code
+                        |> Parse.Error.toString code
                         |> Html.text
                     ]
                 ]

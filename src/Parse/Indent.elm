@@ -1,8 +1,8 @@
-module ParseIndent exposing (..)
+module Parse.Indent exposing (..)
 
 import Array exposing (Array)
-import Chunks exposing (Chunk, ChunkType(..))
-import Error exposing (Error)
+import Parse.Chunks exposing (Chunk, ChunkType(..))
+import Parse.Error exposing (Error)
 
 
 type Indented chunk
@@ -81,7 +81,7 @@ process state =
                             case findInStack indentLength state.indentStack chunksWithIndent of
                                 Nothing ->
                                     Err
-                                        { kind = Error.BadIndent { length = indentLength, stack = state.indentStack }
+                                        { kind = Parse.Error.BadIndent { length = indentLength, stack = state.indentStack }
                                         , position = chunk.end
                                         }
 

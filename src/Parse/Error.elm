@@ -1,4 +1,4 @@
-module Error exposing (..)
+module Parse.Error exposing (..)
 
 
 type alias Error =

@@ -1,8 +1,8 @@
-module Token exposing (..)
+module Parse.Token exposing (..)
 
-import Chunks exposing (Chunk)
-import Error exposing (Error)
-import ParseIndent exposing (Indented(..), IndentedChunk)
+import Parse.Chunks exposing (Chunk)
+import Parse.Error exposing (Error)
+import Parse.Indent exposing (Indented(..), IndentedChunk)
 import Regex exposing (Regex)
 
 
@@ -140,12 +140,12 @@ appendChunk code ic tokenAccu =
     case ic of
         NormalChunk chunk ->
             case chunk.t of
-                Chunks.ContentLine ->
+                Parse.Chunks.ContentLine ->
                     tokenAccu
                         |> contentLineToTokensRec (String.slice chunk.start chunk.end code)
                         |> Result.mapError (\errorKind -> Error errorKind chunk.start)
 
-                Chunks.SoftQuotedString ->
+                Parse.Chunks.SoftQuotedString ->
                     (code
                         -- TODO remove quotes?
                         -- TODO remove escapes
@@ -156,7 +156,7 @@ appendChunk code ic tokenAccu =
                         :: tokenAccu
                         |> Ok
 
-                Chunks.HardQuotedString ->
+                Parse.Chunks.HardQuotedString ->
                     (code
                         -- TODO remove quotes?
                         -- TODO remove escapes
@@ -181,7 +181,7 @@ appendChunk code ic tokenAccu =
             BlockEnd :: tokenAccu |> Ok
 
 
-contentLineToTokensRec : String -> List IndentedToken -> Result Error.Kind (List IndentedToken)
+contentLineToTokensRec : String -> List IndentedToken -> Result Parse.Error.Kind (List IndentedToken)
 contentLineToTokensRec untrimmedCodeChunk tokenAccu =
     let
         codeChunk =
@@ -198,7 +198,7 @@ contentLineToTokensRec untrimmedCodeChunk tokenAccu =
     case mapFind tryMatch recognisedToken of
         Nothing ->
             { token = codeChunk }
-                |> Error.InvalidToken
+                |> Parse.Error.InvalidToken
                 |> Err
 
         Just ( match, constructor ) ->

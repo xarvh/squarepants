@@ -1,2 +1,0 @@
-someFunction : SomeType -> SomeOtherType -> SomeType
-someFunction a b c =

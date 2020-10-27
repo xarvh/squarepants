@@ -1,7 +1,7 @@
-module Chunks exposing (..)
+module Parse.Chunks exposing (..)
 
 import Array exposing (Array)
-import Error exposing (Error)
+import Parse.Error exposing (Error)
 
 
 type ChunkType
@@ -141,7 +141,7 @@ stringToChunksRec state =
                         [ indent_End ]
 
                     ContentLine ->
-                        [ errorOn "\t" Error.Tab
+                        [ errorOn "\t" Parse.Error.Tab
                         , multiComment_Start state.chunkType
                         , indent_Start
                         , lineComment_Start
@@ -158,8 +158,8 @@ stringToChunksRec state =
                         ]
 
                     SoftQuotedString ->
-                        [ errorOn "\n" Error.NewlineInsideSoftQuote
-                        , errorOn "\"\"\"" Error.HardQuoteClosesSoftQuote
+                        [ errorOn "\n" Parse.Error.NewlineInsideSoftQuote
+                        , errorOn "\"\"\"" Parse.Error.HardQuoteClosesSoftQuote
                         , softQuotedString_End
                         ]
 
@@ -247,7 +247,7 @@ compare targetAsString state =
     compareRec 0
 
 
-errorOn : String -> Error.Kind -> State -> Maybe (Result Error State)
+errorOn : String -> Parse.Error.Kind -> State -> Maybe (Result Error State)
 errorOn target errorKind state =
     if compare target state then
         Just <| Err { kind = errorKind, position = state.position }
