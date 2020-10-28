@@ -1,8 +1,8 @@
-module Parse.Token exposing (..)
+module Vier.Lexer.Token exposing (..)
 
-import Parse.Chunks exposing (Chunk)
-import Parse.Error exposing (Error)
-import Parse.Indent exposing (Indented(..), IndentedChunk)
+import Vier.Lexer.Chunks exposing (Chunk)
+import Vier.Lexer.Error exposing (Error)
+import Vier.Lexer.Indent exposing (Indented(..), IndentedChunk)
 import Regex exposing (Regex)
 
 
@@ -146,15 +146,15 @@ appendChunk code ic tokenAccu =
     case ic of
         Content chunk ->
             case chunk.t of
-                Parse.Chunks.ContentLine ->
+                Vier.Lexer.Chunks.ContentLine ->
                     tokenAccu
                         |> contentLineToTokensRec code chunk.start chunk.end
                         |> Result.mapError (\errorKind -> Error errorKind chunk.start)
 
-                Parse.Chunks.SoftQuotedString ->
+                Vier.Lexer.Chunks.SoftQuotedString ->
                     chunkToStringLiteral code chunk :: tokenAccu |> Ok
 
-                Parse.Chunks.HardQuotedString ->
+                Vier.Lexer.Chunks.HardQuotedString ->
                     chunkToStringLiteral code chunk :: tokenAccu |> Ok
 
                 -- TODO do we want comments to make it to the AST?
@@ -179,7 +179,7 @@ chunkToStringLiteral code chunk =
         |> Content
 
 
-contentLineToTokensRec : String -> Int -> Int -> List IndentedToken -> Result Parse.Error.Kind (List IndentedToken)
+contentLineToTokensRec : String -> Int -> Int -> List IndentedToken -> Result Vier.Lexer.Error.Kind (List IndentedToken)
 contentLineToTokensRec code untrimmedStart chunkEnd tokenAccu =
     let
         chunkStart =
@@ -199,7 +199,7 @@ contentLineToTokensRec code untrimmedStart chunkEnd tokenAccu =
     case mapFind tryMatch recognisedTokens of
         Nothing ->
             { token = codeChunk }
-                |> Parse.Error.InvalidToken
+                |> Vier.Lexer.Error.InvalidToken
                 |> Err
 
         Just ( match, constructor ) ->

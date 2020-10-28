@@ -1,8 +1,8 @@
-module Parse.Indent exposing (..)
+module Vier.Lexer.Indent exposing (..)
 
 import Array exposing (Array)
-import Parse.Chunks exposing (Chunk, ChunkType(..))
-import Parse.Error exposing (Error)
+import Vier.Lexer.Chunks exposing (Chunk, ChunkType(..))
+import Vier.Lexer.Error exposing (Error)
 
 
 type Indented content
@@ -81,7 +81,7 @@ process state =
                             case findInStack indentLength state.indentStack chunksWithIndent of
                                 Nothing ->
                                     Err
-                                        { kind = Parse.Error.BadIndent { length = indentLength, stack = state.indentStack }
+                                        { kind = Vier.Lexer.Error.BadIndent { length = indentLength, stack = state.indentStack }
                                         , position = chunk.end
                                         }
 

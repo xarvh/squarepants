@@ -1,4 +1,4 @@
-module Parse.Error exposing (..)
+module Vier.Lexer.Error exposing (..)
 
 
 type alias Error =

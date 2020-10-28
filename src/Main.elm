@@ -6,10 +6,10 @@ import Browser
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
-import Parse.Chunks exposing (Chunk)
-import Parse.Error exposing (Error)
-import Parse.Indent exposing (Indented(..), IndentedChunk, StructureKind(..))
-import Parse.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenKind(..))
+import Vier.Lexer.Chunks exposing (Chunk)
+import Vier.Lexer.Error exposing (Error)
+import Vier.Lexer.Indent exposing (Indented(..), IndentedChunk, StructureKind(..))
+import Vier.Lexer.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenKind(..))
 
 
 initialCode =
@@ -97,16 +97,16 @@ viewTokens code =
             code
                 |> String.toList
                 |> Array.fromList
-                |> Parse.Chunks.fromString
-                |> Result.andThen Parse.Indent.indentChunks
-                |> Result.andThen (Parse.Token.chunksToTokens code)
+                |> Vier.Lexer.Chunks.fromString
+                |> Result.andThen Vier.Lexer.Indent.indentChunks
+                |> Result.andThen (Vier.Lexer.Token.chunksToTokens code)
     in
     case resultTokens of
         Err err ->
             Html.pre []
                 [ Html.code []
                     [ err
-                        |> Parse.Error.toString code
+                        |> Vier.Lexer.Error.toString code
                         |> Html.text
                     ]
                 ]
@@ -235,7 +235,7 @@ viewChunk code chunk =
             String.slice chunk.start chunk.end code
 
         isIndent =
-            chunk.t == Parse.Chunks.Indent
+            chunk.t == Vier.Lexer.Chunks.Indent
     in
     Html.code
         [ style "border" "1px solid lightgray"
@@ -258,7 +258,7 @@ viewChunk code chunk =
              else
                 String.slice chunk.start chunk.end code
             )
-        , if chunk.t == Parse.Chunks.ContentLine && String.endsWith "\n" content then
+        , if chunk.t == Vier.Lexer.Chunks.ContentLine && String.endsWith "\n" content then
             Html.span
                 [ style "background-color" "orange" ]
                 [ Html.text "\\n" ]
@@ -275,8 +275,8 @@ viewChunks code =
             code
                 |> String.toList
                 |> Array.fromList
-                |> Parse.Chunks.fromString
-                |> Result.map Parse.Chunks.toSemanticLines
+                |> Vier.Lexer.Chunks.fromString
+                |> Result.map Vier.Lexer.Chunks.toSemanticLines
     in
     case resultSemLines of
         Err err ->
@@ -303,15 +303,15 @@ viewIndentedChunks code =
             code
                 |> String.toList
                 |> Array.fromList
-                |> Parse.Chunks.fromString
-                |> Result.andThen Parse.Indent.indentChunks
+                |> Vier.Lexer.Chunks.fromString
+                |> Result.andThen Vier.Lexer.Indent.indentChunks
     in
     case resultIndentedChunks of
         Err err ->
             Html.pre []
                 [ Html.code []
                     [ err
-                        |> Parse.Error.toString code
+                        |> Vier.Lexer.Error.toString code
                         |> Html.text
                     ]
                 ]

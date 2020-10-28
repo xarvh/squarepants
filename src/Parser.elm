@@ -129,7 +129,7 @@ without p tokens =
 
 
 t2 : Parser i a -> Parser i b -> Parser i ( a, b )
-t2 pa pb tokens =
+t2 pa pb =
     thenAnd pa <| \a ->
     thenAnd pb <| \b ->
     return ( a, b )
@@ -144,7 +144,7 @@ t3 pa pb pc =
 
 
 r2 : Parser i a -> Parser i b -> Parser i { a : a, b : b }
-r2 pa pb tokens =
+r2 pa pb =
     thenAnd pa <| \a ->
     thenAnd pb <| \b ->
     return { a = a, b = b }
