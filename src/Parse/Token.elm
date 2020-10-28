@@ -7,11 +7,17 @@ import Regex exposing (Regex)
 
 
 type alias IndentedToken =
-    -- TODO preserve position!
     Indented Token
 
 
-type Token
+type alias Token =
+    { kind : TokenKind
+    , start : Int
+    , end : Int
+    }
+
+
+type TokenKind
     = StringLiteral String
     | NumberLiteral String
     | Symbol String
@@ -33,8 +39,8 @@ type OpenOrClosed
     | Closed
 
 
-recognisedToken : List ( Regex, String -> Token )
-recognisedToken =
+recognisedTokens : List ( Regex, String -> TokenKind )
+recognisedTokens =
     [ ( "^[0-9]+[.]?[0-9]*"
       , NumberLiteral
       )
@@ -138,54 +144,49 @@ chunksToTokensRec code chunks tokenAccu =
 appendChunk : String -> IndentedChunk -> List IndentedToken -> Result Error (List IndentedToken)
 appendChunk code ic tokenAccu =
     case ic of
-        NormalChunk chunk ->
+        Content chunk ->
             case chunk.t of
                 Parse.Chunks.ContentLine ->
                     tokenAccu
-                        |> contentLineToTokensRec (String.slice chunk.start chunk.end code)
+                        |> contentLineToTokensRec code chunk.start chunk.end
                         |> Result.mapError (\errorKind -> Error errorKind chunk.start)
 
                 Parse.Chunks.SoftQuotedString ->
-                    (code
-                        -- TODO remove quotes?
-                        -- TODO remove escapes
-                        |> String.slice chunk.start chunk.end
-                        |> StringLiteral
-                        |> NormalChunk
-                    )
-                        :: tokenAccu
-                        |> Ok
+                    chunkToStringLiteral code chunk :: tokenAccu |> Ok
 
                 Parse.Chunks.HardQuotedString ->
-                    (code
-                        -- TODO remove quotes?
-                        -- TODO remove escapes
-                        |> String.slice chunk.start chunk.end
-                        |> StringLiteral
-                        |> NormalChunk
-                    )
-                        :: tokenAccu
-                        |> Ok
+                    chunkToStringLiteral code chunk :: tokenAccu |> Ok
 
                 -- TODO do we want comments to make it to the AST?
                 _ ->
                     Ok tokenAccu
 
-        NewLine ->
-            NewLine :: tokenAccu |> Ok
-
-        BlockStart ->
-            BlockStart :: tokenAccu |> Ok
-
-        BlockEnd ->
-            BlockEnd :: tokenAccu |> Ok
+        Structure structure ->
+            Structure structure :: tokenAccu |> Ok
 
 
-contentLineToTokensRec : String -> List IndentedToken -> Result Parse.Error.Kind (List IndentedToken)
-contentLineToTokensRec untrimmedCodeChunk tokenAccu =
+chunkToStringLiteral : String -> Chunk -> IndentedToken
+chunkToStringLiteral code chunk =
+    { kind =
+        code
+            -- TODO remove quotes?
+            -- TODO remove escapes
+            |> String.slice chunk.start chunk.end
+            |> StringLiteral
+    , start = chunk.start
+    , end = chunk.end
+    }
+        |> Content
+
+
+contentLineToTokensRec : String -> Int -> Int -> List IndentedToken -> Result Parse.Error.Kind (List IndentedToken)
+contentLineToTokensRec code untrimmedStart chunkEnd tokenAccu =
     let
+        chunkStart =
+            skipSpacesFrom code untrimmedStart
+
         codeChunk =
-            String.trimLeft untrimmedCodeChunk
+            String.slice chunkStart chunkEnd code
 
         tryMatch ( regex, constructor ) =
             case Regex.find regex codeChunk of
@@ -195,7 +196,7 @@ contentLineToTokensRec untrimmedCodeChunk tokenAccu =
                 [] ->
                     Nothing
     in
-    case mapFind tryMatch recognisedToken of
+    case mapFind tryMatch recognisedTokens of
         Nothing ->
             { token = codeChunk }
                 |> Parse.Error.InvalidToken
@@ -203,22 +204,41 @@ contentLineToTokensRec untrimmedCodeChunk tokenAccu =
 
         Just ( match, constructor ) ->
             let
-                remainder =
-                    codeChunk
-                        |> String.dropLeft (match.index + String.length match.match)
-                        |> String.trimLeft
+                tokenStart =
+                    chunkStart + match.index
+
+                tokenEnd =
+                    tokenStart + String.length match.match
+
+                newStart =
+                    skipSpacesFrom code tokenEnd
 
                 token =
-                    constructor match.match
+                    { kind = constructor match.match
+                    , start = tokenStart
+                    , end = tokenEnd
+                    }
 
                 accu =
-                    NormalChunk token :: tokenAccu
+                    Content token :: tokenAccu
             in
-            if remainder == "" then
+            if newStart >= chunkEnd then
                 Ok accu
 
             else
-                contentLineToTokensRec remainder accu
+                contentLineToTokensRec code newStart chunkEnd accu
+
+
+skipSpacesFrom : String -> Int -> Int
+skipSpacesFrom code start =
+    let
+        untrimmed =
+            String.slice start -1 code
+
+        trimmed =
+            String.trimLeft untrimmed
+    in
+    start + String.length untrimmed - String.length trimmed
 
 
 {-| This is mostly so that I don't have to run a successful `f` twice

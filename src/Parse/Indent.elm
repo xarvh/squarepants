@@ -5,9 +5,13 @@ import Parse.Chunks exposing (Chunk, ChunkType(..))
 import Parse.Error exposing (Error)
 
 
-type Indented chunk
-    = NormalChunk chunk
-    | NewLine
+type Indented content
+    = Content content
+    | Structure StructureKind
+
+
+type StructureKind
+    = NewLine
     | BlockStart
     | BlockEnd
 
@@ -57,22 +61,18 @@ process state =
                                 chunk.end - chunk.start
 
                             chunksWithIndent =
-                                NewLine :: state.chunksWithIndent
+                                Structure NewLine :: state.chunksWithIndent
                         in
                         if indentLength > currentIndent then
                             process
                                 { chunksToRead = tail
-
-                                --, chunksWithIndent = NormalChunk chunk :: BlockStart :: chunksWithIndent
-                                , chunksWithIndent = BlockStart :: chunksWithIndent
+                                , chunksWithIndent = Structure BlockStart :: chunksWithIndent
                                 , indentStack = indentLength :: state.indentStack
                                 }
 
                         else if indentLength == currentIndent then
                             process
                                 { chunksToRead = tail
-
-                                --, chunksWithIndent = NormalChunk chunk :: chunksWithIndent
                                 , chunksWithIndent = chunksWithIndent
                                 , indentStack = state.indentStack
                                 }
@@ -88,8 +88,6 @@ process state =
                                 Just ( reducedStack, chunksAndBlockEnds ) ->
                                     process
                                         { chunksToRead = tail
-
-                                        --, chunksWithIndent = NormalChunk chunk :: chunksAndBlockEnds
                                         , chunksWithIndent = chunksAndBlockEnds
                                         , indentStack = reducedStack
                                         }
@@ -98,7 +96,7 @@ process state =
                     process
                         { state
                             | chunksToRead = tail
-                            , chunksWithIndent = NormalChunk chunk :: state.chunksWithIndent
+                            , chunksWithIndent = Content chunk :: state.chunksWithIndent
                         }
 
 
@@ -129,13 +127,13 @@ findInStack indentLength stack ccs =
                    indentLength
                    ```
                 -}
-                Just ( rest, BlockEnd :: ccs )
+                Just ( rest, Structure BlockEnd :: ccs )
 
             else
-                findInStack indentLength rest (BlockEnd :: ccs)
+                findInStack indentLength rest (Structure BlockEnd :: ccs)
 
         _ ->
-            Just ( [], BlockEnd :: ccs )
+            Just ( [], Structure BlockEnd :: ccs )
 
 
 firstChunkIsIndent : List Chunk -> Bool

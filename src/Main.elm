@@ -7,8 +7,8 @@ import Html.Attributes exposing (class, style)
 import Html.Events
 import Parse.Chunks exposing (Chunk)
 import Parse.Error exposing (Error)
-import Parse.Indent exposing (Indented(..), IndentedChunk)
-import Parse.Token exposing (IndentedToken, OpenOrClosed(..), Token(..))
+import Parse.Indent exposing (Indented(..), IndentedChunk, StructureKind(..))
+import Parse.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenKind(..))
 
 
 initialCode =
@@ -121,10 +121,10 @@ viewTokens code =
 addToken : IndentedToken -> ( Int, List Token, List (Html msg) ) -> ( Int, List Token, List (Html msg) )
 addToken indentedToken ( depth, lineTokens, html ) =
     case indentedToken of
-        NormalChunk token ->
+        Content token ->
             ( depth, token :: lineTokens, html )
 
-        NewLine ->
+        Structure NewLine ->
             ( depth
             , []
             , (lineTokens
@@ -137,10 +137,10 @@ addToken indentedToken ( depth, lineTokens, html ) =
                 :: html
             )
 
-        BlockStart ->
+        Structure BlockStart ->
             ( depth + 1, lineTokens, html )
 
-        BlockEnd ->
+        Structure BlockEnd ->
             ( depth - 1, lineTokens, html )
 
 
@@ -151,7 +151,7 @@ viewToken token =
             ( s, s, "blue" )
 
         ( content, className, color ) =
-            case token of
+            case token.kind of
                 StringLiteral s ->
                     ( s, "string", "pink" )
 
@@ -339,10 +339,10 @@ viewDepth depth =
 addIndentedChunk : String -> IndentedChunk -> ( Int, List Chunk, List (Html msg) ) -> ( Int, List Chunk, List (Html msg) )
 addIndentedChunk code ic ( depth, chunks, html ) =
     case ic of
-        NormalChunk chunk ->
+        Content chunk ->
             ( depth, chunk :: chunks, html )
 
-        NewLine ->
+        Structure NewLine ->
             ( depth
             , []
             , (chunks
@@ -354,10 +354,10 @@ addIndentedChunk code ic ( depth, chunks, html ) =
                 :: html
             )
 
-        BlockStart ->
+        Structure BlockStart ->
             ( depth + 1, chunks, html )
 
-        BlockEnd ->
+        Structure BlockEnd ->
             ( depth - 1, chunks, html )
 
 
