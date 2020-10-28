@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Parser
 import Array exposing (Array)
 import Browser
 import Html exposing (Html)
