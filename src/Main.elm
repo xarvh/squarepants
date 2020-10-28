@@ -205,6 +205,7 @@ viewToken token =
             , style "color" color
             , style "margin-left" "0.5em"
             , class className
+            , Html.Attributes.id <| String.fromInt token.start ++ "-" ++ String.fromInt token.end
             ]
             [ Html.text content ]
         ]
