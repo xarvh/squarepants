@@ -25,8 +25,8 @@ type alias Parser input output =
 --
 
 
-single : (input -> Maybe output) -> Parser input output
-single test tokens =
+fromFn : (input -> Maybe output) -> Parser input output
+fromFn test tokens =
     case tokens of
         [] ->
             Nothing
@@ -60,11 +60,6 @@ map f p tokens =
             Just ( f a, newTokens )
 
 
-return : a -> Parser input a
-return a tokens =
-    Just ( a, tokens )
-
-
 andThen : (a -> Parser input b) -> Parser input a -> Parser input b
 andThen f p tokens =
     case p tokens of
@@ -77,14 +72,24 @@ andThen f p tokens =
 
 {-| This is just andThen with flipped arguments, which is useful for chaining
 -}
-thenAnd : Parser i a -> (a -> Parser i b) -> Parser i b
-thenAnd p f tokens =
+do : Parser i a -> (a -> Parser i b) -> Parser i b
+do p f tokens =
     case p tokens of
         Nothing ->
             Nothing
 
         Just ( a, newTokens ) ->
             f a newTokens
+
+
+return : a -> Parser input a
+return a tokens =
+    Just ( a, tokens )
+
+
+breakCircularReference : (() -> Parser i b) -> Parser i b
+breakCircularReference f =
+    f ()
 
 
 
@@ -130,62 +135,17 @@ without p tokens =
 
 t2 : Parser i a -> Parser i b -> Parser i ( a, b )
 t2 pa pb =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
+    do pa <| \a ->
+    do pb <| \b ->
     return ( a, b )
 
 
 t3 : Parser i a -> Parser i b -> Parser i c -> Parser i ( a, b, c )
 t3 pa pb pc =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
-    thenAnd pc <| \c ->
+    do pa <| \a ->
+    do pb <| \b ->
+    do pc <| \c ->
     return ( a, b, c )
-
-
-r2 : Parser i a -> Parser i b -> Parser i { a : a, b : b }
-r2 pa pb =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
-    return { a = a, b = b }
-
-
-r3 : Parser i a -> Parser i b -> Parser i c -> Parser i { a : a, b : b, c : c }
-r3 pa pb pc =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
-    thenAnd pc <| \c ->
-    return { a = a, b = b, c = c }
-
-
-r4 : Parser i a -> Parser i b -> Parser i c -> Parser i d -> Parser i { a : a, b : b, c : c, d : d }
-r4 pa pb pc pd =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
-    thenAnd pc <| \c ->
-    thenAnd pd <| \d ->
-    return { a = a, b = b, c = c, d = d }
-
-
-r5 : Parser i a -> Parser i b -> Parser i c -> Parser i d -> Parser i e -> Parser i { a : a, b : b, c : c, d : d, e : e }
-r5 pa pb pc pd pe =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
-    thenAnd pc <| \c ->
-    thenAnd pd <| \d ->
-    thenAnd pe <| \e ->
-    return { a = a, b = b, c = c, d = d, e = e }
-
-
-r6 : Parser i a -> Parser i b -> Parser i c -> Parser i d -> Parser i e -> Parser i f -> Parser i { a : a, b : b, c : c, d : d, e : e, f : f }
-r6 pa pb pc pd pe pf =
-    thenAnd pa <| \a ->
-    thenAnd pb <| \b ->
-    thenAnd pc <| \c ->
-    thenAnd pd <| \d ->
-    thenAnd pe <| \e ->
-    thenAnd pf <| \f ->
-    return { a = a, b = b, c = c, d = d, e = e, f = f }
 
 
 zeroOrMore : Parser i o -> Parser i (List o)

@@ -1,15 +1,16 @@
 module Main exposing (..)
 
-import Parser
 import Array exposing (Array)
 import Browser
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
+import Parser
 import Vier.Lexer.Chunks exposing (Chunk)
 import Vier.Lexer.Error exposing (Error)
 import Vier.Lexer.Indent exposing (Indented(..), IndentedChunk, StructureKind(..))
 import Vier.Lexer.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenKind(..))
+import Vier.Syntax as Syntax exposing (Expression)
 
 
 initialCode =
@@ -75,13 +76,72 @@ view model =
             [ Html.text model.code ]
         , Html.div
             []
-            [ viewTokens model.code
+            [ viewAst model.code
+            , viewTokens model.code
             , Html.hr [] []
             , viewIndentedChunks model.code
             , Html.hr [] []
             , viewChunks model.code
             ]
         ]
+
+
+
+----
+--- AST
+--
+
+
+viewAst : String -> Html msg
+viewAst code =
+    let
+        res =
+            code
+                |> String.toList
+                |> Array.fromList
+                |> Vier.Lexer.Chunks.fromString
+                |> Result.andThen Vier.Lexer.Indent.indentChunks
+                |> Result.andThen (Vier.Lexer.Token.chunksToTokens code)
+                |> Result.map Syntax.expr
+    in
+    case res of
+      Ok (Just (tree, _)) ->
+        viewAstNode tree
+      _ ->
+        Html.text ""
+
+
+viewAstNode : Syntax.Expression -> Html msg
+viewAstNode expr =
+    case expr of
+        Syntax.Literal s ->
+            Html.text s
+
+        Syntax.Variable s ->
+            Html.text s
+
+        Syntax.FunctionCall fn ( aHead, aTail ) ->
+            Html.div
+                [ style "border" "red" ]
+                [ Html.div
+                    []
+                    [ Html.text "CALL"
+                    , viewAstNode fn
+                    ]
+                , Html.div
+                    [ style "padding-left" "2em" ]
+                    (List.map viewAstNode <| aHead :: aTail)
+                ]
+
+        --     Binop Expression String Expression
+        --     Unop String Expression
+        _ ->
+            Html.code
+                []
+                [ expr
+                    |> Debug.toString
+                    |> Html.text
+                ]
 
 
 
