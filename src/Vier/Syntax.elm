@@ -21,12 +21,11 @@ type Expression
 
 expr : Parser Expression
 expr =
-    Parser.breakCircularReference <| \_ ->
     Parser.oneOf
         [ Parser.fromFn maybeAtom
-        , functionCall
-        , unop
-        , binop
+        , Parser.breakCircularReference <| \_ -> functionCall
+        , Parser.breakCircularReference <| \_ -> unop
+        , Parser.breakCircularReference <| \_ -> binop
         ]
 
 
@@ -103,5 +102,6 @@ unop : Parser Expression
 unop =
     Parser.breakCircularReference <| \_ ->
     do (Parser.fromFn maybeUnop) <| \op ->
-    do expr <| \right ->
+    do (Parser.breakCircularReference <| \_ -> expr) <| \right ->
+    
     return <| Unop op right
