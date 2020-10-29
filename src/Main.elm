@@ -102,13 +102,16 @@ viewAst code =
                 |> Vier.Lexer.Chunks.fromString
                 |> Result.andThen Vier.Lexer.Indent.indentChunks
                 |> Result.andThen (Vier.Lexer.Token.chunksToTokens code)
-                |> Result.map Syntax.expr
+                |> Result.map Syntax.parse
     in
     case res of
-      Ok (Just (tree, _)) ->
-        viewAstNode tree
-      _ ->
-        Html.text ""
+        Ok (Just tree) ->
+            viewAstNode tree
+
+        _ ->
+            res
+                |> Debug.toString
+                |> Html.text
 
 
 viewAstNode : Syntax.Expression -> Html msg

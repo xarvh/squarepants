@@ -6,7 +6,7 @@ import Vier.Lexer.Token as Token exposing (IndentedToken, Token)
 
 
 type alias Parser a =
-    Parser.Parser IndentedToken a
+    Parser.Parser IndentedToken (List IndentedToken) a
 
 
 type Expression
@@ -17,6 +17,21 @@ type Expression
     | Unop String Expression
     | If { condition : Expression, true : Expression, false : Expression }
     | Error
+
+
+parse : List IndentedToken -> Maybe Expression
+parse =
+    let
+        uncons : List a -> Maybe ( a, List a )
+        uncons ls =
+            case ls of
+                head :: tail ->
+                    Just ( head, tail )
+
+                [] ->
+                    Nothing
+    in
+    expr uncons >> Maybe.map Tuple.first
 
 
 expr : Parser Expression
@@ -103,5 +118,4 @@ unop =
     Parser.breakCircularReference <| \_ ->
     do (Parser.fromFn maybeUnop) <| \op ->
     do (Parser.breakCircularReference <| \_ -> expr) <| \right ->
-    
     return <| Unop op right

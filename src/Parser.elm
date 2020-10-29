@@ -1,5 +1,7 @@
 module Parser exposing (..)
 
+{-| -}
+
 {-
 
    debuggability:
@@ -9,14 +11,37 @@ module Parser exposing (..)
      * the current input head
 
    How do you do this without
-     1) making the gramar declaration messier
+     1) making the grammar declaration messier
      2) mkaing the parsing slower?
 
 -}
 
 
-type alias Parser input output =
-    List input -> Maybe ( output, List input )
+{-| The Parser is a function that reads an input and tries to match it to a specific pattern.
+
+The input is modelled by the two arguments:
+
+1.  The first argument is a function that extracts a token from the input
+2.  The second argument is the input state itself
+
+For example, if the input is a `List Tokens`, we can use List.Extra.uncons to extract the next token.
+
+    tryToParseExpression : List Token -> Result String Expression
+    tryToParseExpression input =
+        case expressionParser List.Extra.uncons input of
+            Nothing ->
+                Err "input does not contain an expression"
+
+            Just ( expression, [] ) ->
+                Ok expression
+
+            Just ( expression, remainingInput ) ->
+                Err "I found an expression, but then there was some more stuff left!!!"
+
+-}
+-- TODO rename `input` to `readState`?
+type alias Parser token input output =
+    (input -> Maybe ( token, input )) -> input -> Maybe ( output, input )
 
 
 
@@ -25,69 +50,69 @@ type alias Parser input output =
 --
 
 
-fromFn : (input -> Maybe output) -> Parser input output
-fromFn test tokens =
-    case tokens of
-        [] ->
+fromFn : (token -> Maybe output) -> Parser token input output
+fromFn test next input =
+    case next input of
+        Nothing ->
             Nothing
 
-        head :: tail ->
-            case test head of
+        Just ( token, nextInput ) ->
+            case test token of
                 Nothing ->
                     Nothing
 
                 Just output ->
-                    Just ( output, tail )
+                    Just ( output, nextInput )
 
 
-end : Parser input ()
-end tokens =
-    if tokens == [] then
-        Just ( (), [] )
+end : Parser token input ()
+end next input =
+    case next input of
+        Nothing ->
+            Just ( (), input )
 
-    else
-        Nothing
+        Just _ ->
+            Nothing
 
 
-map : (a -> b) -> Parser input a -> Parser input b
-map f p tokens =
-    -- `case` is probably faster than `p >> Maybe.map (Tuple.mapFirst f)`
-    case p tokens of
+map : (a -> b) -> Parser token input a -> Parser token input b
+map f p next input =
+    case p next input of
         Nothing ->
             Nothing
 
-        Just ( a, newTokens ) ->
-            Just ( f a, newTokens )
+        Just ( a, nextInput ) ->
+            Just ( f a, nextInput )
 
 
-andThen : (a -> Parser input b) -> Parser input a -> Parser input b
-andThen f p tokens =
-    case p tokens of
+andThen : (a -> Parser token input b) -> Parser token input a -> Parser token input b
+andThen f p next input =
+    case p next input of
         Nothing ->
             Nothing
 
-        Just ( a, newTokens ) ->
-            f a newTokens
+        Just ( a, nextInput ) ->
+            f a next nextInput
 
 
 {-| This is just andThen with flipped arguments, which is useful for chaining
 -}
-do : Parser i a -> (a -> Parser i b) -> Parser i b
-do p f tokens =
-    case p tokens of
+do : Parser t i a -> (a -> Parser t i b) -> Parser t i b
+do p f next input =
+    case p next input of
         Nothing ->
             Nothing
 
-        Just ( a, newTokens ) ->
-            f a newTokens
+        Just ( a, nextInput ) ->
+            f a next nextInput
 
 
-return : a -> Parser input a
-return a tokens =
+return : a -> Parser token input a
+return a next tokens =
     Just ( a, tokens )
 
 
-breakCircularReference : (() -> Parser i b) -> Parser i b
+breakCircularReference : (() -> Parser t i b) -> Parser t i b
 breakCircularReference f =
     f ()
 
@@ -98,49 +123,49 @@ breakCircularReference f =
 --
 
 
-oneOf : List (Parser i o) -> Parser i o
-oneOf ps tokens =
+oneOf : List (Parser t i o) -> Parser t i o
+oneOf ps next input =
     case ps of
         [] ->
             Nothing
 
         p :: p_tail ->
-            case p tokens of
+            case p next input of
                 Just stuff ->
                     Just stuff
 
                 Nothing ->
-                    oneOf p_tail tokens
+                    oneOf p_tail next input
 
 
-optional : Parser i o -> Parser i (Maybe o)
-optional p tokens =
-    case p tokens of
+optional : Parser t i o -> Parser t i (Maybe o)
+optional p next input =
+    case p next input of
         Nothing ->
-            Just ( Nothing, tokens )
+            Just ( Nothing, input )
 
-        Just ( thing, newTokens ) ->
-            Just ( Just thing, newTokens )
+        Just ( output, nextInput ) ->
+            Just ( Just output, nextInput )
 
 
-without : Parser i o -> Parser i ()
-without p tokens =
-    case p tokens of
+without : Parser t i o -> Parser t i ()
+without p next input =
+    case p next input of
         Nothing ->
-            Just ( (), tokens )
+            Just ( (), input )
 
         Just _ ->
             Nothing
 
 
-t2 : Parser i a -> Parser i b -> Parser i ( a, b )
+t2 : Parser t i a -> Parser t i b -> Parser t i ( a, b )
 t2 pa pb =
     do pa <| \a ->
     do pb <| \b ->
     return ( a, b )
 
 
-t3 : Parser i a -> Parser i b -> Parser i c -> Parser i ( a, b, c )
+t3 : Parser t i a -> Parser t i b -> Parser t i c -> Parser t i ( a, b, c )
 t3 pa pb pc =
     do pa <| \a ->
     do pb <| \b ->
@@ -148,21 +173,21 @@ t3 pa pb pc =
     return ( a, b, c )
 
 
-zeroOrMore : Parser i o -> Parser i (List o)
-zeroOrMore p =
+zeroOrMore : Parser t i o -> Parser t i (List o)
+zeroOrMore p next =
     let
-        recursive : List o -> List i -> ( List o, List i )
-        recursive accum tokens =
-            case p tokens of
+        recursive : List o -> i -> ( List o, i )
+        recursive accum input =
+            case p next input of
                 Nothing ->
-                    ( [], tokens )
+                    ( [], input )
 
-                Just ( thing, newTokens ) ->
-                    recursive (thing :: accum) newTokens
+                Just ( thing, nextInput ) ->
+                    recursive (thing :: accum) nextInput
     in
     recursive [] >> Tuple.mapFirst List.reverse >> Just
 
 
-oneOrMore : Parser i o -> Parser i ( o, List o )
+oneOrMore : Parser t i o -> Parser t i ( o, List o )
 oneOrMore p =
     t2 p (zeroOrMore p)
