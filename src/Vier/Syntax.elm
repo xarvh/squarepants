@@ -36,16 +36,45 @@ parse =
 
 expr : Parser Expression
 expr =
+    -- https://github.com/glebec/left-recursion
+    do exprStart <| \startExpr ->
+    do exprEnd <| \maybeEnd ->
+    case maybeEnd of
+        Nothing ->
+            return startExpr
+
+        Just combinator ->
+            return (combinator startExpr)
+
+
+exprStart : Parser Expression
+exprStart =
     Parser.oneOf
-        [ Parser.fromFn maybeAtom
-        , Parser.breakCircularReference <| \_ -> functionCall
-        , Parser.breakCircularReference <| \_ -> unop
-        , Parser.breakCircularReference <| \_ -> binop
+        [ Parser.fromFn maybeLiteral
+        , unop
         ]
 
 
-maybeAtom : IndentedToken -> Maybe Expression
-maybeAtom it =
+exprEnd : Parser (Maybe (Expression -> Expression))
+exprEnd =
+    Parser.oneOf
+        [ -- Binop
+          do (Parser.fromFn maybeBinop) <| \binop ->
+          do expr <| \rightExpr ->
+          (\startExpr -> Binop startExpr binop rightExpr)
+              |> Just
+              |> return
+        , -- Function call
+          do (Parser.oneOrMore expr) <| \args ->
+          (\startExpr -> FunctionCall startExpr args)
+              |> Just
+              |> return
+        , return Nothing
+        ]
+
+
+maybeLiteral : IndentedToken -> Maybe Expression
+maybeLiteral it =
     case it of
         Indent.Structure structure ->
             Nothing
@@ -95,27 +124,8 @@ maybeUnop it =
             Nothing
 
 
-functionCall : Parser Expression
-functionCall =
-    Parser.breakCircularReference <| \_ ->
-    do expr <| \functionRef ->
-    do expr <| \firstArg ->
-    do (Parser.zeroOrMore expr) <| \otherArgs ->
-    return <| FunctionCall functionRef ( firstArg, otherArgs )
-
-
-binop : Parser Expression
-binop =
-    Parser.breakCircularReference <| \_ ->
-    do expr <| \left ->
-    do (Parser.fromFn maybeBinop) <| \op ->
-    do expr <| \right ->
-    return <| Binop left op right
-
-
 unop : Parser Expression
 unop =
-    Parser.breakCircularReference <| \_ ->
     do (Parser.fromFn maybeUnop) <| \op ->
-    do (Parser.breakCircularReference <| \_ -> expr) <| \right ->
+    do expr <| \right ->
     return <| Unop op right
