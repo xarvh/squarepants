@@ -30,9 +30,16 @@ parse =
 
                 [] ->
                     Nothing
+
+        parser =
+          do term <| \a ->
+          do Parser.end <| \b ->
+            succeed a
+
+
     in
     -- TODO remove the drop 1, which is there to remove a spurious newline
-    List.drop 1 >> expr uncons >> Maybe.map Tuple.first
+    List.drop 1 >> parser uncons >> Maybe.map Tuple.first
 
 
 tokenKind : Parser TokenKind
@@ -99,16 +106,16 @@ expr : Parser Expression
 expr =
     Parser.expression term
         [ parens
-        , functionApplication
-        , unops
-        , binops [ "^" ]
-        , binops [ "*", "/" ]
-        , binops [ "+", "-", "++" ]
-        , binops [ ">=", "<=", "==", "=/=" ]
+--         , functionApplication
+--         , unops
+--         , binops [ "^" ]
+--         , binops [ "*", "/" ]
+--         , binops [ "+", "-", "++" ]
+--         , binops [ ">=", "<=", "==", "=/=" ]
 
         -- TODO pipes can't actually be mixed
-        , binops [ "|>", "<|", "<<", ">>" ]
-        , binops [ ":=", "+=", "-=", "/=", "*=" ]
+--         , binops [ "|>", "<|", "<<", ">>" ]
+--         , binops [ ":=", "+=", "-=", "/=", "*=" ]
         ]
 
 

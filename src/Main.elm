@@ -78,15 +78,28 @@ view model =
             , Html.Events.onInput OnInput
             ]
             [ Html.text model.code ]
-        , Html.div
+        , Html.ul
             []
-            [ viewAst model.code
-            , Html.hr [] []
-            , viewTokens model.code
-            , Html.hr [] []
-            , viewIndentedChunks model.code
-            , Html.hr [] []
-            , viewChunks model.code
+            [ Html.li
+                []
+                [ Html.h6 [] [ Html.text "AST" ]
+                , viewAst model.code
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [Html.text  "Tokens" ]
+                , viewTokens model.code
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [Html.text  "Indent" ]
+                , viewIndentedChunks model.code
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [Html.text  "Chunks" ]
+                , viewChunks model.code
+                ]
             ]
         ]
 

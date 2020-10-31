@@ -228,6 +228,38 @@ oneOrMore p =
     tuple2 p (zeroOrMore p)
 
 
+
+{- If Elm allowed cyclic values in let expressions, we could use this
+
+
+   type alias ExpressionArgs t i o ignored =
+       { term : Parser t i o
+       , openParen : Parser t i ignored
+       , closedParen : Parser t i ignored
+       , ops : List (Parser t i o -> Parser t i o)
+       }
+
+
+   expression : ExpressionArgs t i o ignored -> Parser t i o
+   expression args =
+       let
+           parens : Parser t i o -> Parser t i o
+           parens higher =
+               oneOf
+                   [ higher
+                   , surroundWith args.openParen args.closedParen (do (succeed ()) <| \_ -> expr)
+                   ]
+
+           expr : Parser t i o
+           expr =
+               expressionRec args.term (parens :: args.ops)
+       in
+       expr
+
+
+-}
+
+
 {-| This is how you put together an expression so that you avoid left recursion and set your operations precedence
 
 <https://github.com/glebec/left-recursion>
