@@ -50,9 +50,6 @@ module Parser exposing (..)
 -}
 {- TODO Do we need these?
 
-   breakCircularReference : (() -> Parser t i b) -> Parser t i b
-   breakCircularReference f =
-       f ()
 
 
    sat : (token -> Bool) -> Parser token readState token
@@ -173,20 +170,9 @@ do =
     doWithDefault fail
 
 
-fromFn : (token -> Maybe output) -> Parser token readState output
-fromFn f =
-    do consumeOne <| \token ->
-    case f token of
-        Just output ->
-            succeed output
-
-        Nothing ->
-            fail
-
-
 
 ----
---- Combinators
+--- Common combinators
 --
 
 
@@ -240,3 +226,33 @@ zeroOrMore p =
 oneOrMore : Parser t i o -> Parser t i ( o, List o )
 oneOrMore p =
     tuple2 p (zeroOrMore p)
+
+
+{-| This is how you put together an expression so that you avoid left recursion and set your operations precedence
+
+<https://github.com/glebec/left-recursion>
+
+<https://stackoverflow.com/a/4165483>
+
+-}
+expression : Parser t i o -> List (Parser t i o -> Parser t i o) -> Parser t i o
+expression term ops =
+    case ops of
+        [] ->
+            term
+
+        op :: rest ->
+            expression (op term) rest
+
+
+surround : Parser t i ignoredOutput1 -> Parser t i ignoredOutput2 -> Parser t i output -> Parser t i output
+surround left right parser =
+    do left <| \_ ->
+    do parser <| \p ->
+    do right <| \_ ->
+    succeed p
+
+
+breakCircularReference : (() -> Parser t i b) -> Parser t i b
+breakCircularReference f =
+    f ()

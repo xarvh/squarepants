@@ -1,8 +1,8 @@
 module Vier.Syntax exposing (..)
 
-import Parser exposing (do, oneOf, succeed)
+import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed)
 import Vier.Lexer.Indent as Indent
-import Vier.Lexer.Token as Token exposing (IndentedToken, Token)
+import Vier.Lexer.Token as Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenKind(..))
 
 
 type alias Parser a =
@@ -37,28 +37,30 @@ parse =
 
 term : Parser Expression
 term =
-    Parser.fromFn <| \indentedToken ->
-    case it of
+    do consumeOne <| \indentedToken ->
+    case indentedToken of
         Indent.Structure structure ->
-            Nothing
+            fail
 
         Indent.Content token ->
             case token.kind of
                 Token.NumberLiteral s ->
-                    Just <| Literal s
+                    succeed <| Literal s
 
                 Token.StringLiteral s ->
-                    Just <| Literal s
+                    succeed <| Literal s
 
                 Token.Symbol s ->
-                    Just <| Variable s
+                    succeed <| Variable s
 
                 _ ->
-                    Nothing
+                    fail
 
 
 
 {- Precedence rules:
+
+   ()
 
    f a b ------------> function application
 
@@ -81,109 +83,144 @@ term =
 -}
 
 
-boundExprOrTerm : Parser Expression
-boundExprOrTerm =
-    oneOf
-        [ term
-        , -- ( expr )
-          do openParen <| \_ ->
-          do expr <| \e ->
-          do closedParen <| \_ ->
-          succeed e
-        ]
-
-
-functionApplicationOrTerm : Parser Expression
-functionApplicationOrTerm =
-    do boundExprOrTerm <| \e ->
-    do (oneOrMore boundExprOrTerm) <| \es ->
-    FunctionCall e es
-
-
 expr : Parser Expression
 expr =
-    -- https://github.com/glebec/left-recursion
-    do exprStart <| \startExpr ->
-    do exprEnd <| \maybeEnd ->
-    case maybeEnd of
-        Nothing ->
-            succeed startExpr
+    Parser.expression term
+        [ parens
+        , functionApplication
+        , unops
+        , binops [ "^" ]
+        , binops [ "*", "/" ]
+        , binops [ "+", "-", "++" ]
+        , binops [ ">=", "<=", "==", "=/=" ]
 
-        Just combinator ->
-            succeed (combinator startExpr)
-
-
-{-| This is the part of expr that does NOT have recursion
--}
-exprStart : Parser Expression
-exprStart =
-    Parser.oneOf
-        [ Parser.fromFn maybeLiteral
-        , unop
+        -- TODO pipes can't actually be mixed
+        , binops [ "|>", "<|", "<<", ">>" ]
+        , binops [ ":=", "+=", "-=", "/=", "*=" ]
         ]
 
 
-{-| This is the part of expr that DOES have recursion
--}
-exprEnd : Parser (Maybe (Expression -> Expression))
-exprEnd =
-    Parser.oneOf
-        [ -- Binop
-          do binop <| \op ->
-          do expr <| \rightExpr ->
-          succeed <| Just <| \startExpr -> Binop startExpr op rightExpr
-        , -- Function call
-          do (Parser.oneOrMore expr) <| \args ->
-          succeed <| Just <| \startExpr -> FunctionCall startExpr args
-        , succeed Nothing
+
+----
+--- Parens
+--
+
+
+parens : Parser Expression -> Parser Expression
+parens higher =
+    oneOf
+        [ higher
+        , surround (RoundParen Open) (RoundParen Closed) expr
         ]
 
 
-binop : Parser String
-binop =
-    [ "+"
-    , "*"
-    ]
-        |> List.map (maybeBinop >> Parser.fromFn)
-        |> Parser.oneOf
+surround : TokenKind -> TokenKind -> Parser a -> Parser a
+surround left right =
+    Parser.surround (exactTokenKind left) (exactTokenKind right)
 
 
-maybeBinop : String -> IndentedToken -> Maybe String
-maybeBinop op it =
-    case it of
+exactTokenKind : TokenKind -> Parser ()
+exactTokenKind kind =
+    do consumeOne <| \indentedToken ->
+    case indentedToken of
         Indent.Content token ->
-            case token.kind of
-                Token.Binop s ->
-                    if op == s then
-                        Just s
+            if token.kind == kind then
+                succeed ()
 
-                    else
-                        Nothing
-
-                _ ->
-                    Nothing
+            else
+                fail
 
         _ ->
-            Nothing
+            fail
 
 
-maybeUnop : IndentedToken -> Maybe String
-maybeUnop it =
-    case it of
+
+----
+--- Function application
+--
+
+
+functionApplication : Parser Expression -> Parser Expression
+functionApplication higher =
+    do higher <| \e ->
+    do (oneOrMore higher) <| \es ->
+    succeed <| FunctionCall e es
+
+
+
+----
+--- Unops
+--
+
+
+unops : Parser Expression -> Parser Expression
+unops higher =
+    do (optional unaryOperator) <| \maybeUnary ->
+    do higher <| \right ->
+    case maybeUnary of
+        Just op ->
+            succeed <| Unop op right
+
+        Nothing ->
+            succeed right
+
+
+unaryOperator : Parser String
+unaryOperator =
+    do consumeOne <| \indentedToken ->
+    case indentedToken of
         Indent.Content token ->
             case token.kind of
                 Token.Unop s ->
-                    Just s
+                    succeed s
 
                 _ ->
-                    Nothing
+                    fail
 
         _ ->
-            Nothing
+            fail
 
 
-unop : Parser Expression
-unop =
-    do (Parser.fromFn maybeUnop) <| \op ->
-    do expr <| \right ->
-    succeed <| Unop op right
+
+----
+--- Binops
+--
+
+
+binops : List String -> Parser Expression -> Parser Expression
+binops ops higher =
+    let
+        binopAndPrev : Parser ( String, Expression )
+        binopAndPrev =
+            Parser.tuple2 (binaryOperators ops) higher
+    in
+    do higher <| \left ->
+    do (optional binopAndPrev) <| \maybeBinopAndPrev ->
+    case maybeBinopAndPrev of
+        Nothing ->
+            succeed left
+
+        Just ( op, right ) ->
+            succeed <| Binop left op right
+
+
+binaryOperators : List String -> Parser String
+binaryOperators ops =
+    do consumeOne <| \indentedToken ->
+    case indentedToken of
+        Indent.Content token ->
+            case token.kind of
+                Token.Binop s ->
+                    -- TODO would a Set be faster? How do we ensure that he conversion to Set is not ran every time?
+                    -- It's probably better if the tokenizer sets the binop "precedence group" already
+                    if List.member s ops then
+                        succeed s
+
+                    else
+                        fail
+
+                _ ->
+                    fail
+
+        _ ->
+            fail
