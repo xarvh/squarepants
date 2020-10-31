@@ -1,6 +1,6 @@
 module Vier.Syntax exposing (..)
 
-import Parser exposing (do, succeed)
+import Parser exposing (do, oneOf, succeed)
 import Vier.Lexer.Indent as Indent
 import Vier.Lexer.Token as Token exposing (IndentedToken, Token)
 
@@ -33,6 +33,71 @@ parse =
     in
     -- TODO remove the drop 1, which is there to remove a spurious newline
     List.drop 1 >> expr uncons >> Maybe.map Tuple.first
+
+
+term : Parser Expression
+term =
+    Parser.fromFn <| \indentedToken ->
+    case it of
+        Indent.Structure structure ->
+            Nothing
+
+        Indent.Content token ->
+            case token.kind of
+                Token.NumberLiteral s ->
+                    Just <| Literal s
+
+                Token.StringLiteral s ->
+                    Just <| Literal s
+
+                Token.Symbol s ->
+                    Just <| Variable s
+
+                _ ->
+                    Nothing
+
+
+
+{- Precedence rules:
+
+   f a b ------------> function application
+
+   not, risk --------> unary
+
+   ^ ----------------> exp
+
+   * / --------------> multiplicative
+
+   + - ++ -----------> addittive
+
+   >= <= == =/= -----> comparison
+
+   and, or, xor -----> logical
+
+   |> <| >> << ------> pipes
+
+   := += -= /= *= ---> assignments
+
+-}
+
+
+boundExprOrTerm : Parser Expression
+boundExprOrTerm =
+    oneOf
+        [ term
+        , -- ( expr )
+          do openParen <| \_ ->
+          do expr <| \e ->
+          do closedParen <| \_ ->
+          succeed e
+        ]
+
+
+functionApplicationOrTerm : Parser Expression
+functionApplicationOrTerm =
+    do boundExprOrTerm <| \e ->
+    do (oneOrMore boundExprOrTerm) <| \es ->
+    FunctionCall e es
 
 
 expr : Parser Expression
@@ -81,27 +146,6 @@ binop =
     ]
         |> List.map (maybeBinop >> Parser.fromFn)
         |> Parser.oneOf
-
-
-maybeLiteral : IndentedToken -> Maybe Expression
-maybeLiteral it =
-    case it of
-        Indent.Structure structure ->
-            Nothing
-
-        Indent.Content token ->
-            case token.kind of
-                Token.NumberLiteral s ->
-                    Just <| Literal s
-
-                Token.StringLiteral s ->
-                    Just <| Literal s
-
-                Token.Symbol s ->
-                    Just <| Variable s
-
-                _ ->
-                    Nothing
 
 
 maybeBinop : String -> IndentedToken -> Maybe String
