@@ -144,6 +144,7 @@ Problems still to solve
 * Imperative blocks can contain recursive pure expressions
   How do I handle that?
   I can be smart and divide the code in "imperative blocks" and allow hoisting/recursive definitions only across pure expressions within an "impreative block"?
+  How does JavaScript deal with it?
 
 
 * Currying

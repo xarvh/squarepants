@@ -13,7 +13,10 @@ import Vier.Lexer.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenK
 import Vier.Syntax as Syntax exposing (Expression)
 
 
-initialCode = "fn 1 + 2\n"
+initialCode =
+    "fn 1 + 2\n"
+
+
 nitialCode =
     """
 readStuff : () #> Result Error String
@@ -146,13 +149,13 @@ viewAstNode expr =
                     [ Html.text <| "[op] " ++ op ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [viewAstNode left]
+                    [ viewAstNode left ]
                 , Html.div
                     []
                     [ Html.text "---" ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [viewAstNode right]
+                    [ viewAstNode right ]
                 ]
 
         --     Unop String Expression

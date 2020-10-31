@@ -27,6 +27,26 @@ module Parser exposing (..)
 
    It may require a closure to redefine all combinators in a way that saves the non-debug-mode performance.
 
+
+
+      type alias Parser token readState output =
+          { name : List String
+          , getNext : (readState -> Maybe ( token, readState ))
+          }
+          ->
+          -> readState
+          -> trackState
+          -> (trackState, Maybe ( output, readState ))
+
+
+      type alias TrackState =
+        {.....?
+
+
+
+
+
+
 -}
 {- TODO Do we need these?
 
@@ -195,15 +215,15 @@ optional p =
     doWithDefault (succeed Nothing) p (Just >> succeed)
 
 
-t2 : Parser t i a -> Parser t i b -> Parser t i ( a, b )
-t2 pa pb =
+tuple2 : Parser t i a -> Parser t i b -> Parser t i ( a, b )
+tuple2 pa pb =
     do pa <| \a ->
     do pb <| \b ->
     succeed ( a, b )
 
 
-t3 : Parser t i a -> Parser t i b -> Parser t i c -> Parser t i ( a, b, c )
-t3 pa pb pc =
+tuple3 : Parser t i a -> Parser t i b -> Parser t i c -> Parser t i ( a, b, c )
+tuple3 pa pb pc =
     do pa <| \a ->
     do pb <| \b ->
     do pc <| \c ->
@@ -219,4 +239,4 @@ zeroOrMore p =
 
 oneOrMore : Parser t i o -> Parser t i ( o, List o )
 oneOrMore p =
-    t2 p (zeroOrMore p)
+    tuple2 p (zeroOrMore p)
