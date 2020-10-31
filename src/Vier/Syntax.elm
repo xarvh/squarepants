@@ -1,6 +1,6 @@
 module Vier.Syntax exposing (..)
 
-import Parser exposing (do, return)
+import Parser exposing (do, succeed)
 import Vier.Lexer.Indent as Indent
 import Vier.Lexer.Token as Token exposing (IndentedToken, Token)
 
@@ -42,12 +42,14 @@ expr =
     do exprEnd <| \maybeEnd ->
     case maybeEnd of
         Nothing ->
-            return startExpr
+            succeed startExpr
 
         Just combinator ->
-            return (combinator startExpr)
+            succeed (combinator startExpr)
 
 
+{-| This is the part of expr that does NOT have recursion
+-}
 exprStart : Parser Expression
 exprStart =
     Parser.oneOf
@@ -56,17 +58,19 @@ exprStart =
         ]
 
 
+{-| This is the part of expr that DOES have recursion
+-}
 exprEnd : Parser (Maybe (Expression -> Expression))
 exprEnd =
     Parser.oneOf
         [ -- Binop
           do binop <| \op ->
           do expr <| \rightExpr ->
-          return <| Just <| \startExpr -> Binop startExpr op rightExpr
+          succeed <| Just <| \startExpr -> Binop startExpr op rightExpr
         , -- Function call
           do (Parser.oneOrMore expr) <| \args ->
-          return <| Just <| \startExpr -> FunctionCall startExpr args
-        , return Nothing
+          succeed <| Just <| \startExpr -> FunctionCall startExpr args
+        , succeed Nothing
         ]
 
 
@@ -138,4 +142,4 @@ unop : Parser Expression
 unop =
     do (Parser.fromFn maybeUnop) <| \op ->
     do expr <| \right ->
-    return <| Unop op right
+    succeed <| Unop op right

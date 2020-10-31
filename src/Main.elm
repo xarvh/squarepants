@@ -13,7 +13,7 @@ import Vier.Lexer.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenK
 import Vier.Syntax as Syntax exposing (Expression)
 
 
-initialCode = "1\n"
+initialCode = "fn 1 + 2\n"
 nitialCode =
     """
 readStuff : () #> Result Error String
@@ -130,7 +130,7 @@ viewAstNode expr =
                 [ style "border" "red" ]
                 [ Html.div
                     []
-                    [ Html.text "CALL"
+                    [ Html.text "[call] "
                     , viewAstNode fn
                     ]
                 , Html.div
@@ -138,7 +138,23 @@ viewAstNode expr =
                     (List.map viewAstNode <| aHead :: aTail)
                 ]
 
-        --     Binop Expression String Expression
+        Syntax.Binop left op right ->
+            Html.div
+                [ style "border" "red" ]
+                [ Html.div
+                    []
+                    [ Html.text <| "[op] " ++ op ]
+                , Html.div
+                    [ style "padding-left" "2em" ]
+                    [viewAstNode left]
+                , Html.div
+                    []
+                    [ Html.text "---" ]
+                , Html.div
+                    [ style "padding-left" "2em" ]
+                    [viewAstNode right]
+                ]
+
         --     Unop String Expression
         _ ->
             Html.code

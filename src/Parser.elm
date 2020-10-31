@@ -1,18 +1,54 @@
 module Parser exposing (..)
 
-{-| -}
+{-| A monad is a very general way to structure a computation.
 
-{-
+`return` is the trivial computation that produces the argument as result.
 
-   debuggability:
+`bind` is how you chain the result of a computation to another computation.
 
-   a state should be added to track
-     * the current stack of combinators
-     * the current input head
+`zero` is the value that is independent of type (Nothing, [], ...)
 
-   How do you do this without
-     1) making the grammar declaration messier
-     2) mkaing the parsing slower?
+`Result` is a monad without a zero?
+
+-}
+
+-- TODO? separedBy / separedBy1
+--
+-- TODO bracket
+--
+{- TODO "Debug mode"
+
+   It should collect:
+
+   * the current path of combinators
+       --> this means that each combinator should be able to add its name to the stack, how do I do this?
+
+   * the current input head
+
+   It may require a closure to redefine all combinators in a way that saves the non-debug-mode performance.
+
+-}
+{- TODO Do we need these?
+
+   breakCircularReference : (() -> Parser t i b) -> Parser t i b
+   breakCircularReference f =
+       f ()
+
+
+   sat : (token -> Bool) -> Parser token readState token
+   sat test =
+       do consumeOne <| \token ->
+       if test token then
+           succeed token
+
+       else
+           fail
+
+
+   map : (a -> b) -> Parser token input a -> Parser token input b
+   map f p =
+     do p <| \a ->
+       succeed (f a)
 
 -}
 
@@ -83,6 +119,7 @@ consumeOne =
     \getNext readState -> getNext readState
 
 
+{-| -}
 doWithDefault : Parser t i b -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
 doWithDefault fallbackParser firstParser chainedParser =
     \getNext readState ->
@@ -128,31 +165,8 @@ fromFn f =
 
 
 
-{- Do we need these?
-
-   breakCircularReference : (() -> Parser t i b) -> Parser t i b
-   breakCircularReference f =
-       f ()
-
-
-   sat : (token -> Bool) -> Parser token readState token
-   sat test =
-       do consumeOne <| \token ->
-       if test token then
-           succeed token
-
-       else
-           fail
-
-
-   map : (a -> b) -> Parser token input a -> Parser token input b
-   map f p =
-     do p <| \a ->
-       succeed (f a)
-
--}
 ----
---- Combinator
+--- Combinators
 --
 
 

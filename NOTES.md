@@ -137,6 +137,15 @@ More or less established features
 Problems still to solve
 -----------------------
 
+* `(-) a b == b - a`?
+  `(- blah)` is a function?
+  `(blah -) is also a function?
+
+* Imperative blocks can contain recursive pure expressions
+  How do I handle that?
+  I can be smart and divide the code in "imperative blocks" and allow hoisting/recursive definitions only across pure expressions within an "impreative block"?
+
+
 * Currying
     doesn't solve too many problems and creates a few, so for the time being don't support it?
     it is really nice for combinators tho
