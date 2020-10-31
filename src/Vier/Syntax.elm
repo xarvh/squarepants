@@ -31,7 +31,8 @@ parse =
                 [] ->
                     Nothing
     in
-    expr uncons >> Maybe.map Tuple.first
+    -- TODO remove the drop 1, which is there to remove a spurious newline
+    List.drop 1 >> expr uncons >> Maybe.map Tuple.first
 
 
 expr : Parser Expression

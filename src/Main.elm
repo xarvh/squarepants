@@ -13,7 +13,8 @@ import Vier.Lexer.Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenK
 import Vier.Syntax as Syntax exposing (Expression)
 
 
-initialCode =
+initialCode = "1\n"
+nitialCode =
     """
 readStuff : () #> Result Error String
 readStuff () =
@@ -77,6 +78,7 @@ view model =
         , Html.div
             []
             [ viewAst model.code
+            , Html.hr [] []
             , viewTokens model.code
             , Html.hr [] []
             , viewIndentedChunks model.code

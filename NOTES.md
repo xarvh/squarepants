@@ -30,6 +30,7 @@ Main goals
 More or less established features
 ---------------------------------
 
+
 * Reserved words
     * fn
     * return
@@ -123,6 +124,8 @@ Problems still to solve
 * Currying
     doesn't solve too many problems and creates a few, so for the time being don't support it?
 
+
+* Compatible with Elm libraries?
 
 
 # Statements vs Expressions
