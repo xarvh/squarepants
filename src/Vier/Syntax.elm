@@ -60,18 +60,23 @@ exprEnd : Parser (Maybe (Expression -> Expression))
 exprEnd =
     Parser.oneOf
         [ -- Binop
-          do (Parser.fromFn maybeBinop) <| \binop ->
+          do binop <| \op ->
           do expr <| \rightExpr ->
-          (\startExpr -> Binop startExpr binop rightExpr)
-              |> Just
-              |> return
+          return <| Just <| \startExpr -> Binop startExpr op rightExpr
         , -- Function call
           do (Parser.oneOrMore expr) <| \args ->
-          (\startExpr -> FunctionCall startExpr args)
-              |> Just
-              |> return
+          return <| Just <| \startExpr -> FunctionCall startExpr args
         , return Nothing
         ]
+
+
+binop : Parser String
+binop =
+    [ "+"
+    , "*"
+    ]
+        |> List.map (maybeBinop >> Parser.fromFn)
+        |> Parser.oneOf
 
 
 maybeLiteral : IndentedToken -> Maybe Expression
@@ -95,13 +100,17 @@ maybeLiteral it =
                     Nothing
 
 
-maybeBinop : IndentedToken -> Maybe String
-maybeBinop it =
+maybeBinop : String -> IndentedToken -> Maybe String
+maybeBinop op it =
     case it of
         Indent.Content token ->
             case token.kind of
                 Token.Binop s ->
-                    Just s
+                    if op == s then
+                        Just s
+
+                    else
+                        Nothing
 
                 _ ->
                     Nothing

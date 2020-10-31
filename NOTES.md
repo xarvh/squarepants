@@ -116,6 +116,22 @@ More or less established features
 * Type inference
     Is necessary for coding fast?
 
+* imperative blocks
+  ```
+  someValue =
+
+    doSomething
+    + this must belong to the thing above because it starts with a binop
+
+    this must continue on the next line because it ends with a binop +
+    doSomething
+
+    more importantly this is a do notation <| fn argument =
+    function definition goes here
+
+    function calls instead will continue on the next line only if they are
+      indented
+  ```
 
 
 Problems still to solve
@@ -123,6 +139,7 @@ Problems still to solve
 
 * Currying
     doesn't solve too many problems and creates a few, so for the time being don't support it?
+    it is really nice for combinators tho
 
 
 * Compatible with Elm libraries?
