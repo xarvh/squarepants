@@ -35,26 +35,38 @@ parse =
     List.drop 1 >> expr uncons >> Maybe.map Tuple.first
 
 
-term : Parser Expression
-term =
+tokenKind : Parser TokenKind
+tokenKind =
     do consumeOne <| \indentedToken ->
     case indentedToken of
         Indent.Structure structure ->
             fail
 
         Indent.Content token ->
-            case token.kind of
-                Token.NumberLiteral s ->
-                    succeed <| Literal s
+            succeed token.kind
 
-                Token.StringLiteral s ->
-                    succeed <| Literal s
 
-                Token.Symbol s ->
-                    succeed <| Variable s
 
-                _ ->
-                    fail
+----
+--- Term
+--
+
+
+term : Parser Expression
+term =
+    do tokenKind <| \kind ->
+    case kind of
+        Token.NumberLiteral s ->
+            succeed <| Literal s
+
+        Token.StringLiteral s ->
+            succeed <| Literal s
+
+        Token.Symbol s ->
+            succeed <| Variable s
+
+        _ ->
+            fail
 
 
 
@@ -110,28 +122,23 @@ parens : Parser Expression -> Parser Expression
 parens higher =
     oneOf
         [ higher
-        , surround (RoundParen Open) (RoundParen Closed) expr
+        , surroundWith (RoundParen Open) (RoundParen Closed) (Parser.breakCircularDefinition <| \_ -> expr)
         ]
 
 
-surround : TokenKind -> TokenKind -> Parser a -> Parser a
-surround left right =
-    Parser.surround (exactTokenKind left) (exactTokenKind right)
+surroundWith : TokenKind -> TokenKind -> Parser a -> Parser a
+surroundWith left right =
+    Parser.surroundWith (exactTokenKind left) (exactTokenKind right)
 
 
 exactTokenKind : TokenKind -> Parser ()
-exactTokenKind kind =
-    do consumeOne <| \indentedToken ->
-    case indentedToken of
-        Indent.Content token ->
-            if token.kind == kind then
-                succeed ()
+exactTokenKind targetKind =
+    do tokenKind <| \kind ->
+    if targetKind == kind then
+        succeed ()
 
-            else
-                fail
-
-        _ ->
-            fail
+    else
+        fail
 
 
 
@@ -167,15 +174,10 @@ unops higher =
 
 unaryOperator : Parser String
 unaryOperator =
-    do consumeOne <| \indentedToken ->
-    case indentedToken of
-        Indent.Content token ->
-            case token.kind of
-                Token.Unop s ->
-                    succeed s
-
-                _ ->
-                    fail
+    do tokenKind <| \kind ->
+    case kind of
+        Token.Unop s ->
+            succeed s
 
         _ ->
             fail
@@ -206,21 +208,16 @@ binops ops higher =
 
 binaryOperators : List String -> Parser String
 binaryOperators ops =
-    do consumeOne <| \indentedToken ->
-    case indentedToken of
-        Indent.Content token ->
-            case token.kind of
-                Token.Binop s ->
-                    -- TODO would a Set be faster? How do we ensure that he conversion to Set is not ran every time?
-                    -- It's probably better if the tokenizer sets the binop "precedence group" already
-                    if List.member s ops then
-                        succeed s
+    do tokenKind <| \kind ->
+    case kind of
+        Token.Binop s ->
+            -- TODO would a Set be faster? How do we ensure that he conversion to Set is not ran every time?
+            -- It's probably better if the tokenizer sets the binop "precedence group" already
+            if List.member s ops then
+                succeed s
 
-                    else
-                        fail
-
-                _ ->
-                    fail
+            else
+                fail
 
         _ ->
             fail

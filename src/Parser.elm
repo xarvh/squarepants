@@ -245,14 +245,15 @@ expression term ops =
             expression (op term) rest
 
 
-surround : Parser t i ignoredOutput1 -> Parser t i ignoredOutput2 -> Parser t i output -> Parser t i output
-surround left right parser =
+surroundWith : Parser t i ignoredOutput1 -> Parser t i ignoredOutput2 -> Parser t i output -> Parser t i output
+surroundWith left right parser =
     do left <| \_ ->
     do parser <| \p ->
     do right <| \_ ->
     succeed p
 
 
-breakCircularReference : (() -> Parser t i b) -> Parser t i b
-breakCircularReference f =
-    f ()
+breakCircularDefinition : (() -> Parser t i b) -> Parser t i b
+breakCircularDefinition a =
+    -- TODO: this is equivalent to `a ()` but if I use that the function doesn't break circular definitions any more
+    do (succeed ()) a
