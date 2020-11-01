@@ -104,7 +104,10 @@ You can use more complicated read states to keep track of the context, for examp
 
 -}
 type alias Parser token readState output =
-    (readState -> Maybe ( token, readState )) -> readState -> Maybe ( output, readState )
+    (readState -> Maybe ( token, readState ))
+    -> List String
+    -> readState
+    -> Maybe ( output, readState )
 
 
 
@@ -112,40 +115,64 @@ type alias Parser token readState output =
 --- Primitives
 --
 --
--- They are aware of `getNext` and `readState`
+-- These functions are aware of the internal structure of the parser (ie, it's a function)
 
 
 {-| Always fail
 -}
 fail : Parser token readState output
 fail =
-    \getNext readState -> Nothing
+    \getNext path readState ->
+        Nothing
 
 
 {-| Always succeed, without consuming any input
 -}
 succeed : a -> Parser token readState a
 succeed a =
-    \getNext readState -> Just ( a, readState )
+    \getNext path readState ->
+        Just ( a, readState )
 
 
 {-| Consume and return the next token
 -}
 consumeOne : Parser token readState token
 consumeOne =
-    \getNext readState -> getNext readState
+    \getNext path readState ->
+        getNext readState
 
 
 {-| -}
 doWithDefault : Parser t i b -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
 doWithDefault fallbackParser firstParser chainedParser =
-    \getNext readState ->
-        case firstParser getNext readState of
+    \getNext path readState ->
+        case firstParser getNext path readState of
             Nothing ->
-                fallbackParser getNext readState
+                fallbackParser getNext path readState
 
             Just ( a, nextReadState ) ->
-                chainedParser a getNext nextReadState
+                chainedParser a getNext path nextReadState
+
+
+doWithDebug : ({ path : List String, first : Maybe ( a, i ) } -> discarded) -> String -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
+doWithDebug log name firstParser chainedParser =
+    \getNext p readState ->
+        let
+            path =
+                p ++ [ name ]
+
+            out =
+                firstParser getNext path readState
+
+            _ =
+                log { path = path, first = out }
+        in
+        case out of
+            Nothing ->
+                fail getNext path readState
+
+            Just ( a, nextReadState ) ->
+                chainedParser a getNext path nextReadState
 
 
 

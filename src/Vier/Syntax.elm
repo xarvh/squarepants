@@ -1,12 +1,42 @@
 module Vier.Syntax exposing (..)
 
-import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed)
+import Parser exposing (consumeOne, do, fail, oneOf, optional, succeed)
 import Vier.Lexer.Indent as Indent
-import Vier.Lexer.Token as Token exposing (IndentedToken, OpenOrClosed(..), Token, TokenKind(..))
+import Vier.Lexer.Token as Token exposing (OpenOrClosed(..), TokenKind(..))
+
+
+type alias IndentedKind =
+    {- Indent.Indented -}
+    TokenKind
+
+
+indentedTokenToIndentedKind it =
+    case it of
+        Indent.Structure structure ->
+            --Indent.Structure structure
+            Nothing
+
+        Indent.Content token ->
+            Just token.kind
+
+
+d name =
+    --     Parser.doWithDebug (\{ path, first } -> Debug.log "d" ( path, first )) name
+    do
+
+
+w name parser =
+    --     d name parser succeed
+    parser
+
+
+su : String -> a -> Parser a
+su name a =
+    d name (succeed a) succeed
 
 
 type alias Parser a =
-    Parser.Parser IndentedToken (List IndentedToken) a
+    Parser.Parser TokenKind (List TokenKind) a
 
 
 type Expression
@@ -19,8 +49,8 @@ type Expression
     | Error
 
 
-parse : List IndentedToken -> Maybe Expression
-parse =
+parse : List Token.IndentedToken -> Maybe Expression
+parse its =
     let
         uncons : List a -> Maybe ( a, List a )
         uncons ls =
@@ -32,28 +62,31 @@ parse =
                     Nothing
 
         parser =
-          do term <| \a ->
-          do Parser.end <| \b ->
+            d "root expr" expr <| \a ->
+            d "root end" Parser.end <| \b ->
             succeed a
-
-
     in
-    -- TODO remove the drop 1, which is there to remove a spurious newline
-    List.drop 1 >> parser uncons >> Maybe.map Tuple.first
+    its
+        |> List.filterMap indentedTokenToIndentedKind
+        |> parser uncons []
+        |> Maybe.map Tuple.first
 
 
 tokenKind : Parser TokenKind
 tokenKind =
-    do consumeOne <| \indentedToken ->
-    case indentedToken of
-        Indent.Structure structure ->
-            fail
-
-        Indent.Content token ->
-            succeed token.kind
+    consumeOne
 
 
 
+{-
+   do consumeOne <| \indentedToken ->
+   case indentedToken of
+       Indent.Structure structure ->
+           fail
+
+       Indent.Content kind ->
+           su kind
+-}
 ----
 --- Term
 --
@@ -61,16 +94,16 @@ tokenKind =
 
 term : Parser Expression
 term =
-    do tokenKind <| \kind ->
+    d "tokenKind" tokenKind <| \kind ->
     case kind of
         Token.NumberLiteral s ->
-            succeed <| Literal s
+            su "nl" <| Literal s
 
         Token.StringLiteral s ->
-            succeed <| Literal s
+            su "sl" <| Literal s
 
         Token.Symbol s ->
-            succeed <| Variable s
+            su s <| Variable s
 
         _ ->
             fail
@@ -106,16 +139,16 @@ expr : Parser Expression
 expr =
     Parser.expression term
         [ parens
---         , functionApplication
---         , unops
---         , binops [ "^" ]
---         , binops [ "*", "/" ]
---         , binops [ "+", "-", "++" ]
---         , binops [ ">=", "<=", "==", "=/=" ]
+        , functionApplication
+        , unops
+        , binops [ "^" ]
+        , binops [ "*", "/" ]
+        , binops [ "+", "-", "++" ]
+        , binops [ ">=", "<=", "==", "=/=" ]
 
         -- TODO pipes can't actually be mixed
---         , binops [ "|>", "<|", "<<", ">>" ]
---         , binops [ ":=", "+=", "-=", "/=", "*=" ]
+        , binops [ "|>", "<|", "<<", ">>" ]
+        , binops [ ":=", "+=", "-=", "/=", "*=" ]
         ]
 
 
@@ -157,8 +190,13 @@ exactTokenKind targetKind =
 functionApplication : Parser Expression -> Parser Expression
 functionApplication higher =
     do higher <| \e ->
-    do (oneOrMore higher) <| \es ->
-    succeed <| FunctionCall e es
+    do (Parser.zeroOrMore higher) <| \es ->
+    case es of
+        argsHead :: argsTail ->
+            succeed <| FunctionCall e ( argsHead, argsTail )
+
+        [] ->
+            succeed e
 
 
 
@@ -173,7 +211,7 @@ unops higher =
     do higher <| \right ->
     case maybeUnary of
         Just op ->
-            succeed <| Unop op right
+            su "unop" <| Unop op right
 
         Nothing ->
             succeed right
