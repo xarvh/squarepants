@@ -14,7 +14,7 @@ import Vier.Syntax as Syntax exposing (Expression)
 
 
 initialCode =
-    "(1)\n"
+    "(1 + 1 - 3)\n"
 
 
 nitialCode =
