@@ -104,10 +104,33 @@ You can use more complicated read states to keep track of the context, for examp
 
 -}
 type alias Parser token readState output =
-    (readState -> Maybe ( token, readState ))
+    GetNext token readState
     -> List String
     -> readState
-    -> Maybe ( output, readState )
+    -> Outcome readState output
+
+
+type alias GetNext token readState =
+    readState -> Maybe ( token, readState )
+
+
+type Outcome readState output
+    = Success output readState
+    | Failure
+    | Abort String
+
+
+parse : Parser token readState output -> GetNext token readState -> readState -> Result String output
+parse parser getNext readState =
+    case parser getNext [] readState of
+        Success output finalState ->
+            Ok output
+
+        Failure ->
+            Err "doesn't make sense"
+
+        Abort reason ->
+            Err reason
 
 
 
@@ -118,12 +141,23 @@ type alias Parser token readState output =
 -- These functions are aware of the internal structure of the parser (ie, it's a function)
 
 
+{-| Abort
+
+This is a fatal error that will interrupt the whole execution
+
+-}
+abort : String -> Parser token readState output
+abort reason =
+    \getNext path readState ->
+        Abort reason
+
+
 {-| Always fail
 -}
 fail : Parser token readState output
 fail =
     \getNext path readState ->
-        Nothing
+        Failure
 
 
 {-| Always succeed, without consuming any input
@@ -131,7 +165,7 @@ fail =
 succeed : a -> Parser token readState a
 succeed a =
     \getNext path readState ->
-        Just ( a, readState )
+        Success a readState
 
 
 {-| Consume and return the next token
@@ -139,7 +173,12 @@ succeed a =
 consumeOne : Parser token readState token
 consumeOne =
     \getNext path readState ->
-        getNext readState
+        case getNext readState of
+            Nothing ->
+                Failure
+
+            Just ( token, nextState ) ->
+                Success token nextState
 
 
 {-| -}
@@ -147,14 +186,17 @@ doWithDefault : Parser t i b -> Parser t i a -> (a -> Parser t i b) -> Parser t 
 doWithDefault fallbackParser firstParser chainedParser =
     \getNext path readState ->
         case firstParser getNext path readState of
-            Nothing ->
+            Abort reason ->
+                Abort reason
+
+            Failure ->
                 fallbackParser getNext path readState
 
-            Just ( a, nextReadState ) ->
+            Success a nextReadState ->
                 chainedParser a getNext path nextReadState
 
 
-doWithDebug : ({ path : List String, first : Maybe ( a, i ) } -> discarded) -> String -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
+doWithDebug : ({ path : List String, first : Outcome i a } -> discarded) -> String -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
 doWithDebug log name firstParser chainedParser =
     \getNext p readState ->
         let
@@ -168,17 +210,35 @@ doWithDebug log name firstParser chainedParser =
                 log { path = path, first = out }
         in
         case out of
-            Nothing ->
+            Abort reason ->
+                Abort reason
+
+            Failure ->
                 fail getNext path readState
 
-            Just ( a, nextReadState ) ->
+            Success a nextReadState ->
                 chainedParser a getNext path nextReadState
+
+
+updState : (readState -> readState) -> Parser t readState readState
+updState upd =
+    \getNext path readState ->
+        let
+            newReadState =
+                upd readState
+        in
+        Success newReadState newReadState
 
 
 
 ----
 --- Base combinators
 --
+
+
+getState : Parser t i i
+getState =
+    updState identity
 
 
 {-| Parse something and if successful, use the result to produce another parser.

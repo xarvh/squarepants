@@ -1,23 +1,7 @@
 module Vier.Syntax exposing (..)
 
 import Parser exposing (consumeOne, do, fail, oneOf, optional, succeed)
-import Vier.Lexer.Indent as Indent
-import Vier.Lexer.Token as Token exposing (OpenOrClosed(..), TokenKind(..))
-
-
-type alias IndentedKind =
-    {- Indent.Indented -}
-    TokenKind
-
-
-indentedTokenToIndentedKind it =
-    case it of
-        Indent.Structure structure ->
-            --Indent.Structure structure
-            Nothing
-
-        Indent.Content token ->
-            Just token.kind
+import Vier.Token as Token exposing (OpenOrClosed(..), PrecedenceGroup(..), Token, TokenKind(..))
 
 
 d name =
@@ -49,8 +33,8 @@ type Expression
     | Error
 
 
-parse : List Token.IndentedToken -> Maybe Expression
-parse its =
+parse : List Token -> Result String Expression
+parse tokens =
     let
         uncons : List a -> Maybe ( a, List a )
         uncons ls =
@@ -66,10 +50,9 @@ parse its =
             d "root end" Parser.end <| \b ->
             succeed a
     in
-    its
-        |> List.filterMap indentedTokenToIndentedKind
-        |> parser uncons []
-        |> Maybe.map Tuple.first
+    tokens
+        |> List.map .kind
+        |> Parser.parse parser uncons
 
 
 tokenKind : Parser TokenKind
@@ -78,15 +61,6 @@ tokenKind =
 
 
 
-{-
-   do consumeOne <| \indentedToken ->
-   case indentedToken of
-       Indent.Structure structure ->
-           fail
-
-       Indent.Content kind ->
-           su kind
--}
 ----
 --- Term
 --
@@ -124,13 +98,13 @@ term =
 
    + - ++ -----------> addittive
 
-   >= <= == =/= -----> comparison
+   < > >= <= == =/= -> comparison
 
    and, or, xor -----> logical
 
    |> <| >> << ------> pipes
 
-   := += -= /= *= ---> assignments
+   = := += -= /= *= -> assignments
 
 -}
 
@@ -141,14 +115,14 @@ expr =
         [ parens
         , functionApplication
         , unops
-        , binops [ "^" ]
-        , binops [ "*", "/" ]
-        , binops [ "+", "-", "++" ]
-        , binops [ ">=", "<=", "==", "=/=" ]
+        , binops Exponential
+        , binops Multiplicative
+        , binops AddittiveSpaced
+        , binops Comparison
 
         -- TODO pipes can't actually be mixed
-        , binops [ "|>", "<|", "<<", ">>" ]
-        , binops [ ":=", "+=", "-=", "/=", "*=" ]
+        , binops Pipe
+        , binops Assignment
         ]
 
 
@@ -234,12 +208,12 @@ unaryOperator =
 --
 
 
-binops : List String -> Parser Expression -> Parser Expression
-binops ops higher =
+binops : PrecedenceGroup -> Parser Expression -> Parser Expression
+binops group higher =
     let
         binopAndPrev : Parser ( String, Expression )
         binopAndPrev =
-            Parser.tuple2 (binaryOperators ops) higher
+            Parser.tuple2 (binaryOperators group) higher
     in
     do higher <| \left ->
     do (optional binopAndPrev) <| \maybeBinopAndPrev ->
@@ -251,14 +225,12 @@ binops ops higher =
             succeed <| Binop left op right
 
 
-binaryOperators : List String -> Parser String
-binaryOperators ops =
+binaryOperators : PrecedenceGroup -> Parser String
+binaryOperators group =
     do tokenKind <| \kind ->
     case kind of
-        Token.Binop s ->
-            -- TODO would a Set be faster? How do we ensure that he conversion to Set is not ran every time?
-            -- It's probably better if the tokenizer sets the binop "precedence group" already
-            if List.member s ops then
+        Token.Binop g s ->
+            if g == group then
                 succeed s
 
             else

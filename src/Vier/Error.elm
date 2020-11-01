@@ -1,25 +1,38 @@
-module Vier.Lexer.Error exposing (..)
+module Vier.Error exposing (..)
 
 
 type alias Error =
     { kind : Kind
-    , position : Int
+    , pos : Int
     }
 
 
 type Kind
     = BadIndent { length : Int, stack : List Int }
+    | InvalidToken String
+    | UnknownOperator String
+    | UnterminatedMultiLineComment
     | Tab
-    | NewlineInsideSoftQuote
+    | NewLineInsideSoftQuote
     | HardQuoteClosesSoftQuote
-    | InvalidToken { token : String }
+    | UnterminatedStringLiteral
+
+
+kindToString : Kind -> String
+kindToString kind =
+    case kind of
+        NewLineInsideSoftQuote ->
+            "single-quoted strings can't go on multiple lines, use \\n or a triple-quoted string instead"
+
+        _ ->
+            Debug.toString kind
 
 
 toString : String -> Error -> String
 toString code error =
     let
         ( line, col ) =
-            positionToLineAndColumn code error.position
+            positionToLineAndColumn code error.pos
 
         l =
             String.length code
@@ -35,15 +48,15 @@ toString code error =
 
         -}
         a =
-            error.position - 10 |> clamp 0 l
+            error.pos - 10 |> clamp 0 l
 
         b =
-            error.position + 10 |> clamp 0 l
+            error.pos + 10 |> clamp 0 l
 
         slice =
             String.slice a b code
     in
-    String.fromInt line ++ "," ++ String.fromInt col ++ ": ```\n" ++ slice ++ "\n```\n" ++ Debug.toString error.kind
+    String.fromInt line ++ "," ++ String.fromInt col ++ ": ```\n" ++ slice ++ "\n```\n" ++ kindToString error.kind
 
 
 positionToLineAndColumn : String -> Int -> ( Int, Int )

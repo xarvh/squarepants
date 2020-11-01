@@ -54,6 +54,8 @@ More or less established features
           else
               ...
 
+    ? alternative: `if value matches ...`
+
 * Functions
   * Must have at least one argument, anything without arguments is evaluated at once.
     * Maybe catch attempts at calling a function without arguments?
@@ -136,6 +138,24 @@ More or less established features
 
 Problems still to solve
 -----------------------
+
+* -a is valid
+  a-a is valid
+  a -a is NOT valid
+  a - a is valid
+
+  +a is valid
+
+  distinguo fra op seguito da spazio, e op seguito da non-spazio?
+
+  AddOp 
+  AddOpWithoutSpace
+
+
+
+
+
+* ``/``` for String and ""/""" for Text ?
 
 * `(-) a b == b - a`?
   `(- blah)` is a function?
