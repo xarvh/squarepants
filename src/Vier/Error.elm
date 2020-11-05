@@ -16,6 +16,8 @@ type Kind
     | NewLineInsideSoftQuote
     | HardQuoteClosesSoftQuote
     | UnterminatedStringLiteral
+    -- TODO remove this one
+    | Whatever String
 
 
 kindToString : Kind -> String
@@ -23,6 +25,9 @@ kindToString kind =
     case kind of
         NewLineInsideSoftQuote ->
             "single-quoted strings can't go on multiple lines, use \\n or a triple-quoted string instead"
+
+        Whatever s ->
+            s
 
         _ ->
             Debug.toString kind

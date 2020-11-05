@@ -1,17 +1,26 @@
 module Vier.Syntax exposing (..)
 
-import Parser exposing (consumeOne, do, fail, oneOf, optional, succeed)
+import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed)
+import Vier.Error as Error exposing (Error)
 import Vier.Token as Token exposing (OpenOrClosed(..), PrecedenceGroup(..), Token, TokenKind(..))
 
 
 d name =
-    --     Parser.doWithDebug (\{ path, first } -> Debug.log "d" ( path, first )) name
-    do
+    let
+        logDebug { path, first } =
+            Debug.log "d"
+                ( path
+                , "<=="
+                , Result.map (\( output, readState ) -> List.take 1 readState) first
+                )
+    in
+    --     do
+    Parser.doWithDebug logDebug name
 
 
 w name parser =
-    --     d name parser succeed
-    parser
+    --     parser
+    d name parser succeed
 
 
 su : String -> a -> Parser a
@@ -23,9 +32,14 @@ type alias Parser a =
     Parser.Parser TokenKind (List TokenKind) a
 
 
+type alias Pattern =
+    String
+
+
 type Expression
     = Literal String
     | Variable String
+    | Lambda (List Pattern) (List Expression)
     | FunctionCall Expression ( Expression, List Expression )
     | Binop Expression String Expression
     | Unop String Expression
@@ -33,7 +47,7 @@ type Expression
     | Error
 
 
-parse : List Token -> Result String Expression
+parse : List Token -> Result Error Expression
 parse tokens =
     let
         uncons : List a -> Maybe ( a, List a )
@@ -46,13 +60,21 @@ parse tokens =
                     Nothing
 
         parser =
-            d "root expr" expr <| \a ->
-            d "root end" Parser.end <| \b ->
-            succeed a
+            do
+                (oneOf
+                    [ exactTokenKind BlockStart
+                    , exactTokenKind NewSiblingLine
+                    ]
+                )
+            <| \_ ->
+           d "root expr" expr <| \a ->
+           d "root end" Parser.end <| \b ->
+           succeed a
     in
     tokens
         |> List.map .kind
         |> Parser.parse parser uncons
+        |> Result.mapError (\s -> { pos = 0, kind = Error.Whatever s })
 
 
 tokenKind : Parser TokenKind
@@ -68,7 +90,7 @@ tokenKind =
 
 term : Parser Expression
 term =
-    d "tokenKind" tokenKind <| \kind ->
+    d "term" tokenKind <| \kind ->
     case kind of
         Token.NumberLiteral s ->
             su "nl" <| Literal s
@@ -83,46 +105,24 @@ term =
             fail
 
 
-
-{- Precedence rules:
-
-   ()
-
-   f a b ------------> function application
-
-   not, risk --------> unary
-
-   ^ ----------------> exp
-
-   * / --------------> multiplicative
-
-   + - ++ -----------> addittive
-
-   < > >= <= == =/= -> comparison
-
-   and, or, xor -----> logical
-
-   |> <| >> << ------> pipes
-
-   = := += -= /= *= -> assignments
-
+{-| Precedence rules
 -}
-
-
 expr : Parser Expression
 expr =
     Parser.expression term
-        [ parens
-        , functionApplication
-        , unops
-        , binops Exponential
-        , binops Multiplicative
-        , binops AddittiveSpaced
-        , binops Comparison
+        -- the `Or` stands for `Or higher priority parser`
+        [ parensOr
+        , lambdaOr
+        , functionApplicationOr
+        , unopsOr
+        , binopsOr Exponential
+        , binopsOr Multiplicative
+        , binopsOr AddittiveSpaced
+        , binopsOr Comparison
 
         -- TODO pipes can't actually be mixed
-        , binops Pipe
-        , binops Assignment
+        , binopsOr Pipe
+        , binopsOr Assignment
         ]
 
 
@@ -132,8 +132,8 @@ expr =
 --
 
 
-parens : Parser Expression -> Parser Expression
-parens higher =
+parensOr : Parser Expression -> Parser Expression
+parensOr higher =
     oneOf
         [ higher
         , surroundWith (RoundParen Open) (RoundParen Closed) (Parser.breakCircularDefinition <| \_ -> expr)
@@ -157,12 +157,63 @@ exactTokenKind targetKind =
 
 
 ----
+--- Lambda
+--
+
+
+lambdaOr : Parser Expression -> Parser Expression
+lambdaOr higher =
+    let
+        def =
+            do (exactTokenKind Fn) <| \_ ->
+            do (oneOrMore pattern) <| \( argsHead, argsTail ) ->
+            do (exactTokenKind (Token.Binop Assignment "=")) <| \_ ->
+            succeed <| argsHead :: argsTail
+
+        body =
+            oneOf
+                [ --
+                  do (oneOrMore (do (exactTokenKind NewSiblingLine) <| \_ -> expr)) <| \( h, t ) ->
+                  succeed (h :: t)
+                , --
+                  do (exactTokenKind BlockStart) <| \_ ->
+                  do expr <| \e ->
+                  do (exactTokenKind BlockEnd) <| \_ ->
+                  succeed [ e ]
+                , --
+                  do (succeed ()) <| \_ ->
+                  do expr <| \b ->
+                  succeed [ b ]
+                ]
+    in
+    oneOf
+        [ higher
+        , --
+          do def <| \args ->
+          do body <| \b ->
+          succeed <| Lambda args b
+        ]
+
+
+pattern : Parser Pattern
+pattern =
+    do tokenKind <| \kind ->
+    case kind of
+        Symbol s ->
+            succeed s
+
+        _ ->
+            fail
+
+
+
+----
 --- Function application
 --
 
 
-functionApplication : Parser Expression -> Parser Expression
-functionApplication higher =
+functionApplicationOr : Parser Expression -> Parser Expression
+functionApplicationOr higher =
     do higher <| \e ->
     do (Parser.zeroOrMore higher) <| \es ->
     case es of
@@ -179,8 +230,8 @@ functionApplication higher =
 --
 
 
-unops : Parser Expression -> Parser Expression
-unops higher =
+unopsOr : Parser Expression -> Parser Expression
+unopsOr higher =
     do (optional unaryOperator) <| \maybeUnary ->
     do higher <| \right ->
     case maybeUnary of
@@ -208,21 +259,18 @@ unaryOperator =
 --
 
 
-binops : PrecedenceGroup -> Parser Expression -> Parser Expression
-binops group higher =
+binopsOr : PrecedenceGroup -> Parser Expression -> Parser Expression
+binopsOr group higher =
     let
         binopAndPrev : Parser ( String, Expression )
         binopAndPrev =
             Parser.tuple2 (binaryOperators group) higher
     in
     do higher <| \left ->
-    do (optional binopAndPrev) <| \maybeBinopAndPrev ->
-    case maybeBinopAndPrev of
-        Nothing ->
-            succeed left
-
-        Just ( op, right ) ->
-            succeed <| Binop left op right
+    do (Parser.zeroOrMore binopAndPrev) <| \binopAndPrevs ->
+    binopAndPrevs
+        |> List.foldl (\( op, right ) leftAccum -> Binop leftAccum op right) left
+        |> succeed
 
 
 binaryOperators : PrecedenceGroup -> Parser String

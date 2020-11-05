@@ -30,6 +30,7 @@ Main goals
 More or less established features
 ---------------------------------
 
+* Allow docs for single union type constructors
 
 * Reserved words
     * fn
@@ -85,7 +86,7 @@ More or less established features
     * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
     * Assignment binops return Void
     * `=` is for declaring a new symbol
-    * `:=` is for assigning a new value to an existing mutable variable
+    * `#=` is for assigning a new value to an existing mutable variable
     * not-equal: `=/=`
     ? use `and`, `or` instead of `&&` `||`
 
@@ -150,6 +151,68 @@ Problems still to solve
 
   AddOp 
   AddOpWithoutSpace
+
+
+
+* Multi-line expressions:
+
+  * Functions: Fn Arg* (BlockStart Arg (NewSiblingLine Arg)* BlockEnd)?
+  ```
+  funzione arg1 arg2
+
+  funzione arg1
+    arg2
+
+  funzione
+     arg1
+     arg2
+  ```
+
+  * Operators:
+      Term NewSiblingLine? Op NewSiblingLine? Term
+
+      Term BlockStart Op Term BlockEnd
+      Term Op BlockStart Term BlockEnd
+
+
+  ```
+  a + b
+
+  a
+  + b
+
+  a +
+  b
+
+  a
+  +
+  b
+
+  a
+    + b
+
+  a +
+    b
+
+  ```
+
+  * Lambdas:
+       Fn pattern+ '=' Expr
+       Fn pattern+ '=' (NewSiblingLine Expr)*
+       Fn pattern+ '=' BlockStart Expr (NewSiblingLine Expr)* BlockEnd
+      
+  ```
+  fn arg = 1
+
+  fn arg =
+  1
+
+  fn arg =
+    1
+
+  ```
+
+
 
 
 

@@ -120,17 +120,25 @@ type Outcome readState output
     | Abort String
 
 
-parse : Parser token readState output -> GetNext token readState -> readState -> Result String output
-parse parser getNext readState =
-    case parser getNext [] readState of
+outcomeToResult : Outcome r o -> Result String ( o, r )
+outcomeToResult outcome =
+    case outcome of
         Success output finalState ->
-            Ok output
+            Ok ( output, finalState )
 
         Failure ->
-            Err "doesn't make sense"
+            Err "options exhausted"
 
         Abort reason ->
             Err reason
+
+
+parse : Parser token readState output -> GetNext token readState -> readState -> Result String output
+parse parser getNext readState =
+    readState
+        |> parser getNext []
+        |> outcomeToResult
+        |> Result.map Tuple.first
 
 
 
@@ -196,7 +204,7 @@ doWithDefault fallbackParser firstParser chainedParser =
                 chainedParser a getNext path nextReadState
 
 
-doWithDebug : ({ path : List String, first : Outcome i a } -> discarded) -> String -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
+doWithDebug : ({ path : List String, first : Result String ( a, i ) } -> discarded) -> String -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
 doWithDebug log name firstParser chainedParser =
     \getNext p readState ->
         let
@@ -207,7 +215,7 @@ doWithDebug log name firstParser chainedParser =
                 firstParser getNext path readState
 
             _ =
-                log { path = path, first = out }
+                log { path = path, first = outcomeToResult out }
         in
         case out of
             Abort reason ->

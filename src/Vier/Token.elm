@@ -21,6 +21,7 @@ type
     | NumberLiteral String
     | Symbol String
       -- Keywords
+    | Fn
     | If
     | Is
     | Then

@@ -245,6 +245,8 @@ recognisedTokens =
                 \match ->
                     Ok <|
                         case match of
+                            "fn" ->
+                                Fn
                             "if" ->
                                 If
 
@@ -343,7 +345,7 @@ recognisedTokens =
                         "=" ->
                             Ok <| Binop Assignment match
 
-                        ":=" ->
+                        "#=" ->
                             Ok <| Binop Assignment match
 
                         "+=" ->

@@ -11,12 +11,9 @@ import Vier.Lexer
 import Vier.Syntax as Syntax exposing (Expression)
 
 
-nitialCode =
-    "(1 + 1 - 3)\n"
-
-
 initialCode =
-    "   a"
+    "(1 + 2 - 3)\n"
+
 
 
 itialCode =
@@ -82,12 +79,12 @@ view model =
             [ Html.text model.code ]
         , Html.ul
             []
-            --             [ Html.li
-            --                 []
-            --                 [ Html.h6 [] [ Html.text "AST" ]
-            --                 , viewAst model.code
-            --                 ]
-            [ Html.li
+             [ Html.li
+                 []
+                 [ Html.h6 [] [ Html.text "AST" ]
+                 , viewAst model.code
+                 ]
+            , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tokens" ]
                 , viewTokens model.code
@@ -100,28 +97,22 @@ view model =
 ----
 --- AST
 --
-{-
-   viewAst : String -> Html msg
-   viewAst code =
-       let
-           res =
-               code
-                   |> String.toList
-                   |> Array.fromList
-                   |> Vier.Lexer.Chunks.fromString
-                   |> Result.andThen Vier.Lexer.Indent.indentChunks
-                   |> Result.andThen (Vier.Lexer.Token.chunksToTokens code)
-                   |> Result.map Syntax.parse
-       in
-       case res of
-           Ok (Just tree) ->
-               viewAstNode tree
+viewAst : String -> Html msg
+viewAst code =
+   let
+       res =
+            code
+                |> Vier.Lexer.lexer
+                |> Result.andThen Syntax.parse
+   in
+   case res of
+       Ok tree ->
+           viewAstNode tree
 
-           _ ->
-               res
-                   |> Debug.toString
-                   |> Html.text
--}
+       _ ->
+           res
+               |> Debug.toString
+               |> Html.text
 
 
 viewAstNode : Syntax.Expression -> Html msg
@@ -185,7 +176,6 @@ viewTokens code =
         resultTokens =
             code
                 |> Vier.Lexer.lexer
-                |> Debug.log "lexer"
     in
     case resultTokens of
         Err error ->
