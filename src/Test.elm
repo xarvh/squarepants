@@ -16,14 +16,14 @@ type alias Test =
 --
 
 
-type alias SimpleArgs outcome =
-    { name : String
-    , run : () -> outcome
-    , expected : outcome
-    }
-
-
-simple : (outcome -> String) -> SimpleArgs outcome -> Test
+simple :
+    (outcome -> String)
+    ->
+        { name : String
+        , run : () -> outcome
+        , expected : outcome
+        }
+    -> Test
 simple toString { name, run, expected } =
     { name = name
     , maybeError =
@@ -37,11 +37,10 @@ simple toString { name, run, expected } =
         else
             [ "Expected: "
             , toString expected
-            , "\n"
             , "Actual: "
             , toString actual
             ]
-                |> String.join ""
+                |> String.join "\n"
                 |> Just
     }
 
@@ -85,7 +84,10 @@ view test =
                     Html.text "Ok!"
 
                 Just error ->
-                    Html.text error
+                    error
+                        |> String.split "\n"
+                        |> List.map (\e -> Html.div [ class "test-error-line" ] [ Html.text e ])
+                        |> Html.div []
             ]
         ]
 
@@ -110,6 +112,10 @@ style =
 
 .test-error {
   background-color: #f66;
+}
+
+.test-error-line {
+  margin-bottom: 0.5em;
 }
   """
         ]

@@ -146,7 +146,7 @@ expr =
         , unopsOr
         , binopsOr Exponential
         , binopsOr Multiplicative
-        , binopsOr AddittiveSpaced
+        , binopsOr Addittive
         , binopsOr Comparison
 
         -- TODO pipes can't actually be mixed

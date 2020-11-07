@@ -140,19 +140,6 @@ More or less established features
 Problems still to solve
 -----------------------
 
-* -a is valid
-  a-a is valid
-  a -a is NOT valid
-  a - a is valid
-
-  +a is valid
-
-  distinguo fra op seguito da spazio, e op seguito da non-spazio?
-
-  AddOp 
-  AddOpWithoutSpace
-
-
 
 * Multi-line expressions:
 

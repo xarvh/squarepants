@@ -40,8 +40,7 @@ type
 type PrecedenceGroup
     = Exponential
     | Multiplicative
-    | AddittiveSpaced
-    | AddittiveUnspaced
+    | Addittive
     | Comparison
     | Logical
     | Pipe

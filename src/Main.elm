@@ -11,10 +11,11 @@ import Vier.Error
 import Vier.Lexer
 import Vier.Syntax as Syntax exposing (Expression)
 import Vier.Syntax_Test
+import Vier.Lexer_Test
 
 
 initialCode =
-    "x += 3"
+    "a + -a"
 
 
 itialCode =
@@ -93,7 +94,7 @@ view model =
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tests" ]
-                , Test.viewList Vier.Syntax_Test.tests
+                , Test.viewList (Vier.Lexer_Test.tests ++ Vier.Syntax_Test.tests)
                 ]
             ]
         ]
@@ -193,7 +194,7 @@ viewTokens code =
 
         Ok tokens ->
             tokens
-                |> List.map (\t -> Html.div [] [ Html.text (Debug.toString t) ])
+                |> List.map (\t -> Html.div [] [ Html.text (Debug.toString t.kind) ])
                 |> Html.div []
 
 

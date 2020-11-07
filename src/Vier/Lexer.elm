@@ -107,10 +107,10 @@ lexContent startPos state =
             runLexer False (lexIndent >> Ok) 1 rest
 
         '\t' :: rest ->
-          Err
-            { pos = state.pos
-            , kind = Error.Tab
-            }
+            Err
+                { pos = state.pos
+                , kind = Error.Tab
+                }
 
         char :: rest ->
             { state | pos = 1 + state.pos, code = rest }
@@ -140,7 +140,9 @@ contentLineToTokens startPos state =
             String.slice startPos state.pos state.codeAsString
     in
     state.accum
-        |> contentLineToTokensRec contentLine startPos
+        -- TODO (horrible) I'm adding a space in front so that indent will not
+        -- eat all of the spaces in front of "  -a", so that `-` can be reocgnised as Unop
+        |> contentLineToTokensRec (" " ++ contentLine) (startPos - 1)
         |> Result.map (\tokens -> { state | accum = tokens })
 
 
@@ -156,7 +158,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                     untrimmedPos + String.length untrimmedBlock - String.length codeBlock
 
                 tryMatch ( regex, constructor ) =
-                    case Regex.find regex codeBlock of
+                    case Regex.find regex untrimmedBlock of
                         match :: tail ->
                             Just ( match, constructor )
 
@@ -199,7 +201,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                                     }
 
                                 newBlock =
-                                    String.dropLeft charsConsumed codeBlock
+                                    String.dropLeft charsConsumed untrimmedBlock
 
                                 accu =
                                     token :: tokenAccu
@@ -227,26 +229,31 @@ recognisedTokens =
             )
 
         parenRegex s kind =
-            { regex = "^\\" ++ s
+            { regex = "^[ ]*\\" ++ s
             , consumed = String.length
             , constructor = \match -> Ok kind
             }
     in
     List.map recordEntryToTuple
         [ -- Numbers
-          { regex = "^[0-9]+[.]?[0-9]*"
-          , constructor = NumberLiteral >> Ok
+          { regex = "^[ ]*[0-9]+[.]?[0-9]*"
           , consumed = String.length
+          , constructor = String.trimLeft >> NumberLiteral >> Ok
           }
         , -- Words
-          { regex = "^[a-zA-Z._][a-zA-Z._0-9]*"
+          { regex = "^[ ]*[a-zA-Z._][a-zA-Z._0-9]*"
           , consumed = String.length
           , constructor =
                 \match ->
+                    let
+                        m =
+                            String.trimLeft match
+                    in
                     Ok <|
-                        case match of
+                        case m of
                             "fn" ->
                                 Fn
+
                             "if" ->
                                 If
 
@@ -260,22 +267,22 @@ recognisedTokens =
                                 Else
 
                             "and" ->
-                                Binop Logical "and"
+                                Binop Logical m
 
                             "or" ->
-                                Binop Logical "or"
+                                Binop Logical m
 
                             "return" ->
                                 Return
 
                             "risk" ->
-                                Unop "risk"
+                                Unop m
 
                             "not" ->
-                                Unop "not"
+                                Unop m
 
                             _ ->
-                                Symbol match
+                                Symbol m
           }
 
         -- Parens
@@ -286,16 +293,20 @@ recognisedTokens =
         , parenRegex "{" <| CurlyBrace Open
         , parenRegex "}" <| CurlyBrace Closed
         , parenRegex "," <| Comma
-        , -- Weirdos
-          { regex = "^[+-][ ]"
-          , consumed = always 1
-          , constructor = String.dropRight 1 >> Binop AddittiveSpaced >> Ok
+        , -- Unary addittive
+          { regex = "^[ ]+[+-][^ ]"
+          , consumed = \match -> String.length match - 1
+          , constructor = String.trimLeft >> String.dropRight 1 >> Unop >> Ok
           }
         , -- Squiggles
-          { regex = "^[=+\\-*/:><!^|#]+"
+          { regex = "^[ ]*[=+\\-*/:><!^|#]+"
           , consumed = String.length
           , constructor =
-                \match ->
+                \m ->
+                    let
+                        match =
+                            String.trimLeft m
+                    in
                     case match of
                         "^" ->
                             Ok <| Binop Exponential match
@@ -307,10 +318,10 @@ recognisedTokens =
                             Ok <| Binop Multiplicative match
 
                         "+" ->
-                            Ok <| Binop AddittiveUnspaced match
+                            Ok <| Binop Addittive match
 
                         "-" ->
-                            Ok <| Binop AddittiveUnspaced match
+                            Ok <| Binop Addittive match
 
                         ">" ->
                             Ok <| Binop Comparison match
