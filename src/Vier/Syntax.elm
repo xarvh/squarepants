@@ -32,7 +32,14 @@ type alias Parser a =
     Parser.Parser TokenKind (List TokenKind) a
 
 
+
+----
+--- AST
+--
+
+
 type alias Pattern =
+    -- TODO
     String
 
 
@@ -47,18 +54,38 @@ type Expression
     | Error
 
 
+
+----
+--- Main
+--
+
+
+runParser : Parser a -> List TokenKind -> Result String a
+runParser parser ts =
+    Parser.parse parser uncons ts
+        |> Debug.log "RESULT"
+
+
+end : Parser a -> Parser a
+end parser =
+    do parser <| \v ->
+    do Parser.end <| \_ ->
+    succeed v
+
+
+uncons : List a -> Maybe ( a, List a )
+uncons ls =
+    case ls of
+        head :: tail ->
+            Just ( head, tail )
+
+        [] ->
+            Nothing
+
+
 parse : List Token -> Result Error Expression
 parse tokens =
     let
-        uncons : List a -> Maybe ( a, List a )
-        uncons ls =
-            case ls of
-                head :: tail ->
-                    Just ( head, tail )
-
-                [] ->
-                    Nothing
-
         parser =
             do
                 (oneOf
@@ -67,13 +94,11 @@ parse tokens =
                     ]
                 )
             <| \_ ->
-           d "root expr" expr <| \a ->
-           d "root end" Parser.end <| \b ->
-           succeed a
+           expr
     in
     tokens
         |> List.map .kind
-        |> Parser.parse parser uncons
+        |> runParser (end parser)
         |> Result.mapError (\s -> { pos = 0, kind = Error.Whatever s })
 
 
@@ -105,8 +130,12 @@ term =
             fail
 
 
-{-| Precedence rules
--}
+
+----
+--- Expr (with precedence rules)
+--
+
+
 expr : Parser Expression
 expr =
     Parser.expression term
@@ -173,7 +202,7 @@ lambdaOr higher =
         body =
             oneOf
                 [ --
-                  do (oneOrMore (do (exactTokenKind NewSiblingLine) <| \_ -> expr)) <| \( h, t ) ->
+                  do (oneOrMore <| do (exactTokenKind NewSiblingLine) <| \_ -> expr) <| \( h, t ) ->
                   succeed (h :: t)
                 , --
                   do (exactTokenKind BlockStart) <| \_ ->
@@ -195,6 +224,8 @@ lambdaOr higher =
         ]
 
 
+{-| TODO
+-}
 pattern : Parser Pattern
 pattern =
     do tokenKind <| \kind ->

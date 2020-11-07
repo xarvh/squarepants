@@ -287,9 +287,9 @@ recognisedTokens =
         , parenRegex "}" <| CurlyBrace Closed
         , parenRegex "," <| Comma
         , -- Weirdos
-          { regex = "^[+-][^ ]"
+          { regex = "^[+-][ ]"
           , consumed = always 1
-          , constructor = String.dropRight 1 >> Binop AddittiveUnspaced >> Ok
+          , constructor = String.dropRight 1 >> Binop AddittiveSpaced >> Ok
           }
         , -- Squiggles
           { regex = "^[=+\\-*/:><!^|#]+"
@@ -307,10 +307,10 @@ recognisedTokens =
                             Ok <| Binop Multiplicative match
 
                         "+" ->
-                            Ok <| Binop AddittiveSpaced match
+                            Ok <| Binop AddittiveUnspaced match
 
                         "-" ->
-                            Ok <| Binop AddittiveSpaced match
+                            Ok <| Binop AddittiveUnspaced match
 
                         ">" ->
                             Ok <| Binop Comparison match

@@ -6,14 +6,15 @@ import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
 import Parser
+import Test
 import Vier.Error
 import Vier.Lexer
 import Vier.Syntax as Syntax exposing (Expression)
+import Vier.Syntax_Test
 
 
 initialCode =
-    "(1 + 2 - 3)\n"
-
+    "x += 3"
 
 
 itialCode =
@@ -79,15 +80,20 @@ view model =
             [ Html.text model.code ]
         , Html.ul
             []
-             [ Html.li
-                 []
-                 [ Html.h6 [] [ Html.text "AST" ]
-                 , viewAst model.code
-                 ]
+            [ Html.li
+                []
+                [ Html.h6 [] [ Html.text "AST" ]
+                , viewAst model.code
+                ]
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tokens" ]
                 , viewTokens model.code
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [ Html.text "Tests" ]
+                , Test.viewList Vier.Syntax_Test.tests
                 ]
             ]
         ]
@@ -97,22 +103,24 @@ view model =
 ----
 --- AST
 --
+
+
 viewAst : String -> Html msg
 viewAst code =
-   let
-       res =
+    let
+        res =
             code
                 |> Vier.Lexer.lexer
                 |> Result.andThen Syntax.parse
-   in
-   case res of
-       Ok tree ->
-           viewAstNode tree
+    in
+    case res of
+        Ok tree ->
+            viewAstNode tree
 
-       _ ->
-           res
-               |> Debug.toString
-               |> Html.text
+        _ ->
+            res
+                |> Debug.toString
+                |> Html.text
 
 
 viewAstNode : Syntax.Expression -> Html msg
@@ -189,86 +197,85 @@ viewTokens code =
                 |> Html.div []
 
 
+
 {-
-viewToken : Token -> Html msg
-viewToken token =
-    let
-        key s =
-            ( s, s, "blue" )
+   viewToken : Token -> Html msg
+   viewToken token =
+       let
+           key s =
+               ( s, s, "blue" )
 
-        ( content, className, color ) =
-            case token.kind of
-                StringLiteral s ->
-                    ( s, "string", "pink" )
+           ( content, className, color ) =
+               case token.kind of
+                   StringLiteral s ->
+                       ( s, "string", "pink" )
 
-                NumberLiteral s ->
-                    ( s, "number", "pink" )
+                   NumberLiteral s ->
+                       ( s, "number", "pink" )
 
-                Symbol s ->
-                    ( s
-                    , "symbol"
-                    , if startsWithUpper s then
-                        "green"
+                   Symbol s ->
+                       ( s
+                       , "symbol"
+                       , if startsWithUpper s then
+                           "green"
 
-                      else
-                        "#222"
-                    )
+                         else
+                           "#222"
+                       )
 
-                If ->
-                    key "if"
+                   If ->
+                       key "if"
 
-                Is ->
-                    key "is"
+                   Is ->
+                       key "is"
 
-                Then ->
-                    key "then"
+                   Then ->
+                       key "then"
 
-                Else ->
-                    key "else"
+                   Else ->
+                       key "else"
 
-                Return ->
-                    key "return"
+                   Return ->
+                       key "return"
 
-                Binop s ->
-                    ( s, "binop", "orange" )
+                   Binop s ->
+                       ( s, "binop", "orange" )
 
-                Unop s ->
-                    ( s, "unop", "red" )
+                   Unop s ->
+                       ( s, "unop", "red" )
 
-                RoundParen Open ->
-                    ( "(", "paren", "purple" )
+                   RoundParen Open ->
+                       ( "(", "paren", "purple" )
 
-                RoundParen Closed ->
-                    ( ")", "paren", "purple" )
+                   RoundParen Closed ->
+                       ( ")", "paren", "purple" )
 
-                _ ->
-                    ( Debug.toString token, "", "" )
-    in
-    Html.span
-        []
-        [ Html.code
-            [ style "border" "1px solid #eee"
-            , style "color" color
-            , style "margin-left" "0.5em"
-            , class className
-            , Html.Attributes.id <| String.fromInt token.start ++ "-" ++ String.fromInt token.end
-            ]
-            [ Html.text content ]
-        ]
+                   _ ->
+                       ( Debug.toString token, "", "" )
+       in
+       Html.span
+           []
+           [ Html.code
+               [ style "border" "1px solid #eee"
+               , style "color" color
+               , style "margin-left" "0.5em"
+               , class className
+               , Html.Attributes.id <| String.fromInt token.start ++ "-" ++ String.fromInt token.end
+               ]
+               [ Html.text content ]
+           ]
 
 
-startsWithUpper : String -> Bool
-startsWithUpper s =
-    case String.uncons s of
-        Just ( char, rest ) ->
-            char >= 'A' && char <= 'Z'
+   startsWithUpper : String -> Bool
+   startsWithUpper s =
+       case String.uncons s of
+           Just ( char, rest ) ->
+               char >= 'A' && char <= 'Z'
 
-        Nothing ->
-            False
+           Nothing ->
+               False
 
 -}
-
-
 ----
 ---
 --
