@@ -1,22 +1,18 @@
 module Vier.Lexer_Test exposing (..)
 
 import Test exposing (Test)
-import Vier.Lexer as Lexer
-import Vier.Token as Token exposing (TokenKind)
 import Vier.Error exposing (Error)
+import Vier.Lexer as Lexer
+import Vier.Token as Token exposing (Token, TokenKind)
 
 
 simpleTest =
     Test.simple Debug.toString
 
 
-lexTokens : String -> () -> Result Error (List TokenKind)
+lexTokens : String -> () -> Result Error (List Token)
 lexTokens s _ =
-  s
-  |> Lexer.lexer
-  |> Result.map (List.map .kind)
-
-
+    Lexer.lexer s
 
 
 tests : List Test
@@ -29,22 +25,33 @@ tests =
         , run = lexTokens " -a"
         , expected =
             Ok
-                [ Token.BlockStart
-                , Token.Unop "-"
-                , Token.Symbol "a"
-                , Token.BlockEnd
+                [ { kind = Token.BlockStart, start = 0, end = 1 }
+                , { kind = Token.Unop "-", start = 1, end = 2 }
+                , { kind = Token.Symbol "a", start = 2, end = 3 }
+                , { kind = Token.BlockEnd, start = 3, end = 3 }
                 ]
         }
-      , simpleTest
+    , simpleTest
         { name = "Unary +/-: a - -a"
         , run = lexTokens "a - -a"
         , expected =
             Ok
-                [ Token.NewSiblingLine
-                , Token.Symbol "a"
-                , Token.Binop Token.Addittive "-"
-                , Token.Unop "-"
-                , Token.Symbol "a"
+                [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
+                , { kind = Token.Symbol "a", start = 0, end = 1 }
+                , { kind = Token.Binop Token.Addittive "-", start = 2, end = 3 }
+                , { kind = Token.Unop "-", start = 4, end = 5 }
+                , { kind = Token.Symbol "a", start = 5, end = 6 }
+                ]
+        }
+    , simpleTest
+        { name = "Unary +/-: a-a"
+        , run = lexTokens "a-a"
+        , expected =
+            Ok
+                [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
+                , { kind = Token.Symbol "a", start = 0, end = 1 }
+                , { kind = Token.Binop Token.Addittive "-", start = 1, end = 2 }
+                , { kind = Token.Symbol "a", start = 2, end = 3 }
                 ]
         }
     ]

@@ -154,8 +154,9 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
 
         codeBlock ->
             let
+                spaces = String.length untrimmedBlock - String.length codeBlock
                 start =
-                    untrimmedPos + String.length untrimmedBlock - String.length codeBlock
+                    untrimmedPos + spaces
 
                 tryMatch ( regex, constructor ) =
                     case Regex.find regex untrimmedBlock of
@@ -192,7 +193,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                                     start + match.index
 
                                 tokenEnd =
-                                    tokenStart + charsConsumed
+                                    tokenStart + charsConsumed - spaces
 
                                 token =
                                     { kind = tokenKind
