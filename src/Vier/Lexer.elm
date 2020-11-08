@@ -355,7 +355,7 @@ recognisedTokens =
                             Ok <| Binop Pipe match
 
                         "=" ->
-                            Ok <| Binop Assignment match
+                            Ok Defop
 
                         "#=" ->
                             Ok <| Binop Assignment match

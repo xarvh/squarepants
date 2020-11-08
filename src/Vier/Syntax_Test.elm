@@ -74,23 +74,25 @@ tests =
                 runParser (Syntax.end Syntax.expr)
                     [ Token.Fn
                     , Token.Symbol "a"
-                    , Token.Binop Token.Assignment "="
+                    , Token.Defop
                     , Token.Fn
                     , Token.Symbol "b"
-                    , Token.Binop Token.Assignment "="
+                    , Token.Defop
                     , Token.NumberLiteral "3"
                     ]
         , expected =
-            Ok
-                (Lambda [ "a" ]
-                    ( Evaluate <|
-                        Lambda [ "b" ]
-                            ( Evaluate <| Literal "3"
-                            , []
-                            )
-                    , []
-                    )
-                )
+            Ok <|
+                Lambda
+                    { parameters = ( "a", [] )
+                    , body =
+                        ( Evaluate <|
+                            Lambda
+                                { parameters = ( "b", [] )
+                                , body = ( Evaluate <| Literal "3", [] )
+                                }
+                        , []
+                        )
+                    }
         }
     , simpleTest
         { name =
@@ -100,11 +102,11 @@ tests =
                 runParser (Syntax.end Syntax.expr)
                     [ Token.Fn
                     , Token.Symbol "a"
-                    , Token.Binop Token.Assignment "="
+                    , Token.Defop
                     , Token.BlockStart
                     , Token.Fn
                     , Token.Symbol "b"
-                    , Token.Binop Token.Assignment "="
+                    , Token.Defop
                     , Token.BlockStart
                     , Token.NumberLiteral "3"
                     , Token.BlockEnd
@@ -112,14 +114,17 @@ tests =
                     ]
         , expected =
             Ok
-                (Lambda [ "a" ]
-                    ( Evaluate <|
-                        Lambda [ "b" ]
-                            ( Evaluate <| Literal "3"
-                            , []
-                            )
-                    , []
-                    )
+                (Lambda
+                    { parameters = ( "a", [] )
+                    , body =
+                        ( Evaluate <|
+                            Lambda
+                                { parameters = ( "b", [] )
+                                , body = ( Evaluate <| Literal "3", [] )
+                                }
+                        , []
+                        )
+                    }
                 )
         }
     , simpleTest
@@ -130,24 +135,27 @@ tests =
                 runParser (Syntax.end Syntax.expr)
                     [ Token.Fn
                     , Token.Symbol "a"
-                    , Token.Binop Token.Assignment "="
+                    , Token.Defop
                     , Token.NewSiblingLine
                     , Token.Fn
                     , Token.Symbol "b"
-                    , Token.Binop Token.Assignment "="
+                    , Token.Defop
                     , Token.NewSiblingLine
                     , Token.NumberLiteral "3"
                     ]
         , expected =
             Ok
-                (Lambda [ "a" ]
-                    ( Evaluate <|
-                        Lambda [ "b" ]
-                            ( Evaluate <| Literal "3"
-                            , []
-                            )
-                    , []
-                    )
+                (Lambda
+                    { parameters = ( "a", [] )
+                    , body =
+                        ( Evaluate <|
+                            Lambda
+                                { parameters = ( "b", [] )
+                                , body = ( Evaluate <| Literal "3", [] )
+                                }
+                        , []
+                        )
+                    }
                 )
         }
     ]

@@ -50,7 +50,7 @@ type alias Pattern =
 type Expression
     = Literal String
     | Variable String
-    | Lambda (List Pattern) (OneOrMore Statement)
+    | Lambda { parameters : (OneOrMore Pattern), body :  (OneOrMore Statement) }
     | FunctionCall { reference : Expression, arguments : OneOrMore Expression }
     | Binop Expression String Expression
     | Unop String Expression
@@ -62,6 +62,7 @@ type Expression
 type Statement
     = Pass
     | Evaluate Expression
+    | Definition { name : Pattern, parameters : List Pattern, body : OneOrMore Statement }
     | Return Expression
     | If_Imperative { condition : Expression, true : List Statement, false : List Statement }
     | Match_Imperative { value : Expression, patterns : List ( Pattern, List Statement ), maybeElse : Maybe (List Statement) }
@@ -96,7 +97,7 @@ uncons ls =
             Nothing
 
 
-parse : List Token -> Result Error Expression
+parse : List Token -> Result Error (List Statement)
 parse tokens =
     let
         parser =
@@ -107,7 +108,7 @@ parse tokens =
                     ]
                 )
             <| \_ ->
-           expr
+           (zeroOrMore statement)
     in
     tokens
         |> List.map .kind
@@ -199,16 +200,27 @@ exactTokenKind targetKind =
 
 
 ----
----
+--- Statements
 --
+
+
+
+
 
 
 statement : Parser Statement
 statement =
     Parser.breakCircularDefinition <| \_ ->
     Parser.oneOf
-        [ do (discardFirst (exactTokenKind Token.Return) expr) <| \s ->
-        succeed (Return s)
+        [ -- return
+          do (discardFirst (exactTokenKind Token.Return) expr) <| \s ->
+          succeed (Return s)
+        -- definition
+        , do (oneOrMore pattern) <| \(name, params) ->
+          do (exactTokenKind Token.Defop) <| \_ ->
+          do statementBlock <| \sb ->
+          succeed <| Definition { name = name, parameters = params, body = sb }
+
 
         -- TODO if
         -- TODO match
@@ -244,9 +256,9 @@ lambdaOr higher =
     let
         def =
             do (exactTokenKind Fn) <| \_ ->
-            do (oneOrMore pattern) <| \( argsHead, argsTail ) ->
-            do (exactTokenKind (Token.Binop Assignment "=")) <| \_ ->
-            succeed <| argsHead :: argsTail
+            do (oneOrMore pattern) <| \params ->
+            do (exactTokenKind Token.Defop) <| \_ ->
+            succeed params
 
         body : Parser (OneOrMore Statement)
         body =
@@ -274,9 +286,9 @@ lambdaOr higher =
     oneOf
         [ higher
         , --
-          do def <| \args ->
+          do def <| \params ->
           do body <| \b ->
-          succeed <| Lambda args b
+          succeed <| Lambda {parameters = params, body = b }
         ]
 
 

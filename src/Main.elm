@@ -9,13 +9,16 @@ import Parser
 import Test
 import Vier.Error
 import Vier.Lexer
+import Vier.Lexer_Test
 import Vier.Syntax as Syntax exposing (Expression)
 import Vier.Syntax_Test
-import Vier.Lexer_Test
 
 
 initialCode =
-    "a + -a"
+    """
+a =
+      1
+    """
 
 
 itialCode =
@@ -106,6 +109,11 @@ view model =
 --
 
 
+oomToList : Syntax.OneOrMore a -> List a
+oomToList ( h, t ) =
+    h :: t
+
+
 viewAst : String -> Html msg
 viewAst code =
     let
@@ -115,8 +123,10 @@ viewAst code =
                 |> Result.andThen Syntax.parse
     in
     case res of
-        Ok tree ->
-            viewAstNode tree
+        Ok statements ->
+            statements
+                |> List.map viewStatement
+                |> Html.div []
 
         _ ->
             res
@@ -124,8 +134,50 @@ viewAst code =
                 |> Html.text
 
 
-viewAstNode : Syntax.Expression -> Html msg
-viewAstNode expr =
+viewStatement : Syntax.Statement -> Html msg
+viewStatement statement =
+    case statement of
+        Syntax.Pass ->
+            Html.text "pass"
+
+        Syntax.Evaluate expr ->
+            Html.div
+                []
+                [ Html.text "evaluate: "
+                , viewExpression expr
+                ]
+
+        Syntax.Definition { name, parameters, body } ->
+            Html.div
+                []
+                [ Html.span
+                    [ style "font-weight" "bold" ]
+                    [ Html.text name ]
+                , parameters
+                    |> List.map Html.text
+                    |> Html.span []
+                , body
+                    |> oomToList
+                    |> List.map viewStatement
+                    |> Html.div []
+                ]
+
+        Syntax.Return expr ->
+            Html.div
+                []
+                [ Html.span [] [ Html.text "return " ]
+                , viewExpression expr
+                ]
+
+        Syntax.If_Imperative { condition, true, false } ->
+            Debug.todo "If_Imperative"
+
+        Syntax.Match_Imperative { value, patterns, maybeElse } ->
+            Debug.todo "Match_Imperative"
+
+
+viewExpression : Syntax.Expression -> Html msg
+viewExpression expr =
     case expr of
         Syntax.Literal s ->
             Html.text s
@@ -133,17 +185,17 @@ viewAstNode expr =
         Syntax.Variable s ->
             Html.text s
 
-        Syntax.FunctionCall { reference, arguments  } ->
+        Syntax.FunctionCall { reference, arguments } ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
                     []
                     [ Html.text "[call] "
-                    , viewAstNode reference
+                    , viewExpression reference
                     ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    (List.map viewAstNode <| Tuple.first arguments :: Tuple.second arguments)
+                    (List.map viewExpression <| Tuple.first arguments :: Tuple.second arguments)
                 ]
 
         Syntax.Binop left op right ->
@@ -154,13 +206,13 @@ viewAstNode expr =
                     [ Html.text <| "[op] " ++ op ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [ viewAstNode left ]
+                    [ viewExpression left ]
                 , Html.div
                     []
                     [ Html.text "---" ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [ viewAstNode right ]
+                    [ viewExpression right ]
                 ]
 
         --     Unop String Expression

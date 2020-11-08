@@ -29,6 +29,7 @@ type
     | Return
       -- Ops
     | Unop String
+    | Defop
     | Binop PrecedenceGroup String
       -- Parens
     | RoundParen OpenOrClosed
