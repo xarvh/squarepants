@@ -133,17 +133,17 @@ viewAstNode expr =
         Syntax.Variable s ->
             Html.text s
 
-        Syntax.FunctionCall fn ( aHead, aTail ) ->
+        Syntax.FunctionCall { reference, arguments  } ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
                     []
                     [ Html.text "[call] "
-                    , viewAstNode fn
+                    , viewAstNode reference
                     ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    (List.map viewAstNode <| aHead :: aTail)
+                    (List.map viewAstNode <| Tuple.first arguments :: Tuple.second arguments)
                 ]
 
         Syntax.Binop left op right ->

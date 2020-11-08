@@ -1,6 +1,6 @@
 module Vier.Syntax exposing (..)
 
-import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed)
+import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed, zeroOrMore)
 import Vier.Error as Error exposing (Error)
 import Vier.Token as Token exposing (OpenOrClosed(..), PrecedenceGroup(..), Token, TokenKind(..))
 
@@ -32,6 +32,10 @@ type alias Parser a =
     Parser.Parser TokenKind (List TokenKind) a
 
 
+type alias OneOrMore a =
+    ( a, List a )
+
+
 
 ----
 --- AST
@@ -46,12 +50,21 @@ type alias Pattern =
 type Expression
     = Literal String
     | Variable String
-    | Lambda (List Pattern) (List Expression)
-    | FunctionCall Expression ( Expression, List Expression )
+    | Lambda (List Pattern) (OneOrMore Statement)
+    | FunctionCall { reference : Expression, arguments : OneOrMore Expression }
     | Binop Expression String Expression
     | Unop String Expression
-    | If { condition : Expression, true : Expression, false : Expression }
+    | If_Functional { condition : Expression, true : Expression, false : Expression }
+    | Match_Functional { value : Expression, patterns : List ( Pattern, Expression ), maybeElse : Maybe Expression }
     | Error
+
+
+type Statement
+    = Pass
+    | Evaluate Expression
+    | Return Expression
+    | If_Imperative { condition : Expression, true : List Statement, false : List Statement }
+    | Match_Imperative { value : Expression, patterns : List ( Pattern, List Statement ), maybeElse : Maybe (List Statement) }
 
 
 
@@ -186,6 +199,42 @@ exactTokenKind targetKind =
 
 
 ----
+---
+--
+
+
+statement : Parser Statement
+statement =
+    Parser.breakCircularDefinition <| \_ ->
+    Parser.oneOf
+        [ do (discardFirst (exactTokenKind Token.Return) expr) <| \s ->
+        succeed (Return s)
+
+        -- TODO if
+        -- TODO match
+        , do expr <| (Evaluate >> succeed)
+        ]
+
+
+statementBlock : Parser (OneOrMore Statement)
+statementBlock =
+    statement
+        |> oomSeparatedBy (exactTokenKind NewSiblingLine)
+        |> Parser.surroundWith (exactTokenKind BlockStart) (exactTokenKind BlockEnd)
+
+
+oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
+oomSeparatedBy sep pa =
+    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
+
+
+discardFirst : Parser a -> Parser b -> Parser b
+discardFirst a b =
+    do a <| \_ -> b
+
+
+
+----
 --- Lambda
 --
 
@@ -199,20 +248,27 @@ lambdaOr higher =
             do (exactTokenKind (Token.Binop Assignment "=")) <| \_ ->
             succeed <| argsHead :: argsTail
 
+        body : Parser (OneOrMore Statement)
         body =
             oneOf
-                [ --
-                  do (oneOrMore <| do (exactTokenKind NewSiblingLine) <| \_ -> expr) <| \( h, t ) ->
-                  succeed (h :: t)
-                , --
-                  do (exactTokenKind BlockStart) <| \_ ->
-                  do expr <| \e ->
-                  do (exactTokenKind BlockEnd) <| \_ ->
-                  succeed [ e ]
-                , --
+                [ {-
+                     fn x =
+                     a
+                     b
+                     c
+                  -}
+                  oneOrMore (discardFirst (exactTokenKind NewSiblingLine) statement)
+                , {-
+                     fn x =
+                       a
+                  -}
+                  statementBlock
+                , {-
+                     fn x = a
+                  -}
                   do (succeed ()) <| \_ ->
-                  do expr <| \b ->
-                  succeed [ b ]
+                  do expr <| \e ->
+                  succeed ( Evaluate e, [] )
                 ]
     in
     oneOf
@@ -246,10 +302,10 @@ pattern =
 functionApplicationOr : Parser Expression -> Parser Expression
 functionApplicationOr higher =
     do higher <| \e ->
-    do (Parser.zeroOrMore higher) <| \es ->
+    do (zeroOrMore higher) <| \es ->
     case es of
         argsHead :: argsTail ->
-            succeed <| FunctionCall e ( argsHead, argsTail )
+            succeed <| FunctionCall { reference = e, arguments = ( argsHead, argsTail ) }
 
         [] ->
             succeed e

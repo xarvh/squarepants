@@ -380,7 +380,18 @@ surroundWith left right parser =
     succeed p
 
 
+
+{- TODO
+   oomSeparatedBy : Parser t i ignoredOutput -> Parser t i output -> Parser t i (output, List output)
+   oomSeparatedBy separator parser =
+       do parser <| \_ ->
+       do parser <| \p ->
+       do right <| \_ ->
+       succeed p
+-}
+
+
 breakCircularDefinition : (() -> Parser t i b) -> Parser t i b
 breakCircularDefinition a =
-    -- TODO: this is equivalent to `a ()` but if I use that the function doesn't break circular definitions any more
+    -- This is equivalent to `a ()` but we need the lambda contained inside `do` to actually break the circula def
     do (succeed ()) a

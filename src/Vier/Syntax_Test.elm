@@ -1,7 +1,7 @@
 module Vier.Syntax_Test exposing (..)
 
 import Test exposing (Test)
-import Vier.Syntax as Syntax exposing (Expression(..), runParser)
+import Vier.Syntax as Syntax exposing (Expression(..), Statement(..), runParser)
 import Vier.Token as Token exposing (Token)
 
 
@@ -83,9 +83,13 @@ tests =
         , expected =
             Ok
                 (Lambda [ "a" ]
-                    [ Lambda [ "b" ]
-                        [ Literal "3" ]
-                    ]
+                    ( Evaluate <|
+                        Lambda [ "b" ]
+                            ( Evaluate <| Literal "3"
+                            , []
+                            )
+                    , []
+                    )
                 )
         }
     , simpleTest
@@ -109,9 +113,13 @@ tests =
         , expected =
             Ok
                 (Lambda [ "a" ]
-                    [ Lambda [ "b" ]
-                        [ Literal "3" ]
-                    ]
+                    ( Evaluate <|
+                        Lambda [ "b" ]
+                            ( Evaluate <| Literal "3"
+                            , []
+                            )
+                    , []
+                    )
                 )
         }
     , simpleTest
@@ -133,9 +141,13 @@ tests =
         , expected =
             Ok
                 (Lambda [ "a" ]
-                    [ Lambda [ "b" ]
-                        [ Literal "3" ]
-                    ]
+                    ( Evaluate <|
+                        Lambda [ "b" ]
+                            ( Evaluate <| Literal "3"
+                            , []
+                            )
+                    , []
+                    )
                 )
         }
     ]
