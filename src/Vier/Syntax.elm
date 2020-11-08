@@ -1,5 +1,6 @@
 module Vier.Syntax exposing (..)
 
+import OneOrMore exposing (OneOrMore)
 import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed, zeroOrMore)
 import Vier.Error as Error exposing (Error)
 import Vier.Token as Token exposing (OpenOrClosed(..), PrecedenceGroup(..), Token, TokenKind(..))
@@ -32,10 +33,6 @@ type alias Parser a =
     Parser.Parser TokenKind (List TokenKind) a
 
 
-type alias OneOrMore a =
-    ( a, List a )
-
-
 
 ----
 --- AST
@@ -50,7 +47,7 @@ type alias Pattern =
 type Expression
     = Literal String
     | Variable String
-    | Lambda { parameters : (OneOrMore Pattern), body :  (OneOrMore Statement) }
+    | Lambda { parameters : OneOrMore Pattern, body : OneOrMore Statement }
     | FunctionCall { reference : Expression, arguments : OneOrMore Expression }
     | Binop Expression String Expression
     | Unop String Expression
@@ -108,12 +105,13 @@ parse tokens =
                     ]
                 )
             <| \_ ->
-           (zeroOrMore statement)
+           oomSeparatedBy (exactTokenKind NewSiblingLine) statement
     in
     tokens
         |> List.map .kind
         |> runParser (end parser)
         |> Result.mapError (\s -> { pos = 0, kind = Error.Whatever s })
+        |> Result.map OneOrMore.toList
 
 
 tokenKind : Parser TokenKind
@@ -204,10 +202,6 @@ exactTokenKind targetKind =
 --
 
 
-
-
-
-
 statement : Parser Statement
 statement =
     Parser.breakCircularDefinition <| \_ ->
@@ -215,12 +209,17 @@ statement =
         [ -- return
           do (discardFirst (exactTokenKind Token.Return) expr) <| \s ->
           succeed (Return s)
-        -- definition
-        , do (oneOrMore pattern) <| \(name, params) ->
+        , -- definition
+          do (oneOrMore pattern) <| \( name, params ) ->
           do (exactTokenKind Token.Defop) <| \_ ->
-          do statementBlock <| \sb ->
-          succeed <| Definition { name = name, parameters = params, body = sb }
-
+          do
+              (oneOf
+                  [ statementBlock
+                  , do expr <| \e -> succeed ( Evaluate e, [] )
+                  ]
+              )
+          <| \sb ->
+         succeed <| Definition { name = name, parameters = params, body = sb }
 
         -- TODO if
         -- TODO match
@@ -288,7 +287,7 @@ lambdaOr higher =
         , --
           do def <| \params ->
           do body <| \b ->
-          succeed <| Lambda {parameters = params, body = b }
+          succeed <| Lambda { parameters = params, body = b }
         ]
 
 

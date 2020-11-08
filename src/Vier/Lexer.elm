@@ -644,24 +644,19 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
             }
     in
     if newIndent == lastIndent then
-        if isFirstRecursion then
             {-
                ```
                lastIndent
                newIndent
                ```
-            -}
-            Ok { state | accum = makeToken NewSiblingLine :: state.accum }
 
-        else
-            {-
                ```
                previousRecursionIndent
                  lastIndent
                newIndent
                ```
             -}
-            Ok { state | indentStack = stack }
+            Ok { state | accum = makeToken NewSiblingLine :: state.accum, indentStack = stack }
 
     else if newIndent > lastIndent then
         if isFirstRecursion then

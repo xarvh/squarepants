@@ -5,6 +5,7 @@ import Browser
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
+import OneOrMore exposing (OneOrMore)
 import Parser
 import Test
 import Vier.Error
@@ -17,7 +18,8 @@ import Vier.Syntax_Test
 initialCode =
     """
 a =
-      1
+ 1
+b = 1
     """
 
 
@@ -109,11 +111,6 @@ view model =
 --
 
 
-oomToList : Syntax.OneOrMore a -> List a
-oomToList ( h, t ) =
-    h :: t
-
-
 viewAst : String -> Html msg
 viewAst code =
     let
@@ -157,7 +154,7 @@ viewStatement statement =
                     |> List.map Html.text
                     |> Html.span []
                 , body
-                    |> oomToList
+                    |> OneOrMore.toList
                     |> List.map viewStatement
                     |> Html.div []
                 ]

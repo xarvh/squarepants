@@ -54,4 +54,29 @@ tests =
                 , { kind = Token.Symbol "a", start = 2, end = 3 }
                 ]
         }
+
+    ----
+    --- Blocks, sibling lines, indentation
+    --
+    , simpleTest
+        { name = ""
+        , run = lexTokens """
+a =
+ 1
+b = 1
+"""
+        , expected =
+            Ok
+                [ { kind = Token.NewSiblingLine, start = 1, end = 1 }
+                , { kind = Token.Symbol "a", start = 1, end = 2 }
+                , { kind = Token.Defop, start = 3, end = 4 }
+                , { kind = Token.BlockStart, start = 5, end = 6 }
+                , { kind = Token.NumberLiteral "1", start = 6, end = 7 }
+                , { kind = Token.BlockEnd, start = 8, end = 8 }
+                , { kind = Token.NewSiblingLine, start = 8, end = 8 }
+                , { kind = Token.Symbol "b", start = 8, end = 9 }
+                , { kind = Token.Defop, start = 10, end = 11 }
+                , { kind = Token.NumberLiteral "1", start = 12, end = 13 }
+                ]
+        }
     ]
