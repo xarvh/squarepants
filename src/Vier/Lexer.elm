@@ -237,7 +237,7 @@ recognisedTokens =
     in
     List.map recordEntryToTuple
         [ -- Numbers
-          { regex = "^[ ]*[0-9]+[.]?[0-9]*"
+          { regex = "^[ ]*[0-9_]+[.]?[0-9_]*"
           , consumed = String.length
           , constructor = String.trimLeft >> NumberLiteral >> Ok
           }

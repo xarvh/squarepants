@@ -30,12 +30,12 @@ tests =
             Ok
                 (Binop
                     (Binop
-                        (Literal "1")
+                        (NumberLiteral "1")
                         "+"
-                        (Literal "2")
+                        (NumberLiteral "2")
                     )
                     "+"
-                    (Literal "3")
+                    (NumberLiteral "3")
                 )
         }
     , simpleTest
@@ -53,12 +53,12 @@ tests =
         , expected =
             Ok
                 (Binop
-                    (Literal "1")
+                    (NumberLiteral "1")
                     "+"
                     (Binop
-                        (Literal "2")
+                        (NumberLiteral "2")
                         "*"
-                        (Literal "3")
+                        (NumberLiteral "3")
                     )
                 )
         }
@@ -88,7 +88,7 @@ tests =
                         ( Evaluate <|
                             Lambda
                                 { parameters = ( "b", [] )
-                                , body = ( Evaluate <| Literal "3", [] )
+                                , body = ( Evaluate <| NumberLiteral "3", [] )
                                 }
                         , []
                         )
@@ -120,7 +120,7 @@ tests =
                         ( Evaluate <|
                             Lambda
                                 { parameters = ( "b", [] )
-                                , body = ( Evaluate <| Literal "3", [] )
+                                , body = ( Evaluate <| NumberLiteral "3", [] )
                                 }
                         , []
                         )
@@ -151,7 +151,7 @@ tests =
                         ( Evaluate <|
                             Lambda
                                 { parameters = ( "b", [] )
-                                , body = ( Evaluate <| Literal "3", [] )
+                                , body = ( Evaluate <| NumberLiteral "3", [] )
                                 }
                         , []
                         )

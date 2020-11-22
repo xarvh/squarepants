@@ -13,13 +13,13 @@ import Vier.Lexer
 import Vier.Lexer_Test
 import Vier.Syntax as Syntax exposing (Expression)
 import Vier.Syntax_Test
+import Vier.TypeInference
 
 
 initialCode =
     """
-a =
+a x =
  1
-b = 1
     """
 
 
@@ -88,6 +88,11 @@ view model =
             []
             [ Html.li
                 []
+                [ Html.h6 [] [ Html.text "Inference" ]
+                , viewInference model.code
+                ]
+            , Html.li
+                []
                 [ Html.h6 [] [ Html.text "AST" ]
                 , viewAst model.code
                 ]
@@ -103,6 +108,36 @@ view model =
                 ]
             ]
         ]
+
+
+
+----
+--- Inference
+--
+
+
+viewInference : String -> Html msg
+viewInference code =
+    let
+        res =
+            code
+                |> Vier.Lexer.lexer
+                |> Result.andThen Syntax.parse
+    in
+    case res of
+        Ok (statementsHead :: statementsTail) ->
+            Html.div
+                []
+                [ ( statementsHead, [] )
+                    |> Vier.TypeInference.inferStatements Vier.TypeInference.initContext
+                    |> Debug.toString
+                    |> Html.text
+                ]
+
+        _ ->
+            res
+                |> Debug.toString
+                |> Html.text
 
 
 
@@ -176,7 +211,10 @@ viewStatement statement =
 viewExpression : Syntax.Expression -> Html msg
 viewExpression expr =
     case expr of
-        Syntax.Literal s ->
+        Syntax.NumberLiteral s ->
+            Html.text s
+
+        Syntax.StringLiteral s ->
             Html.text s
 
         Syntax.Variable s ->

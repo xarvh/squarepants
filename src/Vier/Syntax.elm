@@ -45,7 +45,8 @@ type alias Pattern =
 
 
 type Expression
-    = Literal String
+    = StringLiteral String
+    | NumberLiteral String
     | Variable String
     | Lambda { parameters : OneOrMore Pattern, body : OneOrMore Statement }
     | FunctionCall { reference : Expression, arguments : OneOrMore Expression }
@@ -130,10 +131,10 @@ term =
     d "term" tokenKind <| \kind ->
     case kind of
         Token.NumberLiteral s ->
-            su "nl" <| Literal s
+            su "nl" <| NumberLiteral s
 
         Token.StringLiteral s ->
-            su "sl" <| Literal s
+            su "sl" <| StringLiteral s
 
         Token.Symbol s ->
             su s <| Variable s

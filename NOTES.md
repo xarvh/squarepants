@@ -2,6 +2,8 @@
 Main goals
 ----------
 
+* A language for indie games
+
 * Performance
   - Must be able to transpile to GLSL without significant performance penalty
   - Must be able to mutate values in place
@@ -136,9 +138,48 @@ More or less established features
       indented
   ```
 
+* data pretty printer
+
 
 Problems still to solve
 -----------------------
+
+How do I `Dict UnionType a`?
+How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
+
+  * I need an automatic solution that works for most cases
+  * But I also need to override it seamlessly
+  * Further, I need to specify that a function wants a type that be decoded or used as key in a Dict
+
+  * with typeclasses?
+    --> how do I automatically generate default classes when possible?
+    --> how do I avoid magic?
+    --> 
+
+  * with reflection?
+    --> how do I ensure that a function can produce a certain type?
+      `decode(SomeType) .... -> Blah SomeType`
+      I need first-class types for this!
+
+
+
+
+
+
+
+
+
+* Support `0 < x < 10`?
+
+* Use * to separate type args?
+
+* Allow `?` for skipping the annotation of a specific type?
+  as in: `someAnnotatedFunction : SomeType -> ? -> SomeReturnType`
+
+
+* Is it a good idea to overload ops?
+  toFloat is a pain in the ass to use, but it does avoid some problems.
+
 
 
 * Multi-line expressions:
@@ -241,10 +282,6 @@ Problems still to solve
 # Closures
     * Easy to implement because both JS and V have them?
     ! Pain in the ass to implement in GLSL
-
-# Type inference
-    * Is very good for fast prototyping, allows to write faster
-    ? How will longer compile time affect fast prototyping
 
 
 ? System for string interpolation?
