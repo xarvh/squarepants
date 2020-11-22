@@ -2,18 +2,19 @@ module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
+import Compiler.StringToTokens
+import Compiler.StringToTokens_Test
+import Compiler.TokensToFormattableAst
+import Compiler.TokensToFormattableAst_Test
+import Compiler.TypeInference
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
 import OneOrMore exposing (OneOrMore)
 import Parser
 import Test
-import Vier.Error
-import Vier.Lexer
-import Vier.Lexer_Test
-import Vier.Syntax as Syntax exposing (Expression)
-import Vier.Syntax_Test
-import Vier.TypeInference
+import Types.Error
+import Types.FormattableAst as FA exposing (Expression)
 
 
 initialCode =
@@ -104,7 +105,7 @@ view model =
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tests" ]
-                , Test.viewList (Vier.Lexer_Test.tests ++ Vier.Syntax_Test.tests)
+                , Test.viewList (Compiler.StringToTokens_Test.tests ++ Compiler.TokensToFormattableAst_Test.tests)
                 ]
             ]
         ]
@@ -121,18 +122,20 @@ viewInference code =
     let
         res =
             code
-                |> Vier.Lexer.lexer
-                |> Result.andThen Syntax.parse
+                |> Compiler.StringToTokens.lexer
+                |> Result.andThen Compiler.TokensToFormattableAst.parse
     in
     case res of
+        {-
         Ok (statementsHead :: statementsTail) ->
             Html.div
                 []
                 [ ( statementsHead, [] )
-                    |> Vier.TypeInference.inferStatements Vier.TypeInference.initContext
+                    |> Compiler.TypeInference.inferStatements Compiler.TypeInference.initContext
                     |> Debug.toString
                     |> Html.text
                 ]
+        -}
 
         _ ->
             res
@@ -151,8 +154,8 @@ viewAst code =
     let
         res =
             code
-                |> Vier.Lexer.lexer
-                |> Result.andThen Syntax.parse
+                |> Compiler.StringToTokens.lexer
+                |> Result.andThen Compiler.TokensToFormattableAst.parse
     in
     case res of
         Ok statements ->
@@ -166,20 +169,20 @@ viewAst code =
                 |> Html.text
 
 
-viewStatement : Syntax.Statement -> Html msg
+viewStatement : FA.Statement -> Html msg
 viewStatement statement =
     case statement of
-        Syntax.Pass ->
+        FA.Pass ->
             Html.text "pass"
 
-        Syntax.Evaluate expr ->
+        FA.Evaluate expr ->
             Html.div
                 []
                 [ Html.text "evaluate: "
                 , viewExpression expr
                 ]
 
-        Syntax.Definition { name, parameters, body } ->
+        FA.Definition { name, parameters, body } ->
             Html.div
                 []
                 [ Html.span
@@ -194,33 +197,33 @@ viewStatement statement =
                     |> Html.div []
                 ]
 
-        Syntax.Return expr ->
+        FA.Return expr ->
             Html.div
                 []
                 [ Html.span [] [ Html.text "return " ]
                 , viewExpression expr
                 ]
 
-        Syntax.If_Imperative { condition, true, false } ->
+        FA.If_Imperative { condition, true, false } ->
             Debug.todo "If_Imperative"
 
-        Syntax.Match_Imperative { value, patterns, maybeElse } ->
+        FA.Match_Imperative { value, patterns, maybeElse } ->
             Debug.todo "Match_Imperative"
 
 
-viewExpression : Syntax.Expression -> Html msg
+viewExpression : FA.Expression -> Html msg
 viewExpression expr =
     case expr of
-        Syntax.NumberLiteral s ->
+        FA.NumberLiteral s ->
             Html.text s
 
-        Syntax.StringLiteral s ->
+        FA.StringLiteral s ->
             Html.text s
 
-        Syntax.Variable s ->
+        FA.Variable s ->
             Html.text s
 
-        Syntax.FunctionCall { reference, arguments } ->
+        FA.FunctionCall { reference, arguments } ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
@@ -233,7 +236,7 @@ viewExpression expr =
                     (List.map viewExpression <| Tuple.first arguments :: Tuple.second arguments)
                 ]
 
-        Syntax.Binop left op right ->
+        FA.Binop left op right ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
@@ -271,12 +274,12 @@ viewTokens code =
     let
         resultTokens =
             code
-                |> Vier.Lexer.lexer
+                |> Compiler.StringToTokens.lexer
     in
     case resultTokens of
         Err error ->
             error
-                |> Vier.Error.toString code
+                |> Types.Error.toString code
                 |> Html.text
 
         Ok tokens ->

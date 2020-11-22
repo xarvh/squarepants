@@ -1,8 +1,9 @@
-module Vier.Syntax_Test exposing (..)
+module Compiler.TokensToFormattableAst_Test exposing (..)
 
+import Compiler.TokensToFormattableAst as Syntax
 import Test exposing (Test)
-import Vier.Syntax as Syntax exposing (Expression(..), Statement(..), runParser)
-import Vier.Token as Token exposing (Token)
+import Types.FormattableAst as FA
+import Types.Token as Token exposing (Token)
 
 
 simpleTest =
@@ -19,7 +20,7 @@ tests =
             "Binops: left-association"
         , run =
             \_ ->
-                runParser (Syntax.end Syntax.expr)
+                Syntax.runParser (Syntax.end Syntax.expr)
                     [ Token.NumberLiteral "1"
                     , Token.Binop Token.Addittive "+"
                     , Token.NumberLiteral "2"
@@ -28,14 +29,14 @@ tests =
                     ]
         , expected =
             Ok
-                (Binop
-                    (Binop
-                        (NumberLiteral "1")
+                (FA.Binop
+                    (FA.Binop
+                        (FA.NumberLiteral "1")
                         "+"
-                        (NumberLiteral "2")
+                        (FA.NumberLiteral "2")
                     )
                     "+"
-                    (NumberLiteral "3")
+                    (FA.NumberLiteral "3")
                 )
         }
     , simpleTest
@@ -43,7 +44,7 @@ tests =
             "Binops: precedence"
         , run =
             \_ ->
-                runParser (Syntax.end Syntax.expr)
+                Syntax.runParser (Syntax.end Syntax.expr)
                     [ Token.NumberLiteral "1"
                     , Token.Binop Token.Addittive "+"
                     , Token.NumberLiteral "2"
@@ -52,13 +53,13 @@ tests =
                     ]
         , expected =
             Ok
-                (Binop
-                    (NumberLiteral "1")
+                (FA.Binop
+                    (FA.NumberLiteral "1")
                     "+"
-                    (Binop
-                        (NumberLiteral "2")
+                    (FA.Binop
+                        (FA.NumberLiteral "2")
                         "*"
-                        (NumberLiteral "3")
+                        (FA.NumberLiteral "3")
                     )
                 )
         }
@@ -71,7 +72,7 @@ tests =
             "Lambdas: inline nesting"
         , run =
             \_ ->
-                runParser (Syntax.end Syntax.expr)
+                Syntax.runParser (Syntax.end Syntax.expr)
                     [ Token.Fn
                     , Token.Symbol "a"
                     , Token.Defop
@@ -82,13 +83,13 @@ tests =
                     ]
         , expected =
             Ok <|
-                Lambda
+                FA.Lambda
                     { parameters = ( "a", [] )
                     , body =
-                        ( Evaluate <|
-                            Lambda
+                        ( FA.Evaluate <|
+                            FA.Lambda
                                 { parameters = ( "b", [] )
-                                , body = ( Evaluate <| NumberLiteral "3", [] )
+                                , body = ( FA.Evaluate <| FA.NumberLiteral "3", [] )
                                 }
                         , []
                         )
@@ -99,7 +100,7 @@ tests =
             "Lambdas: block nesting"
         , run =
             \_ ->
-                runParser (Syntax.end Syntax.expr)
+                Syntax.runParser (Syntax.end Syntax.expr)
                     [ Token.Fn
                     , Token.Symbol "a"
                     , Token.Defop
@@ -114,13 +115,13 @@ tests =
                     ]
         , expected =
             Ok
-                (Lambda
+                (FA.Lambda
                     { parameters = ( "a", [] )
                     , body =
-                        ( Evaluate <|
-                            Lambda
+                        ( FA.Evaluate <|
+                            FA.Lambda
                                 { parameters = ( "b", [] )
-                                , body = ( Evaluate <| NumberLiteral "3", [] )
+                                , body = ( FA.Evaluate <| FA.NumberLiteral "3", [] )
                                 }
                         , []
                         )
@@ -132,7 +133,7 @@ tests =
             "Lambdas: sibling nesting"
         , run =
             \_ ->
-                runParser (Syntax.end Syntax.expr)
+                Syntax.runParser (Syntax.end Syntax.expr)
                     [ Token.Fn
                     , Token.Symbol "a"
                     , Token.Defop
@@ -145,13 +146,13 @@ tests =
                     ]
         , expected =
             Ok
-                (Lambda
+                (FA.Lambda
                     { parameters = ( "a", [] )
                     , body =
-                        ( Evaluate <|
-                            Lambda
+                        ( FA.Evaluate <|
+                            FA.Lambda
                                 { parameters = ( "b", [] )
-                                , body = ( Evaluate <| NumberLiteral "3", [] )
+                                , body = ( FA.Evaluate <| FA.NumberLiteral "3", [] )
                                 }
                         , []
                         )

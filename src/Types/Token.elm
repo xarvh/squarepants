@@ -1,15 +1,15 @@
-module Vier.Token exposing (..)
+module Types.Token exposing (..)
 
 
 type alias Token =
-    { kind : TokenKind
+    { kind : Kind
     , start : Int
     , end : Int
     }
 
 
 type
-    TokenKind
+    Kind
     -- Structure
     = NewSiblingLine
     | BlockStart

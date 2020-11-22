@@ -1,4 +1,4 @@
-module Vier.Error exposing (..)
+module Types.Error exposing (..)
 
 
 type alias Error =

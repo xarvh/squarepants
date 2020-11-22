@@ -1,4 +1,4 @@
-module Vier.Lexer exposing (..)
+module Compiler.StringToTokens exposing (..)
 
 {-| I wanted to use patterns like `char0 :: char1 :: rest` to run most of the lexing,
 on the assumption that Elm can execute that fast and because it was nice to read.
@@ -14,8 +14,8 @@ pointless, but hey, I'm having fun).
 -}
 
 import Regex exposing (Regex)
-import Vier.Error as Error exposing (Error)
-import Vier.Token exposing (OpenOrClosed(..), PrecedenceGroup(..), Token, TokenKind(..))
+import Types.Error as Error exposing (Error)
+import Types.Token as Token exposing (Token)
 
 
 type alias ReadState =
@@ -71,7 +71,7 @@ stateToFinalTokens state =
     let
         blockEnd : Token
         blockEnd =
-            { kind = BlockEnd
+            { kind = Token.BlockEnd
             , start = state.pos
             , end = state.pos
             }
@@ -210,7 +210,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                             contentLineToTokensRec newBlock tokenEnd accu
 
 
-recognisedTokens : List ( Regex, String -> Result Error.Kind ( TokenKind, Int ) )
+recognisedTokens : List ( Regex, String -> Result Error.Kind ( Token.Kind, Int ) )
 recognisedTokens =
     let
         reOrDie reString =
@@ -239,7 +239,7 @@ recognisedTokens =
         [ -- Numbers
           { regex = "^[ ]*[0-9_]+[.]?[0-9_]*"
           , consumed = String.length
-          , constructor = String.trimLeft >> NumberLiteral >> Ok
+          , constructor = String.trimLeft >> Token.NumberLiteral >> Ok
           }
         , -- Words
           { regex = "^[ ]*[a-zA-Z._][a-zA-Z._0-9]*"
@@ -253,51 +253,51 @@ recognisedTokens =
                     Ok <|
                         case m of
                             "fn" ->
-                                Fn
+                                Token.Fn
 
                             "if" ->
-                                If
+                                Token.If
 
                             "is" ->
-                                Is
+                                Token.Is
 
                             "then" ->
-                                Then
+                                Token.Then
 
                             "else" ->
-                                Else
+                                Token.Else
 
                             "and" ->
-                                Binop Logical m
+                                Token.Binop Token.Logical m
 
                             "or" ->
-                                Binop Logical m
+                                Token.Binop Token.Logical m
 
                             "return" ->
-                                Return
+                                Token.Return
 
                             "risk" ->
-                                Unop m
+                                Token.Unop m
 
                             "not" ->
-                                Unop m
+                                Token.Unop m
 
                             _ ->
-                                Symbol m
+                                Token.Symbol m
           }
 
         -- Parens
-        , parenRegex "(" <| RoundParen Open
-        , parenRegex ")" <| RoundParen Closed
-        , parenRegex "[" <| SquareBracket Open
-        , parenRegex "]" <| SquareBracket Closed
-        , parenRegex "{" <| CurlyBrace Open
-        , parenRegex "}" <| CurlyBrace Closed
-        , parenRegex "," <| Comma
+        , parenRegex "(" <| Token.RoundParen Token.Open
+        , parenRegex ")" <| Token.RoundParen Token.Closed
+        , parenRegex "[" <| Token.SquareBracket Token.Open
+        , parenRegex "]" <| Token.SquareBracket Token.Closed
+        , parenRegex "{" <| Token.CurlyBrace Token.Open
+        , parenRegex "}" <| Token.CurlyBrace Token.Closed
+        , parenRegex "," <| Token.Comma
         , -- Unary addittive
           { regex = "^[ ]+[+-][^ ]"
           , consumed = \match -> String.length match - 1
-          , constructor = String.trimLeft >> String.dropRight 1 >> Unop >> Ok
+          , constructor = String.trimLeft >> String.dropRight 1 >> Token.Unop >> Ok
           }
         , -- Squiggles
           { regex = "^[ ]*[=+\\-*/:><!^|#]+"
@@ -310,67 +310,67 @@ recognisedTokens =
                     in
                     case match of
                         "^" ->
-                            Ok <| Binop Exponential match
+                            Ok <| Token.Binop Token.Exponential match
 
                         "*" ->
-                            Ok <| Binop Multiplicative match
+                            Ok <| Token.Binop Token.Multiplicative match
 
                         "/" ->
-                            Ok <| Binop Multiplicative match
+                            Ok <| Token.Binop Token.Multiplicative match
 
                         "+" ->
-                            Ok <| Binop Addittive match
+                            Ok <| Token.Binop Token.Addittive match
 
                         "-" ->
-                            Ok <| Binop Addittive match
+                            Ok <| Token.Binop Token.Addittive match
 
                         ">" ->
-                            Ok <| Binop Comparison match
+                            Ok <| Token.Binop Token.Comparison match
 
                         "<" ->
-                            Ok <| Binop Comparison match
+                            Ok <| Token.Binop Token.Comparison match
 
                         ">=" ->
-                            Ok <| Binop Comparison match
+                            Ok <| Token.Binop Token.Comparison match
 
                         "<=" ->
-                            Ok <| Binop Comparison match
+                            Ok <| Token.Binop Token.Comparison match
 
                         "==" ->
-                            Ok <| Binop Comparison match
+                            Ok <| Token.Binop Token.Comparison match
 
                         "=/=" ->
-                            Ok <| Binop Comparison match
+                            Ok <| Token.Binop Token.Comparison match
 
                         "|>" ->
-                            Ok <| Binop Pipe match
+                            Ok <| Token.Binop Token.Pipe match
 
                         "<|" ->
-                            Ok <| Binop Pipe match
+                            Ok <| Token.Binop Token.Pipe match
 
                         ">>" ->
-                            Ok <| Binop Pipe match
+                            Ok <| Token.Binop Token.Pipe match
 
                         "<<" ->
-                            Ok <| Binop Pipe match
+                            Ok <| Token.Binop Token.Pipe match
 
                         "=" ->
-                            Ok Defop
+                            Ok Token.Defop
 
                         "#=" ->
-                            Ok <| Binop Assignment match
+                            Ok <| Token.Binop Token.Assignment match
 
                         "+=" ->
-                            Ok <| Binop Assignment match
+                            Ok <| Token.Binop Token.Assignment match
 
                         "-=" ->
-                            Ok <| Binop Assignment match
+                            Ok <| Token.Binop Token.Assignment match
 
                         "/=" ->
-                            Ok <| Binop Assignment match
+                            Ok <| Token.Binop Token.Assignment match
 
                         "*=" ->
-                            Ok <| Binop Assignment match
+                            Ok <| Token.Binop Token.Assignment match
 
                         _ ->
                             Err <| Error.UnknownOperator match
@@ -406,7 +406,7 @@ lexSingleLineComment startPos state =
                 { kind =
                     state.codeAsString
                         |> String.slice startPos endPos
-                        |> StringLiteral
+                        |> Token.StringLiteral
                 , start = startPos
                 , end = endPos
                 }
@@ -458,7 +458,7 @@ lexSoftQuotedString startPos state =
                                         state.codeAsString
                                             |> String.slice startPos endPos
                                             -- TODO transform escapes and reject non-escapable chars
-                                            |> StringLiteral
+                                            |> Token.StringLiteral
                                     , start = startPos
                                     , end = endPos
                                     }
@@ -530,7 +530,7 @@ lexHardQuotedString startPos state =
                                         state.codeAsString
                                             |> String.slice startPos endPos
                                             -- TODO transform escapes and reject non-escapable chars
-                                            |> StringLiteral
+                                            |> Token.StringLiteral
                                     , start = startPos
                                     , end = endPos
                                     }
@@ -579,7 +579,7 @@ lexMultiLineComment startPos state =
                                 | pos = endPos
                                 , code = rest
                                 , accum =
-                                    { kind = Comment
+                                    { kind = Token.Comment
                                     , start = startPos
                                     , end = endPos
                                     }
@@ -656,7 +656,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
                newIndent
                ```
             -}
-            Ok { state | accum = makeToken NewSiblingLine :: state.accum, indentStack = stack }
+            Ok { state | accum = makeToken Token.NewSiblingLine :: state.accum, indentStack = stack }
 
     else if newIndent > lastIndent then
         if isFirstRecursion then
@@ -668,7 +668,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
             -}
             Ok
                 { state
-                    | accum = makeToken BlockStart :: state.accum
+                    | accum = makeToken Token.BlockStart :: state.accum
                     , indentStack = newIndent :: state.indentStack
                 }
 
@@ -690,7 +690,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
                 }
 
     else
-        addIndentTokensRec endPos newIndent False { state | accum = makeToken BlockEnd :: state.accum } poppedStack
+        addIndentTokensRec endPos newIndent False { state | accum = makeToken Token.BlockEnd :: state.accum } poppedStack
 
 
 readWhile : (char -> Bool) -> List char -> ( Int, List char )

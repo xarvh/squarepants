@@ -1,9 +1,9 @@
-module Vier.Lexer_Test exposing (..)
+module Compiler.StringToTokens_Test exposing (..)
 
 import Test exposing (Test)
-import Vier.Error exposing (Error)
-import Vier.Lexer as Lexer
-import Vier.Token as Token exposing (Token, TokenKind)
+import Types.Error exposing (Error)
+import Compiler.StringToTokens as Lexer
+import Types.Token as Token exposing (Token)
 
 
 simpleTest =

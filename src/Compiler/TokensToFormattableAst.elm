@@ -1,9 +1,10 @@
-module Vier.Syntax exposing (..)
+module Compiler.TokensToFormattableAst exposing (..)
 
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed, zeroOrMore)
-import Vier.Error as Error exposing (Error)
-import Vier.Token as Token exposing (OpenOrClosed(..), PrecedenceGroup(..), Token, TokenKind(..))
+import Types.Error as Error exposing (Error)
+import Types.Token as Token exposing (Token)
+import Types.FormattableAst as FA
 
 
 d name =
@@ -30,40 +31,7 @@ su name a =
 
 
 type alias Parser a =
-    Parser.Parser TokenKind (List TokenKind) a
-
-
-
-----
---- AST
---
-
-
-type alias Pattern =
-    -- TODO
-    String
-
-
-type Expression
-    = StringLiteral String
-    | NumberLiteral String
-    | Variable String
-    | Lambda { parameters : OneOrMore Pattern, body : OneOrMore Statement }
-    | FunctionCall { reference : Expression, arguments : OneOrMore Expression }
-    | Binop Expression String Expression
-    | Unop String Expression
-    | If_Functional { condition : Expression, true : Expression, false : Expression }
-    | Match_Functional { value : Expression, patterns : List ( Pattern, Expression ), maybeElse : Maybe Expression }
-    | Error
-
-
-type Statement
-    = Pass
-    | Evaluate Expression
-    | Definition { name : Pattern, parameters : List Pattern, body : OneOrMore Statement }
-    | Return Expression
-    | If_Imperative { condition : Expression, true : List Statement, false : List Statement }
-    | Match_Imperative { value : Expression, patterns : List ( Pattern, List Statement ), maybeElse : Maybe (List Statement) }
+    Parser.Parser Token.Kind (List Token.Kind) a
 
 
 
@@ -72,7 +40,7 @@ type Statement
 --
 
 
-runParser : Parser a -> List TokenKind -> Result String a
+runParser : Parser a -> List Token.Kind -> Result String a
 runParser parser ts =
     Parser.parse parser uncons ts
         |> Debug.log "RESULT"
@@ -95,18 +63,18 @@ uncons ls =
             Nothing
 
 
-parse : List Token -> Result Error (List Statement)
+parse : List Token -> Result Error (List FA.Statement)
 parse tokens =
     let
         parser =
             do
                 (oneOf
-                    [ exactTokenKind BlockStart
-                    , exactTokenKind NewSiblingLine
+                    [ exactTokenKind Token.BlockStart
+                    , exactTokenKind Token.NewSiblingLine
                     ]
                 )
             <| \_ ->
-           oomSeparatedBy (exactTokenKind NewSiblingLine) statement
+           oomSeparatedBy (exactTokenKind Token.NewSiblingLine) statement
     in
     tokens
         |> List.map .kind
@@ -115,7 +83,7 @@ parse tokens =
         |> Result.map OneOrMore.toList
 
 
-tokenKind : Parser TokenKind
+tokenKind : Parser Token.Kind
 tokenKind =
     consumeOne
 
@@ -126,18 +94,18 @@ tokenKind =
 --
 
 
-term : Parser Expression
+term : Parser FA.Expression
 term =
     d "term" tokenKind <| \kind ->
     case kind of
         Token.NumberLiteral s ->
-            su "nl" <| NumberLiteral s
+            su "nl" <| FA.NumberLiteral s
 
         Token.StringLiteral s ->
-            su "sl" <| StringLiteral s
+            su "sl" <| FA.StringLiteral s
 
         Token.Symbol s ->
-            su s <| Variable s
+            su s <| FA.Variable s
 
         _ ->
             fail
@@ -149,7 +117,7 @@ term =
 --
 
 
-expr : Parser Expression
+expr : Parser FA.Expression
 expr =
     Parser.expression term
         -- the `Or` stands for `Or higher priority parser`
@@ -157,14 +125,14 @@ expr =
         , lambdaOr
         , functionApplicationOr
         , unopsOr
-        , binopsOr Exponential
-        , binopsOr Multiplicative
-        , binopsOr Addittive
-        , binopsOr Comparison
+        , binopsOr Token.Exponential
+        , binopsOr Token.Multiplicative
+        , binopsOr Token.Addittive
+        , binopsOr Token.Comparison
 
         -- TODO pipes can't actually be mixed
-        , binopsOr Pipe
-        , binopsOr Assignment
+        , binopsOr Token.Pipe
+        , binopsOr Token.Assignment
         ]
 
 
@@ -174,20 +142,20 @@ expr =
 --
 
 
-parensOr : Parser Expression -> Parser Expression
+parensOr : Parser FA.Expression -> Parser FA.Expression
 parensOr higher =
     oneOf
         [ higher
-        , surroundWith (RoundParen Open) (RoundParen Closed) (Parser.breakCircularDefinition <| \_ -> expr)
+        , surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> expr)
         ]
 
 
-surroundWith : TokenKind -> TokenKind -> Parser a -> Parser a
+surroundWith : Token.Kind -> Token.Kind -> Parser a -> Parser a
 surroundWith left right =
     Parser.surroundWith (exactTokenKind left) (exactTokenKind right)
 
 
-exactTokenKind : TokenKind -> Parser ()
+exactTokenKind : Token.Kind -> Parser ()
 exactTokenKind targetKind =
     do tokenKind <| \kind ->
     if targetKind == kind then
@@ -203,36 +171,36 @@ exactTokenKind targetKind =
 --
 
 
-statement : Parser Statement
+statement : Parser FA.Statement
 statement =
     Parser.breakCircularDefinition <| \_ ->
     Parser.oneOf
         [ -- return
           do (discardFirst (exactTokenKind Token.Return) expr) <| \s ->
-          succeed (Return s)
+          succeed (FA.Return s)
         , -- definition
           do (oneOrMore pattern) <| \( name, params ) ->
           do (exactTokenKind Token.Defop) <| \_ ->
           do
               (oneOf
                   [ statementBlock
-                  , do expr <| \e -> succeed ( Evaluate e, [] )
+                  , do expr <| \e -> succeed ( FA.Evaluate e, [] )
                   ]
               )
           <| \sb ->
-         succeed <| Definition { name = name, parameters = params, body = sb }
+         succeed <| FA.Definition { name = name, parameters = params, body = sb }
 
         -- TODO if
         -- TODO match
-        , do expr <| (Evaluate >> succeed)
+        , do expr <| (FA.Evaluate >> succeed)
         ]
 
 
-statementBlock : Parser (OneOrMore Statement)
+statementBlock : Parser (OneOrMore FA.Statement)
 statementBlock =
     statement
-        |> oomSeparatedBy (exactTokenKind NewSiblingLine)
-        |> Parser.surroundWith (exactTokenKind BlockStart) (exactTokenKind BlockEnd)
+        |> oomSeparatedBy (exactTokenKind Token.NewSiblingLine)
+        |> Parser.surroundWith (exactTokenKind Token.BlockStart) (exactTokenKind Token.BlockEnd)
 
 
 oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
@@ -251,16 +219,16 @@ discardFirst a b =
 --
 
 
-lambdaOr : Parser Expression -> Parser Expression
+lambdaOr : Parser FA.Expression -> Parser FA.Expression
 lambdaOr higher =
     let
         def =
-            do (exactTokenKind Fn) <| \_ ->
+            do (exactTokenKind Token.Fn) <| \_ ->
             do (oneOrMore pattern) <| \params ->
             do (exactTokenKind Token.Defop) <| \_ ->
             succeed params
 
-        body : Parser (OneOrMore Statement)
+        body : Parser (OneOrMore FA.Statement)
         body =
             oneOf
                 [ {-
@@ -269,7 +237,7 @@ lambdaOr higher =
                      b
                      c
                   -}
-                  oneOrMore (discardFirst (exactTokenKind NewSiblingLine) statement)
+                  oneOrMore (discardFirst (exactTokenKind Token.NewSiblingLine) statement)
                 , {-
                      fn x =
                        a
@@ -280,7 +248,7 @@ lambdaOr higher =
                   -}
                   do (succeed ()) <| \_ ->
                   do expr <| \e ->
-                  succeed ( Evaluate e, [] )
+                  succeed ( FA.Evaluate e, [] )
                 ]
     in
     oneOf
@@ -288,17 +256,17 @@ lambdaOr higher =
         , --
           do def <| \params ->
           do body <| \b ->
-          succeed <| Lambda { parameters = params, body = b }
+          succeed <| FA.Lambda { parameters = params, body = b }
         ]
 
 
 {-| TODO
 -}
-pattern : Parser Pattern
+pattern : Parser FA.Pattern
 pattern =
     do tokenKind <| \kind ->
     case kind of
-        Symbol s ->
+        Token.Symbol s ->
             succeed s
 
         _ ->
@@ -311,13 +279,13 @@ pattern =
 --
 
 
-functionApplicationOr : Parser Expression -> Parser Expression
+functionApplicationOr : Parser FA.Expression -> Parser FA.Expression
 functionApplicationOr higher =
     do higher <| \e ->
     do (zeroOrMore higher) <| \es ->
     case es of
         argsHead :: argsTail ->
-            succeed <| FunctionCall { reference = e, arguments = ( argsHead, argsTail ) }
+            succeed <| FA.FunctionCall { reference = e, arguments = ( argsHead, argsTail ) }
 
         [] ->
             succeed e
@@ -329,13 +297,13 @@ functionApplicationOr higher =
 --
 
 
-unopsOr : Parser Expression -> Parser Expression
+unopsOr : Parser FA.Expression -> Parser FA.Expression
 unopsOr higher =
     do (optional unaryOperator) <| \maybeUnary ->
     do higher <| \right ->
     case maybeUnary of
         Just op ->
-            su "unop" <| Unop op right
+            su "unop" <| FA.Unop op right
 
         Nothing ->
             succeed right
@@ -358,21 +326,21 @@ unaryOperator =
 --
 
 
-binopsOr : PrecedenceGroup -> Parser Expression -> Parser Expression
+binopsOr : Token.PrecedenceGroup -> Parser FA.Expression -> Parser FA.Expression
 binopsOr group higher =
     let
-        binopAndPrev : Parser ( String, Expression )
+        binopAndPrev : Parser ( String, FA.Expression )
         binopAndPrev =
             Parser.tuple2 (binaryOperators group) higher
     in
     do higher <| \left ->
     do (Parser.zeroOrMore binopAndPrev) <| \binopAndPrevs ->
     binopAndPrevs
-        |> List.foldl (\( op, right ) leftAccum -> Binop leftAccum op right) left
+        |> List.foldl (\( op, right ) leftAccum -> FA.Binop leftAccum op right) left
         |> succeed
 
 
-binaryOperators : PrecedenceGroup -> Parser String
+binaryOperators : Token.PrecedenceGroup -> Parser String
 binaryOperators group =
     do tokenKind <| \kind ->
     case kind of
