@@ -139,20 +139,15 @@ viewInference code =
     in
     case res of
         Ok scope ->
-            let
-                ( nextPlaceholderId, env ) =
-                    Compiler.TypeInference.addSymbols 0 Dict.empty (Dict.keys scope)
+            case Compiler.TypeInference.inferScope scope of
+                Err err ->
+                    Html.text err
 
-                -- infer each symbol, applying substitutions
-            in
-            Html.div
-                []
-                [ scope
-                    |> Dict.toList
-                    --|> Compiler.TypeInference.inferExpr 0 Dict.empty
-                    |> Debug.toString
-                    |> Html.text
-                ]
+                Ok env ->
+                    env
+                        |> Dict.toList
+                        |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ Debug.toString v |> Html.text ])
+                        |> Html.div []
 
         _ ->
             res

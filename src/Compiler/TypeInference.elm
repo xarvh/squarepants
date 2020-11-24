@@ -32,10 +32,39 @@ addSymbols : PlaceholderId -> Env -> List String -> ( Env, PlaceholderId )
 addSymbols nextPlaceholderId env names =
     let
         fold : String -> ( Env, PlaceholderId ) -> ( Env, PlaceholderId )
-        fold name ( envAccum, nextId  ) =
+        fold name ( envAccum, nextId ) =
             Tuple.second <| addSymbol nextId envAccum name
     in
-    List.foldl fold ( env, nextPlaceholderId  ) names
+    List.foldl fold ( env, nextPlaceholderId ) names
+
+
+inferScope : Dict String CA.Expression -> Result String Env
+inferScope scope =
+    let
+        ( env0, nextId0 ) =
+            addSymbols 0 Dict.empty (Dict.keys scope)
+
+        rec : PlaceholderId -> Env -> List ( String, CA.Expression ) -> Result String Env
+        rec nextId env symbols =
+            case symbols of
+                [] ->
+                    Ok env
+
+                ( name, expr ) :: tail ->
+                    case inferExpr nextId env expr of
+                        Err err ->
+                            Err <| name ++ ": " ++ err
+
+                        Ok ( type_, substitutions, newNextId ) ->
+                            rec
+                                newNextId
+                                (env
+                                    |> Dict.insert name type_
+                                    |> Dict.map (\k v -> applySubstitutions substitutions v)
+                                )
+                                tail
+    in
+    rec nextId0 env0 (Dict.toList scope)
 
 
 
