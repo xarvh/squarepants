@@ -28,6 +28,22 @@ type alias Substitutions =
 --
 
 
+addSymbols : PlaceholderId -> Env -> List String -> ( Env, PlaceholderId )
+addSymbols nextPlaceholderId env names =
+    let
+        fold : String -> ( Env, PlaceholderId ) -> ( Env, PlaceholderId )
+        fold name ( envAccum, nextId  ) =
+            Tuple.second <| addSymbol nextId envAccum name
+    in
+    List.foldl fold ( env, nextPlaceholderId  ) names
+
+
+
+----
+---
+--
+
+
 applySubstitutions : Substitutions -> InferredType -> InferredType
 applySubstitutions substitutions targetType =
     case targetType of
@@ -46,21 +62,27 @@ applySubstitutions substitutions targetType =
             Function (applySubstitutions substitutions paramType) (applySubstitutions substitutions bodyType)
 
 
-addTypeVariable : PlaceholderId -> ( InferredType, PlaceholderId )
-addTypeVariable nextPlaceholderId =
-    ( TypeVariable nextPlaceholderId
-    , nextPlaceholderId + 1
+addSymbol : PlaceholderId -> Env -> String -> ( InferredType, ( Env, PlaceholderId ) )
+addSymbol nextPlaceholderId env name =
+    let
+        type_ =
+            TypeVariable nextPlaceholderId
+    in
+    ( type_
+    , ( Dict.insert name type_ env
+      , nextPlaceholderId + 1
+      )
     )
 
 
 inferExpr : PlaceholderId -> Env -> CA.Expression -> Result String ( InferredType, Substitutions, PlaceholderId )
-inferExpr placeholderId env expr =
+inferExpr nextPlaceholderId env expr =
     case expr of
         CA.NumberLiteral _ ->
             Ok
                 ( Named "Number"
                 , Dict.empty
-                , placeholderId
+                , nextPlaceholderId
                 )
 
         CA.Variable args ->
@@ -69,7 +91,7 @@ inferExpr placeholderId env expr =
                     Ok
                         ( t
                         , Dict.empty
-                        , placeholderId
+                        , nextPlaceholderId
                         )
 
                 Nothing ->
@@ -77,11 +99,8 @@ inferExpr placeholderId env expr =
 
         CA.Lambda { parameter, body } ->
             let
-                ( parameterType, newPlaceholderId ) =
-                    addTypeVariable placeholderId
-
-                childEnv =
-                    Dict.insert parameter parameterType env
+                ( parameterType, ( childEnv, newPlaceholderId ) ) =
+                    addSymbol nextPlaceholderId env parameter
             in
             case inferExpr newPlaceholderId childEnv body of
                 Err e ->

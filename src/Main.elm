@@ -8,15 +8,16 @@ import Compiler.StringToTokens_Test
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
 import Compiler.TypeInference
-import Dict
+import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
 import OneOrMore exposing (OneOrMore)
 import Parser
 import Test
+import Types.CanonicalAst as CA
 import Types.Error
-import Types.FormattableAst as FA exposing (Expression)
+import Types.FormattableAst as FA
 
 
 initialCode =
@@ -126,24 +127,32 @@ viewInference code =
             code
                 |> Compiler.StringToTokens.lexer
                 |> Result.andThen Compiler.TokensToFormattableAst.parse
+                |> Result.map (List.foldl insertStatement Dict.empty)
+
+        insertStatement : FA.Statement -> Dict String CA.Expression -> Dict String CA.Expression
+        insertStatement statement scope =
+            let
+                (CA.Definition { name, body }) =
+                    Compiler.FormattableToCanonicalAst.statement statement
+            in
+            Dict.insert name body scope
     in
     case res of
-        Ok ((FA.Evaluate expr) :: _) ->
+        Ok scope ->
+            let
+                ( nextPlaceholderId, env ) =
+                    Compiler.TypeInference.addSymbols 0 Dict.empty (Dict.keys scope)
+
+                -- infer each symbol, applying substitutions
+            in
             Html.div
                 []
-                [ expr
-                    |> Debug.log "BLAH"
-                    |> Compiler.FormattableToCanonicalAst.expression
-                    |> Compiler.TypeInference.inferExpr 0 Dict.empty
+                [ scope
+                    |> Dict.toList
+                    --|> Compiler.TypeInference.inferExpr 0 Dict.empty
                     |> Debug.toString
                     |> Html.text
                 ]
-
-        Ok (stuff :: _) ->
-            stuff
-                |> Debug.toString
-                |> (++) "BLEH"
-                |> Html.text
 
         _ ->
             res

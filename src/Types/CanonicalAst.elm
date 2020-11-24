@@ -1,10 +1,18 @@
 module Types.CanonicalAst exposing (..)
 
+{- Canonical AST is meant for
+   * type inference
+   * optimization
+   * emission or interpretation
+-}
+
 
 type Expression
     = NumberLiteral
         { start : Int
         , end : Int
+
+        -- TODO this should be Int
         , number : String
         }
     | Variable
@@ -27,3 +35,7 @@ type Expression
         , true : Expression
         , false : Expression
         }
+
+
+type Statement
+    = Definition { name : String, body : Expression }

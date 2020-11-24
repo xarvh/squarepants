@@ -57,3 +57,30 @@ expression faExpr =
 
         _ ->
             Debug.todo "NOT SUPPORTED FOR NOW"
+
+
+statement : FA.Statement -> CA.Statement
+statement faStat =
+    case faStat of
+        FA.Definition { name, parameters, body } ->
+            case body of
+                ( FA.Evaluate bodyExpression, [] ) ->
+                    let
+                        (FA.PatternAny n) =
+                            name
+
+                        fold : FA.Pattern -> CA.Expression -> CA.Expression
+                        fold (FA.PatternAny paramName) bodyAccum =
+                            -- TODO start?
+                            CA.Lambda { start = 0, parameter = paramName, body = bodyAccum }
+                    in
+                    CA.Definition
+                        { name = n
+                        , body = List.foldr fold (expression bodyExpression) parameters
+                        }
+
+                _ ->
+                    Debug.todo "STATEMENT IS TOO COMPLICATED"
+
+        _ ->
+            Debug.todo "STAT NOT SUPPORTED FOR NOW"
