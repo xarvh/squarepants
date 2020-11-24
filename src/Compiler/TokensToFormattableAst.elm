@@ -1,10 +1,10 @@
 module Compiler.TokensToFormattableAst exposing (..)
 
 import OneOrMore exposing (OneOrMore)
-import Parser exposing (consumeOne, do, fail, oneOf, oneOrMore, optional, succeed, zeroOrMore)
+import Parser exposing (do, fail, oneOf, oneOrMore, optional, succeed, zeroOrMore)
 import Types.Error as Error exposing (Error)
-import Types.Token as Token exposing (Token)
 import Types.FormattableAst as FA
+import Types.Token as Token exposing (Token)
 
 
 d name =
@@ -31,7 +31,7 @@ su name a =
 
 
 type alias Parser a =
-    Parser.Parser Token.Kind (List Token.Kind) a
+    Parser.Parser Token (List Token) a
 
 
 
@@ -40,7 +40,7 @@ type alias Parser a =
 --
 
 
-runParser : Parser a -> List Token.Kind -> Result String a
+runParser : Parser a -> List Token -> Result String a
 runParser parser ts =
     Parser.parse parser uncons ts
         |> Debug.log "RESULT"
@@ -77,15 +77,14 @@ parse tokens =
            oomSeparatedBy (exactTokenKind Token.NewSiblingLine) statement
     in
     tokens
-        |> List.map .kind
         |> runParser (end parser)
         |> Result.mapError (\s -> { pos = 0, kind = Error.Whatever s })
         |> Result.map OneOrMore.toList
 
 
-tokenKind : Parser Token.Kind
-tokenKind =
-    consumeOne
+oneToken : Parser Token
+oneToken =
+    Parser.consumeOne
 
 
 
@@ -96,16 +95,16 @@ tokenKind =
 
 term : Parser FA.Expression
 term =
-    d "term" tokenKind <| \kind ->
-    case kind of
+    do oneToken <| \token ->
+    case token.kind of
         Token.NumberLiteral s ->
-            su "nl" <| FA.NumberLiteral s
+            su "nl" <| FA.NumberLiteral { start = token.start, end = token.end, number = s }
 
         Token.StringLiteral s ->
-            su "sl" <| FA.StringLiteral s
+            su "sl" <| FA.StringLiteral { start = token.start, end = token.end, string = s }
 
         Token.Symbol s ->
-            su s <| FA.Variable s
+            su s <| FA.Variable { start = token.start, end = token.end, variable = s }
 
         _ ->
             fail
@@ -155,11 +154,11 @@ surroundWith left right =
     Parser.surroundWith (exactTokenKind left) (exactTokenKind right)
 
 
-exactTokenKind : Token.Kind -> Parser ()
+exactTokenKind : Token.Kind -> Parser Token
 exactTokenKind targetKind =
-    do tokenKind <| \kind ->
-    if targetKind == kind then
-        succeed ()
+    do oneToken <| \token ->
+    if targetKind == token.kind then
+        succeed token
 
     else
         fail
@@ -223,10 +222,10 @@ lambdaOr : Parser FA.Expression -> Parser FA.Expression
 lambdaOr higher =
     let
         def =
-            do (exactTokenKind Token.Fn) <| \_ ->
+            do (exactTokenKind Token.Fn) <| \fn ->
             do (oneOrMore pattern) <| \params ->
             do (exactTokenKind Token.Defop) <| \_ ->
-            succeed params
+            succeed ( fn, params )
 
         body : Parser (OneOrMore FA.Statement)
         body =
@@ -254,9 +253,9 @@ lambdaOr higher =
     oneOf
         [ higher
         , --
-          do def <| \params ->
+          do def <| \( fn, params ) ->
           do body <| \b ->
-          succeed <| FA.Lambda { parameters = params, body = b }
+          succeed <| FA.Lambda { start = fn.start, parameters = params, body = b }
         ]
 
 
@@ -264,10 +263,10 @@ lambdaOr higher =
 -}
 pattern : Parser FA.Pattern
 pattern =
-    do tokenKind <| \kind ->
-    case kind of
+    do oneToken <| \token ->
+    case token.kind of
         Token.Symbol s ->
-            succeed s
+            succeed (FA.PatternAny s)
 
         _ ->
             fail
@@ -302,19 +301,19 @@ unopsOr higher =
     do (optional unaryOperator) <| \maybeUnary ->
     do higher <| \right ->
     case maybeUnary of
-        Just op ->
-            su "unop" <| FA.Unop op right
+        Just ( opAsString, opToken ) ->
+            su "unop" <| FA.Unop { start = opToken.start, op = opAsString, right = right }
 
         Nothing ->
             succeed right
 
 
-unaryOperator : Parser String
+unaryOperator : Parser ( String, Token )
 unaryOperator =
-    do tokenKind <| \kind ->
-    case kind of
+    do oneToken <| \token ->
+    case token.kind of
         Token.Unop s ->
-            succeed s
+            succeed ( s, token )
 
         _ ->
             fail
@@ -336,14 +335,14 @@ binopsOr group higher =
     do higher <| \left ->
     do (Parser.zeroOrMore binopAndPrev) <| \binopAndPrevs ->
     binopAndPrevs
-        |> List.foldl (\( op, right ) leftAccum -> FA.Binop leftAccum op right) left
+        |> List.foldl (\( op, right ) leftAccum -> FA.Binop { left = leftAccum, op = op, right = right }) left
         |> succeed
 
 
 binaryOperators : Token.PrecedenceGroup -> Parser String
 binaryOperators group =
-    do tokenKind <| \kind ->
-    case kind of
+    do oneToken <| \token ->
+    case token.kind of
         Token.Binop g s ->
             if g == group then
                 succeed s

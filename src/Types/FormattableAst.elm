@@ -12,28 +12,111 @@ It is meant for two purposes:
 import OneOrMore exposing (OneOrMore)
 
 
-type alias Pattern =
-    -- TODO
-    String
-
-
 type Expression
-    = StringLiteral String
-    | NumberLiteral String
-    | Variable String
-    | Lambda { parameters : OneOrMore Pattern, body : OneOrMore Statement }
-    | FunctionCall { reference : Expression, arguments : OneOrMore Expression }
-    | Binop Expression String Expression
-    | Unop String Expression
-    | If_Functional { condition : Expression, true : Expression, false : Expression }
-    | Match_Functional { value : Expression, patterns : List ( Pattern, Expression ), maybeElse : Maybe Expression }
+    = StringLiteral
+        { start : Int
+        , end : Int
+        , string : String
+        }
+    | NumberLiteral
+        { start : Int
+        , end : Int
+        , number : String
+        }
+    | Variable
+        { start : Int
+        , end : Int
+        , variable : String
+        }
+    | Lambda
+        { start : Int
+        , parameters : OneOrMore Pattern
+        , body : OneOrMore Statement
+        }
+    | FunctionCall
+        { reference : Expression
+        , arguments : OneOrMore Expression
+        }
+    | Binop
+        { left : Expression
+        , op : String
+        , right : Expression
+        }
+    | Unop
+        { start : Int
+        , op : String
+        , right : Expression
+        }
+    | If_Functional
+        { start : Int
+        , condition : Expression
+        , true : Expression
+        , false : Expression
+        }
+    | Match_Functional
+        { start : Int
+        , value : Expression
+        , patterns : List ( Pattern, Expression )
+        , maybeElse : Maybe Expression
+        }
     | Error
+
+
+type Pattern
+    = PatternAny String
 
 
 type Statement
     = Pass
     | Evaluate Expression
-    | Definition { name : Pattern, parameters : List Pattern, body : OneOrMore Statement }
+    | Definition
+        { name : Pattern
+        , parameters : List Pattern
+        , body : OneOrMore Statement
+        }
     | Return Expression
-    | If_Imperative { condition : Expression, true : List Statement, false : List Statement }
-    | Match_Imperative { value : Expression, patterns : List ( Pattern, List Statement ), maybeElse : Maybe (List Statement) }
+    | If_Imperative
+        { condition : Expression
+        , true : List Statement
+        , false : List Statement
+        }
+    | Match_Imperative
+        { value : Expression
+        , patterns : List ( Pattern, List Statement )
+        , maybeElse : Maybe (List Statement)
+        }
+
+
+exprStart : Expression -> Int
+exprStart expr =
+    case expr of
+        StringLiteral { start, end, string } ->
+            start
+
+        NumberLiteral { start, end, number } ->
+            start
+
+        Variable { start, end, variable } ->
+            start
+
+        Lambda { start, parameters, body } ->
+            start
+
+        FunctionCall { reference, arguments } ->
+            exprStart reference
+
+        Binop { left, op, right } ->
+            exprStart left
+
+        Unop { start, op, right } ->
+            start
+
+        If_Functional { start, condition, true, false } ->
+            start
+
+        Match_Functional { start, value, patterns, maybeElse } ->
+            start
+
+        Error ->
+            Debug.todo ""
+

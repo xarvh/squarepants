@@ -1,35 +1,25 @@
 module Compiler.TypeInference exposing (..)
 
 import Dict exposing (Dict)
-import OneOrMore exposing (OneOrMore)
-import Types.FormattableAst as Syntax
+import Types.CanonicalAst as CA
 
 
 type InferredType
-    = Known String
-    | Placeholder PlaceholderId
-    | Lambda (List InferredType) InferredType
-
-
-
---     | FunctionCall (List InferredType) InferredType
+    = Named String
+    | TypeVariable PlaceholderId
+    | Function InferredType InferredType
 
 
 type alias PlaceholderId =
     Int
 
 
-type alias Context =
-    { symbolTypeByName : Dict String InferredType
-    , nextPlaceholderId : PlaceholderId
-    }
+type alias Env =
+    Dict String InferredType
 
 
-initContext : Context
-initContext =
-    { symbolTypeByName = Dict.empty
-    , nextPlaceholderId = 0
-    }
+type alias Substitutions =
+    Dict PlaceholderId InferredType
 
 
 
@@ -38,153 +28,74 @@ initContext =
 --
 
 
-applySubstitutions : Dict PlaceholderId InferredType -> InferredType -> InferredType
+applySubstitutions : Substitutions -> InferredType -> InferredType
 applySubstitutions substitutions targetType =
     case targetType of
-        Known s ->
+        Named s ->
             targetType
 
-        Placeholder placeholderId ->
-            substitutions
-                |> Dict.get placeholderId
-                |> Maybe.withDefault targetType
+        TypeVariable placeholderId ->
+            case Dict.get placeholderId substitutions of
+                Just inferredType ->
+                    inferredType
 
-        Lambda paramTypes bodyType ->
-            Lambda (List.map (applySubstitutions substitutions) paramTypes) (applySubstitutions substitutions bodyType)
+                Nothing ->
+                    targetType
+
+        Function paramType bodyType ->
+            Function (applySubstitutions substitutions paramType) (applySubstitutions substitutions bodyType)
 
 
-addPlaceholder : String -> ( List InferredType, Context ) -> ( List InferredType, Context )
-addPlaceholder name ( typesAccum, context ) =
-    let
-        placeholderType =
-            Placeholder context.nextPlaceholderId
-    in
-    ( placeholderType :: typesAccum
-    , { nextPlaceholderId = context.nextPlaceholderId + 1
-      , symbolTypeByName = Dict.insert name placeholderType context.symbolTypeByName
-      }
+addTypeVariable : PlaceholderId -> ( InferredType, PlaceholderId )
+addTypeVariable nextPlaceholderId =
+    ( TypeVariable nextPlaceholderId
+    , nextPlaceholderId + 1
     )
 
 
-inferExpr : Context -> Syntax.Expression -> ( InferredType, Dict PlaceholderId InferredType )
-inferExpr context expr =
+inferExpr : PlaceholderId -> Env -> CA.Expression -> Result String ( InferredType, Substitutions, PlaceholderId )
+inferExpr placeholderId env expr =
     case expr of
-        Syntax.StringLiteral _ ->
-            ( Known "String"
-            , Dict.empty
-            )
+        CA.NumberLiteral _ ->
+            Ok
+                ( Named "Number"
+                , Dict.empty
+                , placeholderId
+                )
 
-        Syntax.NumberLiteral _ ->
-            ( Known "Number"
-            , Dict.empty
-            )
-
-        Syntax.Variable variableName ->
-            case Dict.get variableName context.symbolTypeByName of
+        CA.Variable args ->
+            case Dict.get args.variable env of
                 Just t ->
-                    ( t
-                    , Dict.empty
-                    )
+                    Ok
+                        ( t
+                        , Dict.empty
+                        , placeholderId
+                        )
 
                 Nothing ->
-                    Debug.todo "variable not declared? o_O"
+                    Err "variable not in scope"
 
-        {-
-           Syntax.Lambda { parameters, body } ->
-               let
-                   paramsAsList =
-                       OneOrMore.toList parameters
+        CA.Lambda { parameter, body } ->
+            let
+                ( parameterType, newPlaceholderId ) =
+                    addTypeVariable placeholderId
 
-                   ( paramsPlaceholderTypes, lambdaState ) =
-                       List.foldl addPlaceholder ( [], context ) paramsAsList
+                childEnv =
+                    Dict.insert parameter parameterType env
+            in
+            case inferExpr newPlaceholderId childEnv body of
+                Err e ->
+                    Err e
 
-                   ( inferredBodyType, substitutions ) =
-                       inferStatements lambdaState body
+                Ok ( bodyType, substitutions, newNewPlaceholderId ) ->
+                    Ok
+                        ( Function (applySubstitutions substitutions parameterType) bodyType
+                        , substitutions
+                        , newNewPlaceholderId
+                        )
 
-                   paramTypes =
-                       List.map (applySubstitutions substitutions) paramsPlaceholderTypes
-               in
-               ( Lambda paramTypes inferredBodyType
-               , substitutions
-               )
-        -}
-        _ ->
-            Debug.todo "BLAH"
+        CA.Call { reference, argument } ->
+            Debug.todo ""
 
-
-
-{-
-   doStuff statement (types, context) =
-     case statement of
-
-               Syntax.Return expr ->
-                   ( inferExpr context expr :: types
-                   , context
-                   )
-
-               Syntax.Definition { name, parameters, body } ->
-                 ( types
-                 , Dict.insert context ....?
-                 }
-
-               Syntax.Evaluate expr ->
-                 (types, context)
-
-               Sytnax.Pass ->
-                 (types, context)
-
-               Sytnax.If_Imperative _ ->
-                 Debug.todo "impif"
-
-               Sytnax.Match_Imperative _ ->
-                 Debug.todo "imp match"
-
-
-   inferStatements : Context -> OneOrMore Syntax.Statement -> ( Context, Maybe InferredType)
-   inferStatements parentContext statements =
-       case statements of
-         -- single statement, return is implicit
-         ( Syntax.Evaluate expr, []) ->
-           ( Dict.empty
-           , Just <| inferExpr parentContext expr
-           )
-
-         _ ->
-           let
-               (returnTypes, context) =
-                 statements
-                   |> OneOrMore.toList
-                   |> List.foldl doStuff ([], parentContext)
-
-               (known, placeholders) =
-                 List.partition ??? returnTypes
-
-           in
-
-
-         [] ->
-
-
-
-       if more /= [] then
-           Debug.todo "STATEMENTS"
-
-       else
-           case one of
-               Syntax.Evaluate expr ->
-                   -- TODO This makes sense only because there is a single statement!!
-                   inferExpr context expr
-
-               Syntax.Return expr ->
-                   inferExpr context expr
-
-               Syntax.Definition { name, parameters, body } ->
-                   -- TODO this is wrong
-                   inferStatements context body
-   --                 ( Known "Void"
-   --                 , ()
-   --                 )
-
-               _ ->
-                   Debug.todo <| Debug.toString one
--}
+        CA.If { start, condition, true, false } ->
+            Debug.todo ""

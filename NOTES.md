@@ -32,14 +32,11 @@ Main goals
 More or less established features
 ---------------------------------
 
-* Allow docs for single union type constructors
+* Different backends or "platforms" which are environments dedicated to a specific kind of apps.
+  * SystemTools: file IO, server
+  * Games: generic Bulk Storage / State storage functions, SFX, GFX etc, input devices...
 
-* Reserved words
-    * fn
-    * return
-    * if is then else
-    * risk
-    * log
+* Allow docs for single union type constructors
 
 * `risk` monop
     * `risk unionTypeValue`
@@ -140,9 +137,19 @@ More or less established features
 
 * data pretty printer
 
+* Support `0 < x < 10`
+
 
 Problems still to solve
 -----------------------
+
+GLSL: https://github.com/EmbarkStudios/rust-gpu
+
+
+Do we really need `#>` functions?
+Ideally they should only be used by platform stuff.
+
+
 
 How do I `Dict UnionType a`?
 How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
@@ -163,13 +170,6 @@ How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
 
 
 
-
-
-
-
-
-
-* Support `0 < x < 10`?
 
 * Use * to separate type args?
 

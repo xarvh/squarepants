@@ -10,6 +10,14 @@ simpleTest =
     Test.simple Debug.toString
 
 
+kindToToken : Int -> Token.Kind -> Token
+kindToToken index kind =
+    { start = index
+    , end = index + 1
+    , kind = kind
+    }
+
+
 tests : List Test
 tests =
     [ ----
@@ -20,23 +28,26 @@ tests =
             "Binops: left-association"
         , run =
             \_ ->
-                Syntax.runParser (Syntax.end Syntax.expr)
-                    [ Token.NumberLiteral "1"
-                    , Token.Binop Token.Addittive "+"
-                    , Token.NumberLiteral "2"
-                    , Token.Binop Token.Addittive "+"
-                    , Token.NumberLiteral "3"
-                    ]
+                [ Token.NumberLiteral "1"
+                , Token.Binop Token.Addittive "+"
+                , Token.NumberLiteral "2"
+                , Token.Binop Token.Addittive "+"
+                , Token.NumberLiteral "3"
+                ]
+                    |> List.indexedMap kindToToken
+                    |> Syntax.runParser (Syntax.end Syntax.expr)
         , expected =
             Ok
                 (FA.Binop
-                    (FA.Binop
-                        (FA.NumberLiteral "1")
-                        "+"
-                        (FA.NumberLiteral "2")
-                    )
-                    "+"
-                    (FA.NumberLiteral "3")
+                    { left =
+                        FA.Binop
+                            { left = FA.NumberLiteral { start = 0, end = 1, number = "1" }
+                            , op = "+"
+                            , right = FA.NumberLiteral { start = 2, end = 3, number = "2" }
+                            }
+                    , op = "+"
+                    , right = FA.NumberLiteral { start = 4, end = 5, number = "3" }
+                    }
                 )
         }
     , simpleTest
@@ -44,23 +55,26 @@ tests =
             "Binops: precedence"
         , run =
             \_ ->
-                Syntax.runParser (Syntax.end Syntax.expr)
-                    [ Token.NumberLiteral "1"
-                    , Token.Binop Token.Addittive "+"
-                    , Token.NumberLiteral "2"
-                    , Token.Binop Token.Multiplicative "*"
-                    , Token.NumberLiteral "3"
-                    ]
+                [ Token.NumberLiteral "1"
+                , Token.Binop Token.Addittive "+"
+                , Token.NumberLiteral "2"
+                , Token.Binop Token.Multiplicative "*"
+                , Token.NumberLiteral "3"
+                ]
+                    |> List.indexedMap kindToToken
+                    |> Syntax.runParser (Syntax.end Syntax.expr)
         , expected =
             Ok
                 (FA.Binop
-                    (FA.NumberLiteral "1")
-                    "+"
-                    (FA.Binop
-                        (FA.NumberLiteral "2")
-                        "*"
-                        (FA.NumberLiteral "3")
-                    )
+                    { left = FA.NumberLiteral { start = 0, end = 1, number = "1" }
+                    , op = "+"
+                    , right =
+                        FA.Binop
+                            { left = FA.NumberLiteral { start = 2, end = 3, number = "2" }
+                            , op = "*"
+                            , right = FA.NumberLiteral { start = 4, end = 5, number = "3" }
+                            }
+                    }
                 )
         }
 
@@ -72,24 +86,27 @@ tests =
             "Lambdas: inline nesting"
         , run =
             \_ ->
-                Syntax.runParser (Syntax.end Syntax.expr)
-                    [ Token.Fn
-                    , Token.Symbol "a"
-                    , Token.Defop
-                    , Token.Fn
-                    , Token.Symbol "b"
-                    , Token.Defop
-                    , Token.NumberLiteral "3"
-                    ]
+                [ Token.Fn
+                , Token.Symbol "a"
+                , Token.Defop
+                , Token.Fn
+                , Token.Symbol "b"
+                , Token.Defop
+                , Token.NumberLiteral "3"
+                ]
+                    |> List.indexedMap kindToToken
+                    |> Syntax.runParser (Syntax.end Syntax.expr)
         , expected =
             Ok <|
                 FA.Lambda
-                    { parameters = ( "a", [] )
+                    { start = 0
+                    , parameters = ( FA.PatternAny "a", [] )
                     , body =
                         ( FA.Evaluate <|
                             FA.Lambda
-                                { parameters = ( "b", [] )
-                                , body = ( FA.Evaluate <| FA.NumberLiteral "3", [] )
+                                { start = 3
+                                , parameters = ( FA.PatternAny "b", [] )
+                                , body = ( FA.Evaluate <| FA.NumberLiteral { start = 6, end = 7, number = "3" }, [] )
                                 }
                         , []
                         )
@@ -100,28 +117,31 @@ tests =
             "Lambdas: block nesting"
         , run =
             \_ ->
-                Syntax.runParser (Syntax.end Syntax.expr)
-                    [ Token.Fn
-                    , Token.Symbol "a"
-                    , Token.Defop
-                    , Token.BlockStart
-                    , Token.Fn
-                    , Token.Symbol "b"
-                    , Token.Defop
-                    , Token.BlockStart
-                    , Token.NumberLiteral "3"
-                    , Token.BlockEnd
-                    , Token.BlockEnd
-                    ]
+                [ Token.Fn
+                , Token.Symbol "a"
+                , Token.Defop
+                , Token.BlockStart
+                , Token.Fn
+                , Token.Symbol "b"
+                , Token.Defop
+                , Token.BlockStart
+                , Token.NumberLiteral "3"
+                , Token.BlockEnd
+                , Token.BlockEnd
+                ]
+                    |> List.indexedMap kindToToken
+                    |> Syntax.runParser (Syntax.end Syntax.expr)
         , expected =
             Ok
                 (FA.Lambda
-                    { parameters = ( "a", [] )
+                    { start = 0
+                    , parameters = ( FA.PatternAny "a", [] )
                     , body =
                         ( FA.Evaluate <|
                             FA.Lambda
-                                { parameters = ( "b", [] )
-                                , body = ( FA.Evaluate <| FA.NumberLiteral "3", [] )
+                                { start = 4
+                                , parameters = ( FA.PatternAny "b", [] )
+                                , body = ( FA.Evaluate <| FA.NumberLiteral { start = 8, end = 9, number = "3" }, [] )
                                 }
                         , []
                         )
@@ -133,26 +153,37 @@ tests =
             "Lambdas: sibling nesting"
         , run =
             \_ ->
-                Syntax.runParser (Syntax.end Syntax.expr)
-                    [ Token.Fn
-                    , Token.Symbol "a"
-                    , Token.Defop
-                    , Token.NewSiblingLine
-                    , Token.Fn
-                    , Token.Symbol "b"
-                    , Token.Defop
-                    , Token.NewSiblingLine
-                    , Token.NumberLiteral "3"
-                    ]
+                [ Token.Fn
+                , Token.Symbol "a"
+                , Token.Defop
+                , Token.NewSiblingLine
+                , Token.Fn
+                , Token.Symbol "b"
+                , Token.Defop
+                , Token.NewSiblingLine
+                , Token.NumberLiteral "3"
+                ]
+                    |> List.indexedMap kindToToken
+                    |> Syntax.runParser (Syntax.end Syntax.expr)
         , expected =
             Ok
                 (FA.Lambda
-                    { parameters = ( "a", [] )
+                    { start = 0
+                    , parameters = ( FA.PatternAny "a", [] )
                     , body =
                         ( FA.Evaluate <|
                             FA.Lambda
-                                { parameters = ( "b", [] )
-                                , body = ( FA.Evaluate <| FA.NumberLiteral "3", [] )
+                                { start = 4
+                                , parameters = ( FA.PatternAny "b", [] )
+                                , body =
+                                    ( FA.Evaluate <|
+                                        FA.NumberLiteral
+                                            { start = 8
+                                            , end = 9
+                                            , number = "3"
+                                            }
+                                    , []
+                                    )
                                 }
                         , []
                         )

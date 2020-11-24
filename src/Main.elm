@@ -2,11 +2,13 @@ module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
+import Compiler.FormattableToCanonicalAst
 import Compiler.StringToTokens
 import Compiler.StringToTokens_Test
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
 import Compiler.TypeInference
+import Dict
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
@@ -126,20 +128,27 @@ viewInference code =
                 |> Result.andThen Compiler.TokensToFormattableAst.parse
     in
     case res of
-        {-
-        Ok (statementsHead :: statementsTail) ->
+        Ok ((FA.Evaluate expr) :: _) ->
             Html.div
                 []
-                [ ( statementsHead, [] )
-                    |> Compiler.TypeInference.inferStatements Compiler.TypeInference.initContext
+                [ expr
+                    |> Debug.log "BLAH"
+                    |> Compiler.FormattableToCanonicalAst.expression
+                    |> Compiler.TypeInference.inferExpr 0 Dict.empty
                     |> Debug.toString
                     |> Html.text
                 ]
-        -}
+
+        Ok (stuff :: _) ->
+            stuff
+                |> Debug.toString
+                |> (++) "BLEH"
+                |> Html.text
 
         _ ->
             res
                 |> Debug.toString
+                |> (++) "ERROR "
                 |> Html.text
 
 
@@ -187,8 +196,14 @@ viewStatement statement =
                 []
                 [ Html.span
                     [ style "font-weight" "bold" ]
-                    [ Html.text name ]
+                    [ let
+                        (FA.PatternAny n) =
+                            name
+                      in
+                      Html.text n
+                    ]
                 , parameters
+                    |> List.map (\(FA.PatternAny n) -> n)
                     |> List.map Html.text
                     |> Html.span []
                 , body
@@ -215,13 +230,13 @@ viewExpression : FA.Expression -> Html msg
 viewExpression expr =
     case expr of
         FA.NumberLiteral s ->
-            Html.text s
+            Html.text s.number
 
         FA.StringLiteral s ->
-            Html.text s
+            Html.text s.string
 
         FA.Variable s ->
-            Html.text s
+            Html.text s.variable
 
         FA.FunctionCall { reference, arguments } ->
             Html.div
@@ -236,7 +251,7 @@ viewExpression expr =
                     (List.map viewExpression <| Tuple.first arguments :: Tuple.second arguments)
                 ]
 
-        FA.Binop left op right ->
+        FA.Binop { left, op, right } ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
