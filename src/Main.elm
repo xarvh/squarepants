@@ -22,8 +22,10 @@ import Types.FormattableAst as FA
 
 initialCode =
     """
+b = 1
+
 a x =
- 1
+ b
     """
 
 

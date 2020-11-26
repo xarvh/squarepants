@@ -42,7 +42,10 @@ inferScope : Dict String CA.Expression -> Result String Env
 inferScope scope =
     let
         ( env0, nextId0 ) =
-            addSymbols 0 Dict.empty (Dict.keys scope)
+            scope
+                |> Dict.keys
+                |> addSymbols 0 Dict.empty
+                |> Debug.log "AAAAA"
 
         rec : PlaceholderId -> Env -> List ( String, CA.Expression ) -> Result String Env
         rec nextId env symbols =
@@ -55,12 +58,28 @@ inferScope scope =
                         Err err ->
                             Err <| name ++ ": " ++ err
 
-                        Ok ( type_, substitutions, newNextId ) ->
+                        Ok ( type_, subs0, newNextId ) ->
+                            let
+                                subs1 =
+                                    case Dict.get name env of
+                                        Just (TypeVariable oldPlaceholderId) ->
+                                            if TypeVariable oldPlaceholderId == type_ then
+                                                subs0
+
+                                            else
+                                                Dict.insert oldPlaceholderId type_ subs0
+
+                                        _ ->
+                                            Debug.todo "ENV DOES NOT CONTAIN VAR NAME"
+
+                                _ =
+                                    Debug.log ("substs for: " ++ name) subs1
+                            in
                             rec
                                 newNextId
                                 (env
                                     |> Dict.insert name type_
-                                    |> Dict.map (\k v -> applySubstitutions substitutions v)
+                                    |> Dict.map (\k v -> applySubstitutions subs1 v)
                                 )
                                 tail
     in

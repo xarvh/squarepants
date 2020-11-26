@@ -43,18 +43,8 @@ More or less established features
     * Extract the first constructor of a Union Type, crash if not available
     * Prone to error if the constructos change order, but this is a YOLO feature
 
-* Pattern Matching
-    * if value is pattern then ... else ...
 
-    * if value is
-          pattern then
-              ...
-          pattern then
-              ...
-          else
-              ...
 
-    ? alternative: `if value matches ...`
 
 * Functions
   * Must have at least one argument, anything without arguments is evaluated at once.
@@ -142,6 +132,56 @@ More or less established features
 
 Problems still to solve
 -----------------------
+
+Get rid of tuples and only use Union Types?
+  -> **Then limit union type constructors to two args**
+  -> Also provide `type Two a b = Two a b` and helpers in the prelude
+  -> Probably NOT very nice to use
+
+
+
+
+
+
+
+
+
+* Pattern Matching
+    * if value is pattern then ... else ...
+
+    * if value is
+          pattern then
+              ...
+          pattern then
+              ...
+          else
+              ...
+
+    --> It is probably a bad idea to use `if..is`.
+    Alternatives:
+    match..vs?
+    try..vs?
+
+
+
+
+
+
+Halting problem:
+ https://www.reddit.com/r/ProgrammingLanguages/comments/k0hrpx/what_is_your_idea_of_a_perfect_programming/gdir42n/
+ "Idris deals with this by having a class of proven-to-terminate functions. Unprovably terminating functions are still intractable, but a lot of things can be built that are provably terminating."
+
+
+
+Modules:
+  "Adding things to a module must never stop any program from compiling. That means no starred imports: every symbol is imported either explicitly, or qualified. Also no auto-importing of typeclass instances or other such implicit crap. Every little element must be imported explicitly. Modula-2 had it right,"
+  https://www.reddit.com/r/ProgrammingLanguages/comments/k0hrpx/what_is_your_idea_of_a_perfect_programming/gdj455b/
+
+
+No currying?
+  (`List.map (blah param) list` -> `List.map (fn i = blah param i) list`)
+
+
 
 GLSL: https://github.com/EmbarkStudios/rust-gpu
 
