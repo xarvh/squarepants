@@ -73,7 +73,7 @@ More or less established features
 
 * Operators
     * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
-    * Assignment binops return Void
+    * Assignment ops are not binops and are not valid expressions
     * `=` is for declaring a new symbol
     * `#=` is for assigning a new value to an existing mutable variable
     * not-equal: `=/=`
@@ -133,36 +133,33 @@ More or less established features
 Problems still to solve
 -----------------------
 
-Get rid of tuples and only use Union Types?
-  -> **Then limit union type constructors to two args**
-  -> Also provide `type Two a b = Two a b` and helpers in the prelude
-  -> Probably NOT very nice to use
+What do I use as unit type?
+  Unit type is used as
+    * Dummy parameter for functions `fn None =`
+    * Return value for side effects `writeFile : String -> String -> None`
+
+  `()` is confusing
+  `{}` is more elegant but probably just as confusing
+  `type Void = Void`?
+  `type None = None`?
 
 
 
-
-
-
+Limit union type constructors two no more than two arguments?
+  -> More than 2 you need to name them
 
 
 
 * Pattern Matching
-    * if value is pattern then ... else ...
+    * try value as pattern then ... else ...
 
-    * if value is
+    * try value as
           pattern then
               ...
           pattern then
               ...
           else
               ...
-
-    --> It is probably a bad idea to use `if..is`.
-    Alternatives:
-    match..vs?
-    try..vs?
-
-
 
 
 
@@ -346,7 +343,7 @@ How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
   - These function should stay in some module like Fast. or GLSL. ?
 ```
 
-loop : state -> (state -> Bool) -> (state -> state) -> (state -> BreakOrContinue) -> Void
+loop : state -> (state -> Bool) -> (state -> state) -> (state -> BreakOrContinue) -> Empty
 
 
 loopFrom 0 (until 10) (adding 1) (fn x =

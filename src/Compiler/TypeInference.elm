@@ -8,6 +8,7 @@ type InferredType
     = Named String
     | TypeVariable PlaceholderId
     | Function InferredType InferredType
+    | Tuple2 InferredType InferredType
 
 
 type alias PlaceholderId =
@@ -107,7 +108,14 @@ applySubstitutions substitutions targetType =
                     targetType
 
         Function paramType bodyType ->
-            Function (applySubstitutions substitutions paramType) (applySubstitutions substitutions bodyType)
+            Function
+                (applySubstitutions substitutions paramType)
+                (applySubstitutions substitutions bodyType)
+
+        Tuple2 fst snd ->
+            Tuple2
+                (applySubstitutions substitutions fst)
+                (applySubstitutions substitutions snd)
 
 
 addSymbol : PlaceholderId -> Env -> String -> ( InferredType, ( Env, PlaceholderId ) )
@@ -161,8 +169,53 @@ inferExpr nextPlaceholderId env expr =
                         , newNewPlaceholderId
                         )
 
+        CA.Tuple2 { first, second } ->
+            case inferExpr nextPlaceholderId env first of
+                Err e ->
+                    Err e
+
+                Ok ( firstType, firstSubs, pid0 ) ->
+                    case inferExpr pid0 env second of
+                        Err e ->
+                            Err e
+
+                        Ok ( secondType, secondSubs, pid1 ) ->
+                            unifySubstitutions firstSubs secondSubs
+                                |> Result.map
+                                    (\unifiedSubs ->
+                                        ( Tuple2
+                                            (applySubstitutions secondSubs firstType)
+                                            (applySubstitutions firstSubs secondType)
+                                        , unifiedSubs
+                                        , pid1
+                                        )
+                                    )
+
         CA.Call { reference, argument } ->
             Debug.todo ""
 
         CA.If { start, condition, true, false } ->
             Debug.todo ""
+
+
+unifySubstitutions : Substitutions -> Substitutions -> Result String Substitutions
+unifySubstitutions a b =
+    let
+        rec : List ( PlaceholderId, InferredType ) -> Substitutions -> Result String Substitutions
+        rec aAsList accum =
+            case aAsList of
+                [] ->
+                    Ok accum
+
+                ( id, aType ) :: tail ->
+                    let
+                        maybeBType =
+                            Dict.get id b
+                    in
+                    if maybeBType == Nothing || maybeBType == Just aType then
+                        rec tail (Dict.insert id aType accum)
+
+                    else
+                        Err <| Debug.toString (Just aType) ++ " vs " ++ Debug.toString maybeBType
+    in
+    rec (Dict.toList a) b

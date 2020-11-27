@@ -25,6 +25,10 @@ type Expression
         , parameter : String
         , body : Expression
         }
+    | Tuple2
+        { first : Expression
+        , second : Expression
+        }
     | Call
         { reference : Expression
         , argument : Expression

@@ -144,8 +144,36 @@ parensOr : Parser FA.Expression -> Parser FA.Expression
 parensOr higher =
     oneOf
         [ higher
-        , surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> expr)
+        , do (surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> commaSeparated expr)) <| \es ->
+        case es of
+            ( head, [] ) ->
+                succeed head
+
+            ( first, second :: [] ) ->
+                succeed <|
+                    FA.Tuple2
+                        { first = first
+                        , second = second
+                        }
+
+            _ ->
+                fail
         ]
+
+
+commaSeparated : Parser FA.Expression -> Parser (OneOrMore FA.Expression)
+commaSeparated v =
+    let
+        comma =
+            exactTokenKind Token.Comma
+
+        commaAndV =
+            do comma <| \_ -> v
+    in
+    do v <| \head ->
+    do (zeroOrMore commaAndV) <| \tail ->
+    do (optional comma) <| \_ ->
+    succeed ( head, tail )
 
 
 surroundWith : Token.Kind -> Token.Kind -> Parser a -> Parser a

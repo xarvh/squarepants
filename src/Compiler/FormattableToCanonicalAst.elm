@@ -55,6 +55,12 @@ expression faExpr =
                 , false = expression condition
                 }
 
+        FA.Tuple2 { first, second } ->
+            CA.Tuple2
+                { first = expression first
+                , second = expression second
+                }
+
         _ ->
             Debug.todo "NOT SUPPORTED FOR NOW"
 

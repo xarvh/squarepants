@@ -59,6 +59,10 @@ type Expression
         , patterns : List ( Pattern, Expression )
         , maybeElse : Maybe Expression
         }
+    | Tuple2
+        { first : Expression
+        , second : Expression
+        }
     | Error
 
 
@@ -117,6 +121,8 @@ exprStart expr =
         Match_Functional { start, value, patterns, maybeElse } ->
             start
 
+        Tuple2 { first, second } ->
+            exprStart first
+
         Error ->
             Debug.todo ""
-
