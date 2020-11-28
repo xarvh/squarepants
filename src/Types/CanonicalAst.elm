@@ -25,6 +25,7 @@ type Expression
         , parameter : String
         , body : Expression
         }
+    -- TODO use a record instead?
     | Tuple2
         { first : Expression
         , second : Expression
