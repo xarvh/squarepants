@@ -69,7 +69,7 @@ tests =
                     |> Result.andThen (TI.inferExpr 0 preamble)
                     |> Result.map (\( inferredType, subs, nextId ) -> inferredType)
         , expected =
-            Err "Cannot match `Named \"Bool\"` with `Named \"Number\"`"
+            Err """Cannot match `Named "Number"` with `Named "Bool"`"""
         }
     , simpleTest
         { name =

@@ -1,6 +1,12 @@
 module Compiler.TypeInference exposing (..)
 
-{-| I don't udnerstand what I'm doing, I'm just following <https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
+{-| I don't understand what I'm doing, I'm just following
+
+<https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
+<http://reasonableapproximation.net/2019/05/05/hindley-milner.html>
+<https://ltbringer.github.io/blog/hindley-milner-for-humans>
+<https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand>
+
 -}
 
 import Dict exposing (Dict)
@@ -314,37 +320,55 @@ inferExpr nextId0 env expr =
             in
             result_do (inferExpr n1 env1 argument) <| \( argumentType, s2, n2 ) ->
             result_do (composeSubstitutions s1 s2) <| \s3 ->
+            result_do (extractFunctionTypes n2 actualFunctionType) <| \extracted ->
             let
-                expectedFunctionType =
-                    Function
-                        argumentType
-                        (TypeVariable n2)
+                s4 =
+                    extracted.subs
 
                 n3 =
-                    n2 + 1
-            in
-            result_do (unify expectedFunctionType actualFunctionType) <| \s4 ->
-            let
-                fixedFunctionType =
-                    applySubstitutionsToType s4 actualFunctionType
+                    extracted.nextId
             in
             result_do (composeSubstitutions s3 s4) <| \s5 ->
-            let
-                ( fFrom, fTo ) =
-                    case fixedFunctionType of
-                        Function f t ->
-                            ( f, t )
-
-                        _ ->
-                            Debug.todo "THIS SHOULD REALLY BE A FUNCTION"
-            in
-            result_do (unify (applySubstitutionsToType s5 fFrom) argumentType) <| \s6 ->
+            result_do (unify (applySubstitutionsToType s5 extracted.inType) argumentType) <| \s6 ->
             result_do (composeSubstitutions s5 s6) <| \s7 ->
             Ok
-                ( applySubstitutionsToType s7 fTo
+                ( applySubstitutionsToType s7 extracted.outType
                 , s7
                 , n3
                 )
 
         CA.If { start, condition, true, false } ->
             Debug.todo ""
+
+
+extractFunctionTypes : PlaceholderId -> InferredType -> Res { inType : InferredType, outType : InferredType, subs : Substitutions, nextId : PlaceholderId }
+extractFunctionTypes nextId0 t =
+    case t of
+        Function inType outType ->
+            Ok
+                { inType = inType
+                , outType = outType
+                , subs = Dict.empty
+                , nextId = nextId0
+                }
+
+        TypeVariable pid ->
+            let
+                inType =
+                    TypeVariable nextId0
+
+                outType =
+                    TypeVariable (nextId0 + 1)
+
+                nextId1 =
+                    nextId0 + 2
+            in
+            Ok
+                { inType = inType
+                , outType = outType
+                , subs = Dict.singleton pid (Function inType outType)
+                , nextId = nextId1
+                }
+
+        _ ->
+            Err "trying to call something that is not a function!"
