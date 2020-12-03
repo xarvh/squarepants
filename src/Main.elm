@@ -8,6 +8,7 @@ import Compiler.StringToTokens_Test
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
 import Compiler.TypeInference
+import Compiler.TypeInference_Test exposing (preamble)
 import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
@@ -110,7 +111,12 @@ view model =
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tests" ]
-                , Test.viewList (Compiler.StringToTokens_Test.tests ++ Compiler.TokensToFormattableAst_Test.tests)
+                , [ Compiler.StringToTokens_Test.tests
+                  , Compiler.TokensToFormattableAst_Test.tests
+                  , Compiler.TypeInference_Test.tests
+                  ]
+                    |> List.concat
+                    |> Test.viewList
                 ]
             ]
         ]
@@ -141,7 +147,7 @@ viewInference code =
     in
     case res of
         Ok scope ->
-            case Compiler.TypeInference.inferScope scope of
+            case Compiler.TypeInference.inferScope preamble scope of
                 Err err ->
                     Html.text err
 

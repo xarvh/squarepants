@@ -66,6 +66,7 @@ More or less established features
 
 * Union Types
   * Constructors are scoped to the type: `type Blah = A | B` => `Blah.A, Blah.B`
+  -> But then can we obscure them?
 
 * Modules
   - No mutable globals
@@ -81,6 +82,7 @@ More or less established features
 
 * Swizzling
     Allowed, as exception, for all Vector types
+    (and all records where it would be unambiguous?)
 
 * Function overloading
     Not available.
@@ -130,8 +132,82 @@ More or less established features
 * Support `0 < x < 10`
 
 
-Problems still to solve
------------------------
+
+Stuff that's still up in the air
+--------------------------------
+
+
+Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus
+
+
+
+Comment with `#` `#! ... !#`?
+
+
+
+
+
+### Macros
+  The only macro I really need is `TypeAST -> ExpressionAST`.
+
+  It requires special syntax.
+
+  Macros can throw compile errors
+
+  Useful macros:
+    order : a -> a -> Order
+
+    toTextData : a -> TextData
+    fromTextData : TextData -> Result TextDataError a
+
+    toBinData : a -> BinData
+    fromBinData : BinData -> Result BinDataError a
+
+    clone : a -> a
+    default : a
+
+
+  ```
+  module Order
+
+  ...
+
+  macro_deriveOrderFunction : TypeAST -> ExpressionAST
+  ```
+
+  ```
+  module Dict
+
+  ...
+
+  insert : k -> v -> Dict k v -> Dict k v
+  insert key value dict =
+
+      orderFunction = Order.macro_deriveOrderFunction k
+
+      doStuffWith orderFunction
+  ```
+
+
+
+
+
+
+
+### function comparison/serialisation
+  Two functions are the same if the checksum of their canonical ast (minus position info) is the same and if their arguments are the same
+
+  If we make a table of all the functions ever in the code, we can actually serialise and deserialize function references
+  We can trim down the table to the function types that are actually used in the deserializer.
+
+  ---> Deserializing function references is a security problem
+
+  ---> But what about closures? Maybe we can consider those closure values as arguments (that do not affect comparison?), like I was doing with elm-glsl?
+
+
+
+
+
 
 What do I use as unit type?
   Unit type is used as
@@ -303,6 +379,9 @@ How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
 * Compatible with Elm libraries?
 
 
+
+
+
 # Statements vs Expressions
     * A function declaration consists of a list of statements
     * Statements can be:
@@ -421,5 +500,39 @@ rectFragmentShader attributes uniforms varying =
 
 
 
+
+
+Obsolete ideas
+------------
+  (No)
+
+  Sarebbe utile avere le seguenti funzioni per ogni tipo:
+
+  order : instance has order => a -> a -> Order # per dizionari/set/hashmap/sort
+  toHumanReadableString : instance -> String
+
+  toStringData : instance -> StringData
+  fromStringData : (instance can decode) => StringData -> Result DecodeError instance
+
+  toBitData : instance -> BitData
+  fromBitData : (instance can decode) => BitData -> Result DecodeError instance
+
+  Se queste funzioni vengono usate (come?) per un certo tipo, il compilatore cerca di generarle automaticamente
+  Se il compilatore non riesce a generarle o l'utente vuole fare qualcosa di diverso, puo' dichiarare esplicitamente queste funzioni per quel tipo
+
+  ```
+  Dict.insert : k has order => k -> v -> Dict k v -> Dict k v
+  ```
+
+  ```
+  save : someObject has toSerializedData => String -> someObject -> SideEffect (Maybe SaveError)
+  save referenceName object =
+    object
+      |> toSerializedData
+      |> writeToStorage referenceName
+  ```
+
+  ---> Is it ok if only union types can override the class functions?
+  ---> Probably not! But then I have to distinguish between alias and records?
 
 

@@ -1,5 +1,8 @@
 module Compiler.TypeInference exposing (..)
 
+{-| I don't udnerstand what I'm doing, I'm just following <https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
+-}
+
 import Dict exposing (Dict)
 import Types.CanonicalAst as CA
 
@@ -50,19 +53,19 @@ type alias Substitutions =
 --
 
 
-inferScope : Dict String CA.Expression -> Res Env
-inferScope scope =
+inferScope : Env -> Dict String CA.Expression -> Res Env
+inferScope preamble scope =
     let
         ( env0, nextId0 ) =
             scope
                 |> Dict.keys
-                |> addSymbols 0 Dict.empty
+                |> addSymbols 0 preamble
 
         rec : PlaceholderId -> Env -> List ( String, CA.Expression ) -> Res Env
         rec nextId env symbols =
             case symbols of
                 [] ->
-                    Ok env
+                    Ok (Dict.diff env preamble)
 
                 ( name, expr ) :: tail ->
                     case inferExpr nextId env expr of
@@ -80,11 +83,11 @@ inferScope scope =
                                             else
                                                 Dict.insert oldPlaceholderId type_ subs0
 
-                                        _ ->
-                                            Debug.todo "ENV DOES NOT CONTAIN VAR NAME"
+                                        Just _ ->
+                                            subs0
 
-                                _ =
-                                    Debug.log ("substs for: " ++ name) subs1
+                                        Nothing ->
+                                            Debug.todo <| "ENV DOES NOT CONTAIN VAR NAME: " ++ name
                             in
                             rec
                                 newNextId
@@ -129,39 +132,6 @@ addSymbol nextId0 env name =
       , nextId0 + 1
       )
     )
-
-
-extractFunctionTypes : PlaceholderId -> InferredType -> Res { inType : InferredType, outType : InferredType, subs : Substitutions, nextId : PlaceholderId }
-extractFunctionTypes nextId0 t =
-    case t of
-        Function inType outType ->
-            Ok
-                { inType = inType
-                , outType = outType
-                , subs = Dict.empty
-                , nextId = nextId0
-                }
-
-        TypeVariable pid ->
-            let
-                inType =
-                    TypeVariable nextId0
-
-                outType =
-                    TypeVariable (nextId0 + 1)
-
-                nextId1 =
-                    nextId0 + 2
-            in
-            Ok
-                { inType = inType
-                , outType = outType
-                , subs = Dict.singleton pid (Function inType outType)
-                , nextId = nextId1
-                }
-
-        _ ->
-            Err "trying to call something that is not a function!"
 
 
 bindPlaceholderIdToType : PlaceholderId -> InferredType -> Res Substitutions
@@ -337,20 +307,43 @@ inferExpr nextId0 env expr =
                 )
 
         CA.Call { reference, argument } ->
-            result_do (inferExpr nextId0 env reference) <| \( refType, refSubs, nextId1 ) ->
-            result_do (extractFunctionTypes nextId1 refType) <| \{ inType, outType, subs, nextId } ->
+            result_do (inferExpr nextId0 env reference) <| \( actualFunctionType, s1, n1 ) ->
             let
-                env0 =
-                    applySubstitutionsToEnv subs
+                env1 =
+                    applySubstitutionsToEnv s1 env
             in
-            -- TODO ?? composeSubstitutions refSubs extracted.subs
-            result_do (inferExpr nextId env argument) <| \( argType, argSubs, nextId3 ) ->
-            result_do (unify inType argType) <| \unifSubs ->
-            -- TODO result_do (composeSubstitutions yyyyyy) <| \unifiedSubs ->
+            result_do (inferExpr n1 env1 argument) <| \( argumentType, s2, n2 ) ->
+            result_do (composeSubstitutions s1 s2) <| \s3 ->
+            let
+                expectedFunctionType =
+                    Function
+                        argumentType
+                        (TypeVariable n2)
+
+                n3 =
+                    n2 + 1
+            in
+            result_do (unify expectedFunctionType actualFunctionType) <| \s4 ->
+            let
+                fixedFunctionType =
+                    applySubstitutionsToType s4 actualFunctionType
+            in
+            result_do (composeSubstitutions s3 s4) <| \s5 ->
+            let
+                ( fFrom, fTo ) =
+                    case fixedFunctionType of
+                        Function f t ->
+                            ( f, t )
+
+                        _ ->
+                            Debug.todo "THIS SHOULD REALLY BE A FUNCTION"
+            in
+            result_do (unify (applySubstitutionsToType s5 fFrom) argumentType) <| \s6 ->
+            result_do (composeSubstitutions s5 s6) <| \s7 ->
             Ok
-                ( outType
-                , unifSubs
-                , nextId3
+                ( applySubstitutionsToType s7 fTo
+                , s7
+                , n3
                 )
 
         CA.If { start, condition, true, false } ->
