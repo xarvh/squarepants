@@ -71,24 +71,29 @@ type Pattern
 
 
 type Statement
-    = Pass
-    | Evaluate Expression
+    = Evaluate Expression
     | Definition
         { name : Pattern
         , parameters : List Pattern
         , body : OneOrMore Statement
         }
-    | Return Expression
-    | If_Imperative
-        { condition : Expression
-        , true : List Statement
-        , false : List Statement
-        }
-    | Match_Imperative
-        { value : Expression
-        , patterns : List ( Pattern, List Statement )
-        , maybeElse : Maybe (List Statement)
-        }
+
+
+
+{- TODO do I actually want these?
+   | Pass
+   | Return Expression
+   | If_Imperative
+       { condition : Expression
+       , true : List Statement
+       , false : List Statement
+       }
+   | Match_Imperative
+       { value : Expression
+       , patterns : List ( Pattern, List Statement )
+       , maybeElse : Maybe (List Statement)
+       }
+-}
 
 
 exprStart : Expression -> Int

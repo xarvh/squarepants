@@ -1,3 +1,27 @@
+MVP
+---
+
+* The compiler must be able to compile itself over Node.js
+
+
+* TODOS
+  - support records
+  - support type annotations
+  - support type declarations
+  - core libraries
+  - emit javascript
+  - mutation
+
+
+* Leave out
+  - macros (Dict supports only strings)
+  - proper type inference
+
+
+
+
+
+
 
 Main goals
 ----------
@@ -44,71 +68,27 @@ More or less established features
     * Prone to error if the constructos change order, but this is a YOLO feature
 
 
+* Comment with `#`
+  What about multi line comments?
 
 
 * Functions
-  * Must have at least one argument, anything without arguments is evaluated at once.
-    * Maybe catch attempts at calling a function without arguments?
-      ```
-      x = ...
+  * Evaluating an expression that produces a function without returning it is an error
 
-      x
-      ```
-  * Cannot mutate anything outside their scope
-  * Declared as `$functionName : $space-separated-arguments $arrow $return type
-  * Arrows:
-    * `@>` functions depend entirely on their arguments and are compatible with GLSL
-    * `->` functions depend entirely on their arguments
-    * `#>` functions have IO effects
-
-    * `@>` functions can be used in place of any function
-    * `->` functions can be used in place of `#>` functions
-
-* Union Types
-  * Constructors are scoped to the type: `type Blah = A | B` => `Blah.A, Blah.B`
-  -> But then can we obscure them?
 
 * Modules
   - No mutable globals
   - No side effects on module load
 
+
 * Operators
     * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
     * Assignment ops are not binops and are not valid expressions
     * `=` is for declaring a new symbol
-    * `#=` is for assigning a new value to an existing mutable variable
+    * `@=` is for assigning a new value to an existing mutable variable
     * not-equal: `=/=`
-    ? use `and`, `or` instead of `&&` `||`
+    * use `and`, `or` instead of `&&` `||`
 
-* Swizzling
-    Allowed, as exception, for all Vector types
-    (and all records where it would be unambiguous?)
-
-* Function overloading
-    Not available.
-    One Vector constructor for each possibility, probably called vec4_121 or something like that.
-
-* Libraries
-    LocalStorage: readable and writable
-    BulkStorage: read only
-
-* Anonymous Functions
-    * Declared with the `fn` keyword in place of the name
-    ```
-    someFunction =
-        fn a b c =
-            a + b + c
-
-    someMoreConvolutedFunction =
-        fn a b c =
-            fn z =
-                a + b + c + z
-
-    Array.mapInPlace (fn element = element + 1) anArray
-    ```
-
-* Type inference
-    Is necessary for coding fast?
 
 * imperative blocks
   ```
@@ -133,18 +113,82 @@ More or less established features
 
 
 
-Stuff that's still up in the air
---------------------------------
 
 
-Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus
+### Unit type
+
+The Preamble should contain a `type None = None`
+
+Unit type is used as
+    * Dummy parameter for functions `fn None =`
+    * Return value for side effects `modifyStrings : @String -> @String -> None`?
+
+  `()` is confusing
+  `{}` is more elegant but probably just as confusing
 
 
 
-Comment with `#` `#! ... !#`?
+### Pattern Matching
+    * try value as pattern then ... else ...
+
+    * try value as
+          pattern then
+              ...
+          pattern then
+              ...
+          else
+              ...
 
 
 
+
+
+
+Stuff that seems good but needs thinking
+----------------------------------------
+
+### Mutability
+
+    Preamble.toMutableReference : a -> @a
+
+    Preamble.toImmutable : @a -> a
+
+
+    # a defaults to immutable (because 0 is immutable!)
+    a = 0
+
+    # but can be "upgraded" to mutable ref if used as such...
+    a = 0
+    a += 1
+
+    # ...or if annotated
+    a : @Int
+    a = 1
+
+    # preamble functions can also be used
+    a = toMutableReference 1
+
+
+    generateUser : @Random.Seed -> User
+    generateUser seed =
+        { name = generateName @seed
+        , address = generateAddress @seed
+        , age = generateRange @seed 10 99
+        }
+
+
+    doStuff time =
+        seed : @Random.Seed
+        seed =
+            Random.initSeed time
+
+        users : List User
+        users =
+            10
+              |> List.range
+              |> List.map fn i = generateUser @seed
+
+        users
 
 
 ### Macros
@@ -190,10 +234,6 @@ Comment with `#` `#! ... !#`?
 
 
 
-
-
-
-
 ### function comparison/serialisation
   Two functions are the same if the checksum of their canonical ast (minus position info) is the same and if their arguments are the same
 
@@ -207,35 +247,45 @@ Comment with `#` `#! ... !#`?
 
 
 
-
-
-What do I use as unit type?
-  Unit type is used as
-    * Dummy parameter for functions `fn None =`
-    * Return value for side effects `writeFile : String -> String -> None`
-
-  `()` is confusing
-  `{}` is more elegant but probably just as confusing
-  `type Void = Void`?
-  `type None = None`?
+* Union Types
+  * Constructors are scoped to the type: `type Blah = A | B` => `Blah.A, Blah.B`
+  -> But then can we obscure them?
 
 
 
-Limit union type constructors two no more than two arguments?
+Game Platform
+-------------
+
+* Libraries
+    LocalStorage: readable and writable
+    BulkStorage: read only
+
+
+
+GLSL
+----
+
+* Swizzling
+    Allowed, as exception, for all Vector types
+    (and all records where it would be unambiguous?)
+
+* Function overloading
+    Not available.
+    One Vector constructor for each possibility, probably called vec4_121 or something like that.
+
+
+
+Stuff that's still up in the air
+--------------------------------
+
+
+Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus
+
+
+
+
+Limit union type constructors to no more than two arguments?
   -> More than 2 you need to name them
-
-
-
-* Pattern Matching
-    * try value as pattern then ... else ...
-
-    * try value as
-          pattern then
-              ...
-          pattern then
-              ...
-          else
-              ...
 
 
 
@@ -257,31 +307,6 @@ No currying?
 
 
 GLSL: https://github.com/EmbarkStudios/rust-gpu
-
-
-Do we really need `#>` functions?
-Ideally they should only be used by platform stuff.
-
-
-
-How do I `Dict UnionType a`?
-How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
-
-  * I need an automatic solution that works for most cases
-  * But I also need to override it seamlessly
-  * Further, I need to specify that a function wants a type that be decoded or used as key in a Dict
-
-  * with typeclasses?
-    --> how do I automatically generate default classes when possible?
-    --> how do I avoid magic?
-    --> 
-
-  * with reflection?
-    --> how do I ensure that a function can produce a certain type?
-      `decode(SomeType) .... -> Blah SomeType`
-      I need first-class types for this!
-
-
 
 
 * Use * to separate type args?
@@ -502,8 +527,8 @@ rectFragmentShader attributes uniforms varying =
 
 
 
-Obsolete ideas
-------------
+Obsolete
+--------
   (No)
 
   Sarebbe utile avere le seguenti funzioni per ogni tipo:
@@ -536,3 +561,52 @@ Obsolete ideas
   ---> Probably not! But then I have to distinguish between alias and records?
 
 
+* Type inference
+    Is necessary for coding fast?
+
+
+
+  * Cannot mutate anything outside their scope
+  * Declared as `$functionName : $space-separated-arguments $arrow $return type
+  * Arrows:
+    * `@>` functions depend entirely on their arguments and are compatible with GLSL
+    * `->` functions depend entirely on their arguments
+    * `#>` functions have IO effects
+
+    * `@>` functions can be used in place of any function
+    * `->` functions can be used in place of `#>` functions
+
+
+  * statement blocks without arguments are evaluated at once
+
+  * Must have at least one argument, anything without arguments is evaluated at once.
+    * Maybe catch attempts at calling a function without arguments?
+      ```
+      x = ...
+
+      x
+      ```
+
+
+Do we really need `#>` functions?
+Ideally they should only be used by platform stuff.
+
+
+
+
+How do I `Dict UnionType a`?
+How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
+
+  * I need an automatic solution that works for most cases
+  * But I also need to override it seamlessly
+  * Further, I need to specify that a function wants a type that be decoded or used as key in a Dict
+
+  * with typeclasses?
+    --> how do I automatically generate default classes when possible?
+    --> how do I avoid magic?
+    --> 
+
+  * with reflection?
+    --> how do I ensure that a function can produce a certain type?
+      `decode(SomeType) .... -> Blah SomeType`
+      I need first-class types for this!

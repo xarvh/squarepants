@@ -6,6 +6,7 @@ module Compiler.TypeInference exposing (..)
 <http://reasonableapproximation.net/2019/05/05/hindley-milner.html>
 <https://ltbringer.github.io/blog/hindley-milner-for-humans>
 <https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand>
+<https://course.ccs.neu.edu/cs4410sp19/lec_type-inference_notes.html>
 
 -}
 
