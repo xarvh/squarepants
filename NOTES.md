@@ -13,12 +13,9 @@ MVP
   - mutation
 
 
-* Leave out
+* Leave out?
   - macros (Dict supports only strings)
   - proper type inference
-
-
-
 
 
 
@@ -47,7 +44,7 @@ Main goals
 
 * Make escape hatches viable but just slightly annoying to use
 
-* Transpile to GLSL, JavaScript, (Go | V | Rust..?)
+* Transpile to GLSL, JavaScript/Wasm, Rust
 
 * Can be used for scripting, compiled at run-time and executed in a safe environment
 
@@ -147,48 +144,98 @@ Unit type is used as
 Stuff that seems good but needs thinking
 ----------------------------------------
 
-### Mutability
 
-    Preamble.toMutableReference : a -> @a
+### Mutability, take 2
 
-    Preamble.toImmutable : @a -> a
+The only values that can be mutable are
+  * function arguments
+  * variables defined inside functions
+
+Mutability can be inferred, but can also be expressed in annotations via the snail operator `@`:
+```
+thisFunctionMutatesItsFirstArgument : @Int -> None
+thisFunctionMutatesItsFirstArgument a =
+  b : @Int
+  b =
+    3
+
+  b +=
+    4
+
+  a +=
+    b
+```
+
+When passing a mutable variable to a function that will mutate it, the variable name must be preceded by `@`, to make it obvious that the value will be mutated:
+```
+x = 1
+
+thisFunctionMutatesItsFirstArgument @x
+```
 
 
-    # a defaults to immutable (because 0 is immutable!)
-    a = 0
-
-    # but can be "upgraded" to mutable ref if used as such...
-    a = 0
-    a += 1
-
-    # ...or if annotated
-    a : @Int
-    a = 1
-
-    # preamble functions can also be used
-    a = toMutableReference 1
+The imperative `entities[entityId].component.x += 3` becomes:
+```
+Dict.updateInPlace entityId (fn entity = entity.component.x += 3 ) @entities
+```
+(with `Dict.updateInPlace : key -> (@value -> None) -> @Dict key value -> None`)
 
 
-    generateUser : @Random.Seed -> User
-    generateUser seed =
-        { name = generateName @seed
-        , address = generateAddress @seed
-        , age = generateRange @seed 10 99
-        }
+Records, tuples and union types are either entirely mutable, either are entirely immutable: their annotations can contain `@` only when it's a function argument:
+```
+type alias CompilerWillComplain = {
+  , becauseThisIsInvalid : @Int
+  }
+
+type alias ThisDoesntWorkEither =
+  Dict Int @Int
 
 
-    doStuff time =
-        seed : @Random.Seed
-        seed =
-            Random.initSeed time
+type alias ThisInsteadIsPerfectlyFine = {
+  , becauseTheMutableThingIsAFunctionArg : @Int -> None
+  }
+```
 
-        users : List User
-        users =
-            10
-              |> List.range
-              |> List.map fn i = generateUser @seed
+Records however are used also to pass named arguments to a function.
+The only way to pass named mutable arguments is via a mutable record:
+```
+a : @Int
+a = 1
 
-        users
+functionThatMutatesItsNamedArgs { aNamedArg = a }
+
+# sigh
+a @= record.a
+```
+The necessity of reassigning `a`:
+  * kind of kills the ease of using named args
+  * opens the door to mistakes, because it's too easy to forget it.
+
+-> Find some syntax magic that allows doing without the re-assignment?
+-> Could the compiler figure out what is happening and warn the user?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### Macros
@@ -208,7 +255,7 @@ Stuff that seems good but needs thinking
     fromBinData : BinData -> Result BinDataError a
 
     clone : a -> a
-    default : a
+    empty : a
 
 
   ```
@@ -610,3 +657,62 @@ How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
     --> how do I ensure that a function can produce a certain type?
       `decode(SomeType) .... -> Blah SomeType`
       I need first-class types for this!
+
+
+
+### Mutability, take 1
+
+    Preamble.toMutableReference : a -> @a
+
+    Preamble.toImmutable : @a -> a
+
+
+    # a defaults to immutable (because 0 is immutable!)
+    a = 0
+
+    # but can be "upgraded" to mutable ref if used as such...
+    a = 0
+    a += 1
+
+    # ...or if annotated
+    a : @Int
+    a = 1
+
+    # preamble functions can also be used
+    a = toMutableReference 1
+
+
+    generateUser : @Random.Seed -> User
+    generateUser seed =
+        { name = generateName @seed
+        , address = generateAddress @seed
+        , age = generateRange @seed 10 99
+        }
+
+
+    doStuff time =
+        seed : @Random.Seed
+        seed =
+            Random.initSeed time
+
+        users : List User
+        users =
+            10
+              |> List.range
+              |> List.map fn i = generateUser @seed
+
+        users
+
+
+    a : @{ first : @Int, second : Int }
+    a = { first = 1, second = 2 }
+
+    b : @Int
+    b = 3
+
+    a.first = b
+
+
+
+
+

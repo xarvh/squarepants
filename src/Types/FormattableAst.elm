@@ -47,14 +47,16 @@ type Expression
         , op : String
         , right : Expression
         }
-    | If_Functional
+    | If
         { start : Int
+        , isOneLine : Bool
         , condition : Expression
         , true : Expression
         , false : Expression
         }
-    | Match_Functional
+    | Match
         { start : Int
+        , isOneLine : Bool
         , value : Expression
         , patterns : List ( Pattern, Expression )
         , maybeElse : Maybe Expression
@@ -63,6 +65,12 @@ type Expression
         { first : Expression
         , second : Expression
         }
+    | Record
+        (List
+            { name : String
+            , value : Expression
+            }
+        )
     | Error
 
 

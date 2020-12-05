@@ -23,10 +23,10 @@ type
       -- Keywords
     | Fn
     | If
-    | Is
+    | Try
+    | As
     | Then
     | Else
-    | Return
       -- Ops
     | Unop String
     | Defop
