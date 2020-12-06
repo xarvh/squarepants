@@ -3,9 +3,12 @@ module Compiler.TypeInference exposing (..)
 {-| I don't understand what I'm doing, I'm just following
 
 <https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
+<http://steshaw.org/hm/hindley-milner.pdf>
+
 <http://reasonableapproximation.net/2019/05/05/hindley-milner.html>
 <https://ltbringer.github.io/blog/hindley-milner-for-humans>
 <https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand>
+<https://web.cecs.pdx.edu/~mpj/thih/thih.pdf>
 <https://course.ccs.neu.edu/cs4410sp19/lec_type-inference_notes.html>
 
 -}

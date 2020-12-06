@@ -154,7 +154,9 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
 
         codeBlock ->
             let
-                spaces = String.length untrimmedBlock - String.length codeBlock
+                spaces =
+                    String.length untrimmedBlock - String.length codeBlock
+
                 start =
                     untrimmedPos + spaces
 
@@ -258,8 +260,11 @@ recognisedTokens =
                             "if" ->
                                 Token.If
 
-                            "is" ->
-                                Token.Is
+                            "try" ->
+                                Token.Try
+
+                            "as" ->
+                                Token.As
 
                             "then" ->
                                 Token.Then
@@ -272,9 +277,6 @@ recognisedTokens =
 
                             "or" ->
                                 Token.Binop Token.Logical m
-
-                            "return" ->
-                                Token.Return
 
                             "risk" ->
                                 Token.Unop m
@@ -309,6 +311,12 @@ recognisedTokens =
                             String.trimLeft m
                     in
                     case match of
+                        "->" ->
+                            Ok <| Token.Arrow
+
+                        ":" ->
+                            Ok <| Token.HasType
+
                         "^" ->
                             Ok <| Token.Binop Token.Exponential match
 
@@ -357,20 +365,23 @@ recognisedTokens =
                         "=" ->
                             Ok Token.Defop
 
-                        "#=" ->
-                            Ok <| Token.Binop Token.Assignment match
+                        "@=" ->
+                            Ok <| Token.Mutop match
 
                         "+=" ->
-                            Ok <| Token.Binop Token.Assignment match
+                            Ok <| Token.Mutop match
 
                         "-=" ->
-                            Ok <| Token.Binop Token.Assignment match
+                            Ok <| Token.Mutop match
 
                         "/=" ->
-                            Ok <| Token.Binop Token.Assignment match
+                            Ok <| Token.Mutop match
 
                         "*=" ->
-                            Ok <| Token.Binop Token.Assignment match
+                            Ok <| Token.Mutop match
+
+                        "^=" ->
+                            Ok <| Token.Mutop match
 
                         _ ->
                             Err <| Error.UnknownOperator match
@@ -644,19 +655,19 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
             }
     in
     if newIndent == lastIndent then
-            {-
-               ```
-               lastIndent
-               newIndent
-               ```
+        {-
+           ```
+           lastIndent
+           newIndent
+           ```
 
-               ```
-               previousRecursionIndent
-                 lastIndent
-               newIndent
-               ```
-            -}
-            Ok { state | accum = makeToken Token.NewSiblingLine :: state.accum, indentStack = stack }
+           ```
+           previousRecursionIndent
+             lastIndent
+           newIndent
+           ```
+        -}
+        Ok { state | accum = makeToken Token.NewSiblingLine :: state.accum, indentStack = stack }
 
     else if newIndent > lastIndent then
         if isFirstRecursion then

@@ -1,7 +1,7 @@
 module Compiler.TokensToFormattableAst exposing (..)
 
 import OneOrMore exposing (OneOrMore)
-import Parser exposing (do, fail, oneOf, oneOrMore, optional, succeed, zeroOrMore)
+import Parser exposing (do, fail, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import Types.Error as Error exposing (Error)
 import Types.FormattableAst as FA
 import Types.Token as Token exposing (Token)
@@ -32,6 +32,16 @@ su name a =
 
 type alias Parser a =
     Parser.Parser Token (List Token) a
+
+
+oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
+oomSeparatedBy sep pa =
+    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
+
+
+discardFirst : Parser a -> Parser b -> Parser b
+discardFirst a b =
+    do a <| \_ -> b
 
 
 
@@ -172,7 +182,7 @@ commaSeparated v =
     in
     do v <| \head ->
     do (zeroOrMore commaAndV) <| \tail ->
-    do (optional comma) <| \_ ->
+    do (maybe comma) <| \_ ->
     succeed ( head, tail )
 
 
@@ -201,25 +211,29 @@ statement : Parser FA.Statement
 statement =
     Parser.breakCircularDefinition <| \_ ->
     Parser.oneOf
-        [ -- return
-          do (discardFirst (exactTokenKind Token.Return) expr) <| \s ->
-          succeed (FA.Return s)
-        , -- definition
-          do (oneOrMore pattern) <| \( name, params ) ->
-          do (exactTokenKind Token.Defop) <| \_ ->
-          do
-              (oneOf
-                  [ statementBlock
-                  , do expr <| \e -> succeed ( FA.Evaluate e, [] )
-                  ]
-              )
-          <| \sb ->
-         succeed <| FA.Definition { name = name, parameters = params, body = sb }
-
-        -- TODO if
-        -- TODO match
+        [ definition
         , do expr <| (FA.Evaluate >> succeed)
         ]
+
+
+definition : Parser FA.Statement
+definition =
+    do (maybe annotation) <| \maybeAnnotation ->
+    do (oneOrMore pattern) <| \( name, params ) ->
+    do (exactTokenKind Token.Defop) <| \_ ->
+    do (oneOf [ statement, statementBlock ]) <| \sb ->
+    -- TODO if name is a pattern, then params must be empty
+    if maybeAnnotation /= Nothing && Maybe.map .name maybeAnnotation /= Just name then
+        abort "annotation doesn't match definition"
+
+    else
+        { name = name
+        , parameters = params
+        , body = sb
+        , maybeAnnotation = Maybe.map .type_ maybeAnnotation
+        }
+            |> FA.Definition
+            |> succeed
 
 
 statementBlock : Parser (OneOrMore FA.Statement)
@@ -229,14 +243,17 @@ statementBlock =
         |> Parser.surroundWith (exactTokenKind Token.BlockStart) (exactTokenKind Token.BlockEnd)
 
 
-oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
-oomSeparatedBy sep pa =
-    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
+annotation : Parser { name : String, type_ : FA.TypeAnnotation }
+annotation =
+    do symbolName <| \name ->
+    do exactTokenKind Token.HasType <| \_ ->
+    do annotationType <| \t ->
+    succeed { name = name, type_ = t }
 
 
-discardFirst : Parser a -> Parser b -> Parser b
-discardFirst a b =
-    do a <| \_ -> b
+annotationType : Parser FA.TypeAnnotation
+annotationType =
+    xxx
 
 
 
@@ -299,6 +316,17 @@ pattern =
             fail
 
 
+symbolName : Parser String
+symbolName =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Symbol s ->
+            succeed s
+
+        _ ->
+            fail
+
+
 
 ----
 --- Function application
@@ -325,7 +353,7 @@ functionApplicationOr higher =
 
 unopsOr : Parser FA.Expression -> Parser FA.Expression
 unopsOr higher =
-    do (optional unaryOperator) <| \maybeUnary ->
+    do (maybe unaryOperator) <| \maybeUnary ->
     do higher <| \right ->
     case maybeUnary of
         Just ( opAsString, opToken ) ->

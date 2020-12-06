@@ -144,7 +144,6 @@ Unit type is used as
 Stuff that seems good but needs thinking
 ----------------------------------------
 
-
 ### Mutability, take 2
 
 The only values that can be mutable are
@@ -196,42 +195,83 @@ type alias ThisInsteadIsPerfectlyFine = {
   }
 ```
 
-Records however are used also to pass named arguments to a function.
-The only way to pass named mutable arguments is via a mutable record:
+
+###### Squiggles vs letters
+Right now I'm choocing to use `@` rather than `mut` because
+  * `@` stands out more than `mut` would
+  * `@` can stick to its target without spaces, so it's more obvious what its target is
+
+
+###### Implicit mutability
+When reading an unannotated
+```
+a = 1
+```
+the user *cannot* assume that `a` is immutable, because there might be an `@a` or an `a += 2` or any other reassignment op down the line.
+This reduces the code legibility.
+How bad is this? How is this likely to cause unintended consequences?
+
+
+###### Mutability and named arguments
+Using records to pass named arguments to a function is an important pattern.
+However, it doesn't work well with mutability as defined above.
+
+In this code, `args.someArgument` will be updated, but `a` will not!
 ```
 a : @Int
 a = 1
 
-functionThatMutatesItsNamedArgs { aNamedArg = a }
+args = {
+  , someArgument = a
+  }
 
-# sigh
-a @= record.a
+functionThatMutatesItsNamedArgs @args
 ```
-The necessity of reassigning `a`:
-  * kind of kills the ease of using named args
-  * opens the door to mistakes, because it's too easy to forget it.
 
--> Find some syntax magic that allows doing without the re-assignment?
--> Could the compiler figure out what is happening and warn the user?
+I hope that the syntax makes it obvious enough that the only thing that gets mutated is `args`.
+
+Further, passing a mutable arg requires already for that arg to have a name, so the need to explicitly name the arg is lessened.
 
 
+###### Mutable closures
+This allows mutable state to hang around implicit and invisible:
+```
+createStatefulClosure : None -> { get : None -> Int, set : Int -> None }
+createStatefulClosure =
+  a = 0
+
+  { get = fn None = a
+  , set = fn v = a @= v
+  }
+
+createStatefulClosure2 : Int -> { get : None -> Int, set : Int -> None }
+createStatefulClosure2 a =
+  { get = fn None = a
+  , set = fn v = a @= v
+  }
 
 
 
 
+createStatefulClosure3 =
+  fn x =
+    fn y =
+      x += y
+
+
+someOtherFun =
+  a = 0
+  createStatefulClosure3 @a
 
 
 
+```
 
-
-
-
-
-
-
-
-
-
+To prevent it, when type checking a lambda:
+    put all defined and arg mutables in a set
+    descend the return expression
+      if it contains any function that mutates any of the mutables in the set
+        throw an error
 
 
 

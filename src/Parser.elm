@@ -291,8 +291,8 @@ oneOf ps =
             doWithDefault (oneOf p_tail) p succeed
 
 
-optional : Parser t i o -> Parser t i (Maybe o)
-optional p =
+maybe : Parser t i o -> Parser t i (Maybe o)
+maybe p =
     doWithDefault (succeed Nothing) p (Just >> succeed)
 
 

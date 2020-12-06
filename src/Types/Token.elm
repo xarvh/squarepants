@@ -28,9 +28,12 @@ type
     | Then
     | Else
       -- Ops
-    | Unop String
     | Defop
+    | Mutop String
+    | Unop String
     | Binop PrecedenceGroup String
+    | Arrow
+    | HasType
       -- Parens
     | RoundParen OpenOrClosed
     | SquareBracket OpenOrClosed
@@ -45,7 +48,6 @@ type PrecedenceGroup
     | Comparison
     | Logical
     | Pipe
-    | Assignment
 
 
 type OpenOrClosed

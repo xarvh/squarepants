@@ -71,7 +71,6 @@ type Expression
             , value : Expression
             }
         )
-    | Error
 
 
 type Pattern
@@ -82,26 +81,37 @@ type Statement
     = Evaluate Expression
     | Definition
         { name : Pattern
+        , maybeAnnotation : Maybe TypeAnnotation
         , parameters : List Pattern
         , body : OneOrMore Statement
         }
+    | Mutation
+        { left : String
+        , mutop : String
+        , right : Expression
+        }
 
 
+type TypeAnnotationUnion
+    = TypeDefined
+        { name : String
+        , args : List TypeAnnotation
+        }
+    | TypeVariable
+        { name : String
+        }
+    | TypeFunction
+        { from : TypeAnnotation
+        , to : TypeAnnotation
+        }
+    | TypeTuple2 ( TypeAnnotation, TypeAnnotation )
+    | TypeRecord (List ( String, TypeAnnotation ))
 
-{- TODO do I actually want these?
-   | Pass
-   | Return Expression
-   | If_Imperative
-       { condition : Expression
-       , true : List Statement
-       , false : List Statement
-       }
-   | Match_Imperative
-       { value : Expression
-       , patterns : List ( Pattern, List Statement )
-       , maybeElse : Maybe (List Statement)
-       }
--}
+
+type alias TypeAnnotation =
+    { isMutableReference : Bool
+    , union : TypeAnnotationUnion
+    }
 
 
 exprStart : Expression -> Int
