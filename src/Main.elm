@@ -135,15 +135,7 @@ viewInference code =
             code
                 |> Compiler.StringToTokens.lexer
                 |> Result.andThen Compiler.TokensToFormattableAst.parse
-                |> Result.map (List.foldl insertStatement Dict.empty)
-
-        insertStatement : FA.Statement -> Dict String CA.Expression -> Dict String CA.Expression
-        insertStatement statement scope =
-            let
-                (CA.Definition { name, body }) =
-                    Compiler.FormattableToCanonicalAst.statement statement
-            in
-            Dict.insert name body scope
+                |> Result.map (List.foldl Compiler.TypeInference_Test.insertStatement Dict.empty)
     in
     case res of
         Ok scope ->
@@ -193,9 +185,6 @@ viewAst code =
 viewStatement : FA.Statement -> Html msg
 viewStatement statement =
     case statement of
-        FA.Pass ->
-            Html.text "pass"
-
         FA.Evaluate expr ->
             Html.div
                 []
@@ -224,18 +213,9 @@ viewStatement statement =
                     |> Html.div []
                 ]
 
-        FA.Return expr ->
-            Html.div
-                []
-                [ Html.span [] [ Html.text "return " ]
-                , viewExpression expr
-                ]
-
-        FA.If_Imperative { condition, true, false } ->
-            Debug.todo "If_Imperative"
-
-        FA.Match_Imperative { value, patterns, maybeElse } ->
-            Debug.todo "Match_Imperative"
+        FA.Mutation x ->
+            Debug.toString x
+                |> Html.text
 
 
 viewExpression : FA.Expression -> Html msg

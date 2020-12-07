@@ -9,32 +9,6 @@ module Types.CanonicalAst exposing (..)
 -}
 
 
-type alias ModuleReference =
-    String
-
-
-type TypeAnnotationUnion
-    = TypeDefined
-        { moduleReference : ModuleReference
-        , name : String
-        , args : List TypeAnnotation
-        }
-    | TypeVariable
-        { name : String
-        }
-    | TypeFunction
-        { from : TypeAnnotation
-        , to : TypeAnnotation
-        }
-    | TypeRecord (List ( String, TypeAnnotation ))
-
-
-type alias TypeAnnotation =
-    { isMutableReference : Bool
-    , union : TypeAnnotationUnion
-    }
-
-
 type Expression
     = NumberLiteral
         { start : Int
@@ -45,7 +19,8 @@ type Expression
         { start : Int
         , end : Int
         , variable : String
-        , moduleReference : ModuleReference
+
+        --, moduleReference : ModuleReference
         }
     | Lambda
         { start : Int
@@ -82,3 +57,27 @@ type Statement
         , op : String
         , body : Expression
         }
+
+
+type alias TypeAnnotation =
+    { isMutable : Bool
+    , union : TypeAnnotationUnion
+    }
+
+
+type TypeAnnotationUnion
+    = TypeConstant
+        { name : String
+
+        --, moduleReference : ModuleReference
+        , args : List TypeAnnotationUnion
+        }
+    | TypeVariable
+        { name : String
+        }
+    | TypeFunction
+        -- `from` can actually be mutable
+        { from : TypeAnnotation
+        , to : TypeAnnotationUnion
+        }
+    | TypeRecord (List ( String, TypeAnnotationUnion ))

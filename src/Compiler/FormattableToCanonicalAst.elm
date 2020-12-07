@@ -22,9 +22,6 @@ expression faExpr =
                         ( FA.Evaluate expr, [] ) ->
                             expr
 
-                        ( FA.Return expr, [] ) ->
-                            expr
-
                         _ ->
                             Debug.todo "STATEMENTS"
 
@@ -47,7 +44,7 @@ expression faExpr =
                 |> OneOrMore.toList
                 |> List.foldl fold (expression reference)
 
-        FA.If_Functional { start, condition, true, false } ->
+        FA.If { start, condition, true, false } ->
             CA.If
                 { start = start
                 , condition = expression condition
@@ -56,10 +53,10 @@ expression faExpr =
                 }
 
         FA.Tuple2 { first, second } ->
-            CA.Tuple2
-                { first = expression first
-                , second = expression second
-                }
+            CA.Record
+                [ { name = "first", value = expression first }
+                , { name = "second", value = expression second }
+                ]
 
         _ ->
             Debug.todo "NOT SUPPORTED FOR NOW"
@@ -68,7 +65,7 @@ expression faExpr =
 statement : FA.Statement -> CA.Statement
 statement faStat =
     case faStat of
-        FA.Definition { name, parameters, body } ->
+        FA.Definition { name, maybeAnnotation, parameters, body } ->
             case body of
                 ( FA.Evaluate bodyExpression, [] ) ->
                     let
@@ -82,6 +79,7 @@ statement faStat =
                     in
                     CA.Definition
                         { name = n
+                        , maybeAnnotation = Maybe.map annotation maybeAnnotation
                         , body = List.foldr fold (expression bodyExpression) parameters
                         }
 
@@ -90,3 +88,8 @@ statement faStat =
 
         _ ->
             Debug.todo "STAT NOT SUPPORTED FOR NOW"
+
+
+annotation : FA.TypeAnnotation -> CA.TypeAnnotation
+annotation faAnn =
+    Debug.todo ""

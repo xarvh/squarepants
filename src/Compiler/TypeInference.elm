@@ -42,7 +42,7 @@ type InferredType
     = Named String
     | TypeVariable PlaceholderId
     | Function InferredType InferredType
-    | Tuple2 InferredType InferredType
+    | Record (List ( String, InferredType ))
 
 
 type alias PlaceholderId =
@@ -169,8 +169,8 @@ typeContains id type_ =
         Function i o ->
             typeContains id i || typeContains id o
 
-        Tuple2 a b ->
-            typeContains id a || typeContains id b
+        Record attrs ->
+            List.any (\( name, t ) -> typeContains id t) attrs
 
 
 
@@ -197,10 +197,11 @@ unify a b =
                 result_do (unify (applySubstitutionsToType sub1 aOut) (applySubstitutionsToType sub1 bOut)) <| \sub2 ->
                 composeSubstitutions sub1 sub2
 
-            ( Tuple2 a1 a2, Tuple2 b1 b2 ) ->
-                result_do (unify a1 b1) <| \sub1 ->
-                result_do (unify (applySubstitutionsToType sub1 a2) (applySubstitutionsToType sub1 b2)) <| \sub2 ->
-                composeSubstitutions sub1 sub2
+            ( Record aAttrs, Record bAttrs ) ->
+                --                 result_do (unify a1 b1) <| \sub1 ->
+                --                 result_do (unify (applySubstitutionsToType sub1 a2) (applySubstitutionsToType sub1 b2)) <| \sub2 ->
+                --                 composeSubstitutions sub1 sub2
+                Debug.todo ""
 
             _ ->
                 Err <| "Cannot match `" ++ Debug.toString a ++ "` with `" ++ Debug.toString b ++ "`"
@@ -231,10 +232,10 @@ applySubstitutionsToType substitutions targetType =
                 (applySubstitutionsToType substitutions paramType)
                 (applySubstitutionsToType substitutions bodyType)
 
-        Tuple2 fst snd ->
-            Tuple2
-                (applySubstitutionsToType substitutions fst)
-                (applySubstitutionsToType substitutions snd)
+        Record attrs ->
+            attrs
+                |> List.map (Tuple.mapSecond <| applySubstitutionsToType substitutions)
+                |> Record
 
 
 composeSubstitutions : Substitutions -> Substitutions -> Res Substitutions
@@ -304,17 +305,18 @@ inferExpr nextId0 env expr =
                         , newNewPlaceholderId
                         )
 
-        CA.Tuple2 { first, second } ->
-            result_do (inferExpr nextId0 env first) <| \( firstType, firstSubs, pid0 ) ->
-            result_do (inferExpr pid0 env second) <| \( secondType, secondSubs, pid1 ) ->
-            result_do (composeSubstitutions firstSubs secondSubs) <| \unifiedSubs ->
-            Ok
-                ( Tuple2
-                    (applySubstitutionsToType secondSubs firstType)
-                    (applySubstitutionsToType firstSubs secondType)
-                , unifiedSubs
-                , pid1
-                )
+        CA.Record attrs ->
+            --             result_do (inferExpr nextId0 env first) <| \( firstType, firstSubs, pid0 ) ->
+            --             result_do (inferExpr pid0 env second) <| \( secondType, secondSubs, pid1 ) ->
+            --             result_do (composeSubstitutions firstSubs secondSubs) <| \unifiedSubs ->
+            --             Ok
+            --                 ( Record
+            --                     (applySubstitutionsToType secondSubs firstType)
+            --                     (applySubstitutionsToType firstSubs secondType)
+            --                 , unifiedSubs
+            --                 , pid1
+            --                 )
+            Debug.todo ""
 
         CA.Call { reference, argument } ->
             result_do (inferExpr nextId0 env reference) <| \( actualFunctionType, s1, n1 ) ->

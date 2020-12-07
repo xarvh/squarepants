@@ -15,17 +15,18 @@ simpleTest =
     Test.simple Debug.toString
 
 
+insertStatement : FA.Statement -> Dict String CA.Expression -> Dict String CA.Expression
+insertStatement statement scope =
+    case Compiler.FormattableToCanonicalAst.statement statement of
+        CA.Definition { name, body } ->
+            Dict.insert name body scope
+
+        _ ->
+            scope
+
+
 stringToCanonicalAst : String -> Result String (Dict String CA.Expression)
 stringToCanonicalAst code =
-    let
-        insertStatement : FA.Statement -> Dict String CA.Expression -> Dict String CA.Expression
-        insertStatement statement scope =
-            let
-                (CA.Definition { name, body }) =
-                    Compiler.FormattableToCanonicalAst.statement statement
-            in
-            Dict.insert name body scope
-    in
     code
         |> Compiler.StringToTokens.lexer
         |> Result.andThen Compiler.TokensToFormattableAst.parse

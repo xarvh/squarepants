@@ -92,8 +92,11 @@ type Statement
         }
 
 
+{-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
+This way we can tell the user why they can't flag those as mutable rather than just producing a syntax error.
+-}
 type TypeAnnotationUnion
-    = TypeDefined
+    = TypeConstant
         { name : String
         , args : List TypeAnnotation
         }
@@ -105,7 +108,7 @@ type TypeAnnotationUnion
         , to : TypeAnnotation
         }
     | TypeTuple2 ( TypeAnnotation, TypeAnnotation )
-    | TypeRecord (List ( String, TypeAnnotation ))
+    | TypeRecord (List ( String, TypeAnnotationUnion ))
 
 
 type alias TypeAnnotation =
@@ -138,14 +141,14 @@ exprStart expr =
         Unop { start, op, right } ->
             start
 
-        If_Functional { start, condition, true, false } ->
+        If { start, condition, true, false } ->
             start
 
-        Match_Functional { start, value, patterns, maybeElse } ->
+        Match { start, value, patterns, maybeElse } ->
             start
 
         Tuple2 { first, second } ->
             exprStart first
 
-        Error ->
+        Record attrs ->
             Debug.todo ""

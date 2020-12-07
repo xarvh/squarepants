@@ -97,10 +97,10 @@ lexContent startPos state =
         '"' :: rest ->
             runLexer True (lexSoftQuotedString state.pos) 1 rest
 
-        '-' :: '-' :: rest ->
+        '#' :: rest ->
             runLexer False (lexSingleLineComment state.pos) 2 rest
 
-        '{' :: '-' :: rest ->
+        '{' :: '#' :: rest ->
             runLexer False (lexMultiLineComment state.pos) 2 rest
 
         '\n' :: rest ->
@@ -302,7 +302,7 @@ recognisedTokens =
           , constructor = String.trimLeft >> String.dropRight 1 >> Token.Unop >> Ok
           }
         , -- Squiggles
-          { regex = "^[ ]*[=+\\-*/:><!^|#]+"
+          { regex = "^[ ]*[=+\\-*/:><!^|@]+"
           , consumed = String.length
           , constructor =
                 \m ->
@@ -366,6 +366,9 @@ recognisedTokens =
                             Ok Token.Defop
 
                         "@=" ->
+                            Ok <| Token.Mutop match
+
+                        "@" ->
                             Ok <| Token.Mutop match
 
                         "+=" ->
@@ -573,10 +576,10 @@ lexMultiLineComment startPos state =
     let
         rec pos depth code =
             case code of
-                '{' :: '-' :: rest ->
+                '{' :: '#' :: rest ->
                     rec (pos + 1) (depth + 1) rest
 
-                '-' :: '}' :: rest ->
+                '#' :: '}' :: rest ->
                     let
                         endPos =
                             pos + 2

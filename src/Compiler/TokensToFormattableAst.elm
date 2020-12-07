@@ -140,7 +140,6 @@ expr =
 
         -- TODO pipes can't actually be mixed
         , binopsOr Token.Pipe
-        , binopsOr Token.Assignment
         ]
 
 
@@ -218,22 +217,30 @@ statement =
 
 definition : Parser FA.Statement
 definition =
-    do (maybe annotation) <| \maybeAnnotation ->
-    do (oneOrMore pattern) <| \( name, params ) ->
+    do (maybe typeAnnotation) <| \maybeAnnotation ->
+    do (oneOrMore pattern) <| \( namePattern, params ) ->
     do (exactTokenKind Token.Defop) <| \_ ->
-    do (oneOf [ statement, statementBlock ]) <| \sb ->
-    -- TODO if name is a pattern, then params must be empty
-    if maybeAnnotation /= Nothing && Maybe.map .name maybeAnnotation /= Just name then
-        abort "annotation doesn't match definition"
+    do (oneOf [ inlineStatement, statementBlock ]) <| \sb ->
+    case namePattern of
+        -- TODO if namePattern is any other pattern, then params must be empty
+        FA.PatternAny name ->
+            if maybeAnnotation /= Nothing && Maybe.map .name maybeAnnotation /= Just name then
+                Parser.abort "annotation name doesn't match definition name"
 
-    else
-        { name = name
-        , parameters = params
-        , body = sb
-        , maybeAnnotation = Maybe.map .type_ maybeAnnotation
-        }
-            |> FA.Definition
-            |> succeed
+            else
+                { name = namePattern
+                , parameters = params
+                , body = sb
+                , maybeAnnotation = Maybe.map .type_ maybeAnnotation
+                }
+                    |> FA.Definition
+                    |> succeed
+
+
+inlineStatement : Parser (OneOrMore FA.Statement)
+inlineStatement =
+    do statement <| \s ->
+    succeed ( s, [] )
 
 
 statementBlock : Parser (OneOrMore FA.Statement)
@@ -243,17 +250,17 @@ statementBlock =
         |> Parser.surroundWith (exactTokenKind Token.BlockStart) (exactTokenKind Token.BlockEnd)
 
 
-annotation : Parser { name : String, type_ : FA.TypeAnnotation }
-annotation =
+typeAnnotation : Parser { name : String, type_ : FA.TypeAnnotation }
+typeAnnotation =
     do symbolName <| \name ->
-    do exactTokenKind Token.HasType <| \_ ->
-    do annotationType <| \t ->
+    do (exactTokenKind Token.HasType) <| \_ ->
+    do typeParser <| \t ->
     succeed { name = name, type_ = t }
 
 
-annotationType : Parser FA.TypeAnnotation
-annotationType =
-    xxx
+typeParser : Parser FA.TypeAnnotation
+typeParser =
+    fail
 
 
 

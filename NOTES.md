@@ -10,10 +10,10 @@ MVP
   - support type declarations
   - core libraries
   - emit javascript
-  - mutation
 
 
 * Leave out?
+  - modules
   - macros (Dict supports only strings)
   - proper type inference
 
@@ -144,6 +144,18 @@ Unit type is used as
 Stuff that seems good but needs thinking
 ----------------------------------------
 
+* Add "naming suggestions" for container types? (Maybe, Result, List, Dict...?)
+
+* Thorin Intermediate representation? https://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf
+
+* Keep currying.
+  Because it's fun and makes you feel smart and fall in love with functional programming.
+  It's easier to implement.
+  It can also make code less readable, but I hope the advantages above will offset this.
+
+
+
+
 ### Mutability, take 2
 
 The only values that can be mutable are
@@ -272,6 +284,25 @@ To prevent it, when type checking a lambda:
     descend the return expression
       if it contains any function that mutates any of the mutables in the set
         throw an error
+
+
+better algorithm:
+    when type checking a lambda's return statement
+      for any lambda that the returned value contains
+        any variable that the lamba mutates must either
+          - be the argument of the original lambda
+          - be the argument of the contained lambda
+          - belong to the parent scope/env of the original lambda
+
+
+
+
+
+
+
+
+
+
 
 
 
