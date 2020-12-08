@@ -5,11 +5,11 @@ MVP
 
 
 * TODOS
-  - support records
   - support type annotations
   - support type declarations
-  - core libraries
   - emit javascript
+  - support records
+  - core libraries
 
 
 * Leave out?

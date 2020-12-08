@@ -147,6 +147,10 @@ parse parser getNext readState =
 --
 --
 -- These functions are aware of the internal structure of the parser (ie, it's a function)
+--
+-- TODO rename to `accept`, `reject`, `abort`
+-- TODO allow `abort` to produce any type of error, not only string
+
 
 
 {-| Abort

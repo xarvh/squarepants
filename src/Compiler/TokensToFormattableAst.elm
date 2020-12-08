@@ -158,15 +158,8 @@ parensOr higher =
             ( head, [] ) ->
                 succeed head
 
-            ( first, second :: [] ) ->
-                succeed <|
-                    FA.Tuple2
-                        { first = first
-                        , second = second
-                        }
-
-            _ ->
-                fail
+            ( head, tail ) ->
+                succeed <| FA.Tuple (head :: tail)
         ]
 
 
@@ -250,17 +243,95 @@ statementBlock =
         |> Parser.surroundWith (exactTokenKind Token.BlockStart) (exactTokenKind Token.BlockEnd)
 
 
+
+----
+--- Types
+--
+
+
 typeAnnotation : Parser { name : String, type_ : FA.TypeAnnotation }
 typeAnnotation =
     do symbolName <| \name ->
     do (exactTokenKind Token.HasType) <| \_ ->
-    do typeParser <| \t ->
+    do typeExpr <| \t ->
     succeed { name = name, type_ = t }
 
 
-typeParser : Parser FA.TypeAnnotation
-typeParser =
-    fail
+typeExpr : Parser FA.TypeAnnotation
+typeExpr =
+    Parser.expression typeTerm
+        -- the `Or` stands for `Or higher priority parser`
+        [ typeParensOr
+        , typeFunctionOr
+        , typeApplicationOr
+
+        -- TODO record
+        ]
+
+
+typeTerm : Parser FA.TypeAnnotation
+typeTerm =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Symbol s ->
+            succeed
+                (if isUppercaseSymbol s then
+                    FA.TypeConstant s
+
+                 else
+                    FA.TypeVariable s
+                )
+
+        _ ->
+            fail
+
+
+isUppercaseSymbol : String -> Bool
+isUppercaseSymbol s =
+    True
+
+
+typeParensOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeParensOr higher =
+    oneOf
+        [ higher
+        , do (surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> commaSeparated typeExpr)) <| \t ->
+        case t of
+            ( head, [] ) ->
+                succeed head
+
+            ( head, tail ) ->
+                succeed <| FA.TypeTuple (head :: tail)
+        ]
+
+
+typeFunctionOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeFunctionOr higher =
+    let
+        arrowAndHigher =
+            do (exactTokenKind Token.Arrow) <| \_ -> higher
+    in
+    do higher <| \e ->
+    do (zeroOrMore arrowAndHigher) <| \es ->
+    if es == [] then
+        succeed e
+
+    else
+        succeed <| FA.TypeFunction (e :: es)
+
+
+typeApplicationOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeApplicationOr higher =
+    oneOf
+        [ higher
+        , do typeTerm <| \base ->
+        do (oneOrMore higher) <| \args ->
+        { name = base
+        , args = args
+        }
+            |> FA.TypePolymorphic
+            |> succeed
+        ]
 
 
 

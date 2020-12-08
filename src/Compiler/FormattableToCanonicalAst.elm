@@ -52,11 +52,16 @@ expression faExpr =
                 , false = expression condition
                 }
 
-        FA.Tuple2 { first, second } ->
-            CA.Record
-                [ { name = "first", value = expression first }
-                , { name = "second", value = expression second }
-                ]
+        FA.Tuple list ->
+            case list of
+                [ first, second ] ->
+                    CA.Record
+                        [ { name = "first", value = expression first }
+                        , { name = "second", value = expression second }
+                        ]
+
+                _ ->
+                    Debug.todo "sorry, I'm supporting only tuples of size 2"
 
         _ ->
             Debug.todo "NOT SUPPORTED FOR NOW"

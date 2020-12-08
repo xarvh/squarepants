@@ -61,10 +61,7 @@ type Expression
         , patterns : List ( Pattern, Expression )
         , maybeElse : Maybe Expression
         }
-    | Tuple2
-        { first : Expression
-        , second : Expression
-        }
+    | Tuple (List Expression)
     | Record
         (List
             { name : String
@@ -98,16 +95,18 @@ This way we can tell the user why they can't flag those as mutable rather than j
 type TypeAnnotationUnion
     = TypeConstant
         { name : String
-        , args : List TypeAnnotation
         }
     | TypeVariable
         { name : String
         }
-    | TypeFunction
-        { from : TypeAnnotation
-        , to : TypeAnnotation
+      -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
+    | TypeFunction (List TypeAnnotation)
+    | TypePolymorphic
+        -- TODO name should be a String
+        { name : TypeAnnotation
+        , args : OneOrMore TypeAnnotation
         }
-    | TypeTuple2 ( TypeAnnotation, TypeAnnotation )
+    | TypeTuple (List TypeAnnotation)
     | TypeRecord (List ( String, TypeAnnotationUnion ))
 
 
@@ -147,8 +146,8 @@ exprStart expr =
         Match { start, value, patterns, maybeElse } ->
             start
 
-        Tuple2 { first, second } ->
-            exprStart first
+        Tuple _ ->
+            Debug.todo ""
 
         Record attrs ->
             Debug.todo ""
