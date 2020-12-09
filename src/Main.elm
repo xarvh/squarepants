@@ -23,10 +23,8 @@ import Types.FormattableAst as FA
 
 initialCode =
     """
+b : Int
 b = 1
-
-a x =
- b
     """
 
 
@@ -111,12 +109,12 @@ view model =
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tests" ]
-                , [ Compiler.StringToTokens_Test.tests
-                  , Compiler.TokensToFormattableAst_Test.tests
-                  , Compiler.TypeInference_Test.tests
-                  ]
-                    |> List.concat
-                    |> Test.viewList
+--                 , [ Compiler.StringToTokens_Test.tests
+--                   , Compiler.TokensToFormattableAst_Test.tests
+--                   , Compiler.TypeInference_Test.tests
+--                   ]
+--                     |> List.concat
+--                     |> Test.viewList
                 ]
             ]
         ]

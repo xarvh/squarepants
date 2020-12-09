@@ -2,17 +2,39 @@ module Compiler.FormattableToCanonicalAst exposing (..)
 
 import OneOrMore
 import Types.CanonicalAst as CA
+import Types.Error as Error exposing (Error)
 import Types.FormattableAst as FA
 
 
-expression : FA.Expression -> CA.Expression
+errorTodo : String -> Result Error a
+errorTodo s =
+    Err
+        { kind = Error.Whatever s
+        , pos = -1
+        }
+
+
+firstError : List o -> List (Result e o) -> Result e (List o)
+firstError os rs =
+    case rs of
+        [] ->
+            Ok os
+
+        (Err e) :: _ ->
+            Err e
+
+        (Ok o) :: rt ->
+            firstError (o :: os) rt
+
+
+expression : FA.Expression -> Result Error CA.Expression
 expression faExpr =
     case faExpr of
         FA.NumberLiteral args ->
-            CA.NumberLiteral args
+            Ok <| CA.NumberLiteral args
 
         FA.Variable args ->
-            CA.Variable args
+            Ok <| CA.Variable args
 
         FA.Lambda { start, parameters, body } ->
             -- fn x y z = expr -> fn x = fn y = fn z = expr
@@ -29,45 +51,66 @@ expression faExpr =
                 fold (FA.PatternAny paramName) bodyAccum =
                     CA.Lambda { start = start, parameter = paramName, body = bodyAccum }
             in
-            parameters
-                |> OneOrMore.toList
-                |> List.foldr fold (expression bodyExpression)
+            bodyExpression
+                |> expression
+                |> Result.map
+                    (\expr ->
+                        parameters
+                            |> OneOrMore.toList
+                            |> List.foldr fold expr
+                    )
 
         FA.FunctionCall { reference, arguments } ->
             -- ref arg1 arg2 arg3...
             let
-                fold : FA.Expression -> CA.Expression -> CA.Expression
+                fold : CA.Expression -> CA.Expression -> CA.Expression
                 fold argument refAccum =
-                    CA.Call { reference = refAccum, argument = expression argument }
+                    CA.Call { reference = refAccum, argument = argument }
             in
-            arguments
-                |> OneOrMore.toList
-                |> List.foldl fold (expression reference)
+            Result.map2
+                (List.foldl fold)
+                (expression reference)
+                (arguments
+                    |> OneOrMore.toList
+                    |> List.map expression
+                    |> firstError []
+                )
 
         FA.If { start, condition, true, false } ->
-            CA.If
-                { start = start
-                , condition = expression condition
-                , true = expression condition
-                , false = expression condition
-                }
+            Result.map3
+                (\c t f ->
+                    CA.If
+                        { start = start
+                        , condition = c
+                        , true = t
+                        , false = f
+                        }
+                )
+                (expression condition)
+                (expression true)
+                (expression false)
 
         FA.Tuple list ->
             case list of
                 [ first, second ] ->
-                    CA.Record
-                        [ { name = "first", value = expression first }
-                        , { name = "second", value = expression second }
-                        ]
+                    Result.map2
+                        (\f s ->
+                            CA.Record
+                                [ { name = "first", value = f }
+                                , { name = "second", value = s }
+                                ]
+                        )
+                        (expression first)
+                        (expression second)
 
                 _ ->
-                    Debug.todo "sorry, I'm supporting only tuples of size 2"
+                    errorTodo "sorry, I'm supporting only tuples of size 2"
 
         _ ->
-            Debug.todo "NOT SUPPORTED FOR NOW"
+            errorTodo "NOT SUPPORTED FOR NOW"
 
 
-statement : FA.Statement -> CA.Statement
+statement : FA.Statement -> Result Error CA.Statement
 statement faStat =
     case faStat of
         FA.Definition { name, maybeAnnotation, parameters, body } ->
@@ -82,19 +125,26 @@ statement faStat =
                             -- TODO start?
                             CA.Lambda { start = 0, parameter = paramName, body = bodyAccum }
                     in
-                    CA.Definition
-                        { name = n
-                        , maybeAnnotation = Maybe.map annotation maybeAnnotation
-                        , body = List.foldr fold (expression bodyExpression) parameters
-                        }
+                    bodyExpression
+                        |> expression
+                        |> Result.map
+                            (\expr ->
+                                CA.Definition
+                                    { name = n
+                                    , maybeAnnotation = Maybe.map annotation maybeAnnotation
+                                    , body = List.foldr fold expr parameters
+                                    }
+                            )
 
                 _ ->
-                    Debug.todo "STATEMENT IS TOO COMPLICATED"
+                    errorTodo "STATEMENT IS TOO COMPLICATED"
 
         _ ->
-            Debug.todo "STAT NOT SUPPORTED FOR NOW"
+            errorTodo "STAT NOT SUPPORTED FOR NOW"
 
 
 annotation : FA.TypeAnnotation -> CA.TypeAnnotation
 annotation faAnn =
-    Debug.todo ""
+    { union = CA.TypeConstant { name = "TODO", args = [] }
+    , isMutable = False
+    }

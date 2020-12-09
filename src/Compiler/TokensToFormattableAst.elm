@@ -16,8 +16,8 @@ d name =
                 , Result.map (\( output, readState ) -> List.take 1 readState) first
                 )
     in
-    --Parser.doWithDebug logDebug name
-    do
+    --do
+    Parser.doWithDebug logDebug name
 
 
 w name parser =
@@ -96,6 +96,12 @@ oneToken =
     Parser.consumeOne
 
 
+isUppercaseSymbol : String -> Bool
+isUppercaseSymbol s =
+    -- TODO
+    True
+
+
 
 ----
 --- Term
@@ -163,7 +169,7 @@ parensOr higher =
         ]
 
 
-commaSeparated : Parser FA.Expression -> Parser (OneOrMore FA.Expression)
+commaSeparated : Parser expr -> Parser (OneOrMore expr)
 commaSeparated v =
     let
         comma =
@@ -254,6 +260,7 @@ typeAnnotation =
     do symbolName <| \name ->
     do (exactTokenKind Token.HasType) <| \_ ->
     do typeExpr <| \t ->
+    do (exactTokenKind Token.NewSiblingLine) <| \_ ->
     succeed { name = name, type_ = t }
 
 
@@ -262,6 +269,7 @@ typeExpr =
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr
+        , typeMutableOr
         , typeFunctionOr
         , typeApplicationOr
 
@@ -276,32 +284,43 @@ typeTerm =
         Token.Symbol s ->
             succeed
                 (if isUppercaseSymbol s then
-                    FA.TypeConstant s
+                    FA.TypeConstant { name = s }
 
                  else
-                    FA.TypeVariable s
+                    FA.TypeVariable { name = s }
                 )
 
         _ ->
             fail
 
 
-isUppercaseSymbol : String -> Bool
-isUppercaseSymbol s =
-    True
-
-
 typeParensOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
 typeParensOr higher =
     oneOf
         [ higher
-        , do (surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> commaSeparated typeExpr)) <| \t ->
-        case t of
-            ( head, [] ) ->
-                succeed head
+        , let
+            parens =
+                surroundWith
+                    (Token.RoundParen Token.Open)
+                    (Token.RoundParen Token.Closed)
+                    (Parser.breakCircularDefinition <| \_ -> commaSeparated typeExpr)
+          in
+          do parens <| \t ->
+          case t of
+              ( head, [] ) ->
+                  succeed <| head
 
-            ( head, tail ) ->
-                succeed <| FA.TypeTuple (head :: tail)
+              ( head, tail ) ->
+                  succeed <| FA.TypeTuple (head :: tail)
+        ]
+
+
+typeMutableOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeMutableOr higher =
+    oneOf
+        [ higher
+        , do (discardFirst (exactTokenKind (Token.Mutop "@")) higher) <| \t ->
+        succeed <| FA.TypeMutable t
         ]
 
 

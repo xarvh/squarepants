@@ -144,6 +144,9 @@ Unit type is used as
 Stuff that seems good but needs thinking
 ----------------------------------------
 
+* Parser error friendliness: https://www.reddit.com/r/ProgrammingLanguages/comments/k9u35g/whats_an_useful_debugging_output_for_a_simple/
+
+
 * Add "naming suggestions" for container types? (Maybe, Result, List, Dict...?)
 
 * Thorin Intermediate representation? https://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf

@@ -4,8 +4,11 @@ module Types.FormattableAst exposing (..)
 
 It is meant for two purposes:
 
-1.  Transform it back into human-readable, nicely formatted code
-2.  Transform it into canonical AST for compiling
+1.  Transform it into canonical AST for compiling
+2.  Transform it back into human-readable, nicely formatted code
+
+It is a lot more permissive than what the actual language syntax allows, because in this way we can give more helpful error messages to the user.
+Instead than errors at parse time, we can produce more meaningful errors when translating into canonical.
 
 -}
 
@@ -92,28 +95,24 @@ type Statement
 {-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
 This way we can tell the user why they can't flag those as mutable rather than just producing a syntax error.
 -}
-type TypeAnnotationUnion
+type TypeAnnotation
     = TypeConstant
         { name : String
         }
     | TypeVariable
         { name : String
         }
-      -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
-    | TypeFunction (List TypeAnnotation)
+    | TypeFunction
+        -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
+        (List TypeAnnotation)
     | TypePolymorphic
         -- TODO name should be a String
         { name : TypeAnnotation
         , args : OneOrMore TypeAnnotation
         }
     | TypeTuple (List TypeAnnotation)
-    | TypeRecord (List ( String, TypeAnnotationUnion ))
-
-
-type alias TypeAnnotation =
-    { isMutableReference : Bool
-    , union : TypeAnnotationUnion
-    }
+    | TypeRecord (List ( String, TypeAnnotation ))
+    | TypeMutable TypeAnnotation
 
 
 exprStart : Expression -> Int

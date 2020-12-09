@@ -18,7 +18,7 @@ simpleTest =
 insertStatement : FA.Statement -> Dict String CA.Expression -> Dict String CA.Expression
 insertStatement statement scope =
     case Compiler.FormattableToCanonicalAst.statement statement of
-        CA.Definition { name, body } ->
+        Ok (CA.Definition { name, body }) ->
             Dict.insert name body scope
 
         _ ->
