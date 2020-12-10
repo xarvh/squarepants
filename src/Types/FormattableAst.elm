@@ -15,6 +15,22 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 import OneOrMore exposing (OneOrMore)
 
 
+{-| This is the stuff that can live in the module root
+-}
+type RootStatement
+    = Statement Statement
+    | TypeAlias
+        { name : String
+        , args : List String
+        , type_ : Type
+        }
+    | TypeDefinition
+        { name : String
+        , args : List String
+        , constructors : List { name : String, args : List Type }
+        }
+
+
 type Expression
     = StringLiteral
         { start : Int
@@ -81,7 +97,7 @@ type Statement
     = Evaluate Expression
     | Definition
         { name : Pattern
-        , maybeAnnotation : Maybe TypeAnnotation
+        , maybeAnnotation : Maybe Type
         , parameters : List Pattern
         , body : OneOrMore Statement
         }
@@ -95,7 +111,7 @@ type Statement
 {-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
 This way we can tell the user why they can't flag those as mutable rather than just producing a syntax error.
 -}
-type TypeAnnotation
+type Type
     = TypeConstant
         { name : String
         }
@@ -104,15 +120,15 @@ type TypeAnnotation
         }
     | TypeFunction
         -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
-        (List TypeAnnotation)
+        (List Type)
     | TypePolymorphic
         -- TODO name should be a String
-        { name : TypeAnnotation
-        , args : OneOrMore TypeAnnotation
+        { name : Type
+        , args : OneOrMore Type
         }
-    | TypeTuple (List TypeAnnotation)
-    | TypeRecord (List ( String, TypeAnnotation ))
-    | TypeMutable TypeAnnotation
+    | TypeTuple (List Type)
+    | TypeRecord (List ( String, Type ))
+    | TypeMutable Type
 
 
 exprStart : Expression -> Int

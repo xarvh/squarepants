@@ -5,7 +5,7 @@ MVP
 
 
 * TODOS
-  - support type annotations
+  v support type annotations
   - support type declarations
   - emit javascript
   - support records
@@ -146,7 +146,6 @@ Stuff that seems good but needs thinking
 
 * Parser error friendliness: https://www.reddit.com/r/ProgrammingLanguages/comments/k9u35g/whats_an_useful_debugging_output_for_a_simple/
 
-
 * Add "naming suggestions" for container types? (Maybe, Result, List, Dict...?)
 
 * Thorin Intermediate representation? https://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf
@@ -155,6 +154,15 @@ Stuff that seems good but needs thinking
   Because it's fun and makes you feel smart and fall in love with functional programming.
   It's easier to implement.
   It can also make code less readable, but I hope the advantages above will offset this.
+
+* do notation?
+  ```
+  blah blah blah |> to fn blahOutput =
+  someotherline |> to fn otherThingy =
+  doStuffWith blahOutput otherThingy
+  ```
+
+
 
 
 

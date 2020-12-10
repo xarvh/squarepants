@@ -5,6 +5,7 @@ import Browser
 import Compiler.FormattableToCanonicalAst
 import Compiler.StringToTokens
 import Compiler.StringToTokens_Test
+import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
 import Compiler.TypeInference
@@ -128,14 +129,7 @@ view model =
 
 viewInference : String -> Html msg
 viewInference code =
-    let
-        res =
-            code
-                |> Compiler.StringToTokens.lexer
-                |> Result.andThen Compiler.TokensToFormattableAst.parse
-                |> Result.map (List.foldl Compiler.TypeInference_Test.insertStatement Dict.empty)
-    in
-    case res of
+    case Compiler.TestHelpers.stringToCanonicalAst code of
         Ok scope ->
             case Compiler.TypeInference.inferScope preamble scope of
                 Err err ->
@@ -147,8 +141,8 @@ viewInference code =
                         |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ Debug.toString v |> Html.text ])
                         |> Html.div []
 
-        _ ->
-            res
+        Err error ->
+            error
                 |> Debug.toString
                 |> (++) "ERROR "
                 |> Html.text
@@ -171,7 +165,7 @@ viewAst code =
     case res of
         Ok statements ->
             statements
-                |> List.map viewStatement
+                |> List.map viewRootStatement
                 |> Html.div []
 
         _ ->
@@ -180,9 +174,28 @@ viewAst code =
                 |> Html.text
 
 
+viewRootStatement : FA.RootStatement -> Html msg
+viewRootStatement rs =
+    case rs of
+        FA.TypeDefinition td ->
+            td
+                |> Debug.toString
+                |> (++) "type definition: "
+                |> Html.text
+
+        FA.TypeAlias td ->
+            td
+                |> Debug.toString
+                |> (++) "type alias: "
+                |> Html.text
+
+        FA.Statement s ->
+            viewStatement s
+
+
 viewStatement : FA.Statement -> Html msg
-viewStatement statement =
-    case statement of
+viewStatement s =
+    case s of
         FA.Evaluate expr ->
             Html.div
                 []

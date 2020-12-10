@@ -72,21 +72,10 @@ uncons ls =
             Nothing
 
 
-parse : List Token -> Result Error (List FA.Statement)
+parse : List Token -> Result Error (List FA.RootStatement)
 parse tokens =
-    let
-        parser =
-            do
-                (oneOf
-                    [ exactTokenKind Token.BlockStart
-                    , exactTokenKind Token.NewSiblingLine
-                    ]
-                )
-            <| \_ ->
-           oomSeparatedBy (exactTokenKind Token.NewSiblingLine) statement
-    in
     tokens
-        |> runParser (end parser)
+        |> runParser (end module_)
         |> Result.mapError (\s -> { pos = 0, kind = Error.Whatever s })
         |> Result.map OneOrMore.toList
 
@@ -96,10 +85,90 @@ oneToken =
     Parser.consumeOne
 
 
+module_ : Parser (OneOrMore FA.RootStatement)
+module_ =
+    do
+        (oneOf
+            [ exactTokenKind Token.BlockStart
+            , exactTokenKind Token.NewSiblingLine
+            ]
+        )
+    <| \_ ->
+   oomSeparatedBy (exactTokenKind Token.NewSiblingLine) rootStatement
+
+
 isUppercaseSymbol : String -> Bool
 isUppercaseSymbol s =
     -- TODO
     True
+
+
+inlineOrIndented : Parser a -> Parser a
+inlineOrIndented p =
+    oneOf
+        [ surroundWith Token.BlockStart Token.BlockEnd p
+        , p
+        ]
+
+
+
+----
+--- Root Statements
+--
+-- These can contain type declarations
+--
+
+
+rootStatement : Parser FA.RootStatement
+rootStatement =
+    oneOf
+        [ typeAlias
+        , typeDefinition
+        , do statement <| \s -> succeed (FA.Statement s)
+        ]
+
+
+typeAlias : Parser FA.RootStatement
+typeAlias =
+    do (exactTokenKind <| Token.Symbol "alias") <| \_ ->
+    do (oneOrMore termName) <| \( name, args ) ->
+    do (exactTokenKind Token.Defop) <| \_ ->
+    do (inlineOrIndented typeExpr) <| \type_ ->
+    { name = name
+    , args = args
+    , type_ = type_
+    }
+        |> FA.TypeAlias
+        |> succeed
+
+
+typeDefinition : Parser FA.RootStatement
+typeDefinition =
+    do (exactTokenKind <| Token.Symbol "type") <| \_ ->
+    do (oneOrMore termName) <| \( name, args ) ->
+    do (exactTokenKind Token.Defop) <| \_ ->
+    do (inlineOrIndented constructors) <| \cons ->
+    { name = name
+    , args = args
+    , constructors = cons
+    }
+        |> FA.TypeDefinition
+        |> succeed
+
+
+constructors : Parser (List { name : String, args : List FA.Type })
+constructors =
+    do (maybe <| exactTokenKind Token.ActualPipe) <| \_ ->
+    zeroOrMore constructor
+
+
+constructor : Parser { name : String, args : List FA.Type }
+constructor =
+    do (maybe <| exactTokenKind Token.NewSiblingLine) <| \_ ->
+    do (exactTokenKind Token.ActualPipe) <| \_ ->
+    do termName <| \name ->
+    do (zeroOrMore typeExpr) <| \args ->
+    succeed { name = name, args = args }
 
 
 
@@ -120,6 +189,17 @@ term =
 
         Token.Symbol s ->
             su s <| FA.Variable { start = token.start, end = token.end, variable = s }
+
+        _ ->
+            fail
+
+
+termName : Parser String
+termName =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Symbol s ->
+            succeed s
 
         _ ->
             fail
@@ -255,7 +335,7 @@ statementBlock =
 --
 
 
-typeAnnotation : Parser { name : String, type_ : FA.TypeAnnotation }
+typeAnnotation : Parser { name : String, type_ : FA.Type }
 typeAnnotation =
     do symbolName <| \name ->
     do (exactTokenKind Token.HasType) <| \_ ->
@@ -264,7 +344,7 @@ typeAnnotation =
     succeed { name = name, type_ = t }
 
 
-typeExpr : Parser FA.TypeAnnotation
+typeExpr : Parser FA.Type
 typeExpr =
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
@@ -277,7 +357,7 @@ typeExpr =
         ]
 
 
-typeTerm : Parser FA.TypeAnnotation
+typeTerm : Parser FA.Type
 typeTerm =
     do oneToken <| \token ->
     case token.kind of
@@ -294,7 +374,7 @@ typeTerm =
             fail
 
 
-typeParensOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeParensOr : Parser FA.Type -> Parser FA.Type
 typeParensOr higher =
     oneOf
         [ higher
@@ -315,7 +395,7 @@ typeParensOr higher =
         ]
 
 
-typeMutableOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeMutableOr : Parser FA.Type -> Parser FA.Type
 typeMutableOr higher =
     oneOf
         [ higher
@@ -324,7 +404,7 @@ typeMutableOr higher =
         ]
 
 
-typeFunctionOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeFunctionOr : Parser FA.Type -> Parser FA.Type
 typeFunctionOr higher =
     let
         arrowAndHigher =
@@ -339,7 +419,7 @@ typeFunctionOr higher =
         succeed <| FA.TypeFunction (e :: es)
 
 
-typeApplicationOr : Parser FA.TypeAnnotation -> Parser FA.TypeAnnotation
+typeApplicationOr : Parser FA.Type -> Parser FA.Type
 typeApplicationOr higher =
     oneOf
         [ higher

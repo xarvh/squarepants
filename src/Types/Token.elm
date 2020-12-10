@@ -20,6 +20,9 @@ type
     | StringLiteral String
     | NumberLiteral String
     | Symbol String
+      -- Types
+    | HasType
+    | ActualPipe
       -- Keywords
     | Fn
     | If
@@ -33,7 +36,6 @@ type
     | Unop String
     | Binop PrecedenceGroup String
     | Arrow
-    | HasType
       -- Parens
     | RoundParen OpenOrClosed
     | SquareBracket OpenOrClosed

@@ -356,6 +356,9 @@ recognisedTokens =
                         "<|" ->
                             Ok <| Token.Binop Token.Pipe match
 
+                        "|" ->
+                            Ok <| Token.ActualPipe
+
                         ">>" ->
                             Ok <| Token.Binop Token.Pipe match
 

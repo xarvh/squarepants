@@ -143,7 +143,7 @@ statement faStat =
             errorTodo "STAT NOT SUPPORTED FOR NOW"
 
 
-annotation : FA.TypeAnnotation -> CA.TypeAnnotation
+annotation : FA.Type -> CA.TypeAnnotation
 annotation faAnn =
     { union = CA.TypeConstant { name = "TODO", args = [] }
     , isMutable = False
