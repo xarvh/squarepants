@@ -18,6 +18,11 @@ kindToToken index kind =
     }
 
 
+
+-- TODO add tests for type annotations
+-- TODO add helpers to declare tests input via text code
+
+
 tests : List Test
 tests =
     [ ----

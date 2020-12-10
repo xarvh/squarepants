@@ -55,6 +55,16 @@ tests =
                 ]
         }
 
+    , simpleTest
+        { name = "Arrow ->"
+        , run = lexTokens "->"
+        , expected =
+            Ok
+                [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
+                , { kind = Token.Arrow, start = 0, end = 2 }
+                ]
+        }
+
     ----
     --- Blocks, sibling lines, indentation
     --

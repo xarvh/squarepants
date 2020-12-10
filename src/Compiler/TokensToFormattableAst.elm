@@ -16,8 +16,8 @@ d name =
                 , Result.map (\( output, readState ) -> List.take 1 readState) first
                 )
     in
-    --do
-    Parser.doWithDebug logDebug name
+    --Parser.doWithDebug logDebug name
+    do
 
 
 w name parser =

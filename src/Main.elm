@@ -109,12 +109,12 @@ view model =
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tests" ]
---                 , [ Compiler.StringToTokens_Test.tests
---                   , Compiler.TokensToFormattableAst_Test.tests
---                   , Compiler.TypeInference_Test.tests
---                   ]
---                     |> List.concat
---                     |> Test.viewList
+                , [ Compiler.StringToTokens_Test.tests
+                  , Compiler.TokensToFormattableAst_Test.tests
+                  , Compiler.TypeInference_Test.tests
+                  ]
+                    |> List.concat
+                    |> Test.viewList
                 ]
             ]
         ]
@@ -190,7 +190,7 @@ viewStatement statement =
                 , viewExpression expr
                 ]
 
-        FA.Definition { name, parameters, body } ->
+        FA.Definition { name, maybeAnnotation, parameters, body } ->
             Html.div
                 []
                 [ Html.span
@@ -201,6 +201,10 @@ viewStatement statement =
                       in
                       Html.text n
                     ]
+                , maybeAnnotation
+                    |> Maybe.map (\x -> " : " ++ Debug.toString x)
+                    |> Maybe.withDefault ""
+                    |> Html.text
                 , parameters
                     |> List.map (\(FA.PatternAny n) -> n)
                     |> List.map Html.text

@@ -297,7 +297,8 @@ recognisedTokens =
         , parenRegex "}" <| Token.CurlyBrace Token.Closed
         , parenRegex "," <| Token.Comma
         , -- Unary addittive
-          { regex = "^[ ]+[+-][^ ]"
+          -- the `>` at the end is to avoid matching `->`
+          { regex = "^[ ]+[+-][^ >]"
           , consumed = \match -> String.length match - 1
           , constructor = String.trimLeft >> String.dropRight 1 >> Token.Unop >> Ok
           }
@@ -313,7 +314,6 @@ recognisedTokens =
                     case match of
                         "->" ->
                             Ok <| Token.Arrow
-
                         ":" ->
                             Ok <| Token.HasType
 
