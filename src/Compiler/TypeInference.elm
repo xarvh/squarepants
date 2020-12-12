@@ -2,13 +2,15 @@ module Compiler.TypeInference exposing (..)
 
 {-| I don't understand what I'm doing, I'm just following
 
-<https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
+Da leggere:
 <http://steshaw.org/hm/hindley-milner.pdf>
-
-<http://reasonableapproximation.net/2019/05/05/hindley-milner.html>
-<https://ltbringer.github.io/blog/hindley-milner-for-humans>
-<https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand>
 <https://web.cecs.pdx.edu/~mpj/thih/thih.pdf>
+
+Letti:
+<http://reasonableapproximation.net/2019/05/05/hindley-milner.html>
+<https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand>
+<https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
+<https://ltbringer.github.io/blog/hindley-milner-for-humans>
 <https://course.ccs.neu.edu/cs4410sp19/lec_type-inference_notes.html>
 
 -}
@@ -38,23 +40,36 @@ type alias Res a =
     Result String a
 
 
-type InferredType
-    = Named String
-    | TypeVariable PlaceholderId
-    | Function InferredType InferredType
-    | Record (List ( String, InferredType ))
+type Type
+    = TypeMutable Type
+    | TypeInferencePlaceholder PlaceholderId
+    | TypeConstant
+        { name : String
+        }
+    | TypeFunction
+        { from : Type
+        , to : Type
+        }
+    | TypeRecord
+        (List
+            { name : String
+            , type_ : Type
+            }
+        )
 
 
 type alias PlaceholderId =
     Int
 
 
+{-| type environment
+-}
 type alias Env =
-    Dict String InferredType
+    Dict String Type
 
 
 type alias Substitutions =
-    Dict PlaceholderId InferredType
+    Dict PlaceholderId Type
 
 
 
@@ -86,8 +101,8 @@ inferScope preamble scope =
                             let
                                 subs1 =
                                     case Dict.get name env of
-                                        Just (TypeVariable oldPlaceholderId) ->
-                                            if TypeVariable oldPlaceholderId == type_ then
+                                        Just (TypeInferencePlaceholder oldPlaceholderId) ->
+                                            if TypeInferencePlaceholder oldPlaceholderId == type_ then
                                                 subs0
 
                                             else
@@ -131,11 +146,11 @@ applySubstitutionsToEnv subs env =
     Dict.map (\k v -> applySubstitutionsToType subs v) env
 
 
-addSymbol : PlaceholderId -> Env -> String -> ( InferredType, ( Env, PlaceholderId ) )
+addSymbol : PlaceholderId -> Env -> String -> ( Type, ( Env, PlaceholderId ) )
 addSymbol nextId0 env name =
     let
         type_ =
-            TypeVariable nextId0
+            TypeInferencePlaceholder nextId0
     in
     ( type_
     , ( Dict.insert name type_ env
@@ -144,33 +159,36 @@ addSymbol nextId0 env name =
     )
 
 
-bindPlaceholderIdToType : PlaceholderId -> InferredType -> Res Substitutions
+bindPlaceholderIdToType : PlaceholderId -> Type -> Res Substitutions
 bindPlaceholderIdToType id type_ =
     -- TODO Is this really needed? So far `unify` checks already if the two types are the same
-    if TypeVariable id == type_ then
+    if TypeInferencePlaceholder id == type_ then
         Ok Dict.empty
 
     else if typeContains id type_ then
-        Err <| "TypeVariable " ++ String.fromInt id ++ " is contained by " ++ Debug.toString type_
+        Err <| "TypeInferencePlaceholder " ++ String.fromInt id ++ " is contained by " ++ Debug.toString type_
 
     else
         Ok <| Dict.singleton id type_
 
 
-typeContains : PlaceholderId -> InferredType -> Bool
+typeContains : PlaceholderId -> Type -> Bool
 typeContains id type_ =
     case type_ of
-        Named _ ->
-            False
-
-        TypeVariable tid ->
+        TypeInferencePlaceholder tid ->
             tid == id
 
-        Function i o ->
-            typeContains id i || typeContains id o
+        TypeConstant _ ->
+            False
 
-        Record attrs ->
-            List.any (\( name, t ) -> typeContains id t) attrs
+        TypeFunction args ->
+            typeContains id args.from || typeContains id args.to
+
+        TypeRecord attrs ->
+            List.any (\attr -> typeContains id attr.type_) attrs
+
+        TypeMutable t ->
+            typeContains id t
 
 
 
@@ -179,25 +197,25 @@ typeContains id type_ =
 --
 
 
-unify : InferredType -> InferredType -> Res Substitutions
+unify : Type -> Type -> Res Substitutions
 unify a b =
     if a == b then
         Ok Dict.empty
 
     else
         case ( a, b ) of
-            ( TypeVariable aId, _ ) ->
+            ( TypeInferencePlaceholder aId, _ ) ->
                 bindPlaceholderIdToType aId b
 
-            ( _, TypeVariable bId ) ->
+            ( _, TypeInferencePlaceholder bId ) ->
                 bindPlaceholderIdToType bId a
 
-            ( Function aIn aOut, Function bIn bOut ) ->
-                result_do (unify aIn bIn) <| \sub1 ->
-                result_do (unify (applySubstitutionsToType sub1 aOut) (applySubstitutionsToType sub1 bOut)) <| \sub2 ->
+            ( TypeFunction ta, TypeFunction tb ) ->
+                result_do (unify ta.from tb.from) <| \sub1 ->
+                result_do (unify (applySubstitutionsToType sub1 ta.to) (applySubstitutionsToType sub1 tb.to)) <| \sub2 ->
                 composeSubstitutions sub1 sub2
 
-            ( Record aAttrs, Record bAttrs ) ->
+            ( TypeRecord aAttrs, TypeRecord bAttrs ) ->
                 --                 result_do (unify a1 b1) <| \sub1 ->
                 --                 result_do (unify (applySubstitutionsToType sub1 a2) (applySubstitutionsToType sub1 b2)) <| \sub2 ->
                 --                 composeSubstitutions sub1 sub2
@@ -213,13 +231,13 @@ unify a b =
 --
 
 
-applySubstitutionsToType : Substitutions -> InferredType -> InferredType
+applySubstitutionsToType : Substitutions -> Type -> Type
 applySubstitutionsToType substitutions targetType =
     case targetType of
-        Named s ->
+        TypeConstant _ ->
             targetType
 
-        TypeVariable placeholderId ->
+        TypeInferencePlaceholder placeholderId ->
             case Dict.get placeholderId substitutions of
                 Just inferredType ->
                     inferredType
@@ -227,21 +245,25 @@ applySubstitutionsToType substitutions targetType =
                 Nothing ->
                     targetType
 
-        Function paramType bodyType ->
-            Function
-                (applySubstitutionsToType substitutions paramType)
-                (applySubstitutionsToType substitutions bodyType)
+        TypeFunction { from, to } ->
+            TypeFunction
+                { from = applySubstitutionsToType substitutions from
+                , to = applySubstitutionsToType substitutions to
+                }
 
-        Record attrs ->
+        TypeRecord attrs ->
             attrs
-                |> List.map (Tuple.mapSecond <| applySubstitutionsToType substitutions)
-                |> Record
+                |> List.map (\a -> { a | type_ = applySubstitutionsToType substitutions a.type_ })
+                |> TypeRecord
+
+        TypeMutable t ->
+            TypeMutable <| applySubstitutionsToType substitutions t
 
 
 composeSubstitutions : Substitutions -> Substitutions -> Res Substitutions
 composeSubstitutions a b =
     let
-        rec : List ( PlaceholderId, InferredType ) -> Substitutions -> Res Substitutions
+        rec : List ( PlaceholderId, Type ) -> Substitutions -> Res Substitutions
         rec aAsList accum =
             case aAsList of
                 [] ->
@@ -267,18 +289,18 @@ composeSubstitutions a b =
 --
 
 
-inferExpr : PlaceholderId -> Env -> CA.Expression -> Res ( InferredType, Substitutions, PlaceholderId )
+inferExpr : PlaceholderId -> Env -> CA.Expression -> Res ( Type, Substitutions, PlaceholderId )
 inferExpr nextId0 env expr =
     case expr of
         CA.NumberLiteral _ ->
             Ok
-                ( Named "Number"
+                ( TypeConstant { name = "Number" }
                 , Dict.empty
                 , nextId0
                 )
 
         CA.Variable args ->
-            case Dict.get args.variable env of
+            case Dict.get args.name env of
                 Just t ->
                     Ok
                         ( t
@@ -300,7 +322,10 @@ inferExpr nextId0 env expr =
 
                 Ok ( bodyType, substitutions, newNewPlaceholderId ) ->
                     Ok
-                        ( Function (applySubstitutionsToType substitutions parameterType) bodyType
+                        ( TypeFunction
+                            { from = applySubstitutionsToType substitutions parameterType
+                            , to = bodyType
+                            }
                         , substitutions
                         , newNewPlaceholderId
                         )
@@ -318,7 +343,8 @@ inferExpr nextId0 env expr =
             --                 )
             Debug.todo ""
 
-        CA.Call { reference, argument } ->
+        CA.Call { reference, argument, argumentIsMutable } ->
+            -- TODO argumentIsMutable!!!
             result_do (inferExpr nextId0 env reference) <| \( actualFunctionType, s1, n1 ) ->
             let
                 env1 =
@@ -335,10 +361,10 @@ inferExpr nextId0 env expr =
                     extracted.nextId
             in
             result_do (composeSubstitutions s3 s4) <| \s5 ->
-            result_do (unify (applySubstitutionsToType s5 extracted.inType) argumentType) <| \s6 ->
+            result_do (unify (applySubstitutionsToType s5 extracted.type_.from) argumentType) <| \s6 ->
             result_do (composeSubstitutions s5 s6) <| \s7 ->
             Ok
-                ( applySubstitutionsToType s7 extracted.outType
+                ( applySubstitutionsToType s7 extracted.type_.to
                 , s7
                 , n3
                 )
@@ -347,33 +373,43 @@ inferExpr nextId0 env expr =
             Debug.todo ""
 
 
-extractFunctionTypes : PlaceholderId -> InferredType -> Res { inType : InferredType, outType : InferredType, subs : Substitutions, nextId : PlaceholderId }
+type alias ExtractFunctionTypesReturn =
+    { type_ :
+        { from : Type
+        , to : Type
+        }
+    , subs : Substitutions
+    , nextId : PlaceholderId
+    }
+
+
+extractFunctionTypes : PlaceholderId -> Type -> Res ExtractFunctionTypesReturn
 extractFunctionTypes nextId0 t =
     case t of
-        Function inType outType ->
+        TypeFunction type_ ->
             Ok
-                { inType = inType
-                , outType = outType
+                { type_ = type_
                 , subs = Dict.empty
                 , nextId = nextId0
                 }
 
-        TypeVariable pid ->
+        TypeInferencePlaceholder pid ->
             let
-                inType =
-                    TypeVariable nextId0
-
-                outType =
-                    TypeVariable (nextId0 + 1)
+                type_ =
+                    { from = TypeInferencePlaceholder nextId0
+                    , to = TypeInferencePlaceholder (nextId0 + 1)
+                    }
 
                 nextId1 =
                     nextId0 + 2
             in
             Ok
-                { inType = inType
-                , outType = outType
-                , subs = Dict.singleton pid (Function inType outType)
-                , nextId = nextId1
+                { nextId = nextId1
+                , type_ = type_
+                , subs =
+                    type_
+                        |> TypeFunction
+                        |> Dict.singleton pid
                 }
 
         _ ->

@@ -1,3 +1,15 @@
+Square Pants
+============
+A language for humans and other bottom dwellers
+
+* Functional language with local mutabilty
+* Type inferred
+* Designed for readability and writability
+
+
+
+
+
 MVP
 ---
 

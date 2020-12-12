@@ -30,6 +30,40 @@ type RootStatement
         , constructors : List { name : String, args : List Type }
         }
 
+type Statement
+    = Evaluate Expression
+    | Definition
+        { name : Pattern
+        , maybeAnnotation : Maybe Type
+        , parameters : List Pattern
+        , body : OneOrMore Statement
+        }
+    | Mutation
+        { left : String
+        , mutop : String
+        , right : Expression
+        }
+
+
+{-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
+This way we can tell the user why they can't flag those as mutable rather than just producing a syntax error.
+-}
+type Type
+    = TypeConstantOrVariable
+        { name : String
+        }
+    | TypeFunction
+        -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
+        (List Type)
+    | TypePolymorphic
+        -- TODO name should be a String
+        { name : Type
+        , args : OneOrMore Type
+        }
+    | TypeTuple (List Type)
+    | TypeRecord (List ( String, Type ))
+    | TypeMutable Type
+
 
 type Expression
     = StringLiteral
@@ -46,6 +80,7 @@ type Expression
         { start : Int
         , end : Int
         , variable : String
+        , willBeMutated : Bool
         }
     | Lambda
         { start : Int
@@ -92,43 +127,6 @@ type Expression
 type Pattern
     = PatternAny String
 
-
-type Statement
-    = Evaluate Expression
-    | Definition
-        { name : Pattern
-        , maybeAnnotation : Maybe Type
-        , parameters : List Pattern
-        , body : OneOrMore Statement
-        }
-    | Mutation
-        { left : String
-        , mutop : String
-        , right : Expression
-        }
-
-
-{-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
-This way we can tell the user why they can't flag those as mutable rather than just producing a syntax error.
--}
-type Type
-    = TypeConstant
-        { name : String
-        }
-    | TypeVariable
-        { name : String
-        }
-    | TypeFunction
-        -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
-        (List Type)
-    | TypePolymorphic
-        -- TODO name should be a String
-        { name : Type
-        , args : OneOrMore Type
-        }
-    | TypeTuple (List Type)
-    | TypeRecord (List ( String, Type ))
-    | TypeMutable Type
 
 
 exprStart : Expression -> Int

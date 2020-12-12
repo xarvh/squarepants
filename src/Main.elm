@@ -129,7 +129,7 @@ view model =
 
 viewInference : String -> Html msg
 viewInference code =
-    case Compiler.TestHelpers.stringToCanonicalAst code of
+    case Compiler.TestHelpers.stringToCanonicalStatements code of
         Ok scope ->
             case Compiler.TypeInference.inferScope preamble scope of
                 Err err ->

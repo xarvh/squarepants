@@ -34,6 +34,12 @@ type alias Parser a =
     Parser.Parser Token (List Token) a
 
 
+
+----
+--- Helpers
+--
+
+
 oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
 oomSeparatedBy sep pa =
     Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
@@ -42,6 +48,25 @@ oomSeparatedBy sep pa =
 discardFirst : Parser a -> Parser b -> Parser b
 discardFirst a b =
     do a <| \_ -> b
+
+
+isUppercaseSymbol : String -> Bool
+isUppercaseSymbol s =
+    -- TODO
+    True
+
+
+oneToken : Parser Token
+oneToken =
+    Parser.consumeOne
+
+
+inlineOrIndented : Parser a -> Parser a
+inlineOrIndented p =
+    oneOf
+        [ surroundWith Token.BlockStart Token.BlockEnd p
+        , p
+        ]
 
 
 
@@ -80,11 +105,6 @@ parse tokens =
         |> Result.map OneOrMore.toList
 
 
-oneToken : Parser Token
-oneToken =
-    Parser.consumeOne
-
-
 module_ : Parser (OneOrMore FA.RootStatement)
 module_ =
     do
@@ -95,20 +115,6 @@ module_ =
         )
     <| \_ ->
    oomSeparatedBy (exactTokenKind Token.NewSiblingLine) rootStatement
-
-
-isUppercaseSymbol : String -> Bool
-isUppercaseSymbol s =
-    -- TODO
-    True
-
-
-inlineOrIndented : Parser a -> Parser a
-inlineOrIndented p =
-    oneOf
-        [ surroundWith Token.BlockStart Token.BlockEnd p
-        , p
-        ]
 
 
 
@@ -188,7 +194,28 @@ term =
             su "sl" <| FA.StringLiteral { start = token.start, end = token.end, string = s }
 
         Token.Symbol s ->
-            su s <| FA.Variable { start = token.start, end = token.end, variable = s }
+            { start = token.start
+            , end = token.end
+            , variable = s
+            , willBeMutated = False
+            }
+                |> FA.Variable
+                |> su s
+
+        Token.Mutop "@" ->
+            do oneToken <| \token2 ->
+            case token2.kind of
+                Token.Symbol s ->
+                    { start = token.start
+                    , end = token2.end
+                    , variable = s
+                    , willBeMutated = True
+                    }
+                        |> FA.Variable
+                        |> succeed
+
+                _ ->
+                    Parser.abort "something weird is following the mutop!"
 
         _ ->
             fail
@@ -362,13 +389,10 @@ typeTerm =
     do oneToken <| \token ->
     case token.kind of
         Token.Symbol s ->
-            succeed
-                (if isUppercaseSymbol s then
-                    FA.TypeConstant { name = s }
-
-                 else
-                    FA.TypeVariable { name = s }
-                )
+            { name = s
+            }
+                |> FA.TypeConstantOrVariable
+                |> succeed
 
         _ ->
             fail

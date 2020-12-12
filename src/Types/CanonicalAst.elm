@@ -18,7 +18,7 @@ type Expression
     | Variable
         { start : Int
         , end : Int
-        , variable : String
+        , name : String
 
         --, moduleReference : ModuleReference
         }
@@ -36,6 +36,7 @@ type Expression
     | Call
         { reference : Expression
         , argument : Expression
+        , argumentIsMutable : Bool
         }
     | If
         { start : Int
@@ -50,7 +51,7 @@ type Statement
     | Definition
         { name : String
         , body : Expression
-        , maybeAnnotation : Maybe TypeAnnotation
+        , maybeAnnotation : Maybe Type
         }
     | Assignment
         { lvalue : String
@@ -59,25 +60,27 @@ type Statement
         }
 
 
-type alias TypeAnnotation =
-    { isMutable : Bool
-    , union : TypeAnnotationUnion
-    }
-
-
-type TypeAnnotationUnion
+type Type
     = TypeConstant
         { name : String
 
         --, moduleReference : ModuleReference
-        , args : List TypeAnnotationUnion
+        --, args : List Type
         }
-    | TypeVariable
-        { name : String
-        }
+      {- TODO: support polymorphism
+         | TypeVariable
+             { name : String
+             }
+      -}
     | TypeFunction
         -- `from` can actually be mutable
-        { from : TypeAnnotation
-        , to : TypeAnnotationUnion
+        { from : Type
+        , fromIsMutable : Bool
+        , to : Type
         }
-    | TypeRecord (List ( String, TypeAnnotationUnion ))
+    | TypeRecord
+        (List
+            { name : String
+            , type_ : Type
+            }
+        )

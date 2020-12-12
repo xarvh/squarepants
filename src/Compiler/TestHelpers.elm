@@ -24,8 +24,8 @@ insertStatement rootStatement scope =
             scope
 
 
-stringToCanonicalAst : String -> Result String (Dict String CA.Expression)
-stringToCanonicalAst code =
+stringToCanonicalStatements : String -> Result String (Dict String CA.Expression)
+stringToCanonicalStatements code =
     code
         |> Compiler.StringToTokens.lexer
         |> Result.andThen Compiler.TokensToFormattableAst.parse
