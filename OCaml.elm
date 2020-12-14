@@ -5,60 +5,24 @@ module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
+import Generator as Next
 import Html
 import Set exposing (Set)
 
 
 
 ----
---- Id generator
+--- Variable type generator
 --
 
 
-type Next a
-    = Next (Int -> ( a, Int ))
+type alias Next a =
+    Next.Generator Int a
 
 
-zero : a -> Next a
-zero a =
-    Next (\next -> ( a, next ))
-
-
-one : Next Int
-one =
-    Next
-        (\next ->
-            ( next, next + 1 )
-        )
-
-
-map : (a -> b) -> Next a -> Next b
-map f =
-    andThen (f >> zero)
-
-
-andThen : (a -> Next b) -> Next a -> Next b
-andThen f (Next genA) =
-    Next
-        (\next ->
-            let
-                ( result, newNext ) =
-                    genA next
-
-                (Next genB) =
-                    f result
-            in
-            genB newNext
-        )
-
-
-do_next a b =
-    andThen b a
-
-
-run_next : Int -> Next a -> ( a, Int )
-run_next n (Next a) =
-    a n
+newType : Next Ty
+newType =
+    Next.next ((+) 1) (\n -> TyVar <| "t" ++ String.fromInt n)
 
 
 
@@ -251,7 +215,7 @@ env_add v sc e =
 
 instantiate_type : Ty -> Set String -> Next Ty
 instantiate_type t tvars =
-    do_next newType <| \nt ->
+    Next.do newType <| \nt ->
     let
         aggregate =
             \v acc -> Dict.insert v nt acc
@@ -260,7 +224,7 @@ instantiate_type t tvars =
             Set.foldl aggregate Dict.empty tvars
     in
     refine_type subs t
-        |> zero
+        |> Next.wrap
 
 
 env_get : String -> Env -> Next Ty
@@ -322,11 +286,6 @@ unify t1 t2 s =
                 Err "(Cannot_unify (a, b))"
 
 
-newType : Next Ty
-newType =
-    map (\int -> TyVar <| "t" ++ String.fromInt int) one
-
-
 lit_to_type : Literal -> Ty_literal
 lit_to_type l =
     case l of
@@ -357,14 +316,14 @@ generalize e t =
 
 do_nr : Next (Res a) -> (a -> Next (Res b)) -> Next (Res b)
 do_nr nra f =
-    do_next nra
+    Next.do nra
         (\ra ->
             case ra of
                 Ok a ->
                     f a
 
                 Err e ->
-                    zero (Err e)
+                    Next.wrap (Err e)
         )
 
 
@@ -374,19 +333,19 @@ inspect_expr env expr ty subs =
         Lit l ->
             subs
                 |> unify ty (TyLit (lit_to_type l))
-                |> zero
+                |> Next.wrap
 
         Var v ->
-            do_next (env_get v env) <| \stuff ->
+            Next.do (env_get v env) <| \stuff ->
             let
                 t =
                     refine_type subs stuff
             in
             unify ty t subs
-                |> zero
+                |> Next.wrap
 
         Let v e1 e2 ->
-            do_next newType <| \e1_ty ->
+            Next.do newType <| \e1_ty ->
             do_nr (inspect_expr env e1 e1_ty subs) <| \subs1 ->
             let
                 e1_ty1 =
@@ -401,9 +360,9 @@ inspect_expr env expr ty subs =
             inspect_expr (refine_env subs1 env1) e2 ty subs1
 
         Lambda v e ->
-            do_next newType <| \v_t ->
-            do_next newType <| \e_t ->
-            do_nr (unify ty (TyLambda v_t e_t) subs |> zero) <| \new_subs ->
+            Next.do newType <| \v_t ->
+            Next.do newType <| \e_t ->
+            do_nr (unify ty (TyLambda v_t e_t) subs |> Next.wrap) <| \new_subs ->
             let
                 new_env =
                     env_add v ( v_t, Set.empty ) env
@@ -411,7 +370,7 @@ inspect_expr env expr ty subs =
             inspect_expr new_env e e_t new_subs
 
         App f e ->
-            do_next newType <| \e_t ->
+            Next.do newType <| \e_t ->
             do_nr (inspect_expr env e e_t subs) <| \e_subs ->
             let
                 f_t =
@@ -477,13 +436,13 @@ type_of e =
             Dict.empty
 
         nn =
-            do_next newType <| \e_t ->
+            Next.do newType <| \e_t ->
             do_nr (inspect_expr env e e_t empty_subs) <| \xxxx ->
             refine_type xxxx e_t
                 |> Ok
-                |> zero
+                |> Next.wrap
     in
-    run_next 0 nn
+    Next.run 0 nn
         |> Tuple.first
 
 
