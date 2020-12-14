@@ -3,6 +3,7 @@ module Compiler.TypeInference exposing (..)
 {-| I don't understand what I'm doing, I'm just following
 
 Da leggere:
+https://pfudke.wordpress.com/2014/11/20/hindley-milner-type-inference-a-practical-example-2/
 <http://steshaw.org/hm/hindley-milner.pdf>
 <https://web.cecs.pdx.edu/~mpj/thih/thih.pdf>
 
@@ -19,25 +20,12 @@ import Dict exposing (Dict)
 import Types.CanonicalAst as CA
 
 
-
-----
---- Should be library
---
+type alias Id =
+    Int
 
 
-result_do : Result err a -> (a -> Result err b) -> Result err b
-result_do r f =
-    Result.andThen f r
-
-
-
-----
---- Types
---
-
-
-type alias Res a =
-    Result String a
+type alias CA_Expression =
+    CA.Expression PlaceholderId
 
 
 type Type
@@ -58,18 +46,137 @@ type Type
         )
 
 
-type alias PlaceholderId =
-    Int
+
+----
+---
+--
 
 
-{-| type environment
--}
-type alias Env =
-    Dict String Type
+assignIdsToExpression : Id -> CA.Expression () -> ( CA.Expression Id, Id )
+assignIdsToExpression nextId expr_unit =
+    let
+        addId : () -> Int -> ( Int, Int )
+        addId () idAccum =
+            ( idAccum
+            , idAccum + 1
+            )
+    in
+    CA.expression_fold addId nextId expr_unit
 
 
-type alias Substitutions =
-    Dict PlaceholderId Type
+dict_append : Id -> value -> Dict Id (List value) -> Dict Id (List value)
+dict_append id value =
+    Dict.update id (Maybe.withDefault [] >> (::) value)
+
+
+collectConstraints : CA.Expression Id -> Dict Id (List Type) -> Dict Id (List Type)
+collectConstraints expr constraintsAccum =
+    case expr of
+        NumberLiteral id args ->
+            dict_append id (TypeConstant { name = "Number" }) constraintsAccum
+
+        Variable id args ->
+            constraintsAccum
+
+        Lambda id { start, parameter, body } ->
+            constraintsAccum
+                |> dict_append id
+                    (TypeFunction
+                        { from = TypeInferencePlaceholder (getId parameter)
+                        , to = TypeInferencePlaceholder (getId body)
+                        }
+                    )
+                -- TODO what about the parameter doesn't have an id!
+                |> collectConstraints body
+
+        Record id attrs ->
+            List.foldl (\attr -> collectConstraints attr.value) constraintsAccum attrs
+                |> dict_append id
+                    (attrs
+                        |> List.map (\attr -> { name = attr.name, type_ = TypeInferencePlaceholder (getId value) })
+                        |> TypeRecord
+                    )
+                |> (\acc -> List.foldl collectConstraints acc attrs)
+
+        Call id { reference, argument, argumentIsMutable } ->
+            constraintsAccum
+                |> dict_append (getId reference)
+                    (TypeFunction
+                        { from = TypeInferencePlaceholder (getId argument)
+                        , to = TypeInferencePlaceholder id
+                        }
+                    )
+                |> collectConstraints reference
+                |> collectConstraints argument
+
+        If id { start, condition, true, false } ->
+            constraintsAccum
+                |> dict_append id (TypeInferencePlaceholder <| getId true)
+                |> dict_append id (TypeInferencePlaceholder <| getId false)
+                -- TODO redundantly, true should also be the same as false. Is it good or bad to add it?
+                |> dict_append (getId condition) (TypeConstant { name = "Bool" })
+                |> collectConstraints condition
+                |> collectConstraints true
+                |> collectConstraints false
+
+
+
+
+
+
+
+type alias State =
+  { unsolved : Dict Id (List Type)
+  , solved : Dict Id TypeOrError
+  }
+
+
+resolveConstraints : Dict Id (List Type) -> Dict Id (List Type)
+resolveConstraints
+
+  case first unsolved of
+      Nothing ->
+        "Done! =)"
+
+      Just unsolved ->
+        try to consolidate all constraints into a single one?
+
+        case first item with placeholder of
+          Nothing ->
+            "move to solved! =)"
+
+          Just placeholder ->
+              case placeholder in solved of
+                Just solved ->
+                  apply it?
+
+
+                Nothing ->
+
+              is solved?
+              add placeholder to circular_prevention_set
+              try to solve 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+
+
+
 
 
 
@@ -78,26 +185,45 @@ type alias Substitutions =
 --
 
 
-inferScope : Env -> Dict String CA.Expression -> Res Env
-inferScope preamble scope =
+inferScope : Env -> Dict String CA.Expression () -> Res Env
+inferScope preamble scope_unit =
     let
-        ( env0, nextId0 ) =
+        addId : () -> Int -> ( Int, Int )
+        addId () idAccum =
+            ( idAccum
+            , idAccum + 1
+            )
+
+        fold : String -> CA.Expression () -> ( Dict String CA_Expression, Int ) -> ( Dict String CA_Expression, Int )
+        fold name expr_unit ( scopeAccum, idAccum ) =
+            let
+                ( expr_id, idAccum1 ) =
+                    CA.expression_fold addId idAccum expr_unit
+            in
+            ( Dict.insert name expr_id scopeAccum
+            , idAccum1
+            )
+
+        scope =
+            Dict.foldl fold ( Dict.empty, 0 ) scope_unit
+
+        env0 =
             scope
                 |> Dict.keys
-                |> addSymbols 0 preamble
+                |> addSymbols preamble
 
-        rec : PlaceholderId -> Env -> List ( String, CA.Expression ) -> Res Env
-        rec nextId env symbols =
+        rec : Env -> List ( String, CA_Expression ) -> Res Env
+        rec env symbols =
             case symbols of
                 [] ->
                     Ok (Dict.diff env preamble)
 
                 ( name, expr ) :: tail ->
-                    case inferExpr nextId env expr of
+                    case inferExpr env expr of
                         Err err ->
                             Err <| name ++ ": " ++ err
 
-                        Ok ( type_, subs0, newNextId ) ->
+                        Ok ( type_, subs0 ) ->
                             let
                                 subs1 =
                                     case Dict.get name env of
@@ -128,8 +254,8 @@ inferScope preamble scope =
 addSymbols : PlaceholderId -> Env -> List String -> ( Env, PlaceholderId )
 addSymbols nextId0 env names =
     let
-        fold : String -> ( Env, PlaceholderId ) -> ( Env, PlaceholderId )
-        fold name ( envAccum, nextId ) =
+        fold : String -> Env -> Env
+        fold name envAccum =
             Tuple.second <| addSymbol nextId envAccum name
     in
     List.foldl fold ( env, nextId0 ) names
@@ -146,8 +272,8 @@ applySubstitutionsToEnv subs env =
     Dict.map (\k v -> applySubstitutionsToType subs v) env
 
 
-addSymbol : PlaceholderId -> Env -> String -> ( Type, ( Env, PlaceholderId ) )
-addSymbol nextId0 env name =
+addSymbol : Env -> String -> ( Type, Env )
+addSymbol env name =
     let
         type_ =
             TypeInferencePlaceholder nextId0
@@ -289,7 +415,7 @@ composeSubstitutions a b =
 --
 
 
-inferExpr : PlaceholderId -> Env -> CA.Expression -> Res ( Type, Substitutions, PlaceholderId )
+inferExpr : PlaceholderId -> Env -> CA.Expression () -> Res ( Type, Substitutions, PlaceholderId )
 inferExpr nextId0 env expr =
     case expr of
         CA.NumberLiteral _ ->

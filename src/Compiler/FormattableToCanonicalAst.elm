@@ -56,11 +56,11 @@ firstError os rs =
             firstError (o :: os) rt
 
 
-expression : FA.Expression -> Result Error CA.Expression
+expression : FA.Expression -> Result Error (CA.Expression ())
 expression faExpr =
     case faExpr of
         FA.NumberLiteral args ->
-            Ok <| CA.NumberLiteral args
+            Ok <| CA.NumberLiteral () args
 
         FA.Variable args ->
             { start = args.start
@@ -70,7 +70,7 @@ expression faExpr =
             -- TODO check that args.willBeMutated is on only if being used in an expression?
             -- Probably needs to be handled at the function call level
             }
-                |> CA.Variable
+                |> CA.Variable ()
                 |> Ok
 
         FA.Lambda { start, parameters, body } ->
@@ -84,9 +84,9 @@ expression faExpr =
                         _ ->
                             Debug.todo "STATEMENTS"
 
-                fold : FA.Pattern -> CA.Expression -> CA.Expression
+                fold : FA.Pattern -> CA.Expression () -> CA.Expression ()
                 fold (FA.PatternAny paramName) bodyAccum =
-                    CA.Lambda { start = start, parameter = paramName, body = bodyAccum }
+                    CA.Lambda () { start = start, parameter = paramName, body = bodyAccum }
             in
             bodyExpression
                 |> expression
@@ -100,7 +100,7 @@ expression faExpr =
         FA.FunctionCall { reference, arguments } ->
             -- ref arg1 arg2 arg3...
             let
-                fold : CA.Expression -> CA.Expression -> CA.Expression
+                fold : CA.Expression () -> CA.Expression () -> CA.Expression ()
                 fold argument refAccum =
                     { reference = refAccum
                     , argument = argument
@@ -108,7 +108,7 @@ expression faExpr =
                     -- TODO
                     , argumentIsMutable = False
                     }
-                        |> CA.Call
+                        |> CA.Call ()
             in
             Result.map2
                 (List.foldl fold)
@@ -122,7 +122,7 @@ expression faExpr =
         FA.If { start, condition, true, false } ->
             Result.map3
                 (\c t f ->
-                    CA.If
+                    CA.If ()
                         { start = start
                         , condition = c
                         , true = t
@@ -138,7 +138,7 @@ expression faExpr =
                 [ first, second ] ->
                     Result.map2
                         (\f s ->
-                            CA.Record
+                            CA.Record ()
                                 [ { name = "first", value = f }
                                 , { name = "second", value = s }
                                 ]
@@ -153,7 +153,7 @@ expression faExpr =
             errorTodo "NOT SUPPORTED FOR NOW"
 
 
-statement : FA.Statement -> Result Error CA.Statement
+statement : FA.Statement -> Result Error (CA.Statement ())
 statement faStat =
     case faStat of
         FA.Definition { name, maybeAnnotation, parameters, body } ->
@@ -163,10 +163,10 @@ statement faStat =
                         (FA.PatternAny n) =
                             name
 
-                        fold : FA.Pattern -> CA.Expression -> CA.Expression
+                        fold : FA.Pattern -> CA.Expression () -> CA.Expression ()
                         fold (FA.PatternAny paramName) bodyAccum =
                             -- TODO start?
-                            CA.Lambda { start = 0, parameter = paramName, body = bodyAccum }
+                            CA.Lambda () { start = 0, parameter = paramName, body = bodyAccum }
                     in
                     Result.map2
                         (\expr maybeAnn ->

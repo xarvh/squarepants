@@ -9,7 +9,7 @@ import Types.Error
 import Types.FormattableAst as FA
 
 
-insertStatement : FA.RootStatement -> Dict String CA.Expression -> Dict String CA.Expression
+insertStatement : FA.RootStatement -> Dict String (CA.Expression ()) -> Dict String (CA.Expression ())
 insertStatement rootStatement scope =
     case rootStatement of
         FA.Statement statement ->
@@ -24,7 +24,7 @@ insertStatement rootStatement scope =
             scope
 
 
-stringToCanonicalStatements : String -> Result String (Dict String CA.Expression)
+stringToCanonicalStatements : String -> Result String (Dict String (CA.Expression ()))
 stringToCanonicalStatements code =
     code
         |> Compiler.StringToTokens.lexer
