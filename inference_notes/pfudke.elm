@@ -160,11 +160,11 @@ refine_type s t =
         TyVar v ->
             case Dict.get v s of
                 Just substitutionType ->
-                    {- a substitution exists for the variable type v -}
+                    -- a substitution exists for the variable type v
                     refine_type s substitutionType
 
                 Nothing ->
-                    {- no substitution, return the type as-is -}
+                    -- no substitution, return the type as-is
                     TyVar v
 
         TyLambda a b ->
@@ -195,6 +195,9 @@ tyvars_from_type ty =
 
 type alias Env =
     -- (Ty, Set String) is a type's "schema"?
+    --
+    -- Set String is the set of all forall vars in the type!
+    --
     Dict String ( Ty, Set String )
 
 
@@ -215,16 +218,17 @@ env_add v sc e =
 
 instantiate_type : Ty -> Set String -> Next Ty
 instantiate_type t tvars =
-    Next.do newType <| \nt ->
     let
-        aggregate =
-            \v acc -> Dict.insert v nt acc
+        aggregate : String -> Next Subst -> Next Subst
+        aggregate tvar nextSubsAcc =
+            Next.do newType <| \nt ->
+            Next.map (Dict.insert tvar nt) nextSubsAcc
 
-        subs =
-            Set.foldl aggregate Dict.empty tvars
+        nextSubs : Next Subst
+        nextSubs =
+            Set.foldl aggregate (Next.wrap Dict.empty) tvars
     in
-    refine_type subs t
-        |> Next.wrap
+    Next.map (\subs -> refine_type subs t) nextSubs
 
 
 env_get : String -> Env -> Next Ty
@@ -260,30 +264,36 @@ unify t1 t2 s =
         cycle v t =
             Set.member v (tyvars_from_type t)
     in
-    if t1_refined == t2_refined then
-        Ok s
+    case ( t1_refined, t2_refined ) of
+        ( TyVar v1, TyVar v2 ) ->
+            if v1 == v2 then
+                Ok s
 
-    else
-        case ( t1_refined, t2_refined ) of
-            ( TyVar v1, _ ) ->
-                if cycle v1 t2 then
-                    -- TODO is this the correct behavior?
-                    Err "cycle!"
-
-                else
-                    make_constraint v1 t2_refined s
-                        |> Ok
-
-            ( _, TyVar v2 ) ->
-                unify t2_refined t1_refined s
-
-            ( TyLambda from1 to1, TyLambda from2 to2 ) ->
+            else
                 s
-                    |> unify to1 to2
-                    |> Result.andThen (unify from1 from2)
+                    |> make_constraint v1 t2_refined
+                    |> Ok
 
-            _ ->
-                Err "(Cannot_unify (a, b))"
+        ( TyVar v1, _ ) ->
+            if cycle v1 t2 then
+                -- TODO is this the correct behavior?
+                Err "cycle!"
+
+            else
+                s
+                    |> make_constraint v1 t2_refined
+                    |> Ok
+
+        ( _, TyVar v2 ) ->
+            unify t2_refined t1_refined s
+
+        ( TyLambda from1 to1, TyLambda from2 to2 ) ->
+            s
+                |> unify to1 to2
+                |> Result.andThen (unify from1 from2)
+
+        _ ->
+            Err "(Cannot_unify (a, b))"
 
 
 lit_to_type : Literal -> Ty_literal
@@ -336,6 +346,9 @@ inspect_expr env expr ty subs =
                 |> Next.wrap
 
         Var v ->
+            -- Every time I use a var with variable type, it should be instantiated,
+            -- because each time it may by used against a different type.
+            -- This is done automatically by `env_get`.
             Next.do (env_get v env) <| \stuff ->
             let
                 t =
@@ -352,6 +365,7 @@ inspect_expr env expr ty subs =
                     refine_type subs1 e1_ty
 
                 scheme =
+                    -- this gets all "forall" vars in the definition
                     generalize (refine_env subs1 env) e1_ty1
 
                 env1 =
@@ -362,12 +376,12 @@ inspect_expr env expr ty subs =
         Lambda v e ->
             Next.do newType <| \v_t ->
             Next.do newType <| \e_t ->
-            do_nr (unify ty (TyLambda v_t e_t) subs |> Next.wrap) <| \new_subs ->
+            do_nr (unify ty (TyLambda v_t e_t) subs |> Next.wrap) <| \subs1 ->
             let
-                new_env =
+                env1 =
                     env_add v ( v_t, Set.empty ) env
             in
-            inspect_expr new_env e e_t new_subs
+            inspect_expr env1 e e_t subs1
 
         App f e ->
             Next.do newType <| \e_t ->
@@ -437,8 +451,8 @@ type_of e =
 
         nn =
             Next.do newType <| \e_t ->
-            do_nr (inspect_expr env e e_t empty_subs) <| \xxxx ->
-            refine_type xxxx e_t
+            do_nr (inspect_expr env e e_t empty_subs) <| \subs ->
+            refine_type subs e_t
                 |> Ok
                 |> Next.wrap
     in
