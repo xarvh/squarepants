@@ -292,6 +292,13 @@ unify t1 t2 s =
                 |> unify to1 to2
                 |> Result.andThen (unify from1 from2)
 
+        ( TyLit l1, TyLit l2 ) ->
+            if l1 == l2 then
+                Ok s
+
+            else
+                Err "no lit unify"
+
         _ ->
             Err "(Cannot_unify (a, b))"
 

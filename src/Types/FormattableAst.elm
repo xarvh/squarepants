@@ -12,13 +12,31 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 -}
 
+{- TODO: if possible, replace all OneOrMore with List -}
+
 import OneOrMore exposing (OneOrMore)
 
 
-{-| This is the stuff that can live in the module root
--}
-type RootStatement
-    = Statement Statement
+type alias Module =
+    List Statement
+
+
+type alias DefinitionArgs =
+    { name : Pattern
+    , maybeAnnotation : Maybe Type
+    , parameters : List Pattern
+    , body : OneOrMore Statement
+    }
+
+
+type Statement
+    = Evaluation Expression
+    | Definition DefinitionArgs
+    | Mutation
+        { left : String
+        , mutop : String
+        , right : Expression
+        }
     | TypeAlias
         { name : String
         , args : List String
@@ -27,22 +45,14 @@ type RootStatement
     | TypeDefinition
         { name : String
         , args : List String
-        , constructors : List { name : String, args : List Type }
+        , constructors : List TypeConstructor
         }
 
-type Statement
-    = Evaluate Expression
-    | Definition
-        { name : Pattern
-        , maybeAnnotation : Maybe Type
-        , parameters : List Pattern
-        , body : OneOrMore Statement
-        }
-    | Mutation
-        { left : String
-        , mutop : String
-        , right : Expression
-        }
+
+type alias TypeConstructor =
+    { name : String
+    , args : List Type
+    }
 
 
 {-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
@@ -84,6 +94,8 @@ type Expression
         }
     | Lambda
         { start : Int
+
+        -- TODO this should be a list
         , parameters : OneOrMore Pattern
         , body : OneOrMore Statement
         }
@@ -126,7 +138,6 @@ type Expression
 
 type Pattern
     = PatternAny String
-
 
 
 exprStart : Expression -> Int

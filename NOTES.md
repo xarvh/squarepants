@@ -179,6 +179,42 @@ Stuff that seems good but needs thinking
 
 
 
+### Mutability, take 3
+
+
+* Track every variable that a lambda declares (body, argument) and every variable that it modifies
+
+
+
+
+* Mutability is a type modifier.
+
+* Every non-mutable type can be transformed into mutable.
+
+* These mutable versions are types on their own and are typechecked as their own types.
+
+* Immutable and mutable types can't be mixed inside records and ADTs.
+
+* The ways one can use Mutable types are limited:
+  - Mut types can't be returned by functions
+  ? Mut types can't be reassigned to other names in the same scope
+
+? How to init mutable values from immutable values
+
+* Algebraic operators can mix immutable and mutable types via op overloading
+  - the output is always immutable
+
+
+
+
+
+
+
+
+
+
+
+
 ### Mutability, take 2
 
 The only values that can be mutable are
@@ -232,7 +268,7 @@ type alias ThisInsteadIsPerfectlyFine = {
 
 
 ###### Squiggles vs letters
-Right now I'm choocing to use `@` rather than `mut` because
+Right now I'm choosing to use `@` rather than `mut` because
   * `@` stands out more than `mut` would
   * `@` can stick to its target without spaces, so it's more obvious what its target is
 
@@ -394,6 +430,16 @@ better algorithm:
 
 
 
+### Modules
+Given a module, it should be  straightforward to figure out which file declares it
+
+relative vs absolute module names?
+
+
+
+
+
+
 Game Platform
 -------------
 
@@ -418,6 +464,17 @@ GLSL
 
 Stuff that's still up in the air
 --------------------------------
+
+
+
+
+
+
+
+
+
+
+
 
 
 Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus

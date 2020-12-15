@@ -97,7 +97,7 @@ uncons ls =
             Nothing
 
 
-parse : List Token -> Result Error (List FA.RootStatement)
+parse : List Token -> Result Error (List FA.Statement)
 parse tokens =
     tokens
         |> runParser (end module_)
@@ -105,7 +105,7 @@ parse tokens =
         |> Result.map OneOrMore.toList
 
 
-module_ : Parser (OneOrMore FA.RootStatement)
+module_ : Parser (OneOrMore FA.Statement)
 module_ =
     do
         (oneOf
@@ -114,27 +114,16 @@ module_ =
             ]
         )
     <| \_ ->
-   oomSeparatedBy (exactTokenKind Token.NewSiblingLine) rootStatement
+   oomSeparatedBy (exactTokenKind Token.NewSiblingLine) statement
 
 
 
 ----
---- Root Statements
---
--- These can contain type declarations
+--- Statements
 --
 
 
-rootStatement : Parser FA.RootStatement
-rootStatement =
-    oneOf
-        [ typeAlias
-        , typeDefinition
-        , do statement <| \s -> succeed (FA.Statement s)
-        ]
-
-
-typeAlias : Parser FA.RootStatement
+typeAlias : Parser FA.Statement
 typeAlias =
     do (exactTokenKind <| Token.Symbol "alias") <| \_ ->
     do (oneOrMore termName) <| \( name, args ) ->
@@ -148,7 +137,7 @@ typeAlias =
         |> succeed
 
 
-typeDefinition : Parser FA.RootStatement
+typeDefinition : Parser FA.Statement
 typeDefinition =
     do (exactTokenKind <| Token.Symbol "type") <| \_ ->
     do (oneOrMore termName) <| \( name, args ) ->
@@ -316,8 +305,10 @@ statement : Parser FA.Statement
 statement =
     Parser.breakCircularDefinition <| \_ ->
     Parser.oneOf
-        [ definition
-        , do expr <| (FA.Evaluate >> succeed)
+        [ typeAlias
+        , typeDefinition
+        , definition
+        , do expr <| (FA.Evaluation >> succeed)
         ]
 
 
@@ -492,7 +483,7 @@ lambdaOr higher =
                   -}
                   do (succeed ()) <| \_ ->
                   do expr <| \e ->
-                  succeed ( FA.Evaluate e, [] )
+                  succeed ( FA.Evaluation e, [] )
                 ]
     in
     oneOf

@@ -24,8 +24,8 @@ import Types.FormattableAst as FA
 
 initialCode =
     """
-b : Int
-b = 1
+b x = x
+a = b 1
     """
 
 
@@ -129,9 +129,9 @@ view model =
 
 viewInference : String -> Html msg
 viewInference code =
-    case Compiler.TestHelpers.stringToCanonicalStatements code of
-        Ok scope ->
-            case Compiler.TypeInference.inferScope preamble scope of
+    case Compiler.TestHelpers.stringToCanonicalModule code of
+        Ok mod ->
+            case Compiler.TypeInference.inspectModule preamble mod of
                 Err err ->
                     Html.text err
 
@@ -165,7 +165,7 @@ viewAst code =
     case res of
         Ok statements ->
             statements
-                |> List.map viewRootStatement
+                |> List.map viewStatement
                 |> Html.div []
 
         _ ->
@@ -174,9 +174,9 @@ viewAst code =
                 |> Html.text
 
 
-viewRootStatement : FA.RootStatement -> Html msg
-viewRootStatement rs =
-    case rs of
+viewStatement : FA.Statement -> Html msg
+viewStatement s =
+    case s of
         FA.TypeDefinition td ->
             td
                 |> Debug.toString
@@ -189,17 +189,10 @@ viewRootStatement rs =
                 |> (++) "type alias: "
                 |> Html.text
 
-        FA.Statement s ->
-            viewStatement s
-
-
-viewStatement : FA.Statement -> Html msg
-viewStatement s =
-    case s of
-        FA.Evaluate expr ->
+        FA.Evaluation expr ->
             Html.div
                 []
-                [ Html.text "evaluate: "
+                [ Html.text "Evaluation: "
                 , viewExpression expr
                 ]
 

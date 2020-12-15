@@ -107,11 +107,11 @@ tests =
                     { start = 0
                     , parameters = ( FA.PatternAny "a", [] )
                     , body =
-                        ( FA.Evaluate <|
+                        ( FA.Evaluation <|
                             FA.Lambda
                                 { start = 3
                                 , parameters = ( FA.PatternAny "b", [] )
-                                , body = ( FA.Evaluate <| FA.NumberLiteral { start = 6, end = 7, number = "3" }, [] )
+                                , body = ( FA.Evaluation <| FA.NumberLiteral { start = 6, end = 7, number = "3" }, [] )
                                 }
                         , []
                         )
@@ -142,11 +142,11 @@ tests =
                     { start = 0
                     , parameters = ( FA.PatternAny "a", [] )
                     , body =
-                        ( FA.Evaluate <|
+                        ( FA.Evaluation <|
                             FA.Lambda
                                 { start = 4
                                 , parameters = ( FA.PatternAny "b", [] )
-                                , body = ( FA.Evaluate <| FA.NumberLiteral { start = 8, end = 9, number = "3" }, [] )
+                                , body = ( FA.Evaluation <| FA.NumberLiteral { start = 8, end = 9, number = "3" }, [] )
                                 }
                         , []
                         )
@@ -176,12 +176,12 @@ tests =
                     { start = 0
                     , parameters = ( FA.PatternAny "a", [] )
                     , body =
-                        ( FA.Evaluate <|
+                        ( FA.Evaluation <|
                             FA.Lambda
                                 { start = 4
                                 , parameters = ( FA.PatternAny "b", [] )
                                 , body =
-                                    ( FA.Evaluate <|
+                                    ( FA.Evaluation <|
                                         FA.NumberLiteral
                                             { start = 8
                                             , end = 9

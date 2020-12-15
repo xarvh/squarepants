@@ -1,354 +1,111 @@
 module Compiler.TypeInference exposing (..)
 
-{-| I don't understand what I'm doing, I'm just following
-
-Da leggere:
-https://pfudke.wordpress.com/2014/11/20/hindley-milner-type-inference-a-practical-example-2/
-<http://steshaw.org/hm/hindley-milner.pdf>
-<https://web.cecs.pdx.edu/~mpj/thih/thih.pdf>
-
-Letti:
-<http://reasonableapproximation.net/2019/05/05/hindley-milner.html>
-<https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand>
-<https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b>
-<https://ltbringer.github.io/blog/hindley-milner-for-humans>
-<https://course.ccs.neu.edu/cs4410sp19/lec_type-inference_notes.html>
-
--}
-
 import Dict exposing (Dict)
-import Types.CanonicalAst as CA
+import Generator as TyGen
+import Html
+import Set exposing (Set)
+import Types.CanonicalAst as CA exposing (Type)
 
 
-type alias Id =
-    Int
+type alias Res a =
+    Result String a
 
 
-type alias CA_Expression =
-    CA.Expression PlaceholderId
+type alias Substitutions =
+    Dict String Type
 
 
-type Type
-    = TypeMutable Type
-    | TypeInferencePlaceholder PlaceholderId
-    | TypeConstant
-        { name : String
-        }
-    | TypeFunction
-        { from : Type
-        , to : Type
-        }
-    | TypeRecord
-        (List
-            { name : String
-            , type_ : Type
-            }
+type alias Env =
+    -- (Ty, Set String) is a type's "schema"?
+    --
+    -- Set String is the set of all forall vars in the type!
+    --
+    Dict String ( Type, Set String )
+
+
+
+----
+--- Variable type generator
+--
+
+
+type alias TyGen a =
+    TyGen.Generator Int a
+
+newName : TyGen String
+newName =
+    TyGen.next ((+) 1) (\n -> "t" ++ String.fromInt n )
+
+newType : TyGen Type
+newType =
+    TyGen.map (\s -> CA.TypeVariable { name = s }) newName
+
+
+do_nr : TyGen (Res a) -> (a -> TyGen (Res b)) -> TyGen (Res b)
+do_nr nra f =
+    TyGen.do nra
+        (\ra ->
+            case ra of
+                Ok a ->
+                    f a
+
+                Err e ->
+                    TyGen.wrap (Err e)
         )
 
 
-
-----
----
---
-
-
-assignIdsToExpression : Id -> CA.Expression () -> ( CA.Expression Id, Id )
-assignIdsToExpression nextId expr_unit =
-    let
-        addId : () -> Int -> ( Int, Int )
-        addId () idAccum =
-            ( idAccum
-            , idAccum + 1
-            )
-    in
-    CA.expression_fold addId nextId expr_unit
-
-
-dict_append : Id -> value -> Dict Id (List value) -> Dict Id (List value)
-dict_append id value =
-    Dict.update id (Maybe.withDefault [] >> (::) value)
-
-
-collectConstraints : CA.Expression Id -> Dict Id (List Type) -> Dict Id (List Type)
-collectConstraints expr constraintsAccum =
-    case expr of
-        NumberLiteral id args ->
-            dict_append id (TypeConstant { name = "Number" }) constraintsAccum
-
-        Variable id args ->
-            constraintsAccum
-
-        Lambda id { start, parameter, body } ->
-            constraintsAccum
-                |> dict_append id
-                    (TypeFunction
-                        { from = TypeInferencePlaceholder (getId parameter)
-                        , to = TypeInferencePlaceholder (getId body)
-                        }
-                    )
-                -- TODO what about the parameter doesn't have an id!
-                |> collectConstraints body
-
-        Record id attrs ->
-            List.foldl (\attr -> collectConstraints attr.value) constraintsAccum attrs
-                |> dict_append id
-                    (attrs
-                        |> List.map (\attr -> { name = attr.name, type_ = TypeInferencePlaceholder (getId value) })
-                        |> TypeRecord
-                    )
-                |> (\acc -> List.foldl collectConstraints acc attrs)
-
-        Call id { reference, argument, argumentIsMutable } ->
-            constraintsAccum
-                |> dict_append (getId reference)
-                    (TypeFunction
-                        { from = TypeInferencePlaceholder (getId argument)
-                        , to = TypeInferencePlaceholder id
-                        }
-                    )
-                |> collectConstraints reference
-                |> collectConstraints argument
-
-        If id { start, condition, true, false } ->
-            constraintsAccum
-                |> dict_append id (TypeInferencePlaceholder <| getId true)
-                |> dict_append id (TypeInferencePlaceholder <| getId false)
-                -- TODO redundantly, true should also be the same as false. Is it good or bad to add it?
-                |> dict_append (getId condition) (TypeConstant { name = "Bool" })
-                |> collectConstraints condition
-                |> collectConstraints true
-                |> collectConstraints false
-
-
-
-
-
-
-
-type alias State =
-  { unsolved : Dict Id (List Type)
-  , solved : Dict Id TypeOrError
-  }
-
-
-resolveConstraints : Dict Id (List Type) -> Dict Id (List Type)
-resolveConstraints
-
-  case first unsolved of
-      Nothing ->
-        "Done! =)"
-
-      Just unsolved ->
-        try to consolidate all constraints into a single one?
-
-        case first item with placeholder of
-          Nothing ->
-            "move to solved! =)"
-
-          Just placeholder ->
-              case placeholder in solved of
-                Just solved ->
-                  apply it?
-
-
-                Nothing ->
-
-              is solved?
-              add placeholder to circular_prevention_set
-              try to solve 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-------------------------------------------------------------------------------
-
-
-
-
+do_res a b =
+    Result.andThen b a
 
 
 
 ----
---- Higher level stuff
+--- Core types
 --
 
 
-inferScope : Env -> Dict String CA.Expression () -> Res Env
-inferScope preamble scope_unit =
-    let
-        addId : () -> Int -> ( Int, Int )
-        addId () idAccum =
-            ( idAccum
-            , idAccum + 1
-            )
-
-        fold : String -> CA.Expression () -> ( Dict String CA_Expression, Int ) -> ( Dict String CA_Expression, Int )
-        fold name expr_unit ( scopeAccum, idAccum ) =
-            let
-                ( expr_id, idAccum1 ) =
-                    CA.expression_fold addId idAccum expr_unit
-            in
-            ( Dict.insert name expr_id scopeAccum
-            , idAccum1
-            )
-
-        scope =
-            Dict.foldl fold ( Dict.empty, 0 ) scope_unit
-
-        env0 =
-            scope
-                |> Dict.keys
-                |> addSymbols preamble
-
-        rec : Env -> List ( String, CA_Expression ) -> Res Env
-        rec env symbols =
-            case symbols of
-                [] ->
-                    Ok (Dict.diff env preamble)
-
-                ( name, expr ) :: tail ->
-                    case inferExpr env expr of
-                        Err err ->
-                            Err <| name ++ ": " ++ err
-
-                        Ok ( type_, subs0 ) ->
-                            let
-                                subs1 =
-                                    case Dict.get name env of
-                                        Just (TypeInferencePlaceholder oldPlaceholderId) ->
-                                            if TypeInferencePlaceholder oldPlaceholderId == type_ then
-                                                subs0
-
-                                            else
-                                                Dict.insert oldPlaceholderId type_ subs0
-
-                                        Just _ ->
-                                            subs0
-
-                                        Nothing ->
-                                            Debug.todo <| "ENV DOES NOT CONTAIN VAR NAME: " ++ name
-                            in
-                            rec
-                                newNextId
-                                (env
-                                    |> Dict.insert name type_
-                                    |> applySubstitutionsToEnv subs1
-                                )
-                                tail
-    in
-    rec nextId0 env0 (Dict.toList scope)
+typeNone : Type
+typeNone =
+    CA.TypeConstant { name = "None" }
 
 
-addSymbols : PlaceholderId -> Env -> List String -> ( Env, PlaceholderId )
-addSymbols nextId0 env names =
-    let
-        fold : String -> Env -> Env
-        fold name envAccum =
-            Tuple.second <| addSymbol nextId envAccum name
-    in
-    List.foldl fold ( env, nextId0 ) names
+
+-- TODO add constructors
+
+
+typeBool : Type
+typeBool =
+    CA.TypeConstant { name = "Bool" }
 
 
 
 ----
---- Helpers (ie, more or less straightforward stuff that doesn't contain much payload logic)
+--- Modules
 --
 
 
-applySubstitutionsToEnv : Substitutions -> Env -> Env
-applySubstitutionsToEnv subs env =
-    Dict.map (\k v -> applySubstitutionsToType subs v) env
-
-
-addSymbol : Env -> String -> ( Type, Env )
-addSymbol env name =
+inspectModule : Env -> CA.Module e -> Res Env
+inspectModule prelude mod =
     let
-        type_ =
-            TypeInferencePlaceholder nextId0
+        statements =
+            mod.valueDefinitions
+                |> Dict.values
+                |> List.map CA.Definition
+
+        env =
+            -- TODO add type constructors to env!
+            prelude
+
+        gen =
+            do_nr (inspectStatementList statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->
+            refine_env subs env1
+                |> Ok
+                |> TyGen.wrap
+
+        ( envResult, nextId ) =
+            TyGen.run 0 gen
     in
-    ( type_
-    , ( Dict.insert name type_ env
-      , nextId0 + 1
-      )
-    )
-
-
-bindPlaceholderIdToType : PlaceholderId -> Type -> Res Substitutions
-bindPlaceholderIdToType id type_ =
-    -- TODO Is this really needed? So far `unify` checks already if the two types are the same
-    if TypeInferencePlaceholder id == type_ then
-        Ok Dict.empty
-
-    else if typeContains id type_ then
-        Err <| "TypeInferencePlaceholder " ++ String.fromInt id ++ " is contained by " ++ Debug.toString type_
-
-    else
-        Ok <| Dict.singleton id type_
-
-
-typeContains : PlaceholderId -> Type -> Bool
-typeContains id type_ =
-    case type_ of
-        TypeInferencePlaceholder tid ->
-            tid == id
-
-        TypeConstant _ ->
-            False
-
-        TypeFunction args ->
-            typeContains id args.from || typeContains id args.to
-
-        TypeRecord attrs ->
-            List.any (\attr -> typeContains id attr.type_) attrs
-
-        TypeMutable t ->
-            typeContains id t
-
-
-
-----
---- Unify
---
-
-
-unify : Type -> Type -> Res Substitutions
-unify a b =
-    if a == b then
-        Ok Dict.empty
-
-    else
-        case ( a, b ) of
-            ( TypeInferencePlaceholder aId, _ ) ->
-                bindPlaceholderIdToType aId b
-
-            ( _, TypeInferencePlaceholder bId ) ->
-                bindPlaceholderIdToType bId a
-
-            ( TypeFunction ta, TypeFunction tb ) ->
-                result_do (unify ta.from tb.from) <| \sub1 ->
-                result_do (unify (applySubstitutionsToType sub1 ta.to) (applySubstitutionsToType sub1 tb.to)) <| \sub2 ->
-                composeSubstitutions sub1 sub2
-
-            ( TypeRecord aAttrs, TypeRecord bAttrs ) ->
-                --                 result_do (unify a1 b1) <| \sub1 ->
-                --                 result_do (unify (applySubstitutionsToType sub1 a2) (applySubstitutionsToType sub1 b2)) <| \sub2 ->
-                --                 composeSubstitutions sub1 sub2
-                Debug.todo ""
-
-            _ ->
-                Err <| "Cannot match `" ++ Debug.toString a ++ "` with `" ++ Debug.toString b ++ "`"
+    envResult
 
 
 
@@ -357,186 +114,404 @@ unify a b =
 --
 
 
-applySubstitutionsToType : Substitutions -> Type -> Type
-applySubstitutionsToType substitutions targetType =
-    case targetType of
-        TypeConstant _ ->
-            targetType
+refine_type : Substitutions -> Type -> Type
+refine_type subs ty =
+    case ty of
+        CA.TypeConstant _ ->
+            -- TODO what about type parameters?
+            ty
 
-        TypeInferencePlaceholder placeholderId ->
-            case Dict.get placeholderId substitutions of
-                Just inferredType ->
-                    inferredType
+        CA.TypeVariable { name } ->
+            case Dict.get name subs of
+                Just substitutionType ->
+                    -- a substitution exists for the variable type v
+                    refine_type subs substitutionType
 
                 Nothing ->
-                    targetType
+                    -- no substitution, return the type as-is
+                    ty
 
-        TypeFunction { from, to } ->
-            TypeFunction
-                { from = applySubstitutionsToType substitutions from
-                , to = applySubstitutionsToType substitutions to
+        CA.TypeFunction { from, fromIsMutable, to } ->
+            CA.TypeFunction
+                { from = refine_type subs from
+                , fromIsMutable = fromIsMutable
+                , to = refine_type subs to
                 }
 
-        TypeRecord attrs ->
+        CA.TypeRecord attrs ->
             attrs
-                |> List.map (\a -> { a | type_ = applySubstitutionsToType substitutions a.type_ })
-                |> TypeRecord
-
-        TypeMutable t ->
-            TypeMutable <| applySubstitutionsToType substitutions t
+                |> List.map (\a -> { a | type_ = refine_type subs a.type_ })
+                |> CA.TypeRecord
 
 
-composeSubstitutions : Substitutions -> Substitutions -> Res Substitutions
-composeSubstitutions a b =
-    let
-        rec : List ( PlaceholderId, Type ) -> Substitutions -> Res Substitutions
-        rec aAsList accum =
-            case aAsList of
-                [] ->
-                    Ok accum
+tyvars_from_type : Type -> Set String
+tyvars_from_type ty =
+    case ty of
+        CA.TypeVariable { name } ->
+            Set.singleton name
 
-                ( id, aType ) :: tail ->
-                    let
-                        maybeBType =
-                            Dict.get id b
-                    in
-                    if maybeBType == Nothing || maybeBType == Just aType then
-                        rec tail (Dict.insert id aType accum)
+        CA.TypeFunction { from, to } ->
+            Set.union (tyvars_from_type from) (tyvars_from_type to)
 
-                    else
-                        Err <| Debug.toString (Just aType) ++ " vs " ++ Debug.toString maybeBType
-    in
-    rec (Dict.toList a) b
+        CA.TypeConstant _ ->
+            Set.empty
+
+        CA.TypeRecord attrs ->
+            List.foldl (\a -> Set.union (tyvars_from_type a.type_)) Set.empty attrs
 
 
 
 ----
---- Infer
+--- Env
 --
 
 
-inferExpr : PlaceholderId -> Env -> CA.Expression () -> Res ( Type, Substitutions, PlaceholderId )
-inferExpr nextId0 env expr =
-    case expr of
-        CA.NumberLiteral _ ->
-            Ok
-                ( TypeConstant { name = "Number" }
-                , Dict.empty
-                , nextId0
-                )
-
-        CA.Variable args ->
-            case Dict.get args.name env of
-                Just t ->
-                    Ok
-                        ( t
-                        , Dict.empty
-                        , nextId0
-                        )
-
-                Nothing ->
-                    Err "variable not in scope"
-
-        CA.Lambda { parameter, body } ->
-            let
-                ( parameterType, ( childEnv, newPlaceholderId ) ) =
-                    addSymbol nextId0 env parameter
-            in
-            case inferExpr newPlaceholderId childEnv body of
-                Err e ->
-                    Err e
-
-                Ok ( bodyType, substitutions, newNewPlaceholderId ) ->
-                    Ok
-                        ( TypeFunction
-                            { from = applySubstitutionsToType substitutions parameterType
-                            , to = bodyType
-                            }
-                        , substitutions
-                        , newNewPlaceholderId
-                        )
-
-        CA.Record attrs ->
-            --             result_do (inferExpr nextId0 env first) <| \( firstType, firstSubs, pid0 ) ->
-            --             result_do (inferExpr pid0 env second) <| \( secondType, secondSubs, pid1 ) ->
-            --             result_do (composeSubstitutions firstSubs secondSubs) <| \unifiedSubs ->
-            --             Ok
-            --                 ( Record
-            --                     (applySubstitutionsToType secondSubs firstType)
-            --                     (applySubstitutionsToType firstSubs secondType)
-            --                 , unifiedSubs
-            --                 , pid1
-            --                 )
-            Debug.todo ""
-
-        CA.Call { reference, argument, argumentIsMutable } ->
-            -- TODO argumentIsMutable!!!
-            result_do (inferExpr nextId0 env reference) <| \( actualFunctionType, s1, n1 ) ->
-            let
-                env1 =
-                    applySubstitutionsToEnv s1 env
-            in
-            result_do (inferExpr n1 env1 argument) <| \( argumentType, s2, n2 ) ->
-            result_do (composeSubstitutions s1 s2) <| \s3 ->
-            result_do (extractFunctionTypes n2 actualFunctionType) <| \extracted ->
-            let
-                s4 =
-                    extracted.subs
-
-                n3 =
-                    extracted.nextId
-            in
-            result_do (composeSubstitutions s3 s4) <| \s5 ->
-            result_do (unify (applySubstitutionsToType s5 extracted.type_.from) argumentType) <| \s6 ->
-            result_do (composeSubstitutions s5 s6) <| \s7 ->
-            Ok
-                ( applySubstitutionsToType s7 extracted.type_.to
-                , s7
-                , n3
-                )
-
-        CA.If { start, condition, true, false } ->
-            Debug.todo ""
+{-| string -> ty -> env -> env
+-}
+env_add : String -> ( Type, Set String ) -> Env -> Env
+env_add v sc e =
+    Dict.insert v sc e
 
 
-type alias ExtractFunctionTypesReturn =
-    { type_ :
-        { from : Type
-        , to : Type
-        }
-    , subs : Substitutions
-    , nextId : PlaceholderId
-    }
+instantiate_type : Type -> Set String -> TyGen Type
+instantiate_type t tvars =
+    let
+        aggregate : String -> TyGen Substitutions -> TyGen Substitutions
+        aggregate tvar nextSubsAcc =
+            TyGen.do newType <| \nt ->
+            TyGen.map (Dict.insert tvar nt) nextSubsAcc
+
+        genSubs : TyGen Substitutions
+        genSubs =
+            Set.foldl aggregate (TyGen.wrap Dict.empty) tvars
+    in
+    TyGen.map (\subs -> refine_type subs t) genSubs
 
 
-extractFunctionTypes : PlaceholderId -> Type -> Res ExtractFunctionTypesReturn
-extractFunctionTypes nextId0 t =
-    case t of
-        TypeFunction type_ ->
-            Ok
-                { type_ = type_
-                , subs = Dict.empty
-                , nextId = nextId0
-                }
+env_get : String -> Env -> TyGen (Res Type)
+env_get v e =
+    case Dict.get v e of
+        Just ( t, tvars ) ->
+            instantiate_type t tvars
+                |> TyGen.map Ok
 
-        TypeInferencePlaceholder pid ->
-            let
-                type_ =
-                    { from = TypeInferencePlaceholder nextId0
-                    , to = TypeInferencePlaceholder (nextId0 + 1)
-                    }
+        Nothing ->
+            ("unbound variable: " ++ v)
+                |> Err
+                |> TyGen.wrap
 
-                nextId1 =
-                    nextId0 + 2
-            in
-            Ok
-                { nextId = nextId1
-                , type_ = type_
-                , subs =
-                    type_
-                        |> TypeFunction
-                        |> Dict.singleton pid
-                }
+
+refine_env : Substitutions -> Env -> Env
+refine_env s env =
+    let
+        refine_entry _ ( t, v ) =
+            ( refine_type (Set.foldl Dict.remove s v) t
+            , v
+            )
+    in
+    Dict.map refine_entry env
+
+
+unify : Type -> Type -> Substitutions -> Res Substitutions
+unify t1 t2 s =
+    let
+        t1_refined =
+            refine_type s t1
+
+        t2_refined =
+            refine_type s t2
+
+        cycle v t =
+            Set.member v (tyvars_from_type t)
+    in
+    case ( t1_refined, t2_refined ) of
+        ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
+            if c1.name == c2.name then
+                Ok s
+
+            else
+                Err <| "cannot unify " ++ c1.name ++ " and " ++ c2.name
+
+        ( CA.TypeVariable v1, CA.TypeVariable v2 ) ->
+            if v1 == v2 then
+                Ok s
+
+            else
+                s
+                    |> Dict.insert v1.name t2_refined
+                    |> Ok
+
+        ( CA.TypeVariable v1, _ ) ->
+            if cycle v1.name t2 then
+                -- is this the correct behavior?
+                Err "cycle!"
+
+            else
+                s
+                    |> Dict.insert v1.name t2_refined
+                    |> Ok
+
+        ( _, CA.TypeVariable v2 ) ->
+            unify t2_refined t1_refined s
+
+        ( CA.TypeFunction a, CA.TypeFunction b ) ->
+            s
+                |> unify a.to b.to
+                |> Result.andThen (unify a.from b.from)
 
         _ ->
-            Err "trying to call something that is not a function!"
+            Err <| "cannot unify " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
+
+
+literalToType : literal -> Type
+literalToType l =
+    -- TODO
+    CA.TypeConstant { name = "Number" }
+
+
+generalize : String -> Env -> Type -> ( Type, Set String )
+generalize name env ty =
+    let
+        fold k ( t, tvars ) acc =
+            -- don't add the value's own tyvars!
+            if k == name then
+                acc
+
+            else
+                Set.union (Set.diff (tyvars_from_type t) tvars) acc
+
+        tyvarsFromEnv : Set String
+        tyvarsFromEnv =
+            Dict.foldl fold Set.empty env
+
+        d =
+            Set.diff (tyvars_from_type ty) tyvarsFromEnv
+    in
+    ( ty, d )
+
+
+inspect_expr : Env -> CA.Expression e -> Type -> Substitutions -> TyGen (Res Substitutions)
+inspect_expr env expr ty subs =
+    case expr of
+        CA.NumberLiteral _ l ->
+            subs
+                |> unify ty (literalToType l)
+                |> TyGen.wrap
+
+        CA.Variable _ { name } ->
+            -- Every time I use a var with variable type, it should be instantiated,
+            -- because each time it may by used against a different type.
+            -- This is done automatically by `env_get`.
+            do_nr (env_get name env) <| \nt ->
+            let
+                t =
+                    refine_type subs nt
+            in
+            subs
+                |> unify ty t
+                |> TyGen.wrap
+
+        CA.Lambda _ args ->
+            TyGen.do newType <| \v_t ->
+            TyGen.do newType <| \e_t ->
+            do_nr (unify ty (CA.TypeFunction { from = v_t, fromIsMutable = False, to = e_t }) subs |> TyGen.wrap) <| \subs1 ->
+            let
+                v =
+                    args.parameter
+
+                e =
+                    args.body
+
+                env1 =
+                    env_add v ( v_t, Set.empty ) env
+            in
+            do_nr (inspectStatementList e env1 subs1) <| \( returnType, _, subs2 ) ->
+            unify e_t returnType subs2
+                |> TyGen.wrap
+
+        CA.Call _ args ->
+            let
+                f =
+                    args.reference
+
+                e =
+                    args.argument
+            in
+            TyGen.do newType <| \e_t ->
+            do_nr (inspect_expr env e e_t subs) <| \e_subs ->
+            let
+                f_t =
+                    CA.TypeFunction { from = e_t, fromIsMutable = False, to = ty }
+
+                f_t1 =
+                    refine_type e_subs f_t
+            in
+            inspect_expr (refine_env e_subs env) f f_t1 e_subs
+
+        CA.If _ _ ->
+            ("inference NI: " ++ Debug.toString expr)
+                |> Err
+                |> TyGen.wrap
+
+        CA.Record _ attrs ->
+            let
+                init =
+                    ( [], subs )
+                        |> Ok
+                        |> TyGen.wrap
+
+                foldAttr :
+                    { name : String, value : CA.Expression e }
+                    -> TyGen (Res ( List { name : String, type_ : Type }, Substitutions ))
+                    -> TyGen (Res ( List { name : String, type_ : Type }, Substitutions ))
+                foldAttr attr genResAccum =
+                    do_nr genResAccum <| \( attrsAccum, subsAccum ) ->
+                    TyGen.do newType <| \nt ->
+                    do_nr (inspect_expr env attr.value nt subsAccum) <| \newSubs ->
+                    ( { name = attr.name, type_ = nt } :: attrsAccum, newSubs )
+                        |> Ok
+                        |> TyGen.wrap
+            in
+            do_nr (List.foldl foldAttr init attrs) <| \( attrTypes, newSubs ) ->
+            let
+                refinedAttrTypes =
+                    -- first I need all new subs, only then it makes sense to apply them
+                    List.map (\a -> { a | type_ = refine_type newSubs a.type_ }) attrTypes
+            in
+            newSubs
+                |> unify ty (CA.TypeRecord refinedAttrTypes)
+                |> TyGen.wrap
+
+
+inferExpr nextId preamble expr =
+    let
+        env =
+            Dict.map (\n t -> ( t, Set.empty )) preamble
+
+        genResType =
+            TyGen.do newType <| \nt ->
+            do_nr (inspect_expr env expr nt Dict.empty) <| \subs ->
+            refine_type subs nt
+                |> Ok
+                |> TyGen.wrap
+
+        ( res, nextId1 ) =
+            TyGen.run nextId genResType
+    in
+    res
+        |> Result.map (\type_ -> ( type_, Dict.empty, nextId1 ))
+
+
+
+----
+---
+--
+
+
+inspect_statement : CA.Statement e -> Env -> Substitutions -> TyGen (Res ( Type, Env, Substitutions ))
+inspect_statement statement env subs =
+    case statement of
+        CA.Evaluation expr ->
+            TyGen.do newType <| \nt ->
+            do_nr (inspect_expr env expr nt subs) <| \subs1 ->
+            let
+                refinedNt =
+                    refine_type subs1 nt
+            in
+            ( refinedNt, env, subs1 )
+                |> Ok
+                |> TyGen.wrap
+
+        CA.Assignment _ ->
+            "Assignment not implemented"
+                |> Err
+                |> TyGen.wrap
+
+        CA.Definition { name, body, maybeAnnotation } ->
+            do_nr (inspectStatementList body env subs) <| \( returnType, _, subs1 ) ->
+            TyGen.wrap
+                (case Dict.get name env of
+                    Nothing ->
+                        Debug.todo "WTF dict should contain def name already"
+
+                    Just ( defType, defFreeTypeVars ) ->
+                        unify returnType defType subs1
+                            |> Result.map
+                                (\subs2 ->
+                                    let
+                                        refinedType =
+                                            refine_type subs2 defType
+
+                                        scheme =
+                                            -- this gets all "forall" vars in the definition
+                                            generalize name (refine_env subs2 env) refinedType
+
+                                        env1 =
+                                            env_add name scheme env
+                                    in
+                                    -- A definition has no type
+                                    ( typeNone, env1, subs2 )
+                                )
+                )
+
+
+
+----
+--- Definition Body
+--
+
+
+inspectStatementList : List (CA.Statement e) -> Env -> Substitutions -> TyGen (Res ( Type, Env, Substitutions ))
+inspectStatementList stats parentEnv subs =
+    let
+        -- A statement list can contain definitions, creating its own scope
+        -- Definitions can be recursive and in general appear in any order, so we want to add them to the environment before we inspect them
+        definitions =
+            List.filterMap statementAsDefinition stats
+    in
+    do_nr (insertDefinitionRec definitions parentEnv) <| \localEnv ->
+    inspectStatementRec stats typeNone localEnv subs
+
+
+inspectStatementRec : List (CA.Statement e) -> Type -> Env -> Substitutions -> TyGen (Res ( Type, Env, Substitutions ))
+inspectStatementRec stats returnType env subs =
+    case stats of
+        [] ->
+            ( returnType, env, subs )
+                |> Ok
+                |> TyGen.wrap
+
+        stat :: statsTail ->
+            do_nr (inspect_statement stat env subs) <| \( ty, env1, subs1 ) ->
+            inspectStatementRec statsTail ty env1 subs1
+
+
+insertDefinitionRec : List (CA.ValueDefinition e) -> Env -> TyGen (Res Env)
+insertDefinitionRec defs env =
+    case defs of
+        [] ->
+            env
+                |> Ok
+                |> TyGen.wrap
+
+        def :: ds ->
+            if Dict.member def.name env then
+                (def.name ++ " already declared in scope!")
+                    |> Err
+                    |> TyGen.wrap
+
+            else
+                TyGen.do newName <| \name ->
+                env
+                    |> env_add def.name ( CA.TypeVariable { name = name }, Set.singleton name )
+                    |> insertDefinitionRec ds
+
+
+statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDefinition e)
+statementAsDefinition stat =
+    case stat of
+        CA.Definition d ->
+            Just d
+
+        _ ->
+            Nothing

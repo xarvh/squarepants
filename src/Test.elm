@@ -45,6 +45,25 @@ simple toString { name, run, expected } =
     }
 
 
+isOk :
+    (error -> String)
+    ->
+        { name : String
+        , run : () -> Result error outcome
+        }
+    -> Test
+isOk toString { name, run } =
+    { name = name
+    , maybeError =
+        case run () of
+            Ok _ ->
+                Nothing
+
+            Err e ->
+                Just <| "Error: " ++ toString e
+    }
+
+
 
 ----
 --- View
