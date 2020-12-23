@@ -3,6 +3,7 @@ module Main exposing (..)
 import Array exposing (Array)
 import Browser
 import Compiler.FormattableToCanonicalAst
+import Compiler.FormattableToCanonicalAst_Test
 import Compiler.StringToTokens
 import Compiler.StringToTokens_Test
 import Compiler.TestHelpers
@@ -16,17 +17,33 @@ import Html.Attributes exposing (class, style)
 import Html.Events
 import OneOrMore exposing (OneOrMore)
 import Parser
+import Set exposing (Set)
 import Test
 import Types.CanonicalAst as CA
 import Types.Error
 import Types.FormattableAst as FA
 
 
+runTests =
+    False
+--         || True
+
+
 initialCode =
     """
-b x = x
-a = b 1
-    """
+type A =
+    |A
+    |B
+
+  """
+
+
+
+--     """
+-- a =
+--   x @= 1
+--   fn y = y
+--     """
 
 
 itialCode =
@@ -99,24 +116,38 @@ view model =
                 ]
             , Html.li
                 []
-                [ Html.h6 [] [ Html.text "AST" ]
-                , viewAst model.code
+                [ Html.h6 [] [ Html.text "Canonical AST" ]
+                , viewCanonicalAst model.code
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [ Html.text "Formattable AST" ]
+                , viewFormattableAst model.code
                 ]
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tokens" ]
                 , viewTokens model.code
                 ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Tests" ]
-                , [ Compiler.StringToTokens_Test.tests
-                  , Compiler.TokensToFormattableAst_Test.tests
-                  , Compiler.TypeInference_Test.tests
-                  ]
-                    |> List.concat
-                    |> Test.viewList
-                ]
+            , if not runTests then
+                Html.li
+                    []
+                    [ Html.h6
+                        [ style "color" "red" ]
+                        [ Html.text "TESTS DISABLED" ]
+                    ]
+
+              else
+                Html.li
+                    []
+                    [ Html.h6 [] [ Html.text "Tests" ]
+                    , [ Compiler.StringToTokens_Test.tests
+                      , Compiler.TokensToFormattableAst_Test.tests
+                      , Compiler.FormattableToCanonicalAst_Test.tests
+                      , Compiler.TypeInference_Test.tests
+                      ]
+                        |> Test.viewList
+                    ]
             ]
         ]
 
@@ -138,7 +169,8 @@ viewInference code =
                 Ok env ->
                     env
                         |> Dict.toList
-                        |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ Debug.toString v |> Html.text ])
+                        |> List.filter (\( k, v ) -> not (Dict.member k preamble))
+                        |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
                         |> Html.div []
 
         Err error ->
@@ -148,14 +180,150 @@ viewInference code =
                 |> Html.text
 
 
+viewSchema : Compiler.TypeInference.EnvEntry -> String
+viewSchema schema =
+    [ "forall: [" ++ String.join "," (Set.toList schema.forall) ++ "]"
+    , "mutable: " ++ Debug.toString schema.mutable
+    , "type: " ++ viewCaType schema.type_
+    ]
+        |> String.join " ### "
+
+
 
 ----
---- AST
+--- Canonical AST
 --
 
 
-viewAst : String -> Html msg
-viewAst code =
+viewCanonicalAst : String -> Html msg
+viewCanonicalAst code =
+    let
+        res =
+            code
+                |> Compiler.StringToTokens.lexer
+                |> Result.andThen Compiler.TokensToFormattableAst.parse
+                |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
+    in
+    case res of
+        Ok module_ ->
+            module_.valueDefinitions
+                |> Dict.values
+                |> List.sortBy .name
+                |> List.map viewCaDefinition
+                |> Html.code []
+
+        _ ->
+            res
+                |> Debug.toString
+                |> Html.text
+
+
+viewCaDefinition : CA.ValueDefinition e -> Html msg
+viewCaDefinition def =
+    Html.div
+        []
+        [ Html.div
+            []
+            [ def.maybeAnnotation
+                |> Maybe.map (\x -> def.name ++ " : " ++ viewCaType x)
+                |> Maybe.withDefault ""
+                |> Html.text
+            ]
+        , Html.div
+            []
+            [ Html.text <| def.name ++ " = " ]
+        , Html.div
+            [ style "padding-left" "2em" ]
+            (List.map viewCaStatement def.body)
+        ]
+
+
+viewCaType : CA.Type -> String
+viewCaType ty =
+    case ty of
+        CA.TypeConstant { name } ->
+            name
+
+        CA.TypeVariable { name } ->
+            name
+
+        CA.TypeFunction { from, fromIsMutable, to } ->
+            [ "(" ++ viewCaType from ++ ")"
+            , case fromIsMutable of
+                Just True ->
+                    " @> "
+
+                Just False ->
+                    " -> "
+
+                Nothing ->
+                    " ???> "
+            , "(" ++ viewCaType to ++ ")"
+            ]
+                |> String.join ""
+
+        CA.TypeRecord attrs ->
+            attrs
+                |> List.map (\{ name, type_ } -> name ++ ": " ++ viewCaType type_)
+                |> String.join ", "
+                |> (\s -> "{" ++ s ++ "}")
+
+
+viewCaStatement : CA.Statement e -> Html msg
+viewCaStatement s =
+    case s of
+        CA.Evaluation expr ->
+            Html.div
+                []
+                [ Html.text "Evaluation: "
+                , viewCaExpression expr
+                ]
+
+        CA.Definition def ->
+            viewCaDefinition def
+
+
+viewCaExpression : CA.Expression e -> Html msg
+viewCaExpression expr =
+    case expr of
+        CA.NumberLiteral _ s ->
+            Html.text s.number
+
+        CA.Variable _ s ->
+            Html.text s.name
+
+        CA.Call _ { reference, argument } ->
+            Html.div
+                [ style "border" "red" ]
+                [ viewCaExpression reference
+                , Html.div
+                    [ style "padding-left" "2em" ]
+                    [ case argument of
+                        CA.ArgumentMutable name ->
+                            Html.text <| "@" ++ name
+
+                        CA.ArgumentExpression e ->
+                            viewCaExpression e
+                    ]
+                ]
+
+        _ ->
+            Html.code
+                []
+                [ expr
+                    |> Debug.toString
+                    |> Html.text
+                ]
+
+
+
+----
+--- Formattable AST
+--
+
+
+viewFormattableAst : String -> Html msg
+viewFormattableAst code =
     let
         res =
             code
@@ -165,7 +333,7 @@ viewAst code =
     case res of
         Ok statements ->
             statements
-                |> List.map viewStatement
+                |> List.map viewFaStatement
                 |> Html.div []
 
         _ ->
@@ -174,8 +342,8 @@ viewAst code =
                 |> Html.text
 
 
-viewStatement : FA.Statement -> Html msg
-viewStatement s =
+viewFaStatement : FA.Statement -> Html msg
+viewFaStatement s =
     case s of
         FA.TypeDefinition td ->
             td
@@ -193,7 +361,7 @@ viewStatement s =
             Html.div
                 []
                 [ Html.text "Evaluation: "
-                , viewExpression expr
+                , viewFaExpression expr
                 ]
 
         FA.Definition { name, maybeAnnotation, parameters, body } ->
@@ -217,7 +385,7 @@ viewStatement s =
                     |> Html.span []
                 , body
                     |> OneOrMore.toList
-                    |> List.map viewStatement
+                    |> List.map viewFaStatement
                     |> Html.div []
                 ]
 
@@ -226,8 +394,8 @@ viewStatement s =
                 |> Html.text
 
 
-viewExpression : FA.Expression -> Html msg
-viewExpression expr =
+viewFaExpression : FA.Expression -> Html msg
+viewFaExpression expr =
     case expr of
         FA.NumberLiteral s ->
             Html.text s.number
@@ -236,7 +404,7 @@ viewExpression expr =
             Html.text s.string
 
         FA.Variable s ->
-            Html.text s.variable
+            Html.text s.name
 
         FA.FunctionCall { reference, arguments } ->
             Html.div
@@ -244,11 +412,11 @@ viewExpression expr =
                 [ Html.div
                     []
                     [ Html.text "[call] "
-                    , viewExpression reference
+                    , viewFaExpression reference
                     ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    (List.map viewExpression <| Tuple.first arguments :: Tuple.second arguments)
+                    (List.map viewFaExpression <| Tuple.first arguments :: Tuple.second arguments)
                 ]
 
         FA.Binop { left, op, right } ->
@@ -259,13 +427,13 @@ viewExpression expr =
                     [ Html.text <| "[op] " ++ op ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [ viewExpression left ]
+                    [ viewFaExpression left ]
                 , Html.div
                     []
                     [ Html.text "---" ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [ viewExpression right ]
+                    [ viewFaExpression right ]
                 ]
 
         --     Unop String Expression

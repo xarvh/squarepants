@@ -2,6 +2,7 @@ module Compiler.FormattableToCanonicalAst exposing (..)
 
 import Dict exposing (Dict)
 import OneOrMore
+import Set exposing (Set)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Error)
 import Types.FormattableAst as FA
@@ -80,36 +81,59 @@ insertStatement faStatement caModule =
                 errorTodo <| fa.name ++ " declared twice!"
 
             else
-                let
-                    translateConstructor : FA.TypeConstructor -> Res CA.TypeConstructor
-                    translateConstructor faCons =
-                        faCons.args
-                            |> List.map translateType
-                            |> listResultToResultList
-                            |> Result.map
-                                (\caArgs ->
-                                    { name = faCons.name
-                                    , args = caArgs
-                                    }
-                                )
+                case validateTypeDefinition fa of
+                    Just error ->
+                        errorTodo error
 
-                    consListToModule : List CA.TypeConstructor -> CA.Module ()
-                    consListToModule consList =
-                        { caModule
-                            | typeDefinitions =
-                                Dict.insert
-                                    fa.name
-                                    { name = fa.name
-                                    , args = fa.args
-                                    , constructors = consList
-                                    }
-                                    caModule.typeDefinitions
-                        }
-                in
-                fa.constructors
-                    |> List.map translateConstructor
-                    |> listResultToResultList
-                    |> Result.map consListToModule
+                    Nothing ->
+                        let
+                            translateConstructor : FA.TypeConstructor -> Res CA.TypeConstructor
+                            translateConstructor faCons =
+                                faCons.args
+                                    |> List.map translateType
+                                    |> listResultToResultList
+                                    |> Result.map
+                                        (\caArgs ->
+                                            { name = faCons.name
+                                            , args = caArgs
+                                            }
+                                        )
+
+                            consListToModule : List CA.TypeConstructor -> CA.Module ()
+                            consListToModule consList =
+                                { caModule
+                                    | typeDefinitions =
+                                        Dict.insert
+                                            fa.name
+                                            { name = fa.name
+                                            , args = fa.args
+                                            , constructors = consList
+                                            }
+                                            caModule.typeDefinitions
+                                }
+                        in
+                        fa.constructors
+                            |> List.map translateConstructor
+                            |> listResultToResultList
+                            |> Result.map consListToModule
+
+
+validateTypeDefinition { name, args, constructors } =
+    let
+        names =
+            List.map .name constructors
+    in
+    if not <| firstCharIsUpper name then
+        Just "type names should be uppercase"
+
+    else if List.any (\n -> not <| firstCharIsUpper n) names then
+        Just "constructor names should be uppercase"
+
+    else if Set.size (Set.fromList names) < List.length names then
+        Just "duplicate constructor names"
+
+    else
+        Nothing
 
 
 
@@ -118,7 +142,7 @@ insertStatement faStatement caModule =
 --
 
 
-translateDefinition : FA.DefinitionArgs -> Res (CA.ValueDefinition ())
+translateDefinition : FA.ValueDefinition -> Res (CA.ValueDefinition ())
 translateDefinition fa =
     let
         (FA.PatternAny name) =
@@ -126,7 +150,7 @@ translateDefinition fa =
 
         resultMaybeAnnotation =
             fa.maybeAnnotation
-                |> Maybe.map translateType
+                |> Maybe.map (translateAnnotation name fa)
                 |> maybeResultToResultMaybe
 
         resultBody =
@@ -138,12 +162,25 @@ translateDefinition fa =
     Result.map2
         (\maybeAnnotation body ->
             { name = name
+            , mutable = fa.mutable
             , maybeAnnotation = maybeAnnotation
             , body = List.foldr wrapLambda body fa.parameters
             }
         )
         resultMaybeAnnotation
         resultBody
+
+
+translateAnnotation : String -> FA.ValueDefinition -> FA.Annotation -> Res CA.Type
+translateAnnotation defName faDef faAnn =
+    if faAnn.name /= defName then
+        errorTodo "annotation name does not match"
+
+    else if faDef.mutable /= faAnn.mutable then
+        errorTodo "annotation mutability does not match"
+
+    else
+        translateType faAnn.type_
 
 
 
@@ -184,7 +221,7 @@ translateStatement faStat =
 --
 
 
-translateExpression : FA.Expression -> Result Error (CA.Expression ())
+translateExpression : FA.Expression -> Res (CA.Expression ())
 translateExpression faExpr =
     case faExpr of
         FA.NumberLiteral args ->
@@ -193,7 +230,7 @@ translateExpression faExpr =
         FA.Variable args ->
             { start = args.start
             , end = args.end
-            , name = args.variable
+            , name = args.name
 
             -- TODO check that args.willBeMutated is on only if being used in an expression?
             -- Probably needs to be handled at the function call level
@@ -223,13 +260,10 @@ translateExpression faExpr =
         FA.FunctionCall { reference, arguments } ->
             -- ref arg1 arg2 arg3...
             let
-                fold : CA.Expression () -> CA.Expression () -> CA.Expression ()
+                fold : CA.Argument () -> CA.Expression () -> CA.Expression ()
                 fold argument refAccum =
                     { reference = refAccum
                     , argument = argument
-
-                    -- TODO
-                    , argumentIsMutable = False
                     }
                         |> CA.Call ()
             in
@@ -238,7 +272,7 @@ translateExpression faExpr =
                 (translateExpression reference)
                 (arguments
                     |> OneOrMore.toList
-                    |> List.map translateExpression
+                    |> List.map translateArgument
                     |> listResultToResultList
                 )
 
@@ -272,29 +306,57 @@ translateExpression faExpr =
                 _ ->
                     errorTodo "sorry, I'm supporting only tuples of size 2"
 
+        FA.Binop { left, op, right } ->
+            --
+            -- Unlike other ML languages, the left operand is the *second* argument
+            --
+            -- `a + b` == `((+) b) a`
+            --
+            Result.map2
+                (\l r ->
+                    CA.Call ()
+                        { argument = l
+                        , reference =
+                            CA.Call ()
+                                { argument = r
+                                , reference =
+                                    CA.Variable ()
+                                        -- TODO start, end!!
+                                        { start = 0
+                                        , end = 0
+                                        , name = op
+                                        }
+                                }
+                        }
+                )
+                (translateArgument left)
+                (translateArgument right)
+
+        FA.Lvalue args ->
+            errorTodo "mutable values can be used only as arguments for function or mutation operators"
+
         _ ->
-            errorTodo "NOT SUPPORTED FOR NOW"
+            errorTodo <| "NOT SUPPORTED FOR NOW " ++ Debug.toString faExpr
+
+
+translateArgument : FA.Expression -> Res (CA.Argument ())
+translateArgument faExpr =
+    case faExpr of
+        FA.Lvalue args ->
+            args.name
+                |> CA.ArgumentMutable
+                |> Ok
+
+        _ ->
+            faExpr
+                |> translateExpression
+                |> Result.map CA.ArgumentExpression
 
 
 
 ----
 --- Type
 --
-
-
-translateAndCons : List FA.Type -> List CA.Type -> Res (List CA.Type)
-translateAndCons faTypes caTypesAccum =
-    case faTypes of
-        [] ->
-            Ok caTypesAccum
-
-        faHead :: faTail ->
-            case translateType faHead of
-                Err e ->
-                    Err e
-
-                Ok caType ->
-                    translateAndCons faTail (caType :: caTypesAccum)
 
 
 addAttribute : List ( String, FA.Type ) -> List { name : String, type_ : CA.Type } -> Res CA.Type
@@ -335,19 +397,21 @@ translateType faType =
                     |> Ok
 
             else
-                errorTodo "type vars not yet supported"
+                { name = name }
+                    |> CA.TypeVariable
+                    |> Ok
 
-        FA.TypeFunction argsAndReturn ->
-            -- translateAndCons will conveniently *reverse* the list, so that the return type is first
-            case translateAndCons argsAndReturn [] of
-                Err e ->
-                    Err e
-
-                Ok [] ->
-                    errorTodo "This shouldn't happen #98765"
-
-                Ok (return :: args) ->
-                    Ok <| List.foldl (\arg accum -> CA.TypeFunction { from = arg, fromIsMutable = False, to = accum }) return args
+        FA.TypeFunction fa ->
+            Result.map2
+                (\from to ->
+                    CA.TypeFunction
+                        { from = from
+                        , fromIsMutable = Just fa.fromIsMutable
+                        , to = to
+                        }
+                )
+                (translateType fa.from)
+                (translateType fa.to)
 
         FA.TypePolymorphic { name, args } ->
             errorTodo "polymorphism not yet implemented"
@@ -357,13 +421,6 @@ translateType faType =
 
         FA.TypeRecord attrs ->
             addAttribute attrs []
-
-        FA.TypeMutable t ->
-            {-
-               ensure that this is being used only "in" a function call '?'
-               add an arg to this function "can be mutable" '?'
-            -}
-            errorTodo "mutability not  yet implemented"
 
 
 

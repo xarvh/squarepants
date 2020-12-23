@@ -11,29 +11,34 @@ module Types.CanonicalAst exposing (..)
 import Dict exposing (Dict)
 
 
+type alias Name =
+    String
+
+
 type alias Module e =
-    { typeDefinitions : Dict String TypeDefinition
-    , valueDefinitions : Dict String (ValueDefinition e)
+    { typeDefinitions : Dict Name TypeDefinition
+    , valueDefinitions : Dict Name (ValueDefinition e)
     }
 
 
 type alias TypeDefinition =
-    { name : String
-    , args : List String
+    { name : Name
+    , args : List Name
     , constructors : List TypeConstructor
     }
 
 
-type alias ValueDefinition e =
-    { name : String
-    , maybeAnnotation : Maybe Type
-    , body : List (Statement e)
+type alias TypeConstructor =
+    { name : Name
+    , args : List Type
     }
 
 
-type alias TypeConstructor =
-    { name : String
-    , args : List Type
+type alias ValueDefinition e =
+    { name : Name
+    , mutable : Bool
+    , maybeAnnotation : Maybe Type
+    , body : List (Statement e)
     }
 
 
@@ -41,23 +46,23 @@ type alias TypeConstructor =
 -}
 type Type
     = TypeConstant
-        { name : String
+        { name : Name
 
         --, moduleReference : ModuleReference
         --, args : List Type
         }
     | TypeVariable
-        { name : String
+        { name : Name
         }
     | TypeFunction
         -- `from` can actually be mutable
         { from : Type
-        , fromIsMutable : Bool
+        , fromIsMutable : Maybe Bool
         , to : Type
         }
     | TypeRecord
         (List
-            { name : String
+            { name : Name
             , type_ : Type
             }
         )
@@ -67,11 +72,6 @@ type Statement e
     = Definition (ValueDefinition e)
       -- Evaluations are needed for return, mutation and debug
     | Evaluation (Expression e)
-    | Assignment
-        { lvalue : String
-        , op : String
-        , body : Expression e
-        }
 
 
 type Expression e
@@ -85,29 +85,28 @@ type Expression e
         e
         { start : Int
         , end : Int
-        , name : String
+        , name : Name
 
         --, moduleReference : ModuleReference
         }
     | Lambda
         e
         { start : Int
-        , parameter : String
+        , parameter : Name
         , body : List (Statement e)
         }
     | Record
         e
         -- TODO use a Dict instead? Attrs should not be ordered!
         (List
-            { name : String
+            { name : Name
             , value : Expression e
             }
         )
     | Call
         e
         { reference : Expression e
-        , argument : Expression e
-        , argumentIsMutable : Bool
+        , argument : Argument e
         }
     | If
         e
@@ -116,6 +115,11 @@ type Expression e
         , true : Expression e
         , false : Expression e
         }
+
+
+type Argument e
+    = ArgumentExpression (Expression e)
+    | ArgumentMutable Name
 
 
 

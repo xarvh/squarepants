@@ -100,7 +100,7 @@ lexContent startPos state =
         '#' :: rest ->
             runLexer False (lexSingleLineComment state.pos) 2 rest
 
-        '{' :: '#' :: rest ->
+        '[' :: '#' :: rest ->
             runLexer False (lexMultiLineComment state.pos) 2 rest
 
         '\n' :: rest ->
@@ -244,16 +244,16 @@ recognisedTokens =
           , constructor = String.trimLeft >> Token.NumberLiteral >> Ok
           }
         , -- Words
-          { regex = "^[ ]*[a-zA-Z._][a-zA-Z._0-9]*"
+          { regex = "^[ ]*[@]?[a-zA-Z._][a-zA-Z._0-9]*"
           , consumed = String.length
           , constructor =
-                \match ->
+                \m ->
                     let
-                        m =
-                            String.trimLeft match
+                        match =
+                            String.trimLeft m
                     in
                     Ok <|
-                        case m of
+                        case match of
                             "fn" ->
                                 Token.Fn
 
@@ -273,19 +273,28 @@ recognisedTokens =
                                 Token.Else
 
                             "and" ->
-                                Token.Binop Token.Logical m
+                                Token.Binop Token.Logical match
 
                             "or" ->
-                                Token.Binop Token.Logical m
+                                Token.Binop Token.Logical match
 
                             "risk" ->
-                                Token.Unop m
+                                Token.Unop match
 
                             "not" ->
-                                Token.Unop m
+                                Token.Unop match
 
                             _ ->
-                                Token.Symbol m
+                                case String.uncons match of
+                                    Nothing ->
+                                        Debug.todo "not happening"
+
+                                    Just ( head, tail ) ->
+                                        if head == '@' then
+                                            Token.Name { mutable = True } tail
+
+                                        else
+                                            Token.Name { mutable = False } match
           }
 
         -- Parens
@@ -298,7 +307,7 @@ recognisedTokens =
         , parenRegex "," <| Token.Comma
         , -- Unary addittive
           -- the `>` at the end is to avoid matching `->`
-          { regex = "^[ ]+[+-][^ >]"
+          { regex = "^[ ]+[+-][^ >=]"
           , consumed = \match -> String.length match - 1
           , constructor = String.trimLeft >> String.dropRight 1 >> Token.Unop >> Ok
           }
@@ -313,9 +322,16 @@ recognisedTokens =
                     in
                     case match of
                         "->" ->
-                            Ok <| Token.Arrow
+                            Ok <| Token.Arrow { mutable = False }
+
+                        "@>" ->
+                            Ok <| Token.Arrow { mutable = True }
+
                         ":" ->
-                            Ok <| Token.HasType
+                            Ok <| Token.HasType { mutable = False }
+
+                        "@:" ->
+                            Ok <| Token.HasType { mutable = True }
 
                         "^" ->
                             Ok <| Token.Binop Token.Exponential match
@@ -366,28 +382,28 @@ recognisedTokens =
                             Ok <| Token.Binop Token.Pipe match
 
                         "=" ->
-                            Ok Token.Defop
+                            Ok <| Token.Defop { mutable = False }
 
                         "@=" ->
-                            Ok <| Token.Mutop match
+                            Ok <| Token.Defop { mutable = True }
 
-                        "@" ->
-                            Ok <| Token.Mutop match
+                        ":=" ->
+                            Ok <| Token.Binop Token.Mutop match
 
                         "+=" ->
-                            Ok <| Token.Mutop match
+                            Ok <| Token.Binop Token.Mutop match
 
                         "-=" ->
-                            Ok <| Token.Mutop match
+                            Ok <| Token.Binop Token.Mutop match
 
                         "/=" ->
-                            Ok <| Token.Mutop match
+                            Ok <| Token.Binop Token.Mutop match
 
                         "*=" ->
-                            Ok <| Token.Mutop match
+                            Ok <| Token.Binop Token.Mutop match
 
                         "^=" ->
-                            Ok <| Token.Mutop match
+                            Ok <| Token.Binop Token.Mutop match
 
                         _ ->
                             Err <| Error.UnknownOperator match
@@ -420,10 +436,7 @@ lexSingleLineComment startPos state =
             | pos = endPos
             , code = rest
             , accum =
-                { kind =
-                    state.codeAsString
-                        |> String.slice startPos endPos
-                        |> Token.StringLiteral
+                { kind = Token.Comment
                 , start = startPos
                 , end = endPos
                 }
@@ -579,10 +592,10 @@ lexMultiLineComment startPos state =
     let
         rec pos depth code =
             case code of
-                '{' :: '#' :: rest ->
+                '[' :: '#' :: rest ->
                     rec (pos + 1) (depth + 1) rest
 
-                '#' :: '}' :: rest ->
+                '#' :: ']' :: rest ->
                     let
                         endPos =
                             pos + 2

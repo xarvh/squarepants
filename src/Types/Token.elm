@@ -19,9 +19,9 @@ type
       -- Terms
     | StringLiteral String
     | NumberLiteral String
-    | Symbol String
+    | Name { mutable : Bool } String
       -- Types
-    | HasType
+    | HasType { mutable : Bool }
     | ActualPipe
       -- Keywords
     | Fn
@@ -31,11 +31,10 @@ type
     | Then
     | Else
       -- Ops
-    | Defop
-    | Mutop String
+    | Defop { mutable : Bool }
     | Unop String
     | Binop PrecedenceGroup String
-    | Arrow
+    | Arrow { mutable : Bool }
       -- Parens
     | RoundParen OpenOrClosed
     | SquareBracket OpenOrClosed
@@ -50,6 +49,7 @@ type PrecedenceGroup
     | Comparison
     | Logical
     | Pipe
+    | Mutop
 
 
 type OpenOrClosed

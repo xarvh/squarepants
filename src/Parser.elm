@@ -62,10 +62,6 @@ module Parser exposing (..)
            fail
 
 
-   map : (a -> b) -> Parser token input a -> Parser token input b
-   map f p =
-     do p <| \a ->
-       succeed (f a)
 
 -}
 
@@ -150,7 +146,6 @@ parse parser getNext readState =
 --
 -- TODO rename to `accept`, `reject`, `abort`
 -- TODO allow `abort` to produce any type of error, not only string
-
 
 
 {-| Abort
@@ -246,6 +241,12 @@ updState upd =
 ----
 --- Base combinators
 --
+
+
+map : (a -> b) -> Parser token input a -> Parser token input b
+map f p =
+    do p <| \a ->
+    succeed (f a)
 
 
 getState : Parser t i i

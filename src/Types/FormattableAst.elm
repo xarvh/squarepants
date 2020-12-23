@@ -12,8 +12,6 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 -}
 
-{- TODO: if possible, replace all OneOrMore with List -}
-
 import OneOrMore exposing (OneOrMore)
 
 
@@ -21,17 +19,25 @@ type alias Module =
     List Statement
 
 
-type alias DefinitionArgs =
+type alias ValueDefinition =
     { name : Pattern
-    , maybeAnnotation : Maybe Type
+    , mutable : Bool
+    , maybeAnnotation : Maybe Annotation
     , parameters : List Pattern
     , body : OneOrMore Statement
     }
 
 
+type alias Annotation =
+    { name : String
+    , mutable : Bool
+    , type_ : Type
+    }
+
+
 type Statement
     = Evaluation Expression
-    | Definition DefinitionArgs
+    | Definition ValueDefinition
     | Mutation
         { left : String
         , mutop : String
@@ -63,8 +69,10 @@ type Type
         { name : String
         }
     | TypeFunction
-        -- TODO TypeFunction's List is guaranteed to have at least TWO items, but I'm not yet sure what's the best format for them
-        (List Type)
+        { from : Type
+        , fromIsMutable : Bool
+        , to : Type
+        }
     | TypePolymorphic
         -- TODO name should be a String
         { name : Type
@@ -72,7 +80,6 @@ type Type
         }
     | TypeTuple (List Type)
     | TypeRecord (List ( String, Type ))
-    | TypeMutable Type
 
 
 type Expression
@@ -89,8 +96,12 @@ type Expression
     | Variable
         { start : Int
         , end : Int
-        , variable : String
-        , willBeMutated : Bool
+        , name : String
+        }
+    | Lvalue
+        { start : Int
+        , end : Int
+        , name : String
         }
     | Lambda
         { start : Int
@@ -149,7 +160,10 @@ exprStart expr =
         NumberLiteral { start, end, number } ->
             start
 
-        Variable { start, end, variable } ->
+        Variable { start, end, name } ->
+            start
+
+        Lvalue { start, end, name } ->
             start
 
         Lambda { start, parameters, body } ->

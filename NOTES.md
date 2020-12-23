@@ -35,17 +35,20 @@ MVP
 Main goals
 ----------
 
-* A language for indie games
+* Ergonomics
+  - easy to read for non-experts
+  - easy to write, quick to modify
+  - less symbols, more words
 
 * Performance
-  - Must be able to transpile to GLSL without significant performance penalty
-  - Must be able to mutate values in place
+  - transpile to GLSL without significant performance penalty
+  - limited ability to mutate values in place
 
 * Readability
-  - Minimalist design
-  - No "magic", explicit is better than implicit
-  - No global state
-  - Human-friendly symbol names
+  - minimalist design
+  - no "magic", explicit is better than implicit
+  - no global state
+  - human-friendly value names
 
 * Fast iteration
   - User code CAN use escape hatches
@@ -71,11 +74,6 @@ More or less established features
 
 * Allow docs for single union type constructors
 
-* `risk` monop
-    * `risk unionTypeValue`
-    * Extract the first constructor of a Union Type, crash if not available
-    * Prone to error if the constructos change order, but this is a YOLO feature
-
 
 * Comment with `#`
   What about multi line comments?
@@ -85,17 +83,11 @@ More or less established features
   * Evaluating an expression that produces a function without returning it is an error
 
 
-* Modules
-  - No mutable globals
-  - No side effects on module load
-
-
 * Operators
     * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
     * Assignment ops are not binops and are not valid expressions
     * `=` is for declaring a new symbol
-    * `@=` is for assigning a new value to an existing mutable variable
-    * not-equal: `=/=`
+    ? not-equal: `=/=`
     * use `and`, `or` instead of `&&` `||`
 
 
@@ -121,6 +113,20 @@ More or less established features
 * Support `0 < x < 10`
 
 
+* do notation
+  Nice explanation of monad: https://stackoverflow.com/questions/44965/what-is-a-monad
+
+  bind: "chains two operations so that they look like a single one"
+  bind: "take a computation, pretend you have its result already, and use that result to produce a new computation"
+
+  - A computation is anything that results in a value
+
+  ```
+  ch = Result.chain
+  blah blah blah |> ch fn blahOutput =
+  someotherline |> ch fn otherThingy =
+  doStuffWith blahOutput otherThingy
+  ```
 
 
 
@@ -148,6 +154,15 @@ Unit type is used as
           else
               ...
 
+    Match over multiple values:
+
+    * try v1, v2, v3 as
+        p1a, p2a, p3a then
+          ...
+        p1b, b2b, p3b then
+          ...
+        else
+          ...
 
 
 
@@ -167,202 +182,19 @@ Stuff that seems good but needs thinking
   It's easier to implement.
   It can also make code less readable, but I hope the advantages above will offset this.
 
-* do notation?
-  ```
-  blah blah blah |> to fn blahOutput =
-  someotherline |> to fn otherThingy =
-  doStuffWith blahOutput otherThingy
-  ```
 
+* Remove left pipes?
 
+* Remove point-free pipes?
+    probably not, function composition is core to functional programming
 
+* Use `>>` or `|` as value pipe?
 
 
-
-### Mutability, take 3
-
-
-* Track every variable that a lambda declares (body, argument) and every variable that it modifies
-
-
-
-
-* Mutability is a type modifier.
-
-* Every non-mutable type can be transformed into mutable.
-
-* These mutable versions are types on their own and are typechecked as their own types.
-
-* Immutable and mutable types can't be mixed inside records and ADTs.
-
-* The ways one can use Mutable types are limited:
-  - Mut types can't be returned by functions
-  ? Mut types can't be reassigned to other names in the same scope
-
-? How to init mutable values from immutable values
-
-* Algebraic operators can mix immutable and mutable types via op overloading
-  - the output is always immutable
-
-
-
-
-
-
-
-
-
-
-
-
-### Mutability, take 2
-
-The only values that can be mutable are
-  * function arguments
-  * variables defined inside functions
-
-Mutability can be inferred, but can also be expressed in annotations via the snail operator `@`:
-```
-thisFunctionMutatesItsFirstArgument : @Int -> None
-thisFunctionMutatesItsFirstArgument a =
-  b : @Int
-  b =
-    3
-
-  b +=
-    4
-
-  a +=
-    b
-```
-
-When passing a mutable variable to a function that will mutate it, the variable name must be preceded by `@`, to make it obvious that the value will be mutated:
-```
-x = 1
-
-thisFunctionMutatesItsFirstArgument @x
-```
-
-
-The imperative `entities[entityId].component.x += 3` becomes:
-```
-Dict.updateInPlace entityId (fn entity = entity.component.x += 3 ) @entities
-```
-(with `Dict.updateInPlace : key -> (@value -> None) -> @Dict key value -> None`)
-
-
-Records, tuples and union types are either entirely mutable, either are entirely immutable: their annotations can contain `@` only when it's a function argument:
-```
-type alias CompilerWillComplain = {
-  , becauseThisIsInvalid : @Int
-  }
-
-type alias ThisDoesntWorkEither =
-  Dict Int @Int
-
-
-type alias ThisInsteadIsPerfectlyFine = {
-  , becauseTheMutableThingIsAFunctionArg : @Int -> None
-  }
-```
-
-
-###### Squiggles vs letters
-Right now I'm choosing to use `@` rather than `mut` because
-  * `@` stands out more than `mut` would
-  * `@` can stick to its target without spaces, so it's more obvious what its target is
-
-
-###### Implicit mutability
-When reading an unannotated
-```
-a = 1
-```
-the user *cannot* assume that `a` is immutable, because there might be an `@a` or an `a += 2` or any other reassignment op down the line.
-This reduces the code legibility.
-How bad is this? How is this likely to cause unintended consequences?
-
-
-###### Mutability and named arguments
-Using records to pass named arguments to a function is an important pattern.
-However, it doesn't work well with mutability as defined above.
-
-In this code, `args.someArgument` will be updated, but `a` will not!
-```
-a : @Int
-a = 1
-
-args = {
-  , someArgument = a
-  }
-
-functionThatMutatesItsNamedArgs @args
-```
-
-I hope that the syntax makes it obvious enough that the only thing that gets mutated is `args`.
-
-Further, passing a mutable arg requires already for that arg to have a name, so the need to explicitly name the arg is lessened.
-
-
-###### Mutable closures
-This allows mutable state to hang around implicit and invisible:
-```
-createStatefulClosure : None -> { get : None -> Int, set : Int -> None }
-createStatefulClosure =
-  a = 0
-
-  { get = fn None = a
-  , set = fn v = a @= v
-  }
-
-createStatefulClosure2 : Int -> { get : None -> Int, set : Int -> None }
-createStatefulClosure2 a =
-  { get = fn None = a
-  , set = fn v = a @= v
-  }
-
-
-
-
-createStatefulClosure3 =
-  fn x =
-    fn y =
-      x += y
-
-
-someOtherFun =
-  a = 0
-  createStatefulClosure3 @a
-
-
-
-```
-
-To prevent it, when type checking a lambda:
-    put all defined and arg mutables in a set
-    descend the return expression
-      if it contains any function that mutates any of the mutables in the set
-        throw an error
-
-
-better algorithm:
-    when type checking a lambda's return statement
-      for any lambda that the returned value contains
-        any variable that the lamba mutates must either
-          - be the argument of the original lambda
-          - be the argument of the contained lambda
-          - belong to the parent scope/env of the original lambda
-
-
-
-
-
-
-
-
-
-
-
+* `risk` monop
+    * `risk unionTypeValue`
+    * Extract the first constructor of a Union Type, crash if not available
+    * Prone to error if the constructos change order, but this is a YOLO feature
 
 
 
@@ -430,16 +262,6 @@ better algorithm:
 
 
 
-### Modules
-Given a module, it should be  straightforward to figure out which file declares it
-
-relative vs absolute module names?
-
-
-
-
-
-
 Game Platform
 -------------
 
@@ -466,14 +288,11 @@ Stuff that's still up in the air
 --------------------------------
 
 
+Scala accessibility: https://github.com/scalacenter/advisoryboard/blob/master/proposals/016-verbal-descriptions.md
 
 
-
-
-
-
-
-
+Animations with Algebraic Effects https://gopiandcode.uk/logs/log-bye-bye-monads-algebraic-effects.html
+(I'm not convinced by algebraic effects, but animations are something that the language must definitely manage well)
 
 
 
@@ -808,62 +627,6 @@ How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
     --> how do I ensure that a function can produce a certain type?
       `decode(SomeType) .... -> Blah SomeType`
       I need first-class types for this!
-
-
-
-### Mutability, take 1
-
-    Preamble.toMutableReference : a -> @a
-
-    Preamble.toImmutable : @a -> a
-
-
-    # a defaults to immutable (because 0 is immutable!)
-    a = 0
-
-    # but can be "upgraded" to mutable ref if used as such...
-    a = 0
-    a += 1
-
-    # ...or if annotated
-    a : @Int
-    a = 1
-
-    # preamble functions can also be used
-    a = toMutableReference 1
-
-
-    generateUser : @Random.Seed -> User
-    generateUser seed =
-        { name = generateName @seed
-        , address = generateAddress @seed
-        , age = generateRange @seed 10 99
-        }
-
-
-    doStuff time =
-        seed : @Random.Seed
-        seed =
-            Random.initSeed time
-
-        users : List User
-        users =
-            10
-              |> List.range
-              |> List.map fn i = generateUser @seed
-
-        users
-
-
-    a : @{ first : @Int, second : Int }
-    a = { first = 1, second = 2 }
-
-    b : @Int
-    b = 3
-
-    a.first = b
-
-
 
 
 

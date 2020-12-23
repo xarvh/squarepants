@@ -19,6 +19,15 @@ stringToCanonicalModule code =
         |> Result.mapError (Types.Error.toString code)
 
 
+stringToFormattableModule : String -> Result String FA.Module
+stringToFormattableModule code =
+    code
+        |> unindent
+        |> Compiler.StringToTokens.lexer
+        |> Result.andThen Compiler.TokensToFormattableAst.parse
+        |> Result.mapError (Types.Error.toString code)
+
+
 unindent : String -> String
 unindent multilineString =
     let

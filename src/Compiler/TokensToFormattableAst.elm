@@ -7,6 +7,10 @@ import Types.FormattableAst as FA
 import Types.Token as Token exposing (Token)
 
 
+
+{- TODO: if possible, replace all OneOrMore with List, BUT -}
+
+
 d name =
     let
         logDebug { path, first } =
@@ -50,12 +54,6 @@ discardFirst a b =
     do a <| \_ -> b
 
 
-isUppercaseSymbol : String -> Bool
-isUppercaseSymbol s =
-    -- TODO
-    True
-
-
 oneToken : Parser Token
 oneToken =
     Parser.consumeOne
@@ -69,6 +67,42 @@ inlineOrIndented p =
         ]
 
 
+nonMutName : Parser String
+nonMutName =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Name { mutable } s ->
+            if mutable then
+                fail
+
+            else
+                succeed s
+
+        _ ->
+            fail
+
+
+defop : Parser { mutable : Bool }
+defop =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Defop arg ->
+            succeed arg
+
+        _ ->
+            fail
+
+
+standardList : { separator : Token.Kind, item : Parser a } -> Parser (OneOrMore a)
+standardList { separator, item } =
+    let
+        sibsep =
+            do (maybe <| exactTokenKind Token.NewSiblingLine) <| \_ ->
+              exactTokenKind separator
+    in
+    discardFirst (maybe sibsep) (oomSeparatedBy sibsep item)
+
+
 
 ----
 --- Main
@@ -77,7 +111,7 @@ inlineOrIndented p =
 
 runParser : Parser a -> List Token -> Result String a
 runParser parser ts =
-    Parser.parse parser uncons ts
+    Parser.parse parser unconsIgnoreComments ts
 
 
 end : Parser a -> Parser a
@@ -87,11 +121,15 @@ end parser =
     succeed v
 
 
-uncons : List a -> Maybe ( a, List a )
-uncons ls =
+unconsIgnoreComments : List Token -> Maybe ( Token, List Token )
+unconsIgnoreComments ls =
     case ls of
         head :: tail ->
-            Just ( head, tail )
+            if head.kind == Token.Comment then
+                unconsIgnoreComments tail
+
+            else
+                Just ( head, tail )
 
         [] ->
             Nothing
@@ -125,43 +163,43 @@ module_ =
 
 typeAlias : Parser FA.Statement
 typeAlias =
-    do (exactTokenKind <| Token.Symbol "alias") <| \_ ->
-    do (oneOrMore termName) <| \( name, args ) ->
-    do (exactTokenKind Token.Defop) <| \_ ->
+    do (exactTokenKind <| Token.Name { mutable = False } "alias") <| \_ ->
+    do (oneOrMore nonMutName) <| \( name, args ) ->
+    do defop <| \{ mutable } ->
     do (inlineOrIndented typeExpr) <| \type_ ->
-    { name = name
-    , args = args
-    , type_ = type_
-    }
-        |> FA.TypeAlias
-        |> succeed
+    if mutable then
+        Parser.abort "aliases can't be mutable"
+
+    else
+        { name = name
+        , args = args
+        , type_ = type_
+        }
+            |> FA.TypeAlias
+            |> succeed
 
 
 typeDefinition : Parser FA.Statement
 typeDefinition =
-    do (exactTokenKind <| Token.Symbol "type") <| \_ ->
-    do (oneOrMore termName) <| \( name, args ) ->
-    do (exactTokenKind Token.Defop) <| \_ ->
-    do (inlineOrIndented constructors) <| \cons ->
-    { name = name
-    , args = args
-    , constructors = cons
-    }
-        |> FA.TypeDefinition
-        |> succeed
+    do (exactTokenKind <| Token.Name { mutable = False } "type") <| \_ ->
+    do (oneOrMore nonMutName) <| \( name, args ) ->
+    do defop <| \{ mutable } ->
+    do (inlineOrIndented <| standardList { separator = Token.ActualPipe, item = constructor }) <| \cons ->
+    if mutable then
+        Parser.abort "can't use @= to define a type"
 
-
-constructors : Parser (List { name : String, args : List FA.Type })
-constructors =
-    do (maybe <| exactTokenKind Token.ActualPipe) <| \_ ->
-    zeroOrMore constructor
+    else
+        { name = name
+        , args = args
+        , constructors = OneOrMore.toList cons
+        }
+            |> FA.TypeDefinition
+            |> succeed
 
 
 constructor : Parser { name : String, args : List FA.Type }
 constructor =
-    do (maybe <| exactTokenKind Token.NewSiblingLine) <| \_ ->
-    do (exactTokenKind Token.ActualPipe) <| \_ ->
-    do termName <| \name ->
+    do nonMutName <| \name ->
     do (zeroOrMore typeExpr) <| \args ->
     succeed { name = name, args = args }
 
@@ -182,40 +220,18 @@ term =
         Token.StringLiteral s ->
             su "sl" <| FA.StringLiteral { start = token.start, end = token.end, string = s }
 
-        Token.Symbol s ->
+        Token.Name { mutable } s ->
             { start = token.start
             , end = token.end
-            , variable = s
-            , willBeMutated = False
+            , name = s
             }
-                |> FA.Variable
+                |> (if mutable then
+                        FA.Lvalue
+
+                    else
+                        FA.Variable
+                   )
                 |> su s
-
-        Token.Mutop "@" ->
-            do oneToken <| \token2 ->
-            case token2.kind of
-                Token.Symbol s ->
-                    { start = token.start
-                    , end = token2.end
-                    , variable = s
-                    , willBeMutated = True
-                    }
-                        |> FA.Variable
-                        |> succeed
-
-                _ ->
-                    Parser.abort "something weird is following the mutop!"
-
-        _ ->
-            fail
-
-
-termName : Parser String
-termName =
-    do oneToken <| \token ->
-    case token.kind of
-        Token.Symbol s ->
-            succeed s
 
         _ ->
             fail
@@ -238,10 +254,13 @@ expr =
         , binopsOr Token.Exponential
         , binopsOr Token.Multiplicative
         , binopsOr Token.Addittive
+
+        -- TODO compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
         , binopsOr Token.Comparison
 
         -- TODO pipes can't actually be mixed
         , binopsOr Token.Pipe
+        , binopsOr Token.Mutop
         ]
 
 
@@ -316,22 +335,41 @@ definition : Parser FA.Statement
 definition =
     do (maybe typeAnnotation) <| \maybeAnnotation ->
     do (oneOrMore pattern) <| \( namePattern, params ) ->
-    do (exactTokenKind Token.Defop) <| \_ ->
+    do defop <| \{ mutable } ->
     do (oneOf [ inlineStatement, statementBlock ]) <| \sb ->
     case namePattern of
         -- TODO if namePattern is any other pattern, then params must be empty
         FA.PatternAny name ->
-            if maybeAnnotation /= Nothing && Maybe.map .name maybeAnnotation /= Just name then
-                Parser.abort "annotation name doesn't match definition name"
+            case annotationError maybeAnnotation name mutable of
+                Just err ->
+                    Parser.abort err
+
+                Nothing ->
+                    { name = namePattern
+                    , mutable = mutable
+                    , parameters = params
+                    , body = sb
+                    , maybeAnnotation = maybeAnnotation
+                    }
+                        |> FA.Definition
+                        |> succeed
+
+
+annotationError : Maybe FA.Annotation -> String -> Bool -> Maybe String
+annotationError maybeAnnotation name mutable =
+    case maybeAnnotation of
+        Nothing ->
+            Nothing
+
+        Just annotation ->
+            if annotation.name /= name then
+                Just "annotation name doesn't match definition name"
+
+            else if annotation.mutable /= mutable then
+                Just "annotation mutability doesn't match definition"
 
             else
-                { name = namePattern
-                , parameters = params
-                , body = sb
-                , maybeAnnotation = Maybe.map .type_ maybeAnnotation
-                }
-                    |> FA.Definition
-                    |> succeed
+                Nothing
 
 
 inlineStatement : Parser (OneOrMore FA.Statement)
@@ -353,13 +391,28 @@ statementBlock =
 --
 
 
-typeAnnotation : Parser { name : String, type_ : FA.Type }
+typeAnnotation : Parser FA.Annotation
 typeAnnotation =
-    do symbolName <| \name ->
-    do (exactTokenKind Token.HasType) <| \_ ->
+    do nonMutName <| \name ->
+    do hasType <| \{ mutable } ->
     do typeExpr <| \t ->
     do (exactTokenKind Token.NewSiblingLine) <| \_ ->
-    succeed { name = name, type_ = t }
+    succeed
+        { name = name
+        , mutable = mutable
+        , type_ = t
+        }
+
+
+hasType : Parser { mutable : Bool }
+hasType =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.HasType mutability ->
+            succeed mutability
+
+        _ ->
+            fail
 
 
 typeExpr : Parser FA.Type
@@ -367,7 +420,6 @@ typeExpr =
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr
-        , typeMutableOr
         , typeFunctionOr
         , typeApplicationOr
 
@@ -377,16 +429,7 @@ typeExpr =
 
 typeTerm : Parser FA.Type
 typeTerm =
-    do oneToken <| \token ->
-    case token.kind of
-        Token.Symbol s ->
-            { name = s
-            }
-                |> FA.TypeConstantOrVariable
-                |> succeed
-
-        _ ->
-            fail
+    Parser.map (\n -> FA.TypeConstantOrVariable { name = n }) nonMutName
 
 
 typeParensOr : Parser FA.Type -> Parser FA.Type
@@ -410,28 +453,46 @@ typeParensOr higher =
         ]
 
 
-typeMutableOr : Parser FA.Type -> Parser FA.Type
-typeMutableOr higher =
-    oneOf
-        [ higher
-        , do (discardFirst (exactTokenKind (Token.Mutop "@")) higher) <| \t ->
-        succeed <| FA.TypeMutable t
-        ]
-
-
 typeFunctionOr : Parser FA.Type -> Parser FA.Type
 typeFunctionOr higher =
     let
+        arrowAndHigher : Parser ( Bool, FA.Type )
         arrowAndHigher =
-            do (exactTokenKind Token.Arrow) <| \_ -> higher
+            do arrow <| \{ mutable } ->
+            do higher <| \h ->
+            succeed ( mutable, h )
+
+        fold : ( Bool, FA.Type ) -> ( Bool, FA.Type ) -> ( Bool, FA.Type )
+        fold ( nextIsMutable, ty ) ( thisIsMutable, accum ) =
+            ( nextIsMutable
+            , FA.TypeFunction
+                { from = ty
+                , fromIsMutable = thisIsMutable
+                , to = accum
+                }
+            )
     in
     do higher <| \e ->
     do (zeroOrMore arrowAndHigher) <| \es ->
-    if es == [] then
-        succeed e
+    let
+        ( return, reversedArgs ) =
+            OneOrMore.reverse ( ( False, e ), es )
+    in
+    reversedArgs
+        |> List.foldl fold return
+        |> Tuple.second
+        |> succeed
 
-    else
-        succeed <| FA.TypeFunction (e :: es)
+
+arrow : Parser { mutable : Bool }
+arrow =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Arrow arg ->
+            succeed arg
+
+        _ ->
+            fail
 
 
 typeApplicationOr : Parser FA.Type -> Parser FA.Type
@@ -460,8 +521,12 @@ lambdaOr higher =
         def =
             do (exactTokenKind Token.Fn) <| \fn ->
             do (oneOrMore pattern) <| \params ->
-            do (exactTokenKind Token.Defop) <| \_ ->
-            succeed ( fn, params )
+            do defop <| \{ mutable } ->
+            if mutable then
+                Parser.abort "lambdas can't be mutable"
+
+            else
+                succeed ( fn, params )
 
         body : Parser (OneOrMore FA.Statement)
         body =
@@ -499,24 +564,8 @@ lambdaOr higher =
 -}
 pattern : Parser FA.Pattern
 pattern =
-    do oneToken <| \token ->
-    case token.kind of
-        Token.Symbol s ->
-            succeed (FA.PatternAny s)
-
-        _ ->
-            fail
-
-
-symbolName : Parser String
-symbolName =
-    do oneToken <| \token ->
-    case token.kind of
-        Token.Symbol s ->
-            succeed s
-
-        _ ->
-            fail
+    do nonMutName <| \name ->
+    succeed (FA.PatternAny name)
 
 
 

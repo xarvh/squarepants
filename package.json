@@ -2,7 +2,7 @@
   "dependencies": {
     "pegjs": "^0.10.0"
   },
-  "name": "vier",
+  "name": "Squarepants",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xarvh/vier.git"
+    "url": "git+https://github.com/xarvh/squarepants.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/xarvh/vier/issues"
+    "url": "https://github.com/xarvh/squarepants/issues"
   },
-  "homepage": "https://github.com/xarvh/vier#readme",
+  "homepage": "https://github.com/xarvh/squarepants#readme",
   "description": "",
   "devDependencies": {
     "elm-live": "^4.0.2"
