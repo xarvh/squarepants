@@ -67,16 +67,12 @@ This way we can tell the user why they can't flag those as mutable rather than j
 type Type
     = TypeConstantOrVariable
         { name : String
+        , args : List Type
         }
     | TypeFunction
         { from : Type
         , fromIsMutable : Bool
         , to : Type
-        }
-    | TypePolymorphic
-        -- TODO name should be a String
-        { name : Type
-        , args : OneOrMore Type
         }
     | TypeTuple (List Type)
     | TypeRecord (List ( String, Type ))

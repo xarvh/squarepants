@@ -22,7 +22,6 @@ type
     | Name { mutable : Bool } String
       -- Types
     | HasType { mutable : Bool }
-    | ActualPipe
       -- Keywords
     | Fn
     | If

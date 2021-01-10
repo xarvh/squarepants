@@ -166,10 +166,24 @@ Unit type is used as
 
 
 
+### Support Tabs or Spaces, but not mixed
+I want to wait for bootstrapping  before I implement this.
+
+But because of accessibility tabs are important https://www.reddit.com/r/javascript/comments/c8drjo/nobody_talks_about_the_real_reason_to_use_tabs/
+At the same time, also because of accessibility, spaces are important.
+
+So, allow a file to be indented entirely with tabs or entirely with spaces, but reject a file that mixes the two
+
+
 
 
 Stuff that seems good but needs thinking
 ----------------------------------------
+
+Collect-then-solve type inference:
+  https://www.researchgate.net/publication/2528716_Generalizing_Hindley-Milner_Type_Inference_Algorithms
+  https://github.com/cronokirby/heeren-2002/blob/master/lang.hs
+
 
 * Parser error friendliness: https://www.reddit.com/r/ProgrammingLanguages/comments/k9u35g/whats_an_useful_debugging_output_for_a_simple/
 
@@ -288,7 +302,28 @@ Stuff that's still up in the air
 --------------------------------
 
 
-Scala accessibility: https://github.com/scalacenter/advisoryboard/blob/master/proposals/016-verbal-descriptions.md
+### Tuples
+
+Tuples with parens are a pain in the ass
+
+Would be nice to have tuples just as syntsugar for records
+
+`a & b` -> { first = a, second = b }
+
+
+
+
+
+
+
+
+
+
+
+### Accessibility
+https://cs.brown.edu/~sk/Publications/Papers/Published/sbk-accessible-ast-blocks/paper.pdf
+https://github.com/scalacenter/advisoryboard/blob/master/proposals/016-verbal-descriptions.md
+
 
 
 Animations with Algebraic Effects https://gopiandcode.uk/logs/log-bye-bye-monads-algebraic-effects.html

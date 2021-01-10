@@ -17,7 +17,7 @@ d name =
             Debug.log "d"
                 ( path
                 , "<=="
-                , Result.map (\( output, readState ) -> List.take 1 readState) first
+                , Result.map (\( output, readState ) -> List.take 1 readState |> List.map .kind) first
                 )
     in
     --Parser.doWithDebug logDebug name
@@ -98,7 +98,7 @@ standardList { separator, item } =
     let
         sibsep =
             do (maybe <| exactTokenKind Token.NewSiblingLine) <| \_ ->
-              exactTokenKind separator
+            exactTokenKind separator
     in
     discardFirst (maybe sibsep) (oomSeparatedBy sibsep item)
 
@@ -184,7 +184,7 @@ typeDefinition =
     do (exactTokenKind <| Token.Name { mutable = False } "type") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
-    do (inlineOrIndented <| standardList { separator = Token.ActualPipe, item = constructor }) <| \cons ->
+    do (inlineOrIndented <| standardList { separator = Token.Comma, item = constructor }) <| \cons ->
     if mutable then
         Parser.abort "can't use @= to define a type"
 
@@ -199,8 +199,15 @@ typeDefinition =
 
 constructor : Parser { name : String, args : List FA.Type }
 constructor =
+    let
+        ctorArgs =
+            oneOf
+                [ typeTerm
+                , surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) typeExpr
+                ]
+    in
     do nonMutName <| \name ->
-    do (zeroOrMore typeExpr) <| \args ->
+    do (zeroOrMore ctorArgs) <| \args ->
     succeed { name = name, args = args }
 
 
@@ -420,8 +427,8 @@ typeExpr =
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr
-        , typeFunctionOr
         , typeApplicationOr
+        , typeFunctionOr
 
         -- TODO record
         ]
@@ -429,7 +436,7 @@ typeExpr =
 
 typeTerm : Parser FA.Type
 typeTerm =
-    Parser.map (\n -> FA.TypeConstantOrVariable { name = n }) nonMutName
+    Parser.map (\n -> FA.TypeConstantOrVariable { name = n, args = [] }) nonMutName
 
 
 typeParensOr : Parser FA.Type -> Parser FA.Type
@@ -497,16 +504,19 @@ arrow =
 
 typeApplicationOr : Parser FA.Type -> Parser FA.Type
 typeApplicationOr higher =
-    oneOf
-        [ higher
-        , do typeTerm <| \base ->
-        do (oneOrMore higher) <| \args ->
-        { name = base
-        , args = args
-        }
-            |> FA.TypePolymorphic
-            |> succeed
-        ]
+    do higher <| \ty ->
+    case ty of
+        FA.TypeConstantOrVariable fa ->
+            -- TODO what about fa.args?
+            do (zeroOrMore higher) <| \args ->
+            { name = fa.name
+            , args = args
+            }
+                |> FA.TypeConstantOrVariable
+                |> succeed
+
+        _ ->
+            succeed ty
 
 
 

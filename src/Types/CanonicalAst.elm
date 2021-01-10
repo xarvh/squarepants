@@ -47,15 +47,14 @@ type alias ValueDefinition e =
 type Type
     = TypeConstant
         { name : Name
+        , args : List Type
 
-        --, moduleReference : ModuleReference
-        --, args : List Type
+        -- sourceModule : ?
         }
     | TypeVariable
         { name : Name
         }
     | TypeFunction
-        -- `from` can actually be mutable
         { from : Type
         , fromIsMutable : Maybe Bool
         , to : Type

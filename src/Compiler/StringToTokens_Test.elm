@@ -139,17 +139,18 @@ b = 1
             --
             --
             [ simpleTest
-                { name = "[reg] def after comment"
+                { name = "[reg] statement after comment"
                 , run = lexTokens """
 #
 a = 1
                 """
                 , expected =
                     Ok
-                        [ { kind = Token.Comment, start = 0, end = 8 }
-                        , { kind = non_mut_name "a", start = 0, end = 8 }
-                        , { kind = Token.Defop { mutable = False }, start = 0, end = 8 }
-                        , { kind = Token.NumberLiteral "1", start = 37, end = 38 }
+                        [ { kind = Token.Comment, start = 1, end = 2 }
+                        , { kind = Token.NewSiblingLine, start = 3, end = 3 }
+                        , { kind = non_mut_name "a", start = 3, end = 4 }
+                        , { kind = Token.Defop { mutable = False }, start = 5, end = 6 }
+                        , { kind = Token.NumberLiteral "1", start = 7, end = 8 }
                         ]
                 }
             , simpleTest
@@ -157,7 +158,7 @@ a = 1
                 , run = lexTokens "# hello"
                 , expected =
                     Ok
-                        [ { kind = Token.Comment, start = 0, end = 8 }
+                        [ { kind = Token.Comment, start = 0, end = 7 }
                         ]
                 }
             , simpleTest

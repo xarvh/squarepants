@@ -84,7 +84,7 @@ do_res a b =
 
 typeNone : Type
 typeNone =
-    CA.TypeConstant { name = "None" }
+    CA.TypeConstant { name = "None", args = [] }
 
 
 
@@ -97,9 +97,8 @@ inspectModule : Env -> CA.Module e -> Res Env
 inspectModule prelude mod =
     do_res (Dict.foldl addConstructors (Ok prelude) mod.typeDefinitions) <| \env ->
     let
-        _ =
-            Debug.log "" env
-
+        --         _ =
+        --             Debug.log "" env
         statements =
             mod.valueDefinitions
                 |> Dict.values
@@ -120,21 +119,23 @@ inspectModule prelude mod =
 addConstructors : String -> CA.TypeDefinition -> Res Env -> Res Env
 addConstructors _ def resEnv =
     do_res resEnv <| \env ->
-    addConstructorsRec (Set.fromList def.args) def.name def.constructors env
+    addConstructorsRec def def.constructors env
 
 
-addConstructorsRec : Set Name -> Name -> List CA.TypeConstructor -> Env -> Res Env
-addConstructorsRec args typeName constructors env =
+addConstructorsRec : CA.TypeDefinition -> List CA.TypeConstructor -> Env -> Res Env
+addConstructorsRec typeDef constructors env =
     case constructors of
         [] ->
             Ok env
 
         ctor :: cTail ->
             let
+                args =
+                    List.map (\a -> CA.TypeVariable { name = a }) typeDef.args
+
                 ctorType =
-                    -- TODO add type args to TypeConstant
                     -- TODO ensure that all constructors use declared var types?
-                    List.foldr fold (CA.TypeConstant { name = typeName }) ctor.args
+                    List.foldr fold (CA.TypeConstant { name = typeDef.name, args = args }) ctor.args
 
                 fold ty accum =
                     CA.TypeFunction
@@ -154,7 +155,7 @@ addConstructorsRec args typeName constructors env =
                             , forall = Set.empty
                             , mutable = Just False
                             }
-                        |> addConstructorsRec args typeName cTail
+                        |> addConstructorsRec typeDef cTail
 
 
 
@@ -202,8 +203,8 @@ tyvars_from_type ty =
         CA.TypeFunction { from, to } ->
             Set.union (tyvars_from_type from) (tyvars_from_type to)
 
-        CA.TypeConstant _ ->
-            Set.empty
+        CA.TypeConstant { name, args } ->
+            List.foldl (\a -> Set.union (tyvars_from_type a)) Set.empty args
 
         CA.TypeRecord attrs ->
             List.foldl (\a -> Set.union (tyvars_from_type a.type_)) Set.empty attrs
@@ -266,11 +267,23 @@ unify t1 t2 s =
     in
     case ( t1_refined, t2_refined ) of
         ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
-            if c1.name == c2.name then
-                Ok s
+            if c1.name /= c2.name then
+                Err <| "cannot unify " ++ c1.name ++ " and " ++ c2.name
 
             else
-                Err <| "cannot unify " ++ c1.name ++ " and " ++ c2.name
+                let
+                    rec a1 a2 subs =
+                        case ( a1, a2 ) of
+                            ( [], [] ) ->
+                                Ok subs
+
+                            ( head1 :: tail1, head2 :: tail2 ) ->
+                                do_res (unify head1 head2 subs) <| rec tail1 tail2
+
+                            _ ->
+                                Err <| "one of the two has wrong number of args: " ++ c1.name ++ " and " ++ c2.name
+                in
+                rec c1.args c2.args s
 
         ( CA.TypeVariable v1, CA.TypeVariable v2 ) ->
             if v1 == v2 then
@@ -314,7 +327,7 @@ unify t1 t2 s =
 literalToType : literal -> Type
 literalToType l =
     -- TODO
-    CA.TypeConstant { name = "Number" }
+    CA.TypeConstant { name = "Number", args = [] }
 
 
 generalize : Name -> Env -> Type -> Set Name
@@ -515,7 +528,7 @@ inspect_statement statement env subs =
 
                     Just def ->
                         unify returnType def.type_ subs1
-                            |> Result.map
+                            |> Result.andThen
                                 (\subs2 ->
                                     let
                                         refinedType =
@@ -540,10 +553,35 @@ inspect_statement statement env subs =
                                         env1 =
                                             Dict.insert name scheme env
                                     in
-                                    -- A definition has no type
-                                    ( typeNone, env1, subs2 )
+                                    case annotationTooGeneral maybeAnnotation forall of
+                                        Nothing ->
+                                            -- A definition has no type
+                                            Ok ( typeNone, env1, subs2 )
+
+                                        Just error ->
+                                            Err error
                                 )
                 )
+
+
+annotationTooGeneral : Maybe Type -> Set Name -> Maybe String
+annotationTooGeneral maybeAnnotation inferredForall =
+    case maybeAnnotation of
+        Nothing ->
+            Nothing
+
+        Just annotation ->
+            let
+                -- This is already calculated when we add the raw definitions to env
+                -- Is it faster to get it from env?
+                annotationForall =
+                    tyvars_from_type annotation
+            in
+            if Set.size annotationForall > Set.size inferredForall then
+                Just <| "annotation too general : " ++ Debug.toString annotationForall ++ " vs " ++ Debug.toString inferredForall
+
+            else
+                Nothing
 
 
 
@@ -651,7 +689,9 @@ insertDefinitionRec defs env =
                                 env
                                     |> Dict.insert def.name
                                         { type_ = annotation
-                                        , forall = Set.empty
+
+                                        -- TODO remove parent annotation tyvars!
+                                        , forall = tyvars_from_type annotation
                                         , mutable = Just def.mutable
                                         }
                                     |> insertDefinitionRec ds

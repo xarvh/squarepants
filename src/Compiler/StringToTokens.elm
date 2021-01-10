@@ -98,7 +98,7 @@ lexContent startPos state =
             runLexer True (lexSoftQuotedString state.pos) 1 rest
 
         '#' :: rest ->
-            runLexer False (lexSingleLineComment state.pos) 2 rest
+            runLexer False (lexSingleLineComment state.pos) 1 rest
 
         '[' :: '#' :: rest ->
             runLexer False (lexMultiLineComment state.pos) 2 rest
@@ -278,9 +278,6 @@ recognisedTokens =
                             "or" ->
                                 Token.Binop Token.Logical match
 
-                            "risk" ->
-                                Token.Unop match
-
                             "not" ->
                                 Token.Unop match
 
@@ -366,14 +363,11 @@ recognisedTokens =
                         "=/=" ->
                             Ok <| Token.Binop Token.Comparison match
 
-                        "|>" ->
+                        ":>" ->
                             Ok <| Token.Binop Token.Pipe match
 
-                        "<|" ->
+                        "<:" ->
                             Ok <| Token.Binop Token.Pipe match
-
-                        "|" ->
-                            Ok <| Token.ActualPipe
 
                         ">>" ->
                             Ok <| Token.Binop Token.Pipe match
@@ -397,6 +391,7 @@ recognisedTokens =
                             Ok <| Token.Binop Token.Mutop match
 
                         "/=" ->
+                            -- TODO do we really want this op?
                             Ok <| Token.Binop Token.Mutop match
 
                         "*=" ->

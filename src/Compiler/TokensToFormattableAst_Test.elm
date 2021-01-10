@@ -236,13 +236,13 @@ annotations =
                     , name = "a"
                     , type_ =
                         FA.TypeFunction
-                            { from = FA.TypeConstantOrVariable { name = "Number" }
+                            { from = FA.TypeConstantOrVariable { name = "Number", args = [] }
                             , fromIsMutable = True
                             , to =
                                 FA.TypeFunction
-                                    { from = FA.TypeConstantOrVariable { name = "Int" }
+                                    { from = FA.TypeConstantOrVariable { name = "Int", args = [] }
                                     , fromIsMutable = False
-                                    , to = FA.TypeConstantOrVariable { name = "None" }
+                                    , to = FA.TypeConstantOrVariable { name = "None", args = [] }
                                     }
                             }
                     }
@@ -262,13 +262,13 @@ annotations =
                     , name = "a"
                     , type_ =
                         FA.TypeFunction
-                            { from = FA.TypeConstantOrVariable { name = "Number" }
+                            { from = FA.TypeConstantOrVariable { name = "Number", args = [] }
                             , fromIsMutable = False
                             , to =
                                 FA.TypeFunction
-                                    { from = FA.TypeConstantOrVariable { name = "Int" }
+                                    { from = FA.TypeConstantOrVariable { name = "Int", args = [] }
                                     , fromIsMutable = True
-                                    , to = FA.TypeConstantOrVariable { name = "None" }
+                                    , to = FA.TypeConstantOrVariable { name = "None", args = [] }
                                     }
                             }
                     }
@@ -297,15 +297,15 @@ typeDefinitions =
     Test.Group "Type Definitions"
         [ simpleTest
             { name = "Parse inline def"
-            , run = \_ -> firstTypeDef "type A b c = V1 b | V2 c | V3 | V4 b c"
+            , run = \_ -> firstTypeDef "type A b c = V1 b , V2 c , V3 , V4 b c"
             , expected =
                 Just
                     { args = [ "b", "c" ]
                     , constructors =
-                        [ { args = [ FA.TypeConstantOrVariable { name = "b" } ], name = "V1" }
-                        , { args = [ FA.TypeConstantOrVariable { name = "c" } ], name = "V2" }
+                        [ { args = [ FA.TypeConstantOrVariable { name = "b", args = [] } ], name = "V1" }
+                        , { args = [ FA.TypeConstantOrVariable { name = "c", args = [] } ], name = "V2" }
                         , { args = [], name = "V3" }
-                        , { args = [ FA.TypeConstantOrVariable { name = "b" }, FA.TypeConstantOrVariable { name = "c" } ], name = "V4" }
+                        , { args = [ FA.TypeConstantOrVariable { name = "b", args = [] }, FA.TypeConstantOrVariable { name = "c", args = [] } ], name = "V4" }
                         ]
                     , name = "A"
                     }
@@ -317,8 +317,8 @@ typeDefinitions =
                     firstTypeDef
                         """
                         type A =
-                           | V1
-                           | V2
+                           , V1
+                           , V2
                         """
             , expected =
                 Just

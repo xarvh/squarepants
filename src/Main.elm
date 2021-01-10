@@ -26,54 +26,27 @@ import Types.FormattableAst as FA
 
 runTests =
     False
---         || True
+        || True
 
 
 initialCode =
     """
-type A =
-    |A
-    |B
-
+id : a -> b
+id l = l
   """
 
 
+tests =
+    if not runTests then
+        Html.text ""
 
---     """
--- a =
---   x @= 1
---   fn y = y
---     """
-
-
-itialCode =
-    """
-readStuff : () #> Result Error String
-readStuff () =
-  if readFile "stuff.json" is Ok string then string else ""
-
-
-modifyThisVariable : #Int -> Void
-modifyThisVariable v =
-  v += 1
-
-
-someValue : Int
-someValue =
-  a = 3
-  b = 2
-  return a + b
-
-
-someOtherFunction : Int String #> Void
-someOtherFunction n s =
-
-  someSideEffect ()
-
-  x = readStuff ()
-
-  return
-"""
+    else
+        Test.viewList
+            [ Compiler.StringToTokens_Test.tests
+            , Compiler.TokensToFormattableAst_Test.tests
+            , Compiler.FormattableToCanonicalAst_Test.tests
+            , Compiler.TypeInference_Test.tests
+            ]
 
 
 type alias Model =
@@ -141,12 +114,7 @@ view model =
                 Html.li
                     []
                     [ Html.h6 [] [ Html.text "Tests" ]
-                    , [ Compiler.StringToTokens_Test.tests
-                      , Compiler.TokensToFormattableAst_Test.tests
-                      , Compiler.FormattableToCanonicalAst_Test.tests
-                      , Compiler.TypeInference_Test.tests
-                      ]
-                        |> Test.viewList
+                    , tests
                     ]
             ]
         ]

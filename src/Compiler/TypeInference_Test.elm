@@ -21,7 +21,7 @@ hasError =
 
 
 constant n =
-    CA.TypeConstant { name = n }
+    CA.TypeConstant { name = n, args = [] }
 
 
 function from to =
@@ -58,11 +58,11 @@ preamble =
         , ( "+="
           , em <|
                 CA.TypeFunction
-                    { from = CA.TypeConstant { name = "Number" }
+                    { from = CA.TypeConstant { name = "Number", args = [] }
                     , fromIsMutable = Just False
                     , to =
                         CA.TypeFunction
-                            { from = CA.TypeConstant { name = "Number" }
+                            { from = CA.TypeConstant { name = "Number", args = [] }
                             , fromIsMutable = Just True
                             , to = constant "None"
                             }
@@ -79,6 +79,7 @@ tests =
         , variableTypes
         , findAllNestedSiblingReferences
         , mutability
+        , higherOrderTypes
         ]
 
 
@@ -137,7 +138,7 @@ functions =
                         CA.TypeFunction
                             { from = CA.TypeVariable { name = "t2" }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeConstant { name = "Number" }
+                            , to = CA.TypeConstant { name = "Number", args = [] }
                             }
                     }
             }
@@ -189,7 +190,7 @@ variableTypes : Test
 variableTypes =
     Test.Group "variable types"
         [ simpleTest
-            { name = "identity"
+            { name = "Identity"
             , run =
                 \_ ->
                     infer "id"
@@ -199,10 +200,46 @@ variableTypes =
                         """
             , expected =
                 Ok
-                    { type_ = function (CA.TypeVariable { name = "a" }) (CA.TypeVariable { name = "a" })
+                    { type_ =
+                        CA.TypeFunction
+                            { from = CA.TypeVariable { name = "a" }
+                            , fromIsMutable = Just False
+                            , to = CA.TypeVariable { name = "a" }
+                            }
                     , forall = Set.singleton "a"
                     , mutable = Just False
                     }
+            }
+        , simpleTest
+            { name = "Identity, no annotation"
+            , run =
+                \_ ->
+                    infer "id"
+                        """
+                        id a = a
+                        """
+            , expected =
+                Ok
+                    { type_ =
+                        CA.TypeFunction
+                            { from = CA.TypeVariable { name = "t2" }
+                            , fromIsMutable = Nothing
+                            , to = CA.TypeVariable { name = "t2" }
+                            }
+                    , forall = Set.singleton "t2"
+                    , mutable = Just False
+                    }
+            }
+        , hasError
+            { name = "Reject disconnected forall var types?"
+            , run =
+                \_ ->
+                    infer "id"
+                        """
+                        id : a -> b
+                        id l = l
+                        """
+            , test = Test.errorShouldContain "too general"
             }
         , isOk
             { name = "TyVar definitions: lambda scope"
@@ -525,5 +562,38 @@ mutability =
                         a = a
                         """
             , test = Test.errorShouldContain "mutable"
+            }
+        ]
+
+
+
+----
+--- Higher order types
+--
+
+
+higherOrderTypes : Test
+higherOrderTypes =
+    Test.Group "higher order types"
+        [ simpleTest
+            { name = "Parse precedence"
+            , run =
+                \_ ->
+                    infer "a"
+                        """
+                        a : List a -> List a
+                        a l = l
+                        """
+            , expected =
+                Ok
+                    { type_ =
+                        CA.TypeFunction
+                            { from = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], name = "List" }
+                            , fromIsMutable = Just False
+                            , to = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], name = "List" }
+                            }
+                    , mutable = Just False
+                    , forall = Set.singleton "a"
+                    }
             }
         ]

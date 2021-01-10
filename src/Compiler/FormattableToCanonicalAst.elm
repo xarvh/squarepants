@@ -390,11 +390,22 @@ firstCharIsUpper s =
 translateType : FA.Type -> Res CA.Type
 translateType faType =
     case faType of
-        FA.TypeConstantOrVariable { name } ->
+        FA.TypeConstantOrVariable { name, args } ->
             if firstCharIsUpper name then
-                { name = name }
-                    |> CA.TypeConstant
-                    |> Ok
+                args
+                    |> List.map translateType
+                    |> listResultToResultList
+                    |> Result.map
+                        (\caArgs ->
+                            { name = name
+                            , args = caArgs
+                            }
+                                |> CA.TypeConstant
+                        )
+
+            else if args /= [] then
+                -- TODO is this the correct error?
+                errorTodo "rank 2 types are not supported"
 
             else
                 { name = name }
@@ -412,9 +423,6 @@ translateType faType =
                 )
                 (translateType fa.from)
                 (translateType fa.to)
-
-        FA.TypePolymorphic { name, args } ->
-            errorTodo "polymorphism not yet implemented"
 
         FA.TypeTuple types ->
             errorTodo "tuples are not supported. Use `pair` for a tuple-2, or a record instead."
