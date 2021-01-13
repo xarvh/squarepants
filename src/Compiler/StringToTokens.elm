@@ -309,7 +309,7 @@ recognisedTokens =
           , constructor = String.trimLeft >> String.dropRight 1 >> Token.Unop >> Ok
           }
         , -- Squiggles
-          { regex = "^[ ]*[=+\\-*/:><!^|@]+"
+          { regex = "^[ ]*[=+\\-*/:><!&^|@]+"
           , consumed = String.length
           , constructor =
                 \m ->
@@ -362,6 +362,9 @@ recognisedTokens =
 
                         "=/=" ->
                             Ok <| Token.Binop Token.Comparison match
+
+                        "&" ->
+                            Ok <| Token.Binop Token.Tuple match
 
                         ":>" ->
                             Ok <| Token.Binop Token.Pipe match

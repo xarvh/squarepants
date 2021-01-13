@@ -2,6 +2,7 @@ module Compiler.TokensToFormattableAst exposing (..)
 
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
+import SepList exposing (SepList)
 import Types.Error as Error exposing (Error)
 import Types.FormattableAst as FA
 import Types.Token as Token exposing (Token)
@@ -47,6 +48,11 @@ type alias Parser a =
 oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
 oomSeparatedBy sep pa =
     Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
+
+
+sepList : Parser sep -> Parser item -> Parser (SepList sep item)
+sepList sep item =
+    Parser.tuple2 item (zeroOrMore (Parser.tuple2 sep item))
 
 
 discardFirst : Parser a -> Parser b -> Parser b
@@ -265,6 +271,9 @@ expr =
         -- TODO compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
         , binopsOr Token.Comparison
 
+        -- TODO chain tuples
+        , binopsOr Token.Tuple
+
         -- TODO pipes can't actually be mixed
         , binopsOr Token.Pipe
         , binopsOr Token.Mutop
@@ -428,10 +437,32 @@ typeExpr =
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr
         , typeApplicationOr
+        , typeTupleOr
         , typeFunctionOr
 
         -- TODO record
         ]
+
+
+typeTupleOr : Parser FA.Type -> Parser FA.Type
+typeTupleOr higher =
+    let
+        group =
+            Token.Tuple
+
+        binopAndPrev : Parser FA.Type
+        binopAndPrev =
+            discardFirst (binaryOperators group) higher
+    in
+    do higher <| \head ->
+    do (Parser.zeroOrMore binopAndPrev) <| \tail ->
+    if tail == [] then
+        succeed head
+
+    else
+        (head :: tail)
+            |> FA.TypeTuple
+            |> succeed
 
 
 typeTerm : Parser FA.Type
@@ -633,16 +664,16 @@ unaryOperator =
 
 binopsOr : Token.PrecedenceGroup -> Parser FA.Expression -> Parser FA.Expression
 binopsOr group higher =
-    let
-        binopAndPrev : Parser ( String, FA.Expression )
-        binopAndPrev =
-            Parser.tuple2 (binaryOperators group) higher
-    in
-    do higher <| \left ->
-    do (Parser.zeroOrMore binopAndPrev) <| \binopAndPrevs ->
-    binopAndPrevs
-        |> List.foldl (\( op, right ) leftAccum -> FA.Binop { left = leftAccum, op = op, right = right }) left
-        |> succeed
+    do (sepList (binaryOperators group) higher) <| \( head, sepTail ) ->
+    if sepTail == [] then
+        succeed head
+
+    else
+        { group = group
+        , sepList = ( head, sepTail )
+        }
+            |> FA.Binop
+            |> succeed
 
 
 binaryOperators : Token.PrecedenceGroup -> Parser String

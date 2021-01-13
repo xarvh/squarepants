@@ -110,9 +110,11 @@ type Expression e
     | If
         e
         { start : Int
-        , condition : Expression e
-        , true : Expression e
-        , false : Expression e
+        -- we use the if also to get lazy ops and compacted compops, so even if the syntax does
+        -- not support statement blocks inside if condition, it's useful that the AST can model it.
+        , condition : List (Statement e)
+        , true : List (Statement e)
+        , false : List (Statement e)
         }
 
 

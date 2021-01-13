@@ -387,21 +387,21 @@ viewFaExpression expr =
                     (List.map viewFaExpression <| Tuple.first arguments :: Tuple.second arguments)
                 ]
 
-        FA.Binop { left, op, right } ->
+        FA.Binop { group, sepList } ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
                     []
-                    [ Html.text <| "[op] " ++ op ]
+                    [ Html.text <| "[op] "] --TODO ++ op ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [ viewFaExpression left ]
+                    [] --TODO viewFaExpression left ]
                 , Html.div
                     []
                     [ Html.text "---" ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [ viewFaExpression right ]
+                    [] --TODO viewFaExpression right ]
                 ]
 
         --     Unop String Expression

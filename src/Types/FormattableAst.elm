@@ -12,7 +12,9 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 -}
 
+import Types.Token
 import OneOrMore exposing (OneOrMore)
+import SepList exposing (SepList)
 
 
 type alias Module =
@@ -111,9 +113,8 @@ type Expression
         , arguments : OneOrMore Expression
         }
     | Binop
-        { left : Expression
-        , op : String
-        , right : Expression
+        { group : Types.Token.PrecedenceGroup
+        , sepList : (SepList String Expression)
         }
     | Unop
         { start : Int
@@ -168,8 +169,8 @@ exprStart expr =
         FunctionCall { reference, arguments } ->
             exprStart reference
 
-        Binop { left, op, right } ->
-            exprStart left
+        Binop { group, sepList } ->
+            exprStart (Tuple.first sepList)
 
         Unop { start, op, right } ->
             start

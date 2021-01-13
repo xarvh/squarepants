@@ -940,7 +940,7 @@ findAllRefs_expr expr =
             Set.singleton args.name
 
         CA.Lambda _ { start, parameter, body } ->
-            List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty body
+            findAllRefs_statementBlock body
 
         CA.Record _ attrsA ->
             List.foldl (\a -> Set.union (findAllRefs_expr a.value)) Set.empty attrsA
@@ -951,9 +951,9 @@ findAllRefs_expr expr =
                 (findAllRefs_arg argument)
 
         CA.If _ { start, condition, true, false } ->
-            findAllRefs_expr condition
-                |> Set.union (findAllRefs_expr true)
-                |> Set.union (findAllRefs_expr false)
+            findAllRefs_statementBlock condition
+                |> Set.union (findAllRefs_statementBlock true)
+                |> Set.union (findAllRefs_statementBlock false)
 
 
 findAllRefs_arg : CA.Argument e -> Set String
@@ -965,6 +965,9 @@ findAllRefs_arg arg =
         CA.ArgumentExpression expr ->
             findAllRefs_expr expr
 
+findAllRefs_statementBlock : List (CA.Statement e) -> Set String
+findAllRefs_statementBlock statements =
+            List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
 
 
 ----

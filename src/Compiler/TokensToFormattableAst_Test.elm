@@ -29,72 +29,29 @@ asDefinition s =
             Nothing
 
 
+faBinop : Token.PrecedenceGroup -> { left : FA.Expression, op : String, right : FA.Expression } -> FA.Expression
+faBinop group { left, op, right } =
+    FA.Binop
+        { group = group
+        , sepList = ( left, [ ( op, right ) ] )
+        }
+
+
+
+----
+---
+--
+
+
 tests : Test
 tests =
     Test.Group "TokensToFormattableAst"
-        [ binops
-        , lambdas
+        [ lambdas
         , annotations
         , typeDefinitions
         ]
 
 
-binops : Test
-binops =
-    Test.Group "Binops"
-        [ simpleTest
-            { name = "left-association"
-            , run =
-                \_ ->
-                    [ Token.NumberLiteral "1"
-                    , Token.Binop Token.Addittive "+"
-                    , Token.NumberLiteral "2"
-                    , Token.Binop Token.Addittive "+"
-                    , Token.NumberLiteral "3"
-                    ]
-                        |> List.indexedMap kindToToken
-                        |> Syntax.runParser (Syntax.end Syntax.expr)
-            , expected =
-                Ok
-                    (FA.Binop
-                        { left =
-                            FA.Binop
-                                { left = FA.NumberLiteral { start = 0, end = 1, number = "1" }
-                                , op = "+"
-                                , right = FA.NumberLiteral { start = 2, end = 3, number = "2" }
-                                }
-                        , op = "+"
-                        , right = FA.NumberLiteral { start = 4, end = 5, number = "3" }
-                        }
-                    )
-            }
-        , simpleTest
-            { name = "precedence"
-            , run =
-                \_ ->
-                    [ Token.NumberLiteral "1"
-                    , Token.Binop Token.Addittive "+"
-                    , Token.NumberLiteral "2"
-                    , Token.Binop Token.Multiplicative "*"
-                    , Token.NumberLiteral "3"
-                    ]
-                        |> List.indexedMap kindToToken
-                        |> Syntax.runParser (Syntax.end Syntax.expr)
-            , expected =
-                Ok
-                    (FA.Binop
-                        { left = FA.NumberLiteral { start = 0, end = 1, number = "1" }
-                        , op = "+"
-                        , right =
-                            FA.Binop
-                                { left = FA.NumberLiteral { start = 2, end = 3, number = "2" }
-                                , op = "*"
-                                , right = FA.NumberLiteral { start = 4, end = 5, number = "3" }
-                                }
-                        }
-                    )
-            }
-        ]
 
 
 lambdas : Test

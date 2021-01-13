@@ -2,10 +2,12 @@ module Compiler.FormattableToCanonicalAst exposing (..)
 
 import Dict exposing (Dict)
 import OneOrMore
+import SepList exposing (SepList)
 import Set exposing (Set)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Error)
 import Types.FormattableAst as FA
+import Types.Token as Token
 
 
 type alias Res ok =
@@ -281,9 +283,9 @@ translateExpression faExpr =
                 (\c t f ->
                     CA.If ()
                         { start = start
-                        , condition = c
-                        , true = t
-                        , false = f
+                        , condition = [ CA.Evaluation c ]
+                        , true = [ CA.Evaluation t ]
+                        , false = [ CA.Evaluation f ]
                         }
                 )
                 (translateExpression condition)
@@ -306,31 +308,8 @@ translateExpression faExpr =
                 _ ->
                     errorTodo "sorry, I'm supporting only tuples of size 2"
 
-        FA.Binop { left, op, right } ->
-            --
-            -- Unlike other ML languages, the left operand is the *second* argument
-            --
-            -- `a + b` == `((+) b) a`
-            --
-            Result.map2
-                (\l r ->
-                    CA.Call ()
-                        { argument = l
-                        , reference =
-                            CA.Call ()
-                                { argument = r
-                                , reference =
-                                    CA.Variable ()
-                                        -- TODO start, end!!
-                                        { start = 0
-                                        , end = 0
-                                        , name = op
-                                        }
-                                }
-                        }
-                )
-                (translateArgument left)
-                (translateArgument right)
+        FA.Binop { group, sepList } ->
+            translateBinops group sepList
 
         FA.Lvalue args ->
             errorTodo "mutable values can be used only as arguments for function or mutation operators"
@@ -351,6 +330,171 @@ translateArgument faExpr =
             faExpr
                 |> translateExpression
                 |> Result.map CA.ArgumentExpression
+
+
+translateBinops : Token.PrecedenceGroup -> SepList String FA.Expression -> Res (CA.Expression ())
+translateBinops group ( firstItem, firstTail ) =
+    case firstTail of
+        [] ->
+            translateExpression firstItem
+
+        ( firstSep, secondItem ) :: [] ->
+            case group of
+                Token.Tuple ->
+                    Result.map2
+                        (\first second ->
+                            CA.Record ()
+                                [ { name = "first", value = first }
+                                , { name = "second", value = second }
+                                ]
+                        )
+                        (translateExpression firstItem)
+                        (translateExpression secondItem)
+
+                _ ->
+                    translateSimpleBinop firstItem firstSep secondItem
+
+        ( firstSep, secondItem ) :: ( secondSep, thirdItem ) :: thirdTail ->
+            let
+                -- Use "as"? Yay undocumented syntax...
+                secondTail =
+                    ( secondSep, thirdItem ) :: thirdTail
+            in
+            case group of
+                Token.Comparison ->
+                    if notAllSeparators (sameDirectionAs firstSep) secondTail then
+                        -- TODO actually list the seps
+                        errorTodo "can't mix comparison ops with different direction"
+
+                    else
+                        -- TODO expand `a < b < c` to `a < b && b < c` without calculating b twice
+                        errorTodo "NI compops expansion"
+
+                Token.Logical ->
+                    if notAllSeparators ((==) firstSep) secondTail then
+                        errorTodo "Mixing `and` and `or` is ambiguous. Use parens!"
+
+                    else
+                        translateBinopSepList firstItem firstTail
+
+                Token.Tuple ->
+                    if thirdTail /= [] then
+                        errorTodo "Tuples can't have more than 3 items, use a record instead."
+
+                    else
+                        Result.map3
+                            (\first second third ->
+                                CA.Record ()
+                                    [ { name = "first", value = first }
+                                    , { name = "second", value = second }
+                                    , { name = "third", value = third }
+                                    ]
+                            )
+                            (translateExpression firstItem)
+                            (translateExpression secondItem)
+                            (translateExpression thirdItem)
+
+                Token.Pipe ->
+                    if notAllSeparators ((==) firstSep) secondTail then
+                        errorTodo "Mixing pipes is ambigous. Use parens."
+
+                    else
+                        translateBinopSepList firstItem firstTail
+
+                Token.Mutop ->
+                    errorTodo "mutops can't be chained"
+
+                _ ->
+                    translateBinopSepList firstItem firstTail
+
+
+notAllSeparators : (sep -> Bool) -> List ( sep, item ) -> Bool
+notAllSeparators f ls =
+    case ls of
+        [] ->
+            False
+
+        ( sep, item ) :: tail ->
+            if f sep then
+                notAllSeparators f tail
+
+            else
+                True
+
+
+sameDirectionAs : String -> String -> Bool
+sameDirectionAs a b =
+    if a == b then
+        True
+
+    else
+        case a of
+            ">" ->
+                b == ">="
+
+            ">=" ->
+                b == ">"
+
+            "<" ->
+                b == "<="
+
+            "<=" ->
+                b == "<"
+
+            _ ->
+                False
+
+
+translateBinopSepList : FA.Expression -> List ( String, FA.Expression ) -> Res (CA.Expression ())
+translateBinopSepList leftAccum opsAndRight =
+    leftAccum
+        |> translateExpression
+        |> Result.andThen (\caLeftAccum -> translateBinopSepListRec caLeftAccum opsAndRight)
+
+
+translateBinopSepListRec : CA.Expression () -> List ( String, FA.Expression ) -> Res (CA.Expression ())
+translateBinopSepListRec leftAccum opsAndRight =
+    case opsAndRight of
+        [] ->
+            Ok leftAccum
+
+        ( op, faRight ) :: tail ->
+            case translateArgument faRight of
+                Err e ->
+                    Err e
+
+                Ok caRight ->
+                    translateBinopSepListRec (makeBinop (CA.ArgumentExpression leftAccum) op caRight) tail
+
+
+{-| Unlike other ML languages, the left operand is the _second_ argument
+
+`a + b` == `((+) b) a`
+
+-}
+makeBinop : CA.Argument () -> String -> CA.Argument () -> CA.Expression ()
+makeBinop left op right =
+    CA.Call ()
+        { argument = left
+        , reference =
+            CA.Call ()
+                { argument = right
+                , reference =
+                    CA.Variable ()
+                        -- TODO start, end!!
+                        { start = 0
+                        , end = 0
+                        , name = op
+                        }
+                }
+        }
+
+
+translateSimpleBinop : FA.Expression -> String -> FA.Expression -> Res (CA.Expression ())
+translateSimpleBinop left op right =
+    Result.map2 (\l r -> makeBinop l op r)
+        (translateArgument left)
+        (translateArgument right)
 
 
 

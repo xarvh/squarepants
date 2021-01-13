@@ -17,6 +17,10 @@ Requirements
 * Make two different versions of the same package coexist
 
 
+Tooling
+=======
+Automated tool to safely rename aliases all over the code base.
+
 
 Project-wide import
 ===================

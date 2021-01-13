@@ -47,6 +47,7 @@ type PrecedenceGroup
     | Addittive
     | Comparison
     | Logical
+    | Tuple
     | Pipe
     | Mutop
 
