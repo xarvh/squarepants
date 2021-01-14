@@ -31,8 +31,8 @@ runTests =
 
 initialCode =
     """
-id : a -> b
-id l = l
+a : Number & Number
+a = 1 & 1
   """
 
 
@@ -73,10 +73,15 @@ update msg model =
 view : Model -> Html Msg
 view model =
     Html.div
-        [ style "display" "flex" ]
+        [ style "display" "flex"
+--         , style "background-color" "black"
+--         , style "color" "white"
+        ]
         [ Html.textarea
             [ style "width" "50%"
             , style "height" "99vh"
+--             , style "background-color" "black"
+--             , style "color" "white"
             , Html.Events.onInput OnInput
             ]
             [ Html.text model.code ]
@@ -230,11 +235,20 @@ viewCaType ty =
             ]
                 |> String.join ""
 
-        CA.TypeRecord attrs ->
-            attrs
+        CA.TypeRecord args ->
+            let
+                var =
+                    case args.extensible of
+                        Just name ->
+                            name ++ "|"
+
+                        Nothing ->
+                            ""
+            in
+            args.attrs
                 |> List.map (\{ name, type_ } -> name ++ ": " ++ viewCaType type_)
                 |> String.join ", "
-                |> (\s -> "{" ++ s ++ "}")
+                |> (\s -> "{" ++ var ++ s ++ "}")
 
 
 viewCaStatement : CA.Statement e -> Html msg
@@ -392,16 +406,22 @@ viewFaExpression expr =
                 [ style "border" "red" ]
                 [ Html.div
                     []
-                    [ Html.text <| "[op] "] --TODO ++ op ]
+                    [ Html.text <| "[op] " ]
+
+                --TODO ++ op ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [] --TODO viewFaExpression left ]
+                    []
+
+                --TODO viewFaExpression left ]
                 , Html.div
                     []
                     [ Html.text "---" ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    [] --TODO viewFaExpression right ]
+                    []
+
+                --TODO viewFaExpression right ]
                 ]
 
         --     Unop String Expression

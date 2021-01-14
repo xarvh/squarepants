@@ -76,6 +76,11 @@ do_res a b =
     Result.andThen b a
 
 
+nr_map : (a -> b) -> TyGen (Res a) -> TyGen (Res b)
+nr_map f tr =
+    TyGen.map (Result.map f) tr
+
+
 
 ----
 --- Core types
@@ -188,10 +193,16 @@ refine_type subs ty =
                 , to = refine_type subs to
                 }
 
-        CA.TypeRecord attrs ->
-            attrs
-                |> List.map (\a -> { a | type_ = refine_type subs a.type_ })
-                |> CA.TypeRecord
+        CA.TypeRecord args ->
+            case args.extensible |> Maybe.andThen (\name -> Dict.get name subs) of
+                Nothing ->
+                    CA.TypeRecord
+                        { extensible = args.extensible
+                        , attrs = args.attrs |> List.map (\a -> { a | type_ = refine_type subs a.type_ })
+                        }
+
+                Just substitutionType ->
+                    substitutionType
 
 
 tyvars_from_type : Type -> Set Name
@@ -206,8 +217,17 @@ tyvars_from_type ty =
         CA.TypeConstant { name, args } ->
             List.foldl (\a -> Set.union (tyvars_from_type a)) Set.empty args
 
-        CA.TypeRecord attrs ->
-            List.foldl (\a -> Set.union (tyvars_from_type a.type_)) Set.empty attrs
+        CA.TypeRecord args ->
+            let
+                init =
+                    case args.extensible of
+                        Nothing ->
+                            Set.empty
+
+                        Just name ->
+                            Set.singleton name
+            in
+            List.foldl (\a -> Set.union (tyvars_from_type a.type_)) init args.attrs
 
 
 
@@ -253,7 +273,7 @@ refine_env s env =
     Dict.map refine_entry env
 
 
-unify : Type -> Type -> Substitutions -> Res Substitutions
+unify : Type -> Type -> Substitutions -> TyGen (Res Substitutions)
 unify t1 t2 s =
     let
         t1_refined =
@@ -268,41 +288,45 @@ unify t1 t2 s =
     case ( t1_refined, t2_refined ) of
         ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
             if c1.name /= c2.name then
-                Err <| "cannot unify " ++ c1.name ++ " and " ++ c2.name
+                TyGen.wrap <| Err <| "cannot unify " ++ c1.name ++ " and " ++ c2.name
 
             else
                 let
                     rec a1 a2 subs =
                         case ( a1, a2 ) of
                             ( [], [] ) ->
-                                Ok subs
+                                TyGen.wrap <| Ok subs
 
                             ( head1 :: tail1, head2 :: tail2 ) ->
-                                do_res (unify head1 head2 subs) <| rec tail1 tail2
+                                do_nr (unify head1 head2 subs) <| rec tail1 tail2
 
                             _ ->
-                                Err <| "one of the two has wrong number of args: " ++ c1.name ++ " and " ++ c2.name
+                                TyGen.wrap <| Err <| "one of the two has wrong number of args: " ++ c1.name ++ " and " ++ c2.name
                 in
                 rec c1.args c2.args s
 
         ( CA.TypeVariable v1, CA.TypeVariable v2 ) ->
-            if v1 == v2 then
-                Ok s
+            TyGen.wrap
+                (if v1 == v2 then
+                    Ok s
 
-            else
-                s
-                    |> Dict.insert v1.name t2_refined
-                    |> Ok
+                 else
+                    s
+                        |> Dict.insert v1.name t2_refined
+                        |> Ok
+                )
 
         ( CA.TypeVariable v1, _ ) ->
-            if cycle v1.name t2 then
-                -- is this the correct behavior?
-                Err "cycle!"
+            TyGen.wrap
+                (if cycle v1.name t2 then
+                    -- is this the correct behavior?
+                    Err "cycle!"
 
-            else
-                s
-                    |> Dict.insert v1.name t2_refined
-                    |> Ok
+                 else
+                    s
+                        |> Dict.insert v1.name t2_refined
+                        |> Ok
+                )
 
         ( _, CA.TypeVariable v2 ) ->
             unify t2_refined t1_refined s
@@ -313,15 +337,136 @@ unify t1 t2 s =
                     Maybe.map2 (\aa bb -> aa /= bb) a.fromIsMutable b.fromIsMutable
             in
             if Maybe.withDefault False maybeClash then
-                Err <| "mutability clash: " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
+                TyGen.wrap <| Err <| "mutability clash: " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
 
             else
-                s
-                    |> unify a.to b.to
-                    |> Result.andThen (unify a.from b.from)
+                do_nr (unify a.to b.to s) <| unify a.from b.from
+
+        ( CA.TypeRecord a, CA.TypeRecord b ) ->
+            unifyRecords a b s
 
         _ ->
-            Err <| "cannot unify " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
+            TyGen.wrap <| Err <| "cannot unify " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
+
+
+type alias UnifyRecordsFold =
+    { aOnly : Dict Name Type
+    , bOnly : Dict Name Type
+    , both : Dict Name ( Type, Type )
+    }
+
+
+unifyRecords : CA.TypeRecordArgs -> CA.TypeRecordArgs -> Substitutions -> TyGen (Res Substitutions)
+unifyRecords aArgs bArgs subs0 =
+    -- TODO if aArg == bArg do nothing
+    let
+        -- TODO args.attrs should be a Dict already
+        a =
+            aArgs.attrs
+                |> List.map (\at -> ( at.name, at.type_ ))
+                |> Dict.fromList
+
+        b =
+            bArgs.attrs
+                |> List.map (\at -> ( at.name, at.type_ ))
+                |> Dict.fromList
+
+        initState : UnifyRecordsFold
+        initState =
+            { aOnly = Dict.empty
+            , bOnly = Dict.empty
+            , both = Dict.empty
+            }
+
+        onA : Name -> Type -> UnifyRecordsFold -> UnifyRecordsFold
+        onA name type_ state =
+            { state | aOnly = Dict.insert name type_ state.aOnly }
+
+        onB : Name -> Type -> UnifyRecordsFold -> UnifyRecordsFold
+        onB name type_ state =
+            { state | bOnly = Dict.insert name type_ state.bOnly }
+
+        onBoth : Name -> Type -> Type -> UnifyRecordsFold -> UnifyRecordsFold
+        onBoth name aType bType state =
+            { state | both = Dict.insert name ( aType, bType ) state.both }
+
+        { aOnly, bOnly, both } =
+            Dict.merge onA onBoth onB a b initState
+
+        unifyBothRec subs ls =
+            case ls of
+                [] ->
+                    TyGen.wrap <| Ok subs
+
+                ( name, ( aType, bType ) ) :: tail ->
+                    do_nr (unify aType bType subs) <| \subsN ->
+                    unifyBothRec subsN tail
+
+        tyResSubs1 =
+            both
+                |> Dict.toList
+                |> unifyBothRec subs0
+    in
+    if aOnly == Dict.empty && bOnly == Dict.empty then
+        tyResSubs1
+
+    else
+        do_nr tyResSubs1 <| \subs1 ->
+        -- from this point on, we can assume that the common attributes are compatible
+        case ( aArgs.extensible, bArgs.extensible ) of
+            ( Just aName, Nothing ) ->
+                if aOnly /= Dict.empty then
+                    "a has arguments that do not exist in b"
+                        |> Err
+                        |> TyGen.wrap
+
+                else
+                    -- substitute a with b
+                    Dict.insert aName (CA.TypeRecord bArgs) subs1
+                        |> Ok
+                        |> TyGen.wrap
+
+            ( Nothing, Just bName ) ->
+                if bOnly /= Dict.empty then
+                    "b has arguments that do not exist in a"
+                        |> Err
+                        |> TyGen.wrap
+
+                else
+                    -- substitute b with a
+                    Dict.insert bName (CA.TypeRecord aArgs) subs1
+                        |> Ok
+                        |> TyGen.wrap
+
+            ( Nothing, Nothing ) ->
+                if bOnly == Dict.empty && aOnly == Dict.empty then
+                    -- the two are the same
+                    subs1
+                        |> Ok
+                        |> TyGen.wrap
+
+                else
+                    "the two records are just too different"
+                        |> Err
+                        |> TyGen.wrap
+
+            ( Just aName, Just bName ) ->
+                TyGen.do newName <| \new ->
+                let
+                    attrs =
+                        bOnly
+                            |> Dict.toList
+                            |> List.map (\( name, ty ) -> { name = name, type_ = ty })
+                            |> (++) aArgs.attrs
+
+                    subTy =
+                        CA.TypeRecord { extensible = Just new, attrs = attrs }
+                in
+                subs1
+                    |> Dict.insert aName subTy
+                    |> Dict.insert bName subTy
+                    |> Ok
+                    |> TyGen.wrap
 
 
 literalToType : literal -> Type
@@ -358,10 +503,9 @@ type alias Eas =
     ( Env, Substitutions )
 
 
-andEnv : Env -> Res Substitutions -> Res Eas
-andEnv env resSubs =
-    resSubs
-        |> Result.map (\subs -> ( env, subs ))
+andEnv : Env -> TyGen (Res Substitutions) -> TyGen (Res Eas)
+andEnv env =
+    nr_map (\subs -> ( env, subs ))
 
 
 inspect_expr : Env -> CA.Expression e -> Type -> Substitutions -> TyGen (Res Eas)
@@ -371,7 +515,6 @@ inspect_expr env expr ty subs =
             subs
                 |> unify ty (literalToType l)
                 |> andEnv env
-                |> TyGen.wrap
 
         CA.Variable _ { name } ->
             -- Every time I use a var with variable type, it should be instantiated,
@@ -385,7 +528,6 @@ inspect_expr env expr ty subs =
             subs
                 |> unify ty t
                 |> andEnv env
-                |> TyGen.wrap
 
         CA.Lambda _ args ->
             if Dict.member args.parameter env then
@@ -410,10 +552,9 @@ inspect_expr env expr ty subs =
                             Just schema ->
                                 schema.mutable
                 in
-                do_nr (unify ty (CA.TypeFunction { from = v_t, fromIsMutable = fromIsMutable, to = e_t }) subs1 |> TyGen.wrap) <| \subs2 ->
+                do_nr (unify ty (CA.TypeFunction { from = v_t, fromIsMutable = fromIsMutable, to = e_t }) subs1) <| \subs2 ->
                 unify e_t returnType subs2
                     |> andEnv env
-                    |> TyGen.wrap
 
         CA.Call _ args ->
             TyGen.do newType <| \e_t ->
@@ -459,41 +600,41 @@ inspect_expr env expr ty subs =
                         |> Ok
                         |> TyGen.wrap
             in
-            do_nr (List.foldl foldAttr init attrs) <| \( attrTypes, ( newEnv, newSubs ) ) ->
+            do_nr (List.foldr foldAttr init attrs) <| \( attrTypes, ( newEnv, newSubs ) ) ->
             let
                 refinedAttrTypes =
                     -- first I need all new subs, only then it makes sense to apply them
                     List.map (\a -> { a | type_ = refine_type newSubs a.type_ }) attrTypes
             in
             newSubs
-                |> unify ty (CA.TypeRecord refinedAttrTypes)
+                |> unify ty (CA.TypeRecord { extensible = Nothing, attrs = refinedAttrTypes })
                 |> andEnv newEnv
-                |> TyGen.wrap
 
 
 inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TyGen (Res ( Env, Substitutions ))
 inspect_argument env arg ty subs =
     case arg of
         CA.ArgumentMutable name ->
-            TyGen.wrap <|
-                case Dict.get name env of
-                    Nothing ->
-                        ("undeclared mutable variable: " ++ name)
-                            |> Err
+            case Dict.get name env of
+                Nothing ->
+                    ("undeclared mutable variable: " ++ name)
+                        |> Err
+                        |> TyGen.wrap
 
-                    Just schema ->
-                        case schema.mutable of
-                            Nothing ->
-                                unify schema.type_ ty subs
-                                    |> Result.map (\s -> ( Dict.insert name { schema | mutable = Just True } env, s ))
+                Just schema ->
+                    case schema.mutable of
+                        Nothing ->
+                            unify schema.type_ ty subs
+                                |> nr_map (\s -> ( Dict.insert name { schema | mutable = Just True } env, s ))
 
-                            Just True ->
-                                unify schema.type_ ty subs
-                                    |> Result.map (\s -> ( env, s ))
+                        Just True ->
+                            unify schema.type_ ty subs
+                                |> nr_map (\s -> ( env, s ))
 
-                            Just False ->
-                                (name ++ " can't be mutable")
-                                    |> Err
+                        Just False ->
+                            (name ++ " can't be mutable")
+                                |> Err
+                                |> TyGen.wrap
 
         CA.ArgumentExpression expr ->
             inspect_expr env expr ty subs
@@ -521,47 +662,44 @@ inspect_statement statement env subs =
 
         CA.Definition { name, mutable, body, maybeAnnotation } ->
             do_nr (inspectStatementList body env subs) <| \( returnType, _, subs1 ) ->
-            TyGen.wrap
-                (case Dict.get name env of
-                    Nothing ->
-                        Debug.todo "WTF dict should contain def name already"
+            case Dict.get name env of
+                Nothing ->
+                    Debug.todo "WTF dict should contain def name already"
 
-                    Just def ->
-                        unify returnType def.type_ subs1
-                            |> Result.andThen
-                                (\subs2 ->
-                                    let
-                                        refinedType =
-                                            refine_type subs2 def.type_
+                Just def ->
+                    do_nr (unify returnType def.type_ subs1) <| \subs2 ->
+                    let
+                        refinedType =
+                            refine_type subs2 def.type_
 
-                                        -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
-                                        -- This is also the reason why we can't infer whether a value is mutable or not
-                                        forall =
-                                            if mutable then
-                                                Set.empty
+                        -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
+                        -- This is also the reason why we can't infer whether a value is mutable or not
+                        forall =
+                            if mutable then
+                                Set.empty
 
-                                            else
-                                                generalize name (refine_env subs2 env) refinedType
+                            else
+                                generalize name (refine_env subs2 env) refinedType
 
-                                        scheme : EnvEntry
-                                        scheme =
-                                            { type_ = refinedType
-                                            , forall = forall
-                                            , mutable = Just mutable
-                                            }
+                        scheme : EnvEntry
+                        scheme =
+                            { type_ = refinedType
+                            , forall = forall
+                            , mutable = Just mutable
+                            }
 
-                                        env1 =
-                                            Dict.insert name scheme env
-                                    in
-                                    case annotationTooGeneral maybeAnnotation forall of
-                                        Nothing ->
-                                            -- A definition has no type
-                                            Ok ( typeNone, env1, subs2 )
+                        env1 =
+                            Dict.insert name scheme env
+                    in
+                    case annotationTooGeneral maybeAnnotation forall of
+                        Nothing ->
+                            -- A definition has no type
+                            Ok ( typeNone, env1, subs2 )
+                                |> TyGen.wrap
 
-                                        Just error ->
-                                            Err error
-                                )
-                )
+                        Just error ->
+                            Err error
+                                |> TyGen.wrap
 
 
 annotationTooGeneral : Maybe Type -> Set Name -> Maybe String
@@ -742,8 +880,8 @@ validateType mutable ty =
                     Nothing ->
                         validateType False to
 
-        CA.TypeRecord attrs ->
-            attrs
+        CA.TypeRecord args ->
+            args.attrs
                 -- TODO Rewrite the whole dumpster fire to support returning  multiple errors
                 |> List.filterMap (\a -> validateType mutable a.type_)
                 |> List.head
@@ -761,8 +899,9 @@ typeContainsFunctions ty =
         CA.TypeFunction { from, fromIsMutable, to } ->
             True
 
-        CA.TypeRecord attrs ->
-            List.any (\a -> typeContainsFunctions a.type_) attrs
+        CA.TypeRecord args ->
+            -- TODO is it ok to ignore the record extension?
+            List.any (\a -> typeContainsFunctions a.type_) args.attrs
 
 
 
@@ -965,9 +1104,11 @@ findAllRefs_arg arg =
         CA.ArgumentExpression expr ->
             findAllRefs_expr expr
 
+
 findAllRefs_statementBlock : List (CA.Statement e) -> Set String
 findAllRefs_statementBlock statements =
-            List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
+    List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
+
 
 
 ----

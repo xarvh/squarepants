@@ -59,12 +59,14 @@ type Type
         , fromIsMutable : Maybe Bool
         , to : Type
         }
-    | TypeRecord
-        (List
-            { name : Name
-            , type_ : Type
-            }
-        )
+    | TypeRecord TypeRecordArgs
+
+
+
+type alias TypeRecordArgs =
+        { extensible : Maybe Name
+        , attrs : List { name : Name, type_ : Type }
+        }
 
 
 type Statement e
@@ -110,6 +112,7 @@ type Expression e
     | If
         e
         { start : Int
+
         -- we use the if also to get lazy ops and compacted compops, so even if the syntax does
         -- not support statement blocks inside if condition, it's useful that the AST can model it.
         , condition : List (Statement e)

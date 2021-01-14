@@ -20,6 +20,13 @@ hasError =
     Test.hasError Debug.toString
 
 
+firstDefinition : String -> String -> Result String (CA.ValueDefinition ())
+firstDefinition name code =
+    code
+        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Result.andThen (\mod -> Dict.get name mod.valueDefinitions |> Result.fromMaybe "Dict fail")
+
+
 firstEvaluation : String -> String -> Result String (CA.Expression ())
 firstEvaluation name code =
     code
@@ -50,6 +57,7 @@ tests =
     Test.Group "FormattableToCanonicalAst"
         [ unionTypes
         , binops
+        , tuples
         ]
 
 
@@ -80,9 +88,7 @@ binops =
     Test.Group "Binops"
         [ simpleTest
             { name = "left-association"
-            , run =
-                \_ ->
-                    firstEvaluation "a" "a = 1 + 2 + 3"
+            , run = \_ -> firstEvaluation "a" "a = 1 + 2 + 3"
             , expected =
                 Ok
                     (CA.Call ()
@@ -107,9 +113,7 @@ binops =
             }
         , simpleTest
             { name = "precedence"
-            , run =
-                \_ ->
-                    firstEvaluation "a" "a = 1 + 2 * 3"
+            , run = \_ -> firstEvaluation "a" "a = 1 + 2 * 3"
             , expected =
                 Ok
                     (CA.Call ()
@@ -131,5 +135,82 @@ binops =
                                 }
                         }
                     )
+            }
+        ]
+
+
+
+----
+--- Tuples
+--
+
+
+tuples : Test
+tuples =
+    Test.Group "Tuples"
+        [ simpleTest
+            { name = "tuple2"
+            , run = \_ -> firstEvaluation "a" "a = 1 & 2"
+            , expected =
+                Ok
+                    (CA.Record ()
+                        [ { name = "first", value = CA.NumberLiteral () { end = 5, number = "1", start = 4 } }
+                        , { name = "second", value = CA.NumberLiteral () { end = 9, number = "2", start = 8 } }
+                        ]
+                    )
+            }
+        , simpleTest
+            { name = "tuple3"
+            , run = \_ -> firstEvaluation "a" "a = 1 & 2 & 3"
+            , expected =
+                Ok
+                    (CA.Record ()
+                        [ { name = "first", value = CA.NumberLiteral () { end = 5, number = "1", start = 4 } }
+                        , { name = "second", value = CA.NumberLiteral () { end = 9, number = "2", start = 8 } }
+                        , { name = "third", value = CA.NumberLiteral () { end = 13, number = "3", start = 12 } }
+                        ]
+                    )
+            }
+        , hasError
+            { name = "tuple4"
+            , run = \_ -> firstEvaluation "a" "a = 1 & 2 & 3 & 4"
+            , test = Test.errorShouldContain "use a record"
+            }
+        , simpleTest
+            { name = "tuple2 type"
+            , run =
+                \_ ->
+                    firstDefinition "a"
+                        """
+                        a : Blah & Blah
+                        a = a
+                        """
+            , expected =
+                Ok
+                    { body = [ CA.Evaluation (CA.Variable () { end = 22, name = "a", start = 21 }) ]
+                    , maybeAnnotation =
+                        Just
+                            (CA.TypeRecord
+                                { attrs =
+                                    [ { name = "first", type_ = CA.TypeConstant { args = [], name = "Blah" } }
+                                    , { name = "second", type_ = CA.TypeConstant { args = [], name = "Blah" } }
+                                    ]
+                                , extensible = Nothing
+                                }
+                            )
+                    , mutable = False
+                    , name = "a"
+                    }
+            }
+        , hasError
+            { name = "tuple4, type"
+            , run =
+                \_ ->
+                    firstDefinition "a"
+                        """
+                        a : Blah & Blah & Blah & Blah
+                        a = a
+                        """
+            , test = Test.errorShouldContain "Use a record"
             }
         ]

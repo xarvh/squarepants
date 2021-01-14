@@ -507,7 +507,9 @@ addAttribute : List ( String, FA.Type ) -> List { name : String, type_ : CA.Type
 addAttribute faAttrs caAttrsAccum =
     case faAttrs of
         [] ->
-            caAttrsAccum
+            { attrs = caAttrsAccum
+            , extensible = Nothing
+            }
                 |> CA.TypeRecord
                 |> Ok
 
@@ -569,7 +571,39 @@ translateType faType =
                 (translateType fa.to)
 
         FA.TypeTuple types ->
-            errorTodo "tuples are not supported. Use `pair` for a tuple-2, or a record instead."
+            case types of
+                [ faFirst, faSecond ] ->
+                    Result.map2
+                        (\caFirst caSecond ->
+                            CA.TypeRecord
+                                { extensible = Nothing
+                                , attrs =
+                                    [ { name = "first", type_ = caFirst }
+                                    , { name = "second", type_ = caSecond }
+                                    ]
+                                }
+                        )
+                        (translateType faFirst)
+                        (translateType faSecond)
+
+                [ faFirst, faSecond, faThird ] ->
+                    Result.map3
+                        (\caFirst caSecond caThird ->
+                            CA.TypeRecord
+                                { extensible = Nothing
+                                , attrs =
+                                    [ { name = "first", type_ = caFirst }
+                                    , { name = "second", type_ = caSecond }
+                                    , { name = "third", type_ = caThird }
+                                    ]
+                                }
+                        )
+                        (translateType faFirst)
+                        (translateType faSecond)
+                        (translateType faThird)
+
+                _ ->
+                    errorTodo "Tuples can only have size 2 or 3. Use a record."
 
         FA.TypeRecord attrs ->
             addAttribute attrs []
