@@ -21,7 +21,7 @@ hasError =
 
 
 constant n =
-    CA.TypeConstant { name = n, args = [] }
+    CA.TypeConstant { path = n, args = [] }
 
 
 function from to =
@@ -58,11 +58,11 @@ preamble =
         , ( "+="
           , em <|
                 CA.TypeFunction
-                    { from = CA.TypeConstant { name = "Number", args = [] }
+                    { from = CA.TypeConstant { path = "Number", args = [] }
                     , fromIsMutable = Just False
                     , to =
                         CA.TypeFunction
-                            { from = CA.TypeConstant { name = "Number", args = [] }
+                            { from = CA.TypeConstant { path = "Number", args = [] }
                             , fromIsMutable = Just True
                             , to = constant "None"
                             }
@@ -138,7 +138,7 @@ functions =
                         CA.TypeFunction
                             { from = CA.TypeVariable { name = "t2" }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeConstant { name = "Number", args = [] }
+                            , to = CA.TypeConstant { path = "Number", args = [] }
                             }
                     }
             }
@@ -588,9 +588,9 @@ higherOrderTypes =
                 Ok
                     { type_ =
                         CA.TypeFunction
-                            { from = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], name = "List" }
+                            { from = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], path = "List" }
                             , fromIsMutable = Just False
-                            , to = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], name = "List" }
+                            , to = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], path = "List" }
                             }
                     , mutable = Just False
                     , forall = Set.singleton "a"

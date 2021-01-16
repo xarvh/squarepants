@@ -89,7 +89,7 @@ nr_map f tr =
 
 typeNone : Type
 typeNone =
-    CA.TypeConstant { name = "None", args = [] }
+    CA.TypeConstant { path = "None", args = [] }
 
 
 
@@ -140,7 +140,7 @@ addConstructorsRec typeDef constructors env =
 
                 ctorType =
                     -- TODO ensure that all constructors use declared var types?
-                    List.foldr fold (CA.TypeConstant { name = typeDef.name, args = args }) ctor.args
+                    List.foldr fold (CA.TypeConstant { path = typeDef.name, args = args }) ctor.args
 
                 fold ty accum =
                     CA.TypeFunction
@@ -214,7 +214,7 @@ tyvars_from_type ty =
         CA.TypeFunction { from, to } ->
             Set.union (tyvars_from_type from) (tyvars_from_type to)
 
-        CA.TypeConstant { name, args } ->
+        CA.TypeConstant { path, args } ->
             List.foldl (\a -> Set.union (tyvars_from_type a)) Set.empty args
 
         CA.TypeRecord args ->
@@ -287,8 +287,8 @@ unify t1 t2 s =
     in
     case ( t1_refined, t2_refined ) of
         ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
-            if c1.name /= c2.name then
-                TyGen.wrap <| Err <| "cannot unify " ++ c1.name ++ " and " ++ c2.name
+            if c1.path /= c2.path then
+                TyGen.wrap <| Err <| "cannot unify " ++ c1.path ++ " and " ++ c2.path
 
             else
                 let
@@ -301,7 +301,7 @@ unify t1 t2 s =
                                 do_nr (unify head1 head2 subs) <| rec tail1 tail2
 
                             _ ->
-                                TyGen.wrap <| Err <| "one of the two has wrong number of args: " ++ c1.name ++ " and " ++ c2.name
+                                TyGen.wrap <| Err <| "one of the two has wrong number of args: " ++ c1.path ++ " and " ++ c2.path
                 in
                 rec c1.args c2.args s
 
@@ -472,7 +472,7 @@ unifyRecords aArgs bArgs subs0 =
 literalToType : literal -> Type
 literalToType l =
     -- TODO
-    CA.TypeConstant { name = "Number", args = [] }
+    CA.TypeConstant { path = "Number", args = [] }
 
 
 generalize : Name -> Env -> Type -> Set Name
@@ -508,6 +508,27 @@ andEnv env =
     nr_map (\subs -> ( env, subs ))
 
 
+unifyWithAttrPath : List Name -> Type -> Type -> Substitutions -> TyGen (Res Substitutions)
+unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
+    case attrPath of
+        [] ->
+            unify typeAtPathEnd valueType subs
+
+        head :: tail ->
+            TyGen.do newName <| \n1 ->
+            TyGen.do newType <| \t1 ->
+            let
+                -- `rType` : { n1 | `head` : t1 }
+                rType =
+                    CA.TypeRecord
+                        { extensible = Just n1
+                        , attrs = [ { name = head, type_ = t1 } ]
+                        }
+            in
+            do_nr (unify rType valueType subs) <| \subs1 ->
+            unifyWithAttrPath tail typeAtPathEnd t1 subs1
+
+
 inspect_expr : Env -> CA.Expression e -> Type -> Substitutions -> TyGen (Res Eas)
 inspect_expr env expr ty subs =
     case expr of
@@ -516,17 +537,17 @@ inspect_expr env expr ty subs =
                 |> unify ty (literalToType l)
                 |> andEnv env
 
-        CA.Variable _ { name } ->
+        CA.Variable _ { path, attrPath } ->
             -- Every time I use a var with variable type, it should be instantiated,
             -- because each time it may by used against a different type.
             -- This is done automatically by `env_get`.
-            do_nr (env_get name env) <| \nt ->
+            do_nr (env_get path env) <| \nt ->
             let
                 t =
                     refine_type subs nt
             in
             subs
-                |> unify ty t
+                |> unifyWithAttrPath attrPath ty t
                 |> andEnv env
 
         CA.Lambda _ args ->
@@ -614,25 +635,25 @@ inspect_expr env expr ty subs =
 inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TyGen (Res ( Env, Substitutions ))
 inspect_argument env arg ty subs =
     case arg of
-        CA.ArgumentMutable name ->
-            case Dict.get name env of
+        CA.ArgumentMutable { path, attrPath } ->
+            case Dict.get path env of
                 Nothing ->
-                    ("undeclared mutable variable: " ++ name)
+                    ("undeclared mutable variable: " ++ path)
                         |> Err
                         |> TyGen.wrap
 
                 Just schema ->
                     case schema.mutable of
                         Nothing ->
-                            unify schema.type_ ty subs
-                                |> nr_map (\s -> ( Dict.insert name { schema | mutable = Just True } env, s ))
+                            unifyWithAttrPath attrPath ty schema.type_ subs
+                                |> nr_map (\s -> ( Dict.insert path { schema | mutable = Just True } env, s ))
 
                         Just True ->
-                            unify schema.type_ ty subs
+                            unifyWithAttrPath attrPath ty schema.type_ subs
                                 |> nr_map (\s -> ( env, s ))
 
                         Just False ->
-                            (name ++ " can't be mutable")
+                            (path ++ " can't be mutable")
                                 |> Err
                                 |> TyGen.wrap
 
@@ -1076,7 +1097,7 @@ findAllRefs_expr expr =
             Set.empty
 
         CA.Variable _ args ->
-            Set.singleton args.name
+            Set.singleton args.path
 
         CA.Lambda _ { start, parameter, body } ->
             findAllRefs_statementBlock body
@@ -1098,8 +1119,8 @@ findAllRefs_expr expr =
 findAllRefs_arg : CA.Argument e -> Set String
 findAllRefs_arg arg =
     case arg of
-        CA.ArgumentMutable name ->
-            Set.singleton name
+        CA.ArgumentMutable { path } ->
+            Set.singleton path
 
         CA.ArgumentExpression expr ->
             findAllRefs_expr expr

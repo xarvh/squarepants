@@ -94,7 +94,7 @@ binops =
                     (CA.Call ()
                         { reference =
                             CA.Call ()
-                                { reference = CA.Variable () { end = 0, name = "+", start = 0 }
+                                { reference = CA.Variable () { end = 0, path = "+", start = 0, attrPath = [] }
                                 , argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 13, number = "3", start = 12 })
                                 }
                         , argument =
@@ -102,7 +102,7 @@ binops =
                                 (CA.Call ()
                                     { reference =
                                         CA.Call ()
-                                            { reference = CA.Variable () { end = 0, name = "+", start = 0 }
+                                            { reference = CA.Variable () { end = 0, path = "+", start = 0, attrPath = [] }
                                             , argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 9, number = "2", start = 8 })
                                             }
                                     , argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 5, number = "1", start = 4 })
@@ -127,11 +127,11 @@ binops =
                                             , reference =
                                                 CA.Call ()
                                                     { argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 13, number = "3", start = 12 })
-                                                    , reference = CA.Variable () { end = 0, name = "*", start = 0 }
+                                                    , reference = CA.Variable () { end = 0, path = "*", start = 0, attrPath = [] }
                                                     }
                                             }
                                         )
-                                , reference = CA.Variable () { end = 0, name = "+", start = 0 }
+                                , reference = CA.Variable () { end = 0, path = "+", start = 0, attrPath = [] }
                                 }
                         }
                     )
@@ -187,13 +187,13 @@ tuples =
                         """
             , expected =
                 Ok
-                    { body = [ CA.Evaluation (CA.Variable () { end = 22, name = "a", start = 21 }) ]
+                    { body = [ CA.Evaluation (CA.Variable () { end = 22, path = "a", start = 21, attrPath = [] }) ]
                     , maybeAnnotation =
                         Just
                             (CA.TypeRecord
                                 { attrs =
-                                    [ { name = "first", type_ = CA.TypeConstant { args = [], name = "Blah" } }
-                                    , { name = "second", type_ = CA.TypeConstant { args = [], name = "Blah" } }
+                                    [ { name = "first", type_ = CA.TypeConstant { args = [], path = "Blah" } }
+                                    , { name = "second", type_ = CA.TypeConstant { args = [], path = "Blah" } }
                                     ]
                                 , extensible = Nothing
                                 }

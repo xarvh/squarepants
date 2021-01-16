@@ -15,6 +15,10 @@ type alias Name =
     String
 
 
+type alias Path =
+    Name
+
+
 type alias Module e =
     { typeDefinitions : Dict Name TypeDefinition
     , valueDefinitions : Dict Name (ValueDefinition e)
@@ -46,10 +50,8 @@ type alias ValueDefinition e =
 -}
 type Type
     = TypeConstant
-        { name : Name
+        { path : Path
         , args : List Type
-
-        -- sourceModule : ?
         }
     | TypeVariable
         { name : Name
@@ -62,11 +64,10 @@ type Type
     | TypeRecord TypeRecordArgs
 
 
-
 type alias TypeRecordArgs =
-        { extensible : Maybe Name
-        , attrs : List { name : Name, type_ : Type }
-        }
+    { extensible : Maybe Name
+    , attrs : List { name : Name, type_ : Type }
+    }
 
 
 type Statement e
@@ -82,14 +83,7 @@ type Expression e
         , end : Int
         , number : String
         }
-    | Variable
-        e
-        { start : Int
-        , end : Int
-        , name : Name
-
-        --, moduleReference : ModuleReference
-        }
+    | Variable e VariableArgs
     | Lambda
         e
         { start : Int
@@ -123,7 +117,15 @@ type Expression e
 
 type Argument e
     = ArgumentExpression (Expression e)
-    | ArgumentMutable Name
+    | ArgumentMutable VariableArgs
+
+
+type alias VariableArgs =
+    { start : Int
+    , end : Int
+    , path : Path
+    , attrPath : List Name
+    }
 
 
 

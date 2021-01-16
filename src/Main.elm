@@ -32,7 +32,10 @@ runTests =
 initialCode =
     """
 a : Number & Number
-a = 1 & 1
+a = 1 & 2
+
+
+b = a.first
   """
 
 
@@ -74,14 +77,16 @@ view : Model -> Html Msg
 view model =
     Html.div
         [ style "display" "flex"
---         , style "background-color" "black"
---         , style "color" "white"
+
+        --         , style "background-color" "black"
+        --         , style "color" "white"
         ]
         [ Html.textarea
             [ style "width" "50%"
             , style "height" "99vh"
---             , style "background-color" "black"
---             , style "color" "white"
+
+            --             , style "background-color" "black"
+            --             , style "color" "white"
             , Html.Events.onInput OnInput
             ]
             [ Html.text model.code ]
@@ -214,8 +219,8 @@ viewCaDefinition def =
 viewCaType : CA.Type -> String
 viewCaType ty =
     case ty of
-        CA.TypeConstant { name } ->
-            name
+        CA.TypeConstant { path } ->
+            path
 
         CA.TypeVariable { name } ->
             name
@@ -272,7 +277,7 @@ viewCaExpression expr =
             Html.text s.number
 
         CA.Variable _ s ->
-            Html.text s.name
+            Html.text s.path
 
         CA.Call _ { reference, argument } ->
             Html.div
@@ -281,8 +286,8 @@ viewCaExpression expr =
                 , Html.div
                     [ style "padding-left" "2em" ]
                     [ case argument of
-                        CA.ArgumentMutable name ->
-                            Html.text <| "@" ++ name
+                        CA.ArgumentMutable args ->
+                            Html.text <| "@" ++ args.path ++ String.join ":" args.attrPath
 
                         CA.ArgumentExpression e ->
                             viewCaExpression e

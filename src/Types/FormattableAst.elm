@@ -97,6 +97,7 @@ type Expression
         , name : String
         }
     | Lvalue
+        -- TODO rename to `Mutable`?
         { start : Int
         , end : Int
         , name : String

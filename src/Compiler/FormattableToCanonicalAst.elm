@@ -140,6 +140,82 @@ validateTypeDefinition { name, args, constructors } =
 
 
 ----
+--- Structured Names
+--
+
+
+type alias StructuredName =
+    { isUpper : Bool
+    , path : List CA.Name
+    , attrPath : List CA.Name
+    }
+
+
+stringToStructuredName : String -> Res StructuredName
+stringToStructuredName s =
+    case String.split "." s of
+        [ "", attrName ] ->
+            errorTodo "NI attr accessor shorthands"
+
+        strings ->
+            case uppercaseRec strings [] of
+                Err e ->
+                    errorTodo e
+
+                Ok ( [], [] ) ->
+                    errorTodo "WTF!?"
+
+                Ok ( reversedPath, [] ) ->
+                    Ok
+                        { isUpper = True
+                        , path = List.reverse reversedPath
+                        , attrPath = []
+                        }
+
+                Ok ( reversedPath, name :: attrPath ) ->
+                    Ok
+                        { isUpper = False
+                        , path = List.reverse (name :: reversedPath)
+                        , attrPath = attrPath
+                        }
+
+
+uppercaseRec : List String -> List String -> Result String ( List String, List String )
+uppercaseRec ls uppercaseAcc =
+    case ls of
+        [] ->
+            Ok ( uppercaseAcc, [] )
+
+        head :: tail ->
+            if head == "" then
+                Err "Not sure what to make of the dot here"
+
+            else if firstCharIsUpper head then
+                uppercaseRec tail (head :: uppercaseAcc)
+
+            else
+                lowercaseRec uppercaseAcc [ head ] tail
+
+
+lowercaseRec : List String -> List String -> List String -> Result String ( List String, List String )
+lowercaseRec uppercaseAcc lowercaseAcc ls =
+    case ls of
+        [] ->
+            Ok ( uppercaseAcc, List.reverse lowercaseAcc )
+
+        head :: tail ->
+            if head == "" then
+                Err "Not sure what to make of the dot here"
+
+            else if firstCharIsUpper head then
+                Err "I was expecting a lower case here"
+
+            else
+                lowercaseRec uppercaseAcc (head :: lowercaseAcc) tail
+
+
+
+----
 --- Definition
 --
 
@@ -230,15 +306,17 @@ translateExpression faExpr =
             Ok <| CA.NumberLiteral () args
 
         FA.Variable args ->
-            { start = args.start
-            , end = args.end
-            , name = args.name
-
-            -- TODO check that args.willBeMutated is on only if being used in an expression?
-            -- Probably needs to be handled at the function call level
-            }
-                |> CA.Variable ()
-                |> Ok
+            args.name
+                |> stringToStructuredName
+                |> Result.map
+                    (\sname ->
+                        CA.Variable ()
+                            { start = args.start
+                            , end = args.end
+                            , path = String.join "." sname.path
+                            , attrPath = sname.attrPath
+                            }
+                    )
 
         FA.Lambda fa ->
             let
@@ -323,8 +401,17 @@ translateArgument faExpr =
     case faExpr of
         FA.Lvalue args ->
             args.name
-                |> CA.ArgumentMutable
-                |> Ok
+                |> stringToStructuredName
+                |> Result.andThen
+                    (\sname ->
+                        { start = args.start
+                        , end = args.end
+                        , path = String.join "." sname.path
+                        , attrPath = sname.attrPath
+                        }
+                            |> CA.ArgumentMutable
+                            |> Ok
+                    )
 
         _ ->
             faExpr
@@ -484,7 +571,8 @@ makeBinop left op right =
                         -- TODO start, end!!
                         { start = 0
                         , end = 0
-                        , name = op
+                        , path = op
+                        , attrPath = []
                         }
                 }
         }
@@ -537,26 +625,37 @@ translateType : FA.Type -> Res CA.Type
 translateType faType =
     case faType of
         FA.TypeConstantOrVariable { name, args } ->
-            if firstCharIsUpper name then
-                args
-                    |> List.map translateType
-                    |> listResultToResultList
-                    |> Result.map
-                        (\caArgs ->
-                            { name = name
-                            , args = caArgs
-                            }
-                                |> CA.TypeConstant
-                        )
+            name
+                |> stringToStructuredName
+                |> Result.andThen
+                    (\sname ->
+                        if sname.attrPath /= [] then
+                            errorTodo "no attribute accessors on types"
 
-            else if args /= [] then
-                -- TODO is this the correct error?
-                errorTodo "rank 2 types are not supported"
+                        else if sname.isUpper then
+                            args
+                                |> List.map translateType
+                                |> listResultToResultList
+                                |> Result.map
+                                    (\caArgs ->
+                                        CA.TypeConstant
+                                            { path = String.join "." sname.path
+                                            , args = caArgs
+                                            }
+                                    )
 
-            else
-                { name = name }
-                    |> CA.TypeVariable
-                    |> Ok
+                        else if args /= [] then
+                            -- TODO is this the correct error?
+                            errorTodo "rank 2 types are not supported"
+
+                        else if List.length sname.path /= 1 then
+                            errorTodo "this is not a valid name for a type variable"
+
+                        else
+                            { name = name }
+                                |> CA.TypeVariable
+                                |> Ok
+                    )
 
         FA.TypeFunction fa ->
             Result.map2
