@@ -198,7 +198,7 @@ refine_type subs ty =
                 Nothing ->
                     CA.TypeRecord
                         { extensible = args.extensible
-                        , attrs = args.attrs |> List.map (\a -> { a | type_ = refine_type subs a.type_ })
+                        , attrs = Dict.map (\name -> refine_type subs) args.attrs
                         }
 
                 Just substitutionType ->
@@ -227,7 +227,7 @@ tyvars_from_type ty =
                         Just name ->
                             Set.singleton name
             in
-            List.foldl (\a -> Set.union (tyvars_from_type a.type_)) init args.attrs
+            Dict.foldl (\n t -> Set.union (tyvars_from_type t)) init args.attrs
 
 
 
@@ -360,17 +360,6 @@ unifyRecords : CA.TypeRecordArgs -> CA.TypeRecordArgs -> Substitutions -> TyGen 
 unifyRecords aArgs bArgs subs0 =
     -- TODO if aArg == bArg do nothing
     let
-        -- TODO args.attrs should be a Dict already
-        a =
-            aArgs.attrs
-                |> List.map (\at -> ( at.name, at.type_ ))
-                |> Dict.fromList
-
-        b =
-            bArgs.attrs
-                |> List.map (\at -> ( at.name, at.type_ ))
-                |> Dict.fromList
-
         initState : UnifyRecordsFold
         initState =
             { aOnly = Dict.empty
@@ -391,7 +380,7 @@ unifyRecords aArgs bArgs subs0 =
             { state | both = Dict.insert name ( aType, bType ) state.both }
 
         { aOnly, bOnly, both } =
-            Dict.merge onA onBoth onB a b initState
+            Dict.merge onA onBoth onB aArgs.attrs bArgs.attrs initState
 
         unifyBothRec subs ls =
             case ls of
@@ -453,14 +442,8 @@ unifyRecords aArgs bArgs subs0 =
             ( Just aName, Just bName ) ->
                 TyGen.do newName <| \new ->
                 let
-                    attrs =
-                        bOnly
-                            |> Dict.toList
-                            |> List.map (\( name, ty ) -> { name = name, type_ = ty })
-                            |> (++) aArgs.attrs
-
                     subTy =
-                        CA.TypeRecord { extensible = Just new, attrs = attrs }
+                        CA.TypeRecord { extensible = Just new, attrs = Dict.union bOnly aArgs.attrs }
                 in
                 subs1
                     |> Dict.insert aName subTy
@@ -522,13 +505,15 @@ unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
                 rType =
                     CA.TypeRecord
                         { extensible = Just n1
-                        , attrs = [ { name = head, type_ = t1 } ]
+                        , attrs = Dict.singleton head t1
                         }
             in
             do_nr (unify rType valueType subs) <| \subs1 ->
             unifyWithAttrPath tail typeAtPathEnd t1 subs1
 
 
+{-| TODO move Env at the end?
+-}
 inspect_expr : Env -> CA.Expression e -> Type -> Substitutions -> TyGen (Res Eas)
 inspect_expr env expr ty subs =
     case expr of
@@ -602,37 +587,51 @@ inspect_expr env expr ty subs =
                 |> Err
                 |> TyGen.wrap
 
-        CA.Record _ attrs ->
+        CA.Record _ args ->
             let
                 init =
-                    ( [], ( env, subs ) )
+                    ( Dict.empty, ( env, subs ) )
                         |> Ok
                         |> TyGen.wrap
 
                 foldAttr :
-                    { name : Name, value : CA.Expression e }
-                    -> TyGen (Res ( List { name : Name, type_ : Type }, Eas ))
-                    -> TyGen (Res ( List { name : Name, type_ : Type }, Eas ))
-                foldAttr attr genResAccum =
+                    Name
+                    -> CA.Expression e
+                    -> TyGen (Res ( Dict Name Type, Eas ))
+                    -> TyGen (Res ( Dict Name Type, Eas ))
+                foldAttr attrName attrValue genResAccum =
                     do_nr genResAccum <| \( attrsAccum, ( envAccum, subsAccum ) ) ->
                     TyGen.do newType <| \nt ->
-                    do_nr (inspect_expr envAccum attr.value nt subsAccum) <| \eas ->
-                    ( { name = attr.name, type_ = nt } :: attrsAccum, eas )
+                    do_nr (inspect_expr envAccum attrValue nt subsAccum) <| \eas ->
+                    ( Dict.insert attrName nt attrsAccum, eas )
                         |> Ok
                         |> TyGen.wrap
             in
-            do_nr (List.foldr foldAttr init attrs) <| \( attrTypes, ( newEnv, newSubs ) ) ->
+            do_nr (Dict.foldr foldAttr init args.attrs) <| \( attrTypes, ( env1, subs1 ) ) ->
+            do_nr (inspect_maybeUpdateTarget env1 args.maybeUpdateTarget ty subs1) <| \( extensible, ( env2, subs2 ) ) ->
             let
                 refinedAttrTypes =
                     -- first I need all new subs, only then it makes sense to apply them
-                    List.map (\a -> { a | type_ = refine_type newSubs a.type_ }) attrTypes
+                    Dict.map (\attrName attrType -> refine_type subs2 attrType) attrTypes
             in
-            newSubs
-                |> unify ty (CA.TypeRecord { extensible = Nothing, attrs = refinedAttrTypes })
-                |> andEnv newEnv
+            subs2
+                |> unify ty (CA.TypeRecord { extensible = extensible, attrs = refinedAttrTypes })
+                |> andEnv env2
 
 
-inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TyGen (Res ( Env, Substitutions ))
+inspect_maybeUpdateTarget : Env -> Maybe CA.VariableArgs -> Type -> Substitutions -> TyGen (Res ( Maybe Name, Eas ))
+inspect_maybeUpdateTarget env maybeUpdateTarget ty subs =
+    case maybeUpdateTarget of
+        Nothing ->
+            TyGen.wrap <| Ok <| ( Nothing, ( env, subs ) )
+
+        Just updateTarget ->
+            TyGen.do newName <| \n ->
+            inspect_expr env (CA.Variable () updateTarget) ty subs
+                |> nr_map (\eas -> ( Just n, eas ))
+
+
+inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TyGen (Res Eas)
 inspect_argument env arg ty subs =
     case arg of
         CA.ArgumentMutable { path, attrPath } ->
@@ -904,7 +903,8 @@ validateType mutable ty =
         CA.TypeRecord args ->
             args.attrs
                 -- TODO Rewrite the whole dumpster fire to support returning  multiple errors
-                |> List.filterMap (\a -> validateType mutable a.type_)
+                |> Dict.values
+                |> List.filterMap (validateType mutable)
                 |> List.head
 
 
@@ -922,7 +922,9 @@ typeContainsFunctions ty =
 
         CA.TypeRecord args ->
             -- TODO is it ok to ignore the record extension?
-            List.any (\a -> typeContainsFunctions a.type_) args.attrs
+            args.attrs
+                |> Dict.values
+                |> List.any typeContainsFunctions
 
 
 
@@ -1102,8 +1104,8 @@ findAllRefs_expr expr =
         CA.Lambda _ { start, parameter, body } ->
             findAllRefs_statementBlock body
 
-        CA.Record _ attrsA ->
-            List.foldl (\a -> Set.union (findAllRefs_expr a.value)) Set.empty attrsA
+        CA.Record _ args ->
+            Dict.foldl (\name value -> Set.union (findAllRefs_expr value)) Set.empty args.attrs
 
         CA.Call _ { reference, argument } ->
             Set.union

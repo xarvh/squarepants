@@ -626,18 +626,12 @@ records =
                             { from =
                                 CA.TypeRecord
                                     { attrs =
-                                        [ { name = "meh"
-                                          , type_ =
-                                                CA.TypeRecord
-                                                    { attrs =
-                                                        [ { name = "blah"
-                                                          , type_ = CA.TypeVariable { name = "t8" }
-                                                          }
-                                                        ]
-                                                    , extensible = Just "t7"
-                                                    }
-                                          }
-                                        ]
+                                        Dict.singleton "meh"
+                                            (CA.TypeRecord
+                                                { attrs = Dict.singleton "blah" (CA.TypeVariable { name = "t8" })
+                                                , extensible = Just "t7"
+                                                }
+                                            )
                                     , extensible = Just "t5"
                                     }
                             , fromIsMutable = Nothing
@@ -662,18 +656,12 @@ records =
                             { from =
                                 CA.TypeRecord
                                     { attrs =
-                                        [ { name = "meh"
-                                          , type_ =
-                                                CA.TypeRecord
-                                                    { attrs =
-                                                        [ { name = "blah"
-                                                          , type_ = CA.TypeConstant { path = "Number", args = [] }
-                                                          }
-                                                        ]
-                                                    , extensible = Just "t8"
-                                                    }
-                                          }
-                                        ]
+                                        Dict.singleton "meh"
+                                            (CA.TypeRecord
+                                                { attrs = Dict.singleton "blah" (CA.TypeConstant { path = "Number", args = [] })
+                                                , extensible = Just "t8"
+                                                }
+                                            )
                                     , extensible = Just "t6"
                                     }
                             , fromIsMutable = Just True
@@ -705,5 +693,57 @@ records =
 
                            @a.first += 1
                         """
+            }
+        , simpleTest
+            { name = "functional update"
+            , run =
+                \_ ->
+                    infer "a" "a b = { b with x = 1 }"
+            , expected =
+                let
+                    re =
+                        CA.TypeRecord
+                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
+                            , extensible = Just "t6"
+                            }
+                in
+                Ok
+                    { forall = Set.fromList [ "t6" ]
+                    , mutable = Just False
+                    , type_ =
+                        CA.TypeFunction
+                            { from = re
+                            , fromIsMutable = Nothing
+                            , to = re
+                            }
+                    }
+            }
+        , simpleTest
+            { name = "generalization?"
+            , run =
+                \_ ->
+                    infer "c"
+                        """
+                        a t = { t with x = 1 }
+                        c = a
+                        """
+            , expected =
+                let
+                    re =
+                        CA.TypeRecord
+                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
+                            , extensible = Just "t6"
+                            }
+                in
+                Ok
+                    { forall = Set.fromList [ "t6" ]
+                    , mutable = Just False
+                    , type_ =
+                        CA.TypeFunction
+                            { from = re
+                            , fromIsMutable = Nothing
+                            , to = re
+                            }
+                    }
             }
         ]

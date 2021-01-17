@@ -66,7 +66,7 @@ type Type
 
 type alias TypeRecordArgs =
     { extensible : Maybe Name
-    , attrs : List { name : Name, type_ : Type }
+    , attrs : Dict Name Type
     }
 
 
@@ -92,12 +92,9 @@ type Expression e
         }
     | Record
         e
-        -- TODO use a Dict instead? Attrs should not be ordered!
-        (List
-            { name : Name
-            , value : Expression e
-            }
-        )
+        { maybeUpdateTarget : Maybe VariableArgs
+        , attrs : Dict String (Expression e)
+        }
     | Call
         e
         { reference : Expression e

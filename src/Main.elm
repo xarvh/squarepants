@@ -251,7 +251,9 @@ viewCaType ty =
                             ""
             in
             args.attrs
-                |> List.map (\{ name, type_ } -> name ++ ": " ++ viewCaType type_)
+                |> Dict.toList
+                |> List.sortBy Tuple.first
+                |> List.map (\( name, type_ ) -> name ++ ": " ++ viewCaType type_)
                 |> String.join ", "
                 |> (\s -> "{" ++ var ++ s ++ "}")
 

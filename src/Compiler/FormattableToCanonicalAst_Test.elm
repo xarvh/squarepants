@@ -59,6 +59,7 @@ tests =
         , binops
         , tuples
         , moduleAndAttributePaths
+        , records
         ]
 
 
@@ -155,9 +156,13 @@ tuples =
             , expected =
                 Ok
                     (CA.Record ()
-                        [ { name = "first", value = CA.NumberLiteral () { end = 5, number = "1", start = 4 } }
-                        , { name = "second", value = CA.NumberLiteral () { end = 9, number = "2", start = 8 } }
-                        ]
+                        { maybeUpdateTarget = Nothing
+                        , attrs =
+                            Dict.fromList
+                                [ ( "first", CA.NumberLiteral () { end = 5, number = "1", start = 4 } )
+                                , ( "second", CA.NumberLiteral () { end = 9, number = "2", start = 8 } )
+                                ]
+                        }
                     )
             }
         , simpleTest
@@ -166,10 +171,14 @@ tuples =
             , expected =
                 Ok
                     (CA.Record ()
-                        [ { name = "first", value = CA.NumberLiteral () { end = 5, number = "1", start = 4 } }
-                        , { name = "second", value = CA.NumberLiteral () { end = 9, number = "2", start = 8 } }
-                        , { name = "third", value = CA.NumberLiteral () { end = 13, number = "3", start = 12 } }
-                        ]
+                        { maybeUpdateTarget = Nothing
+                        , attrs =
+                            Dict.fromList
+                                [ ( "first", CA.NumberLiteral () { end = 5, number = "1", start = 4 } )
+                                , ( "second", CA.NumberLiteral () { end = 9, number = "2", start = 8 } )
+                                , ( "third", CA.NumberLiteral () { end = 13, number = "3", start = 12 } )
+                                ]
+                        }
                     )
             }
         , hasError
@@ -193,9 +202,10 @@ tuples =
                         Just
                             (CA.TypeRecord
                                 { attrs =
-                                    [ { name = "first", type_ = CA.TypeConstant { args = [], path = "Blah" } }
-                                    , { name = "second", type_ = CA.TypeConstant { args = [], path = "Blah" } }
-                                    ]
+                                    Dict.fromList
+                                        [ ( "first", CA.TypeConstant { args = [], path = "Blah" } )
+                                        , ( "second", CA.TypeConstant { args = [], path = "Blah" } )
+                                        ]
                                 , extensible = Nothing
                                 }
                             )
@@ -237,9 +247,52 @@ moduleAndAttributePaths =
         , accept "Blah.Blah.blah"
         , reject "blah.Blah.blah" "lower"
         , reject "Blah.blah.Blah" "lower"
-        , reject ".." "dot"
+        , reject ".." "shorthand"
         , reject "Blah..blah" "dot"
-        , reject ".Blah" "lower"
-        , reject ".blah.blah" "dot"
-        , reject ".blah" "NI"
+        , reject ".Blah" "shorthand"
+        , reject ".blah.blah" "shorthand"
+        , reject ".blah" "shorthand"
+        ]
+
+
+
+----
+--- Records
+--
+
+
+records : Test
+records =
+    let
+        accept s =
+            isOk { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s) }
+
+        reject s m =
+            hasError { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s), test = Test.errorShouldContain m }
+    in
+    Test.Group "Records"
+        [ simpleTest
+            { name = "functional update"
+            , run = \_ -> firstEvaluation "a" "a = { m with b, c = 1 }"
+            , expected =
+                { attrs =
+                    Dict.fromList
+                        [ ( "c", CA.NumberLiteral () { end = 21, number = "1", start = 20 } )
+                        , ( "b", CA.Variable () { attrPath = [], end = 0, path = "b", start = 0 } )
+                        ]
+                , maybeUpdateTarget = Just { attrPath = [], end = 7, path = "m", start = 6 }
+                }
+                    |> CA.Record ()
+                    |> Ok
+            }
+        , simpleTest
+            { name = "update shorthand"
+            , run = \_ -> firstEvaluation "b" "b = { a.k with y = .x }"
+            , expected =
+                { attrs = Dict.singleton "y" (CA.Variable () { attrPath = [ "k", "x" ], end = 21, path = "a", start = 19 })
+                , maybeUpdateTarget = Just { attrPath = [ "k" ], end = 9, path = "a", start = 6 }
+                }
+                    |> CA.Record ()
+                    |> Ok
+            }
         ]

@@ -45,11 +45,6 @@ type alias Parser a =
 --
 
 
-oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
-oomSeparatedBy sep pa =
-    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
-
-
 sepList : Parser sep -> Parser item -> Parser (SepList sep item)
 sepList sep item =
     Parser.tuple2 item (zeroOrMore (Parser.tuple2 sep item))
@@ -58,6 +53,11 @@ sepList sep item =
 discardFirst : Parser a -> Parser b -> Parser b
 discardFirst a b =
     do a <| \_ -> b
+
+
+oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
+oomSeparatedBy sep pa =
+    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
 
 
 oneToken : Parser Token
@@ -103,8 +103,8 @@ standardList : { separator : Token.Kind, item : Parser a } -> Parser (OneOrMore 
 standardList { separator, item } =
     let
         sibsep =
-            do (maybe <| exactTokenKind Token.NewSiblingLine) <| \_ ->
-            exactTokenKind separator
+            do (maybe <| kind Token.NewSiblingLine) <| \_ ->
+            kind separator
     in
     discardFirst (maybe sibsep) (oomSeparatedBy sibsep item)
 
@@ -153,12 +153,12 @@ module_ : Parser (OneOrMore FA.Statement)
 module_ =
     do
         (oneOf
-            [ exactTokenKind Token.BlockStart
-            , exactTokenKind Token.NewSiblingLine
+            [ kind Token.BlockStart
+            , kind Token.NewSiblingLine
             ]
         )
     <| \_ ->
-   oomSeparatedBy (exactTokenKind Token.NewSiblingLine) statement
+    oomSeparatedBy (kind Token.NewSiblingLine) statement
 
 
 
@@ -169,7 +169,7 @@ module_ =
 
 typeAlias : Parser FA.Statement
 typeAlias =
-    do (exactTokenKind <| Token.Name { mutable = False } "alias") <| \_ ->
+    do (kind <| Token.Name { mutable = False } "alias") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
     do (inlineOrIndented typeExpr) <| \type_ ->
@@ -187,7 +187,7 @@ typeAlias =
 
 typeDefinition : Parser FA.Statement
 typeDefinition =
-    do (exactTokenKind <| Token.Name { mutable = False } "type") <| \_ ->
+    do (kind <| Token.Name { mutable = False } "type") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
     do (inlineOrIndented <| standardList { separator = Token.Comma, item = constructor }) <| \cons ->
@@ -261,6 +261,7 @@ expr =
     Parser.expression term
         -- the `Or` stands for `Or higher priority parser`
         [ parensOr
+        , recordOr
         , lambdaOr
         , functionApplicationOr
         , unopsOr
@@ -290,13 +291,7 @@ parensOr : Parser FA.Expression -> Parser FA.Expression
 parensOr higher =
     oneOf
         [ higher
-        , do (surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> commaSeparated expr)) <| \es ->
-        case es of
-            ( head, [] ) ->
-                succeed head
-
-            ( head, tail ) ->
-                succeed <| FA.Tuple (head :: tail)
+        , surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> expr)
         ]
 
 
@@ -304,7 +299,7 @@ commaSeparated : Parser expr -> Parser (OneOrMore expr)
 commaSeparated v =
     let
         comma =
-            exactTokenKind Token.Comma
+            kind Token.Comma
 
         commaAndV =
             do comma <| \_ -> v
@@ -317,17 +312,56 @@ commaSeparated v =
 
 surroundWith : Token.Kind -> Token.Kind -> Parser a -> Parser a
 surroundWith left right =
-    Parser.surroundWith (exactTokenKind left) (exactTokenKind right)
+    Parser.surroundWith (kind left) (kind right)
 
 
-exactTokenKind : Token.Kind -> Parser Token
-exactTokenKind targetKind =
+kind : Token.Kind -> Parser Token
+kind targetKind =
     do oneToken <| \token ->
     if targetKind == token.kind then
         succeed token
 
     else
         fail
+
+
+
+----
+--- Record
+--
+
+
+recordOr : Parser FA.Expression -> Parser FA.Expression
+recordOr higher =
+    let
+        attrAssignment =
+            discardFirst
+                (kind <| Token.Defop { mutable = False })
+                (Parser.breakCircularDefinition <| \_ -> expr)
+
+        attr =
+            do nonMutName <| \name ->
+            do (maybe attrAssignment) <| \maybeAssignment ->
+            succeed ( name, maybeAssignment )
+
+        updateTarget =
+            do (Parser.breakCircularDefinition <| \_ -> expr) <| \h ->
+            do (kind Token.With) <| \_ ->
+            succeed h
+
+        content =
+            do (maybe updateTarget) <| \maybeUpdateTarget ->
+            do (commaSeparated attr) <| \attrs ->
+            { maybeUpdateTarget = maybeUpdateTarget
+            , attrs = OneOrMore.toList attrs
+            }
+                |> FA.Record
+                |> succeed
+    in
+    oneOf
+        [ higher
+        , surroundWith (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) content
+        ]
 
 
 
@@ -397,8 +431,8 @@ inlineStatement =
 statementBlock : Parser (OneOrMore FA.Statement)
 statementBlock =
     statement
-        |> oomSeparatedBy (exactTokenKind Token.NewSiblingLine)
-        |> Parser.surroundWith (exactTokenKind Token.BlockStart) (exactTokenKind Token.BlockEnd)
+        |> oomSeparatedBy (kind Token.NewSiblingLine)
+        |> Parser.surroundWith (kind Token.BlockStart) (kind Token.BlockEnd)
 
 
 
@@ -412,7 +446,7 @@ typeAnnotation =
     do nonMutName <| \name ->
     do hasType <| \{ mutable } ->
     do typeExpr <| \t ->
-    do (exactTokenKind Token.NewSiblingLine) <| \_ ->
+    do (kind Token.NewSiblingLine) <| \_ ->
     succeed
         { name = name
         , mutable = mutable
@@ -560,7 +594,7 @@ lambdaOr : Parser FA.Expression -> Parser FA.Expression
 lambdaOr higher =
     let
         def =
-            do (exactTokenKind Token.Fn) <| \fn ->
+            do (kind Token.Fn) <| \fn ->
             do (oneOrMore pattern) <| \params ->
             do defop <| \{ mutable } ->
             if mutable then
@@ -578,7 +612,7 @@ lambdaOr higher =
                      b
                      c
                   -}
-                  oneOrMore (discardFirst (exactTokenKind Token.NewSiblingLine) statement)
+                  oneOrMore (discardFirst (kind Token.NewSiblingLine) statement)
                 , {-
                      fn x =
                        a

@@ -12,9 +12,9 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 -}
 
-import Types.Token
 import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
+import Types.Token
 
 
 type alias Module =
@@ -115,7 +115,7 @@ type Expression
         }
     | Binop
         { group : Types.Token.PrecedenceGroup
-        , sepList : (SepList String Expression)
+        , sepList : SepList String Expression
         }
     | Unop
         { start : Int
@@ -136,13 +136,10 @@ type Expression
         , patterns : List ( Pattern, Expression )
         , maybeElse : Maybe Expression
         }
-    | Tuple (List Expression)
     | Record
-        (List
-            { name : String
-            , value : Expression
-            }
-        )
+        { maybeUpdateTarget : Maybe Expression
+        , attrs : List ( String, Maybe Expression )
+        }
 
 
 type Pattern
@@ -182,8 +179,5 @@ exprStart expr =
         Match { start, value, patterns, maybeElse } ->
             start
 
-        Tuple _ ->
-            Debug.todo ""
-
-        Record attrs ->
+        Record args ->
             Debug.todo ""

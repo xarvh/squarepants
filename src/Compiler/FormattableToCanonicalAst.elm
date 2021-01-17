@@ -14,6 +14,15 @@ type alias Res ok =
     Result Error ok
 
 
+{-| Record Shorthand
+
+      new = { old | x = .x + 1 }
+
+-}
+type alias Rs =
+    Maybe CA.VariableArgs
+
+
 
 ----
 --- Module
@@ -49,7 +58,7 @@ insertStatement faStatement caModule =
 
         FA.Definition fa ->
             fa
-                |> translateDefinition
+                |> translateDefinition Nothing
                 |> Result.andThen
                     (\def ->
                         if Dict.member def.name caModule.valueDefinitions then
@@ -151,17 +160,27 @@ type alias StructuredName =
     }
 
 
-stringToStructuredName : String -> Res StructuredName
-stringToStructuredName s =
-    case String.split "." s of
-        [ "", attrName ] ->
-            if firstCharIsUpper attrName then
-                errorTodo "attribute names must start with lowercase"
+stringToStructuredName : Rs -> String -> Res StructuredName
+stringToStructuredName rs s =
+    let
+        resStrings =
+            case String.split "." s of
+                "" :: ls ->
+                    case rs of
+                        Nothing ->
+                            errorTodo "record update shorthands can be used only inside a record update!"
 
-            else
-                errorTodo "NI attr accessor shorthands"
+                        Just ref ->
+                            Ok <| ref.path :: ref.attrPath ++ ls
 
-        strings ->
+                ls ->
+                    Ok ls
+    in
+    case resStrings of
+        Err e ->
+            Err e
+
+        Ok strings ->
             case uppercaseRec strings [] of
                 Err e ->
                     errorTodo e
@@ -224,8 +243,8 @@ lowercaseRec uppercaseAcc lowercaseAcc ls =
 --
 
 
-translateDefinition : FA.ValueDefinition -> Res (CA.ValueDefinition ())
-translateDefinition fa =
+translateDefinition : Rs -> FA.ValueDefinition -> Res (CA.ValueDefinition ())
+translateDefinition rs fa =
     let
         (FA.PatternAny name) =
             fa.name
@@ -238,7 +257,7 @@ translateDefinition fa =
         resultBody =
             fa.body
                 |> OneOrMore.toList
-                |> List.map translateStatement
+                |> List.map (translateStatement rs)
                 |> listResultToResultList
     in
     Result.map2
@@ -271,19 +290,19 @@ translateAnnotation defName faDef faAnn =
 --
 
 
-translateStatement : FA.Statement -> Res (CA.Statement ())
-translateStatement faStat =
+translateStatement : Rs -> FA.Statement -> Res (CA.Statement ())
+translateStatement rs faStat =
     case faStat of
         FA.Evaluation faExpr ->
             -- TODO Non-return, non-mutable, non-debug evaluations should produce an error.
             -- Debug evaluations should be optimized away in production build
             faExpr
-                |> translateExpression
+                |> translateExpression rs
                 |> Result.map CA.Evaluation
 
         FA.Definition fa ->
             fa
-                |> translateDefinition
+                |> translateDefinition rs
                 |> Result.map CA.Definition
 
         FA.Mutation fa ->
@@ -303,15 +322,15 @@ translateStatement faStat =
 --
 
 
-translateExpression : FA.Expression -> Res (CA.Expression ())
-translateExpression faExpr =
+translateExpression : Rs -> FA.Expression -> Res (CA.Expression ())
+translateExpression rs faExpr =
     case faExpr of
         FA.NumberLiteral args ->
             Ok <| CA.NumberLiteral () args
 
         FA.Variable args ->
             args.name
-                |> stringToStructuredName
+                |> stringToStructuredName rs
                 |> Result.map
                     (\sname ->
                         CA.Variable ()
@@ -329,7 +348,7 @@ translateExpression faExpr =
             in
             fa.body
                 |> OneOrMore.toList
-                |> List.map translateStatement
+                |> List.map (translateStatement rs)
                 |> listResultToResultList
                 |> Result.map
                     (\body ->
@@ -353,10 +372,10 @@ translateExpression faExpr =
             in
             Result.map2
                 (List.foldl fold)
-                (translateExpression reference)
+                (translateExpression rs reference)
                 (arguments
                     |> OneOrMore.toList
-                    |> List.map translateArgument
+                    |> List.map (translateArgument rs)
                     |> listResultToResultList
                 )
 
@@ -370,42 +389,91 @@ translateExpression faExpr =
                         , false = [ CA.Evaluation f ]
                         }
                 )
-                (translateExpression condition)
-                (translateExpression true)
-                (translateExpression false)
-
-        FA.Tuple list ->
-            case list of
-                [ first, second ] ->
-                    Result.map2
-                        (\f s ->
-                            CA.Record ()
-                                [ { name = "first", value = f }
-                                , { name = "second", value = s }
-                                ]
-                        )
-                        (translateExpression first)
-                        (translateExpression second)
-
-                _ ->
-                    errorTodo "sorry, I'm supporting only tuples of size 2"
+                (translateExpression rs condition)
+                (translateExpression rs true)
+                (translateExpression rs false)
 
         FA.Binop { group, sepList } ->
-            translateBinops group sepList
+            translateBinops rs group sepList
 
         FA.Lvalue args ->
             errorTodo "mutable values can be used only as arguments for function or mutation operators"
 
+        FA.Record faArgs ->
+            let
+                res_do a b =
+                    Result.andThen b a
+            in
+            res_do (makeUpdateTarget faArgs.maybeUpdateTarget) <| \caUpdateTarget ->
+            res_do (translateAttrsRec caUpdateTarget.maybeName faArgs.attrs Dict.empty) <| \caAttrs ->
+            { maybeUpdateTarget = caUpdateTarget.maybeName
+            , attrs = caAttrs
+            }
+                |> CA.Record ()
+                |> caUpdateTarget.wrapper
+                |> Ok
+
         _ ->
-            errorTodo <| "NOT SUPPORTED FOR NOW " ++ Debug.toString faExpr
+            errorTodo <| "FA expression type not supported for now:" ++ Debug.toString faExpr
 
 
-translateArgument : FA.Expression -> Res (CA.Argument ())
-translateArgument faExpr =
+makeUpdateTarget : Maybe FA.Expression -> Res { maybeName : Rs, wrapper : CA.Expression () -> CA.Expression () }
+makeUpdateTarget maybeUpdateTarget =
+    case Maybe.map (translateExpression Nothing) maybeUpdateTarget of
+        Nothing ->
+            Ok { maybeName = Nothing, wrapper = identity }
+
+        Just (Err e) ->
+            Err e
+
+        Just (Ok (CA.Variable _ args)) ->
+            -- TODO test for lowercase name?
+            Ok { maybeName = Just args, wrapper = identity }
+
+        Just (Ok expr) ->
+            errorTodo "NI { (expr) with ...} not yet implemented =("
+
+
+translateAttrsRec :
+    Rs
+    -> List ( String, Maybe FA.Expression )
+    -> Dict CA.Name (CA.Expression ())
+    -> Res (Dict CA.Name (CA.Expression ()))
+translateAttrsRec maybeUpdateTarget faAttrs caAttrsAccum =
+    case faAttrs of
+        [] ->
+            Ok caAttrsAccum
+
+        ( attrName, maybeAttrExpression ) :: faTail ->
+            let
+                exprRes =
+                    case maybeAttrExpression of
+                        Just faExpr ->
+                            translateExpression maybeUpdateTarget faExpr
+
+                        Nothing ->
+                            -- TODO start, end
+                            { start = 0
+                            , end = 0
+                            , path = attrName
+                            , attrPath = []
+                            }
+                                |> CA.Variable ()
+                                |> Ok
+            in
+            exprRes
+                |> Result.andThen
+                    (\expr ->
+                        translateAttrsRec maybeUpdateTarget faTail (Dict.insert attrName expr caAttrsAccum)
+                    )
+
+
+translateArgument : Rs -> FA.Expression -> Res (CA.Argument ())
+translateArgument rs faExpr =
     case faExpr of
         FA.Lvalue args ->
             args.name
-                |> stringToStructuredName
+                |> stringToStructuredName Nothing
                 |> Result.andThen
                     (\sname ->
                         { start = args.start
@@ -419,15 +487,15 @@ translateArgument faExpr =
 
         _ ->
             faExpr
-                |> translateExpression
+                |> translateExpression rs
                 |> Result.map CA.ArgumentExpression
 
 
-translateBinops : Token.PrecedenceGroup -> SepList String FA.Expression -> Res (CA.Expression ())
-translateBinops group ( firstItem, firstTail ) =
+translateBinops : Rs -> Token.PrecedenceGroup -> SepList String FA.Expression -> Res (CA.Expression ())
+translateBinops rs group ( firstItem, firstTail ) =
     case firstTail of
         [] ->
-            translateExpression firstItem
+            translateExpression rs firstItem
 
         ( firstSep, secondItem ) :: [] ->
             case group of
@@ -435,15 +503,19 @@ translateBinops group ( firstItem, firstTail ) =
                     Result.map2
                         (\first second ->
                             CA.Record ()
-                                [ { name = "first", value = first }
-                                , { name = "second", value = second }
-                                ]
+                                { maybeUpdateTarget = Nothing
+                                , attrs =
+                                    Dict.fromList
+                                        [ ( "first", first )
+                                        , ( "second", second )
+                                        ]
+                                }
                         )
-                        (translateExpression firstItem)
-                        (translateExpression secondItem)
+                        (translateExpression rs firstItem)
+                        (translateExpression rs secondItem)
 
                 _ ->
-                    translateSimpleBinop firstItem firstSep secondItem
+                    translateSimpleBinop rs firstItem firstSep secondItem
 
         ( firstSep, secondItem ) :: ( secondSep, thirdItem ) :: thirdTail ->
             let
@@ -466,7 +538,7 @@ translateBinops group ( firstItem, firstTail ) =
                         errorTodo "Mixing `and` and `or` is ambiguous. Use parens!"
 
                     else
-                        translateBinopSepList firstItem firstTail
+                        translateBinopSepList rs firstItem firstTail
 
                 Token.Tuple ->
                     if thirdTail /= [] then
@@ -476,27 +548,31 @@ translateBinops group ( firstItem, firstTail ) =
                         Result.map3
                             (\first second third ->
                                 CA.Record ()
-                                    [ { name = "first", value = first }
-                                    , { name = "second", value = second }
-                                    , { name = "third", value = third }
-                                    ]
+                                    { maybeUpdateTarget = Nothing
+                                    , attrs =
+                                        Dict.fromList
+                                            [ ( "first", first )
+                                            , ( "second", second )
+                                            , ( "third", third )
+                                            ]
+                                    }
                             )
-                            (translateExpression firstItem)
-                            (translateExpression secondItem)
-                            (translateExpression thirdItem)
+                            (translateExpression rs firstItem)
+                            (translateExpression rs secondItem)
+                            (translateExpression rs thirdItem)
 
                 Token.Pipe ->
                     if notAllSeparators ((==) firstSep) secondTail then
                         errorTodo "Mixing pipes is ambigous. Use parens."
 
                     else
-                        translateBinopSepList firstItem firstTail
+                        translateBinopSepList rs firstItem firstTail
 
                 Token.Mutop ->
                     errorTodo "mutops can't be chained"
 
                 _ ->
-                    translateBinopSepList firstItem firstTail
+                    translateBinopSepList rs firstItem firstTail
 
 
 notAllSeparators : (sep -> Bool) -> List ( sep, item ) -> Bool
@@ -536,26 +612,26 @@ sameDirectionAs a b =
                 False
 
 
-translateBinopSepList : FA.Expression -> List ( String, FA.Expression ) -> Res (CA.Expression ())
-translateBinopSepList leftAccum opsAndRight =
+translateBinopSepList : Rs -> FA.Expression -> List ( String, FA.Expression ) -> Res (CA.Expression ())
+translateBinopSepList rs leftAccum opsAndRight =
     leftAccum
-        |> translateExpression
-        |> Result.andThen (\caLeftAccum -> translateBinopSepListRec caLeftAccum opsAndRight)
+        |> translateExpression rs
+        |> Result.andThen (\caLeftAccum -> translateBinopSepListRec rs caLeftAccum opsAndRight)
 
 
-translateBinopSepListRec : CA.Expression () -> List ( String, FA.Expression ) -> Res (CA.Expression ())
-translateBinopSepListRec leftAccum opsAndRight =
+translateBinopSepListRec : Rs -> CA.Expression () -> List ( String, FA.Expression ) -> Res (CA.Expression ())
+translateBinopSepListRec rs leftAccum opsAndRight =
     case opsAndRight of
         [] ->
             Ok leftAccum
 
         ( op, faRight ) :: tail ->
-            case translateArgument faRight of
+            case translateArgument rs faRight of
                 Err e ->
                     Err e
 
                 Ok caRight ->
-                    translateBinopSepListRec (makeBinop (CA.ArgumentExpression leftAccum) op caRight) tail
+                    translateBinopSepListRec rs (makeBinop (CA.ArgumentExpression leftAccum) op caRight) tail
 
 
 {-| Unlike other ML languages, the left operand is the _second_ argument
@@ -582,11 +658,11 @@ makeBinop left op right =
         }
 
 
-translateSimpleBinop : FA.Expression -> String -> FA.Expression -> Res (CA.Expression ())
-translateSimpleBinop left op right =
+translateSimpleBinop : Rs -> FA.Expression -> String -> FA.Expression -> Res (CA.Expression ())
+translateSimpleBinop rs left op right =
     Result.map2 (\l r -> makeBinop l op r)
-        (translateArgument left)
-        (translateArgument right)
+        (translateArgument rs left)
+        (translateArgument rs right)
 
 
 
@@ -595,7 +671,7 @@ translateSimpleBinop left op right =
 --
 
 
-addAttribute : List ( String, FA.Type ) -> List { name : String, type_ : CA.Type } -> Res CA.Type
+addAttribute : List ( String, FA.Type ) -> Dict String CA.Type -> Res CA.Type
 addAttribute faAttrs caAttrsAccum =
     case faAttrs of
         [] ->
@@ -612,7 +688,7 @@ addAttribute faAttrs caAttrsAccum =
                     Err e
 
                 Ok caType ->
-                    addAttribute faTail ({ name = name, type_ = caType } :: caAttrsAccum)
+                    addAttribute faTail (Dict.insert name caType caAttrsAccum)
 
 
 firstCharIsUpper : String -> Bool
@@ -630,7 +706,7 @@ translateType faType =
     case faType of
         FA.TypeConstantOrVariable { name, args } ->
             name
-                |> stringToStructuredName
+                |> stringToStructuredName Nothing
                 |> Result.andThen
                     (\sname ->
                         if sname.attrPath /= [] then
@@ -681,9 +757,10 @@ translateType faType =
                             CA.TypeRecord
                                 { extensible = Nothing
                                 , attrs =
-                                    [ { name = "first", type_ = caFirst }
-                                    , { name = "second", type_ = caSecond }
-                                    ]
+                                    Dict.fromList
+                                        [ ( "first", caFirst )
+                                        , ( "second", caSecond )
+                                        ]
                                 }
                         )
                         (translateType faFirst)
@@ -695,10 +772,11 @@ translateType faType =
                             CA.TypeRecord
                                 { extensible = Nothing
                                 , attrs =
-                                    [ { name = "first", type_ = caFirst }
-                                    , { name = "second", type_ = caSecond }
-                                    , { name = "third", type_ = caThird }
-                                    ]
+                                    Dict.fromList
+                                        [ ( "first", caFirst )
+                                        , ( "second", caSecond )
+                                        , ( "third", caThird )
+                                        ]
                                 }
                         )
                         (translateType faFirst)
@@ -709,7 +787,7 @@ translateType faType =
                     errorTodo "Tuples can only have size 2 or 3. Use a record."
 
         FA.TypeRecord attrs ->
-            addAttribute attrs []
+            addAttribute attrs Dict.empty
 
 
 

@@ -272,6 +272,9 @@ recognisedTokens =
                             "else" ->
                                 Token.Else
 
+                            "with" ->
+                                Token.With
+
                             "and" ->
                                 Token.Binop Token.Logical match
 

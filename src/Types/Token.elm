@@ -29,6 +29,7 @@ type
     | As
     | Then
     | Else
+    | With
       -- Ops
     | Defop { mutable : Bool }
     | Unop String

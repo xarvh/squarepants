@@ -68,15 +68,16 @@ Main goals
 More or less established features
 ---------------------------------
 
+* `(expr).attr` is not supported nor necessary (expr |> fn.attr), but it would be a nice-to-have?
+  - tokenization is a mess
+  - makes `@var.attr` mut values more complicated
+
+
 * Different backends or "platforms" which are environments dedicated to a specific kind of apps.
   * SystemTools: file IO, server
   * Games: generic Bulk Storage / State storage functions, SFX, GFX etc, input devices...
 
 * Allow docs for single union type constructors
-
-
-* Comment with `#`
-  What about multi line comments?
 
 
 * Functions
