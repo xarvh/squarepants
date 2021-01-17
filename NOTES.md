@@ -180,7 +180,35 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 Stuff that seems good but needs thinking
 ----------------------------------------
 
-Collect-then-solve type inference:
+* Record functional update shorthands
+
+    # no need to repeat `oldModel`
+    newModel = { oldModel with someAttribute = .someAttribute + 1 }
+
+  This means that `.attr` can't be used as a shorthand for `fn x = x.attr`
+  But maybe it can be replaced with `fn.attr`?
+
+  Nested record updates become:
+
+      a =
+         { b = 1
+         , c =
+           { d = 3
+           , e = 4
+           }
+         }
+
+      a0 =
+        { a with
+        , c =
+            { .c with
+            , e = 4
+            }
+        }
+
+
+
+* Collect-then-solve type inference:
   https://www.researchgate.net/publication/2528716_Generalizing_Hindley-Milner_Type_Inference_Algorithms
   https://github.com/cronokirby/heeren-2002/blob/master/lang.hs
 
@@ -258,6 +286,9 @@ Collect-then-solve type inference:
 
 
 ### function comparison/serialisation
+  (A different approach would be: provide an easy way to translate (top-level?) functions to and from a union type?)
+
+
   Two functions are the same if the checksum of their canonical ast (minus position info) is the same and if their arguments are the same
 
   If we make a table of all the functions ever in the code, we can actually serialise and deserialize function references
@@ -300,23 +331,6 @@ GLSL
 
 Stuff that's still up in the air
 --------------------------------
-
-
-### Tuples
-
-Tuples with parens are a pain in the ass
-
-Would be nice to have tuples just as syntsugar for records
-
-`a & b` -> { first = a, second = b }
-
-
-
-
-
-
-
-
 
 
 

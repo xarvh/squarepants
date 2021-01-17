@@ -80,6 +80,7 @@ tests =
         , findAllNestedSiblingReferences
         , mutability
         , higherOrderTypes
+        , records
         ]
 
 
@@ -595,5 +596,114 @@ higherOrderTypes =
                     , mutable = Just False
                     , forall = Set.singleton "a"
                     }
+            }
+        ]
+
+
+
+----
+--- Records
+--
+
+
+records : Test
+records =
+    Test.Group "Records"
+        [ simpleTest
+            { name = "Attribute access"
+            , run =
+                \_ ->
+                    infer "a"
+                        """
+                        a b = b.meh.blah
+                        """
+            , expected =
+                Ok
+                    { forall = Set.fromList [ "t5", "t7", "t8" ]
+                    , mutable = Just False
+                    , type_ =
+                        CA.TypeFunction
+                            { from =
+                                CA.TypeRecord
+                                    { attrs =
+                                        [ { name = "meh"
+                                          , type_ =
+                                                CA.TypeRecord
+                                                    { attrs =
+                                                        [ { name = "blah"
+                                                          , type_ = CA.TypeVariable { name = "t8" }
+                                                          }
+                                                        ]
+                                                    , extensible = Just "t7"
+                                                    }
+                                          }
+                                        ]
+                                    , extensible = Just "t5"
+                                    }
+                            , fromIsMutable = Nothing
+                            , to = CA.TypeVariable { name = "t8" }
+                            }
+                    }
+            }
+        , simpleTest
+            { name = "Attribute mutation"
+            , run =
+                \_ ->
+                    infer "a"
+                        """
+                        a b = @b.meh.blah += 1
+                        """
+            , expected =
+                Ok
+                    { forall = Set.fromList [ "t6", "t8" ]
+                    , mutable = Just False
+                    , type_ =
+                        CA.TypeFunction
+                            { from =
+                                CA.TypeRecord
+                                    { attrs =
+                                        [ { name = "meh"
+                                          , type_ =
+                                                CA.TypeRecord
+                                                    { attrs =
+                                                        [ { name = "blah"
+                                                          , type_ = CA.TypeConstant { path = "Number", args = [] }
+                                                          }
+                                                        ]
+                                                    , extensible = Just "t8"
+                                                    }
+                                          }
+                                        ]
+                                    , extensible = Just "t6"
+                                    }
+                            , fromIsMutable = Just True
+                            , to = CA.TypeConstant { path = "None", args = [] }
+                            }
+                    }
+            }
+        , isOk
+            { name = "Tuple3 direct item mutability"
+            , run =
+                \_ ->
+                    infer "x"
+                        """
+                        x =
+                          a @= 3 & False & 2
+
+                          @a.third += 1
+                        """
+            }
+        , isOk
+            { name = "Tuple2 direct item mutability, annotated"
+            , run =
+                \_ ->
+                    infer "x"
+                        """
+                        x =
+                           a @: Number & Number
+                           a @= 1 & 2
+
+                           @a.first += 1
+                        """
             }
         ]

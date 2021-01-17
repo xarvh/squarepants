@@ -155,7 +155,11 @@ stringToStructuredName : String -> Res StructuredName
 stringToStructuredName s =
     case String.split "." s of
         [ "", attrName ] ->
-            errorTodo "NI attr accessor shorthands"
+            if firstCharIsUpper attrName then
+                errorTodo "attribute names must start with lowercase"
+
+            else
+                errorTodo "NI attr accessor shorthands"
 
         strings ->
             case uppercaseRec strings [] of

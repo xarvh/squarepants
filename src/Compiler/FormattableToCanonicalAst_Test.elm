@@ -58,6 +58,7 @@ tests =
         [ unionTypes
         , binops
         , tuples
+        , moduleAndAttributePaths
         ]
 
 
@@ -213,4 +214,32 @@ tuples =
                         """
             , test = Test.errorShouldContain "Use a record"
             }
+        ]
+
+
+
+----
+--- Module and Attribute Paths
+--
+
+
+moduleAndAttributePaths : Test
+moduleAndAttributePaths =
+    let
+        accept s =
+            isOk { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s) }
+
+        reject s m =
+            hasError { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s), test = Test.errorShouldContain m }
+    in
+    Test.Group "Module and Attribute Paths"
+        [ accept "blah.blah.blah"
+        , accept "Blah.Blah.blah"
+        , reject "blah.Blah.blah" "lower"
+        , reject "Blah.blah.Blah" "lower"
+        , reject ".." "dot"
+        , reject "Blah..blah" "dot"
+        , reject ".Blah" "lower"
+        , reject ".blah.blah" "dot"
+        , reject ".blah" "NI"
         ]

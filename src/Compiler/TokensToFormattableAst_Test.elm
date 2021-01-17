@@ -52,8 +52,6 @@ tests =
         ]
 
 
-
-
 lambdas : Test
 lambdas =
     Test.Group "lambdas"
@@ -227,6 +225,34 @@ annotations =
                                     , fromIsMutable = True
                                     , to = FA.TypeConstantOrVariable { name = "None", args = [] }
                                     }
+                            }
+                    }
+            }
+        , simpleTest
+            { name = "Tuple precedence"
+            , run =
+                \_ ->
+                    firstAnnotation
+                        """
+                        a : Int & Int -> Bool
+                        a = a
+                        """
+            , expected =
+                Just
+                    { mutable = False
+                    , name = "a"
+                    , type_ =
+                        FA.TypeFunction
+                            { from =
+                                FA.TypeTuple
+                                    [ FA.TypeConstantOrVariable
+                                        { args = []
+                                        , name = "Int"
+                                        }
+                                    , FA.TypeConstantOrVariable { args = [], name = "Int" }
+                                    ]
+                            , fromIsMutable = False
+                            , to = FA.TypeConstantOrVariable { args = [], name = "Bool" }
                             }
                     }
             }
