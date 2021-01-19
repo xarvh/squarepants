@@ -140,6 +140,7 @@ addConstructorsRec typeDef constructors env =
 
                 ctorType =
                     -- TODO ensure that all constructors use declared var types?
+                    -- ^ This is something that should be done by FormattableToCanonical?
                     List.foldr fold (CA.TypeConstant { path = typeDef.name, args = args }) ctor.args
 
                 fold ty accum =
@@ -172,9 +173,8 @@ addConstructorsRec typeDef constructors env =
 refine_type : Substitutions -> Type -> Type
 refine_type subs ty =
     case ty of
-        CA.TypeConstant _ ->
-            -- TODO what about type parameters?
-            ty
+        CA.TypeConstant { path, args } ->
+            CA.TypeConstant { path = path, args = List.map (refine_type subs) args }
 
         CA.TypeVariable { name } ->
             case Dict.get name subs of
