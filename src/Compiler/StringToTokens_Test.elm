@@ -10,7 +10,7 @@ simpleTest =
     Test.simple Debug.toString
 
 
-lexTokens : String -> () -> Result Error (List Token)
+lexTokens : String -> String -> Result Error (List Token)
 lexTokens s _ =
     Lexer.lexer s
 

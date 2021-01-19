@@ -41,23 +41,8 @@ type alias Parser a =
 
 
 ----
---- Helpers
+--- Terms
 --
-
-
-sepList : Parser sep -> Parser item -> Parser (SepList sep item)
-sepList sep item =
-    Parser.tuple2 item (zeroOrMore (Parser.tuple2 sep item))
-
-
-discardFirst : Parser a -> Parser b -> Parser b
-discardFirst a b =
-    do a <| \_ -> b
-
-
-oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
-oomSeparatedBy sep pa =
-    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
 
 
 oneToken : Parser Token
@@ -65,12 +50,14 @@ oneToken =
     Parser.consumeOne
 
 
-inlineOrIndented : Parser a -> Parser a
-inlineOrIndented p =
-    oneOf
-        [ surroundWith Token.BlockStart Token.BlockEnd p
-        , p
-        ]
+kind : Token.Kind -> Parser Token
+kind targetKind =
+    do oneToken <| \token ->
+    if targetKind == token.kind then
+        succeed token
+
+    else
+        fail
 
 
 nonMutName : Parser String
@@ -99,12 +86,91 @@ defop =
             fail
 
 
-standardList : { separator : Token.Kind, item : Parser a } -> Parser (OneOrMore a)
-standardList { separator, item } =
+
+----
+--- Combinators
+--
+
+
+discardFirst : Parser a -> Parser b -> Parser b
+discardFirst a b =
+    do a <| \_ -> b
+
+
+discardSecond : Parser a -> Parser b -> Parser a
+discardSecond a b =
+    do a <| \aa ->
+    do b <| \_ ->
+    succeed aa
+
+
+inlineOrIndented : Parser a -> Parser a
+inlineOrIndented p =
+    oneOf
+        [ surroundStrict Token.BlockStart Token.BlockEnd p
+        , discardFirst (maybe <| kind Token.NewSiblingLine) p
+        ]
+
+
+surroundStrict : Token.Kind -> Token.Kind -> Parser a -> Parser a
+surroundStrict left right =
+    Parser.surroundWith (kind left) (kind right)
+
+
+surroundMultiline : Token.Kind -> Token.Kind -> Parser a -> Parser a
+surroundMultiline left right content =
+    discardFirst
+        (kind left)
+        (inlineOrIndented
+            (discardSecond
+                content
+                (inlineOrIndented (kind right))
+            )
+        )
+
+
+oomSeparatedBy : Parser a -> Parser b -> Parser (OneOrMore b)
+oomSeparatedBy sep pa =
+    Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
+
+
+{-| TODO make it more flexible, support multiline sep lists:
+
+    ```
+    a = x
+       + 2
+    ```
+
+also, note whether it is multiline or not, so that formatting can preserve it
+
+-}
+sepList : Parser sep -> Parser item -> Parser (SepList sep item)
+sepList sep item =
+    Parser.tuple2 item (zeroOrMore (Parser.tuple2 sep item))
+
+
+{-| TODO make it more flexible
+
+also, note whether it is multiline or not, so that formatting can preserve it
+
+    x = [ a ]
+    x = [, a ]
+    x = [
+      , a
+      , b
+      ]
+    x = [
+      , a, b
+      , c, d
+      ]
+
+-}
+rawList : Parser a -> Parser (OneOrMore a)
+rawList item =
     let
         sibsep =
             do (maybe <| kind Token.NewSiblingLine) <| \_ ->
-            kind separator
+            kind Token.Comma
     in
     discardFirst (maybe sibsep) (oomSeparatedBy sibsep item)
 
@@ -190,7 +256,7 @@ typeDefinition =
     do (kind <| Token.Name { mutable = False } "type") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
-    do (inlineOrIndented <| standardList { separator = Token.Comma, item = constructor }) <| \cons ->
+    do (inlineOrIndented <| rawList constructor) <| \cons ->
     if mutable then
         Parser.abort "can't use @= to define a type"
 
@@ -209,7 +275,7 @@ constructor =
         ctorArgs =
             oneOf
                 [ typeTerm
-                , surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) typeExpr
+                , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) typeExpr
                 ]
     in
     do nonMutName <| \name ->
@@ -261,6 +327,7 @@ expr =
     Parser.expression term
         -- the `Or` stands for `Or higher priority parser`
         [ parensOr
+        , listOr
         , recordOr
         , lambdaOr
         , functionApplicationOr
@@ -291,38 +358,31 @@ parensOr : Parser FA.Expression -> Parser FA.Expression
 parensOr higher =
     oneOf
         [ higher
-        , surroundWith (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> expr)
+        , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> expr)
         ]
 
 
-commaSeparated : Parser expr -> Parser (OneOrMore expr)
-commaSeparated v =
-    let
-        comma =
-            kind Token.Comma
 
-        commaAndV =
-            do comma <| \_ -> v
-    in
-    do v <| \head ->
-    do (zeroOrMore commaAndV) <| \tail ->
-    do (maybe comma) <| \_ ->
-    succeed ( head, tail )
+----
+--- List
+--
 
 
-surroundWith : Token.Kind -> Token.Kind -> Parser a -> Parser a
-surroundWith left right =
-    Parser.surroundWith (kind left) (kind right)
+listOr : Parser FA.Expression -> Parser FA.Expression
+listOr higher =
+    oneOf
+        [ higher
+        , do (surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (Parser.breakCircularDefinition <| \_ -> maybe (rawList expr))) <| \maybeLs ->
+        (case maybeLs of
+            Just ( h, t ) ->
+                h :: t
 
-
-kind : Token.Kind -> Parser Token
-kind targetKind =
-    do oneToken <| \token ->
-    if targetKind == token.kind then
-        succeed token
-
-    else
-        fail
+            Nothing ->
+                []
+        )
+            |> FA.List
+            |> succeed
+        ]
 
 
 
@@ -351,7 +411,7 @@ recordOr higher =
 
         content =
             do (maybe updateTarget) <| \maybeUpdateTarget ->
-            do (commaSeparated attr) <| \attrs ->
+            do (rawList attr) <| \attrs ->
             { maybeUpdateTarget = maybeUpdateTarget
             , attrs = OneOrMore.toList attrs
             }
@@ -360,7 +420,10 @@ recordOr higher =
     in
     oneOf
         [ higher
-        , surroundWith (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) content
+        , do (surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (maybe content)) <| \maybeRecord ->
+        maybeRecord
+            |> Maybe.withDefault (FA.Record { maybeUpdateTarget = Nothing, attrs = [] })
+            |> succeed
         ]
 
 
@@ -381,6 +444,8 @@ statement =
         ]
 
 
+{-| TODO separate annotation and definition to different statements to make the parser more flexible?
+-}
 definition : Parser FA.Statement
 definition =
     do (maybe typeAnnotation) <| \maybeAnnotation ->
@@ -465,12 +530,18 @@ hasType =
             fail
 
 
+typeTerm : Parser FA.Type
+typeTerm =
+    Parser.map (\n -> FA.TypeConstantOrVariable { name = n, args = [] }) nonMutName
+
+
 typeExpr : Parser FA.Type
 typeExpr =
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr
         , typeApplicationOr
+        , typeListOr
         , typeTupleOr
         , typeFunctionOr
 
@@ -499,29 +570,33 @@ typeTupleOr higher =
             |> succeed
 
 
-typeTerm : Parser FA.Type
-typeTerm =
-    Parser.map (\n -> FA.TypeConstantOrVariable { name = n, args = [] }) nonMutName
-
-
 typeParensOr : Parser FA.Type -> Parser FA.Type
 typeParensOr higher =
     oneOf
         [ higher
-        , let
-            parens =
-                surroundWith
-                    (Token.RoundParen Token.Open)
-                    (Token.RoundParen Token.Closed)
-                    (Parser.breakCircularDefinition <| \_ -> commaSeparated typeExpr)
-          in
-          do parens <| \t ->
-          case t of
-              ( head, [] ) ->
-                  succeed <| head
+        , surroundStrict
+            (Token.RoundParen Token.Open)
+            (Token.RoundParen Token.Closed)
+            (Parser.breakCircularDefinition <| \_ -> typeExpr)
+        ]
 
-              ( head, tail ) ->
-                  succeed <| FA.TypeTuple (head :: tail)
+
+typeListOr : Parser FA.Type -> Parser FA.Type
+typeListOr higher =
+    oneOf
+        [ higher
+        , do
+            (surroundStrict
+                (Token.SquareBracket Token.Open)
+                (Token.SquareBracket Token.Closed)
+                (Parser.breakCircularDefinition <| \_ -> typeExpr)
+            )
+          <| \t ->
+          { name = "List"
+          , args = [ t ]
+          }
+              |> FA.TypeConstantOrVariable
+              |> succeed
         ]
 
 
@@ -572,7 +647,10 @@ typeApplicationOr higher =
     do higher <| \ty ->
     case ty of
         FA.TypeConstantOrVariable fa ->
-            -- TODO what about fa.args?
+            if fa.args /= [] then
+              -- TODO rewrite this parser, it's kind of terrible
+              Parser.abort "This shouldn't happen, there is a problem with the parser code."
+            else
             do (zeroOrMore higher) <| \args ->
             { name = fa.name
             , args = args

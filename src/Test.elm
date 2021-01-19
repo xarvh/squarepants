@@ -43,7 +43,7 @@ simple :
     (outcome -> String)
     ->
         { name : String
-        , run : () -> outcome
+        , run : String -> outcome
         , expected : outcome
         }
     -> Test
@@ -54,7 +54,7 @@ simple toString { name, run, expected } =
             , maybeError =
                 let
                     actual =
-                        run ()
+                        run name
                 in
                 if actual == expected then
                     Nothing
@@ -75,7 +75,7 @@ isOk :
     (error -> String)
     ->
         { name : String
-        , run : () -> Result error outcome
+        , run : String -> Result error outcome
         }
     -> Test
 isOk toString { name, run } =
@@ -83,7 +83,7 @@ isOk toString { name, run } =
         (\() ->
             { name = name
             , maybeError =
-                case run () of
+                case run name of
                     Ok _ ->
                         Nothing
 
@@ -97,7 +97,7 @@ hasError :
     (outcome -> String)
     ->
         { name : String
-        , run : () -> Result error outcome
+        , run : String -> Result error outcome
         , test : error -> Maybe String
         }
     -> Test
@@ -106,7 +106,7 @@ hasError toString { name, run, test } =
         (\() ->
             { name = name
             , maybeError =
-                case run () of
+                case run name of
                     Ok outcome ->
                         Just <| "Ok: " ++ toString outcome
 

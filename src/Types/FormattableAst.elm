@@ -63,9 +63,6 @@ type alias TypeConstructor =
     }
 
 
-{-| Unlike the canonical annotation, the formattable annotation allows the mutability flag even where it's invalid.
-This way we can tell the user why they can't flag those as mutable rather than just producing a syntax error.
--}
 type Type
     = TypeConstantOrVariable
         { name : String
@@ -140,6 +137,7 @@ type Expression
         { maybeUpdateTarget : Maybe Expression
         , attrs : List ( String, Maybe Expression )
         }
+    | List (List Expression)
 
 
 type Pattern
@@ -180,4 +178,7 @@ exprStart expr =
             start
 
         Record args ->
+            Debug.todo ""
+
+        List _ ->
             Debug.todo ""

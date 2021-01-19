@@ -58,6 +58,7 @@ tests =
         [ unionTypes
         , binops
         , tuples
+        , lists
         , moduleAndAttributePaths
         , records
         ]
@@ -137,6 +138,41 @@ binops =
                                 }
                         }
                     )
+            }
+        ]
+
+
+
+----
+--- Lists
+--
+
+
+lists : Test
+lists =
+    Test.Group "Lists"
+        [ simpleTest
+            { name = "list type sugar"
+            , run =
+                \_ ->
+                    firstDefinition "l"
+                        """
+                        l : [ Bool ]
+                        l = l
+                        """
+            , expected =
+                Ok
+                    { body = [ CA.Evaluation (CA.Variable () { end = 19, path = "l", start = 18, attrPath = [] }) ]
+                    , maybeAnnotation =
+                        Just
+                            (CA.TypeConstant
+                                { path = "List"
+                                , args = [ CA.TypeConstant { path = "Bool" , args = [] } ]
+                                }
+                            )
+                    , mutable = False
+                    , name = "l"
+                    }
             }
         ]
 

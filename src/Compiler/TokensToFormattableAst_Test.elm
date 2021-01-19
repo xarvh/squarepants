@@ -29,12 +29,39 @@ asDefinition s =
             Nothing
 
 
+asEvaluation : FA.Statement -> Maybe FA.Expression
+asEvaluation s =
+    case s of
+        FA.Evaluation a ->
+            Just a
+
+        _ ->
+            Nothing
+
+
 faBinop : Token.PrecedenceGroup -> { left : FA.Expression, op : String, right : FA.Expression } -> FA.Expression
 faBinop group { left, op, right } =
     FA.Binop
         { group = group
         , sepList = ( left, [ ( op, right ) ] )
         }
+
+
+firstStatement : String -> Maybe FA.Statement
+firstStatement code =
+    code
+        |> Compiler.TestHelpers.stringToFormattableModule
+        |> Result.toMaybe
+        |> Maybe.andThen List.head
+
+
+firstEvaluation : String -> Maybe FA.Expression
+firstEvaluation code =
+    code
+        |> firstStatement
+        |> Maybe.andThen asDefinition
+        |> Maybe.map (.body >> Tuple.first)
+        |> Maybe.andThen asEvaluation
 
 
 
@@ -49,6 +76,7 @@ tests =
         [ lambdas
         , annotations
         , typeDefinitions
+        , lists
         ]
 
 
@@ -262,13 +290,6 @@ annotations =
 typeDefinitions : Test
 typeDefinitions =
     let
-        firstTypeDef code =
-            code
-                |> Compiler.TestHelpers.stringToFormattableModule
-                |> Result.toMaybe
-                |> Maybe.andThen List.head
-                |> Maybe.andThen asTypeDef
-
         asTypeDef s =
             case s of
                 FA.TypeDefinition a ->
@@ -276,6 +297,9 @@ typeDefinitions =
 
                 _ ->
                     Nothing
+
+        firstTypeDef =
+            firstStatement >> Maybe.andThen asTypeDef
     in
     Test.Group "Type Definitions"
         [ simpleTest
@@ -312,5 +336,36 @@ typeDefinitions =
                         ]
                     , name = "A"
                     }
+            }
+        ]
+
+
+lists : Test
+lists =
+    Test.Group "Lists"
+        [ simpleTest
+            { name = "inline"
+            , run = \_ -> firstEvaluation "a = [1, 2]"
+            , expected =
+                [ FA.NumberLiteral { end = 6, number = "1", start = 5 }
+                , FA.NumberLiteral { end = 9, number = "2", start = 8 }
+                ]
+                    |> FA.List
+                    |> Just
+            }
+        , simpleTest
+            { name = "multiline"
+            , run = \_ -> firstEvaluation """
+                 a = [
+                   , 1
+                   , 2
+                   ]
+                 """
+            , expected =
+                [ FA.NumberLiteral { end = 12, number = "1", start = 11 }
+                , FA.NumberLiteral { end = 18, number = "2", start = 17 }
+                ]
+                    |> FA.List
+                    |> Just
             }
         ]

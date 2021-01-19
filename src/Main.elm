@@ -31,12 +31,9 @@ runTests =
 
 initialCode =
     """
-a : Number & Number
-a = 1 & 2
-
-
-b = a.first
-  """
+a : [ Bool ]
+a = a
+    """
 
 
 tests =
@@ -219,8 +216,8 @@ viewCaDefinition def =
 viewCaType : CA.Type -> String
 viewCaType ty =
     case ty of
-        CA.TypeConstant { path } ->
-            path
+        CA.TypeConstant { path, args } ->
+            path ++ " " ++ String.join " " (List.map viewCaType args)
 
         CA.TypeVariable { name } ->
             name
@@ -235,7 +232,7 @@ viewCaType ty =
                     " -> "
 
                 Nothing ->
-                    " ???> "
+                    " ?> "
             , "(" ++ viewCaType to ++ ")"
             ]
                 |> String.join ""
