@@ -24,14 +24,14 @@ firstDefinition : String -> String -> Result String (CA.ValueDefinition ())
 firstDefinition name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Result.andThen (\mod -> Dict.get name mod.valueDefinitions |> Result.fromMaybe "Dict fail")
+        |> Result.andThen (\mod -> Dict.get name mod.values |> Result.fromMaybe "Dict fail")
 
 
 firstEvaluation : String -> String -> Result String (CA.Expression ())
 firstEvaluation name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Result.andThen (\mod -> Dict.get name mod.valueDefinitions |> Result.fromMaybe "Dict fail")
+        |> Result.andThen (\mod -> Dict.get name mod.values |> Result.fromMaybe "Dict fail")
         |> Result.andThen (\def -> List.head def.body |> Result.fromMaybe "head fail")
         |> Result.andThen (asEvaluation >> Result.fromMaybe "asEval fail")
 

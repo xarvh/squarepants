@@ -23,6 +23,10 @@ type alias Rs =
     Maybe CA.VariableArgs
 
 
+do a b =
+    Result.andThen b a
+
+
 
 ----
 --- Module
@@ -33,8 +37,9 @@ translateModule : FA.Module -> Res (CA.Module ())
 translateModule faModule =
     translateModuleRec
         faModule
-        { typeDefinitions = Dict.empty
-        , valueDefinitions = Dict.empty
+        { types = Dict.empty
+        , values = Dict.empty
+        , aliases = Dict.empty
         }
 
 
@@ -57,36 +62,30 @@ insertStatement faStatement caModule =
             errorTodo "Root Evaluations don't really do much =|"
 
         FA.Definition fa ->
-            fa
-                |> translateDefinition Nothing
-                |> Result.andThen
-                    (\def ->
-                        if Dict.member def.name caModule.valueDefinitions then
-                            errorTodo <| def.name ++ " declared twice!"
+            do (translateDefinition Nothing fa) <| \def ->
+            if Dict.member def.name caModule.values then
+                errorTodo <| def.name ++ " declared twice!"
 
-                        else
-                            Ok { caModule | valueDefinitions = Dict.insert def.name def caModule.valueDefinitions }
-                    )
-
+            else
+                Ok { caModule | values = Dict.insert def.name def caModule.values }
 
         FA.TypeAlias fa ->
-            -- TODO aliases need to be loaded on their own and applied to all types
-            {-
-               fa.type_
-                   |> translateType
-                   |> Result.map
-                       (\translatedType ->
-                           CA.TypeAlias
-                               { name = fa.name
-                               , args = fa.args
-                               , type_ = translatedType
-                               }
-                       )
-            -}
-            errorTodo "aliases not yet implemented"
+            if Dict.member fa.name caModule.types then
+                errorTodo <| fa.name ++ " declared twice!"
+
+            else
+                do (translateType fa.type_) <| \caType ->
+                let
+                    al =
+                        { name = fa.name
+                        , args = fa.args
+                        , ty = caType
+                        }
+                in
+                Ok { caModule | aliases = Dict.insert al.name al caModule.aliases }
 
         FA.TypeDefinition fa ->
-            if Dict.member fa.name caModule.typeDefinitions then
+            if Dict.member fa.name caModule.types then
                 errorTodo <| fa.name ++ " declared twice!"
 
             else
@@ -111,14 +110,14 @@ insertStatement faStatement caModule =
                             consListToModule : List CA.TypeConstructor -> CA.Module ()
                             consListToModule consList =
                                 { caModule
-                                    | typeDefinitions =
+                                    | types =
                                         Dict.insert
                                             fa.name
                                             { name = fa.name
                                             , args = fa.args
                                             , constructors = consList
                                             }
-                                            caModule.typeDefinitions
+                                            caModule.types
                                 }
                         in
                         fa.constructors
@@ -394,12 +393,8 @@ translateExpression rs faExpr =
             errorTodo "mutable values can be used only as arguments for function or mutation operators"
 
         FA.Record faArgs ->
-            let
-                res_do a b =
-                    Result.andThen b a
-            in
-            res_do (makeUpdateTarget faArgs.maybeUpdateTarget) <| \caUpdateTarget ->
-            res_do (translateAttrsRec caUpdateTarget.maybeName faArgs.attrs Dict.empty) <| \caAttrs ->
+            do (makeUpdateTarget faArgs.maybeUpdateTarget) <| \caUpdateTarget ->
+            do (translateAttrsRec caUpdateTarget.maybeName faArgs.attrs Dict.empty) <| \caAttrs ->
             { maybeUpdateTarget = caUpdateTarget.maybeName
             , attrs = caAttrs
             }
@@ -455,29 +450,22 @@ translateAttrsRec maybeUpdateTarget faAttrs caAttrsAccum =
                                 |> CA.Variable ()
                                 |> Ok
             in
-            exprRes
-                |> Result.andThen
-                    (\expr ->
-                        translateAttrsRec maybeUpdateTarget faTail (Dict.insert attrName expr caAttrsAccum)
-                    )
+            do exprRes <| \expr ->
+            translateAttrsRec maybeUpdateTarget faTail (Dict.insert attrName expr caAttrsAccum)
 
 
 translateArgument : Rs -> FA.Expression -> Res (CA.Argument ())
 translateArgument rs faExpr =
     case faExpr of
         FA.Lvalue args ->
-            args.name
-                |> stringToStructuredName Nothing
-                |> Result.andThen
-                    (\sname ->
-                        { start = args.start
-                        , end = args.end
-                        , path = String.join "." sname.path
-                        , attrPath = sname.attrPath
-                        }
-                            |> CA.ArgumentMutable
-                            |> Ok
-                    )
+            do (stringToStructuredName Nothing args.name) <| \sname ->
+            { start = args.start
+            , end = args.end
+            , path = String.join "." sname.path
+            , attrPath = sname.attrPath
+            }
+                |> CA.ArgumentMutable
+                |> Ok
 
         _ ->
             faExpr
@@ -608,9 +596,8 @@ sameDirectionAs a b =
 
 translateBinopSepList : Rs -> FA.Expression -> List ( String, FA.Expression ) -> Res (CA.Expression ())
 translateBinopSepList rs leftAccum opsAndRight =
-    leftAccum
-        |> translateExpression rs
-        |> Result.andThen (\caLeftAccum -> translateBinopSepListRec rs caLeftAccum opsAndRight)
+    do (translateExpression rs leftAccum) <| \caLeftAccum ->
+    translateBinopSepListRec rs caLeftAccum opsAndRight
 
 
 translateBinopSepListRec : Rs -> CA.Expression () -> List ( String, FA.Expression ) -> Res (CA.Expression ())
@@ -699,37 +686,33 @@ translateType : FA.Type -> Res CA.Type
 translateType faType =
     case faType of
         FA.TypeConstantOrVariable { name, args } ->
-            name
-                |> stringToStructuredName Nothing
-                |> Result.andThen
-                    (\sname ->
-                        if sname.attrPath /= [] then
-                            errorTodo "no attribute accessors on types"
+            do (stringToStructuredName Nothing name) <| \sname ->
+            if sname.attrPath /= [] then
+                errorTodo "no attribute accessors on types"
 
-                        else if sname.isUpper then
-                            args
-                                |> List.map translateType
-                                |> listResultToResultList
-                                |> Result.map
-                                    (\caArgs ->
-                                        CA.TypeConstant
-                                            { path = String.join "." sname.path
-                                            , args = caArgs
-                                            }
-                                    )
+            else if sname.isUpper then
+                args
+                    |> List.map translateType
+                    |> listResultToResultList
+                    |> Result.map
+                        (\caArgs ->
+                            CA.TypeConstant
+                                { path = String.join "." sname.path
+                                , args = caArgs
+                                }
+                        )
 
-                        else if args /= [] then
-                            -- TODO is this the correct error?
-                            errorTodo "rank 2 types are not supported"
+            else if args /= [] then
+                -- TODO is this the correct error?
+                errorTodo "rank 2 types are not supported"
 
-                        else if List.length sname.path /= 1 then
-                            errorTodo "this is not a valid name for a type variable"
+            else if List.length sname.path /= 1 then
+                errorTodo "this is not a valid name for a type variable"
 
-                        else
-                            { name = name }
-                                |> CA.TypeVariable
-                                |> Ok
-                    )
+            else
+                { name = name }
+                    |> CA.TypeVariable
+                    |> Ok
 
         FA.TypeFunction fa ->
             Result.map2

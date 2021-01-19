@@ -19,9 +19,23 @@ type alias Path =
     Name
 
 
+
+----
+--- Module
+--
+
+
 type alias Module e =
-    { typeDefinitions : Dict Name TypeDefinition
-    , valueDefinitions : Dict Name (ValueDefinition e)
+    { aliases : Dict Name Alias
+    , types : Dict Name TypeDefinition
+    , values : Dict Name (ValueDefinition e)
+    }
+
+
+type alias Alias =
+    { name : Name
+    , args : List Name
+    , ty : Type
     }
 
 
@@ -46,8 +60,12 @@ type alias ValueDefinition e =
     }
 
 
-{-| TODO expanded aliases should probably maintain a reference to the alias name?
--}
+
+----
+--- Type
+--
+
+
 type Type
     = TypeConstant
         { path : Path
@@ -68,6 +86,12 @@ type alias TypeRecordArgs =
     { extensible : Maybe Name
     , attrs : Dict Name Type
     }
+
+
+
+----
+--- Expressions
+--
 
 
 type Statement e
@@ -126,6 +150,9 @@ type alias VariableArgs =
 
 
 
+----
+--- Helpers
+--
 {-
    expression_fold : (a -> accum -> ( b, accum )) -> accum -> Expression a -> ( Expression b, accum )
    expression_fold f accum expr =

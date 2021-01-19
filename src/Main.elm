@@ -180,17 +180,40 @@ viewCanonicalAst code =
                 |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
     in
     case res of
-        Ok module_ ->
-            module_.valueDefinitions
-                |> Dict.values
-                |> List.sortBy .name
-                |> List.map viewCaDefinition
-                |> Html.code []
+        Ok mod ->
+            Html.div
+                []
+                [ mod.aliases
+                    |> Dict.values
+                    |> List.sortBy .name
+                    |> List.map viewCaAlias
+                    |> Html.code []
+                , mod.values
+                    |> Dict.values
+                    |> List.sortBy .name
+                    |> List.map viewCaDefinition
+                    |> Html.code []
+                ]
 
         _ ->
             res
                 |> Debug.toString
                 |> Html.text
+
+
+viewCaAlias : CA.Alias -> Html msg
+viewCaAlias al =
+    Html.div
+        []
+        [ [ "alias:"
+          , al.name
+          , String.join " " al.args
+          , "="
+          , viewCaType al.ty
+          ]
+            |> String.join " "
+            |> Html.text
+        ]
 
 
 viewCaDefinition : CA.ValueDefinition e -> Html msg

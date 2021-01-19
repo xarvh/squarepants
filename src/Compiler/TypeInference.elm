@@ -100,12 +100,12 @@ typeNone =
 
 inspectModule : Env -> CA.Module e -> Res Env
 inspectModule prelude mod =
-    do_res (Dict.foldl addConstructors (Ok prelude) mod.typeDefinitions) <| \env ->
+    do_res (Dict.foldl addConstructors (Ok prelude) mod.types) <| \env ->
     let
         --         _ =
         --             Debug.log "" env
         statements =
-            mod.valueDefinitions
+            mod.values
                 |> Dict.values
                 |> List.map CA.Definition
 
