@@ -40,11 +40,6 @@ type alias Annotation =
 type Statement
     = Evaluation Expression
     | Definition ValueDefinition
-    | Mutation
-        { left : String
-        , mutop : String
-        , right : Expression
-        }
     | TypeAlias
         { name : String
         , args : List String

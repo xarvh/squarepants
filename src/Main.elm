@@ -375,10 +375,6 @@ viewFaStatement s =
                     |> Html.div []
                 ]
 
-        FA.Mutation x ->
-            Debug.toString x
-                |> Html.text
-
 
 viewFaExpression : FA.Expression -> Html msg
 viewFaExpression expr =

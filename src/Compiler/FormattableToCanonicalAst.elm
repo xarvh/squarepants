@@ -68,8 +68,6 @@ insertStatement faStatement caModule =
                             Ok { caModule | valueDefinitions = Dict.insert def.name def caModule.valueDefinitions }
                     )
 
-        FA.Mutation _ ->
-            errorTodo "Root Mutations are not allowed o_O"
 
         FA.TypeAlias fa ->
             -- TODO aliases need to be loaded on their own and applied to all types
@@ -304,10 +302,6 @@ translateStatement rs faStat =
             fa
                 |> translateDefinition rs
                 |> Result.map CA.Definition
-
-        FA.Mutation fa ->
-            -- TODO!!
-            errorTodo "Mutation not supported yet"
 
         FA.TypeAlias fa ->
             errorTodo "Aliases can be declared only in the root scope"
