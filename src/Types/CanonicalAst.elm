@@ -27,6 +27,7 @@ type alias Path =
 
 type alias Module e =
     { aliases : Dict Name Alias
+    -- TODO rename to unions?
     , types : Dict Name TypeDefinition
     , values : Dict Name (ValueDefinition e)
     }
@@ -39,6 +40,7 @@ type alias Alias =
     }
 
 
+{-| TODO rename to UnionDefinition? -}
 type alias TypeDefinition =
     { name : Name
     , args : List Name

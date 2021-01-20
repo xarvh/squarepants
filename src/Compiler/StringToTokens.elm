@@ -497,6 +497,7 @@ lexSoftQuotedString startPos state =
                             }
 
                 '\n' :: rest ->
+                    -- https://www.reddit.com/r/ProgrammingLanguages/comments/l0ptdl/why_do_so_many_languages_not_allow_string/gjvrcg2/
                     Err
                         { pos = pos
                         , kind = Error.NewLineInsideSoftQuote

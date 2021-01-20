@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
+import Compiler.FindUndeclared
 import Compiler.FormattableToCanonicalAst
 import Compiler.FormattableToCanonicalAst_Test
 import Compiler.StringToTokens
@@ -96,6 +97,11 @@ view model =
                 ]
             , Html.li
                 []
+                [ Html.h6 [] [ Html.text "Undeclared" ]
+                , viewUndeclared model.code
+                ]
+            , Html.li
+                []
                 [ Html.h6 [] [ Html.text "Canonical AST" ]
                 , viewCanonicalAst model.code
                 ]
@@ -162,6 +168,36 @@ viewSchema schema =
     , "type: " ++ viewCaType schema.type_
     ]
         |> String.join " ### "
+
+
+
+----
+--- Undeclared
+--
+
+
+viewUndeclared : String -> Html msg
+viewUndeclared code =
+    case Compiler.TestHelpers.stringToCanonicalModule code of
+        Err error ->
+            error
+                |> Debug.toString
+                |> (++) "ERROR "
+                |> Html.text
+
+        Ok mod ->
+            case Compiler.FindUndeclared.moduleUndeclared mod of
+                Err undeclaredTypeVars ->
+                    Html.div
+                        []
+                        [ Html.text <| "UNDECLARED TYPE VARS: " ++ Debug.toString undeclaredTypeVars ]
+
+                Ok m ->
+                    Html.div
+                        []
+                        [ Html.div [] [ Html.text <| "types: " ++ Debug.toString m.types ]
+                        , Html.div [] [ Html.text <| "values: " ++ Debug.toString m.values ]
+                        ]
 
 
 
@@ -483,84 +519,6 @@ viewTokens code =
 
 
 
-{-
-   viewToken : Token -> Html msg
-   viewToken token =
-       let
-           key s =
-               ( s, s, "blue" )
-
-           ( content, className, color ) =
-               case token.kind of
-                   StringLiteral s ->
-                       ( s, "string", "pink" )
-
-                   NumberLiteral s ->
-                       ( s, "number", "pink" )
-
-                   Symbol s ->
-                       ( s
-                       , "symbol"
-                       , if startsWithUpper s then
-                           "green"
-
-                         else
-                           "#222"
-                       )
-
-                   If ->
-                       key "if"
-
-                   Is ->
-                       key "is"
-
-                   Then ->
-                       key "then"
-
-                   Else ->
-                       key "else"
-
-                   Return ->
-                       key "return"
-
-                   Binop s ->
-                       ( s, "binop", "orange" )
-
-                   Unop s ->
-                       ( s, "unop", "red" )
-
-                   RoundParen Open ->
-                       ( "(", "paren", "purple" )
-
-                   RoundParen Closed ->
-                       ( ")", "paren", "purple" )
-
-                   _ ->
-                       ( Debug.toString token, "", "" )
-       in
-       Html.span
-           []
-           [ Html.code
-               [ style "border" "1px solid #eee"
-               , style "color" color
-               , style "margin-left" "0.5em"
-               , class className
-               , Html.Attributes.id <| String.fromInt token.start ++ "-" ++ String.fromInt token.end
-               ]
-               [ Html.text content ]
-           ]
-
-
-   startsWithUpper : String -> Bool
-   startsWithUpper s =
-       case String.uncons s of
-           Just ( char, rest ) ->
-               char >= 'A' && char <= 'Z'
-
-           Nothing ->
-               False
-
--}
 ----
 ---
 --
