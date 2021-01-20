@@ -1,7 +1,7 @@
 module Compiler.FormattableToCanonicalAst exposing (..)
 
 import Dict exposing (Dict)
-import OneOrMore
+import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
 import Set exposing (Set)
 import Types.CanonicalAst as CA
@@ -250,12 +250,6 @@ translateDefinition rs fa =
             fa.maybeAnnotation
                 |> Maybe.map (translateAnnotation name fa)
                 |> maybeResultToResultMaybe
-
-        resultBody =
-            fa.body
-                |> OneOrMore.toList
-                |> List.map (translateStatement rs)
-                |> listResultToResultList
     in
     Result.map2
         (\maybeAnnotation body ->
@@ -266,7 +260,7 @@ translateDefinition rs fa =
             }
         )
         resultMaybeAnnotation
-        resultBody
+        (translateStatementBlock rs fa.body)
 
 
 translateAnnotation : String -> FA.ValueDefinition -> FA.Annotation -> Res CA.Type
@@ -285,6 +279,15 @@ translateAnnotation defName faDef faAnn =
 ----
 --- Statement
 --
+
+
+translateStatementBlock : Rs -> OneOrMore FA.Statement -> Res (List (CA.Statement ()))
+translateStatementBlock rs oom =
+    oom
+        |> OneOrMore.toList
+        -- ugly but works, maybe write it better once we can bootstrap
+        |> List.map (translateStatement rs)
+        |> listResultToResultList
 
 
 translateStatement : Rs -> FA.Statement -> Res (CA.Statement ())
@@ -340,9 +343,7 @@ translateExpression rs faExpr =
                     fa.parameters
             in
             fa.body
-                |> OneOrMore.toList
-                |> List.map (translateStatement rs)
-                |> listResultToResultList
+                |> translateStatementBlock rs
                 |> Result.map
                     (\body ->
                         CA.Lambda ()
@@ -378,13 +379,13 @@ translateExpression rs faExpr =
                     CA.If ()
                         { start = start
                         , condition = [ CA.Evaluation c ]
-                        , true = [ CA.Evaluation t ]
-                        , false = [ CA.Evaluation f ]
+                        , true = t
+                        , false = f
                         }
                 )
                 (translateExpression rs condition)
-                (translateExpression rs true)
-                (translateExpression rs false)
+                (translateStatementBlock rs true)
+                (translateStatementBlock rs false)
 
         FA.Binop { group, sepList } ->
             translateBinops rs group sepList

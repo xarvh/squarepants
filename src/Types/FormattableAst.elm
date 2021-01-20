@@ -118,15 +118,15 @@ type Expression
         { start : Int
         , isOneLine : Bool
         , condition : Expression
-        , true : Expression
-        , false : Expression
+        , true : OneOrMore Statement
+        , false : OneOrMore Statement
         }
-    | Match
+    | Try
         { start : Int
         , isOneLine : Bool
         , value : Expression
-        , patterns : List ( Pattern, Expression )
-        , maybeElse : Maybe Expression
+        , patterns : List ( Pattern, OneOrMore Statement )
+        , maybeElse : Maybe (OneOrMore Statement)
         }
     | Record
         { maybeUpdateTarget : Maybe Expression
@@ -169,7 +169,7 @@ exprStart expr =
         If { start, condition, true, false } ->
             start
 
-        Match { start, value, patterns, maybeElse } ->
+        Try { start, value, patterns, maybeElse } ->
             start
 
         Record args ->
