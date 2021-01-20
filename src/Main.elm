@@ -3,6 +3,7 @@ module Main exposing (..)
 import Array exposing (Array)
 import Browser
 import Compiler.FindUndeclared
+import Compiler.FindUndeclared_Test
 import Compiler.FormattableToCanonicalAst
 import Compiler.FormattableToCanonicalAst_Test
 import Compiler.StringToTokens
@@ -47,6 +48,7 @@ tests =
             , Compiler.TokensToFormattableAst_Test.tests
             , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.TypeInference_Test.tests
+            , Compiler.FindUndeclared_Test.tests
             ]
 
 

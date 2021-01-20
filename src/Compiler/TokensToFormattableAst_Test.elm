@@ -343,17 +343,17 @@ typeDefinitions =
             , expected =
                 Just
                     { args = []
+                    , name = "A"
                     , constructors =
                         [ { args =
-                                [ TypeConstantOrVariable
+                                [ FA.TypeConstantOrVariable
                                     { name = "List"
-                                    , args = [ TypeConstantOrVariable { args = [], name = "Int" } ]
+                                    , args = [ FA.TypeConstantOrVariable { args = [], name = "Int" } ]
                                     }
                                 ]
                           , name = "A"
                           }
                         ]
-                    , name = "A"
                     }
             }
         ]
