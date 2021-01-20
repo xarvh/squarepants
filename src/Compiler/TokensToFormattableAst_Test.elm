@@ -337,6 +337,25 @@ typeDefinitions =
                     , name = "A"
                     }
             }
+        , simpleTest
+            { name = "list argument"
+            , run = \_ -> firstTypeDef "type A = A [Int]"
+            , expected =
+                Just
+                    { args = []
+                    , constructors =
+                        [ { args =
+                                [ TypeConstantOrVariable
+                                    { name = "List"
+                                    , args = [ TypeConstantOrVariable { args = [], name = "Int" } ]
+                                    }
+                                ]
+                          , name = "A"
+                          }
+                        ]
+                    , name = "A"
+                    }
+            }
         ]
 
 

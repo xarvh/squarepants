@@ -83,6 +83,8 @@ Available modules are determined by the project's single configuration file, and
 
 * All `importAs` and `exposing` entries must be unique.
 
+* alias names probably should not contain `.`?
+
 * Source directories make available all modules they contain (they are loaded on demand)
 
 * No value or type is exposed automatically from source directories.
@@ -92,7 +94,7 @@ Available modules are determined by the project's single configuration file, and
 
 * Unlike source directories, libraries define their own global modules and variables.
 
-* Source dir modules expose everything by default (except values without annotation)
+* Source dir modules expose everything by default (except values without annotation?)
 
 * Library modules expose things by documenting them
 
