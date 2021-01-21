@@ -719,7 +719,7 @@ records =
                     }
             }
         , simpleTest
-            { name = "generalization?"
+            { name = "instantiate and refine inferred records"
             , run =
                 \_ ->
                     infer "c"
@@ -732,11 +732,11 @@ records =
                     re =
                         CA.TypeRecord
                             { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
-                            , extensible = Just "t6"
+                            , extensible = Just "t9"
                             }
                 in
                 Ok
-                    { forall = Set.fromList [ "t6" ]
+                    { forall = Set.fromList [ "t9" ]
                     , mutable = Just False
                     , type_ =
                         CA.TypeFunction

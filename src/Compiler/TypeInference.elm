@@ -102,8 +102,6 @@ inspectModule : Env -> CA.Module e -> Res Env
 inspectModule prelude mod =
     do_res (Dict.foldl addConstructors (Ok prelude) mod.types) <| \env ->
     let
-        --         _ =
-        --             Debug.log "" env
         statements =
             mod.values
                 |> Dict.values
@@ -201,8 +199,14 @@ refine_type subs ty =
                         , attrs = Dict.map (\name -> refine_type subs) args.attrs
                         }
 
-                Just substitutionType ->
-                    substitutionType
+                Just (CA.TypeVariable ar) ->
+                    CA.TypeRecord
+                        { extensible = Just ar.name
+                        , attrs = Dict.map (\name -> refine_type subs) args.attrs
+                        }
+
+                Just what ->
+                    Debug.todo "replacing record extension with non-var" (Debug.toString what)
 
 
 tyvars_from_type : Type -> Set Name
@@ -239,16 +243,21 @@ tyvars_from_type ty =
 instantiate_type : Type -> Set Name -> TyGen Type
 instantiate_type t tvars =
     let
-        aggregate : Name -> TyGen Substitutions -> TyGen Substitutions
-        aggregate tvar nextSubsAcc =
+        -- substitute each tvar with a newly generated tvar
+        substituteTvar : Name -> TyGen Substitutions -> TyGen Substitutions
+        substituteTvar tvar genSubs =
             TyGen.do newType <| \nt ->
-            TyGen.map (Dict.insert tvar nt) nextSubsAcc
+            TyGen.do genSubs <| \subs ->
+            Dict.insert tvar nt subs
+                |> TyGen.wrap
 
-        genSubs : TyGen Substitutions
-        genSubs =
-            Set.foldl aggregate (TyGen.wrap Dict.empty) tvars
+        genAllSubs : TyGen Substitutions
+        genAllSubs =
+            Set.foldl substituteTvar (TyGen.wrap Dict.empty) tvars
     in
-    TyGen.map (\subs -> refine_type subs t) genSubs
+    TyGen.do genAllSubs <| \subs ->
+    refine_type subs t
+        |> TyGen.wrap
 
 
 env_get : Name -> Env -> TyGen (Res Type)

@@ -109,7 +109,8 @@ More or less established features
       indented
   ```
 
-* data pretty printer
+* --> data pretty printer <--
+  Output debug info that is actually readable!!!
 
 * Support `0 < x < 10`
 
