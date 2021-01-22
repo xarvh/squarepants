@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
+import Compiler.ApplyAliases
 import Compiler.FindUndeclared
 import Compiler.FindUndeclared_Test
 import Compiler.FormattableToCanonicalAst
@@ -33,8 +34,8 @@ runTests =
 
 initialCode =
     """
-a : [ Bool ]
-a = a
+alias Meh = Blah
+alias X = Meh
     """
 
 
@@ -216,6 +217,7 @@ viewCanonicalAst code =
                 |> Compiler.StringToTokens.lexer
                 |> Result.andThen Compiler.TokensToFormattableAst.parse
                 |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
+                |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
     in
     case res of
         Ok mod ->
@@ -283,6 +285,9 @@ viewCaType ty =
         CA.TypeVariable { name } ->
             name
 
+        CA.TypeAlias path t ->
+          "<" ++ path ++ ": " ++ viewCaType t ++ ">"
+
         CA.TypeFunction { from, fromIsMutable, to } ->
             [ "(" ++ viewCaType from ++ ")"
             , case fromIsMutable of
@@ -303,7 +308,7 @@ viewCaType ty =
                 var =
                     case args.extensible of
                         Just name ->
-                            name ++ "|"
+                            name ++ " with"
 
                         Nothing ->
                             ""

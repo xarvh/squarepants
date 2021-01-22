@@ -1,3 +1,9 @@
+Concept
+=======
+
+"All import statements are declared in a single file, used by the whole project"
+
+
 Rules
 =====
 

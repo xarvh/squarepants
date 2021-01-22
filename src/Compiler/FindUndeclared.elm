@@ -129,6 +129,9 @@ addTypeUndeclared isAnnotation typesEnv ty undeclaredTypes =
                 |> (\un -> Dict.foldl (\k -> addTypeUndeclared isAnnotation typesEnv) un attrs)
                 |> maybeMaybeAdd typesEnv extensible
 
+        CA.TypeAlias path t ->
+            addTypeUndeclared isAnnotation typesEnv t undeclaredTypes
+
 
 
 ----

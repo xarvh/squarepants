@@ -84,6 +84,7 @@ type Type
         , to : Type
         }
     | TypeRecord TypeRecordArgs
+    | TypeAlias Path Type
 
 
 type alias TypeRecordArgs =

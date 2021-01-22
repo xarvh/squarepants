@@ -3,6 +3,8 @@ module Compiler.TypeInference exposing (..)
 import Dict exposing (Dict)
 import Generator as TyGen
 import Html
+import Lib exposing (result_do)
+import RefHierarchy
 import Set exposing (Set)
 import Types.CanonicalAst as CA exposing (Name, Type)
 
@@ -72,10 +74,6 @@ do_nr nra f =
         )
 
 
-do_res a b =
-    Result.andThen b a
-
-
 nr_map : (a -> b) -> TyGen (Res a) -> TyGen (Res b)
 nr_map f tr =
     TyGen.map (Result.map f) tr
@@ -100,7 +98,7 @@ typeNone =
 
 inspectModule : Env -> CA.Module e -> Res Env
 inspectModule prelude mod =
-    do_res (Dict.foldl addConstructors (Ok prelude) mod.types) <| \env ->
+    result_do (Dict.foldl addConstructors (Ok prelude) mod.types) <| \env ->
     let
         statements =
             mod.values
@@ -121,7 +119,7 @@ inspectModule prelude mod =
 
 addConstructors : String -> CA.TypeDefinition -> Res Env -> Res Env
 addConstructors _ def resEnv =
-    do_res resEnv <| \env ->
+    result_do resEnv <| \env ->
     addConstructorsRec def def.constructors env
 
 
@@ -191,6 +189,9 @@ refine_type subs ty =
                 , to = refine_type subs to
                 }
 
+        CA.TypeAlias path t ->
+            CA.TypeAlias path (refine_type subs t)
+
         CA.TypeRecord args ->
             case args.extensible |> Maybe.andThen (\name -> Dict.get name subs) of
                 Nothing ->
@@ -220,6 +221,9 @@ tyvars_from_type ty =
 
         CA.TypeConstant { path, args } ->
             List.foldl (\a -> Set.union (tyvars_from_type a)) Set.empty args
+
+        CA.TypeAlias path t ->
+            tyvars_from_type t
 
         CA.TypeRecord args ->
             let
@@ -283,8 +287,22 @@ refine_env s env =
 
 
 unify : Type -> Type -> Substitutions -> TyGen (Res Substitutions)
-unify t1 t2 s =
+unify at1 at2 s =
     let
+        unwrapAlias ty =
+            case ty of
+                CA.TypeAlias path t ->
+                    ( t, Just path )
+
+                _ ->
+                    ( ty, Nothing )
+
+        ( t1, path1 ) =
+            unwrapAlias at1
+
+        ( t2, path2 ) =
+            unwrapAlias at2
+
         t1_refined =
             refine_type s t1
 
@@ -763,22 +781,22 @@ inspectStatementList stats parentEnv subs =
         definitionOrStatement stat =
             case stat of
                 CA.Definition d ->
-                    Left d
+                    Lib.Left d
 
                 _ ->
-                    Right stat
+                    Lib.Right stat
 
         -- A statement list can contain definitions, creating its own scope
         -- Definitions can be recursive and in general appear in any order, so we want to add them to the environment before we inspect them
         ( definitions, nonDefs ) =
-            partition definitionOrStatement stats
+            Lib.partition definitionOrStatement stats
 
         definedMutables =
             List.filter .mutable definitions
 
         -- Also, we need to reorder them, so that dependent sibling defs come after
         orderedDefinitions =
-            reorderDefinitions definitions
+            RefHierarchy.reorder .name findAllRefs_definition definitions
 
         newStats =
             List.map CA.Definition orderedDefinitions ++ nonDefs
@@ -897,6 +915,9 @@ validateType mutable ty =
             else
                 Nothing
 
+        CA.TypeAlias path t ->
+            validateType mutable t
+
         CA.TypeFunction { from, fromIsMutable, to } ->
             if mutable then
                 Just "mutable values can't contain functions"
@@ -929,6 +950,9 @@ typeContainsFunctions ty =
         CA.TypeFunction { from, fromIsMutable, to } ->
             True
 
+        CA.TypeAlias path t ->
+            typeContainsFunctions t
+
         CA.TypeRecord args ->
             -- TODO is it ok to ignore the record extension?
             args.attrs
@@ -937,150 +961,6 @@ typeContainsFunctions ty =
 
 
 
-----
---- Reorder definitions
---
-
-
-reorderDefinitions : List (CA.ValueDefinition e) -> List (CA.ValueDefinition e)
-reorderDefinitions defs =
-    let
-        names =
-            defs
-                |> List.map .name
-                |> Set.fromList
-
-        -- for each def, find all sibling defs it directly references
-        referencedSiblingDefs : Dict Name (Set Name)
-        referencedSiblingDefs =
-            List.foldl (\def -> Dict.insert def.name (Set.intersect names (findAllRefs_definition def))) Dict.empty defs
-
-        {- For each definition, find all the sibling it references AND the sibling /they/ reference (ie, recurse over the referenced sibs)
-
-           This is kind of brute and horribly inefficient, but for now will do.
-        -}
-        allNestedSiblingRefs : Dict Name (Set Name)
-        allNestedSiblingRefs =
-            Dict.map (\k v -> findAllNestedSiblingReferences referencedSiblingDefs k Set.empty) referencedSiblingDefs
-
-        oneReferencesTwo : Name -> Name -> Bool
-        oneReferencesTwo one two =
-            case Dict.get one allNestedSiblingRefs of
-                Nothing ->
-                    -- should not happen
-                    False
-
-                Just set ->
-                    Set.member two set
-
-        orderDefinitions : CA.ValueDefinition e -> CA.ValueDefinition e -> Order
-        orderDefinitions a b =
-            case ( oneReferencesTwo a.name b.name, oneReferencesTwo b.name a.name ) of
-                ( True, True ) ->
-                    -- Mutually recursive, order doesn't matter
-                    EQ
-
-                ( True, False ) ->
-                    -- A should go after B
-                    GT
-
-                ( False, True ) ->
-                    -- A should go before B
-                    LT
-
-                ( False, False ) ->
-                    -- Neither references the other, order doesn't matter
-                    EQ
-    in
-    List.sortWith orderDefinitions defs
-
-
-
--- stuff remainingDefs mutualGroups =
---   case remainingDefs of
---     [] ->
---       mutualGroups
---
---     (name, referecendSiblings) :: tail ->
---
-
-
-findAllNestedSiblingReferences : Dict Name (Set Name) -> Name -> Set Name -> Set Name
-findAllNestedSiblingReferences referencedSiblingDefs name accum =
-    if Set.member name accum then
-        accum
-
-    else
-        Set.foldl
-            (findAllNestedSiblingReferences referencedSiblingDefs)
-            (Set.insert name accum)
-            (Dict.get name referencedSiblingDefs |> Maybe.withDefault Set.empty)
-
-
-
-{-
-   findMutualRecursions : Dict Name (Set Name) -> Name -> Set Name
-   findMutualRecursions referencedSiblingDefs name =
-       case Dict.get name referencedSiblingDefs of
-           Nothing ->
-               -- This is not supposed to happen
-               found
-
-           Just siblings ->
-               let
-
-                   testSibling sibName sibRefs alreadyChecked =
-                     Set.insert sibName alreadyChecked
-                     if Set.member name sibRefs then
-
-                   notAlreadyChecked =
-                       Set.diff siblings found
-               in
-               Set.foldl (findMutualRecursions referencedSiblingDefs) (Set.insert name found) notAlreadyChecked
-
-
-
-
-
-   testRec defName path alreadyTried sibName mutualSet
-
-     if sibName in alreadyTried
-       mutualSet
-     else
-       let
-       refs = Dict.get sibName referencedSiblingDefs
-
-       newMutualSet =
-         if defName in refs
-           add all path names to mutualSet
-         else
-           mutualSet
-
-       newAlreadyTried =
-           Set.insert sibName alreadyTried
-
-       newPath = sibName :: path
-
-       toTry = Set.diff refs alreadyTried
-
-
-       for any toTry
-         testRec
-
-     in
-
-
-
-     get sib references
-
-     notAlreadyTried = Set.diff sibReferences alreadyTried
-
-
-
-
-     if sib references contain defname, then we have mutual recursion
-
--}
 ----
 --- Find References
 --
@@ -1140,28 +1020,3 @@ findAllRefs_arg arg =
 findAllRefs_statementBlock : List (CA.Statement e) -> Set String
 findAllRefs_statementBlock statements =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
-
-
-
-----
----
---
-
-
-type Either a b
-    = Left a
-    | Right b
-
-
-partition : (a -> Either b c) -> List a -> ( List b, List c )
-partition f ls =
-    let
-        fold item ( left, right ) =
-            case f item of
-                Left l ->
-                    ( l :: left, right )
-
-                Right r ->
-                    ( left, r :: right )
-    in
-    List.foldr fold ( [], [] ) ls

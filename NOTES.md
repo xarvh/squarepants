@@ -4,48 +4,24 @@ A language for humans and other bottom dwellers
 
 * Functional language with local mutabilty
 * Type inferred
-* Designed for readability and writability
-
-
-
-
-
-MVP
----
-
-* The compiler must be able to compile itself over Node.js
-
-
-* TODOS
-  v support type annotations
-  - support type declarations
-  - emit javascript
-  - support records
-  - core libraries
-
-
-* Leave out?
-  - modules
-  - macros (Dict supports only strings)
-  - proper type inference
-
+* Designed for accessibility, readability and writability
 
 
 
 Main goals
 ----------
 
-* Ergonomics
+* Ergonomics and accessibility
   - easy to read for non-experts
-  - easy to write, quick to modify
-  - less symbols, more words
+  - syntax easy to write and quick to modify
+  - more words, less symbols, symbols used to visually stand out and always indicate the same thing
 
 * Performance
   - transpile to GLSL without significant performance penalty
   - limited ability to mutate values in place
 
 * Readability
-  - minimalist design
+  - minimalist, not too expressive
   - no "magic", explicit is better than implicit
   - no global state
   - human-friendly value names

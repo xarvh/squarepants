@@ -1,5 +1,6 @@
 module Compiler.TestHelpers exposing (..)
 
+import Compiler.ApplyAliases
 import Compiler.FormattableToCanonicalAst
 import Compiler.StringToTokens
 import Compiler.TokensToFormattableAst
@@ -16,6 +17,7 @@ stringToCanonicalModule code =
         |> Compiler.StringToTokens.lexer
         |> Result.andThen Compiler.TokensToFormattableAst.parse
         |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
+        |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
         |> Result.mapError (Types.Error.toString code)
 
 

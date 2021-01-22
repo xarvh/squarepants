@@ -77,7 +77,6 @@ tests =
         [ functions
         , statements
         , variableTypes
-        , findAllNestedSiblingReferences
         , mutability
         , higherOrderTypes
         , records
@@ -359,99 +358,7 @@ referencedSiblingDefs =
         |> Dict.fromList
 
 
-findAllNestedSiblingReferences : Test
-findAllNestedSiblingReferences =
-    Test.Group "findAllNestedSiblingReferences"
-        [ simpleTest
-            { name = "Two-way recursion"
-            , run = \_ -> TI.findAllNestedSiblingReferences referencedSiblingDefs "a" Set.empty
-            , expected = Set.fromList [ "a", "b", "blah", "meh" ]
-            }
-        , simpleTest
-            { name = "Three way recursion"
-            , run = \_ -> TI.findAllNestedSiblingReferences referencedSiblingDefs "c" Set.empty
-            , expected = Set.fromList [ "c", "d", "e" ]
-            }
-        , simpleTest
-            { name = "Self recursion"
-            , run = \_ -> TI.findAllNestedSiblingReferences referencedSiblingDefs "f" Set.empty
-            , expected = Set.fromList [ "f" ]
-            }
-        , simpleTest
-            { name = "No recursion"
-            , run = \_ -> TI.findAllNestedSiblingReferences referencedSiblingDefs "g" Set.empty
-            , expected = Set.fromList [ "g", "h" ]
-            }
-        , simpleTest
-            { name = "Single self recursion"
-            , run = \_ -> TI.findAllNestedSiblingReferences referencedSiblingDefs "cc" Set.empty
-            , expected = Set.fromList [ "cc", "dd", "ee" ]
-            }
-        ]
 
-
-
-{-
-   findMutualRecursions : List Test
-   findMutualRecursions =
-       let
-       in
-       [ simpleTest
-           { name =
-               "Two-way mutual recursion A"
-           , run =
-               \_ ->
-                   TI.findMutualRecursions referencedSiblingDefs "a" Set.empty
-           , expected =
-               Set.fromList [ "a", "b" ]
-           }
-       , simpleTest
-           { name =
-               "Two-way mutual recursion B"
-           , run =
-               \_ ->
-                   TI.findMutualRecursions referencedSiblingDefs "b" Set.empty
-           , expected =
-               Set.fromList [ "a", "b" ]
-           }
-       , simpleTest
-           { name =
-               "Three-way mutual recursion D"
-           , run =
-               \_ ->
-                   TI.findMutualRecursions referencedSiblingDefs "d" Set.empty
-           , expected =
-               Set.fromList [ "c", "d", "e" ]
-           }
-       , simpleTest
-           { name =
-               "Self recursion"
-           , run =
-               \_ ->
-                   TI.findMutualRecursions referencedSiblingDefs "f" Set.empty
-           , expected =
-               Set.fromList [ "f" ]
-           }
-       , simpleTest
-           { name =
-               "No recursion 1"
-           , run =
-               \_ ->
-                   TI.findMutualRecursions referencedSiblingDefs "g" Set.empty
-           , expected =
-               Set.fromList [ "g" ]
-           }
-       , simpleTest
-           { name =
-               "No recursion 2"
-           , run =
-               \_ ->
-                   TI.findMutualRecursions referencedSiblingDefs "cc" Set.empty
-           , expected =
-               Set.fromList [ "cc" ]
-           }
-       ]
--}
 ----
 --- Mutability
 --
