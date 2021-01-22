@@ -26,37 +26,35 @@ type alias Path =
 
 
 type alias Module e =
-    { aliases : Dict Name Alias
+    { aliases : Dict Name AliasDef
 
     -- TODO rename to unions?
-    , types : Dict Name TypeDefinition
-    , values : Dict Name (ValueDefinition e)
+    , types : Dict Name UnionDef
+    , values : Dict Name (ValueDef e)
     }
 
 
-type alias Alias =
+type alias AliasDef =
     { name : Name
     , args : List Name
     , ty : Type
     }
 
 
-{-| TODO rename to UnionDefinition?
--}
-type alias TypeDefinition =
+type alias UnionDef =
     { name : Name
     , args : List Name
-    , constructors : List TypeConstructor
+    , constructors : List UnionConstructor
     }
 
 
-type alias TypeConstructor =
+type alias UnionConstructor =
     { name : Name
     , args : List Type
     }
 
 
-type alias ValueDefinition e =
+type alias ValueDef e =
     { name : Name
     , mutable : Bool
     , maybeAnnotation : Maybe Type
@@ -100,7 +98,7 @@ type alias TypeRecordArgs =
 
 
 type Statement e
-    = Definition (ValueDefinition e)
+    = Definition (ValueDef e)
       -- Evaluations are needed for return, mutation and debug
     | Evaluation (Expression e)
 

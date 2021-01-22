@@ -16,6 +16,7 @@ undeclared code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Result.map Compiler.FindUndeclared.moduleUndeclared
+        |> Compiler.TestHelpers.resultErrorToString code
 
 
 

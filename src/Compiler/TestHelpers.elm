@@ -6,11 +6,20 @@ import Compiler.StringToTokens
 import Compiler.TokensToFormattableAst
 import Dict exposing (Dict)
 import Types.CanonicalAst as CA
-import Types.Error
+import Types.Error exposing (Res)
 import Types.FormattableAst as FA
 
 
-stringToCanonicalModule : String -> Result String (CA.Module ())
+errorToString code =
+    Types.Error.toStrings code >> String.join "\n"
+
+
+resultErrorToString : String -> Res a -> Result String a
+resultErrorToString code =
+    Result.mapError (errorToString code)
+
+
+stringToCanonicalModule : String -> Res (CA.Module ())
 stringToCanonicalModule code =
     code
         |> unindent
@@ -18,7 +27,6 @@ stringToCanonicalModule code =
         |> Result.andThen Compiler.TokensToFormattableAst.parse
         |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
         |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
-        |> Result.mapError (Types.Error.toString code)
 
 
 stringToFormattableModule : String -> Result String FA.Module
@@ -27,7 +35,7 @@ stringToFormattableModule code =
         |> unindent
         |> Compiler.StringToTokens.lexer
         |> Result.andThen Compiler.TokensToFormattableAst.parse
-        |> Result.mapError (Types.Error.toString code)
+        |> resultErrorToString code
 
 
 unindent : String -> String

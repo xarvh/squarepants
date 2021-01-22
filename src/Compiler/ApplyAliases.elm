@@ -5,30 +5,27 @@ import Lib
 import RefHierarchy
 import Set exposing (Set)
 import Types.CanonicalAst as CA exposing (Name, Type)
-import Types.Error as Error exposing (Error)
-
-
-type alias Res a =
-    -- TODO move this to Types.Error
-    Result Error a
-
-
-errorTodo : String -> Res a
-errorTodo s =
-    Err
-        { kind = Error.Whatever s
-        , pos = -1
-        }
+import Types.Error as Error exposing (Res, errorTodo)
 
 
 {-| -}
 applyAliasesToModule : CA.Module () -> Res (CA.Module ())
 applyAliasesToModule mod =
     Lib.result_do (applyAliasesToAliases mod.aliases) <| \aliases ->
+    Lib.result_do (applyAliasesToUnions aliases mod.types) <| \unions ->
     Ok
         -- TODO apply aliases to unions
         -- TODO apply aliases to annotations
         { mod | aliases = aliases }
+
+
+
+
+applyAliasesToUnions : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Res (Dict Name CA.UnionDef)
+applyAliasesToUnions aliases unions =
+  Ok unions
+
+
 
 
 
@@ -37,7 +34,7 @@ applyAliasesToModule mod =
 --
 
 
-applyAliasesToAliases : Dict Name CA.Alias -> Res (Dict Name CA.Alias)
+applyAliasesToAliases : Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
 applyAliasesToAliases als =
     let
         orderedAliases =
@@ -48,7 +45,7 @@ applyAliasesToAliases als =
     Lib.result_fold (processAlias als) orderedAliases Dict.empty
 
 
-processAlias : Dict Name CA.Alias -> CA.Alias -> Dict Name CA.Alias -> Res (Dict Name CA.Alias)
+processAlias : Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
 processAlias allAliases al processedAliases =
     let
         getAlias name =
@@ -68,7 +65,7 @@ processAlias allAliases al processedAliases =
         |> Ok
 
 
-replaceType : (Name -> Res (Maybe CA.Alias)) -> Type -> Res Type
+replaceType : (Name -> Res (Maybe CA.AliasDef)) -> Type -> Res Type
 replaceType getAlias ty =
     case ty of
         CA.TypeVariable { name } ->
@@ -169,7 +166,7 @@ expandAliasVariables typeByArgName ty =
 --
 
 
-findAllRefs_alias : CA.Alias -> Set String
+findAllRefs_alias : CA.AliasDef -> Set String
 findAllRefs_alias al =
     findAllRefs_type al.ty
 

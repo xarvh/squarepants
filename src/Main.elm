@@ -23,8 +23,9 @@ import Parser
 import Set exposing (Set)
 import Test
 import Types.CanonicalAst as CA
-import Types.Error
+import Types.Error exposing (Res)
 import Types.FormattableAst as FA
+import Types.Token
 
 
 runTests =
@@ -76,6 +77,52 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        code =
+            model.code
+
+        tokens =
+            code
+                |> Compiler.StringToTokens.lexer
+
+        faModule =
+            tokens
+                |> Result.andThen Compiler.TokensToFormattableAst.parse
+
+        caModule =
+            faModule
+                |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
+
+        undeclared =
+            caModule
+                |> Result.mapError (always Dict.empty)
+                |> Result.andThen Compiler.FindUndeclared.moduleUndeclared
+
+        -- here a miracle happens
+        alModule =
+            caModule
+                |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
+
+        inference =
+            alModule
+                |> Result.andThen (Compiler.TypeInference.inspectModule preamble)
+
+        --
+        --
+        onOk : (a -> Html msg) -> Res a -> Html msg
+        onOk f res =
+            case res of
+                Ok a ->
+                    f a
+
+                Err e ->
+                    Html.code
+                        []
+                        [ Compiler.TestHelpers.resultErrorToString code (Err e)
+                            |> Result.withDefault ""
+                            |> Html.text
+                        ]
+    in
     Html.div
         [ style "display" "flex"
 
@@ -96,27 +143,27 @@ view model =
             [ Html.li
                 []
                 [ Html.h6 [] [ Html.text "Inference" ]
-                , viewInference model.code
+                , onOk viewInference inference
                 ]
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Undeclared" ]
-                , viewUndeclared model.code
+                , viewUndeclared undeclared
                 ]
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Canonical AST" ]
-                , viewCanonicalAst model.code
+                , onOk viewCanonicalAst caModule
                 ]
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Formattable AST" ]
-                , viewFormattableAst model.code
+                , onOk viewFormattableAst faModule
                 ]
             , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Tokens" ]
-                , viewTokens model.code
+                , onOk viewTokens tokens
                 ]
             , if not runTests then
                 Html.li
@@ -142,26 +189,13 @@ view model =
 --
 
 
-viewInference : String -> Html msg
-viewInference code =
-    case Compiler.TestHelpers.stringToCanonicalModule code of
-        Ok mod ->
-            case Compiler.TypeInference.inspectModule preamble mod of
-                Err err ->
-                    Html.text err
-
-                Ok env ->
-                    env
-                        |> Dict.toList
-                        |> List.filter (\( k, v ) -> not (Dict.member k preamble))
-                        |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
-                        |> Html.div []
-
-        Err error ->
-            error
-                |> Debug.toString
-                |> (++) "ERROR "
-                |> Html.text
+viewInference : Compiler.TypeInference.Env -> Html msg
+viewInference env =
+    env
+        |> Dict.toList
+        |> List.filter (\( k, v ) -> not (Dict.member k preamble))
+        |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
+        |> Html.div []
 
 
 viewSchema : Compiler.TypeInference.EnvEntry -> String
@@ -179,28 +213,20 @@ viewSchema schema =
 --
 
 
-viewUndeclared : String -> Html msg
-viewUndeclared code =
-    case Compiler.TestHelpers.stringToCanonicalModule code of
-        Err error ->
-            error
-                |> Debug.toString
-                |> (++) "ERROR "
-                |> Html.text
+viewUndeclared : Result Compiler.FindUndeclared.Undeclared Compiler.FindUndeclared.EnvUndeclared -> Html msg
+viewUndeclared un =
+    case un of
+        Err undeclaredTypeVars ->
+            Html.div
+                []
+                [ Html.text <| "UNDECLARED TYPE VARS: " ++ Debug.toString undeclaredTypeVars ]
 
-        Ok mod ->
-            case Compiler.FindUndeclared.moduleUndeclared mod of
-                Err undeclaredTypeVars ->
-                    Html.div
-                        []
-                        [ Html.text <| "UNDECLARED TYPE VARS: " ++ Debug.toString undeclaredTypeVars ]
-
-                Ok m ->
-                    Html.div
-                        []
-                        [ Html.div [] [ Html.text <| "types: " ++ Debug.toString m.types ]
-                        , Html.div [] [ Html.text <| "values: " ++ Debug.toString m.values ]
-                        ]
+        Ok m ->
+            Html.div
+                []
+                [ Html.div [] [ Html.text <| "types: " ++ Debug.toString m.types ]
+                , Html.div [] [ Html.text <| "values: " ++ Debug.toString m.values ]
+                ]
 
 
 
@@ -209,39 +235,24 @@ viewUndeclared code =
 --
 
 
-viewCanonicalAst : String -> Html msg
-viewCanonicalAst code =
-    let
-        res =
-            code
-                |> Compiler.StringToTokens.lexer
-                |> Result.andThen Compiler.TokensToFormattableAst.parse
-                |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
-                |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
-    in
-    case res of
-        Ok mod ->
-            Html.div
-                []
-                [ mod.aliases
-                    |> Dict.values
-                    |> List.sortBy .name
-                    |> List.map viewCaAlias
-                    |> Html.code []
-                , mod.values
-                    |> Dict.values
-                    |> List.sortBy .name
-                    |> List.map viewCaDefinition
-                    |> Html.code []
-                ]
-
-        _ ->
-            res
-                |> Debug.toString
-                |> Html.text
+viewCanonicalAst : CA.Module () -> Html msg
+viewCanonicalAst mod =
+    Html.div
+        []
+        [ mod.aliases
+            |> Dict.values
+            |> List.sortBy .name
+            |> List.map viewCaAlias
+            |> Html.code []
+        , mod.values
+            |> Dict.values
+            |> List.sortBy .name
+            |> List.map viewCaDefinition
+            |> Html.code []
+        ]
 
 
-viewCaAlias : CA.Alias -> Html msg
+viewCaAlias : CA.AliasDef -> Html msg
 viewCaAlias al =
     Html.div
         []
@@ -256,7 +267,7 @@ viewCaAlias al =
         ]
 
 
-viewCaDefinition : CA.ValueDefinition e -> Html msg
+viewCaDefinition : CA.ValueDef e -> Html msg
 viewCaDefinition def =
     Html.div
         []
@@ -286,7 +297,7 @@ viewCaType ty =
             name
 
         CA.TypeAlias path t ->
-          "<" ++ path ++ ": " ++ viewCaType t ++ ">"
+            "<" ++ path ++ ": " ++ viewCaType t ++ ">"
 
         CA.TypeFunction { from, fromIsMutable, to } ->
             [ "(" ++ viewCaType from ++ ")"
@@ -374,40 +385,33 @@ viewCaExpression expr =
 --
 
 
-viewFormattableAst : String -> Html msg
-viewFormattableAst code =
-    let
-        res =
-            code
-                |> Compiler.StringToTokens.lexer
-                |> Result.andThen Compiler.TokensToFormattableAst.parse
-    in
-    case res of
-        Ok statements ->
-            statements
-                |> List.map viewFaStatement
-                |> Html.div []
-
-        _ ->
-            res
-                |> Debug.toString
-                |> Html.text
+viewFormattableAst : FA.Module -> Html msg
+viewFormattableAst statements =
+    statements
+        |> List.map viewFaStatement
+        |> Html.div []
 
 
 viewFaStatement : FA.Statement -> Html msg
 viewFaStatement s =
     case s of
-        FA.TypeDefinition td ->
-            td
-                |> Debug.toString
-                |> (++) "type definition: "
-                |> Html.text
+        FA.UnionDef td ->
+            Html.div
+                []
+                [ td
+                    |> Debug.toString
+                    |> (++) "type definition: "
+                    |> Html.text
+                ]
 
         FA.TypeAlias td ->
-            td
-                |> Debug.toString
-                |> (++) "type alias: "
-                |> Html.text
+            Html.div
+                []
+                [ td
+                    |> Debug.toString
+                    |> (++) "type alias: "
+                    |> Html.text
+                ]
 
         FA.Evaluation expr ->
             Html.div
@@ -506,23 +510,11 @@ viewFaExpression expr =
 --
 
 
-viewTokens : String -> Html msg
-viewTokens code =
-    let
-        resultTokens =
-            code
-                |> Compiler.StringToTokens.lexer
-    in
-    case resultTokens of
-        Err error ->
-            error
-                |> Types.Error.toString code
-                |> Html.text
-
-        Ok tokens ->
-            tokens
-                |> List.map (\t -> Html.div [] [ Html.text (Debug.toString t.kind) ])
-                |> Html.div []
+viewTokens : List Types.Token.Token -> Html msg
+viewTokens tokens =
+    tokens
+        |> List.map (\t -> Html.div [] [ Html.text (Debug.toString t.kind) ])
+        |> Html.div []
 
 
 

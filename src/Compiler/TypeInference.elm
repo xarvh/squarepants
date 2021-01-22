@@ -7,10 +7,7 @@ import Lib exposing (result_do)
 import RefHierarchy
 import Set exposing (Set)
 import Types.CanonicalAst as CA exposing (Name, Type)
-
-
-type alias Res a =
-    Result String a
+import Types.Error as Error exposing (Res, errorTodo)
 
 
 type alias Substitutions =
@@ -117,14 +114,14 @@ inspectModule prelude mod =
     envResult
 
 
-addConstructors : String -> CA.TypeDefinition -> Res Env -> Res Env
+addConstructors : String -> CA.UnionDef -> Res Env -> Res Env
 addConstructors _ def resEnv =
     result_do resEnv <| \env ->
     addConstructorsRec def def.constructors env
 
 
-addConstructorsRec : CA.TypeDefinition -> List CA.TypeConstructor -> Env -> Res Env
-addConstructorsRec typeDef constructors env =
+addConstructorsRec : CA.UnionDef -> List CA.UnionConstructor -> Env -> Res Env
+addConstructorsRec unionDef constructors env =
     case constructors of
         [] ->
             Ok env
@@ -132,12 +129,12 @@ addConstructorsRec typeDef constructors env =
         ctor :: cTail ->
             let
                 args =
-                    List.map (\a -> CA.TypeVariable { name = a }) typeDef.args
+                    List.map (\a -> CA.TypeVariable { name = a }) unionDef.args
 
                 ctorType =
                     -- TODO ensure that all constructors use declared var types?
                     -- ^ This is something that should be done by FormattableToCanonical?
-                    List.foldr fold (CA.TypeConstant { path = typeDef.name, args = args }) ctor.args
+                    List.foldr fold (CA.TypeConstant { path = unionDef.name, args = args }) ctor.args
 
                 fold ty accum =
                     CA.TypeFunction
@@ -148,7 +145,7 @@ addConstructorsRec typeDef constructors env =
             in
             case validateType False ctorType of
                 Just err ->
-                    Err err
+                    errorTodo err
 
                 Nothing ->
                     env
@@ -157,7 +154,7 @@ addConstructorsRec typeDef constructors env =
                             , forall = Set.empty
                             , mutable = Just False
                             }
-                        |> addConstructorsRec typeDef cTail
+                        |> addConstructorsRec unionDef cTail
 
 
 
@@ -273,7 +270,7 @@ env_get v e =
 
         Nothing ->
             ("unbound variable: " ++ v)
-                |> Err
+                |> errorTodo
                 |> TyGen.wrap
 
 
@@ -286,22 +283,25 @@ refine_env s env =
     Dict.map refine_entry env
 
 
+unwrapAlias : Maybe CA.Path -> Type -> ( Type, Maybe CA.Path )
+unwrapAlias prevPath ty =
+    case ty of
+        CA.TypeAlias path t ->
+            unwrapAlias (Just path) t
+
+        _ ->
+            ( ty, prevPath )
+
+
 unify : Type -> Type -> Substitutions -> TyGen (Res Substitutions)
 unify at1 at2 s =
     let
-        unwrapAlias ty =
-            case ty of
-                CA.TypeAlias path t ->
-                    ( t, Just path )
-
-                _ ->
-                    ( ty, Nothing )
-
+        -- TODO use path1,2 in error messages
         ( t1, path1 ) =
-            unwrapAlias at1
+            unwrapAlias Nothing at1
 
         ( t2, path2 ) =
-            unwrapAlias at2
+            unwrapAlias Nothing at2
 
         t1_refined =
             refine_type s t1
@@ -315,7 +315,7 @@ unify at1 at2 s =
     case ( t1_refined, t2_refined ) of
         ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
             if c1.path /= c2.path then
-                TyGen.wrap <| Err <| "cannot unify " ++ c1.path ++ " and " ++ c2.path
+                TyGen.wrap <| errorTodo <| "cannot unify " ++ c1.path ++ " and " ++ c2.path
 
             else
                 let
@@ -328,7 +328,7 @@ unify at1 at2 s =
                                 do_nr (unify head1 head2 subs) <| rec tail1 tail2
 
                             _ ->
-                                TyGen.wrap <| Err <| "one of the two has wrong number of args: " ++ c1.path ++ " and " ++ c2.path
+                                TyGen.wrap <| errorTodo <| "one of the two has wrong number of args: " ++ c1.path ++ " and " ++ c2.path
                 in
                 rec c1.args c2.args s
 
@@ -347,7 +347,7 @@ unify at1 at2 s =
             TyGen.wrap
                 (if cycle v1.name t2 then
                     -- is this the correct behavior?
-                    Err "cycle!"
+                    errorTodo "cycle!"
 
                  else
                     s
@@ -364,7 +364,7 @@ unify at1 at2 s =
                     Maybe.map2 (\aa bb -> aa /= bb) a.fromIsMutable b.fromIsMutable
             in
             if Maybe.withDefault False maybeClash then
-                TyGen.wrap <| Err <| "mutability clash: " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
+                TyGen.wrap <| errorTodo <| "mutability clash: " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
 
             else
                 do_nr (unify a.to b.to s) <| unify a.from b.from
@@ -373,7 +373,7 @@ unify at1 at2 s =
             unifyRecords a b s
 
         _ ->
-            TyGen.wrap <| Err <| "cannot unify " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
+            TyGen.wrap <| errorTodo <| "cannot unify " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
 
 
 type alias UnifyRecordsFold =
@@ -433,7 +433,7 @@ unifyRecords aArgs bArgs subs0 =
             ( Just aName, Nothing ) ->
                 if aOnly /= Dict.empty then
                     "a has arguments that do not exist in b"
-                        |> Err
+                        |> errorTodo
                         |> TyGen.wrap
 
                 else
@@ -445,7 +445,7 @@ unifyRecords aArgs bArgs subs0 =
             ( Nothing, Just bName ) ->
                 if bOnly /= Dict.empty then
                     "b has arguments that do not exist in a"
-                        |> Err
+                        |> errorTodo
                         |> TyGen.wrap
 
                 else
@@ -463,7 +463,7 @@ unifyRecords aArgs bArgs subs0 =
 
                 else
                     "the two records are just too different"
-                        |> Err
+                        |> errorTodo
                         |> TyGen.wrap
 
             ( Just aName, Just bName ) ->
@@ -565,7 +565,7 @@ inspect_expr env expr ty subs =
         CA.Lambda _ args ->
             if Dict.member args.parameter env then
                 ("function parameter `" ++ args.parameter ++ "` shadows env variable")
-                    |> Err
+                    |> errorTodo
                     |> TyGen.wrap
 
             else
@@ -611,7 +611,7 @@ inspect_expr env expr ty subs =
 
         CA.If _ _ ->
             ("inference NI: " ++ Debug.toString expr)
-                |> Err
+                |> errorTodo
                 |> TyGen.wrap
 
         CA.Record _ args ->
@@ -665,7 +665,7 @@ inspect_argument env arg ty subs =
             case Dict.get path env of
                 Nothing ->
                     ("undeclared mutable variable: " ++ path)
-                        |> Err
+                        |> errorTodo
                         |> TyGen.wrap
 
                 Just schema ->
@@ -680,7 +680,7 @@ inspect_argument env arg ty subs =
 
                         Just False ->
                             (path ++ " can't be mutable")
-                                |> Err
+                                |> errorTodo
                                 |> TyGen.wrap
 
         CA.ArgumentExpression expr ->
@@ -745,7 +745,7 @@ inspect_statement statement env subs =
                                 |> TyGen.wrap
 
                         Just error ->
-                            Err error
+                            errorTodo error
                                 |> TyGen.wrap
 
 
@@ -808,7 +808,7 @@ inspectStatementList stats parentEnv subs =
             ( ty, env, _ ) =
                 typeAndEnvAndSubs
 
-            defContainsFunctions : CA.ValueDefinition e -> Bool
+            defContainsFunctions : CA.ValueDef e -> Bool
             defContainsFunctions def =
                 case Dict.get def.name env of
                     Nothing ->
@@ -825,10 +825,10 @@ inspectStatementList stats parentEnv subs =
                 |> List.map .name
                 |> String.join ", "
                 |> (++) "these mutable values contain functions: "
-                |> Err
+                |> errorTodo
 
         else if definedMutables /= [] && typeContainsFunctions ty then
-            Err "statement blocks that define mutables can't return functions"
+            errorTodo "statement blocks that define mutables can't return functions"
 
         else
             Ok typeAndEnvAndSubs
@@ -847,7 +847,7 @@ inspectStatementRec stats returnType env subs =
             inspectStatementRec statsTail ty env1 subs1
 
 
-insertDefinitionRec : List (CA.ValueDefinition e) -> Env -> TyGen (Res Env)
+insertDefinitionRec : List (CA.ValueDef e) -> Env -> TyGen (Res Env)
 insertDefinitionRec defs env =
     case defs of
         [] ->
@@ -858,7 +858,7 @@ insertDefinitionRec defs env =
         def :: ds ->
             if Dict.member def.name env then
                 (def.name ++ " already declared in scope!")
-                    |> Err
+                    |> errorTodo
                     |> TyGen.wrap
 
             else
@@ -867,7 +867,7 @@ insertDefinitionRec defs env =
                         case validateType def.mutable annotation of
                             Just err ->
                                 err
-                                    |> Err
+                                    |> errorTodo
                                     |> TyGen.wrap
 
                             Nothing ->
@@ -892,7 +892,7 @@ insertDefinitionRec defs env =
                             |> insertDefinitionRec ds
 
 
-statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDefinition e)
+statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDef e)
 statementAsDefinition stat =
     case stat of
         CA.Definition d ->
@@ -966,7 +966,7 @@ typeContainsFunctions ty =
 --
 
 
-findAllRefs_definition : CA.ValueDefinition e -> Set String
+findAllRefs_definition : CA.ValueDef e -> Set String
 findAllRefs_definition def =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty def.body
 

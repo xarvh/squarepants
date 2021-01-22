@@ -21,7 +21,7 @@ type alias Module =
     List Statement
 
 
-type alias ValueDefinition =
+type alias ValueDef =
     { name : Pattern
     , mutable : Bool
     , maybeAnnotation : Maybe Annotation
@@ -39,20 +39,20 @@ type alias Annotation =
 
 type Statement
     = Evaluation Expression
-    | Definition ValueDefinition
+    | Definition ValueDef
     | TypeAlias
         { name : String
         , args : List String
         , type_ : Type
         }
-    | TypeDefinition
+    | UnionDef
         { name : String
         , args : List String
-        , constructors : List TypeConstructor
+        , constructors : List UnionConstructor
         }
 
 
-type alias TypeConstructor =
+type alias UnionConstructor =
     { name : String
     , args : List Type
     }

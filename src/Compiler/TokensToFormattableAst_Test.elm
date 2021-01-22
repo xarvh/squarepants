@@ -19,7 +19,7 @@ kindToToken index kind =
     }
 
 
-asDefinition : FA.Statement -> Maybe FA.ValueDefinition
+asDefinition : FA.Statement -> Maybe FA.ValueDef
 asDefinition s =
     case s of
         FA.Definition a ->
@@ -75,7 +75,7 @@ tests =
     Test.Group "TokensToFormattableAst"
         [ lambdas
         , annotations
-        , typeDefinitions
+        , unionDefs
         , lists
         ]
 
@@ -287,12 +287,12 @@ annotations =
         ]
 
 
-typeDefinitions : Test
-typeDefinitions =
+unionDefs : Test
+unionDefs =
     let
         asTypeDef s =
             case s of
-                FA.TypeDefinition a ->
+                FA.UnionDef a ->
                     Just a
 
                 _ ->

@@ -14,7 +14,7 @@ pointless, but hey, I'm having fun).
 -}
 
 import Regex exposing (Regex)
-import Types.Error as Error exposing (Error)
+import Types.Error as Error exposing (Error, Res)
 import Types.Token as Token exposing (Token)
 
 
@@ -35,7 +35,7 @@ type alias ReadState =
 --
 
 
-lexer : String -> Result Error (List Token)
+lexer : String -> Res (List Token)
 lexer codeAsString =
     { pos = -1
     , multiCommentDepth = 0
@@ -48,7 +48,7 @@ lexer codeAsString =
         |> lexerStep
 
 
-lexerStep : ReadState -> Result Error (List Token)
+lexerStep : ReadState -> Res (List Token)
 lexerStep prevState =
     case lexContent prevState.pos prevState of
         Err a ->
@@ -80,7 +80,7 @@ stateToFinalTokens state =
     List.foldl (\stack accum -> blockEnd :: accum) state.accum state.indentStack
 
 
-lexContent : Int -> ReadState -> Result Error ReadState
+lexContent : Int -> ReadState -> Res ReadState
 lexContent startPos state =
     let
         runLexer contentAhead lex posOffset rest =
@@ -107,10 +107,7 @@ lexContent startPos state =
             runLexer False (lexIndent >> Ok) 1 rest
 
         '\t' :: rest ->
-            Err
-                { pos = state.pos
-                , kind = Error.Tab
-                }
+            Error.error state.pos Error.Tab
 
         char :: rest ->
             { state | pos = 1 + state.pos, code = rest }
@@ -133,7 +130,7 @@ chainIf predicate fn result =
             )
 
 
-contentLineToTokens : Int -> ReadState -> Result Error ReadState
+contentLineToTokens : Int -> ReadState -> Res ReadState
 contentLineToTokens startPos state =
     let
         contentLine =
@@ -146,7 +143,7 @@ contentLineToTokens startPos state =
         |> Result.map (\tokens -> { state | accum = tokens })
 
 
-contentLineToTokensRec : String -> Int -> List Token -> Result Error (List Token)
+contentLineToTokensRec : String -> Int -> List Token -> Res (List Token)
 contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
     case String.trimLeft untrimmedBlock of
         "" ->
@@ -170,23 +167,17 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
             in
             case mapFind tryMatch recognisedTokens of
                 Nothing ->
-                    Err
-                        { pos = start
-                        , kind =
-                            codeBlock
-                                |> String.split " "
-                                |> List.take 1
-                                |> String.join ""
-                                |> Error.InvalidToken
-                        }
+                    codeBlock
+                        |> String.split " "
+                        |> List.take 1
+                        |> String.join ""
+                        |> Error.InvalidToken
+                        |> Error.error start
 
                 Just ( match, constructor ) ->
                     case constructor match.match of
                         Err kind ->
-                            Err
-                                { pos = start
-                                , kind = kind
-                                }
+                            Error.error start kind
 
                         Ok ( tokenKind, charsConsumed ) ->
                             let
@@ -423,7 +414,7 @@ recognisedTokens =
   - state.pos is updated manually, so it should be tested!
 
 -}
-lexSingleLineComment : Int -> ReadState -> Result Error ReadState
+lexSingleLineComment : Int -> ReadState -> Res ReadState
 lexSingleLineComment startPos state =
     let
         ( length, rest ) =
@@ -463,7 +454,7 @@ lexSingleLineComment startPos state =
   - state.pos is updated manually, so it should be tested!
 
 -}
-lexSoftQuotedString : Int -> ReadState -> Result Error ReadState
+lexSoftQuotedString : Int -> ReadState -> Res ReadState
 lexSoftQuotedString startPos state =
     let
         rec pos isEscape code =
@@ -498,19 +489,13 @@ lexSoftQuotedString startPos state =
 
                 '\n' :: rest ->
                     -- https://www.reddit.com/r/ProgrammingLanguages/comments/l0ptdl/why_do_so_many_languages_not_allow_string/gjvrcg2/
-                    Err
-                        { pos = pos
-                        , kind = Error.NewLineInsideSoftQuote
-                        }
+                    Error.error pos Error.NewLineInsideSoftQuote
 
                 char :: rest ->
                     rec (pos + 1) False rest
 
                 [] ->
-                    Err
-                        { pos = pos
-                        , kind = Error.UnterminatedStringLiteral
-                        }
+                    Error.error pos Error.UnterminatedStringLiteral
     in
     rec state.pos False state.code
 
@@ -533,7 +518,7 @@ lexSoftQuotedString startPos state =
   - state.pos is updated manually, so it should be tested!
 
 -}
-lexHardQuotedString : Int -> ReadState -> Result Error ReadState
+lexHardQuotedString : Int -> ReadState -> Res ReadState
 lexHardQuotedString startPos state =
     let
         rec pos isEscape doubleQuotes code =
@@ -573,10 +558,7 @@ lexHardQuotedString startPos state =
                     rec (pos + 1) False 0 rest
 
                 [] ->
-                    Err
-                        { pos = pos
-                        , kind = Error.UnterminatedStringLiteral
-                        }
+                    Error.error pos Error.UnterminatedStringLiteral
     in
     rec state.pos False 0 state.code
 
@@ -589,7 +571,7 @@ lexHardQuotedString startPos state =
   - state.pos is updated manually, so it should be tested!
 
 -}
-lexMultiLineComment : Int -> ReadState -> Result Error ReadState
+lexMultiLineComment : Int -> ReadState -> Res ReadState
 lexMultiLineComment startPos state =
     let
         rec pos depth code =
@@ -622,10 +604,7 @@ lexMultiLineComment startPos state =
                     rec (pos + 1) depth rest
 
                 [] ->
-                    Err
-                        { pos = pos
-                        , kind = Error.UnterminatedMultiLineComment
-                        }
+                    Error.error pos Error.UnterminatedMultiLineComment
     in
     rec state.pos 0 state.code
 
@@ -648,7 +627,7 @@ lexIndent state =
     }
 
 
-addIndentTokens : Int -> ReadState -> Result Error ReadState
+addIndentTokens : Int -> ReadState -> Res ReadState
 addIndentTokens endPos state =
     case state.maybeIndentToAdd of
         Nothing ->
@@ -658,7 +637,7 @@ addIndentTokens endPos state =
             addIndentTokensRec endPos newIndent True { state | maybeIndentToAdd = Nothing } state.indentStack
 
 
-addIndentTokensRec : Int -> Int -> Bool -> ReadState -> List Int -> Result Error ReadState
+addIndentTokensRec : Int -> Int -> Bool -> ReadState -> List Int -> Res ReadState
 addIndentTokensRec endPos newIndent isFirstRecursion state stack =
     let
         ( lastIndent, poppedStack ) =
@@ -712,14 +691,11 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
                  newIndent
                ```
             -}
-            Err
-                { pos = endPos
-                , kind =
-                    Error.BadIndent
-                        { length = newIndent
-                        , stack = state.indentStack
-                        }
-                }
+            { length = newIndent
+            , stack = state.indentStack
+            }
+                |> Error.BadIndent
+                |> Error.error endPos
 
     else
         addIndentTokensRec endPos newIndent False { state | accum = makeToken Token.BlockEnd :: state.accum } poppedStack

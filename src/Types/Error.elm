@@ -1,10 +1,41 @@
 module Types.Error exposing (..)
 
 
-type alias Error =
-    { kind : Kind
-    , pos : Int
+type Error
+    = Simple ErrorArgs
+    | Nested (List Error)
+
+
+type alias ErrorArgs =
+    { kind : Kind, pos : Int }
+
+
+type alias Res a =
+    Result Error a
+
+
+errorTodo : String -> Res a
+errorTodo s =
+    { kind = Whatever s
+    , pos = -1
     }
+        |> Simple
+        |> Err
+
+
+error : Int -> Kind -> Res a
+error pos kind =
+    { kind = kind
+    , pos = pos
+    }
+        |> Simple
+        |> Err
+
+
+
+----
+--- Kinds
+--
 
 
 type Kind
@@ -16,7 +47,7 @@ type Kind
     | NewLineInsideSoftQuote
     | HardQuoteClosesSoftQuote
     | UnterminatedStringLiteral
-    -- TODO remove this one
+      -- TODO remove this one
     | Whatever String
 
 
@@ -33,11 +64,33 @@ kindToString kind =
             Debug.toString kind
 
 
-toString : String -> Error -> String
-toString code error =
+
+----
+--- To human
+--
+
+
+toStrings : String -> Error -> List String
+toStrings code e =
+    flatten e []
+        |> List.map (argsToString code)
+
+
+flatten : Error -> List ErrorArgs -> List ErrorArgs
+flatten e accum =
+    case e of
+        Simple ar ->
+            ar :: accum
+
+        Nested ls ->
+            List.foldl flatten accum ls
+
+
+argsToString : String -> ErrorArgs -> String
+argsToString code e =
     let
         ( line, col ) =
-            positionToLineAndColumn code error.pos
+            positionToLineAndColumn code e.pos
 
         l =
             String.length code
@@ -53,15 +106,15 @@ toString code error =
 
         -}
         a =
-            error.pos - 10 |> clamp 0 l
+            e.pos - 10 |> clamp 0 l
 
         b =
-            error.pos + 10 |> clamp 0 l
+            e.pos + 10 |> clamp 0 l
 
         slice =
             String.slice a b code
     in
-    String.fromInt line ++ "," ++ String.fromInt col ++ ": ```\n" ++ slice ++ "\n```\n" ++ kindToString error.kind
+    String.fromInt line ++ "," ++ String.fromInt col ++ ": ```\n" ++ slice ++ "\n```\n" ++ kindToString e.kind
 
 
 positionToLineAndColumn : String -> Int -> ( Int, Int )

@@ -1,7 +1,7 @@
 module Compiler.FormattableToCanonicalAst_Test exposing (..)
 
 import Compiler.FormattableToCanonicalAst
-import Compiler.TestHelpers exposing (stringToCanonicalModule)
+import Compiler.TestHelpers
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Test exposing (Test)
@@ -20,10 +20,11 @@ hasError =
     Test.hasError Debug.toString
 
 
-firstDefinition : String -> String -> Result String (CA.ValueDefinition ())
+firstDefinition : String -> String -> Result String (CA.ValueDef ())
 firstDefinition name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.resultErrorToString code
         |> Result.andThen (\mod -> Dict.get name mod.values |> Result.fromMaybe "Dict fail")
 
 
@@ -31,9 +32,16 @@ firstEvaluation : String -> String -> Result String (CA.Expression ())
 firstEvaluation name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.resultErrorToString code
         |> Result.andThen (\mod -> Dict.get name mod.values |> Result.fromMaybe "Dict fail")
         |> Result.andThen (\def -> List.head def.body |> Result.fromMaybe "head fail")
         |> Result.andThen (asEvaluation >> Result.fromMaybe "asEval fail")
+
+
+stringToCanonicalModule code =
+    code
+        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.resultErrorToString code
 
 
 asEvaluation : CA.Statement e -> Maybe (CA.Expression e)
@@ -167,7 +175,7 @@ lists =
                         Just
                             (CA.TypeConstant
                                 { path = "List"
-                                , args = [ CA.TypeConstant { path = "Bool" , args = [] } ]
+                                , args = [ CA.TypeConstant { path = "Bool", args = [] } ]
                                 }
                             )
                     , mutable = False

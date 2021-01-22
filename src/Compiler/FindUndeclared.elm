@@ -82,7 +82,7 @@ moduleUndeclared mod =
 --
 
 
-addAliasUndeclared : Set String -> CA.Alias -> Undeclared -> Undeclared
+addAliasUndeclared : Set String -> CA.AliasDef -> Undeclared -> Undeclared
 addAliasUndeclared declaredTypes al undeclaredTypes =
     let
         typesEnv =
@@ -91,13 +91,13 @@ addAliasUndeclared declaredTypes al undeclaredTypes =
     addTypeUndeclared False typesEnv al.ty undeclaredTypes
 
 
-addUnionUndeclared : Set String -> CA.TypeDefinition -> Undeclared -> Undeclared
+addUnionUndeclared : Set String -> CA.UnionDef -> Undeclared -> Undeclared
 addUnionUndeclared declaredTypes union undeclaredTypes =
     let
         typesEnv =
             List.foldl Set.insert declaredTypes union.args
 
-        addConstructor : CA.TypeConstructor -> Undeclared -> Undeclared
+        addConstructor : CA.UnionConstructor -> Undeclared -> Undeclared
         addConstructor cons un =
             List.foldl (addTypeUndeclared False typesEnv) un cons.args
     in
@@ -139,7 +139,7 @@ addTypeUndeclared isAnnotation typesEnv ty undeclaredTypes =
 --
 
 
-addValueUndeclared : EnvDeclared -> CA.ValueDefinition e -> EnvUndeclared -> EnvUndeclared
+addValueUndeclared : EnvDeclared -> CA.ValueDef e -> EnvUndeclared -> EnvUndeclared
 addValueUndeclared env def undeclared =
     let
         undeclaredTypes =
@@ -153,7 +153,7 @@ addValueUndeclared env def undeclared =
     addStatementBlockUndeclared env def.body { undeclared | types = undeclaredTypes }
 
 
-statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDefinition e)
+statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDef e)
 statementAsDefinition s =
     case s of
         CA.Definition d ->

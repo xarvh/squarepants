@@ -6,6 +6,7 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import Test exposing (Test)
 import Types.CanonicalAst as CA exposing (Name)
+import Types.Error exposing (Res)
 
 
 simpleTest =
@@ -28,11 +29,12 @@ function from to =
     CA.TypeFunction { from = from, fromIsMutable = Nothing, to = to }
 
 
-infer : String -> String -> TI.Res TI.EnvEntry
+infer : String -> String -> Result String TI.EnvEntry
 infer name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Result.andThen (TI.inspectModule preamble)
+        |> Result.mapError (Compiler.TestHelpers.errorToString code)
         |> Result.andThen (Dict.get name >> Result.fromMaybe "Dict fail")
 
 
@@ -97,10 +99,10 @@ functions =
             , run = \_ -> infer "a" "a = add 3 1"
             , expected = Ok { type_ = constant "Number", forall = Set.empty, mutable = Just False }
             }
-        , simpleTest
+        , hasError
             { name = "Known function with wrong params"
             , run = \_ -> infer "a" "a = add False"
-            , expected = Err """cannot unify Bool and Number"""
+            , test = Test.errorShouldContain "cannot unify Bool and Number"
             }
         , simpleTest
             { name = "Function inference 1"
@@ -122,10 +124,10 @@ functions =
                     , mutable = Just False
                     }
             }
-        , simpleTest
+        , hasError
             { name = "Function args can't shadow other names"
             , run = \_ -> infer "a" "a = fn a = 1"
-            , expected = Err "function parameter `a` shadows env variable"
+            , test = Test.errorShouldContain "function parameter `a` shadows env variable"
             }
         , simpleTest
             { name = "[reg] fn has type None"
@@ -367,7 +369,7 @@ referencedSiblingDefs =
 mutability : Test
 mutability =
     Test.Group "mutability"
-        [ simpleTest
+        [ hasError
             { name = "Statement blocks that define mutables can't return functions"
             , run =
                 \_ ->
@@ -377,7 +379,7 @@ mutability =
                           x @= 1
                           fn y = y
                         """
-            , expected = Err "statement blocks that define mutables can't return functions"
+            , test = Test.errorShouldContain "statement blocks that define mutables can't return functions"
             }
         , simpleTest
             { name = "Infer lambda arg mutability"
@@ -426,10 +428,10 @@ mutability =
                     , mutable = Just False
                     }
             }
-        , simpleTest
+        , hasError
             { name = "Functions can't be mutable 1"
             , run = \_ -> infer "a" "a @= fn x = x"
-            , expected = Err "these mutable values contain functions: a"
+            , test = Test.errorShouldContain "these mutable values contain functions: a"
             }
 
         {- TODO, requires type vars

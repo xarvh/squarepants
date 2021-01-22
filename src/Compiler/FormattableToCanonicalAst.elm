@@ -5,13 +5,9 @@ import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
 import Set exposing (Set)
 import Types.CanonicalAst as CA
-import Types.Error as Error exposing (Error)
+import Types.Error as Error exposing (Error, Res, errorTodo)
 import Types.FormattableAst as FA
 import Types.Token as Token
-
-
-type alias Res ok =
-    Result Error ok
 
 
 {-| Record Shorthand
@@ -84,7 +80,7 @@ insertStatement faStatement caModule =
                 in
                 Ok { caModule | aliases = Dict.insert al.name al caModule.aliases }
 
-        FA.TypeDefinition fa ->
+        FA.UnionDef fa ->
             if Dict.member fa.name caModule.types then
                 errorTodo <| fa.name ++ " declared twice!"
 
@@ -95,7 +91,7 @@ insertStatement faStatement caModule =
 
                     Nothing ->
                         let
-                            translateConstructor : FA.TypeConstructor -> Res CA.TypeConstructor
+                            translateConstructor : FA.UnionConstructor -> Res CA.UnionConstructor
                             translateConstructor faCons =
                                 faCons.args
                                     |> List.map translateType
@@ -107,7 +103,7 @@ insertStatement faStatement caModule =
                                             }
                                         )
 
-                            consListToModule : List CA.TypeConstructor -> CA.Module ()
+                            consListToModule : List CA.UnionConstructor -> CA.Module ()
                             consListToModule consList =
                                 { caModule
                                     | types =
@@ -240,7 +236,7 @@ lowercaseRec uppercaseAcc lowercaseAcc ls =
 --
 
 
-translateDefinition : Rs -> FA.ValueDefinition -> Res (CA.ValueDefinition ())
+translateDefinition : Rs -> FA.ValueDef -> Res (CA.ValueDef ())
 translateDefinition rs fa =
     let
         (FA.PatternAny name) =
@@ -263,7 +259,7 @@ translateDefinition rs fa =
         (translateStatementBlock rs fa.body)
 
 
-translateAnnotation : String -> FA.ValueDefinition -> FA.Annotation -> Res CA.Type
+translateAnnotation : String -> FA.ValueDef -> FA.Annotation -> Res CA.Type
 translateAnnotation defName faDef faAnn =
     if faAnn.name /= defName then
         errorTodo "annotation name does not match"
@@ -308,7 +304,7 @@ translateStatement rs faStat =
         FA.TypeAlias fa ->
             errorTodo "Aliases can be declared only in the root scope"
 
-        FA.TypeDefinition fa ->
+        FA.UnionDef fa ->
             errorTodo "Types can be declared only in the root scope"
 
 
@@ -784,14 +780,6 @@ wrapLambda (FA.PatternAny paramName) bodyAccum =
         |> CA.Lambda ()
         |> CA.Evaluation
     ]
-
-
-errorTodo : String -> Res a
-errorTodo s =
-    Err
-        { kind = Error.Whatever s
-        , pos = -1
-        }
 
 
 listResultToResultList : List (Result e o) -> Result e (List o)

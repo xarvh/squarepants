@@ -3,7 +3,7 @@ module Compiler.TokensToFormattableAst exposing (..)
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
-import Types.Error as Error exposing (Error)
+import Types.Error as Error exposing (Error, Res)
 import Types.FormattableAst as FA
 import Types.Token as Token exposing (Token)
 
@@ -207,11 +207,11 @@ unconsIgnoreComments ls =
             Nothing
 
 
-parse : List Token -> Result Error (List FA.Statement)
+parse : List Token -> Res (List FA.Statement)
 parse tokens =
     tokens
         |> runParser (end module_)
-        |> Result.mapError (\s -> { pos = 0, kind = Error.Whatever s })
+        |> Result.mapError (\e -> Error.Simple { pos = 0, kind = Error.Whatever e })
         |> Result.map OneOrMore.toList
 
 
@@ -251,8 +251,8 @@ typeAlias =
             |> succeed
 
 
-typeDefinition : Parser FA.Statement
-typeDefinition =
+unionDef : Parser FA.Statement
+unionDef =
     do (kind <| Token.Name { mutable = False } "type") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
@@ -265,7 +265,7 @@ typeDefinition =
         , args = args
         , constructors = OneOrMore.toList cons
         }
-            |> FA.TypeDefinition
+            |> FA.UnionDef
             |> succeed
 
 
@@ -438,7 +438,7 @@ statement =
     Parser.breakCircularDefinition <| \_ ->
     Parser.oneOf
         [ typeAlias
-        , typeDefinition
+        , unionDef
         , definition
         , do expr <| (FA.Evaluation >> succeed)
         ]
@@ -648,15 +648,16 @@ typeApplicationOr higher =
     case ty of
         FA.TypeConstantOrVariable fa ->
             if fa.args /= [] then
-              -- TODO rewrite this parser, it's kind of terrible
-              Parser.abort "This shouldn't happen, there is a problem with the parser code."
+                -- TODO rewrite this parser, it's kind of terrible
+                Parser.abort "This shouldn't happen, there is a problem with the parser code."
+
             else
-            do (zeroOrMore higher) <| \args ->
-            { name = fa.name
-            , args = args
-            }
-                |> FA.TypeConstantOrVariable
-                |> succeed
+                do (zeroOrMore higher) <| \args ->
+                { name = fa.name
+                , args = args
+                }
+                    |> FA.TypeConstantOrVariable
+                    |> succeed
 
         _ ->
             succeed ty
