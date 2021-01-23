@@ -1,5 +1,14 @@
 module Compiler.ApplyAliases exposing (..)
 
+{-| The alternative to this module is to make Compiler.TypeInference do it instead,
+but at least for now I want to keep that module as light as possible.
+
+Later on, it might be good to solve alias dependencies and maybe unions, then allow
+TypeInference to do the replacement of annotations on the fly, which would avoid
+allocating another AST.
+
+-}
+
 import Dict exposing (Dict)
 import Lib
 import RefHierarchy
@@ -37,7 +46,7 @@ replaceType getAlias ty =
 
         CA.TypeAlias path t ->
             -- it's easy to deal with, but it shouldn't happen O_O
-            Debug.todo "why is this happening? o_O"
+            errorTodo "why is this happening? o_O"
 
         CA.TypeConstant { path, args } ->
             let
@@ -84,12 +93,11 @@ applyAliasesToModule : CA.Module () -> Res (CA.Module ())
 applyAliasesToModule mod =
     Lib.result_do (applyAliasesToAliases mod.aliases) <| \aliases ->
     Lib.result_do (applyAliasesToUnions aliases mod.unions) <| \unions ->
+    Lib.result_do (applyAliasesToValues aliases mod.values) <| \values ->
     Ok
         { aliases = aliases
         , unions = unions
-
-        -- TODO apply aliases to annotations
-        , values = mod.values
+        , values = values
         }
 
 
@@ -100,29 +108,115 @@ applyAliasesToModule mod =
 
 
 applyAliasesToUnions : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Res (Dict Name CA.UnionDef)
-applyAliasesToUnions aliases unions =
+applyAliasesToUnions aliases =
     let
-        getAlias : Name -> Res (Maybe CA.AliasDef)
+        getAlias : GetAlias
         getAlias name =
             Ok <| Dict.get name aliases
 
-        -- Err is not supposed to happen... I think?
-        yolo ty =
-            case replaceType getAlias ty of
-                Ok t ->
-                    t
+        mapConstructor c =
+            c.args
+                |> Lib.list_mapRes (replaceType getAlias)
+                |> Result.map (\args -> { c | args = args })
 
-                Err _ ->
-                    Debug.todo "yolo"
-
-        replaceCons cons =
-            { name = cons.name
-            , args = List.map yolo cons.args
-            }
+        mapUnion name union =
+            Result.map
+                (\cs -> { union | constructors = cs })
+                (Lib.list_mapRes mapConstructor union.constructors)
     in
-    unions
-        |> Dict.map (\k v -> { v | constructors = List.map replaceCons v.constructors })
-        |> Ok
+    Lib.dict_resMap mapUnion
+
+
+
+----
+--- Apply aliases to annotations
+--
+
+
+applyAliasesToValues : Dict Name CA.AliasDef -> Dict Name (CA.ValueDef e) -> Res (Dict Name (CA.ValueDef e))
+applyAliasesToValues aliases =
+    let
+        ga : GetAlias
+        ga name =
+            Dict.get name aliases |> Ok
+    in
+    Lib.dict_resMap (\k -> normalizeValueDef ga)
+
+
+normalizeValueDef : GetAlias -> CA.ValueDef e -> Res (CA.ValueDef e)
+normalizeValueDef ga vdef =
+    Result.map2
+        (\maybeAnnotation body ->
+            { vdef
+                | maybeAnnotation = maybeAnnotation
+                , body = body
+            }
+        )
+        (normalizeAnnotation ga vdef.maybeAnnotation)
+        (Lib.list_mapRes (normalizeStatement ga) vdef.body)
+
+
+normalizeAnnotation : GetAlias -> Maybe Type -> Res (Maybe Type)
+normalizeAnnotation ga maybeType =
+    case maybeType of
+        Nothing ->
+            Ok Nothing
+
+        Just ty ->
+            replaceType ga ty |> Result.map Just
+
+
+normalizeStatement : GetAlias -> CA.Statement e -> Res (CA.Statement e)
+normalizeStatement ga s =
+    case s of
+        CA.Definition vdef ->
+            Result.map CA.Definition (normalizeValueDef ga vdef)
+
+        CA.Evaluation expr ->
+            Result.map CA.Evaluation (normalizeExpr ga expr)
+
+
+normalizeExpr : GetAlias -> CA.Expression e -> Res (CA.Expression e)
+normalizeExpr ga expr =
+    case expr of
+        CA.NumberLiteral _ _ ->
+            Ok expr
+
+        CA.Variable _ _ ->
+            Ok expr
+
+        CA.Lambda e ar ->
+            ar.body
+                |> Lib.list_mapRes (normalizeStatement ga)
+                |> Result.map (\body -> CA.Lambda e { ar | body = body })
+
+        CA.Record e ar ->
+            ar.attrs
+                |> Lib.dict_resMap (\k -> normalizeExpr ga)
+                |> Result.map (\attrs -> CA.Record e { ar | attrs = attrs })
+
+        CA.Call e ar ->
+            Result.map2
+                (\ref arg -> CA.Call e { reference = ref, argument = arg })
+                (normalizeExpr ga ar.reference)
+                (normalizeArg ga ar.argument)
+
+        CA.If e ar ->
+            Result.map3
+                (\c t f -> CA.If e { start = ar.start, condition = c, true = t, false = f })
+                (Lib.list_mapRes (normalizeStatement ga) ar.condition)
+                (Lib.list_mapRes (normalizeStatement ga) ar.true)
+                (Lib.list_mapRes (normalizeStatement ga) ar.false)
+
+
+normalizeArg : GetAlias -> CA.Argument e -> Res (CA.Argument e)
+normalizeArg ga arg =
+    case arg of
+        CA.ArgumentMutable _ ->
+            Ok arg
+
+        CA.ArgumentExpression expr ->
+            Result.map CA.ArgumentExpression (normalizeExpr ga expr)
 
 
 

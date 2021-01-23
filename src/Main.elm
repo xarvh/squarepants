@@ -98,7 +98,9 @@ view model =
                 |> Result.mapError (always Dict.empty)
                 |> Result.andThen Compiler.FindUndeclared.moduleUndeclared
 
-        -- here a miracle happens
+        --
+        -- missing step: load undeclared from other modules
+        --
         alModule =
             caModule
                 |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
@@ -118,8 +120,8 @@ view model =
                 Err e ->
                     Html.code
                         []
-                        [ Compiler.TestHelpers.resultErrorToString code (Err e)
-                            |> Result.withDefault ""
+                        [ e
+                            |> Compiler.TestHelpers.errorToString code
                             |> Html.text
                         ]
     in
@@ -144,6 +146,11 @@ view model =
                 []
                 [ Html.h6 [] [ Html.text "Inference" ]
                 , onOk viewInference inference
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [ Html.text "Alias expansion" ]
+                , onOk viewCanonicalAst alModule
                 ]
             , Html.li
                 []
