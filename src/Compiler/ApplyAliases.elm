@@ -8,64 +8,11 @@ import Types.CanonicalAst as CA exposing (Name, Type)
 import Types.Error as Error exposing (Res, errorTodo)
 
 
-{-| -}
-applyAliasesToModule : CA.Module () -> Res (CA.Module ())
-applyAliasesToModule mod =
-    Lib.result_do (applyAliasesToAliases mod.aliases) <| \aliases ->
-    Lib.result_do (applyAliasesToUnions aliases mod.types) <| \unions ->
-    Ok
-        -- TODO apply aliases to unions
-        -- TODO apply aliases to annotations
-        { mod | aliases = aliases }
+type alias GetAlias =
+    Name -> Res (Maybe CA.AliasDef)
 
 
-
-
-applyAliasesToUnions : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Res (Dict Name CA.UnionDef)
-applyAliasesToUnions aliases unions =
-  Ok unions
-
-
-
-
-
-----
---- Apply aliases to aliases
---
-
-
-applyAliasesToAliases : Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
-applyAliasesToAliases als =
-    let
-        orderedAliases =
-            als
-                |> Dict.values
-                |> RefHierarchy.reorder .name findAllRefs_alias
-    in
-    Lib.result_fold (processAlias als) orderedAliases Dict.empty
-
-
-processAlias : Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
-processAlias allAliases al processedAliases =
-    let
-        getAlias name =
-            if Dict.member name allAliases then
-                case Dict.get name processedAliases of
-                    Nothing ->
-                        errorTodo "circular!"
-
-                    Just processedAlias ->
-                        Ok (Just processedAlias)
-
-            else
-                Ok Nothing
-    in
-    Lib.result_do (replaceType getAlias al.ty) <| \ty ->
-    Dict.insert al.name { al | ty = ty } processedAliases
-        |> Ok
-
-
-replaceType : (Name -> Res (Maybe CA.AliasDef)) -> Type -> Res Type
+replaceType : GetAlias -> Type -> Res Type
 replaceType getAlias ty =
     case ty of
         CA.TypeVariable { name } ->
@@ -124,6 +71,95 @@ replaceType getAlias ty =
                             |> expandAliasVariables typeByArgName
                             |> CA.TypeAlias path
                             |> Ok
+
+
+
+----
+--- Main
+--
+
+
+{-| -}
+applyAliasesToModule : CA.Module () -> Res (CA.Module ())
+applyAliasesToModule mod =
+    Lib.result_do (applyAliasesToAliases mod.aliases) <| \aliases ->
+    Lib.result_do (applyAliasesToUnions aliases mod.unions) <| \unions ->
+    Ok
+        { aliases = aliases
+        , unions = unions
+
+        -- TODO apply aliases to annotations
+        , values = mod.values
+        }
+
+
+
+----
+--- Apply aliases to unions
+--
+
+
+applyAliasesToUnions : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Res (Dict Name CA.UnionDef)
+applyAliasesToUnions aliases unions =
+    let
+        getAlias : Name -> Res (Maybe CA.AliasDef)
+        getAlias name =
+            Ok <| Dict.get name aliases
+
+        -- Err is not supposed to happen... I think?
+        yolo ty =
+            case replaceType getAlias ty of
+                Ok t ->
+                    t
+
+                Err _ ->
+                    Debug.todo "yolo"
+
+        replaceCons cons =
+            { name = cons.name
+            , args = List.map yolo cons.args
+            }
+    in
+    unions
+        |> Dict.map (\k v -> { v | constructors = List.map replaceCons v.constructors })
+        |> Ok
+
+
+
+----
+--- Apply aliases to aliases
+--
+
+
+applyAliasesToAliases : Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
+applyAliasesToAliases als =
+    let
+        orderedAliases =
+            als
+                |> Dict.values
+                |> RefHierarchy.reorder .name findAllRefs_alias
+    in
+    Lib.result_fold (processAlias als) orderedAliases Dict.empty
+
+
+processAlias : Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
+processAlias allAliases al processedAliases =
+    let
+        getAlias name =
+            if Dict.member name allAliases then
+                case Dict.get name processedAliases of
+                    Nothing ->
+                        errorTodo "circular!"
+
+                    Just processedAlias ->
+                        Ok (Just processedAlias)
+
+            else
+                Ok Nothing
+    in
+    Lib.result_do (replaceType getAlias al.ty) <| \ty ->
+    Dict.insert al.name { al | ty = ty } processedAliases
+        |> Ok
 
 
 expandAliasVariables : Dict Name Type -> Type -> Type

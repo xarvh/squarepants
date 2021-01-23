@@ -95,7 +95,7 @@ typeNone =
 
 inspectModule : Env -> CA.Module e -> Res Env
 inspectModule prelude mod =
-    result_do (Dict.foldl addConstructors (Ok prelude) mod.types) <| \env ->
+    result_do (Dict.foldl addConstructors (Ok prelude) mod.unions) <| \env ->
     let
         statements =
             mod.values

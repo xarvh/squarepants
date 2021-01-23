@@ -43,12 +43,12 @@ moduleUndeclared : CA.Module e -> Result Undeclared EnvUndeclared
 moduleUndeclared mod =
     let
         declaredTypes =
-            Set.fromList <| Dict.keys mod.aliases ++ Dict.keys mod.types
+            Set.fromList <| Dict.keys mod.aliases ++ Dict.keys mod.unions
 
         undeclaredTypes =
             Dict.empty
                 |> (\a -> Dict.foldl (\k -> addAliasUndeclared declaredTypes) a mod.aliases)
-                |> (\a -> Dict.foldl (\k -> addUnionUndeclared declaredTypes) a mod.types)
+                |> (\a -> Dict.foldl (\k -> addUnionUndeclared declaredTypes) a mod.unions)
 
         declared : EnvDeclared
         declared =

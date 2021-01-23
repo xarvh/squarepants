@@ -27,9 +27,7 @@ type alias Path =
 
 type alias Module e =
     { aliases : Dict Name AliasDef
-
-    -- TODO rename to unions?
-    , types : Dict Name UnionDef
+    , unions : Dict Name UnionDef
     , values : Dict Name (ValueDef e)
     }
 

@@ -33,7 +33,7 @@ translateModule : FA.Module -> Res (CA.Module ())
 translateModule faModule =
     translateModuleRec
         faModule
-        { types = Dict.empty
+        { unions = Dict.empty
         , values = Dict.empty
         , aliases = Dict.empty
         }
@@ -66,7 +66,7 @@ insertStatement faStatement caModule =
                 Ok { caModule | values = Dict.insert def.name def caModule.values }
 
         FA.TypeAlias fa ->
-            if Dict.member fa.name caModule.types then
+            if Dict.member fa.name caModule.unions then
                 errorTodo <| fa.name ++ " declared twice!"
 
             else
@@ -81,7 +81,7 @@ insertStatement faStatement caModule =
                 Ok { caModule | aliases = Dict.insert al.name al caModule.aliases }
 
         FA.UnionDef fa ->
-            if Dict.member fa.name caModule.types then
+            if Dict.member fa.name caModule.unions then
                 errorTodo <| fa.name ++ " declared twice!"
 
             else
@@ -106,14 +106,14 @@ insertStatement faStatement caModule =
                             consListToModule : List CA.UnionConstructor -> CA.Module ()
                             consListToModule consList =
                                 { caModule
-                                    | types =
+                                    | unions =
                                         Dict.insert
                                             fa.name
                                             { name = fa.name
                                             , args = fa.args
                                             , constructors = consList
                                             }
-                                            caModule.types
+                                            caModule.unions
                                 }
                         in
                         fa.constructors
