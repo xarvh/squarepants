@@ -3,10 +3,8 @@ module Lib exposing (..)
 import Dict exposing (Dict)
 
 
-{-| TODO rename to list\_foldlRes
--}
-result_fold : (item -> accum -> Result error accum) -> List item -> accum -> Result error accum
-result_fold f ls accum =
+list_foldlRes : (item -> accum -> Result error accum) -> List item -> accum -> Result error accum
+list_foldlRes f ls accum =
     case ls of
         [] ->
             Ok accum
@@ -17,12 +15,12 @@ result_fold f ls accum =
                     Err x
 
                 Ok newAccum ->
-                    result_fold f tail newAccum
+                    list_foldlRes f tail newAccum
 
 
 list_mapRes : (a -> Result error b) -> List a -> Result error (List b)
 list_mapRes f ls =
-    result_fold (\a acc -> Result.map (\b -> b :: acc) (f a)) ls []
+    list_foldlRes (\a acc -> Result.map (\b -> b :: acc) (f a)) ls []
         |> Result.map List.reverse
 
 
@@ -31,18 +29,15 @@ result_do a b =
 
 
 {-| TODO Doesn't Elm have a way to interrupt iterating over a Dict?
-TODO rename to dict\_foldRes
 -}
-dict_resFold : (comparable -> item -> accum -> Result error accum) -> Dict comparable item -> accum -> Result error accum
-dict_resFold f dict accum =
+dict_foldRes : (comparable -> item -> accum -> Result error accum) -> Dict comparable item -> accum -> Result error accum
+dict_foldRes f dict accum =
     Dict.foldl (\k v -> Result.andThen (f k v)) (Ok accum) dict
 
 
-{-| TODO rename to dict\_mapRes
--}
-dict_resMap : (comparable -> a -> Result error b) -> Dict comparable a -> Result error (Dict comparable b)
-dict_resMap f aDict =
-    dict_resFold (\k a bAcc -> Result.map (\b -> Dict.insert k b bAcc) (f k a)) aDict Dict.empty
+dict_mapRes : (comparable -> a -> Result error b) -> Dict comparable a -> Result error (Dict comparable b)
+dict_mapRes f aDict =
+    dict_foldRes (\k a bAcc -> Result.map (\b -> Dict.insert k b bAcc) (f k a)) aDict Dict.empty
 
 
 

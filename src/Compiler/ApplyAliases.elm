@@ -41,7 +41,7 @@ replaceType getAlias ty =
 
         CA.TypeRecord { extensible, attrs } ->
             attrs
-                |> Lib.dict_resMap (\k -> replaceType getAlias)
+                |> Lib.dict_mapRes (\k -> replaceType getAlias)
                 |> Result.map (\a -> CA.TypeRecord { extensible = extensible, attrs = a })
 
         CA.TypeAlias path t ->
@@ -55,7 +55,7 @@ replaceType getAlias ty =
                         |> replaceType getAlias
                         |> Result.map (\t -> t :: acc)
             in
-            Lib.result_do (Lib.result_fold fold args []) <| \replacedArgs ->
+            Lib.result_do (Lib.list_foldlRes fold args []) <| \replacedArgs ->
             case getAlias path of
                 Err e ->
                     Err e
@@ -124,7 +124,7 @@ applyAliasesToUnions aliases =
                 (\cs -> { union | constructors = cs })
                 (Lib.list_mapRes mapConstructor union.constructors)
     in
-    Lib.dict_resMap mapUnion
+    Lib.dict_mapRes mapUnion
 
 
 
@@ -140,7 +140,7 @@ applyAliasesToValues aliases =
         ga name =
             Dict.get name aliases |> Ok
     in
-    Lib.dict_resMap (\k -> normalizeValueDef ga)
+    Lib.dict_mapRes (\k -> normalizeValueDef ga)
 
 
 normalizeValueDef : GetAlias -> CA.ValueDef e -> Res (CA.ValueDef e)
@@ -192,7 +192,7 @@ normalizeExpr ga expr =
 
         CA.Record e ar ->
             ar.attrs
-                |> Lib.dict_resMap (\k -> normalizeExpr ga)
+                |> Lib.dict_mapRes (\k -> normalizeExpr ga)
                 |> Result.map (\attrs -> CA.Record e { ar | attrs = attrs })
 
         CA.Call e ar ->
@@ -233,7 +233,7 @@ applyAliasesToAliases als =
                 |> Dict.values
                 |> RefHierarchy.reorder .name findAllRefs_alias
     in
-    Lib.result_fold (processAlias als) orderedAliases Dict.empty
+    Lib.list_foldlRes (processAlias als) orderedAliases Dict.empty
 
 
 processAlias : Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
