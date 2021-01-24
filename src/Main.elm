@@ -3,6 +3,7 @@ module Main exposing (..)
 import Array exposing (Array)
 import Browser
 import Compiler.ApplyAliases
+import Compiler.ApplyAliases_Test
 import Compiler.FindUndeclared
 import Compiler.FindUndeclared_Test
 import Compiler.FormattableToCanonicalAst
@@ -35,8 +36,9 @@ runTests =
 
 initialCode =
     """
-alias Meh = Blah
-alias X = Meh
+alias A b c = List b
+a : A Number Bool
+a = a
     """
 
 
@@ -51,6 +53,7 @@ tests =
             , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.TypeInference_Test.tests
             , Compiler.FindUndeclared_Test.tests
+            , Compiler.ApplyAliases_Test.tests
             ]
 
 

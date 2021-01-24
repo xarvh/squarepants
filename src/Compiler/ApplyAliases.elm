@@ -22,7 +22,7 @@ type alias GetAlias =
 
 
 replaceType : GetAlias -> Type -> Res Type
-replaceType getAlias ty =
+replaceType ga ty =
     case ty of
         CA.TypeVariable { name } ->
             Ok ty
@@ -36,33 +36,27 @@ replaceType getAlias ty =
                         , to = t
                         }
                 )
-                (replaceType getAlias from)
-                (replaceType getAlias to)
+                (replaceType ga from)
+                (replaceType ga to)
 
         CA.TypeRecord { extensible, attrs } ->
             attrs
-                |> Lib.dict_mapRes (\k -> replaceType getAlias)
+                |> Lib.dict_mapRes (\k -> replaceType ga)
                 |> Result.map (\a -> CA.TypeRecord { extensible = extensible, attrs = a })
 
         CA.TypeAlias path t ->
             -- it's easy to deal with, but it shouldn't happen O_O
-            errorTodo "why is this happening? o_O"
+            errorTodo "Did we apply aliases twice?"
 
         CA.TypeConstant { path, args } ->
-            let
-                fold arg acc =
-                    arg
-                        |> replaceType getAlias
-                        |> Result.map (\t -> t :: acc)
-            in
-            Lib.result_do (Lib.list_foldlRes fold args []) <| \replacedArgs ->
-            case getAlias path of
+            Lib.result_do (Lib.list_mapRes (replaceType ga) args) <| \replacedArgs ->
+            case ga path of
                 Err e ->
                     Err e
 
                 Ok Nothing ->
                     { path = path
-                    , args = List.reverse replacedArgs
+                    , args = replacedArgs
                     }
                         |> CA.TypeConstant
                         |> Ok
