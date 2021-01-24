@@ -19,24 +19,24 @@ kindToToken index kind =
     }
 
 
-asDefinition : FA.Statement -> Maybe FA.ValueDef
+asDefinition : FA.Statement -> Result String FA.ValueDef
 asDefinition s =
     case s of
         FA.Definition a ->
-            Just a
+            Ok a
 
         _ ->
-            Nothing
+            Err "no def"
 
 
-asEvaluation : FA.Statement -> Maybe FA.Expression
+asEvaluation : FA.Statement -> Result String FA.Expression
 asEvaluation s =
     case s of
         FA.Evaluation a ->
-            Just a
+            Ok a
 
         _ ->
-            Nothing
+            Err "no eval"
 
 
 faBinop : Token.PrecedenceGroup -> { left : FA.Expression, op : String, right : FA.Expression } -> FA.Expression
@@ -47,21 +47,28 @@ faBinop group { left, op, right } =
         }
 
 
-firstStatement : String -> Maybe FA.Statement
+firstStatement : String -> Result String FA.Statement
 firstStatement code =
     code
         |> Compiler.TestHelpers.stringToFormattableModule
-        |> Result.toMaybe
-        |> Maybe.andThen List.head
+        |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 
-firstEvaluation : String -> Maybe FA.Expression
+firstEvaluation : String -> Result String FA.Expression
 firstEvaluation code =
     code
         |> firstStatement
-        |> Maybe.andThen asDefinition
-        |> Maybe.map (.body >> Tuple.first)
-        |> Maybe.andThen asEvaluation
+        |> Result.andThen asDefinition
+        |> Result.map (.body >> Tuple.first)
+        |> Result.andThen asEvaluation
+
+
+firstAnnotation : String -> Result String FA.Annotation
+firstAnnotation code =
+    code
+        |> firstStatement
+        |> Result.andThen asDefinition
+        |> Result.andThen (.maybeAnnotation >> Result.fromMaybe "no annotation")
 
 
 
@@ -77,6 +84,7 @@ tests =
         , annotations
         , unionDefs
         , lists
+        , records
         ]
 
 
@@ -194,15 +202,6 @@ lambdas =
 
 annotations : Test
 annotations =
-    let
-        firstAnnotation code =
-            code
-                |> Compiler.TestHelpers.stringToFormattableModule
-                |> Result.toMaybe
-                |> Maybe.andThen List.head
-                |> Maybe.andThen asDefinition
-                |> Maybe.andThen .maybeAnnotation
-    in
     Test.Group "Annotations"
         [ simpleTest
             { name = "Mutability 1"
@@ -214,7 +213,7 @@ annotations =
                         a = 1
                         """
             , expected =
-                Just
+                Ok
                     { mutable = False
                     , name = "a"
                     , type_ =
@@ -240,7 +239,7 @@ annotations =
                         a = 1
                         """
             , expected =
-                Just
+                Ok
                     { mutable = False
                     , name = "a"
                     , type_ =
@@ -266,7 +265,7 @@ annotations =
                         a = a
                         """
             , expected =
-                Just
+                Ok
                     { mutable = False
                     , name = "a"
                     , type_ =
@@ -293,20 +292,20 @@ unionDefs =
         asTypeDef s =
             case s of
                 FA.UnionDef a ->
-                    Just a
+                    Ok a
 
                 _ ->
-                    Nothing
+                    Err "no type def"
 
         firstTypeDef =
-            firstStatement >> Maybe.andThen asTypeDef
+            firstStatement >> Result.andThen asTypeDef
     in
     Test.Group "Type Definitions"
         [ simpleTest
             { name = "Parse inline def"
             , run = \_ -> firstTypeDef "type A b c = V1 b , V2 c , V3 , V4 b c"
             , expected =
-                Just
+                Ok
                     { args = [ "b", "c" ]
                     , constructors =
                         [ { args = [ FA.TypeConstantOrVariable { name = "b", args = [] } ], name = "V1" }
@@ -328,7 +327,7 @@ unionDefs =
                            , V2
                         """
             , expected =
-                Just
+                Ok
                     { args = []
                     , constructors =
                         [ { args = [], name = "V1" }
@@ -341,7 +340,7 @@ unionDefs =
             { name = "list argument"
             , run = \_ -> firstTypeDef "type A = A [Int]"
             , expected =
-                Just
+                Ok
                     { args = []
                     , name = "A"
                     , constructors =
@@ -370,7 +369,7 @@ lists =
                 , FA.NumberLiteral { end = 9, number = "2", start = 8 }
                 ]
                     |> FA.List
-                    |> Just
+                    |> Ok
             }
         , simpleTest
             { name = "multiline"
@@ -385,6 +384,56 @@ lists =
                 , FA.NumberLiteral { end = 18, number = "2", start = 17 }
                 ]
                     |> FA.List
-                    |> Just
+                    |> Ok
+            }
+        ]
+
+
+records : Test
+records =
+    Test.Group "Records"
+        [ simpleTest
+            { name = "inline"
+            , run = \_ -> firstEvaluation "a = { x = 1 }"
+            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.NumberLiteral { end = 11, number = "1", start = 10 }) ) ], maybeUpdateTarget = Nothing })
+            }
+        , simpleTest
+            { name = "multiline"
+            , run =
+                \_ ->
+                    """
+                    a = {
+                      , x = 1
+                      , y = 2
+                      }
+                    """
+                        |> firstEvaluation
+            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.NumberLiteral { end = 16, number = "1", start = 15 }) ), ( "y", Just (FA.NumberLiteral { end = 26, number = "2", start = 25 }) ) ], maybeUpdateTarget = Nothing })
+            }
+        , simpleTest
+            { name = "annotation, inline"
+            , run =
+                \_ ->
+                    """
+                    a : { x : Bool }
+                    a = a
+                    """
+                        |> firstAnnotation
+                        |> Result.map .type_
+            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeConstantOrVariable { args = [], name = "Bool" } ) ])
+            }
+        , simpleTest
+            { name = "annotation, multiline"
+            , run =
+                \_ ->
+                    """
+                    a : {
+                       , x : Bool
+                       }
+                    a = a
+                    """
+                        |> firstAnnotation
+                        |> Result.map .type_
+            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeConstantOrVariable { args = [], name = "Bool" } ) ])
             }
         ]

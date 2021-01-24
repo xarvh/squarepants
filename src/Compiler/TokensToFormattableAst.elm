@@ -542,10 +542,41 @@ typeExpr =
         [ typeParensOr
         , typeApplicationOr
         , typeListOr
+        , typeRecordOr
         , typeTupleOr
         , typeFunctionOr
+        ]
 
-        -- TODO record
+
+{-| Extensible records are not supported, and deliberately so.
+
+I'm not sure it's a good idea, but for the time being, I'd rather avoid supporting them as much as possible.
+
+-}
+typeRecordOr : Parser FA.Type -> Parser FA.Type
+typeRecordOr higher =
+    let
+        attrAssignment =
+            discardFirst
+                (kind <| Token.HasType { mutable = False })
+                (Parser.breakCircularDefinition <| \_ -> typeExpr)
+
+        attr =
+            Parser.tuple2 nonMutName attrAssignment
+
+        content =
+            do (rawList attr) <| \attrs ->
+            attrs
+                |> OneOrMore.toList
+                |> FA.TypeRecord
+                |> succeed
+    in
+    oneOf
+        [ higher
+        , do (surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (maybe content)) <| \maybeRecord ->
+        maybeRecord
+            |> Maybe.withDefault (FA.TypeRecord [])
+            |> succeed
         ]
 
 

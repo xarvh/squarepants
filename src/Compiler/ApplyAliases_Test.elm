@@ -7,6 +7,10 @@ import Test exposing (Test)
 import Types.CanonicalAst as CA
 
 
+isOk =
+    Test.isOk Debug.toString
+
+
 simpleTest =
     Test.simple Debug.toString
 
@@ -71,6 +75,30 @@ tests =
                             |> applyAndGet .values "a"
                 , test = Test.errorShouldContain "alias A needs 2 args, but was used with 1"
                 }
+            , simpleTest
+                { name = "record"
+                , run =
+                    \_ ->
+                        """
+                        alias A b = { x : b, y : b }
+                        a : A Bool
+                        a = a
+                        """
+                            |> applyAndGet .values "a"
+                            |> Result.map .maybeAnnotation
+                , expected =
+                    { attrs =
+                        Dict.fromList
+                            [ ( "x", CA.TypeConstant { args = [], path = "Bool" } )
+                            , ( "y", CA.TypeConstant { args = [], path = "Bool" } )
+                            ]
+                    , extensible = Nothing
+                    }
+                        |> CA.TypeRecord
+                        |> CA.TypeAlias "A"
+                        |> Just
+                        |> Ok
+                }
             ]
         , Test.Group "unions"
             [ simpleTest
@@ -116,6 +144,18 @@ tests =
                             |> Result.map .ty
                 , expected =
                     Ok <| CA.TypeAlias "A" (CA.TypeConstant { path = "List", args = [ CA.TypeConstant { path = "Bool", args = [] } ] })
+                }
+            , hasError
+                { name = "reject circular aliases"
+                , run =
+                    \_ ->
+                        """
+                        alias A = B -> B
+                        alias B = [ A ]
+                        """
+                            |> applyAndGet .aliases "B"
+                , test =
+                    Test.errorShouldContain "circular"
                 }
             ]
         ]
