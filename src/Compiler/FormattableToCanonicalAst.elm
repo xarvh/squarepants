@@ -1,5 +1,6 @@
 module Compiler.FormattableToCanonicalAst exposing (..)
 
+import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import Lib
 import OneOrMore exposing (OneOrMore)
@@ -404,6 +405,19 @@ translateExpression rs faExpr =
                 |> CA.Record ()
                 |> caUpdateTarget.wrapper
                 |> Ok
+
+        FA.List faItems ->
+            let
+                cons item list =
+                    CA.Call ()
+                        { reference = CA.Call () { reference = Core.cons, argument = CA.ArgumentExpression item }
+                        , argument = CA.ArgumentExpression list
+                        }
+            in
+            faItems
+                -- TODO this is more List.reverse than necessary
+                |> Lib.list_mapRes (translateExpression rs)
+                |> Result.map (List.foldr cons Core.nil)
 
         _ ->
             errorTodo <| "FA expression type not supported for now:" ++ Debug.toString faExpr

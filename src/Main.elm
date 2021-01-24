@@ -36,9 +36,12 @@ runTests =
 
 initialCode =
     """
-alias A b c = List b
-a : A Number Bool
-a = a
+type List item = Nil, Cons item (List item)
+
+type None = None
+
+type Bool = True, False
+
     """
 
 
@@ -254,6 +257,11 @@ viewCanonicalAst mod =
             |> List.sortBy .name
             |> List.map viewCaAlias
             |> Html.code []
+        , mod.unions
+            |> Dict.values
+            |> List.sortBy .name
+            |> List.map viewCaUnion
+            |> Html.code []
         , mod.values
             |> Dict.values
             |> List.sortBy .name
@@ -276,6 +284,19 @@ viewCaAlias al =
             |> Html.text
         ]
 
+viewCaUnion : CA.UnionDef -> Html msg
+viewCaUnion u =
+    Html.div
+        []
+        [ [ "union:"
+          , u.name
+          , String.join " " u.args
+          , "="
+          , Debug.toString u.constructors
+          ]
+            |> String.join " "
+            |> Html.text
+        ]
 
 viewCaDefinition : CA.ValueDef e -> Html msg
 viewCaDefinition def =

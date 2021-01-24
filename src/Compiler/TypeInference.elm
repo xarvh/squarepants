@@ -1,5 +1,6 @@
 module Compiler.TypeInference exposing (..)
 
+import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import Generator as TyGen
 import Html
@@ -78,24 +79,13 @@ nr_map f tr =
 
 
 ----
---- Core types
---
-
-
-typeNone : Type
-typeNone =
-    CA.TypeConstant { path = "None", args = [] }
-
-
-
-----
 --- Modules
 --
 
 
 inspectModule : Env -> CA.Module e -> Res Env
 inspectModule prelude mod =
-    result_do (Dict.foldl addConstructors (Ok prelude) mod.unions) <| \env ->
+    result_do (Lib.dict_foldRes (\k -> addConstructors) mod.unions prelude) <| \env ->
     let
         statements =
             mod.values
@@ -114,47 +104,40 @@ inspectModule prelude mod =
     envResult
 
 
-addConstructors : String -> CA.UnionDef -> Res Env -> Res Env
-addConstructors _ def resEnv =
-    result_do resEnv <| \env ->
-    addConstructorsRec def def.constructors env
+addConstructors : CA.UnionDef -> Env -> Res Env
+addConstructors def env =
+    Lib.list_foldlRes (addConstructor def) def.constructors env
 
 
-addConstructorsRec : CA.UnionDef -> List CA.UnionConstructor -> Env -> Res Env
-addConstructorsRec unionDef constructors env =
-    case constructors of
-        [] ->
-            Ok env
+addConstructor : CA.UnionDef -> CA.UnionConstructor -> Env -> Res Env
+addConstructor unionDef ctor env =
+    let
+        args =
+            List.map (\a -> CA.TypeVariable { name = a }) unionDef.args
 
-        ctor :: cTail ->
-            let
-                args =
-                    List.map (\a -> CA.TypeVariable { name = a }) unionDef.args
+        ctorType =
+            -- FindUndeclared has checked already that all constructors use only declared var types
+            List.foldr fold (CA.TypeConstant { path = unionDef.name, args = args }) ctor.args
 
-                ctorType =
-                    -- TODO ensure that all constructors use declared var types?
-                    -- ^ This is something that should be done by FormattableToCanonical?
-                    List.foldr fold (CA.TypeConstant { path = unionDef.name, args = args }) ctor.args
+        fold ty accum =
+            CA.TypeFunction
+                { from = ty
+                , fromIsMutable = Just False
+                , to = accum
+                }
+    in
+    case validateType False ctorType of
+        Just err ->
+            errorTodo err
 
-                fold ty accum =
-                    CA.TypeFunction
-                        { from = ty
-                        , fromIsMutable = Just False
-                        , to = accum
-                        }
-            in
-            case validateType False ctorType of
-                Just err ->
-                    errorTodo err
-
-                Nothing ->
-                    env
-                        |> Dict.insert ctor.name
-                            { type_ = ctorType
-                            , forall = Set.empty
-                            , mutable = Just False
-                            }
-                        |> addConstructorsRec unionDef cTail
+        Nothing ->
+            env
+                |> Dict.insert ctor.name
+                    { type_ = ctorType
+                    , forall = Set.empty
+                    , mutable = Just False
+                    }
+                |> Ok
 
 
 
@@ -741,7 +724,7 @@ inspect_statement statement env subs =
                     case annotationTooGeneral maybeAnnotation forall of
                         Nothing ->
                             -- A definition has no type
-                            Ok ( typeNone, env1, subs2 )
+                            Ok ( Core.noneType, env1, subs2 )
                                 |> TyGen.wrap
 
                         Just error ->
@@ -802,7 +785,7 @@ inspectStatementList stats parentEnv subs =
             List.map CA.Definition orderedDefinitions ++ nonDefs
     in
     do_nr (insertDefinitionRec definitions parentEnv) <| \localEnv ->
-    do_nr (inspectStatementRec newStats typeNone localEnv subs) <| \typeAndEnvAndSubs ->
+    do_nr (inspectStatementRec newStats Core.noneType localEnv subs) <| \typeAndEnvAndSubs ->
     TyGen.wrap <|
         let
             ( ty, env, _ ) =

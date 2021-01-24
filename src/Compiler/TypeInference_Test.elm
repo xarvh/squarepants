@@ -1,8 +1,10 @@
 module Compiler.TypeInference_Test exposing (..)
 
+import Compiler.CoreModule
 import Compiler.TestHelpers
 import Compiler.TypeInference as TI
 import Dict exposing (Dict)
+import Lib
 import Set exposing (Set)
 import Test exposing (Test)
 import Types.CanonicalAst as CA exposing (Name)
@@ -38,10 +40,7 @@ infer name code =
         |> Result.andThen (Dict.get name >> Result.fromMaybe "Dict fail")
 
 
-
--- preamble : TI.Env
-
-
+preamble : TI.Env
 preamble =
     let
         em x =
@@ -50,27 +49,27 @@ preamble =
             , mutable = Just False
             }
     in
-    Dict.fromList
-        [ ( "add", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
-        , ( "+", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
-        , ( "not", em <| function (constant "Bool") (constant "Bool") )
-        , ( "True", em <| constant "Bool" )
-        , ( "False", em <| constant "Bool" )
-        , ( "reset", em <| CA.TypeFunction { from = constant "Number", fromIsMutable = Just True, to = constant "None" } )
-        , ( "+="
-          , em <|
-                CA.TypeFunction
-                    { from = CA.TypeConstant { path = "Number", args = [] }
-                    , fromIsMutable = Just False
-                    , to =
-                        CA.TypeFunction
-                            { from = CA.TypeConstant { path = "Number", args = [] }
-                            , fromIsMutable = Just True
-                            , to = constant "None"
-                            }
-                    }
-          )
-        ]
+    [ ( "add", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
+    , ( "+", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
+    , ( "not", em <| function (constant "Bool") (constant "Bool") )
+    , ( "reset", em <| CA.TypeFunction { from = constant "Number", fromIsMutable = Just True, to = constant "None" } )
+    , ( "+="
+      , em <|
+            CA.TypeFunction
+                { from = CA.TypeConstant { path = "Number", args = [] }
+                , fromIsMutable = Just False
+                , to =
+                    CA.TypeFunction
+                        { from = CA.TypeConstant { path = "Number", args = [] }
+                        , fromIsMutable = Just True
+                        , to = constant "None"
+                        }
+                }
+      )
+    ]
+        |> Dict.fromList
+        |> Lib.dict_foldRes (\k -> TI.addConstructors) Compiler.CoreModule.coreModule.unions
+        |> Result.withDefault Dict.empty
 
 
 tests : Test

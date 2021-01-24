@@ -1,7 +1,8 @@
 Concept
 =======
 
-"All import statements are declared in a single file, used by the whole project"
+All imports are specified in a single file, used by the whole project, so you
+don't have to repeat them for each module.
 
 
 Rules
@@ -109,10 +110,16 @@ Available modules are determined by the project's single configuration file, and
 Hoped Advantages
 ================
 1. don't have to write "import Dict exposing (Dict)" on every single module. In fact, I don't have to write import s at all, and this is really good because I want rapid prototyping
+
 2. you can load two versions of the same library and give it different names
+
 3. globals are tightily controlled and there is a single place where you can see them immediately
+
 4. No guessing what module "Cart" comes from, when you see "Cart" it's always the same module across the whole project.
+
 5. You can have your editor load the meta file and highlight all globals/imported symbols
+
+6. You can expose `log` from `Debug` and then remove it enitrely or remap it to something else entirely (or just use the rename tool)
 
 
 
