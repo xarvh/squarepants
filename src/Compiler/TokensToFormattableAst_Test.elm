@@ -218,13 +218,13 @@ annotations =
                     , name = "a"
                     , type_ =
                         FA.TypeFunction
-                            { from = FA.TypeConstantOrVariable { name = "Number", args = [] }
+                            { from = FA.TypeName { name = "Number" }
                             , fromIsMutable = True
                             , to =
                                 FA.TypeFunction
-                                    { from = FA.TypeConstantOrVariable { name = "Int", args = [] }
+                                    { from = FA.TypeName { name = "Int" }
                                     , fromIsMutable = False
-                                    , to = FA.TypeConstantOrVariable { name = "None", args = [] }
+                                    , to = FA.TypeName { name = "None" }
                                     }
                             }
                     }
@@ -244,13 +244,13 @@ annotations =
                     , name = "a"
                     , type_ =
                         FA.TypeFunction
-                            { from = FA.TypeConstantOrVariable { name = "Number", args = [] }
+                            { from = FA.TypeName { name = "Number" }
                             , fromIsMutable = False
                             , to =
                                 FA.TypeFunction
-                                    { from = FA.TypeConstantOrVariable { name = "Int", args = [] }
+                                    { from = FA.TypeName { name = "Int" }
                                     , fromIsMutable = True
-                                    , to = FA.TypeConstantOrVariable { name = "None", args = [] }
+                                    , to = FA.TypeName { name = "None" }
                                     }
                             }
                     }
@@ -272,14 +272,13 @@ annotations =
                         FA.TypeFunction
                             { from =
                                 FA.TypeTuple
-                                    [ FA.TypeConstantOrVariable
-                                        { args = []
-                                        , name = "Int"
+                                    [ FA.TypeName
+                                        { name = "Int"
                                         }
-                                    , FA.TypeConstantOrVariable { args = [], name = "Int" }
+                                    , FA.TypeName { name = "Int" }
                                     ]
                             , fromIsMutable = False
-                            , to = FA.TypeConstantOrVariable { args = [], name = "Bool" }
+                            , to = FA.TypeName { name = "Bool" }
                             }
                     }
             }
@@ -303,15 +302,15 @@ unionDefs =
     Test.Group "Type Definitions"
         [ simpleTest
             { name = "Parse inline def"
-            , run = \_ -> firstTypeDef "type A b c = V1 b , V2 c , V3 , V4 b c"
+            , run = \_ -> firstTypeDef "type A b c = V1 b, V2 c, V3, V4 b c"
             , expected =
                 Ok
                     { args = [ "b", "c" ]
                     , constructors =
-                        [ { args = [ FA.TypeConstantOrVariable { name = "b", args = [] } ], name = "V1" }
-                        , { args = [ FA.TypeConstantOrVariable { name = "c", args = [] } ], name = "V2" }
-                        , { args = [], name = "V3" }
-                        , { args = [ FA.TypeConstantOrVariable { name = "b", args = [] }, FA.TypeConstantOrVariable { name = "c", args = [] } ], name = "V4" }
+                        [ FA.TypePolymorphic { args = [ FA.TypeName { name = "b" } ], name = "V1" }
+                        , FA.TypePolymorphic { args = [ FA.TypeName { name = "c" } ], name = "V2" }
+                        , FA.TypeName { name = "V3" }
+                        , FA.TypePolymorphic { args = [ FA.TypeName { name = "b" }, FA.TypeName { name = "c" } ], name = "V4" }
                         ]
                     , name = "A"
                     }
@@ -327,14 +326,14 @@ unionDefs =
                            , V2
                         """
             , expected =
-                Ok
-                    { args = []
-                    , constructors =
-                        [ { args = [], name = "V1" }
-                        , { args = [], name = "V2" }
-                        ]
-                    , name = "A"
-                    }
+                { name = "A"
+                , args = []
+                , constructors =
+                    [ FA.TypeName { name = "V1" }
+                    , FA.TypeName { name = "V2" }
+                    ]
+                }
+                    |> Ok
             }
         , simpleTest
             { name = "list argument"
@@ -344,14 +343,15 @@ unionDefs =
                     { args = []
                     , name = "A"
                     , constructors =
-                        [ { args =
-                                [ FA.TypeConstantOrVariable
+                        [ FA.TypePolymorphic
+                            { name = "A"
+                            , args =
+                                [ FA.TypePolymorphic
                                     { name = "List"
-                                    , args = [ FA.TypeConstantOrVariable { args = [], name = "Int" } ]
+                                    , args = [ FA.TypeName { name = "Int" } ]
                                     }
                                 ]
-                          , name = "A"
-                          }
+                            }
                         ]
                     }
             }
@@ -420,7 +420,7 @@ records =
                     """
                         |> firstAnnotation
                         |> Result.map .type_
-            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeConstantOrVariable { args = [], name = "Bool" } ) ])
+            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeName { name = "Bool" } ) ])
             }
         , simpleTest
             { name = "annotation, multiline"
@@ -434,6 +434,6 @@ records =
                     """
                         |> firstAnnotation
                         |> Result.map .type_
-            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeConstantOrVariable { args = [], name = "Bool" } ) ])
+            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeName { name = "Bool" } ) ])
             }
         ]

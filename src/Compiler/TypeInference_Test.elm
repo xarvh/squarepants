@@ -506,6 +506,16 @@ higherOrderTypes =
                     , forall = Set.singleton "a"
                     }
             }
+        , simpleTest
+            { name = "Union type constructors"
+            , run = \_ -> infer "L" "type X a = L"
+            , expected =
+                Ok
+                    { type_ = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], path = "X" }
+                    , mutable = Just False
+                    , forall = Set.singleton "a"
+                    }
+            }
         ]
 
 

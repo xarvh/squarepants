@@ -256,7 +256,7 @@ unionDef =
     do (kind <| Token.Name { mutable = False } "type") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
-    do (inlineOrIndented <| rawList constructor) <| \cons ->
+    do (inlineOrIndented <| rawList typeExpr) <| \cons ->
     if mutable then
         Parser.abort "can't use @= to define a type"
 
@@ -269,21 +269,21 @@ unionDef =
             |> succeed
 
 
-constructor : Parser { name : String, args : List FA.Type }
-constructor =
-    let
-        ctorArgs =
-            oneOf
-                [ typeTerm
-                , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) typeExpr
-                ]
-    in
-    do nonMutName <| \name ->
-    do (zeroOrMore ctorArgs) <| \args ->
-    succeed { name = name, args = args }
 
-
-
+{-
+   constructor : Parser { name : String, args : List FA.Type }
+   constructor =
+       let
+           ctorArgs =
+               oneOf
+                   [ typeTerm
+                   , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) typeExpr
+                   ]
+       in
+       do nonMutName <| \name ->
+       do (zeroOrMore ctorArgs) <| \args ->
+       succeed { name = name, args = args }
+-}
 ----
 --- Term
 --
@@ -532,7 +532,7 @@ hasType =
 
 typeTerm : Parser FA.Type
 typeTerm =
-    Parser.map (\n -> FA.TypeConstantOrVariable { name = n, args = [] }) nonMutName
+    Parser.map (\n -> FA.TypeName { name = n }) nonMutName
 
 
 typeExpr : Parser FA.Type
@@ -540,9 +540,9 @@ typeExpr =
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr
-        , typeApplicationOr
         , typeListOr
         , typeRecordOr
+        , typeApplicationOr
         , typeTupleOr
         , typeFunctionOr
         ]
@@ -551,6 +551,8 @@ typeExpr =
 {-| Extensible records are not supported, and deliberately so.
 
 I'm not sure it's a good idea, but for the time being, I'd rather avoid supporting them as much as possible.
+
+TODO: merge with `recordOr`, to ensure that types and values use the same syntax, as a human would expect
 
 -}
 typeRecordOr : Parser FA.Type -> Parser FA.Type
@@ -626,7 +628,7 @@ typeListOr higher =
           { name = "List"
           , args = [ t ]
           }
-              |> FA.TypeConstantOrVariable
+              |> FA.TypePolymorphic
               |> succeed
         ]
 
@@ -677,21 +679,21 @@ typeApplicationOr : Parser FA.Type -> Parser FA.Type
 typeApplicationOr higher =
     do higher <| \ty ->
     case ty of
-        FA.TypeConstantOrVariable fa ->
-            if fa.args /= [] then
-                -- TODO rewrite this parser, it's kind of terrible
-                Parser.abort "This shouldn't happen, there is a problem with the parser code."
+        FA.TypeName { name } ->
+            do (zeroOrMore higher) <| \args ->
+            if args == [] then
+                succeed ty
 
             else
-                do (zeroOrMore higher) <| \args ->
-                { name = fa.name
+                { name = name
                 , args = args
                 }
-                    |> FA.TypeConstantOrVariable
+                    |> FA.TypePolymorphic
                     |> succeed
 
         _ ->
             succeed ty
+
 
 
 

@@ -1,6 +1,7 @@
 module Compiler.FormattableToCanonicalAst exposing (..)
 
 import Dict exposing (Dict)
+import Lib
 import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
 import Set exposing (Set)
@@ -84,60 +85,65 @@ insertStatement faStatement caModule =
             if Dict.member fa.name caModule.unions then
                 errorTodo <| fa.name ++ " declared twice!"
 
+            else if not <| firstCharIsUpper fa.name then
+                errorTodo "type name should be uppercase"
+
             else
-                case validateTypeDefinition fa of
-                    Just error ->
-                        errorTodo error
-
-                    Nothing ->
-                        let
-                            translateConstructor : FA.UnionConstructor -> Res CA.UnionConstructor
-                            translateConstructor faCons =
-                                faCons.args
-                                    |> List.map translateType
-                                    |> listResultToResultList
-                                    |> Result.map
-                                        (\caArgs ->
-                                            { name = faCons.name
-                                            , args = caArgs
-                                            }
-                                        )
-
-                            consListToModule : List CA.UnionConstructor -> CA.Module ()
-                            consListToModule consList =
-                                { caModule
-                                    | unions =
-                                        Dict.insert
-                                            fa.name
-                                            { name = fa.name
-                                            , args = fa.args
-                                            , constructors = consList
-                                            }
-                                            caModule.unions
-                                }
-                        in
-                        fa.constructors
-                            |> List.map translateConstructor
-                            |> listResultToResultList
-                            |> Result.map consListToModule
+                let
+                    constructorListToModule : List CA.UnionConstructor -> CA.Module ()
+                    constructorListToModule consList =
+                        { caModule
+                            | unions =
+                                Dict.insert
+                                    fa.name
+                                    { name = fa.name
+                                    , args = fa.args
+                                    , constructors = consList
+                                    }
+                                    caModule.unions
+                        }
+                in
+                fa.constructors
+                    |> Lib.list_mapRes translateConstructor
+                    |> Result.andThen errorOnDuplicateConstructorNames
+                    |> Result.map constructorListToModule
 
 
-validateTypeDefinition { name, args, constructors } =
+translateConstructor : FA.Type -> Res CA.UnionConstructor
+translateConstructor faType =
+    case faType of
+        FA.TypeName { name } ->
+            translateConstructor (FA.TypePolymorphic { name = name, args = [] })
+
+        FA.TypePolymorphic { name, args } ->
+            if not <| firstCharIsUpper name then
+                errorTodo "constructor name must start with a uppercase letter"
+
+            else
+                args
+                    |> Lib.list_mapRes translateType
+                    |> Result.map
+                        (\caArgs ->
+                            { name = name
+                            , args = caArgs
+                            }
+                        )
+
+        _ ->
+            errorTodo "either this constructor does not start with a name, either there's something off with the operators"
+
+
+errorOnDuplicateConstructorNames : List CA.UnionConstructor -> Res (List CA.UnionConstructor)
+errorOnDuplicateConstructorNames constructors =
     let
         names =
             List.map .name constructors
     in
-    if not <| firstCharIsUpper name then
-        Just "type names should be uppercase"
-
-    else if List.any (\n -> not <| firstCharIsUpper n) names then
-        Just "constructor names should be uppercase"
-
-    else if Set.size (Set.fromList names) < List.length names then
-        Just "duplicate constructor names"
+    if Set.size (Set.fromList names) < List.length names then
+        errorTodo "duplicate constructor names"
 
     else
-        Nothing
+        Ok constructors
 
 
 
@@ -682,7 +688,10 @@ firstCharIsUpper s =
 translateType : FA.Type -> Res CA.Type
 translateType faType =
     case faType of
-        FA.TypeConstantOrVariable { name, args } ->
+        FA.TypeName { name } ->
+            translateType <| FA.TypePolymorphic { name = name, args = [] }
+
+        FA.TypePolymorphic { name, args } ->
             do (stringToStructuredName Nothing name) <| \sname ->
             if sname.attrPath /= [] then
                 errorTodo "no attribute accessors on types"

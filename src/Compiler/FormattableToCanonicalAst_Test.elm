@@ -91,6 +91,15 @@ unionTypes =
             , run = \_ -> stringToCanonicalModule "type A = a"
             , test = Test.errorShouldContain "constructor"
             }
+        , hasError
+            { name = "tuples op precedence"
+            , run = \_ -> stringToCanonicalModule "type A = X Bool & Bool"
+            , test = Test.errorShouldContain "operators"
+            }
+        , isOk
+            { name = "tuples op precedence works with parens"
+            , run = \_ -> stringToCanonicalModule "type A = X (Bool & Bool)"
+            }
         ]
 
 

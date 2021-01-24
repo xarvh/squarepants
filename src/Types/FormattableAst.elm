@@ -48,18 +48,23 @@ type Statement
     | UnionDef
         { name : String
         , args : List String
-        , constructors : List UnionConstructor
+        , constructors : List Type
         }
 
 
+{-
 type alias UnionConstructor =
     { name : String
     , args : List Type
     }
+-}
 
 
 type Type
-    = TypeConstantOrVariable
+    = TypeName
+        { name : String
+        }
+    | TypePolymorphic
         { name : String
         , args : List Type
         }
