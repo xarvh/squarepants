@@ -46,12 +46,12 @@ tests =
                         }
             }
         , simpleTest
-            { name = "checks alias arguments"
+            { name = "reject aliases with undeclared var types"
             , run = \_ -> undeclared "alias K a = List b"
             , expected = Ok <| Err <| Dict.singleton "b" [ 111 ]
             }
         , simpleTest
-            { name = "checks union argumeents"
+            { name = "reject union constructors with undeclared var types"
             , run = \_ -> undeclared "type Q b c = Q d"
             , expected = Ok <| Err <| Dict.singleton "d" [ 111 ]
             }

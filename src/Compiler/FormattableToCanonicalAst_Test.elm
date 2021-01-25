@@ -8,6 +8,26 @@ import Test exposing (Test)
 import Types.CanonicalAst as CA exposing (Name)
 
 
+tests : Test
+tests =
+    Test.Group "FormattableToCanonicalAst"
+        [ unionTypes
+        , binops
+        , tuples
+        , lists
+        , moduleAndAttributePaths
+        , records
+        , patterns
+        , annotations
+        ]
+
+
+
+----
+---
+--
+
+
 simpleTest =
     Test.simple Debug.toString
 
@@ -52,24 +72,6 @@ asEvaluation s =
 
         _ ->
             Nothing
-
-
-
-----
----
---
-
-
-tests : Test
-tests =
-    Test.Group "FormattableToCanonicalAst"
-        [ unionTypes
-        , binops
-        , tuples
-        , lists
-        , moduleAndAttributePaths
-        , records
-        ]
 
 
 
@@ -188,7 +190,7 @@ lists =
                                 }
                             )
                     , mutable = False
-                    , name = "l"
+                    , pattern = CA.PatternAny "l"
                     }
             }
         ]
@@ -263,7 +265,7 @@ tuples =
                                 }
                             )
                     , mutable = False
-                    , name = "a"
+                    , pattern = CA.PatternAny "a"
                     }
             }
         , hasError
@@ -347,5 +349,62 @@ records =
                 }
                     |> CA.Record ()
                     |> Ok
+            }
+        ]
+
+
+
+----
+--- Pattern
+--
+
+
+patterns : Test
+patterns =
+    Test.Group "Patterns"
+        [ hasError
+            { name = "can't declare functions inside patterns "
+            , run =
+                \_ ->
+                    """
+                    x =
+                      c (a b) = 2
+                    """
+                        |> firstEvaluation "x"
+            , test = Test.errorShouldContain "function"
+            }
+        ]
+
+
+
+----
+--- Annotations
+--
+
+
+annotations : Test
+annotations =
+    Test.Group "Annotations"
+        [ hasError
+            { name = "annotation mutability must match definition's"
+            , run =
+                \_ ->
+                    """
+                    a : Number
+                    a @= 3
+                    """
+                        |> firstEvaluation "a"
+            , test = Test.errorShouldContain "mutability"
+            }
+        , hasError
+            { name = "annotation mutability must match definition's"
+            , run =
+                \_ ->
+                    """
+                    a : Number
+                    b = 3
+                    """
+                        |> firstEvaluation "b"
+            , test = Test.errorShouldContain "name"
             }
         ]

@@ -202,6 +202,9 @@ normalizeExpr ga expr =
                 (Lib.list_mapRes (normalizeStatement ga) ar.true)
                 (Lib.list_mapRes (normalizeStatement ga) ar.false)
 
+        CA.Try e ar ->
+            errorTodo "NI ApplyAliases Try"
+
 
 normalizeArg : GetAlias -> CA.Argument e -> Res (CA.Argument e)
 normalizeArg ga arg =

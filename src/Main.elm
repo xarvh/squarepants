@@ -36,12 +36,9 @@ runTests =
 
 initialCode =
     """
-type List item = Nil, Cons item (List item)
-
-type None = None
-
-type Bool = True, False
-
+x q =
+    { f } = q
+    f
     """
 
 
@@ -139,6 +136,7 @@ view model =
         ]
         [ Html.textarea
             [ style "width" "50%"
+            , style "min-width" "30%"
             , style "height" "99vh"
 
             --             , style "background-color" "black"
@@ -202,13 +200,20 @@ view model =
 --
 
 
-viewInference : Compiler.TypeInference.Env -> Html msg
-viewInference env =
-    env
-        |> Dict.toList
-        |> List.filter (\( k, v ) -> not (Dict.member k preamble))
-        |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
-        |> Html.div []
+viewInference : Compiler.TypeInference.Eas -> Html msg
+viewInference ( env, subs ) =
+    Html.div
+        []
+        [ env
+            |> Dict.toList
+            |> List.filter (\( k, v ) -> not (Dict.member k preamble))
+            |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
+            |> Html.div []
+        , subs
+            |> Dict.toList
+            |> List.map (\( k, v ) -> Html.div [] [ k ++ " => " ++ viewCaType v |> Html.text ])
+            |> Html.div []
+        ]
 
 
 viewSchema : Compiler.TypeInference.EnvEntry -> String
@@ -264,7 +269,7 @@ viewCanonicalAst mod =
             |> Html.code []
         , mod.values
             |> Dict.values
-            |> List.sortBy .name
+            --             |> List.sortBy .name
             |> List.map viewCaDefinition
             |> Html.code []
         ]
@@ -284,6 +289,7 @@ viewCaAlias al =
             |> Html.text
         ]
 
+
 viewCaUnion : CA.UnionDef -> Html msg
 viewCaUnion u =
     Html.div
@@ -298,6 +304,7 @@ viewCaUnion u =
             |> Html.text
         ]
 
+
 viewCaDefinition : CA.ValueDef e -> Html msg
 viewCaDefinition def =
     Html.div
@@ -305,17 +312,30 @@ viewCaDefinition def =
         [ Html.div
             []
             [ def.maybeAnnotation
-                |> Maybe.map (\x -> def.name ++ " : " ++ viewCaType x)
+                |> Maybe.map (\x -> viewCaPattern def.pattern ++ " : " ++ viewCaType x)
                 |> Maybe.withDefault ""
                 |> Html.text
             ]
         , Html.div
             []
-            [ Html.text <| def.name ++ " = " ]
+            [ Html.text <| viewCaPattern def.pattern ++ " = " ]
         , Html.div
             [ style "padding-left" "2em" ]
             (List.map viewCaStatement def.body)
         ]
+
+
+viewCaPattern : CA.Pattern -> String
+viewCaPattern p =
+    case p of
+        CA.PatternDiscard ->
+            "_"
+
+        CA.PatternAny n ->
+            n
+
+        _ ->
+            Debug.toString p
 
 
 viewCaType : CA.Type -> String
@@ -350,7 +370,7 @@ viewCaType ty =
                 var =
                     case args.extensible of
                         Just name ->
-                            name ++ " with"
+                            name ++ " with "
 
                         Nothing ->
                             ""
@@ -451,30 +471,32 @@ viewFaStatement s =
                 , viewFaExpression expr
                 ]
 
-        FA.Definition { name, maybeAnnotation, parameters, body } ->
+        FA.Definition { pattern, maybeAnnotation, body } ->
             Html.div
                 []
                 [ Html.span
-                    [ style "font-weight" "bold" ]
-                    [ let
-                        (FA.PatternAny n) =
-                            name
-                      in
-                      Html.text n
+                    []
+                    [ Html.text (viewFaPattern pattern)
                     ]
                 , maybeAnnotation
                     |> Maybe.map (\x -> " : " ++ Debug.toString x)
                     |> Maybe.withDefault ""
                     |> Html.text
-                , parameters
-                    |> List.map (\(FA.PatternAny n) -> n)
-                    |> List.map Html.text
-                    |> Html.span []
                 , body
                     |> OneOrMore.toList
                     |> List.map viewFaStatement
                     |> Html.div []
                 ]
+
+
+viewFaPattern : FA.Pattern -> String
+viewFaPattern p =
+    case p of
+        FA.PatternAny n ->
+            n
+
+        _ ->
+            Debug.toString p
 
 
 viewFaExpression : FA.Expression -> Html msg

@@ -61,11 +61,16 @@ insertStatement faStatement caModule =
 
         FA.Definition fa ->
             do (translateDefinition Nothing fa) <| \def ->
-            if Dict.member def.name caModule.values then
-                errorTodo <| def.name ++ " declared twice!"
+            case def.pattern of
+                CA.PatternAny name ->
+                    if Dict.member name caModule.values then
+                        errorTodo <| name ++ " declared twice!"
 
-            else
-                Ok { caModule | values = Dict.insert def.name def caModule.values }
+                    else
+                        Ok { caModule | values = Dict.insert name def caModule.values }
+
+                _ ->
+                    errorTodo "patterns can't be used in root definitions!"
 
         FA.TypeAlias fa ->
             if Dict.member fa.name caModule.unions then
@@ -241,41 +246,201 @@ lowercaseRec uppercaseAcc lowercaseAcc ls =
 ----
 --- Definition
 --
+{-
+   translateRootDefinition : FA.ValueDef -> Res (CA.RootDef ())
+   translateRootDefinition fa =
+       case fa.pattern of
+           FA.PatternAny name ->
+               Result.map3
+                   (\maybeAnnotation body caParameters ->
+                       { name = name
+                       , maybeAnnotation = maybeAnnotation
+                       , body = List.foldr wrapLambda body caParameters
+                       }
+                   )
+                   (translateMaybeAnnotation fa)
+                   (translateStatementBlock Nothing fa.body)
+                   (Lib.list_mapRes translatePattern fa.parameters)
+
+           _ ->
+               errorTodo "Root definitions can't be patterns"
+-}
 
 
 translateDefinition : Rs -> FA.ValueDef -> Res (CA.ValueDef ())
 translateDefinition rs fa =
-    let
-        (FA.PatternAny name) =
-            fa.name
+    Result.map4
+        (\_ maybeAnnotation patternOrFunction body ->
+            let
+                ( name, params ) =
+                    case patternOrFunction of
+                        Lib.Left p ->
+                            ( p, [] )
 
-        resultMaybeAnnotation =
-            fa.maybeAnnotation
-                |> Maybe.map (translateAnnotation name fa)
-                |> maybeResultToResultMaybe
-    in
-    Result.map2
-        (\maybeAnnotation body ->
-            { name = name
+                        Lib.Right ( n, pas ) ->
+                            ( CA.PatternAny n, pas )
+            in
+            { pattern = name
             , mutable = fa.mutable
             , maybeAnnotation = maybeAnnotation
-            , body = List.foldr wrapLambda body fa.parameters
+            , body = List.foldr wrapLambda body params
             }
         )
-        resultMaybeAnnotation
+        (validateFaDefinition fa)
+        (translateMaybeAnnotation fa)
+        (translatePatternOrFunction fa.pattern)
         (translateStatementBlock rs fa.body)
 
 
-translateAnnotation : String -> FA.ValueDef -> FA.Annotation -> Res CA.Type
-translateAnnotation defName faDef faAnn =
-    if faAnn.name /= defName then
-        errorTodo "annotation name does not match"
+validateFaDefinition : FA.ValueDef -> Res ()
+validateFaDefinition fa =
+    let
+        maybeName =
+            case fa.pattern of
+                FA.PatternAny n ->
+                    Just n
 
-    else if faDef.mutable /= faAnn.mutable then
-        errorTodo "annotation mutability does not match"
+                _ ->
+                    Nothing
+    in
+    case fa.maybeAnnotation of
+        Nothing ->
+            Ok ()
 
-    else
-        translateType faAnn.type_
+        Just annotation ->
+            if fa.mutable /= annotation.mutable then
+                errorTodo "annotation mutability doesn't match definition mutability"
+
+            else
+                case maybeName of
+                    Nothing ->
+                        Ok ()
+
+                    Just name ->
+                        if annotation.name /= name then
+                            errorTodo "annotation name doesn't match definition name"
+
+                        else
+                            Ok ()
+
+
+translateMaybeAnnotation : FA.ValueDef -> Res (Maybe CA.Type)
+translateMaybeAnnotation fa =
+    case fa.maybeAnnotation of
+        Nothing ->
+            Ok Nothing
+
+        Just annotation ->
+            translateType annotation.type_
+                |> Result.map Just
+
+
+
+----
+--- Pattern
+--
+
+
+translatePattern : FA.Pattern -> Res CA.Pattern
+translatePattern faPattern =
+    do (translatePatternOrFunction faPattern) <| \either ->
+    case either of
+        Lib.Left caPattern ->
+            Ok caPattern
+
+        Lib.Right fn ->
+            errorTodo "can't declare a function here!"
+
+
+translatePatternOrFunction : FA.Pattern -> Res (Lib.Either CA.Pattern ( String, List CA.Pattern ))
+translatePatternOrFunction fa =
+    case fa of
+        FA.PatternAny s ->
+            translatePatternOrFunction (FA.PatternApplication s [])
+
+        FA.PatternApplication rawName faArgs ->
+            do (stringToStructuredName Nothing rawName) <| \sname ->
+            if sname.attrPath /= [] then
+                errorTodo "can't use attribute access inside a pattern"
+
+            else
+                do (Lib.list_mapRes translatePattern faArgs) <| \caArgs ->
+                if sname.isUpper then
+                    -- it's a constructor!
+                    CA.PatternConstructor (String.join "." sname.path) caArgs
+                        |> Lib.Left
+                        |> Ok
+
+                else
+                    -- it's a function or variable!
+                    case sname.path of
+                        [ actualName ] ->
+                            if caArgs == [] then
+                                actualName
+                                    |> CA.PatternAny
+                                    |> Lib.Left
+                                    |> Ok
+
+                            else
+                                ( actualName, caArgs )
+                                    |> Lib.Right
+                                    |> Ok
+
+                        _ ->
+                            errorTodo "It looks like you are trying to reference some module value, but I need just a new variable name"
+
+        FA.PatternList fas ->
+            let
+                fold pattern last =
+                    CA.PatternConstructor Core.listCons.name [ pattern, last ]
+            in
+            fas
+                |> Lib.list_mapRes translatePattern
+                |> Result.map (List.foldr fold (CA.PatternConstructor Core.listNil.name []) >> Lib.Left)
+
+        FA.PatternRecord fas ->
+            let
+                fold ( name, maybePattern ) dict =
+                    if Dict.member name dict then
+                        errorTodo <| "duplicate attribute name in pattern: " ++ name
+
+                    else
+                        case maybePattern of
+                            Nothing ->
+                                Dict.insert name (CA.PatternAny name) dict |> Ok
+
+                            Just faPattern ->
+                                translatePattern faPattern
+                                    |> Result.map (\caPattern -> Dict.insert name caPattern dict)
+            in
+            Lib.list_foldlRes fold fas Dict.empty
+                |> Result.map (CA.PatternRecord >> Lib.Left)
+
+        FA.PatternCons faHead faTail ->
+            Result.map2
+                (\caHead caTail -> CA.PatternConstructor Core.listCons.name [ caHead, caTail ] |> Lib.Left)
+                (translatePattern faHead)
+                (translatePattern faTail)
+
+        FA.PatternTuple fas ->
+            case fas of
+                [ fa1, fa2 ] ->
+                    [ ( "first", Just fa1 )
+                    , ( "second", Just fa2 )
+                    ]
+                        |> FA.PatternRecord
+                        |> translatePatternOrFunction
+
+                [ fa1, fa2, fa3 ] ->
+                    [ ( "first", Just fa1 )
+                    , ( "second", Just fa2 )
+                    , ( "third", Just fa3 )
+                    ]
+                        |> FA.PatternRecord
+                        |> translatePatternOrFunction
+
+                _ ->
+                    errorTodo "tuples can be only of size 2 or 3"
 
 
 
@@ -342,20 +507,21 @@ translateExpression rs faExpr =
 
         FA.Lambda fa ->
             let
-                ( FA.PatternAny paramsHead, paramsTail ) =
+                ( faHead, faTail ) =
                     fa.parameters
             in
-            fa.body
-                |> translateStatementBlock rs
-                |> Result.map
-                    (\body ->
-                        CA.Lambda ()
-                            -- TODO start!
-                            { start = 0
-                            , parameter = paramsHead
-                            , body = List.foldr wrapLambda body paramsTail
-                            }
-                    )
+            Result.map3
+                (\caHead caTail caBody ->
+                    CA.Lambda ()
+                        -- TODO start!
+                        { start = 0
+                        , parameter = caHead
+                        , body = List.foldr wrapLambda caBody caTail
+                        }
+                )
+                (translatePattern faHead)
+                (Lib.list_mapRes translatePattern faTail)
+                (translateStatementBlock rs fa.body)
 
         FA.FunctionCall { reference, arguments } ->
             -- ref arg1 arg2 arg3...
@@ -793,11 +959,11 @@ translateType faType =
 --
 
 
-wrapLambda : FA.Pattern -> List (CA.Statement ()) -> List (CA.Statement ())
-wrapLambda (FA.PatternAny paramName) bodyAccum =
+wrapLambda : CA.Pattern -> List (CA.Statement ()) -> List (CA.Statement ())
+wrapLambda pattern bodyAccum =
     -- TODO start?
     [ { start = 0
-      , parameter = paramName
+      , parameter = pattern
       , body = bodyAccum
       }
         |> CA.Lambda ()

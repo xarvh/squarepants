@@ -41,12 +41,32 @@ type alias EnvEntry =
 
 
 ----
+---
+--
+
+
+dict_get : String -> comparable -> Dict comparable value -> value
+dict_get caller k d =
+    case Dict.get k d of
+        Nothing ->
+            Debug.todo caller
+
+        Just v ->
+            v
+
+
+
+----
 --- Variable type generator
 --
 
 
 type alias TyGen a =
     TyGen.Generator Int a
+
+
+type alias TR a =
+    TyGen (Res a)
 
 
 newName : TyGen Name
@@ -59,7 +79,7 @@ newType =
     TyGen.map (\s -> CA.TypeVariable { name = s }) newName
 
 
-do_nr : TyGen (Res a) -> (a -> TyGen (Res b)) -> TyGen (Res b)
+do_nr : TR a -> (a -> TR b) -> TR b
 do_nr nra f =
     TyGen.do nra
         (\ra ->
@@ -72,9 +92,31 @@ do_nr nra f =
         )
 
 
-nr_map : (a -> b) -> TyGen (Res a) -> TyGen (Res b)
-nr_map f tr =
+map_nr : (a -> b) -> TR a -> TR b
+map_nr f tr =
     TyGen.map (Result.map f) tr
+
+
+list_foldl_nr : (item -> accum -> TR accum) -> List item -> accum -> TR accum
+list_foldl_nr f ls accum =
+    case ls of
+        [] ->
+            TyGen.wrap <| Ok accum
+
+        head :: tail ->
+            do_nr (f head accum) <| \newAccum ->
+            list_foldl_nr f tail newAccum
+
+
+list_map_nr : (a -> TR b) -> List a -> TR (List b)
+list_map_nr f ls =
+    list_foldl_nr (\a acc -> map_nr (\b -> b :: acc) (f a)) ls []
+        |> map_nr List.reverse
+
+
+dict_fold_nr : (comparable -> item -> accum -> TR accum) -> Dict comparable item -> accum -> TR accum
+dict_fold_nr f dict accum =
+    list_foldl_nr (\( k, v ) -> f k v) (Dict.toList dict) accum
 
 
 
@@ -83,7 +125,7 @@ nr_map f tr =
 --
 
 
-inspectModule : Env -> CA.Module e -> Res Env
+inspectModule : Env -> CA.Module e -> Res Eas
 inspectModule prelude mod =
     result_do (Lib.dict_foldRes (\k -> addConstructors) mod.unions prelude) <| \env ->
     let
@@ -94,7 +136,9 @@ inspectModule prelude mod =
 
         gen =
             do_nr (inspectStatementList statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->
-            refine_env subs env1
+            ( refine_env subs env1
+            , subs
+            )
                 |> Ok
                 |> TyGen.wrap
 
@@ -134,7 +178,7 @@ addConstructor unionDef ctor env =
             env
                 |> Dict.insert ctor.name
                     { type_ = ctorType
-                    , forall = Set.empty
+                    , forall = Set.fromList unionDef.args
                     , mutable = Just False
                     }
                 |> Ok
@@ -244,7 +288,7 @@ instantiate_type t tvars =
         |> TyGen.wrap
 
 
-env_get : Name -> Env -> TyGen (Res Type)
+env_get : Name -> Env -> TR Type
 env_get v e =
     case Dict.get v e of
         Just { type_, forall, mutable } ->
@@ -276,7 +320,7 @@ unwrapAlias prevPath ty =
             ( ty, prevPath )
 
 
-unify : Type -> Type -> Substitutions -> TyGen (Res Substitutions)
+unify : Type -> Type -> Substitutions -> TR Substitutions
 unify at1 at2 s =
     let
         -- TODO use path1,2 in error messages
@@ -366,7 +410,7 @@ type alias UnifyRecordsFold =
     }
 
 
-unifyRecords : CA.TypeRecordArgs -> CA.TypeRecordArgs -> Substitutions -> TyGen (Res Substitutions)
+unifyRecords : CA.TypeRecordArgs -> CA.TypeRecordArgs -> Substitutions -> TR Substitutions
 unifyRecords aArgs bArgs subs0 =
     -- TODO if aArg == bArg do nothing
     let
@@ -468,20 +512,20 @@ literalToType l =
     CA.TypeConstant { path = "Number", args = [] }
 
 
-generalize : Name -> Env -> Type -> Set Name
-generalize name env ty =
+generalize : Set Name -> Env -> Type -> Set Name
+generalize names env ty =
     let
-        fold k schema acc =
+        tyvarsFromEnv : Set Name
+        tyvarsFromEnv =
+            Dict.foldl addEnvTvar Set.empty env
+
+        addEnvTvar k schema acc =
             -- don't add the value's own tyvars!
-            if k == name then
+            if Set.member k names then
                 acc
 
             else
                 Set.union (Set.diff (tyvars_from_type schema.type_) schema.forall) acc
-
-        tyvarsFromEnv : Set Name
-        tyvarsFromEnv =
-            Dict.foldl fold Set.empty env
     in
     Set.diff (tyvars_from_type ty) tyvarsFromEnv
 
@@ -496,12 +540,12 @@ type alias Eas =
     ( Env, Substitutions )
 
 
-andEnv : Env -> TyGen (Res Substitutions) -> TyGen (Res Eas)
+andEnv : Env -> TR Substitutions -> TR Eas
 andEnv env =
-    nr_map (\subs -> ( env, subs ))
+    map_nr (\subs -> ( env, subs ))
 
 
-unifyWithAttrPath : List Name -> Type -> Type -> Substitutions -> TyGen (Res Substitutions)
+unifyWithAttrPath : List Name -> Type -> Type -> Substitutions -> TR Substitutions
 unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
     case attrPath of
         [] ->
@@ -522,10 +566,8 @@ unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
             unifyWithAttrPath tail typeAtPathEnd t1 subs1
 
 
-{-| TODO move Env at the end?
--}
-inspect_expr : Env -> CA.Expression e -> Type -> Substitutions -> TyGen (Res Eas)
-inspect_expr env expr ty subs =
+inspect_expr : CA.Expression e -> Type -> Eas -> TR Eas
+inspect_expr expr ty ( env, subs ) =
     case expr of
         CA.NumberLiteral _ l ->
             subs
@@ -546,31 +588,26 @@ inspect_expr env expr ty subs =
                 |> andEnv env
 
         CA.Lambda _ args ->
-            if Dict.member args.parameter env then
-                ("function parameter `" ++ args.parameter ++ "` shadows env variable")
-                    |> errorTodo
-                    |> TyGen.wrap
+            TyGen.do newType <| \v_t ->
+            TyGen.do newType <| \e_t ->
+            do_nr (inspectPattern insertVariableFromLambda args.parameter v_t ( env, subs )) <| \( env1, subs1 ) ->
+            do_nr (inspectStatementList args.body env1 subs1) <| \( returnType, env2, subs2 ) ->
+            let
+                fromIsMutable_res =
+                    case args.parameter of
+                        CA.PatternDiscard ->
+                            Ok (Just False)
 
-            else
-                TyGen.do newType <| \v_t ->
-                TyGen.do newType <| \e_t ->
-                let
-                    env1 =
-                        Dict.insert args.parameter { type_ = v_t, forall = Set.empty, mutable = Nothing } env
-                in
-                do_nr (inspectStatementList args.body env1 subs) <| \( returnType, env2, subs1 ) ->
-                let
-                    fromIsMutable =
-                        case Dict.get args.parameter env2 of
-                            Nothing ->
-                                Debug.todo "I'm pretty sure the arg IS in the env"
+                        CA.PatternAny name ->
+                            Ok (dict_get "SNH inspect_expr CA.Lambda" name env2).mutable
 
-                            Just schema ->
-                                schema.mutable
-                in
-                do_nr (unify ty (CA.TypeFunction { from = v_t, fromIsMutable = fromIsMutable, to = e_t }) subs1) <| \subs2 ->
-                unify e_t returnType subs2
-                    |> andEnv env
+                        _ ->
+                            errorTodo "unpacking mutable arguments is not supported =("
+            in
+            do_nr (TyGen.wrap fromIsMutable_res) <| \fromIsMutable ->
+            do_nr (unify ty (CA.TypeFunction { from = v_t, fromIsMutable = fromIsMutable, to = e_t }) subs2) <| \subs3 ->
+            unify e_t returnType subs3
+                |> andEnv env
 
         CA.Call _ args ->
             TyGen.do newType <| \e_t ->
@@ -590,7 +627,7 @@ inspect_expr env expr ty subs =
                 f_t1 =
                     refine_type subs1 f_t
             in
-            inspect_expr (refine_env subs1 env1) args.reference f_t1 subs1
+            inspect_expr args.reference f_t1 ( refine_env subs1 env1, subs1 )
 
         CA.If _ _ ->
             ("inference NI: " ++ Debug.toString expr)
@@ -598,26 +635,7 @@ inspect_expr env expr ty subs =
                 |> TyGen.wrap
 
         CA.Record _ args ->
-            let
-                init =
-                    ( Dict.empty, ( env, subs ) )
-                        |> Ok
-                        |> TyGen.wrap
-
-                foldAttr :
-                    Name
-                    -> CA.Expression e
-                    -> TyGen (Res ( Dict Name Type, Eas ))
-                    -> TyGen (Res ( Dict Name Type, Eas ))
-                foldAttr attrName attrValue genResAccum =
-                    do_nr genResAccum <| \( attrsAccum, ( envAccum, subsAccum ) ) ->
-                    TyGen.do newType <| \nt ->
-                    do_nr (inspect_expr envAccum attrValue nt subsAccum) <| \eas ->
-                    ( Dict.insert attrName nt attrsAccum, eas )
-                        |> Ok
-                        |> TyGen.wrap
-            in
-            do_nr (Dict.foldr foldAttr init args.attrs) <| \( attrTypes, ( env1, subs1 ) ) ->
+            do_nr (inspectRecordAttributes inspect_expr args.attrs ( env, subs )) <| \( attrTypes, ( env1, subs1 ) ) ->
             do_nr (inspect_maybeUpdateTarget env1 args.maybeUpdateTarget ty subs1) <| \( extensible, ( env2, subs2 ) ) ->
             let
                 refinedAttrTypes =
@@ -628,8 +646,37 @@ inspect_expr env expr ty subs =
                 |> unify ty (CA.TypeRecord { extensible = extensible, attrs = refinedAttrTypes })
                 |> andEnv env2
 
+        CA.Try _ _ ->
+            TyGen.wrap <| errorTodo "NI inspect_expr Try"
 
-inspect_maybeUpdateTarget : Env -> Maybe CA.VariableArgs -> Type -> Substitutions -> TyGen (Res ( Maybe Name, Eas ))
+
+{-| TODO replace this function with dict\_fold\_nr and inline it
+-}
+inspectRecordAttributes : (a -> Type -> Eas -> TR Eas) -> Dict Name a -> Eas -> TR ( Dict Name Type, Eas )
+inspectRecordAttributes inspectValue attrs eas =
+    let
+        init =
+            ( Dict.empty, eas )
+                |> Ok
+                |> TyGen.wrap
+
+        foldAttr :
+            Name
+            -> a
+            -> TR ( Dict Name Type, Eas )
+            -> TR ( Dict Name Type, Eas )
+        foldAttr attrName attrValue genResAccum =
+            do_nr genResAccum <| \( attrsAccum, easAccum ) ->
+            TyGen.do newType <| \nt ->
+            do_nr (inspectValue attrValue nt easAccum) <| \newEas ->
+            ( Dict.insert attrName nt attrsAccum, newEas )
+                |> Ok
+                |> TyGen.wrap
+    in
+    Dict.foldr foldAttr init attrs
+
+
+inspect_maybeUpdateTarget : Env -> Maybe CA.VariableArgs -> Type -> Substitutions -> TR ( Maybe Name, Eas )
 inspect_maybeUpdateTarget env maybeUpdateTarget ty subs =
     case maybeUpdateTarget of
         Nothing ->
@@ -637,11 +684,11 @@ inspect_maybeUpdateTarget env maybeUpdateTarget ty subs =
 
         Just updateTarget ->
             TyGen.do newName <| \n ->
-            inspect_expr env (CA.Variable () updateTarget) ty subs
-                |> nr_map (\eas -> ( Just n, eas ))
+            inspect_expr (CA.Variable () updateTarget) ty ( env, subs )
+                |> map_nr (\eas -> ( Just n, eas ))
 
 
-inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TyGen (Res Eas)
+inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TR Eas
 inspect_argument env arg ty subs =
     case arg of
         CA.ArgumentMutable { path, attrPath } ->
@@ -655,11 +702,11 @@ inspect_argument env arg ty subs =
                     case schema.mutable of
                         Nothing ->
                             unifyWithAttrPath attrPath ty schema.type_ subs
-                                |> nr_map (\s -> ( Dict.insert path { schema | mutable = Just True } env, s ))
+                                |> map_nr (\s -> ( Dict.insert path { schema | mutable = Just True } env, s ))
 
                         Just True ->
                             unifyWithAttrPath attrPath ty schema.type_ subs
-                                |> nr_map (\s -> ( env, s ))
+                                |> map_nr (\s -> ( env, s ))
 
                         Just False ->
                             (path ++ " can't be mutable")
@@ -667,7 +714,7 @@ inspect_argument env arg ty subs =
                                 |> TyGen.wrap
 
         CA.ArgumentExpression expr ->
-            inspect_expr env expr ty subs
+            inspect_expr expr ty ( env, subs )
 
 
 
@@ -676,12 +723,12 @@ inspect_argument env arg ty subs =
 --
 
 
-inspect_statement : CA.Statement e -> Env -> Substitutions -> TyGen (Res ( Type, Env, Substitutions ))
+inspect_statement : CA.Statement e -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspect_statement statement env subs =
     case statement of
         CA.Evaluation expr ->
             TyGen.do newType <| \nt ->
-            do_nr (inspect_expr env expr nt subs) <| \( env1, subs1 ) ->
+            do_nr (inspect_expr expr nt ( env, subs )) <| \( env1, subs1 ) ->
             let
                 refinedNt =
                     refine_type subs1 nt
@@ -690,66 +737,190 @@ inspect_statement statement env subs =
                 |> Ok
                 |> TyGen.wrap
 
-        CA.Definition { name, mutable, body, maybeAnnotation } ->
-            do_nr (inspectStatementList body env subs) <| \( returnType, _, subs1 ) ->
-            case Dict.get name env of
-                Nothing ->
-                    Debug.todo "WTF dict should contain def name already"
-
-                Just def ->
-                    do_nr (unify returnType def.type_ subs1) <| \subs2 ->
-                    let
-                        refinedType =
-                            refine_type subs2 def.type_
-
-                        -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
-                        -- This is also the reason why we can't infer whether a value is mutable or not
-                        forall =
-                            if mutable then
-                                Set.empty
-
-                            else
-                                generalize name (refine_env subs2 env) refinedType
-
-                        scheme : EnvEntry
-                        scheme =
-                            { type_ = refinedType
-                            , forall = forall
-                            , mutable = Just mutable
-                            }
-
-                        env1 =
-                            Dict.insert name scheme env
-                    in
-                    case annotationTooGeneral maybeAnnotation forall of
-                        Nothing ->
-                            -- A definition has no type
-                            Ok ( Core.noneType, env1, subs2 )
-                                |> TyGen.wrap
-
-                        Just error ->
-                            errorTodo error
-                                |> TyGen.wrap
-
-
-annotationTooGeneral : Maybe Type -> Set Name -> Maybe String
-annotationTooGeneral maybeAnnotation inferredForall =
-    case maybeAnnotation of
-        Nothing ->
-            Nothing
-
-        Just annotation ->
+        CA.Definition { pattern, mutable, body, maybeAnnotation } ->
             let
-                -- This is already calculated when we add the raw definitions to env
-                -- Is it faster to get it from env?
-                annotationForall =
-                    tyvars_from_type annotation
+                insert =
+                    insertVariableFromDefinition mutable maybeAnnotation
             in
-            if Set.size annotationForall > Set.size inferredForall then
-                Just <| "annotation too general : " ++ Debug.toString annotationForall ++ " vs " ++ Debug.toString inferredForall
+            do_nr (inspectStatementList body env subs) <| \( bodyType, _, subs1 ) ->
+            do_nr (inspectPattern insert pattern bodyType ( env, subs1 )) <| \( env1, subs2 ) ->
+            let
+                -- TODO All this stuff is just repeating stuff that insertVariableFromDefinition has done already.
+                -- Can we avoid the duplication?
+                names =
+                    CA.patternNames pattern
+
+                -- TODO we need to calculate forall only if there is an annotation
+                refinedType =
+                    refine_type subs2 bodyType
+
+                -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
+                -- This is also the reason why we can't infer whether a value is mutable or not
+                forall =
+                    if mutable then
+                        Set.empty
+
+                    else
+                        generalize names (refine_env subs2 env) refinedType
+            in
+            case Maybe.map (\ann -> annotationTooGeneral ann forall) maybeAnnotation of
+                Just (Just error) ->
+                    errorTodo error
+                        |> TyGen.wrap
+
+                _ ->
+                    -- The type of a definition is always None
+                    Ok ( Core.noneType, refine_env subs2 env1, subs2 )
+                        |> TyGen.wrap
+
+
+insertVariableFromDefinition : Bool -> Maybe Type -> Name -> Type -> Eas -> TR Eas
+insertVariableFromDefinition mutable maybeAnnotation name ty ( env, subs ) =
+    let
+        def =
+            dict_get "SNH inspectPattern PatternAny" name env
+    in
+    do_nr (unify ty def.type_ subs) <| \subs2 ->
+    let
+        refinedType =
+            refine_type subs2 def.type_
+
+        -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
+        -- This is also the reason why we can't infer whether a value is mutable or not
+        forall =
+            if mutable then
+                Set.empty
 
             else
-                Nothing
+                generalize (Set.singleton name) (refine_env subs2 env) refinedType
+
+        scheme : EnvEntry
+        scheme =
+            { type_ = refinedType
+            , forall = forall
+            , mutable = Just mutable
+            }
+
+        env1 =
+            Dict.insert name scheme env
+    in
+    ( env1, subs2 )
+        |> Ok
+        |> TyGen.wrap
+
+
+insertVariableFromLambda : Name -> Type -> Eas -> TR Eas
+insertVariableFromLambda name ty ( env, subs ) =
+    if Dict.member name env then
+        ("function parameter `" ++ name ++ "` shadows env variable")
+            |> errorTodo
+            |> TyGen.wrap
+
+    else
+        ( Dict.insert name { type_ = ty, forall = Set.empty, mutable = Nothing } env
+        , subs
+        )
+            |> Ok
+            |> TyGen.wrap
+
+
+inspectPattern : (Name -> Type -> Eas -> TR Eas) -> CA.Pattern -> Type -> Eas -> TR Eas
+inspectPattern insertVariable pattern ty ( env, subs ) =
+    case pattern of
+        CA.PatternDiscard ->
+            ( env, subs )
+                |> Ok
+                |> TyGen.wrap
+
+        CA.PatternAny name ->
+            insertVariable name ty ( env, subs )
+
+        CA.PatternLiteral literal ->
+            -- TODO unify ty (literalType literal)
+            TyGen.wrap <| errorTodo <| "NI pattern:" ++ Debug.toString pattern
+
+        CA.PatternConstructor path args ->
+            case Dict.get path env of
+                Nothing ->
+                    ("undeclared constructor: " ++ path)
+                        |> errorTodo
+                        |> TyGen.wrap
+
+                Just envEntry ->
+                    do_nr (reversedZipConstructorArgs args envEntry.type_ [] |> TyGen.wrap) <| \( patternType, argsAndTypes ) ->
+                    do_nr (unify ty patternType subs) <| \subs1 ->
+                    let
+                        fold ( argPattern, argType ) eas =
+                            inspectPattern insertVariable argPattern argType eas
+                    in
+                    list_foldl_nr fold argsAndTypes ( env, subs1 )
+
+        CA.PatternRecord attrs ->
+            TyGen.do newName <| \nn ->
+            do_nr (dict_fold_nr (\name pa acc -> TyGen.map (\t -> Dict.insert name t acc |> Ok) newType) attrs Dict.empty) <| \xxx ->
+            do_nr (unify ty (CA.TypeRecord { extensible = Just nn, attrs = xxx }) subs) <| \s1 ->
+            let
+                init =
+                    ( Dict.empty, ( env, s1 ) )
+
+                fold name pa ( attrsAcc, easAcc ) =
+                    let
+                        t =
+                            dict_get "blah" name xxx
+                    in
+                    do_nr (inspectPattern insertVariable pa t easAcc) <| \newEasAcc ->
+                    ( Dict.insert name t attrsAcc, newEasAcc )
+                        |> Ok
+                        |> TyGen.wrap
+            in
+            do_nr (dict_fold_nr fold attrs init) <| \( attrTypes, ( env1, subs1 ) ) ->
+            let
+                refinedAttrTypes =
+                    -- first I need all new subs, only then it makes sense to apply them
+                    Dict.map (\attrName attrType -> refine_type subs1 attrType) attrTypes
+            in
+            subs1
+                |> unify ty (CA.TypeRecord { extensible = Just nn, attrs = refinedAttrTypes })
+                |> andEnv env1
+
+
+reversedZipConstructorArgs : List CA.Pattern -> Type -> List ( CA.Pattern, Type ) -> Res ( Type, List ( CA.Pattern, Type ) )
+reversedZipConstructorArgs args constructorType accum =
+    case constructorType of
+        -- fromIsMutable should always be False for constructors
+        CA.TypeFunction { from, to } ->
+            case args of
+                [] ->
+                    errorTodo "not enough arguments in constructor pattern"
+
+                a :: aTail ->
+                    reversedZipConstructorArgs aTail to (( a, from ) :: accum)
+
+        CA.TypeAlias _ ty ->
+            reversedZipConstructorArgs args ty accum
+
+        _ ->
+            case args of
+                [] ->
+                    Ok ( constructorType, accum )
+
+                a :: aTail ->
+                    errorTodo "too many arguments in constructor pattern"
+
+
+annotationTooGeneral : Type -> Set Name -> Maybe String
+annotationTooGeneral annotation inferredForall =
+    let
+        -- This is already calculated when we add the raw definitions to env
+        -- Is it faster to get it from env?
+        annotationForall =
+            tyvars_from_type annotation
+    in
+    if Set.size annotationForall > Set.size inferredForall then
+        Just <| "annotation too general : " ++ Debug.toString annotationForall ++ " vs " ++ Debug.toString inferredForall
+
+    else
+        Nothing
 
 
 
@@ -758,7 +929,7 @@ annotationTooGeneral maybeAnnotation inferredForall =
 --
 
 
-inspectStatementList : List (CA.Statement e) -> Env -> Substitutions -> TyGen (Res ( Type, Env, Substitutions ))
+inspectStatementList : List (CA.Statement e) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectStatementList stats parentEnv subs =
     let
         definitionOrStatement stat =
@@ -777,14 +948,33 @@ inspectStatementList stats parentEnv subs =
         definedMutables =
             List.filter .mutable definitions
 
+        -- Via patterns, a single definition can define multiple names, so we need to reference them by index instead
+        indexedDefs =
+            definitions
+                |> List.indexedMap Tuple.pair
+
+        indexByName =
+            List.foldl
+                (\( index, def ) dict -> Set.foldl (\name -> Dict.insert name index) dict (CA.patternNames def.pattern))
+                Dict.empty
+                indexedDefs
+
+        findAllIndexes : ( Int, CA.ValueDef e ) -> Set Int
+        findAllIndexes ( index, def ) =
+            def
+                |> findAllRefs_definition
+                |> Set.toList
+                |> List.filterMap (\s -> Dict.get s indexByName)
+                |> Set.fromList
+
         -- Also, we need to reorder them, so that dependent sibling defs come after
         orderedDefinitions =
-            RefHierarchy.reorder .name findAllRefs_definition definitions
+            RefHierarchy.reorder Tuple.first findAllIndexes indexedDefs
 
         newStats =
-            List.map CA.Definition orderedDefinitions ++ nonDefs
+            List.map (Tuple.second >> CA.Definition) orderedDefinitions ++ nonDefs
     in
-    do_nr (insertDefinitionRec definitions parentEnv) <| \localEnv ->
+    do_nr (list_foldl_nr insertDefinitionRec definitions parentEnv) <| \localEnv ->
     do_nr (inspectStatementRec newStats Core.noneType localEnv subs) <| \typeAndEnvAndSubs ->
     TyGen.wrap <|
         let
@@ -793,19 +983,22 @@ inspectStatementList stats parentEnv subs =
 
             defContainsFunctions : CA.ValueDef e -> Bool
             defContainsFunctions def =
-                case Dict.get def.name env of
-                    Nothing ->
-                        Debug.todo "NAHAHHAHAHAHAHAHA"
+                def.pattern
+                    |> CA.patternNames
+                    |> Set.toList
+                    |> List.any nameContainsFunction
 
-                    Just schema ->
-                        typeContainsFunctions schema.type_
+            nameContainsFunction name =
+                typeContainsFunctions (dict_get "SNH: nameContainsFunction" name env).type_
 
             mutablesWithFunction =
                 List.filter defContainsFunctions definedMutables
         in
         if mutablesWithFunction /= [] then
             mutablesWithFunction
-                |> List.map .name
+                |> List.foldl (.pattern >> CA.patternNames >> Set.union) Set.empty
+                |> Set.toList
+                |> List.sort
                 |> String.join ", "
                 |> (++) "these mutable values contain functions: "
                 |> errorTodo
@@ -817,7 +1010,7 @@ inspectStatementList stats parentEnv subs =
             Ok typeAndEnvAndSubs
 
 
-inspectStatementRec : List (CA.Statement e) -> Type -> Env -> Substitutions -> TyGen (Res ( Type, Env, Substitutions ))
+inspectStatementRec : List (CA.Statement e) -> Type -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectStatementRec stats returnType env subs =
     case stats of
         [] ->
@@ -830,49 +1023,63 @@ inspectStatementRec stats returnType env subs =
             inspectStatementRec statsTail ty env1 subs1
 
 
-insertDefinitionRec : List (CA.ValueDef e) -> Env -> TyGen (Res Env)
-insertDefinitionRec defs env =
-    case defs of
-        [] ->
-            env
-                |> Ok
-                |> TyGen.wrap
+insertDefinitionRec : CA.ValueDef e -> Env -> TR Env
+insertDefinitionRec def env =
+    let
+        varNames =
+            CA.patternNames def.pattern
 
-        def :: ds ->
-            if Dict.member def.name env then
-                (def.name ++ " already declared in scope!")
-                    |> errorTodo
-                    |> TyGen.wrap
+        duplicates =
+            Set.filter (\name -> Dict.member name env) varNames
+    in
+    if duplicates /= Set.empty then
+        duplicates
+            |> Set.toList
+            |> List.sort
+            |> String.join ", "
+            |> (\s -> s ++ " already declared in scope!")
+            |> errorTodo
+            |> TyGen.wrap
 
-            else
-                case def.maybeAnnotation of
-                    Just annotation ->
-                        case validateType def.mutable annotation of
-                            Just err ->
-                                err
-                                    |> errorTodo
-                                    |> TyGen.wrap
-
-                            Nothing ->
-                                env
-                                    |> Dict.insert def.name
-                                        { type_ = annotation
-
-                                        -- TODO remove parent annotation tyvars!
-                                        , forall = tyvars_from_type annotation
-                                        , mutable = Just def.mutable
-                                        }
-                                    |> insertDefinitionRec ds
+    else
+        case def.maybeAnnotation of
+            Just annotation ->
+                case validateType def.mutable annotation of
+                    Just err ->
+                        err
+                            |> errorTodo
+                            |> TyGen.wrap
 
                     Nothing ->
-                        TyGen.do newName <| \name ->
-                        env
-                            |> Dict.insert def.name
-                                { type_ = CA.TypeVariable { name = name }
-                                , forall = Set.singleton name
+                        let
+                            insert varName =
+                                Dict.insert varName
+                                    { type_ = annotation
+
+                                    -- TODO remove parent annotation tyvars!
+                                    , forall = tyvars_from_type annotation
+                                    , mutable = Just def.mutable
+                                    }
+                        in
+                        varNames
+                            |> Set.foldl insert env
+                            |> Ok
+                            |> TyGen.wrap
+
+            Nothing ->
+                let
+                    insert_nr varName e =
+                        TyGen.do newName <| \typeName ->
+                        e
+                            |> Dict.insert varName
+                                { type_ = CA.TypeVariable { name = typeName }
+                                , forall = Set.singleton typeName
                                 , mutable = Just def.mutable
                                 }
-                            |> insertDefinitionRec ds
+                            |> Ok
+                            |> TyGen.wrap
+                in
+                list_foldl_nr insert_nr (Set.toList varNames) env
 
 
 statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDef e)
@@ -988,6 +1195,9 @@ findAllRefs_expr expr =
             findAllRefs_statementBlock condition
                 |> Set.union (findAllRefs_statementBlock true)
                 |> Set.union (findAllRefs_statementBlock false)
+
+        CA.Try _ _ ->
+            Debug.todo "NI findAllRefs_arg Try"
 
 
 findAllRefs_arg : CA.Argument e -> Set String

@@ -22,10 +22,9 @@ type alias Module =
 
 
 type alias ValueDef =
-    { name : Pattern
+    { pattern : Pattern
     , mutable : Bool
     , maybeAnnotation : Maybe Annotation
-    , parameters : List Pattern
     , body : OneOrMore Statement
     }
 
@@ -48,16 +47,10 @@ type Statement
     | UnionDef
         { name : String
         , args : List String
+
+        -- constructors are parsed into a TypePolymorphic
         , constructors : List Type
         }
-
-
-{-
-type alias UnionConstructor =
-    { name : String
-    , args : List Type
-    }
--}
 
 
 type Type
@@ -142,6 +135,12 @@ type Expression
 
 type Pattern
     = PatternAny String
+      -- TODO| PatternLiteral String, Number, Char
+    | PatternApplication String (List Pattern)
+    | PatternList (List Pattern)
+    | PatternRecord (List ( String, Maybe Pattern ))
+    | PatternCons Pattern Pattern
+    | PatternTuple (List Pattern)
 
 
 exprStart : Expression -> Int
@@ -178,7 +177,7 @@ exprStart expr =
             start
 
         Record args ->
-            Debug.todo ""
+            Debug.todo "exprStart"
 
         List _ ->
-            Debug.todo ""
+            Debug.todo "exprStart"

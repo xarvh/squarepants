@@ -121,26 +121,6 @@ Unit type is used as
 
 
 
-### Pattern Matching
-    * try value as pattern then ... else ...
-
-    * try value as
-          pattern then
-              ...
-          pattern then
-              ...
-          else
-              ...
-
-    Match over multiple values:
-
-    * try v1, v2, v3 as
-        p1a, p2a, p3a then
-          ...
-        p1b, b2b, p3b then
-          ...
-        else
-          ...
 
 
 
@@ -158,31 +138,22 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 Stuff that seems good but needs thinking
 ----------------------------------------
 
-* Record functional update shorthands
 
-    # no need to repeat `oldModel`
-    newModel = { oldModel with someAttribute = .someAttribute + 1 }
+* record & patterns
 
-  This means that `.attr` can't be used as a shorthand for `fn x = x.attr`
-  But maybe it can be replaced with `fn.attr`?
+  To be entirely consistent, `{ a }` should match only `{ a : a }` and not `{ r with a : a }`
 
-  Nested record updates become:
+  Reading the pattern match `{ a }` one *may* intuitively think that that's all the record contains.
 
-      a =
-         { b = 1
-         , c =
-           { d = 3
-           , e = 4
-           }
-         }
+  If this is the case, we could have
+    * `{ a }` matching only `{ a : a }`
+    * `{ with a }` matching any  `{ e with a : a }`
 
-      a0 =
-        { a with
-        , c =
-            { .c with
-            , e = 4
-            }
-        }
+  But is this the case?
+
+
+
+
 
 
 
@@ -215,6 +186,27 @@ Stuff that seems good but needs thinking
     * `risk unionTypeValue`
     * Extract the first constructor of a Union Type, crash if not available
     * Prone to error if the constructos change order, but this is a YOLO feature
+
+
+
+* FUCK UP ALL THE OPS
+
+  Equality, inequality
+     ==, =/= -> is, isnt
+  + no need to learn two weird symbols
+  - we're still using >= and <=
+
+  Definition
+    = -> :
+  + removes the ambiguous use of the `=` op
+  + in line with math notation that uses `:=` as defop
+  + one less space
+  / : is a more accessible symbol than =, but requires Shift
+  - HasType is consistently represented by :, what would be a suitable replacement?
+
+
+
+
 
 
 

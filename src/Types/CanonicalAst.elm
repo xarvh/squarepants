@@ -9,6 +9,7 @@ module Types.CanonicalAst exposing (..)
 -}
 
 import Dict exposing (Dict)
+import Set exposing (Set)
 
 
 type alias Name =
@@ -53,7 +54,7 @@ type alias UnionConstructor =
 
 
 type alias ValueDef e =
-    { name : Name
+    { pattern : Pattern
     , mutable : Bool
     , maybeAnnotation : Maybe Type
     , body : List (Statement e)
@@ -95,6 +96,21 @@ type alias TypeRecordArgs =
 --
 
 
+{-| TODO statements are always used in blocks.
+
+type alias StatementBlock =
+{ List { maybeAssignment, pattern, mutable, annotation
+
+    Pattern
+    mutable
+    annotation
+
+    { pattern : Pattern
+    , mutable : Bool
+    , maybeAnnotation : Maybe Type
+    , body : List (Statement e)
+
+-}
 type Statement e
     = Definition (ValueDef e)
       -- Evaluations are needed for return, mutation and debug
@@ -112,7 +128,7 @@ type Expression e
     | Lambda
         e
         { start : Int
-        , parameter : Name
+        , parameter : Pattern
         , body : List (Statement e)
         }
     | Record
@@ -135,6 +151,12 @@ type Expression e
         , true : List (Statement e)
         , false : List (Statement e)
         }
+    | Try
+        e
+        { start : Int
+        , value : Expression e
+        , patterns : List ( Pattern, List (Statement e) )
+        }
 
 
 type Argument e
@@ -148,6 +170,45 @@ type alias VariableArgs =
     , path : Path
     , attrPath : List Name
     }
+
+
+type Literal
+    = LiteralString String
+    | LiteralInt Int
+    | LiteralFloat Float
+
+
+
+----
+--- Pattern
+--
+
+
+type Pattern
+    = PatternDiscard
+    | PatternAny Name
+    | PatternLiteral Literal
+    | PatternConstructor Path (List Pattern)
+    | PatternRecord (Dict Name Pattern)
+
+
+patternNames : Pattern -> Set Name
+patternNames p =
+    case p of
+        PatternDiscard ->
+            Set.empty
+
+        PatternAny n ->
+            Set.singleton n
+
+        PatternLiteral _ ->
+            Set.empty
+
+        PatternConstructor path ps ->
+            List.foldl (patternNames >> Set.union) Set.empty ps
+
+        PatternRecord ps ->
+            Dict.foldl (\k -> patternNames >> Set.union) Set.empty ps
 
 
 

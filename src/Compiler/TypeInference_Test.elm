@@ -11,6 +11,29 @@ import Types.CanonicalAst as CA exposing (Name)
 import Types.Error exposing (Res)
 
 
+tests : Test
+tests =
+    Test.Group "TypeInference"
+        [ functions
+        , statements
+        , variableTypes
+        , mutability
+        , higherOrderTypes
+        , records
+        , patterns
+        ]
+
+
+
+----
+---
+--
+
+
+codeTest =
+    Test.codeTest Debug.toString
+
+
 simpleTest =
     Test.simple Debug.toString
 
@@ -37,7 +60,7 @@ infer name code =
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Result.andThen (TI.inspectModule preamble)
         |> Result.mapError (Compiler.TestHelpers.errorToString code)
-        |> Result.andThen (Dict.get name >> Result.fromMaybe "Dict fail")
+        |> Result.andThen (Tuple.first >> Dict.get name >> Result.fromMaybe "Dict fail")
 
 
 preamble : TI.Env
@@ -53,6 +76,22 @@ preamble =
     , ( "+", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
     , ( "not", em <| function (constant "Bool") (constant "Bool") )
     , ( "reset", em <| CA.TypeFunction { from = constant "Number", fromIsMutable = Just True, to = constant "None" } )
+    , ( ":="
+      , { forall = Set.singleton "a"
+        , mutable = Just False
+        , type_ =
+            CA.TypeFunction
+                { from = CA.TypeVariable { name = "a" }
+                , fromIsMutable = Just False
+                , to =
+                    CA.TypeFunction
+                        { from = CA.TypeVariable { name = "a" }
+                        , fromIsMutable = Just True
+                        , to = constant "None"
+                        }
+                }
+        }
+      )
     , ( "+="
       , em <|
             CA.TypeFunction
@@ -70,18 +109,6 @@ preamble =
         |> Dict.fromList
         |> Lib.dict_foldRes (\k -> TI.addConstructors) Compiler.CoreModule.coreModule.unions
         |> Result.withDefault Dict.empty
-
-
-tests : Test
-tests =
-    Test.Group "TypeInference"
-        [ functions
-        , statements
-        , variableTypes
-        , mutability
-        , higherOrderTypes
-        , records
-        ]
 
 
 
@@ -432,14 +459,11 @@ mutability =
             , run = \_ -> infer "a" "a @= fn x = x"
             , test = Test.errorShouldContain "these mutable values contain functions: a"
             }
-
-        {- TODO, requires type vars
-           , simpleTest
-               { name = "Functions can't be mutable 2"
-               , run = \_ -> infer "a" "a f = set f (fn x = x)"
-               , expected = Err "these mutable values contain functions: f"
-               }
-        -}
+        , simpleTest
+            { name = "Functions can't be mutable 2"
+            , run = \_ -> infer "a" "a f = @f := (fn x = x)"
+            , expected = Err "these mutable values contain functions: f"
+            }
         , hasError
             { name = "Lambda argument mutability is correctly inferred"
             , run = \_ -> infer "a" "a = fn x = reset x"
@@ -664,4 +688,84 @@ records =
                             }
                     }
             }
+        , codeTest "[reg] excessive forallness in records"
+            """
+            x q =
+             a = q.first
+             a
+            """
+            (infer "x")
+            (Test.okEqual
+                { forall = Set.fromList [ "t4", "t6" ]
+                , mutable = Just False
+                , type_ =
+                    CA.TypeFunction
+                        { from =
+                            CA.TypeRecord
+                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "t4" } ) ]
+                                , extensible = Just "t6"
+                                }
+                        , fromIsMutable = Nothing
+                        , to = CA.TypeVariable { name = "t4" }
+                        }
+                }
+            )
+        ]
+
+
+
+----
+--- Patterns
+--
+
+
+patterns : Test
+patterns =
+    Test.Group "Patterns"
+        [ codeTest "List unpacking"
+            """
+            x q =
+                   [ first, second ] = q
+                   first
+            """
+            (infer "x")
+            --
+            (Test.okEqual
+                { forall = Set.fromList [ "t4" ]
+                , mutable = Just False
+                , type_ =
+                    CA.TypeFunction
+                        { from =
+                            CA.TypeConstant
+                                { args = [ CA.TypeVariable { name = "t4" } ]
+                                , path = "List"
+                                }
+                        , fromIsMutable = Nothing
+                        , to = CA.TypeVariable { name = "t4" }
+                        }
+                }
+            )
+        , codeTest "Records are correctly unpacked"
+            """
+            x q =
+                { first } = q
+                first
+            """
+            (infer "x")
+            --
+            (Test.okEqual
+                { forall = Set.fromList [ "t4", "t6" ]
+                , mutable = Just False
+                , type_ =
+                    CA.TypeFunction
+                        { from =
+                            CA.TypeRecord
+                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "t4" } ) ]
+                                , extensible = Just "t6"
+                                }
+                        , fromIsMutable = Nothing
+                        , to = CA.TypeVariable { name = "t4" }
+                        }
+                }
+            )
         ]

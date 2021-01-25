@@ -39,6 +39,39 @@ type alias TestOutcome =
 --
 
 
+type CodeExpectation ok
+    = CodeExpectation ((ok -> String) -> Result String ok -> Maybe String)
+
+
+codeTest : (ok -> String) -> String -> String -> (String -> Result String ok) -> CodeExpectation ok -> Test
+codeTest toString title code functionToTest (CodeExpectation toMaybeError) =
+    Single <| \() ->
+    { name = title ++ "\n\n" ++ code
+    , maybeError = code |> functionToTest |> toMaybeError toString
+    }
+
+
+okEqual : ok -> CodeExpectation ok
+okEqual expectedOk =
+    CodeExpectation <| \toString result ->
+    case result of
+        Err e ->
+            Just e
+
+        Ok actualOk ->
+            if expectedOk == actualOk then
+                Nothing
+
+            else
+                [ "expected = "
+                , toString expectedOk
+                , "actual = "
+                , toString actualOk
+                ]
+                    |> String.join "\n"
+                    |> Just
+
+
 simple :
     (outcome -> String)
     ->
@@ -62,10 +95,11 @@ simple toString { name, run, expected } =
                 else
                     [ "Expected: "
                     , toString expected
+                    , "\n"
                     , "Actual: "
                     , toString actual
                     ]
-                        |> String.join "\n"
+                        |> String.join ""
                         |> Just
             }
         )
@@ -142,7 +176,7 @@ outcomesRec path t accum =
             { outcome | name = path ++ outcome.name } :: accum
 
         Group pathSegment ts ->
-            List.foldl (outcomesRec (path ++ pathSegment ++ ": ")) accum ts
+            List.foldl (outcomesRec (path ++ pathSegment ++ " / ")) accum ts
 
 
 viewList : List Test -> Html msg
@@ -172,7 +206,7 @@ view test =
           else
             class "test-error"
         ]
-        [ Html.div [ class "test-name" ] [ Html.text test.name ]
+        [ Html.pre [ class "test-name" ] [ Html.text test.name ]
         , Html.code []
             [ case test.maybeError of
                 Nothing ->
@@ -195,6 +229,7 @@ style =
             """
 .test-item {
   padding: 1em;
+  margin-bottom: 2px;
 }
 
 .test-name {

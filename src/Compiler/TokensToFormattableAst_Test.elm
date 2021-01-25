@@ -7,6 +7,30 @@ import Types.FormattableAst as FA
 import Types.Token as Token exposing (Token)
 
 
+tests : Test
+tests =
+    Test.Group "TokensToFormattableAst"
+        [ lambdas
+        , annotations
+        , unionDefs
+        , lists
+        , records
+        , ifs
+        , tries
+        , patterns
+        ]
+
+
+
+----
+---
+--
+
+
+isOk =
+    Test.isOk Debug.toString
+
+
 simpleTest =
     Test.simple Debug.toString
 
@@ -54,11 +78,14 @@ firstStatement code =
         |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 
+firstDefinition =
+    firstStatement >> Result.andThen asDefinition
+
+
 firstEvaluation : String -> Result String FA.Expression
 firstEvaluation code =
     code
-        |> firstStatement
-        |> Result.andThen asDefinition
+        |> firstDefinition
         |> Result.map (.body >> Tuple.first)
         |> Result.andThen asEvaluation
 
@@ -75,17 +102,6 @@ firstAnnotation code =
 ----
 ---
 --
-
-
-tests : Test
-tests =
-    Test.Group "TokensToFormattableAst"
-        [ lambdas
-        , annotations
-        , unionDefs
-        , lists
-        , records
-        ]
 
 
 lambdas : Test
@@ -435,5 +451,116 @@ records =
                         |> firstAnnotation
                         |> Result.map .type_
             , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeName { name = "Bool" } ) ])
+            }
+        ]
+
+
+ifs : Test
+ifs =
+    Test.Group "Ifs"
+        [ isOk
+            { name = "inline"
+            , run = \_ -> firstEvaluation "a = if a then b else c"
+            }
+        , isOk
+            { name = "multiline, formatted"
+            , run =
+                \_ ->
+                    """
+                    x =
+                      if a then
+                        b
+                      else
+                        c
+                    """
+                        |> firstEvaluation
+            }
+        , isOk
+            { name = "multiline, compact"
+            , run =
+                \_ ->
+                    """
+                    x =
+                      if a then b
+                      else c
+                    """
+                        |> firstEvaluation
+            }
+        ]
+
+
+tries : Test
+tries =
+    Test.Group "Try"
+        [ isOk
+            { name = "inline"
+            , run = \_ -> firstEvaluation "x = try a as b then c else d"
+            }
+        , isOk
+            { name = "multiline, formatted"
+            , run =
+                \_ ->
+                    """
+                    x =
+                      try a as
+                        b then
+                          c
+                        d then
+                          e
+                        else
+                          f
+                    """
+                        |> firstEvaluation
+            }
+        , isOk
+            { name = "multiline, compact"
+            , run =
+                \_ ->
+                    """
+                    x =
+                      try a as
+                        b then c
+                        d then e
+                        else f
+                    """
+                        |> firstEvaluation
+            }
+        ]
+
+
+patterns : Test
+patterns =
+    Test.Group "Patterns"
+        [ simpleTest
+            { name = "list unpacking"
+            , run = \_ -> firstDefinition "[a, b] = x" |> Result.map .pattern
+            , expected = Ok <| FA.PatternList [ FA.PatternAny "a", FA.PatternAny "b" ]
+            }
+        , isOk
+            { name = "list unpacking, inner block"
+            , run =
+                \_ ->
+                    """
+x =
+   [ a, b ] = c
+                    """
+                        |> firstDefinition
+                        |> Result.map .pattern
+            }
+        , simpleTest
+            { name = "record unpacking"
+            , run = \_ -> firstDefinition "{ a, b } = x" |> Result.map .pattern
+            , expected = Ok <| FA.PatternRecord [ ( "a", Nothing ), ( "b", Nothing ) ]
+            }
+        , isOk
+            { name = "record unpacking, inner block"
+            , run =
+                \_ ->
+                    """
+x =
+  { a, b } = c
+                    """
+                        |> firstDefinition
+                        |> Result.map .pattern
             }
         ]

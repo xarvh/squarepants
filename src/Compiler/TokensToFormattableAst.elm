@@ -324,11 +324,22 @@ term =
 
 expr : Parser FA.Expression
 expr =
+    let
+        nest =
+            Parser.breakCircularDefinition <| \_ -> expr
+
+        recordConstructor maybeUpdateTarget attrs =
+            { maybeUpdateTarget = maybeUpdateTarget
+            , attrs = attrs
+            }
+                |> FA.Record
+                |> succeed
+    in
     Parser.expression term
         -- the `Or` stands for `Or higher priority parser`
-        [ parensOr
-        , listOr
-        , recordOr
+        [ parensOr nest
+        , listOr FA.List nest
+        , recordOr recordConstructor nest
         , lambdaOr
         , functionApplicationOr
         , unopsOr
@@ -336,15 +347,17 @@ expr =
         , binopsOr Token.Multiplicative
         , binopsOr Token.Addittive
 
-        -- TODO compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
+        -- Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
         , binopsOr Token.Comparison
 
-        -- TODO chain tuples
+        -- Tuples are chained (ie, `a & b & c` makes a tuple3)
         , binopsOr Token.Tuple
 
         -- TODO pipes can't actually be mixed
         , binopsOr Token.Pipe
         , binopsOr Token.Mutop
+        , ifOr
+        , tryOr
         ]
 
 
@@ -354,11 +367,11 @@ expr =
 --
 
 
-parensOr : Parser FA.Expression -> Parser FA.Expression
-parensOr higher =
+parensOr : Parser a -> Parser a -> Parser a
+parensOr main higher =
     oneOf
         [ higher
-        , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) (Parser.breakCircularDefinition <| \_ -> expr)
+        , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) main
         ]
 
 
@@ -368,11 +381,11 @@ parensOr higher =
 --
 
 
-listOr : Parser FA.Expression -> Parser FA.Expression
-listOr higher =
+listOr : (List a -> a) -> Parser a -> Parser a -> Parser a
+listOr constructor main higher =
     oneOf
         [ higher
-        , do (surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (Parser.breakCircularDefinition <| \_ -> maybe (rawList expr))) <| \maybeLs ->
+        , do (surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (maybe (rawList main))) <| \maybeLs ->
         (case maybeLs of
             Just ( h, t ) ->
                 h :: t
@@ -380,7 +393,7 @@ listOr higher =
             Nothing ->
                 []
         )
-            |> FA.List
+            |> constructor
             |> succeed
         ]
 
@@ -391,13 +404,13 @@ listOr higher =
 --
 
 
-recordOr : Parser FA.Expression -> Parser FA.Expression
-recordOr higher =
+recordOr : (Maybe a -> List ( String, Maybe a ) -> Parser a) -> Parser a -> Parser a -> Parser a
+recordOr constructor main higher =
     let
         attrAssignment =
             discardFirst
                 (kind <| Token.Defop { mutable = False })
-                (Parser.breakCircularDefinition <| \_ -> expr)
+                main
 
         attr =
             do nonMutName <| \name ->
@@ -405,24 +418,112 @@ recordOr higher =
             succeed ( name, maybeAssignment )
 
         updateTarget =
-            do (Parser.breakCircularDefinition <| \_ -> expr) <| \h ->
+            do main <| \h ->
             do (kind Token.With) <| \_ ->
             succeed h
 
         content =
             do (maybe updateTarget) <| \maybeUpdateTarget ->
             do (rawList attr) <| \attrs ->
-            { maybeUpdateTarget = maybeUpdateTarget
-            , attrs = OneOrMore.toList attrs
-            }
-                |> FA.Record
-                |> succeed
+            constructor maybeUpdateTarget (OneOrMore.toList attrs)
     in
     oneOf
         [ higher
         , do (surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (maybe content)) <| \maybeRecord ->
-        maybeRecord
-            |> Maybe.withDefault (FA.Record { maybeUpdateTarget = Nothing, attrs = [] })
+        case maybeRecord of
+            Just re ->
+                succeed re
+
+            Nothing ->
+                constructor Nothing []
+        ]
+
+
+
+----
+--- if..then
+--
+
+
+ifOr : Parser FA.Expression -> Parser FA.Expression
+ifOr higher =
+    let
+        maybeNewLine k =
+            discardFirst
+                (maybe (kind Token.NewSiblingLine))
+                (kind k)
+    in
+    oneOf
+        [ higher
+        , do (kind Token.If) <| \ifToken ->
+        do expr <| \condition ->
+        do (maybeNewLine Token.Then) <| \_ ->
+        do inlineStatementOrBlock <| \true ->
+        do (maybeNewLine Token.Else) <| \_ ->
+        do inlineStatementOrBlock <| \false ->
+        { start = ifToken.start
+        , isOneLine = False
+        , condition = condition
+        , true = true
+        , false = false
+        }
+            |> FA.If
+            |> succeed
+        ]
+
+
+
+----
+--- try..as
+--
+
+
+tryOr : Parser FA.Expression -> Parser FA.Expression
+tryOr higher =
+    let
+        maybeNewLine : Parser a -> Parser a
+        maybeNewLine =
+            discardFirst (maybe (kind Token.NewSiblingLine))
+
+        maybeNewLineKind : Token.Kind -> Parser Token
+        maybeNewLineKind k =
+            maybeNewLine (kind k)
+
+        patternAndAccept =
+            do pattern <| \p ->
+            do (maybeNewLineKind Token.Then) <| \_ ->
+            do inlineStatementOrBlock <| \accept ->
+            succeed ( p, accept )
+
+        default =
+            discardFirst
+                (maybeNewLineKind Token.Else)
+                inlineStatementOrBlock
+
+        single =
+            do patternAndAccept <| \pna ->
+            do default <| \def ->
+            succeed ( [ pna ], Just def )
+
+        multi =
+            Parser.surroundWith (kind Token.BlockStart) (kind Token.BlockEnd) <|
+                do (zeroOrMore (maybeNewLine patternAndAccept)) <| \pnas ->
+                do (maybe default) <| \mdef ->
+                succeed ( pnas, mdef )
+    in
+    oneOf
+        [ higher
+        , do (kind Token.Try) <| \tryToken ->
+        do expr <| \value ->
+        do (maybeNewLineKind Token.As) <| \_ ->
+        do (oneOf [ single, multi ]) <| \( patterns, maybeElse ) ->
+        { start = tryToken.start
+        , isOneLine = False
+        , value = value
+        , patterns = patterns
+        , maybeElse = maybeElse
+        }
+            |> FA.Try
             |> succeed
         ]
 
@@ -436,7 +537,7 @@ recordOr higher =
 statement : Parser FA.Statement
 statement =
     Parser.breakCircularDefinition <| \_ ->
-    Parser.oneOf
+    oneOf
         [ typeAlias
         , unionDef
         , definition
@@ -449,55 +550,26 @@ statement =
 definition : Parser FA.Statement
 definition =
     do (maybe typeAnnotation) <| \maybeAnnotation ->
-    do (oneOrMore pattern) <| \( namePattern, params ) ->
+    do pattern <| \p ->
     do defop <| \{ mutable } ->
-    do (oneOf [ inlineStatement, statementBlock ]) <| \sb ->
-    case namePattern of
-        -- TODO if namePattern is any other pattern, then params must be empty
-        FA.PatternAny name ->
-            case annotationError maybeAnnotation name mutable of
-                Just err ->
-                    Parser.abort err
-
-                Nothing ->
-                    { name = namePattern
-                    , mutable = mutable
-                    , parameters = params
-                    , body = sb
-                    , maybeAnnotation = maybeAnnotation
-                    }
-                        |> FA.Definition
-                        |> succeed
+    do inlineStatementOrBlock <| \sb ->
+    { pattern = p
+    , mutable = mutable
+    , body = sb
+    , maybeAnnotation = maybeAnnotation
+    }
+        |> FA.Definition
+        |> succeed
 
 
-annotationError : Maybe FA.Annotation -> String -> Bool -> Maybe String
-annotationError maybeAnnotation name mutable =
-    case maybeAnnotation of
-        Nothing ->
-            Nothing
-
-        Just annotation ->
-            if annotation.name /= name then
-                Just "annotation name doesn't match definition name"
-
-            else if annotation.mutable /= mutable then
-                Just "annotation mutability doesn't match definition"
-
-            else
-                Nothing
-
-
-inlineStatement : Parser (OneOrMore FA.Statement)
-inlineStatement =
-    do statement <| \s ->
-    succeed ( s, [] )
-
-
-statementBlock : Parser (OneOrMore FA.Statement)
-statementBlock =
-    statement
-        |> oomSeparatedBy (kind Token.NewSiblingLine)
-        |> Parser.surroundWith (kind Token.BlockStart) (kind Token.BlockEnd)
+inlineStatementOrBlock : Parser (OneOrMore FA.Statement)
+inlineStatementOrBlock =
+    oneOf
+        [ do (Parser.breakCircularDefinition <| \_ -> expr) <| \e -> succeed ( FA.Evaluation e, [] )
+        , statement
+            |> oomSeparatedBy (kind Token.NewSiblingLine)
+            |> Parser.surroundWith (kind Token.BlockStart) (kind Token.BlockEnd)
+        ]
 
 
 
@@ -696,7 +768,6 @@ typeApplicationOr higher =
 
 
 
-
 ----
 --- Lambda
 --
@@ -726,16 +797,13 @@ lambdaOr higher =
                   -}
                   oneOrMore (discardFirst (kind Token.NewSiblingLine) statement)
                 , {-
+                     fn x = a
+
                      fn x =
                        a
+
                   -}
-                  statementBlock
-                , {-
-                     fn x = a
-                  -}
-                  do (succeed ()) <| \_ ->
-                  do expr <| \e ->
-                  succeed ( FA.Evaluation e, [] )
+                  inlineStatementOrBlock
                 ]
     in
     oneOf
@@ -747,12 +815,82 @@ lambdaOr higher =
         ]
 
 
-{-| TODO
--}
+
+----
+--- Pattern
+--
+
+
 pattern : Parser FA.Pattern
 pattern =
-    do nonMutName <| \name ->
-    succeed (FA.PatternAny name)
+    let
+        nest =
+            Parser.breakCircularDefinition <| \_ -> pattern
+
+        recordConstructor maybeUpdateTarget attrs =
+            if maybeUpdateTarget /= Nothing then
+                Parser.abort "can't use `with` for pattern matching!"
+
+            else
+                attrs
+                    |> FA.PatternRecord
+                    |> succeed
+    in
+    Parser.expression patternTerm
+        -- the `Or` stands for `Or higher priority parser`
+        [ parensOr nest
+        , listOr FA.PatternList nest
+        , recordOr recordConstructor nest
+        , patternApplicationOr
+
+        --         , patternListConsOr
+        --         , patternTupleOr
+        ]
+
+
+patternTerm : Parser FA.Pattern
+patternTerm =
+    do oneToken <| \token ->
+    case token.kind of
+        {- TODO
+           Token.NumberLiteral s ->
+               s
+                   |> FA.PatternNumber
+                   |> succeed
+
+           Token.StringLiteral s ->
+               s
+                   |> FA.PatternString
+                   |> succeed
+        -}
+        Token.Name { mutable } s ->
+            if mutable then
+                fail
+
+            else
+                s
+                    |> FA.PatternAny
+                    |> succeed
+
+        _ ->
+            fail
+
+
+patternApplicationOr : Parser FA.Pattern -> Parser FA.Pattern
+patternApplicationOr higher =
+    do higher <| \p ->
+    case p of
+        FA.PatternAny name ->
+            do (zeroOrMore higher) <| \args ->
+            if args == [] then
+                succeed p
+
+            else
+                FA.PatternApplication name args
+                    |> succeed
+
+        _ ->
+            succeed p
 
 
 

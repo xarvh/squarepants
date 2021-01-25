@@ -55,6 +55,27 @@ Ideally, types that are optimized for mutation will have library functions that 
 Unsolved problems
 =================
 
+# Invisible mutation
+
+_ =
+  x @: Int
+  x @= 0
+
+  nextX : None -> Int
+  nextX None =
+    @x += 1
+    x
+
+  doStuffWith nextX
+
+
+doStuffWith may not mutate anything, but will be unwittingly mutating `x` every time it calls nextX
+However, the mutation /should/ be limited to the scope where `x` is declared.
+Is there any way we could bring nextX out of the `_` scope?
+If not, is this acceptable?
+
+
+
 # When do I fix a variable's value?
 
 I need to understand how closures are implemented in the emitter before I can solve this.

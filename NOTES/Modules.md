@@ -121,6 +121,8 @@ Hoped Advantages
 
 6. You can expose `log` from `Debug` and then remove it enitrely or remap it to something else entirely (or just use the rename tool)
 
+7. `Debug.toString` (or however we call it) can print the name paths that actually work in the program.
+
 
 
 JSON?

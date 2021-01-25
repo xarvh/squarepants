@@ -169,7 +169,7 @@ addStatementBlockUndeclared env block undeclared =
         localEnv =
             block
                 |> List.filterMap statementAsDefinition
-                |> List.foldl (\def envAcc -> { envAcc | values = Set.insert def.name envAcc.values }) env
+                |> List.foldl (\def envAcc -> { envAcc | values = Set.union (CA.patternNames def.pattern) envAcc.values }) env
     in
     List.foldl (addStatementUndeclared localEnv) undeclared block
 
@@ -211,6 +211,9 @@ addExpressionUndeclared env expr undeclared =
                 |> addStatementBlockUndeclared env ar.condition
                 |> addStatementBlockUndeclared env ar.true
                 |> addStatementBlockUndeclared env ar.false
+
+        CA.Try e ar ->
+            Debug.todo "NI FindUndeclared Try"
 
 
 addArgumentUndeclared : EnvDeclared -> CA.Argument e -> EnvUndeclared -> EnvUndeclared
