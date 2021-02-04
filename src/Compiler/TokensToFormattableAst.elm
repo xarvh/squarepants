@@ -339,7 +339,7 @@ expr =
         -- the `Or` stands for `Or higher priority parser`
         [ parensOr nest
         , listOr FA.List nest
-        , recordOr recordConstructor nest
+        , recordOr Token.Defop recordConstructor nest
         , lambdaOr
         , functionApplicationOr
         , unopsOr
@@ -404,12 +404,12 @@ listOr constructor main higher =
 --
 
 
-recordOr : (Maybe a -> List ( String, Maybe a ) -> Parser a) -> Parser a -> Parser a -> Parser a
-recordOr constructor main higher =
+recordOr : ({ mutable : Bool } -> Token.Kind) -> (Maybe a -> List ( String, Maybe a ) -> Parser a) -> Parser a -> Parser a -> Parser a
+recordOr assign constructor main higher =
     let
         attrAssignment =
             discardFirst
-                (kind <| Token.Defop { mutable = False })
+                (kind <| assign { mutable = False })
                 main
 
         attr =
@@ -609,48 +609,29 @@ typeTerm =
 
 typeExpr : Parser FA.Type
 typeExpr =
+    let
+        nest =
+            Parser.breakCircularDefinition <| \_ -> typeExpr
+
+        recordConstructor : Maybe FA.Type -> List ( String, Maybe FA.Type ) -> Parser FA.Type
+        recordConstructor extensible attrs =
+            if extensible /= Nothing then
+                Parser.abort "Extensible types are not supported, I want to see if it's good to do without them"
+
+            else
+                attrs
+                    |> List.map (\( name, maybeAttr ) -> ( name, Maybe.withDefault (FA.TypeName { name = name }) maybeAttr ))
+                    |> FA.TypeRecord
+                    |> succeed
+    in
     Parser.expression typeTerm
         -- the `Or` stands for `Or higher priority parser`
-        [ typeParensOr
-        , typeListOr
-        , typeRecordOr
+        [ typeParensOr nest
+        , typeListOr nest
+        , recordOr Token.HasType recordConstructor nest
         , typeApplicationOr
         , typeTupleOr
         , typeFunctionOr
-        ]
-
-
-{-| Extensible records are not supported, and deliberately so.
-
-I'm not sure it's a good idea, but for the time being, I'd rather avoid supporting them as much as possible.
-
-TODO: merge with `recordOr`, to ensure that types and values use the same syntax, as a human would expect
-
--}
-typeRecordOr : Parser FA.Type -> Parser FA.Type
-typeRecordOr higher =
-    let
-        attrAssignment =
-            discardFirst
-                (kind <| Token.HasType { mutable = False })
-                (Parser.breakCircularDefinition <| \_ -> typeExpr)
-
-        attr =
-            Parser.tuple2 nonMutName attrAssignment
-
-        content =
-            do (rawList attr) <| \attrs ->
-            attrs
-                |> OneOrMore.toList
-                |> FA.TypeRecord
-                |> succeed
-    in
-    oneOf
-        [ higher
-        , do (surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (maybe content)) <| \maybeRecord ->
-        maybeRecord
-            |> Maybe.withDefault (FA.TypeRecord [])
-            |> succeed
         ]
 
 
@@ -675,26 +656,26 @@ typeTupleOr higher =
             |> succeed
 
 
-typeParensOr : Parser FA.Type -> Parser FA.Type
-typeParensOr higher =
+typeParensOr : Parser FA.Type -> Parser FA.Type -> Parser FA.Type
+typeParensOr main higher =
     oneOf
         [ higher
         , surroundStrict
             (Token.RoundParen Token.Open)
             (Token.RoundParen Token.Closed)
-            (Parser.breakCircularDefinition <| \_ -> typeExpr)
+            main
         ]
 
 
-typeListOr : Parser FA.Type -> Parser FA.Type
-typeListOr higher =
+typeListOr : Parser FA.Type -> Parser FA.Type -> Parser FA.Type
+typeListOr main higher =
     oneOf
         [ higher
         , do
             (surroundStrict
                 (Token.SquareBracket Token.Open)
                 (Token.SquareBracket Token.Closed)
-                (Parser.breakCircularDefinition <| \_ -> typeExpr)
+                main
             )
           <| \t ->
           { name = "List"
@@ -840,7 +821,7 @@ pattern =
         -- the `Or` stands for `Or higher priority parser`
         [ parensOr nest
         , listOr FA.PatternList nest
-        , recordOr recordConstructor nest
+        , recordOr Token.Defop recordConstructor nest
         , patternApplicationOr
 
         --         , patternListConsOr

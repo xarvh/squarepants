@@ -27,6 +27,10 @@ tests =
 --
 
 
+codeTest =
+    Test.codeTest Debug.toString
+
+
 isOk =
     Test.isOk Debug.toString
 
@@ -452,6 +456,13 @@ records =
                         |> Result.map .type_
             , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeName { name = "Bool" } ) ])
             }
+        , codeTest "annotation, extensible"
+            """
+            a : { b with x : Bool }
+            a = a
+            """
+            (firstAnnotation >> Result.map .type_)
+            (Test.errContain "not supported")
         ]
 
 

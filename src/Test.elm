@@ -35,7 +35,7 @@ type alias TestOutcome =
 
 
 ----
---- Constructors
+--- Constructors (code)
 --
 
 
@@ -56,7 +56,14 @@ okEqual expectedOk =
     CodeExpectation <| \toString result ->
     case result of
         Err e ->
-            Just e
+            [ "expected = "
+            , "  " ++ toString expectedOk
+            , ""
+            , "error = "
+            , "  " ++ e
+            ]
+                |> String.join "\n"
+                |> Just
 
         Ok actualOk ->
             if expectedOk == actualOk then
@@ -65,11 +72,45 @@ okEqual expectedOk =
             else
                 [ "expected = "
                 , toString expectedOk
+                , ""
                 , "actual = "
                 , toString actualOk
                 ]
                     |> String.join "\n"
                     |> Just
+
+
+errContain : String -> CodeExpectation ok
+errContain subString =
+    CodeExpectation <| \toString result ->
+    case result of
+        Err error ->
+            if String.contains subString error then
+                Nothing
+
+            else
+                [ "error should contain \"" ++ subString ++ "\""
+                , "but instead is:"
+                , ""
+                , error
+                ]
+                    |> String.join "\n"
+                    |> Just
+
+        Ok ok ->
+            [ "expecting an error containing \"" ++ subString ++ "\""
+            , "but instead got ok!"
+            , ""
+            , toString ok
+            ]
+                |> String.join "\n"
+                |> Just
+
+
+
+----
+--- Constructors
+--
 
 
 simple :
@@ -213,10 +254,12 @@ view test =
                     Html.text "Ok!"
 
                 Just error ->
-                    error
-                        |> String.split "\n"
-                        |> List.map (\e -> Html.div [ class "test-error-line" ] [ Html.text e ])
-                        |> Html.div []
+                    Html.code
+                        []
+                        [ Html.pre
+                            []
+                            [ Html.text error ]
+                        ]
             ]
         ]
 
