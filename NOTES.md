@@ -100,28 +100,11 @@ More or less established features
   - A computation is anything that results in a value
 
   ```
-  ch = Result.chain
-  blah blah blah |> ch fn blahOutput =
-  someotherline |> ch fn otherThingy =
+  to = Result.andThen
+  blah blah blah >> to fn blahOutput =
+  someotherline >> to fn otherThingy =
   doStuffWith blahOutput otherThingy
   ```
-
-
-
-### Unit type
-
-The Preamble should contain a `type None = None`
-
-Unit type is used as
-    * Dummy parameter for functions `fn None =`
-    * Return value for side effects `modifyStrings : @String -> @String -> None`?
-
-  `()` is confusing
-  `{}` is more elegant but probably just as confusing
-
-
-
-
 
 
 ### Support Tabs or Spaces, but not mixed
@@ -154,9 +137,6 @@ Stuff that seems good but needs thinking
 
 
 
-
-
-
 * Collect-then-solve type inference:
   https://www.researchgate.net/publication/2528716_Generalizing_Hindley-Milner_Type_Inference_Algorithms
   https://github.com/cronokirby/heeren-2002/blob/master/lang.hs
@@ -179,15 +159,6 @@ Stuff that seems good but needs thinking
 * Remove point-free pipes?
     probably not, function composition is core to functional programming
 
-* Use `>>` or `|` as value pipe?
-
-
-* `risk` monop
-    * `risk unionTypeValue`
-    * Extract the first constructor of a Union Type, crash if not available
-    * Prone to error if the constructos change order, but this is a YOLO feature
-
-
 
 * FUCK UP ALL THE OPS
 
@@ -206,52 +177,6 @@ Stuff that seems good but needs thinking
 
 
 
-
-
-
-
-
-
-### Macros
-  The only macro I really need is `TypeAST -> ExpressionAST`.
-
-  It requires special syntax.
-
-  Macros can throw compile errors
-
-  Useful macros:
-    order : a -> a -> Order
-
-    toTextData : a -> TextData
-    fromTextData : TextData -> Result TextDataError a
-
-    toBinData : a -> BinData
-    fromBinData : BinData -> Result BinDataError a
-
-    clone : a -> a
-    empty : a
-
-
-  ```
-  module Order
-
-  ...
-
-  macro_deriveOrderFunction : TypeAST -> ExpressionAST
-  ```
-
-  ```
-  module Dict
-
-  ...
-
-  insert : k -> v -> Dict k v -> Dict k v
-  insert key value dict =
-
-      orderFunction = Order.macro_deriveOrderFunction k
-
-      doStuffWith orderFunction
-  ```
 
 
 
@@ -345,8 +270,6 @@ No currying?
 GLSL: https://github.com/EmbarkStudios/rust-gpu
 
 
-* Use * to separate type args?
-
 * Allow `?` for skipping the annotation of a specific type?
   as in: `someAnnotatedFunction : SomeType -> ? -> SomeReturnType`
 
@@ -356,71 +279,7 @@ GLSL: https://github.com/EmbarkStudios/rust-gpu
 
 
 
-* Multi-line expressions:
 
-  * Functions: Fn Arg* (BlockStart Arg (NewSiblingLine Arg)* BlockEnd)?
-  ```
-  funzione arg1 arg2
-
-  funzione arg1
-    arg2
-
-  funzione
-     arg1
-     arg2
-  ```
-
-  * Operators:
-      Term NewSiblingLine? Op NewSiblingLine? Term
-
-      Term BlockStart Op Term BlockEnd
-      Term Op BlockStart Term BlockEnd
-
-
-  ```
-  a + b
-
-  a
-  + b
-
-  a +
-  b
-
-  a
-  +
-  b
-
-  a
-    + b
-
-  a +
-    b
-
-  ```
-
-  * Lambdas:
-       Fn pattern+ '=' Expr
-       Fn pattern+ '=' (NewSiblingLine Expr)*
-       Fn pattern+ '=' BlockStart Expr (NewSiblingLine Expr)* BlockEnd
-      
-  ```
-  fn arg = 1
-
-  fn arg =
-  1
-
-  fn arg =
-    1
-
-  ```
-
-
-
-
-
-
-
-* ``/``` for String and ""/""" for Text ?
 
 * `(-) a b == b - a`?
   `(- blah)` is a function?
@@ -443,30 +302,7 @@ GLSL: https://github.com/EmbarkStudios/rust-gpu
 
 
 
-# Statements vs Expressions
-    * A function declaration consists of a list of statements
-    * Statements can be:
-      - Variable or function declarations
-      - Variable mutations
-      - function calls where the return value is ignored
-      - `return` followed or not by an expression
-    * Mutations and declarations DO NOT have a value and cannot be used inside expressions
-    * `return` can be omitted in single-statement functions
-    * `return` can be put at the end of any other statement
-      - `Array.forEach (fn element = element += 1 return) anArray`
-
-
-# Closures
-    * Easy to implement because both JS and V have them?
-    ! Pain in the ass to implement in GLSL
-
-
 ? System for string interpolation?
-
-? module aliases
-  - Disallow module aliases
-    The first path items in module A.B.C.D can be omitted if it doesn't cause any ambiguity:
-      `module Webbhuset.Control` can be referenced just as `Control` if no other module ends with `.Control`
 
 
 ? Do we want opaque types? Can we find a better solution?
@@ -553,99 +389,4 @@ rectFragmentShader attributes uniforms varying =
 
     return Just <| opacity * alpha * (vec4 color 1.0)
 ```
-
-
-
-
-
-
-
-
-
-
-Obsolete
---------
-  (No)
-
-  Sarebbe utile avere le seguenti funzioni per ogni tipo:
-
-  order : instance has order => a -> a -> Order # per dizionari/set/hashmap/sort
-  toHumanReadableString : instance -> String
-
-  toStringData : instance -> StringData
-  fromStringData : (instance can decode) => StringData -> Result DecodeError instance
-
-  toBitData : instance -> BitData
-  fromBitData : (instance can decode) => BitData -> Result DecodeError instance
-
-  Se queste funzioni vengono usate (come?) per un certo tipo, il compilatore cerca di generarle automaticamente
-  Se il compilatore non riesce a generarle o l'utente vuole fare qualcosa di diverso, puo' dichiarare esplicitamente queste funzioni per quel tipo
-
-  ```
-  Dict.insert : k has order => k -> v -> Dict k v -> Dict k v
-  ```
-
-  ```
-  save : someObject has toSerializedData => String -> someObject -> SideEffect (Maybe SaveError)
-  save referenceName object =
-    object
-      |> toSerializedData
-      |> writeToStorage referenceName
-  ```
-
-  ---> Is it ok if only union types can override the class functions?
-  ---> Probably not! But then I have to distinguish between alias and records?
-
-
-* Type inference
-    Is necessary for coding fast?
-
-
-
-  * Cannot mutate anything outside their scope
-  * Declared as `$functionName : $space-separated-arguments $arrow $return type
-  * Arrows:
-    * `@>` functions depend entirely on their arguments and are compatible with GLSL
-    * `->` functions depend entirely on their arguments
-    * `#>` functions have IO effects
-
-    * `@>` functions can be used in place of any function
-    * `->` functions can be used in place of `#>` functions
-
-
-  * statement blocks without arguments are evaluated at once
-
-  * Must have at least one argument, anything without arguments is evaluated at once.
-    * Maybe catch attempts at calling a function without arguments?
-      ```
-      x = ...
-
-      x
-      ```
-
-
-Do we really need `#>` functions?
-Ideally they should only be used by platform stuff.
-
-
-
-
-How do I `Dict UnionType a`?
-How do I `decode(SomeType) : (String or Json) -> (Maybe or Result) SomeType`
-
-  * I need an automatic solution that works for most cases
-  * But I also need to override it seamlessly
-  * Further, I need to specify that a function wants a type that be decoded or used as key in a Dict
-
-  * with typeclasses?
-    --> how do I automatically generate default classes when possible?
-    --> how do I avoid magic?
-    --> 
-
-  * with reflection?
-    --> how do I ensure that a function can produce a certain type?
-      `decode(SomeType) .... -> Blah SomeType`
-      I need first-class types for this!
-
-
 
