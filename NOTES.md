@@ -64,7 +64,6 @@ More or less established features
     * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
     * Assignment ops are not binops and are not valid expressions
     * `=` is for declaring a new symbol
-    ? not-equal: `=/=`
     * use `and`, `or` instead of `&&` `||`
 
 
@@ -105,6 +104,9 @@ More or less established features
   someotherline >> to fn otherThingy =
   doStuffWith blahOutput otherThingy
   ```
+
+* imperative if, try
+  Allow the branches to have different types if the block is not evaluated
 
 
 ### Support Tabs or Spaces, but not mixed

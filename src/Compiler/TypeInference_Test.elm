@@ -21,6 +21,8 @@ tests =
         , higherOrderTypes
         , records
         , patterns
+        , try_as
+        , if_then
         ]
 
 
@@ -354,6 +356,26 @@ variableTypes =
             }
 
         -- TODO Test self recursion and mutual recursion
+        , codeTest "[reg] statements, assignments, free vars"
+            """
+            id a = a
+
+            x q =
+                  s = id q
+                  s
+            """
+            (infer "x")
+            (Test.okEqual
+                { forall = Set.fromList [ "t9" ]
+                , mutable = Just False
+                , type_ =
+                    CA.TypeFunction
+                        { from = CA.TypeVariable { name = "t9" }
+                        , fromIsMutable = Nothing
+                        , to = CA.TypeVariable { name = "t9" }
+                        }
+                }
+            )
         ]
 
 
@@ -768,4 +790,107 @@ patterns =
                         }
                 }
             )
+        ]
+
+
+
+----
+--- Try..As
+--
+
+
+try_as : Test
+try_as =
+    Test.Group "try..as"
+        [ codeTest "basic functionality"
+            """
+            x q =
+             try q as
+               True then 2
+               else 3
+            """
+            (infer "x")
+            (Test.okEqual
+                { forall = Set.fromList []
+                , mutable = Just False
+                , type_ =
+                    CA.TypeFunction
+                        { from = CA.TypeConstant { path = "Bool", args = [] }
+                        , fromIsMutable = Nothing
+                        , to = CA.TypeConstant { path = "Number", args = [] }
+                        }
+                }
+            )
+
+        --
+        , codeTest "rejects non-matching patterns"
+            """
+            x q =
+             try q as
+               True then 2
+               [] then 3
+            """
+            (infer "x")
+            (Test.errContain "List")
+
+        --
+        , codeTest "rejects non-matching blocks"
+            """
+            x q =
+             try q as
+               True then 2
+               False then False
+            """
+            (infer "x")
+            (Test.errContain "Number")
+        ]
+
+
+
+----
+--- if..then
+--
+
+
+if_then : Test
+if_then =
+    Test.Group "if..then"
+        [ codeTest "basic functionality"
+            """
+            x q =
+              if q then 1
+              else 2
+            """
+            (infer "x")
+            (Test.okEqual
+                { forall = Set.fromList []
+                , mutable = Just False
+                , type_ =
+                    CA.TypeFunction
+                        { from = CA.TypeConstant { path = "Bool", args = [] }
+                        , fromIsMutable = Nothing
+                        , to = CA.TypeConstant { path = "Number", args = [] }
+                        }
+                }
+            )
+
+        --
+        , codeTest "rejects non-bool conditions"
+            """
+            x q =
+              if 1 then 1
+              else 2
+            """
+            (infer "x")
+            (Test.errContain "Bool")
+
+        --
+        , codeTest "rejects non-matching blocks"
+            """
+            x q =
+              if q then 2
+              else False
+            """
+            (infer "x")
+            (Test.errContain "Number")
         ]

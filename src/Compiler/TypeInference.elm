@@ -135,8 +135,8 @@ inspectModule prelude mod =
                 |> List.map CA.Definition
 
         gen =
-            do_nr (inspectStatementList statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->
-            ( refine_env subs env1
+            do_nr (inspectBlock statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->
+            ( refineEnv subs env1
             , subs
             )
                 |> Ok
@@ -190,17 +190,17 @@ addConstructor unionDef ctor env =
 --
 
 
-refine_type : Substitutions -> Type -> Type
-refine_type subs ty =
+refineType : Substitutions -> Type -> Type
+refineType subs ty =
     case ty of
         CA.TypeConstant { path, args } ->
-            CA.TypeConstant { path = path, args = List.map (refine_type subs) args }
+            CA.TypeConstant { path = path, args = List.map (refineType subs) args }
 
         CA.TypeVariable { name } ->
             case Dict.get name subs of
                 Just substitutionType ->
                     -- a substitution exists for the variable type v
-                    refine_type subs substitutionType
+                    refineType subs substitutionType
 
                 Nothing ->
                     -- no substitution, return the type as-is
@@ -208,46 +208,46 @@ refine_type subs ty =
 
         CA.TypeFunction { from, fromIsMutable, to } ->
             CA.TypeFunction
-                { from = refine_type subs from
+                { from = refineType subs from
                 , fromIsMutable = fromIsMutable
-                , to = refine_type subs to
+                , to = refineType subs to
                 }
 
         CA.TypeAlias path t ->
-            CA.TypeAlias path (refine_type subs t)
+            CA.TypeAlias path (refineType subs t)
 
         CA.TypeRecord args ->
             case args.extensible |> Maybe.andThen (\name -> Dict.get name subs) of
                 Nothing ->
                     CA.TypeRecord
                         { extensible = args.extensible
-                        , attrs = Dict.map (\name -> refine_type subs) args.attrs
+                        , attrs = Dict.map (\name -> refineType subs) args.attrs
                         }
 
                 Just (CA.TypeVariable ar) ->
                     CA.TypeRecord
                         { extensible = Just ar.name
-                        , attrs = Dict.map (\name -> refine_type subs) args.attrs
+                        , attrs = Dict.map (\name -> refineType subs) args.attrs
                         }
 
                 Just what ->
                     Debug.todo "replacing record extension with non-var" (Debug.toString what)
 
 
-tyvars_from_type : Type -> Set Name
-tyvars_from_type ty =
+typeVarsFromType : Type -> Set Name
+typeVarsFromType ty =
     case ty of
         CA.TypeVariable { name } ->
             Set.singleton name
 
         CA.TypeFunction { from, to } ->
-            Set.union (tyvars_from_type from) (tyvars_from_type to)
+            Set.union (typeVarsFromType from) (typeVarsFromType to)
 
         CA.TypeConstant { path, args } ->
-            List.foldl (\a -> Set.union (tyvars_from_type a)) Set.empty args
+            List.foldl (\a -> Set.union (typeVarsFromType a)) Set.empty args
 
         CA.TypeAlias path t ->
-            tyvars_from_type t
+            typeVarsFromType t
 
         CA.TypeRecord args ->
             let
@@ -259,7 +259,7 @@ tyvars_from_type ty =
                         Just name ->
                             Set.singleton name
             in
-            Dict.foldl (\n t -> Set.union (tyvars_from_type t)) init args.attrs
+            Dict.foldl (\n t -> Set.union (typeVarsFromType t)) init args.attrs
 
 
 
@@ -268,8 +268,8 @@ tyvars_from_type ty =
 --
 
 
-instantiate_type : Type -> Set Name -> TyGen Type
-instantiate_type t tvars =
+instantiateType : Type -> Set Name -> TyGen Type
+instantiateType t tvars =
     let
         -- substitute each tvar with a newly generated tvar
         substituteTvar : Name -> TyGen Substitutions -> TyGen Substitutions
@@ -284,15 +284,15 @@ instantiate_type t tvars =
             Set.foldl substituteTvar (TyGen.wrap Dict.empty) tvars
     in
     TyGen.do genAllSubs <| \subs ->
-    refine_type subs t
+    refineType subs t
         |> TyGen.wrap
 
 
-env_get : Name -> Env -> TR Type
-env_get v e =
+envGet : Name -> Env -> TR Type
+envGet v e =
     case Dict.get v e of
         Just { type_, forall, mutable } ->
-            instantiate_type type_ forall
+            instantiateType type_ forall
                 |> TyGen.map Ok
 
         Nothing ->
@@ -301,11 +301,11 @@ env_get v e =
                 |> TyGen.wrap
 
 
-refine_env : Substitutions -> Env -> Env
-refine_env s env =
+refineEnv : Substitutions -> Env -> Env
+refineEnv s env =
     let
         refine_entry _ entry =
-            { entry | type_ = refine_type (Set.foldl Dict.remove s entry.forall) entry.type_ }
+            { entry | type_ = refineType (Set.foldl Dict.remove s entry.forall) entry.type_ }
     in
     Dict.map refine_entry env
 
@@ -331,13 +331,13 @@ unify at1 at2 s =
             unwrapAlias Nothing at2
 
         t1_refined =
-            refine_type s t1
+            refineType s t1
 
         t2_refined =
-            refine_type s t2
+            refineType s t2
 
         cycle v t =
-            Set.member v (tyvars_from_type t)
+            Set.member v (typeVarsFromType t)
     in
     case ( t1_refined, t2_refined ) of
         ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
@@ -525,9 +525,9 @@ generalize names env ty =
                 acc
 
             else
-                Set.union (Set.diff (tyvars_from_type schema.type_) schema.forall) acc
+                Set.union (Set.diff (typeVarsFromType schema.type_) schema.forall) acc
     in
-    Set.diff (tyvars_from_type ty) tyvarsFromEnv
+    Set.diff (typeVarsFromType ty) tyvarsFromEnv
 
 
 
@@ -566,8 +566,8 @@ unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
             unifyWithAttrPath tail typeAtPathEnd t1 subs1
 
 
-inspect_expr : CA.Expression e -> Type -> Eas -> TR Eas
-inspect_expr expr ty ( env, subs ) =
+inspectExpr : CA.Expression e -> Type -> Eas -> TR Eas
+inspectExpr expr ty ( env, subs ) =
     case expr of
         CA.NumberLiteral _ l ->
             subs
@@ -577,11 +577,11 @@ inspect_expr expr ty ( env, subs ) =
         CA.Variable _ { path, attrPath } ->
             -- Every time I use a var with variable type, it should be instantiated,
             -- because each time it may by used against a different type.
-            -- This is done automatically by `env_get`.
-            do_nr (env_get path env) <| \nt ->
+            -- This is done automatically by `envGet`.
+            do_nr (envGet path env) <| \nt ->
             let
                 t =
-                    refine_type subs nt
+                    refineType subs nt
             in
             subs
                 |> unifyWithAttrPath attrPath ty t
@@ -591,7 +591,7 @@ inspect_expr expr ty ( env, subs ) =
             TyGen.do newType <| \v_t ->
             TyGen.do newType <| \e_t ->
             do_nr (inspectPattern insertVariableFromLambda args.parameter v_t ( env, subs )) <| \( env1, subs1 ) ->
-            do_nr (inspectStatementList args.body env1 subs1) <| \( returnType, env2, subs2 ) ->
+            do_nr (inspectBlock args.body env1 subs1) <| \( returnType, env2, subs2 ) ->
             let
                 fromIsMutable_res =
                     case args.parameter of
@@ -599,7 +599,7 @@ inspect_expr expr ty ( env, subs ) =
                             Ok (Just False)
 
                         CA.PatternAny name ->
-                            Ok (dict_get "SNH inspect_expr CA.Lambda" name env2).mutable
+                            Ok (dict_get "SNH inspectExpr CA.Lambda" name env2).mutable
 
                         _ ->
                             errorTodo "unpacking mutable arguments is not supported =("
@@ -611,7 +611,7 @@ inspect_expr expr ty ( env, subs ) =
 
         CA.Call _ args ->
             TyGen.do newType <| \e_t ->
-            do_nr (inspect_argument env args.argument e_t subs) <| \( env1, subs1 ) ->
+            do_nr (inspectArgument env args.argument e_t subs) <| \( env1, subs1 ) ->
             let
                 fromIsMutable =
                     case args.argument of
@@ -625,29 +625,66 @@ inspect_expr expr ty ( env, subs ) =
                     CA.TypeFunction { from = e_t, fromIsMutable = Just fromIsMutable, to = ty }
 
                 f_t1 =
-                    refine_type subs1 f_t
+                    refineType subs1 f_t
             in
-            inspect_expr args.reference f_t1 ( refine_env subs1 env1, subs1 )
-
-        CA.If _ _ ->
-            ("inference NI: " ++ Debug.toString expr)
-                |> errorTodo
-                |> TyGen.wrap
+            inspectExpr args.reference f_t1 ( refineEnv subs1 env1, subs1 )
 
         CA.Record _ args ->
-            do_nr (inspectRecordAttributes inspect_expr args.attrs ( env, subs )) <| \( attrTypes, ( env1, subs1 ) ) ->
-            do_nr (inspect_maybeUpdateTarget env1 args.maybeUpdateTarget ty subs1) <| \( extensible, ( env2, subs2 ) ) ->
+            do_nr (inspectRecordAttributes inspectExpr args.attrs ( env, subs )) <| \( attrTypes, ( env1, subs1 ) ) ->
+            do_nr (inspectMaybeExtensible env1 args.maybeUpdateTarget ty subs1) <| \( extensible, ( env2, subs2 ) ) ->
             let
                 refinedAttrTypes =
                     -- first I need all new subs, only then it makes sense to apply them
-                    Dict.map (\attrName attrType -> refine_type subs2 attrType) attrTypes
+                    Dict.map (\attrName attrType -> refineType subs2 attrType) attrTypes
             in
             subs2
                 |> unify ty (CA.TypeRecord { extensible = extensible, attrs = refinedAttrTypes })
                 |> andEnv env2
 
-        CA.Try _ _ ->
-            TyGen.wrap <| errorTodo "NI inspect_expr Try"
+        CA.If _ ar ->
+            do_nr (inspectBlock ar.condition env subs) <| \( conditionType, env1, subs1 ) ->
+            do_nr (unify conditionType Core.boolType subs1) <| \subs2 ->
+            do_nr (inspectBlock ar.true env1 subs2) <| \( inferredTrue, _, subs3 ) ->
+            do_nr (inspectBlock ar.false env1 subs3) <| \( inferredFalse, _, subs4 ) ->
+            do_nr (unify inferredTrue inferredFalse subs4) <| \subs5 ->
+            do_nr (unify (refineType subs5 inferredTrue) ty subs5) <| \subs6 ->
+            ( refineEnv subs6 env1
+            , subs6
+            )
+                |> Ok
+                |> TyGen.wrap
+
+        CA.Try _ ar ->
+            TyGen.do newType <| \rawPatternTy ->
+            TyGen.do newType <| \blockType ->
+            do_nr (inspectExpr ar.value rawPatternTy ( env, subs )) <| \( env1, subs1 ) ->
+            let
+                refPatternTy =
+                    refineType subs1 rawPatternTy
+
+                env2 =
+                    refineEnv subs1 env1
+            in
+            do_nr (list_foldl_nr (inspectPatternBlock env2) ar.patterns ( refPatternTy, blockType, subs1 )) <| \( _, _, subs2 ) ->
+            do_nr (unify blockType ty subs2) <| \subs3 ->
+            ( refineEnv subs3 env2
+            , subs3
+            )
+                |> Ok
+                |> TyGen.wrap
+
+
+inspectPatternBlock : Env -> ( CA.Pattern, List (CA.Statement e) ) -> ( Type, Type, Substitutions ) -> TR ( Type, Type, Substitutions )
+inspectPatternBlock env ( pattern, block ) ( patternType, expectedBlockType, subs ) =
+    do_nr (inspectPattern insertVariableFromLambda pattern patternType ( env, subs )) <| \( env1, subs1 ) ->
+    do_nr (inspectBlock block env1 subs1) <| \( inferredBlockType, _, subs2 ) ->
+    do_nr (unify expectedBlockType inferredBlockType subs2) <| \subs3 ->
+    ( refineType subs3 patternType
+    , refineType subs3 inferredBlockType
+    , subs3
+    )
+        |> Ok
+        |> TyGen.wrap
 
 
 {-| TODO replace this function with dict\_fold\_nr and inline it
@@ -676,20 +713,20 @@ inspectRecordAttributes inspectValue attrs eas =
     Dict.foldr foldAttr init attrs
 
 
-inspect_maybeUpdateTarget : Env -> Maybe CA.VariableArgs -> Type -> Substitutions -> TR ( Maybe Name, Eas )
-inspect_maybeUpdateTarget env maybeUpdateTarget ty subs =
+inspectMaybeExtensible : Env -> Maybe CA.VariableArgs -> Type -> Substitutions -> TR ( Maybe Name, Eas )
+inspectMaybeExtensible env maybeUpdateTarget ty subs =
     case maybeUpdateTarget of
         Nothing ->
             TyGen.wrap <| Ok <| ( Nothing, ( env, subs ) )
 
         Just updateTarget ->
             TyGen.do newName <| \n ->
-            inspect_expr (CA.Variable () updateTarget) ty ( env, subs )
+            inspectExpr (CA.Variable () updateTarget) ty ( env, subs )
                 |> map_nr (\eas -> ( Just n, eas ))
 
 
-inspect_argument : Env -> CA.Argument e -> Type -> Substitutions -> TR Eas
-inspect_argument env arg ty subs =
+inspectArgument : Env -> CA.Argument e -> Type -> Substitutions -> TR Eas
+inspectArgument env arg ty subs =
     case arg of
         CA.ArgumentMutable { path, attrPath } ->
             case Dict.get path env of
@@ -714,7 +751,7 @@ inspect_argument env arg ty subs =
                                 |> TyGen.wrap
 
         CA.ArgumentExpression expr ->
-            inspect_expr expr ty ( env, subs )
+            inspectExpr expr ty ( env, subs )
 
 
 
@@ -723,15 +760,15 @@ inspect_argument env arg ty subs =
 --
 
 
-inspect_statement : CA.Statement e -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
-inspect_statement statement env subs =
+inspectStatement : CA.Statement e -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectStatement statement env subs =
     case statement of
         CA.Evaluation expr ->
             TyGen.do newType <| \nt ->
-            do_nr (inspect_expr expr nt ( env, subs )) <| \( env1, subs1 ) ->
+            do_nr (inspectExpr expr nt ( env, subs )) <| \( env1, subs1 ) ->
             let
                 refinedNt =
-                    refine_type subs1 nt
+                    refineType subs1 nt
             in
             ( refinedNt, env1, subs1 )
                 |> Ok
@@ -742,7 +779,7 @@ inspect_statement statement env subs =
                 insert =
                     insertVariableFromDefinition mutable maybeAnnotation
             in
-            do_nr (inspectStatementList body env subs) <| \( bodyType, _, subs1 ) ->
+            do_nr (inspectBlock body env subs) <| \( bodyType, _, subs1 ) ->
             do_nr (inspectPattern insert pattern bodyType ( env, subs1 )) <| \( env1, subs2 ) ->
             let
                 -- TODO All this stuff is just repeating stuff that insertVariableFromDefinition has done already.
@@ -752,7 +789,7 @@ inspect_statement statement env subs =
 
                 -- TODO we need to calculate forall only if there is an annotation
                 refinedType =
-                    refine_type subs2 bodyType
+                    refineType subs2 bodyType
 
                 -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
                 -- This is also the reason why we can't infer whether a value is mutable or not
@@ -761,7 +798,7 @@ inspect_statement statement env subs =
                         Set.empty
 
                     else
-                        generalize names (refine_env subs2 env) refinedType
+                        generalize names (refineEnv subs2 env) refinedType
             in
             case Maybe.map (\ann -> annotationTooGeneral ann forall) maybeAnnotation of
                 Just (Just error) ->
@@ -770,7 +807,7 @@ inspect_statement statement env subs =
 
                 _ ->
                     -- The type of a definition is always None
-                    Ok ( Core.noneType, refine_env subs2 env1, subs2 )
+                    Ok ( Core.noneType, refineEnv subs2 env1, subs2 )
                         |> TyGen.wrap
 
 
@@ -783,7 +820,7 @@ insertVariableFromDefinition mutable maybeAnnotation name ty ( env, subs ) =
     do_nr (unify ty def.type_ subs) <| \subs2 ->
     let
         refinedType =
-            refine_type subs2 def.type_
+            refineType subs2 def.type_
 
         -- https://cstheory.stackexchange.com/questions/42554/extending-hindley-milner-to-type-mutable-references
         -- This is also the reason why we can't infer whether a value is mutable or not
@@ -792,7 +829,7 @@ insertVariableFromDefinition mutable maybeAnnotation name ty ( env, subs ) =
                 Set.empty
 
             else
-                generalize (Set.singleton name) (refine_env subs2 env) refinedType
+                generalize (Set.singleton name) (refineEnv subs2 env) refinedType
 
         scheme : EnvEntry
         scheme =
@@ -877,7 +914,7 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
             let
                 refinedAttrTypes =
                     -- first I need all new subs, only then it makes sense to apply them
-                    Dict.map (\attrName attrType -> refine_type subs1 attrType) attrTypes
+                    Dict.map (\attrName attrType -> refineType subs1 attrType) attrTypes
             in
             subs1
                 |> unify ty (CA.TypeRecord { extensible = Just nn, attrs = refinedAttrTypes })
@@ -914,7 +951,7 @@ annotationTooGeneral annotation inferredForall =
         -- This is already calculated when we add the raw definitions to env
         -- Is it faster to get it from env?
         annotationForall =
-            tyvars_from_type annotation
+            typeVarsFromType annotation
     in
     if Set.size annotationForall > Set.size inferredForall then
         Just <| "annotation too general : " ++ Debug.toString annotationForall ++ " vs " ++ Debug.toString inferredForall
@@ -929,8 +966,8 @@ annotationTooGeneral annotation inferredForall =
 --
 
 
-inspectStatementList : List (CA.Statement e) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
-inspectStatementList stats parentEnv subs =
+inspectBlock : List (CA.Statement e) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectBlock stats parentEnv subs =
     let
         definitionOrStatement stat =
             case stat of
@@ -1019,7 +1056,7 @@ inspectStatementRec stats returnType env subs =
                 |> TyGen.wrap
 
         stat :: statsTail ->
-            do_nr (inspect_statement stat env subs) <| \( ty, env1, subs1 ) ->
+            do_nr (inspectStatement stat env subs) <| \( ty, env1, subs1 ) ->
             inspectStatementRec statsTail ty env1 subs1
 
 
@@ -1057,7 +1094,7 @@ insertDefinitionRec def env =
                                     { type_ = annotation
 
                                     -- TODO remove parent annotation tyvars!
-                                    , forall = tyvars_from_type annotation
+                                    , forall = typeVarsFromType annotation
                                     , mutable = Just def.mutable
                                     }
                         in
@@ -1196,8 +1233,9 @@ findAllRefs_expr expr =
                 |> Set.union (findAllRefs_statementBlock true)
                 |> Set.union (findAllRefs_statementBlock false)
 
-        CA.Try _ _ ->
-            Debug.todo "NI findAllRefs_arg Try"
+        CA.Try _ { value, patterns } ->
+            findAllRefs_expr value
+                |> (\refs -> List.foldl (\( pa, block ) -> Set.union (findAllRefs_statementBlock block)) refs patterns)
 
 
 findAllRefs_arg : CA.Argument e -> Set String

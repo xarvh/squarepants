@@ -64,6 +64,12 @@ bool =
     }
 
 
+boolType : CA.Type
+boolType =
+    CA.TypeConstant
+        { path = bool.name
+        , args = []
+        }
 
 ----
 --- List

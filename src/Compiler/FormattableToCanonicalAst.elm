@@ -585,6 +585,32 @@ translateExpression rs faExpr =
                 |> Lib.list_mapRes (translateExpression rs)
                 |> Result.map (List.foldr cons Core.nil)
 
+        FA.Try fa ->
+            let
+                translatePatternAndStatements ( faPattern, faStatements ) =
+                    Result.map2 Tuple.pair
+                        (translatePattern faPattern)
+                        (translateStatementBlock rs faStatements)
+            in
+            Result.map3
+                (\caValue caPatternsAndStatements caElse ->
+                    CA.Try ()
+                        { start = fa.start
+                        , value = caValue
+                        , patterns = caPatternsAndStatements ++ caElse
+                        }
+                )
+                (translateExpression rs fa.value)
+                (Lib.list_mapRes translatePatternAndStatements fa.patterns)
+                (case fa.maybeElse of
+                    Nothing ->
+                        Ok []
+
+                    Just faBlock ->
+                        translateStatementBlock rs faBlock
+                            |> Result.map (\caBlock -> [ ( CA.PatternDiscard, caBlock ) ])
+                )
+
         _ ->
             errorTodo <| "FA expression type not supported for now:" ++ Debug.toString faExpr
 

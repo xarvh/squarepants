@@ -147,7 +147,7 @@ normalizeValueDef ga vdef =
             }
         )
         (normalizeAnnotation ga vdef.maybeAnnotation)
-        (Lib.list_mapRes (normalizeStatement ga) vdef.body)
+        (normalizeBlock ga vdef.body)
 
 
 normalizeAnnotation : GetAlias -> Maybe Type -> Res (Maybe Type)
@@ -158,6 +158,11 @@ normalizeAnnotation ga maybeType =
 
         Just ty ->
             replaceType ga ty |> Result.map Just
+
+
+normalizeBlock : GetAlias -> List (CA.Statement e) -> Res (List (CA.Statement e))
+normalizeBlock ga =
+    Lib.list_mapRes (normalizeStatement ga)
 
 
 normalizeStatement : GetAlias -> CA.Statement e -> Res (CA.Statement e)
@@ -181,7 +186,7 @@ normalizeExpr ga expr =
 
         CA.Lambda e ar ->
             ar.body
-                |> Lib.list_mapRes (normalizeStatement ga)
+                |> normalizeBlock ga
                 |> Result.map (\body -> CA.Lambda e { ar | body = body })
 
         CA.Record e ar ->
@@ -198,12 +203,15 @@ normalizeExpr ga expr =
         CA.If e ar ->
             Result.map3
                 (\c t f -> CA.If e { start = ar.start, condition = c, true = t, false = f })
-                (Lib.list_mapRes (normalizeStatement ga) ar.condition)
-                (Lib.list_mapRes (normalizeStatement ga) ar.true)
-                (Lib.list_mapRes (normalizeStatement ga) ar.false)
+                (normalizeBlock ga ar.condition)
+                (normalizeBlock ga ar.true)
+                (normalizeBlock ga ar.false)
 
         CA.Try e ar ->
-            errorTodo "NI ApplyAliases Try"
+            Result.map2
+                (\v ps -> CA.Try e { start = ar.start, value = v, patterns = ps })
+                (normalizeExpr ga ar.value)
+                (Lib.list_mapRes (Lib.tuple_mapSecondRes (normalizeBlock ga)) ar.patterns)
 
 
 normalizeArg : GetAlias -> CA.Argument e -> Res (CA.Argument e)

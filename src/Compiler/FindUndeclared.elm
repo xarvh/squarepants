@@ -194,7 +194,11 @@ addExpressionUndeclared env expr undeclared =
             { undeclared | values = maybeAdd env.values ar.path undeclared.values }
 
         CA.Lambda e ar ->
-            addStatementBlockUndeclared env ar.body undeclared
+            let
+                envWithParams =
+                    { env | values = Set.union env.values (CA.patternNames ar.parameter) }
+            in
+            addStatementBlockUndeclared envWithParams ar.body undeclared
 
         CA.Record e ar ->
             undeclared
@@ -213,7 +217,9 @@ addExpressionUndeclared env expr undeclared =
                 |> addStatementBlockUndeclared env ar.false
 
         CA.Try e ar ->
-            Debug.todo "NI FindUndeclared Try"
+            undeclared
+                |> addExpressionUndeclared env ar.value
+                |> (\u -> List.foldl (\( pa, block ) -> addStatementBlockUndeclared env block) u ar.patterns)
 
 
 addArgumentUndeclared : EnvDeclared -> CA.Argument e -> EnvUndeclared -> EnvUndeclared

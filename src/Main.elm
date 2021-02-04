@@ -37,8 +37,11 @@ runTests =
 initialCode =
     """
 x q =
-    { f } = q
-    f
+ try q as
+   a then
+     2
+   else
+      3
     """
 
 

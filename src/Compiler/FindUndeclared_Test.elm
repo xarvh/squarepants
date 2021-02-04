@@ -7,6 +7,10 @@ import Test exposing (Test)
 import Types.CanonicalAst as CA
 
 
+codeTest =
+    Test.codeTest Debug.toString
+
+
 simpleTest =
     Test.simple Debug.toString
 
@@ -55,4 +59,15 @@ tests =
             , run = \_ -> undeclared "type Q b c = Q d"
             , expected = Ok <| Err <| Dict.singleton "d" [ 111 ]
             }
+        , codeTest "[reg] lambda params should count as declared!"
+            """
+            x q = q
+            """
+            undeclared
+            (Test.okEqual <|
+                Ok
+                    { types = Dict.empty
+                    , values = Dict.empty
+                    }
+            )
         ]

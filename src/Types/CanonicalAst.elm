@@ -155,6 +155,8 @@ type Expression e
         e
         { start : Int
         , value : Expression e
+
+        -- TODO rename to patternBlocks?
         , patterns : List ( Pattern, List (Statement e) )
         }
 

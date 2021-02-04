@@ -40,6 +40,13 @@ dict_mapRes f aDict =
     dict_foldRes (\k a bAcc -> Result.map (\b -> Dict.insert k b bAcc) (f k a)) aDict Dict.empty
 
 
+tuple_mapSecondRes : (b -> Result err c) -> ( a, b ) -> Result err ( a, c )
+tuple_mapSecondRes f ( a, b ) =
+    Result.map (\c -> ( a, c )) (f b)
+
+
+
+
 
 ----
 ---
