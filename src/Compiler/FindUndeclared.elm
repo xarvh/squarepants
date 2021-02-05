@@ -187,7 +187,7 @@ addStatementUndeclared env s undeclared =
 addExpressionUndeclared : EnvDeclared -> CA.Expression e -> EnvUndeclared -> EnvUndeclared
 addExpressionUndeclared env expr undeclared =
     case expr of
-        CA.NumberLiteral e ar ->
+        CA.Literal e ar ->
             undeclared
 
         CA.Variable e ar ->

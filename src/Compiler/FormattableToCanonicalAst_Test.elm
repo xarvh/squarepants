@@ -6,6 +6,7 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import Test exposing (Test)
 import Types.CanonicalAst as CA exposing (Name)
+import Types.Literal as Literal
 
 
 tests : Test
@@ -117,7 +118,7 @@ binops =
                         { reference =
                             CA.Call ()
                                 { reference = CA.Variable () { end = 0, path = "+", start = 0, attrPath = [] }
-                                , argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 13, number = "3", start = 12 })
+                                , argument = CA.ArgumentExpression (CA.Literal () { end = 13, value = Literal.Number "3", start = 12 })
                                 }
                         , argument =
                             CA.ArgumentExpression
@@ -125,9 +126,9 @@ binops =
                                     { reference =
                                         CA.Call ()
                                             { reference = CA.Variable () { end = 0, path = "+", start = 0, attrPath = [] }
-                                            , argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 9, number = "2", start = 8 })
+                                            , argument = CA.ArgumentExpression (CA.Literal () { end = 9, value = Literal.Number "2", start = 8 })
                                             }
-                                    , argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 5, number = "1", start = 4 })
+                                    , argument = CA.ArgumentExpression (CA.Literal () { end = 5, value = Literal.Number "1", start = 4 })
                                     }
                                 )
                         }
@@ -139,16 +140,16 @@ binops =
             , expected =
                 Ok
                     (CA.Call ()
-                        { argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 5, number = "1", start = 4 })
+                        { argument = CA.ArgumentExpression (CA.Literal () { end = 5, value = Literal.Number "1", start = 4 })
                         , reference =
                             CA.Call ()
                                 { argument =
                                     CA.ArgumentExpression
                                         (CA.Call ()
-                                            { argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 9, number = "2", start = 8 })
+                                            { argument = CA.ArgumentExpression (CA.Literal () { end = 9, value = Literal.Number "2", start = 8 })
                                             , reference =
                                                 CA.Call ()
-                                                    { argument = CA.ArgumentExpression (CA.NumberLiteral () { end = 13, number = "3", start = 12 })
+                                                    { argument = CA.ArgumentExpression (CA.Literal () { end = 13, value = Literal.Number "3", start = 12 })
                                                     , reference = CA.Variable () { end = 0, path = "*", start = 0, attrPath = [] }
                                                     }
                                             }
@@ -214,8 +215,8 @@ tuples =
                         { maybeUpdateTarget = Nothing
                         , attrs =
                             Dict.fromList
-                                [ ( "first", CA.NumberLiteral () { end = 5, number = "1", start = 4 } )
-                                , ( "second", CA.NumberLiteral () { end = 9, number = "2", start = 8 } )
+                                [ ( "first", CA.Literal () { end = 5, value = Literal.Number "1", start = 4 } )
+                                , ( "second", CA.Literal () { end = 9, value = Literal.Number "2", start = 8 } )
                                 ]
                         }
                     )
@@ -229,9 +230,9 @@ tuples =
                         { maybeUpdateTarget = Nothing
                         , attrs =
                             Dict.fromList
-                                [ ( "first", CA.NumberLiteral () { end = 5, number = "1", start = 4 } )
-                                , ( "second", CA.NumberLiteral () { end = 9, number = "2", start = 8 } )
-                                , ( "third", CA.NumberLiteral () { end = 13, number = "3", start = 12 } )
+                                [ ( "first", CA.Literal () { end = 5, value = Literal.Number "1", start = 4 } )
+                                , ( "second", CA.Literal () { end = 9, value = Literal.Number "2", start = 8 } )
+                                , ( "third", CA.Literal () { end = 13, value = Literal.Number "3", start = 12 } )
                                 ]
                         }
                     )
@@ -332,7 +333,7 @@ records =
             , expected =
                 { attrs =
                     Dict.fromList
-                        [ ( "c", CA.NumberLiteral () { end = 21, number = "1", start = 20 } )
+                        [ ( "c", CA.Literal () { end = 21, value = Literal.Number "1", start = 20 } )
                         , ( "b", CA.Variable () { attrPath = [], end = 0, path = "b", start = 0 } )
                         ]
                 , maybeUpdateTarget = Just { attrPath = [], end = 7, path = "m", start = 6 }

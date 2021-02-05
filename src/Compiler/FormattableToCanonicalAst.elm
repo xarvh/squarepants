@@ -358,6 +358,11 @@ translatePatternOrFunction fa =
         FA.PatternAny s ->
             translatePatternOrFunction (FA.PatternApplication s [])
 
+        FA.PatternLiteral l ->
+            CA.PatternLiteral l
+                |> Lib.Left
+                |> Ok
+
         FA.PatternApplication rawName faArgs ->
             do (stringToStructuredName Nothing rawName) <| \sname ->
             if sname.attrPath /= [] then
@@ -489,8 +494,8 @@ translateStatement rs faStat =
 translateExpression : Rs -> FA.Expression -> Res (CA.Expression ())
 translateExpression rs faExpr =
     case faExpr of
-        FA.NumberLiteral args ->
-            Ok <| CA.NumberLiteral () args
+        FA.Literal args ->
+            Ok <| CA.Literal () args
 
         FA.Variable args ->
             args.name

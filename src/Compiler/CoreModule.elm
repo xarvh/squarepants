@@ -14,11 +14,80 @@ coreModule =
         [ none
         , bool
         , list
+        , text
+        , number
+        , char
         ]
             |> List.foldl (\u -> Dict.insert u.name u) Dict.empty
     , values =
         Dict.empty
     }
+
+
+
+----
+--- Text
+--
+
+
+text : CA.UnionDef
+text =
+    { name = "Text"
+    , args = []
+    , constructors = []
+    }
+
+
+textType : CA.Type
+textType =
+    CA.TypeConstant
+        { path = text.name
+        , args = []
+        }
+
+
+
+----
+--- Number
+--
+
+
+number : CA.UnionDef
+number =
+    { name = "Number"
+    , args = []
+    , constructors = []
+    }
+
+
+numberType : CA.Type
+numberType =
+    CA.TypeConstant
+        { path = number.name
+        , args = []
+        }
+
+
+
+----
+--- Char
+--
+
+
+char : CA.UnionDef
+char =
+    { name = "Char"
+    , args = []
+    , constructors = []
+    }
+
+
+charType : CA.Type
+charType =
+    CA.TypeConstant
+        { path = char.name
+        , args = []
+        }
 
 
 
@@ -70,6 +139,8 @@ boolType =
         { path = bool.name
         , args = []
         }
+
+
 
 ----
 --- List

@@ -10,6 +10,7 @@ module Types.CanonicalAst exposing (..)
 
 import Dict exposing (Dict)
 import Set exposing (Set)
+import Types.Literal
 
 
 type alias Name =
@@ -118,11 +119,11 @@ type Statement e
 
 
 type Expression e
-    = NumberLiteral
+    = Literal
         e
         { start : Int
         , end : Int
-        , number : String
+        , value : Types.Literal.Value
         }
     | Variable e VariableArgs
     | Lambda
@@ -174,12 +175,6 @@ type alias VariableArgs =
     }
 
 
-type Literal
-    = LiteralString String
-    | LiteralInt Int
-    | LiteralFloat Float
-
-
 
 ----
 --- Pattern
@@ -189,7 +184,7 @@ type Literal
 type Pattern
     = PatternDiscard
     | PatternAny Name
-    | PatternLiteral Literal
+    | PatternLiteral Types.Literal.Value
     | PatternConstructor Path (List Pattern)
     | PatternRecord (Dict Name Pattern)
 

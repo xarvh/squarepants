@@ -17,7 +17,7 @@ type
       -- Comment
     | Comment
       -- Terms
-    | StringLiteral String
+    | TextLiteral String
     | NumberLiteral String
     | Name { mutable : Bool } String
       -- Types

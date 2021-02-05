@@ -483,7 +483,7 @@ lexSoftQuotedString startPos state =
                                         state.codeAsString
                                             |> String.slice startPos endPos
                                             -- TODO transform escapes and reject non-escapable chars
-                                            |> Token.StringLiteral
+                                            |> Token.TextLiteral
                                     , start = startPos
                                     , end = endPos
                                     }
@@ -498,7 +498,7 @@ lexSoftQuotedString startPos state =
                     rec (pos + 1) False rest
 
                 [] ->
-                    Error.error pos Error.UnterminatedStringLiteral
+                    Error.error pos Error.UnterminatedTextLiteral
     in
     rec state.pos False state.code
 
@@ -550,7 +550,7 @@ lexHardQuotedString startPos state =
                                         state.codeAsString
                                             |> String.slice startPos endPos
                                             -- TODO transform escapes and reject non-escapable chars
-                                            |> Token.StringLiteral
+                                            |> Token.TextLiteral
                                     , start = startPos
                                     , end = endPos
                                     }
@@ -561,7 +561,7 @@ lexHardQuotedString startPos state =
                     rec (pos + 1) False 0 rest
 
                 [] ->
-                    Error.error pos Error.UnterminatedStringLiteral
+                    Error.error pos Error.UnterminatedTextLiteral
     in
     rec state.pos False 0 state.code
 

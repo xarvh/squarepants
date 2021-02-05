@@ -14,6 +14,7 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
+import Types.Literal
 import Types.Token
 
 
@@ -71,15 +72,10 @@ type Type
 
 
 type Expression
-    = StringLiteral
+    = Literal
         { start : Int
         , end : Int
-        , string : String
-        }
-    | NumberLiteral
-        { start : Int
-        , end : Int
-        , number : String
+        , value : Types.Literal.Value
         }
     | Variable
         { start : Int
@@ -135,7 +131,7 @@ type Expression
 
 type Pattern
     = PatternAny String
-      -- TODO| PatternLiteral String, Number, Char
+    | PatternLiteral Types.Literal.Value
     | PatternApplication String (List Pattern)
     | PatternList (List Pattern)
     | PatternRecord (List ( String, Maybe Pattern ))
@@ -146,10 +142,7 @@ type Pattern
 exprStart : Expression -> Int
 exprStart expr =
     case expr of
-        StringLiteral { start, end, string } ->
-            start
-
-        NumberLiteral { start, end, number } ->
+        Literal { start, end, value } ->
             start
 
         Variable { start, end, name } ->

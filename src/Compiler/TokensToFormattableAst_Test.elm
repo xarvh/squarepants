@@ -4,6 +4,7 @@ import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst as Syntax
 import Test exposing (Test)
 import Types.FormattableAst as FA
+import Types.Literal
 import Types.Token as Token exposing (Token)
 
 
@@ -135,7 +136,7 @@ lambdas =
                                 FA.Lambda
                                     { start = 3
                                     , parameters = ( FA.PatternAny "b", [] )
-                                    , body = ( FA.Evaluation <| FA.NumberLiteral { start = 6, end = 7, number = "3" }, [] )
+                                    , body = ( FA.Evaluation <| FA.Literal { start = 6, end = 7, value = Types.Literal.Number "3" }, [] )
                                     }
                             , []
                             )
@@ -169,7 +170,7 @@ lambdas =
                                 FA.Lambda
                                     { start = 4
                                     , parameters = ( FA.PatternAny "b", [] )
-                                    , body = ( FA.Evaluation <| FA.NumberLiteral { start = 8, end = 9, number = "3" }, [] )
+                                    , body = ( FA.Evaluation <| FA.Literal { start = 8, end = 9, value = Types.Literal.Number "3" }, [] )
                                     }
                             , []
                             )
@@ -204,10 +205,10 @@ lambdas =
                                     , parameters = ( FA.PatternAny "b", [] )
                                     , body =
                                         ( FA.Evaluation <|
-                                            FA.NumberLiteral
+                                            FA.Literal
                                                 { start = 8
                                                 , end = 9
-                                                , number = "3"
+                                                , value = Types.Literal.Number "3"
                                                 }
                                         , []
                                         )
@@ -385,8 +386,8 @@ lists =
             { name = "inline"
             , run = \_ -> firstEvaluation "a = [1, 2]"
             , expected =
-                [ FA.NumberLiteral { end = 6, number = "1", start = 5 }
-                , FA.NumberLiteral { end = 9, number = "2", start = 8 }
+                [ FA.Literal { end = 6, value = Types.Literal.Number "1", start = 5 }
+                , FA.Literal { end = 9, value = Types.Literal.Number "2", start = 8 }
                 ]
                     |> FA.List
                     |> Ok
@@ -400,8 +401,8 @@ lists =
                    ]
                  """
             , expected =
-                [ FA.NumberLiteral { end = 12, number = "1", start = 11 }
-                , FA.NumberLiteral { end = 18, number = "2", start = 17 }
+                [ FA.Literal { end = 12, value = Types.Literal.Number "1", start = 11 }
+                , FA.Literal { end = 18, value = Types.Literal.Number "2", start = 17 }
                 ]
                     |> FA.List
                     |> Ok
@@ -415,7 +416,7 @@ records =
         [ simpleTest
             { name = "inline"
             , run = \_ -> firstEvaluation "a = { x = 1 }"
-            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.NumberLiteral { end = 11, number = "1", start = 10 }) ) ], maybeUpdateTarget = Nothing })
+            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.Literal { end = 11, value = Types.Literal.Number "1", start = 10 }) ) ], maybeUpdateTarget = Nothing })
             }
         , simpleTest
             { name = "multiline"
@@ -428,7 +429,7 @@ records =
                       }
                     """
                         |> firstEvaluation
-            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.NumberLiteral { end = 16, number = "1", start = 15 }) ), ( "y", Just (FA.NumberLiteral { end = 26, number = "2", start = 25 }) ) ], maybeUpdateTarget = Nothing })
+            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.Literal { end = 16, value = Types.Literal.Number "1", start = 15 }) ), ( "y", Just (FA.Literal { end = 26, value = Types.Literal.Number "2", start = 25 }) ) ], maybeUpdateTarget = Nothing })
             }
         , simpleTest
             { name = "annotation, inline"

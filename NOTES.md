@@ -230,27 +230,26 @@ Stuff that's still up in the air
 --------------------------------
 
 
-
 ### Accessibility
 https://cs.brown.edu/~sk/Publications/Papers/Published/sbk-accessible-ast-blocks/paper.pdf
 https://github.com/scalacenter/advisoryboard/blob/master/proposals/016-verbal-descriptions.md
 
 
+### Memory management
+
+Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus
+
+https://vale.dev/blog/generational-references
+
+
+###
 
 Animations with Algebraic Effects https://gopiandcode.uk/logs/log-bye-bye-monads-algebraic-effects.html
 (I'm not convinced by algebraic effects, but animations are something that the language must definitely manage well)
 
 
-
-Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus
-
-
-
-
 Limit union type constructors to no more than two arguments?
   -> More than 2 you need to name them
-
-
 
 
 Halting problem:

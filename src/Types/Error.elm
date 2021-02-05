@@ -46,7 +46,7 @@ type Kind
     | Tab
     | NewLineInsideSoftQuote
     | HardQuoteClosesSoftQuote
-    | UnterminatedStringLiteral
+    | UnterminatedTextLiteral
       -- TODO remove this one
     | Whatever String
 

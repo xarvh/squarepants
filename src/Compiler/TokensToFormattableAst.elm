@@ -5,6 +5,7 @@ import Parser exposing (do, fail, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
 import Types.Error as Error exposing (Error, Res)
 import Types.FormattableAst as FA
+import Types.Literal
 import Types.Token as Token exposing (Token)
 
 
@@ -294,10 +295,14 @@ term =
     do oneToken <| \token ->
     case token.kind of
         Token.NumberLiteral s ->
-            su "nl" <| FA.NumberLiteral { start = token.start, end = token.end, number = s }
+            { start = token.start, end = token.end, value = Types.Literal.Number s }
+                |> FA.Literal
+                |> succeed
 
-        Token.StringLiteral s ->
-            su "sl" <| FA.StringLiteral { start = token.start, end = token.end, string = s }
+        Token.TextLiteral s ->
+            { start = token.start, end = token.end, value = Types.Literal.Text s }
+                |> FA.Literal
+                |> succeed
 
         Token.Name { mutable } s ->
             { start = token.start
@@ -833,17 +838,18 @@ patternTerm : Parser FA.Pattern
 patternTerm =
     do oneToken <| \token ->
     case token.kind of
-        {- TODO
-           Token.NumberLiteral s ->
-               s
-                   |> FA.PatternNumber
-                   |> succeed
+        Token.NumberLiteral s ->
+            s
+                |> Types.Literal.Number
+                |> FA.PatternLiteral
+                |> succeed
 
-           Token.StringLiteral s ->
-               s
-                   |> FA.PatternString
-                   |> succeed
-        -}
+        Token.TextLiteral s ->
+            s
+                |> Types.Literal.Text
+                |> FA.PatternLiteral
+                |> succeed
+
         Token.Name { mutable } s ->
             if mutable then
                 fail

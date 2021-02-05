@@ -9,6 +9,7 @@ import RefHierarchy
 import Set exposing (Set)
 import Types.CanonicalAst as CA exposing (Name, Type)
 import Types.Error as Error exposing (Res, errorTodo)
+import Types.Literal
 
 
 type alias Substitutions =
@@ -506,10 +507,17 @@ unifyRecords aArgs bArgs subs0 =
                     |> TyGen.wrap
 
 
-literalToType : literal -> Type
+literalToType : Types.Literal.Value -> Type
 literalToType l =
-    -- TODO
-    CA.TypeConstant { path = "Number", args = [] }
+    case l of
+        Types.Literal.Number _ ->
+            Core.numberType
+
+        Types.Literal.Text _ ->
+            Core.textType
+
+        Types.Literal.Char _ ->
+            Core.charType
 
 
 generalize : Set Name -> Env -> Type -> Set Name
@@ -569,9 +577,9 @@ unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
 inspectExpr : CA.Expression e -> Type -> Eas -> TR Eas
 inspectExpr expr ty ( env, subs ) =
     case expr of
-        CA.NumberLiteral _ l ->
+        CA.Literal _ l ->
             subs
-                |> unify ty (literalToType l)
+                |> unify ty (literalToType l.value)
                 |> andEnv env
 
         CA.Variable _ { path, attrPath } ->
@@ -873,8 +881,9 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
             insertVariable name ty ( env, subs )
 
         CA.PatternLiteral literal ->
-            -- TODO unify ty (literalType literal)
-            TyGen.wrap <| errorTodo <| "NI pattern:" ++ Debug.toString pattern
+            subs
+                |> unify ty (literalToType literal)
+                |> andEnv env
 
         CA.PatternConstructor path args ->
             case Dict.get path env of
@@ -1211,7 +1220,7 @@ findAllRefs_statement stat =
 findAllRefs_expr : CA.Expression e -> Set String
 findAllRefs_expr expr =
     case expr of
-        CA.NumberLiteral _ args ->
+        CA.Literal _ args ->
             Set.empty
 
         CA.Variable _ args ->

@@ -178,7 +178,7 @@ normalizeStatement ga s =
 normalizeExpr : GetAlias -> CA.Expression e -> Res (CA.Expression e)
 normalizeExpr ga expr =
     case expr of
-        CA.NumberLiteral _ _ ->
+        CA.Literal _ _ ->
             Ok expr
 
         CA.Variable _ _ ->

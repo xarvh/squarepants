@@ -403,8 +403,8 @@ viewCaStatement s =
 viewCaExpression : CA.Expression e -> Html msg
 viewCaExpression expr =
     case expr of
-        CA.NumberLiteral _ s ->
-            Html.text s.number
+        CA.Literal _ s ->
+            Html.text (Debug.toString s)
 
         CA.Variable _ s ->
             Html.text s.path
@@ -505,11 +505,9 @@ viewFaPattern p =
 viewFaExpression : FA.Expression -> Html msg
 viewFaExpression expr =
     case expr of
-        FA.NumberLiteral s ->
-            Html.text s.number
+        FA.Literal s ->
+            Html.text (Debug.toString s)
 
-        FA.StringLiteral s ->
-            Html.text s.string
 
         FA.Variable s ->
             Html.text s.name
