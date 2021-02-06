@@ -4,10 +4,13 @@ import Array exposing (Array)
 import Browser
 import Compiler.ApplyAliases
 import Compiler.ApplyAliases_Test
+import Compiler.CanonicalToJs
 import Compiler.FindUndeclared
 import Compiler.FindUndeclared_Test
 import Compiler.FormattableToCanonicalAst
 import Compiler.FormattableToCanonicalAst_Test
+import Compiler.JsToString
+import Compiler.JsToString_Test
 import Compiler.StringToTokens
 import Compiler.StringToTokens_Test
 import Compiler.TestHelpers
@@ -19,6 +22,7 @@ import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
+import Markdown
 import OneOrMore exposing (OneOrMore)
 import Parser
 import Set exposing (Set)
@@ -36,12 +40,14 @@ runTests =
 
 initialCode =
     """
-x q =
- try q as
-   a then
-     2
-   else
-      3
+
+record = { x = { y = { z = 4 } } }
+
+remm =
+   m @= record
+
+result = remm
+
     """
 
 
@@ -57,6 +63,7 @@ tests =
             , Compiler.TypeInference_Test.tests
             , Compiler.FindUndeclared_Test.tests
             , Compiler.ApplyAliases_Test.tests
+            , Compiler.JsToString_Test.tests
             ]
 
 
@@ -115,6 +122,10 @@ view model =
             alModule
                 |> Result.andThen (Compiler.TypeInference.inspectModule preamble)
 
+        js =
+            caModule
+                |> Result.andThen emitModule
+
         --
         --
         onOk : (a -> Html msg) -> Res a -> Html msg
@@ -150,6 +161,16 @@ view model =
         , Html.ul
             []
             [ Html.li
+                []
+                [ Html.h6 [] [ Html.text "Run $result" ]
+                , viewEval model.code
+                ]
+            , Html.li
+                []
+                [ Html.h6 [] [ Html.text "Emit" ]
+                , onOk viewJs js
+                ]
+            , Html.li
                 []
                 [ Html.h6 [] [ Html.text "Inference" ]
                 , onOk viewInference inference
@@ -199,12 +220,54 @@ view model =
 
 
 ----
---- Inference
+--- JS
 --
 
 
-viewInference : Compiler.TypeInference.Eas -> Html msg
-viewInference ( env, subs ) =
+viewEval : String -> Html msg
+viewEval code =
+    Html.code
+        []
+        [ Html.pre
+            []
+            [ case Compiler.JsToString_Test.eval "result" code of
+                Ok res ->
+                    Html.text res
+
+                Err message ->
+                    Html.text <| "Error: ### " ++ message ++ " ###"
+            ]
+        ]
+
+
+viewJs : String -> Html msg
+viewJs js =
+    Html.code
+        []
+        [ Html.pre
+            []
+            [ Html.text js ]
+        ]
+
+
+emitModule : CA.Module e -> Result x String
+emitModule caModule =
+    [ caModule ]
+        |> Compiler.CanonicalToJs.translateAll
+        |> List.map (Compiler.JsToString.emitStatement 0)
+        |> (++) [ Compiler.CanonicalToJs.cloneDefinition ]
+        |> String.join "\n\n"
+        |> Ok
+
+
+
+----
+--- Inference
+--
+-- viewInference : (Compiler.TypeInference.Eas -> Html msg
+
+
+viewInference ( mod, env, subs ) =
     Html.div
         []
         [ env
@@ -212,6 +275,14 @@ viewInference ( env, subs ) =
             |> List.filter (\( k, v ) -> not (Dict.member k preamble))
             |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
             |> Html.div []
+
+        {-
+           , mod.values
+               |> Dict.values
+               --             |> List.sortBy .name
+               |> List.map viewCaDefinition
+               |> Html.code []
+        -}
         , subs
             |> Dict.toList
             |> List.map (\( k, v ) -> Html.div [] [ k ++ " => " ++ viewCaType v |> Html.text ])
@@ -256,7 +327,7 @@ viewUndeclared un =
 --
 
 
-viewCanonicalAst : CA.Module () -> Html msg
+viewCanonicalAst : CA.Module e -> Html msg
 viewCanonicalAst mod =
     Html.div
         []
@@ -406,8 +477,8 @@ viewCaExpression expr =
         CA.Literal _ s ->
             Html.text (Debug.toString s)
 
-        CA.Variable _ s ->
-            Html.text s.path
+        CA.Variable x s ->
+            Html.text <| Debug.toString x ++ "|" ++ s.path
 
         CA.Call _ { reference, argument } ->
             Html.div
@@ -507,7 +578,6 @@ viewFaExpression expr =
     case expr of
         FA.Literal s ->
             Html.text (Debug.toString s)
-
 
         FA.Variable s ->
             Html.text s.name

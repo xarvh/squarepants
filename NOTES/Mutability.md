@@ -121,3 +121,29 @@ I hope that the syntax makes it obvious enough that the only thing that gets mut
 
 Further, passing a mutable arg requires already for that arg to have a name, so the need to explicitly name the arg is lessened.
 
+
+Implementation
+==============
+
+Some types (C, Complex) need to be cloned, some types (P, Primitive) can just be copied inside the stack (I think?)
+
+**This can be done only after monomorphization.**
+
+  * @=
+      - P: wrap? Use a reference/pointer?
+      - C: probably we use a reference already
+
+  * CA.Variable
+      - P: unwrap/dereference?
+      - C: crawl the whole expression that contains it
+          This is a mess but could avoid a few clones: figure out which parts of the thing are actually preserved
+          and clone only those!
+          * if only a primitive slice of it (ex an array item or a record attribute) is used, clone just the property
+          * if it is passed to a function, we might need to figure out what that function does with it
+          > build a path of record/array accessors, whenever there is a different operation, reset it
+          > from the type of the mutable, figure out the final type of the accessed property
+
+
+  * mutation primitive (:=, +=, -=, ...)
+      - P: unwrap/dereference
+      - C: probably we use a reference already

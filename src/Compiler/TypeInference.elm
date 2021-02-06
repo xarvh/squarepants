@@ -40,6 +40,15 @@ type alias EnvEntry =
     }
 
 
+type alias Ext =
+    Int
+
+
+dummyExt : Ext
+dummyExt =
+    -1
+
+
 
 ----
 ---
@@ -54,6 +63,20 @@ dict_get caller k d =
 
         Just v ->
             v
+
+
+uidToVarType =
+    intToName >> nameToTyVar
+
+
+intToName : Int -> Name
+intToName n =
+    String.fromInt n
+
+
+nameToTyVar : Name -> Type
+nameToTyVar name =
+    CA.TypeVariable { name = name }
 
 
 
@@ -72,12 +95,12 @@ type alias TR a =
 
 newName : TyGen Name
 newName =
-    TyGen.next ((+) 1) (\n -> "t" ++ String.fromInt n)
+    TyGen.next ((+) 1) intToName
 
 
 newType : TyGen Type
 newType =
-    TyGen.map (\s -> CA.TypeVariable { name = s }) newName
+    TyGen.map nameToTyVar newName
 
 
 do_nr : TR a -> (a -> TR b) -> TR b
@@ -126,8 +149,15 @@ dict_fold_nr f dict accum =
 --
 
 
-inspectModule : Env -> CA.Module e -> Res Eas
-inspectModule prelude mod =
+inspectModule : Env -> CA.Module e -> Res ( CA.Module Ext, Env, Substitutions )
+inspectModule prelude rawMod =
+    let
+        f expr ( _, n ) =
+            ( n, n + 1 )
+
+        ( mod, lastId ) =
+            CA.extensionFold_module f ( rawMod, 0 )
+    in
     result_do (Lib.dict_foldRes (\k -> addConstructors) mod.unions prelude) <| \env ->
     let
         statements =
@@ -137,16 +167,16 @@ inspectModule prelude mod =
 
         gen =
             do_nr (inspectBlock statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->
-            ( refineEnv subs env1
+            ( mod
+            , refineEnv subs env1
             , subs
             )
                 |> Ok
                 |> TyGen.wrap
-
-        ( envResult, nextId ) =
-            TyGen.run 0 gen
     in
-    envResult
+    gen
+        |> TyGen.run lastId
+        |> Tuple.first
 
 
 addConstructors : CA.UnionDef -> Env -> Res Env
@@ -574,7 +604,7 @@ unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
             unifyWithAttrPath tail typeAtPathEnd t1 subs1
 
 
-inspectExpr : CA.Expression e -> Type -> Eas -> TR Eas
+inspectExpr : CA.Expression Ext -> Type -> Eas -> TR Eas
 inspectExpr expr ty ( env, subs ) =
     case expr of
         CA.Literal _ l ->
@@ -595,12 +625,14 @@ inspectExpr expr ty ( env, subs ) =
                 |> unifyWithAttrPath attrPath ty t
                 |> andEnv env
 
-        CA.Lambda _ args ->
-            TyGen.do newType <| \v_t ->
-            TyGen.do newType <| \e_t ->
-            do_nr (inspectPattern insertVariableFromLambda args.parameter v_t ( env, subs )) <| \( env1, subs1 ) ->
+        CA.Lambda uid args ->
+            TyGen.do newType <| \argTy ->
+            do_nr (inspectPattern insertVariableFromLambda args.parameter argTy ( env, subs )) <| \( env1, subs1 ) ->
             do_nr (inspectBlock args.body env1 subs1) <| \( returnType, env2, subs2 ) ->
             let
+                lambdaTy =
+                    uidToVarType uid
+
                 fromIsMutable_res =
                     case args.parameter of
                         CA.PatternDiscard ->
@@ -613,8 +645,9 @@ inspectExpr expr ty ( env, subs ) =
                             errorTodo "unpacking mutable arguments is not supported =("
             in
             do_nr (TyGen.wrap fromIsMutable_res) <| \fromIsMutable ->
-            do_nr (unify ty (CA.TypeFunction { from = v_t, fromIsMutable = fromIsMutable, to = e_t }) subs2) <| \subs3 ->
-            unify e_t returnType subs3
+            do_nr (unify ty (CA.TypeFunction { from = argTy, fromIsMutable = fromIsMutable, to = lambdaTy }) subs2) <| \subs3 ->
+            subs3
+                |> unify lambdaTy returnType
                 |> andEnv env
 
         CA.Call _ args ->
@@ -662,8 +695,11 @@ inspectExpr expr ty ( env, subs ) =
                 |> Ok
                 |> TyGen.wrap
 
-        CA.Try _ ar ->
-            TyGen.do newType <| \rawPatternTy ->
+        CA.Try uid ar ->
+            let
+                rawPatternTy =
+                    uidToVarType uid
+            in
             TyGen.do newType <| \blockType ->
             do_nr (inspectExpr ar.value rawPatternTy ( env, subs )) <| \( env1, subs1 ) ->
             let
@@ -682,7 +718,7 @@ inspectExpr expr ty ( env, subs ) =
                 |> TyGen.wrap
 
 
-inspectPatternBlock : Env -> ( CA.Pattern, List (CA.Statement e) ) -> ( Type, Type, Substitutions ) -> TR ( Type, Type, Substitutions )
+inspectPatternBlock : Env -> ( CA.Pattern, List (CA.Statement Ext) ) -> ( Type, Type, Substitutions ) -> TR ( Type, Type, Substitutions )
 inspectPatternBlock env ( pattern, block ) ( patternType, expectedBlockType, subs ) =
     do_nr (inspectPattern insertVariableFromLambda pattern patternType ( env, subs )) <| \( env1, subs1 ) ->
     do_nr (inspectBlock block env1 subs1) <| \( inferredBlockType, _, subs2 ) ->
@@ -729,11 +765,11 @@ inspectMaybeExtensible env maybeUpdateTarget ty subs =
 
         Just updateTarget ->
             TyGen.do newName <| \n ->
-            inspectExpr (CA.Variable () updateTarget) ty ( env, subs )
+            inspectExpr (CA.Variable dummyExt updateTarget) ty ( env, subs )
                 |> map_nr (\eas -> ( Just n, eas ))
 
 
-inspectArgument : Env -> CA.Argument e -> Type -> Substitutions -> TR Eas
+inspectArgument : Env -> CA.Argument Ext -> Type -> Substitutions -> TR Eas
 inspectArgument env arg ty subs =
     case arg of
         CA.ArgumentMutable { path, attrPath } ->
@@ -768,7 +804,7 @@ inspectArgument env arg ty subs =
 --
 
 
-inspectStatement : CA.Statement e -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectStatement : CA.Statement Ext -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectStatement statement env subs =
     case statement of
         CA.Evaluation expr ->
@@ -975,50 +1011,11 @@ annotationTooGeneral annotation inferredForall =
 --
 
 
-inspectBlock : List (CA.Statement e) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectBlock : List (CA.Statement Ext) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectBlock stats parentEnv subs =
     let
-        definitionOrStatement stat =
-            case stat of
-                CA.Definition d ->
-                    Lib.Left d
-
-                _ ->
-                    Lib.Right stat
-
-        -- A statement list can contain definitions, creating its own scope
-        -- Definitions can be recursive and in general appear in any order, so we want to add them to the environment before we inspect them
-        ( definitions, nonDefs ) =
-            Lib.partition definitionOrStatement stats
-
-        definedMutables =
-            List.filter .mutable definitions
-
-        -- Via patterns, a single definition can define multiple names, so we need to reference them by index instead
-        indexedDefs =
-            definitions
-                |> List.indexedMap Tuple.pair
-
-        indexByName =
-            List.foldl
-                (\( index, def ) dict -> Set.foldl (\name -> Dict.insert name index) dict (CA.patternNames def.pattern))
-                Dict.empty
-                indexedDefs
-
-        findAllIndexes : ( Int, CA.ValueDef e ) -> Set Int
-        findAllIndexes ( index, def ) =
-            def
-                |> findAllRefs_definition
-                |> Set.toList
-                |> List.filterMap (\s -> Dict.get s indexByName)
-                |> Set.fromList
-
-        -- Also, we need to reorder them, so that dependent sibling defs come after
-        orderedDefinitions =
-            RefHierarchy.reorder Tuple.first findAllIndexes indexedDefs
-
-        newStats =
-            List.map (Tuple.second >> CA.Definition) orderedDefinitions ++ nonDefs
+        ( definitions, newStats ) =
+            reorderStatements stats
     in
     do_nr (list_foldl_nr insertDefinitionRec definitions parentEnv) <| \localEnv ->
     do_nr (inspectStatementRec newStats Core.noneType localEnv subs) <| \typeAndEnvAndSubs ->
@@ -1036,6 +1033,9 @@ inspectBlock stats parentEnv subs =
 
             nameContainsFunction name =
                 typeContainsFunctions (dict_get "SNH: nameContainsFunction" name env).type_
+
+            definedMutables =
+                List.filter .mutable definitions
 
             mutablesWithFunction =
                 List.filter defContainsFunctions definedMutables
@@ -1056,7 +1056,7 @@ inspectBlock stats parentEnv subs =
             Ok typeAndEnvAndSubs
 
 
-inspectStatementRec : List (CA.Statement e) -> Type -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectStatementRec : List (CA.Statement Ext) -> Type -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectStatementRec stats returnType env subs =
     case stats of
         [] ->
@@ -1069,7 +1069,7 @@ inspectStatementRec stats returnType env subs =
             inspectStatementRec statsTail ty env1 subs1
 
 
-insertDefinitionRec : CA.ValueDef e -> Env -> TR Env
+insertDefinitionRec : CA.ValueDef Ext -> Env -> TR Env
 insertDefinitionRec def env =
     let
         varNames =
@@ -1260,3 +1260,50 @@ findAllRefs_arg arg =
 findAllRefs_statementBlock : List (CA.Statement e) -> Set String
 findAllRefs_statementBlock statements =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
+
+
+{-| TODO move this outr of this module
+-}
+reorderStatements : List (CA.Statement e) -> ( List (CA.ValueDef e), List (CA.Statement e) )
+reorderStatements stats =
+    let
+        definitionOrStatement stat =
+            case stat of
+                CA.Definition d ->
+                    Lib.Left d
+
+                _ ->
+                    Lib.Right stat
+
+        -- A statement list can contain definitions, creating its own scope
+        -- Definitions can be recursive and in general appear in any order, so we want to add them to the environment before we inspect them
+        ( definitions, nonDefs ) =
+            Lib.partition definitionOrStatement stats
+
+        -- Via patterns, a single definition can define multiple names, so we need to reference them by index instead
+        indexedDefs =
+            definitions
+                |> List.indexedMap Tuple.pair
+
+        indexByName =
+            List.foldl
+                (\( index, def ) dict -> Set.foldl (\name -> Dict.insert name index) dict (CA.patternNames def.pattern))
+                Dict.empty
+                indexedDefs
+
+        findAllIndexes : ( Int, CA.ValueDef e ) -> Set Int
+        findAllIndexes ( index, def ) =
+            def
+                |> findAllRefs_definition
+                |> Set.toList
+                |> List.filterMap (\s -> Dict.get s indexByName)
+                |> Set.fromList
+
+        -- Also, we need to reorder them, so that dependent sibling defs come after
+        orderedDefinitions =
+            RefHierarchy.reorder Tuple.first findAllIndexes indexedDefs
+
+        newStats =
+            List.map (Tuple.second >> CA.Definition) orderedDefinitions ++ nonDefs
+    in
+    ( definitions, newStats )

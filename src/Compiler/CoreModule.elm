@@ -96,12 +96,17 @@ charType =
 --
 
 
+noneValue : CA.Name
+noneValue =
+    "None"
+
+
 none : CA.UnionDef
 none =
     { name = "None"
     , args = []
     , constructors =
-        [ { name = "None"
+        [ { name = noneValue
           , args = []
           }
         ]
@@ -122,13 +127,23 @@ noneType =
 --
 
 
+trueValue : CA.Name
+trueValue =
+    "True"
+
+
+falseValue : CA.Name
+falseValue =
+    "False"
+
+
 bool : CA.UnionDef
 bool =
     { name = "Bool"
     , args = []
     , constructors =
-        [ { name = "True", args = [] }
-        , { name = "False", args = [] }
+        [ { name = trueValue, args = [] }
+        , { name = falseValue, args = [] }
         ]
     }
 

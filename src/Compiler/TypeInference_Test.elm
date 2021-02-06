@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Lib
 import Set exposing (Set)
 import Test exposing (Test)
-import Types.CanonicalAst as CA exposing (Name)
+import Types.CanonicalAst as CA exposing (Name, Type)
 import Types.Error exposing (Res)
 
 
@@ -62,7 +62,13 @@ infer name code =
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Result.andThen (TI.inspectModule preamble)
         |> Result.mapError (Compiler.TestHelpers.errorToString code)
-        |> Result.andThen (Tuple.first >> Dict.get name >> Result.fromMaybe "Dict fail")
+        |> Result.andThen
+            (\( mod, env, subs ) ->
+                env
+                    |> Dict.get name
+                    |> Maybe.map normalizeSchema
+                    |> Result.fromMaybe "Dict fail"
+            )
 
 
 preamble : TI.Env
@@ -115,6 +121,103 @@ preamble =
 
 
 ----
+--- "t2" -> "a"
+--
+
+
+normalizeSchema : TI.EnvEntry -> TI.EnvEntry
+normalizeSchema schema =
+    let
+        ( ty, dict ) =
+            normalizeType Dict.empty schema.type_
+
+        replaceName name =
+            Dict.get name dict |> Maybe.withDefault name
+    in
+    { schema
+        | type_ = ty
+        , forall = Set.map replaceName schema.forall
+    }
+
+
+normalizeName : Dict String String -> String -> ( String, Dict String String )
+normalizeName dict name =
+    case Dict.get name dict of
+        Just new ->
+            ( new, dict )
+
+        Nothing ->
+            if String.toInt name == Nothing then
+                ( name, dict )
+
+            else
+                let
+                    n =
+                        Dict.size dict + 1 |> String.fromInt
+                in
+                ( n, Dict.insert name n dict )
+
+
+normalizeType : Dict String String -> Type -> ( Type, Dict String String )
+normalizeType dict ty =
+    case ty of
+        CA.TypeConstant ar ->
+            let
+                fold arg ( ars, d ) =
+                    normalizeType d arg
+                        |> Tuple.mapFirst (\na -> na :: ars)
+
+                ( reversedArgs, dict1 ) =
+                    List.foldl fold ( [], dict ) ar.args
+            in
+            ( CA.TypeConstant { ar | args = List.reverse reversedArgs }
+            , dict1
+            )
+
+        CA.TypeVariable { name } ->
+            normalizeName dict name
+                |> Tuple.mapFirst (\n -> CA.TypeVariable { name = n })
+
+        CA.TypeFunction ar ->
+            let
+                ( from, d1 ) =
+                    normalizeType dict ar.from
+
+                ( to, d2 ) =
+                    normalizeType d1 ar.to
+            in
+            ( CA.TypeFunction { ar | from = from, to = to }
+            , d2
+            )
+
+        CA.TypeRecord ar ->
+            let
+                ( et, d1 ) =
+                    case ar.extensible of
+                        Nothing ->
+                            ( Nothing, dict )
+
+                        Just e ->
+                            normalizeName dict e |> Tuple.mapFirst Just
+
+                fold name attr ( accum, d ) =
+                    normalizeType d attr
+                        |> Tuple.mapFirst (\na -> Dict.insert name na accum)
+
+                ( attrs, d2 ) =
+                    Dict.foldl fold ( Dict.empty, d1 ) ar.attrs
+            in
+            ( CA.TypeRecord { extensible = et, attrs = attrs }
+            , d2
+            )
+
+        CA.TypeAlias path t ->
+            normalizeType dict t
+                |> Tuple.mapFirst (CA.TypeAlias path)
+
+
+
+----
 --- Functions
 --
 
@@ -162,11 +265,11 @@ functions =
             , run = \_ -> infer "a" "a = fn x = 1"
             , expected =
                 Ok
-                    { forall = Set.fromList [ "t2" ]
+                    { forall = Set.fromList [ "1" ]
                     , mutable = Just False
                     , type_ =
                         CA.TypeFunction
-                            { from = CA.TypeVariable { name = "t2" }
+                            { from = CA.TypeVariable { name = "1" }
                             , fromIsMutable = Nothing
                             , to = CA.TypeConstant { path = "Number", args = [] }
                             }
@@ -252,11 +355,11 @@ variableTypes =
                 Ok
                     { type_ =
                         CA.TypeFunction
-                            { from = CA.TypeVariable { name = "t2" }
+                            { from = CA.TypeVariable { name = "1" }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeVariable { name = "t2" }
+                            , to = CA.TypeVariable { name = "1" }
                             }
-                    , forall = Set.singleton "t2"
+                    , forall = Set.singleton "1"
                     , mutable = Just False
                     }
             }
@@ -366,13 +469,13 @@ variableTypes =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Set.fromList [ "t9" ]
+                { forall = Set.fromList [ "1" ]
                 , mutable = Just False
                 , type_ =
                     CA.TypeFunction
-                        { from = CA.TypeVariable { name = "t9" }
+                        { from = CA.TypeVariable { name = "1" }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "t9" }
+                        , to = CA.TypeVariable { name = "1" }
                         }
                 }
             )
@@ -583,7 +686,7 @@ records =
                         """
             , expected =
                 Ok
-                    { forall = Set.fromList [ "t5", "t7", "t8" ]
+                    { forall = Set.fromList [ "1", "2", "3" ]
                     , mutable = Just False
                     , type_ =
                         CA.TypeFunction
@@ -592,14 +695,14 @@ records =
                                     { attrs =
                                         Dict.singleton "meh"
                                             (CA.TypeRecord
-                                                { attrs = Dict.singleton "blah" (CA.TypeVariable { name = "t8" })
-                                                , extensible = Just "t7"
+                                                { attrs = Dict.singleton "blah" (CA.TypeVariable { name = "3" })
+                                                , extensible = Just "2"
                                                 }
                                             )
-                                    , extensible = Just "t5"
+                                    , extensible = Just "1"
                                     }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeVariable { name = "t8" }
+                            , to = CA.TypeVariable { name = "3" }
                             }
                     }
             }
@@ -613,7 +716,7 @@ records =
                         """
             , expected =
                 Ok
-                    { forall = Set.fromList [ "t6", "t8" ]
+                    { forall = Set.fromList [ "1", "2" ]
                     , mutable = Just False
                     , type_ =
                         CA.TypeFunction
@@ -623,10 +726,10 @@ records =
                                         Dict.singleton "meh"
                                             (CA.TypeRecord
                                                 { attrs = Dict.singleton "blah" (CA.TypeConstant { path = "Number", args = [] })
-                                                , extensible = Just "t8"
+                                                , extensible = Just "2"
                                                 }
                                             )
-                                    , extensible = Just "t6"
+                                    , extensible = Just "1"
                                     }
                             , fromIsMutable = Just True
                             , to = CA.TypeConstant { path = "None", args = [] }
@@ -668,11 +771,11 @@ records =
                     re =
                         CA.TypeRecord
                             { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
-                            , extensible = Just "t6"
+                            , extensible = Just "1"
                             }
                 in
                 Ok
-                    { forall = Set.fromList [ "t6" ]
+                    { forall = Set.fromList [ "1" ]
                     , mutable = Just False
                     , type_ =
                         CA.TypeFunction
@@ -696,11 +799,11 @@ records =
                     re =
                         CA.TypeRecord
                             { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
-                            , extensible = Just "t9"
+                            , extensible = Just "1"
                             }
                 in
                 Ok
-                    { forall = Set.fromList [ "t9" ]
+                    { forall = Set.fromList [ "1" ]
                     , mutable = Just False
                     , type_ =
                         CA.TypeFunction
@@ -718,17 +821,17 @@ records =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Set.fromList [ "t4", "t6" ]
+                { forall = Set.fromList [ "2", "1" ]
                 , mutable = Just False
                 , type_ =
                     CA.TypeFunction
                         { from =
                             CA.TypeRecord
-                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "t4" } ) ]
-                                , extensible = Just "t6"
+                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "2" } ) ]
+                                , extensible = Just "1"
                                 }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "t4" }
+                        , to = CA.TypeVariable { name = "2" }
                         }
                 }
             )
@@ -753,17 +856,17 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { forall = Set.fromList [ "t4" ]
+                { forall = Set.fromList [ "1" ]
                 , mutable = Just False
                 , type_ =
                     CA.TypeFunction
                         { from =
                             CA.TypeConstant
-                                { args = [ CA.TypeVariable { name = "t4" } ]
+                                { args = [ CA.TypeVariable { name = "1" } ]
                                 , path = "List"
                                 }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "t4" }
+                        , to = CA.TypeVariable { name = "1" }
                         }
                 }
             )
@@ -776,17 +879,17 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { forall = Set.fromList [ "t4", "t6" ]
+                { forall = Set.fromList [ "2", "1" ]
                 , mutable = Just False
                 , type_ =
                     CA.TypeFunction
                         { from =
                             CA.TypeRecord
-                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "t4" } ) ]
-                                , extensible = Just "t6"
+                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "2" } ) ]
+                                , extensible = Just "1"
                                 }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "t4" }
+                        , to = CA.TypeVariable { name = "2" }
                         }
                 }
             )

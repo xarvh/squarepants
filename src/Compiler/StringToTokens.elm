@@ -245,9 +245,8 @@ recognisedTokens =
                     in
                     Ok <|
                         case match of
---                             ".." ->
---                               Token.Binop Token.Addittive match
-
+                            --                             ".." ->
+                            --                               Token.Binop Token.Addittive match
                             "fn" ->
                                 Token.Fn
 
@@ -481,7 +480,7 @@ lexSoftQuotedString startPos state =
                                 , accum =
                                     { kind =
                                         state.codeAsString
-                                            |> String.slice startPos endPos
+                                            |> String.slice (startPos + 1) (endPos - 1)
                                             -- TODO transform escapes and reject non-escapable chars
                                             |> Token.TextLiteral
                                     , start = startPos
@@ -548,7 +547,7 @@ lexHardQuotedString startPos state =
                                 , accum =
                                     { kind =
                                         state.codeAsString
-                                            |> String.slice startPos endPos
+                                            |> String.slice (startPos + 3) (endPos - 3)
                                             -- TODO transform escapes and reject non-escapable chars
                                             |> Token.TextLiteral
                                     , start = startPos
