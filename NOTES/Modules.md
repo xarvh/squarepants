@@ -105,6 +105,8 @@ Available modules are determined by the project's single configuration file, and
 
 * Library modules expose things by documenting them
 
+* `source`, `path`, `original` can use `$(ENV_VAR)` to interpolate environment variables.
+  (The compiler will fail if any referenced variable is not defined in the system env)
 
 
 Hoped Advantages
