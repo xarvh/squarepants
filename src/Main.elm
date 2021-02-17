@@ -51,6 +51,109 @@ result = remm
     """
 
 
+allCode =
+    """
+[#
+   SquarePants has no import statements: instead, project-wide imports are declared in modules.toml
+#]
+
+
+
+# Basic stuff
+
+numberOne =
+  1
+
+addThreeNumbers x y z =
+  x + y + z
+
+floatOne : Float
+floatOne =
+  1
+
+fibonacci : Int -> Int
+fibonacci n =
+  if n < 2 then n else n + fibonacci (n - 1)
+
+listOfText : [ Text ]
+listOfText = [
+  , "Gary"
+  , "Karen"
+  , "I'm ready! Promotion!"
+  ]
+
+
+
+# Mutability
+
+average : List Int -> Float
+average numbers =
+  n @= 0
+  sum @= 0
+
+  List.each fn x =
+    @n += 1
+    @sum += x
+
+  # division by 0 yields 0
+  sum / n
+
+
+
+# Algebraic Data Types
+
+union LoadingState payload =
+    , NotRequested
+    , Requested
+    , Error Text
+    , Available payload
+
+getStatusName : LoadingState payload -> Text
+getStatusName loadingState =
+  try LoadingState as
+    NotRequested then "Not needed"
+    Requested then "Awaiting server response"
+    Error message then "Error: " .. message
+    Available _ then "Successfully loaded"
+
+getPayload : LoadingState payload -> Maybe payload
+getPayload loadingState =
+  try loadingState as Available payload then Just payload else Nothing
+
+
+
+# Records
+
+alias Crab = {
+  , name : Text
+  , money : Float
+  }
+
+eugeneKrabs : Crab
+eugeneKrabs = {
+  , name = "Eugene H. Krabs"
+  , money = 2_345_678.90
+  }
+
+
+# TODO record access example
+
+
+earnMoney : Float -> Crab -> Crab
+earnMoney profit crab =
+  { crab with money = .money + profit }
+
+
+
+
+# Tuples TODO
+
+
+
+
+    """
+
+
 tests =
     if not runTests then
         Html.text ""
