@@ -36,7 +36,7 @@ translateModule faModule =
     translateModuleRec
         faModule
         { unions = Dict.empty
-        , values = Dict.empty
+        , values = []
         , aliases = Dict.empty
         }
 
@@ -63,11 +63,12 @@ insertStatement faStatement caModule =
             do (translateDefinition Nothing fa) <| \def ->
             case def.pattern of
                 CA.PatternAny name ->
-                    if Dict.member name caModule.values then
+                    if List.any (\d -> Set.member name (CA.patternNames d.pattern)) caModule.values then
+                        --if Dict.member name caModule.values then
                         errorTodo <| name ++ " declared twice!"
 
                     else
-                        Ok { caModule | values = Dict.insert name def caModule.values }
+                        Ok { caModule | values = caModule.values ++ [def]}
 
                 _ ->
                     errorTodo "patterns can't be used in root definitions!"

@@ -20,7 +20,7 @@ coreModule =
         ]
             |> List.foldl (\u -> Dict.insert u.name u) Dict.empty
     , values =
-        Dict.empty
+        []
     }
 
 

@@ -30,7 +30,7 @@ type alias Path =
 type alias Module e =
     { aliases : Dict Name AliasDef
     , unions : Dict Name UnionDef
-    , values : Dict Name (ValueDef e)
+    , values : List (ValueDef e)
     }
 
 
@@ -214,16 +214,34 @@ patternNames p =
 --
 
 
+findValue : Name -> Module e -> Maybe (ValueDef e)
+findValue name mod =
+    let
+        rec vs =
+            case vs of
+                [] ->
+                    Nothing
+
+                h :: t ->
+                    if Set.member name (patternNames h.pattern) then
+                        Just h
+
+                    else
+                        rec t
+    in
+    rec mod.values
+
+
 extensionFold_module : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Module a, acc ) -> ( Module b, acc )
 extensionFold_module f ( mod, acc ) =
     let
-        fold name a_valueDef ( vals, aX ) =
+        fold a_valueDef ( vals, aX ) =
             Tuple.mapFirst
-                (\b_expr -> Dict.insert name b_expr vals)
+                (\b_expr -> b_expr :: vals)
                 (extensionFold_valueDef f ( a_valueDef, aX ))
     in
     mod.values
-        |> Dict.foldl fold ( Dict.empty, acc )
+        |> List.foldr fold ( [], acc )
         |> Tuple.mapFirst
             (\b_values ->
                 { aliases = mod.aliases

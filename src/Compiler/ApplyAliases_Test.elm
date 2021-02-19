@@ -3,6 +3,7 @@ module Compiler.ApplyAliases_Test exposing (..)
 import Compiler.ApplyAliases
 import Compiler.TestHelpers
 import Dict exposing (Dict)
+import Set exposing (Set)
 import Test exposing (Test)
 import Types.CanonicalAst as CA
 
@@ -28,6 +29,14 @@ applyAndGet dict name code =
         |> Result.andThen (Dict.get name >> Result.fromMaybe "dict error!")
 
 
+applyAndGetValue : String -> String -> Result String (CA.ValueDef ())
+applyAndGetValue name code =
+    code
+        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.resultErrorToString code
+        |> Result.andThen (CA.findValue name >> Result.fromMaybe "findValue error!")
+
+
 
 ----
 ---
@@ -47,7 +56,7 @@ tests =
                         a : A Number Bool
                         a = a
                         """
-                            |> applyAndGet .values "a"
+                            |> applyAndGetValue "a"
                             |> Result.map .maybeAnnotation
                 , expected =
                     { args =
@@ -72,7 +81,7 @@ tests =
                         a : A Bool
                         a = a
                         """
-                            |> applyAndGet .values "a"
+                            |> applyAndGetValue "a"
                 , test = Test.errorShouldContain "alias A needs 2 args, but was used with 1"
                 }
             , simpleTest
@@ -84,7 +93,7 @@ tests =
                         a : A Bool
                         a = a
                         """
-                            |> applyAndGet .values "a"
+                            |> applyAndGetValue "a"
                             |> Result.map .maybeAnnotation
                 , expected =
                     { attrs =

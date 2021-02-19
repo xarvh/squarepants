@@ -161,9 +161,7 @@ inspectModule prelude rawMod =
     result_do (Lib.dict_foldRes (\k -> addConstructors) mod.unions prelude) <| \env ->
     let
         statements =
-            mod.values
-                |> Dict.values
-                |> List.map CA.Definition
+            List.map CA.Definition mod.values
 
         gen =
             do_nr (inspectBlock statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->

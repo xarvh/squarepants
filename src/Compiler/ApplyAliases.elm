@@ -127,14 +127,14 @@ applyAliasesToUnions aliases =
 --
 
 
-applyAliasesToValues : Dict Name CA.AliasDef -> Dict Name (CA.ValueDef e) -> Res (Dict Name (CA.ValueDef e))
+applyAliasesToValues : Dict Name CA.AliasDef -> List (CA.ValueDef e) -> Res (List (CA.ValueDef e))
 applyAliasesToValues aliases =
     let
         ga : GetAlias
         ga name =
             Dict.get name aliases |> Ok
     in
-    Lib.dict_mapRes (\k -> normalizeValueDef ga)
+    Lib.list_mapRes (normalizeValueDef ga)
 
 
 normalizeValueDef : GetAlias -> CA.ValueDef e -> Res (CA.ValueDef e)

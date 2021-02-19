@@ -81,13 +81,13 @@ If not, is this acceptable?
 I need to understand how closures are implemented in the emitter before I can solve this.
 Also, I need to see how I actually use the language.
 
-unaFunzione : @Int -> None -> Int
+unaFunzione : Int @> None -> Int
 unaFunzione n =
   fn None = n
 
 
 _ =
-    a = 0
+    a @= 0
 
     f None =
       a
@@ -96,8 +96,6 @@ _ =
 
     # `f None` e' 0 o 3?
 
-
-    ---> No definitions
 
 
 

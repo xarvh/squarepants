@@ -90,6 +90,7 @@ emitExpr l expression =
                 ++ (id (l + 1) ++ "? " ++ emitExpr (l + 1) true)
                 ++ "\n"
                 ++ (id (l + 1) ++ ": " ++ emitExpr (l + 1) false)
+                ++ ")"
 
         JA.Array items ->
             if items == [] then

@@ -231,6 +231,7 @@ Stuff that's still up in the air
 
 
 ### Accessibility
+https://www.youtube.com/watch?v=UH0A2iujtY8
 https://cs.brown.edu/~sk/Publications/Papers/Published/sbk-accessible-ast-blocks/paper.pdf
 https://github.com/scalacenter/advisoryboard/blob/master/proposals/016-verbal-descriptions.md
 

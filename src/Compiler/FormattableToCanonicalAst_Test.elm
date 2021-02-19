@@ -46,7 +46,7 @@ firstDefinition name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Compiler.TestHelpers.resultErrorToString code
-        |> Result.andThen (\mod -> Dict.get name mod.values |> Result.fromMaybe "Dict fail")
+        |> Result.andThen (CA.findValue name >> Result.fromMaybe "Dict fail")
 
 
 firstEvaluation : String -> String -> Result String (CA.Expression ())
@@ -54,7 +54,7 @@ firstEvaluation name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Compiler.TestHelpers.resultErrorToString code
-        |> Result.andThen (\mod -> Dict.get name mod.values |> Result.fromMaybe "Dict fail")
+        |> Result.andThen (CA.findValue name >> Result.fromMaybe "findValue fail")
         |> Result.andThen (\def -> List.head def.body |> Result.fromMaybe "head fail")
         |> Result.andThen (asEvaluation >> Result.fromMaybe "asEval fail")
 

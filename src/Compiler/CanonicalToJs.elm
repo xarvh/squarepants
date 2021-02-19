@@ -237,14 +237,7 @@ translateModule ca =
                     Nothing
 
         vals =
-            ca.values
-                |> Dict.values
-                |> List.map CA.Definition
-                -- TODO reorderStatements should be moved out of TypeInference
-                |> Compiler.TypeInference.reorderStatements
-                |> Tuple.second
-                |> List.filterMap asDefinition
-                |> List.concatMap (translateValueDef env >> Tuple.first)
+            List.concatMap (translateValueDef env >> Tuple.first) ca.values
     in
     cons ++ vals
 
@@ -413,17 +406,21 @@ translateExpr env expression =
                     let
                         extraStats =
                             patternDefinitions tryName pattern
-                    in
-                    JA.If
-                        (testPattern pattern init [] |> binopChain (JA.Literal "true") "&&")
-                        (case translateBodyToEither env extraStats block of
-                            Lib.Left e ->
-                                extraStats ++ [ JA.Return e ]
 
-                            Lib.Right bl ->
-                                -- TODO two returns is better than zero, but one would be better than two...
-                                extraStats ++ bl ++ [ JA.Return (JA.Literal "null") ]
-                        )
+                        condition =
+                            testPattern pattern init []
+                                |> binopChain (JA.Literal "true") "&&"
+
+                        whenConditionMatches =
+                            case translateBodyToEither env extraStats block of
+                                Lib.Left e ->
+                                    extraStats ++ [ JA.Return e ]
+
+                                Lib.Right bl ->
+                                    -- TODO two returns is better than zero, but one would be better than two...
+                                    bl ++ [ JA.Return (JA.Literal "null") ]
+                    in
+                    JA.If condition whenConditionMatches
 
                 allStatements =
                     head :: List.map testPa ar.patterns
@@ -536,20 +533,12 @@ translateBodyToExpr env caBody =
 translateBodyToEither : Env -> List JA.Statement -> List (CA.Statement e) -> Lib.Either JA.Expr (List JA.Statement)
 translateBodyToEither env extra caBody =
     let
-        orderedStatements =
-            caBody
-                |> Compiler.TypeInference.reorderStatements
-                |> Tuple.second
-
         fold caStat ( faStats, e ) =
             translateStatement e caStat
                 |> Tuple.mapFirst (List.foldl (::) faStats)
 
         ( reversedStats, env1 ) =
-            List.foldl fold ( extra, env ) orderedStatements
-
-        --         stats =
-        --             extra ++ List.concatMap (translateStatement env) caBody
+            List.foldl fold ( extra, env ) caBody
     in
     case reversedStats of
         [] ->
@@ -640,7 +629,10 @@ assignPattern pattern exprAccum accum =
             accum
 
         CA.PatternAny name ->
-            JA.Define name exprAccum :: accum
+          if name == "_" then
+            accum
+          else
+            JA.Define (translatePath name) exprAccum :: accum
 
         CA.PatternLiteral literal ->
             accum

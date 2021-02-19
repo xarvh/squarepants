@@ -18,6 +18,8 @@ tests =
         [ meta
         , misc
         , mutation
+        , ifs
+        , try
         ]
 
 
@@ -181,4 +183,60 @@ mutation =
             """
             (eval "result")
             (Test.okEqual """{"x":{"y":{"z":59}}}""")
+        ]
+
+
+
+----
+--- ifs
+--
+
+
+ifs : Test
+ifs =
+    Test.Group "ifs"
+        [ codeTest "basic sanity"
+            """
+            a =
+              if True then
+                1
+              else
+                2
+            """
+            (eval "a")
+            (Test.okEqual "1")
+        ]
+
+
+
+----
+--- try
+--
+
+
+try : Test
+try =
+    Test.Group "try"
+        [ codeTest "basic sanity"
+            """
+            type A = A Number, B, C Bool
+
+            a x =
+              try x as
+                A 1 then 11
+                A n then n
+                B then 3
+                C False then 5
+                C _ then 6
+
+            result =
+             { x = a (A 2)
+             , y = a (A 1)
+             , z = a B
+             , w = a (C False)
+             , k = a (C True)
+             }
+            """
+            (eval "result")
+            (Test.okEqual """{"k":6,"w":6,"x":2,"y":11,"z":3}""")
         ]

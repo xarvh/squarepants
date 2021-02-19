@@ -40,13 +40,15 @@ runTests =
 
 initialCode =
     """
-
-record = { x = { y = { z = 4 } } }
-
-remm =
-   m @= record
-
-result = remm
+a =
+  m @= 0
+  @m += 1
+  x = m
+  @m := 10
+  y = m
+  @m += 1
+  z = m
+  { x, y, z, m }
 
     """
 
@@ -75,12 +77,27 @@ fibonacci : Int -> Int
 fibonacci n =
   if n < 2 then n else n + fibonacci (n - 1)
 
+subtractTwoFrom : Vec2 -> Vec2
+subtractTwoFrom =
+  (-) 2
+
+
+
 listOfText : [ Text ]
 listOfText = [
   , "Gary"
-  , "Karen"
+  , "Bikini Bottom"
   , "I'm ready! Promotion!"
   ]
+
+
+repeatHello : Int -> Text
+repeatHello times =
+  times
+    >> List.repeat
+    >> List.map fn n = "This is hello #" .. Text.fromInt n
+    >> Text.join "
+"
 
 
 
@@ -88,15 +105,24 @@ listOfText = [
 
 average : List Int -> Float
 average numbers =
+  # mutable variables can only be local and can't leave their scope.
+  # `average` is still a pure function.
   n @= 0
   sum @= 0
 
-  List.each fn x =
+  List.each numbers fn x =
     @n += 1
     @sum += x
 
   # division by 0 yields 0
   sum / n
+
+
+# The argument preceding `@>` is mutable
+generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
+generateTwoRandomNumbers min max seed =
+  # '&' is used for tuples
+  Random.int min max @seed & Random.int min max @seed
 
 
 
@@ -141,13 +167,8 @@ eugeneKrabs = {
 
 earnMoney : Float -> Crab -> Crab
 earnMoney profit crab =
+  # no need to repeat `crab`
   { crab with money = .money + profit }
-
-
-
-
-# Tuples TODO
-
 
 
 
@@ -211,7 +232,7 @@ view model =
 
         undeclared =
             caModule
-                |> Result.mapError (always Dict.empty)
+                |> Result.mapError (always [])
                 |> Result.andThen Compiler.FindUndeclared.moduleUndeclared
 
         --
@@ -408,13 +429,22 @@ viewSchema schema =
 --
 
 
-viewUndeclared : Result Compiler.FindUndeclared.Undeclared Compiler.FindUndeclared.EnvUndeclared -> Html msg
+viewUndeclared : Result (List Compiler.FindUndeclared.Error) Compiler.FindUndeclared.EnvUn -> Html msg
 viewUndeclared un =
     case un of
-        Err undeclaredTypeVars ->
+        Err errors ->
+            let
+                viewError error =
+                    case error of
+                        Compiler.FindUndeclared.ErrorValueUsedBeforeDeclaration name locations ->
+                            Html.div [ style "color" "red" ] [ Html.text <| "value `" ++ name ++ "` used before declaration at locations: " ++ Debug.toString locations ]
+
+                        Compiler.FindUndeclared.ErrorUndeclaredTypeVariable name locations ->
+                            Html.div [ style "color" "red" ] [ Html.text <| "type variable `" ++ name ++ "` used at " ++ Debug.toString locations ++ " was not declared" ]
+            in
             Html.div
                 []
-                [ Html.text <| "UNDECLARED TYPE VARS: " ++ Debug.toString undeclaredTypeVars ]
+                (List.map viewError errors)
 
         Ok m ->
             Html.div
@@ -445,8 +475,6 @@ viewCanonicalAst mod =
             |> List.map viewCaUnion
             |> Html.code []
         , mod.values
-            |> Dict.values
-            --             |> List.sortBy .name
             |> List.map viewCaDefinition
             |> Html.code []
         ]

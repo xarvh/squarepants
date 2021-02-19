@@ -4,6 +4,7 @@ import Compiler.FormattableToCanonicalAst
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Types.CanonicalAst as CA
+import Types.Error
 
 
 type alias Path =
@@ -24,10 +25,16 @@ type alias Undeclared =
     Dict Path (List Location)
 
 
-type alias EnvUndeclared =
+type alias EnvUn =
     { types : Undeclared
     , values : Undeclared
+    , valuesUsedBeforeDeclaration : Undeclared
     }
+
+
+type Error
+    = ErrorUndeclaredTypeVariable String (List Location)
+    | ErrorValueUsedBeforeDeclaration String (List Location)
 
 
 
@@ -39,7 +46,7 @@ type alias EnvUndeclared =
 {-| On error, produce a dict of undeclared type variables
 --| On ok, produce the stuff that the system should try to load form other modules
 -}
-moduleUndeclared : CA.Module e -> Result Undeclared EnvUndeclared
+moduleUndeclared : CA.Module e -> Result (List Error) EnvUn
 moduleUndeclared mod =
     let
         declaredTypes =
@@ -53,24 +60,35 @@ moduleUndeclared mod =
         declared : EnvDeclared
         declared =
             { types = declaredTypes
-            , values = Set.fromList <| Dict.keys mod.values
+            , values = List.foldl (\def -> Set.union (CA.patternNames def.pattern)) Set.empty mod.values
             }
 
-        undeclaredInit : EnvUndeclared
+        undeclaredInit : EnvUn
         undeclaredInit =
             { types = undeclaredTypes
             , values = Dict.empty
+            , valuesUsedBeforeDeclaration = Dict.empty
             }
 
         undeclaredFinal =
-            Dict.foldl (\k -> addValueUndeclared declared) undeclaredInit mod.values
+            List.foldl (addValueUndeclared declared) undeclaredInit mod.values
 
-        undeclaredTypeVariables =
+        unTyVars =
             undeclaredFinal.types
-                |> Dict.filter (\k v -> not <| Compiler.FormattableToCanonicalAst.firstCharIsUpper k)
+                |> Dict.toList
+                |> List.filter (\( k, v ) -> not <| Compiler.FormattableToCanonicalAst.firstCharIsUpper k)
+                |> List.map (\( k, v ) -> ErrorUndeclaredTypeVariable k v)
+
+        unBefore =
+            undeclaredFinal.valuesUsedBeforeDeclaration
+                |> Dict.toList
+                |> List.map (\( k, v ) -> ErrorValueUsedBeforeDeclaration k v)
+
+        errors =
+            unTyVars ++ unBefore
     in
-    if undeclaredTypeVariables /= Dict.empty then
-        Err undeclaredTypeVariables
+    if errors /= [] then
+        Err errors
 
     else
         Ok undeclaredFinal
@@ -139,7 +157,7 @@ addTypeUndeclared isAnnotation typesEnv ty undeclaredTypes =
 --
 
 
-addValueUndeclared : EnvDeclared -> CA.ValueDef e -> EnvUndeclared -> EnvUndeclared
+addValueUndeclared : EnvDeclared -> CA.ValueDef e -> EnvUn -> EnvUn
 addValueUndeclared env def undeclared =
     let
         undeclaredTypes =
@@ -163,28 +181,72 @@ statementAsDefinition s =
             Nothing
 
 
-addStatementBlockUndeclared : EnvDeclared -> List (CA.Statement e) -> EnvUndeclared -> EnvUndeclared
+defIsFunction : CA.ValueDef e -> Bool
+defIsFunction def =
+    case list_last def.body of
+        Just (CA.Evaluation (CA.Lambda _ _)) ->
+            True
+
+        _ ->
+            False
+
+
+list_last : List a -> Maybe a
+list_last l =
+    case l of
+        [] ->
+            Nothing
+
+        head :: [] ->
+            Just head
+
+        head :: tail ->
+            list_last tail
+
+
+addStatementBlockUndeclared : EnvDeclared -> List (CA.Statement e) -> EnvUn -> EnvUn
 addStatementBlockUndeclared env block undeclared =
     let
-        localEnv =
-            block
-                |> List.filterMap statementAsDefinition
-                |> List.foldl (\def envAcc -> { envAcc | values = Set.union (CA.patternNames def.pattern) envAcc.values }) env
+        localEnv0 =
+            { env
+                | values =
+                    block
+                        |> List.filterMap statementAsDefinition
+                        |> List.filter defIsFunction
+                        |> List.foldl (\def -> Set.union (CA.patternNames def.pattern)) env.values
+            }
+
+        ( localEnv1, undeclared1 ) =
+            List.foldl addStatementUndeclared ( localEnv0, undeclared ) block
+
+        undeclaredHere =
+            Dict.diff undeclared1.values undeclared.values
+
+        usedBeforeDeclared =
+            Dict.filter (\name _ -> Set.member name localEnv1.values) undeclaredHere
+
+        valuesUsedBeforeDeclaration =
+            Dict.foldl (\name value -> Dict.update name (Maybe.withDefault [] >> (++) value >> Just)) undeclared1.valuesUsedBeforeDeclaration usedBeforeDeclared
     in
-    List.foldl (addStatementUndeclared localEnv) undeclared block
+    { undeclared1 | valuesUsedBeforeDeclaration = valuesUsedBeforeDeclaration }
 
 
-addStatementUndeclared : EnvDeclared -> CA.Statement e -> EnvUndeclared -> EnvUndeclared
-addStatementUndeclared env s undeclared =
+addStatementUndeclared : CA.Statement e -> ( EnvDeclared, EnvUn ) -> ( EnvDeclared, EnvUn )
+addStatementUndeclared s ( localEnv, undeclared ) =
     case s of
-        CA.Definition def ->
-            addValueUndeclared env def undeclared
-
         CA.Evaluation expr ->
-            addExpressionUndeclared env expr undeclared
+            ( localEnv
+            , addExpressionUndeclared localEnv expr undeclared
+            )
+
+        CA.Definition def ->
+            ( { localEnv | values = Set.union (CA.patternNames def.pattern) localEnv.values }
+              -- we use the non-updated localEnv because variables can't reference themselves recursively
+            , addValueUndeclared localEnv def undeclared
+            )
 
 
-addExpressionUndeclared : EnvDeclared -> CA.Expression e -> EnvUndeclared -> EnvUndeclared
+addExpressionUndeclared : EnvDeclared -> CA.Expression e -> EnvUn -> EnvUn
 addExpressionUndeclared env expr undeclared =
     case expr of
         CA.Literal e ar ->
@@ -222,7 +284,7 @@ addExpressionUndeclared env expr undeclared =
                 |> (\u -> List.foldl (\( pa, block ) -> addStatementBlockUndeclared env block) u ar.patterns)
 
 
-addArgumentUndeclared : EnvDeclared -> CA.Argument e -> EnvUndeclared -> EnvUndeclared
+addArgumentUndeclared : EnvDeclared -> CA.Argument e -> EnvUn -> EnvUn
 addArgumentUndeclared env arg undeclared =
     case arg of
         CA.ArgumentExpression expr ->
