@@ -44,6 +44,13 @@ Main goals
 More or less established features
 ---------------------------------
 
+* Documentation is a multi-line string starting with `[# DOC:`
+
+
+* Module path is delimited by `/`, ie `List/Extra.find`
+  (Tokens starting with uppercase letter can't be used in a division, so there is no ambiguity)
+
+
 * `(expr).attr` is not supported nor necessary (expr |> fn.attr), but it would be a nice-to-have?
   - tokenization is a mess
   - makes `@var.attr` mut values more complicated
@@ -122,6 +129,7 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 
 Stuff that seems good but needs thinking
 ----------------------------------------
+
 
 
 * record & patterns
@@ -237,6 +245,8 @@ https://github.com/scalacenter/advisoryboard/blob/master/proposals/016-verbal-de
 
 
 ### Memory management
+
+* vaporization memory management https://github.com/vrtbl/passerine#faq
 
 Cool stuff from Koka https://koka-lang.github.io/koka/doc/kokaspec.html#why-perceus
 

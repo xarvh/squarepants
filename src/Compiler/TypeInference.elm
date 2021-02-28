@@ -488,7 +488,7 @@ unifyRecords aArgs bArgs subs0 =
         case ( aArgs.extensible, bArgs.extensible ) of
             ( Just aName, Nothing ) ->
                 if aOnly /= Dict.empty then
-                    "a has arguments that do not exist in b"
+                    "a has attributes that do not exist in b"
                         |> errorTodo
                         |> TyGen.wrap
 
@@ -500,7 +500,7 @@ unifyRecords aArgs bArgs subs0 =
 
             ( Nothing, Just bName ) ->
                 if bOnly /= Dict.empty then
-                    "b has arguments that do not exist in a"
+                    "b has attributes that do not exist in a"
                         |> errorTodo
                         |> TyGen.wrap
 
