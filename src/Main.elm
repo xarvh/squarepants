@@ -5,8 +5,6 @@ import Browser
 import Compiler.ApplyAliases
 import Compiler.ApplyAliases_Test
 import Compiler.CanonicalToJs
-import Compiler.FindUndeclared
-import Compiler.FindUndeclared_Test
 import Compiler.FormattableToCanonicalAst
 import Compiler.FormattableToCanonicalAst_Test
 import Compiler.JsToString
@@ -17,19 +15,24 @@ import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
 import Compiler.TypeInference
-import Compiler.TypeInference_Test exposing (preamble)
+import Compiler.TypeInference_Test
+import Css
 import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
+import Lib
 import Markdown
+import MetaFile
 import OneOrMore exposing (OneOrMore)
 import Parser
+import Prelude
 import Set exposing (Set)
 import Test
-import Types.CanonicalAst as CA
+import Types.CanonicalAst as CA exposing (Pos)
 import Types.Error exposing (Res)
 import Types.FormattableAst as FA
+import Types.Meta exposing (Meta)
 import Types.Token
 
 
@@ -38,25 +41,47 @@ runTests =
         || True
 
 
-initialCode =
+initialFiles =
+    [ ( "ModA"
+      , """
+result = Debug.log "LOL"
     """
-a =
-  m @= 0
-  @m += 1
-  x = m
-  @m := 10
-  y = m
-  @m += 1
-  z = m
-  { x, y, z, m }
+      )
+    , ( "SPCore/Maybe"
+      , """
+type Maybe a = Nothing, Just a
 
-    """
+map : (a -> b) -> Maybe a -> Maybe b
+map f m =
+  try m as
+    Nothing then
+      Nothing
+    Just v then
+      Just (f v)
+        """
+      )
+
+    --     , ( "Language/Overview"
+    --       , allCode
+    --       )
+    ----
+    --- Meta
+    --
+    , ( metaFileName
+      , Prelude.metaString
+      )
+    ]
+
+
+metaFileName =
+    "meta"
 
 
 allCode =
     """
 [#
-   SquarePants has no import statements: instead, project-wide imports are declared in modules.toml
+   SquarePants has no import statements: instead, project-wide imports are
+   declared in modules.toml
 #]
 
 
@@ -96,8 +121,7 @@ repeatHello times =
   times
     >> List.repeat
     >> List.map fn n = "This is hello #" .. Text.fromInt n
-    >> Text.join "
-"
+    >> Text.join ""
 
 
 
@@ -183,235 +207,508 @@ tests =
         Test.viewList
             [ Compiler.StringToTokens_Test.tests
             , Compiler.TokensToFormattableAst_Test.tests
-            , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.TypeInference_Test.tests
-            , Compiler.FindUndeclared_Test.tests
+
+            --             , Compiler.FindUndeclared_Test.tests
             , Compiler.ApplyAliases_Test.tests
             , Compiler.JsToString_Test.tests
+            , Compiler.FormattableToCanonicalAst_Test.tests
             ]
 
 
 type alias Model =
-    { code : String
+    { files : Dict String String
+    , selectedFile : String
     }
 
 
 type Msg
     = OnInput String
+    | OnSelect String
 
 
 init : Model
 init =
-    Model initialCode
+    { files = Dict.fromList initialFiles
+    , selectedFile =
+        initialFiles
+            |> List.head
+            |> Maybe.map Tuple.first
+            |> Maybe.withDefault ""
+    }
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
         OnInput code ->
-            { model | code = code }
+            { model | files = Dict.insert model.selectedFile code model.files }
+
+        OnSelect name ->
+            { model | selectedFile = name }
+
+
+
+----
+--- Helpers
+--
+
+
+getMeta : Model -> Result String Meta
+getMeta model =
+    model.files
+        |> Dict.get metaFileName
+        |> Maybe.withDefault ""
+        |> MetaFile.stringToMeta
+        --         |> Result.mapError (\e -> Types.Error.Simple { pos = -1, kind = Types.Error.Whatever e })
+        |> identity
+
+
+onJust : Maybe (Res a) -> (a -> Res b) -> Maybe (Res b)
+onJust maybeResA f =
+    case maybeResA of
+        Just (Ok a) ->
+            f a |> Just
+
+        _ ->
+            Nothing
+
+
+
+----
+--- View
+--
+
+
+viewMaybeRes : String -> (a -> Html msg) -> Maybe (Res a) -> Html msg
+viewMaybeRes code f maybeRes =
+    case maybeRes of
+        Nothing ->
+            Html.text ""
+
+        Just (Err e) ->
+            Html.code
+                []
+                [ e
+                    |> Compiler.TestHelpers.errorToString code
+                    |> Html.text
+                ]
+
+        Just (Ok a) ->
+            f a
 
 
 view : Model -> Html Msg
 view model =
+    Html.div
+        [ class "col" ]
+        [ viewFilesSelector model
+        , Html.div
+            [ class "row thirds" ]
+            [ viewSelectedFile model
+            , viewProgram model
+            , viewTests
+            ]
+        , Html.node "style" [] [ Html.text Css.css ]
+        ]
+
+
+viewTests : Html Msg
+viewTests =
+    if not runTests then
+        Html.li
+            []
+            [ Html.h6
+                [ style "color" "red" ]
+                [ Html.text "TESTS DISABLED" ]
+            ]
+
+    else
+        Html.li
+            []
+            [ Html.h6 [] [ Html.text "Tests" ]
+            , tests
+            ]
+
+
+viewFilesSelector : Model -> Html Msg
+viewFilesSelector model =
     let
-        code =
-            model.code
-
-        tokens =
-            code
-                |> Compiler.StringToTokens.lexer
-
-        faModule =
-            tokens
-                |> Result.andThen Compiler.TokensToFormattableAst.parse
-
-        caModule =
-            faModule
-                |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
-
-        undeclared =
-            caModule
-                |> Result.mapError (always [])
-                |> Result.andThen Compiler.FindUndeclared.moduleUndeclared
-
-        --
-        -- missing step: load undeclared from other modules
-        --
-        alModule =
-            caModule
-                |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
-
-        inference =
-            alModule
-                |> Result.andThen (Compiler.TypeInference.inspectModule preamble)
-
-        js =
-            caModule
-                |> Result.andThen emitModule
-
-        --
-        --
-        onOk : (a -> Html msg) -> Res a -> Html msg
-        onOk f res =
-            case res of
-                Ok a ->
-                    f a
-
-                Err e ->
-                    Html.code
-                        []
-                        [ e
-                            |> Compiler.TestHelpers.errorToString code
-                            |> Html.text
-                        ]
+        viewButton name =
+            Html.button
+                [ Html.Events.onClick <| OnSelect name
+                , Html.Attributes.disabled <| model.selectedFile == name
+                , class "ml"
+                ]
+                [ Html.text name ]
     in
     Html.div
-        [ style "display" "flex"
-
-        --         , style "background-color" "black"
-        --         , style "color" "white"
+        [ class "row mt"
         ]
+        (model.files
+            |> Dict.keys
+            |> List.filter ((/=) metaFileName)
+            |> List.sort
+            |> (::) metaFileName
+            |> List.map viewButton
+        )
+
+
+viewSelectedFile : Model -> Html Msg
+viewSelectedFile model =
+    let
+        code =
+            Dict.get model.selectedFile model.files |> Maybe.withDefault ""
+
+        width =
+            code
+                |> String.split "\n"
+                |> List.map String.length
+                |> List.maximum
+                |> Maybe.withDefault 10
+                |> toFloat
+                |> (*) (0.5 * 16)
+
+        height =
+            code
+                |> String.split "\n"
+                |> List.length
+                |> toFloat
+                |> (*) (1.0 * 16)
+    in
+    Html.div
+        [ class "col mt ml" ]
         [ Html.textarea
-            [ style "width" "50%"
-            , style "min-width" "30%"
-            , style "height" "99vh"
-
-            --             , style "background-color" "black"
-            --             , style "color" "white"
-            , Html.Events.onInput OnInput
+            [ Html.Events.onInput OnInput
+            , style "min-height" <| String.fromFloat height ++ "px"
+            , style "min-width" <| String.fromFloat width ++ "px"
+            , Html.Attributes.value code
             ]
-            [ Html.text model.code ]
-        , Html.ul
-            []
-            [ Html.li
-                []
-                [ Html.h6 [] [ Html.text "Run $result" ]
-                , viewEval model.code
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Emit" ]
-                , onOk viewJs js
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Inference" ]
-                , onOk viewInference inference
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Alias expansion" ]
-                , onOk viewCanonicalAst alModule
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Undeclared" ]
-                , viewUndeclared undeclared
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Canonical AST" ]
-                , onOk viewCanonicalAst caModule
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Formattable AST" ]
-                , onOk viewFormattableAst faModule
-                ]
-            , Html.li
-                []
-                [ Html.h6 [] [ Html.text "Tokens" ]
-                , onOk viewTokens tokens
-                ]
-            , if not runTests then
-                Html.li
-                    []
-                    [ Html.h6
-                        [ style "color" "red" ]
-                        [ Html.text "TESTS DISABLED" ]
-                    ]
+            [ Html.text code ]
+        , if model.selectedFile == metaFileName then
+            viewMeta model code
 
-              else
-                Html.li
-                    []
-                    [ Html.h6 [] [ Html.text "Tests" ]
-                    , tests
-                    ]
+          else
+            viewFileStages model code
+        ]
+
+
+viewMeta : Model -> String -> Html Msg
+viewMeta model code =
+    case getMeta model of
+        Err s ->
+            Html.text s
+
+        Ok meta ->
+            meta
+                |> Debug.toString
+                |> Html.text
+
+
+viewFileStages : Model -> String -> Html Msg
+viewFileStages model rawCode =
+    let
+        code =
+            Compiler.TestHelpers.unindent rawCode
+
+        tokens =
+            onJust (Just <| Ok code) Compiler.StringToTokens.lexer
+
+        faModule =
+            onJust tokens Compiler.TokensToFormattableAst.parse
+
+        caModule =
+            case getMeta model of
+                Ok meta ->
+                    onJust faModule (\fa -> Compiler.FormattableToCanonicalAst.translateModule model.selectedFile meta fa Dict.empty)
+
+                Err e ->
+                    Just <| Types.Error.errorTodo e
+    in
+    Html.ul
+        []
+        [ Html.li
+            []
+            [ Html.h6 [] [ Html.text "Canonical AST" ]
+            , viewMaybeRes code viewCanonicalAst caModule
+            ]
+        , Html.li
+            []
+            [ Html.h6 [] [ Html.text "Formattable AST" ]
+            , viewMaybeRes code viewFormattableAst faModule
+            ]
+        , Html.li
+            []
+            [ Html.h6 [] [ Html.text "Tokens" ]
+            , viewMaybeRes code viewTokens tokens
             ]
         ]
 
 
+viewProgram : Model -> Html Msg
+viewProgram model =
+    let
+        do =
+            Lib.result_do
 
+        compileAndInsert : Meta -> String -> String -> CA.Module Pos -> Res (CA.Module Pos)
+        compileAndInsert meta fileName code acc =
+            if fileName == metaFileName then
+                Ok acc
+
+            else
+                do (Compiler.StringToTokens.lexer (Compiler.TestHelpers.unindent code)) <| \tokens ->
+                do (Compiler.TokensToFormattableAst.parse tokens) <| \fa ->
+                do (Compiler.FormattableToCanonicalAst.translateModule fileName meta fa acc) Ok
+
+        emitModule : CA.Module e -> Result x String
+        emitModule caModule =
+            caModule
+                |> Compiler.CanonicalToJs.translateAll
+                |> List.map (Compiler.JsToString.emitStatement 0)
+                |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
+                |> String.join "\n\n"
+                |> Ok
+
+        programResult meta =
+            do (Lib.dict_foldRes (compileAndInsert meta) model.files Prelude.prelude) <| \allDefs ->
+            do (Compiler.ApplyAliases.applyAliasesToModule allDefs) <| \alsDefs ->
+            do (Compiler.TypeInference.inspectModule Dict.empty alsDefs) <| \( typedProgram, _, _ ) ->
+            Ok typedProgram
+
+        liPreCode text =
+            Html.li [] [ Html.pre [] [ Html.code [] [ Html.text text ] ] ]
+    in
+    case getMeta model of
+        Err e ->
+            Html.div
+                []
+                [ Html.text e ]
+
+        Ok meta ->
+            case programResult meta of
+                Err e ->
+                    Html.div
+                        []
+                        [ e
+                            |> Debug.toString
+                            |> Html.text
+                        ]
+
+                Ok program ->
+                    Html.ul
+                        [ class "ml" ]
+                        [ liPreCode
+                            (case Compiler.JsToString_Test.runProgram "ModA.result" program of
+                                Ok res ->
+                                    res
+
+                                Err message ->
+                                    "Error: ### " ++ message ++ " ###"
+                            )
+                        , program
+                            |> emitModule
+                            |> Result.withDefault "error"
+                            |> liPreCode
+                        ]
+
+
+
+{-
+   let
+       code =
+           model.code
+
+       tokens =
+           code
+               |> Compiler.StringToTokens.lexer
+
+       faModule =
+           tokens
+               |> Result.andThen Compiler.TokensToFormattableAst.parse
+
+       caModule =
+           faModule
+               |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
+
+       undeclared =
+           caModule
+               |> Result.mapError (always [])
+               |> Result.andThen Compiler.FindUndeclared.moduleUndeclared
+
+       --
+       -- missing step: load undeclared from other modules
+       --
+       alModule =
+           caModule
+               |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
+
+       inference =
+           alModule
+               |> Result.andThen (Compiler.TypeInference.inspectModule preamble)
+
+       js =
+           caModule
+               |> Result.andThen emitModule
+
+       --
+       --
+       onOk : (a -> Html msg) -> Res a -> Html msg
+       onOk f res =
+           case res of
+               Ok a ->
+                   f a
+
+               Err e ->
+                   Html.code
+                       []
+                       [ e
+                           |> Compiler.TestHelpers.errorToString code
+                           |> Html.text
+                       ]
+   in
+   Html.div
+       [ style "display" "flex"
+
+       --         , style "background-color" "black"
+       --         , style "color" "white"
+       ]
+       [ Html.textarea
+           [ style "width" "50%"
+           , style "min-width" "30%"
+           , style "height" "99vh"
+
+           --             , style "background-color" "black"
+           --             , style "color" "white"
+           , Html.Events.onInput OnInput
+           ]
+           [ Html.text model.code ]
+       , Html.ul
+           []
+           [ Html.li
+               []
+               [ Html.h6 [] [ Html.text "Run $result" ]
+               , viewEval model.code
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Emit" ]
+               , onOk viewJs js
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Inference" ]
+               , onOk viewInference inference
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Alias expansion" ]
+               , onOk viewCanonicalAst alModule
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Undeclared" ]
+               , viewUndeclared undeclared
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Canonical AST" ]
+               , onOk viewCanonicalAst caModule
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Formattable AST" ]
+               , onOk viewFormattableAst faModule
+               ]
+           , Html.li
+               []
+               [ Html.h6 [] [ Html.text "Tokens" ]
+               , onOk viewTokens tokens
+               ]
+           , if not runTests then
+               Html.li
+                   []
+                   [ Html.h6
+                       [ style "color" "red" ]
+                       [ Html.text "TESTS DISABLED" ]
+                   ]
+
+             else
+               Html.li
+                   []
+                   [ Html.h6 [] [ Html.text "Tests" ]
+                   , tests
+                   ]
+           ]
+       ]
+-}
 ----
 --- JS
 --
+{-
+   viewEval : String -> Html msg
+   viewEval code =
+       Html.code
+           []
+           [ Html.pre
+               []
+               [ case Compiler.JsToString_Test.eval "result" code of
+                   Ok res ->
+                       Html.text res
+
+                   Err message ->
+                       Html.text <| "Error: ### " ++ message ++ " ###"
+               ]
+           ]
 
 
-viewEval : String -> Html msg
-viewEval code =
-    Html.code
-        []
-        [ Html.pre
-            []
-            [ case Compiler.JsToString_Test.eval "result" code of
-                Ok res ->
-                    Html.text res
+   viewJs : String -> Html msg
+   viewJs js =
+       Html.code
+           []
+           [ Html.pre
+               []
+               [ Html.text js ]
+           ]
 
-                Err message ->
-                    Html.text <| "Error: ### " ++ message ++ " ###"
-            ]
-        ]
-
-
-viewJs : String -> Html msg
-viewJs js =
-    Html.code
-        []
-        [ Html.pre
-            []
-            [ Html.text js ]
-        ]
-
-
-emitModule : CA.Module e -> Result x String
-emitModule caModule =
-    [ caModule ]
-        |> Compiler.CanonicalToJs.translateAll
-        |> List.map (Compiler.JsToString.emitStatement 0)
-        |> (++) [ Compiler.CanonicalToJs.cloneDefinition ]
-        |> String.join "\n\n"
-        |> Ok
-
-
-
+-}
+{-
+   emitModule : CA.Module e -> Result x String
+   emitModule caModule =
+       [ caModule ]
+           |> Compiler.CanonicalToJs.translateAll
+           |> List.map (Compiler.JsToString.emitStatement 0)
+           |> (++) [ Compiler.CanonicalToJs.cloneDefinition ]
+           |> String.join "\n\n"
+           |> Ok
+-}
 ----
 --- Inference
 --
 -- viewInference : (Compiler.TypeInference.Eas -> Html msg
+{-
+   viewInference ( mod, env, subs ) =
+       Html.div
+           []
+           [ env
+               |> Dict.toList
+               |> List.filter (\( k, v ) -> not (Dict.member k preamble))
+               |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
+               |> Html.div []
 
-
-viewInference ( mod, env, subs ) =
-    Html.div
-        []
-        [ env
-            |> Dict.toList
-            |> List.filter (\( k, v ) -> not (Dict.member k preamble))
-            |> List.map (\( k, v ) -> Html.div [] [ k ++ ": " ++ viewSchema v |> Html.text ])
-            |> Html.div []
-
-        {-
-           , mod.values
-               |> Dict.values
-               --             |> List.sortBy .name
-               |> List.map viewCaDefinition
-               |> Html.code []
-        -}
-        , subs
-            |> Dict.toList
-            |> List.map (\( k, v ) -> Html.div [] [ k ++ " => " ++ viewCaType v |> Html.text ])
-            |> Html.div []
-        ]
+           {-
+              , mod.values
+                  |> Dict.values
+                  --             |> List.sortBy .name
+                  |> List.map viewCaDefinition
+                  |> Html.code []
+           -}
+           , subs
+               |> Dict.toList
+               |> List.map (\( k, v ) -> Html.div [] [ k ++ " => " ++ viewCaType v |> Html.text ])
+               |> Html.div []
+           ]
+-}
 
 
 viewSchema : Compiler.TypeInference.EnvEntry -> String
@@ -424,6 +721,7 @@ viewSchema schema =
 
 
 
+{-
 ----
 --- Undeclared
 --
@@ -452,6 +750,7 @@ viewUndeclared un =
                 [ Html.div [] [ Html.text <| "types: " ++ Debug.toString m.types ]
                 , Html.div [] [ Html.text <| "values: " ++ Debug.toString m.values ]
                 ]
+-}
 
 
 
@@ -462,22 +761,25 @@ viewUndeclared un =
 
 viewCanonicalAst : CA.Module e -> Html msg
 viewCanonicalAst mod =
-    Html.div
+    let
+        v ( name, rv ) =
+            case rv of
+                CA.Alias a ->
+                    viewCaAlias a
+
+                CA.Union u ->
+                    viewCaUnion u
+
+                CA.Value d ->
+                    viewCaDefinition d
+    in
+    Html.code
         []
-        [ mod.aliases
-            |> Dict.values
-            |> List.sortBy .name
-            |> List.map viewCaAlias
-            |> Html.code []
-        , mod.unions
-            |> Dict.values
-            |> List.sortBy .name
-            |> List.map viewCaUnion
-            |> Html.code []
-        , mod.values
-            |> List.map viewCaDefinition
-            |> Html.code []
-        ]
+        (mod
+            |> Dict.toList
+            |> List.sortBy Tuple.first
+            |> List.map v
+        )
 
 
 viewCaAlias : CA.AliasDef -> Html msg
@@ -546,8 +848,8 @@ viewCaPattern p =
 viewCaType : CA.Type -> String
 viewCaType ty =
     case ty of
-        CA.TypeConstant { path, args } ->
-            path ++ " " ++ String.join " " (List.map viewCaType args)
+        CA.TypeConstant { ref, args } ->
+            ref ++ " " ++ String.join " " (List.map viewCaType args)
 
         CA.TypeVariable { name } ->
             name
@@ -594,8 +896,9 @@ viewCaStatement s =
         CA.Evaluation expr ->
             Html.div
                 []
-                [ Html.text "Evaluation: "
+                [ Html.text "("
                 , viewCaExpression expr
+                , Html.text ")"
                 ]
 
         CA.Definition def ->
@@ -609,7 +912,7 @@ viewCaExpression expr =
             Html.text (Debug.toString s)
 
         CA.Variable x s ->
-            Html.text <| Debug.toString x ++ "|" ++ s.path
+            Html.text <| Debug.toString x ++ "|" ++ s.name
 
         CA.Call _ { reference, argument } ->
             Html.div
@@ -619,7 +922,7 @@ viewCaExpression expr =
                     [ style "padding-left" "2em" ]
                     [ case argument of
                         CA.ArgumentMutable args ->
-                            Html.text <| "@" ++ args.path ++ String.join ":" args.attrPath
+                            Html.text <| "@" ++ args.name ++ String.join ":" args.attrPath
 
                         CA.ArgumentExpression e ->
                             viewCaExpression e

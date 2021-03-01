@@ -4,12 +4,12 @@ import Compiler.CanonicalToJs
 import Compiler.JsToString
 import Compiler.TestHelpers
 import Compiler.TypeInference as TI
-import Compiler.TypeInference_Test exposing (preamble)
 import Dict exposing (Dict)
 import Lib
 import Markdown
 import Set exposing (Set)
 import Test exposing (Test)
+import Types.CanonicalAst as CA
 
 
 tests : Test
@@ -20,6 +20,7 @@ tests =
         , mutation
         , ifs
         , try
+        , natives
         ]
 
 
@@ -33,22 +34,11 @@ codeTest =
     Test.codeTest Debug.toString
 
 
-eval : String -> String -> Result String String
-eval variable code =
+runProgram : String -> CA.Module TI.Ext -> Result String String
+runProgram variable mod =
     let
         endStatements =
             [ Compiler.CanonicalToJs.translatePath variable ++ ";" ]
-
-        inferredToEvaluatedString ( mod, env, subs ) =
-            [ mod ]
-                |> Compiler.CanonicalToJs.translateAll
-                |> List.map (Compiler.JsToString.emitStatement 0)
-                |> (\stats ->
-                        (Compiler.CanonicalToJs.cloneDefinition :: stats ++ endStatements)
-                            |> String.join "\n\n"
-                            |> Markdown.eval
-                            |> evalToResult stats
-                   )
 
         evalToResult stats s =
             if String.startsWith "eval()" s then
@@ -59,11 +49,24 @@ eval variable code =
             else
                 Ok s
     in
+    mod
+        |> Compiler.CanonicalToJs.translateAll
+        |> List.map (Compiler.JsToString.emitStatement 0)
+        |> (\stats ->
+                (Compiler.CanonicalToJs.nativeDefinitions :: stats ++ endStatements)
+                    |> String.join "\n\n"
+                    |> Markdown.eval
+                    |> evalToResult stats
+           )
+
+
+eval : String -> String -> Result String String
+eval variable code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Result.andThen (TI.inspectModule preamble)
+        |> Result.andThen (TI.inspectModule Dict.empty)
         |> Result.mapError (Compiler.TestHelpers.errorToString code)
-        |> Result.andThen inferredToEvaluatedString
+        |> Result.andThen (\( mod, env, sub ) -> runProgram variable mod)
 
 
 meta : Test
@@ -73,19 +76,19 @@ meta =
             """
             x = 1 + 1
             """
-            (eval "x")
+            (eval "Test.x")
             (Test.okEqual "2")
         , codeTest "None is null"
             """
             x = None
             """
-            (eval "x")
+            (eval "Test.x")
             (Test.okEqual "null")
         , codeTest "undefined reference"
             """
             x = None
             """
-            (eval "y")
+            (eval "Test.y")
             (Test.errContain "not defined")
         ]
 
@@ -111,7 +114,7 @@ misc =
             a =
               { x, y }
             """
-            (eval "a")
+            (eval "Test.a")
             (Test.okEqual """{"x":null,"y":null}""")
         ]
 
@@ -137,7 +140,7 @@ mutation =
               z = m
               { x, y, z, m }
             """
-            (eval "a")
+            (eval "Test.a")
             (Test.okEqual """{"m":11,"x":1,"y":10,"z":11}""")
 
         --
@@ -151,7 +154,7 @@ mutation =
                @m.x.y.z += 1
                m
             """
-            (eval "result")
+            (eval "Test.result")
             (Test.okEqual """{"x":{"y":{"z":2}}}""")
 
         --
@@ -165,7 +168,7 @@ mutation =
                fun @m
                m
             """
-            (eval "result")
+            (eval "Test.result")
             (Test.okEqual """57""")
 
         --
@@ -181,7 +184,7 @@ mutation =
                fun @m.x.y.z
                m
             """
-            (eval "result")
+            (eval "Test.result")
             (Test.okEqual """{"x":{"y":{"z":59}}}""")
         ]
 
@@ -203,7 +206,7 @@ ifs =
               else
                 2
             """
-            (eval "a")
+            (eval "Test.a")
             (Test.okEqual "1")
         ]
 
@@ -237,6 +240,37 @@ try =
              , k = a (C True)
              }
             """
-            (eval "result")
+            (eval "Test.result")
             (Test.okEqual """{"k":6,"w":6,"x":2,"y":11,"z":3}""")
+        ]
+
+
+
+----
+--- Natives
+--
+
+
+natives : Test
+natives =
+    Test.Group "natives"
+        [ codeTest "SPCore/Debug.log"
+            """
+            result = log "blah" True
+            """
+            (eval "Test.result")
+            (Test.okEqual """true""")
+        , codeTest "SPCore/Debug.log, partially applied"
+            """
+            result = log "blah"
+            """
+            (eval "Test.result")
+            (Test.okEqual """undefined""")
+        , codeTest "SPCore/Debug.todo"
+            """
+            a = todo "blah"
+            result = 1
+            """
+            (eval "Test.result")
+            (Test.errContain "blah")
         ]

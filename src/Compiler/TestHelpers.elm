@@ -5,6 +5,7 @@ import Compiler.FormattableToCanonicalAst
 import Compiler.StringToTokens
 import Compiler.TokensToFormattableAst
 import Dict exposing (Dict)
+import Prelude exposing (meta)
 import Types.CanonicalAst as CA
 import Types.Error exposing (Res)
 import Types.FormattableAst as FA
@@ -25,8 +26,9 @@ stringToCanonicalModule code =
         |> unindent
         |> Compiler.StringToTokens.lexer
         |> Result.andThen Compiler.TokensToFormattableAst.parse
-        |> Result.andThen Compiler.FormattableToCanonicalAst.translateModule
+        |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule "Test" meta fa Prelude.prelude)
         |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
+        |> Result.map (\mod -> CA.extensionFold_module (\_ _ -> ( (), () )) ( mod, () ) |> Tuple.first)
 
 
 stringToFormattableModule : String -> Result String FA.Module

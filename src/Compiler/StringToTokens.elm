@@ -235,7 +235,7 @@ recognisedTokens =
           , constructor = String.trimLeft >> Token.NumberLiteral >> Ok
           }
         , -- Words
-          { regex = "^[ ]*[@]?[a-zA-Z._][a-zA-Z._0-9]*"
+          { regex = "^[ ]*[@]?[a-zA-Z._][a-zA-Z./_0-9]*"
           , consumed = String.length
           , constructor =
                 \m ->

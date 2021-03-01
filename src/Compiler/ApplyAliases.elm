@@ -13,8 +13,12 @@ import Dict exposing (Dict)
 import Lib
 import RefHierarchy
 import Set exposing (Set)
-import Types.CanonicalAst as CA exposing (Name, Type)
+import Types.CanonicalAst as CA exposing (Type)
 import Types.Error as Error exposing (Res, errorTodo)
+
+
+type alias Name =
+    String
 
 
 type alias GetAlias =
@@ -48,14 +52,14 @@ replaceType ga ty =
             -- it's easy to deal with, but it shouldn't happen O_O
             errorTodo "Did we apply aliases twice?"
 
-        CA.TypeConstant { path, args } ->
+        CA.TypeConstant { ref, args } ->
             Lib.result_do (Lib.list_mapRes (replaceType ga) args) <| \replacedArgs ->
-            case ga path of
+            case ga ref of
                 Err e ->
                     Err e
 
                 Ok Nothing ->
-                    { path = path
+                    { ref = ref
                     , args = replacedArgs
                     }
                         |> CA.TypeConstant
@@ -72,7 +76,7 @@ replaceType ga ty =
                         in
                         al.ty
                             |> expandAliasVariables typeByArgName
-                            |> CA.TypeAlias path
+                            |> CA.TypeAlias ref
                             |> Ok
 
 
@@ -82,17 +86,32 @@ replaceType ga ty =
 --
 
 
-{-| -}
-applyAliasesToModule : CA.Module () -> Res (CA.Module ())
+applyAliasesToModule : CA.Module e -> Res (CA.Module e)
 applyAliasesToModule mod =
-    Lib.result_do (applyAliasesToAliases mod.aliases) <| \aliases ->
-    Lib.result_do (applyAliasesToUnions aliases mod.unions) <| \unions ->
-    Lib.result_do (applyAliasesToValues aliases mod.values) <| \values ->
-    Ok
-        { aliases = aliases
-        , unions = unions
-        , values = values
-        }
+    let
+        do =
+            Lib.result_do
+
+        ( aliases, unions, values ) =
+            CA.split mod
+    in
+    do (applyAliasesToAliases aliases) <| \resolved_aliases ->
+    do (applyAliasesToUnions resolved_aliases unions) <| \resolved_unions ->
+    do (applyAliasesToValues resolved_aliases values) <| \resolved_values ->
+    let
+        a0 =
+            Dict.empty
+
+        a1 =
+            Dict.foldl (\k v -> Dict.insert k (CA.Alias v)) a0 resolved_aliases
+
+        a2 =
+            Dict.foldl (\k v -> Dict.insert k (CA.Union v)) a1 resolved_unions
+
+        a3 =
+            Dict.foldl (\k v -> Dict.insert k (CA.Value v)) a2 resolved_values
+    in
+    Ok a3
 
 
 
@@ -108,15 +127,13 @@ applyAliasesToUnions aliases =
         getAlias name =
             Ok <| Dict.get name aliases
 
-        mapConstructor c =
-            c.args
-                |> Lib.list_mapRes (replaceType getAlias)
-                |> Result.map (\args -> { c | args = args })
+        mapConstructor name args =
+            Lib.list_mapRes (replaceType getAlias) args
 
         mapUnion name union =
             Result.map
                 (\cs -> { union | constructors = cs })
-                (Lib.list_mapRes mapConstructor union.constructors)
+                (Lib.dict_mapRes mapConstructor union.constructors)
     in
     Lib.dict_mapRes mapUnion
 
@@ -127,14 +144,14 @@ applyAliasesToUnions aliases =
 --
 
 
-applyAliasesToValues : Dict Name CA.AliasDef -> List (CA.ValueDef e) -> Res (List (CA.ValueDef e))
+applyAliasesToValues : Dict Name CA.AliasDef -> Dict String (CA.ValueDef e) -> Res (Dict String (CA.ValueDef e))
 applyAliasesToValues aliases =
     let
         ga : GetAlias
         ga name =
             Dict.get name aliases |> Ok
     in
-    Lib.list_mapRes (normalizeValueDef ga)
+    Lib.dict_mapRes (\k -> normalizeValueDef ga)
 
 
 normalizeValueDef : GetAlias -> CA.ValueDef e -> Res (CA.ValueDef e)
@@ -202,14 +219,14 @@ normalizeExpr ga expr =
 
         CA.If e ar ->
             Result.map3
-                (\c t f -> CA.If e { start = ar.start, condition = c, true = t, false = f })
+                (\c t f -> CA.If e { condition = c, true = t, false = f })
                 (normalizeBlock ga ar.condition)
                 (normalizeBlock ga ar.true)
                 (normalizeBlock ga ar.false)
 
         CA.Try e ar ->
             Result.map2
-                (\v ps -> CA.Try e { start = ar.start, value = v, patterns = ps })
+                (\v ps -> CA.Try e { value = v, patterns = ps })
                 (normalizeExpr ga ar.value)
                 (Lib.list_mapRes (Lib.tuple_mapSecondRes (normalizeBlock ga)) ar.patterns)
 
@@ -285,14 +302,14 @@ expandAliasVariables typeByArgName ty =
                 , attrs = Dict.map (\k -> expandAliasVariables typeByArgName) attrs
                 }
 
-        CA.TypeConstant { path, args } ->
+        CA.TypeConstant { ref, args } ->
             CA.TypeConstant
-                { path = path
+                { ref = ref
                 , args = List.map (expandAliasVariables typeByArgName) args
                 }
 
-        CA.TypeAlias path t ->
-            CA.TypeAlias path (expandAliasVariables typeByArgName t)
+        CA.TypeAlias ref t ->
+            CA.TypeAlias ref (expandAliasVariables typeByArgName t)
 
 
 
@@ -309,8 +326,8 @@ findAllRefs_alias al =
 findAllRefs_type : CA.Type -> Set String
 findAllRefs_type ty =
     case ty of
-        CA.TypeConstant { path, args } ->
-            List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton path) args
+        CA.TypeConstant { ref, args } ->
+            List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton ref) args
 
         CA.TypeVariable { name } ->
             Set.empty

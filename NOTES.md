@@ -130,7 +130,7 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 Stuff that seems good but needs thinking
 ----------------------------------------
 
-
+https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontrivial_hashing_algorithm_in_your/
 
 * record & patterns
 

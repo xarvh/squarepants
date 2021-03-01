@@ -1,27 +1,41 @@
 module Compiler.CoreModule exposing (..)
 
 import Dict exposing (Dict)
-import Types.CanonicalAst as CA
+import Types.CanonicalAst as CA exposing (Pos)
+
+
+moduleName =
+    "SPCore"
+
+
+root name =
+    moduleName ++ "." ++ name
+
+
+todoPos : Pos
+todoPos =
+    ( -2, -2 )
 
 
 {-| This module contains all the types that are necessary for the syntax.
+
+TODO rename to CoreTypes?
+
 -}
-coreModule : CA.Module ()
+coreModule : CA.Module Pos
 coreModule =
-    { aliases =
-        Dict.empty
-    , unions =
-        [ none
-        , bool
-        , list
-        , text
-        , number
-        , char
-        ]
-            |> List.foldl (\u -> Dict.insert u.name u) Dict.empty
-    , values =
-        []
-    }
+    let
+        u uDef =
+            ( uDef.name, CA.Union uDef )
+    in
+    [ u none
+    , u bool
+    , u list
+    , u text
+    , u number
+    , u char
+    ]
+        |> Dict.fromList
 
 
 
@@ -32,16 +46,16 @@ coreModule =
 
 text : CA.UnionDef
 text =
-    { name = "Text"
+    { name = root "Text"
     , args = []
-    , constructors = []
+    , constructors = Dict.empty
     }
 
 
 textType : CA.Type
 textType =
     CA.TypeConstant
-        { path = text.name
+        { ref = text.name
         , args = []
         }
 
@@ -54,16 +68,16 @@ textType =
 
 number : CA.UnionDef
 number =
-    { name = "Number"
+    { name = root "Number"
     , args = []
-    , constructors = []
+    , constructors = Dict.empty
     }
 
 
 numberType : CA.Type
 numberType =
     CA.TypeConstant
-        { path = number.name
+        { ref = number.name
         , args = []
         }
 
@@ -76,16 +90,16 @@ numberType =
 
 char : CA.UnionDef
 char =
-    { name = "Char"
+    { name = root "Char"
     , args = []
-    , constructors = []
+    , constructors = Dict.empty
     }
 
 
 charType : CA.Type
 charType =
     CA.TypeConstant
-        { path = char.name
+        { ref = char.name
         , args = []
         }
 
@@ -96,27 +110,29 @@ charType =
 --
 
 
-noneValue : CA.Name
+noneValue : String
 noneValue =
-    "None"
+    root "None"
 
 
 none : CA.UnionDef
 none =
-    { name = "None"
+    { name = root "None"
     , args = []
     , constructors =
         [ { name = noneValue
           , args = []
           }
         ]
+            |> List.map (\c -> ( c.name, c.args ))
+            |> Dict.fromList
     }
 
 
 noneType : CA.Type
 noneType =
     CA.TypeConstant
-        { path = none.name
+        { ref = none.name
         , args = []
         }
 
@@ -127,31 +143,33 @@ noneType =
 --
 
 
-trueValue : CA.Name
+trueValue : String
 trueValue =
-    "True"
+    root "True"
 
 
-falseValue : CA.Name
+falseValue : String
 falseValue =
-    "False"
+    root "False"
 
 
 bool : CA.UnionDef
 bool =
-    { name = "Bool"
+    { name = root "Bool"
     , args = []
     , constructors =
         [ { name = trueValue, args = [] }
         , { name = falseValue, args = [] }
         ]
+            |> List.map (\c -> ( c.name, c.args ))
+            |> Dict.fromList
     }
 
 
 boolType : CA.Type
 boolType =
     CA.TypeConstant
-        { path = bool.name
+        { ref = bool.name
         , args = []
         }
 
@@ -164,52 +182,58 @@ boolType =
 
 list : CA.UnionDef
 list =
-    { name = "List"
+    { name = root "List"
     , args = [ "item" ]
     , constructors =
         [ listNil
         , listCons
         ]
+            |> List.map (\c -> ( c.name, c.args ))
+            |> Dict.fromList
     }
 
 
-listNil : CA.UnionConstructor
+
+-- listNil : CA.UnionConstructor
+
+
 listNil =
-    { name = "Nil"
+    { name = root "Nil"
     , args = []
     }
 
 
-listCons : CA.UnionConstructor
+
+-- listCons : CA.UnionConstructor
+
+
 listCons =
-    { name = "Cons"
+    { name = root "Cons"
     , args =
         [ CA.TypeVariable
             { name = "item"
             }
         , CA.TypeConstant
-            { path = "List"
+            { ref = root "List"
             , args = [ CA.TypeVariable { name = "item" } ]
             }
         ]
     }
 
 
-nil : CA.Expression ()
+nil : CA.Expression Pos
 nil =
-    CA.Variable ()
-        { start = 0
-        , end = 0
-        , path = listNil.name
+    CA.Variable todoPos
+        { isRoot = True
+        , name = listNil.name
         , attrPath = []
         }
 
 
-cons : CA.Expression ()
+cons : CA.Expression Pos
 cons =
-    CA.Variable ()
-        { start = 0
-        , end = 0
-        , path = listCons.name
+    CA.Variable todoPos
+        { isRoot = True
+        , name = listCons.name
         , attrPath = []
         }

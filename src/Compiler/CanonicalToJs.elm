@@ -4,31 +4,29 @@ import Compiler.CoreModule
 import Compiler.TypeInference
 import Dict exposing (Dict)
 import Lib
+import RefHierarchy
 import Set exposing (Set)
 import Types.CanonicalAst as CA
 import Types.JavascriptAst as JA
 import Types.Literal
 
 
-nativeCalls : Dict CA.Name ( JA.Name, Bool )
-nativeCalls =
-    let
-        op ca ja mutates =
-            Dict.insert ca ( ja, mutates )
-    in
+nativeNonOps : Dict String JA.Name
+nativeNonOps =
     Dict.empty
-        |> op "+" "+" False
-        |> op ":=" "=" True
-        |> op "+=" "+=" True
+        |> Dict.insert Compiler.CoreModule.trueValue "true"
+        |> Dict.insert Compiler.CoreModule.falseValue "false"
+        |> Dict.insert Compiler.CoreModule.noneValue "null"
+        |> Dict.insert "SPCore/Debug.log" "sp_log"
+        |> Dict.insert "SPCore/Debug.todo" "sp_todo"
 
 
-nativeValues : Dict CA.Name JA.Name
-nativeValues =
-    [ Tuple.pair Compiler.CoreModule.trueValue "true"
-    , Tuple.pair Compiler.CoreModule.falseValue "false"
-    , Tuple.pair Compiler.CoreModule.noneValue "null"
-    ]
-        |> Dict.fromList
+nativeBinops : Dict String { opName : JA.Name, mutates : Bool }
+nativeBinops =
+    Dict.empty
+        |> Dict.insert "+" { opName = "+", mutates = False }
+        |> Dict.insert ":=" { opName = "=", mutates = True }
+        |> Dict.insert "+=" { opName = "+=", mutates = True }
 
 
 none =
@@ -104,8 +102,8 @@ unwrapMutable x =
     JA.AccessWithBrackets (JA.AccessWithDot "attr" ja_x) (JA.AccessWithDot "obj" ja_x)
 
 
-cloneDefinition : String
-cloneDefinition =
+nativeDefinitions : String
+nativeDefinitions =
     """
 function sp_clone(src) {
  if (Array.isArray(src))
@@ -118,6 +116,17 @@ function sp_clone(src) {
  }
 
  return src;
+}
+
+
+function sp_todo(message) {
+  throw new Error("TODO: " + message);
+}
+
+
+const sp_log = (message) => (thing) => {
+  console.log(message, thing);
+  return thing;
 }
     """
 
@@ -161,14 +170,17 @@ clone expr =
 -}
 
 
-translatePath : CA.Path -> JA.Name
+translatePath : String -> JA.Name
 translatePath s =
-    case Dict.get s nativeValues of
+    case Dict.get s nativeNonOps of
         Just nv ->
             nv
 
         Nothing ->
-            "$" ++ String.replace "." "$" s
+            s
+                |> String.replace "." "$"
+                |> String.replace "/" "$"
+                |> (++) "$"
 
 
 constructorArgumentName : Int -> JA.Name
@@ -183,16 +195,17 @@ tryName =
 
 pickMainName : CA.Pattern -> Maybe JA.Name
 pickMainName pattern =
-    case pattern of
-        CA.PatternAny name ->
-            Just <| "$" ++ name
+    Maybe.map (String.replace "/" "$" >> String.replace "." "$") <|
+        case pattern of
+            CA.PatternAny name ->
+                Just <| "$" ++ name
 
-        _ ->
-            pattern
-                |> CA.patternNames
-                |> Set.toList
-                |> List.head
-                |> Maybe.map ((++) "$$")
+            _ ->
+                pattern
+                    |> CA.patternNames
+                    |> Set.toList
+                    |> List.head
+                    |> Maybe.map ((++) "$$")
 
 
 
@@ -201,68 +214,98 @@ pickMainName pattern =
 --
 
 
-{-| TODO add cloneDefinition
--}
-translateAll : List (CA.Module e) -> List JA.Statement
-translateAll mods =
+getValueDefName : CA.ValueDef e -> String
+getValueDefName def =
+    def.pattern
+        |> CA.patternNames
+        |> Set.toList
+        |> List.head
+        |> Maybe.withDefault "BLARGH"
+
+
+getValueRefs : CA.ValueDef e -> Set String
+getValueRefs def =
     let
-        unitMod mod =
-            CA.extensionFold_module (\e ( a, acc ) -> ( (), acc )) ( mod, () ) |> Tuple.first
+        fn expr ( ext, set ) =
+            case expr of
+                CA.Variable _ args ->
+                    ( ext
+                    , if args.isRoot then
+                        Set.insert args.name set
+
+                      else
+                        set
+                    )
+
+                _ ->
+                    ( ext, set )
     in
-    Compiler.CoreModule.coreModule
-        :: List.map unitMod mods
-        |> List.concatMap translateModule
+    ( def, Set.empty )
+        |> CA.extensionFold_valueDef fn
+        |> Tuple.second
 
 
-{-| TODO I probably don't want to translate the whole module
--}
-translateModule : CA.Module e -> List JA.Statement
-translateModule ca =
+translateAll : CA.Module e -> List JA.Statement
+translateAll ca =
     let
+        ( aliases, unions, values ) =
+            CA.split ca
+
         cons =
-            ca.unions
+            unions
                 |> Dict.values
                 |> List.sortBy .name
                 |> List.concatMap translateUnion
 
-        env =
-            Set.empty
-
-        asDefinition s =
-            case s of
-                CA.Definition d ->
-                    Just d
+        isFunctionBlock : CA.ValueDef e -> Bool
+        isFunctionBlock def =
+            case def.body of
+                (CA.Evaluation (CA.Lambda _ _)) :: [] ->
+                    True
 
                 _ ->
-                    Nothing
+                    False
+
+        ( fns, nonFns ) =
+            values
+                |> Dict.values
+                |> List.partition isFunctionBlock
+
+        reorderedNonFuns =
+            RefHierarchy.reorder getValueDefName getValueRefs nonFns
 
         vals =
-            List.concatMap (translateValueDef env >> Tuple.first) ca.values
+            (fns ++ reorderedNonFuns)
+                |> List.concatMap (translateValueDef Set.empty >> Tuple.first)
     in
     cons ++ vals
 
 
 translateValueDef : Env -> CA.ValueDef e -> ( List JA.Statement, Env )
 translateValueDef env caDef =
-    case pickMainName caDef.pattern of
-        Nothing ->
-            ( [ JA.Eval (translateBodyToExpr env caDef.body) ]
-            , env
-            )
+    if caDef.body == [] then
+        ( [], env )
 
-        Just mainName ->
-            ( (caDef.body
-                |> translateBodyToExpr env
-                |> wrapMutable caDef.mutable
-                |> JA.Define mainName
-              )
-                :: patternDefinitions mainName caDef.pattern
-            , if caDef.mutable then
-                Set.insert mainName env
+    else
+        case pickMainName caDef.pattern of
+            Nothing ->
+                ( [ JA.Eval (translateBodyToExpr env caDef.body) ]
+                , env
+                )
 
-              else
-                env
-            )
+            Just mainName ->
+                ( (caDef.body
+                    |> translateBodyToExpr env
+                    |> wrapMutable caDef.mutable
+                    |> JA.Define mainName
+                  )
+                    :: patternDefinitions mainName caDef.pattern
+                , if caDef.mutable then
+                    Set.insert mainName env
+
+                  else
+                    env
+                )
 
 
 translateStatement : Env -> CA.Statement e -> ( List JA.Statement, Env )
@@ -278,20 +321,20 @@ translateStatement env s =
 
 
 translateVar : Env -> CA.VariableArgs -> JA.Expr
-translateVar env { path, attrPath } =
+translateVar env { name, attrPath } =
     let
-        name =
-            translatePath path
+        jname =
+            translatePath name
     in
     -- right now `env` just tells us whether a var is mutable or not
-    if Set.member name env then
-        name
+    if Set.member jname env then
+        jname
             |> unwrapMutable
             |> accessAttrs attrPath
             |> clone
 
     else
-        accessAttrs attrPath (JA.Var name)
+        accessAttrs attrPath (JA.Var jname)
 
 
 translateLiteral : Types.Literal.Value -> String
@@ -312,7 +355,7 @@ translateExpr : Env -> CA.Expression e -> JA.Expr
 translateExpr env expression =
     case expression of
         CA.Literal _ lit ->
-            lit.value
+            lit
                 |> translateLiteral
                 |> JA.Literal
 
@@ -357,16 +400,14 @@ translateExpr env expression =
                         ]
 
         CA.Call _ ar ->
-            case tryNative ar.reference of
-                Just ( opConstructor, rightOperand ) ->
-                    opConstructor
-                        (translateArg { native = True } env ar.argument)
-                        (translateArg { native = True } env rightOperand)
+            case maybeNativeBinop env ar of
+                Just jaExpr ->
+                    jaExpr
 
                 Nothing ->
                     JA.Call
                         (translateExpr env ar.reference)
-                        [ translateArg { native = False } env ar.argument ]
+                        [ translateArg { nativeBinop = False } env ar.argument ]
 
         CA.If _ ar ->
             JA.Conditional
@@ -428,17 +469,17 @@ translateExpr env expression =
             JA.Call (JA.BlockLambda [] allStatements) []
 
 
-translateArg : { native : Bool } -> Env -> CA.Argument e -> JA.Expr
-translateArg { native } env arg =
+translateArg : { nativeBinop : Bool } -> Env -> CA.Argument e -> JA.Expr
+translateArg { nativeBinop } env arg =
     case arg of
         CA.ArgumentExpression e ->
             translateExpr env e
 
-        CA.ArgumentMutable { path, attrPath } ->
-            if native then
+        CA.ArgumentMutable { name, attrPath } ->
+            if nativeBinop then
                 --SP: @x.a.b += blah
                 --JS: x.obj[x.attr].a.b += blah
-                path
+                name
                     |> translatePath
                     |> unwrapMutable
                     |> accessAttrs attrPath
@@ -448,14 +489,14 @@ translateArg { native } env arg =
                     [] ->
                         --SP: doStuff @x
                         --JS: doStuff(x)
-                        path
+                        name
                             |> translatePath
                             |> JA.Var
 
                     head :: tail ->
                         --SP: doStuff @x.a.b.c
                         --JS: doStuff({ obj: x.obj[x.attr].a.b, attr: 'c' })
-                        path
+                        name
                             |> translatePath
                             |> unwrapMutable
                             |> accessAttrsButTheLast head tail
@@ -483,25 +524,29 @@ accessAttrsButTheLast attrHead attrTail e =
     List.foldl fold ( e, attrHead ) attrTail
 
 
-tryNative : CA.Expression e -> Maybe ( JA.Expr -> JA.Expr -> JA.Expr, CA.Argument e )
-tryNative expr =
-    case expr of
-        CA.Call _ ar ->
-            case ar.reference of
-                CA.Variable _ { path } ->
-                    case Dict.get path nativeCalls of
-                        Just ( op, mutates ) ->
-                            Just
-                                ( if mutates then
-                                    JA.Mutop op none
-
-                                  else
-                                    JA.Binop op
-                                , ar.argument
-                                )
-
+maybeNativeBinop : Env -> { reference : CA.Expression e, argument : CA.Argument e } -> Maybe JA.Expr
+maybeNativeBinop env ar =
+    case ar.reference of
+        CA.Call _ arRight ->
+            case arRight.reference of
+                CA.Variable _ { name } ->
+                    case Dict.get name nativeBinops of
                         Nothing ->
                             Nothing
+
+                        Just { opName, mutates } ->
+                            let
+                                cons =
+                                    if mutates then
+                                        JA.Mutop opName none
+
+                                    else
+                                        JA.Binop opName
+                            in
+                            cons
+                                (translateArg { nativeBinop = True } env ar.argument)
+                                (translateArg { nativeBinop = True } env arRight.argument)
+                                |> Just
 
                 _ ->
                     Nothing
@@ -629,10 +674,11 @@ assignPattern pattern exprAccum accum =
             accum
 
         CA.PatternAny name ->
-          if name == "_" then
-            accum
-          else
-            JA.Define (translatePath name) exprAccum :: accum
+            if name == "_" then
+                accum
+
+            else
+                JA.Define (translatePath name) exprAccum :: accum
 
         CA.PatternLiteral literal ->
             accum
@@ -673,12 +719,12 @@ accessConstructorArg =
     accessWithBracketsInt
 
 
-translateUnionConstructor : CA.UnionConstructor -> JA.Statement
-translateUnionConstructor cons =
+translateUnionConstructor : ( String, List CA.Type ) -> JA.Statement
+translateUnionConstructor ( consName, consArgs ) =
     -- const ConstructorName = ($1) => ($2) => [ "ConstructorName", $1, $2 ]
     let
         n =
-            List.length cons.args
+            List.length consArgs
 
         range =
             List.range 1 n
@@ -687,7 +733,7 @@ translateUnionConstructor cons =
             List.map (constructorArgumentName >> JA.Var) range
 
         name =
-            quoteAndEscape cons.name
+            quoteAndEscape consName
 
         expr =
             JA.Array (JA.Literal name :: storedArgs)
@@ -695,13 +741,14 @@ translateUnionConstructor cons =
         lambdas =
             List.foldr (\i -> JA.SimpleLambda [ constructorArgumentName i ]) expr range
     in
-    JA.Define (translatePath cons.name) lambdas
+    JA.Define (translatePath consName) lambdas
 
 
 translateUnion : CA.UnionDef -> List JA.Statement
 translateUnion def =
     def.constructors
-        |> List.filter (\cons -> not <| Dict.member cons.name nativeValues)
+        |> Dict.toList
+        |> List.filter (\( name, args ) -> not <| Dict.member name nativeNonOps)
         |> List.map translateUnionConstructor
 
 

@@ -13,47 +13,63 @@ import Set exposing (Set)
 import Types.Literal
 
 
-type alias Name =
-    String
+{-| The free variable type parameter `e` is used to store (and remove) position and type annotations
+
+The Pos type is only one possibility, but it lives here because it's used in a few different modules.
+
+-}
+type alias Pos =
+    ( Int, Int )
 
 
-type alias Path =
-    Name
+{-| TODO rename to Program? It's not even a program, it's just to sum of all declarations, not all of them will be used.
+-}
+type alias Module e =
+    Dict String (RootDef e)
 
 
 
 ----
---- Module
+--- Root
 --
 
 
-type alias Module e =
-    { aliases : Dict Name AliasDef
-    , unions : Dict Name UnionDef
-    , values : List (ValueDef e)
-    }
+type RootDef e
+    = Union UnionDef
+    | Alias AliasDef
+    | Value (ValueDef e)
 
 
 type alias AliasDef =
-    { name : Name
-    , args : List Name
+    { name : String
+    , args : List String
     , ty : Type
     }
 
 
 type alias UnionDef =
-    { name : Name
-    , args : List Name
-    , constructors : List UnionConstructor
+    { name : String
+    , args : List String
+    , constructors : Dict String (List Type)
     }
 
 
-type alias UnionConstructor =
-    { name : Name
-    , args : List Type
-    }
+{-| TODO
 
+      split RootValueDef
+      (Right now I'm using `body == []` for native defs)
 
+      -- also use this for every other name?
+      type alias ref = { mod : String, def : String }
+
+      type alias RootValueDef e =
+          { ref : Ref
+          , maybeAnnotation : Maybe Type
+          , isNative : Bool
+          , body : List (Statement e)
+          }
+
+-}
 type alias ValueDef e =
     { pattern : Pattern
     , mutable : Bool
@@ -70,11 +86,11 @@ type alias ValueDef e =
 
 type Type
     = TypeConstant
-        { path : Path
+        { ref : String
         , args : List Type
         }
     | TypeVariable
-        { name : Name
+        { name : String
         }
     | TypeFunction
         { from : Type
@@ -82,12 +98,12 @@ type Type
         , to : Type
         }
     | TypeRecord TypeRecordArgs
-    | TypeAlias Path Type
+    | TypeAlias String Type
 
 
 type alias TypeRecordArgs =
-    { extensible : Maybe Name
-    , attrs : Dict Name Type
+    { extensible : Maybe String
+    , attrs : Dict String Type
     }
 
 
@@ -107,6 +123,7 @@ type alias TypeRecordArgs =
 
    The important part is that this data can be replaced or removed (for example, for testing) via extensionFold_module.
 
+   Maybe in the future, I can remove `e` from the constructors that are not needed to produce an error?
 
 -}
 
@@ -118,17 +135,11 @@ type Statement e
 
 
 type Expression e
-    = Literal
-        e
-        { start : Int
-        , end : Int
-        , value : Types.Literal.Value
-        }
+    = Literal e Types.Literal.Value
     | Variable e VariableArgs
     | Lambda
         e
-        { start : Int
-        , parameter : Pattern
+        { parameter : Pattern
         , body : List (Statement e)
         }
     | Record
@@ -144,18 +155,15 @@ type Expression e
         }
     | If
         e
-        { start : Int
-
         -- we use the if also to get lazy ops and compacted compops, so even if the syntax does
         -- not support statement blocks inside if condition, it's useful that the AST can model it.
-        , condition : List (Statement e)
+        { condition : List (Statement e)
         , true : List (Statement e)
         , false : List (Statement e)
         }
     | Try
         e
-        { start : Int
-        , value : Expression e
+        { value : Expression e
 
         -- TODO rename to patternBlocks?
         , patterns : List ( Pattern, List (Statement e) )
@@ -168,10 +176,12 @@ type Argument e
 
 
 type alias VariableArgs =
-    { start : Int
-    , end : Int
-    , path : Path
-    , attrPath : List Name
+    { name : String
+    , attrPath : List String
+
+    -- True => declared in the root scope
+    -- False => declared inside a function's scope
+    , isRoot : Bool
     }
 
 
@@ -183,13 +193,13 @@ type alias VariableArgs =
 
 type Pattern
     = PatternDiscard
-    | PatternAny Name
+    | PatternAny String
     | PatternLiteral Types.Literal.Value
-    | PatternConstructor Path (List Pattern)
-    | PatternRecord (Dict Name Pattern)
+    | PatternConstructor String (List Pattern)
+    | PatternRecord (Dict String Pattern)
 
 
-patternNames : Pattern -> Set Name
+patternNames : Pattern -> Set String
 patternNames p =
     case p of
         PatternDiscard ->
@@ -210,45 +220,90 @@ patternNames p =
 
 
 ----
---- Helpers
+--- RootDef splitters
 --
 
 
-findValue : Name -> Module e -> Maybe (ValueDef e)
-findValue name mod =
+asValue : RootDef e -> Maybe (ValueDef e)
+asValue r =
+    case r of
+        Value v ->
+            Just v
+
+        _ ->
+            Nothing
+
+
+asAlias : RootDef e -> Maybe AliasDef
+asAlias r =
+    case r of
+        Alias a ->
+            Just a
+
+        _ ->
+            Nothing
+
+
+asUnion : RootDef e -> Maybe UnionDef
+asUnion r =
+    case r of
+        Union u ->
+            Just u
+
+        _ ->
+            Nothing
+
+
+split : Module e -> ( Dict String AliasDef, Dict String UnionDef, Dict String (ValueDef e) )
+split =
     let
-        rec vs =
-            case vs of
-                [] ->
-                    Nothing
+        part3 n rootDef ( als, uns, vals ) =
+            case rootDef of
+                Alias a ->
+                    ( Dict.insert n a als, uns, vals )
 
-                h :: t ->
-                    if Set.member name (patternNames h.pattern) then
-                        Just h
+                Union u ->
+                    ( als, Dict.insert n u uns, vals )
 
-                    else
-                        rec t
+                Value v ->
+                    ( als, uns, Dict.insert n v vals )
     in
-    rec mod.values
+    Dict.foldl part3 ( Dict.empty, Dict.empty, Dict.empty )
+
+
+findValue : String -> Module e -> Maybe (ValueDef e)
+findValue name mod =
+    case Dict.get name mod of
+        Just (Value valueDef) ->
+            Just valueDef
+
+        _ ->
+            Nothing
+
+
+
+----
+--- Crawler
+--
 
 
 extensionFold_module : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Module a, acc ) -> ( Module b, acc )
-extensionFold_module f ( mod, acc ) =
+extensionFold_module f ( a_mod, acc ) =
     let
-        fold a_valueDef ( vals, aX ) =
-            Tuple.mapFirst
-                (\b_expr -> b_expr :: vals)
-                (extensionFold_valueDef f ( a_valueDef, aX ))
+        fold name a_rootDef ( b_mod, accX ) =
+            case a_rootDef of
+                Alias a ->
+                    ( Dict.insert name (Alias a) b_mod, accX )
+
+                Union u ->
+                    ( Dict.insert name (Union u) b_mod, accX )
+
+                Value a_valueDef ->
+                    Tuple.mapFirst
+                        (\b_rootDef -> Dict.insert name (Value b_rootDef) b_mod)
+                        (extensionFold_valueDef f ( a_valueDef, accX ))
     in
-    mod.values
-        |> List.foldr fold ( [], acc )
-        |> Tuple.mapFirst
-            (\b_values ->
-                { aliases = mod.aliases
-                , unions = mod.unions
-                , values = b_values
-                }
-            )
+    Dict.foldl fold ( Dict.empty, acc ) a_mod
 
 
 extensionFold_expression : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Expression a, acc ) -> ( Expression b, acc )
@@ -268,7 +323,7 @@ extensionFold_expression f ( expr, acc ) =
                 ( bodyB, acc2 ) =
                     extensionFold_block f ( ar.body, acc1 )
             in
-            ( Lambda b { start = ar.start, parameter = ar.parameter, body = bodyB }
+            ( Lambda b { parameter = ar.parameter, body = bodyB }
             , acc2
             )
 
@@ -319,7 +374,7 @@ extensionFold_expression f ( expr, acc ) =
                 ( b_false, acc4 ) =
                     extensionFold_block f ( ar.false, acc3 )
             in
-            ( If b { start = ar.start, condition = b_cond, true = b_true, false = b_false }
+            ( If b { condition = b_cond, true = b_true, false = b_false }
             , acc4
             )
 
@@ -337,7 +392,7 @@ extensionFold_expression f ( expr, acc ) =
                 ( b_patterns, acc3 ) =
                     List.foldr fold ( [], acc2 ) ar.patterns
             in
-            ( Try b { start = ar.start, value = b_value, patterns = b_patterns }
+            ( Try b { value = b_value, patterns = b_patterns }
             , acc3
             )
 

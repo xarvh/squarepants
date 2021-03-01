@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Lib
 import Set exposing (Set)
 import Test exposing (Test)
-import Types.CanonicalAst as CA exposing (Name, Type)
+import Types.CanonicalAst as CA exposing (Type)
 import Types.Error exposing (Res)
 
 
@@ -49,11 +49,19 @@ hasError =
 
 
 constant n =
-    CA.TypeConstant { path = n, args = [] }
+    CA.TypeConstant { ref = n, args = [] }
 
 
 function from to =
     CA.TypeFunction { from = from, fromIsMutable = Nothing, to = to }
+
+
+tyNumber =
+    constant "SPCore.Number"
+
+
+tyNone =
+    constant "SPCore.None"
 
 
 infer : String -> String -> Result String TI.EnvEntry
@@ -65,7 +73,7 @@ infer name code =
         |> Result.andThen
             (\( mod, env, subs ) ->
                 env
-                    |> Dict.get name
+                    |> Dict.get ("Test." ++ name)
                     |> Maybe.map normalizeSchema
                     |> Result.fromMaybe "Dict fail"
             )
@@ -80,43 +88,10 @@ preamble =
             , mutable = Just False
             }
     in
-    [ ( "add", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
-    , ( "+", em <| function (constant "Number") (function (constant "Number") (constant "Number")) )
-    , ( "not", em <| function (constant "Bool") (constant "Bool") )
-    , ( "reset", em <| CA.TypeFunction { from = constant "Number", fromIsMutable = Just True, to = constant "None" } )
-    , ( ":="
-      , { forall = Set.singleton "a"
-        , mutable = Just False
-        , type_ =
-            CA.TypeFunction
-                { from = CA.TypeVariable { name = "a" }
-                , fromIsMutable = Just False
-                , to =
-                    CA.TypeFunction
-                        { from = CA.TypeVariable { name = "a" }
-                        , fromIsMutable = Just True
-                        , to = constant "None"
-                        }
-                }
-        }
-      )
-    , ( "+="
-      , em <|
-            CA.TypeFunction
-                { from = CA.TypeConstant { path = "Number", args = [] }
-                , fromIsMutable = Just False
-                , to =
-                    CA.TypeFunction
-                        { from = CA.TypeConstant { path = "Number", args = [] }
-                        , fromIsMutable = Just True
-                        , to = constant "None"
-                        }
-                }
-      )
+    [ ( "Test.add", em <| function tyNumber (function tyNumber tyNumber) )
+    , ( "Test.reset", em <| CA.TypeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone } )
     ]
         |> Dict.fromList
-        |> Lib.dict_foldRes (\k -> TI.addConstructors) Compiler.CoreModule.coreModule.unions
-        |> Result.withDefault Dict.empty
 
 
 
@@ -228,19 +203,19 @@ functions =
         [ simpleTest
             { name = "Known function with correct params"
             , run = \_ -> infer "a" "a = add 3 1"
-            , expected = Ok { type_ = constant "Number", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
             }
         , hasError
             { name = "Known function with wrong params"
             , run = \_ -> infer "a" "a = add False"
-            , test = Test.errorShouldContain "cannot unify Bool and Number"
+            , test = Test.errorShouldContain "cannot unify SPCore.Bool and SPCore.Number"
             }
         , simpleTest
             { name = "Function inference 1"
             , run = \_ -> infer "a" "a x = add x 1"
             , expected =
                 Ok
-                    { type_ = function (constant "Number") (constant "Number")
+                    { type_ = function tyNumber tyNumber
                     , forall = Set.empty
                     , mutable = Just False
                     }
@@ -250,7 +225,7 @@ functions =
             , run = \_ -> infer "a" "a x = add 1 x"
             , expected =
                 Ok
-                    { type_ = function (constant "Number") (constant "Number")
+                    { type_ = function tyNumber tyNumber
                     , forall = Set.empty
                     , mutable = Just False
                     }
@@ -271,7 +246,7 @@ functions =
                         CA.TypeFunction
                             { from = CA.TypeVariable { name = "1" }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeConstant { path = "Number", args = [] }
+                            , to = CA.TypeConstant { ref = "SPCore.Number", args = [] }
                             }
                     }
             }
@@ -297,7 +272,7 @@ statements =
                   3
                   False
                 """
-            , expected = Ok { type_ = constant "Bool", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = constant "SPCore.Bool", forall = Set.empty, mutable = Just False }
             }
         , simpleTest
             { name = "Definition statement return type None"
@@ -308,7 +283,7 @@ statements =
                 a =
                   f x = 3
                 """
-            , expected = Ok { type_ = constant "None", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNone, forall = Set.empty, mutable = Just False }
             }
         ]
 
@@ -429,7 +404,7 @@ variableTypes =
                         b x = x
                         a = b 1
                         """
-            , expected = Ok { type_ = constant "Number", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
             }
         , simpleTest
             -- See note for the test above!
@@ -441,7 +416,7 @@ variableTypes =
                         b x = x
                         c = b 1
                         """
-            , expected = Ok { type_ = constant "Number", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
             }
         , simpleTest
             -- See note for the test above!
@@ -455,7 +430,7 @@ variableTypes =
                           b x = x
                           a
                         """
-            , expected = Ok { type_ = constant "Number", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
             }
 
         -- TODO Test self recursion and mutual recursion
@@ -488,7 +463,7 @@ variableTypes =
 --
 
 
-referencedSiblingDefs : Dict Name (Set Name)
+referencedSiblingDefs : Dict String (Set String)
 referencedSiblingDefs =
     [ ( "a", [ "b", "blah" ] )
     , ( "b", [ "a", "meh" ] )
@@ -545,7 +520,7 @@ mutability =
                         """
             , expected =
                 Ok
-                    { type_ = CA.TypeFunction { from = constant "Number", fromIsMutable = Just True, to = constant "None" }
+                    { type_ = CA.TypeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
                     , forall = Set.empty
                     , mutable = Just False
                     }
@@ -574,7 +549,7 @@ mutability =
                         """
             , expected =
                 Ok
-                    { type_ = CA.TypeFunction { from = constant "Number", fromIsMutable = Just True, to = constant "None" }
+                    { type_ = CA.TypeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
                     , forall = Set.empty
                     , mutable = Just False
                     }
@@ -582,7 +557,7 @@ mutability =
         , hasError
             { name = "Functions can't be mutable 1"
             , run = \_ -> infer "a" "a @= fn x = x"
-            , test = Test.errorShouldContain "these mutable values contain functions: a"
+            , test = Test.errorShouldContain "these mutable values contain functions: Test.a"
             }
         , simpleTest
             { name = "Functions can't be mutable 2"
@@ -646,9 +621,9 @@ higherOrderTypes =
                 Ok
                     { type_ =
                         CA.TypeFunction
-                            { from = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], path = "List" }
+                            { from = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "SPCore.List" }
                             , fromIsMutable = Just False
-                            , to = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], path = "List" }
+                            , to = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "SPCore.List" }
                             }
                     , mutable = Just False
                     , forall = Set.singleton "a"
@@ -659,7 +634,7 @@ higherOrderTypes =
             , run = \_ -> infer "L" "type X a = L"
             , expected =
                 Ok
-                    { type_ = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], path = "X" }
+                    { type_ = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "Test.X" }
                     , mutable = Just False
                     , forall = Set.singleton "a"
                     }
@@ -725,14 +700,14 @@ records =
                                     { attrs =
                                         Dict.singleton "meh"
                                             (CA.TypeRecord
-                                                { attrs = Dict.singleton "blah" (CA.TypeConstant { path = "Number", args = [] })
+                                                { attrs = Dict.singleton "blah" (CA.TypeConstant { ref = "SPCore.Number", args = [] })
                                                 , extensible = Just "2"
                                                 }
                                             )
                                     , extensible = Just "1"
                                     }
                             , fromIsMutable = Just True
-                            , to = CA.TypeConstant { path = "None", args = [] }
+                            , to = CA.TypeConstant { ref = "SPCore.None", args = [] }
                             }
                     }
             }
@@ -770,7 +745,7 @@ records =
                 let
                     re =
                         CA.TypeRecord
-                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
+                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], ref = "SPCore.Number" })
                             , extensible = Just "1"
                             }
                 in
@@ -798,7 +773,7 @@ records =
                 let
                     re =
                         CA.TypeRecord
-                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], path = "Number" })
+                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], ref = "SPCore.Number" })
                             , extensible = Just "1"
                             }
                 in
@@ -863,7 +838,7 @@ patterns =
                         { from =
                             CA.TypeConstant
                                 { args = [ CA.TypeVariable { name = "1" } ]
-                                , path = "List"
+                                , ref = "SPCore.List"
                                 }
                         , fromIsMutable = Nothing
                         , to = CA.TypeVariable { name = "1" }
@@ -918,9 +893,9 @@ try_as =
                 , mutable = Just False
                 , type_ =
                     CA.TypeFunction
-                        { from = CA.TypeConstant { path = "Bool", args = [] }
+                        { from = CA.TypeConstant { ref = "SPCore.Bool", args = [] }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeConstant { path = "Number", args = [] }
+                        , to = CA.TypeConstant { ref = "SPCore.Number", args = [] }
                         }
                 }
             )
@@ -934,7 +909,7 @@ try_as =
                [] then 3
             """
             (infer "x")
-            (Test.errContain "List")
+            (Test.errContain "SPCore.List")
 
         --
         , codeTest "rejects non-matching blocks"
@@ -945,7 +920,7 @@ try_as =
                False then False
             """
             (infer "x")
-            (Test.errContain "Number")
+            (Test.errContain "SPCore.Number")
         ]
 
 
@@ -970,9 +945,9 @@ if_then =
                 , mutable = Just False
                 , type_ =
                     CA.TypeFunction
-                        { from = CA.TypeConstant { path = "Bool", args = [] }
+                        { from = CA.TypeConstant { ref = "SPCore.Bool", args = [] }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeConstant { path = "Number", args = [] }
+                        , to = CA.TypeConstant { ref = "SPCore.Number", args = [] }
                         }
                 }
             )
@@ -985,7 +960,7 @@ if_then =
               else 2
             """
             (infer "x")
-            (Test.errContain "Bool")
+            (Test.errContain "SPCore.Bool")
 
         --
         , codeTest "rejects non-matching blocks"
@@ -995,5 +970,5 @@ if_then =
               else False
             """
             (infer "x")
-            (Test.errContain "Number")
+            (Test.errContain "SPCore.Number")
         ]

@@ -47,29 +47,30 @@ TODO: what about circular dependencies?
 Modules are loaded only if and when referenced.
 
 Available modules are determined by the project's single configuration file, and can come from source dirs or libraries:
-```
+```toml
 
 [library]
-  source = http://www.github.com/xarvh/spcore#master
+  source = "http://www.github.com/xarvh/spcore#master"
 
   [[module]]
-    original = Basics
-    importAs = Basics
-    globals = [ Bool, True, False ]
+    original = "Basics"
+    importAs = "Basics"
+    globalTypes = [ "Bool" ]
+    globalValues = [ "True", "False" ]
 
   [[module]]
-    original = Dict
-    importAs = Dict
-    globals = [ Dict ]
+    original = "Dict"
+    importAs = "Dict"
+    globalTypes = [ "Dict" ]
 
 
 [library]
   # local directories can be loaded as libraries
-  source = lib/fast-dict/
+  source = "lib/fast-dict/"
 
   [[module]]
-    original = Dict
-    importAs = FastDict
+    original = "Dict"
+    importAs = "FastDict"
     globals = []
 
 
@@ -78,13 +79,13 @@ Available modules are determined by the project's single configuration file, and
   # Unlike libraries, all modules in the path will be made available by default,
   # imported with their original name (determined by their file path relative
   # to `path` below) and with no exposed globals.
-  path = src/
+  path = "src/"
 
   # Exceptions can be defined inside the [[module]] blocks below
   [[module]]
-    original = CanonicalAst
-    importAs = CA
-    globals = [ Expr ]
+    original = "CanonicalAst"
+    importAs = "CA"
+    globalTypes = [ "Expr" ]
 
 ```
 
@@ -127,13 +128,26 @@ Hoped Advantages
 
 
 
+Problems
+========
+
+1. Still don't know which format to use. See below.
+
+1. Is it ok to allow a constructor to be global but not its type?
+
+1. Is it ok to allow a type to have some global constructors and some non-global ones?
+
+1. Implementing the libraries system will be a pain
+
+
+
 JSON?
 ====
-Looks like shit.
+It's a pain for humans to read and write and does not support comments.
 
 I'd rather include a compiler command that outputs the module file in json format.
 
-```
+```json
 [
     {
         "type": "library",

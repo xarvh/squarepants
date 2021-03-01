@@ -7,9 +7,13 @@ import Html
 import Lib exposing (result_do)
 import RefHierarchy
 import Set exposing (Set)
-import Types.CanonicalAst as CA exposing (Name, Type)
+import Types.CanonicalAst as CA exposing (Type)
 import Types.Error as Error exposing (Res, errorTodo)
 import Types.Literal
+
+
+type alias Name =
+    String
 
 
 type alias Substitutions =
@@ -158,10 +162,21 @@ inspectModule prelude rawMod =
         ( mod, lastId ) =
             CA.extensionFold_module f ( rawMod, 0 )
     in
-    result_do (Lib.dict_foldRes (\k -> addConstructors) mod.unions prelude) <| \env ->
+    result_do (Lib.dict_foldRes (\k -> addConstructors) mod prelude) <| \env ->
     let
+        asValue rootDef =
+            case rootDef of
+                CA.Value v ->
+                    Just v
+
+                _ ->
+                    Nothing
+
         statements =
-            List.map CA.Definition mod.values
+            mod
+                |> Dict.values
+                |> List.filterMap asValue
+                |> List.map CA.Definition
 
         gen =
             do_nr (inspectBlock statements env Dict.empty) <| \( shouldBeNone, env1, subs ) ->
@@ -177,20 +192,24 @@ inspectModule prelude rawMod =
         |> Tuple.first
 
 
-addConstructors : CA.UnionDef -> Env -> Res Env
-addConstructors def env =
-    Lib.list_foldlRes (addConstructor def) def.constructors env
+addConstructors : CA.RootDef Ext -> Env -> Res Env
+addConstructors rootDef env =
+    case rootDef of
+        CA.Union def ->
+            Lib.dict_foldRes (addConstructor def) def.constructors env
+
+        _ ->
+            Ok env
 
 
-addConstructor : CA.UnionDef -> CA.UnionConstructor -> Env -> Res Env
-addConstructor unionDef ctor env =
+addConstructor : CA.UnionDef -> String -> List CA.Type -> Env -> Res Env
+addConstructor unionDef ctorName ctorArgs env =
     let
         args =
             List.map (\a -> CA.TypeVariable { name = a }) unionDef.args
 
         ctorType =
-            -- FindUndeclared has checked already that all constructors use only declared var types
-            List.foldr fold (CA.TypeConstant { path = unionDef.name, args = args }) ctor.args
+            List.foldr fold (CA.TypeConstant { ref = unionDef.name, args = args }) ctorArgs
 
         fold ty accum =
             CA.TypeFunction
@@ -205,7 +224,7 @@ addConstructor unionDef ctor env =
 
         Nothing ->
             env
-                |> Dict.insert ctor.name
+                |> Dict.insert ctorName
                     { type_ = ctorType
                     , forall = Set.fromList unionDef.args
                     , mutable = Just False
@@ -222,8 +241,8 @@ addConstructor unionDef ctor env =
 refineType : Substitutions -> Type -> Type
 refineType subs ty =
     case ty of
-        CA.TypeConstant { path, args } ->
-            CA.TypeConstant { path = path, args = List.map (refineType subs) args }
+        CA.TypeConstant { ref, args } ->
+            CA.TypeConstant { ref = ref, args = List.map (refineType subs) args }
 
         CA.TypeVariable { name } ->
             case Dict.get name subs of
@@ -272,7 +291,7 @@ typeVarsFromType ty =
         CA.TypeFunction { from, to } ->
             Set.union (typeVarsFromType from) (typeVarsFromType to)
 
-        CA.TypeConstant { path, args } ->
+        CA.TypeConstant { ref, args } ->
             List.foldl (\a -> Set.union (typeVarsFromType a)) Set.empty args
 
         CA.TypeAlias path t ->
@@ -339,7 +358,7 @@ refineEnv s env =
     Dict.map refine_entry env
 
 
-unwrapAlias : Maybe CA.Path -> Type -> ( Type, Maybe CA.Path )
+unwrapAlias : Maybe String -> Type -> ( Type, Maybe String )
 unwrapAlias prevPath ty =
     case ty of
         CA.TypeAlias path t ->
@@ -370,8 +389,8 @@ unify at1 at2 s =
     in
     case ( t1_refined, t2_refined ) of
         ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
-            if c1.path /= c2.path then
-                TyGen.wrap <| errorTodo <| "cannot unify " ++ c1.path ++ " and " ++ c2.path
+            if c1.ref /= c2.ref then
+                TyGen.wrap <| errorTodo <| "cannot unify " ++ c1.ref ++ " and " ++ c2.ref
 
             else
                 let
@@ -384,7 +403,7 @@ unify at1 at2 s =
                                 do_nr (unify head1 head2 subs) <| rec tail1 tail2
 
                             _ ->
-                                TyGen.wrap <| errorTodo <| "one of the two has wrong number of args: " ++ c1.path ++ " and " ++ c2.path
+                                TyGen.wrap <| errorTodo <| "one of the two has wrong number of args: " ++ c1.ref ++ " and " ++ c2.ref
                 in
                 rec c1.args c2.args s
 
@@ -607,14 +626,14 @@ inspectExpr expr ty ( env, subs ) =
     case expr of
         CA.Literal _ l ->
             subs
-                |> unify ty (literalToType l.value)
+                |> unify ty (literalToType l)
                 |> andEnv env
 
-        CA.Variable _ { path, attrPath } ->
+        CA.Variable _ { name, attrPath } ->
             -- Every time I use a var with variable type, it should be instantiated,
             -- because each time it may by used against a different type.
             -- This is done automatically by `envGet`.
-            do_nr (envGet path env) <| \nt ->
+            do_nr (envGet name env) <| \nt ->
             let
                 t =
                     refineType subs nt
@@ -770,10 +789,10 @@ inspectMaybeExtensible env maybeUpdateTarget ty subs =
 inspectArgument : Env -> CA.Argument Ext -> Type -> Substitutions -> TR Eas
 inspectArgument env arg ty subs =
     case arg of
-        CA.ArgumentMutable { path, attrPath } ->
-            case Dict.get path env of
+        CA.ArgumentMutable { name, attrPath } ->
+            case Dict.get name env of
                 Nothing ->
-                    ("undeclared mutable variable: " ++ path)
+                    ("undeclared mutable variable: " ++ name)
                         |> errorTodo
                         |> TyGen.wrap
 
@@ -781,14 +800,14 @@ inspectArgument env arg ty subs =
                     case schema.mutable of
                         Nothing ->
                             unifyWithAttrPath attrPath ty schema.type_ subs
-                                |> map_nr (\s -> ( Dict.insert path { schema | mutable = Just True } env, s ))
+                                |> map_nr (\s -> ( Dict.insert name { schema | mutable = Just True } env, s ))
 
                         Just True ->
                             unifyWithAttrPath attrPath ty schema.type_ subs
                                 |> map_nr (\s -> ( env, s ))
 
                         Just False ->
-                            (path ++ " can't be mutable")
+                            (name ++ " can't be mutable")
                                 |> errorTodo
                                 |> TyGen.wrap
 
@@ -1011,47 +1030,54 @@ annotationTooGeneral annotation inferredForall =
 
 inspectBlock : List (CA.Statement Ext) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectBlock stats parentEnv subs =
-    let
-        ( definitions, newStats ) =
-            reorderStatements stats
-    in
-    do_nr (list_foldl_nr insertDefinitionRec definitions parentEnv) <| \localEnv ->
-    do_nr (inspectStatementRec newStats Core.noneType localEnv subs) <| \typeAndEnvAndSubs ->
-    TyGen.wrap <|
+    if stats == [] then
+        TyGen.do newType <| \nt ->
+        ( nt, parentEnv, subs )
+            |> Ok
+            |> TyGen.wrap
+
+    else
         let
-            ( ty, env, _ ) =
-                typeAndEnvAndSubs
-
-            defContainsFunctions : CA.ValueDef e -> Bool
-            defContainsFunctions def =
-                def.pattern
-                    |> CA.patternNames
-                    |> Set.toList
-                    |> List.any nameContainsFunction
-
-            nameContainsFunction name =
-                typeContainsFunctions (dict_get "SNH: nameContainsFunction" name env).type_
-
-            definedMutables =
-                List.filter .mutable definitions
-
-            mutablesWithFunction =
-                List.filter defContainsFunctions definedMutables
+            ( definitions, newStats ) =
+                reorderStatements stats
         in
-        if mutablesWithFunction /= [] then
-            mutablesWithFunction
-                |> List.foldl (.pattern >> CA.patternNames >> Set.union) Set.empty
-                |> Set.toList
-                |> List.sort
-                |> String.join ", "
-                |> (++) "these mutable values contain functions: "
-                |> errorTodo
+        do_nr (list_foldl_nr insertDefinitionRec definitions parentEnv) <| \localEnv ->
+        do_nr (inspectStatementRec newStats Core.noneType localEnv subs) <| \typeAndEnvAndSubs ->
+        TyGen.wrap <|
+            let
+                ( ty, env, _ ) =
+                    typeAndEnvAndSubs
 
-        else if definedMutables /= [] && typeContainsFunctions ty then
-            errorTodo "statement blocks that define mutables can't return functions"
+                defContainsFunctions : CA.ValueDef e -> Bool
+                defContainsFunctions def =
+                    def.pattern
+                        |> CA.patternNames
+                        |> Set.toList
+                        |> List.any nameContainsFunction
 
-        else
-            Ok typeAndEnvAndSubs
+                nameContainsFunction name =
+                    typeContainsFunctions (dict_get "SNH: nameContainsFunction" name env).type_
+
+                definedMutables =
+                    List.filter .mutable definitions
+
+                mutablesWithFunction =
+                    List.filter defContainsFunctions definedMutables
+            in
+            if mutablesWithFunction /= [] then
+                mutablesWithFunction
+                    |> List.foldl (.pattern >> CA.patternNames >> Set.union) Set.empty
+                    |> Set.toList
+                    |> List.sort
+                    |> String.join ", "
+                    |> (++) "these mutable values contain functions: "
+                    |> errorTodo
+
+            else if definedMutables /= [] && typeContainsFunctions ty then
+                errorTodo "statement blocks that define mutables can't return functions"
+
+            else
+                Ok typeAndEnvAndSubs
 
 
 inspectStatementRec : List (CA.Statement Ext) -> Type -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
@@ -1143,11 +1169,13 @@ validateType mutable ty =
             Nothing
 
         CA.TypeVariable { name } ->
-            if mutable then
-                Just "variable types can't be mutable"
+            {- TODO
+               if mutable then
+                   Just "variable types can't be mutable"
 
-            else
-                Nothing
+               else
+            -}
+            Nothing
 
         CA.TypeAlias path t ->
             validateType mutable t
@@ -1222,9 +1250,9 @@ findAllRefs_expr expr =
             Set.empty
 
         CA.Variable _ args ->
-            Set.singleton args.path
+            Set.singleton args.name
 
-        CA.Lambda _ { start, parameter, body } ->
+        CA.Lambda _ { parameter, body } ->
             findAllRefs_statementBlock body
 
         CA.Record _ args ->
@@ -1235,7 +1263,7 @@ findAllRefs_expr expr =
                 (findAllRefs_expr reference)
                 (findAllRefs_arg argument)
 
-        CA.If _ { start, condition, true, false } ->
+        CA.If _ { condition, true, false } ->
             findAllRefs_statementBlock condition
                 |> Set.union (findAllRefs_statementBlock true)
                 |> Set.union (findAllRefs_statementBlock false)
@@ -1248,8 +1276,8 @@ findAllRefs_expr expr =
 findAllRefs_arg : CA.Argument e -> Set String
 findAllRefs_arg arg =
     case arg of
-        CA.ArgumentMutable { path } ->
-            Set.singleton path
+        CA.ArgumentMutable { name } ->
+            Set.singleton name
 
         CA.ArgumentExpression expr ->
             findAllRefs_expr expr

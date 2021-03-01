@@ -41,60 +41,56 @@ type Error
 ----
 --- Module
 --
+{- On error, produce a dict of undeclared type variables
+   --| On ok, produce the stuff that the system should try to load form other modules
+   moduleUndeclared : CA.Module e -> Result (List Error) EnvUn
+   moduleUndeclared mod =
+       let
+           declaredTypes =
+               Set.fromList <| Dict.keys mod.aliases ++ Dict.keys mod.unions
 
+           undeclaredTypes =
+               Dict.empty
+                   |> (\a -> Dict.foldl (\k -> addAliasUndeclared declaredTypes) a mod.aliases)
+                   |> (\a -> Dict.foldl (\k -> addUnionUndeclared declaredTypes) a mod.unions)
 
-{-| On error, produce a dict of undeclared type variables
---| On ok, produce the stuff that the system should try to load form other modules
+           declared : EnvDeclared
+           declared =
+               { types = declaredTypes
+               , values = List.foldl (\def -> Set.union (CA.patternNames def.pattern)) Set.empty mod.values
+               }
+
+           undeclaredInit : EnvUn
+           undeclaredInit =
+               { types = undeclaredTypes
+               , values = Dict.empty
+               , valuesUsedBeforeDeclaration = Dict.empty
+               }
+
+           undeclaredFinal =
+               List.foldl (addValueUndeclared declared) undeclaredInit mod.values
+
+           unTyVars =
+               undeclaredFinal.types
+                   |> Dict.toList
+                   |> List.filter (\( k, v ) -> not <| Compiler.FormattableToCanonicalAst.startsWithUpperChar k)
+                   |> List.map (\( k, v ) -> ErrorUndeclaredTypeVariable k v)
+
+           unBefore =
+               undeclaredFinal.valuesUsedBeforeDeclaration
+                   |> Dict.toList
+                   |> List.map (\( k, v ) -> ErrorValueUsedBeforeDeclaration k v)
+
+           errors =
+               unTyVars ++ unBefore
+       in
+       if errors /= [] then
+           Err errors
+
+       else
+           Ok undeclaredFinal
+
 -}
-moduleUndeclared : CA.Module e -> Result (List Error) EnvUn
-moduleUndeclared mod =
-    let
-        declaredTypes =
-            Set.fromList <| Dict.keys mod.aliases ++ Dict.keys mod.unions
-
-        undeclaredTypes =
-            Dict.empty
-                |> (\a -> Dict.foldl (\k -> addAliasUndeclared declaredTypes) a mod.aliases)
-                |> (\a -> Dict.foldl (\k -> addUnionUndeclared declaredTypes) a mod.unions)
-
-        declared : EnvDeclared
-        declared =
-            { types = declaredTypes
-            , values = List.foldl (\def -> Set.union (CA.patternNames def.pattern)) Set.empty mod.values
-            }
-
-        undeclaredInit : EnvUn
-        undeclaredInit =
-            { types = undeclaredTypes
-            , values = Dict.empty
-            , valuesUsedBeforeDeclaration = Dict.empty
-            }
-
-        undeclaredFinal =
-            List.foldl (addValueUndeclared declared) undeclaredInit mod.values
-
-        unTyVars =
-            undeclaredFinal.types
-                |> Dict.toList
-                |> List.filter (\( k, v ) -> not <| Compiler.FormattableToCanonicalAst.firstCharIsUpper k)
-                |> List.map (\( k, v ) -> ErrorUndeclaredTypeVariable k v)
-
-        unBefore =
-            undeclaredFinal.valuesUsedBeforeDeclaration
-                |> Dict.toList
-                |> List.map (\( k, v ) -> ErrorValueUsedBeforeDeclaration k v)
-
-        errors =
-            unTyVars ++ unBefore
-    in
-    if errors /= [] then
-        Err errors
-
-    else
-        Ok undeclaredFinal
-
-
-
 ----
 --- Types
 --
@@ -115,20 +111,21 @@ addUnionUndeclared declaredTypes union undeclaredTypes =
         typesEnv =
             List.foldl Set.insert declaredTypes union.args
 
-        addConstructor : CA.UnionConstructor -> Undeclared -> Undeclared
-        addConstructor cons un =
-            List.foldl (addTypeUndeclared False typesEnv) un cons.args
+        addConstructor : String -> List CA.Type -> Undeclared -> Undeclared
+        addConstructor name args un =
+            List.foldl (addTypeUndeclared False typesEnv) un args
     in
-    List.foldl addConstructor undeclaredTypes union.constructors
+    Dict.foldl addConstructor undeclaredTypes union.constructors
+
 
 
 addTypeUndeclared : Bool -> Set String -> CA.Type -> Undeclared -> Undeclared
 addTypeUndeclared isAnnotation typesEnv ty undeclaredTypes =
     case ty of
-        CA.TypeConstant { path, args } ->
+        CA.TypeConstant { ref, args } ->
             undeclaredTypes
                 |> (\un -> List.foldl (addTypeUndeclared isAnnotation typesEnv) un args)
-                |> maybeAdd typesEnv path
+                |> maybeAdd typesEnv ref
 
         CA.TypeVariable { name } ->
             if isAnnotation then
@@ -253,7 +250,7 @@ addExpressionUndeclared env expr undeclared =
             undeclared
 
         CA.Variable e ar ->
-            { undeclared | values = maybeAdd env.values ar.path undeclared.values }
+            { undeclared | values = maybeAdd env.values ar.name undeclared.values }
 
         CA.Lambda e ar ->
             let
@@ -264,7 +261,7 @@ addExpressionUndeclared env expr undeclared =
 
         CA.Record e ar ->
             undeclared
-                |> (\un -> { un | values = maybeMaybeAdd env.values (Maybe.map .path ar.maybeUpdateTarget) un.values })
+                |> (\un -> { un | values = maybeMaybeAdd env.values (Maybe.map .name ar.maybeUpdateTarget) un.values })
                 |> (\un -> Dict.foldl (\k -> addExpressionUndeclared env) un ar.attrs)
 
         CA.Call e ar ->
@@ -291,7 +288,7 @@ addArgumentUndeclared env arg undeclared =
             addExpressionUndeclared env expr undeclared
 
         CA.ArgumentMutable ar ->
-            { undeclared | values = maybeAdd env.values ar.path undeclared.values }
+            { undeclared | values = maybeAdd env.values ar.name undeclared.values }
 
 
 
