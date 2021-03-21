@@ -116,7 +116,7 @@ tests =
                     \_ ->
                         """
                         alias A b c = List b
-                        type B x = B1 (A Bool x)
+                        union B x = B1 (A Bool x)
                         """
                             |> applyAndGet CA.asUnion "B"
                             |> Result.map .constructors

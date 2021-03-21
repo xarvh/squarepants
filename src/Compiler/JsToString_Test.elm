@@ -222,7 +222,7 @@ try =
     Test.Group "try"
         [ codeTest "basic sanity"
             """
-            type A = A Number, B, C Bool
+            union A = A Number, B, C Bool
 
             a x =
               try x as

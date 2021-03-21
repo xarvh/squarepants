@@ -95,22 +95,22 @@ unionTypes =
     Test.Group "unionTypes"
         [ hasError
             { name = "name starts with uppercase"
-            , run = \_ -> stringToCanonicalModule "type a = A"
+            , run = \_ -> stringToCanonicalModule "union a = A"
             , test = Test.errorShouldContain "uppercase"
             }
         , hasError
             { name = "constructor names start with uppercase"
-            , run = \_ -> stringToCanonicalModule "type A = a"
+            , run = \_ -> stringToCanonicalModule "union A = a"
             , test = Test.errorShouldContain "constructor"
             }
         , hasError
             { name = "tuples op precedence"
-            , run = \_ -> stringToCanonicalModule "type A = X Bool & Bool"
+            , run = \_ -> stringToCanonicalModule "union A = X Bool & Bool"
             , test = Test.errorShouldContain "operators"
             }
         , isOk
             { name = "tuples op precedence works with parens"
-            , run = \_ -> stringToCanonicalModule "type A = X (Bool & Bool)"
+            , run = \_ -> stringToCanonicalModule "union A = X (Bool & Bool)"
             }
         ]
 

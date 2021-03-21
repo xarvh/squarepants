@@ -262,7 +262,7 @@ typeAlias =
 
 unionDef : Parser FA.Statement
 unionDef =
-    do (kind <| Token.Name { mutable = False } "type") <| \_ ->
+    do (kind <| Token.Name { mutable = False } "union") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
     do (inlineOrIndented <| rawList typeExpr) <| \cons ->

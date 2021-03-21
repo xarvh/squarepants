@@ -316,7 +316,7 @@ unionDefs =
     Test.Group "Type Definitions"
         [ simpleTest
             { name = "Parse inline def"
-            , run = \_ -> firstTypeDef "type A b c = V1 b, V2 c, V3, V4 b c"
+            , run = \_ -> firstTypeDef "union A b c = V1 b, V2 c, V3, V4 b c"
             , expected =
                 Ok
                     { args = [ "b", "c" ]
@@ -335,7 +335,7 @@ unionDefs =
                 \_ ->
                     firstTypeDef
                         """
-                        type A =
+                        union A =
                            , V1
                            , V2
                         """
@@ -351,7 +351,7 @@ unionDefs =
             }
         , simpleTest
             { name = "list argument"
-            , run = \_ -> firstTypeDef "type A = A [Int]"
+            , run = \_ -> firstTypeDef "union A = A [Int]"
             , expected =
                 Ok
                     { args = []

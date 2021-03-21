@@ -61,9 +61,9 @@ map f m =
         """
       )
 
-    --     , ( "Language/Overview"
-    --       , allCode
-    --       )
+     , ( "Language/Overview"
+       , allCode
+       )
     ----
     --- Meta
     --
@@ -94,6 +94,7 @@ numberOne =
 addThreeNumbers x y z =
   x + y + z
 
+[# TODO: numeric polymorphism not yet implemented =(
 floatOne : Float
 floatOne =
   1
@@ -105,6 +106,7 @@ fibonacci n =
 subtractTwoFrom : Vec2 -> Vec2
 subtractTwoFrom =
   (-) 2
+#]
 
 
 
@@ -138,7 +140,7 @@ average numbers =
     @n += 1
     @sum += x
 
-  # division by 0 yields 0
+  # TODO: division by 0 yields 0
   sum / n
 
 

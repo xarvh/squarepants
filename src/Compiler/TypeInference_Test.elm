@@ -633,7 +633,7 @@ higherOrderTypes =
             }
         , simpleTest
             { name = "Union type constructors"
-            , run = \_ -> infer "L" "type X a = L"
+            , run = \_ -> infer "L" "union X a = L"
             , expected =
                 Ok
                     { type_ = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "Test.X" }
