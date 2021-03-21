@@ -316,7 +316,7 @@ view model =
 viewTests : Html Msg
 viewTests =
     if not runTests then
-        Html.li
+        Html.div
             []
             [ Html.h6
                 [ style "color" "red" ]
@@ -324,11 +324,9 @@ viewTests =
             ]
 
     else
-        Html.li
-            []
-            [ Html.h6 [] [ Html.text "Tests" ]
-            , tests
-            ]
+        Html.div
+            [ class "mt ml" ]
+            [ tests ]
 
 
 viewFilesSelector : Model -> Html Msg
@@ -476,29 +474,32 @@ viewProgram model =
             do (Compiler.TypeInference.inspectModule Dict.empty alsDefs) <| \( typedProgram, _, _ ) ->
             Ok typedProgram
 
-        liPreCode text =
-            Html.li [] [ Html.pre [] [ Html.code [] [ Html.text text ] ] ]
-    in
-    case getMeta model of
-        Err e ->
-            Html.div
+        titleAndPreCode title text =
+            Html.li
                 []
+                [ Html.h6 [] [ Html.text title ]
+                , Html.pre [] [ Html.code [] [ Html.text text ] ]
+                ]
+    in
+    Html.ul
+        [ class "ml mt border"
+        , style "padding-right" "1em"
+        ]
+        (case getMeta model of
+            Err e ->
                 [ Html.text e ]
 
-        Ok meta ->
-            case programResult meta of
-                Err e ->
-                    Html.div
-                        []
+            Ok meta ->
+                case programResult meta of
+                    Err e ->
                         [ e
                             |> Debug.toString
                             |> Html.text
                         ]
 
-                Ok program ->
-                    Html.ul
-                        [ class "ml" ]
-                        [ liPreCode
+                    Ok program ->
+                        [ titleAndPreCode
+                            "JavaScript value for Mod.result:"
                             (case Compiler.JsToString_Test.runProgram "ModA.result" program of
                                 Ok res ->
                                     res
@@ -509,8 +510,9 @@ viewProgram model =
                         , program
                             |> emitModule
                             |> Result.withDefault "error"
-                            |> liPreCode
+                            |> titleAndPreCode "Evaluated JavaScript code:"
                         ]
+        )
 
 
 
@@ -722,38 +724,35 @@ viewSchema schema =
 
 
 {-
-----
---- Undeclared
---
+   ----
+   --- Undeclared
+   --
 
 
-viewUndeclared : Result (List Compiler.FindUndeclared.Error) Compiler.FindUndeclared.EnvUn -> Html msg
-viewUndeclared un =
-    case un of
-        Err errors ->
-            let
-                viewError error =
-                    case error of
-                        Compiler.FindUndeclared.ErrorValueUsedBeforeDeclaration name locations ->
-                            Html.div [ style "color" "red" ] [ Html.text <| "value `" ++ name ++ "` used before declaration at locations: " ++ Debug.toString locations ]
+   viewUndeclared : Result (List Compiler.FindUndeclared.Error) Compiler.FindUndeclared.EnvUn -> Html msg
+   viewUndeclared un =
+       case un of
+           Err errors ->
+               let
+                   viewError error =
+                       case error of
+                           Compiler.FindUndeclared.ErrorValueUsedBeforeDeclaration name locations ->
+                               Html.div [ style "color" "red" ] [ Html.text <| "value `" ++ name ++ "` used before declaration at locations: " ++ Debug.toString locations ]
 
-                        Compiler.FindUndeclared.ErrorUndeclaredTypeVariable name locations ->
-                            Html.div [ style "color" "red" ] [ Html.text <| "type variable `" ++ name ++ "` used at " ++ Debug.toString locations ++ " was not declared" ]
-            in
-            Html.div
-                []
-                (List.map viewError errors)
+                           Compiler.FindUndeclared.ErrorUndeclaredTypeVariable name locations ->
+                               Html.div [ style "color" "red" ] [ Html.text <| "type variable `" ++ name ++ "` used at " ++ Debug.toString locations ++ " was not declared" ]
+               in
+               Html.div
+                   []
+                   (List.map viewError errors)
 
-        Ok m ->
-            Html.div
-                []
-                [ Html.div [] [ Html.text <| "types: " ++ Debug.toString m.types ]
-                , Html.div [] [ Html.text <| "values: " ++ Debug.toString m.values ]
-                ]
+           Ok m ->
+               Html.div
+                   []
+                   [ Html.div [] [ Html.text <| "types: " ++ Debug.toString m.types ]
+                   , Html.div [] [ Html.text <| "values: " ++ Debug.toString m.values ]
+                   ]
 -}
-
-
-
 ----
 --- Canonical AST
 --

@@ -23,14 +23,25 @@ import Html.Attributes exposing (class)
 
 
 type Test
-    = Single (() -> TestOutcome)
+    = Single String (() -> TestOutcome)
     | Group String (List Test)
+    | NotNow Test
 
 
-type alias TestOutcome =
-    { name : String
-    , maybeError : Maybe String
-    }
+type TestOutcome
+    = Success
+    | Skipped
+    | Error String
+
+
+maybeToOutcome : Maybe String -> TestOutcome
+maybeToOutcome m =
+    case m of
+        Just e ->
+            Error e
+
+        Nothing ->
+            Success
 
 
 
@@ -45,10 +56,11 @@ type CodeExpectation ok
 
 codeTest : (ok -> String) -> String -> String -> (String -> Result String ok) -> CodeExpectation ok -> Test
 codeTest toString title code functionToTest (CodeExpectation toMaybeError) =
-    Single <| \() ->
-    { name = title ++ "\n\n" ++ code
-    , maybeError = code |> functionToTest |> toMaybeError toString
-    }
+    Single (title ++ "\n\n" ++ code) <| \() ->
+    code
+        |> functionToTest
+        |> toMaybeError toString
+        |> maybeToOutcome
 
 
 okEqual : ok -> CodeExpectation ok
@@ -122,27 +134,24 @@ simple :
         }
     -> Test
 simple toString { name, run, expected } =
-    Single
+    Single name
         (\() ->
-            { name = name
-            , maybeError =
-                let
-                    actual =
-                        run name
-                in
-                if actual == expected then
-                    Nothing
+            let
+                actual =
+                    run name
+            in
+            if actual == expected then
+                Success
 
-                else
-                    [ "Expected: "
-                    , toString expected
-                    , "\n"
-                    , "Actual: "
-                    , toString actual
-                    ]
-                        |> String.join ""
-                        |> Just
-            }
+            else
+                [ "Expected: "
+                , toString expected
+                , "\n"
+                , "Actual: "
+                , toString actual
+                ]
+                    |> String.join ""
+                    |> Error
         )
 
 
@@ -154,17 +163,14 @@ isOk :
         }
     -> Test
 isOk toString { name, run } =
-    Single
+    Single name
         (\() ->
-            { name = name
-            , maybeError =
-                case run name of
-                    Ok _ ->
-                        Nothing
+            case run name of
+                Ok _ ->
+                    Success
 
-                    Err e ->
-                        Just <| "Error: " ++ toString e
-            }
+                Err e ->
+                    Error <| toString e
         )
 
 
@@ -177,17 +183,14 @@ hasError :
         }
     -> Test
 hasError toString { name, run, test } =
-    Single
+    Single name
         (\() ->
-            { name = name
-            , maybeError =
-                case run name of
-                    Ok outcome ->
-                        Just <| "Ok: " ++ toString outcome
+            case run name of
+                Ok outcome ->
+                    Error <| "Ok: " ++ toString outcome
 
-                    Err e ->
-                        test e
-            }
+                Err e ->
+                    maybeToOutcome <| test e
         )
 
 
@@ -206,18 +209,30 @@ errorShouldContain s error =
 --
 
 
-outcomesRec : String -> Test -> List TestOutcome -> List TestOutcome
+outcomesRec : String -> Test -> List (String, TestOutcome) -> List ( String, TestOutcome )
 outcomesRec path t accum =
     case t of
-        Single f ->
-            let
-                outcome =
-                    f ()
-            in
-            { outcome | name = path ++ outcome.name } :: accum
+        Single name f ->
+            ( path ++ name, f () ) :: accum
+
+        NotNow test ->
+            ( getName test, Skipped ) :: accum
 
         Group pathSegment ts ->
             List.foldl (outcomesRec (path ++ pathSegment ++ " / ")) accum ts
+
+
+getName : Test -> String
+getName test =
+    case test of
+        Single n f ->
+            n
+
+        Group n ls ->
+            n
+
+        NotNow t ->
+            getName t
 
 
 viewList : List Test -> Html msg
@@ -225,35 +240,46 @@ viewList tests =
     tests
         |> List.foldl (outcomesRec "") []
         |> List.sortBy
-            (\t ->
-                if t.maybeError /= Nothing then
-                    0
+            (\( name, outcome ) ->
+                case outcome of
+                    Error e ->
+                        -1
 
-                else
-                    1
+                    Skipped ->
+                        0
+
+                    Success ->
+                        1
             )
         |> List.map view
         |> (::) style
         |> Html.div []
 
 
-view : TestOutcome -> Html msg
-view test =
+view : ( String, TestOutcome ) -> Html msg
+view ( name, outcome ) =
     Html.div
         [ class "test-item"
-        , if test.maybeError == Nothing then
-            class "test-ok"
+        , case outcome of
+            Success ->
+                class "test-ok"
 
-          else
-            class "test-error"
+            Skipped ->
+                class "test-skipped"
+
+            Error e ->
+                class "test-error"
         ]
-        [ Html.pre [ class "test-name" ] [ Html.text test.name ]
+        [ Html.pre [ class "test-name" ] [ Html.text name ]
         , Html.code []
-            [ case test.maybeError of
-                Nothing ->
+            [ case outcome of
+                Success ->
                     Html.text "Ok!"
 
-                Just error ->
+                Skipped ->
+                    Html.text "Skipped!"
+
+                Error error ->
                     Html.code
                         []
                         [ Html.pre
@@ -281,6 +307,10 @@ style =
 
 .test-ok {
   background-color: #6f6;
+}
+
+.test-skipped {
+  background-color: #fe3;
 }
 
 .test-error {

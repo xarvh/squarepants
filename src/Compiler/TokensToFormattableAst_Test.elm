@@ -19,6 +19,7 @@ tests =
         , ifs
         , tries
         , patterns
+        , binops
         ]
 
 
@@ -66,14 +67,6 @@ asEvaluation s =
 
         _ ->
             Err "no eval"
-
-
-faBinop : Token.PrecedenceGroup -> { left : FA.Expression, op : String, right : FA.Expression } -> FA.Expression
-faBinop group { left, op, right } =
-    FA.Binop
-        { group = group
-        , sepList = ( left, [ ( op, right ) ] )
-        }
 
 
 firstStatement : String -> Result String FA.Statement
@@ -575,4 +568,54 @@ x =
                         |> firstDefinition
                         |> Result.map .pattern
             }
+        ]
+
+
+binops : Test
+binops =
+    let
+        sendBtoC b c =
+            FA.Binop
+                { group = Token.Pipe
+                , sepList =
+                    ( FA.Variable { start = b, end = b + 1, name = "b" }
+                    , [ ( ">>"
+                        , FA.Variable { start = c, end = c + 1, name = "c" }
+                        )
+                      ]
+                    )
+                }
+    in
+    Test.Group "Binops"
+        [ codeTest "no indent"
+            """
+            a = b >> c
+            """
+            firstEvaluation
+            (Test.okEqual <| sendBtoC 5 10)
+        , codeTest "assignment indent"
+            """
+            a =
+                b >> c
+            """
+            firstEvaluation
+            (Test.okEqual <| sendBtoC 9 14)
+        , codeTest "pipe indent"
+            """
+            a =
+                b
+                  >> c
+            """
+            firstEvaluation
+            (Test.okEqual <| sendBtoC 9 20)
+        , codeTest "pipe indent"
+            """
+            a =
+                b
+                  >> c
+                    >> d
+            """
+            firstEvaluation
+            (Test.okEqual <| sendBtoC 9 20)
+            |> Test.NotNow
         ]

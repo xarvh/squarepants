@@ -135,11 +135,19 @@ oomSeparatedBy sep pa =
     Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
 
 
-{-| TODO make it more flexible, support multiline sep lists:
+{-| TODO we support
 
     ```
     a = x
        + 2
+    ```
+
+but not
+
+    ```
+    a = x
+       + 2
+         + 3
     ```
 
 also, note whether it is multiline or not, so that formatting can preserve it
@@ -147,7 +155,7 @@ also, note whether it is multiline or not, so that formatting can preserve it
 -}
 sepList : Parser sep -> Parser item -> Parser (SepList sep item)
 sepList sep item =
-    Parser.tuple2 item (zeroOrMore (Parser.tuple2 sep item))
+    Parser.tuple2 item (zeroOrMore <| inlineOrIndented (Parser.tuple2 sep item))
 
 
 {-| TODO make it more flexible

@@ -235,6 +235,7 @@ functions =
             , run = \_ -> infer "a" "a = fn a = 1"
             , test = Test.errorShouldContain "function parameter `a` shadows env variable"
             }
+            |> Test.NotNow
         , simpleTest
             { name = "[reg] fn has type None"
             , run = \_ -> infer "a" "a = fn x = 1"
@@ -564,6 +565,7 @@ mutability =
             , run = \_ -> infer "a" "a f = @f := (fn x = x)"
             , expected = Err "these mutable values contain functions: f"
             }
+            |> Test.NotNow
         , hasError
             { name = "Lambda argument mutability is correctly inferred"
             , run = \_ -> infer "a" "a = fn x = reset x"
