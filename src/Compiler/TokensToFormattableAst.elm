@@ -917,13 +917,15 @@ pattern =
             Parser.breakCircularDefinition <| \_ -> pattern
 
         recordConstructor maybeUpdateTarget attrs =
-            if maybeUpdateTarget /= Nothing then
-                Parser.abort errorCantUseWithInsidePatternMatching
+            {- TODO this check seems important, but it gets in the way of record updates?
+               if maybeUpdateTarget /= Nothing then
+                   Parser.abort errorCantUseWithInsidePatternMatching
 
-            else
-                attrs
-                    |> FA.PatternRecord
-                    |> succeed
+               else
+            -}
+            attrs
+                |> FA.PatternRecord
+                |> succeed
     in
     Parser.expression patternTerm
         -- the `Or` stands for `Or higher priority parser`

@@ -1,5 +1,7 @@
 module Types.Error exposing (..)
 
+-- TODO move this in Compiler/
+
 
 type alias Res a =
     Result Error a
@@ -63,6 +65,11 @@ makeRes file content =
 text : String -> ( ContentType, List ( Priority, String ) )
 text s =
     ( Text, [ ( Default, s ) ] )
+
+
+codeBlock : String -> ( ContentType, List ( Priority, String ) )
+codeBlock s =
+    ( CodeBlock, [ ( Default, s ) ] )
 
 
 showLines : String -> Int -> Int -> ( ContentType, List ( Priority, String ) )

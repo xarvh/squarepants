@@ -965,7 +965,7 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
                 fold name pa ( attrsAcc, easAcc ) =
                     let
                         t =
-                            dict_get "blah" name xxx
+                            dict_get "inspectPattern: CA.PatternRecord" name xxx
                     in
                     do_nr (inspectPattern insertVariable pa t easAcc) <| \newEasAcc ->
                     ( Dict.insert name t attrsAcc, newEasAcc )

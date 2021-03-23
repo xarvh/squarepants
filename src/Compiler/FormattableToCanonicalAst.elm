@@ -7,7 +7,7 @@ import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
 import Set exposing (Set)
 import Types.CanonicalAst as CA exposing (Pos)
-import Types.Error as Error exposing (Error, Res, errorTodo)
+import Types.Error as Error exposing (Res, errorTodo)
 import Types.FormattableAst as FA
 import Types.Meta exposing (Meta)
 import Types.Token as Token
@@ -37,6 +37,7 @@ type alias Env =
 
 type alias ReadOnly =
     { meta : Meta
+    , code : String
     , currentModule : String
     }
 
@@ -59,20 +60,8 @@ do a b =
 --
 
 
-{-| TODO remove?
--}
-translateModule : String -> Meta -> FA.Module -> CA.Module Pos -> Res (CA.Module Pos)
-translateModule moduleName meta faModule caModule =
-    translateModuleRec
-        { currentModule = moduleName
-        , meta = meta
-        }
-        faModule
-        caModule
-
-
-translateModuleRec : ReadOnly -> FA.Module -> CA.Module Pos -> Res (CA.Module Pos)
-translateModuleRec ro faModule caModule =
+translateModule : ReadOnly -> FA.Module -> CA.Module Pos -> Res (CA.Module Pos)
+translateModule ro faModule caModule =
     case faModule of
         [] ->
             Ok caModule
@@ -80,7 +69,7 @@ translateModuleRec ro faModule caModule =
         faStat :: faStatTail ->
             caModule
                 |> insertRootStatement ro faStat
-                |> Result.andThen (translateModuleRec ro faStatTail)
+                |> Result.andThen (translateModule ro faStatTail)
 
 
 insertRootStatement : ReadOnly -> FA.Statement -> CA.Module Pos -> Res (CA.Module Pos)
@@ -319,7 +308,7 @@ stringToStructuredName env rawString =
         "" :: tail ->
             case env.maybeUpdateTarget of
                 Nothing ->
-                    errorTodo "record update shorthands can be used only inside a record update!"
+                    errorRecordUpdateShorthandOutsideRecordUpdate rawString env
 
                 Just ref ->
                     do (validateAttrPath tail) <| \tailPath ->
@@ -1244,3 +1233,18 @@ maybeResultToResultMaybe maybeResult =
             -- Unfortunately Elm doesn't realize that the two `Err e` have the same type
             -- Is it a limit of how pattern matching is implemented?
             Err e
+
+
+
+----
+--- Errors
+--
+
+
+errorRecordUpdateShorthandOutsideRecordUpdate : String -> Env -> Res a
+errorRecordUpdateShorthandOutsideRecordUpdate rawString env =
+    Error.makeRes
+        env.ro.currentModule
+        [ Error.codeBlock rawString
+        , Error.text "I see a record update shorthand, but we are not inside a record update!"
+        ]

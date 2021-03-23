@@ -50,7 +50,7 @@ result = Debug.log "LOL"
       )
     , ( "SPCore/Maybe"
       , """
-type Maybe a = Nothing, Just a
+union Maybe a = Nothing, Just a
 
 map : (a -> b) -> Maybe a -> Maybe b
 map f m =
@@ -123,7 +123,7 @@ repeatHello : Int -> Text
 repeatHello times =
   times
     >> List.repeat
-    >> List.map fn n = "This is hello #" .. Text.fromInt n
+    >> List.map fn n = "This is hello #" #TODO .. Text.fromInt n
     >> Text.join ""
 
 
@@ -166,7 +166,7 @@ getStatusName loadingState =
   try LoadingState as
     NotRequested then "Not needed"
     Requested then "Awaiting server response"
-    Error message then "Error: " .. message
+    Error message then "Error: " #TODO .. message
     Available _ then "Successfully loaded"
 
 getPayload : LoadingState payload -> Maybe payload
@@ -185,7 +185,7 @@ alias Crab = {
 eugeneKrabs : Crab
 eugeneKrabs = {
   , name = "Eugene H. Krabs"
-  , money = 2_345_678.90
+  , money = 2 #TODO 2_345_678.90
   }
 
 
@@ -428,7 +428,14 @@ viewFileStages model rawCode =
         caModule =
             case getMeta model of
                 Ok meta ->
-                    onJust faModule (\fa -> Compiler.FormattableToCanonicalAst.translateModule model.selectedFile meta fa Dict.empty)
+                    let
+                        ro =
+                            { meta = meta
+                            , code = code
+                            , currentModule = model.selectedFile
+                            }
+                    in
+                    onJust faModule (\fa -> Compiler.FormattableToCanonicalAst.translateModule ro fa Dict.empty)
 
                 Err e ->
                     Just <| Types.Error.errorTodo e

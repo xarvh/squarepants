@@ -256,13 +256,13 @@ natives =
     Test.Group "natives"
         [ codeTest "SPCore/Debug.log"
             """
-            result = log "blah" True
+            result = log "this is produced by a test" True
             """
             (eval "Test.result")
             (Test.okEqual """true""")
         , codeTest "SPCore/Debug.log, partially applied"
             """
-            result = log "blah"
+            result = log "if this gets actually logged, we have a problem"
             """
             (eval "Test.result")
             (Test.okEqual """undefined""")

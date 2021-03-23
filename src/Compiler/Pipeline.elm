@@ -10,8 +10,6 @@ import Types.Meta exposing (Meta)
 import Types.Token exposing (Token)
 
 
-
-
 andThenMapError : (e -> f) -> (a -> Result e b) -> Result f a -> Result f b
 andThenMapError transformError f =
     Result.andThen (f >> Result.mapError transformError)
@@ -32,8 +30,13 @@ stringToFormattableAst moduleName code =
 
 stringToCanonicalAst : Meta -> String -> String -> CA.Module CA.Pos -> Res (CA.Module CA.Pos)
 stringToCanonicalAst meta moduleName code accum =
+    let
+        ro =
+            { meta = meta
+            , code = code
+            , currentModule = moduleName
+            }
+    in
     code
         |> stringToFormattableAst moduleName
-        |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule moduleName meta fa accum)
-
-
+        |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule ro fa accum)
