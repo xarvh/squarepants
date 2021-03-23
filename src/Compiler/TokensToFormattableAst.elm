@@ -135,27 +135,65 @@ oomSeparatedBy sep pa =
     Parser.tuple2 pa (zeroOrMore (discardFirst sep pa))
 
 
-{-| TODO we support
+{-|
 
-    ```
-    a = x
-       + 2
-    ```
+    a >> b >> c
 
-but not
+    a
+        >> b
+        >> c
 
-    ```
-    a = x
-       + 2
-         + 3
-    ```
+    a
+        >> b
+        >> c
 
-also, note whether it is multiline or not, so that formatting can preserve it
+    a
+        >> b
+        >> c
 
 -}
+block : Parser a -> Parser a
+block =
+    surroundStrict Token.BlockStart Token.BlockEnd
+
+
+sib : Parser a -> Parser a
+sib =
+    discardFirst (kind Token.NewSiblingLine)
+
+
+sepListAtSep : Parser sep -> Parser item -> Parser (List ( sep, item ))
+sepListAtSep sep item =
+    do sep <| \sep0 ->
+    do
+        (oneOf
+            [ block (sepListAtItem sep item)
+            , sib (sepListAtItem sep item)
+            , sepListAtItem sep item
+            ]
+        )
+    <| \( item0, tail ) ->
+    succeed (( sep0, item0 ) :: tail)
+
+
+sepListAtItem : Parser sep -> Parser item -> Parser (SepList sep item)
+sepListAtItem sep item =
+    do item <| \item0 ->
+    do
+        (oneOf
+            [ block (sepListAtSep sep item)
+            , sib (sepListAtSep sep item)
+            , sepListAtSep sep item
+            , succeed []
+            ]
+        )
+    <| \sepsAndItems ->
+    succeed ( item0, sepsAndItems )
+
+
 sepList : Parser sep -> Parser item -> Parser (SepList sep item)
-sepList sep item =
-    Parser.tuple2 item (zeroOrMore <| inlineOrIndented (Parser.tuple2 sep item))
+sepList =
+    sepListAtItem
 
 
 {-| TODO make it more flexible

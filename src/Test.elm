@@ -216,7 +216,7 @@ outcomesRec path t accum =
             ( path ++ name, f () ) :: accum
 
         NotNow test ->
-            ( getName test, Skipped ) :: accum
+            ( path ++ getName test, Skipped ) :: accum
 
         Group pathSegment ts ->
             List.foldl (outcomesRec (path ++ pathSegment ++ " / ")) accum ts

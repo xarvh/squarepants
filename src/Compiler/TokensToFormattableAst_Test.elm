@@ -585,6 +585,21 @@ binops =
                       ]
                     )
                 }
+
+        sendBtoCtoD b c d =
+            FA.Binop
+                { group = Token.Pipe
+                , sepList =
+                    ( FA.Variable { start = b, end = b + 1, name = "b" }
+                    , [ ( ">>"
+                        , FA.Variable { start = c, end = c + 1, name = "c" }
+                        )
+                      , ( ">>"
+                        , FA.Variable { start = d, end = d + 1, name = "d" }
+                        )
+                      ]
+                    )
+                }
     in
     Test.Group "Binops"
         [ codeTest "no indent"
@@ -613,9 +628,17 @@ binops =
             a =
                 b
                   >> c
+                  >> d
+            """
+            firstEvaluation
+            (Test.okEqual <| sendBtoCtoD 9 20 31)
+        , codeTest "pyramid indent"
+            """
+            a =
+                b
+                  >> c
                     >> d
             """
             firstEvaluation
-            (Test.okEqual <| sendBtoC 9 20)
-            |> Test.NotNow
+            (Test.okEqual <| sendBtoCtoD 9 20 33)
         ]
