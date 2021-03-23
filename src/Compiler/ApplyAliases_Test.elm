@@ -1,7 +1,7 @@
 module Compiler.ApplyAliases_Test exposing (..)
 
 import Compiler.ApplyAliases
-import Compiler.TestHelpers
+import Compiler.TestHelpers as TH
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Test exposing (Test)
@@ -23,8 +23,8 @@ hasError =
 applyAndGet : (CA.RootDef () -> Maybe a) -> String -> String -> Result String a
 applyAndGet getAs name code =
     code
-        |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resultErrorToString code
+        |> TH.stringToCanonicalModule
+        |> TH.resErrorToString
         |> Result.andThen (Dict.get ("Test." ++ name) >> Result.fromMaybe "dict error!")
         |> Result.andThen (getAs >> Result.fromMaybe "wrong variant")
 
@@ -32,8 +32,8 @@ applyAndGet getAs name code =
 applyAndGetValue : String -> String -> Result String (CA.ValueDef ())
 applyAndGetValue name code =
     code
-        |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resultErrorToString code
+        |> TH.stringToCanonicalModule
+        |> TH.resErrorToString
         |> Result.andThen (CA.findValue ("Test." ++ name) >> Result.fromMaybe "findValue error!")
 
 

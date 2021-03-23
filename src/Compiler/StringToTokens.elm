@@ -107,7 +107,7 @@ lexContent startPos state =
             runLexer False (lexIndent >> Ok) 1 rest
 
         '\t' :: rest ->
-            Error.error state.pos Error.Tab
+            errorTab state
 
         char :: rest ->
             { state | pos = 1 + state.pos, code = rest }
@@ -140,10 +140,11 @@ contentLineToTokens startPos state =
         -- TODO (horrible) I'm adding a space in front so that indent will not
         -- eat all of the spaces in front of "  -a", so that `-` can be reocgnised as Unop
         |> contentLineToTokensRec (" " ++ contentLine) (startPos - 1)
+        |> Result.mapError (\stateToError -> stateToError state)
         |> Result.map (\tokens -> { state | accum = tokens })
 
 
-contentLineToTokensRec : String -> Int -> List Token -> Res (List Token)
+contentLineToTokensRec : String -> Int -> List Token -> Result (ReadState -> Error) (List Token)
 contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
     case String.trimLeft untrimmedBlock of
         "" ->
@@ -167,17 +168,12 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
             in
             case mapFind tryMatch recognisedTokens of
                 Nothing ->
-                    codeBlock
-                        |> String.split " "
-                        |> List.take 1
-                        |> String.join ""
-                        |> Error.InvalidToken
-                        |> Error.error start
+                    Err <| errorInvalidToken start codeBlock
 
                 Just ( match, constructor ) ->
                     case constructor match.match of
-                        Err kind ->
-                            Error.error start kind
+                        Err stateToError ->
+                            Err <| stateToError start
 
                         Ok ( tokenKind, charsConsumed ) ->
                             let
@@ -203,7 +199,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                             contentLineToTokensRec newBlock tokenEnd accu
 
 
-recognisedTokens : List ( Regex, String -> Result Error.Kind ( Token.Kind, Int ) )
+recognisedTokens : List ( Regex, String -> Result (Int -> ReadState -> Error) ( Token.Kind, Int ) )
 recognisedTokens =
     let
         reOrDie reString =
@@ -400,7 +396,7 @@ recognisedTokens =
                             Ok <| Token.Binop Token.Mutop match
 
                         _ ->
-                            Err <| Error.UnknownOperator match
+                            Err errorUnknownOperator
           }
         ]
 
@@ -491,13 +487,13 @@ lexSoftQuotedString startPos state =
 
                 '\n' :: rest ->
                     -- https://www.reddit.com/r/ProgrammingLanguages/comments/l0ptdl/why_do_so_many_languages_not_allow_string/gjvrcg2/
-                    Error.error pos Error.NewLineInsideSoftQuote
+                    errorNewLineInsideSoftQuote pos
 
                 char :: rest ->
                     rec (pos + 1) False rest
 
                 [] ->
-                    Error.error pos Error.UnterminatedTextLiteral
+                    errorUnterminatedTextLiteral pos
     in
     rec state.pos False state.code
 
@@ -560,7 +556,7 @@ lexHardQuotedString startPos state =
                     rec (pos + 1) False 0 rest
 
                 [] ->
-                    Error.error pos Error.UnterminatedTextLiteral
+                    errorUnterminatedTextLiteral pos
     in
     rec state.pos False 0 state.code
 
@@ -606,7 +602,7 @@ lexMultiLineComment startPos state =
                     rec (pos + 1) depth rest
 
                 [] ->
-                    Error.error pos Error.UnterminatedMultiLineComment
+                    errorUnterminatedMultilineComment pos
     in
     rec state.pos 0 state.code
 
@@ -693,11 +689,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
                  newIndent
                ```
             -}
-            { length = newIndent
-            , stack = state.indentStack
-            }
-                |> Error.BadIndent
-                |> Error.error endPos
+            errorBadIndent lastIndent newIndent endPos state
 
     else
         addIndentTokensRec endPos newIndent False { state | accum = makeToken Token.BlockEnd :: state.accum } poppedStack
@@ -737,3 +729,67 @@ mapFind f ls =
 
                 Nothing ->
                     mapFind f tail
+
+
+
+----
+--- Errors
+--
+
+
+errorBadIndent : Int -> Int -> Int -> ReadState -> Res a
+errorBadIndent lastIndent newIndent endPos state =
+    Error.makeRes
+        "TODO"
+        [ Error.showLines (String.fromList state.code) 2 endPos
+        , Error.text <| "last indent was at row " ++ String.fromInt lastIndent
+        , Error.text <| "but this new indent is at row " ++ String.fromInt newIndent
+        ]
+
+
+errorTab : ReadState -> Res a
+errorTab state =
+    Error.makeRes
+        "TODO"
+        [ Error.showLines (String.fromList state.code) 2 state.pos
+        , Error.text <| "Tab support is not yet implemented =*("
+        ]
+
+
+errorInvalidToken : Int -> String -> ReadState -> Error
+errorInvalidToken start codeBlock state =
+    let
+        token =
+            codeBlock
+                |> String.split " "
+                |> List.take 1
+                |> String.join ""
+    in
+    Error.makeError
+        "TODO"
+        [ Error.text <| "Not sure what `" ++ token ++ "` means"
+        ]
+
+
+errorUnknownOperator pos state =
+    Error.makeError
+        "TODO"
+        [ Error.text "Unknown operator" ]
+
+
+errorNewLineInsideSoftQuote pos =
+    Error.makeRes
+        "TODO"
+        [ Error.text "single-quoted strings can't go on multiple lines, use \\n or a triple-quoted string instead" ]
+
+
+errorUnterminatedTextLiteral pos =
+    Error.makeRes
+        "TODO"
+        [ Error.text "unterminated text literal" ]
+
+
+errorUnterminatedMultilineComment pos =
+    Error.makeRes
+        "TODO"
+        [ Error.text "unterminated multiline comment" ]

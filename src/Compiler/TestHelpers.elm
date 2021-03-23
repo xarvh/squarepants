@@ -1,43 +1,37 @@
 module Compiler.TestHelpers exposing (..)
 
 import Compiler.ApplyAliases
-import Compiler.FormattableToCanonicalAst
-import Compiler.StringToTokens
-import Compiler.TokensToFormattableAst
+import Compiler.Pipeline
 import Dict exposing (Dict)
 import Prelude exposing (meta)
 import Types.CanonicalAst as CA
-import Types.Error exposing (Res)
+import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
 
 
-errorToString code =
-    Types.Error.toStrings code >> String.join "\n"
+moduleName =
+    "Test"
 
 
-resultErrorToString : String -> Res a -> Result String a
-resultErrorToString code =
-    Result.mapError (errorToString code)
+resErrorToString : Res a -> Result String a
+resErrorToString =
+    Result.mapError (\e -> Error.flatten e [] |> List.map Error.toString |> String.join "\n\n")
 
 
 stringToCanonicalModule : String -> Res (CA.Module ())
 stringToCanonicalModule code =
     code
         |> unindent
-        |> Compiler.StringToTokens.lexer
-        |> Result.andThen Compiler.TokensToFormattableAst.parse
-        |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule "Test" meta fa Prelude.prelude)
+        |> (\c -> Compiler.Pipeline.stringToCanonicalAst meta moduleName c Prelude.prelude)
         |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
         |> Result.map (\mod -> CA.extensionFold_module (\_ _ -> ( (), () )) ( mod, () ) |> Tuple.first)
 
 
-stringToFormattableModule : String -> Result String FA.Module
+stringToFormattableModule : String -> Res FA.Module
 stringToFormattableModule code =
     code
         |> unindent
-        |> Compiler.StringToTokens.lexer
-        |> Result.andThen Compiler.TokensToFormattableAst.parse
-        |> resultErrorToString code
+        |> Compiler.Pipeline.stringToFormattableAst moduleName
 
 
 unindent : String -> String

@@ -99,42 +99,26 @@ If instead your input is an `Array Char`, you can use an Int as your read state:
 You can use more complicated read states to keep track of the context, for example if you need to parse indentation.
 
 -}
-type alias Parser token readState output =
+type alias Parser token readState error output =
     GetNext token readState
     -> List String
     -> readState
-    -> Outcome readState output
+    -> Outcome readState error output
 
 
 type alias GetNext token readState =
     readState -> Maybe ( token, readState )
 
 
-type Outcome readState output
-    = Success output readState
-    | Failure
-    | Abort String
+type Outcome readState error output
+    = Success readState output
+    | Failure readState
+    | Abort readState error
 
 
-outcomeToResult : Outcome r o -> Result String ( o, r )
-outcomeToResult outcome =
-    case outcome of
-        Success output finalState ->
-            Ok ( output, finalState )
-
-        Failure ->
-            Err "options exhausted"
-
-        Abort reason ->
-            Err reason
-
-
-parse : Parser token readState output -> GetNext token readState -> readState -> Result String output
+parse : Parser token readState error output -> GetNext token readState -> readState -> Outcome readState error output
 parse parser getNext readState =
-    readState
-        |> parser getNext []
-        |> outcomeToResult
-        |> Result.map Tuple.first
+    parser getNext [] readState
 
 
 
@@ -153,57 +137,57 @@ parse parser getNext readState =
 This is a fatal error that will interrupt the whole execution
 
 -}
-abort : String -> Parser token readState output
-abort reason =
+abort : error -> Parser token readState error output
+abort error =
     \getNext path readState ->
-        Abort reason
+        Abort readState error
 
 
 {-| Always fail
 -}
-fail : Parser token readState output
+fail : Parser token readState error output
 fail =
     \getNext path readState ->
-        Failure
+        Failure readState
 
 
 {-| Always succeed, without consuming any input
 -}
-succeed : a -> Parser token readState a
+succeed : a -> Parser token readState error a
 succeed a =
     \getNext path readState ->
-        Success a readState
+        Success readState a
 
 
 {-| Consume and return the next token
 -}
-consumeOne : Parser token readState token
+consumeOne : Parser token readState error token
 consumeOne =
     \getNext path readState ->
         case getNext readState of
             Nothing ->
-                Failure
+                Failure readState
 
             Just ( token, nextState ) ->
-                Success token nextState
+                Success nextState token
 
 
 {-| -}
-doWithDefault : Parser t i b -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
+doWithDefault : Parser t i e b -> Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
 doWithDefault fallbackParser firstParser chainedParser =
     \getNext path readState ->
         case firstParser getNext path readState of
-            Abort reason ->
-                Abort reason
+            Abort rs reason ->
+                Abort rs reason
 
-            Failure ->
+            Failure _ ->
                 fallbackParser getNext path readState
 
-            Success a nextReadState ->
+            Success nextReadState a ->
                 chainedParser a getNext path nextReadState
 
 
-doWithDebug : ({ path : List String, first : Result String ( a, i ) } -> discarded) -> String -> Parser t i a -> (a -> Parser t i b) -> Parser t i b
+doWithDebug : ({ path : List String, first : Outcome i e a } -> discarded) -> String -> Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
 doWithDebug log name firstParser chainedParser =
     \getNext p readState ->
         let
@@ -214,20 +198,20 @@ doWithDebug log name firstParser chainedParser =
                 firstParser getNext path readState
 
             _ =
-                log { path = path, first = outcomeToResult out }
+                log { path = path, first = out }
         in
         case out of
-            Abort reason ->
-                Abort reason
+            Abort rs reason ->
+                Abort rs reason
 
-            Failure ->
+            Failure _ ->
                 fail getNext path readState
 
-            Success a nextReadState ->
+            Success nextReadState a ->
                 chainedParser a getNext path nextReadState
 
 
-updState : (readState -> readState) -> Parser t readState readState
+updState : (readState -> readState) -> Parser t readState e readState
 updState upd =
     \getNext path readState ->
         let
@@ -243,13 +227,13 @@ updState upd =
 --
 
 
-map : (a -> b) -> Parser token input a -> Parser token input b
+map : (a -> b) -> Parser token input e a -> Parser token input e b
 map f p =
     do p <| \a ->
     succeed (f a)
 
 
-getState : Parser t i i
+getState : Parser t i e i
 getState =
     updState identity
 
@@ -265,7 +249,7 @@ If you talk Elm, this is `andThen` with its arguments flipped, so that you can w
 If you talk monads, this is the monadic `bind`, Haskell's `>>=`.
 
 -}
-do : Parser t i a -> (a -> Parser t i b) -> Parser t i b
+do : Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
 do =
     doWithDefault fail
 
@@ -276,17 +260,17 @@ do =
 --
 
 
-without : Parser t i o -> Parser t i ()
+without : Parser t i e o -> Parser t i e ()
 without p =
     doWithDefault (succeed ()) p (\_ -> fail)
 
 
-end : Parser token input ()
+end : Parser t i e ()
 end =
     without consumeOne
 
 
-oneOf : List (Parser t i o) -> Parser t i o
+oneOf : List (Parser t i e o) -> Parser t i e o
 oneOf ps =
     case ps of
         [] ->
@@ -296,19 +280,19 @@ oneOf ps =
             doWithDefault (oneOf p_tail) p succeed
 
 
-maybe : Parser t i o -> Parser t i (Maybe o)
+maybe : Parser t i e o -> Parser t i e (Maybe o)
 maybe p =
     doWithDefault (succeed Nothing) p (Just >> succeed)
 
 
-tuple2 : Parser t i a -> Parser t i b -> Parser t i ( a, b )
+tuple2 : Parser t i e a -> Parser t i e b -> Parser t i e ( a, b )
 tuple2 pa pb =
     do pa <| \a ->
     do pb <| \b ->
     succeed ( a, b )
 
 
-tuple3 : Parser t i a -> Parser t i b -> Parser t i c -> Parser t i ( a, b, c )
+tuple3 : Parser t i e a -> Parser t i e b -> Parser t i e c -> Parser t i e ( a, b, c )
 tuple3 pa pb pc =
     do pa <| \a ->
     do pb <| \b ->
@@ -316,14 +300,14 @@ tuple3 pa pb pc =
     succeed ( a, b, c )
 
 
-zeroOrMore : Parser t i o -> Parser t i (List o)
+zeroOrMore : Parser t i e o -> Parser t i e (List o)
 zeroOrMore p =
     doWithDefault (succeed []) p <| \head ->
     do (zeroOrMore p) <| \tail ->
     succeed (head :: tail)
 
 
-oneOrMore : Parser t i o -> Parser t i ( o, List o )
+oneOrMore : Parser t i e o -> Parser t i e ( o, List o )
 oneOrMore p =
     tuple2 p (zeroOrMore p)
 
@@ -333,24 +317,24 @@ oneOrMore p =
 
 
    type alias ExpressionArgs t i o ignored =
-       { term : Parser t i o
-       , openParen : Parser t i ignored
-       , closedParen : Parser t i ignored
-       , ops : List (Parser t i o -> Parser t i o)
+       { term : Parser t i e o
+       , openParen : Parser t i e ignored
+       , closedParen : Parser t i e ignored
+       , ops : List (Parser t i e o -> Parser t i e o)
        }
 
 
-   expression : ExpressionArgs t i o ignored -> Parser t i o
+   expression : ExpressionArgs t i o ignored -> Parser t i e o
    expression args =
        let
-           parens : Parser t i o -> Parser t i o
+           parens : Parser t i e o -> Parser t i e o
            parens higher =
                oneOf
                    [ higher
                    , surroundWith args.openParen args.closedParen (do (succeed ()) <| \_ -> expr)
                    ]
 
-           expr : Parser t i o
+           expr : Parser t i e o
            expr =
                expressionRec args.term (parens :: args.ops)
        in
@@ -367,7 +351,7 @@ oneOrMore p =
 <https://stackoverflow.com/a/4165483>
 
 -}
-expression : Parser t i o -> List (Parser t i o -> Parser t i o) -> Parser t i o
+expression : Parser t i e o -> List (Parser t i e o -> Parser t i e o) -> Parser t i e o
 expression term ops =
     case ops of
         [] ->
@@ -377,7 +361,7 @@ expression term ops =
             expression (op term) rest
 
 
-surroundWith : Parser t i ignoredOutput1 -> Parser t i ignoredOutput2 -> Parser t i output -> Parser t i output
+surroundWith : Parser t i e ignoredOutput1 -> Parser t i e ignoredOutput2 -> Parser t i e output -> Parser t i e output
 surroundWith left right parser =
     do left <| \_ ->
     do parser <| \p ->
@@ -387,7 +371,7 @@ surroundWith left right parser =
 
 
 {- TODO
-   oomSeparatedBy : Parser t i ignoredOutput -> Parser t i output -> Parser t i (output, List output)
+   oomSeparatedBy : Parser t i e ignoredOutput -> Parser t i e output -> Parser t i e (output, List output)
    oomSeparatedBy separator parser =
        do parser <| \_ ->
        do parser <| \p ->
@@ -396,7 +380,7 @@ surroundWith left right parser =
 -}
 
 
-breakCircularDefinition : (() -> Parser t i b) -> Parser t i b
+breakCircularDefinition : (() -> Parser t i e b) -> Parser t i e b
 breakCircularDefinition a =
     -- This is equivalent to `a ()` but we need the lambda contained inside `do` to actually break the circula def
     do (succeed ()) a

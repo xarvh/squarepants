@@ -65,7 +65,7 @@ eval variable code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Result.andThen (TI.inspectModule Dict.empty)
-        |> Result.mapError (Compiler.TestHelpers.errorToString code)
+        |> Compiler.TestHelpers.resErrorToString
         |> Result.andThen (\( mod, env, sub ) -> runProgram variable mod)
 
 

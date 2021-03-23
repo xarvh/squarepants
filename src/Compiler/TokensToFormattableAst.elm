@@ -3,10 +3,14 @@ module Compiler.TokensToFormattableAst exposing (..)
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
-import Types.Error as Error exposing (Error, Res)
+import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Literal
 import Types.Token as Token exposing (Token)
+
+
+type alias MakeError =
+    String -> String -> List Token -> Error.Error
 
 
 
@@ -37,7 +41,112 @@ su name a =
 
 
 type alias Parser a =
-    Parser.Parser Token (List Token) a
+    Parser.Parser Token (List Token) MakeError a
+
+
+
+----
+--- Main
+--
+
+
+parse : String -> String -> List Token -> Res (List FA.Statement)
+parse moduleName code tokens =
+    tokens
+        |> Parser.parse (end module_) unconsIgnoreComments
+        |> outcomeToResult moduleName code tokens
+        |> Result.map OneOrMore.toList
+
+
+outcomeToResult : String -> String -> List Token -> Parser.Outcome (List Token) MakeError a -> Res a
+outcomeToResult moduleName code tokens outcome =
+    case outcome of
+        Parser.Success readState output ->
+            Ok output
+
+        Parser.Abort readState makeError ->
+            Err <| makeError moduleName code readState
+
+        Parser.Failure readState ->
+            Err <| errorOptionsExhausted moduleName code readState
+
+
+end : Parser a -> Parser a
+end parser =
+    do parser <| \v ->
+    do Parser.end <| \_ ->
+    succeed v
+
+
+unconsIgnoreComments : List Token -> Maybe ( Token, List Token )
+unconsIgnoreComments ls =
+    case ls of
+        head :: tail ->
+            if head.kind == Token.Comment then
+                unconsIgnoreComments tail
+
+            else
+                Just ( head, tail )
+
+        [] ->
+            Nothing
+
+
+module_ : Parser (OneOrMore FA.Statement)
+module_ =
+    do
+        (oneOf
+            [ kind Token.BlockStart
+            , kind Token.NewSiblingLine
+            ]
+        )
+    <| \_ ->
+    oomSeparatedBy (kind Token.NewSiblingLine) statement
+
+
+
+----
+--- Errors
+--
+
+
+errorOptionsExhausted : String -> String -> List Token -> Error.Error
+errorOptionsExhausted moduleName code nonConsumedTokens =
+    case nonConsumedTokens of
+        [] ->
+            Error.makeError moduleName
+                [ Error.text "I got to the end of file and I can't make sense of it. =(" ]
+
+        token :: _ ->
+            Error.makeError moduleName
+                [ Error.text "I got stuck parsing at this point:"
+                , Error.showLines code 2 token.start
+                ]
+
+
+errorCantUseMutableAssignmentHere : String -> String -> List Token -> Error.Error
+errorCantUseMutableAssignmentHere moduleName code state =
+    Error.makeError moduleName
+        [ Error.text "errorCantUseMutableAssignmentHere" ]
+
+
+errorExperimentingWithNoExtensibleTypes : String -> String -> List Token -> Error.Error
+errorExperimentingWithNoExtensibleTypes moduleName code state =
+    Error.makeError moduleName
+        [ Error.text "Extensible types are not supported, I want to see if it's good to do without them" ]
+
+
+errorCantUseWithInsidePatternMatching : String -> String -> List Token -> Error.Error
+errorCantUseWithInsidePatternMatching moduleName code nonConsumedTokens =
+    case nonConsumedTokens of
+        [] ->
+            Debug.todo "wat"
+
+        token :: _ ->
+            Error.makeError moduleName
+                [ Error.text "`with` cannot be used when pattern-matching"
+                , Error.showLines code 2 token.start
+                ]
 
 
 
@@ -224,58 +333,6 @@ rawList item =
 
 
 ----
---- Main
---
-
-
-runParser : Parser a -> List Token -> Result String a
-runParser parser ts =
-    Parser.parse parser unconsIgnoreComments ts
-
-
-end : Parser a -> Parser a
-end parser =
-    do parser <| \v ->
-    do Parser.end <| \_ ->
-    succeed v
-
-
-unconsIgnoreComments : List Token -> Maybe ( Token, List Token )
-unconsIgnoreComments ls =
-    case ls of
-        head :: tail ->
-            if head.kind == Token.Comment then
-                unconsIgnoreComments tail
-
-            else
-                Just ( head, tail )
-
-        [] ->
-            Nothing
-
-
-parse : List Token -> Res (List FA.Statement)
-parse tokens =
-    tokens
-        |> runParser (end module_)
-        |> Result.mapError (\e -> Error.Simple { pos = 0, kind = Error.Whatever e })
-        |> Result.map OneOrMore.toList
-
-
-module_ : Parser (OneOrMore FA.Statement)
-module_ =
-    do
-        (oneOf
-            [ kind Token.BlockStart
-            , kind Token.NewSiblingLine
-            ]
-        )
-    <| \_ ->
-    oomSeparatedBy (kind Token.NewSiblingLine) statement
-
-
-
-----
 --- Statements
 --
 
@@ -287,7 +344,7 @@ typeAlias =
     do defop <| \{ mutable } ->
     do (inlineOrIndented typeExpr) <| \type_ ->
     if mutable then
-        Parser.abort "aliases can't be mutable"
+        Parser.abort errorCantUseMutableAssignmentHere
 
     else
         { name = name
@@ -305,7 +362,7 @@ unionDef =
     do defop <| \{ mutable } ->
     do (inlineOrIndented <| rawList typeExpr) <| \cons ->
     if mutable then
-        Parser.abort "can't use @= to define a type"
+        Parser.abort errorCantUseMutableAssignmentHere
 
     else
         { name = name
@@ -667,7 +724,7 @@ typeExpr =
         recordConstructor : Maybe FA.Type -> List ( String, Maybe FA.Type ) -> Parser FA.Type
         recordConstructor extensible attrs =
             if extensible /= Nothing then
-                Parser.abort "Extensible types are not supported, I want to see if it's good to do without them"
+                Parser.abort errorExperimentingWithNoExtensibleTypes
 
             else
                 attrs
@@ -813,7 +870,7 @@ lambdaOr higher =
             do (oneOrMore pattern) <| \params ->
             do defop <| \{ mutable } ->
             if mutable then
-                Parser.abort "lambdas can't be mutable"
+                Parser.abort errorCantUseMutableAssignmentHere
 
             else
                 succeed ( fn, params )
@@ -861,7 +918,7 @@ pattern =
 
         recordConstructor maybeUpdateTarget attrs =
             if maybeUpdateTarget /= Nothing then
-                Parser.abort "can't use `with` for pattern matching!"
+                Parser.abort errorCantUseWithInsidePatternMatching
 
             else
                 attrs

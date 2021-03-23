@@ -69,7 +69,7 @@ infer name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
         |> Result.andThen (TI.inspectModule preamble)
-        |> Result.mapError (Compiler.TestHelpers.errorToString code)
+        |> Compiler.TestHelpers.resErrorToString
         |> Result.andThen
             (\( mod, env, subs ) ->
                 env

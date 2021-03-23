@@ -2,6 +2,7 @@ module Compiler.TokensToFormattableAst_Test exposing (..)
 
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst as Syntax
+import Parser
 import Test exposing (Test)
 import Types.FormattableAst as FA
 import Types.Literal
@@ -69,10 +70,19 @@ asEvaluation s =
             Err "no eval"
 
 
+runParser : Syntax.Parser a -> List Token -> Result String a
+runParser parser ts =
+    ts
+        |> Parser.parse parser Syntax.unconsIgnoreComments
+        |> Syntax.outcomeToResult "Test" "" ts
+        |> Compiler.TestHelpers.resErrorToString
+
+
 firstStatement : String -> Result String FA.Statement
 firstStatement code =
     code
         |> Compiler.TestHelpers.stringToFormattableModule
+        |> Compiler.TestHelpers.resErrorToString
         |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 
@@ -118,7 +128,7 @@ lambdas =
                     , Token.NumberLiteral "3"
                     ]
                         |> List.indexedMap kindToToken
-                        |> Syntax.runParser (Syntax.end Syntax.expr)
+                        |> runParser (Syntax.end Syntax.expr)
             , expected =
                 Ok <|
                     FA.Lambda
@@ -152,7 +162,7 @@ lambdas =
                     , Token.BlockEnd
                     ]
                         |> List.indexedMap kindToToken
-                        |> Syntax.runParser (Syntax.end Syntax.expr)
+                        |> runParser (Syntax.end Syntax.expr)
             , expected =
                 Ok
                     (FA.Lambda
@@ -185,7 +195,7 @@ lambdas =
                     , Token.NumberLiteral "3"
                     ]
                         |> List.indexedMap kindToToken
-                        |> Syntax.runParser (Syntax.end Syntax.expr)
+                        |> runParser (Syntax.end Syntax.expr)
             , expected =
                 Ok
                     (FA.Lambda

@@ -1,79 +1,90 @@
 module Types.Error exposing (..)
 
 
+type alias Res a =
+    Result Error a
+
+
 type Error
     = Simple ErrorArgs
     | Nested (List Error)
 
 
 type alias ErrorArgs =
-    { kind : Kind, pos : Int }
+    { file : String
+    , content : Content
+    }
 
 
-type alias Res a =
-    Result Error a
+type alias Content =
+    List ( ContentType, List ( Priority, String ) )
+
+
+type Priority
+    = Default
+      -- These are nice-to-have, but not important
+    | LowlightHint
+    | HighlightHint
+      -- This highlight should appear no matter the limits of the display
+    | HighlightImportant
+
+
+type ContentType
+    = Text
+    | InlineCode
+    | CodeBlock
+    | CodeBlockWithLineNumber Int
+
+
+
+----
+--- Helpers
+--
 
 
 errorTodo : String -> Res a
 errorTodo s =
-    { kind = Whatever s
-    , pos = -1
+    makeRes "TODO" [ text s ]
+
+
+makeError : String -> Content -> Error
+makeError file content =
+    { file = file
+    , content = content
     }
         |> Simple
-        |> Err
 
 
-error : Int -> Kind -> Res a
-error pos kind =
-    { kind = kind
-    , pos = pos
-    }
-        |> Simple
-        |> Err
+makeRes : String -> Content -> Res a
+makeRes file content =
+    Err <| makeError file content
 
 
-
-----
---- Kinds
---
-
-
-type Kind
-    = BadIndent { length : Int, stack : List Int }
-    | InvalidToken String
-    | UnknownOperator String
-    | UnterminatedMultiLineComment
-    | Tab
-    | NewLineInsideSoftQuote
-    | HardQuoteClosesSoftQuote
-    | UnterminatedTextLiteral
-      -- TODO remove this one
-    | Whatever String
+text : String -> ( ContentType, List ( Priority, String ) )
+text s =
+    ( Text, [ ( Default, s ) ] )
 
 
-kindToString : Kind -> String
-kindToString kind =
-    case kind of
-        NewLineInsideSoftQuote ->
-            "single-quoted strings can't go on multiple lines, use \\n or a triple-quoted string instead"
+showLines : String -> Int -> Int -> ( ContentType, List ( Priority, String ) )
+showLines code lineSpan pos =
+    let
+        ( line, col ) =
+            positionToLineAndColumn code pos
 
-        Whatever s ->
-            s
+        start =
+            line - lineSpan
 
-        _ ->
-            Debug.toString kind
+        end =
+            line + lineSpan
 
-
-
-----
---- To human
---
-
-
-toStrings : String -> Error -> List String
-toStrings code e =
-    flatten e []
-        |> List.map (argsToString code)
+        lines =
+            code
+                |> String.split "\n"
+                |> List.drop start
+                |> List.take (lineSpan * 2)
+                |> String.join "\n"
+    in
+    ( CodeBlockWithLineNumber start, [ ( Default, lines ) ] )
 
 
 flatten : Error -> List ErrorArgs -> List ErrorArgs
@@ -84,37 +95,6 @@ flatten e accum =
 
         Nested ls ->
             List.foldl flatten accum ls
-
-
-argsToString : String -> ErrorArgs -> String
-argsToString code e =
-    let
-        ( line, col ) =
-            positionToLineAndColumn code e.pos
-
-        l =
-            String.length code
-
-        {- TODO: search 3 newline prior and 3 newlines after, then output a record:
-           { before : String
-           , target : String
-           , after : String
-           , line : Int
-           , col : Int
-           , message : String
-           }
-
-        -}
-        a =
-            e.pos - 10 |> clamp 0 l
-
-        b =
-            e.pos + 10 |> clamp 0 l
-
-        slice =
-            String.slice a b code
-    in
-    String.fromInt line ++ "," ++ String.fromInt col ++ ": ```\n" ++ slice ++ "\n```\n" ++ kindToString e.kind
 
 
 positionToLineAndColumn : String -> Int -> ( Int, Int )
@@ -139,3 +119,77 @@ positionToLineAndColumn s index =
             index - lastNewLineIndex
     in
     ( lineNumber, colNumber )
+
+
+
+----
+--- View
+--
+
+
+toString : ErrorArgs -> String
+toString eArgs =
+    let
+        hr =
+            "== ERROR!!! =================================="
+
+        file =
+            if eArgs.file /= "" then
+                [ "# " ++ eArgs.file
+                , ""
+                ]
+
+            else
+                []
+
+        content =
+            eArgs.content
+                |> List.concatMap (contentBlockToString >> String.split "\n")
+                |> List.map ((++) "  ")
+    in
+    hr
+        :: file
+        ++ content
+        |> String.join "\n"
+
+
+contentBlockToString : ( ContentType, List ( Priority, String ) ) -> String
+contentBlockToString ( cty, spans ) =
+    let
+        wrap s =
+            case cty of
+                Text ->
+                    s
+
+                InlineCode ->
+                    "`" ++ s ++ "`"
+
+                CodeBlock ->
+                    "\n```\n" ++ s ++ "\n```\n"
+
+                CodeBlockWithLineNumber start ->
+                    s
+                        |> String.split "\n"
+                        |> List.indexedMap (\i line -> (String.padLeft 5 ' ' <| String.fromInt (i + start)) ++ " | " ++ line)
+                        |> String.join "\n"
+    in
+    spans
+        |> List.map contentSpanToString
+        |> String.join ""
+        |> wrap
+
+
+contentSpanToString : ( Priority, String ) -> String
+contentSpanToString ( pri, s ) =
+    case pri of
+        Default ->
+            s
+
+        LowlightHint ->
+            s
+
+        HighlightHint ->
+            s
+
+        HighlightImportant ->
+            s
