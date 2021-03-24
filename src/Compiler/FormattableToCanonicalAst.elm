@@ -151,7 +151,7 @@ translateConstructor ro faType constructors =
             translateConstructor ro (FA.TypePolymorphic { name = name, args = [] }) constructors
 
         FA.TypePolymorphic polyArgs ->
-            do (stringToStructuredName (initEnv ro) polyArgs.name) <| \sname ->
+            do (stringToStructuredName (initEnv ro) {- TODO -} 0 0 polyArgs.name) <| \sname ->
             case sname of
                 StructuredName_Value _ ->
                     errorTodo "constructor name must start with a uppercase letter"
@@ -240,8 +240,8 @@ makeRootName modName defName =
     modName ++ "." ++ defName
 
 
-stringToStructuredName : Env -> String -> Res StructuredName
-stringToStructuredName env rawString =
+stringToStructuredName : Env -> Int -> Int -> String -> Res StructuredName
+stringToStructuredName env start end rawString =
     {-
        .attr
        .attr1.attr2
@@ -308,7 +308,7 @@ stringToStructuredName env rawString =
         "" :: tail ->
             case env.maybeUpdateTarget of
                 Nothing ->
-                    errorRecordUpdateShorthandOutsideRecordUpdate rawString env
+                    errorRecordUpdateShorthandOutsideRecordUpdate start end rawString env
 
                 Just ref ->
                     do (validateAttrPath tail) <| \tailPath ->
@@ -504,7 +504,7 @@ translatePatternOrFunction env fa =
                 |> Ok
 
         FA.PatternApplication rawName faArgs ->
-            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } rawName) <| \sname ->
+            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } {- TODO -} 0 0 rawName) <| \sname ->
             do (Lib.list_mapRes (translatePattern env) faArgs) <| \caArgs ->
             case sname of
                 StructuredName_TypeOrCons { name, mod } ->
@@ -664,7 +664,7 @@ translateExpression env faExpr =
             Ok <| CA.Literal ( args.start, args.end ) args.value
 
         FA.Variable args ->
-            do (stringToStructuredName env args.name) <| \sname ->
+            do (stringToStructuredName env args.start args.end args.name) <| \sname ->
             let
                 ( name, mod, attrPath ) =
                     case sname of
@@ -849,7 +849,7 @@ translateArgument : Env -> FA.Expression -> Res (CA.Argument Pos)
 translateArgument env faExpr =
     case faExpr of
         FA.Lvalue args ->
-            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } args.name) <| \sname ->
+            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } args.start args.end args.name) <| \sname ->
             case sname of
                 StructuredName_TypeOrCons _ ->
                     errorTodo "constructors can't be mutable?"
@@ -1107,7 +1107,7 @@ translateType ro faType =
             translateType ro <| FA.TypePolymorphic { name = name, args = [] }
 
         FA.TypePolymorphic a ->
-            do (stringToStructuredName (initEnv ro) a.name) <| \sname ->
+            do (stringToStructuredName (initEnv ro) {- TODO -} 0 0 a.name) <| \sname ->
             case sname of
                 StructuredName_Value { name, mod, attrPath } ->
                     if a.args /= [] then
@@ -1241,10 +1241,10 @@ maybeResultToResultMaybe maybeResult =
 --
 
 
-errorRecordUpdateShorthandOutsideRecordUpdate : String -> Env -> Res a
-errorRecordUpdateShorthandOutsideRecordUpdate rawString env =
+errorRecordUpdateShorthandOutsideRecordUpdate : Int -> Int -> String -> Env -> Res a
+errorRecordUpdateShorthandOutsideRecordUpdate start end rawString env =
     Error.makeRes
         env.ro.currentModule
-        [ Error.codeBlock rawString
-        , Error.text "I see a record update shorthand, but we are not inside a record update!"
+        [ Error.showLines env.ro.code 2 start
+        , Error.text <| Error.inlineCode rawString ++ " looks like a record update shorthand, but we are not inside a record update!"
         ]

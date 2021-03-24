@@ -14,28 +14,14 @@ type Error
 
 type alias ErrorArgs =
     { file : String
-    , content : Content
+    , content : List ContentDiv
     }
 
 
-type alias Content =
-    List ( ContentType, List ( Priority, String ) )
-
-
-type Priority
-    = Default
-      -- These are nice-to-have, but not important
-    | LowlightHint
-    | HighlightHint
-      -- This highlight should appear no matter the limits of the display
-    | HighlightImportant
-
-
-type ContentType
-    = Text
-    | InlineCode
-    | CodeBlock
-    | CodeBlockWithLineNumber Int
+type ContentDiv
+    = Text String
+    | CodeBlock String
+    | CodeBlockWithLineNumber Int (List String)
 
 
 
@@ -49,7 +35,7 @@ errorTodo s =
     makeRes "TODO" [ text s ]
 
 
-makeError : String -> Content -> Error
+makeError : String -> List ContentDiv -> Error
 makeError file content =
     { file = file
     , content = content
@@ -57,41 +43,45 @@ makeError file content =
         |> Simple
 
 
-makeRes : String -> Content -> Res a
+makeRes : String -> List ContentDiv -> Res a
 makeRes file content =
     Err <| makeError file content
 
 
-text : String -> ( ContentType, List ( Priority, String ) )
-text s =
-    ( Text, [ ( Default, s ) ] )
+text : String -> ContentDiv
+text =
+    Text
 
 
-codeBlock : String -> ( ContentType, List ( Priority, String ) )
-codeBlock s =
-    ( CodeBlock, [ ( Default, s ) ] )
+codeBlock : String -> ContentDiv
+codeBlock =
+    CodeBlock
 
 
-showLines : String -> Int -> Int -> ( ContentType, List ( Priority, String ) )
+inlineCode : String -> String
+inlineCode s =
+    "`" ++ s ++ "`"
+
+
+showLines : String -> Int -> Int -> ContentDiv
 showLines code lineSpan pos =
     let
-        ( line, col ) =
+        ( line, _ ) =
             positionToLineAndColumn code pos
 
-        start =
-            line - lineSpan
-
-        end =
-            line + lineSpan
-
         lines =
-            code
-                |> String.split "\n"
-                |> List.drop start
-                |> List.take (lineSpan * 2)
-                |> String.join "\n"
+            String.split "\n" code
+
+        start =
+            line - lineSpan - 1 |> clamp 0 (List.length lines - 1)
+
+        size =
+            line - start + lineSpan |> max 1
     in
-    ( CodeBlockWithLineNumber start, [ ( Default, lines ) ] )
+    lines
+        |> List.drop start
+        |> List.take size
+        |> CodeBlockWithLineNumber (start + 1)
 
 
 flatten : Error -> List ErrorArgs -> List ErrorArgs
@@ -151,52 +141,37 @@ toString eArgs =
 
         content =
             eArgs.content
-                |> List.concatMap (contentBlockToString >> String.split "\n")
+                |> List.concatMap (contentDivToString >> String.split "\n")
                 |> List.map ((++) "  ")
     in
-    hr
-        :: file
-        ++ content
-        |> String.join "\n"
+    hr :: file ++ content |> String.join "\n"
 
 
-contentBlockToString : ( ContentType, List ( Priority, String ) ) -> String
-contentBlockToString ( cty, spans ) =
-    let
-        wrap s =
-            case cty of
-                Text ->
-                    s
-
-                InlineCode ->
-                    "`" ++ s ++ "`"
-
-                CodeBlock ->
-                    "\n```\n" ++ s ++ "\n```\n"
-
-                CodeBlockWithLineNumber start ->
-                    s
-                        |> String.split "\n"
-                        |> List.indexedMap (\i line -> (String.padLeft 5 ' ' <| String.fromInt (i + start)) ++ " | " ++ line)
-                        |> String.join "\n"
-    in
-    spans
-        |> List.map contentSpanToString
-        |> String.join ""
-        |> wrap
-
-
-contentSpanToString : ( Priority, String ) -> String
-contentSpanToString ( pri, s ) =
-    case pri of
-        Default ->
+contentDivToString : ContentDiv -> String
+contentDivToString div =
+    case div of
+        Text s ->
             s
 
-        LowlightHint ->
-            s
+        CodeBlock s ->
+            "\n```\n" ++ s ++ "\n```\n"
 
-        HighlightHint ->
-            s
+        CodeBlockWithLineNumber start ls ->
+            let
+                pad =
+                    (start + List.length ls)
+                        |> String.fromInt
+                        |> String.length
 
-        HighlightImportant ->
-            s
+                fmtLine index line =
+                    ((index + start)
+                        |> String.fromInt
+                        |> String.padLeft 5 ' '
+                    )
+                        ++ " | "
+                        ++ line
+            in
+            ls
+                |> List.indexedMap fmtLine
+                |> String.join "\n"
+                |> (\s -> s ++ "\n")
