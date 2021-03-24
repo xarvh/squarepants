@@ -43,9 +43,9 @@ runTests =
 
 
 initialFiles =
-    [ ( "ModA"
+    [ ( "Main"
       , """
-result = Debug.log "LOL"
+result = Language/Overview.fibonacci 5
     """
       )
     , ( "SPCore/Maybe"
@@ -59,6 +59,29 @@ map f m =
       Nothing
     Just v then
       Just (f v)
+        """
+      )
+    , ( "SPCore/List"
+      , """
+each : List a -> (a @> None) -> None
+each ls f =
+  None
+  [# TODO
+  try ls as
+    SPCore.Nil then
+      None
+
+    SPCore.Cons head tail then
+      f head
+      each tail f
+  #]
+
+repeat : Number -> a -> List a
+repeat n a =
+  # TODO
+  []
+
+
         """
       )
     , ( "Language/Overview"
@@ -95,7 +118,13 @@ numberOne =
 addThreeNumbers x y z =
   x + y + z
 
-[# TODO: numeric polymorphism not yet implemented =(
+
+# TODO: polymorphism for number types is not yet implemented =(
+alias Int = Number
+alias Float = Number
+alias Vec2 = Number
+
+
 floatOne : Float
 floatOne =
   1
@@ -104,6 +133,7 @@ fibonacci : Int -> Int
 fibonacci n =
   if n < 2 then n else n + fibonacci (n - 1)
 
+[#
 subtractTwoFrom : Vec2 -> Vec2
 subtractTwoFrom =
   (-) 2
@@ -121,10 +151,13 @@ listOfText = [
 
 repeatHello : Int -> Text
 repeatHello times =
+  "todo"
+[# TODO
   times
-    >> List.repeat
+    >> List.repeat 3
     >> List.map fn n = "This is hello #" .. Text.fromInt n
     >> Text.join ""
+#]
 
 
 
@@ -145,16 +178,19 @@ average numbers =
   sum / n
 
 
+[# TODO
 # The argument preceding `@>` is mutable
 generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
 generateTwoRandomNumbers min max seed =
   # '&' is used for tuples
   Random.int min max @seed & Random.int min max @seed
+#]
 
 
 
 # Algebraic Data Types
 
+[# TODO
 union LoadingState payload =
     , NotRequested
     , Requested
@@ -172,6 +208,7 @@ getStatusName loadingState =
 getPayload : LoadingState payload -> Maybe payload
 getPayload loadingState =
   try loadingState as Available payload then Just payload else Nothing
+#]
 
 
 
@@ -192,19 +229,22 @@ eugeneKrabs = {
 # TODO record access example
 
 
+[# TODO
 earnMoney : Float -> Crab -> Crab
 earnMoney profit crab =
   # no need to repeat `crab`
   { crab with money = .money + profit }
+#]
 
 
 # do-notation
 
 blah f =
-  to = Result.andThen
-  blah blah blah >> to fn blahOutput =
-  someotherline >> to fn otherThingy =
-  doStuffWith blahOutput otherThingy
+  None # TODO use actually declared stuff so it compiles
+  #  to = Result.andThen
+  #  blah blah blah >> to fn blahOutput =
+  #  someotherline >> to fn otherThingy =
+  #  doStuffWith blahOutput otherThingy
 
 
     """
@@ -530,7 +570,7 @@ viewProgram model =
                     Ok program ->
                         [ titleAndPreCode
                             "JavaScript value for Mod.result:"
-                            (case Compiler.JsToString_Test.runProgram "ModA.result" program of
+                            (case Compiler.JsToString_Test.runProgram "Main.result" program of
                                 Ok res ->
                                     res
 

@@ -344,8 +344,7 @@ envGet v e =
                 |> TyGen.map Ok
 
         Nothing ->
-            ("unbound variable: " ++ v)
-                |> errorTodo
+            errorUnboundVariable v
                 |> TyGen.wrap
 
 
@@ -1333,3 +1332,17 @@ reorderStatements stats =
             List.map (Tuple.second >> CA.Definition) orderedDefinitions ++ nonDefs
     in
     ( definitions, newStats )
+
+
+
+----
+--- Errors
+--
+
+
+errorUnboundVariable : String -> Res a
+errorUnboundVariable s =
+    Error.makeRes
+        ""
+        [ Error.text <| "unbound variable: " ++ s
+        ]

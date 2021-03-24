@@ -16,11 +16,20 @@ import Types.Meta exposing (Meta)
 prelude : CA.Module Pos
 prelude =
     [ mutableAssign
-    , binaryAdd
-    , mutableAdd
-    , stringConcat
 
-    -- pipes
+    -- arithmetic
+    , add
+    , subtract
+    , multiply
+    , divide
+    , mutableAdd
+
+    -- comparison
+    , lesserThan
+    , greaterThan
+
+    -- others
+    , stringConcat
     , sendRight
     , sendLeft
 
@@ -53,8 +62,16 @@ metaString =
           "globalTypes": [
             "None",
             "Bool",
+            "Text",
             "List",
             "Number"
+          ]
+        }, {
+          "path": "SPCore/List",
+          "importAs": "List",
+          "globalValues": [
+          ],
+          "globalTypes": [
           ]
         }, {
           "path": "SPCore/Maybe",
@@ -121,23 +138,32 @@ function from to =
 --
 
 
-mutableAssign : ( String, CA.RootDef Pos )
-mutableAssign =
-    ( ":="
+type alias NativeBinopArgs =
+    { symbol : String
+    , left : CA.Type
+    , right : CA.Type
+    , return : CA.Type
+    , mutates : Bool
+    }
+
+
+nativeBinop : NativeBinopArgs -> ( String, CA.RootDef Pos )
+nativeBinop ar =
+    ( ar.symbol
     , CA.Value
-        { pattern = CA.PatternAny ":="
+        { pattern = CA.PatternAny ar.symbol
         , mutable = False
         , body = []
         , maybeAnnotation =
             Just
                 (CA.TypeFunction
-                    { from = CA.TypeVariable { name = "a" }
+                    { from = ar.left
                     , fromIsMutable = Just False
                     , to =
                         CA.TypeFunction
-                            { from = CA.TypeVariable { name = "a" }
-                            , fromIsMutable = Just True
-                            , to = Core.noneType
+                            { from = ar.right
+                            , fromIsMutable = Just ar.mutates
+                            , to = ar.return
                             }
                     }
                 )
@@ -145,114 +171,139 @@ mutableAssign =
     )
 
 
-binaryAdd : ( String, CA.RootDef Pos )
-binaryAdd =
-    ( "+"
-    , CA.Value
-        { pattern = CA.PatternAny "+"
-        , mutable = False
-        , body = []
-        , maybeAnnotation =
-            Just
-                (function
-                    Core.numberType
-                    (function
-                        Core.numberType
-                        Core.numberType
-                    )
-                )
+mutableAssign : ( String, CA.RootDef Pos )
+mutableAssign =
+    nativeBinop
+        { symbol = ":="
+        , left = CA.TypeVariable { name = "a" }
+        , right = CA.TypeVariable { name = "a" }
+        , return = Core.noneType
+        , mutates = True
         }
-    )
+
+
+
+-- arithmetic
+
+
+add : ( String, CA.RootDef Pos )
+add =
+    nativeBinop
+        { symbol = "+"
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.numberType
+        , mutates = False
+        }
+
+
+subtract : ( String, CA.RootDef Pos )
+subtract =
+    nativeBinop
+        { symbol = "-"
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.numberType
+        , mutates = False
+        }
+
+
+multiply : ( String, CA.RootDef Pos )
+multiply =
+    nativeBinop
+        { symbol = "*"
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.numberType
+        , mutates = False
+        }
+
+
+divide : ( String, CA.RootDef Pos )
+divide =
+    nativeBinop
+        { symbol = "/"
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.numberType
+        , mutates = False
+        }
 
 
 mutableAdd : ( String, CA.RootDef Pos )
 mutableAdd =
-    ( "+="
-    , CA.Value
-        { pattern = CA.PatternAny "+="
-        , mutable = False
-        , body = []
-        , maybeAnnotation =
-            Just
-                (CA.TypeFunction
-                    { from = Core.numberType
-                    , fromIsMutable = Just False
-                    , to =
-                        CA.TypeFunction
-                            { from = Core.numberType
-                            , fromIsMutable = Just True
-                            , to = Core.noneType
-                            }
-                    }
-                )
+    nativeBinop
+        { symbol = "+="
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.noneType
+        , mutates = True
         }
-    )
+
+
+
+-- Comparison binops
+
+
+{-| TODO I don't have a `comparable` typeclass, how do I give a type to these?
+-}
+lesserThan : ( String, CA.RootDef Pos )
+lesserThan =
+    nativeBinop
+        { symbol = "<"
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.boolType
+        , mutates = False
+        }
+
+
+greaterThan : ( String, CA.RootDef Pos )
+greaterThan =
+    nativeBinop
+        { symbol = ">"
+        , left = Core.numberType
+        , right = Core.numberType
+        , return = Core.boolType
+        , mutates = False
+        }
+
+
+
+-- Other binops
 
 
 stringConcat : ( String, CA.RootDef Pos )
 stringConcat =
-    ( ".."
-    , CA.Value
-        { pattern = CA.PatternAny ".."
-        , mutable = False
-        , body = []
-        , maybeAnnotation =
-            Just
-                (function
-                    Core.textType
-                    (function
-                        Core.textType
-                        Core.textType
-                    )
-                )
+    nativeBinop
+        { symbol = ".."
+        , left = Core.textType
+        , right = Core.textType
+        , return = Core.textType
+        , mutates = False
         }
-    )
-
-
-
-----
---- Pipes
---
 
 
 sendRight : ( String, CA.RootDef Pos )
 sendRight =
-    ( ">>"
-    , CA.Value
-        { pattern = CA.PatternAny ">>"
-        , mutable = False
-        , body = []
-        , maybeAnnotation =
-            Just
-                (function
-                    (function (tyVar "a") (tyVar "b"))
-                    (function
-                        (tyVar "a")
-                        (tyVar "b")
-                    )
-                )
+    nativeBinop
+        { symbol = ">>"
+        , left = tyVar "a"
+        , right = function (tyVar "a") (tyVar "b")
+        , return = tyVar "b"
+        , mutates = False
         }
-    )
 
 
 sendLeft : ( String, CA.RootDef Pos )
 sendLeft =
-    ( "<<"
-    , CA.Value
-        { pattern = CA.PatternAny "<<"
-        , mutable = False
-        , body = []
-        , maybeAnnotation =
-            Just
-                (function
-                    (tyVar "a")
-                    (function
-                        (function (tyVar "a") (tyVar "b"))
-                        (tyVar "b")
-                    )
-                )
+    nativeBinop
+        { symbol = "<<"
+        , left = function (tyVar "a") (tyVar "b")
+        , right = tyVar "a"
+        , return = tyVar "b"
+        , mutates = False
         }
-    )
 
 
 

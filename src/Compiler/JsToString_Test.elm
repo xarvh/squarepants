@@ -279,4 +279,46 @@ natives =
             """
             (eval "Test.result")
             (Test.okEqual "\"abc\"")
+        , codeTest "add"
+            """
+            result = 1 + 2
+            """
+            (eval "Test.result")
+            (Test.okEqual "3")
+        , codeTest "subtract"
+            """
+            result = 5 - 3
+            """
+            (eval "Test.result")
+            (Test.okEqual "2")
+        , codeTest "multiply"
+            """
+            result = 3 * 2
+            """
+            (eval "Test.result")
+            (Test.okEqual "6")
+        , codeTest "divide"
+            """
+            result = 3 / 2
+            """
+            (eval "Test.result")
+            (Test.okEqual "1.5")
+        , codeTest "divide by zero"
+            """
+            result = 3 / 0
+            """
+            (eval "Test.result")
+            (Test.okEqual "0")
+        , codeTest "lesser than (<)"
+            """
+            result = 3 < 2 & 2 < 3
+            """
+            (eval "Test.result")
+            (Test.okEqual """{"first":false,"second":true}""")
+        , codeTest "greater than (>)"
+            """
+            result = 3 > 2 & 2 > 3
+            """
+            (eval "Test.result")
+            (Test.okEqual """{"first":true,"second":false}""")
         ]

@@ -19,15 +19,20 @@ nativeNonOps =
         |> Dict.insert Compiler.CoreModule.noneValue "null"
         |> Dict.insert "SPCore/Debug.log" "sp_log"
         |> Dict.insert "SPCore/Debug.todo" "sp_todo"
+        |> Dict.insert "/" "sp_divide"
 
 
 nativeBinops : Dict String { opName : JA.Name, mutates : Bool }
 nativeBinops =
     Dict.empty
         |> Dict.insert "+" { opName = "+", mutates = False }
+        |> Dict.insert "*" { opName = "*", mutates = False }
+        |> Dict.insert "-" { opName = "-", mutates = False }
         |> Dict.insert ":=" { opName = "=", mutates = True }
         |> Dict.insert "+=" { opName = "+=", mutates = True }
         |> Dict.insert ".." { opName = "+", mutates = False }
+        |> Dict.insert ">" { opName = ">", mutates = False }
+        |> Dict.insert "<" { opName = "<", mutates = False }
 
 
 none =
@@ -106,7 +111,7 @@ unwrapMutable x =
 nativeDefinitions : String
 nativeDefinitions =
     """
-function sp_clone(src) {
+const sp_clone = (src) => {
  if (Array.isArray(src))
    return src.map(clone);
 
@@ -120,7 +125,12 @@ function sp_clone(src) {
 }
 
 
-function sp_todo(message) {
+const sp_divide = (right) => (left) => {
+  if (right === 0) return 0;
+  return left / right;
+}
+
+const sp_todo = (message) => {
   throw new Error("TODO: " + message);
 }
 
