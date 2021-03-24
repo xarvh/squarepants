@@ -18,6 +18,7 @@ prelude =
     [ mutableAssign
     , binaryAdd
     , mutableAdd
+    , stringConcat
 
     -- pipes
     , sendRight
@@ -183,6 +184,26 @@ mutableAdd =
                             , to = Core.noneType
                             }
                     }
+                )
+        }
+    )
+
+
+stringConcat : ( String, CA.RootDef Pos )
+stringConcat =
+    ( ".."
+    , CA.Value
+        { pattern = CA.PatternAny ".."
+        , mutable = False
+        , body = []
+        , maybeAnnotation =
+            Just
+                (function
+                    Core.textType
+                    (function
+                        Core.textType
+                        Core.textType
+                    )
                 )
         }
     )

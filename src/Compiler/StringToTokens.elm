@@ -241,8 +241,9 @@ recognisedTokens =
                     in
                     Ok <|
                         case match of
-                            --                             ".." ->
-                            --                               Token.Binop Token.Addittive match
+                            ".." ->
+                                Token.Binop Token.Addittive match
+
                             "fn" ->
                                 Token.Fn
 

@@ -67,6 +67,7 @@ firstEvaluation name code =
         |> Result.andThen (\def -> List.head def.body |> Result.fromMaybe "head fail")
         |> Result.andThen (asEvaluation >> Result.fromMaybe "asEval fail")
 
+
 stringToCanonicalModule code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
@@ -311,11 +312,12 @@ moduleAndAttributePaths =
         , reject "Blah.Blah.blah" "Constructor"
         , reject "blah.Blah.blah" "lower"
         , reject "Blah.blah.Blah" "lower"
-        , reject ".." "shorthand"
         , reject "Blah..blah" "dot"
         , reject ".Blah" "shorthand"
         , reject ".blah.blah" "shorthand"
         , reject ".blah" "shorthand"
+        , reject "..." ""
+        , accept "x .. y"
         ]
 
 

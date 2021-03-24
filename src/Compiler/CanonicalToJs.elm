@@ -27,6 +27,7 @@ nativeBinops =
         |> Dict.insert "+" { opName = "+", mutates = False }
         |> Dict.insert ":=" { opName = "=", mutates = True }
         |> Dict.insert "+=" { opName = "+=", mutates = True }
+        |> Dict.insert ".." { opName = "+", mutates = False }
 
 
 none =

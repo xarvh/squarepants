@@ -273,4 +273,10 @@ natives =
             """
             (eval "Test.result")
             (Test.errContain "blah")
+        , codeTest "Text concat (..)"
+            """
+            result = "a" .. "b" .. "c"
+            """
+            (eval "Test.result")
+            (Test.okEqual "\"abc\"")
         ]

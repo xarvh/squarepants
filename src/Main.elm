@@ -123,7 +123,7 @@ repeatHello : Int -> Text
 repeatHello times =
   times
     >> List.repeat
-    >> List.map fn n = "This is hello #" #TODO .. Text.fromInt n
+    >> List.map fn n = "This is hello #" .. Text.fromInt n
     >> Text.join ""
 
 
@@ -166,7 +166,7 @@ getStatusName loadingState =
   try LoadingState as
     NotRequested then "Not needed"
     Requested then "Awaiting server response"
-    Error message then "Error: " #TODO .. message
+    Error message then "Error: " .. message
     Available _ then "Successfully loaded"
 
 getPayload : LoadingState payload -> Maybe payload
@@ -198,15 +198,13 @@ earnMoney profit crab =
   { crab with money = .money + profit }
 
 
-[# do-notation
+# do-notation
 
 blah f =
   to = Result.andThen
   blah blah blah >> to fn blahOutput =
   someotherline >> to fn otherThingy =
   doStuffWith blahOutput otherThingy
-
-#]
 
 
     """
