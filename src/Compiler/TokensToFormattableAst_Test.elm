@@ -467,6 +467,33 @@ records =
             """
             (firstAnnotation >> Result.map .type_)
             (Test.errContain "not supported")
+        , codeTest "[reg] simple assignment, inline"
+            """
+            a = { b with c }
+            """
+            firstDefinition
+            Test.justOk
+        , codeTest "[reg] simple assignment, as block"
+            """
+            a =
+              { b with c }
+            """
+            firstDefinition
+            Test.justOk
+        , codeTest "[reg] simple assignment, as block"
+            """
+            a =
+              { b with c = 1 }
+            """
+            firstDefinition
+            Test.justOk
+        , codeTest "[reg] patterns are NOT extensible"
+            """
+            a =
+              { b with c } = d
+            """
+            firstDefinition
+            (Test.errContain "")
         ]
 
 
