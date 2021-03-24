@@ -136,6 +136,7 @@ errorExperimentingWithNoExtensibleTypes moduleName code state =
         [ Error.text "Extensible types are not supported, I want to see if it's good to do without them" ]
 
 
+{-
 errorCantUseWithInsidePatternMatching : String -> String -> List Token -> Error.Error
 errorCantUseWithInsidePatternMatching moduleName code nonConsumedTokens =
     case nonConsumedTokens of
@@ -147,6 +148,7 @@ errorCantUseWithInsidePatternMatching moduleName code nonConsumedTokens =
                 [ Error.text "`with` cannot be used when pattern-matching"
                 , Error.showLines code 2 token.start
                 ]
+-}
 
 
 

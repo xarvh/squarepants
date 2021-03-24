@@ -133,7 +133,7 @@ fibonacci : Int -> Int
 fibonacci n =
   if n < 2 then n else n + fibonacci (n - 1)
 
-[#
+[# TODO: binop functional notation not implemented =(
 subtractTwoFrom : Vec2 -> Vec2
 subtractTwoFrom =
   (-) 2
@@ -152,7 +152,7 @@ listOfText = [
 repeatHello : Int -> Text
 repeatHello times =
   "todo"
-[# TODO
+[# TODO: implement List. and Text. functions
   times
     >> List.repeat 3
     >> List.map fn n = "This is hello #" .. Text.fromInt n
@@ -178,7 +178,7 @@ average numbers =
   sum / n
 
 
-[# TODO
+[# TODO: implement Random.
 # The argument preceding `@>` is mutable
 generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
 generateTwoRandomNumbers min max seed =
@@ -190,7 +190,6 @@ generateTwoRandomNumbers min max seed =
 
 # Algebraic Data Types
 
-[# TODO
 union LoadingState payload =
     , NotRequested
     , Requested
@@ -199,7 +198,7 @@ union LoadingState payload =
 
 getStatusName : LoadingState payload -> Text
 getStatusName loadingState =
-  try LoadingState as
+  try loadingState as
     NotRequested then "Not needed"
     Requested then "Awaiting server response"
     Error message then "Error: " .. message
@@ -208,7 +207,6 @@ getStatusName loadingState =
 getPayload : LoadingState payload -> Maybe payload
 getPayload loadingState =
   try loadingState as Available payload then Just payload else Nothing
-#]
 
 
 
@@ -226,15 +224,13 @@ eugeneKrabs = {
   }
 
 
-# TODO record access example
+# TODO add a record access example
 
 
-[# TODO
 earnMoney : Float -> Crab -> Crab
 earnMoney profit crab =
-  # no need to repeat `crab`
+  # `.money` is a shorthand for `crab.money`
   { crab with money = .money + profit }
-#]
 
 
 # do-notation
