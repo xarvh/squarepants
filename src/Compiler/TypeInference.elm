@@ -278,6 +278,15 @@ refineType subs ty =
                         , attrs = Dict.map (\name -> refineType subs) args.attrs
                         }
 
+                Just (CA.TypeRecord ar) ->
+                    -- TODO I'm not sure what I'm doing here
+                    CA.TypeRecord
+                        { extensible = ar.extensible
+
+                        -- TODO Should I refine ar? args? none? merge the two?
+                        , attrs = Dict.map (\name -> refineType subs) ar.attrs
+                        }
+
                 Just what ->
                     Debug.todo "replacing record extension with non-var" (Debug.toString what)
 

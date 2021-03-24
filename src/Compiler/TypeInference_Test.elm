@@ -812,6 +812,16 @@ records =
                         }
                 }
             )
+        , codeTest "[reg] refineType when the record has a non-extensible alias"
+            """
+            alias A = { c : Number, d : Number }
+
+            upd : A -> A
+            upd a =
+              { a with c = .c + 1 }
+            """
+            (infer "upd")
+            Test.justOk
         ]
 
 

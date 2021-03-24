@@ -63,6 +63,23 @@ codeTest toString title code functionToTest (CodeExpectation toMaybeError) =
         |> maybeToOutcome
 
 
+{-| TODO remove old-system isOk below and rename this to isOk -}
+justOk : CodeExpectation ok
+justOk =
+    CodeExpectation <| \toString result ->
+    case result of
+        Err e ->
+            [ "error = "
+            , "  " ++ e
+            ]
+                |> String.join "\n"
+                |> Just
+
+        Ok actualOk ->
+                Nothing
+
+
+
 okEqual : ok -> CodeExpectation ok
 okEqual expectedOk =
     CodeExpectation <| \toString result ->
