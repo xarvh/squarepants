@@ -361,6 +361,26 @@ records =
                     |> CA.Record ()
                     |> Ok
             }
+        , codeTest "[reg] simple assignment, inline"
+            """
+            a = { b with c }
+            """
+            (firstDefinition "a")
+            Test.justOk
+        , codeTest "[reg] simple assignment, as block"
+            """
+            a =
+              { b with c }
+            """
+            (firstDefinition "a")
+            Test.justOk
+        , codeTest "[reg] patterns are NOT extensible"
+            """
+            a =
+              { b with c } = d
+            """
+            (firstDefinition "a")
+            (Test.errContain "pattern")
         ]
 
 

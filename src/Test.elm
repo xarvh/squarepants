@@ -127,8 +127,7 @@ errContain subString =
                     |> Just
 
         Ok ok ->
-            [ "expecting an error containing \"" ++ subString ++ "\""
-            , "but instead got ok!"
+            [ "expecting an error containing \"" ++ subString ++ "\" but instead got Ok!"
             , ""
             , toString ok
             ]
