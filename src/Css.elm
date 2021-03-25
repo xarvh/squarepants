@@ -24,4 +24,73 @@ css =
   /* min-width: 300px; */
 }
 
+
+body {
+  background: #003;
+  color: lightgray;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+
+
+.editor {
+  border: 1px solid gray;
+}
+
+
+.editor-content {
+  position: relative;
+  background: #002;
+
+  margin-left: 8px;
+}
+
+.editor-overlay, .editor-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+}
+
+
+.editor-overlay, .editor-textarea, .editor-line-numbers {
+  height: 100%;
+
+  margin: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  background: none;
+
+  padding: 2px;
+  font-size: 14px;
+  font-family: monospace;
+  white-space: pre;
+
+  caret-color: #ddd;
+}
+
+.editor-overlay {
+  pointer-events: none;
+}
+
+.editor-line-numbers {
+  text-align: right;
+}
+
+.comment  { color: #00d; }
+.literal  { color: green; }
+.valueUp  { color: #aff; }
+.valueLo  { color: #ddd; }
+.globalUp { color: #499; }
+.globalLo { color: #999; }
+.op       { color: red; }
+.keyword  { color: #ffdd07; }
+.paren    { color: red; }
+
     """

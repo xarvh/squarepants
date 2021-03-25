@@ -315,6 +315,7 @@ style =
 .test-item {
   padding: 1em;
   margin-bottom: 2px;
+  color: #222;
 }
 
 .test-name {

@@ -34,7 +34,7 @@ import Types.CanonicalAst as CA exposing (Pos)
 import Types.Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Meta exposing (Meta)
-import Types.Token
+import Types.Token as Token exposing (Token)
 
 
 runTests =
@@ -105,7 +105,7 @@ allCode =
     """
 [#
    SquarePants has no import statements: instead, project-wide imports are
-   declared in modules.toml
+   declared in the `meta` file.
 #]
 
 
@@ -278,10 +278,12 @@ init : Model
 init =
     { files = Dict.fromList initialFiles
     , selectedFile =
-        initialFiles
-            |> List.head
-            |> Maybe.map Tuple.first
-            |> Maybe.withDefault ""
+        "Language/Overview"
+
+    --         initialFiles
+    --             |> List.head
+    --             |> Maybe.map Tuple.first
+    --             |> Maybe.withDefault ""
     }
 
 
@@ -401,6 +403,23 @@ viewSelectedFile model =
     let
         code =
             Dict.get model.selectedFile model.files |> Maybe.withDefault ""
+    in
+    Html.div
+        [ class "col mt ml" ]
+        [ viewCodeEditor model code
+        , if model.selectedFile == metaFileName then
+            viewMeta model code
+
+          else
+            viewFileStages model code
+        ]
+
+
+viewCodeEditor : Model -> String -> Html Msg
+viewCodeEditor model code =
+    let
+        meta =
+            getMeta model |> Result.withDefault Types.Meta.init
 
         width =
             code
@@ -408,31 +427,183 @@ viewSelectedFile model =
                 |> List.map String.length
                 |> List.maximum
                 |> Maybe.withDefault 10
+                |> max 40
+
+        widthAttr =
+            width
                 |> toFloat
-                |> (*) (0.5 * 16)
+                |> (*) 9
+                |> String.fromFloat
+                |> (\s -> s ++ "px")
+                |> style "width"
 
         height =
             code
                 |> String.split "\n"
                 |> List.length
+                |> max 15
+
+        heightAttr =
+            height
                 |> toFloat
-                |> (*) (1.0 * 16)
+                |> (+) 1
+                |> (*) 18
+                |> String.fromFloat
+                |> (\s -> s ++ "px")
+                |> style "height"
+
+        viewLineNumber n =
+            n
+                |> String.fromInt
     in
     Html.div
-        [ class "col mt ml" ]
-        [ Html.textarea
-            [ Html.Events.onInput OnInput
-            , style "min-height" <| String.fromFloat height ++ "px"
-            , style "min-width" <| String.fromFloat width ++ "px"
-            , Html.Attributes.value code
-            ]
-            [ Html.text code ]
-        , if model.selectedFile == metaFileName then
-            viewMeta model code
-
-          else
-            viewFileStages model code
+        [ class "editor"
+        , class "row"
         ]
+        [ Html.div
+            [ class "editor-line-numbers"
+            , heightAttr
+            ]
+            [ List.range 1 height
+                |> List.map String.fromInt
+                |> String.join "\n"
+                |> Html.text
+            ]
+        , Html.div
+            [ class "editor-content"
+            , widthAttr
+            , heightAttr
+            ]
+            [ Html.textarea
+                [ class "editor-textarea"
+                , Html.Events.onInput OnInput
+                , Html.Attributes.value code
+                , Html.Attributes.spellcheck False
+                ]
+                [ Html.text code ]
+            , Html.div
+                [ class "editor-overlay"
+                ]
+                (viewSyntaxHighlight meta code)
+            ]
+        ]
+
+
+viewSyntaxHighlight : Meta -> String -> List (Html msg)
+viewSyntaxHighlight meta code =
+    case Compiler.StringToTokens.lexer code of
+        Err _ ->
+            [ Html.text code ]
+
+        Ok tokens ->
+            tokens
+                |> List.foldl (viewColorToken meta code) ( 0, [] )
+                |> Tuple.second
+                |> List.reverse
+
+
+viewColorToken : Meta -> String -> Token -> ( Int, List (Html msg) ) -> ( Int, List (Html msg) )
+viewColorToken meta code token ( start, accum ) =
+    let
+        x =
+            Html.span
+                [ class (tokenToClass meta token) ]
+                [ code
+                    |> String.slice start token.end
+                    |> Html.text
+                ]
+    in
+    ( token.end, x :: accum )
+
+
+tokenToClass : Meta -> Token -> String
+tokenToClass meta token =
+    case token.kind of
+        -- Comment
+        Token.Comment ->
+            "comment"
+
+        -- Terms
+        Token.TextLiteral _ ->
+            "literal"
+
+        Token.NumberLiteral _ ->
+            "literal"
+
+        -- Types
+        Token.HasType _ ->
+            "op"
+
+        -- Keywords
+        Token.Fn ->
+            "keyword"
+
+        Token.If ->
+            "keyword"
+
+        Token.Try ->
+            "keyword"
+
+        Token.As ->
+            "keyword"
+
+        Token.Then ->
+            "keyword"
+
+        Token.Else ->
+            "keyword"
+
+        Token.With ->
+            "keyword"
+
+        -- Ops
+        Token.Defop _ ->
+            "op"
+
+        Token.Unop _ ->
+            "op"
+
+        Token.Binop _ _ ->
+            "op"
+
+        Token.Arrow _ ->
+            "op"
+
+        -- Parens
+        Token.RoundParen _ ->
+            "paren"
+
+        Token.SquareBracket _ ->
+            "paren"
+
+        Token.CurlyBrace _ ->
+            "paren"
+
+        Token.Comma ->
+            "paren"
+
+        Token.Name _ "alias" ->
+            "keyword"
+
+        Token.Name _ "union" ->
+            "keyword"
+
+        Token.Name _ name ->
+            if Dict.member name meta.globalValues || Dict.member name meta.globalTypes then
+                if Compiler.FormattableToCanonicalAst.startsWithUpperChar name then
+                    "globalUp"
+
+                else
+                    "globalLo"
+
+            else if Compiler.FormattableToCanonicalAst.startsWithUpperChar name then
+                "valueUp"
+
+            else
+                "valueLo"
+
+        _ ->
+            ""
 
 
 viewMeta : Model -> String -> Html Msg
@@ -965,7 +1136,7 @@ viewFaExpression expr =
 --
 
 
-viewTokens : List Types.Token.Token -> Html msg
+viewTokens : List Token -> Html msg
 viewTokens tokens =
     tokens
         |> List.map (\t -> Html.div [] [ Html.text (Debug.toString t.kind) ])
