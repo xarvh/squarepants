@@ -67,7 +67,7 @@ tyNone =
 infer : String -> String -> Result String TI.EnvEntry
 infer name code =
     code
-        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.stringToCanonicalModuleWithPos
         |> Result.andThen (TI.inspectModule preamble)
         |> Compiler.TestHelpers.resErrorToString
         |> Result.andThen

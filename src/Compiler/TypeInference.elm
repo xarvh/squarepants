@@ -45,12 +45,19 @@ type alias EnvEntry =
 
 
 type alias Ext =
-    Int
+    { pos : CA.Pos, uid : Int }
 
 
 dummyExt : Ext
 dummyExt =
-    -1
+    { pos =
+        { moduleName = ""
+        , moduleCode = ""
+        , start = -1
+        , end = -1
+        }
+    , uid = -1
+    }
 
 
 
@@ -153,11 +160,11 @@ dict_fold_nr f dict accum =
 --
 
 
-inspectModule : Env -> CA.Module e -> Res ( CA.Module Ext, Env, Substitutions )
+inspectModule : Env -> CA.Module CA.Pos -> Res ( CA.Module Ext, Env, Substitutions )
 inspectModule prelude rawMod =
     let
-        f expr ( _, n ) =
-            ( n, n + 1 )
+        f expr ( pos, n ) =
+            ( { pos = pos, uid = n }, n + 1 )
 
         ( mod, lastId ) =
             CA.extensionFold_module f ( rawMod, 0 )
@@ -345,15 +352,15 @@ instantiateType t tvars =
         |> TyGen.wrap
 
 
-envGet : Name -> Env -> TR Type
-envGet v e =
+envGet : Ext -> Name -> Env -> TR Type
+envGet ext v e =
     case Dict.get v e of
         Just { type_, forall, mutable } ->
             instantiateType type_ forall
                 |> TyGen.map Ok
 
         Nothing ->
-            errorUnboundVariable v
+            errorUnboundVariable ext v
                 |> TyGen.wrap
 
 
@@ -637,11 +644,11 @@ inspectExpr expr ty ( env, subs ) =
                 |> unify ty (literalToType l)
                 |> andEnv env
 
-        CA.Variable _ { name, attrPath } ->
+        CA.Variable ext { name, attrPath } ->
             -- Every time I use a var with variable type, it should be instantiated,
             -- because each time it may by used against a different type.
             -- This is done automatically by `envGet`.
-            do_nr (envGet name env) <| \nt ->
+            do_nr (envGet ext name env) <| \nt ->
             let
                 t =
                     refineType subs nt
@@ -650,13 +657,13 @@ inspectExpr expr ty ( env, subs ) =
                 |> unifyWithAttrPath attrPath ty t
                 |> andEnv env
 
-        CA.Lambda uid args ->
+        CA.Lambda ext args ->
             TyGen.do newType <| \argTy ->
             do_nr (inspectPattern insertVariableFromLambda args.parameter argTy ( env, subs )) <| \( env1, subs1 ) ->
             do_nr (inspectBlock args.body env1 subs1) <| \( returnType, env2, subs2 ) ->
             let
                 lambdaTy =
-                    uidToVarType uid
+                    uidToVarType ext.uid
 
                 fromIsMutable_res =
                     case args.parameter of
@@ -720,10 +727,10 @@ inspectExpr expr ty ( env, subs ) =
                 |> Ok
                 |> TyGen.wrap
 
-        CA.Try uid ar ->
+        CA.Try ext ar ->
             let
                 rawPatternTy =
-                    uidToVarType uid
+                    uidToVarType ext.uid
             in
             TyGen.do newType <| \blockType ->
             do_nr (inspectExpr ar.value rawPatternTy ( env, subs )) <| \( env1, subs1 ) ->
@@ -1349,9 +1356,10 @@ reorderStatements stats =
 --
 
 
-errorUnboundVariable : String -> Res a
-errorUnboundVariable s =
+errorUnboundVariable : Ext -> String -> Res a
+errorUnboundVariable ext s =
     Error.makeRes
-        ""
-        [ Error.text <| "unbound variable: " ++ s
+        ext.pos.moduleName
+        [ Error.showLines ext.pos.moduleCode 2 ext.pos.start
+        , Error.text <| "unbound variable: " ++ s
         ]

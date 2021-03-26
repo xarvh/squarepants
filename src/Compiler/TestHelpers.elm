@@ -18,12 +18,18 @@ resErrorToString =
     Result.mapError (\e -> Error.flatten e [] |> List.map Error.toString |> String.join "\n\n")
 
 
-stringToCanonicalModule : String -> Res (CA.Module ())
-stringToCanonicalModule code =
+stringToCanonicalModuleWithPos : String -> Res (CA.Module CA.Pos)
+stringToCanonicalModuleWithPos code =
     code
         |> unindent
         |> (\c -> Compiler.Pipeline.stringToCanonicalAst meta moduleName c Prelude.prelude)
         |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
+
+
+stringToCanonicalModule : String -> Res (CA.Module ())
+stringToCanonicalModule code =
+    code
+        |> stringToCanonicalModuleWithPos
         |> Result.map (\mod -> CA.extensionFold_module (\_ _ -> ( (), () )) ( mod, () ) |> Tuple.first)
 
 

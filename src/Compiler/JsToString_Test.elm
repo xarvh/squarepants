@@ -56,7 +56,7 @@ runProgram variable mod =
 eval : String -> String -> Result String String
 eval variable code =
     code
-        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.stringToCanonicalModuleWithPos
         |> Result.andThen (TI.inspectModule Dict.empty)
         |> Compiler.TestHelpers.resErrorToString
         |> Result.andThen (\( mod, env, sub ) -> runProgram variable mod)

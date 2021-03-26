@@ -16,7 +16,7 @@ import Compiler.StringToTokens_Test
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
-import Compiler.TypeInference
+import Compiler.TypeInference as TI
 import Compiler.TypeInference_Test
 import Css
 import Dict exposing (Dict)
@@ -711,10 +711,10 @@ viewProgram model =
             in
             do withAliases <| \alsDefs ->
             let
-                blah : Result String ( CA.Module Int, Compiler.TypeInference.Env, Compiler.TypeInference.Substitutions )
+                blah : Result String ( CA.Module TI.Ext, TI.Env, TI.Substitutions )
                 blah =
                     alsDefs
-                        |> Compiler.TypeInference.inspectModule Dict.empty
+                        |> TI.inspectModule Dict.empty
                         |> Compiler.TestHelpers.resErrorToString
             in
             do blah <| \( typedProgram, _, _ ) ->
@@ -765,7 +765,7 @@ viewProgram model =
 ----
 --- Inference
 --
--- viewInference : (Compiler.TypeInference.Eas -> Html msg
+-- viewInference : (TI.Eas -> Html msg
 {-
    viewInference ( mod, env, subs ) =
        Html.div
@@ -791,7 +791,7 @@ viewProgram model =
 -}
 
 
-viewSchema : Compiler.TypeInference.EnvEntry -> String
+viewSchema : TI.EnvEntry -> String
 viewSchema schema =
     [ "forall: [" ++ String.join "," (Set.toList schema.forall) ++ "]"
     , "mutable: " ++ Debug.toString schema.mutable

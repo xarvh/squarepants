@@ -19,7 +19,11 @@ The Pos type is only one possibility, but it lives here because it's used in a f
 
 -}
 type alias Pos =
-    ( Int, Int )
+    { moduleName : String
+    , moduleCode : String
+    , start : Int
+    , end : Int
+    }
 
 
 {-| TODO rename to Program? It's not even a program, it's just to sum of all declarations, not all of them will be used.

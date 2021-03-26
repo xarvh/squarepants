@@ -166,7 +166,7 @@ contentDivToString div =
                 fmtLine index line =
                     ((index + start)
                         |> String.fromInt
-                        |> String.padLeft 5 ' '
+                        |> String.padLeft pad ' '
                     )
                         ++ " | "
                         ++ line

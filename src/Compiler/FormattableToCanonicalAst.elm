@@ -13,11 +13,6 @@ import Types.Meta exposing (Meta)
 import Types.Token as Token
 
 
-todoPos : Pos
-todoPos =
-    ( -1, -1 )
-
-
 {-| `maybeUpdateTarget` is used for record update shorthands:
 
       new = { old | x = .x + 1 }
@@ -52,6 +47,32 @@ initEnv ro =
 
 do a b =
     Result.andThen b a
+
+
+
+----
+--- Position
+--
+
+
+{-| TODO Pos should include module name
+-}
+todoPos : Pos
+todoPos =
+    { moduleName = "TODO"
+    , moduleCode = ""
+    , start = -1
+    , end = -1
+    }
+
+
+pos : Env -> Int -> Int -> Pos
+pos env start end =
+    { moduleName = env.ro.currentModule
+    , moduleCode = env.ro.code
+    , start = start
+    , end = end
+    }
 
 
 
@@ -661,7 +682,7 @@ translateExpression : Env -> FA.Expression -> Res (CA.Expression Pos)
 translateExpression env faExpr =
     case faExpr of
         FA.Literal args ->
-            Ok <| CA.Literal ( args.start, args.end ) args.value
+            Ok <| CA.Literal (pos env args.start args.end) args.value
 
         FA.Variable args ->
             if args.binop then
@@ -669,7 +690,7 @@ translateExpression env faExpr =
                 , name = args.name
                 , attrPath = []
                 }
-                    |> CA.Variable ( args.start, args.end )
+                    |> CA.Variable (pos env args.start args.end)
                     |> Ok
 
             else
@@ -690,7 +711,7 @@ translateExpression env faExpr =
                 , name = resolveValueName env.ro declaredInsideFunction mod name
                 , attrPath = attrPath
                 }
-                    |> CA.Variable ( args.start, args.end )
+                    |> CA.Variable (pos env args.start args.end)
                     |> Ok
 
         FA.Lambda fa ->
@@ -711,7 +732,7 @@ translateExpression env faExpr =
             { parameter = caHead
             , body = List.foldr wrapLambda caBody caTail
             }
-                |> CA.Lambda ( fa.start, -1 )
+                |> CA.Lambda todoPos
                 |> Ok
 
         FA.FunctionCall s e { reference, arguments } ->
@@ -722,7 +743,7 @@ translateExpression env faExpr =
                     { reference = refAccum
                     , argument = argument
                     }
-                        |> CA.Call ( s, e )
+                        |> CA.Call (pos env s e)
             in
             Result.map2
                 (List.foldl fold)
@@ -736,7 +757,7 @@ translateExpression env faExpr =
         FA.If { start, condition, true, false } ->
             Result.map3
                 (\c t f ->
-                    CA.If ( start, -1 )
+                    CA.If todoPos
                         { condition = [ CA.Evaluation c ]
                         , true = t
                         , false = f
@@ -784,7 +805,7 @@ translateExpression env faExpr =
             in
             Result.map3
                 (\caValue caPatternsAndStatements caElse ->
-                    CA.Try ( fa.start, -1 )
+                    CA.Try todoPos
                         { value = caValue
                         , patterns = caPatternsAndStatements ++ caElse
                         }

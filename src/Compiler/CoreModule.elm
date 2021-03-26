@@ -14,7 +14,11 @@ root name =
 
 todoPos : Pos
 todoPos =
-    ( -2, -2 )
+    { moduleName = "Core"
+    , moduleCode = ""
+    , start = -2
+    , end = -2
+    }
 
 
 {-| This module contains all the types that are necessary for the syntax.
