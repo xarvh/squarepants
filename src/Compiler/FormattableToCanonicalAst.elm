@@ -714,7 +714,7 @@ translateExpression env faExpr =
                 |> CA.Lambda ( fa.start, -1 )
                 |> Ok
 
-        FA.FunctionCall { reference, arguments } ->
+        FA.FunctionCall s e { reference, arguments } ->
             -- ref arg1 arg2 arg3...
             let
                 fold : CA.Argument Pos -> CA.Expression Pos -> CA.Expression Pos
@@ -722,7 +722,7 @@ translateExpression env faExpr =
                     { reference = refAccum
                     , argument = argument
                     }
-                        |> CA.Call todoPos
+                        |> CA.Call ( s, e )
             in
             Result.map2
                 (List.foldl fold)

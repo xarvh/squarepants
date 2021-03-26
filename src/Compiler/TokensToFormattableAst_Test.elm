@@ -73,7 +73,7 @@ asEvaluation s =
 runParser : Syntax.Parser a -> List Token -> Result String a
 runParser parser ts =
     ts
-        |> Parser.parse parser Syntax.unconsIgnoreComments
+        |> Parser.parse (Syntax.discardSecond parser Parser.end) Syntax.unconsIgnoreComments
         |> Syntax.outcomeToResult "Test" "" ts
         |> Compiler.TestHelpers.resErrorToString
 
@@ -128,7 +128,7 @@ lambdas =
                     , Token.NumberLiteral "3"
                     ]
                         |> List.indexedMap kindToToken
-                        |> runParser (Syntax.end Syntax.expr)
+                        |> runParser Syntax.expr
             , expected =
                 Ok <|
                     FA.Lambda
@@ -162,7 +162,7 @@ lambdas =
                     , Token.BlockEnd
                     ]
                         |> List.indexedMap kindToToken
-                        |> runParser (Syntax.end Syntax.expr)
+                        |> runParser Syntax.expr
             , expected =
                 Ok
                     (FA.Lambda
@@ -195,7 +195,7 @@ lambdas =
                     , Token.NumberLiteral "3"
                     ]
                         |> List.indexedMap kindToToken
-                        |> runParser (Syntax.end Syntax.expr)
+                        |> runParser Syntax.expr
             , expected =
                 Ok
                     (FA.Lambda

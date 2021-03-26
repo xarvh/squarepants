@@ -211,6 +211,14 @@ doWithDebug log name firstParser chainedParser =
                 chainedParser a getNext path nextReadState
 
 
+here : Parser t readState e readState
+here =
+    \getNext path readState ->
+        Success readState readState
+
+
+
+
 updState : (readState -> readState) -> Parser t readState e readState
 updState upd =
     \getNext path readState ->

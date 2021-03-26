@@ -1093,7 +1093,7 @@ viewFaExpression expr =
         FA.Variable s ->
             Html.text s.name
 
-        FA.FunctionCall { reference, arguments } ->
+        FA.FunctionCall s e { reference, arguments } ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div

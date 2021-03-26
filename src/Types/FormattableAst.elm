@@ -96,7 +96,7 @@ type Expression
         , parameters : OneOrMore Pattern
         , body : OneOrMore Statement
         }
-    | FunctionCall
+    | FunctionCall Int Int
         { reference : Expression
         , arguments : OneOrMore Expression
         }
@@ -140,6 +140,7 @@ type Pattern
     | PatternTuple (List Pattern)
 
 
+{-
 exprStart : Expression -> Int
 exprStart expr =
     case expr of
@@ -175,3 +176,4 @@ exprStart expr =
 
         List _ ->
             Debug.todo "exprStart"
+-}

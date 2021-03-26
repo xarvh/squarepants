@@ -44,6 +44,19 @@ type alias Parser a =
     Parser.Parser Token (List Token) MakeError a
 
 
+here : Parser Int
+here =
+    do Parser.here <| \tokens ->
+    succeed
+        (case tokens of
+            next :: rest ->
+                next.start
+
+            [] ->
+                0
+        )
+
+
 
 ----
 --- Main
@@ -53,7 +66,7 @@ type alias Parser a =
 parse : String -> String -> List Token -> Res (List FA.Statement)
 parse moduleName code tokens =
     tokens
-        |> Parser.parse (end module_) unconsIgnoreComments
+        |> Parser.parse module_ unconsIgnoreComments
         |> outcomeToResult moduleName code tokens
         |> Result.map OneOrMore.toList
 
@@ -69,13 +82,6 @@ outcomeToResult moduleName code tokens outcome =
 
         Parser.Failure readState ->
             Err <| errorOptionsExhausted moduleName code readState
-
-
-end : Parser a -> Parser a
-end parser =
-    do parser <| \v ->
-    do Parser.end <| \_ ->
-    succeed v
 
 
 unconsIgnoreComments : List Token -> Maybe ( Token, List Token )
@@ -94,14 +100,20 @@ unconsIgnoreComments ls =
 
 module_ : Parser (OneOrMore FA.Statement)
 module_ =
-    do
-        (oneOf
-            [ kind Token.BlockStart
-            , kind Token.NewSiblingLine
-            ]
-        )
-    <| \_ ->
-    oomSeparatedBy (kind Token.NewSiblingLine) statement
+    let
+        start =
+            oneOf
+                [ kind Token.BlockStart
+                , kind Token.NewSiblingLine
+                ]
+
+        statements =
+            oomSeparatedBy (kind Token.NewSiblingLine) statement
+
+        end =
+            Parser.end
+    in
+    Parser.surroundWith start end statements
 
 
 
@@ -996,11 +1008,13 @@ patternApplicationOr higher =
 
 functionApplicationOr : Parser FA.Expression -> Parser FA.Expression
 functionApplicationOr higher =
+    do here <| \start ->
     do higher <| \e ->
     do (zeroOrMore higher) <| \es ->
+    do here <| \end ->
     case es of
         argsHead :: argsTail ->
-            succeed <| FA.FunctionCall { reference = e, arguments = ( argsHead, argsTail ) }
+            succeed <| FA.FunctionCall start end { reference = e, arguments = ( argsHead, argsTail ) }
 
         [] ->
             succeed e
