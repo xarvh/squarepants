@@ -56,10 +56,13 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
                             [ CA.Evaluation
                                 (CA.Call dummyExt
                                     { argument =
-                                        CA.ArgumentExpression
-                                            (CA.Variable dummyExt
-                                                { attrPath = [], isRoot = False, name = "b" }
-                                            )
+                                        (if mutates then
+                                            CA.ArgumentMutable
+
+                                         else
+                                            CA.ArgumentExpression << CA.Variable dummyExt
+                                        )
+                                            { attrPath = [], isRoot = False, name = "b" }
                                     , reference =
                                         CA.Call dummyExt
                                             { argument =
