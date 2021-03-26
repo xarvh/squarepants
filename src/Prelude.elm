@@ -84,6 +84,13 @@ metaString =
             "Maybe"
           ]
         }, {
+          "path": "SPCore/Text",
+          "importAs": "Text",
+          "globalValues": [
+          ],
+          "globalTypes": [
+          ]
+        }, {
           "path": "SPCore/Debug",
           "importAs": "Debug",
           "globalValues": [

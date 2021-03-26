@@ -47,6 +47,7 @@ initialFiles =
     [ moduleMain
     , moduleMaybe
     , moduleList
+    , moduleText
     , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
@@ -77,6 +78,32 @@ moduleMaybe =
             Nothing
           Just v then
             Just (f v)
+        """
+    )
+
+
+moduleText =
+    ( "SPCore/Text"
+    , """
+      fromInt : Number -> Text
+      fromInt n =
+        "<native>"
+
+      join : Text -> List Text -> Text
+      join sep listOfText =
+        try listOfText as
+            SPCore.Nil then
+              ""
+
+            SPCore.Cons head tail then
+              rec ls acc =
+                try ls as
+                  SPCore.Nil then
+                    acc
+                  SPCore.Cons h t then
+                    rec t << acc .. sep .. h
+
+              rec tail head
         """
     )
 
@@ -149,15 +176,13 @@ languageOverview =
       ]
 
 
+    # TODO rework this example
     repeatHello : Int -> Text
     repeatHello times =
-      "TODO"
-    [# TODO: implement List. and Text. functions
-      times
-        >> List.repeat 3
-        >> List.map fn n = "This is hello #" .. Text.fromInt n
+      "hello"
+        >> List.repeat times
+        >> List.map (fn n = "This is hello #" .. Text.fromInt n)
         >> Text.join ""
-    #]
 
 
 

@@ -19,6 +19,7 @@ nativeNonOps =
         |> Dict.insert Compiler.CoreModule.noneValue "null"
         |> Dict.insert "SPCore/Debug.log" "sp_log"
         |> Dict.insert "SPCore/Debug.todo" "sp_todo"
+        |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
         |> Dict.insert "/" "sp_divide"
 
 
@@ -184,15 +185,18 @@ const sp_divide = (right) => (left) => {
   return left / right;
 }
 
+
 const sp_todo = (message) => {
   throw new Error("TODO: " + message);
 }
-
 
 const sp_log = (message) => (thing) => {
   console.log(message, thing);
   return thing;
 }
+
+
+const text_fromInt = (n) => '' + n;
     """
 
 
