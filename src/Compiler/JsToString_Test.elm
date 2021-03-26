@@ -321,4 +321,10 @@ natives =
             """
             (eval "Test.result")
             (Test.okEqual """{"first":true,"second":false}""")
+        , codeTest "partial application"
+            """
+            result = (-) 2
+            """
+            (eval "Test.result")
+            (Test.okEqual "undefined")
         ]

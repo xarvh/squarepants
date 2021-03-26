@@ -664,25 +664,34 @@ translateExpression env faExpr =
             Ok <| CA.Literal ( args.start, args.end ) args.value
 
         FA.Variable args ->
-            do (stringToStructuredName env args.start args.end args.name) <| \sname ->
-            let
-                ( name, mod, attrPath ) =
-                    case sname of
-                        StructuredName_Value a ->
-                            ( a.name, a.mod, a.attrPath )
+            if args.binop then
+                { isRoot = True
+                , name = args.name
+                , attrPath = []
+                }
+                    |> CA.Variable ( args.start, args.end )
+                    |> Ok
 
-                        StructuredName_TypeOrCons a ->
-                            ( a.name, a.mod, [] )
+            else
+                do (stringToStructuredName env args.start args.end args.name) <| \sname ->
+                let
+                    ( name, mod, attrPath ) =
+                        case sname of
+                            StructuredName_Value a ->
+                                ( a.name, a.mod, a.attrPath )
 
-                declaredInsideFunction =
-                    Set.member name env.nonRootValues
-            in
-            { isRoot = not declaredInsideFunction
-            , name = resolveValueName env.ro declaredInsideFunction mod name
-            , attrPath = attrPath
-            }
-                |> CA.Variable ( args.start, args.end )
-                |> Ok
+                            StructuredName_TypeOrCons a ->
+                                ( a.name, a.mod, [] )
+
+                    declaredInsideFunction =
+                        Set.member name env.nonRootValues
+                in
+                { isRoot = not declaredInsideFunction
+                , name = resolveValueName env.ro declaredInsideFunction mod name
+                , attrPath = attrPath
+                }
+                    |> CA.Variable ( args.start, args.end )
+                    |> Ok
 
         FA.Lambda fa ->
             let

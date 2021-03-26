@@ -81,6 +81,7 @@ type Expression
         { start : Int
         , end : Int
         , name : String
+        , binop : Bool
         }
     | Lvalue
         -- TODO rename to `Mutable`?

@@ -168,6 +168,14 @@ binops =
                         }
                     )
             }
+        , codeTest "functional notation"
+            """
+            a = (-)
+            """
+            (firstEvaluation "a")
+            (Test.okEqual <|
+                CA.Variable () { name = "-", isRoot = True, attrPath = [] }
+            )
         ]
 
 

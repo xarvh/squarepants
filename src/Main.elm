@@ -124,7 +124,6 @@ alias Int = Number
 alias Float = Number
 alias Vec2 = Number
 
-
 floatOne : Float
 floatOne =
   1
@@ -133,11 +132,10 @@ fibonacci : Int -> Int
 fibonacci n =
   if n < 2 then n else n + fibonacci (n - 1)
 
-[# TODO: binop functional notation not implemented =(
+# `left - right` becomes `(-) right left`
 subtractTwoFrom : Vec2 -> Vec2
 subtractTwoFrom =
   (-) 2
-#]
 
 
 
@@ -278,12 +276,11 @@ init : Model
 init =
     { files = Dict.fromList initialFiles
     , selectedFile =
-        "Language/Overview"
-
-    --         initialFiles
-    --             |> List.head
-    --             |> Maybe.map Tuple.first
-    --             |> Maybe.withDefault ""
+        --         "Language/Overview"
+        initialFiles
+            |> List.head
+            |> Maybe.map Tuple.first
+            |> Maybe.withDefault ""
     }
 
 

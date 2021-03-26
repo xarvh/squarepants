@@ -1,7 +1,6 @@
 module Compiler.CanonicalToJs exposing (..)
 
 import Compiler.CoreModule
-import Compiler.TypeInference
 import Dict exposing (Dict)
 import Lib
 import RefHierarchy
@@ -13,7 +12,8 @@ import Types.Literal
 
 nativeNonOps : Dict String JA.Name
 nativeNonOps =
-    Dict.empty
+    nativeBinops
+        |> Dict.map (always .fnName)
         |> Dict.insert Compiler.CoreModule.trueValue "true"
         |> Dict.insert Compiler.CoreModule.falseValue "false"
         |> Dict.insert Compiler.CoreModule.noneValue "null"
@@ -22,21 +22,72 @@ nativeNonOps =
         |> Dict.insert "/" "sp_divide"
 
 
-nativeBinops : Dict String { opName : JA.Name, mutates : Bool }
+nativeBinops : Dict String { jsSymb : JA.Name, mutates : Bool, fnName : String }
 nativeBinops =
     Dict.empty
-        |> Dict.insert "+" { opName = "+", mutates = False }
-        |> Dict.insert "*" { opName = "*", mutates = False }
-        |> Dict.insert "-" { opName = "-", mutates = False }
-        |> Dict.insert ":=" { opName = "=", mutates = True }
-        |> Dict.insert "+=" { opName = "+=", mutates = True }
-        |> Dict.insert ".." { opName = "+", mutates = False }
-        |> Dict.insert ">" { opName = ">", mutates = False }
-        |> Dict.insert "<" { opName = "<", mutates = False }
+        |> Dict.insert "+" { jsSymb = "+", mutates = False, fnName = "add" }
+        |> Dict.insert "*" { jsSymb = "*", mutates = False, fnName = "mul" }
+        |> Dict.insert "-" { jsSymb = "-", mutates = False, fnName = "sub" }
+        |> Dict.insert ":=" { jsSymb = "=", mutates = True, fnName = "mutass" }
+        |> Dict.insert "+=" { jsSymb = "+=", mutates = True, fnName = "mutadd" }
+        |> Dict.insert ".." { jsSymb = "+", mutates = False, fnName = "strcon" }
+        |> Dict.insert ">" { jsSymb = ">", mutates = False, fnName = "greaterThan" }
+        |> Dict.insert "<" { jsSymb = "<", mutates = False, fnName = "lesserThan" }
 
 
 none =
     translatePath Compiler.CoreModule.noneValue
+
+
+nativeBinopToFunction : String -> { jsSymb : JA.Name, mutates : Bool, fnName : String } -> List JA.Statement -> List JA.Statement
+nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
+    let
+        dummyExt =
+            ()
+    in
+    ([ CA.Evaluation
+        (CA.Lambda dummyExt
+            { parameter = CA.PatternAny "a"
+            , body =
+                [ CA.Evaluation
+                    (CA.Lambda dummyExt
+                        { parameter = CA.PatternAny "b"
+                        , body =
+                            [ CA.Evaluation
+                                (CA.Call dummyExt
+                                    { argument =
+                                        CA.ArgumentExpression
+                                            (CA.Variable dummyExt
+                                                { attrPath = [], isRoot = False, name = "b" }
+                                            )
+                                    , reference =
+                                        CA.Call dummyExt
+                                            { argument =
+                                                CA.ArgumentExpression
+                                                    (CA.Variable dummyExt
+                                                        { attrPath = [], isRoot = False, name = "a" }
+                                                    )
+                                            , reference =
+                                                CA.Variable dummyExt
+                                                    { attrPath = [], isRoot = True, name = spName }
+                                            }
+                                    }
+                                )
+                            ]
+                        }
+                    )
+                ]
+            }
+        )
+     ]
+        |> translateBodyToExpr Set.empty
+        |> JA.Define fnName
+    )
+        :: acc
+
+
+nativeBinopsAsFns =
+    Dict.foldl nativeBinopToFunction [] nativeBinops
 
 
 
@@ -289,7 +340,7 @@ translateAll ca =
             (fns ++ reorderedNonFuns)
                 |> List.concatMap (translateValueDef Set.empty >> Tuple.first)
     in
-    cons ++ vals
+    nativeBinopsAsFns ++ cons ++ vals
 
 
 translateValueDef : Env -> CA.ValueDef e -> ( List JA.Statement, Env )
@@ -545,14 +596,14 @@ maybeNativeBinop env ar =
                         Nothing ->
                             Nothing
 
-                        Just { opName, mutates } ->
+                        Just { jsSymb, mutates } ->
                             let
                                 cons =
                                     if mutates then
-                                        JA.Mutop opName none
+                                        JA.Mutop jsSymb none
 
                                     else
-                                        JA.Binop opName
+                                        JA.Binop jsSymb
                             in
                             cons
                                 (translateArg { nativeBinop = True } env ar.argument)

@@ -136,22 +136,20 @@ errorExperimentingWithNoExtensibleTypes moduleName code state =
         [ Error.text "Extensible types are not supported, I want to see if it's good to do without them" ]
 
 
+
 {-
-errorCantUseWithInsidePatternMatching : String -> String -> List Token -> Error.Error
-errorCantUseWithInsidePatternMatching moduleName code nonConsumedTokens =
-    case nonConsumedTokens of
-        [] ->
-            Debug.todo "wat"
+   errorCantUseWithInsidePatternMatching : String -> String -> List Token -> Error.Error
+   errorCantUseWithInsidePatternMatching moduleName code nonConsumedTokens =
+       case nonConsumedTokens of
+           [] ->
+               Debug.todo "wat"
 
-        token :: _ ->
-            Error.makeError moduleName
-                [ Error.text "`with` cannot be used when pattern-matching"
-                , Error.showLines code 2 token.start
-                ]
+           token :: _ ->
+               Error.makeError moduleName
+                   [ Error.text "`with` cannot be used when pattern-matching"
+                   , Error.showLines code 2 token.start
+                   ]
 -}
-
-
-
 ----
 --- Terms
 --
@@ -410,16 +408,21 @@ term =
                 |> succeed
 
         Token.Name { mutable } s ->
-            { start = token.start
-            , end = token.end
-            , name = s
-            }
-                |> (if mutable then
-                        FA.Lvalue
+            (if mutable then
+                FA.Lvalue
+                    { start = token.start
+                    , end = token.end
+                    , name = s
+                    }
 
-                    else
-                        FA.Variable
-                   )
+             else
+                FA.Variable
+                    { start = token.start
+                    , end = token.end
+                    , name = s
+                    , binop = False
+                    }
+            )
                 |> su s
 
         _ ->
@@ -447,7 +450,7 @@ expr =
     in
     Parser.expression term
         -- the `Or` stands for `Or higher priority parser`
-        [ parensOr nest
+        [ parensOr (oneOf [ binopInsideParens, nest ])
         , listOr FA.List nest
         , recordOr Token.Defop recordConstructor nest
         , lambdaOr
@@ -1036,6 +1039,23 @@ unaryOperator =
 ----
 --- Binops
 --
+
+
+binopInsideParens : Parser FA.Expression
+binopInsideParens =
+    do oneToken <| \token ->
+    case token.kind of
+        Token.Binop g s ->
+            { start = token.start
+            , end = token.end
+            , name = s
+            , binop = True
+            }
+                |> FA.Variable
+                |> succeed
+
+        _ ->
+            fail
 
 
 binopsOr : Token.PrecedenceGroup -> Parser FA.Expression -> Parser FA.Expression

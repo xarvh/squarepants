@@ -615,9 +615,9 @@ binops =
             FA.Binop
                 { group = Token.Pipe
                 , sepList =
-                    ( FA.Variable { start = b, end = b + 1, name = "b" }
+                    ( FA.Variable { start = b, end = b + 1, name = "b", binop = False }
                     , [ ( ">>"
-                        , FA.Variable { start = c, end = c + 1, name = "c" }
+                        , FA.Variable { start = c, end = c + 1, name = "c", binop = False }
                         )
                       ]
                     )
@@ -627,12 +627,12 @@ binops =
             FA.Binop
                 { group = Token.Pipe
                 , sepList =
-                    ( FA.Variable { start = b, end = b + 1, name = "b" }
+                    ( FA.Variable { start = b, end = b + 1, name = "b", binop = False }
                     , [ ( ">>"
-                        , FA.Variable { start = c, end = c + 1, name = "c" }
+                        , FA.Variable { start = c, end = c + 1, name = "c", binop = False }
                         )
                       , ( ">>"
-                        , FA.Variable { start = d, end = d + 1, name = "d" }
+                        , FA.Variable { start = d, end = d + 1, name = "d", binop = False }
                         )
                       ]
                     )
