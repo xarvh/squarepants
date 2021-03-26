@@ -44,201 +44,207 @@ runTests =
 
 
 initialFiles =
-    [ ( "Main"
-      , """
-result = Language/Overview.fibonacci 5
-    """
-      )
-    , ( "SPCore/Maybe"
-      , """
-union Maybe a = Nothing, Just a
-
-map : (a -> b) -> Maybe a -> Maybe b
-map f m =
-  try m as
-    Nothing then
-      Nothing
-    Just v then
-      Just (f v)
-        """
-      )
-    , ( "SPCore/List"
-      , """
-each : List a -> (a -> b) -> None
-each ls f =
-  try ls as
-    SPCore.Nil then
-      None
-
-    SPCore.Cons head tail then
-      f head
-      each tail f
-
-repeat : Number -> a -> List a
-repeat n a =
-  # TODO
-  []
-
-
-        """
-      )
-    , ( "Language/Overview"
-      , featureOverview
-      )
-
-    ----
-    --- Meta
-    --
-    , ( metaFileName
-      , Prelude.metaString
-      )
+    [ moduleMain
+    , moduleMaybe
+    , moduleList
+    , languageOverview
+    , ( metaFileName, Prelude.metaString )
     ]
+        |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
 
 
 metaFileName =
     "meta"
 
 
-featureOverview =
-    """[#
-   SquarePants has no import statements: instead, project-wide imports are
-   declared in the `meta` file.
-#]
+moduleMain =
+    ( "Main"
+    , """
+      result = Language/Overview.fibonacci 5
+      """
+    )
+
+
+moduleMaybe =
+    ( "SPCore/Maybe"
+    , """
+      union Maybe a = Nothing, Just a
+
+      map : (a -> b) -> Maybe a -> Maybe b
+      map f m =
+        try m as
+          Nothing then
+            Nothing
+          Just v then
+            Just (f v)
+        """
+    )
+
+
+moduleList =
+    ( "SPCore/List"
+    , """
+      each : List a -> (a -> b) -> None
+      each ls f =
+        try ls as
+          SPCore.Nil then
+            None
+
+          SPCore.Cons head tail then
+            f head
+            each tail f
+
+      repeat : Number -> a -> List a
+      repeat n a =
+        # TODO
+        []
+        """
+    )
+
+
+languageOverview =
+    ( "Language/Overview"
+    , """
+    [#
+       SquarePants has no import statements: instead, project-wide imports are
+       declared in the `meta` file.
+    #]
 
 
 
-# Basic stuff
+    # Basic stuff
 
-numberOne =
-  1
+    numberOne =
+      1
 
-addThreeNumbers x y z =
-  x + y + z
-
-
-# TODO: polymorphism for number types is not yet implemented =(
-alias Int = Number
-alias Float = Number
-alias Vec2 = Number
-
-floatOne : Float
-floatOne =
-  1
-
-fibonacci : Int -> Int
-fibonacci n =
-  if n < 2 then n else n + fibonacci (n - 1)
-
-# `left - right` becomes `(-) right left`
-subtractTwoFrom : Vec2 -> Vec2
-subtractTwoFrom =
-  (-) 2
+    addThreeNumbers x y z =
+      x + y + z
 
 
+    # TODO: polymorphism for number types is not yet implemented =(
+    alias Int = Number
+    alias Float = Number
+    alias Vec2 = Number
 
-listOfText : [ Text ]
-listOfText = [
-  , "Gary"
-  , "Bikini Bottom"
-  , "I'm ready! Promotion!"
-  ]
+    floatOne : Float
+    floatOne =
+      1
 
+    fibonacci : Int -> Int
+    fibonacci n =
+      if n < 2 then n else n + fibonacci (n - 1)
 
-repeatHello : Int -> Text
-repeatHello times =
-  "TODO"
-[# TODO: implement List. and Text. functions
-  times
-    >> List.repeat 3
-    >> List.map fn n = "This is hello #" .. Text.fromInt n
-    >> Text.join ""
-#]
+    # `left - right` becomes `(-) right left`
+    subtractTwoFrom : Vec2 -> Vec2
+    subtractTwoFrom =
+      (-) 2
 
 
 
-# Mutability
-
-average : List Int -> Float
-average numbers =
-  # mutable variables can only be local and can't leave their scope.
-  # `average` is still a pure function.
-  n @= 0
-  sum @= 0
-
-  List.each numbers fn x =
-    @n += 1
-    @sum += x
-
-  # division by 0 yields 0
-  sum / n
+    listOfText : [ Text ]
+    listOfText = [
+      , "Gary"
+      , "Bikini Bottom"
+      , "I'm ready! Promotion!"
+      ]
 
 
-[# TODO: implement Random.
-# The argument preceding `@>` is mutable
-generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
-generateTwoRandomNumbers min max seed =
-  # '&' is used for tuples
-  Random.int min max @seed & Random.int min max @seed
-#]
+    repeatHello : Int -> Text
+    repeatHello times =
+      "TODO"
+    [# TODO: implement List. and Text. functions
+      times
+        >> List.repeat 3
+        >> List.map fn n = "This is hello #" .. Text.fromInt n
+        >> Text.join ""
+    #]
 
 
 
-# Algebraic Data Types
+    # Mutability
 
-union LoadingState payload =
-    , NotRequested
-    , Requested
-    , Error Text
-    , Available payload
+    average : List Int -> Float
+    average numbers =
+      # mutable variables can only be local and can't leave their scope.
+      # `average` is still a pure function.
+      n @= 0
+      sum @= 0
 
-getStatusName : LoadingState payload -> Text
-getStatusName loadingState =
-  try loadingState as
-    NotRequested then "Not needed"
-    Requested then "Awaiting server response"
-    Error message then "Error: " .. message
-    Available _ then "Successfully loaded"
+      List.each numbers fn x =
+        @n += 1
+        @sum += x
 
-getPayload : LoadingState payload -> Maybe payload
-getPayload loadingState =
-  try loadingState as Available payload then Just payload else Nothing
+      # division by 0 yields 0
+      sum / n
 
 
-
-# Records
-
-alias Crab = {
-  , name : Text
-  , money : Float
-  }
-
-eugeneKrabs : Crab
-eugeneKrabs = {
-  , name = "Eugene H. Krabs"
-  , money = 2 #TODO 2_345_678.90
-  }
+    [# TODO: implement Random.
+    # The argument preceding `@>` is mutable
+    generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
+    generateTwoRandomNumbers min max seed =
+      # '&' is used for tuples
+      Random.int min max @seed & Random.int min max @seed
+    #]
 
 
-# TODO add a record access example
+
+    # Algebraic Data Types
+
+    union LoadingState payload =
+        , NotRequested
+        , Requested
+        , Error Text
+        , Available payload
+
+    getStatusName : LoadingState payload -> Text
+    getStatusName loadingState =
+      try loadingState as
+        NotRequested then "Not needed"
+        Requested then "Awaiting server response"
+        Error message then "Error: " .. message
+        Available _ then "Successfully loaded"
+
+    getPayload : LoadingState payload -> Maybe payload
+    getPayload loadingState =
+      try loadingState as Available payload then Just payload else Nothing
 
 
-earnMoney : Float -> Crab -> Crab
-earnMoney profit crab =
-  # `.money` is a shorthand for `crab.money`
-  { crab with money = .money + profit }
+
+    # Records
+
+    alias Crab = {
+      , name : Text
+      , money : Float
+      }
+
+    eugeneKrabs : Crab
+    eugeneKrabs = {
+      , name = "Eugene H. Krabs"
+      , money = 2 #TODO 2_345_678.90
+      }
 
 
-# do-notation
+    # TODO add a record access example
 
-blah f =
-  None # TODO use actually declared stuff so it compiles
-  #  to = Result.andThen
-  #  blah blah blah >> to fn blahOutput =
-  #  someotherline >> to fn otherThingy =
-  #  doStuffWith blahOutput otherThingy
+
+    earnMoney : Float -> Crab -> Crab
+    earnMoney profit crab =
+      # `.money` is a shorthand for `crab.money`
+      { crab with money = .money + profit }
+
+
+    # do-notation
+
+    blah f =
+      None # TODO use actually declared stuff so it compiles
+      #  to = Result.andThen
+      #  blah blah blah >> to fn blahOutput =
+      #  someotherline >> to fn otherThingy =
+      #  doStuffWith blahOutput otherThingy
 
 
     """
+    )
 
 
 tests =
@@ -379,7 +385,12 @@ viewFilesSelector model =
                 , Html.Attributes.disabled <| model.selectedFile == name
                 , class "ml"
                 ]
-                [ Html.text name ]
+                [ if name == metaFileName then
+                    Html.text <| name ++ ".json"
+
+                  else
+                    Html.text <| name ++ ".sp"
+                ]
     in
     Html.div
         [ class "row mt"
