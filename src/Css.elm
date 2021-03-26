@@ -83,6 +83,7 @@ body {
   text-align: right;
 }
 
+.mutable  { color: red; }
 .comment  { color: #00d; }
 .literal  { color: green; }
 .valueUp  { color: #aff; }

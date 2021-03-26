@@ -63,10 +63,8 @@ map f m =
       )
     , ( "SPCore/List"
       , """
-each : List a -> (a @> None) -> None
+each : List a -> (a -> b) -> None
 each ls f =
-  None
-  [# TODO
   try ls as
     SPCore.Nil then
       None
@@ -74,7 +72,6 @@ each ls f =
     SPCore.Cons head tail then
       f head
       each tail f
-  #]
 
 repeat : Number -> a -> List a
 repeat n a =
@@ -85,7 +82,7 @@ repeat n a =
         """
       )
     , ( "Language/Overview"
-      , allCode
+      , featureOverview
       )
 
     ----
@@ -101,9 +98,8 @@ metaFileName =
     "meta"
 
 
-allCode =
-    """
-[#
+featureOverview =
+    """[#
    SquarePants has no import statements: instead, project-wide imports are
    declared in the `meta` file.
 #]
@@ -149,7 +145,7 @@ listOfText = [
 
 repeatHello : Int -> Text
 repeatHello times =
-  "todo"
+  "TODO"
 [# TODO: implement List. and Text. functions
   times
     >> List.repeat 3
@@ -172,7 +168,7 @@ average numbers =
     @n += 1
     @sum += x
 
-  # TODO: division by 0 yields 0
+  # division by 0 yields 0
   sum / n
 
 
@@ -585,7 +581,10 @@ tokenToClass meta token =
         Token.Name _ "union" ->
             "keyword"
 
-        Token.Name _ name ->
+        Token.Name { mutable } name ->
+          if mutable then
+            "mutable"
+          else
             if Dict.member name meta.globalValues || Dict.member name meta.globalTypes then
                 if Compiler.FormattableToCanonicalAst.startsWithUpperChar name then
                     "globalUp"
