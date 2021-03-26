@@ -5,6 +5,7 @@ import Browser
 import Compiler.ApplyAliases
 import Compiler.ApplyAliases_Test
 import Compiler.CanonicalToJs
+import Compiler.CanonicalToJs_Test
 import Compiler.FormattableToCanonicalAst
 import Compiler.FormattableToCanonicalAst_Test
 import Compiler.JsToString
@@ -253,6 +254,7 @@ tests =
             --             , Compiler.FindUndeclared_Test.tests
             , Compiler.ApplyAliases_Test.tests
             , Compiler.JsToString_Test.tests
+            , Compiler.CanonicalToJs_Test.tests
             , Compiler.FormattableToCanonicalAst_Test.tests
             ]
 
@@ -582,10 +584,10 @@ tokenToClass meta token =
             "keyword"
 
         Token.Name { mutable } name ->
-          if mutable then
-            "mutable"
-          else
-            if Dict.member name meta.globalValues || Dict.member name meta.globalTypes then
+            if mutable then
+                "mutable"
+
+            else if Dict.member name meta.globalValues || Dict.member name meta.globalTypes then
                 if Compiler.FormattableToCanonicalAst.startsWithUpperChar name then
                     "globalUp"
 
