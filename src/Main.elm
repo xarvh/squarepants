@@ -111,20 +111,27 @@ moduleText =
 moduleList =
     ( "SPCore/List"
     , """
-      each : List a -> (a -> b) -> None
-      each ls f =
-        try ls as
-          SPCore.Nil then
+each : List a -> (a -> b) -> None
+each ls f =
+    try ls as
+        SPCore.Nil then
             None
 
-          SPCore.Cons head tail then
+        SPCore.Cons head tail then
             f head
             each tail f
 
-      repeat : Number -> a -> List a
-      repeat n a =
-        # TODO
-        []
+reverse : List a -> List a
+reverse aList =
+    rec ls acc =
+        try ls as
+            SPCore.Nil then
+                acc
+
+            SPCore.Cons head tail then
+                rec tail (SPCore.Cons head acc)
+
+    rec aList []
         """
     )
 
@@ -132,142 +139,148 @@ moduleList =
 languageOverview =
     ( "Language/Overview"
     , """
-    [#
-       SquarePants has no import statements: instead, project-wide imports are
-       declared in the `meta` file.
-    #]
+[#
+   SquarePants has no import statements: instead, project-wide imports are
+   declared in the `meta` file.
+#]
 
 
+# Declare a constant
+numberOne =
+    1
 
-    # Basic stuff
-
-    numberOne =
-      1
-
-    addThreeNumbers x y z =
-      x + y + z
-
-
-    # TODO: polymorphism for number types is not yet implemented =(
-    alias Int = Number
-    alias Float = Number
-    alias Vec2 = Number
-
-    floatOne : Float
-    floatOne =
-      1
-
-    fibonacci : Int -> Int
-    fibonacci n =
-      if n < 2 then n else n + fibonacci (n - 1)
-
-    # `left - right` becomes `(-) right left`
-    subtractTwoFrom : Vec2 -> Vec2
-    subtractTwoFrom =
-      (-) 2
+# Declare a function
+addThreeNumbers x y z =
+    x + y + z
 
 
-
-    listOfText : [ Text ]
-    listOfText = [
-      , "Gary"
-      , "Bikini Bottom"
-      , "I'm ready! Promotion!"
-      ]
+# TODO: polymorphism for number types is not yet implemented,
+# so I'm cheating and adding these aliases.
+alias Int = Number
+alias Float = Number
+alias Vec2 = Number
 
 
-    # TODO rework this example
-    repeatHello : Int -> Text
-    repeatHello times =
-      "hello"
-        >> List.repeat times
-        >> List.map (fn n = "This is hello #" .. Text.fromInt n)
-        >> Text.join ""
+# Declarations can have a type annotation
+floatSix : Float
+floatSix =
+    # parens are not needed for calling functions
+    addThreeNumbers 1 2 3
 
 
+# if-then-else always yields a value
+fibonacci : Int -> Int
+fibonacci n =
+    if n < 2 then n else n + fibonacci (n - 1)
 
-    # Mutability
 
-    average : List Int -> Float
-    average numbers =
-      # mutable variables can only be local and can't leave their scope.
-      # `average` is still a pure function.
-      n @= 0
-      sum @= 0
+# operators can be used prefixed, like functions
+# `left - right` becomes `(-) right left`
+subtractTwoFrom : Vec2 -> Vec2
+subtractTwoFrom n =
+    (-) 2 n
 
-      List.each numbers fn x =
+
+# Square brackets for Lists.
+# All items must be of the same type
+listOfText : [ Text ]
+listOfText = [
+    , "Gary"
+    , "Bikini Bottom"
+    , "I'm ready! Promotion!"
+    ]
+
+
+# `>>` and `<<` are just syntactic sugar
+# They help using less parens and
+# help visualizing how a value is transformed
+repeatHello : Int -> Text
+repeatHello times =
+    listOfText
+        >> List.reverse
+        >> Text.join ", "
+        >> (..) " and append this text at the end"
+
+
+# When you see `@`, it means "this stuff is mutable"
+average : List Int -> Float
+average numbers =
+    # mutable variables can only be local and can't leave their scope.
+    # `average` is still a pure function.
+    n @= 0
+    sum @= 0
+
+    List.each numbers fn x =
         @n += 1
         @sum += x
 
-      # division by 0 yields 0
-      sum / n
+    # division by 0 yields 0
+    sum / n
 
 
-    [# TODO: implement Random.
-    # The argument preceding `@>` is mutable
-    generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
-    generateTwoRandomNumbers min max seed =
-      # '&' is used for tuples
-      Random.int min max @seed & Random.int min max @seed
-    #]
+[# TODO: implement Random.
+# The argument preceding `@>` is mutable
+generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
+generateTwoRandomNumbers min max seed =
+    # '&' is used for tuples
+    Random.int min max @seed & Random.int min max @seed
+#]
 
 
 
-    # Algebraic Data Types
+# Algebraic Data Types
 
-    union LoadingState payload =
-        , NotRequested
-        , Requested
-        , Error Text
-        , Available payload
+union LoadingState payload =
+    , NotRequested
+    , Requested
+    , Error Text
+    , Available payload
 
-    getStatusName : LoadingState payload -> Text
-    getStatusName loadingState =
-      try loadingState as
+getStatusName : LoadingState payload -> Text
+getStatusName loadingState =
+    try loadingState as
         NotRequested then "Not needed"
         Requested then "Awaiting server response"
         Error message then "Error: " .. message
         Available _ then "Successfully loaded"
 
-    getPayload : LoadingState payload -> Maybe payload
-    getPayload loadingState =
-      try loadingState as Available payload then Just payload else Nothing
+getPayload : LoadingState payload -> Maybe payload
+getPayload loadingState =
+    try loadingState as Available payload then Just payload else Nothing
 
 
 
-    # Records
+# Records
 
-    alias Crab = {
-      , name : Text
-      , money : Float
-      }
+alias Crab = {
+    , name : Text
+    , money : Float
+    }
 
-    eugeneKrabs : Crab
-    eugeneKrabs = {
-      , name = "Eugene H. Krabs"
-      , money = 2 #TODO 2_345_678.90
-      }
-
-
-    # TODO add a record access example
+eugeneKrabs : Crab
+eugeneKrabs = {
+    , name = "Eugene H. Krabs"
+    , money = 2 #TODO 2_345_678.90
+    }
 
 
-    earnMoney : Float -> Crab -> Crab
-    earnMoney profit crab =
-      # `.money` is a shorthand for `crab.money`
-      { crab with money = .money + profit }
+# TODO add a record access example
 
 
-    # do-notation
-
-    blah f =
-      None # TODO use actually declared stuff so it compiles
-      #  to = Result.andThen
-      #  blah blah blah >> to fn blahOutput =
-      #  someotherline >> to fn otherThingy =
-      #  doStuffWith blahOutput otherThingy
+earnMoney : Float -> Crab -> Crab
+earnMoney profit crab =
+    # `.money` is a shorthand for `crab.money`
+    { crab with money = .money + profit }
 
 
+# do-notation
+
+blah f =
+    None # TODO use actually declared stuff so it compiles
+    #  to = Result.andThen
+    #  blah blah blah >> to fn blahOutput =
+    #  someotherline >> to fn otherThingy =
+    #  doStuffWith blahOutput otherThingy
     """
     )
 
@@ -1102,7 +1115,7 @@ viewFaStatement s =
 viewFaPattern : FA.Pattern -> String
 viewFaPattern p =
     case p of
-        FA.PatternAny n ->
+        FA.PatternAny _ n ->
             n
 
         _ ->

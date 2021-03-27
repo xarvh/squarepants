@@ -458,7 +458,7 @@ validateFaDefinition fa =
     let
         maybeName =
             case fa.pattern of
-                FA.PatternAny n ->
+                FA.PatternAny _ n ->
                     Just n
 
                 _ ->
@@ -510,21 +510,21 @@ translatePattern env faPattern =
             Ok caPattern
 
         Lib.Right fn ->
-            errorTodo "can't declare a function here!"
+            errorCantDeclareAFunctionHere env fn faPattern
 
 
 translatePatternOrFunction : Env -> FA.Pattern -> Res (Lib.Either CA.Pattern ( String, List CA.Pattern ))
 translatePatternOrFunction env fa =
     case fa of
-        FA.PatternAny s ->
-            translatePatternOrFunction env (FA.PatternApplication s [])
+        FA.PatternAny faPos s ->
+            translatePatternOrFunction env (FA.PatternApplication faPos s [])
 
-        FA.PatternLiteral l ->
+        FA.PatternLiteral faPos l ->
             CA.PatternLiteral l
                 |> Lib.Left
                 |> Ok
 
-        FA.PatternApplication rawName faArgs ->
+        FA.PatternApplication faPos rawName faArgs ->
             do (stringToStructuredName { env | maybeUpdateTarget = Nothing } {- TODO -} 0 0 rawName) <| \sname ->
             do (Lib.list_mapRes (translatePattern env) faArgs) <| \caArgs ->
             case sname of
@@ -558,7 +558,7 @@ translatePatternOrFunction env fa =
                                         |> Lib.Right
                                         |> Ok
 
-        FA.PatternList fas ->
+        FA.PatternList faPos fas ->
             let
                 fold pattern last =
                     CA.PatternConstructor Core.listCons.name [ pattern, last ]
@@ -567,46 +567,56 @@ translatePatternOrFunction env fa =
                 |> Lib.list_mapRes (translatePattern env)
                 |> Result.map (List.foldr fold (CA.PatternConstructor Core.listNil.name []) >> Lib.Left)
 
-        FA.PatternRecord fas ->
-            let
-                fold ( name, maybePattern ) dict =
-                    if Dict.member name dict then
-                        errorTodo <| "duplicate attribute name in pattern: " ++ name
+        FA.PatternRecord faPos recordArgs ->
+            if recordArgs.extends /= Nothing then
+                errorTodo "can't use `with` inside patterns"
 
-                    else
-                        case maybePattern of
-                            Nothing ->
-                                Dict.insert name (CA.PatternAny name) dict |> Ok
+            else
+                let
+                    fold ( name, maybePattern ) dict =
+                        if Dict.member name dict then
+                            errorTodo <| "duplicate attribute name in pattern: " ++ name
 
-                            Just faPattern ->
-                                faPattern
-                                    |> translatePattern env
-                                    |> Result.map (\caPattern -> Dict.insert name caPattern dict)
-            in
-            Lib.list_foldlRes fold fas Dict.empty
-                |> Result.map (CA.PatternRecord >> Lib.Left)
+                        else
+                            case maybePattern of
+                                Nothing ->
+                                    Dict.insert name (CA.PatternAny name) dict |> Ok
 
-        FA.PatternCons faHead faTail ->
+                                Just faPattern ->
+                                    faPattern
+                                        |> translatePattern env
+                                        |> Result.map (\caPattern -> Dict.insert name caPattern dict)
+                in
+                Lib.list_foldlRes fold recordArgs.attrs Dict.empty
+                    |> Result.map (CA.PatternRecord >> Lib.Left)
+
+        FA.PatternCons faPos faHead faTail ->
             Result.map2
                 (\caHead caTail -> CA.PatternConstructor Core.listCons.name [ caHead, caTail ] |> Lib.Left)
                 (translatePattern env faHead)
                 (translatePattern env faTail)
 
-        FA.PatternTuple fas ->
+        FA.PatternTuple faPos fas ->
             case fas of
                 [ fa1, fa2 ] ->
-                    [ ( "first", Just fa1 )
-                    , ( "second", Just fa2 )
-                    ]
-                        |> FA.PatternRecord
+                    { extends = Nothing
+                    , attrs =
+                        [ ( "first", Just fa1 )
+                        , ( "second", Just fa2 )
+                        ]
+                    }
+                        |> FA.PatternRecord faPos
                         |> translatePatternOrFunction env
 
                 [ fa1, fa2, fa3 ] ->
-                    [ ( "first", Just fa1 )
-                    , ( "second", Just fa2 )
-                    , ( "third", Just fa3 )
-                    ]
-                        |> FA.PatternRecord
+                    { extends = Nothing
+                    , attrs =
+                        [ ( "first", Just fa1 )
+                        , ( "second", Just fa2 )
+                        , ( "third", Just fa3 )
+                        ]
+                    }
+                        |> FA.PatternRecord faPos
                         |> translatePatternOrFunction env
 
                 _ ->
@@ -773,13 +783,13 @@ translateExpression env faExpr =
         FA.Lvalue args ->
             errorTodo "mutable values can be used only as arguments for function or mutation operators"
 
-        FA.Record faArgs ->
-            do (makeUpdateTarget env faArgs.maybeUpdateTarget) <| \caUpdateTarget ->
+        FA.Record ( start, end ) faArgs ->
+            do (makeUpdateTarget env faArgs.extends) <| \caUpdateTarget ->
             do (translateAttrsRec { env | maybeUpdateTarget = caUpdateTarget.maybeName } faArgs.attrs Dict.empty) <| \caAttrs ->
             { maybeUpdateTarget = caUpdateTarget.maybeName
             , attrs = caAttrs
             }
-                |> CA.Record todoPos
+                |> CA.Record (pos env start end)
                 |> caUpdateTarget.wrapper
                 |> Ok
 
@@ -1100,8 +1110,8 @@ translateSimpleBinop env left op right =
 --
 
 
-addAttribute : ReadOnly -> List ( String, FA.Type ) -> Dict String CA.Type -> Res CA.Type
-addAttribute ro faAttrs caAttrsAccum =
+addAttributes : ReadOnly -> List ( String, Maybe FA.Type ) -> Dict String CA.Type -> Res CA.Type
+addAttributes ro faAttrs caAttrsAccum =
     case faAttrs of
         [] ->
             { attrs = caAttrsAccum
@@ -1110,14 +1120,13 @@ addAttribute ro faAttrs caAttrsAccum =
                 |> CA.TypeRecord
                 |> Ok
 
-        ( name, faType ) :: faTail ->
-            case translateType ro faType of
-                Err e ->
-                    -- TODO add `name` in the error?
-                    Err e
-
-                Ok caType ->
-                    addAttribute ro faTail (Dict.insert name caType caAttrsAccum)
+        ( name, maybeFaType ) :: faTail ->
+            let
+                faType =
+                    Maybe.withDefault (FA.TypeName { name = name }) maybeFaType
+            in
+            do (translateType ro faType) <| \caType ->
+            addAttributes ro faTail (Dict.insert name caType caAttrsAccum)
 
 
 startsWithUpperChar : String -> Bool
@@ -1212,8 +1221,20 @@ translateType ro faType =
                 _ ->
                     errorTodo "Tuples can only have size 2 or 3. Use a record."
 
-        FA.TypeRecord attrs ->
-            addAttribute ro attrs Dict.empty
+        FA.TypeRecord p recordArgs ->
+            if recordArgs.extends /= Nothing then
+                errorExperimentingWithNoExtensibleTypes ro p
+
+            else
+                addAttributes ro recordArgs.attrs Dict.empty
+
+
+errorExperimentingWithNoExtensibleTypes : ReadOnly -> FA.Pos -> Res a
+errorExperimentingWithNoExtensibleTypes ro ( start, end ) =
+    Error.makeRes ro.currentModule
+        [ Error.showLines ro.code 2 start
+        , Error.text "For now extensible types are disabled, I want to see if it's good to do without them"
+        ]
 
 
 
@@ -1277,4 +1298,13 @@ errorRecordUpdateShorthandOutsideRecordUpdate start end rawString env =
         env.ro.currentModule
         [ Error.showLines env.ro.code 2 start
         , Error.text <| Error.inlineCode rawString ++ " looks like a record update shorthand, but we are not inside a record update!"
+        ]
+
+
+errorCantDeclareAFunctionHere : Env -> ( String, List CA.Pattern ) -> FA.Pattern -> Res a
+errorCantDeclareAFunctionHere env ( name, args ) originalPattern =
+    Error.makeRes
+        env.ro.currentModule
+        [ Error.showLines env.ro.code 2 (Tuple.first <| FA.patternPos originalPattern)
+        , Error.text "it seems like there is a function declaration inside a pattern?"
         ]

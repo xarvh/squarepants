@@ -217,8 +217,6 @@ here =
         Success readState readState
 
 
-
-
 updState : (readState -> readState) -> Parser t readState e readState
 updState upd =
     \getNext path readState ->
@@ -337,14 +335,11 @@ oneOrMore p =
        let
            parens : Parser t i e o -> Parser t i e o
            parens higher =
-               oneOf
-                   [ higher
-                   , surroundWith args.openParen args.closedParen (do (succeed ()) <| \_ -> expr)
-                   ]
+               surroundWith args.openParen args.closedParen (do (succeed ()) <| \_ -> expr)
 
            expr : Parser t i e o
            expr =
-               expressionRec args.term (parens :: args.ops)
+               expressionRec args.term (higherOr parens :: args.ops)
        in
        expr
 
@@ -367,6 +362,11 @@ expression term ops =
 
         op :: rest ->
             expression (op term) rest
+
+
+higherOr : Parser t i e o -> Parser t i e o -> Parser t i e o
+higherOr parser higher =
+    oneOf [ higher, parser ]
 
 
 surroundWith : Parser t i e ignoredOutput1 -> Parser t i e ignoredOutput2 -> Parser t i e output -> Parser t i e output

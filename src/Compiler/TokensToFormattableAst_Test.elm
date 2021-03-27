@@ -133,12 +133,12 @@ lambdas =
                 Ok <|
                     FA.Lambda
                         { start = 0
-                        , parameters = ( FA.PatternAny "a", [] )
+                        , parameters = ( FA.PatternAny ( 1, 2 ) "a", [] )
                         , body =
                             ( FA.Evaluation <|
                                 FA.Lambda
                                     { start = 3
-                                    , parameters = ( FA.PatternAny "b", [] )
+                                    , parameters = ( FA.PatternAny ( 4, 5 ) "b", [] )
                                     , body = ( FA.Evaluation <| FA.Literal { start = 6, end = 7, value = Types.Literal.Number "3" }, [] )
                                     }
                             , []
@@ -167,12 +167,12 @@ lambdas =
                 Ok
                     (FA.Lambda
                         { start = 0
-                        , parameters = ( FA.PatternAny "a", [] )
+                        , parameters = ( FA.PatternAny ( 1, 2 ) "a", [] )
                         , body =
                             ( FA.Evaluation <|
                                 FA.Lambda
                                     { start = 4
-                                    , parameters = ( FA.PatternAny "b", [] )
+                                    , parameters = ( FA.PatternAny ( 5, 6 ) "b", [] )
                                     , body = ( FA.Evaluation <| FA.Literal { start = 8, end = 9, value = Types.Literal.Number "3" }, [] )
                                     }
                             , []
@@ -200,12 +200,12 @@ lambdas =
                 Ok
                     (FA.Lambda
                         { start = 0
-                        , parameters = ( FA.PatternAny "a", [] )
+                        , parameters = ( FA.PatternAny ( 1, 2 ) "a", [] )
                         , body =
                             ( FA.Evaluation <|
                                 FA.Lambda
                                     { start = 4
-                                    , parameters = ( FA.PatternAny "b", [] )
+                                    , parameters = ( FA.PatternAny ( 5, 6 ) "b", [] )
                                     , body =
                                         ( FA.Evaluation <|
                                             FA.Literal
@@ -419,7 +419,13 @@ records =
         [ simpleTest
             { name = "inline"
             , run = \_ -> firstEvaluation "a = { x = 1 }"
-            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.Literal { end = 11, value = Types.Literal.Number "1", start = 10 }) ) ], maybeUpdateTarget = Nothing })
+            , expected =
+                Ok
+                    (FA.Record ( 4, 12 )
+                        { attrs = [ ( "x", Just (FA.Literal { end = 11, value = Types.Literal.Number "1", start = 10 }) ) ]
+                        , extends = Nothing
+                        }
+                    )
             }
         , simpleTest
             { name = "multiline"
@@ -432,7 +438,16 @@ records =
                       }
                     """
                         |> firstEvaluation
-            , expected = Ok (FA.Record { attrs = [ ( "x", Just (FA.Literal { end = 16, value = Types.Literal.Number "1", start = 15 }) ), ( "y", Just (FA.Literal { end = 26, value = Types.Literal.Number "2", start = 25 }) ) ], maybeUpdateTarget = Nothing })
+            , expected =
+                Ok
+                    (FA.Record ( 5, 27 )
+                        { attrs =
+                            [ ( "x", Just (FA.Literal { end = 16, value = Types.Literal.Number "1", start = 15 }) )
+                            , ( "y", Just (FA.Literal { end = 26, value = Types.Literal.Number "2", start = 25 }) )
+                            ]
+                        , extends = Nothing
+                        }
+                    )
             }
         , simpleTest
             { name = "annotation, inline"
@@ -444,7 +459,13 @@ records =
                     """
                         |> firstAnnotation
                         |> Result.map .type_
-            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeName { name = "Bool" } ) ])
+            , expected =
+                Ok
+                    (FA.TypeRecord ( 5, 16 )
+                        { extends = Nothing
+                        , attrs = [ ( "x", Just <| FA.TypeName { name = "Bool" } ) ]
+                        }
+                    )
             }
         , simpleTest
             { name = "annotation, multiline"
@@ -458,15 +479,14 @@ records =
                     """
                         |> firstAnnotation
                         |> Result.map .type_
-            , expected = Ok (FA.TypeRecord [ ( "x", FA.TypeName { name = "Bool" } ) ])
+            , expected =
+                Ok
+                    (FA.TypeRecord ( 5, 21 )
+                        { extends = Nothing
+                        , attrs = [ ( "x", Just <| FA.TypeName { name = "Bool" } ) ]
+                        }
+                    )
             }
-        , codeTest "annotation, extensible"
-            """
-            a : { b with x : Bool }
-            a = a
-            """
-            (firstAnnotation >> Result.map .type_)
-            (Test.errContain "not supported")
         , codeTest "[reg] simple assignment, inline"
             """
             a = { b with c }
@@ -487,13 +507,6 @@ records =
             """
             firstDefinition
             Test.justOk
-        , codeTest "[reg] patterns are NOT extensible"
-            """
-            a =
-              { b with c } = d
-            """
-            firstDefinition
-            (Test.errContain "")
         ]
 
 
@@ -576,7 +589,7 @@ patterns =
         [ simpleTest
             { name = "list unpacking"
             , run = \_ -> firstDefinition "[a, b] = x" |> Result.map .pattern
-            , expected = Ok <| FA.PatternList [ FA.PatternAny "a", FA.PatternAny "b" ]
+            , expected = Ok <| FA.PatternList ( 0, 7 ) [ FA.PatternAny ( 1, 2 ) "a", FA.PatternAny ( 4, 5 ) "b" ]
             }
         , isOk
             { name = "list unpacking, inner block"
@@ -592,7 +605,15 @@ x =
         , simpleTest
             { name = "record unpacking"
             , run = \_ -> firstDefinition "{ a, b } = x" |> Result.map .pattern
-            , expected = Ok <| FA.PatternRecord [ ( "a", Nothing ), ( "b", Nothing ) ]
+            , expected =
+                Ok <|
+                    FA.PatternRecord ( 0, 7 )
+                        { extends = Nothing
+                        , attrs =
+                            [ ( "a", Nothing )
+                            , ( "b", Nothing )
+                            ]
+                        }
             }
         , isOk
             { name = "record unpacking, inner block"

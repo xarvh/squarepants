@@ -18,6 +18,10 @@ import Types.Literal
 import Types.Token
 
 
+type alias Pos =
+    ( Int, Int )
+
+
 type alias Module =
     List Statement
 
@@ -68,7 +72,7 @@ type Type
         , to : Type
         }
     | TypeTuple (List Type)
-    | TypeRecord (List ( String, Type ))
+    | TypeRecord Pos (RecordArgs Type)
 
 
 type Expression
@@ -96,7 +100,9 @@ type Expression
         , parameters : OneOrMore Pattern
         , body : OneOrMore Statement
         }
-    | FunctionCall Int Int
+    | FunctionCall
+        Int
+        Int
         { reference : Expression
         , arguments : OneOrMore Expression
         }
@@ -123,57 +129,122 @@ type Expression
         , patterns : List ( Pattern, OneOrMore Statement )
         , maybeElse : Maybe (OneOrMore Statement)
         }
-    | Record
-        { maybeUpdateTarget : Maybe Expression
-        , attrs : List ( String, Maybe Expression )
-        }
+    | Record Pos (RecordArgs Expression)
     | List (List Expression)
 
 
 type Pattern
-    = PatternAny String
-    | PatternLiteral Types.Literal.Value
-    | PatternApplication String (List Pattern)
-    | PatternList (List Pattern)
-    | PatternRecord (List ( String, Maybe Pattern ))
-    | PatternCons Pattern Pattern
-    | PatternTuple (List Pattern)
+    = PatternAny Pos String
+    | PatternLiteral Pos Types.Literal.Value
+    | PatternApplication Pos String (List Pattern)
+    | PatternList Pos (List Pattern)
+    | PatternRecord Pos (RecordArgs Pattern)
+    | PatternCons Pos Pattern Pattern
+    | PatternTuple Pos (List Pattern)
+
+
+type alias RecordArgs expr =
+    { extends : Maybe expr
+    , attrs : List ( String, Maybe expr )
+    }
+
+
+
+----
+--- Helpers
+--
+
+
+patternPos : Pattern -> Pos
+patternPos pa =
+    case pa of
+        PatternAny p _ ->
+            p
+
+        PatternLiteral p _ ->
+            p
+
+        PatternApplication p _ _ ->
+            p
+
+        PatternList p _ ->
+            p
+
+        PatternRecord p _ ->
+            p
+
+        PatternCons p _ _ ->
+            p
+
+        PatternTuple p _ ->
+            p
+
 
 
 {-
-exprStart : Expression -> Int
-exprStart expr =
-    case expr of
-        Literal { start, end, value } ->
-            start
 
-        Variable { start, end, name } ->
-            start
+   extensionFold_pattern : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Expression a, acc ) -> ( Expression b, acc )
+   extensionFold_pattern f ( expr, acc ) =
+       case expr of
 
-        Lvalue { start, end, name } ->
-            start
+       = Literal
+           { start
+           , end
+           , value
+           }
+       | Variable
+           { start
+           , end
+           , name
+           , binop
+           }
+       | Lvalue
+           -- TODO rename to `Mutable`?
+           { start
+           , end
+           , name
+           }
+       | Lambda
+           { start
 
-        Lambda { start, parameters, body } ->
-            start
+           -- TODO this should be a list
+           , parameters
+           , body
+           }
+       | FunctionCall
+           Int
+           Int
+           { reference
+           , arguments
+           }
+       | Binop
+           { group
+           , sepList
+           }
+       | Unop
+           { start
+           , op
+           , right
+           }
+       | If
+           { start
+           , isOneLine
+           , condition
+           , true
+           , false
+           }
+       | Try
+           { start
+           , isOneLine
+           , value
+           , patterns
+           , maybeElse
+           }
+       | Record
+           { maybeUpdateTarget
+           , attrs
+           }
+       | List (List Expression)
 
-        FunctionCall { reference, arguments } ->
-            exprStart reference
 
-        Binop { group, sepList } ->
-            exprStart (Tuple.first sepList)
-
-        Unop { start, op, right } ->
-            start
-
-        If { start, condition, true, false } ->
-            start
-
-        Try { start, value, patterns, maybeElse } ->
-            start
-
-        Record args ->
-            Debug.todo "exprStart"
-
-        List _ ->
-            Debug.todo "exprStart"
 -}

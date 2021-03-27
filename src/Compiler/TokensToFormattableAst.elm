@@ -1,7 +1,7 @@
 module Compiler.TokensToFormattableAst exposing (..)
 
 import OneOrMore exposing (OneOrMore)
-import Parser exposing (do, fail, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
+import Parser exposing (do, fail, higherOr, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
@@ -140,12 +140,6 @@ errorCantUseMutableAssignmentHere : String -> String -> List Token -> Error.Erro
 errorCantUseMutableAssignmentHere moduleName code state =
     Error.makeError moduleName
         [ Error.text "errorCantUseMutableAssignmentHere" ]
-
-
-errorExperimentingWithNoExtensibleTypes : String -> String -> List Token -> Error.Error
-errorExperimentingWithNoExtensibleTypes moduleName code state =
-    Error.makeError moduleName
-        [ Error.text "Extensible types are not supported, I want to see if it's good to do without them" ]
 
 
 
@@ -452,20 +446,14 @@ expr =
     let
         nest =
             Parser.breakCircularDefinition <| \_ -> expr
-
-        recordConstructor maybeUpdateTarget attrs =
-            { maybeUpdateTarget = maybeUpdateTarget
-            , attrs = attrs
-            }
-                |> FA.Record
-                |> succeed
     in
-    Parser.expression term
+    Parser.expression
+        term
         -- the `Or` stands for `Or higher priority parser`
-        [ parensOr (oneOf [ binopInsideParens, nest ])
-        , listOr FA.List nest
-        , recordOr Token.Defop recordConstructor nest
-        , lambdaOr
+        [ higherOr <| parens (oneOf [ binopInsideParens, nest ])
+        , higherOr <| list (\pos_TODO -> FA.List) nest
+        , higherOr <| record Token.Defop FA.Record nest
+        , higherOr lambda
         , functionApplicationOr
         , unopsOr
         , binopsOr Token.Exponential
@@ -492,12 +480,9 @@ expr =
 --
 
 
-parensOr : Parser a -> Parser a -> Parser a
-parensOr main higher =
-    oneOf
-        [ higher
-        , surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) main
-        ]
+parens : Parser a -> Parser a
+parens main =
+    surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) main
 
 
 
@@ -506,21 +491,20 @@ parensOr main higher =
 --
 
 
-listOr : (List a -> a) -> Parser a -> Parser a -> Parser a
-listOr constructor main higher =
-    oneOf
-        [ higher
-        , do (surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (maybe (rawList main))) <| \maybeLs ->
-        (case maybeLs of
-            Just ( h, t ) ->
-                h :: t
+list : (FA.Pos -> List a -> a) -> Parser a -> Parser a
+list constructor main =
+    do here <| \start ->
+    do (surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (maybe (rawList main))) <| \maybeLs ->
+    do here <| \end ->
+    (case maybeLs of
+        Just ( h, t ) ->
+            h :: t
 
-            Nothing ->
-                []
-        )
-            |> constructor
-            |> succeed
-        ]
+        Nothing ->
+            []
+    )
+        |> constructor ( start, end )
+        |> succeed
 
 
 
@@ -529,8 +513,8 @@ listOr constructor main higher =
 --
 
 
-recordOr : ({ mutable : Bool } -> Token.Kind) -> (Maybe a -> List ( String, Maybe a ) -> Parser a) -> Parser a -> Parser a -> Parser a
-recordOr assign constructor main higher =
+record : ({ mutable : Bool } -> Token.Kind) -> (FA.Pos -> FA.RecordArgs a -> a) -> Parser a -> Parser a
+record assign constructor main =
     let
         attrAssignment =
             discardFirst
@@ -547,21 +531,29 @@ recordOr assign constructor main higher =
             do (kind Token.With) <| \_ ->
             succeed h
 
-        content =
+        content start =
             do (maybe updateTarget) <| \maybeUpdateTarget ->
             do (rawList attr) <| \attrs ->
-            constructor maybeUpdateTarget (OneOrMore.toList attrs)
+            do here <| \end ->
+            { extends = maybeUpdateTarget
+            , attrs = OneOrMore.toList attrs
+            }
+                |> constructor ( start, end )
+                |> succeed
     in
-    oneOf
-        [ higher
-        , do (surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (maybe content)) <| \maybeRecord ->
-        case maybeRecord of
-            Just re ->
-                succeed re
+    do here <| \s ->
+    do (surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (maybe <| content s)) <| \maybeRecord ->
+    do here <| \e ->
+    case maybeRecord of
+        Just re ->
+            succeed re
 
-            Nothing ->
-                constructor Nothing []
-        ]
+        Nothing ->
+            { extends = Nothing
+            , attrs = []
+            }
+                |> constructor ( s, e )
+                |> succeed
 
 
 
@@ -737,23 +729,13 @@ typeExpr =
     let
         nest =
             Parser.breakCircularDefinition <| \_ -> typeExpr
-
-        recordConstructor : Maybe FA.Type -> List ( String, Maybe FA.Type ) -> Parser FA.Type
-        recordConstructor extensible attrs =
-            if extensible /= Nothing then
-                Parser.abort errorExperimentingWithNoExtensibleTypes
-
-            else
-                attrs
-                    |> List.map (\( name, maybeAttr ) -> ( name, Maybe.withDefault (FA.TypeName { name = name }) maybeAttr ))
-                    |> FA.TypeRecord
-                    |> succeed
     in
-    Parser.expression typeTerm
+    Parser.expression
+        typeTerm
         -- the `Or` stands for `Or higher priority parser`
         [ typeParensOr nest
         , typeListOr nest
-        , recordOr Token.HasType recordConstructor nest
+        , higherOr <| record Token.HasType FA.TypeRecord nest
         , typeApplicationOr
         , typeTupleOr
         , typeFunctionOr
@@ -879,12 +861,12 @@ typeApplicationOr higher =
 --
 
 
-lambdaOr : Parser FA.Expression -> Parser FA.Expression
-lambdaOr higher =
+lambda : Parser FA.Expression
+lambda =
     let
         def =
             do (kind Token.Fn) <| \fn ->
-            do (oneOrMore pattern) <| \params ->
+            do (oneOrMore <| functionParameter pattern) <| \params ->
             do defop <| \{ mutable } ->
             if mutable then
                 Parser.abort errorCantUseMutableAssignmentHere
@@ -912,12 +894,18 @@ lambdaOr higher =
                   inlineStatementOrBlock
                 ]
     in
+    do def <| \( fn, params ) ->
+    do body <| \b ->
+    succeed <| FA.Lambda { start = fn.start, parameters = params, body = b }
+
+
+functionParameter : Parser FA.Pattern -> Parser FA.Pattern
+functionParameter nest =
     oneOf
-        [ higher
-        , --
-          do def <| \( fn, params ) ->
-          do body <| \b ->
-          succeed <| FA.Lambda { start = fn.start, parameters = params, body = b }
+        [ patternApplication fail
+        , parens nest
+        , list FA.PatternList nest
+        , record Token.Defop FA.PatternRecord nest
         ]
 
 
@@ -932,72 +920,52 @@ pattern =
     let
         nest =
             Parser.breakCircularDefinition <| \_ -> pattern
-
-        recordConstructor maybeUpdateTarget attrs =
-            if maybeUpdateTarget /= Nothing then
-                Parser.fail
-
-            else
-                attrs
-                    |> FA.PatternRecord
-                    |> succeed
     in
-    Parser.expression patternTerm
+    Parser.expression
+        (patternApplication <| functionParameter nest)
         -- the `Or` stands for `Or higher priority parser`
-        [ parensOr nest
-        , listOr FA.PatternList nest
-        , recordOr Token.Defop recordConstructor nest
-        , patternApplicationOr
+        [ higherOr <| parens nest
+        , higherOr <| list FA.PatternList nest
+        , higherOr <| record Token.Defop FA.PatternRecord nest
 
         --         , patternListConsOr
         --         , patternTupleOr
         ]
 
 
-patternTerm : Parser FA.Pattern
-patternTerm =
+patternApplication : Parser FA.Pattern -> Parser FA.Pattern
+patternApplication param =
     do oneToken <| \token ->
     case token.kind of
         Token.NumberLiteral s ->
             s
                 |> Types.Literal.Number
-                |> FA.PatternLiteral
+                |> FA.PatternLiteral ( token.start, token.end )
                 |> succeed
 
         Token.TextLiteral s ->
             s
                 |> Types.Literal.Text
-                |> FA.PatternLiteral
+                |> FA.PatternLiteral ( token.start, token.end )
                 |> succeed
 
-        Token.Name { mutable } s ->
+        Token.Name { mutable } name ->
             if mutable then
                 fail
 
             else
-                s
-                    |> FA.PatternAny
-                    |> succeed
+                do (zeroOrMore param) <| \params ->
+                do here <| \end ->
+                if params == [] then
+                    FA.PatternAny ( token.start, token.end ) name
+                        |> succeed
+
+                else
+                    FA.PatternApplication ( token.start, end ) name params
+                        |> succeed
 
         _ ->
             fail
-
-
-patternApplicationOr : Parser FA.Pattern -> Parser FA.Pattern
-patternApplicationOr higher =
-    do higher <| \p ->
-    case p of
-        FA.PatternAny name ->
-            do (zeroOrMore higher) <| \args ->
-            if args == [] then
-                succeed p
-
-            else
-                FA.PatternApplication name args
-                    |> succeed
-
-        _ ->
-            succeed p
 
 
 

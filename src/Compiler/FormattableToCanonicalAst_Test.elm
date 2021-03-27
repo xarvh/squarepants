@@ -25,6 +25,7 @@ tests =
         , patterns
         , annotations
         , pipes
+        , functions
         ]
 
 
@@ -369,6 +370,13 @@ records =
                     |> CA.Record ()
                     |> Ok
             }
+        , codeTest "annotation, extensible"
+            """
+            a : { b with x : Bool }
+            a = a
+            """
+            (firstEvaluation "a")
+            (Test.errContain "disabled")
         ]
 
 
@@ -392,6 +400,13 @@ patterns =
                         |> firstEvaluation "x"
             , test = Test.errorShouldContain "function"
             }
+        , codeTest "[reg] record patterns are NOT extensible"
+            """
+            a =
+              { b with c } = d
+            """
+            (firstEvaluation "a")
+            (Test.errContain "with")
         ]
 
 
@@ -460,4 +475,23 @@ pipes =
                     , argument = CA.ArgumentExpression <| CA.Variable () { name = "Test.thing", isRoot = True, attrPath = [] }
                     }
             )
+        ]
+
+
+
+----
+--- Functions
+--
+
+
+functions : Test
+functions =
+    Test.Group "Functions"
+        [ codeTest "[rec] lambda with two arguments"
+            """
+            f =
+              fn a b = 1
+            """
+            (firstEvaluation "f")
+            Test.justOk
         ]

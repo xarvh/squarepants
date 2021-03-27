@@ -63,21 +63,17 @@ codeTest toString title code functionToTest (CodeExpectation toMaybeError) =
         |> maybeToOutcome
 
 
-{-| TODO remove old-system isOk below and rename this to isOk -}
+{-| TODO remove old-system isOk below and rename this to isOk
+-}
 justOk : CodeExpectation ok
 justOk =
     CodeExpectation <| \toString result ->
     case result of
         Err e ->
-            [ "error = "
-            , "  " ++ e
-            ]
-                |> String.join "\n"
-                |> Just
+            Just e
 
         Ok actualOk ->
-                Nothing
-
+            Nothing
 
 
 okEqual : ok -> CodeExpectation ok
@@ -85,15 +81,18 @@ okEqual expectedOk =
     CodeExpectation <| \toString result ->
     case result of
         Err e ->
-            [ "expected = "
-            , "  " ++ toString expectedOk
-            , ""
-            , "error = "
-            , "  " ++ e
-            ]
-                |> String.join "\n"
-                |> Just
+            Just e
 
+        {-
+           [ "expected = "
+           , "  " ++ toString expectedOk
+           , ""
+           , "Err "
+           , "  " ++ e
+           ]
+               |> String.join "\n"
+               |> Just
+        -}
         Ok actualOk ->
             if expectedOk == actualOk then
                 Nothing
@@ -216,7 +215,7 @@ errorShouldContain s error =
         Nothing
 
     else
-        Just <| "Error \"" ++ error ++ "\" should contain \"" ++ s ++ "\""
+        Just <| "\nThe error... \n\n" ++ error ++ "\n\n...should contain \"" ++ s ++ "\""
 
 
 
@@ -225,7 +224,7 @@ errorShouldContain s error =
 --
 
 
-outcomesRec : String -> Test -> List (String, TestOutcome) -> List ( String, TestOutcome )
+outcomesRec : String -> Test -> List ( String, TestOutcome ) -> List ( String, TestOutcome )
 outcomesRec path t accum =
     case t of
         Single name f ->
