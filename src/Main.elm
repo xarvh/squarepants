@@ -71,6 +71,14 @@ moduleMaybe =
     , """
       union Maybe a = Nothing, Just a
 
+      andThen : Maybe a -> (a -> Maybe b) -> Maybe b
+      andThen ma f =
+          try ma as
+              Nothing then
+                  Nothing
+              Just a then
+                  f a
+
       map : (a -> b) -> Maybe a -> Maybe b
       map f m =
         try m as
@@ -210,6 +218,7 @@ average numbers =
     n @= 0
     sum @= 0
 
+    # anonymous functions start with `fn`
     List.each numbers fn x =
         @n += 1
         @sum += x
@@ -273,14 +282,14 @@ earnMoney profit crab =
     { crab with money = .money + profit }
 
 
-# do-notation
-
-blah f =
-    None # TODO use actually declared stuff so it compiles
-    #  to = Result.andThen
-    #  blah blah blah >> to fn blahOutput =
-    #  someotherline >> to fn otherThingy =
-    #  doStuffWith blahOutput otherThingy
+# to-notation
+getAllHouses : (Text -> Maybe house) -> Maybe { rock : house, moai : house, pineapple : house }
+getAllHouses getAsset =
+    to = Maybe.andThen
+    getAsset "rock" >> to fn rock =
+    getAsset "moai" >> to fn moai =
+    getAsset "pineapple" >> to fn pineapple =
+       Just { rock, moai, pineapple }
     """
     )
 

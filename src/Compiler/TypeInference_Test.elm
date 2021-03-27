@@ -455,6 +455,22 @@ variableTypes =
                         }
                 }
             )
+        , codeTest "[reg] statements, assignments, free vars"
+            """
+            reverse : List a -> List a
+            reverse aList =
+                rec ls acc =
+                    try ls as
+                        SPCore.Nil then
+                            acc
+
+                        SPCore.Cons head tail then
+                            rec tail SPCore.Cons head acc
+
+                rec aList []
+            """
+            (infer "reverse")
+            (Test.errContain "")
         ]
 
 
