@@ -43,45 +43,35 @@ none =
 nativeBinopToFunction : String -> { jsSymb : JA.Name, mutates : Bool, fnName : String } -> List JA.Statement -> List JA.Statement
 nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
     let
-        dummyExt =
-            ()
+        d =
+            CA.posDummy
     in
     ([ CA.Evaluation
-        (CA.Lambda dummyExt
-            { parameter = CA.PatternAny "a"
-            , body =
-                [ CA.Evaluation
-                    (CA.Lambda dummyExt
-                        { parameter = CA.PatternAny "b"
-                        , body =
-                            [ CA.Evaluation
-                                (CA.Call dummyExt
-                                    { argument =
-                                        (if mutates then
-                                            CA.ArgumentMutable
-
-                                         else
-                                            CA.ArgumentExpression << CA.Variable dummyExt
-                                        )
-                                            { attrPath = [], isRoot = False, name = "b" }
-                                    , reference =
-                                        CA.Call dummyExt
-                                            { argument =
-                                                CA.ArgumentExpression
-                                                    (CA.Variable dummyExt
-                                                        { attrPath = [], isRoot = False, name = "a" }
-                                                    )
-                                            , reference =
-                                                CA.Variable dummyExt
-                                                    { attrPath = [], isRoot = True, name = spName }
-                                            }
-                                    }
+        (CA.Lambda d
+            (CA.PatternAny "a")
+            [ CA.Evaluation
+                (CA.Lambda d
+                    (CA.PatternAny "b")
+                    [ CA.Evaluation
+                        (CA.Call d
+                            (CA.Call d
+                                (CA.Variable d { attrPath = [], isRoot = True, name = spName })
+                                (CA.ArgumentExpression
+                                    (CA.Variable d { attrPath = [], isRoot = False, name = "a" })
                                 )
-                            ]
-                        }
-                    )
-                ]
-            }
+                            )
+                            ((if mutates then
+                                CA.ArgumentMutable
+
+                              else
+                                CA.ArgumentExpression << CA.Variable d
+                             )
+                                { attrPath = [], isRoot = False, name = "b" }
+                            )
+                        )
+                    ]
+                )
+            ]
         )
      ]
         |> translateBodyToExpr Set.empty
@@ -283,7 +273,7 @@ pickMainName pattern =
 --
 
 
-getValueDefName : CA.ValueDef e -> String
+getValueDefName : CA.ValueDef -> String
 getValueDefName def =
     def.pattern
         |> CA.patternNames
@@ -292,12 +282,12 @@ getValueDefName def =
         |> Maybe.withDefault "BLARGH"
 
 
-getValueRefs : CA.ValueDef e -> Set String
+getValueRefs : CA.ValueDef -> Set String
 getValueRefs def =
     let
-        fn expr ( ext, set ) =
-            case expr of
-                CA.Variable _ args ->
+        fn fold ( ext, set ) =
+            case fold of
+                CA.FoldExpr (CA.Variable _ args) ->
                     ( ext
                     , if args.isRoot then
                         Set.insert args.name set
@@ -314,7 +304,7 @@ getValueRefs def =
         |> Tuple.second
 
 
-translateAll : CA.Module e -> List JA.Statement
+translateAll : CA.AllDefs -> List JA.Statement
 translateAll ca =
     let
         ( aliases, unions, values ) =
@@ -326,10 +316,10 @@ translateAll ca =
                 |> List.sortBy .name
                 |> List.concatMap translateUnion
 
-        isFunctionBlock : CA.ValueDef e -> Bool
+        isFunctionBlock : CA.ValueDef -> Bool
         isFunctionBlock def =
             case def.body of
-                (CA.Evaluation (CA.Lambda _ _)) :: [] ->
+                (CA.Evaluation (CA.Lambda _ _ _)) :: [] ->
                     True
 
                 _ ->
@@ -350,7 +340,7 @@ translateAll ca =
     nativeBinopsAsFns ++ cons ++ vals
 
 
-translateValueDef : Env -> CA.ValueDef e -> ( List JA.Statement, Env )
+translateValueDef : Env -> CA.ValueDef -> ( List JA.Statement, Env )
 translateValueDef env caDef =
     if caDef.body == [] then
         ( [], env )
@@ -377,7 +367,7 @@ translateValueDef env caDef =
                 )
 
 
-translateStatement : Env -> CA.Statement e -> ( List JA.Statement, Env )
+translateStatement : Env -> CA.Statement -> ( List JA.Statement, Env )
 translateStatement env s =
     case s of
         CA.Definition def ->
@@ -420,7 +410,7 @@ translateLiteral value =
             "\"" ++ String.fromChar c ++ "\""
 
 
-translateExpr : Env -> CA.Expression e -> JA.Expr
+translateExpr : Env -> CA.Expression -> JA.Expr
 translateExpr env expression =
     case expression of
         CA.Literal _ lit ->
@@ -431,33 +421,33 @@ translateExpr env expression =
         CA.Variable _ ar ->
             translateVar env ar
 
-        CA.Lambda _ ar ->
+        CA.Lambda _ parameter body ->
             let
                 ( args, extraJaStatements ) =
-                    case pickMainName ar.parameter of
+                    case pickMainName parameter of
                         Nothing ->
                             ( [], [] )
 
                         Just mainName ->
                             ( [ mainName ]
-                            , patternDefinitions mainName ar.parameter
+                            , patternDefinitions mainName parameter
                             )
             in
-            case translateBodyToEither env extraJaStatements ar.body of
+            case translateBodyToEither env extraJaStatements body of
                 Lib.Left expr ->
                     JA.SimpleLambda args expr
 
                 Lib.Right block ->
                     JA.BlockLambda args block
 
-        CA.Record _ ar ->
+        CA.Record _ extends attrs ->
             let
                 obj =
-                    ar.attrs
+                    attrs
                         |> Dict.map (\k -> translateExpr env)
                         |> JA.Record
             in
-            case ar.maybeUpdateTarget of
+            case extends of
                 Nothing ->
                     obj
 
@@ -468,15 +458,15 @@ translateExpr env expression =
                         , obj
                         ]
 
-        CA.Call _ ar ->
-            case maybeNativeBinop env ar of
+        CA.Call _ ref arg ->
+            case maybeNativeBinop env ref arg of
                 Just jaExpr ->
                     jaExpr
 
                 Nothing ->
                     JA.Call
-                        (translateExpr env ar.reference)
-                        [ translateArg { nativeBinop = False } env ar.argument ]
+                        (translateExpr env ref)
+                        [ translateArg { nativeBinop = False } env arg ]
 
         CA.If _ ar ->
             JA.Conditional
@@ -484,7 +474,7 @@ translateExpr env expression =
                 (translateBodyToExpr env ar.true)
                 (translateBodyToExpr env ar.false)
 
-        CA.Try _ ar ->
+        CA.Try pos value tries ->
             {-
 
                (() => {
@@ -507,7 +497,7 @@ translateExpr env expression =
             -}
             let
                 head =
-                    JA.Define tryName (translateExpr env ar.value)
+                    JA.Define tryName (translateExpr env value)
 
                 init =
                     JA.Var tryName
@@ -533,12 +523,12 @@ translateExpr env expression =
                     JA.If condition whenConditionMatches
 
                 allStatements =
-                    head :: List.map testPa ar.patterns
+                    head :: List.map testPa tries
             in
             JA.Call (JA.BlockLambda [] allStatements) []
 
 
-translateArg : { nativeBinop : Bool } -> Env -> CA.Argument e -> JA.Expr
+translateArg : { nativeBinop : Bool } -> Env -> CA.Argument -> JA.Expr
 translateArg { nativeBinop } env arg =
     case arg of
         CA.ArgumentExpression e ->
@@ -593,32 +583,27 @@ accessAttrsButTheLast attrHead attrTail e =
     List.foldl fold ( e, attrHead ) attrTail
 
 
-maybeNativeBinop : Env -> { reference : CA.Expression e, argument : CA.Argument e } -> Maybe JA.Expr
-maybeNativeBinop env ar =
-    case ar.reference of
-        CA.Call _ arRight ->
-            case arRight.reference of
-                CA.Variable _ { name } ->
-                    case Dict.get name nativeBinops of
-                        Nothing ->
-                            Nothing
-
-                        Just { jsSymb, mutates } ->
-                            let
-                                cons =
-                                    if mutates then
-                                        JA.Mutop jsSymb none
-
-                                    else
-                                        JA.Binop jsSymb
-                            in
-                            cons
-                                (translateArg { nativeBinop = True } env ar.argument)
-                                (translateArg { nativeBinop = True } env arRight.argument)
-                                |> Just
-
-                _ ->
+maybeNativeBinop : Env -> CA.Expression -> CA.Argument -> Maybe JA.Expr
+maybeNativeBinop env reference argument =
+    case reference of
+        CA.Call _ (CA.Variable _ { name }) rightArg ->
+            case Dict.get name nativeBinops of
+                Nothing ->
                     Nothing
+
+                Just { jsSymb, mutates } ->
+                    let
+                        cons =
+                            if mutates then
+                                JA.Mutop jsSymb none
+
+                            else
+                                JA.Binop jsSymb
+                    in
+                    cons
+                        (translateArg { nativeBinop = True } env argument)
+                        (translateArg { nativeBinop = True } env rightArg)
+                        |> Just
 
         _ ->
             Nothing
@@ -634,7 +619,7 @@ binopChain default op es =
             List.foldl (JA.Binop op) head tail
 
 
-translateBodyToExpr : Env -> List (CA.Statement e) -> JA.Expr
+translateBodyToExpr : Env -> List CA.Statement -> JA.Expr
 translateBodyToExpr env caBody =
     case translateBodyToEither env [] caBody of
         Lib.Left e ->
@@ -644,7 +629,7 @@ translateBodyToExpr env caBody =
             JA.Call (JA.BlockLambda [] block) []
 
 
-translateBodyToEither : Env -> List JA.Statement -> List (CA.Statement e) -> Lib.Either JA.Expr (List JA.Statement)
+translateBodyToEither : Env -> List JA.Statement -> List CA.Statement -> Lib.Either JA.Expr (List JA.Statement)
 translateBodyToEither env extra caBody =
     let
         fold caStat ( faStats, e ) =

@@ -13,23 +13,32 @@ import Set exposing (Set)
 import Types.Literal
 
 
-{-| The free variable type parameter `e` is used to store (and remove) position and type annotations
+type alias AllDefs =
+    Dict String RootDef
 
-The Pos type is only one possibility, but it lives here because it's used in a few different modules.
 
+{-| moduleName + start + end must be unique for every expression, because they are used to build a unique id
 -}
 type alias Pos =
-    { moduleName : String
-    , moduleCode : String
-    , start : Int
-    , end : Int
+    { n : String
+    , c : String
+    , s : Int
+    , e : Int
     }
 
 
-{-| TODO rename to Program? It's not even a program, it's just to sum of all declarations, not all of them will be used.
--}
-type alias Module e =
-    Dict String (RootDef e)
+posToUid : Pos -> String
+posToUid pos =
+    pos.n ++ " " ++ String.fromInt pos.s ++ " " ++ String.fromInt pos.e
+
+
+posDummy : Pos
+posDummy =
+    { n = ""
+    , c = ""
+    , s = -1
+    , e = -1
+    }
 
 
 
@@ -38,10 +47,10 @@ type alias Module e =
 --
 
 
-type RootDef e
+type RootDef
     = Union UnionDef
     | Alias AliasDef
-    | Value (ValueDef e)
+    | Value ValueDef
 
 
 type alias AliasDef =
@@ -74,11 +83,11 @@ type alias UnionDef =
           }
 
 -}
-type alias ValueDef e =
+type alias ValueDef =
     { pattern : Pattern
     , mutable : Bool
     , maybeAnnotation : Maybe Type
-    , body : List (Statement e)
+    , body : List Statement
     }
 
 
@@ -89,93 +98,44 @@ type alias ValueDef e =
 
 
 type Type
-    = TypeConstant
-        { ref : String
-        , args : List Type
-        }
-    | TypeVariable
-        { name : String
-        }
-    | TypeFunction
-        { from : Type
-        , fromIsMutable : Maybe Bool
-        , to : Type
-        }
-    | TypeRecord TypeRecordArgs
-    | TypeAlias String Type
-
-
-type alias TypeRecordArgs =
-    { extensible : Maybe String
-    , attrs : Dict String Type
-    }
+    = TypeConstant Pos String (List Type)
+    | TypeVariable Pos String
+    | TypeFunction Pos Type (Maybe Bool) Type
+    | TypeRecord Pos (Maybe String) (Dict String Type)
+    | TypeAlias Pos String Type
 
 
 
 ----
 --- Expressions
 --
-{-
-
-   FormattableToCanonical should populate the `e` parameter with:
-
-     * start and end position
-
-     * unique id number, usable as type inference variable type
-
-   But I don't think this will be implemented there before mutability is available.
-
-   The important part is that this data can be replaced or removed (for example, for testing) via extensionFold_module.
-
-   Maybe in the future, I can remove `e` from the constructors that are not needed to produce an error?
-
--}
 
 
-type Statement e
-    = Definition (ValueDef e)
+type Statement
+    = Definition ValueDef
       -- Evaluations are needed for return, mutation and debug
-    | Evaluation (Expression e)
+    | Evaluation Expression
 
 
-type Expression e
-    = Literal e Types.Literal.Value
-    | Variable e VariableArgs
-    | Lambda
-        e
-        { parameter : Pattern
-        , body : List (Statement e)
-        }
-    | Record
-        e
-        -- TODO rename to `extends`?
-        { maybeUpdateTarget : Maybe VariableArgs
-        , attrs : Dict String (Expression e)
-        }
-    | Call
-        e
-        { reference : Expression e
-        , argument : Argument e
-        }
+type Expression
+    = Literal Pos Types.Literal.Value
+    | Variable Pos VariableArgs
+    | Lambda Pos Pattern (List Statement)
+    | Record Pos (Maybe VariableArgs) (Dict String Expression)
+    | Call Pos Expression Argument
     | If
-        e
+        Pos
         -- we use the if also to get lazy ops and compacted compops, so even if the syntax does
         -- not support statement blocks inside if condition, it's useful that the AST can model it.
-        { condition : List (Statement e)
-        , true : List (Statement e)
-        , false : List (Statement e)
+        { condition : List Statement
+        , true : List Statement
+        , false : List Statement
         }
-    | Try
-        e
-        { value : Expression e
-
-        -- TODO rename to patternBlocks?
-        , patterns : List ( Pattern, List (Statement e) )
-        }
+    | Try Pos Expression (List ( Pattern, List Statement ))
 
 
-type Argument e
-    = ArgumentExpression (Expression e)
+type Argument
+    = ArgumentExpression Expression
     | ArgumentMutable VariableArgs
 
 
@@ -195,6 +155,8 @@ type alias VariableArgs =
 --
 
 
+{-| TODO add Pos
+-}
 type Pattern
     = PatternDiscard
     | PatternAny String
@@ -228,7 +190,7 @@ patternNames p =
 --
 
 
-asValue : RootDef e -> Maybe (ValueDef e)
+asValue : RootDef -> Maybe ValueDef
 asValue r =
     case r of
         Value v ->
@@ -238,7 +200,7 @@ asValue r =
             Nothing
 
 
-asAlias : RootDef e -> Maybe AliasDef
+asAlias : RootDef -> Maybe AliasDef
 asAlias r =
     case r of
         Alias a ->
@@ -248,7 +210,7 @@ asAlias r =
             Nothing
 
 
-asUnion : RootDef e -> Maybe UnionDef
+asUnion : RootDef -> Maybe UnionDef
 asUnion r =
     case r of
         Union u ->
@@ -258,7 +220,7 @@ asUnion r =
             Nothing
 
 
-split : Module e -> ( Dict String AliasDef, Dict String UnionDef, Dict String (ValueDef e) )
+split : AllDefs -> ( Dict String AliasDef, Dict String UnionDef, Dict String ValueDef )
 split =
     let
         part3 n rootDef ( als, uns, vals ) =
@@ -275,7 +237,7 @@ split =
     Dict.foldl part3 ( Dict.empty, Dict.empty, Dict.empty )
 
 
-findValue : String -> Module e -> Maybe (ValueDef e)
+findValue : String -> AllDefs -> Maybe ValueDef
 findValue name mod =
     case Dict.get name mod of
         Just (Value valueDef) ->
@@ -289,119 +251,268 @@ findValue name mod =
 ----
 --- Crawler
 --
+{-
+  TODO rename extensionFold_* to posFold_*
+  TODO have two separate set of functions, one for removing the Pos and the other for building an accumulator.
+-}
 
 
-extensionFold_module : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Module a, acc ) -> ( Module b, acc )
-extensionFold_module f ( a_mod, acc ) =
+type Fold
+    = FoldExpr Expression
+    | FoldType Type
+    | FoldPattern Pattern
+
+
+extensionFold_module : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( AllDefs, acc ) -> ( AllDefs, acc )
+extensionFold_module f ( a_defs, acc0 ) =
     let
-        fold name a_rootDef ( b_mod, accX ) =
+        fold name a_rootDef ( b_defs, accX ) =
             case a_rootDef of
-                Alias a ->
-                    ( Dict.insert name (Alias a) b_mod, accX )
+                Alias a_aliasDef ->
+                    Tuple.mapFirst
+                        (\b_rootDef -> Dict.insert name (Alias b_rootDef) b_defs)
+                        (extensionFold_aliasDef f ( a_aliasDef, accX ))
 
-                Union u ->
-                    ( Dict.insert name (Union u) b_mod, accX )
+                Union a_unionDef ->
+                    Tuple.mapFirst
+                        (\b_rootDef -> Dict.insert name (Union b_rootDef) b_defs)
+                        (extensionFold_unionDef f ( a_unionDef, accX ))
 
                 Value a_valueDef ->
                     Tuple.mapFirst
-                        (\b_rootDef -> Dict.insert name (Value b_rootDef) b_mod)
+                        (\b_rootDef -> Dict.insert name (Value b_rootDef) b_defs)
                         (extensionFold_valueDef f ( a_valueDef, accX ))
     in
-    Dict.foldl fold ( Dict.empty, acc ) a_mod
+    Dict.foldl fold ( Dict.empty, acc0 ) a_defs
 
 
-extensionFold_expression : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Expression a, acc ) -> ( Expression b, acc )
-extensionFold_expression f ( expr, acc ) =
-    case expr of
-        Literal a ar ->
-            Tuple.mapFirst (\b -> Literal b ar) (f expr ( a, acc ))
+extensionFold_aliasDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( AliasDef, acc ) -> ( AliasDef, acc )
+extensionFold_aliasDef f ( def, acc ) =
+    ( def.ty, acc )
+        |> extensionFold_type f
+        |> Tuple.mapFirst
+            (\b_ty ->
+                { name = def.name
+                , args = def.args
+                , ty = b_ty
+                }
+            )
 
-        Variable a args ->
-            Tuple.mapFirst (\b -> Variable b args) (f expr ( a, acc ))
 
-        Lambda a ar ->
+extensionFold_unionDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( UnionDef, acc ) -> ( UnionDef, acc )
+extensionFold_unionDef f ( def, acc ) =
+    let
+        foldConstructor constructorName a_constructorArgs ( b_constructors, accX ) =
+            a_constructorArgs
+                |> List.foldr foldArgument ( [], accX )
+                |> Tuple.mapFirst (\b_constructorArgs -> Dict.insert constructorName b_constructorArgs b_constructors)
+
+        foldArgument a_arg ( b_args, accX ) =
+            extensionFold_type f ( a_arg, accX )
+                |> Tuple.mapFirst (\b_arg -> b_arg :: b_args)
+    in
+    def.constructors
+        |> Dict.foldl foldConstructor ( Dict.empty, acc )
+        |> Tuple.mapFirst
+            (\b_constructors ->
+                { name = def.name
+                , args = def.args
+                , constructors = b_constructors
+                }
+            )
+
+
+extensionFold_valueDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( ValueDef, acc ) -> ( ValueDef, acc )
+extensionFold_valueDef f ( def, acc0 ) =
+    let
+        ( b_body, acc1 ) =
+            extensionFold_block f ( def.body, acc0 )
+
+        ( b_ann, acc2 ) =
+            case def.maybeAnnotation of
+                Nothing ->
+                    ( def.maybeAnnotation, acc1 )
+
+                Just ty ->
+                    extensionFold_type f ( ty, acc1 ) |> Tuple.mapFirst Just
+    in
+    ( { pattern = def.pattern
+      , mutable = def.mutable
+      , maybeAnnotation = b_ann
+      , body = b_body
+      }
+    , acc2
+    )
+
+
+extensionFold_type : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Type, acc ) -> ( Type, acc )
+extensionFold_type f ( ty, acc0 ) =
+    let
+        fty =
+            f (FoldType ty)
+    in
+    case ty of
+        TypeConstant a_pos name a_args ->
             let
-                ( b, acc1 ) =
-                    f expr ( a, acc )
+                ( b_pos, acc1 ) =
+                    fty ( a_pos, acc0 )
 
-                ( bodyB, acc2 ) =
-                    extensionFold_block f ( ar.body, acc1 )
+                ( b_args, acc2 ) =
+                    List.foldr fold ( [], acc1 ) a_args
+
+                fold a_arg ( args, accX ) =
+                    extensionFold_type f ( a_arg, accX )
+                        |> Tuple.mapFirst (\b_arg -> b_arg :: args)
             in
-            ( Lambda b { parameter = ar.parameter, body = bodyB }
+            ( TypeConstant b_pos name b_args
             , acc2
             )
 
-        Record a ar ->
+        TypeVariable a_pos name ->
+            fty ( a_pos, acc0 )
+                |> Tuple.mapFirst (\b_pos -> TypeVariable b_pos name)
+
+        TypeFunction a_pos a_from fromIsMut a_to ->
             let
-                ( b, acc1 ) =
-                    f expr ( a, acc )
+                ( b_pos, acc1 ) =
+                    fty ( a_pos, acc0 )
+
+                ( b_from, acc2 ) =
+                    extensionFold_type f ( a_from, acc1 )
+
+                ( b_to, acc3 ) =
+                    extensionFold_type f ( a_to, acc2 )
+            in
+            ( TypeFunction b_pos b_from fromIsMut b_to
+            , acc3
+            )
+
+        TypeRecord a_pos ext a_attrs ->
+            let
+                ( b_pos, acc1 ) =
+                    fty ( a_pos, acc0 )
+
+                fold attr_name a_ty ( attrs, accX ) =
+                    Tuple.mapFirst
+                        (\b_arg -> Dict.insert attr_name b_arg attrs)
+                        (extensionFold_type f ( a_ty, accX ))
+
+                ( b_attrs, acc2 ) =
+                    Dict.foldl fold ( Dict.empty, acc1 ) a_attrs
+            in
+            ( TypeRecord b_pos ext b_attrs
+            , acc2
+            )
+
+        TypeAlias a_pos name a_ty ->
+            let
+                ( b_pos, acc1 ) =
+                    fty ( a_pos, acc0 )
+
+                ( b_ty, acc2 ) =
+                    extensionFold_type f ( a_ty, acc1 )
+            in
+            ( TypeAlias b_pos name b_ty
+            , acc2
+            )
+
+
+extensionFold_expression : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Expression, acc ) -> ( Expression, acc )
+extensionFold_expression fFold ( expr, acc ) =
+    let
+        f =
+            FoldExpr >> fFold
+    in
+    case expr of
+        Literal a_pos ar ->
+            Tuple.mapFirst (\b_pos -> Literal b_pos ar) (f expr ( a_pos, acc ))
+
+        Variable a_pos args ->
+            Tuple.mapFirst (\b_pos -> Variable b_pos args) (f expr ( a_pos, acc ))
+
+        Lambda a_pos pattern a_body ->
+            let
+                ( b_pos, acc1 ) =
+                    f expr ( a_pos, acc )
+
+                ( b_body, acc2 ) =
+                    extensionFold_block fFold ( a_body, acc1 )
+            in
+            ( Lambda b_pos pattern b_body
+            , acc2
+            )
+
+        Record a_pos a_ext a_attrs ->
+            let
+                ( b_pos, acc1 ) =
+                    f expr ( a_pos, acc )
 
                 fold name a_expr ( attrs, aX ) =
                     Tuple.mapFirst
                         (\b_expr -> Dict.insert name b_expr attrs)
-                        (extensionFold_expression f ( a_expr, aX ))
+                        (extensionFold_expression fFold ( a_expr, aX ))
 
                 ( b_attrs, acc2 ) =
-                    Dict.foldl fold ( Dict.empty, acc1 ) ar.attrs
+                    Dict.foldl fold ( Dict.empty, acc1 ) a_attrs
             in
-            ( Record b { maybeUpdateTarget = ar.maybeUpdateTarget, attrs = b_attrs }
+            ( Record b_pos a_ext b_attrs
             , acc2
             )
 
-        Call a ar ->
+        Call a_pos a_ref a_arg ->
             let
-                ( b, acc1 ) =
-                    f expr ( a, acc )
+                ( b_pos, acc1 ) =
+                    f expr ( a_pos, acc )
 
                 ( b_ref, acc2 ) =
-                    extensionFold_expression f ( ar.reference, acc1 )
+                    extensionFold_expression fFold ( a_ref, acc1 )
 
                 ( b_arg, acc3 ) =
-                    extensionFold_argument f ( ar.argument, acc2 )
+                    extensionFold_argument fFold ( a_arg, acc2 )
             in
-            ( Call b { reference = b_ref, argument = b_arg }
+            ( Call b_pos b_ref b_arg
             , acc3
             )
 
-        If a ar ->
+        If a_pos ar ->
             let
                 -- TODO use a `do blah <| \b_meh ->` to avoid using accX?
-                ( b, acc1 ) =
-                    f expr ( a, acc )
+                ( b_pos, acc1 ) =
+                    f expr ( a_pos, acc )
 
                 ( b_cond, acc2 ) =
-                    extensionFold_block f ( ar.condition, acc1 )
+                    extensionFold_block fFold ( ar.condition, acc1 )
 
                 ( b_true, acc3 ) =
-                    extensionFold_block f ( ar.true, acc2 )
+                    extensionFold_block fFold ( ar.true, acc2 )
 
                 ( b_false, acc4 ) =
-                    extensionFold_block f ( ar.false, acc3 )
+                    extensionFold_block fFold ( ar.false, acc3 )
             in
-            ( If b { condition = b_cond, true = b_true, false = b_false }
+            ( If b_pos { condition = b_cond, true = b_true, false = b_false }
             , acc4
             )
 
-        Try a ar ->
+        Try a_pos a_value a_patterns ->
             let
-                ( b, acc1 ) =
-                    f expr ( a, acc )
+                ( b_pos, acc1 ) =
+                    f expr ( a_pos, acc )
 
                 ( b_value, acc2 ) =
-                    extensionFold_expression f ( ar.value, acc1 )
+                    extensionFold_expression fFold ( a_value, acc1 )
 
                 fold ( pa, a_block ) ( pasAndBlocks, accX ) =
-                    Tuple.mapFirst (\b_block -> ( pa, b_block ) :: pasAndBlocks) (extensionFold_block f ( a_block, accX ))
+                    Tuple.mapFirst (\b_block -> ( pa, b_block ) :: pasAndBlocks) (extensionFold_block fFold ( a_block, accX ))
 
                 ( b_patterns, acc3 ) =
-                    List.foldr fold ( [], acc2 ) ar.patterns
+                    List.foldr fold ( [], acc2 ) a_patterns
             in
-            ( Try b { value = b_value, patterns = b_patterns }
+            ( Try b_pos b_value b_patterns
             , acc3
             )
 
 
-extensionFold_block : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( List (Statement a), acc ) -> ( List (Statement b), acc )
+extensionFold_block : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( List Statement, acc ) -> ( List Statement, acc )
 extensionFold_block f ( block, acc ) =
     let
         fold a_stat ( b_stats, accX ) =
@@ -412,7 +523,7 @@ extensionFold_block f ( block, acc ) =
     List.foldr fold ( [], acc ) block
 
 
-extensionFold_argument : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Argument a, acc ) -> ( Argument b, acc )
+extensionFold_argument : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Argument, acc ) -> ( Argument, acc )
 extensionFold_argument f ( arg, acc ) =
     case arg of
         ArgumentExpression expr ->
@@ -421,24 +532,10 @@ extensionFold_argument f ( arg, acc ) =
                 |> Tuple.mapFirst ArgumentExpression
 
         ArgumentMutable ar ->
-            ( ArgumentMutable ar, acc )
+            ( arg, acc )
 
 
-extensionFold_valueDef : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( ValueDef a, acc ) -> ( ValueDef b, acc )
-extensionFold_valueDef f ( def, acc ) =
-    ( def.body, acc )
-        |> extensionFold_block f
-        |> Tuple.mapFirst
-            (\b_body ->
-                { pattern = def.pattern
-                , mutable = def.mutable
-                , maybeAnnotation = def.maybeAnnotation
-                , body = b_body
-                }
-            )
-
-
-extensionFold_statement : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Statement a, acc ) -> ( Statement b, acc )
+extensionFold_statement : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Statement, acc ) -> ( Statement, acc )
 extensionFold_statement f ( stat, acc ) =
     case stat of
         Definition ar ->

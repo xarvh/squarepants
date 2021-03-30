@@ -3,10 +3,9 @@ module Compiler.FormattableToCanonicalAst exposing (..)
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import Lib
-import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
 import Set exposing (Set)
-import Types.CanonicalAst as CA exposing (Pos)
+import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res, errorTodo)
 import Types.FormattableAst as FA
 import Types.Meta exposing (Meta)
@@ -55,23 +54,23 @@ do a b =
 --
 
 
-{-| TODO Pos should include module name
--}
-todoPos : Pos
+todoPos : CA.Pos
 todoPos =
-    { moduleName = "TODO"
-    , moduleCode = ""
-    , start = -1
-    , end = -1
+    { n = "TODO"
+    , c = ""
+    , s = -1
+    , e = -1
     }
 
 
-pos : Env -> Int -> Int -> Pos
-pos env start end =
-    { moduleName = env.ro.currentModule
-    , moduleCode = env.ro.code
-    , start = start
-    , end = end
+{-| translate position
+-}
+tp : ReadOnly -> FA.Pos -> CA.Pos
+tp ro ( start, end ) =
+    { n = ro.currentModule
+    , c = ro.code
+    , s = start
+    , e = end
     }
 
 
@@ -81,7 +80,7 @@ pos env start end =
 --
 
 
-translateModule : ReadOnly -> FA.Module -> CA.Module Pos -> Res (CA.Module Pos)
+translateModule : ReadOnly -> FA.Module -> CA.AllDefs -> Res CA.AllDefs
 translateModule ro faModule caModule =
     case faModule of
         [] ->
@@ -93,7 +92,7 @@ translateModule ro faModule caModule =
                 |> Result.andThen (translateModule ro faStatTail)
 
 
-insertRootStatement : ReadOnly -> FA.Statement -> CA.Module Pos -> Res (CA.Module Pos)
+insertRootStatement : ReadOnly -> FA.Statement -> CA.AllDefs -> Res CA.AllDefs
 insertRootStatement ro faStatement caModule =
     case faStatement of
         FA.Evaluation _ ->
@@ -130,7 +129,7 @@ insertRootStatement ro faStatement caModule =
                 errorTodo "type name should be uppercase"
 
             else
-                do (translateType ro fa.type_) <| \caType ->
+                do (translateType ro fa.ty) <| \caType ->
                 caModule
                     |> Dict.insert caName
                         (CA.Alias
@@ -168,11 +167,11 @@ insertRootStatement ro faStatement caModule =
 translateConstructor : ReadOnly -> FA.Type -> Dict String (List CA.Type) -> Res (Dict String (List CA.Type))
 translateConstructor ro faType constructors =
     case faType of
-        FA.TypeName { name } ->
-            translateConstructor ro (FA.TypePolymorphic { name = name, args = [] }) constructors
+        FA.TypeName pos name ->
+            translateConstructor ro (FA.TypePolymorphic pos name []) constructors
 
-        FA.TypePolymorphic polyArgs ->
-            do (stringToStructuredName (initEnv ro) {- TODO -} 0 0 polyArgs.name) <| \sname ->
+        FA.TypePolymorphic pos fa_name fa_args ->
+            do (stringToStructuredName (initEnv ro) pos fa_name) <| \sname ->
             case sname of
                 StructuredName_Value _ ->
                     errorTodo "constructor name must start with a uppercase letter"
@@ -191,7 +190,7 @@ translateConstructor ro faType constructors =
                             errorTodo <| "constructor " ++ name ++ " is duplicate"
 
                         else
-                            do (Lib.list_mapRes (translateType ro) polyArgs.args) <| \caArgs ->
+                            do (Lib.list_mapRes (translateType ro) fa_args) <| \caArgs ->
                             constructors
                                 |> Dict.insert name caArgs
                                 |> Ok
@@ -261,8 +260,8 @@ makeRootName modName defName =
     modName ++ "." ++ defName
 
 
-stringToStructuredName : Env -> Int -> Int -> String -> Res StructuredName
-stringToStructuredName env start end rawString =
+stringToStructuredName : Env -> FA.Pos -> String -> Res StructuredName
+stringToStructuredName env pos rawString =
     {-
        .attr
        .attr1.attr2
@@ -329,7 +328,7 @@ stringToStructuredName env start end rawString =
         "" :: tail ->
             case env.maybeUpdateTarget of
                 Nothing ->
-                    errorRecordUpdateShorthandOutsideRecordUpdate start end rawString env
+                    errorRecordUpdateShorthandOutsideRecordUpdate pos rawString env
 
                 Just ref ->
                     do (validateAttrPath tail) <| \tailPath ->
@@ -420,7 +419,7 @@ stringToStructuredName env start end rawString =
 -}
 
 
-translateDefinition : Bool -> Env -> FA.ValueDef -> Res (CA.ValueDef Pos)
+translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.ValueDef
 translateDefinition isRoot env fa =
     do (validateFaDefinition fa) <| \_ ->
     do (translateMaybeAnnotation env.ro fa) <| \maybeAnnotation ->
@@ -492,7 +491,7 @@ translateMaybeAnnotation ro fa =
             Ok Nothing
 
         Just annotation ->
-            translateType ro annotation.type_
+            translateType ro annotation.ty
                 |> Result.map Just
 
 
@@ -516,16 +515,16 @@ translatePattern env faPattern =
 translatePatternOrFunction : Env -> FA.Pattern -> Res (Lib.Either CA.Pattern ( String, List CA.Pattern ))
 translatePatternOrFunction env fa =
     case fa of
-        FA.PatternAny faPos s ->
-            translatePatternOrFunction env (FA.PatternApplication faPos s [])
+        FA.PatternAny pos s ->
+            translatePatternOrFunction env (FA.PatternApplication pos s [])
 
-        FA.PatternLiteral faPos l ->
+        FA.PatternLiteral pos l ->
             CA.PatternLiteral l
                 |> Lib.Left
                 |> Ok
 
-        FA.PatternApplication faPos rawName faArgs ->
-            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } {- TODO -} 0 0 rawName) <| \sname ->
+        FA.PatternApplication pos rawName faArgs ->
+            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } pos rawName) <| \sname ->
             do (Lib.list_mapRes (translatePattern env) faArgs) <| \caArgs ->
             case sname of
                 StructuredName_TypeOrCons { name, mod } ->
@@ -558,7 +557,7 @@ translatePatternOrFunction env fa =
                                         |> Lib.Right
                                         |> Ok
 
-        FA.PatternList faPos fas ->
+        FA.PatternList pos fas ->
             let
                 fold pattern last =
                     CA.PatternConstructor Core.listCons.name [ pattern, last ]
@@ -567,7 +566,7 @@ translatePatternOrFunction env fa =
                 |> Lib.list_mapRes (translatePattern env)
                 |> Result.map (List.foldr fold (CA.PatternConstructor Core.listNil.name []) >> Lib.Left)
 
-        FA.PatternRecord faPos recordArgs ->
+        FA.PatternRecord pos recordArgs ->
             if recordArgs.extends /= Nothing then
                 errorTodo "can't use `with` inside patterns"
 
@@ -590,13 +589,13 @@ translatePatternOrFunction env fa =
                 Lib.list_foldlRes fold recordArgs.attrs Dict.empty
                     |> Result.map (CA.PatternRecord >> Lib.Left)
 
-        FA.PatternCons faPos faHead faTail ->
+        FA.PatternCons pos faHead faTail ->
             Result.map2
                 (\caHead caTail -> CA.PatternConstructor Core.listCons.name [ caHead, caTail ] |> Lib.Left)
                 (translatePattern env faHead)
                 (translatePattern env faTail)
 
-        FA.PatternTuple faPos fas ->
+        FA.PatternTuple pos fas ->
             case fas of
                 [ fa1, fa2 ] ->
                     { extends = Nothing
@@ -605,7 +604,7 @@ translatePatternOrFunction env fa =
                         , ( "second", Just fa2 )
                         ]
                     }
-                        |> FA.PatternRecord faPos
+                        |> FA.PatternRecord pos
                         |> translatePatternOrFunction env
 
                 [ fa1, fa2, fa3 ] ->
@@ -616,7 +615,7 @@ translatePatternOrFunction env fa =
                         , ( "third", Just fa3 )
                         ]
                     }
-                        |> FA.PatternRecord faPos
+                        |> FA.PatternRecord pos
                         |> translatePatternOrFunction env
 
                 _ ->
@@ -648,19 +647,16 @@ insertDefinedNames env stat names =
             names
 
 
-translateStatementBlock : Env -> OneOrMore FA.Statement -> Res (List (CA.Statement Pos))
-translateStatementBlock env oom =
+translateStatementBlock : Env -> List FA.Statement -> Res (List CA.Statement)
+translateStatementBlock env stats =
     let
-        stats =
-            OneOrMore.toList oom
-
         localEnv =
             { env | nonRootValues = List.foldl (insertDefinedNames env) env.nonRootValues stats }
     in
     Lib.list_mapRes (translateStatement localEnv) stats
 
 
-translateStatement : Env -> FA.Statement -> Res (CA.Statement Pos)
+translateStatement : Env -> FA.Statement -> Res CA.Statement
 translateStatement env faStat =
     case faStat of
         FA.Evaluation faExpr ->
@@ -688,23 +684,23 @@ translateStatement env faStat =
 --
 
 
-translateExpression : Env -> FA.Expression -> Res (CA.Expression Pos)
+translateExpression : Env -> FA.Expression -> Res CA.Expression
 translateExpression env faExpr =
     case faExpr of
-        FA.Literal args ->
-            Ok <| CA.Literal (pos env args.start args.end) args.value
+        FA.Literal pos v ->
+            Ok <| CA.Literal (tp env.ro pos) v
 
-        FA.Variable args ->
-            if args.binop then
+        FA.Variable pos { isBinop } faName ->
+            if isBinop then
                 { isRoot = True
-                , name = args.name
+                , name = faName
                 , attrPath = []
                 }
-                    |> CA.Variable (pos env args.start args.end)
+                    |> CA.Variable (tp env.ro pos)
                     |> Ok
 
             else
-                do (stringToStructuredName env args.start args.end args.name) <| \sname ->
+                do (stringToStructuredName env pos faName) <| \sname ->
                 let
                     ( name, mod, attrPath ) =
                         case sname of
@@ -721,53 +717,43 @@ translateExpression env faExpr =
                 , name = resolveValueName env.ro declaredInsideFunction mod name
                 , attrPath = attrPath
                 }
-                    |> CA.Variable (pos env args.start args.end)
+                    |> CA.Variable (tp env.ro pos)
                     |> Ok
 
-        FA.Lambda fa ->
-            let
-                ( faHead, faTail ) =
-                    fa.parameters
-            in
-            do (translatePattern env faHead) <| \caHead ->
-            do (Lib.list_mapRes (translatePattern env) faTail) <| \caTail ->
+        FA.Lambda pos faParams faBody ->
+            do (Lib.list_mapRes (translatePattern env) faParams) <| \caParams ->
             let
                 localEnv =
                     { env
                         | nonRootValues =
-                            List.foldl (CA.patternNames >> Set.union) env.nonRootValues (caHead :: caTail)
+                            List.foldl (CA.patternNames >> Set.union) env.nonRootValues caParams
                     }
             in
-            do (translateStatementBlock localEnv fa.body) <| \caBody ->
-            { parameter = caHead
-            , body = List.foldr wrapLambda caBody caTail
-            }
-                |> CA.Lambda todoPos
-                |> Ok
+            case caParams of
+                [] ->
+                    Debug.todo "TODO should not happen but should be fixable?"
 
-        FA.FunctionCall s e { reference, arguments } ->
+                caHead :: caTail ->
+                    do (translateStatementBlock localEnv faBody) <| \caBody ->
+                    CA.Lambda todoPos caHead (List.foldr wrapLambda caBody caTail)
+                        |> Ok
+
+        FA.FunctionCall pos reference arguments ->
             -- ref arg1 arg2 arg3...
             let
-                fold : CA.Argument Pos -> CA.Expression Pos -> CA.Expression Pos
+                fold : CA.Argument -> CA.Expression -> CA.Expression
                 fold argument refAccum =
-                    { reference = refAccum
-                    , argument = argument
-                    }
-                        |> CA.Call (pos env s e)
+                    CA.Call (tp env.ro pos) refAccum argument
             in
             Result.map2
                 (List.foldl fold)
                 (translateExpression env reference)
-                (arguments
-                    |> OneOrMore.toList
-                    |> List.map (translateArgument env)
-                    |> listResultToResultList
-                )
+                (Lib.list_mapRes (translateArgument env) arguments)
 
-        FA.If { start, condition, true, false } ->
+        FA.If pos { condition, true, false } ->
             Result.map3
                 (\c t f ->
-                    CA.If todoPos
+                    CA.If (tp env.ro pos)
                         { condition = [ CA.Evaluation c ]
                         , true = t
                         , false = f
@@ -777,36 +763,38 @@ translateExpression env faExpr =
                 (translateStatementBlock env true)
                 (translateStatementBlock env false)
 
-        FA.Binop { group, sepList } ->
-            translateBinops env group sepList
+        FA.Binop pos group sepList ->
+            translateBinops env pos group sepList
 
-        FA.Lvalue args ->
+        FA.Mutable pos name ->
             errorTodo "mutable values can be used only as arguments for function or mutation operators"
 
-        FA.Record ( start, end ) faArgs ->
+        FA.Record pos faArgs ->
             do (makeUpdateTarget env faArgs.extends) <| \caUpdateTarget ->
             do (translateAttrsRec { env | maybeUpdateTarget = caUpdateTarget.maybeName } faArgs.attrs Dict.empty) <| \caAttrs ->
-            { maybeUpdateTarget = caUpdateTarget.maybeName
-            , attrs = caAttrs
-            }
-                |> CA.Record (pos env start end)
+            caAttrs
+                |> CA.Record (tp env.ro pos) caUpdateTarget.maybeName
                 |> caUpdateTarget.wrapper
                 |> Ok
 
-        FA.List faItems ->
+        FA.List pos faItems ->
             let
+                caPos = tp env.ro pos
+
                 cons item list =
-                    CA.Call todoPos
-                        { reference = CA.Call todoPos { reference = Core.cons, argument = CA.ArgumentExpression item }
-                        , argument = CA.ArgumentExpression list
-                        }
+                    CA.Call caPos
+                        (CA.Call caPos
+                            Core.cons
+                            (CA.ArgumentExpression item)
+                        )
+                        (CA.ArgumentExpression list)
             in
             faItems
                 -- TODO this is more List.reverse than necessary
                 |> Lib.list_mapRes (translateExpression env)
                 |> Result.map (List.foldr cons Core.nil)
 
-        FA.Try fa ->
+        FA.Try pos fa ->
             let
                 translatePatternAndStatements ( faPattern, faStatements ) =
                     do (translatePattern env faPattern) <| \caPattern ->
@@ -815,10 +803,7 @@ translateExpression env faExpr =
             in
             Result.map3
                 (\caValue caPatternsAndStatements caElse ->
-                    CA.Try todoPos
-                        { value = caValue
-                        , patterns = caPatternsAndStatements ++ caElse
-                        }
+                    CA.Try (tp env.ro pos) caValue (caPatternsAndStatements ++ caElse)
                 )
                 (translateExpression env fa.value)
                 (Lib.list_mapRes translatePatternAndStatements fa.patterns)
@@ -835,7 +820,7 @@ translateExpression env faExpr =
             errorTodo <| "FA expression type not supported for now:" ++ Debug.toString faExpr
 
 
-makeUpdateTarget : Env -> Maybe FA.Expression -> Res { maybeName : Maybe CA.VariableArgs, wrapper : CA.Expression Pos -> CA.Expression Pos }
+makeUpdateTarget : Env -> Maybe FA.Expression -> Res { maybeName : Maybe CA.VariableArgs, wrapper : CA.Expression -> CA.Expression }
 makeUpdateTarget env maybeUpdateTarget =
     case Maybe.map (translateExpression { env | maybeUpdateTarget = Nothing }) maybeUpdateTarget of
         Nothing ->
@@ -855,8 +840,8 @@ makeUpdateTarget env maybeUpdateTarget =
 translateAttrsRec :
     Env
     -> List ( String, Maybe FA.Expression )
-    -> Dict String (CA.Expression Pos)
-    -> Res (Dict String (CA.Expression Pos))
+    -> Dict String CA.Expression
+    -> Res (Dict String CA.Expression)
 translateAttrsRec env faAttrs caAttrsAccum =
     case faAttrs of
         [] ->
@@ -885,11 +870,11 @@ translateAttrsRec env faAttrs caAttrsAccum =
             translateAttrsRec env faTail (Dict.insert attrName expr caAttrsAccum)
 
 
-translateArgument : Env -> FA.Expression -> Res (CA.Argument Pos)
+translateArgument : Env -> FA.Expression -> Res CA.Argument
 translateArgument env faExpr =
     case faExpr of
-        FA.Lvalue args ->
-            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } args.start args.end args.name) <| \sname ->
+        FA.Mutable pos faName ->
+            do (stringToStructuredName { env | maybeUpdateTarget = Nothing } pos faName) <| \sname ->
             case sname of
                 StructuredName_TypeOrCons _ ->
                     errorTodo "constructors can't be mutable?"
@@ -906,7 +891,7 @@ translateArgument env faExpr =
                     else
                         { sname = sname
                         , env = { env | maybeUpdateTarget = Nothing }
-                        , rawName = args.name
+                        , rawName = faName
                         }
                             |> Debug.toString
                             |> (++) "only values declared inside a function scope can be mutated!"
@@ -918,8 +903,8 @@ translateArgument env faExpr =
                 |> Result.map CA.ArgumentExpression
 
 
-translateBinops : Env -> Token.PrecedenceGroup -> SepList String FA.Expression -> Res (CA.Expression Pos)
-translateBinops env group ( firstItem, firstTail ) =
+translateBinops : Env -> FA.Pos -> Token.PrecedenceGroup -> SepList String FA.Expression -> Res CA.Expression
+translateBinops env pos group ( firstItem, firstTail ) =
     case firstTail of
         [] ->
             translateExpression env firstItem
@@ -929,20 +914,16 @@ translateBinops env group ( firstItem, firstTail ) =
                 Token.Tuple ->
                     Result.map2
                         (\first second ->
-                            CA.Record todoPos
-                                { maybeUpdateTarget = Nothing
-                                , attrs =
-                                    Dict.fromList
-                                        [ ( "first", first )
-                                        , ( "second", second )
-                                        ]
-                                }
+                            Dict.empty
+                                |> Dict.insert "first" first
+                                |> Dict.insert "second" second
+                                |> CA.Record (tp env.ro pos) Nothing
                         )
                         (translateExpression env firstItem)
                         (translateExpression env secondItem)
 
                 _ ->
-                    translateSimpleBinop env firstItem firstSep secondItem
+                    translateSimpleBinop env pos firstItem firstSep secondItem
 
         ( firstSep, secondItem ) :: ( secondSep, thirdItem ) :: thirdTail ->
             let
@@ -965,7 +946,7 @@ translateBinops env group ( firstItem, firstTail ) =
                         errorTodo "Mixing `and` and `or` is ambiguous. Use parens!"
 
                     else
-                        translateBinopSepList env firstItem firstTail
+                        translateBinopSepList env pos firstItem firstTail
 
                 Token.Tuple ->
                     if thirdTail /= [] then
@@ -974,15 +955,11 @@ translateBinops env group ( firstItem, firstTail ) =
                     else
                         Result.map3
                             (\first second third ->
-                                CA.Record todoPos
-                                    { maybeUpdateTarget = Nothing
-                                    , attrs =
-                                        Dict.fromList
-                                            [ ( "first", first )
-                                            , ( "second", second )
-                                            , ( "third", third )
-                                            ]
-                                    }
+                                Dict.empty
+                                    |> Dict.insert "first" first
+                                    |> Dict.insert "second" second
+                                    |> Dict.insert "third" third
+                                    |> CA.Record (tp env.ro pos) Nothing
                             )
                             (translateExpression env firstItem)
                             (translateExpression env secondItem)
@@ -993,13 +970,13 @@ translateBinops env group ( firstItem, firstTail ) =
                         errorTodo "Mixing pipes is ambigous. Use parens."
 
                     else
-                        translateBinopSepList env firstItem firstTail
+                        translateBinopSepList env pos firstItem firstTail
 
                 Token.Mutop ->
                     errorTodo "mutops can't be chained"
 
                 _ ->
-                    translateBinopSepList env firstItem firstTail
+                    translateBinopSepList env pos firstItem firstTail
 
 
 notAllSeparators : (sep -> Bool) -> List ( sep, item ) -> Bool
@@ -1039,14 +1016,14 @@ sameDirectionAs a b =
                 False
 
 
-translateBinopSepList : Env -> FA.Expression -> List ( String, FA.Expression ) -> Res (CA.Expression Pos)
-translateBinopSepList env leftAccum opsAndRight =
+translateBinopSepList : Env -> FA.Pos -> FA.Expression -> List ( String, FA.Expression ) -> Res CA.Expression
+translateBinopSepList env pos leftAccum opsAndRight =
     do (translateExpression env leftAccum) <| \caLeftAccum ->
-    translateBinopSepListRec env caLeftAccum opsAndRight
+    translateBinopSepListRec env pos caLeftAccum opsAndRight
 
 
-translateBinopSepListRec : Env -> CA.Expression Pos -> List ( String, FA.Expression ) -> Res (CA.Expression Pos)
-translateBinopSepListRec env leftAccum opsAndRight =
+translateBinopSepListRec : Env -> FA.Pos -> CA.Expression -> List ( String, FA.Expression ) -> Res CA.Expression
+translateBinopSepListRec env pos leftAccum opsAndRight =
     case opsAndRight of
         [] ->
             Ok leftAccum
@@ -1057,7 +1034,7 @@ translateBinopSepListRec env leftAccum opsAndRight =
                     Err e
 
                 Ok caRight ->
-                    translateBinopSepListRec env (makeBinop (CA.ArgumentExpression leftAccum) op caRight) tail
+                    translateBinopSepListRec env pos (makeBinop (tp env.ro pos) (CA.ArgumentExpression leftAccum) op caRight) tail
 
 
 {-| Unlike other ML languages, the left operand is the _second_ argument
@@ -1065,41 +1042,33 @@ translateBinopSepListRec env leftAccum opsAndRight =
 `a + b` == `((+) b) a`
 
 -}
-makeBinop : CA.Argument Pos -> String -> CA.Argument Pos -> CA.Expression Pos
-makeBinop left op right =
+makeBinop : CA.Pos -> CA.Argument -> String -> CA.Argument -> CA.Expression
+makeBinop caPos left op right =
     case ( left, op, right ) of
         -- TODO don't hardcode the strings, use instead those defined in Prelude
         ( _, ">>", CA.ArgumentExpression rightExpr ) ->
-            CA.Call todoPos
-                { argument = left
-                , reference = rightExpr
-                }
+            CA.Call caPos rightExpr left
 
         ( CA.ArgumentExpression leftExpr, "<<", _ ) ->
-            CA.Call todoPos
-                { argument = right
-                , reference = leftExpr
-                }
+            CA.Call caPos leftExpr right
 
         _ ->
-            CA.Call todoPos
-                { argument = left
-                , reference =
-                    CA.Call todoPos
-                        { argument = right
-                        , reference =
-                            CA.Variable todoPos
-                                { isRoot = True
-                                , name = op
-                                , attrPath = []
-                                }
+            CA.Call caPos
+                (CA.Call caPos
+                    (CA.Variable caPos
+                        { isRoot = True
+                        , name = op
+                        , attrPath = []
                         }
-                }
+                    )
+                    right
+                )
+                left
 
 
-translateSimpleBinop : Env -> FA.Expression -> String -> FA.Expression -> Res (CA.Expression Pos)
-translateSimpleBinop env left op right =
-    Result.map2 (\l r -> makeBinop l op r)
+translateSimpleBinop : Env -> FA.Pos -> FA.Expression -> String -> FA.Expression -> Res CA.Expression
+translateSimpleBinop env pos left op right =
+    Result.map2 (\l r -> makeBinop (tp env.ro pos) l op r)
         (translateArgument env left)
         (translateArgument env right)
 
@@ -1114,16 +1083,13 @@ addAttributes : ReadOnly -> List ( String, Maybe FA.Type ) -> Dict String CA.Typ
 addAttributes ro faAttrs caAttrsAccum =
     case faAttrs of
         [] ->
-            { attrs = caAttrsAccum
-            , extensible = Nothing
-            }
-                |> CA.TypeRecord
+            CA.TypeRecord todoPos Nothing caAttrsAccum
                 |> Ok
 
         ( name, maybeFaType ) :: faTail ->
             let
                 faType =
-                    Maybe.withDefault (FA.TypeName { name = name }) maybeFaType
+                    Maybe.withDefault (FA.TypeName {- TODO -} ( -1, -1 ) name) maybeFaType
             in
             do (translateType ro faType) <| \caType ->
             addAttributes ro faTail (Dict.insert name caType caAttrsAccum)
@@ -1142,14 +1108,14 @@ startsWithUpperChar s =
 translateType : ReadOnly -> FA.Type -> Res CA.Type
 translateType ro faType =
     case faType of
-        FA.TypeName { name } ->
-            translateType ro <| FA.TypePolymorphic { name = name, args = [] }
+        FA.TypeName p name ->
+            translateType ro <| FA.TypePolymorphic p name []
 
-        FA.TypePolymorphic a ->
-            do (stringToStructuredName (initEnv ro) {- TODO -} 0 0 a.name) <| \sname ->
+        FA.TypePolymorphic pos rawName args ->
+            do (stringToStructuredName (initEnv ro) pos rawName) <| \sname ->
             case sname of
                 StructuredName_Value { name, mod, attrPath } ->
-                    if a.args /= [] then
+                    if args /= [] then
                         -- TODO is this the correct error?
                         errorTodo "rank 2 types are not supported"
 
@@ -1160,43 +1126,31 @@ translateType ro faType =
                         errorTodo "no attribute accessors on types"
 
                     else
-                        { name = name }
-                            |> CA.TypeVariable
+                        name
+                            |> CA.TypeVariable todoPos
                             |> Ok
 
                 StructuredName_TypeOrCons { name, mod } ->
-                    do (Lib.list_mapRes (translateType ro) a.args) <| \caArgs ->
-                    { ref = resolveTypeName ro False mod name
-                    , args = caArgs
-                    }
-                        |> CA.TypeConstant
+                    do (Lib.list_mapRes (translateType ro) args) <| \caArgs ->
+                    caArgs
+                        |> CA.TypeConstant (tp ro pos) (resolveTypeName ro False mod name)
                         |> Ok
 
-        FA.TypeFunction fa ->
+        FA.TypeFunction pos fa_from fromIsMut fa_to ->
             Result.map2
-                (\from to ->
-                    CA.TypeFunction
-                        { from = from
-                        , fromIsMutable = Just fa.fromIsMutable
-                        , to = to
-                        }
-                )
-                (translateType ro fa.from)
-                (translateType ro fa.to)
+                (\ca_from ca_to -> CA.TypeFunction (tp ro pos) ca_from (Just fromIsMut) ca_to)
+                (translateType ro fa_from)
+                (translateType ro fa_to)
 
-        FA.TypeTuple types ->
+        FA.TypeTuple pos types ->
             case types of
                 [ faFirst, faSecond ] ->
                     Result.map2
                         (\caFirst caSecond ->
-                            CA.TypeRecord
-                                { extensible = Nothing
-                                , attrs =
-                                    Dict.fromList
-                                        [ ( "first", caFirst )
-                                        , ( "second", caSecond )
-                                        ]
-                                }
+                            Dict.empty
+                                |> Dict.insert "first" caFirst
+                                |> Dict.insert "second" caSecond
+                                |> CA.TypeRecord (tp ro pos) Nothing
                         )
                         (translateType ro faFirst)
                         (translateType ro faSecond)
@@ -1204,15 +1158,11 @@ translateType ro faType =
                 [ faFirst, faSecond, faThird ] ->
                     Result.map3
                         (\caFirst caSecond caThird ->
-                            CA.TypeRecord
-                                { extensible = Nothing
-                                , attrs =
-                                    Dict.fromList
-                                        [ ( "first", caFirst )
-                                        , ( "second", caSecond )
-                                        , ( "third", caThird )
-                                        ]
-                                }
+                            Dict.empty
+                                |> Dict.insert "first" caFirst
+                                |> Dict.insert "second" caSecond
+                                |> Dict.insert "third" caThird
+                                |> CA.TypeRecord (tp ro pos) Nothing
                         )
                         (translateType ro faFirst)
                         (translateType ro faSecond)
@@ -1243,19 +1193,12 @@ errorExperimentingWithNoExtensibleTypes ro ( start, end ) =
 --
 
 
-wrapLambda : CA.Pattern -> List (CA.Statement Pos) -> List (CA.Statement Pos)
+wrapLambda : CA.Pattern -> List CA.Statement -> List CA.Statement
 wrapLambda pattern bodyAccum =
-    [ { parameter = pattern
-      , body = bodyAccum
-      }
-        |> CA.Lambda todoPos
+    [ bodyAccum
+        |> CA.Lambda todoPos pattern
         |> CA.Evaluation
     ]
-
-
-listResultToResultList : List (Result e o) -> Result e (List o)
-listResultToResultList =
-    firstErrorRec [] >> Result.map List.reverse
 
 
 firstErrorRec : List o -> List (Result e o) -> Result e (List o)
@@ -1292,8 +1235,8 @@ maybeResultToResultMaybe maybeResult =
 --
 
 
-errorRecordUpdateShorthandOutsideRecordUpdate : Int -> Int -> String -> Env -> Res a
-errorRecordUpdateShorthandOutsideRecordUpdate start end rawString env =
+errorRecordUpdateShorthandOutsideRecordUpdate : FA.Pos -> String -> Env -> Res a
+errorRecordUpdateShorthandOutsideRecordUpdate ( start, end ) rawString env =
     Error.makeRes
         env.ro.currentModule
         [ Error.showLines env.ro.code 2 start

@@ -3,7 +3,7 @@ module Prelude exposing (..)
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import MetaFile exposing (MetaFile)
-import Types.CanonicalAst as CA exposing (Pos, Type)
+import Types.CanonicalAst as CA exposing (Type)
 import Types.Meta exposing (Meta)
 
 
@@ -13,7 +13,7 @@ import Types.Meta exposing (Meta)
 --
 
 
-prelude : CA.Module Pos
+prelude : CA.AllDefs
 prelude =
     [ mutableAssign
 
@@ -127,16 +127,25 @@ meta =
 --
 
 
+pos : CA.Pos
+pos =
+    { n = "prelude"
+    , c = ""
+    , s = -1
+    , e = -1
+    }
+
+
 tyVar n =
-    CA.TypeVariable { name = n }
+    CA.TypeVariable pos n
 
 
 constant n =
-    CA.TypeConstant { ref = n, args = [] }
+    CA.TypeConstant pos n []
 
 
 function from to =
-    CA.TypeFunction { from = from, fromIsMutable = Nothing, to = to }
+    CA.TypeFunction pos from Nothing to
 
 
 
@@ -154,7 +163,7 @@ type alias NativeBinopArgs =
     }
 
 
-nativeBinop : NativeBinopArgs -> ( String, CA.RootDef Pos )
+nativeBinop : NativeBinopArgs -> ( String, CA.RootDef )
 nativeBinop ar =
     ( ar.symbol
     , CA.Value
@@ -163,27 +172,25 @@ nativeBinop ar =
         , body = []
         , maybeAnnotation =
             Just
-                (CA.TypeFunction
-                    { from = ar.left
-                    , fromIsMutable = Just False
-                    , to =
-                        CA.TypeFunction
-                            { from = ar.right
-                            , fromIsMutable = Just ar.mutates
-                            , to = ar.return
-                            }
-                    }
+                (CA.TypeFunction pos
+                    ar.left
+                    (Just False)
+                    (CA.TypeFunction pos
+                        ar.right
+                        (Just ar.mutates)
+                        ar.return
+                    )
                 )
         }
     )
 
 
-mutableAssign : ( String, CA.RootDef Pos )
+mutableAssign : ( String, CA.RootDef )
 mutableAssign =
     nativeBinop
         { symbol = ":="
-        , left = CA.TypeVariable { name = "a" }
-        , right = CA.TypeVariable { name = "a" }
+        , left = CA.TypeVariable pos "a"
+        , right = CA.TypeVariable pos "a"
         , return = Core.noneType
         , mutates = True
         }
@@ -193,7 +200,7 @@ mutableAssign =
 -- arithmetic
 
 
-add : ( String, CA.RootDef Pos )
+add : ( String, CA.RootDef )
 add =
     nativeBinop
         { symbol = "+"
@@ -204,7 +211,7 @@ add =
         }
 
 
-subtract : ( String, CA.RootDef Pos )
+subtract : ( String, CA.RootDef )
 subtract =
     nativeBinop
         { symbol = "-"
@@ -215,7 +222,7 @@ subtract =
         }
 
 
-multiply : ( String, CA.RootDef Pos )
+multiply : ( String, CA.RootDef )
 multiply =
     nativeBinop
         { symbol = "*"
@@ -226,7 +233,7 @@ multiply =
         }
 
 
-divide : ( String, CA.RootDef Pos )
+divide : ( String, CA.RootDef )
 divide =
     nativeBinop
         { symbol = "/"
@@ -237,7 +244,7 @@ divide =
         }
 
 
-mutableAdd : ( String, CA.RootDef Pos )
+mutableAdd : ( String, CA.RootDef )
 mutableAdd =
     nativeBinop
         { symbol = "+="
@@ -254,7 +261,7 @@ mutableAdd =
 
 {-| TODO I don't have a `comparable` typeclass, how do I give a type to these?
 -}
-lesserThan : ( String, CA.RootDef Pos )
+lesserThan : ( String, CA.RootDef )
 lesserThan =
     nativeBinop
         { symbol = "<"
@@ -265,7 +272,7 @@ lesserThan =
         }
 
 
-greaterThan : ( String, CA.RootDef Pos )
+greaterThan : ( String, CA.RootDef )
 greaterThan =
     nativeBinop
         { symbol = ">"
@@ -280,7 +287,7 @@ greaterThan =
 -- Other binops
 
 
-stringConcat : ( String, CA.RootDef Pos )
+stringConcat : ( String, CA.RootDef )
 stringConcat =
     nativeBinop
         { symbol = ".."
@@ -291,7 +298,7 @@ stringConcat =
         }
 
 
-sendRight : ( String, CA.RootDef Pos )
+sendRight : ( String, CA.RootDef )
 sendRight =
     nativeBinop
         { symbol = ">>"
@@ -302,7 +309,7 @@ sendRight =
         }
 
 
-sendLeft : ( String, CA.RootDef Pos )
+sendLeft : ( String, CA.RootDef )
 sendLeft =
     nativeBinop
         { symbol = "<<"
@@ -319,7 +326,7 @@ sendLeft =
 --
 
 
-debugTodo : ( String, CA.RootDef Pos )
+debugTodo : ( String, CA.RootDef )
 debugTodo =
     ( "SPCore/Debug.todo"
     , CA.Value
@@ -328,17 +335,16 @@ debugTodo =
         , body = [{- TODO -}]
         , maybeAnnotation =
             Just
-                (CA.TypeFunction
-                    { from = Core.textType
-                    , fromIsMutable = Just False
-                    , to = CA.TypeVariable { name = "a" }
-                    }
+                (CA.TypeFunction pos
+                    Core.textType
+                    (Just False)
+                    (CA.TypeVariable pos "a")
                 )
         }
     )
 
 
-debugLog : ( String, CA.RootDef Pos )
+debugLog : ( String, CA.RootDef )
 debugLog =
     ( "SPCore/Debug.log"
     , CA.Value
@@ -347,16 +353,14 @@ debugLog =
         , body = [{- TODO -}]
         , maybeAnnotation =
             Just
-                (CA.TypeFunction
-                    { from = Core.textType
-                    , fromIsMutable = Just False
-                    , to =
-                        CA.TypeFunction
-                            { from = CA.TypeVariable { name = "a" }
-                            , fromIsMutable = Just False
-                            , to = CA.TypeVariable { name = "a" }
-                            }
-                    }
+                (CA.TypeFunction pos
+                    Core.textType
+                    (Just False)
+                    (CA.TypeFunction pos
+                        (CA.TypeVariable pos "a")
+                        (Just False)
+                        (CA.TypeVariable pos "a")
+                    )
                 )
         }
     )

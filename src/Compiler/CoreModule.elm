@@ -12,12 +12,12 @@ root name =
     moduleName ++ "." ++ name
 
 
-todoPos : Pos
-todoPos =
-    { moduleName = "Core"
-    , moduleCode = ""
-    , start = -2
-    , end = -2
+p : Pos
+p =
+    { n = "Core"
+    , c = ""
+    , s = -2
+    , e = -2
     }
 
 
@@ -26,7 +26,7 @@ todoPos =
 TODO rename to CoreTypes?
 
 -}
-coreModule : CA.Module Pos
+coreModule : CA.AllDefs
 coreModule =
     let
         u uDef =
@@ -58,10 +58,7 @@ text =
 
 textType : CA.Type
 textType =
-    CA.TypeConstant
-        { ref = text.name
-        , args = []
-        }
+    CA.TypeConstant p text.name []
 
 
 
@@ -80,10 +77,7 @@ number =
 
 numberType : CA.Type
 numberType =
-    CA.TypeConstant
-        { ref = number.name
-        , args = []
-        }
+    CA.TypeConstant p number.name []
 
 
 
@@ -102,10 +96,7 @@ char =
 
 charType : CA.Type
 charType =
-    CA.TypeConstant
-        { ref = char.name
-        , args = []
-        }
+    CA.TypeConstant p char.name []
 
 
 
@@ -135,10 +126,7 @@ none =
 
 noneType : CA.Type
 noneType =
-    CA.TypeConstant
-        { ref = none.name
-        , args = []
-        }
+    CA.TypeConstant p none.name []
 
 
 
@@ -172,10 +160,7 @@ bool =
 
 boolType : CA.Type
 boolType =
-    CA.TypeConstant
-        { ref = bool.name
-        , args = []
-        }
+    CA.TypeConstant p bool.name []
 
 
 
@@ -207,36 +192,29 @@ listNil =
     }
 
 
-
--- listCons : CA.UnionConstructor
-
-
+{-| listCons : CA.UnionConstructor
+-}
 listCons =
     { name = root "Cons"
     , args =
-        [ CA.TypeVariable
-            { name = "item"
-            }
-        , CA.TypeConstant
-            { ref = root "List"
-            , args = [ CA.TypeVariable { name = "item" } ]
-            }
+        [ CA.TypeVariable p "item"
+        , CA.TypeConstant p (root "List") [ CA.TypeVariable p "item" ]
         ]
     }
 
 
-nil : CA.Expression Pos
+nil : CA.Expression
 nil =
-    CA.Variable todoPos
+    CA.Variable p
         { isRoot = True
         , name = listNil.name
         , attrPath = []
         }
 
 
-cons : CA.Expression Pos
+cons : CA.Expression
 cons =
-    CA.Variable todoPos
+    CA.Variable p
         { isRoot = True
         , name = listCons.name
         , attrPath = []

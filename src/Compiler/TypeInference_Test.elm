@@ -1,7 +1,7 @@
 module Compiler.TypeInference_Test exposing (..)
 
 import Compiler.CoreModule
-import Compiler.TestHelpers
+import Compiler.TestHelpers as TH exposing (p)
 import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Lib
@@ -49,11 +49,11 @@ hasError =
 
 
 constant n =
-    CA.TypeConstant { ref = n, args = [] }
+    CA.TypeConstant p n []
 
 
 function from to =
-    CA.TypeFunction { from = from, fromIsMutable = Nothing, to = to }
+    CA.TypeFunction p from Nothing to
 
 
 tyNumber =
@@ -64,18 +64,47 @@ tyNone =
     constant "SPCore.None"
 
 
+
+----
+--- These should be removed once we get rid of the old record declarations
+--
+
+
+typeFunction { from, fromIsMutable, to } =
+    CA.TypeFunction p from fromIsMutable to
+
+
+typeVariable { name } =
+    CA.TypeVariable p name
+
+
+typeConstant { ref, args } =
+    CA.TypeConstant p ref args
+
+
+typeRecord { extensible, attrs } =
+    CA.TypeRecord p extensible attrs
+
+
+
+----
+---
+--
+
+
 infer : String -> String -> Result String TI.EnvEntry
 infer name code =
     code
-        |> Compiler.TestHelpers.stringToCanonicalModuleWithPos
+        |> TH.stringToCanonicalModuleWithPos
         |> Result.andThen (TI.inspectModule preamble)
-        |> Compiler.TestHelpers.resErrorToString
+        |> TH.resErrorToString
         |> Result.andThen
             (\( mod, env, subs ) ->
                 env
                     |> Dict.get ("Test." ++ name)
                     |> Maybe.map normalizeSchema
                     |> Result.fromMaybe "Dict fail"
+                    |> Result.map (\schema -> { schema | type_ = TH.removePos CA.extensionFold_type schema.type_ })
             )
 
 
@@ -89,7 +118,7 @@ preamble =
             }
     in
     [ ( "Test.add", em <| function tyNumber (function tyNumber tyNumber) )
-    , ( "Test.reset", em <| CA.TypeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone } )
+    , ( "Test.reset", em <| typeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone } )
     ]
         |> Dict.fromList
 
@@ -136,39 +165,39 @@ normalizeName dict name =
 normalizeType : Dict String String -> Type -> ( Type, Dict String String )
 normalizeType dict ty =
     case ty of
-        CA.TypeConstant ar ->
+        CA.TypeConstant pos name args ->
             let
                 fold arg ( ars, d ) =
                     normalizeType d arg
                         |> Tuple.mapFirst (\na -> na :: ars)
 
                 ( reversedArgs, dict1 ) =
-                    List.foldl fold ( [], dict ) ar.args
+                    List.foldl fold ( [], dict ) args
             in
-            ( CA.TypeConstant { ar | args = List.reverse reversedArgs }
+            ( CA.TypeConstant pos name (List.reverse reversedArgs)
             , dict1
             )
 
-        CA.TypeVariable { name } ->
+        CA.TypeVariable pos name ->
             normalizeName dict name
-                |> Tuple.mapFirst (\n -> CA.TypeVariable { name = n })
+                |> Tuple.mapFirst (CA.TypeVariable pos)
 
-        CA.TypeFunction ar ->
+        CA.TypeFunction pos from0 fromIsMut to0 ->
             let
                 ( from, d1 ) =
-                    normalizeType dict ar.from
+                    normalizeType dict from0
 
                 ( to, d2 ) =
-                    normalizeType d1 ar.to
+                    normalizeType d1 to0
             in
-            ( CA.TypeFunction { ar | from = from, to = to }
+            ( CA.TypeFunction pos from fromIsMut to
             , d2
             )
 
-        CA.TypeRecord ar ->
+        CA.TypeRecord pos ext0 attrs0 ->
             let
                 ( et, d1 ) =
-                    case ar.extensible of
+                    case ext0 of
                         Nothing ->
                             ( Nothing, dict )
 
@@ -180,15 +209,15 @@ normalizeType dict ty =
                         |> Tuple.mapFirst (\na -> Dict.insert name na accum)
 
                 ( attrs, d2 ) =
-                    Dict.foldl fold ( Dict.empty, d1 ) ar.attrs
+                    Dict.foldl fold ( Dict.empty, d1 ) attrs0
             in
-            ( CA.TypeRecord { extensible = et, attrs = attrs }
+            ( CA.TypeRecord pos et attrs
             , d2
             )
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias pos path t ->
             normalizeType dict t
-                |> Tuple.mapFirst (CA.TypeAlias path)
+                |> Tuple.mapFirst (CA.TypeAlias pos path)
 
 
 
@@ -244,10 +273,10 @@ functions =
                     { forall = Set.fromList [ "1" ]
                     , mutable = Just False
                     , type_ =
-                        CA.TypeFunction
-                            { from = CA.TypeVariable { name = "1" }
+                        typeFunction
+                            { from = typeVariable { name = "1" }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeConstant { ref = "SPCore.Number", args = [] }
+                            , to = typeConstant { ref = "SPCore.Number", args = [] }
                             }
                     }
             }
@@ -310,10 +339,10 @@ variableTypes =
             , expected =
                 Ok
                     { type_ =
-                        CA.TypeFunction
-                            { from = CA.TypeVariable { name = "a" }
+                        typeFunction
+                            { from = typeVariable { name = "a" }
                             , fromIsMutable = Just False
-                            , to = CA.TypeVariable { name = "a" }
+                            , to = typeVariable { name = "a" }
                             }
                     , forall = Set.singleton "a"
                     , mutable = Just False
@@ -330,10 +359,10 @@ variableTypes =
             , expected =
                 Ok
                     { type_ =
-                        CA.TypeFunction
-                            { from = CA.TypeVariable { name = "1" }
+                        typeFunction
+                            { from = typeVariable { name = "1" }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeVariable { name = "1" }
+                            , to = typeVariable { name = "1" }
                             }
                     , forall = Set.singleton "1"
                     , mutable = Just False
@@ -448,10 +477,10 @@ variableTypes =
                 { forall = Set.fromList [ "1" ]
                 , mutable = Just False
                 , type_ =
-                    CA.TypeFunction
-                        { from = CA.TypeVariable { name = "1" }
+                    typeFunction
+                        { from = typeVariable { name = "1" }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "1" }
+                        , to = typeVariable { name = "1" }
                         }
                 }
             )
@@ -537,7 +566,7 @@ mutability =
                         """
             , expected =
                 Ok
-                    { type_ = CA.TypeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
+                    { type_ = typeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
                     , forall = Set.empty
                     , mutable = Just False
                     }
@@ -566,7 +595,7 @@ mutability =
                         """
             , expected =
                 Ok
-                    { type_ = CA.TypeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
+                    { type_ = typeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
                     , forall = Set.empty
                     , mutable = Just False
                     }
@@ -638,10 +667,10 @@ higherOrderTypes =
             , expected =
                 Ok
                     { type_ =
-                        CA.TypeFunction
-                            { from = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "SPCore.List" }
+                        typeFunction
+                            { from = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
                             , fromIsMutable = Just False
-                            , to = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "SPCore.List" }
+                            , to = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
                             }
                     , mutable = Just False
                     , forall = Set.singleton "a"
@@ -652,7 +681,7 @@ higherOrderTypes =
             , run = \_ -> infer "L" "union X a = L"
             , expected =
                 Ok
-                    { type_ = CA.TypeConstant { args = [ CA.TypeVariable { name = "a" } ], ref = "Test.X" }
+                    { type_ = typeConstant { args = [ typeVariable { name = "a" } ], ref = "Test.X" }
                     , mutable = Just False
                     , forall = Set.singleton "a"
                     }
@@ -682,20 +711,20 @@ records =
                     { forall = Set.fromList [ "1", "2", "3" ]
                     , mutable = Just False
                     , type_ =
-                        CA.TypeFunction
+                        typeFunction
                             { from =
-                                CA.TypeRecord
+                                typeRecord
                                     { attrs =
                                         Dict.singleton "meh"
-                                            (CA.TypeRecord
-                                                { attrs = Dict.singleton "blah" (CA.TypeVariable { name = "3" })
+                                            (typeRecord
+                                                { attrs = Dict.singleton "blah" (typeVariable { name = "3" })
                                                 , extensible = Just "2"
                                                 }
                                             )
                                     , extensible = Just "1"
                                     }
                             , fromIsMutable = Nothing
-                            , to = CA.TypeVariable { name = "3" }
+                            , to = typeVariable { name = "3" }
                             }
                     }
             }
@@ -712,20 +741,20 @@ records =
                     { forall = Set.fromList [ "1", "2" ]
                     , mutable = Just False
                     , type_ =
-                        CA.TypeFunction
+                        typeFunction
                             { from =
-                                CA.TypeRecord
+                                typeRecord
                                     { attrs =
                                         Dict.singleton "meh"
-                                            (CA.TypeRecord
-                                                { attrs = Dict.singleton "blah" (CA.TypeConstant { ref = "SPCore.Number", args = [] })
+                                            (typeRecord
+                                                { attrs = Dict.singleton "blah" (typeConstant { ref = "SPCore.Number", args = [] })
                                                 , extensible = Just "2"
                                                 }
                                             )
                                     , extensible = Just "1"
                                     }
                             , fromIsMutable = Just True
-                            , to = CA.TypeConstant { ref = "SPCore.None", args = [] }
+                            , to = typeConstant { ref = "SPCore.None", args = [] }
                             }
                     }
             }
@@ -762,8 +791,8 @@ records =
             , expected =
                 let
                     re =
-                        CA.TypeRecord
-                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], ref = "SPCore.Number" })
+                        typeRecord
+                            { attrs = Dict.singleton "x" (typeConstant { args = [], ref = "SPCore.Number" })
                             , extensible = Just "1"
                             }
                 in
@@ -771,7 +800,7 @@ records =
                     { forall = Set.fromList [ "1" ]
                     , mutable = Just False
                     , type_ =
-                        CA.TypeFunction
+                        typeFunction
                             { from = re
                             , fromIsMutable = Nothing
                             , to = re
@@ -790,8 +819,8 @@ records =
             , expected =
                 let
                     re =
-                        CA.TypeRecord
-                            { attrs = Dict.singleton "x" (CA.TypeConstant { args = [], ref = "SPCore.Number" })
+                        typeRecord
+                            { attrs = Dict.singleton "x" (typeConstant { args = [], ref = "SPCore.Number" })
                             , extensible = Just "1"
                             }
                 in
@@ -799,7 +828,7 @@ records =
                     { forall = Set.fromList [ "1" ]
                     , mutable = Just False
                     , type_ =
-                        CA.TypeFunction
+                        typeFunction
                             { from = re
                             , fromIsMutable = Nothing
                             , to = re
@@ -817,14 +846,14 @@ records =
                 { forall = Set.fromList [ "2", "1" ]
                 , mutable = Just False
                 , type_ =
-                    CA.TypeFunction
+                    typeFunction
                         { from =
-                            CA.TypeRecord
-                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "2" } ) ]
+                            typeRecord
+                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "2" } ) ]
                                 , extensible = Just "1"
                                 }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "2" }
+                        , to = typeVariable { name = "2" }
                         }
                 }
             )
@@ -862,14 +891,14 @@ patterns =
                 { forall = Set.fromList [ "1" ]
                 , mutable = Just False
                 , type_ =
-                    CA.TypeFunction
+                    typeFunction
                         { from =
-                            CA.TypeConstant
-                                { args = [ CA.TypeVariable { name = "1" } ]
+                            typeConstant
+                                { args = [ typeVariable { name = "1" } ]
                                 , ref = "SPCore.List"
                                 }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "1" }
+                        , to = typeVariable { name = "1" }
                         }
                 }
             )
@@ -885,14 +914,14 @@ patterns =
                 { forall = Set.fromList [ "2", "1" ]
                 , mutable = Just False
                 , type_ =
-                    CA.TypeFunction
+                    typeFunction
                         { from =
-                            CA.TypeRecord
-                                { attrs = Dict.fromList [ ( "first", CA.TypeVariable { name = "2" } ) ]
+                            typeRecord
+                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "2" } ) ]
                                 , extensible = Just "1"
                                 }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeVariable { name = "2" }
+                        , to = typeVariable { name = "2" }
                         }
                 }
             )
@@ -920,10 +949,10 @@ try_as =
                 { forall = Set.fromList []
                 , mutable = Just False
                 , type_ =
-                    CA.TypeFunction
-                        { from = CA.TypeConstant { ref = "SPCore.Bool", args = [] }
+                    typeFunction
+                        { from = typeConstant { ref = "SPCore.Bool", args = [] }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeConstant { ref = "SPCore.Number", args = [] }
+                        , to = typeConstant { ref = "SPCore.Number", args = [] }
                         }
                 }
             )
@@ -972,10 +1001,10 @@ if_then =
                 { forall = Set.fromList []
                 , mutable = Just False
                 , type_ =
-                    CA.TypeFunction
-                        { from = CA.TypeConstant { ref = "SPCore.Bool", args = [] }
+                    typeFunction
+                        { from = typeConstant { ref = "SPCore.Bool", args = [] }
                         , fromIsMutable = Nothing
-                        , to = CA.TypeConstant { ref = "SPCore.Number", args = [] }
+                        , to = typeConstant { ref = "SPCore.Number", args = [] }
                         }
                 }
             )

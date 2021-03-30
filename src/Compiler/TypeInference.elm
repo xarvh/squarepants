@@ -44,19 +44,12 @@ type alias EnvEntry =
     }
 
 
-type alias Ext =
-    { pos : CA.Pos, uid : Int }
-
-
-dummyExt : Ext
-dummyExt =
-    { pos =
-        { moduleName = ""
-        , moduleCode = ""
-        , start = -1
-        , end = -1
-        }
-    , uid = -1
+infPos : CA.Pos
+infPos =
+    { n = "ti"
+    , c = ""
+    , s = -1
+    , e = -1
     }
 
 
@@ -76,8 +69,8 @@ dict_get caller k d =
             v
 
 
-uidToVarType =
-    intToName >> nameToTyVar
+posToVarType =
+    CA.posToUid >> nameToTyVar
 
 
 intToName : Int -> Name
@@ -87,7 +80,7 @@ intToName n =
 
 nameToTyVar : Name -> Type
 nameToTyVar name =
-    CA.TypeVariable { name = name }
+    CA.TypeVariable infPos name 
 
 
 
@@ -160,15 +153,8 @@ dict_fold_nr f dict accum =
 --
 
 
-inspectModule : Env -> CA.Module CA.Pos -> Res ( CA.Module Ext, Env, Substitutions )
-inspectModule prelude rawMod =
-    let
-        f expr ( pos, n ) =
-            ( { pos = pos, uid = n }, n + 1 )
-
-        ( mod, lastId ) =
-            CA.extensionFold_module f ( rawMod, 0 )
-    in
+inspectModule : Env -> CA.AllDefs -> Res ( CA.AllDefs, Env, Substitutions )
+inspectModule prelude mod =
     result_do (Lib.dict_foldRes (\k -> addConstructors) mod prelude) <| \env ->
     let
         asValue rootDef =
@@ -195,11 +181,11 @@ inspectModule prelude rawMod =
                 |> TyGen.wrap
     in
     gen
-        |> TyGen.run lastId
+        |> TyGen.run 0
         |> Tuple.first
 
 
-addConstructors : CA.RootDef Ext -> Env -> Res Env
+addConstructors : CA.RootDef -> Env -> Res Env
 addConstructors rootDef env =
     case rootDef of
         CA.Union def ->
@@ -213,17 +199,13 @@ addConstructor : CA.UnionDef -> String -> List CA.Type -> Env -> Res Env
 addConstructor unionDef ctorName ctorArgs env =
     let
         args =
-            List.map (\a -> CA.TypeVariable { name = a }) unionDef.args
+            List.map (\name -> CA.TypeVariable infPos name) unionDef.args
 
         ctorType =
-            List.foldr fold (CA.TypeConstant { ref = unionDef.name, args = args }) ctorArgs
+            List.foldr fold (CA.TypeConstant infPos unionDef.name args) ctorArgs
 
         fold ty accum =
-            CA.TypeFunction
-                { from = ty
-                , fromIsMutable = Just False
-                , to = accum
-                }
+            CA.TypeFunction infPos ty (Just False) accum
     in
     case validateType False ctorType of
         Just err ->
@@ -248,10 +230,10 @@ addConstructor unionDef ctorName ctorArgs env =
 refineType : Substitutions -> Type -> Type
 refineType subs ty =
     case ty of
-        CA.TypeConstant { ref, args } ->
-            CA.TypeConstant { ref = ref, args = List.map (refineType subs) args }
+        CA.TypeConstant pos ref args ->
+            CA.TypeConstant pos ref (List.map (refineType subs) args)
 
-        CA.TypeVariable { name } ->
+        CA.TypeVariable _ name ->
             case Dict.get name subs of
                 Just substitutionType ->
                     -- a substitution exists for the variable type v
@@ -261,38 +243,29 @@ refineType subs ty =
                     -- no substitution, return the type as-is
                     ty
 
-        CA.TypeFunction { from, fromIsMutable, to } ->
-            CA.TypeFunction
-                { from = refineType subs from
-                , fromIsMutable = fromIsMutable
-                , to = refineType subs to
-                }
+        CA.TypeFunction pos from fromIsMutable to ->
+            CA.TypeFunction pos
+                (refineType subs from)
+                fromIsMutable
+                (refineType subs to)
 
-        CA.TypeAlias path t ->
-            CA.TypeAlias path (refineType subs t)
+        CA.TypeAlias pos path t ->
+            CA.TypeAlias pos path (refineType subs t)
 
-        CA.TypeRecord args ->
-            case args.extensible |> Maybe.andThen (\name -> Dict.get name subs) of
+        CA.TypeRecord pos extensible attrs ->
+            case extensible |> Maybe.andThen (\name -> Dict.get name subs) of
                 Nothing ->
-                    CA.TypeRecord
-                        { extensible = args.extensible
-                        , attrs = Dict.map (\name -> refineType subs) args.attrs
-                        }
+                    CA.TypeRecord pos extensible (Dict.map (\name -> refineType subs) attrs)
 
-                Just (CA.TypeVariable ar) ->
-                    CA.TypeRecord
-                        { extensible = Just ar.name
-                        , attrs = Dict.map (\name -> refineType subs) args.attrs
-                        }
+                Just (CA.TypeVariable _ n) ->
+                    CA.TypeRecord pos (Just n) (Dict.map (\name -> refineType subs) attrs)
 
-                Just (CA.TypeRecord ar) ->
+                Just (CA.TypeRecord _ ext2 attrs2) ->
                     -- TODO I'm not sure what I'm doing here
-                    CA.TypeRecord
-                        { extensible = ar.extensible
-
+                    CA.TypeRecord pos
+                        ext2
                         -- TODO Should I refine ar? args? none? merge the two?
-                        , attrs = Dict.map (\name -> refineType subs) ar.attrs
-                        }
+                        (Dict.map (\name -> refineType subs) attrs2)
 
                 Just what ->
                     Debug.todo "replacing record extension with non-var" (Debug.toString what)
@@ -301,29 +274,29 @@ refineType subs ty =
 typeVarsFromType : Type -> Set Name
 typeVarsFromType ty =
     case ty of
-        CA.TypeVariable { name } ->
+        CA.TypeVariable _ name ->
             Set.singleton name
 
-        CA.TypeFunction { from, to } ->
+        CA.TypeFunction _ from fromIsMutable to ->
             Set.union (typeVarsFromType from) (typeVarsFromType to)
 
-        CA.TypeConstant { ref, args } ->
+        CA.TypeConstant pos ref args ->
             List.foldl (\a -> Set.union (typeVarsFromType a)) Set.empty args
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias _ path t ->
             typeVarsFromType t
 
-        CA.TypeRecord args ->
+        CA.TypeRecord _ extensible attrs ->
             let
                 init =
-                    case args.extensible of
+                    case extensible of
                         Nothing ->
                             Set.empty
 
                         Just name ->
                             Set.singleton name
             in
-            Dict.foldl (\n t -> Set.union (typeVarsFromType t)) init args.attrs
+            Dict.foldl (\n t -> Set.union (typeVarsFromType t)) init attrs
 
 
 
@@ -352,15 +325,15 @@ instantiateType t tvars =
         |> TyGen.wrap
 
 
-envGet : Ext -> Name -> Env -> TR Type
-envGet ext v e =
+envGet : CA.Pos -> Name -> Env -> TR Type
+envGet pos v e =
     case Dict.get v e of
         Just { type_, forall, mutable } ->
             instantiateType type_ forall
                 |> TyGen.map Ok
 
         Nothing ->
-            errorUnboundVariable ext v
+            errorUnboundVariable pos v
                 |> TyGen.wrap
 
 
@@ -376,7 +349,7 @@ refineEnv s env =
 unwrapAlias : Maybe String -> Type -> ( Type, Maybe String )
 unwrapAlias prevPath ty =
     case ty of
-        CA.TypeAlias path t ->
+        CA.TypeAlias _ path t ->
             unwrapAlias (Just path) t
 
         _ ->
@@ -403,9 +376,9 @@ unify at1 at2 s =
             Set.member v (typeVarsFromType t)
     in
     case ( t1_refined, t2_refined ) of
-        ( CA.TypeConstant c1, CA.TypeConstant c2 ) ->
-            if c1.ref /= c2.ref then
-                TyGen.wrap <| errorTodo <| "cannot unify " ++ c1.ref ++ " and " ++ c2.ref
+        ( CA.TypeConstant _ c1_ref c1_args, CA.TypeConstant _ c2_ref c2_args ) ->
+            if c1_ref /= c2_ref then
+                TyGen.wrap <| errorTodo <| "cannot unify " ++ c1_ref ++ " and " ++ c2_ref
 
             else
                 let
@@ -418,49 +391,49 @@ unify at1 at2 s =
                                 do_nr (unify head1 head2 subs) <| rec tail1 tail2
 
                             _ ->
-                                TyGen.wrap <| errorTodo <| "one of the two has wrong number of args: " ++ c1.ref ++ " and " ++ c2.ref
+                                TyGen.wrap <| errorTodo <| "one of the two has wrong number of args: " ++ c1_ref ++ " and " ++ c2_ref
                 in
-                rec c1.args c2.args s
+                rec c1_args c2_args s
 
-        ( CA.TypeVariable v1, CA.TypeVariable v2 ) ->
+        ( CA.TypeVariable _ v1_name, CA.TypeVariable _ v2_name ) ->
             TyGen.wrap
-                (if v1 == v2 then
+                (if v1_name == v2_name then
                     Ok s
 
                  else
                     s
-                        |> Dict.insert v1.name t2_refined
+                        |> Dict.insert v1_name t2_refined
                         |> Ok
                 )
 
-        ( CA.TypeVariable v1, _ ) ->
+        ( CA.TypeVariable _ v1_name, _ ) ->
             TyGen.wrap
-                (if cycle v1.name t2 then
+                (if cycle v1_name t2 then
                     -- is this the correct behavior?
                     errorTodo "cycle!"
 
                  else
                     s
-                        |> Dict.insert v1.name t2_refined
+                        |> Dict.insert v1_name t2_refined
                         |> Ok
                 )
 
-        ( _, CA.TypeVariable v2 ) ->
+        ( _, CA.TypeVariable _ v2 ) ->
             unify t2_refined t1_refined s
 
-        ( CA.TypeFunction a, CA.TypeFunction b ) ->
+        ( CA.TypeFunction _ a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
             let
                 maybeClash =
-                    Maybe.map2 (\aa bb -> aa /= bb) a.fromIsMutable b.fromIsMutable
+                    Maybe.map2 (\aa bb -> aa /= bb) a_fromIsMutable b_fromIsMutable
             in
             if Maybe.withDefault False maybeClash then
                 TyGen.wrap <| errorTodo <| "mutability clash: " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
 
             else
-                do_nr (unify a.to b.to s) <| unify a.from b.from
+                do_nr (unify a_to b_to s) <| unify a_from b_from
 
-        ( CA.TypeRecord a, CA.TypeRecord b ) ->
-            unifyRecords a b s
+        ( CA.TypeRecord _ a_ext a_attrs, CA.TypeRecord _ b_ext b_attrs ) ->
+            unifyRecords ( a_ext, a_attrs ) ( b_ext, b_attrs ) s
 
         _ ->
             TyGen.wrap <| errorTodo <| "cannot unify " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
@@ -473,8 +446,8 @@ type alias UnifyRecordsFold =
     }
 
 
-unifyRecords : CA.TypeRecordArgs -> CA.TypeRecordArgs -> Substitutions -> TR Substitutions
-unifyRecords aArgs bArgs subs0 =
+unifyRecords : ( Maybe String, Dict String Type ) -> ( Maybe String, Dict String Type ) -> Substitutions -> TR Substitutions
+unifyRecords ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
     -- TODO if aArg == bArg do nothing
     let
         initState : UnifyRecordsFold
@@ -497,7 +470,7 @@ unifyRecords aArgs bArgs subs0 =
             { state | both = Dict.insert name ( aType, bType ) state.both }
 
         { aOnly, bOnly, both } =
-            Dict.merge onA onBoth onB aArgs.attrs bArgs.attrs initState
+            Dict.merge onA onBoth onB a_attrs b_attrs initState
 
         unifyBothRec subs ls =
             case ls of
@@ -519,7 +492,7 @@ unifyRecords aArgs bArgs subs0 =
     else
         do_nr tyResSubs1 <| \subs1 ->
         -- from this point on, we can assume that the common attributes are compatible
-        case ( aArgs.extensible, bArgs.extensible ) of
+        case ( a_ext, b_ext ) of
             ( Just aName, Nothing ) ->
                 if aOnly /= Dict.empty then
                     "a has attributes that do not exist in b"
@@ -528,7 +501,7 @@ unifyRecords aArgs bArgs subs0 =
 
                 else
                     -- substitute a with b
-                    Dict.insert aName (CA.TypeRecord bArgs) subs1
+                    Dict.insert aName (CA.TypeRecord infPos b_ext b_attrs) subs1
                         |> Ok
                         |> TyGen.wrap
 
@@ -540,7 +513,7 @@ unifyRecords aArgs bArgs subs0 =
 
                 else
                     -- substitute b with a
-                    Dict.insert bName (CA.TypeRecord aArgs) subs1
+                    Dict.insert bName (CA.TypeRecord infPos a_ext a_attrs) subs1
                         |> Ok
                         |> TyGen.wrap
 
@@ -560,7 +533,7 @@ unifyRecords aArgs bArgs subs0 =
                 TyGen.do newName <| \new ->
                 let
                     subTy =
-                        CA.TypeRecord { extensible = Just new, attrs = Dict.union bOnly aArgs.attrs }
+                        CA.TypeRecord infPos (Just new) (Dict.union bOnly a_attrs)
                 in
                 subs1
                     |> Dict.insert aName subTy
@@ -627,16 +600,13 @@ unifyWithAttrPath attrPath typeAtPathEnd valueType subs =
             let
                 -- `rType` : { n1 | `head` : t1 }
                 rType =
-                    CA.TypeRecord
-                        { extensible = Just n1
-                        , attrs = Dict.singleton head t1
-                        }
+                    CA.TypeRecord infPos (Just n1) (Dict.singleton head t1)
             in
             do_nr (unify rType valueType subs) <| \subs1 ->
             unifyWithAttrPath tail typeAtPathEnd t1 subs1
 
 
-inspectExpr : CA.Expression Ext -> Type -> Eas -> TR Eas
+inspectExpr : CA.Expression -> Type -> Eas -> TR Eas
 inspectExpr expr ty ( env, subs ) =
     case expr of
         CA.Literal _ l ->
@@ -644,11 +614,11 @@ inspectExpr expr ty ( env, subs ) =
                 |> unify ty (literalToType l)
                 |> andEnv env
 
-        CA.Variable ext { name, attrPath } ->
+        CA.Variable pos { name, attrPath } ->
             -- Every time I use a var with variable type, it should be instantiated,
             -- because each time it may by used against a different type.
             -- This is done automatically by `envGet`.
-            do_nr (envGet ext name env) <| \nt ->
+            do_nr (envGet pos name env) <| \nt ->
             let
                 t =
                     refineType subs nt
@@ -657,16 +627,16 @@ inspectExpr expr ty ( env, subs ) =
                 |> unifyWithAttrPath attrPath ty t
                 |> andEnv env
 
-        CA.Lambda ext args ->
+        CA.Lambda pos parameter body ->
             TyGen.do newType <| \argTy ->
-            do_nr (inspectPattern insertVariableFromLambda args.parameter argTy ( env, subs )) <| \( env1, subs1 ) ->
-            do_nr (inspectBlock args.body env1 subs1) <| \( returnType, env2, subs2 ) ->
+            do_nr (inspectPattern insertVariableFromLambda parameter argTy ( env, subs )) <| \( env1, subs1 ) ->
+            do_nr (inspectBlock body env1 subs1) <| \( returnType, env2, subs2 ) ->
             let
                 lambdaTy =
-                    uidToVarType ext.uid
+                    posToVarType pos
 
                 fromIsMutable_res =
-                    case args.parameter of
+                    case parameter of
                         CA.PatternDiscard ->
                             Ok (Just False)
 
@@ -677,17 +647,17 @@ inspectExpr expr ty ( env, subs ) =
                             errorTodo "unpacking mutable arguments is not supported =("
             in
             do_nr (TyGen.wrap fromIsMutable_res) <| \fromIsMutable ->
-            do_nr (unify ty (CA.TypeFunction { from = argTy, fromIsMutable = fromIsMutable, to = lambdaTy }) subs2) <| \subs3 ->
+            do_nr (unify ty (CA.TypeFunction pos argTy fromIsMutable lambdaTy) subs2) <| \subs3 ->
             subs3
                 |> unify lambdaTy returnType
                 |> andEnv env
 
-        CA.Call _ args ->
+        CA.Call _ reference argument ->
             TyGen.do newType <| \e_t ->
-            do_nr (inspectArgument env args.argument e_t subs) <| \( env1, subs1 ) ->
+            do_nr (inspectArgument env argument e_t subs) <| \( env1, subs1 ) ->
             let
                 fromIsMutable =
-                    case args.argument of
+                    case argument of
                         CA.ArgumentMutable _ ->
                             True
 
@@ -695,23 +665,23 @@ inspectExpr expr ty ( env, subs ) =
                             False
 
                 f_t =
-                    CA.TypeFunction { from = e_t, fromIsMutable = Just fromIsMutable, to = ty }
+                    CA.TypeFunction infPos e_t (Just fromIsMutable) ty
 
                 f_t1 =
                     refineType subs1 f_t
             in
-            inspectExpr args.reference f_t1 ( refineEnv subs1 env1, subs1 )
+            inspectExpr reference f_t1 ( refineEnv subs1 env1, subs1 )
 
-        CA.Record _ args ->
-            do_nr (inspectRecordAttributes inspectExpr args.attrs ( env, subs )) <| \( attrTypes, ( env1, subs1 ) ) ->
-            do_nr (inspectMaybeExtensible env1 args.maybeUpdateTarget ty subs1) <| \( extensible, ( env2, subs2 ) ) ->
+        CA.Record pos extends attrs ->
+            do_nr (inspectRecordAttributes inspectExpr attrs ( env, subs )) <| \( attrTypes, ( env1, subs1 ) ) ->
+            do_nr (inspectMaybeExtensible env1 extends ty subs1) <| \( extensible, ( env2, subs2 ) ) ->
             let
                 refinedAttrTypes =
                     -- first I need all new subs, only then it makes sense to apply them
                     Dict.map (\attrName attrType -> refineType subs2 attrType) attrTypes
             in
             subs2
-                |> unify ty (CA.TypeRecord { extensible = extensible, attrs = refinedAttrTypes })
+                |> unify ty (CA.TypeRecord pos extensible refinedAttrTypes)
                 |> andEnv env2
 
         CA.If _ ar ->
@@ -727,13 +697,13 @@ inspectExpr expr ty ( env, subs ) =
                 |> Ok
                 |> TyGen.wrap
 
-        CA.Try ext ar ->
+        CA.Try pos value tries ->
             let
                 rawPatternTy =
-                    uidToVarType ext.uid
+                    posToVarType pos
             in
             TyGen.do newType <| \blockType ->
-            do_nr (inspectExpr ar.value rawPatternTy ( env, subs )) <| \( env1, subs1 ) ->
+            do_nr (inspectExpr value rawPatternTy ( env, subs )) <| \( env1, subs1 ) ->
             let
                 refPatternTy =
                     refineType subs1 rawPatternTy
@@ -741,7 +711,7 @@ inspectExpr expr ty ( env, subs ) =
                 env2 =
                     refineEnv subs1 env1
             in
-            do_nr (list_foldl_nr (inspectPatternBlock env2) ar.patterns ( refPatternTy, blockType, subs1 )) <| \( _, _, subs2 ) ->
+            do_nr (list_foldl_nr (inspectPatternBlock env2) tries ( refPatternTy, blockType, subs1 )) <| \( _, _, subs2 ) ->
             do_nr (unify blockType ty subs2) <| \subs3 ->
             ( refineEnv subs3 env2
             , subs3
@@ -750,7 +720,7 @@ inspectExpr expr ty ( env, subs ) =
                 |> TyGen.wrap
 
 
-inspectPatternBlock : Env -> ( CA.Pattern, List (CA.Statement Ext) ) -> ( Type, Type, Substitutions ) -> TR ( Type, Type, Substitutions )
+inspectPatternBlock : Env -> ( CA.Pattern, List CA.Statement ) -> ( Type, Type, Substitutions ) -> TR ( Type, Type, Substitutions )
 inspectPatternBlock env ( pattern, block ) ( patternType, expectedBlockType, subs ) =
     do_nr (inspectPattern insertVariableFromLambda pattern patternType ( env, subs )) <| \( env1, subs1 ) ->
     do_nr (inspectBlock block env1 subs1) <| \( inferredBlockType, _, subs2 ) ->
@@ -797,11 +767,12 @@ inspectMaybeExtensible env maybeUpdateTarget ty subs =
 
         Just updateTarget ->
             TyGen.do newName <| \n ->
-            inspectExpr (CA.Variable dummyExt updateTarget) ty ( env, subs )
+            ( env, subs )
+                |> inspectExpr (CA.Variable infPos updateTarget) ty
                 |> map_nr (\eas -> ( Just n, eas ))
 
 
-inspectArgument : Env -> CA.Argument Ext -> Type -> Substitutions -> TR Eas
+inspectArgument : Env -> CA.Argument -> Type -> Substitutions -> TR Eas
 inspectArgument env arg ty subs =
     case arg of
         CA.ArgumentMutable { name, attrPath } ->
@@ -836,7 +807,7 @@ inspectArgument env arg ty subs =
 --
 
 
-inspectStatement : CA.Statement Ext -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectStatement : CA.Statement -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectStatement statement env subs =
     case statement of
         CA.Evaluation expr ->
@@ -972,7 +943,7 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
         CA.PatternRecord attrs ->
             TyGen.do newName <| \nn ->
             do_nr (dict_fold_nr (\name pa acc -> TyGen.map (\t -> Dict.insert name t acc |> Ok) newType) attrs Dict.empty) <| \xxx ->
-            do_nr (unify ty (CA.TypeRecord { extensible = Just nn, attrs = xxx }) subs) <| \s1 ->
+            do_nr (unify ty (CA.TypeRecord infPos (Just nn) xxx) subs) <| \s1 ->
             let
                 init =
                     ( Dict.empty, ( env, s1 ) )
@@ -994,7 +965,7 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
                     Dict.map (\attrName attrType -> refineType subs1 attrType) attrTypes
             in
             subs1
-                |> unify ty (CA.TypeRecord { extensible = Just nn, attrs = refinedAttrTypes })
+                |> unify ty (CA.TypeRecord infPos (Just nn) refinedAttrTypes)
                 |> andEnv env1
 
 
@@ -1002,7 +973,7 @@ reversedZipConstructorArgs : List CA.Pattern -> Type -> List ( CA.Pattern, Type 
 reversedZipConstructorArgs args constructorType accum =
     case constructorType of
         -- fromIsMutable should always be False for constructors
-        CA.TypeFunction { from, to } ->
+        CA.TypeFunction _ from fromIsMutable to ->
             case args of
                 [] ->
                     errorTodo "not enough arguments in constructor pattern"
@@ -1010,7 +981,7 @@ reversedZipConstructorArgs args constructorType accum =
                 a :: aTail ->
                     reversedZipConstructorArgs aTail to (( a, from ) :: accum)
 
-        CA.TypeAlias _ ty ->
+        CA.TypeAlias _ _ ty ->
             reversedZipConstructorArgs args ty accum
 
         _ ->
@@ -1043,7 +1014,7 @@ annotationTooGeneral annotation inferredForall =
 --
 
 
-inspectBlock : List (CA.Statement Ext) -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectBlock : List CA.Statement -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectBlock stats parentEnv subs =
     if stats == [] then
         TyGen.do newType <| \nt ->
@@ -1063,7 +1034,7 @@ inspectBlock stats parentEnv subs =
                 ( ty, env, _ ) =
                     typeAndEnvAndSubs
 
-                defContainsFunctions : CA.ValueDef e -> Bool
+                defContainsFunctions : CA.ValueDef -> Bool
                 defContainsFunctions def =
                     def.pattern
                         |> CA.patternNames
@@ -1095,7 +1066,7 @@ inspectBlock stats parentEnv subs =
                 Ok typeAndEnvAndSubs
 
 
-inspectStatementRec : List (CA.Statement Ext) -> Type -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
+inspectStatementRec : List CA.Statement -> Type -> Env -> Substitutions -> TR ( Type, Env, Substitutions )
 inspectStatementRec stats returnType env subs =
     case stats of
         [] ->
@@ -1108,7 +1079,7 @@ inspectStatementRec stats returnType env subs =
             inspectStatementRec statsTail ty env1 subs1
 
 
-insertDefinitionRec : CA.ValueDef Ext -> Env -> TR Env
+insertDefinitionRec : CA.ValueDef -> Env -> TR Env
 insertDefinitionRec def env =
     let
         varNames =
@@ -1157,7 +1128,7 @@ insertDefinitionRec def env =
                         TyGen.do newName <| \typeName ->
                         e
                             |> Dict.insert varName
-                                { type_ = CA.TypeVariable { name = typeName }
+                                { type_ = CA.TypeVariable infPos typeName
                                 , forall = Set.singleton typeName
                                 , mutable = Just def.mutable
                                 }
@@ -1167,7 +1138,7 @@ insertDefinitionRec def env =
                 list_foldl_nr insert_nr (Set.toList varNames) env
 
 
-statementAsDefinition : CA.Statement e -> Maybe (CA.ValueDef e)
+statementAsDefinition : CA.Statement -> Maybe CA.ValueDef
 statementAsDefinition stat =
     case stat of
         CA.Definition d ->
@@ -1180,22 +1151,24 @@ statementAsDefinition stat =
 validateType : Bool -> Type -> Maybe String
 validateType mutable ty =
     case ty of
-        CA.TypeConstant _ ->
+        CA.TypeConstant _ _ _ ->
             Nothing
 
-        CA.TypeVariable { name } ->
+        CA.TypeVariable _ name ->
             {- TODO
-               if mutable then
-                   Just "variable types can't be mutable"
+                if mutable then
+                    Just "variable types can't be mutable"
 
-               else
+               ----> except they can, they must be if we want to have functions
+               capable of manipulating mutable containers
+
             -}
             Nothing
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias _ path t ->
             validateType mutable t
 
-        CA.TypeFunction { from, fromIsMutable, to } ->
+        CA.TypeFunction _ from fromIsMutable to ->
             if mutable then
                 Just "mutable values can't contain functions"
 
@@ -1207,8 +1180,8 @@ validateType mutable ty =
                     Nothing ->
                         validateType False to
 
-        CA.TypeRecord args ->
-            args.attrs
+        CA.TypeRecord _ ext attrs ->
+            attrs
                 -- TODO Rewrite the whole dumpster fire to support returning  multiple errors
                 |> Dict.values
                 |> List.filterMap (validateType mutable)
@@ -1218,21 +1191,21 @@ validateType mutable ty =
 typeContainsFunctions : Type -> Bool
 typeContainsFunctions ty =
     case ty of
-        CA.TypeConstant _ ->
+        CA.TypeConstant _ _ _ ->
             False
 
-        CA.TypeVariable { name } ->
+        CA.TypeVariable _ name ->
             False
 
-        CA.TypeFunction { from, fromIsMutable, to } ->
+        CA.TypeFunction _ from fromIsMutable to ->
             True
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias _ path t ->
             typeContainsFunctions t
 
-        CA.TypeRecord args ->
+        CA.TypeRecord _ extensible attrs ->
             -- TODO is it ok to ignore the record extension?
-            args.attrs
+            attrs
                 |> Dict.values
                 |> List.any typeContainsFunctions
 
@@ -1243,12 +1216,12 @@ typeContainsFunctions ty =
 --
 
 
-findAllRefs_definition : CA.ValueDef e -> Set String
+findAllRefs_definition : CA.ValueDef -> Set String
 findAllRefs_definition def =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty def.body
 
 
-findAllRefs_statement : CA.Statement e -> Set String
+findAllRefs_statement : CA.Statement -> Set String
 findAllRefs_statement stat =
     case stat of
         CA.Definition def ->
@@ -1258,7 +1231,15 @@ findAllRefs_statement stat =
             findAllRefs_expr expr
 
 
-findAllRefs_expr : CA.Expression e -> Set String
+{-| .
+
+TODO move this to CA?
+It is used also by CanonicalToJs
+
+Also, maybe turn it into a CA.Expression -> Dict String VariableArgs
+
+-}
+findAllRefs_expr : CA.Expression -> Set String
 findAllRefs_expr expr =
     case expr of
         CA.Literal _ args ->
@@ -1267,13 +1248,14 @@ findAllRefs_expr expr =
         CA.Variable _ args ->
             Set.singleton args.name
 
-        CA.Lambda _ { parameter, body } ->
+        CA.Lambda _ parameter body ->
             findAllRefs_statementBlock body
 
-        CA.Record _ args ->
-            Dict.foldl (\name value -> Set.union (findAllRefs_expr value)) Set.empty args.attrs
+        CA.Record _ extends attrs ->
+            -- TODO don't I need to add extends too?
+            Dict.foldl (\name value -> Set.union (findAllRefs_expr value)) Set.empty attrs
 
-        CA.Call _ { reference, argument } ->
+        CA.Call _ reference argument ->
             Set.union
                 (findAllRefs_expr reference)
                 (findAllRefs_arg argument)
@@ -1283,29 +1265,29 @@ findAllRefs_expr expr =
                 |> Set.union (findAllRefs_statementBlock true)
                 |> Set.union (findAllRefs_statementBlock false)
 
-        CA.Try _ { value, patterns } ->
+        CA.Try _ value patterns ->
             findAllRefs_expr value
                 |> (\refs -> List.foldl (\( pa, block ) -> Set.union (findAllRefs_statementBlock block)) refs patterns)
 
 
-findAllRefs_arg : CA.Argument e -> Set String
+findAllRefs_arg : CA.Argument -> Set String
 findAllRefs_arg arg =
     case arg of
-        CA.ArgumentMutable { name } ->
-            Set.singleton name
+        CA.ArgumentMutable ar ->
+            Set.singleton ar.name
 
         CA.ArgumentExpression expr ->
             findAllRefs_expr expr
 
 
-findAllRefs_statementBlock : List (CA.Statement e) -> Set String
+findAllRefs_statementBlock : List CA.Statement -> Set String
 findAllRefs_statementBlock statements =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
 
 
 {-| TODO move this outr of this module
 -}
-reorderStatements : List (CA.Statement e) -> ( List (CA.ValueDef e), List (CA.Statement e) )
+reorderStatements : List CA.Statement -> ( List CA.ValueDef, List CA.Statement )
 reorderStatements stats =
     let
         definitionOrStatement stat =
@@ -1332,7 +1314,7 @@ reorderStatements stats =
                 Dict.empty
                 indexedDefs
 
-        findAllIndexes : ( Int, CA.ValueDef e ) -> Set Int
+        findAllIndexes : ( Int, CA.ValueDef ) -> Set Int
         findAllIndexes ( index, def ) =
             def
                 |> findAllRefs_definition
@@ -1356,10 +1338,10 @@ reorderStatements stats =
 --
 
 
-errorUnboundVariable : Ext -> String -> Res a
-errorUnboundVariable ext s =
+errorUnboundVariable : CA.Pos -> String -> Res a
+errorUnboundVariable pos s =
     Error.makeRes
-        ext.pos.moduleName
-        [ Error.showLines ext.pos.moduleCode 2 ext.pos.start
+        pos.n
+        [ Error.showLines pos.c 2 pos.s
         , Error.text <| "unbound variable: " ++ s
         ]

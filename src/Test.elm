@@ -162,7 +162,7 @@ simple toString { name, run, expected } =
                 [ "Expected: "
                 , toString expected
                 , "\n"
-                , "Actual: "
+                , "Actual  : "
                 , toString actual
                 ]
                     |> String.join ""

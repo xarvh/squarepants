@@ -13,12 +13,32 @@ moduleName =
     "Test"
 
 
+p : CA.Pos
+p =
+    { n = "th"
+    , c = ""
+    , s = 0
+    , e = 0
+    }
+
+
+type alias CA_Fold_Function target acc =
+    (CA.Fold -> ( CA.Pos, acc ) -> ( CA.Pos, acc )) -> ( target, acc ) -> ( target, acc )
+
+
+removePos : CA_Fold_Function target () -> target -> target
+removePos fold_helper target =
+    ( target, () )
+        |> fold_helper (\_ _ -> ( p, () ))
+        |> Tuple.first
+
+
 resErrorToString : Res a -> Result String a
 resErrorToString =
     Result.mapError (\e -> Error.flatten e [] |> List.map Error.toString |> String.join "\n\n")
 
 
-stringToCanonicalModuleWithPos : String -> Res (CA.Module CA.Pos)
+stringToCanonicalModuleWithPos : String -> Res CA.AllDefs
 stringToCanonicalModuleWithPos code =
     code
         |> unindent
@@ -26,11 +46,11 @@ stringToCanonicalModuleWithPos code =
         |> Result.andThen Compiler.ApplyAliases.applyAliasesToModule
 
 
-stringToCanonicalModule : String -> Res (CA.Module ())
+stringToCanonicalModule : String -> Res CA.AllDefs
 stringToCanonicalModule code =
     code
         |> stringToCanonicalModuleWithPos
-        |> Result.map (\mod -> CA.extensionFold_module (\_ _ -> ( (), () )) ( mod, () ) |> Tuple.first)
+        |> Result.map (removePos CA.extensionFold_module)
 
 
 stringToFormattableModule : String -> Res FA.Module
