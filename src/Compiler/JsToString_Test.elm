@@ -27,7 +27,7 @@ codeTest =
     Test.codeTest Debug.toString
 
 
-runProgram : String -> CA.Module TI.Ext -> Result String String
+runProgram : String -> CA.AllDefs -> Result String String
 runProgram variable mod =
     let
         endStatements =

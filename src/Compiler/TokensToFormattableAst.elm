@@ -13,33 +13,6 @@ type alias MakeError =
     String -> String -> List Token -> Error.Error
 
 
-
-{- TODO: if possible, replace all OneOrMore with List, BUT -}
-
-
-d name =
-    let
-        logDebug { path, first } =
-            Debug.log "d"
-                ( path
-                , "<=="
-                , Result.map (\( output, readState ) -> List.take 1 readState |> List.map .kind) first
-                )
-    in
-    --Parser.doWithDebug logDebug name
-    do
-
-
-w name parser =
-    --     parser
-    d name parser succeed
-
-
-su : String -> a -> Parser a
-su name a =
-    d name (succeed a) succeed
-
-
 type alias Parser a =
     Parser.Parser Token (List Token) MakeError a
 
@@ -143,19 +116,6 @@ errorCantUseMutableAssignmentHere moduleName code state =
 
 
 
-{-
-   errorCantUseWithInsidePatternMatching : String -> String -> List Token -> Error.Error
-   errorCantUseWithInsidePatternMatching moduleName code nonConsumedTokens =
-       case nonConsumedTokens of
-           [] ->
-               Debug.todo "wat"
-
-           token :: _ ->
-               Error.makeError moduleName
-                   [ Error.text "`with` cannot be used when pattern-matching"
-                   , Error.showLines code 2 token.start
-                   ]
--}
 ----
 --- Terms
 --
@@ -348,14 +308,14 @@ typeAlias =
     do (kind <| Token.Name { mutable = False } "alias") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
-    do (inlineOrIndented typeExpr) <| \type_ ->
+    do (inlineOrIndented typeExpr) <| \ty ->
     if mutable then
         Parser.abort errorCantUseMutableAssignmentHere
 
     else
         { name = name
         , args = args
-        , type_ = type_
+        , ty = ty
         }
             |> FA.TypeAlias
             |> succeed
@@ -404,32 +364,25 @@ term =
     do oneToken <| \token ->
     case token.kind of
         Token.NumberLiteral s ->
-            { start = token.start, end = token.end, value = Types.Literal.Number s }
-                |> FA.Literal
+            s
+                |> Types.Literal.Number
+                |> FA.Literal ( token.start, token.end )
                 |> succeed
 
         Token.TextLiteral s ->
-            { start = token.start, end = token.end, value = Types.Literal.Text s }
-                |> FA.Literal
+            s
+                |> Types.Literal.Text
+                |> FA.Literal ( token.start, token.end )
                 |> succeed
 
         Token.Name { mutable } s ->
             (if mutable then
-                FA.Lvalue
-                    { start = token.start
-                    , end = token.end
-                    , name = s
-                    }
+                FA.Mutable ( token.start, token.end ) s
 
              else
-                FA.Variable
-                    { start = token.start
-                    , end = token.end
-                    , name = s
-                    , binop = False
-                    }
+                FA.Variable ( token.start, token.end ) { isBinop = False } s
             )
-                |> su s
+                |> succeed
 
         _ ->
             fail
@@ -451,7 +404,7 @@ expr =
         term
         -- the `Or` stands for `Or higher priority parser`
         [ higherOr <| parens (oneOf [ binopInsideParens, nest ])
-        , higherOr <| list (\pos_TODO -> FA.List) nest
+        , higherOr <| list FA.List nest
         , higherOr <| record Token.Defop FA.Record nest
         , higherOr lambda
         , functionApplicationOr
@@ -469,8 +422,8 @@ expr =
         -- TODO pipes can't actually be mixed
         , binopsOr Token.Pipe
         , binopsOr Token.Mutop
-        , ifOr
-        , tryOr
+        , higherOr <| if_
+        , higherOr <| try
         ]
 
 
@@ -562,31 +515,28 @@ record assign constructor main =
 --
 
 
-ifOr : Parser FA.Expression -> Parser FA.Expression
-ifOr higher =
+if_ : Parser FA.Expression
+if_ =
     let
         maybeNewLine k =
             discardFirst
                 (maybe (kind Token.NewSiblingLine))
                 (kind k)
     in
-    oneOf
-        [ higher
-        , do (kind Token.If) <| \ifToken ->
-        do expr <| \condition ->
-        do (maybeNewLine Token.Then) <| \_ ->
-        do inlineStatementOrBlock <| \true ->
-        do (maybeNewLine Token.Else) <| \_ ->
-        do inlineStatementOrBlock <| \false ->
-        { start = ifToken.start
-        , isOneLine = False
-        , condition = condition
-        , true = true
-        , false = false
-        }
-            |> FA.If
-            |> succeed
-        ]
+    do (kind Token.If) <| \ifToken ->
+    do expr <| \condition ->
+    do (maybeNewLine Token.Then) <| \_ ->
+    do inlineStatementOrBlock <| \true ->
+    do (maybeNewLine Token.Else) <| \_ ->
+    do inlineStatementOrBlock <| \false ->
+    do here <| \end ->
+    { isOneLine = False
+    , condition = condition
+    , true = OneOrMore.toList true
+    , false = OneOrMore.toList false
+    }
+        |> FA.If ( ifToken.start, end )
+        |> succeed
 
 
 
@@ -595,8 +545,8 @@ ifOr higher =
 --
 
 
-tryOr : Parser FA.Expression -> Parser FA.Expression
-tryOr higher =
+try : Parser FA.Expression
+try =
     let
         maybeNewLine : Parser a -> Parser a
         maybeNewLine =
@@ -610,12 +560,12 @@ tryOr higher =
             do pattern <| \p ->
             do (maybeNewLineKind Token.Then) <| \_ ->
             do inlineStatementOrBlock <| \accept ->
-            succeed ( p, accept )
+            succeed ( p, OneOrMore.toList accept )
 
         default =
-            discardFirst
-                (maybeNewLineKind Token.Else)
-                inlineStatementOrBlock
+            do (maybeNewLineKind Token.Else) <| \_ ->
+            do inlineStatementOrBlock <| \oom ->
+            succeed oom
 
         single =
             do patternAndAccept <| \pna ->
@@ -628,21 +578,18 @@ tryOr higher =
                 do (maybe default) <| \mdef ->
                 succeed ( pnas, mdef )
     in
-    oneOf
-        [ higher
-        , do (kind Token.Try) <| \tryToken ->
-        do expr <| \value ->
-        do (maybeNewLineKind Token.As) <| \_ ->
-        do (oneOf [ single, multi ]) <| \( patterns, maybeElse ) ->
-        { start = tryToken.start
-        , isOneLine = False
-        , value = value
-        , patterns = patterns
-        , maybeElse = maybeElse
-        }
-            |> FA.Try
-            |> succeed
-        ]
+    do (kind Token.Try) <| \tryToken ->
+    do expr <| \value ->
+    do (maybeNewLineKind Token.As) <| \_ ->
+    do (oneOf [ single, multi ]) <| \( patterns, maybeElse ) ->
+    do here <| \end ->
+    { isOneLine = False
+    , value = value
+    , patterns = patterns
+    , maybeElse = Maybe.map OneOrMore.toList maybeElse
+    }
+        |> FA.Try ( tryToken.start, end )
+        |> succeed
 
 
 
@@ -672,7 +619,7 @@ definition =
     do inlineStatementOrBlock <| \sb ->
     { pattern = p
     , mutable = mutable
-    , body = sb
+    , body = OneOrMore.toList sb
     , maybeAnnotation = maybeAnnotation
     }
         |> FA.Definition
@@ -699,12 +646,12 @@ typeAnnotation : Parser FA.Annotation
 typeAnnotation =
     do nonMutName <| \name ->
     do hasType <| \{ mutable } ->
-    do typeExpr <| \t ->
+    do typeExpr <| \ty ->
     do (kind Token.NewSiblingLine) <| \_ ->
     succeed
         { name = name
         , mutable = mutable
-        , type_ = t
+        , ty = ty
         }
 
 
@@ -721,7 +668,12 @@ hasType =
 
 typeTerm : Parser FA.Type
 typeTerm =
-    Parser.map (\n -> FA.TypeName { name = n }) nonMutName
+    do here <| \s ->
+    do nonMutName <| \n ->
+    do here <| \e ->
+    n
+        |> FA.TypeName ( s, e )
+        |> succeed
 
 
 typeExpr : Parser FA.Type
@@ -733,8 +685,8 @@ typeExpr =
     Parser.expression
         typeTerm
         -- the `Or` stands for `Or higher priority parser`
-        [ typeParensOr nest
-        , typeListOr nest
+        [ higherOr <| typeParens nest
+        , higherOr <| typeList nest
         , higherOr <| record Token.HasType FA.TypeRecord nest
         , typeApplicationOr
         , typeTupleOr
@@ -752,45 +704,35 @@ typeTupleOr higher =
         binopAndPrev =
             discardFirst (binaryOperators group) higher
     in
+    do here <| \start ->
     do higher <| \head ->
     do (Parser.zeroOrMore binopAndPrev) <| \tail ->
+    do here <| \end ->
     if tail == [] then
         succeed head
 
     else
         (head :: tail)
-            |> FA.TypeTuple
+            |> FA.TypeTuple ( start, end )
             |> succeed
 
 
-typeParensOr : Parser FA.Type -> Parser FA.Type -> Parser FA.Type
-typeParensOr main higher =
-    oneOf
-        [ higher
-        , surroundStrict
-            (Token.RoundParen Token.Open)
-            (Token.RoundParen Token.Closed)
-            main
-        ]
+typeParens : Parser FA.Type -> Parser FA.Type
+typeParens main =
+    surroundStrict
+        (Token.RoundParen Token.Open)
+        (Token.RoundParen Token.Closed)
+        main
 
 
-typeListOr : Parser FA.Type -> Parser FA.Type -> Parser FA.Type
-typeListOr main higher =
-    oneOf
-        [ higher
-        , do
-            (surroundStrict
-                (Token.SquareBracket Token.Open)
-                (Token.SquareBracket Token.Closed)
-                main
-            )
-          <| \t ->
-          { name = "List"
-          , args = [ t ]
-          }
-              |> FA.TypePolymorphic
-              |> succeed
-        ]
+typeList : Parser FA.Type -> Parser FA.Type
+typeList main =
+    do here <| \start ->
+    do (surroundStrict (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) main) <| \t ->
+    do here <| \end ->
+    [ t ]
+        |> FA.TypePolymorphic ( start, end ) "List"
+        |> succeed
 
 
 typeFunctionOr : Parser FA.Type -> Parser FA.Type
@@ -805,11 +747,7 @@ typeFunctionOr higher =
         fold : ( Bool, FA.Type ) -> ( Bool, FA.Type ) -> ( Bool, FA.Type )
         fold ( nextIsMutable, ty ) ( thisIsMutable, accum ) =
             ( nextIsMutable
-            , FA.TypeFunction
-                { from = ty
-                , fromIsMutable = thisIsMutable
-                , to = accum
-                }
+            , FA.TypeFunction {- TODO -} ( -1, -1 ) ty thisIsMutable accum
             )
     in
     do higher <| \e ->
@@ -839,16 +777,14 @@ typeApplicationOr : Parser FA.Type -> Parser FA.Type
 typeApplicationOr higher =
     do higher <| \ty ->
     case ty of
-        FA.TypeName { name } ->
+        FA.TypeName ( start, end1 ) name ->
             do (zeroOrMore higher) <| \args ->
+            do here <| \end2 ->
             if args == [] then
                 succeed ty
 
             else
-                { name = name
-                , args = args
-                }
-                    |> FA.TypePolymorphic
+                FA.TypePolymorphic ( start, end2 ) name args
                     |> succeed
 
         _ ->
@@ -864,6 +800,7 @@ typeApplicationOr higher =
 lambda : Parser FA.Expression
 lambda =
     let
+        def : Parser ( Token, OneOrMore FA.Pattern )
         def =
             do (kind Token.Fn) <| \fn ->
             do (oneOrMore <| functionParameter pattern) <| \params ->
@@ -896,7 +833,8 @@ lambda =
     in
     do def <| \( fn, params ) ->
     do body <| \b ->
-    succeed <| FA.Lambda { start = fn.start, parameters = params, body = b }
+    FA.Lambda ( fn.start, fn.end ) (OneOrMore.toList params) (OneOrMore.toList b)
+        |> succeed
 
 
 functionParameter : Parser FA.Pattern -> Parser FA.Pattern
@@ -978,14 +916,13 @@ functionApplicationOr : Parser FA.Expression -> Parser FA.Expression
 functionApplicationOr higher =
     do here <| \start ->
     do higher <| \e ->
-    do (zeroOrMore higher) <| \es ->
+    do (zeroOrMore higher) <| \args ->
     do here <| \end ->
-    case es of
-        argsHead :: argsTail ->
-            succeed <| FA.FunctionCall start end { reference = e, arguments = ( argsHead, argsTail ) }
+    if args == [] then
+        succeed e
 
-        [] ->
-            succeed e
+    else
+        succeed <| FA.FunctionCall ( start, end ) e args
 
 
 
@@ -998,9 +935,11 @@ unopsOr : Parser FA.Expression -> Parser FA.Expression
 unopsOr higher =
     do (maybe unaryOperator) <| \maybeUnary ->
     do higher <| \right ->
+    do here <| \end ->
     case maybeUnary of
-        Just ( opAsString, opToken ) ->
-            su "unop" <| FA.Unop { start = opToken.start, op = opAsString, right = right }
+        Just ( op, token ) ->
+            FA.Unop ( token.start, end ) op right
+                |> succeed
 
         Nothing ->
             succeed right
@@ -1028,12 +967,7 @@ binopInsideParens =
     do oneToken <| \token ->
     case token.kind of
         Token.Binop g s ->
-            { start = token.start
-            , end = token.end
-            , name = s
-            , binop = True
-            }
-                |> FA.Variable
+            FA.Variable ( token.start, token.end ) { isBinop = True } s
                 |> succeed
 
         _ ->
@@ -1042,15 +976,14 @@ binopInsideParens =
 
 binopsOr : Token.PrecedenceGroup -> Parser FA.Expression -> Parser FA.Expression
 binopsOr group higher =
+    do here <| \start ->
     do (sepList (binaryOperators group) higher) <| \( head, sepTail ) ->
+    do here <| \end ->
     if sepTail == [] then
         succeed head
 
     else
-        { group = group
-        , sepList = ( head, sepTail )
-        }
-            |> FA.Binop
+        FA.Binop ( start, end ) group ( head, sepTail )
             |> succeed
 
 

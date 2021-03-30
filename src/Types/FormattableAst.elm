@@ -12,7 +12,6 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 -}
 
-import OneOrMore exposing (OneOrMore)
 import SepList exposing (SepList)
 import Types.Literal
 import Types.Token
@@ -30,14 +29,14 @@ type alias ValueDef =
     { pattern : Pattern
     , mutable : Bool
     , maybeAnnotation : Maybe Annotation
-    , body : OneOrMore Statement
+    , body : List Statement
     }
 
 
 type alias Annotation =
     { name : String
     , mutable : Bool
-    , type_ : Type
+    , ty : Type
     }
 
 
@@ -47,7 +46,7 @@ type Statement
     | TypeAlias
         { name : String
         , args : List String
-        , type_ : Type
+        , ty : Type
         }
     | UnionDef
         { name : String
@@ -59,78 +58,37 @@ type Statement
 
 
 type Type
-    = TypeName
-        { name : String
-        }
-    | TypePolymorphic
-        { name : String
-        , args : List Type
-        }
-    | TypeFunction
-        { from : Type
-        , fromIsMutable : Bool
-        , to : Type
-        }
-    | TypeTuple (List Type)
+    = TypeName Pos String
+    | TypePolymorphic Pos String (List Type)
+    | TypeFunction Pos Type Bool Type
+    | TypeTuple Pos (List Type)
     | TypeRecord Pos (RecordArgs Type)
 
 
 type Expression
-    = Literal
-        { start : Int
-        , end : Int
-        , value : Types.Literal.Value
-        }
-    | Variable
-        { start : Int
-        , end : Int
-        , name : String
-        , binop : Bool
-        }
-    | Lvalue
-        -- TODO rename to `Mutable`?
-        { start : Int
-        , end : Int
-        , name : String
-        }
-    | Lambda
-        { start : Int
-
-        -- TODO this should be a list
-        , parameters : OneOrMore Pattern
-        , body : OneOrMore Statement
-        }
-    | FunctionCall
-        Int
-        Int
-        { reference : Expression
-        , arguments : OneOrMore Expression
-        }
-    | Binop
-        { group : Types.Token.PrecedenceGroup
-        , sepList : SepList String Expression
-        }
-    | Unop
-        { start : Int
-        , op : String
-        , right : Expression
-        }
+    = Literal Pos Types.Literal.Value
+    | Variable Pos { isBinop : Bool } String
+    | Mutable Pos String
+    | Lambda Pos (List Pattern) (List Statement)
+    | FunctionCall Pos Expression (List Expression)
+    | Binop Pos Types.Token.PrecedenceGroup (SepList String Expression)
+    | Unop Pos String Expression
     | If
-        { start : Int
-        , isOneLine : Bool
+        Pos
+        { isOneLine : Bool
         , condition : Expression
-        , true : OneOrMore Statement
-        , false : OneOrMore Statement
+        , true : List Statement
+        , false : List Statement
         }
     | Try
-        { start : Int
-        , isOneLine : Bool
+        Pos
+        { isOneLine : Bool
         , value : Expression
-        , patterns : List ( Pattern, OneOrMore Statement )
-        , maybeElse : Maybe (OneOrMore Statement)
+        , patterns : List ( Pattern, List Statement )
+        , maybeElse : Maybe (List Statement)
         }
     | Record Pos (RecordArgs Expression)
-    | List (List Expression)
+    | List Pos (List Expression)
 
 
 type Pattern
@@ -146,6 +104,13 @@ type Pattern
 type alias RecordArgs expr =
     { extends : Maybe expr
     , attrs : List ( String, Maybe expr )
+    }
+
+
+recordArgs_map : (a -> b) -> RecordArgs a -> RecordArgs b
+recordArgs_map f ar =
+    { extends = Maybe.map f ar.extends
+    , attrs = List.map (Tuple.mapSecond (Maybe.map f)) ar.attrs
     }
 
 
@@ -180,71 +145,127 @@ patternPos pa =
             p
 
 
+posMap_statement : (Pos -> Pos) -> Statement -> Statement
+posMap_statement f stat =
+    case stat of
+        Evaluation e ->
+            Evaluation (posMap_expression f e)
 
-{-
+        Definition def ->
+            Definition
+                { pattern = posMap_pattern f def.pattern
+                , mutable = def.mutable
+                , maybeAnnotation = Maybe.map (\ann -> { ann | ty = posMap_type f ann.ty }) def.maybeAnnotation
+                , body = List.map (posMap_statement f) def.body
+                }
 
-   extensionFold_pattern : (Expression a -> ( a, acc ) -> ( b, acc )) -> ( Expression a, acc ) -> ( Expression b, acc )
-   extensionFold_pattern f ( expr, acc ) =
-       case expr of
+        TypeAlias ar ->
+            TypeAlias
+                { name = ar.name
+                , args = ar.args
+                , ty = posMap_type f ar.ty
+                }
 
-       = Literal
-           { start
-           , end
-           , value
-           }
-       | Variable
-           { start
-           , end
-           , name
-           , binop
-           }
-       | Lvalue
-           -- TODO rename to `Mutable`?
-           { start
-           , end
-           , name
-           }
-       | Lambda
-           { start
-
-           -- TODO this should be a list
-           , parameters
-           , body
-           }
-       | FunctionCall
-           Int
-           Int
-           { reference
-           , arguments
-           }
-       | Binop
-           { group
-           , sepList
-           }
-       | Unop
-           { start
-           , op
-           , right
-           }
-       | If
-           { start
-           , isOneLine
-           , condition
-           , true
-           , false
-           }
-       | Try
-           { start
-           , isOneLine
-           , value
-           , patterns
-           , maybeElse
-           }
-       | Record
-           { maybeUpdateTarget
-           , attrs
-           }
-       | List (List Expression)
+        UnionDef ar ->
+            UnionDef
+                { name = ar.name
+                , args = ar.args
+                , constructors = List.map (posMap_type f) ar.constructors
+                }
 
 
--}
+posMap_expression : (Pos -> Pos) -> Expression -> Expression
+posMap_expression f expr =
+    case expr of
+        Literal pos value ->
+            Literal (f pos) value
+
+        Variable pos isbin name ->
+            Variable (f pos) isbin name
+
+        Mutable pos name ->
+            Mutable (f pos) name
+
+        Lambda pos pas stats ->
+            Lambda (f pos)
+                (List.map (posMap_pattern f) pas)
+                (List.map (posMap_statement f) stats)
+
+        FunctionCall pos ref args ->
+            FunctionCall (f pos)
+                (posMap_expression f ref)
+                (List.map (posMap_expression f) args)
+
+        Binop pos group sepList ->
+            Binop (f pos) group (SepList.mapItem (posMap_expression f) sepList)
+
+        Unop pos name right ->
+            Unop (f pos) name (posMap_expression f right)
+
+        If pos ar ->
+            If (f pos)
+                { isOneLine = ar.isOneLine
+                , condition = posMap_expression f ar.condition
+                , true = List.map (posMap_statement f) ar.true
+                , false = List.map (posMap_statement f) ar.false
+                }
+
+        Try pos ar ->
+            Try (f pos)
+                { isOneLine = ar.isOneLine
+                , value = posMap_expression f ar.value
+                , patterns = List.map (Tuple.mapBoth (posMap_pattern f) (List.map (posMap_statement f))) ar.patterns
+                , maybeElse = Maybe.map (List.map (posMap_statement f)) ar.maybeElse
+                }
+
+        Record pos ar ->
+            Record (f pos) (recordArgs_map (posMap_expression f) ar)
+
+        List pos exs ->
+            List (f pos) (List.map (posMap_expression f) exs)
+
+
+posMap_pattern : (Pos -> Pos) -> Pattern -> Pattern
+posMap_pattern f pa =
+    case pa of
+        PatternAny pos name ->
+            PatternAny (f pos) name
+
+        PatternLiteral pos val ->
+            PatternLiteral (f pos) val
+
+        PatternApplication pos cons pas ->
+            PatternApplication (f pos) cons (List.map (posMap_pattern f) pas)
+
+        PatternList pos pas ->
+            PatternList (f pos) (List.map (posMap_pattern f) pas)
+
+        PatternRecord pos ar ->
+            PatternRecord (f pos) (recordArgs_map (posMap_pattern f) ar)
+
+        PatternCons pos left right ->
+            PatternCons (f pos)
+                (posMap_pattern f left)
+                (posMap_pattern f right)
+
+        PatternTuple pos pas ->
+            PatternTuple (f pos) (List.map (posMap_pattern f) pas)
+
+
+posMap_type : (Pos -> Pos) -> Type -> Type
+posMap_type f ty =
+    case ty of
+        TypeName pos name ->
+            TypeName (f pos) name
+
+        TypePolymorphic pos name args ->
+            TypePolymorphic (f pos) name (List.map (posMap_type f) args)
+
+        TypeFunction pos from mut to ->
+            TypeFunction (f pos) (posMap_type f from) mut (posMap_type f to)
+
+        TypeTuple pos tys ->
+            TypeTuple (f pos) (List.map (posMap_type f) tys)
+
+        TypeRecord pos ar ->
+            TypeRecord (f pos) (recordArgs_map (posMap_type f) ar)

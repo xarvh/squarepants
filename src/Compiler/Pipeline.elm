@@ -28,7 +28,7 @@ stringToFormattableAst moduleName code =
         |> Result.andThen (Compiler.TokensToFormattableAst.parse moduleName code)
 
 
-stringToCanonicalAst : Meta -> String -> String -> CA.Module CA.Pos -> Res (CA.Module CA.Pos)
+stringToCanonicalAst : Meta -> String -> String -> CA.AllDefs -> Res CA.AllDefs
 stringToCanonicalAst meta moduleName code accum =
     let
         ro =

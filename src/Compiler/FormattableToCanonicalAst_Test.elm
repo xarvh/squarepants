@@ -1,11 +1,11 @@
 module Compiler.FormattableToCanonicalAst_Test exposing (..)
 
 import Compiler.FormattableToCanonicalAst
-import Compiler.TestHelpers
+import Compiler.TestHelpers exposing (p)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Test exposing (Test)
-import Types.CanonicalAst as CA exposing (Pos)
+import Types.CanonicalAst as CA
 import Types.Literal as Literal
 
 
@@ -51,7 +51,7 @@ hasError =
     Test.hasError Debug.toString
 
 
-firstDefinition : String -> String -> Result String (CA.ValueDef ())
+firstDefinition : String -> String -> Result String CA.ValueDef
 firstDefinition name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
@@ -59,7 +59,7 @@ firstDefinition name code =
         |> Result.andThen (CA.findValue ("Test." ++ name) >> Result.fromMaybe "Dict fail")
 
 
-firstEvaluation : String -> String -> Result String (CA.Expression ())
+firstEvaluation : String -> String -> Result String CA.Expression
 firstEvaluation name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
@@ -75,7 +75,7 @@ stringToCanonicalModule code =
         |> Compiler.TestHelpers.resErrorToString
 
 
-asEvaluation : CA.Statement e -> Maybe (CA.Expression e)
+asEvaluation : CA.Statement -> Maybe CA.Expression
 asEvaluation s =
     case s of
         CA.Evaluation expr ->
@@ -124,24 +124,20 @@ binops =
             , run = \_ -> firstEvaluation "a" "a = 1 + 2 + 3"
             , expected =
                 Ok
-                    (CA.Call ()
-                        { reference =
-                            CA.Call ()
-                                { reference = CA.Variable () { name = "+", isRoot = True, attrPath = [] }
-                                , argument = CA.ArgumentExpression (CA.Literal () (Literal.Number "3"))
-                                }
-                        , argument =
-                            CA.ArgumentExpression
-                                (CA.Call ()
-                                    { reference =
-                                        CA.Call ()
-                                            { reference = CA.Variable () { name = "+", isRoot = True, attrPath = [] }
-                                            , argument = CA.ArgumentExpression (CA.Literal () (Literal.Number "2"))
-                                            }
-                                    , argument = CA.ArgumentExpression (CA.Literal () (Literal.Number "1"))
-                                    }
+                    (CA.Call p
+                        (CA.Call p
+                            (CA.Variable p { name = "+", isRoot = True, attrPath = [] })
+                            (CA.ArgumentExpression (CA.Literal p (Literal.Number "3")))
+                        )
+                        (CA.ArgumentExpression
+                            (CA.Call p
+                                (CA.Call p
+                                    (CA.Variable p { name = "+", isRoot = True, attrPath = [] })
+                                    (CA.ArgumentExpression (CA.Literal p (Literal.Number "2")))
                                 )
-                        }
+                                (CA.ArgumentExpression (CA.Literal p (Literal.Number "1")))
+                            )
+                        )
                     )
             }
         , simpleTest
@@ -149,24 +145,20 @@ binops =
             , run = \_ -> firstEvaluation "a" "a = 1 + 2 * 3"
             , expected =
                 Ok
-                    (CA.Call ()
-                        { argument = CA.ArgumentExpression (CA.Literal () (Literal.Number "1"))
-                        , reference =
-                            CA.Call ()
-                                { argument =
-                                    CA.ArgumentExpression
-                                        (CA.Call ()
-                                            { argument = CA.ArgumentExpression (CA.Literal () (Literal.Number "2"))
-                                            , reference =
-                                                CA.Call ()
-                                                    { argument = CA.ArgumentExpression (CA.Literal () (Literal.Number "3"))
-                                                    , reference = CA.Variable () { name = "*", isRoot = True, attrPath = [] }
-                                                    }
-                                            }
-                                        )
-                                , reference = CA.Variable () { name = "+", isRoot = True, attrPath = [] }
-                                }
-                        }
+                    (CA.Call p
+                        (CA.Call p
+                            (CA.Variable p { name = "+", isRoot = True, attrPath = [] })
+                            (CA.ArgumentExpression
+                                (CA.Call p
+                                    (CA.Call p
+                                        (CA.Variable p { name = "*", isRoot = True, attrPath = [] })
+                                        (CA.ArgumentExpression (CA.Literal p (Literal.Number "3")))
+                                    )
+                                    (CA.ArgumentExpression (CA.Literal p (Literal.Number "2")))
+                                )
+                            )
+                        )
+                        (CA.ArgumentExpression (CA.Literal p (Literal.Number "1")))
                     )
             }
         , codeTest "functional notation"
@@ -175,7 +167,7 @@ binops =
             """
             (firstEvaluation "a")
             (Test.okEqual <|
-                CA.Variable () { name = "-", isRoot = True, attrPath = [] }
+                CA.Variable p { name = "-", isRoot = True, attrPath = [] }
             )
         ]
 
@@ -200,13 +192,12 @@ lists =
                         """
             , expected =
                 Ok
-                    { body = [ CA.Evaluation (CA.Variable () { name = "Test.l", isRoot = True, attrPath = [] }) ]
+                    { body = [ CA.Evaluation (CA.Variable p { name = "Test.l", isRoot = True, attrPath = [] }) ]
                     , maybeAnnotation =
                         Just
-                            (CA.TypeConstant
-                                { ref = "SPCore.List"
-                                , args = [ CA.TypeConstant { ref = "SPCore.Bool", args = [] } ]
-                                }
+                            (CA.TypeConstant p
+                                "SPCore.List"
+                                [ CA.TypeConstant p "SPCore.Bool" [] ]
                             )
                     , mutable = False
                     , pattern = CA.PatternAny "Test.l"
@@ -229,14 +220,13 @@ tuples =
             , run = \_ -> firstEvaluation "a" "a = 1 & 2"
             , expected =
                 Ok
-                    (CA.Record ()
-                        { maybeUpdateTarget = Nothing
-                        , attrs =
-                            Dict.fromList
-                                [ ( "first", CA.Literal () (Literal.Number "1") )
-                                , ( "second", CA.Literal () (Literal.Number "2") )
-                                ]
-                        }
+                    (CA.Record p
+                        Nothing
+                        (Dict.fromList
+                            [ ( "first", CA.Literal p (Literal.Number "1") )
+                            , ( "second", CA.Literal p (Literal.Number "2") )
+                            ]
+                        )
                     )
             }
         , simpleTest
@@ -244,15 +234,14 @@ tuples =
             , run = \_ -> firstEvaluation "a" "a = 1 & 2 & 3"
             , expected =
                 Ok
-                    (CA.Record ()
-                        { maybeUpdateTarget = Nothing
-                        , attrs =
-                            Dict.fromList
-                                [ ( "first", CA.Literal () (Literal.Number "1") )
-                                , ( "second", CA.Literal () (Literal.Number "2") )
-                                , ( "third", CA.Literal () (Literal.Number "3") )
-                                ]
-                        }
+                    (CA.Record p
+                        Nothing
+                        (Dict.fromList
+                            [ ( "first", CA.Literal p (Literal.Number "1") )
+                            , ( "second", CA.Literal p (Literal.Number "2") )
+                            , ( "third", CA.Literal p (Literal.Number "3") )
+                            ]
+                        )
                     )
             }
         , hasError
@@ -271,17 +260,16 @@ tuples =
                         """
             , expected =
                 Ok
-                    { body = [ CA.Evaluation (CA.Variable () { name = "Test.a", attrPath = [], isRoot = True }) ]
+                    { body = [ CA.Evaluation (CA.Variable p { name = "Test.a", attrPath = [], isRoot = True }) ]
                     , maybeAnnotation =
                         Just
-                            (CA.TypeRecord
-                                { attrs =
-                                    Dict.fromList
-                                        [ ( "first", CA.TypeConstant { args = [], ref = "Test.Blah" } )
-                                        , ( "second", CA.TypeConstant { args = [], ref = "Test.Blah" } )
-                                        ]
-                                , extensible = Nothing
-                                }
+                            (CA.TypeRecord p
+                                Nothing
+                                (Dict.fromList
+                                    [ ( "first", CA.TypeConstant p "Test.Blah" [] )
+                                    , ( "second", CA.TypeConstant p "Test.Blah" [] )
+                                    ]
+                                )
                             )
                     , mutable = False
                     , pattern = CA.PatternAny "Test.a"
@@ -350,24 +338,19 @@ records =
             { name = "functional update"
             , run = \_ -> firstEvaluation "a" "a = { m with b, c = 1 }"
             , expected =
-                { attrs =
-                    Dict.fromList
-                        [ ( "c", CA.Literal () (Literal.Number "1") )
-                        , ( "b", CA.Variable () { attrPath = [], name = "Test.b", isRoot = True } )
-                        ]
-                , maybeUpdateTarget = Just { isRoot = True, attrPath = [], name = "Test.m" }
-                }
-                    |> CA.Record ()
+                [ ( "c", CA.Literal p (Literal.Number "1") )
+                , ( "b", CA.Variable p { attrPath = [], name = "Test.b", isRoot = True } )
+                ]
+                    |> Dict.fromList
+                    |> CA.Record p (Just { isRoot = True, attrPath = [], name = "Test.m" })
                     |> Ok
             }
         , simpleTest
             { name = "update shorthand"
             , run = \_ -> firstEvaluation "b" "b = { a.k with y = .x }"
             , expected =
-                { attrs = Dict.singleton "y" (CA.Variable () { isRoot = True, attrPath = [ "k", "x" ], name = "Test.a" })
-                , maybeUpdateTarget = Just { isRoot = True, attrPath = [ "k" ], name = "Test.a" }
-                }
-                    |> CA.Record ()
+                Dict.singleton "y" (CA.Variable p { isRoot = True, attrPath = [ "k", "x" ], name = "Test.a" })
+                    |> CA.Record p (Just { isRoot = True, attrPath = [ "k" ], name = "Test.a" })
                     |> Ok
             }
         , codeTest "annotation, extensible"
@@ -459,10 +442,9 @@ pipes =
             """
             (firstEvaluation "a")
             (Test.okEqual <|
-                CA.Call ()
-                    { reference = CA.Variable () { name = "Test.function", isRoot = True, attrPath = [] }
-                    , argument = CA.ArgumentExpression <| CA.Variable () { name = "Test.thing", isRoot = True, attrPath = [] }
-                    }
+                CA.Call p
+                    (CA.Variable p { name = "Test.function", isRoot = True, attrPath = [] })
+                    (CA.ArgumentExpression <| CA.Variable p { name = "Test.thing", isRoot = True, attrPath = [] })
             )
         , codeTest "sendRight is inlined"
             """
@@ -470,10 +452,9 @@ pipes =
             """
             (firstEvaluation "a")
             (Test.okEqual <|
-                CA.Call ()
-                    { reference = CA.Variable () { name = "Test.function", isRoot = True, attrPath = [] }
-                    , argument = CA.ArgumentExpression <| CA.Variable () { name = "Test.thing", isRoot = True, attrPath = [] }
-                    }
+                CA.Call p
+                    (CA.Variable p { name = "Test.function", isRoot = True, attrPath = [] })
+                    (CA.ArgumentExpression <| CA.Variable p { name = "Test.thing", isRoot = True, attrPath = [] })
             )
         ]
 

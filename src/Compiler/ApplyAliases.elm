@@ -28,41 +28,33 @@ type alias GetAlias =
 replaceType : GetAlias -> Type -> Res Type
 replaceType ga ty =
     case ty of
-        CA.TypeVariable { name } ->
+        CA.TypeVariable pos name ->
             Ok ty
 
-        CA.TypeFunction { from, fromIsMutable, to } ->
+        CA.TypeFunction pos from fromIsMutable to ->
             Result.map2
-                (\f t ->
-                    CA.TypeFunction
-                        { from = f
-                        , fromIsMutable = fromIsMutable
-                        , to = t
-                        }
-                )
+                (\f t -> CA.TypeFunction pos f fromIsMutable t)
                 (replaceType ga from)
                 (replaceType ga to)
 
-        CA.TypeRecord { extensible, attrs } ->
+        CA.TypeRecord pos extensible attrs ->
             attrs
                 |> Lib.dict_mapRes (\k -> replaceType ga)
-                |> Result.map (\a -> CA.TypeRecord { extensible = extensible, attrs = a })
+                |> Result.map (CA.TypeRecord pos extensible)
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias pos path t ->
             -- it's easy to deal with, but it shouldn't happen O_O
             errorTodo "Did we apply aliases twice?"
 
-        CA.TypeConstant { ref, args } ->
+        CA.TypeConstant pos ref args ->
             Lib.result_do (Lib.list_mapRes (replaceType ga) args) <| \replacedArgs ->
             case ga ref of
                 Err e ->
                     Err e
 
                 Ok Nothing ->
-                    { ref = ref
-                    , args = replacedArgs
-                    }
-                        |> CA.TypeConstant
+                    replacedArgs
+                        |> CA.TypeConstant pos ref
                         |> Ok
 
                 Ok (Just al) ->
@@ -76,7 +68,7 @@ replaceType ga ty =
                         in
                         al.ty
                             |> expandAliasVariables typeByArgName
-                            |> CA.TypeAlias ref
+                            |> CA.TypeAlias pos ref
                             |> Ok
 
 
@@ -86,7 +78,7 @@ replaceType ga ty =
 --
 
 
-applyAliasesToModule : CA.Module e -> Res (CA.Module e)
+applyAliasesToModule : CA.AllDefs -> Res CA.AllDefs
 applyAliasesToModule mod =
     let
         do =
@@ -144,7 +136,7 @@ applyAliasesToUnions aliases =
 --
 
 
-applyAliasesToValues : Dict Name CA.AliasDef -> Dict String (CA.ValueDef e) -> Res (Dict String (CA.ValueDef e))
+applyAliasesToValues : Dict Name CA.AliasDef -> Dict String CA.ValueDef -> Res (Dict String CA.ValueDef)
 applyAliasesToValues aliases =
     let
         ga : GetAlias
@@ -154,7 +146,7 @@ applyAliasesToValues aliases =
     Lib.dict_mapRes (\k -> normalizeValueDef ga)
 
 
-normalizeValueDef : GetAlias -> CA.ValueDef e -> Res (CA.ValueDef e)
+normalizeValueDef : GetAlias -> CA.ValueDef -> Res CA.ValueDef
 normalizeValueDef ga vdef =
     Result.map2
         (\maybeAnnotation body ->
@@ -177,12 +169,12 @@ normalizeAnnotation ga maybeType =
             replaceType ga ty |> Result.map Just
 
 
-normalizeBlock : GetAlias -> List (CA.Statement e) -> Res (List (CA.Statement e))
+normalizeBlock : GetAlias -> List CA.Statement -> Res (List CA.Statement)
 normalizeBlock ga =
     Lib.list_mapRes (normalizeStatement ga)
 
 
-normalizeStatement : GetAlias -> CA.Statement e -> Res (CA.Statement e)
+normalizeStatement : GetAlias -> CA.Statement -> Res CA.Statement
 normalizeStatement ga s =
     case s of
         CA.Definition vdef ->
@@ -192,7 +184,7 @@ normalizeStatement ga s =
             Result.map CA.Evaluation (normalizeExpr ga expr)
 
 
-normalizeExpr : GetAlias -> CA.Expression e -> Res (CA.Expression e)
+normalizeExpr : GetAlias -> CA.Expression -> Res CA.Expression
 normalizeExpr ga expr =
     case expr of
         CA.Literal _ _ ->
@@ -201,37 +193,37 @@ normalizeExpr ga expr =
         CA.Variable _ _ ->
             Ok expr
 
-        CA.Lambda e ar ->
-            ar.body
+        CA.Lambda pos pattern body0 ->
+            body0
                 |> normalizeBlock ga
-                |> Result.map (\body -> CA.Lambda e { ar | body = body })
+                |> Result.map (CA.Lambda pos pattern)
 
-        CA.Record e ar ->
-            ar.attrs
+        CA.Record pos extend attrs0 ->
+            attrs0
                 |> Lib.dict_mapRes (\k -> normalizeExpr ga)
-                |> Result.map (\attrs -> CA.Record e { ar | attrs = attrs })
+                |> Result.map (CA.Record pos extend)
 
-        CA.Call e ar ->
+        CA.Call pos ref0 arg0 ->
             Result.map2
-                (\ref arg -> CA.Call e { reference = ref, argument = arg })
-                (normalizeExpr ga ar.reference)
-                (normalizeArg ga ar.argument)
+                (CA.Call pos)
+                (normalizeExpr ga ref0)
+                (normalizeArg ga arg0)
 
-        CA.If e ar ->
+        CA.If pos ar ->
             Result.map3
-                (\c t f -> CA.If e { condition = c, true = t, false = f })
+                (\c t f -> CA.If pos { condition = c, true = t, false = f })
                 (normalizeBlock ga ar.condition)
                 (normalizeBlock ga ar.true)
                 (normalizeBlock ga ar.false)
 
-        CA.Try e ar ->
+        CA.Try pos value tries ->
             Result.map2
-                (\v ps -> CA.Try e { value = v, patterns = ps })
-                (normalizeExpr ga ar.value)
-                (Lib.list_mapRes (Lib.tuple_mapSecondRes (normalizeBlock ga)) ar.patterns)
+                (CA.Try pos)
+                (normalizeExpr ga value)
+                (Lib.list_mapRes (Lib.tuple_mapSecondRes (normalizeBlock ga)) tries)
 
 
-normalizeArg : GetAlias -> CA.Argument e -> Res (CA.Argument e)
+normalizeArg : GetAlias -> CA.Argument -> Res CA.Argument
 normalizeArg ga arg =
     case arg of
         CA.ArgumentMutable _ ->
@@ -281,7 +273,7 @@ processAlias allAliases al processedAliases =
 expandAliasVariables : Dict Name Type -> Type -> Type
 expandAliasVariables typeByArgName ty =
     case ty of
-        CA.TypeVariable { name } ->
+        CA.TypeVariable pos name ->
             case Dict.get name typeByArgName of
                 Nothing ->
                     ty
@@ -289,27 +281,24 @@ expandAliasVariables typeByArgName ty =
                 Just t ->
                     t
 
-        CA.TypeFunction { from, fromIsMutable, to } ->
-            CA.TypeFunction
-                { from = expandAliasVariables typeByArgName from
-                , fromIsMutable = fromIsMutable
-                , to = expandAliasVariables typeByArgName to
-                }
+        CA.TypeFunction pos from fromIsMutable to ->
+            CA.TypeFunction pos
+                (expandAliasVariables typeByArgName from)
+                fromIsMutable
+                (expandAliasVariables typeByArgName to)
 
-        CA.TypeRecord { extensible, attrs } ->
-            CA.TypeRecord
-                { extensible = extensible
-                , attrs = Dict.map (\k -> expandAliasVariables typeByArgName) attrs
-                }
+        CA.TypeRecord pos extensible attrs ->
+            CA.TypeRecord pos
+                extensible
+                (Dict.map (\k -> expandAliasVariables typeByArgName) attrs)
 
-        CA.TypeConstant { ref, args } ->
-            CA.TypeConstant
-                { ref = ref
-                , args = List.map (expandAliasVariables typeByArgName) args
-                }
+        CA.TypeConstant pos ref args ->
+            CA.TypeConstant pos
+                ref
+                (List.map (expandAliasVariables typeByArgName) args)
 
-        CA.TypeAlias ref t ->
-            CA.TypeAlias ref (expandAliasVariables typeByArgName t)
+        CA.TypeAlias pos ref t ->
+            CA.TypeAlias pos ref (expandAliasVariables typeByArgName t)
 
 
 
@@ -326,17 +315,17 @@ findAllRefs_alias al =
 findAllRefs_type : CA.Type -> Set String
 findAllRefs_type ty =
     case ty of
-        CA.TypeConstant { ref, args } ->
+        CA.TypeConstant pos ref args ->
             List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton ref) args
 
-        CA.TypeVariable { name } ->
+        CA.TypeVariable pos name ->
             Set.empty
 
-        CA.TypeFunction { from, to } ->
+        CA.TypeFunction pos from maybeMut to ->
             Set.union (findAllRefs_type from) (findAllRefs_type to)
 
-        CA.TypeRecord { extensible, attrs } ->
+        CA.TypeRecord pos extensible attrs ->
             Dict.foldl (\name t -> Set.union (findAllRefs_type t)) Set.empty attrs
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias pos path t ->
             findAllRefs_type t

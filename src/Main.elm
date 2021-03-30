@@ -727,7 +727,7 @@ viewProgram model =
         do =
             Lib.result_do
 
-        compileAndInsert : Meta -> String -> String -> CA.Module Pos -> Result String (CA.Module Pos)
+        compileAndInsert : Meta -> String -> String -> CA.AllDefs -> Result String CA.AllDefs
         compileAndInsert meta fileName code acc =
             if fileName == metaFileName then
                 Ok acc
@@ -738,7 +738,7 @@ viewProgram model =
                     |> (\fa -> Compiler.Pipeline.stringToCanonicalAst meta fileName fa acc)
                     |> Compiler.TestHelpers.resErrorToString
 
-        emitModule : CA.Module e -> Result x String
+        emitModule : CA.AllDefs -> Result x String
         emitModule caModule =
             caModule
                 |> Compiler.CanonicalToJs.translateAll
@@ -750,7 +750,7 @@ viewProgram model =
         programResult meta =
             do (Lib.dict_foldRes (compileAndInsert meta) model.files Prelude.prelude) <| \allDefs ->
             let
-                withAliases : Result String (CA.Module CA.Pos)
+                withAliases : Result String CA.AllDefs
                 withAliases =
                     allDefs
                         |> Compiler.ApplyAliases.applyAliasesToModule
@@ -758,7 +758,7 @@ viewProgram model =
             in
             do withAliases <| \alsDefs ->
             let
-                blah : Result String ( CA.Module TI.Ext, TI.Env, TI.Substitutions )
+                blah : Result String ( CA.AllDefs, TI.Env, TI.Substitutions )
                 blah =
                     alsDefs
                         |> TI.inspectModule Dict.empty
@@ -883,7 +883,7 @@ viewSchema schema =
 --
 
 
-viewCanonicalAst : CA.Module e -> Html msg
+viewCanonicalAst : CA.AllDefs -> Html msg
 viewCanonicalAst mod =
     let
         v ( name, rv ) =
@@ -936,7 +936,7 @@ viewCaUnion u =
         ]
 
 
-viewCaDefinition : CA.ValueDef e -> Html msg
+viewCaDefinition : CA.ValueDef -> Html msg
 viewCaDefinition def =
     Html.div
         []
@@ -972,16 +972,16 @@ viewCaPattern p =
 viewCaType : CA.Type -> String
 viewCaType ty =
     case ty of
-        CA.TypeConstant { ref, args } ->
+        CA.TypeConstant pos ref args ->
             ref ++ " " ++ String.join " " (List.map viewCaType args)
 
-        CA.TypeVariable { name } ->
+        CA.TypeVariable pos name ->
             name
 
-        CA.TypeAlias path t ->
+        CA.TypeAlias pos path t ->
             "<" ++ path ++ ": " ++ viewCaType t ++ ">"
 
-        CA.TypeFunction { from, fromIsMutable, to } ->
+        CA.TypeFunction pos from fromIsMutable to ->
             [ "(" ++ viewCaType from ++ ")"
             , case fromIsMutable of
                 Just True ->
@@ -996,17 +996,17 @@ viewCaType ty =
             ]
                 |> String.join ""
 
-        CA.TypeRecord args ->
+        CA.TypeRecord pos extensible attrs ->
             let
                 var =
-                    case args.extensible of
+                    case extensible of
                         Just name ->
                             name ++ " with "
 
                         Nothing ->
                             ""
             in
-            args.attrs
+            attrs
                 |> Dict.toList
                 |> List.sortBy Tuple.first
                 |> List.map (\( name, type_ ) -> name ++ ": " ++ viewCaType type_)
@@ -1014,7 +1014,7 @@ viewCaType ty =
                 |> (\s -> "{" ++ var ++ s ++ "}")
 
 
-viewCaStatement : CA.Statement e -> Html msg
+viewCaStatement : CA.Statement -> Html msg
 viewCaStatement s =
     case s of
         CA.Evaluation expr ->
@@ -1029,7 +1029,7 @@ viewCaStatement s =
             viewCaDefinition def
 
 
-viewCaExpression : CA.Expression e -> Html msg
+viewCaExpression : CA.Expression -> Html msg
 viewCaExpression expr =
     case expr of
         CA.Literal _ s ->
@@ -1038,7 +1038,7 @@ viewCaExpression expr =
         CA.Variable x s ->
             Html.text <| Debug.toString x ++ "|" ++ s.name
 
-        CA.Call _ { reference, argument } ->
+        CA.Call _ reference argument ->
             Html.div
                 [ style "border" "red" ]
                 [ viewCaExpression reference
@@ -1115,7 +1115,6 @@ viewFaStatement s =
                     |> Maybe.withDefault ""
                     |> Html.text
                 , body
-                    |> OneOrMore.toList
                     |> List.map viewFaStatement
                     |> Html.div []
                 ]
@@ -1134,13 +1133,13 @@ viewFaPattern p =
 viewFaExpression : FA.Expression -> Html msg
 viewFaExpression expr =
     case expr of
-        FA.Literal s ->
+        FA.Literal pos s ->
             Html.text (Debug.toString s)
 
-        FA.Variable s ->
-            Html.text s.name
+        FA.Variable pos {isBinop} s ->
+            Html.text s
 
-        FA.FunctionCall s e { reference, arguments } ->
+        FA.FunctionCall pos reference arguments ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div
@@ -1150,10 +1149,10 @@ viewFaExpression expr =
                     ]
                 , Html.div
                     [ style "padding-left" "2em" ]
-                    (List.map viewFaExpression <| Tuple.first arguments :: Tuple.second arguments)
+                    (List.map viewFaExpression arguments)
                 ]
 
-        FA.Binop { group, sepList } ->
+        FA.Binop pos group sepList ->
             Html.div
                 [ style "border" "red" ]
                 [ Html.div

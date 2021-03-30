@@ -24,6 +24,16 @@ tests =
         ]
 
 
+p : FA.Pos
+p =
+    ( -1, -1 )
+
+
+applyDummyPos : FA.Pos -> FA.Pos
+applyDummyPos =
+    always p
+
+
 
 ----
 ---
@@ -82,10 +92,12 @@ firstStatement : String -> Result String FA.Statement
 firstStatement code =
     code
         |> Compiler.TestHelpers.stringToFormattableModule
+        |> Result.map (List.map (FA.posMap_statement applyDummyPos))
         |> Compiler.TestHelpers.resErrorToString
         |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 
+firstDefinition : String -> Result String FA.ValueDef
 firstDefinition =
     firstStatement >> Result.andThen asDefinition
 
@@ -94,7 +106,7 @@ firstEvaluation : String -> Result String FA.Expression
 firstEvaluation code =
     code
         |> firstDefinition
-        |> Result.map (.body >> Tuple.first)
+        |> Result.andThen (.body >> List.head >> Result.fromMaybe "empty body")
         |> Result.andThen asEvaluation
 
 
@@ -129,21 +141,16 @@ lambdas =
                     ]
                         |> List.indexedMap kindToToken
                         |> runParser Syntax.expr
+                        |> Result.map (FA.posMap_expression applyDummyPos)
             , expected =
                 Ok <|
-                    FA.Lambda
-                        { start = 0
-                        , parameters = ( FA.PatternAny ( 1, 2 ) "a", [] )
-                        , body =
-                            ( FA.Evaluation <|
-                                FA.Lambda
-                                    { start = 3
-                                    , parameters = ( FA.PatternAny ( 4, 5 ) "b", [] )
-                                    , body = ( FA.Evaluation <| FA.Literal { start = 6, end = 7, value = Types.Literal.Number "3" }, [] )
-                                    }
-                            , []
-                            )
-                        }
+                    FA.Lambda p
+                        [ FA.PatternAny p "a" ]
+                        [ FA.Evaluation <|
+                            FA.Lambda p
+                                [ FA.PatternAny p "b" ]
+                                [ FA.Evaluation <| FA.Literal p <| Types.Literal.Number "3" ]
+                        ]
             }
         , simpleTest
             { name = "block nesting"
@@ -163,22 +170,16 @@ lambdas =
                     ]
                         |> List.indexedMap kindToToken
                         |> runParser Syntax.expr
+                        |> Result.map (FA.posMap_expression applyDummyPos)
             , expected =
-                Ok
-                    (FA.Lambda
-                        { start = 0
-                        , parameters = ( FA.PatternAny ( 1, 2 ) "a", [] )
-                        , body =
-                            ( FA.Evaluation <|
-                                FA.Lambda
-                                    { start = 4
-                                    , parameters = ( FA.PatternAny ( 5, 6 ) "b", [] )
-                                    , body = ( FA.Evaluation <| FA.Literal { start = 8, end = 9, value = Types.Literal.Number "3" }, [] )
-                                    }
-                            , []
-                            )
-                        }
-                    )
+                Ok <|
+                    FA.Lambda p
+                        [ FA.PatternAny p "a" ]
+                        [ FA.Evaluation <|
+                            FA.Lambda p
+                                [ FA.PatternAny p "b" ]
+                                [ FA.Evaluation <| FA.Literal p <| Types.Literal.Number "3" ]
+                        ]
             }
         , simpleTest
             { name = "sibling nesting"
@@ -196,30 +197,18 @@ lambdas =
                     ]
                         |> List.indexedMap kindToToken
                         |> runParser Syntax.expr
+                        |> Result.map (FA.posMap_expression applyDummyPos)
             , expected =
-                Ok
-                    (FA.Lambda
-                        { start = 0
-                        , parameters = ( FA.PatternAny ( 1, 2 ) "a", [] )
-                        , body =
-                            ( FA.Evaluation <|
-                                FA.Lambda
-                                    { start = 4
-                                    , parameters = ( FA.PatternAny ( 5, 6 ) "b", [] )
-                                    , body =
-                                        ( FA.Evaluation <|
-                                            FA.Literal
-                                                { start = 8
-                                                , end = 9
-                                                , value = Types.Literal.Number "3"
-                                                }
-                                        , []
-                                        )
-                                    }
-                            , []
-                            )
-                        }
-                    )
+                Ok <|
+                    FA.Lambda p
+                        [ FA.PatternAny p "a" ]
+                        [ FA.Evaluation <|
+                            FA.Lambda p
+                                [ FA.PatternAny p "b" ]
+                                [ FA.Evaluation <|
+                                    FA.Literal p (Types.Literal.Number "3")
+                                ]
+                        ]
             }
         ]
 
@@ -240,17 +229,15 @@ annotations =
                 Ok
                     { mutable = False
                     , name = "a"
-                    , type_ =
-                        FA.TypeFunction
-                            { from = FA.TypeName { name = "Number" }
-                            , fromIsMutable = True
-                            , to =
-                                FA.TypeFunction
-                                    { from = FA.TypeName { name = "Int" }
-                                    , fromIsMutable = False
-                                    , to = FA.TypeName { name = "None" }
-                                    }
-                            }
+                    , ty =
+                        FA.TypeFunction p
+                            (FA.TypeName p "Number")
+                            True
+                            (FA.TypeFunction p
+                                (FA.TypeName p "Int")
+                                False
+                                (FA.TypeName p "None")
+                            )
                     }
             }
         , simpleTest
@@ -266,17 +253,15 @@ annotations =
                 Ok
                     { mutable = False
                     , name = "a"
-                    , type_ =
-                        FA.TypeFunction
-                            { from = FA.TypeName { name = "Number" }
-                            , fromIsMutable = False
-                            , to =
-                                FA.TypeFunction
-                                    { from = FA.TypeName { name = "Int" }
-                                    , fromIsMutable = True
-                                    , to = FA.TypeName { name = "None" }
-                                    }
-                            }
+                    , ty =
+                        FA.TypeFunction p
+                            (FA.TypeName p "Number")
+                            False
+                            (FA.TypeFunction p
+                                (FA.TypeName p "Int")
+                                True
+                                (FA.TypeName p "None")
+                            )
                     }
             }
         , simpleTest
@@ -292,18 +277,15 @@ annotations =
                 Ok
                     { mutable = False
                     , name = "a"
-                    , type_ =
-                        FA.TypeFunction
-                            { from =
-                                FA.TypeTuple
-                                    [ FA.TypeName
-                                        { name = "Int"
-                                        }
-                                    , FA.TypeName { name = "Int" }
-                                    ]
-                            , fromIsMutable = False
-                            , to = FA.TypeName { name = "Bool" }
-                            }
+                    , ty =
+                        FA.TypeFunction p
+                            (FA.TypeTuple p
+                                [ FA.TypeName p "Int"
+                                , FA.TypeName p "Int"
+                                ]
+                            )
+                            False
+                            (FA.TypeName p "Bool")
                     }
             }
         ]
@@ -331,10 +313,10 @@ unionDefs =
                 Ok
                     { args = [ "b", "c" ]
                     , constructors =
-                        [ FA.TypePolymorphic { args = [ FA.TypeName { name = "b" } ], name = "V1" }
-                        , FA.TypePolymorphic { args = [ FA.TypeName { name = "c" } ], name = "V2" }
-                        , FA.TypeName { name = "V3" }
-                        , FA.TypePolymorphic { args = [ FA.TypeName { name = "b" }, FA.TypeName { name = "c" } ], name = "V4" }
+                        [ FA.TypePolymorphic p "V1" [ FA.TypeName p "b" ]
+                        , FA.TypePolymorphic p "V2" [ FA.TypeName p "c" ]
+                        , FA.TypeName p "V3"
+                        , FA.TypePolymorphic p "V4" [ FA.TypeName p "b", FA.TypeName p "c" ]
                         ]
                     , name = "A"
                     }
@@ -353,8 +335,8 @@ unionDefs =
                 { name = "A"
                 , args = []
                 , constructors =
-                    [ FA.TypeName { name = "V1" }
-                    , FA.TypeName { name = "V2" }
+                    [ FA.TypeName p "V1"
+                    , FA.TypeName p "V2"
                     ]
                 }
                     |> Ok
@@ -367,15 +349,12 @@ unionDefs =
                     { args = []
                     , name = "A"
                     , constructors =
-                        [ FA.TypePolymorphic
-                            { name = "A"
-                            , args =
-                                [ FA.TypePolymorphic
-                                    { name = "List"
-                                    , args = [ FA.TypeName { name = "Int" } ]
-                                    }
-                                ]
-                            }
+                        [ FA.TypePolymorphic p
+                            "A"
+                            [ FA.TypePolymorphic p
+                                "List"
+                                [ FA.TypeName p "Int" ]
+                            ]
                         ]
                     }
             }
@@ -389,10 +368,10 @@ lists =
             { name = "inline"
             , run = \_ -> firstEvaluation "a = [1, 2]"
             , expected =
-                [ FA.Literal { end = 6, value = Types.Literal.Number "1", start = 5 }
-                , FA.Literal { end = 9, value = Types.Literal.Number "2", start = 8 }
+                [ FA.Literal p <| Types.Literal.Number "1"
+                , FA.Literal p <| Types.Literal.Number "2"
                 ]
-                    |> FA.List
+                    |> FA.List p
                     |> Ok
             }
         , simpleTest
@@ -404,10 +383,10 @@ lists =
                    ]
                  """
             , expected =
-                [ FA.Literal { end = 12, value = Types.Literal.Number "1", start = 11 }
-                , FA.Literal { end = 18, value = Types.Literal.Number "2", start = 17 }
+                [ FA.Literal p <| Types.Literal.Number "1"
+                , FA.Literal p <| Types.Literal.Number "2"
                 ]
-                    |> FA.List
+                    |> FA.List p
                     |> Ok
             }
         ]
@@ -421,8 +400,8 @@ records =
             , run = \_ -> firstEvaluation "a = { x = 1 }"
             , expected =
                 Ok
-                    (FA.Record ( 4, 12 )
-                        { attrs = [ ( "x", Just (FA.Literal { end = 11, value = Types.Literal.Number "1", start = 10 }) ) ]
+                    (FA.Record p
+                        { attrs = [ ( "x", Just (FA.Literal p <| Types.Literal.Number "1") ) ]
                         , extends = Nothing
                         }
                     )
@@ -440,10 +419,10 @@ records =
                         |> firstEvaluation
             , expected =
                 Ok
-                    (FA.Record ( 5, 27 )
+                    (FA.Record p
                         { attrs =
-                            [ ( "x", Just (FA.Literal { end = 16, value = Types.Literal.Number "1", start = 15 }) )
-                            , ( "y", Just (FA.Literal { end = 26, value = Types.Literal.Number "2", start = 25 }) )
+                            [ ( "x", Just (FA.Literal p <| Types.Literal.Number "1") )
+                            , ( "y", Just (FA.Literal p <| Types.Literal.Number "2") )
                             ]
                         , extends = Nothing
                         }
@@ -458,12 +437,12 @@ records =
                     a = a
                     """
                         |> firstAnnotation
-                        |> Result.map .type_
+                        |> Result.map .ty
             , expected =
                 Ok
-                    (FA.TypeRecord ( 5, 16 )
+                    (FA.TypeRecord p
                         { extends = Nothing
-                        , attrs = [ ( "x", Just <| FA.TypeName { name = "Bool" } ) ]
+                        , attrs = [ ( "x", Just <| FA.TypeName p "Bool" ) ]
                         }
                     )
             }
@@ -478,12 +457,12 @@ records =
                     a = a
                     """
                         |> firstAnnotation
-                        |> Result.map .type_
+                        |> Result.map .ty
             , expected =
                 Ok
-                    (FA.TypeRecord ( 5, 21 )
+                    (FA.TypeRecord p
                         { extends = Nothing
-                        , attrs = [ ( "x", Just <| FA.TypeName { name = "Bool" } ) ]
+                        , attrs = [ ( "x", Just <| FA.TypeName p "Bool" ) ]
                         }
                     )
             }
@@ -589,7 +568,7 @@ patterns =
         [ simpleTest
             { name = "list unpacking"
             , run = \_ -> firstDefinition "[a, b] = x" |> Result.map .pattern
-            , expected = Ok <| FA.PatternList ( 0, 7 ) [ FA.PatternAny ( 1, 2 ) "a", FA.PatternAny ( 4, 5 ) "b" ]
+            , expected = Ok <| FA.PatternList p [ FA.PatternAny p "a", FA.PatternAny p "b" ]
             }
         , isOk
             { name = "list unpacking, inner block"
@@ -607,7 +586,7 @@ x =
             , run = \_ -> firstDefinition "{ a, b } = x" |> Result.map .pattern
             , expected =
                 Ok <|
-                    FA.PatternRecord ( 0, 7 )
+                    FA.PatternRecord p
                         { extends = Nothing
                         , attrs =
                             [ ( "a", Nothing )
@@ -633,31 +612,27 @@ binops : Test
 binops =
     let
         sendBtoC b c =
-            FA.Binop
-                { group = Token.Pipe
-                , sepList =
-                    ( FA.Variable { start = b, end = b + 1, name = "b", binop = False }
-                    , [ ( ">>"
-                        , FA.Variable { start = c, end = c + 1, name = "c", binop = False }
-                        )
-                      ]
+            FA.Binop p
+                Token.Pipe
+                ( FA.Variable p { isBinop = False } "b"
+                , [ ( ">>"
+                    , FA.Variable p { isBinop = False } "c"
                     )
-                }
+                  ]
+                )
 
         sendBtoCtoD b c d =
-            FA.Binop
-                { group = Token.Pipe
-                , sepList =
-                    ( FA.Variable { start = b, end = b + 1, name = "b", binop = False }
-                    , [ ( ">>"
-                        , FA.Variable { start = c, end = c + 1, name = "c", binop = False }
-                        )
-                      , ( ">>"
-                        , FA.Variable { start = d, end = d + 1, name = "d", binop = False }
-                        )
-                      ]
+            FA.Binop p
+                Token.Pipe
+                ( FA.Variable p { isBinop = False } "b"
+                , [ ( ">>"
+                    , FA.Variable p { isBinop = False } "c"
                     )
-                }
+                  , ( ">>"
+                    , FA.Variable p { isBinop = False } "d"
+                    )
+                  ]
+                )
     in
     Test.Group "Binops"
         [ codeTest "no indent"

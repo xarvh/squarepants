@@ -1,7 +1,7 @@
 module Compiler.ApplyAliases_Test exposing (..)
 
 import Compiler.ApplyAliases
-import Compiler.TestHelpers as TH
+import Compiler.TestHelpers as TH exposing (p)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Test exposing (Test)
@@ -20,7 +20,7 @@ hasError =
     Test.hasError Debug.toString
 
 
-applyAndGet : (CA.RootDef () -> Maybe a) -> String -> String -> Result String a
+applyAndGet : (CA.RootDef -> Maybe a) -> String -> String -> Result String a
 applyAndGet getAs name code =
     code
         |> TH.stringToCanonicalModule
@@ -29,7 +29,7 @@ applyAndGet getAs name code =
         |> Result.andThen (getAs >> Result.fromMaybe "wrong variant")
 
 
-applyAndGetValue : String -> String -> Result String (CA.ValueDef ())
+applyAndGetValue : String -> String -> Result String CA.ValueDef
 applyAndGetValue name code =
     code
         |> TH.stringToCanonicalModule
@@ -59,16 +59,9 @@ tests =
                             |> applyAndGetValue "a"
                             |> Result.map .maybeAnnotation
                 , expected =
-                    { args =
-                        [ CA.TypeConstant
-                            { args = []
-                            , ref = "SPCore.Number"
-                            }
-                        ]
-                    , ref = "SPCore.List"
-                    }
-                        |> CA.TypeConstant
-                        |> CA.TypeAlias "Test.A"
+                    [ CA.TypeConstant p "SPCore.Number" [] ]
+                        |> CA.TypeConstant p "SPCore.List"
+                        |> CA.TypeAlias p "Test.A"
                         |> Just
                         |> Ok
                 }
@@ -96,15 +89,11 @@ tests =
                             |> applyAndGetValue "a"
                             |> Result.map .maybeAnnotation
                 , expected =
-                    { attrs =
-                        Dict.fromList
-                            [ ( "x", CA.TypeConstant { args = [], ref = "SPCore.Bool" } )
-                            , ( "y", CA.TypeConstant { args = [], ref = "SPCore.Bool" } )
-                            ]
-                    , extensible = Nothing
-                    }
-                        |> CA.TypeRecord
-                        |> CA.TypeAlias "Test.A"
+                    Dict.empty
+                        |> Dict.insert "x" (CA.TypeConstant p "SPCore.Bool" [])
+                        |> Dict.insert "y" (CA.TypeConstant p "SPCore.Bool" [])
+                        |> CA.TypeRecord p Nothing
+                        |> CA.TypeAlias p "Test.A"
                         |> Just
                         |> Ok
                 }
@@ -123,16 +112,12 @@ tests =
                 , expected =
                     Ok <|
                         Dict.singleton "Test.B1"
-                            [ CA.TypeAlias "Test.A"
-                                (CA.TypeConstant
-                                    { ref = "SPCore.List"
-                                    , args =
-                                        [ CA.TypeConstant
-                                            { args = []
-                                            , ref = "SPCore.Bool"
-                                            }
-                                        ]
-                                    }
+                            [ CA.TypeAlias p
+                                "Test.A"
+                                (CA.TypeConstant p
+                                    "SPCore.List"
+                                    [ CA.TypeConstant p "SPCore.Bool" []
+                                    ]
                                 )
                             ]
                 }
