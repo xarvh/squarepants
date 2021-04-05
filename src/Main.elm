@@ -23,6 +23,7 @@ import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
+import Human.CanonicalAst as HumanCA
 import Lib
 import Markdown
 import MetaFile
@@ -62,7 +63,13 @@ metaFileName =
 moduleMain =
     ( "Main"
     , """
-      result x y = 3
+result =
+    # define a function
+    getAssets url =
+      Just << url .. ".jpg"
+
+    # the value of the last statement is returned
+    Language/Overview.getAllHouses getAssets
       """
     )
 
@@ -72,8 +79,8 @@ moduleMaybe =
     , """
       union Maybe a = Nothing, Just a
 
-      andThen : Maybe a -> (a -> Maybe b) -> Maybe b
-      andThen ma f =
+      andThen : (a -> Maybe b) -> Maybe a -> Maybe b
+      andThen f ma =
           try ma as
               Nothing then
                   Nothing
@@ -147,151 +154,7 @@ reverse aList =
 
 languageOverview =
     ( "Language/Overview"
-    , """
-[#
-   SquarePants has no import statements: instead, project-wide imports are
-   declared in the `meta` file.
-#]
-
-
-# Declare a constant
-numberOne =
-    1
-
-# Declare a function
-addThreeNumbers x y z =
-    x + y + z
-
-
-# TODO: polymorphism for number types is not yet implemented,
-# so I'm cheating and adding these aliases.
-alias Int = Number
-alias Float = Number
-alias Vec2 = Number
-
-
-# Declarations can have a type annotation
-floatSix : Float
-floatSix =
-    # parens are not needed for calling functions
-    addThreeNumbers 1 2 3
-
-
-# if-then-else always yields a value
-fibonacci : Int -> Int
-fibonacci n =
-    if n < 2 then n else n + fibonacci (n - 1)
-
-
-# operators can be used prefixed, like functions
-# `left - right` becomes `(-) right left`
-subtractTwoFrom : Vec2 -> Vec2
-subtractTwoFrom n =
-    (-) 2 n
-
-
-# Square brackets for Lists.
-# All items must be of the same type
-listOfText : [ Text ]
-listOfText = [
-    , "Gary"
-    , "Bikini Bottom"
-    , "I'm ready! Promotion!"
-    ]
-
-
-# `>>` and `<<` are just syntactic sugar
-# They help using less parens and
-# help visualizing how a value is transformed
-repeatHello : Int -> Text
-repeatHello times =
-    listOfText
-        >> List.reverse
-        >> Text.join ", "
-        >> (..) " and append this text at the end"
-
-
-# When you see `@`, it means "this stuff is mutable"
-average : List Int -> Float
-average numbers =
-    # mutable variables can only be local and can't leave their scope.
-    # `average` is still a pure function.
-    n @= 0
-    sum @= 0
-
-    # anonymous functions start with `fn`
-    List.each numbers fn x =
-        @n += 1
-        @sum += x
-
-    # division by 0 yields 0
-    sum / n
-
-
-[# TODO: implement Random.
-# The argument preceding `@>` is mutable
-generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
-generateTwoRandomNumbers min max seed =
-    # '&' is used for tuples
-    Random.int min max @seed & Random.int min max @seed
-#]
-
-
-
-# Algebraic Data Types
-
-union LoadingState payload =
-    , NotRequested
-    , Requested
-    , Error Text
-    , Available payload
-
-getStatusName : LoadingState payload -> Text
-getStatusName loadingState =
-    try loadingState as
-        NotRequested then "Not needed"
-        Requested then "Awaiting server response"
-        Error message then "Error: " .. message
-        Available _ then "Successfully loaded"
-
-getPayload : LoadingState payload -> Maybe payload
-getPayload loadingState =
-    try loadingState as Available payload then Just payload else Nothing
-
-
-
-# Records
-
-alias Crab = {
-    , name : Text
-    , money : Float
-    }
-
-eugeneKrabs : Crab
-eugeneKrabs = {
-    , name = "Eugene H. Krabs"
-    , money = 2 #TODO 2_345_678.90
-    }
-
-
-# TODO add a record access example
-
-
-earnMoney : Float -> Crab -> Crab
-earnMoney profit crab =
-    # `.money` is a shorthand for `crab.money`
-    { crab with money = .money + profit }
-
-
-# to-notation
-getAllHouses : (Text -> Maybe house) -> Maybe { rock : house, moai : house, pineapple : house }
-getAllHouses getAsset =
-    to = Maybe.andThen
-    getAsset "rock" >> to fn rock =
-    getAsset "moai" >> to fn moai =
-    getAsset "pineapple" >> to fn pineapple =
-       Just { rock, moai, pineapple }
-    """
+    , overviewString
     )
 
 
@@ -843,7 +706,7 @@ viewSchema : TI.EnvEntry -> String
 viewSchema schema =
     [ "forall: [" ++ String.join "," (Set.toList schema.forall) ++ "]"
     , "mutable: " ++ Debug.toString schema.mutable
-    , "type: " ++ viewCaType schema.type_
+    , "type: " ++ HumanCA.typeToString schema.type_
     ]
         |> String.join " ### "
 
@@ -911,13 +774,13 @@ viewCanonicalAst mod =
 
 viewCaAlias : CA.AliasDef -> Html msg
 viewCaAlias al =
-    Html.div
+    Html.pre
         []
-        [ [ "alias:"
+        [ [ "alias"
           , al.name
           , String.join " " al.args
           , "="
-          , viewCaType al.ty
+          , HumanCA.typeToString al.ty
           ]
             |> String.join " "
             |> Html.text
@@ -1004,7 +867,7 @@ viewCaDefinition : CA.ValueDef -> Indent
 viewCaDefinition def =
     L
         [ def.maybeAnnotation
-            |> Maybe.map (\x -> viewCaPattern def.pattern ++ " : " ++ viewCaType x)
+            |> Maybe.map (\x -> viewCaPattern def.pattern ++ " : " ++ HumanCA.typeToString x)
             |> M
         , S <| viewCaPattern def.pattern ++ " = "
         , I <| L <| List.map viewCaStatement def.body
@@ -1024,51 +887,6 @@ viewCaPattern p =
             Debug.toString p
 
 
-viewCaType : CA.Type -> String
-viewCaType ty =
-    case ty of
-        CA.TypeConstant pos ref args ->
-            ref ++ " " ++ String.join " " (List.map viewCaType args)
-
-        CA.TypeVariable pos name ->
-            name
-
-        CA.TypeAlias pos path t ->
-            "<" ++ path ++ " = " ++ viewCaType t ++ ">"
-
-        CA.TypeFunction pos from fromIsMutable to ->
-            [ "(" ++ viewCaType from ++ ")"
-            , case fromIsMutable of
-                Just True ->
-                    " @> "
-
-                Just False ->
-                    " -> "
-
-                Nothing ->
-                    " ?> "
-            , "(" ++ viewCaType to ++ ")"
-            ]
-                |> String.join ""
-
-        CA.TypeRecord pos extensible attrs ->
-            let
-                var =
-                    case extensible of
-                        Just name ->
-                            name ++ " with "
-
-                        Nothing ->
-                            ""
-            in
-            attrs
-                |> Dict.toList
-                |> List.sortBy Tuple.first
-                |> List.map (\( name, type_ ) -> name ++ ": " ++ viewCaType type_)
-                |> String.join ", "
-                |> (\s -> "{" ++ var ++ s ++ "}")
-
-
 viewCaStatement : CA.Statement -> Indent
 viewCaStatement s =
     case s of
@@ -1077,6 +895,14 @@ viewCaStatement s =
 
         CA.Definition def ->
             I <| viewCaDefinition def
+
+
+viewCaVariableArgs : CA.VariableArgs -> Indent
+viewCaVariableArgs s =
+    s.name
+        :: List.map (\a -> "." ++ a) s.attrPath
+        |> String.join ""
+        |> S
 
 
 viewCaExpression : CA.Expression -> Indent
@@ -1092,10 +918,7 @@ viewCaExpression expr =
             S <| Debug.toString s
 
         CA.Variable _ s ->
-            s.name
-                :: List.map (\a -> "." ++ a) s.attrPath
-                |> String.join ""
-                |> S
+            viewCaVariableArgs s
 
         CA.Call _ reference argument ->
             L
@@ -1117,8 +940,26 @@ viewCaExpression expr =
                     , I <| L <| List.map viewCaStatement body
                     ]
 
+        CA.Record _ extends attrs ->
+            L <|
+                [ S "{"
+                , extends
+                    |> Maybe.map (\e -> [ viewCaVariableArgs e, S " with " ])
+                    |> Maybe.withDefault []
+                    |> L
+                , attrs
+                  |> Dict.toList
+                  |> List.sortBy Tuple.first
+                  |> List.map (\(n, e) -> L [ S <| n ++ " = ",  viewCaExpression e ])
+                  |> L
+                , S "}"
+                ]
+
+        --CA.Try
         _ ->
-            expr
+            (expr, ())
+                |> CA.extensionFold_expression (\_ _ -> (CA.posDummy, ()))
+                |> Tuple.second
                 |> Debug.toString
                 |> S
 
@@ -1271,3 +1112,151 @@ main =
         , update = update
         , view = view
         }
+
+
+overviewString =
+    """
+[#
+   SquarePants has no import statements: instead, project-wide imports are
+   declared in the `meta` file.
+#]
+
+
+# Declare a constant
+numberOne =
+    1
+
+# Declare a function
+addThreeNumbers x y z =
+    x + y + z
+
+
+# TODO: polymorphism for number types is not yet implemented,
+# so I'm cheating and adding these aliases.
+alias Int = Number
+alias Float = Number
+alias Vec2 = Number
+
+
+# Declarations can have a type annotation
+floatSix : Float
+floatSix =
+    # parens are not needed for calling functions
+    addThreeNumbers 1 2 3
+
+
+# if-then-else always yields a value
+fibonacci : Int -> Int
+fibonacci n =
+    if n < 2 then n else n + fibonacci (n - 1)
+
+
+# operators can be used prefixed, like functions
+# `left - right` becomes `(-) right left`
+subtractTwoFrom : Vec2 -> Vec2
+subtractTwoFrom n =
+    (-) 2 n
+
+
+# Square brackets for Lists.
+# All items must be of the same type
+listOfText : [ Text ]
+listOfText = [
+    , "Gary"
+    , "Bikini Bottom"
+    , "I'm ready! Promotion!"
+    ]
+
+
+# `>>` and `<<` are just syntactic sugar
+# They help using less parens and
+# help visualizing how a value is transformed
+repeatHello : Int -> Text
+repeatHello times =
+    listOfText
+        >> List.reverse
+        >> Text.join ", "
+        >> (..) " and append this text at the end"
+
+
+# When you see `@`, it means "this stuff is mutable"
+average : List Int -> Float
+average numbers =
+    # mutable variables can only be local and can't leave their scope.
+    # `average` is still a pure function.
+    n @= 0
+    sum @= 0
+
+    # anonymous functions start with `fn`
+    List.each numbers fn x =
+        @n += 1
+        @sum += x
+
+    # division by 0 yields 0
+    sum / n
+
+
+[# TODO: implement Random.
+# The argument preceding `@>` is mutable
+generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
+generateTwoRandomNumbers min max seed =
+    # '&' is used for tuples
+    Random.int min max @seed & Random.int min max @seed
+#]
+
+
+
+# Algebraic Data Types
+
+union LoadingState payload =
+    , NotRequested
+    , Requested
+    , Error Text
+    , Available payload
+
+getStatusName : LoadingState payload -> Text
+getStatusName loadingState =
+    try loadingState as
+        NotRequested then "Not needed"
+        Requested then "Awaiting server response"
+        Error message then "Error: " .. message
+        Available _ then "Successfully loaded"
+
+getPayload : LoadingState payload -> Maybe payload
+getPayload loadingState =
+    try loadingState as Available payload then Just payload else Nothing
+
+
+
+# Records
+
+alias Crab = {
+    , name : Text
+    , money : Float
+    }
+
+eugeneKrabs : Crab
+eugeneKrabs = {
+    , name = "Eugene H. Krabs"
+    , money = 2 #TODO 2_345_678.90
+    }
+
+
+# TODO add a record access example
+
+
+earnMoney : Float -> Crab -> Crab
+earnMoney profit crab =
+    # `.money` is a shorthand for `crab.money`
+    { crab with money = .money + profit }
+
+
+# to-notation
+getAllHouses : (Text -> Maybe house) -> Maybe { rock : house, moai : house, pineapple : house }
+getAllHouses getAsset =
+    to = Maybe.andThen
+    getAsset "rock" >> to fn rock =
+    getAsset "moai" >> to fn moai =
+    getAsset "pineapple" >> to fn pineapple =
+       Just { rock, moai, pineapple }
+    """
