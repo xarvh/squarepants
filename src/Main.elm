@@ -50,6 +50,7 @@ initialFiles =
     , moduleMaybe
     , moduleList
     , moduleText
+    , moduleRandom
     , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
@@ -137,6 +138,7 @@ each ls f =
             f head
             each tail f
 
+
 reverse : List a -> List a
 reverse aList =
     rec ls acc =
@@ -148,7 +150,58 @@ reverse aList =
                 rec tail (SPCore.Cons head acc)
 
     rec aList []
+
+
+repeat : Number -> a -> List a
+repeat n a =
+    rec c acc =
+        if c > 0 then rec (c - 1) (SPCore.Cons a acc) else acc
+
+    rec n []
         """
+    )
+
+
+moduleRandom =
+    ( "SPCore/Random"
+    , """
+[# DOC
+
+Comments starting with `DOC` are documentation. =)
+
+The main codebase always exposes everything.
+Only libraries can hide types, values and constructors, and they are not yet supported.
+
+#]
+union Seed = Seed Number
+
+
+[# DOC
+
+This function is here just to illustrate how to use mutables.
+
+It's very much not a practical pseudo random generator.
+
+#]
+number : Number -> Number -> Seed @> Number
+number min max wrappedSeed =
+
+    Seed seed = wrappedSeed
+
+    @wrappedSeed :=
+      seed * 4871
+          # TODO implement `modBy` =(
+          # >> modBy 2147483647
+          >> Seed
+
+    # TODO implement `clamp`
+    if seed > max then
+        max
+    else if seed < min then
+        min
+    else
+        seed
+      """
     )
 
 
@@ -1176,15 +1229,15 @@ listOfText = [
     ]
 
 
-# `>>` and `<<` are just syntactic sugar
-# They help using less parens and
-# help visualizing how a value is transformed
+# `>>` and `<<` are just syntactic sugar, read them as "send to".
+# They help using less parens and help visualizing how a value is
+# transformed step-by-step.
 repeatHello : Int -> Text
 repeatHello times =
-    listOfText
-        >> List.reverse
+    "Hello!"
+        >> List.repeat times
         >> Text.join ", "
-        >> (..) " and append this text at the end"
+        >> (..) " And append this text at the end"
 
 
 # When you see `@`, it means "this stuff is mutable"
@@ -1204,13 +1257,11 @@ average numbers =
     sum / n
 
 
-[# TODO: implement Random.
 # The argument preceding `@>` is mutable
 generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
 generateTwoRandomNumbers min max seed =
     # '&' is used for tuples
-    Random.int min max @seed & Random.int min max @seed
-#]
+    Random.number min max @seed & Random.number min max @seed
 
 
 
