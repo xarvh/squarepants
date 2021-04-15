@@ -100,7 +100,7 @@ type alias ValueDef =
 type Type
     = TypeConstant Pos String (List Type)
     | TypeVariable Pos String
-    | TypeFunction Pos Type (Maybe Bool) Type
+    | TypeFunction Pos Type Bool Type
     | TypeRecord Pos (Maybe String) (Dict String Type)
     | TypeAlias Pos String Type
 
@@ -120,7 +120,7 @@ type Statement
 type Expression
     = Literal Pos Types.Literal.Value
     | Variable Pos VariableArgs
-    | Lambda Pos Pattern (List Statement)
+    | Lambda Pos Parameter (List Statement)
     | Record Pos (Maybe VariableArgs) (Dict String Expression)
     | Call Pos Expression Argument
     | If
@@ -132,6 +132,11 @@ type Expression
         , false : List Statement
         }
     | Try Pos Expression (List ( Pattern, List Statement ))
+
+
+type Parameter
+    = ParameterPattern Pattern
+    | ParameterMutable Pos String
 
 
 type Argument
@@ -303,6 +308,7 @@ type Fold
     = FoldExpr Expression
     | FoldType Type
     | FoldPattern Pattern
+    | FoldMutParam String
 
 
 extensionFold_module : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( AllDefs, acc ) -> ( AllDefs, acc )
@@ -475,7 +481,7 @@ extensionFold_expression fFold ( expr, acc ) =
         Variable a_pos args ->
             Tuple.mapFirst (\b_pos -> Variable b_pos args) (f expr ( a_pos, acc ))
 
-        Lambda a_pos a_pattern a_body ->
+        Lambda a_pos a_param a_body ->
             let
                 ( b_pos, acc1 ) =
                     f expr ( a_pos, acc )
@@ -483,10 +489,17 @@ extensionFold_expression fFold ( expr, acc ) =
                 ( b_body, acc2 ) =
                     extensionFold_block fFold ( a_body, acc1 )
 
-                ( b_pattern, acc3 ) =
-                    extensionFold_pattern fFold ( a_pattern, acc2 )
+                ( b_param, acc3 ) =
+                    case a_param of
+                        ParameterMutable pos name ->
+                            fFold (FoldMutParam name) ( pos, acc2 )
+                                |> Tuple.mapFirst (\p -> ParameterMutable p name)
+
+                        ParameterPattern a_pattern ->
+                            extensionFold_pattern fFold ( a_pattern, acc2 )
+                                |> Tuple.mapFirst ParameterPattern
             in
-            ( Lambda b_pos b_pattern b_body
+            ( Lambda b_pos b_param b_body
             , acc3
             )
 
@@ -599,8 +612,22 @@ extensionFold_pattern fFold ( pattern, acc ) =
             , acc2
             )
 
-        PatternRecord a_pos attrs ->
-            Debug.todo ""
+        PatternRecord a_pos a_attrs ->
+            let
+                ( b_pos, acc1 ) =
+                    f pattern ( a_pos, acc )
+
+                fold name a_pa ( attrs, aX ) =
+                    Tuple.mapFirst
+                        (\b_pa -> Dict.insert name b_pa attrs)
+                        (extensionFold_pattern fFold ( a_pa, aX ))
+
+                ( b_attrs, acc2 ) =
+                    Dict.foldl fold ( Dict.empty, acc1 ) a_attrs
+            in
+            ( PatternRecord b_pos b_attrs
+            , acc2
+            )
 
 
 extensionFold_block : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( List Statement, acc ) -> ( List Statement, acc )

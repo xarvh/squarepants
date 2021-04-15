@@ -152,7 +152,7 @@ constant n =
 
 
 function from to =
-    CA.TypeFunction pos from Nothing to
+    CA.TypeFunction pos from False to
 
 
 
@@ -181,10 +181,10 @@ nativeBinop ar =
             Just
                 (CA.TypeFunction pos
                     ar.left
-                    (Just False)
+                    False
                     (CA.TypeFunction pos
                         ar.right
-                        (Just ar.mutates)
+                        ar.mutates
                         ar.return
                     )
                 )
@@ -344,7 +344,7 @@ debugTodo =
             Just
                 (CA.TypeFunction pos
                     Core.textType
-                    (Just False)
+                    False
                     (CA.TypeVariable pos "a")
                 )
         }
@@ -362,10 +362,10 @@ debugLog =
             Just
                 (CA.TypeFunction pos
                     Core.textType
-                    (Just False)
+                    False
                     (CA.TypeFunction pos
                         (CA.TypeVariable pos "a")
-                        (Just False)
+                        False
                         (CA.TypeVariable pos "a")
                     )
                 )

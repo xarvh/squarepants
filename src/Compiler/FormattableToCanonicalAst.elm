@@ -419,32 +419,42 @@ stringToStructuredName env pos rawString =
 -}
 
 
+insertParamNames : CA.Parameter -> Set String -> Set String
+insertParamNames param =
+    case param of
+        CA.ParameterMutable pos n ->
+            Set.insert n
+
+        CA.ParameterPattern pa ->
+            CA.patternNames pa |> Set.union
+
+
 translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.ValueDef
 translateDefinition isRoot env fa =
     do (validateFaDefinition fa) <| \_ ->
     do (translateMaybeAnnotation env.ro fa) <| \maybeAnnotation ->
     do (translatePatternOrFunction env fa.pattern) <| \patternOrFunction ->
     let
-        ( name, params ) =
+        ( namePattern, params ) =
             case patternOrFunction of
-                Lib.Left p ->
+                POF_Pattern p ->
                     ( p, [] )
 
-                Lib.Right ( n, pas ) ->
+                POF_Function n pas ->
                     ( CA.PatternAny (tp env.ro fa.pos) n, pas )
 
-        additionalNonRootValues =
+        nonRootValues1 =
             if isRoot then
-                params
+                env.nonRootValues
 
             else
-                name :: params
+                Set.union (CA.patternNames namePattern) env.nonRootValues
 
         localEnv =
-            { env | nonRootValues = List.foldl (CA.patternNames >> Set.union) env.nonRootValues additionalNonRootValues }
+            { env | nonRootValues = List.foldl insertParamNames nonRootValues1 params }
     in
     do (translateStatementBlock localEnv fa.body) <| \body ->
-    { pattern = name
+    { pattern = namePattern
     , mutable = fa.mutable
     , maybeAnnotation = maybeAnnotation
     , body = List.foldr (wrapLambda env.ro fa.pos) body params
@@ -457,7 +467,7 @@ validateFaDefinition fa =
     let
         maybeName =
             case fa.pattern of
-                FA.PatternAny _ n ->
+                FA.PatternAny _ _ n ->
                     Just n
 
                 _ ->
@@ -497,6 +507,23 @@ translateMaybeAnnotation ro fa =
 
 
 ----
+--- Pattern-y stuff
+--
+
+
+translateParameter : Env -> FA.Pattern -> Res CA.Parameter
+translateParameter env faParam =
+    case faParam of
+        FA.PatternAny pos True name ->
+            Ok <| CA.ParameterMutable (tp env.ro pos) name
+
+        _ ->
+            do (translatePattern env faParam) <| \caPattern ->
+            Ok <| CA.ParameterPattern caPattern
+
+
+
+----
 --- Pattern
 --
 
@@ -505,31 +532,39 @@ translatePattern : Env -> FA.Pattern -> Res CA.Pattern
 translatePattern env faPattern =
     do (translatePatternOrFunction env faPattern) <| \either ->
     case either of
-        Lib.Left caPattern ->
+        POF_Pattern caPattern ->
             Ok caPattern
 
-        Lib.Right fn ->
-            errorCantDeclareAFunctionHere env fn faPattern
+        POF_Function fn params ->
+            errorCantDeclareAFunctionHere env fn params faPattern
 
 
-translatePatternOrFunction : Env -> FA.Pattern -> Res (Lib.Either CA.Pattern ( String, List CA.Pattern ))
+type POF
+    = POF_Pattern CA.Pattern
+    | POF_Function String (List CA.Parameter)
+
+
+translatePatternOrFunction : Env -> FA.Pattern -> Res POF
 translatePatternOrFunction env fa =
     case fa of
-        FA.PatternAny pos s ->
+        FA.PatternAny pos True s ->
+            errorTodo "can't mutable here"
+
+        FA.PatternAny pos False s ->
             translatePatternOrFunction env (FA.PatternApplication pos s [])
 
         FA.PatternLiteral pos l ->
             CA.PatternLiteral (tp env.ro pos) l
-                |> Lib.Left
+                |> POF_Pattern
                 |> Ok
 
         FA.PatternApplication pos rawName faArgs ->
             do (stringToStructuredName { env | maybeUpdateTarget = Nothing } pos rawName) <| \sname ->
-            do (Lib.list_mapRes (translatePattern env) faArgs) <| \caArgs ->
             case sname of
                 StructuredName_TypeOrCons { name, mod } ->
+                    do (Lib.list_mapRes (translatePattern env) faArgs) <| \caArgs ->
                     CA.PatternConstructor (tp env.ro pos) (resolveValueName env.ro False mod name) caArgs
-                        |> Lib.Left
+                        |> POF_Pattern
                         |> Ok
 
                 StructuredName_Value { name, mod, attrPath } ->
@@ -546,15 +581,15 @@ translatePatternOrFunction env fa =
 
                             NotSpecified ->
                                 -- it's a function or variable!
-                                if caArgs == [] then
+                                if faArgs == [] then
                                     name
                                         |> CA.PatternAny (tp env.ro pos)
-                                        |> Lib.Left
+                                        |> POF_Pattern
                                         |> Ok
 
                                 else
-                                    ( name, caArgs )
-                                        |> Lib.Right
+                                    do (Lib.list_mapRes (translateParameter env) faArgs) <| \caParams ->
+                                    POF_Function name caParams
                                         |> Ok
 
         FA.PatternList pos fas ->
@@ -565,7 +600,7 @@ translatePatternOrFunction env fa =
             in
             fas
                 |> Lib.list_mapRes (translatePattern env)
-                |> Result.map (List.foldr fold (CA.PatternConstructor (tp env.ro pos) Core.listNil.name []) >> Lib.Left)
+                |> Result.map (List.foldr fold (CA.PatternConstructor (tp env.ro pos) Core.listNil.name []) >> POF_Pattern)
 
         FA.PatternRecord pos recordArgs ->
             if recordArgs.extends /= Nothing then
@@ -588,11 +623,11 @@ translatePatternOrFunction env fa =
                                         |> Result.map (\caPattern -> Dict.insert name caPattern dict)
                 in
                 Lib.list_foldlRes fold recordArgs.attrs Dict.empty
-                    |> Result.map (CA.PatternRecord (tp env.ro pos) >> Lib.Left)
+                    |> Result.map (CA.PatternRecord (tp env.ro pos) >> POF_Pattern)
 
         FA.PatternCons pos faHead faTail ->
             Result.map2
-                (\caHead caTail -> CA.PatternConstructor (tp env.ro pos) Core.listCons.name [ caHead, caTail ] |> Lib.Left)
+                (\caHead caTail -> CA.PatternConstructor (tp env.ro pos) Core.listCons.name [ caHead, caTail ] |> POF_Pattern)
                 (translatePattern env faHead)
                 (translatePattern env faTail)
 
@@ -638,10 +673,10 @@ insertDefinedNames env stat names =
                 Err _ ->
                     names
 
-                Ok (Lib.Left caPattern) ->
+                Ok (POF_Pattern caPattern) ->
                     Set.union names (CA.patternNames caPattern)
 
-                Ok (Lib.Right ( fnName, fnArgs )) ->
+                Ok (POF_Function fnName fnArgs) ->
                     Set.insert fnName names
 
         _ ->
@@ -722,13 +757,10 @@ translateExpression env faExpr =
                     |> Ok
 
         FA.Lambda pos faParams faBody ->
-            do (Lib.list_mapRes (translatePattern env) faParams) <| \caParams ->
+            do (Lib.list_mapRes (translateParameter env) faParams) <| \caParams ->
             let
                 localEnv =
-                    { env
-                        | nonRootValues =
-                            List.foldl (CA.patternNames >> Set.union) env.nonRootValues caParams
-                    }
+                    { env | nonRootValues = List.foldl insertParamNames env.nonRootValues caParams }
             in
             case caParams of
                 [] ->
@@ -1140,7 +1172,7 @@ translateType ro faType =
 
         FA.TypeFunction pos fa_from fromIsMut fa_to ->
             Result.map2
-                (\ca_from ca_to -> CA.TypeFunction (tp ro pos) ca_from (Just fromIsMut) ca_to)
+                (\ca_from ca_to -> CA.TypeFunction (tp ro pos) ca_from fromIsMut ca_to)
                 (translateType ro fa_from)
                 (translateType ro fa_to)
 
@@ -1195,16 +1227,22 @@ errorExperimentingWithNoExtensibleTypes ro ( start, end ) =
 --
 
 
-wrapLambda : ReadOnly -> FA.Pos -> CA.Pattern -> List CA.Statement -> List CA.Statement
+wrapLambda : ReadOnly -> FA.Pos -> CA.Parameter -> List CA.Statement -> List CA.Statement
 wrapLambda ro faWholePos param bodyAccum =
     let
-        end = Tuple.second faWholePos
+        end =
+            Tuple.second faWholePos
 
         paramPos =
-             CA.patternPos param
+            case param of
+                CA.ParameterMutable pos name ->
+                    pos
 
-        lambdaPos = { paramPos | e = end }
+                CA.ParameterPattern pa ->
+                    CA.patternPos pa
 
+        lambdaPos =
+            { paramPos | e = end }
     in
     [ bodyAccum
         |> CA.Lambda lambdaPos param
@@ -1255,8 +1293,8 @@ errorRecordUpdateShorthandOutsideRecordUpdate ( start, end ) rawString env =
         ]
 
 
-errorCantDeclareAFunctionHere : Env -> ( String, List CA.Pattern ) -> FA.Pattern -> Res a
-errorCantDeclareAFunctionHere env ( name, args ) originalPattern =
+errorCantDeclareAFunctionHere : Env -> String -> List CA.Parameter -> FA.Pattern -> Res a
+errorCantDeclareAFunctionHere env name params originalPattern =
     Error.makeRes
         env.ro.currentModule
         [ Error.showLines env.ro.code 2 (Tuple.first <| FA.patternPos originalPattern)

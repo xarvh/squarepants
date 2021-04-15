@@ -38,10 +38,7 @@ type alias EnvEntry =
          | Mutable
     -}
     , forall : Set Name
-
-    -- TODO: this field should contain a WHY that explains why a variable is or is not mutable
-    -- so that we can show a clear explanation to the user
-    , mutable : Maybe Bool
+    , mutable : Bool
     }
 
 
@@ -94,6 +91,8 @@ newName =
     TyGen.next ((+) 1) String.fromInt
 
 
+{-| TODO we don't really care about the position for generated types
+-}
 newType : CA.Pos -> TyGen Type
 newType pos =
     TyGen.map (CA.TypeVariable pos) newName
@@ -197,7 +196,7 @@ addConstructor unionDef ctorName ctorArgs env =
             List.foldr fold (CA.TypeConstant todoPos unionDef.name args) ctorArgs
 
         fold ty accum =
-            CA.TypeFunction todoPos ty (Just False) accum
+            CA.TypeFunction todoPos ty False accum
     in
     case validateType False ctorType of
         Just err ->
@@ -208,7 +207,7 @@ addConstructor unionDef ctorName ctorArgs env =
                 |> Dict.insert ctorName
                     { type_ = ctorType
                     , forall = Set.fromList unionDef.args
-                    , mutable = Just False
+                    , mutable = False
                     }
                 |> Ok
 
@@ -420,11 +419,7 @@ unify ctx at1 at2 s =
             unify ctx t2_refined t1_refined s
 
         ( CA.TypeFunction _ a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
-            let
-                maybeClash =
-                    Maybe.map2 (\aa bb -> aa /= bb) a_fromIsMutable b_fromIsMutable
-            in
-            if Maybe.withDefault False maybeClash then
+            if a_fromIsMutable /= b_fromIsMutable then
                 TyGen.wrap <| errorTodo <| "mutability clash: " ++ Debug.toString t1_refined ++ " and " ++ Debug.toString t2_refined
 
             else
@@ -625,30 +620,29 @@ inspectExpr expr ty ( env, subs ) =
                 |> unifyWithAttrPath { why = "variable", pos = pos } attrPath ty t
                 |> andEnv env
 
-        CA.Lambda pos parameter body ->
-            TyGen.do (newType pos) <| \argTy ->
-            do_nr (inspectPattern insertVariableFromLambda parameter argTy ( env, subs )) <| \( env1, subs1 ) ->
-            do_nr (inspectBlock body env1 subs1) <| \( returnType, env2, subs2 ) ->
+        CA.Lambda pos param body ->
+            TyGen.do (newType pos) <| \paramTy ->
             let
-                lambdaTy =
-                    posToVarType pos
+                ( isMutable, param_nr ) =
+                    case param of
+                        CA.ParameterPattern pattern ->
+                            ( False
+                            , inspectPattern (insertVariableFromLambda False) pattern paramTy ( env, subs )
+                            )
 
-                fromIsMutable_res =
-                    case parameter of
-                        CA.PatternDiscard _ ->
-                            Ok (Just False)
-
-                        CA.PatternAny _ name ->
-                            Ok (dict_get "SNH inspectExpr CA.Lambda" name env2).mutable
-
-                        _ ->
-                            errorTodo "unpacking mutable arguments is not supported =("
+                        CA.ParameterMutable p paramName ->
+                            ( True
+                            , insertVariableFromLambda True paramName paramTy ( env, subs )
+                            )
             in
-            do_nr (TyGen.wrap fromIsMutable_res) <| \fromIsMutable ->
-            do_nr (unify { why = "Lambda", pos = pos } ty (CA.TypeFunction pos argTy fromIsMutable lambdaTy) subs2) <| \subs3 ->
-            subs3
-                |> unify { why = "Lambda return", pos = pos } lambdaTy returnType
-                |> andEnv env
+            do_nr param_nr <| \( env1, subs1 ) ->
+            do_nr (inspectBlock body env1 subs1) <| \( returnType, env2, subs2 ) ->
+            do_nr (unify { why = "Lambda", pos = pos } ty (CA.TypeFunction pos paramTy isMutable returnType) subs2) <| \subs3 ->
+            ( refineEnv subs3 env
+            , subs3
+            )
+                |> Ok
+                |> TyGen.wrap
 
         CA.Call pos reference argument ->
             TyGen.do (newType pos) <| \argumentTy ->
@@ -663,7 +657,7 @@ inspectExpr expr ty ( env, subs ) =
                             False
 
                 funTy =
-                    CA.TypeFunction pos argumentTy (Just fromIsMutable) ty
+                    CA.TypeFunction pos argumentTy fromIsMutable ty
             in
             inspectExpr reference (refineType subs1 funTy) ( refineEnv subs1 env1, subs1 )
 
@@ -717,7 +711,8 @@ inspectExpr expr ty ( env, subs ) =
 
 inspectPatternBlock : Env -> ( CA.Pattern, List CA.Statement ) -> ( Type, Type, Substitutions ) -> TR ( Type, Type, Substitutions )
 inspectPatternBlock env ( pattern, block ) ( patternType, expectedBlockType, subs ) =
-    do_nr (inspectPattern insertVariableFromLambda pattern patternType ( env, subs )) <| \( env1, subs1 ) ->
+    -- TODO why are we using insertVariableFromLambda? -_-
+    do_nr (inspectPattern (insertVariableFromLambda False) pattern patternType ( env, subs )) <| \( env1, subs1 ) ->
     do_nr (inspectBlock block env1 subs1) <| \( inferredBlockType, _, subs2 ) ->
     do_nr (unify { why = "pa block", pos = todoPos } expectedBlockType inferredBlockType subs2) <| \subs3 ->
     ( refineType subs3 patternType
@@ -778,19 +773,14 @@ inspectArgument env arg ty subs =
                         |> TyGen.wrap
 
                 Just schema ->
-                    case schema.mutable of
-                        Nothing ->
-                            unifyWithAttrPath { why = "ArgumentMutable", pos = todoPos } attrPath ty schema.type_ subs
-                                |> map_nr (\s -> ( Dict.insert name { schema | mutable = Just True } env, s ))
+                    if schema.mutable then
+                        unifyWithAttrPath { why = "ArgumentMutable", pos = todoPos } attrPath ty schema.type_ subs
+                            |> map_nr (\s -> ( env, s ))
 
-                        Just True ->
-                            unifyWithAttrPath { why = "ArgumentMutable", pos = todoPos } attrPath ty schema.type_ subs
-                                |> map_nr (\s -> ( env, s ))
-
-                        Just False ->
-                            (name ++ " can't be mutable")
-                                |> errorTodo
-                                |> TyGen.wrap
+                    else
+                        (name ++ " can't be mutable")
+                            |> errorTodo
+                            |> TyGen.wrap
 
         CA.ArgumentExpression expr ->
             inspectExpr expr ty ( env, subs )
@@ -877,7 +867,7 @@ insertVariableFromDefinition mutable maybeAnnotation name ty ( env, subs ) =
         scheme =
             { type_ = refinedType
             , forall = forall
-            , mutable = Just mutable
+            , mutable = mutable
             }
 
         env1 =
@@ -888,15 +878,15 @@ insertVariableFromDefinition mutable maybeAnnotation name ty ( env, subs ) =
         |> TyGen.wrap
 
 
-insertVariableFromLambda : Name -> Type -> Eas -> TR Eas
-insertVariableFromLambda name ty ( env, subs ) =
+insertVariableFromLambda : Bool -> Name -> Type -> Eas -> TR Eas
+insertVariableFromLambda isMutable name ty ( env, subs ) =
     if Dict.member name env then
         ("function parameter `" ++ name ++ "` shadows env variable")
             |> errorTodo
             |> TyGen.wrap
 
     else
-        ( Dict.insert name { type_ = ty, forall = Set.empty, mutable = Nothing } env
+        ( Dict.insert name { type_ = ty, forall = Set.empty, mutable = isMutable } env
         , subs
         )
             |> Ok
@@ -1022,7 +1012,7 @@ inspectBlock stats parentEnv subs =
             ( definitions, newStats ) =
                 reorderStatements stats
         in
-        do_nr (list_foldl_nr insertDefinitionRec definitions parentEnv) <| \localEnv ->
+        do_nr (list_foldl_nr insertDefinition definitions parentEnv) <| \localEnv ->
         do_nr (inspectStatementRec newStats Core.noneType localEnv subs) <| \typeAndEnvAndSubs ->
         TyGen.wrap <|
             let
@@ -1074,8 +1064,8 @@ inspectStatementRec stats returnType env subs =
             inspectStatementRec statsTail ty env1 subs1
 
 
-insertDefinitionRec : CA.ValueDef -> Env -> TR Env
-insertDefinitionRec def env =
+insertDefinition : CA.ValueDef -> Env -> TR Env
+insertDefinition def env =
     let
         varNames =
             CA.patternNames def.pattern
@@ -1109,7 +1099,7 @@ insertDefinitionRec def env =
 
                                     -- TODO remove parent annotation tyvars!
                                     , forall = typeVarsFromType annotation
-                                    , mutable = Just def.mutable
+                                    , mutable = def.mutable
                                     }
                         in
                         varNames
@@ -1125,7 +1115,7 @@ insertDefinitionRec def env =
                             |> Dict.insert varName
                                 { type_ = CA.TypeVariable todoPos typeName
                                 , forall = Set.singleton typeName
-                                , mutable = Just def.mutable
+                                , mutable = def.mutable
                                 }
                             |> Ok
                             |> TyGen.wrap
@@ -1168,7 +1158,7 @@ validateType mutable ty =
                 Just "mutable values can't contain functions"
 
             else
-                case validateType (Maybe.withDefault False fromIsMutable) from of
+                case validateType fromIsMutable from of
                     Just e ->
                         Just e
 

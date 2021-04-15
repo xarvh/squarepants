@@ -47,11 +47,12 @@ runTests =
 
 initialFiles =
     [ moduleMain
-    , moduleMaybe
-    , moduleList
-    , moduleText
-    , moduleRandom
-    , languageOverview
+
+    --     , moduleMaybe
+    --     , moduleList
+    --     , moduleText
+    --     , moduleRandom
+    --     , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -65,12 +66,11 @@ moduleMain =
     ( "Main"
     , """
 result =
-    # define a function
-    getAssets url =
-      Just << url .. ".jpg"
+    l @= 3
+    f @l
 
-    # the value of the last statement is returned
-    Language/Overview.getAllHouses getAssets
+f @a =
+    a
       """
     )
 
@@ -660,10 +660,10 @@ viewProgram model =
                     |> (\fa -> Compiler.Pipeline.stringToCanonicalAst meta fileName fa acc)
                     |> Compiler.TestHelpers.resErrorToString
 
-        emitModule : CA.AllDefs -> Result x String
-        emitModule caModule =
+        emitModule : TI.Substitutions -> CA.AllDefs -> Result x String
+        emitModule subs caModule =
             caModule
-                |> Compiler.CanonicalToJs.translateAll
+                |> Compiler.CanonicalToJs.translateAll subs
                 |> List.map (Compiler.JsToString.emitStatement 0)
                 |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
                 |> String.join "\n\n"
@@ -686,8 +686,8 @@ viewProgram model =
                         |> TI.inspectModule Dict.empty
                         |> Compiler.TestHelpers.resErrorToString
             in
-            do blah <| \( typedProgram, _, _ ) ->
-            Ok typedProgram
+            do blah <| \( typedProgram, env, subs ) ->
+            Ok ( subs, typedProgram )
 
         titleAndPreCode title text =
             Html.li
@@ -712,10 +712,10 @@ viewProgram model =
                             [ Html.text e ]
                         ]
 
-                    Ok program ->
+                    Ok ( subs, program ) ->
                         [ titleAndPreCode
                             "JavaScript value for Mod.result:"
-                            (case Compiler.JsToString_Test.runProgram "Main.result" program of
+                            (case Compiler.JsToString_Test.runProgram "Main.result" subs program of
                                 Ok res ->
                                     res
 
@@ -723,7 +723,7 @@ viewProgram model =
                                     "Error: ### " ++ message ++ " ###"
                             )
                         , program
-                            |> emitModule
+                            |> emitModule subs
                             |> Result.withDefault "error"
                             |> titleAndPreCode "Evaluated JavaScript code:"
                         ]
@@ -932,6 +932,16 @@ viewCaDefinition def =
         ]
 
 
+viewCaParameter : CA.Parameter -> String
+viewCaParameter p =
+    case p of
+        CA.ParameterPattern pa ->
+            viewCaPattern pa
+
+        CA.ParameterMutable pos pa ->
+            "@" ++ pa
+
+
 viewCaPattern : CA.Pattern -> String
 viewCaPattern p =
     case p of
@@ -994,7 +1004,7 @@ viewCaExpression expr =
         CA.Lambda _ param body ->
             P <|
                 L <|
-                    [ S <| "fn " ++ viewCaPattern param ++ " ="
+                    [ S <| "fn " ++ viewCaParameter param ++ " ="
                     , I <| L <| List.map viewCaStatement body
                     ]
 
@@ -1083,7 +1093,7 @@ viewFaStatement s =
 viewFaPattern : FA.Pattern -> String
 viewFaPattern p =
     case p of
-        FA.PatternAny _ n ->
+        FA.PatternAny pos mutable n ->
             n
 
         _ ->

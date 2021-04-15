@@ -49,15 +49,11 @@ typeToPriAndString type_ =
         CA.TypeFunction pos from fromIsMut to ->
             let
                 arrow =
-                    case fromIsMut of
-                        Nothing ->
-                            "?>"
+                    if fromIsMut then
+                        "@>"
 
-                        Just True ->
-                            "@>"
-
-                        Just False ->
-                            "->"
+                    else
+                        "->"
             in
             ( 2
             , [ parensIfGreaterThan 1 from

@@ -1,6 +1,7 @@
 module Compiler.CanonicalToJs exposing (..)
 
 import Compiler.CoreModule
+import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Lib
 import RefHierarchy
@@ -48,10 +49,10 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
     in
     ([ CA.Evaluation
         (CA.Lambda d
-            (CA.PatternAny d "a")
+            (CA.ParameterPattern <| CA.PatternAny d "a")
             [ CA.Evaluation
                 (CA.Lambda d
-                    (CA.PatternAny d "b")
+                    (CA.ParameterPattern <| CA.PatternAny d "b")
                     [ CA.Evaluation
                         (CA.Call d
                             (CA.Call d
@@ -74,7 +75,7 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
             ]
         )
      ]
-        |> translateBodyToExpr Set.empty
+        |> translateBodyToExpr { subs = Dict.empty, mutables = Set.empty }
         |> JA.Define fnName
     )
         :: acc
@@ -125,10 +126,10 @@ nativeBinopsAsFns =
 -}
 
 
-{-| This right now just contains the names of mutable vars
--}
 type alias Env =
-    Set JA.Name
+    { mutables : Set JA.Name
+    , subs : TI.Substitutions
+    }
 
 
 wrapMutable : Bool -> JA.Expr -> JA.Expr
@@ -304,8 +305,8 @@ getValueRefs def =
         |> Tuple.second
 
 
-translateAll : CA.AllDefs -> List JA.Statement
-translateAll ca =
+translateAll : TI.Substitutions -> CA.AllDefs -> List JA.Statement
+translateAll subs ca =
     let
         ( aliases, unions, values ) =
             CA.split ca
@@ -333,9 +334,14 @@ translateAll ca =
         reorderedNonFuns =
             RefHierarchy.reorder getValueDefName getValueRefs nonFns
 
+        env =
+            { subs = subs
+            , mutables = Set.empty
+            }
+
         vals =
             (fns ++ reorderedNonFuns)
-                |> List.concatMap (translateValueDef Set.empty >> Tuple.first)
+                |> List.concatMap (translateValueDef env >> Tuple.first)
     in
     nativeBinopsAsFns ++ cons ++ vals
 
@@ -360,7 +366,7 @@ translateValueDef env caDef =
                   )
                     :: patternDefinitions mainName caDef.pattern
                 , if caDef.mutable then
-                    Set.insert mainName env
+                    { env | mutables = Set.insert mainName env.mutables }
 
                   else
                     env
@@ -385,8 +391,7 @@ translateVar env { name, attrPath } =
         jname =
             translatePath name
     in
-    -- right now `env` just tells us whether a var is mutable or not
-    if Set.member jname env then
+    if Set.member jname env.mutables then
         jname
             |> unwrapMutable
             |> accessAttrs attrPath
@@ -421,19 +426,35 @@ translateExpr env expression =
         CA.Variable _ ar ->
             translateVar env ar
 
-        CA.Lambda _ parameter body ->
+        CA.Lambda pos parameter body ->
             let
-                ( args, extraJaStatements ) =
-                    case pickMainName parameter of
-                        Nothing ->
-                            ( [], [] )
-
-                        Just mainName ->
-                            ( [ mainName ]
-                            , patternDefinitions mainName parameter
+                ( args, extraJaStatements, localEnv ) =
+                    case parameter of
+                        CA.ParameterMutable _ name ->
+                            let
+                                jaName =
+                                    "$" ++ name
+                            in
+                            ( [ jaName ]
+                            , []
+                            , { env | mutables = Set.insert jaName env.mutables }
                             )
+
+                        CA.ParameterPattern pattern ->
+                            case pickMainName pattern of
+                                Nothing ->
+                                    ( []
+                                    , []
+                                    , env
+                                    )
+
+                                Just mainName ->
+                                    ( [ mainName ]
+                                    , patternDefinitions mainName pattern
+                                    , env
+                                    )
             in
-            case translateBodyToEither env extraJaStatements body of
+            case translateBodyToEither localEnv extraJaStatements body of
                 Lib.Left expr ->
                     JA.SimpleLambda args expr
 

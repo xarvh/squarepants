@@ -623,7 +623,7 @@ definition =
     , mutable = mutable
     , body = OneOrMore.toList sb
     , maybeAnnotation = maybeAnnotation
-    , pos = (start, end)
+    , pos = ( start, end )
     }
         |> FA.Definition
         |> succeed
@@ -891,19 +891,18 @@ patternApplication param =
                 |> succeed
 
         Token.Name { mutable } name ->
-            if mutable then
+            do (zeroOrMore param) <| \params ->
+            do here <| \end ->
+            if params == [] then
+                FA.PatternAny ( token.start, token.end ) mutable name
+                    |> succeed
+
+            else if mutable then
                 fail
 
             else
-                do (zeroOrMore param) <| \params ->
-                do here <| \end ->
-                if params == [] then
-                    FA.PatternAny ( token.start, token.end ) name
-                        |> succeed
-
-                else
-                    FA.PatternApplication ( token.start, end ) name params
-                        |> succeed
+                FA.PatternApplication ( token.start, end ) name params
+                    |> succeed
 
         _ ->
             fail

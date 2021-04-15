@@ -145,10 +145,10 @@ lambdas =
             , expected =
                 Ok <|
                     FA.Lambda p
-                        [ FA.PatternAny p "a" ]
+                        [ FA.PatternAny p False "a" ]
                         [ FA.Evaluation <|
                             FA.Lambda p
-                                [ FA.PatternAny p "b" ]
+                                [ FA.PatternAny p False "b" ]
                                 [ FA.Evaluation <| FA.Literal p <| Types.Literal.Number "3" ]
                         ]
             }
@@ -174,10 +174,10 @@ lambdas =
             , expected =
                 Ok <|
                     FA.Lambda p
-                        [ FA.PatternAny p "a" ]
+                        [ FA.PatternAny p False "a" ]
                         [ FA.Evaluation <|
                             FA.Lambda p
-                                [ FA.PatternAny p "b" ]
+                                [ FA.PatternAny p False "b" ]
                                 [ FA.Evaluation <| FA.Literal p <| Types.Literal.Number "3" ]
                         ]
             }
@@ -201,10 +201,10 @@ lambdas =
             , expected =
                 Ok <|
                     FA.Lambda p
-                        [ FA.PatternAny p "a" ]
+                        [ FA.PatternAny p False "a" ]
                         [ FA.Evaluation <|
                             FA.Lambda p
-                                [ FA.PatternAny p "b" ]
+                                [ FA.PatternAny p False "b" ]
                                 [ FA.Evaluation <|
                                     FA.Literal p (Types.Literal.Number "3")
                                 ]
@@ -568,7 +568,7 @@ patterns =
         [ simpleTest
             { name = "list unpacking"
             , run = \_ -> firstDefinition "[a, b] = x" |> Result.map .pattern
-            , expected = Ok <| FA.PatternList p [ FA.PatternAny p "a", FA.PatternAny p "b" ]
+            , expected = Ok <| FA.PatternList p [ FA.PatternAny p False "a", FA.PatternAny p False "b" ]
             }
         , isOk
             { name = "list unpacking, inner block"

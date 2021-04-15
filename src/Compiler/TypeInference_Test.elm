@@ -53,7 +53,7 @@ constant n =
 
 
 function from to =
-    CA.TypeFunction p from Nothing to
+    CA.TypeFunction p from False to
 
 
 tyNumber =
@@ -114,11 +114,11 @@ preamble =
         em x =
             { type_ = x
             , forall = Set.empty
-            , mutable = Just False
+            , mutable = False
             }
     in
     [ ( "Test.add", em <| function tyNumber (function tyNumber tyNumber) )
-    , ( "Test.reset", em <| typeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone } )
+    , ( "Test.reset", em <| typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone } )
     ]
         |> Dict.fromList
 
@@ -232,7 +232,7 @@ functions =
         [ simpleTest
             { name = "Known function with correct params"
             , run = \_ -> infer "a" "a = add 3 1"
-            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
             }
         , hasError
             { name = "Known function with wrong params"
@@ -246,7 +246,7 @@ functions =
                 Ok
                     { type_ = function tyNumber tyNumber
                     , forall = Set.empty
-                    , mutable = Just False
+                    , mutable = False
                     }
             }
         , simpleTest
@@ -256,7 +256,7 @@ functions =
                 Ok
                     { type_ = function tyNumber tyNumber
                     , forall = Set.empty
-                    , mutable = Just False
+                    , mutable = False
                     }
             }
         , hasError
@@ -271,21 +271,32 @@ functions =
             , expected =
                 Ok
                     { forall = Set.fromList [ "1" ]
-                    , mutable = Just False
+                    , mutable = False
                     , type_ =
                         typeFunction
                             { from = typeVariable { name = "1" }
-                            , fromIsMutable = Nothing
+                            , fromIsMutable = False
                             , to = typeConstant { ref = "SPCore.Number", args = [] }
                             }
                     }
             }
-        , codeTest "[reg] function with multiple arguments are correctly inferred"
+
+        --
+        , codeTest "[reg] Multiple arguments are correctly inferred"
             """
             a x y z = x + y + z
             """
             (infer "a")
             Test.justOk
+
+        --
+        , codeTest "Annotation should be consistent with mutability"
+            """
+            f : Number @> Number
+            f a = a
+            """
+            (infer "f")
+            (Test.errContain "mutability")
         ]
 
 
@@ -308,7 +319,7 @@ statements =
                   3
                   False
                 """
-            , expected = Ok { type_ = constant "SPCore.Bool", forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = constant "SPCore.Bool", forall = Set.empty, mutable = False }
             }
         , simpleTest
             { name = "Definition statement return type None"
@@ -319,7 +330,7 @@ statements =
                 a =
                   f x = 3
                 """
-            , expected = Ok { type_ = tyNone, forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNone, forall = Set.empty, mutable = False }
             }
         ]
 
@@ -347,11 +358,11 @@ variableTypes =
                     { type_ =
                         typeFunction
                             { from = typeVariable { name = "a" }
-                            , fromIsMutable = Just False
+                            , fromIsMutable = False
                             , to = typeVariable { name = "a" }
                             }
                     , forall = Set.singleton "a"
-                    , mutable = Just False
+                    , mutable = False
                     }
             }
         , simpleTest
@@ -367,11 +378,11 @@ variableTypes =
                     { type_ =
                         typeFunction
                             { from = typeVariable { name = "1" }
-                            , fromIsMutable = Nothing
+                            , fromIsMutable = False
                             , to = typeVariable { name = "1" }
                             }
                     , forall = Set.singleton "1"
-                    , mutable = Just False
+                    , mutable = False
                     }
             }
         , hasError
@@ -440,7 +451,7 @@ variableTypes =
                         b x = x
                         a = b 1
                         """
-            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
             }
         , simpleTest
             -- See note for the test above!
@@ -452,7 +463,7 @@ variableTypes =
                         b x = x
                         c = b 1
                         """
-            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
             }
         , simpleTest
             -- See note for the test above!
@@ -466,7 +477,7 @@ variableTypes =
                           b x = x
                           a
                         """
-            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = Just False }
+            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
             }
 
         -- TODO Test self recursion and mutual recursion
@@ -481,11 +492,11 @@ variableTypes =
             (infer "x")
             (Test.okEqual
                 { forall = Set.fromList [ "1" ]
-                , mutable = Just False
+                , mutable = False
                 , type_ =
                     typeFunction
                         { from = typeVariable { name = "1" }
-                        , fromIsMutable = Nothing
+                        , fromIsMutable = False
                         , to = typeVariable { name = "1" }
                         }
                 }
@@ -559,24 +570,27 @@ mutability =
                         """
             , test = Test.errorShouldContain "statement blocks that define mutables can't return functions"
             }
-        , simpleTest
-            { name = "Infer lambda arg mutability"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                        a =
-                          q x =
-                            reset @x
-                          q
-                        """
-            , expected =
-                Ok
-                    { type_ = typeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
-                    , forall = Set.empty
-                    , mutable = Just False
-                    }
-            }
+
+        {-
+           , simpleTest
+               { name = "Infer lambda arg mutability"
+               , run =
+                   \_ ->
+                       infer "a"
+                           """
+                           a =
+                             q x =
+                               reset @x
+                             q
+                           """
+               , expected =
+                   Ok
+                       { type_ = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
+                       , forall = Set.empty
+                       , mutable = False
+                       }
+               }
+        -}
         , hasError
             { name = "Detect mismatching annotations"
             , run =
@@ -601,9 +615,9 @@ mutability =
                         """
             , expected =
                 Ok
-                    { type_ = typeFunction { from = tyNumber, fromIsMutable = Just True, to = tyNone }
+                    { type_ = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
                     , forall = Set.empty
-                    , mutable = Just False
+                    , mutable = False
                     }
             }
         , hasError
@@ -675,10 +689,10 @@ higherOrderTypes =
                     { type_ =
                         typeFunction
                             { from = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
-                            , fromIsMutable = Just False
+                            , fromIsMutable = False
                             , to = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
                             }
-                    , mutable = Just False
+                    , mutable = False
                     , forall = Set.singleton "a"
                     }
             }
@@ -688,7 +702,7 @@ higherOrderTypes =
             , expected =
                 Ok
                     { type_ = typeConstant { args = [ typeVariable { name = "a" } ], ref = "Test.X" }
-                    , mutable = Just False
+                    , mutable = False
                     , forall = Set.singleton "a"
                     }
             }
@@ -715,7 +729,7 @@ records =
             , expected =
                 Ok
                     { forall = Set.fromList [ "1", "2", "3" ]
-                    , mutable = Just False
+                    , mutable = False
                     , type_ =
                         typeFunction
                             { from =
@@ -729,7 +743,7 @@ records =
                                             )
                                     , extensible = Just "1"
                                     }
-                            , fromIsMutable = Nothing
+                            , fromIsMutable = False
                             , to = typeVariable { name = "3" }
                             }
                     }
@@ -740,12 +754,12 @@ records =
                 \_ ->
                     infer "a"
                         """
-                        a b = @b.meh.blah += 1
+                        a @b = @b.meh.blah += 1
                         """
             , expected =
                 Ok
                     { forall = Set.fromList [ "1", "2" ]
-                    , mutable = Just False
+                    , mutable = False
                     , type_ =
                         typeFunction
                             { from =
@@ -759,7 +773,7 @@ records =
                                             )
                                     , extensible = Just "1"
                                     }
-                            , fromIsMutable = Just True
+                            , fromIsMutable = True
                             , to = typeConstant { ref = "SPCore.None", args = [] }
                             }
                     }
@@ -804,11 +818,11 @@ records =
                 in
                 Ok
                     { forall = Set.fromList [ "1" ]
-                    , mutable = Just False
+                    , mutable = False
                     , type_ =
                         typeFunction
                             { from = re
-                            , fromIsMutable = Nothing
+                            , fromIsMutable = False
                             , to = re
                             }
                     }
@@ -832,11 +846,11 @@ records =
                 in
                 Ok
                     { forall = Set.fromList [ "1" ]
-                    , mutable = Just False
+                    , mutable = False
                     , type_ =
                         typeFunction
                             { from = re
-                            , fromIsMutable = Nothing
+                            , fromIsMutable = False
                             , to = re
                             }
                     }
@@ -850,7 +864,7 @@ records =
             (infer "x")
             (Test.okEqual
                 { forall = Set.fromList [ "2", "1" ]
-                , mutable = Just False
+                , mutable = False
                 , type_ =
                     typeFunction
                         { from =
@@ -858,7 +872,7 @@ records =
                                 { attrs = Dict.fromList [ ( "first", typeVariable { name = "2" } ) ]
                                 , extensible = Just "1"
                                 }
-                        , fromIsMutable = Nothing
+                        , fromIsMutable = False
                         , to = typeVariable { name = "2" }
                         }
                 }
@@ -895,7 +909,7 @@ patterns =
             --
             (Test.okEqual
                 { forall = Set.fromList [ "1" ]
-                , mutable = Just False
+                , mutable = False
                 , type_ =
                     typeFunction
                         { from =
@@ -903,7 +917,7 @@ patterns =
                                 { args = [ typeVariable { name = "1" } ]
                                 , ref = "SPCore.List"
                                 }
-                        , fromIsMutable = Nothing
+                        , fromIsMutable = False
                         , to = typeVariable { name = "1" }
                         }
                 }
@@ -918,7 +932,7 @@ patterns =
             --
             (Test.okEqual
                 { forall = Set.fromList [ "2", "1" ]
-                , mutable = Just False
+                , mutable = False
                 , type_ =
                     typeFunction
                         { from =
@@ -926,7 +940,7 @@ patterns =
                                 { attrs = Dict.fromList [ ( "first", typeVariable { name = "2" } ) ]
                                 , extensible = Just "1"
                                 }
-                        , fromIsMutable = Nothing
+                        , fromIsMutable = False
                         , to = typeVariable { name = "2" }
                         }
                 }
@@ -953,11 +967,11 @@ try_as =
             (infer "x")
             (Test.okEqual
                 { forall = Set.fromList []
-                , mutable = Just False
+                , mutable = False
                 , type_ =
                     typeFunction
                         { from = typeConstant { ref = "SPCore.Bool", args = [] }
-                        , fromIsMutable = Nothing
+                        , fromIsMutable = False
                         , to = typeConstant { ref = "SPCore.Number", args = [] }
                         }
                 }
@@ -1005,11 +1019,11 @@ if_then =
             (infer "x")
             (Test.okEqual
                 { forall = Set.fromList []
-                , mutable = Just False
+                , mutable = False
                 , type_ =
                     typeFunction
                         { from = typeConstant { ref = "SPCore.Bool", args = [] }
-                        , fromIsMutable = Nothing
+                        , fromIsMutable = False
                         , to = typeConstant { ref = "SPCore.Number", args = [] }
                         }
                 }

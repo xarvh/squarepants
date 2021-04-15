@@ -95,7 +95,7 @@ type Expression
 
 
 type Pattern
-    = PatternAny Pos String
+    = PatternAny Pos Bool String
     | PatternLiteral Pos Types.Literal.Value
     | PatternApplication Pos String (List Pattern)
     | PatternList Pos (List Pattern)
@@ -126,7 +126,7 @@ recordArgs_map f ar =
 patternPos : Pattern -> Pos
 patternPos pa =
     case pa of
-        PatternAny p _ ->
+        PatternAny p _ _ ->
             p
 
         PatternLiteral p _ ->
@@ -232,8 +232,8 @@ posMap_expression f expr =
 posMap_pattern : (Pos -> Pos) -> Pattern -> Pattern
 posMap_pattern f pa =
     case pa of
-        PatternAny pos name ->
-            PatternAny (f pos) name
+        PatternAny pos mutable name ->
+            PatternAny (f pos) mutable name
 
         PatternLiteral pos val ->
             PatternLiteral (f pos) val

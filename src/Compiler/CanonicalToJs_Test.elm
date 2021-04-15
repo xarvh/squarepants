@@ -86,7 +86,7 @@ mutation =
         --
         , codeTest "pass mutable to function"
             """
-            fun m =
+            fun @m =
               @m += 55
 
             result =
@@ -100,7 +100,7 @@ mutation =
         --
         , codeTest "pass nested mutable value to function"
             """
-            fun m =
+            fun @m =
               @m += 55
 
             record = { x = { y = { z = 4 } } }
@@ -112,6 +112,20 @@ mutation =
             """
             (eval "Test.result")
             (Test.okEqual """{"x":{"y":{"z":59}}}""")
+
+        --
+        , codeTest "[reg] mut args should be dereferenced and cloned"
+            """
+            result =
+                l @= 3
+                f @l
+
+            f : Number @> Number
+            f @a =
+                a
+            """
+            (eval "Test.result")
+            (Test.okEqual "3")
         ]
 
 

@@ -145,3 +145,7 @@ Some types (C, Complex) need to be cloned, some types (P, Primitive) can just be
   * mutation primitive (:=, +=, -=, ...)
       - P: unwrap/dereference
       - C: probably we use a reference already
+
+
+TODO: Track whether a mutable has been declared in the local scope (which means it can be changed without dereferencing)
+vs when it is a parameter (so it is a reference and needs dereferencing).

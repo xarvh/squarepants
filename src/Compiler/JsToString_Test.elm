@@ -27,8 +27,8 @@ codeTest =
     Test.codeTest Debug.toString
 
 
-runProgram : String -> CA.AllDefs -> Result String String
-runProgram variable mod =
+runProgram : String -> TI.Substitutions -> CA.AllDefs -> Result String String
+runProgram variable subs mod =
     let
         endStatements =
             [ Compiler.CanonicalToJs.translatePath variable ++ ";" ]
@@ -43,7 +43,7 @@ runProgram variable mod =
                 Ok s
     in
     mod
-        |> Compiler.CanonicalToJs.translateAll
+        |> Compiler.CanonicalToJs.translateAll subs
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (\stats ->
                 (Compiler.CanonicalToJs.nativeDefinitions :: stats ++ endStatements)
@@ -59,7 +59,7 @@ eval variable code =
         |> Compiler.TestHelpers.stringToCanonicalModuleWithPos
         |> Result.andThen (TI.inspectModule Dict.empty)
         |> Compiler.TestHelpers.resErrorToString
-        |> Result.andThen (\( mod, env, sub ) -> runProgram variable mod)
+        |> Result.andThen (\( mod, env, subs ) -> runProgram variable subs mod)
 
 
 self : Test
