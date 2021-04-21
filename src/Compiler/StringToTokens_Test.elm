@@ -1,6 +1,7 @@
 module Compiler.StringToTokens_Test exposing (..)
 
 import Compiler.StringToTokens as Lexer
+import Prelude
 import Test exposing (Test)
 import Types.Error exposing (Error)
 import Types.Token as Token exposing (Token)
@@ -51,7 +52,7 @@ unaryAddittiveOps : Test
 unaryAddittiveOps =
     Test.Group "Unary addittive ops"
         [ simpleTest
-            { name = "Unary +/-: -a"
+            { name = "-a"
             , run = lexTokens " -a"
             , expected =
                 Ok
@@ -62,25 +63,25 @@ unaryAddittiveOps =
                     ]
             }
         , simpleTest
-            { name = "Unary +/-: a - -a"
+            { name = "a - -a"
             , run = lexTokens "a - -a"
             , expected =
                 Ok
                     [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
                     , { kind = non_mut_name "a", start = 0, end = 1 }
-                    , { kind = Token.Binop Token.Addittive "-", start = 2, end = 3 }
+                    , { kind = Token.Binop " -" Prelude.subtract, start = 2, end = 3 }
                     , { kind = Token.Unop "-", start = 4, end = 5 }
                     , { kind = non_mut_name "a", start = 5, end = 6 }
                     ]
             }
         , simpleTest
-            { name = "Unary +/-: a-a"
+            { name = "a-a"
             , run = lexTokens "a-a"
             , expected =
                 Ok
                     [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
                     , { kind = non_mut_name "a", start = 0, end = 1 }
-                    , { kind = Token.Binop Token.Addittive "-", start = 1, end = 2 }
+                    , { kind = Token.Binop "-" Prelude.subtract, start = 1, end = 2 }
                     , { kind = non_mut_name "a", start = 2, end = 3 }
                     ]
             }
@@ -99,9 +100,10 @@ unaryAddittiveOps =
             , expected =
                 Ok
                     [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
-                    , { kind = Token.Binop Token.Mutop "-=", start = 0, end = 2 }
+                    , { kind = Token.Binop "-=" Prelude.mutableSubtract, start = 0, end = 2 }
                     ]
             }
+            |> Test.NotNow
         ]
 
 

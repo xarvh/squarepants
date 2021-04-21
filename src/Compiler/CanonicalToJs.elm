@@ -1,6 +1,6 @@
 module Compiler.CanonicalToJs exposing (..)
 
-import Compiler.CoreModule
+import Compiler.CoreModule as Core
 import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Lib
@@ -15,13 +15,14 @@ nativeNonOps : Dict String JA.Name
 nativeNonOps =
     nativeBinops
         |> Dict.map (always .fnName)
-        |> Dict.insert Compiler.CoreModule.trueValue "true"
-        |> Dict.insert Compiler.CoreModule.falseValue "false"
-        |> Dict.insert Compiler.CoreModule.noneValue "null"
+        |> Dict.insert Core.trueValue "true"
+        |> Dict.insert Core.falseValue "false"
+        |> Dict.insert Core.noneValue "null"
         |> Dict.insert "SPCore/Debug.log" "sp_log"
         |> Dict.insert "SPCore/Debug.todo" "sp_todo"
         |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
         |> Dict.insert "/" "sp_divide"
+        |> Dict.insert "::" "sp_cons"
 
 
 nativeBinops : Dict String { jsSymb : JA.Name, mutates : Bool, fnName : String }
@@ -38,7 +39,7 @@ nativeBinops =
 
 
 none =
-    translatePath Compiler.CoreModule.noneValue
+    translatePath Core.noneValue
 
 
 nativeBinopToFunction : String -> { jsSymb : JA.Name, mutates : Bool, fnName : String } -> List JA.Statement -> List JA.Statement
@@ -186,6 +187,9 @@ const sp_log = (message) => (thing) => {
   return thing;
 }
 
+const sp_cons = (list) => (item) => {
+  return [ \"""" ++ Core.listCons.name ++ """", item, list];
+}
 
 const text_fromInt = (n) => '' + n;
     """

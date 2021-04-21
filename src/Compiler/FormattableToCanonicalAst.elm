@@ -5,6 +5,7 @@ import Dict exposing (Dict)
 import Lib
 import SepList exposing (SepList)
 import Set exposing (Set)
+import Types.Binop as Binop exposing (Binop)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res, errorTodo)
 import Types.FormattableAst as FA
@@ -937,7 +938,7 @@ translateArgument env faExpr =
                 |> Result.map CA.ArgumentExpression
 
 
-translateBinops : Env -> FA.Pos -> Token.PrecedenceGroup -> SepList String FA.Expression -> Res CA.Expression
+translateBinops : Env -> FA.Pos -> Binop.Precedence -> SepList Binop FA.Expression -> Res CA.Expression
 translateBinops env pos group ( firstItem, firstTail ) =
     case firstTail of
         [] ->
@@ -945,7 +946,7 @@ translateBinops env pos group ( firstItem, firstTail ) =
 
         ( firstSep, secondItem ) :: [] ->
             case group of
-                Token.Tuple ->
+                Binop.Tuple ->
                     Result.map2
                         (\first second ->
                             Dict.empty
@@ -966,7 +967,7 @@ translateBinops env pos group ( firstItem, firstTail ) =
                     ( secondSep, thirdItem ) :: thirdTail
             in
             case group of
-                Token.Comparison ->
+                Binop.Comparison ->
                     if notAllSeparators (sameDirectionAs firstSep) secondTail then
                         -- TODO actually list the seps
                         errorTodo "can't mix comparison ops with different direction"
@@ -975,14 +976,14 @@ translateBinops env pos group ( firstItem, firstTail ) =
                         -- TODO expand `a < b < c` to `a < b && b < c` without calculating b twice
                         errorTodo "NI compops expansion"
 
-                Token.Logical ->
+                Binop.Logical ->
                     if notAllSeparators ((==) firstSep) secondTail then
                         errorTodo "Mixing `and` and `or` is ambiguous. Use parens!"
 
                     else
-                        translateBinopSepList env pos firstItem firstTail
+                        translateBinopSepList_rightAssociative env pos firstItem firstTail
 
-                Token.Tuple ->
+                Binop.Tuple ->
                     if thirdTail /= [] then
                         errorTodo "Tuples can't have more than 3 items, use a record instead."
 
@@ -999,18 +1000,21 @@ translateBinops env pos group ( firstItem, firstTail ) =
                             (translateExpression env secondItem)
                             (translateExpression env thirdItem)
 
-                Token.Pipe ->
+                Binop.Pipe ->
                     if notAllSeparators ((==) firstSep) secondTail then
                         errorTodo "Mixing pipes is ambigous. Use parens."
 
-                    else
-                        translateBinopSepList env pos firstItem firstTail
+                    else if firstSep.associativity == Binop.Right then
+                        translateBinopSepList_rightAssociative env pos firstItem firstTail
 
-                Token.Mutop ->
+                    else
+                        translateBinopSepList_leftAssociative env pos firstItem firstTail
+
+                Binop.Mutop ->
                     errorTodo "mutops can't be chained"
 
                 _ ->
-                    translateBinopSepList env pos firstItem firstTail
+                    translateBinopSepList_rightAssociative env pos firstItem firstTail
 
 
 notAllSeparators : (sep -> Bool) -> List ( sep, item ) -> Bool
@@ -1027,48 +1031,57 @@ notAllSeparators f ls =
                 True
 
 
-sameDirectionAs : String -> String -> Bool
+sameDirectionAs : Binop -> Binop -> Bool
 sameDirectionAs a b =
-    if a == b then
+    if a.symbol == b.symbol then
         True
 
     else
-        case a of
+        case a.symbol of
             ">" ->
-                b == ">="
+                b.symbol == ">="
 
             ">=" ->
-                b == ">"
+                b.symbol == ">"
 
             "<" ->
-                b == "<="
+                b.symbol == "<="
 
             "<=" ->
-                b == "<"
+                b.symbol == "<"
 
             _ ->
                 False
 
 
-translateBinopSepList : Env -> FA.Pos -> FA.Expression -> List ( String, FA.Expression ) -> Res CA.Expression
-translateBinopSepList env pos leftAccum opsAndRight =
+translateBinopSepList_rightAssociative : Env -> FA.Pos -> FA.Expression -> List ( Binop, FA.Expression ) -> Res CA.Expression
+translateBinopSepList_rightAssociative env pos left opsAndRight =
+    do (translateExpression env left) <| \caLeft ->
+    case opsAndRight of
+        [] ->
+            Ok caLeft
+
+        ( op, right ) :: tail ->
+            do (translateBinopSepList_rightAssociative env pos right tail) <| \caRight ->
+            makeBinop (tp env.ro pos) (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
+                |> Ok
+
+
+translateBinopSepList_leftAssociative : Env -> FA.Pos -> FA.Expression -> List ( Binop, FA.Expression ) -> Res CA.Expression
+translateBinopSepList_leftAssociative env pos leftAccum opsAndRight =
     do (translateExpression env leftAccum) <| \caLeftAccum ->
     translateBinopSepListRec env pos caLeftAccum opsAndRight
 
 
-translateBinopSepListRec : Env -> FA.Pos -> CA.Expression -> List ( String, FA.Expression ) -> Res CA.Expression
+translateBinopSepListRec : Env -> FA.Pos -> CA.Expression -> List ( Binop, FA.Expression ) -> Res CA.Expression
 translateBinopSepListRec env pos leftAccum opsAndRight =
     case opsAndRight of
         [] ->
             Ok leftAccum
 
         ( op, faRight ) :: tail ->
-            case translateArgument env faRight of
-                Err e ->
-                    Err e
-
-                Ok caRight ->
-                    translateBinopSepListRec env pos (makeBinop (tp env.ro pos) (CA.ArgumentExpression leftAccum) op caRight) tail
+            do (translateArgument env faRight) <| \caRight ->
+            translateBinopSepListRec env pos (makeBinop (tp env.ro pos) (CA.ArgumentExpression leftAccum) op caRight) tail
 
 
 {-| Unlike other ML languages, the left operand is the _second_ argument
@@ -1076,9 +1089,9 @@ translateBinopSepListRec env pos leftAccum opsAndRight =
 `a + b` == `((+) b) a`
 
 -}
-makeBinop : CA.Pos -> CA.Argument -> String -> CA.Argument -> CA.Expression
+makeBinop : CA.Pos -> CA.Argument -> Binop -> CA.Argument -> CA.Expression
 makeBinop caPos left op right =
-    case ( left, op, right ) of
+    case ( left, op.symbol, right ) of
         -- TODO don't hardcode the strings, use instead those defined in Prelude
         ( _, ">>", CA.ArgumentExpression rightExpr ) ->
             CA.Call caPos rightExpr left
@@ -1091,7 +1104,7 @@ makeBinop caPos left op right =
                 (CA.Call caPos
                     (CA.Variable caPos
                         { isRoot = True
-                        , name = op
+                        , name = op.symbol
                         , attrPath = []
                         }
                     )
@@ -1100,7 +1113,7 @@ makeBinop caPos left op right =
                 left
 
 
-translateSimpleBinop : Env -> FA.Pos -> FA.Expression -> String -> FA.Expression -> Res CA.Expression
+translateSimpleBinop : Env -> FA.Pos -> FA.Expression -> Binop -> FA.Expression -> Res CA.Expression
 translateSimpleBinop env pos left op right =
     Result.map2 (\l r -> makeBinop (tp env.ro pos) l op r)
         (translateArgument env left)

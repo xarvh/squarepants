@@ -3,47 +3,16 @@ module Prelude exposing (..)
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import MetaFile exposing (MetaFile)
+import Types.Binop as Binop exposing (Binop)
 import Types.CanonicalAst as CA exposing (Type)
 import Types.Meta exposing (Meta)
 
 
 
 ----
---- Prelude
+--- Default Meta
 --
-
-
-prelude : CA.AllDefs
-prelude =
-    [ mutableAssign
-
-    -- arithmetic
-    , add
-    , subtract
-    , multiply
-    , divide
-    , mutableAdd
-
-    -- comparison
-    , lesserThan
-    , greaterThan
-
-    -- others
-    , stringConcat
-    , sendRight
-    , sendLeft
-
-    -- debug
-    , debugTodo
-    , debugLog
-    ]
-        |> List.foldl (\( n, v ) -> Dict.insert n v) Core.coreModule
-
-
-
-----
---- Meta
---
+-- TODO move this in its own module?
 
 
 metaString =
@@ -130,8 +99,37 @@ meta =
 
 
 ----
----
+--- Prelude
 --
+
+
+prelude : CA.AllDefs
+prelude =
+    Core.coreModule
+        |> (\m -> Dict.foldl insertBinop m binops)
+        |> (\m -> List.foldl insertFunction m functions)
+
+
+insertBinop : String -> Binop -> CA.AllDefs -> CA.AllDefs
+insertBinop _ b =
+    { pattern = CA.PatternAny pos b.symbol
+    , mutable = False
+    , body = []
+    , maybeAnnotation = Just b.ty
+    }
+        |> CA.Value
+        |> Dict.insert b.symbol
+
+
+insertFunction : ( String, CA.Type ) -> CA.AllDefs -> CA.AllDefs
+insertFunction ( name, ty ) =
+    { pattern = CA.PatternAny pos name
+    , mutable = False
+    , body = []
+    , maybeAnnotation = Just ty
+    }
+        |> CA.Value
+        |> Dict.insert name
 
 
 pos : CA.Pos
@@ -147,11 +145,7 @@ tyVar n =
     CA.TypeVariable pos n
 
 
-constant n =
-    CA.TypeConstant pos n []
-
-
-function from to =
+tyFun from to =
     CA.TypeFunction pos from False to
 
 
@@ -161,213 +155,264 @@ function from to =
 --
 
 
-type alias NativeBinopArgs =
-    { symbol : String
-    , left : CA.Type
-    , right : CA.Type
-    , return : CA.Type
-    , mutates : Bool
+binops : Dict String Binop
+binops =
+    [ textConcat
+    , tuple
+    , listCons
+    , mutableAssign
+    , and
+    , or
+    , add
+    , subtract
+    , multiply
+    , divide
+    , mutableAdd
+    , mutableSubtract
+    , equal
+    , lesserThan
+    , greaterThan
+    , sendRight
+    , sendLeft
+    ]
+        |> List.foldl (\op -> Dict.insert op.symbol op) Dict.empty
+
+
+typeBinop : Bool -> CA.Type -> CA.Type -> CA.Type -> CA.Type
+typeBinop mutates left right return =
+    CA.TypeFunction pos
+        right
+        False
+        (CA.TypeFunction pos
+            left
+            mutates
+            return
+        )
+
+
+typeBinopUniform ty =
+    typeBinop False ty ty ty
+
+
+
+-- Misc
+
+
+textConcat : Binop
+textConcat =
+    { symbol = ".."
+    , precedence = Binop.Addittive
+    , associativity = Binop.Right
+    , ty = typeBinopUniform Core.textType
     }
 
 
-nativeBinop : NativeBinopArgs -> ( String, CA.RootDef )
-nativeBinop ar =
-    ( ar.symbol
-    , CA.Value
-        { pattern = CA.PatternAny pos ar.symbol
-        , mutable = False
-        , body = []
-        , maybeAnnotation =
-            Just
-                (CA.TypeFunction pos
-                    ar.left
-                    False
-                    (CA.TypeFunction pos
-                        ar.right
-                        ar.mutates
-                        ar.return
-                    )
-                )
-        }
-    )
+tuple : Binop
+tuple =
+    { symbol = "&"
+    , precedence = Binop.Tuple
+    , associativity = Binop.NonAssociative
+    , ty =
+        Dict.empty
+            |> Dict.insert "first" (tyVar "a")
+            |> Dict.insert "second" (tyVar "b")
+            |> CA.TypeRecord pos Nothing
+            |> typeBinop False (tyVar "a") (tyVar "b")
+    }
 
 
-mutableAssign : ( String, CA.RootDef )
+listCons : Binop
+listCons =
+    let
+        item =
+            tyVar "item"
+    in
+    { symbol = "::"
+    , precedence = Binop.Addittive
+    , associativity = Binop.Right
+    , ty = typeBinop False item (Core.listType item) (Core.listType item)
+    }
+
+
+mutableAssign : Binop
 mutableAssign =
-    nativeBinop
-        { symbol = ":="
-        , left = CA.TypeVariable pos "a"
-        , right = CA.TypeVariable pos "a"
-        , return = Core.noneType
-        , mutates = True
-        }
+    { symbol = ":="
+    , precedence = Binop.Mutop
+    , associativity = Binop.Left
+    , ty = typeBinop True (tyVar "a") (tyVar "a") Core.noneType
+    }
 
 
 
--- arithmetic
+-- Arithmetic
 
 
-add : ( String, CA.RootDef )
+and : Binop
+and =
+    { symbol = "and"
+    , precedence = Binop.Logical
+    , associativity = Binop.Right
+    , ty = typeBinopUniform Core.boolType
+    }
+
+
+or : Binop
+or =
+    { symbol = "or"
+    , precedence = Binop.Logical
+    , associativity = Binop.Right
+    , ty = typeBinopUniform Core.boolType
+    }
+
+
+add : Binop
 add =
-    nativeBinop
-        { symbol = "+"
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.numberType
-        , mutates = False
-        }
+    { symbol = "+"
+    , precedence = Binop.Addittive
+    , associativity = Binop.Left
+    , ty = typeBinopUniform Core.numberType
+    }
 
 
-subtract : ( String, CA.RootDef )
+subtract : Binop
 subtract =
-    nativeBinop
-        { symbol = "-"
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.numberType
-        , mutates = False
-        }
+    { symbol = "-"
+    , precedence = Binop.Addittive
+    , associativity = Binop.Left
+    , ty = typeBinopUniform Core.numberType
+    }
 
 
-multiply : ( String, CA.RootDef )
+multiply : Binop
 multiply =
-    nativeBinop
-        { symbol = "*"
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.numberType
-        , mutates = False
-        }
+    { symbol = "*"
+    , precedence = Binop.Multiplicative
+    , associativity = Binop.Left
+    , ty = typeBinopUniform Core.numberType
+    }
 
 
-divide : ( String, CA.RootDef )
+divide : Binop
 divide =
-    nativeBinop
-        { symbol = "/"
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.numberType
-        , mutates = False
-        }
+    { symbol = "/"
+    , precedence = Binop.Multiplicative
+    , associativity = Binop.Left
+    , ty = typeBinopUniform Core.numberType
+    }
 
 
-mutableAdd : ( String, CA.RootDef )
+mutableAdd : Binop
 mutableAdd =
-    nativeBinop
-        { symbol = "+="
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.noneType
-        , mutates = True
-        }
+    { symbol = "+="
+    , precedence = Binop.Mutop
+    , associativity = Binop.NonAssociative
+    , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+    }
+
+
+mutableSubtract : Binop
+mutableSubtract =
+    { symbol = "-="
+    , precedence = Binop.Mutop
+    , associativity = Binop.NonAssociative
+    , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+    }
 
 
 
--- Comparison binops
+-- Comparison
 
 
-{-| TODO I don't have a `comparable` typeclass, how do I give a type to these?
--}
-lesserThan : ( String, CA.RootDef )
+anyNonFunction : Type
+anyNonFunction =
+    -- TODO we need a CA.TypeNonFunction or something
+    tyVar "nonFunction"
+
+
+equal : Binop
+equal =
+    { symbol = "=="
+    , precedence = Binop.Comparison
+    , associativity = Binop.Left
+    , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
+    }
+
+
+lesserThan : Binop
 lesserThan =
-    nativeBinop
-        { symbol = "<"
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.boolType
-        , mutates = False
-        }
+    { symbol = "<"
+    , precedence = Binop.Comparison
+    , associativity = Binop.Left
+    , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
+    }
 
 
-greaterThan : ( String, CA.RootDef )
+greaterThan : Binop
 greaterThan =
-    nativeBinop
-        { symbol = ">"
-        , left = Core.numberType
-        , right = Core.numberType
-        , return = Core.boolType
-        , mutates = False
-        }
+    { symbol = ">"
+    , precedence = Binop.Comparison
+    , associativity = Binop.Left
+    , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
+    }
 
 
 
--- Other binops
+-- Pipes
 
 
-stringConcat : ( String, CA.RootDef )
-stringConcat =
-    nativeBinop
-        { symbol = ".."
-        , left = Core.textType
-        , right = Core.textType
-        , return = Core.textType
-        , mutates = False
-        }
-
-
-sendRight : ( String, CA.RootDef )
+sendRight : Binop
 sendRight =
-    nativeBinop
-        { symbol = ">>"
-        , left = tyVar "a"
-        , right = function (tyVar "a") (tyVar "b")
-        , return = tyVar "b"
-        , mutates = False
-        }
+    { symbol = ">>"
+    , precedence = Binop.Pipe
+    , associativity = Binop.Left
+    , ty =
+        typeBinop False
+            (tyVar "a")
+            (tyFun (tyVar "a") (tyVar "b"))
+            (tyVar "b")
+    }
 
 
-sendLeft : ( String, CA.RootDef )
+sendLeft : Binop
 sendLeft =
-    nativeBinop
-        { symbol = "<<"
-        , left = function (tyVar "a") (tyVar "b")
-        , right = tyVar "a"
-        , return = tyVar "b"
-        , mutates = False
-        }
+    { symbol = "<<"
+    , precedence = Binop.Pipe
+    , associativity = Binop.Right
+    , ty =
+        typeBinop False
+            (tyFun (tyVar "a") (tyVar "b"))
+            (tyVar "a")
+            (tyVar "b")
+    }
 
 
 
 ----
---- SPCore/Debug
+--- Functions
 --
 
 
-debugTodo : ( String, CA.RootDef )
+functions : List ( String, CA.Type )
+functions =
+    [ debugTodo
+    , debugLog
+    ]
+
+
+
+-- SPCore/Debug
+
+
+debugTodo : ( String, CA.Type )
 debugTodo =
     ( "SPCore/Debug.todo"
-    , CA.Value
-        { pattern = CA.PatternAny pos "SPCore/Debug.todo"
-        , mutable = False
-        , body = [{- TODO -}]
-        , maybeAnnotation =
-            Just
-                (CA.TypeFunction pos
-                    Core.textType
-                    False
-                    (CA.TypeVariable pos "a")
-                )
-        }
+    , tyFun Core.textType (tyVar "a")
     )
 
 
-debugLog : ( String, CA.RootDef )
+debugLog : ( String, CA.Type )
 debugLog =
     ( "SPCore/Debug.log"
-    , CA.Value
-        { pattern = CA.PatternAny pos "SPCore/Debug.log"
-        , mutable = False
-        , body = [{- TODO -}]
-        , maybeAnnotation =
-            Just
-                (CA.TypeFunction pos
-                    Core.textType
-                    False
-                    (CA.TypeFunction pos
-                        (CA.TypeVariable pos "a")
-                        False
-                        (CA.TypeVariable pos "a")
-                    )
-                )
-        }
+    , tyFun Core.textType
+        (tyFun (tyVar "a") (tyVar "a"))
     )

@@ -1,5 +1,7 @@
 module Types.Token exposing (..)
 
+import Types.Binop
+
 
 type alias Token =
     { kind : Kind
@@ -33,24 +35,13 @@ type
       -- Ops
     | Defop { mutable : Bool }
     | Unop String
-    | Binop PrecedenceGroup String
+    | Binop String Types.Binop.Binop
     | Arrow { mutable : Bool }
       -- Parens
     | RoundParen OpenOrClosed
     | SquareBracket OpenOrClosed
     | CurlyBrace OpenOrClosed
     | Comma
-
-
-type PrecedenceGroup
-    = Exponential
-    | Multiplicative
-    | Addittive
-    | Comparison
-    | Logical
-    | Tuple
-    | Pipe
-    | Mutop
 
 
 type OpenOrClosed

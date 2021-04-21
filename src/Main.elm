@@ -42,6 +42,9 @@ import Types.Token as Token exposing (Token)
 
 runTests =
     False
+
+
+
         || True
 
 
@@ -66,11 +69,7 @@ moduleMain =
     ( "Main"
     , """
 result =
-    l @= 3
-    f @l
-
-f @a =
-    a
+    "a" :: []
       """
     )
 

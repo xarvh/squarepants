@@ -208,23 +208,6 @@ https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontri
     probably not, function composition is core to functional programming
 
 
-* FUCK UP ALL THE OPS
-
-  Equality, inequality
-     ==, =/= -> is, isnt
-  + no need to learn two weird symbols
-  - we're still using >= and <=
-
-  Definition
-    = -> :
-  + removes the ambiguous use of the `=` op
-  + in line with math notation that uses `:=` as defop
-  + one less space
-  / : is a more accessible symbol than =, but requires Shift
-  - HasType is consistently represented by :, what would be a suitable replacement?
-
-
-
 
 
 

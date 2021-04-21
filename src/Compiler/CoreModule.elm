@@ -182,10 +182,13 @@ list =
     }
 
 
+listType : CA.Type -> CA.Type
+listType item =
+    CA.TypeConstant p list.name [ item ]
 
--- listNil : CA.UnionConstructor
 
-
+{-| listNil : CA.UnionConstructor
+-}
 listNil =
     { name = root "Nil"
     , args = []

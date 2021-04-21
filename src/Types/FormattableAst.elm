@@ -13,8 +13,8 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 -}
 
 import SepList exposing (SepList)
-import Types.Literal
-import Types.Token
+import Types.Literal as Literal
+import Types.Binop as Binop exposing (Binop)
 
 
 type alias Pos =
@@ -69,12 +69,12 @@ type Type
 
 
 type Expression
-    = Literal Pos Types.Literal.Value
+    = Literal Pos Literal.Value
     | Variable Pos { isBinop : Bool } String
     | Mutable Pos String
     | Lambda Pos (List Pattern) (List Statement)
     | FunctionCall Pos Expression (List Expression)
-    | Binop Pos Types.Token.PrecedenceGroup (SepList String Expression)
+    | Binop Pos Binop.Precedence (SepList Binop Expression)
     | Unop Pos String Expression
     | If
         Pos
@@ -96,7 +96,7 @@ type Expression
 
 type Pattern
     = PatternAny Pos Bool String
-    | PatternLiteral Pos Types.Literal.Value
+    | PatternLiteral Pos Literal.Value
     | PatternApplication Pos String (List Pattern)
     | PatternList Pos (List Pattern)
     | PatternRecord Pos (RecordArgs Pattern)

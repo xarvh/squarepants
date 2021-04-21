@@ -85,6 +85,54 @@ asEvaluation s =
             Nothing
 
 
+{-| TODO move this to Helpers?
+-}
+transformAB : String -> Result String ( CA.ValueDef, CA.ValueDef )
+transformAB code =
+    let
+        findAB mod =
+            Maybe.map2
+                Tuple.pair
+                (CA.findValue "Test.a" mod)
+                (CA.findValue "Test.b" mod)
+    in
+    code
+        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.resErrorToString
+        |> Result.andThen (findAB >> Result.fromMaybe "findAB fail")
+
+
+shouldHaveSameAB : (ab -> c) -> Test.CodeExpectation ( ab, ab )
+shouldHaveSameAB getter =
+    Test.freeform <| \( a, b ) ->
+    if getter a == getter b then
+        Nothing
+
+    else
+        [ "The two don't match:"
+        , Debug.toString (getter a)
+        , Debug.toString (getter b)
+        ]
+            |> String.join "\n"
+            |> Just
+
+
+transformABC : String -> Result String ( CA.ValueDef, CA.ValueDef, CA.ValueDef )
+transformABC code =
+    let
+        findABC mod =
+            Maybe.map3
+                (\a b c -> ( a, b, c ))
+                (CA.findValue "Test.a" mod)
+                (CA.findValue "Test.b" mod)
+                (CA.findValue "Test.c" mod)
+    in
+    code
+        |> Compiler.TestHelpers.stringToCanonicalModule
+        |> Compiler.TestHelpers.resErrorToString
+        |> Result.andThen (findABC >> Result.fromMaybe "findABC fail")
+
+
 
 ----
 --- Union Types
@@ -119,48 +167,27 @@ unionTypes =
 binops : Test
 binops =
     Test.Group "Binops"
-        [ simpleTest
-            { name = "left-association"
-            , run = \_ -> firstEvaluation "a" "a = 1 + 2 + 3"
-            , expected =
-                Ok
-                    (CA.Call p
-                        (CA.Call p
-                            (CA.Variable p { name = "+", isRoot = True, attrPath = [] })
-                            (CA.ArgumentExpression (CA.Literal p (Literal.Number "3")))
-                        )
-                        (CA.ArgumentExpression
-                            (CA.Call p
-                                (CA.Call p
-                                    (CA.Variable p { name = "+", isRoot = True, attrPath = [] })
-                                    (CA.ArgumentExpression (CA.Literal p (Literal.Number "2")))
-                                )
-                                (CA.ArgumentExpression (CA.Literal p (Literal.Number "1")))
-                            )
-                        )
-                    )
-            }
-        , simpleTest
-            { name = "precedence"
-            , run = \_ -> firstEvaluation "a" "a = 1 + 2 * 3"
-            , expected =
-                Ok
-                    (CA.Call p
-                        (CA.Call p
-                            (CA.Variable p { name = "+", isRoot = True, attrPath = [] })
-                            (CA.ArgumentExpression
-                                (CA.Call p
-                                    (CA.Call p
-                                        (CA.Variable p { name = "*", isRoot = True, attrPath = [] })
-                                        (CA.ArgumentExpression (CA.Literal p (Literal.Number "3")))
-                                    )
-                                    (CA.ArgumentExpression (CA.Literal p (Literal.Number "2")))
-                                )
-                            )
-                        )
-                        (CA.ArgumentExpression (CA.Literal p (Literal.Number "1")))
-                    )
-            }
+        [ codeTest "left associativity"
+            """
+            a = v >> f >> g
+            b = (v >> f) >> g
+            """
+            transformAB
+            (shouldHaveSameAB .body)
+        , codeTest "right associativity"
+            """
+            a = v :: f :: g
+            b = v :: (f :: g)
+            """
+            transformAB
+            (shouldHaveSameAB .body)
+        , codeTest "precedence"
+            """
+            a = 1 + 2 * 3 + 4
+            b = 1 + (2 * 3) + 4
+            """
+            transformAB
+            (shouldHaveSameAB .body)
         , codeTest "functional notation"
             """
             a = (-)
@@ -475,27 +502,13 @@ functions =
             """
             (firstEvaluation "f")
             Test.justOk
-        , let
-            findABC mod =
-                Maybe.map3
-                    (\a b c -> ( a, b, c ))
-                    (CA.findValue "Test.a" mod)
-                    (CA.findValue "Test.b" mod)
-                    (CA.findValue "Test.c" mod)
-
-            transform code =
-                code
-                    |> Compiler.TestHelpers.stringToCanonicalModule
-                    |> Compiler.TestHelpers.resErrorToString
-                    |> Result.andThen (findABC >> Result.fromMaybe "findABC fail")
-          in
-          codeTest "short function notation"
+        , codeTest "short function notation"
             """
             a x y z = x + y + z
             b = fn x y z = x + y + z
             c = fn x = fn y = fn z = x + y + z
             """
-            transform
+            transformABC
             (Test.freeform <| \( a, b, c ) ->
             if a.body == b.body && b.body == c.body then
                 Nothing

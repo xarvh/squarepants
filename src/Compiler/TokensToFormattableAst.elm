@@ -3,6 +3,7 @@ module Compiler.TokensToFormattableAst exposing (..)
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, higherOr, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
+import Types.Binop as Binop exposing (Binop)
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Literal
@@ -409,19 +410,19 @@ expr =
         , higherOr lambda
         , functionApplicationOr
         , unopsOr
-        , binopsOr Token.Exponential
-        , binopsOr Token.Multiplicative
-        , binopsOr Token.Addittive
+        , binopsOr Binop.Exponential
+        , binopsOr Binop.Multiplicative
+        , binopsOr Binop.Addittive
 
         -- Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
-        , binopsOr Token.Comparison
+        , binopsOr Binop.Comparison
 
         -- Tuples are chained (ie, `a & b & c` makes a tuple3)
-        , binopsOr Token.Tuple
+        , binopsOr Binop.Tuple
 
         -- TODO pipes can't actually be mixed
-        , binopsOr Token.Pipe
-        , binopsOr Token.Mutop
+        , binopsOr Binop.Pipe
+        , binopsOr Binop.Mutop
         , higherOr <| if_
         , higherOr <| try
         ]
@@ -700,12 +701,9 @@ typeExpr =
 typeTupleOr : Parser FA.Type -> Parser FA.Type
 typeTupleOr higher =
     let
-        group =
-            Token.Tuple
-
         binopAndPrev : Parser FA.Type
         binopAndPrev =
-            discardFirst (binaryOperators group) higher
+            discardFirst (binaryOperators Binop.Tuple) higher
     in
     do here <| \start ->
     do higher <| \head ->
@@ -968,15 +966,15 @@ binopInsideParens : Parser FA.Expression
 binopInsideParens =
     do oneToken <| \token ->
     case token.kind of
-        Token.Binop g s ->
-            FA.Variable ( token.start, token.end ) { isBinop = True } s
+        Token.Binop string binop ->
+            FA.Variable ( token.start, token.end ) { isBinop = True } binop.symbol
                 |> succeed
 
         _ ->
             fail
 
 
-binopsOr : Token.PrecedenceGroup -> Parser FA.Expression -> Parser FA.Expression
+binopsOr : Binop.Precedence -> Parser FA.Expression -> Parser FA.Expression
 binopsOr group higher =
     do here <| \start ->
     do (sepList (binaryOperators group) higher) <| \( head, sepTail ) ->
@@ -989,13 +987,13 @@ binopsOr group higher =
             |> succeed
 
 
-binaryOperators : Token.PrecedenceGroup -> Parser String
+binaryOperators : Binop.Precedence -> Parser Binop
 binaryOperators group =
     do oneToken <| \token ->
     case token.kind of
-        Token.Binop g s ->
-            if g == group then
-                succeed s
+        Token.Binop string op ->
+            if op.precedence == group then
+                succeed op
 
             else
                 fail

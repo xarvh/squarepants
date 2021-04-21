@@ -13,6 +13,8 @@ pointless, but hey, I'm having fun).
 
 -}
 
+import Dict exposing (Dict)
+import Prelude
 import Regex exposing (Regex)
 import Types.Error as Error exposing (Error, Res)
 import Types.Token as Token exposing (Token)
@@ -242,7 +244,7 @@ recognisedTokens =
                     Ok <|
                         case match of
                             ".." ->
-                                Token.Binop Token.Addittive match
+                                Token.Binop m Prelude.textConcat
 
                             "fn" ->
                                 Token.Fn
@@ -266,10 +268,10 @@ recognisedTokens =
                                 Token.With
 
                             "and" ->
-                                Token.Binop Token.Logical match
+                                Token.Binop m Prelude.and
 
                             "or" ->
-                                Token.Binop Token.Logical match
+                                Token.Binop m Prelude.or
 
                             "not" ->
                                 Token.Unop match
@@ -323,81 +325,19 @@ recognisedTokens =
                         "@:" ->
                             Ok <| Token.HasType { mutable = True }
 
-                        "^" ->
-                            Ok <| Token.Binop Token.Exponential match
-
-                        "*" ->
-                            Ok <| Token.Binop Token.Multiplicative match
-
-                        "/" ->
-                            Ok <| Token.Binop Token.Multiplicative match
-
-                        "+" ->
-                            Ok <| Token.Binop Token.Addittive match
-
-                        "-" ->
-                            Ok <| Token.Binop Token.Addittive match
-
-                        ">" ->
-                            Ok <| Token.Binop Token.Comparison match
-
-                        "<" ->
-                            Ok <| Token.Binop Token.Comparison match
-
-                        ">=" ->
-                            Ok <| Token.Binop Token.Comparison match
-
-                        "<=" ->
-                            Ok <| Token.Binop Token.Comparison match
-
-                        "==" ->
-                            Ok <| Token.Binop Token.Comparison match
-
-                        "=/=" ->
-                            Ok <| Token.Binop Token.Comparison match
-
-                        "&" ->
-                            Ok <| Token.Binop Token.Tuple match
-
-                        ":>" ->
-                            Ok <| Token.Binop Token.Pipe match
-
-                        "<:" ->
-                            Ok <| Token.Binop Token.Pipe match
-
-                        ">>" ->
-                            Ok <| Token.Binop Token.Pipe match
-
-                        "<<" ->
-                            Ok <| Token.Binop Token.Pipe match
-
                         "=" ->
                             Ok <| Token.Defop { mutable = False }
 
                         "@=" ->
                             Ok <| Token.Defop { mutable = True }
 
-                        ":=" ->
-                            Ok <| Token.Binop Token.Mutop match
-
-                        "+=" ->
-                            Ok <| Token.Binop Token.Mutop match
-
-                        "-=" ->
-                            Ok <| Token.Binop Token.Mutop match
-
-                        "/=" ->
-                            -- TODO do we really want this op?
-                            Ok <| Token.Binop Token.Mutop match
-
-                        "*=" ->
-                            Ok <| Token.Binop Token.Mutop match
-
-                        "^=" ->
-                            Ok <| Token.Binop Token.Mutop match
-
                         _ ->
-                            Err errorUnknownOperator
+                            case Dict.get match Prelude.binops of
+                                Nothing ->
+                                    Err errorUnknownOperator
+
+                                Just binop ->
+                                    Ok <| Token.Binop m binop
           }
         ]
 
