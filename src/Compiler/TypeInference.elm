@@ -404,16 +404,15 @@ unify ctx at1 at2 s =
                 )
 
         ( CA.TypeVariable _ v1_name, _ ) ->
-            TyGen.wrap
-                (if cycle v1_name t2 then
-                    -- is this the correct behavior?
-                    errorTodo "cycle!"
+            if cycle v1_name t2 then
+                -- is this the correct behavior?
+                errorCycle ctx s v1_name t2
 
-                 else
-                    s
-                        |> Dict.insert v1_name t2_refined
-                        |> Ok
-                )
+            else
+                s
+                    |> Dict.insert v1_name t2_refined
+                    |> Ok
+                    |> TyGen.wrap
 
         ( _, CA.TypeVariable _ v2 ) ->
             unify ctx t2_refined t1_refined s
@@ -1336,6 +1335,24 @@ errorCannotUnify : ErrorContext -> Substitutions -> CA.Type -> CA.Type -> TR a
 errorCannotUnify ctx subs a b =
     [ Error.text <| "Cannot unify:"
     , Error.text <| "* t1 = " ++ HumanCA.typeToString a
+    , Error.text <| "* t2 = " ++ HumanCA.typeToString b
+    , Error.text <| "why : " ++ ctx.why
+    , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
+    , Error.showLines ctx.pos.c 2 ctx.pos.s
+    , subs
+        |> Dict.toList
+        |> List.sortBy Tuple.first
+        |> List.map (\( n, t ) -> n ++ " = " ++ HumanCA.typeToString t)
+        |> String.join "\n"
+        |> Error.codeBlock
+    ]
+        |> Error.makeRes ctx.pos.n
+        |> TyGen.wrap
+
+
+errorCycle : ErrorContext -> Substitutions -> String -> CA.Type -> TR a
+errorCycle ctx subs a b =
+    [ Error.text <| "Cannot unify tyvar " ++ a ++ " with a function that contains it:"
     , Error.text <| "* t2 = " ++ HumanCA.typeToString b
     , Error.text <| "why : " ++ ctx.why
     , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c

@@ -30,9 +30,9 @@ In theory we'd have also:
 + can use `=` instead of `==` for comparison
 + removes the ambiguous use of the `=` symbol
 
-Use `!=`? (Which also means: use unary `!`?
+* Use `!=`? (Which does not mean necessarily that we use unary `!`)
 
-But mutable numerical ops `+=` `-=` `*=` `/=` still use `=`
+* But mutable numerical ops `+=` `-=` `*=` `/=` still use `=`
 (Maybe I should just dump them, or use something different? Or just keep `+=` and hope no one notices?)
 Also, what do we use for mutable assignment?
   Options assuming that mutation is marked:
@@ -51,6 +51,43 @@ Also, what do we use for mutable assignment?
     x ::@ 4
 
     @{binop} a b: a @ (a binop b)
+
+
+* Should `:` be used for all block declarations?
+    For example, instead of `then` in try..as:
+
+    try blah as
+      pa1:
+          blah
+      pa2:
+          blah
+      _:
+          blah
+
+      else
+          blah
+
+the one-liner looks ugly
+    try blah as x: expr else expr # looks ugly
+
+unless we go python
+    try blah as x: expr else: expr
+
+    try blah as x then expr else blah
+
+    `if..then` would stay an exception
+
+    if x:
+      blah
+    else:
+      blah
+
+    if x: blah else: blah
+
+
+
+
+
 
 
 
