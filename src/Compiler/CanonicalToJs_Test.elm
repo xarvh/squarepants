@@ -42,6 +42,13 @@ misc =
             """
             (eval "Test.a")
             (Test.okEqual """{"x":null,"y":null}""")
+        , codeTest "Cons"
+            -- TODO would be nicer to compare against `b = SPCore.Cons 1 SPCore.Nil`
+            """
+            a = 1 :: []
+            """
+            (eval "Test.a")
+            (Test.okEqual """["SPCore.Cons",1,["SPCore.Nil"]]""")
         ]
 
 
