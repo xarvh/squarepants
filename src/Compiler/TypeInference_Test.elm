@@ -501,21 +501,15 @@ variableTypes =
                         }
                 }
             )
-        , codeTest "[reg] ???"
+        , codeTest "[reg] ??? TI failure"
             """
-            reverse : List a -> List a
-            reverse aList =
-                rec ls acc =
-                    try ls as
-                        SPCore.Nil then
-                            acc
-
-                        SPCore.Cons head tail then
-                            rec tail SPCore.Cons head acc
-
-                rec aList []
+            rec acc =
+                if True then
+                    acc
+                else
+                    rec [] "" [] acc
             """
-            (infer "reverse")
+            (infer "rec")
             (Test.errContain "")
         ]
 

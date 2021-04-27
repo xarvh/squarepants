@@ -51,6 +51,7 @@ Available modules are determined by the project's single configuration file, and
 
 [library]
   source = "http://www.github.com/xarvh/spcore#master"
+  docs = "http://wiki.github.com/xarvh/spcore"
 
   [[module]]
     original = "Basics"

@@ -1,7 +1,89 @@
 Possible alternative syntax
----------------------------
+===========================
 
-Let's go wild.
+
+Things that should probably be implemented
+------------------------------------------
+
+# try..as uses `:` in place of `then`
+
+  * try blah as
+
+      pa1:
+          blah
+
+      pa2:
+          blah
+
+      _:
+          blah
+
+
+# use `is` instead of `:` for HasType
+
+    sumTwoNumbers is Int -> Int -> Int
+    sumTwoNumbers a b =
+      a + b
+
+    # annotation name can be omitted
+    is Int -> Int -> Int
+    sumTwoNumbers a b =
+      a + b
+
+    alias Point = { x is Int, y is Int }
+
+
+
+
+Things that are worth considering but need thinking
+---------------------------------------------------
+
+
+# Use `to` instead of `->` for function types
+
+sumTwoNumbers is Int to Int to Int
+sumTwoNumbers a b =
+  a + b
+
+
+# Use `:` instead of `then` in if statements
+
+  * if expr:
+      blah1
+    else:
+      blah2
+
+  -> This has the advantage that `then` is not a keyword any more
+  -> `else:` is super ugly
+
+
+
+# Hide curryness in types
+
+  Int, Int = Int
+
+* `Int -> Int -> Int` is obscure.
+* it would be nice to have less to type than ` -> `
+* it would be nice to have a notation that's consistent with function declaration
+  -> but it's not doable because of parametric polymorphism (`List Int` or `List -> Int`?)
+
+
+
+
+Let's go wyld
+-------------
+
+# annotation after the name
+
+sumTwoNumbers as Int -> Int -> Int
+  = fn a b =
+    a + b
+
+someRecord as BlahRecordWhatever
+  = {
+  , x = 1
+  , y = 2
+  }
 
 
 # Use `:` instead of `=`
@@ -85,19 +167,4 @@ unless we go python
     if x: blah else: blah
 
 
-
-
-
-
-
-
-
-# Hide curryness in types
-
-  Int, Int: Int
-
-* `Int -> Int -> Int` is obscure.
-* it would be nice to have less to type than ` -> `
-* it would be nice to have a notation that's consistent with function declaration
-  -> but it's not doable because of parametric polymorphism (`List Int` or `List -> Int`?)
 
