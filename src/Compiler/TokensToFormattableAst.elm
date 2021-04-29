@@ -417,6 +417,9 @@ expr =
         -- Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
         , binopsOr Binop.Comparison
 
+        --
+        , binopsOr Binop.Cons
+
         -- Tuples are chained (ie, `a & b & c` makes a tuple3)
         , binopsOr Binop.Tuple
 
@@ -866,10 +869,23 @@ pattern =
         [ higherOr <| parens nest
         , higherOr <| list FA.PatternList nest
         , higherOr <| record Token.Defop FA.PatternRecord nest
-
-        --         , patternListConsOr
-        --         , patternTupleOr
+        , patternBinopOr Binop.Cons FA.PatternCons
+        , patternBinopOr Binop.Tuple FA.PatternTuple
         ]
+
+
+patternBinopOr : Binop.Precedence -> (FA.Pos -> List FA.Pattern -> FA.Pattern) -> Parser FA.Pattern -> Parser FA.Pattern
+patternBinopOr precedenceGroup constructor higher =
+    do here <| \start ->
+    do (sepList (binaryOperators precedenceGroup) higher) <| \( head, sepTail ) ->
+    do here <| \end ->
+    if sepTail == [] then
+        succeed head
+
+    else
+        (head :: List.map Tuple.second sepTail)
+            |> constructor ( start, end )
+            |> succeed
 
 
 patternApplication : Parser FA.Pattern -> Parser FA.Pattern

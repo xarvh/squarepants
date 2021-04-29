@@ -626,11 +626,19 @@ translatePatternOrFunction env fa =
                 Lib.list_foldlRes fold recordArgs.attrs Dict.empty
                     |> Result.map (CA.PatternRecord (tp env.ro pos) >> POF_Pattern)
 
-        FA.PatternCons pos faHead faTail ->
-            Result.map2
-                (\caHead caTail -> CA.PatternConstructor (tp env.ro pos) Core.listCons.name [ caHead, caTail ] |> POF_Pattern)
-                (translatePattern env faHead)
-                (translatePattern env faTail)
+        FA.PatternCons pos pas ->
+            do (Lib.list_mapRes (translatePattern env) pas) <| \caPas ->
+            case List.reverse caPas of
+                last :: rest ->
+                    List.foldl
+                        (\item list -> CA.PatternConstructor (tp env.ro pos) Core.listCons.name [ item, list ])
+                        last
+                        rest
+                        |> POF_Pattern
+                        |> Ok
+
+                [] ->
+                    errorTodo "should not happen: empty cons pattern"
 
         FA.PatternTuple pos fas ->
             case fas of

@@ -13,8 +13,8 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 -}
 
 import SepList exposing (SepList)
-import Types.Literal as Literal
 import Types.Binop as Binop exposing (Binop)
+import Types.Literal as Literal
 
 
 type alias Pos =
@@ -100,7 +100,7 @@ type Pattern
     | PatternApplication Pos String (List Pattern)
     | PatternList Pos (List Pattern)
     | PatternRecord Pos (RecordArgs Pattern)
-    | PatternCons Pos Pattern Pattern
+    | PatternCons Pos (List Pattern)
     | PatternTuple Pos (List Pattern)
 
 
@@ -141,7 +141,7 @@ patternPos pa =
         PatternRecord p _ ->
             p
 
-        PatternCons p _ _ ->
+        PatternCons p _ ->
             p
 
         PatternTuple p _ ->
@@ -247,10 +247,8 @@ posMap_pattern f pa =
         PatternRecord pos ar ->
             PatternRecord (f pos) (recordArgs_map (posMap_pattern f) ar)
 
-        PatternCons pos left right ->
-            PatternCons (f pos)
-                (posMap_pattern f left)
-                (posMap_pattern f right)
+        PatternCons pos pas ->
+            PatternCons (f pos) (List.map (posMap_pattern f) pas)
 
         PatternTuple pos pas ->
             PatternTuple (f pos) (List.map (posMap_pattern f) pas)

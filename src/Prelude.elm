@@ -228,7 +228,7 @@ listCons =
             tyVar "item"
     in
     { symbol = "::"
-    , precedence = Binop.Addittive
+    , precedence = Binop.Cons
     , associativity = Binop.Right
     , ty = typeBinop False item (Core.listType item) (Core.listType item)
     }

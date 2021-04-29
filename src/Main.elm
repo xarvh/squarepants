@@ -51,11 +51,11 @@ runTests =
 initialFiles =
     [ moduleMain
 
-    --     , moduleMaybe
-    --     , moduleList
-    --     , moduleText
-    --     , moduleRandom
-    --     , languageOverview
+     , moduleMaybe
+     , moduleList
+     , moduleText
+     , moduleRandom
+     , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -69,7 +69,11 @@ moduleMain =
     ( "Main"
     , """
 result =
-    "a" :: []
+    try [] as
+      1 :: [] then
+        1
+      [] then
+        0
       """
     )
 
@@ -183,7 +187,7 @@ It's very much not a practical pseudo random generator.
 
 #]
 number : Number -> Number -> Seed @> Number
-number min max wrappedSeed =
+number min max @wrappedSeed =
 
     Seed seed = wrappedSeed
 
@@ -1268,7 +1272,7 @@ average numbers =
 
 # The argument preceding `@>` is mutable
 generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
-generateTwoRandomNumbers min max seed =
+generateTwoRandomNumbers min max @seed =
     # '&' is used for tuples
     Random.number min max @seed & Random.number min max @seed
 
