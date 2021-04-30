@@ -831,7 +831,7 @@ inspectStatement statement env subs =
                     else
                         generalize names (refineEnv subs2 env) refinedType
             in
-            case Maybe.andThen (\ann -> annotationTooGeneral ann forall) maybeAnnotation of
+            case Maybe.andThen (\ann -> annotationTooGeneral ann refinedType forall) maybeAnnotation of
                 Just error ->
                     error
 
@@ -977,8 +977,8 @@ reversedZipConstructorArgs args constructorType accum =
                     errorTodo "too many arguments in constructor pattern"
 
 
-annotationTooGeneral : Type -> Set Name -> Maybe (TR a)
-annotationTooGeneral annotation inferredForall =
+annotationTooGeneral : Type -> Type -> Set Name -> Maybe (TR a)
+annotationTooGeneral annotation inferredType inferredForall =
     let
         -- This is already calculated when we add the raw definitions to env
         -- Is it faster to get it from env?
@@ -986,7 +986,7 @@ annotationTooGeneral annotation inferredForall =
             typeVarsFromType annotation
     in
     if Set.size annotationForall > Set.size inferredForall then
-        Just <| errorAnnotationTooGeneral annotation annotationForall inferredForall
+        Just <| errorAnnotationTooGeneral annotation annotationForall inferredType inferredForall
 
     else
         Nothing
@@ -1368,18 +1368,19 @@ errorCycle ctx subs a b =
         |> TyGen.wrap
 
 
-errorAnnotationTooGeneral : Type -> Set String -> Set String -> TR a
-errorAnnotationTooGeneral annotation annotationForall inferredForall =
+errorAnnotationTooGeneral : Type -> Set String -> Type -> Set String -> TR a
+errorAnnotationTooGeneral annotation annotationForall inferredType inferredForall =
     let
         pos =
             CA.typePos annotation
     in
     [ Error.text <| "Annotation is too general"
-    , Error.text <| HumanCA.typeToString annotation
     , Error.showLines pos.c 2 pos.s
-    , Error.text <| "forall annotation: " ++ Debug.toString (Set.toList annotationForall)
-    , Error.text <| "forall inferred  : " ++ Debug.toString (Set.toList inferredForall)
-    , Error.text <| Debug.toString annotation
+    , Error.text <| "type annotated: " ++ HumanCA.typeToString annotation
+    , Error.text <| "type inferred : " ++ HumanCA.typeToString inferredType
+    , Error.text ""
+    , Error.text <| "forall annotated: " ++ Debug.toString (Set.toList annotationForall)
+    , Error.text <| "forall inferred : " ++ Debug.toString (Set.toList inferredForall)
     ]
         |> Error.makeRes pos.n
         |> TyGen.wrap
