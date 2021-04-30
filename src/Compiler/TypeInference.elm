@@ -831,14 +831,14 @@ inspectStatement statement env subs =
                     else
                         generalize names (refineEnv subs2 env) refinedType
             in
-            case Maybe.map (\ann -> annotationTooGeneral ann forall) maybeAnnotation of
-                Just (Just error) ->
-                    errorTodo error
-                        |> TyGen.wrap
+            case Maybe.andThen (\ann -> annotationTooGeneral ann forall) maybeAnnotation of
+                Just error ->
+                    error
 
                 _ ->
                     -- The type of a definition is always None
-                    Ok ( Core.noneType, refineEnv subs2 env1, subs2 )
+                    ( Core.noneType, refineEnv subs2 env1, subs2 )
+                        |> Ok
                         |> TyGen.wrap
 
 
@@ -977,7 +977,7 @@ reversedZipConstructorArgs args constructorType accum =
                     errorTodo "too many arguments in constructor pattern"
 
 
-annotationTooGeneral : Type -> Set Name -> Maybe String
+annotationTooGeneral : Type -> Set Name -> Maybe (TR a)
 annotationTooGeneral annotation inferredForall =
     let
         -- This is already calculated when we add the raw definitions to env
@@ -986,7 +986,7 @@ annotationTooGeneral annotation inferredForall =
             typeVarsFromType annotation
     in
     if Set.size annotationForall > Set.size inferredForall then
-        Just <| "annotation too general : " ++ Debug.toString annotationForall ++ " vs " ++ Debug.toString inferredForall
+        Just <| errorAnnotationTooGeneral annotation annotationForall inferredForall
 
     else
         Nothing
@@ -1365,4 +1365,19 @@ errorCycle ctx subs a b =
         |> Error.codeBlock
     ]
         |> Error.makeRes ctx.pos.n
+        |> TyGen.wrap
+
+
+errorAnnotationTooGeneral : Type -> Set String -> Set String -> TR a
+errorAnnotationTooGeneral annotation annotationForall inferredForall =
+    let
+        pos =
+            CA.typePos annotation
+    in
+    [ Error.text <| "Annotation is too general"
+    , Error.showLines pos.c 2 pos.s
+    , Error.text <| "annotation ForAll = " ++ Debug.toString annotationForall
+    , Error.text <| "inferred   ForAll = " ++ Debug.toString inferredForall
+    ]
+        |> Error.makeRes pos.n
         |> TyGen.wrap
