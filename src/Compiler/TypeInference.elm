@@ -1375,9 +1375,11 @@ errorAnnotationTooGeneral annotation annotationForall inferredForall =
             CA.typePos annotation
     in
     [ Error.text <| "Annotation is too general"
+    , Error.text <| HumanCA.typeToString annotation
     , Error.showLines pos.c 2 pos.s
-    , Error.text <| "annotation ForAll = " ++ Debug.toString annotationForall
-    , Error.text <| "inferred   ForAll = " ++ Debug.toString inferredForall
+    , Error.text <| "forall annotation: " ++ Debug.toString (Set.toList annotationForall)
+    , Error.text <| "forall inferred  : " ++ Debug.toString (Set.toList inferredForall)
+    , Error.text <| Debug.toString annotation
     ]
         |> Error.makeRes pos.n
         |> TyGen.wrap

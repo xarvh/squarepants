@@ -742,36 +742,41 @@ typeList main =
 typeFunctionOr : Parser FA.Type -> Parser FA.Type
 typeFunctionOr higher =
     let
-        arrowAndHigher : Parser ( Bool, FA.Type )
+        arrowAndHigher : Parser ( Bool, FA.Pos, FA.Type )
         arrowAndHigher =
-            do arrow <| \{ mutable } ->
+            do arrow <| \( mutable, pos ) ->
             do higher <| \h ->
-            succeed ( mutable, h )
+            succeed ( mutable, pos, h )
 
-        fold : ( Bool, FA.Type ) -> ( Bool, FA.Type ) -> ( Bool, FA.Type )
-        fold ( nextIsMutable, ty ) ( thisIsMutable, accum ) =
+        fold : ( Bool, FA.Pos, FA.Type ) -> ( Bool, FA.Type ) -> ( Bool, FA.Type )
+        fold ( nextIsMutable, pos, ty ) ( thisIsMutable, accum ) =
             ( nextIsMutable
-            , FA.TypeFunction {- TODO -} ( -1, -1 ) ty thisIsMutable accum
+            , FA.TypeFunction pos ty thisIsMutable accum
             )
     in
+    do here <| \fs ->
     do higher <| \e ->
+    do here <| \fe ->
     do (zeroOrMore arrowAndHigher) <| \es ->
     let
-        ( return, reversedArgs ) =
-            OneOrMore.reverse ( ( False, e ), es )
+        firstPos =
+            ( fs, fe )
+
+        ( ( thisIsMutable, pos, return ), reversedArgs ) =
+            OneOrMore.reverse ( ( False, firstPos, e ), es )
     in
     reversedArgs
-        |> List.foldl fold return
+        |> List.foldl fold ( thisIsMutable, return )
         |> Tuple.second
         |> succeed
 
 
-arrow : Parser { mutable : Bool }
+arrow : Parser ( Bool, FA.Pos )
 arrow =
     do oneToken <| \token ->
     case token.kind of
         Token.Arrow arg ->
-            succeed arg
+            succeed ( arg.mutable, ( token.start, token.end ) )
 
         _ ->
             fail
