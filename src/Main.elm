@@ -42,20 +42,16 @@ import Types.Token as Token exposing (Token)
 
 runTests =
     False
-
-
-
         || True
 
 
 initialFiles =
     [ moduleMain
-
-     , moduleMaybe
-     , moduleList
-     , moduleText
-     , moduleRandom
-     , languageOverview
+    , moduleMaybe
+    , moduleList
+    , moduleText
+    , moduleRandom
+    , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -68,12 +64,14 @@ metaFileName =
 moduleMain =
     ( "Main"
     , """
+each : List a -> (a -> b) -> None
+each ls f =
+    try ls as
+        SPCore.Nil then
+            None
+
 result =
-    try [] as
-      1 :: [] then
-        1
-      [] then
-        0
+      1 :: SPCore.Nil = SPCore.Nil
       """
     )
 
@@ -953,6 +951,16 @@ viewCaPattern p =
 
         CA.PatternAny _ n ->
             n
+
+        CA.PatternLiteral _ l ->
+            "(" ++ Debug.toString l ++ ")"
+
+        CA.PatternConstructor _ n pas ->
+            if pas == [] then
+                n
+
+            else
+                "(" ++ n ++ " " ++ String.join " " (List.map viewCaPattern pas) ++ ")"
 
         _ ->
             Debug.toString p

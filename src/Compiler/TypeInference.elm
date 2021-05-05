@@ -18,7 +18,13 @@ type alias Name =
 
 
 type alias Substitutions =
-    Dict Name Type
+    Dict Name ( Type, ErrorContext )
+
+
+type alias ErrorContext =
+    { why : String
+    , pos : CA.Pos
+    }
 
 
 type alias Env =
@@ -226,7 +232,7 @@ refineType subs ty =
 
         CA.TypeVariable _ name ->
             case Dict.get name subs of
-                Just substitutionType ->
+                Just ( substitutionType, ctx ) ->
                     -- a substitution exists for the variable type v
                     refineType subs substitutionType
 
@@ -248,10 +254,10 @@ refineType subs ty =
                 Nothing ->
                     CA.TypeRecord pos extensible (Dict.map (\name -> refineType subs) attrs)
 
-                Just (CA.TypeVariable _ n) ->
+                Just ( CA.TypeVariable _ n, ctx ) ->
                     CA.TypeRecord pos (Just n) (Dict.map (\name -> refineType subs) attrs)
 
-                Just (CA.TypeRecord _ ext2 attrs2) ->
+                Just ( CA.TypeRecord _ ext2 attrs2, ctx ) ->
                     -- TODO I'm not sure what I'm doing here
                     CA.TypeRecord pos
                         ext2
@@ -304,7 +310,7 @@ instantiateType t tvars =
         substituteTvar tvar genSubs =
             TyGen.do (newType todoPos) <| \nt ->
             TyGen.do genSubs <| \subs ->
-            Dict.insert tvar nt subs
+            Dict.insert tvar ( nt, { why = "instantiateType", pos = todoPos } ) subs
                 |> TyGen.wrap
 
         genAllSubs : TyGen Substitutions
@@ -345,12 +351,6 @@ unwrapAlias prevPath ty =
 
         _ ->
             ( ty, prevPath )
-
-
-type alias ErrorContext =
-    { why : String
-    , pos : CA.Pos
-    }
 
 
 unify : ErrorContext -> Type -> Type -> Substitutions -> TR Substitutions
@@ -399,7 +399,7 @@ unify ctx at1 at2 s =
 
                  else
                     s
-                        |> Dict.insert v1_name t2_refined
+                        |> Dict.insert v1_name ( t2_refined, ctx )
                         |> Ok
                 )
 
@@ -410,7 +410,7 @@ unify ctx at1 at2 s =
 
             else
                 s
-                    |> Dict.insert v1_name t2_refined
+                    |> Dict.insert v1_name ( t2_refined, ctx )
                     |> Ok
                     |> TyGen.wrap
 
@@ -493,7 +493,7 @@ unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
 
                 else
                     -- substitute a with b
-                    Dict.insert aName (CA.TypeRecord todoPos b_ext b_attrs) subs1
+                    Dict.insert aName ( CA.TypeRecord todoPos b_ext b_attrs, ctx ) subs1
                         |> Ok
                         |> TyGen.wrap
 
@@ -505,7 +505,7 @@ unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
 
                 else
                     -- substitute b with a
-                    Dict.insert bName (CA.TypeRecord todoPos a_ext a_attrs) subs1
+                    Dict.insert bName ( CA.TypeRecord todoPos a_ext a_attrs, ctx ) subs1
                         |> Ok
                         |> TyGen.wrap
 
@@ -528,8 +528,8 @@ unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
                         CA.TypeRecord todoPos (Just new) (Dict.union bOnly a_attrs)
                 in
                 subs1
-                    |> Dict.insert aName subTy
-                    |> Dict.insert bName subTy
+                    |> Dict.insert aName ( subTy, ctx )
+                    |> Dict.insert bName ( subTy, ctx )
                     |> Ok
                     |> TyGen.wrap
 
@@ -808,7 +808,7 @@ inspectStatement statement env subs =
         CA.Definition { pattern, mutable, body, maybeAnnotation } ->
             let
                 insert =
-                    insertVariableFromDefinition mutable maybeAnnotation
+                    insertVariableFromDefinition (CA.patternPos pattern) mutable maybeAnnotation
             in
             do_nr (inspectBlock body env subs) <| \( bodyType, _, subs1 ) ->
             do_nr (inspectPattern insert pattern bodyType ( env, subs1 )) <| \( env1, subs2 ) ->
@@ -831,7 +831,7 @@ inspectStatement statement env subs =
                     else
                         generalize names (refineEnv subs2 env) refinedType
             in
-            case Maybe.andThen (\ann -> annotationTooGeneral ann refinedType forall) maybeAnnotation of
+            case Maybe.andThen (\ann -> annotationTooGeneral subs2 ann refinedType forall) maybeAnnotation of
                 Just error ->
                     error
 
@@ -842,13 +842,13 @@ inspectStatement statement env subs =
                         |> TyGen.wrap
 
 
-insertVariableFromDefinition : Bool -> Maybe Type -> Name -> Type -> Eas -> TR Eas
-insertVariableFromDefinition mutable maybeAnnotation name ty ( env, subs ) =
+insertVariableFromDefinition : CA.Pos -> Bool -> Maybe Type -> Name -> Type -> Eas -> TR Eas
+insertVariableFromDefinition pos mutable maybeAnnotation name ty ( env, subs ) =
     let
         def =
             dict_get "SNH inspectPattern PatternAny" name env
     in
-    do_nr (unify { why = "insertVariableFromDefinition", pos = todoPos } ty def.type_ subs) <| \subs2 ->
+    do_nr (unify { why = "insertVariableFromDefinition", pos = pos } ty def.type_ subs) <| \subs2 ->
     let
         refinedType =
             refineType subs2 def.type_
@@ -895,17 +895,17 @@ insertVariableFromLambda isMutable name ty ( env, subs ) =
 inspectPattern : (Name -> Type -> Eas -> TR Eas) -> CA.Pattern -> Type -> Eas -> TR Eas
 inspectPattern insertVariable pattern ty ( env, subs ) =
     case pattern of
-        CA.PatternDiscard _ ->
+        CA.PatternDiscard pos ->
             ( env, subs )
                 |> Ok
                 |> TyGen.wrap
 
-        CA.PatternAny _ name ->
+        CA.PatternAny pos name ->
             insertVariable name ty ( env, subs )
 
-        CA.PatternLiteral _ literal ->
+        CA.PatternLiteral pos literal ->
             subs
-                |> unify { why = "pattern literal", pos = todoPos } ty (literalToType literal)
+                |> unify { why = "pattern literal", pos = pos } ty (literalToType literal)
                 |> andEnv env
 
         CA.PatternConstructor _ path args ->
@@ -916,7 +916,8 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
                         |> TyGen.wrap
 
                 Just envEntry ->
-                    do_nr (reversedZipConstructorArgs args envEntry.type_ [] |> TyGen.wrap) <| \( patternType, argsAndTypes ) ->
+                    TyGen.do (instantiateType envEntry.type_ envEntry.forall) <| \instantiatedType ->
+                    do_nr (reversedZipConstructorArgs args instantiatedType [] |> TyGen.wrap) <| \( patternType, argsAndTypes ) ->
                     do_nr (unify { why = "PatternConstructor", pos = todoPos } ty patternType subs) <| \subs1 ->
                     let
                         fold ( argPattern, argType ) eas =
@@ -977,8 +978,8 @@ reversedZipConstructorArgs args constructorType accum =
                     errorTodo "too many arguments in constructor pattern"
 
 
-annotationTooGeneral : Type -> Type -> Set Name -> Maybe (TR a)
-annotationTooGeneral annotation inferredType inferredForall =
+annotationTooGeneral : Substitutions -> Type -> Type -> Set Name -> Maybe (TR a)
+annotationTooGeneral sub annotation inferredType inferredForall =
     let
         -- This is already calculated when we add the raw definitions to env
         -- Is it faster to get it from env?
@@ -986,7 +987,7 @@ annotationTooGeneral annotation inferredType inferredForall =
             typeVarsFromType annotation
     in
     if Set.size annotationForall > Set.size inferredForall then
-        Just <| errorAnnotationTooGeneral annotation annotationForall inferredType inferredForall
+        Just <| errorAnnotationTooGeneral sub annotation annotationForall inferredType inferredForall
 
     else
         Nothing
@@ -1094,6 +1095,7 @@ insertDefinition def env =
                         let
                             insert varName =
                                 Dict.insert varName
+                                    -- TODO do we need to generalize the type?
                                     { type_ = annotation
 
                                     -- TODO remove parent annotation tyvars!
@@ -1342,7 +1344,7 @@ errorCannotUnify ctx subs a b =
     , subs
         |> Dict.toList
         |> List.sortBy Tuple.first
-        |> List.map (\( n, t ) -> n ++ " = " ++ HumanCA.typeToString t)
+        |> List.map (\( n, ( t, ctx_ ) ) -> n ++ " = " ++ HumanCA.typeToString t)
         |> String.join "\n"
         |> Error.codeBlock
     ]
@@ -1360,7 +1362,7 @@ errorCycle ctx subs a b =
     , subs
         |> Dict.toList
         |> List.sortBy Tuple.first
-        |> List.map (\( n, t ) -> n ++ " = " ++ HumanCA.typeToString t)
+        |> List.map (\( n, ( t, ctx_ ) ) -> n ++ " = " ++ HumanCA.typeToString t)
         |> String.join "\n"
         |> Error.codeBlock
     ]
@@ -1368,8 +1370,8 @@ errorCycle ctx subs a b =
         |> TyGen.wrap
 
 
-errorAnnotationTooGeneral : Type -> Set String -> Type -> Set String -> TR a
-errorAnnotationTooGeneral annotation annotationForall inferredType inferredForall =
+errorAnnotationTooGeneral : Substitutions -> Type -> Set String -> Type -> Set String -> TR a
+errorAnnotationTooGeneral subs annotation annotationForall inferredType inferredForall =
     let
         pos =
             CA.typePos annotation
@@ -1381,6 +1383,32 @@ errorAnnotationTooGeneral annotation annotationForall inferredType inferredForal
     , Error.text ""
     , Error.text <| "forall annotated: " ++ Debug.toString (Set.toList annotationForall)
     , Error.text <| "forall inferred : " ++ Debug.toString (Set.toList inferredForall)
+    , showSubs subs
     ]
         |> Error.makeRes pos.n
         |> TyGen.wrap
+
+
+showSubs : Substitutions -> Error.ContentDiv
+showSubs subs =
+    subs
+        |> Dict.toList
+        |> List.sortBy Tuple.first
+        |> List.map (\( n, ( t, ctx ) ) -> n ++ " = " ++ HumanCA.typeToString t ++ ": " ++ ctx.why ++ " @ " ++ showLine ctx.pos.c ctx.pos.s)
+        |> String.join "\n"
+        |> Error.codeBlock
+
+
+showLine : String -> Int -> String
+showLine code pos =
+    let
+        ( line, _ ) =
+            Error.positionToLineAndColumn code pos
+
+        lines =
+            String.split "\n" code
+    in
+    lines
+        |> List.drop (line - 1)
+        |> List.head
+        |> Maybe.withDefault "WRONG"

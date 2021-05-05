@@ -5,6 +5,7 @@ import Compiler.TestHelpers as TH exposing (p)
 import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Lib
+import Prelude
 import Set exposing (Set)
 import Test exposing (Test)
 import Types.CanonicalAst as CA exposing (Type)
@@ -939,6 +940,33 @@ patterns =
                         }
                 }
             )
+        , {- TODO
+             I can't reproduce this error in the unit tests.
+             Even if I copy all code verbatim here, the error does not appear.
+
+             I can only reproduce it on the dev environment and not reliably.
+             I don't fully understand what causes it.
+
+             Still, the problem is caused at least in part by the fact that I'm not instantiating the type for type constructors when inferring patterns
+             (In TypeInference.inspectPattern#CA.PatternConstructor) which is definitely something worth fixing.
+
+             But still, I don't understand the problem enough to reproduce it reliably.
+          -}
+          codeTest "[rec] Constructors should instantiate their variable types"
+            """
+            each : List a -> (a -> b) -> None
+            each ls f =
+                try ls as
+                    SPCore.Nil then
+                        None
+
+            result =
+                  1 :: SPCore.Nil = SPCore.Nil
+            """
+            (infer "result")
+            --
+            Test.justOk
+            |> Test.NotNow
         ]
 
 
