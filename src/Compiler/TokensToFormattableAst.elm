@@ -42,7 +42,6 @@ parse moduleName code tokens =
     tokens
         |> Parser.parse module_ unconsIgnoreComments
         |> outcomeToResult moduleName code tokens
-        |> Result.map OneOrMore.toList
 
 
 outcomeToResult : String -> String -> List Token -> Parser.Outcome (List Token) MakeError a -> Res a
@@ -72,7 +71,7 @@ unconsIgnoreComments ls =
             Nothing
 
 
-module_ : Parser (OneOrMore FA.Statement)
+module_ : Parser (List FA.Statement)
 module_ =
     let
         start =
@@ -87,7 +86,10 @@ module_ =
         end =
             Parser.end
     in
-    Parser.surroundWith start end statements
+    oneOf
+        [ Parser.map (always []) end
+        , Parser.map OneOrMore.toList <| Parser.surroundWith start end statements
+        ]
 
 
 
