@@ -40,3 +40,23 @@ stringToCanonicalAst meta moduleName code accum =
     code
         |> stringToFormattableAst moduleName
         |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule ro fa accum)
+
+
+
+{-
+
+   toTokens : String -> Res (List Token)
+
+
+   toFormattableAst : String -> String -> { tokens : Res (List Token), faModule : FA.Module }
+
+
+   toCanonicalAst : Meta -> String -> String -> Res { tokens : List Token, faModule : FA.Module, caModule : CA.AllDefs }
+
+
+   type alias ModulePipeline =
+       { tokens : Maybe (Res (List Token))
+       , faModule : Maybe (Res FA.Module)
+       , caModule : Maybe (Res CA.Module)
+       }
+-}
