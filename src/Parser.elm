@@ -101,7 +101,6 @@ You can use more complicated read states to keep track of the context, for examp
 -}
 type alias Parser token readState error output =
     GetNext token readState
-    -> List String
     -> readState
     -> Outcome readState error output
 
@@ -112,13 +111,37 @@ type alias GetNext token readState =
 
 type Outcome readState error output
     = Success readState output
-    | Failure readState
+    | Failure (Tree readState)
     | Abort readState error
 
 
 parse : Parser token readState error output -> GetNext token readState -> readState -> Outcome readState error output
 parse parser getNext readState =
-    parser getNext [] readState
+    parser getNext readState
+
+
+type
+    Tree a
+    -- TODO would be nice if `One` could also store the name of the parser that failed
+    -- "I was looking for an **expression** but couldn't find one..."
+    = One a
+    | Join (Tree a) (Tree a)
+
+
+flattenTree : Tree a -> List a
+flattenTree t =
+    let
+        rec tree accum =
+            case tree of
+                One a ->
+                    a :: accum
+
+                Join a1 a2 ->
+                    accum
+                        |> rec a1
+                        |> rec a2
+    in
+    rec t []
 
 
 
@@ -129,7 +152,6 @@ parse parser getNext readState =
 -- These functions are aware of the internal structure of the parser (ie, it's a function)
 --
 -- TODO rename to `accept`, `reject`, `abort`
--- TODO allow `abort` to produce any type of error, not only string
 
 
 {-| Abort
@@ -139,7 +161,7 @@ This is a fatal error that will interrupt the whole execution
 -}
 abort : error -> Parser token readState error output
 abort error =
-    \getNext path readState ->
+    \getNext readState ->
         Abort readState error
 
 
@@ -147,15 +169,15 @@ abort error =
 -}
 fail : Parser token readState error output
 fail =
-    \getNext path readState ->
-        Failure readState
+    \getNext readState ->
+        Failure (One readState)
 
 
 {-| Always succeed, without consuming any input
 -}
 succeed : a -> Parser token readState error a
 succeed a =
-    \getNext path readState ->
+    \getNext readState ->
         Success readState a
 
 
@@ -163,63 +185,64 @@ succeed a =
 -}
 consumeOne : Parser token readState error token
 consumeOne =
-    \getNext path readState ->
+    \getNext readState ->
         case getNext readState of
             Nothing ->
-                Failure readState
+                Failure (One readState)
 
             Just ( token, nextState ) ->
                 Success nextState token
 
 
+{-| Parse something and if successful, use the result to produce another parser.
+
+If you talk Elm, this is `andThen` with its arguments flipped, so that you can write
+
+    do parseThing <| \thing ->
+    do parseItem <| \item ->
+    succeed (buildTree thing item)
+
+If you talk monads, this is the monadic `bind`, Haskell's `>>=`.
+
+-}
+do : Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
+do firstParser chainedParser =
+    \getNext readState ->
+        case firstParser getNext readState of
+            Success nextReadState a ->
+                chainedParser a getNext nextReadState
+
+            Failure fs ->
+                Failure fs
+
+            Abort rs e ->
+                Abort rs e
+
+
 {-| -}
 doWithDefault : Parser t i e b -> Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
 doWithDefault fallbackParser firstParser chainedParser =
-    \getNext path readState ->
-        case firstParser getNext path readState of
+    \getNext readState ->
+        case firstParser getNext readState of
             Abort rs reason ->
                 Abort rs reason
 
             Failure _ ->
-                fallbackParser getNext path readState
+                fallbackParser getNext readState
 
             Success nextReadState a ->
-                chainedParser a getNext path nextReadState
-
-
-doWithDebug : ({ path : List String, first : Outcome i e a } -> discarded) -> String -> Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
-doWithDebug log name firstParser chainedParser =
-    \getNext p readState ->
-        let
-            path =
-                p ++ [ name ]
-
-            out =
-                firstParser getNext path readState
-
-            _ =
-                log { path = path, first = out }
-        in
-        case out of
-            Abort rs reason ->
-                Abort rs reason
-
-            Failure _ ->
-                fail getNext path readState
-
-            Success nextReadState a ->
-                chainedParser a getNext path nextReadState
+                chainedParser a getNext nextReadState
 
 
 here : Parser t readState e readState
 here =
-    \getNext path readState ->
+    \getNext readState ->
         Success readState readState
 
 
 updState : (readState -> readState) -> Parser t readState e readState
 updState upd =
-    \getNext path readState ->
+    \getNext readState ->
         let
             newReadState =
                 upd readState
@@ -244,22 +267,6 @@ getState =
     updState identity
 
 
-{-| Parse something and if successful, use the result to produce another parser.
-
-If you talk Elm, this is `andThen` with its arguments flipped, so that you can write
-
-    do parseThing <| \thing ->
-    do parseItem <| \item ->
-    succeed (buildTree thing item)
-
-If you talk monads, this is the monadic `bind`, Haskell's `>>=`.
-
--}
-do : Parser t i e a -> (a -> Parser t i e b) -> Parser t i e b
-do =
-    doWithDefault fail
-
-
 
 ----
 --- Common combinators
@@ -277,13 +284,23 @@ end =
 
 
 oneOf : List (Parser t i e o) -> Parser t i e o
-oneOf ps =
-    case ps of
-        [] ->
-            fail
+oneOf parsers =
+    \getNext readState ->
+        let
+            rec failuresSoFar ps =
+                case ps of
+                    [] ->
+                        Failure failuresSoFar
 
-        p :: p_tail ->
-            doWithDefault (oneOf p_tail) p succeed
+                    headParser :: tailParsers ->
+                        case headParser getNext readState of
+                            Failure failures ->
+                                rec (Join failures failuresSoFar) tailParsers
+
+                            successOrAbort ->
+                                successOrAbort
+        in
+        rec (One readState) parsers
 
 
 maybe : Parser t i e o -> Parser t i e (Maybe o)

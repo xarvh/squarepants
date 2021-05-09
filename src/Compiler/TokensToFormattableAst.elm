@@ -53,7 +53,20 @@ outcomeToResult moduleName code tokens outcome =
         Parser.Abort readState makeError ->
             Err <| makeError moduleName code readState
 
-        Parser.Failure readState ->
+        Parser.Failure failureStatesAsTree ->
+            let
+                findMin state best =
+                    if List.length state < List.length best then
+                        state
+
+                    else
+                        best
+
+                readState =
+                    failureStatesAsTree
+                        |> Parser.flattenTree
+                        |> List.foldl findMin tokens
+            in
             Err <| errorOptionsExhausted moduleName code readState
 
 
@@ -116,6 +129,20 @@ errorCantUseMutableAssignmentHere : String -> String -> List Token -> Error.Erro
 errorCantUseMutableAssignmentHere moduleName code state =
     Error.makeError moduleName
         [ Error.text "errorCantUseMutableAssignmentHere" ]
+
+
+abort : String -> Parser a
+abort message =
+    Parser.abort <| \moduleName code readState ->
+    Error.makeError moduleName
+        [ Error.text message
+        , case readState of
+            [] ->
+                Error.text "at EOF"
+
+            token :: _ ->
+                Error.showLines code 2 token.start
+        ]
 
 
 
@@ -531,18 +558,22 @@ if_ =
     in
     do (kind Token.If) <| \ifToken ->
     do expr <| \condition ->
-    do (maybeNewLine Token.Then) <| \_ ->
-    do inlineStatementOrBlock <| \true ->
-    do (maybeNewLine Token.Else) <| \_ ->
-    do inlineStatementOrBlock <| \false ->
-    do here <| \end ->
-    { isOneLine = False
-    , condition = condition
-    , true = OneOrMore.toList true
-    , false = OneOrMore.toList false
-    }
-        |> FA.If ( ifToken.start, end )
-        |> succeed
+    do (maybe <| maybeNewLine Token.Then) <| \maybeThen ->
+    if maybeThen == Nothing then
+        abort "`if` should be followed by a `then` but I can't find it"
+
+    else
+        do inlineStatementOrBlock <| \true ->
+        do (maybeNewLine Token.Else) <| \_ ->
+        do inlineStatementOrBlock <| \false ->
+        do here <| \end ->
+        { isOneLine = False
+        , condition = condition
+        , true = OneOrMore.toList true
+        , false = OneOrMore.toList false
+        }
+            |> FA.If ( ifToken.start, end )
+            |> succeed
 
 
 
