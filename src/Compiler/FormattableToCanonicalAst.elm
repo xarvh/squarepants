@@ -100,23 +100,39 @@ insertRootStatement ro faStatement caModule =
             errorTodo "Root Evaluations don't really do much =|"
 
         FA.Definition fa ->
-            do (translateDefinition True (initEnv ro) fa) <| \def ->
-            case def.pattern of
-                CA.PatternAny caPos defName ->
-                    let
-                        caName =
-                            makeRootName ro.currentModule defName
-                    in
-                    if Dict.member caName caModule then
-                        errorTodo <| defName ++ " declared twice!"
+            let
+                env =
+                    initEnv ro
+            in
+            do (translateDefinition True env fa) <| \localDef ->
+            if localDef.mutable then
+                errorRootDefinitionsCantBeMutable env localDef
 
-                    else
-                        caModule
-                            |> Dict.insert caName (CA.Value { def | pattern = CA.PatternAny caPos caName })
-                            |> Ok
+            else
+                case localDef.pattern of
+                    CA.PatternAny caPos defName ->
+                        let
+                            caName =
+                                makeRootName ro.currentModule defName
 
-                _ ->
-                    errorTodo "patterns can't be used in root definitions!"
+                            rootDef =
+                                { name = caName
+                                , pos = caPos
+                                , maybeAnnotation = localDef.maybeAnnotation
+                                , isNative = False
+                                , body = localDef.body
+                                }
+                        in
+                        if Dict.member caName caModule then
+                            errorTodo <| defName ++ " declared twice!"
+
+                        else
+                            caModule
+                                |> Dict.insert caName (CA.Value rootDef)
+                                |> Ok
+
+                    _ ->
+                        errorTodo "patterns can't be used in root definitions!"
 
         FA.TypeAlias fa ->
             let
@@ -430,7 +446,7 @@ insertParamNames param =
             CA.patternNames pa |> Set.union
 
 
-translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.ValueDef
+translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.LocalValueDef
 translateDefinition isRoot env fa =
     do (validateFaDefinition fa) <| \_ ->
     do (translateMaybeAnnotation env.ro fa) <| \maybeAnnotation ->
@@ -1320,4 +1336,13 @@ errorCantDeclareAFunctionHere env name params originalPattern =
         env.ro.currentModule
         [ Error.showLines env.ro.code 2 (Tuple.first <| FA.patternPos originalPattern)
         , Error.text "it seems like there is a function declaration inside a pattern?"
+        ]
+
+
+errorRootDefinitionsCantBeMutable : Env -> CA.LocalValueDef -> Res a
+errorRootDefinitionsCantBeMutable env def =
+    Error.makeRes
+        env.ro.currentModule
+        [ Error.showLines env.ro.code 2 (CA.patternPos def.pattern).s
+        , Error.text "mutable values can be declared only inside functions."
         ]
