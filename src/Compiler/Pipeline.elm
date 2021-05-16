@@ -1,14 +1,21 @@
 module Compiler.Pipeline exposing (..)
 
 import Compiler.FormattableToCanonicalAst
+import Compiler.ScopeCheck
 import Compiler.StringToTokens
 import Compiler.TokensToFormattableAst
+import Dict exposing (Dict)
 import Types.CanonicalAst as CA
 import Types.Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Meta exposing (Meta)
 import Types.Token exposing (Token)
 
+
+
+----
+--- Single Modules
+--
 
 andThenMapError : (e -> f) -> (a -> Result e b) -> Result f a -> Result f b
 andThenMapError transformError f =
@@ -28,8 +35,8 @@ stringToFormattableAst moduleName code =
         |> Result.andThen (Compiler.TokensToFormattableAst.parse moduleName code)
 
 
-stringToCanonicalAst : Meta -> String -> String -> CA.AllDefs -> Res CA.AllDefs
-stringToCanonicalAst meta moduleName code accum =
+stringToCanonicalAst : Meta -> String -> String -> Res CA.AllDefs
+stringToCanonicalAst meta moduleName code =
     let
         ro =
             { meta = meta
@@ -39,7 +46,8 @@ stringToCanonicalAst meta moduleName code accum =
     in
     code
         |> stringToFormattableAst moduleName
-        |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule ro fa accum)
+        |> Result.andThen (\fa -> Compiler.FormattableToCanonicalAst.translateModule ro fa Dict.empty)
+        |> Result.andThen (\ca -> Compiler.ScopeCheck.onModule meta ca |> Result.map (always ca))
 
 
 
