@@ -435,7 +435,7 @@ expr =
         -- the `Or` stands for `Or higher priority parser`
         [ higherOr <| parens (oneOf [ binopInsideParens, nest ])
         , higherOr <| list FA.List nest
-        , higherOr <| record Token.Defop FA.Record nest
+        , higherOr <| record (Token.Defop { mutable = False }) FA.Record nest
         , higherOr lambda
         , functionApplicationOr
         , unopsOr
@@ -499,13 +499,11 @@ list constructor main =
 --
 
 
-record : ({ mutable : Bool } -> Token.Kind) -> (FA.Pos -> FA.RecordArgs a -> a) -> Parser a -> Parser a
+record : Token.Kind -> (FA.Pos -> FA.RecordArgs a -> a) -> Parser a -> Parser a
 record assign constructor main =
     let
         attrAssignment =
-            discardFirst
-                (kind <| assign { mutable = False })
-                main
+            discardFirst (kind assign) main
 
         attr =
             do nonMutName <| \name ->
@@ -651,14 +649,13 @@ statement =
 definition : Parser FA.Statement
 definition =
     do here <| \start ->
-    do (maybe typeAnnotation) <| \maybeAnnotation ->
     do pattern <| \p ->
     do defop <| \{ mutable } ->
-    do inlineStatementOrBlock <| \sb ->
+    do inlineStatementOrBlockWithAnnotation <| \( maybeAnnotation, body ) ->
     do here <| \end ->
     { pattern = p
     , mutable = mutable
-    , body = OneOrMore.toList sb
+    , body = body
     , maybeAnnotation = maybeAnnotation
     , pos = ( start, end )
     }
@@ -670,9 +667,30 @@ inlineStatementOrBlock : Parser (OneOrMore FA.Statement)
 inlineStatementOrBlock =
     oneOf
         [ do (Parser.breakCircularDefinition <| \_ -> expr) <| \e -> succeed ( FA.Evaluation e, [] )
-        , statement
-            |> oomSeparatedBy (kind Token.NewSiblingLine)
-            |> Parser.surroundWith (kind Token.BlockStart) (kind Token.BlockEnd)
+        , Parser.surroundWith
+            (kind Token.BlockStart)
+            (kind Token.BlockEnd)
+            (oomSeparatedBy (kind Token.NewSiblingLine) statement)
+        ]
+
+
+inlineStatementOrBlockWithAnnotation : Parser ( Maybe FA.Type, List FA.Statement )
+inlineStatementOrBlockWithAnnotation =
+    let
+        blockWithAnnotation =
+            do (maybe <| discardSecond typeAnnotation <| kind Token.NewSiblingLine) <| \maybeAnnotation ->
+            do (oomSeparatedBy (kind Token.NewSiblingLine) statement) <| \bl ->
+            succeed
+                ( maybeAnnotation
+                , OneOrMore.toList bl
+                )
+    in
+    oneOf
+        [ do (Parser.breakCircularDefinition <| \_ -> expr) <| \e -> succeed ( Nothing, [ FA.Evaluation e ] )
+        , Parser.surroundWith
+            (kind Token.BlockStart)
+            (kind Token.BlockEnd)
+            blockWithAnnotation
         ]
 
 
@@ -682,28 +700,11 @@ inlineStatementOrBlock =
 --
 
 
-typeAnnotation : Parser FA.Annotation
+typeAnnotation : Parser FA.Type
 typeAnnotation =
-    do nonMutName <| \name ->
-    do hasType <| \{ mutable } ->
+    do (kind Token.As) <| \_ ->
     do typeExpr <| \ty ->
-    do (kind Token.NewSiblingLine) <| \_ ->
-    succeed
-        { name = name
-        , mutable = mutable
-        , ty = ty
-        }
-
-
-hasType : Parser { mutable : Bool }
-hasType =
-    do oneToken <| \token ->
-    case token.kind of
-        Token.HasType mutability ->
-            succeed mutability
-
-        _ ->
-            fail
+    succeed ty
 
 
 typeTerm : Parser FA.Type
@@ -727,7 +728,7 @@ typeExpr =
         -- the `Or` stands for `Or higher priority parser`
         [ higherOr <| typeParens nest
         , higherOr <| typeList nest
-        , higherOr <| record Token.HasType FA.TypeRecord nest
+        , higherOr <| record Token.Colon FA.TypeRecord nest
         , typeApplicationOr
         , typeTupleOr
         , typeFunctionOr
@@ -885,7 +886,7 @@ functionParameter nest =
         [ patternApplication fail
         , parens nest
         , list FA.PatternList nest
-        , record Token.Defop FA.PatternRecord nest
+        , record (Token.Defop { mutable = False }) FA.PatternRecord nest
         ]
 
 
@@ -906,7 +907,7 @@ pattern =
         -- the `Or` stands for `Or higher priority parser`
         [ higherOr <| parens nest
         , higherOr <| list FA.PatternList nest
-        , higherOr <| record Token.Defop FA.PatternRecord nest
+        , higherOr <| record (Token.Defop { mutable = False }) FA.PatternRecord nest
         , patternBinopOr Binop.Cons FA.PatternCons
         , patternBinopOr Binop.Tuple FA.PatternTuple
         ]

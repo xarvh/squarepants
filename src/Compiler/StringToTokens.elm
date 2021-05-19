@@ -320,10 +320,7 @@ recognisedTokens =
                             Ok <| Token.Arrow { mutable = True }
 
                         ":" ->
-                            Ok <| Token.HasType { mutable = False }
-
-                        "@:" ->
-                            Ok <| Token.HasType { mutable = True }
+                            Ok <| Token.Colon
 
                         "=" ->
                             Ok <| Token.Defop { mutable = False }

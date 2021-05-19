@@ -160,7 +160,7 @@ nativeDefinitions =
     """
 const sp_clone = (src) => {
  if (Array.isArray(src))
-   return src.map(clone);
+   return src.map(sp_clone);
 
  if (typeof(src) === 'object') {
    const dest = {};

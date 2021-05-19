@@ -293,8 +293,9 @@ functions =
         --
         , codeTest "Annotation should be consistent with mutability"
             """
-            f : Number @> Number
-            f a = a
+            f a =
+              as Number @> Number
+              a
             """
             (infer "f")
             (Test.errContain "mutability")
@@ -375,8 +376,9 @@ variableTypes =
                 \_ ->
                     infer "id"
                         """
-                        id : a -> a
-                        id a = a
+                        id a =
+                          as a -> a
+                          a
                         """
             , expected =
                 Ok
@@ -416,8 +418,9 @@ variableTypes =
                 \_ ->
                     infer "id"
                         """
-                        id : a -> b
-                        id l = l
+                        id l =
+                          as a -> b
+                          l
                         """
             , test = Test.errorShouldContain "too general"
             }
@@ -623,8 +626,8 @@ mutability =
                 \_ ->
                     infer "a"
                         """
-                        a : Number -> None
                         a =
+                          as Number -> None
                           reset
                         """
             , test = Test.errorShouldContain "mutability clash"
@@ -635,8 +638,8 @@ mutability =
                 \_ ->
                     infer "a"
                         """
-                        a : Number @> None
                         a =
+                          as Number @> None
                           reset
                         """
             , expected =
@@ -673,8 +676,9 @@ mutability =
                 \_ ->
                     infer "a"
                         """
-                        a @: Number -> Number
-                        a @= add 1
+                        a @=
+                          as Number -> Number
+                          add 1
                         """
             , test = Test.errorShouldContain "mutable"
             }
@@ -684,8 +688,9 @@ mutability =
                 \_ ->
                     infer "a"
                         """
-                        a : (Int -> Int) @> Int
-                        a = a
+                        a =
+                          as (Int -> Int) @> Int
+                          a
                         """
             , test = Test.errorShouldContain "mutable"
             }
@@ -707,8 +712,9 @@ higherOrderTypes =
                 \_ ->
                     infer "a"
                         """
-                        a : List a -> List a
-                        a l = l
+                        a l =
+                          as List a -> List a
+                          l
                         """
             , expected =
                 Ok
@@ -823,8 +829,9 @@ records =
                     infer "x"
                         """
                         x =
-                           a @: Number & Number
-                           a @= 1 & 2
+                           a @=
+                             as Number & Number
+                             1 & 2
 
                            @a.first += 1
                         """
@@ -905,10 +912,10 @@ records =
             )
         , codeTest "[reg] refineType when the record has a non-extensible alias"
             """
-            alias A = { c : Number, d : Number }
+            alias A = { c as Number, d as Number }
 
-            upd : A -> A
             upd a =
+              as A -> A
               { a with c = .c + 1 }
             """
             (infer "upd")
@@ -985,8 +992,8 @@ patterns =
           -}
           codeTest "[rec] Constructors should instantiate their variable types"
             """
-            each : List a -> (a -> b) -> None
             each ls f =
+                as List a -> (a -> b) -> None
                 try ls as
                     SPCore.Nil then
                         None

@@ -19,18 +19,41 @@ Things that should probably be implemented
           blah
 
 
-# use `is` instead of `:` for HasType
+# use `:` for lambdas
 
-    sumTwoNumbers is Int -> Int -> Int
-    sumTwoNumbers a b =
-      a + b
+    x =
+       fn y z:
+           y + x
 
-    # annotation name can be omitted
-    is Int -> Int -> Int
-    sumTwoNumbers a b =
-      a + b
+    x y z =
+      y + z
 
-    alias Point = { x is Int, y is Int }
+
+
+
+# postfix, indented annotation
+
+    aMutable @=
+      as Int
+      3
+
+    aListOfIntegers givenSomeParam =
+      as Int -> List Int
+      [
+      , 1
+      , 2
+      , givenSomeParam
+      ]
+
+    apples & oranges =
+      as Apples & Oranges
+      Apple "apple" & Orange "orange"
+
+
+
+
+
+
 
 
 
@@ -70,20 +93,9 @@ sumTwoNumbers a b =
 
 
 
-Let's go wyld
+Let's go wild
 -------------
 
-# annotation after the name
-
-sumTwoNumbers as Int -> Int -> Int
-  = fn a b =
-    a + b
-
-someRecord as BlahRecordWhatever
-  = {
-  , x = 1
-  , y = 2
-  }
 
 
 # Use `:` instead of `=`
@@ -166,5 +178,24 @@ unless we go python
 
     if x: blah else: blah
 
+
+
+
+Obsolete
+--------
+
+
+# use `is` instead of `:` for HasType
+
+    sumTwoNumbers is Int -> Int -> Int
+    sumTwoNumbers a b =
+      a + b
+
+    # annotation name can be omitted
+    is Int -> Int -> Int
+    sumTwoNumbers a b =
+      a + b
+
+    alias Point = { x is Int, y is Int }
 
 

@@ -47,12 +47,11 @@ runTests =
 
 initialFiles =
     [ moduleMain
-
-    --     , moduleMaybe
-    --     , moduleList
-    --     , moduleText
-    --     , moduleRandom
-    --     , languageOverview
+    , moduleMaybe
+    , moduleList
+    , moduleText
+    , moduleRandom
+    , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -65,15 +64,10 @@ metaFileName =
 moduleMain =
     ( "Main"
     , """
-x =
-  m @= 0
+result =
+  s @= Random.Seed 3
 
-y =
-  m @= 0
-  @m += 1
-
-a =
-  { x, y }
+  Random.number 0 5 @s
       """
     )
 
@@ -507,10 +501,6 @@ tokenToClass meta token =
 
         Token.NumberLiteral _ ->
             "literal"
-
-        -- Types
-        Token.HasType _ ->
-            "op"
 
         -- Keywords
         Token.Fn ->

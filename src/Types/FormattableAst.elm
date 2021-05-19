@@ -28,18 +28,11 @@ type alias Module =
 type alias ValueDef =
     { pattern : Pattern
     , mutable : Bool
-    , maybeAnnotation : Maybe Annotation
+    , maybeAnnotation : Maybe Type
     , body : List Statement
 
     -- TODO move it in the statement constructor?
     , pos : Pos
-    }
-
-
-type alias Annotation =
-    { name : String
-    , mutable : Bool
-    , ty : Type
     }
 
 
@@ -158,7 +151,7 @@ posMap_statement f stat =
             Definition
                 { pattern = posMap_pattern f def.pattern
                 , mutable = def.mutable
-                , maybeAnnotation = Maybe.map (\ann -> { ann | ty = posMap_type f ann.ty }) def.maybeAnnotation
+                , maybeAnnotation = Maybe.map (posMap_type f) def.maybeAnnotation
                 , body = List.map (posMap_statement f) def.body
                 , pos = f def.pos
                 }

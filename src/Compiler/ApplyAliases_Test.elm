@@ -53,8 +53,9 @@ tests =
                     \_ ->
                         """
                         alias A b c = List b
-                        a : A Number Bool
-                        a = a
+                        a =
+                          as A Number Bool
+                          a
                         """
                             |> applyAndGetValue "a"
                             |> Result.map .maybeAnnotation
@@ -71,8 +72,9 @@ tests =
                     \_ ->
                         """
                         alias A b c = List b
-                        a : A Bool
-                        a = a
+                        a =
+                          as A Bool
+                          a
                         """
                             |> applyAndGetValue "a"
                 , test = Test.errorShouldContain "alias Test.A needs 2 args, but was used with 1"
@@ -82,9 +84,10 @@ tests =
                 , run =
                     \_ ->
                         """
-                        alias A b = { x : b, y : b }
-                        a : A Bool
-                        a = a
+                        alias A b = { x as b, y as b }
+                        a =
+                          as A Bool
+                          a
                         """
                             |> applyAndGetValue "a"
                             |> Result.map .maybeAnnotation

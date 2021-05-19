@@ -3,8 +3,8 @@ module Compiler.TokensToFormattableAst_Test exposing (..)
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst as Syntax
 import Parser
-import Test exposing (Test)
 import Prelude
+import Test exposing (Test)
 import Types.Binop as Binop
 import Types.FormattableAst as FA
 import Types.Literal
@@ -112,7 +112,7 @@ firstEvaluation code =
         |> Result.andThen asEvaluation
 
 
-firstAnnotation : String -> Result String FA.Annotation
+firstAnnotation : String -> Result String FA.Type
 firstAnnotation code =
     code
         |> firstStatement
@@ -224,23 +224,21 @@ annotations =
                 \_ ->
                     firstAnnotation
                         """
-                        a : Number @> Int -> None
-                        a = 1
+                        a =
+                          as Number @> Int -> None
+                          1
                         """
             , expected =
                 Ok
-                    { mutable = False
-                    , name = "a"
-                    , ty =
-                        FA.TypeFunction p
-                            (FA.TypeName p "Number")
-                            True
-                            (FA.TypeFunction p
-                                (FA.TypeName p "Int")
-                                False
-                                (FA.TypeName p "None")
-                            )
-                    }
+                    (FA.TypeFunction p
+                        (FA.TypeName p "Number")
+                        True
+                        (FA.TypeFunction p
+                            (FA.TypeName p "Int")
+                            False
+                            (FA.TypeName p "None")
+                        )
+                    )
             }
         , simpleTest
             { name = "Mutability 2"
@@ -248,23 +246,21 @@ annotations =
                 \_ ->
                     firstAnnotation
                         """
-                        a : Number -> Int @> None
-                        a = 1
+                        a =
+                          as Number -> Int @> None
+                          1
                         """
             , expected =
                 Ok
-                    { mutable = False
-                    , name = "a"
-                    , ty =
-                        FA.TypeFunction p
-                            (FA.TypeName p "Number")
-                            False
-                            (FA.TypeFunction p
-                                (FA.TypeName p "Int")
-                                True
-                                (FA.TypeName p "None")
-                            )
-                    }
+                    (FA.TypeFunction p
+                        (FA.TypeName p "Number")
+                        False
+                        (FA.TypeFunction p
+                            (FA.TypeName p "Int")
+                            True
+                            (FA.TypeName p "None")
+                        )
+                    )
             }
         , simpleTest
             { name = "Tuple precedence"
@@ -272,23 +268,21 @@ annotations =
                 \_ ->
                     firstAnnotation
                         """
-                        a : Int & Int -> Bool
-                        a = a
+                        a =
+                          as Int & Int -> Bool
+                          a
                         """
             , expected =
                 Ok
-                    { mutable = False
-                    , name = "a"
-                    , ty =
-                        FA.TypeFunction p
-                            (FA.TypeTuple p
-                                [ FA.TypeName p "Int"
-                                , FA.TypeName p "Int"
-                                ]
-                            )
-                            False
-                            (FA.TypeName p "Bool")
-                    }
+                    (FA.TypeFunction p
+                        (FA.TypeTuple p
+                            [ FA.TypeName p "Int"
+                            , FA.TypeName p "Int"
+                            ]
+                        )
+                        False
+                        (FA.TypeName p "Bool")
+                    )
             }
         ]
 
@@ -435,11 +429,11 @@ records =
             , run =
                 \_ ->
                     """
-                    a : { x : Bool }
-                    a = a
+                    a =
+                      as { x as Bool }
+                      a
                     """
                         |> firstAnnotation
-                        |> Result.map .ty
             , expected =
                 Ok
                     (FA.TypeRecord p
@@ -453,13 +447,13 @@ records =
             , run =
                 \_ ->
                     """
-                    a : {
-                       , x : Bool
+                    a =
+                      as {
+                       , x as Bool
                        }
-                    a = a
+                      a
                     """
                         |> firstAnnotation
-                        |> Result.map .ty
             , expected =
                 Ok
                     (FA.TypeRecord p

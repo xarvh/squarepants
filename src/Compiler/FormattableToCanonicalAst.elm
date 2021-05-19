@@ -449,7 +449,6 @@ insertParamNames param =
 
 translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.LocalValueDef
 translateDefinition isRoot env fa =
-    do (validateFaDefinition fa) <| \_ ->
     do (translateMaybeAnnotation env.ro fa) <| \maybeAnnotation ->
     do (translatePatternOrFunction env fa.pattern) <| \patternOrFunction ->
     let
@@ -480,38 +479,6 @@ translateDefinition isRoot env fa =
         |> Ok
 
 
-validateFaDefinition : FA.ValueDef -> Res ()
-validateFaDefinition fa =
-    let
-        maybeName =
-            case fa.pattern of
-                FA.PatternAny _ _ n ->
-                    Just n
-
-                _ ->
-                    Nothing
-    in
-    case fa.maybeAnnotation of
-        Nothing ->
-            Ok ()
-
-        Just annotation ->
-            if fa.mutable /= annotation.mutable then
-                errorTodo "annotation mutability doesn't match definition mutability"
-
-            else
-                case maybeName of
-                    Nothing ->
-                        Ok ()
-
-                    Just name ->
-                        if annotation.name /= name then
-                            errorTodo "annotation name doesn't match definition name"
-
-                        else
-                            Ok ()
-
-
 translateMaybeAnnotation : ReadOnly -> FA.ValueDef -> Res (Maybe CA.Type)
 translateMaybeAnnotation ro fa =
     case fa.maybeAnnotation of
@@ -519,7 +486,7 @@ translateMaybeAnnotation ro fa =
             Ok Nothing
 
         Just annotation ->
-            translateType ro annotation.ty
+            translateType ro annotation
                 |> Result.map Just
 
 

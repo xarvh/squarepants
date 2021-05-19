@@ -22,13 +22,12 @@ type
     | TextLiteral String
     | NumberLiteral String
     | Name { mutable : Bool } String
-      -- Types
-    | HasType { mutable : Bool }
       -- Keywords
     | Fn
     | If
     | Try
     | As
+    | Colon
     | Then
     | Else
     | With

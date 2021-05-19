@@ -214,8 +214,9 @@ lists =
                 \_ ->
                     firstDefinition "l"
                         """
-                        l : [ SPCore.Bool ]
-                        l = l
+                        l =
+                          as [ SPCore.Bool ]
+                          l
                         """
             , expected =
                 Ok
@@ -284,8 +285,9 @@ tuples =
                 \_ ->
                     firstDefinition "a"
                         """
-                        a : Blah & Blah
-                        a = a
+                        a =
+                          as Blah & Blah
+                          a
                         """
             , expected =
                 Ok
@@ -312,8 +314,9 @@ tuples =
                 \_ ->
                     firstDefinition "a"
                         """
-                        a : Blah & Blah & Blah & Blah
-                        a = a
+                        a =
+                          as Blah & Blah & Blah & Blah
+                          a
                         """
             , test = Test.errorShouldContain "Use a record"
             }
@@ -386,8 +389,9 @@ records =
             }
         , codeTest "annotation, extensible"
             """
-            a : { b with x : Bool }
-            a = a
+            a =
+              as { b with x as Bool }
+              a
             """
             (firstEvaluation "a")
             (Test.errContain "disabled")
@@ -433,28 +437,26 @@ patterns =
 annotations : Test
 annotations =
     Test.Group "Annotations"
-        [ hasError
-            { name = "annotation mutability must match definition's"
-            , run =
-                \_ ->
-                    """
-                    a : Number
-                    a @= 3
-                    """
-                        |> firstEvaluation "a"
-            , test = Test.errorShouldContain "mutability"
-            }
-        , hasError
-            { name = "annotation mutability must match definition's"
-            , run =
-                \_ ->
-                    """
-                    a : Number
-                    b = 3
-                    """
-                        |> firstEvaluation "b"
-            , test = Test.errorShouldContain "name"
-            }
+        [ codeTest "annotation on mutable value"
+            """
+            x =
+              a @=
+                as Number
+                3
+              a
+            """
+            (firstDefinition "x")
+            Test.justOk
+
+        --
+        , codeTest "annotation on immutable value"
+            """
+            b =
+              as Number
+              3
+            """
+            (firstEvaluation "b")
+            Test.justOk
         ]
 
 
