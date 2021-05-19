@@ -593,7 +593,7 @@ try =
 
         patternAndAccept =
             do pattern <| \p ->
-            do (maybeNewLineKind Token.Then) <| \_ ->
+            do (maybeNewLineKind Token.Colon) <| \_ ->
             do inlineStatementOrBlock <| \accept ->
             succeed ( p, OneOrMore.toList accept )
 
@@ -728,7 +728,7 @@ typeExpr =
         -- the `Or` stands for `Or higher priority parser`
         [ higherOr <| typeParens nest
         , higherOr <| typeList nest
-        , higherOr <| record Token.Colon FA.TypeRecord nest
+        , higherOr <| record Token.As FA.TypeRecord nest
         , typeApplicationOr
         , typeTupleOr
         , typeFunctionOr

@@ -173,11 +173,11 @@ try =
 
             a x =
               try x as
-                A 1 then 11
-                A n then n
-                B then 3
-                C False then 5
-                C _ then 6
+                A 1: 11
+                A n: n
+                B: 3
+                C False: 5
+                C _: 6
 
             result =
              { x = a (A 2)

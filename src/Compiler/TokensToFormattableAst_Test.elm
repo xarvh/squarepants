@@ -524,7 +524,7 @@ tries =
     Test.Group "Try"
         [ isOk
             { name = "inline"
-            , run = \_ -> firstEvaluation "x = try a as b then c else d"
+            , run = \_ -> firstEvaluation "x = try a as b: c else d"
             }
         , isOk
             { name = "multiline, formatted"
@@ -533,9 +533,9 @@ tries =
                     """
                     x =
                       try a as
-                        b then
+                        b:
                           c
-                        d then
+                        d:
                           e
                         else
                           f
@@ -549,8 +549,8 @@ tries =
                     """
                     x =
                       try a as
-                        b then c
-                        d then e
+                        b: c
+                        d: e
                         else f
                     """
                         |> firstEvaluation

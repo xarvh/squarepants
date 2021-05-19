@@ -995,7 +995,7 @@ patterns =
             each ls f =
                 as List a -> (a -> b) -> None
                 try ls as
-                    SPCore.Nil then
+                    SPCore.Nil:
                         None
 
             result =
@@ -1021,7 +1021,7 @@ try_as =
             """
             x q =
              try q as
-               True then 2
+               True: 2
                else 3
             """
             (infer "x")
@@ -1042,8 +1042,8 @@ try_as =
             """
             x q =
              try q as
-               True then 2
-               [] then 3
+               True: 2
+               []: 3
             """
             (infer "x")
             (Test.errContain "SPCore.List")
@@ -1053,8 +1053,8 @@ try_as =
             """
             x q =
              try q as
-               True then 2
-               False then False
+               True: 2
+               False: False
             """
             (infer "x")
             (Test.errContain "SPCore.Number")
