@@ -262,13 +262,13 @@ functions =
             }
         , hasError
             { name = "Function args can't shadow other names"
-            , run = \_ -> infer "a" "a = fn a = 1"
+            , run = \_ -> infer "a" "a = fn a: 1"
             , test = Test.errorShouldContain "function parameter `a` shadows env variable"
             }
             |> Test.NotNow
         , simpleTest
             { name = "[reg] fn has type None"
-            , run = \_ -> infer "a" "a = fn x = 1"
+            , run = \_ -> infer "a" "a = fn x: 1"
             , expected =
                 Ok
                     { forall = Set.fromList [ "1" ]
@@ -595,7 +595,7 @@ mutability =
                         """
                         a =
                           x @= 1
-                          fn y = y
+                          fn y: y
                         """
             , test = Test.errorShouldContain "statement blocks that define mutables can't return functions"
             }
@@ -651,23 +651,23 @@ mutability =
             }
         , hasError
             { name = "Functions can't be mutable 1"
-            , run = \_ -> infer "a" "a @= fn x = x"
+            , run = \_ -> infer "a" "a @= fn x: x"
             , test = Test.errorShouldContain "mutable"
             }
         , simpleTest
             { name = "Functions can't be mutable 2"
-            , run = \_ -> infer "a" "a f = @f := (fn x = x)"
+            , run = \_ -> infer "a" "a f = @f := (fn x: x)"
             , expected = Err "these mutable values contain functions: f"
             }
             |> Test.NotNow
         , hasError
             { name = "Lambda argument mutability is correctly inferred"
-            , run = \_ -> infer "a" "a = fn x = reset x"
+            , run = \_ -> infer "a" "a = fn x: reset x"
             , test = Test.errorShouldContain "mutability clash"
             }
         , hasError
             { name = "*Nested* lambda argument mutability is correctly inferred"
-            , run = \_ -> infer "a" "a = fn x = (fn y = reset y) x"
+            , run = \_ -> infer "a" "a = fn x: (fn y: reset y) x"
             , test = Test.errorShouldContain "mutability clash"
             }
         , hasError

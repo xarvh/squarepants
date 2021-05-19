@@ -135,10 +135,10 @@ lambdas =
                 \_ ->
                     [ Token.Fn
                     , Token.Name { mutable = False } "a"
-                    , Token.Defop { mutable = False }
+                    , Token.Colon
                     , Token.Fn
                     , Token.Name { mutable = False } "b"
-                    , Token.Defop { mutable = False }
+                    , Token.Colon
                     , Token.NumberLiteral "3"
                     ]
                         |> List.indexedMap kindToToken
@@ -160,11 +160,11 @@ lambdas =
                 \_ ->
                     [ Token.Fn
                     , Token.Name { mutable = False } "a"
-                    , Token.Defop { mutable = False }
+                    , Token.Colon
                     , Token.BlockStart
                     , Token.Fn
                     , Token.Name { mutable = False } "b"
-                    , Token.Defop { mutable = False }
+                    , Token.Colon
                     , Token.BlockStart
                     , Token.NumberLiteral "3"
                     , Token.BlockEnd
@@ -189,11 +189,11 @@ lambdas =
                 \_ ->
                     [ Token.Fn
                     , Token.Name { mutable = False } "a"
-                    , Token.Defop { mutable = False }
+                    , Token.Colon
                     , Token.NewSiblingLine
                     , Token.Fn
                     , Token.Name { mutable = False } "b"
-                    , Token.Defop { mutable = False }
+                    , Token.Colon
                     , Token.NewSiblingLine
                     , Token.NumberLiteral "3"
                     ]

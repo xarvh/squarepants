@@ -847,12 +847,8 @@ lambda =
         def =
             do (kind Token.Fn) <| \fn ->
             do (oneOrMore <| functionParameter pattern) <| \params ->
-            do defop <| \{ mutable } ->
-            if mutable then
-                Parser.abort errorCantUseMutableAssignmentHere
-
-            else
-                succeed ( fn, params )
+            do (kind Token.Colon) <| \_ ->
+            succeed ( fn, params )
 
         body : Parser (OneOrMore FA.Statement)
         body =

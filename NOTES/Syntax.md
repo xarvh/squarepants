@@ -5,51 +5,18 @@ Possible alternative syntax
 Things that should probably be implemented
 ------------------------------------------
 
-# try..as uses `:` in place of `then`
 
-  * try blah as
+# Use `:` instead of `then` in if statements
 
-      pa1:
-          blah
+  * if expr: blah1 else: blah2
 
-      pa2:
-          blah
+  * if expr: blah1 else blah2
 
-      _:
-          blah
+  -> Both `else` and `else:` are valid
+  -> auto-formatting will turn `else` into `else:`
 
-
-# use `:` for lambdas
-
-    x =
-       fn y z:
-           y + x
-
-    x y z =
-      y + z
-
-
-
-
-# postfix, indented annotation
-
-    aMutable @=
-      as Int
-      3
-
-    aListOfIntegers givenSomeParam =
-      as Int -> List Int
-      [
-      , 1
-      , 2
-      , givenSomeParam
-      ]
-
-    apples & oranges =
-      as Apples & Oranges
-      Apple "apple" & Orange "orange"
-
-
+  + This has the advantage that `then` is not a keyword any more
+  - `else:` is super ugly
 
 
 
@@ -62,22 +29,15 @@ Things that are worth considering but need thinking
 ---------------------------------------------------
 
 
+# Remove support for `else` in try..as
+
+
 # Use `to` instead of `->` for function types
 
 sumTwoNumbers is Int to Int to Int
 sumTwoNumbers a b =
   a + b
 
-
-# Use `:` instead of `then` in if statements
-
-  * if expr:
-      blah1
-    else:
-      blah2
-
-  -> This has the advantage that `then` is not a keyword any more
-  -> `else:` is super ugly
 
 
 

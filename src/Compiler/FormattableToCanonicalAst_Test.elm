@@ -504,15 +504,15 @@ functions =
         [ codeTest "[rec] lambda with two arguments"
             """
             f =
-              fn a b = 1
+              fn a b: 1
             """
             (firstEvaluation "f")
             Test.justOk
         , codeTest "short function notation"
             """
             a x y z = x + y + z
-            b = fn x y z = x + y + z
-            c = fn x = fn y = fn z = x + y + z
+            b = fn x y z: x + y + z
+            c = fn x: fn y: fn z: x + y + z
             """
             transformABC
             (Test.freeform <| \( a, b, c ) ->
