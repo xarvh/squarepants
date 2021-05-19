@@ -77,21 +77,19 @@ moduleMaybe =
     , """
       union Maybe a = Nothing, Just a
 
-      andThen : (a -> Maybe b) -> Maybe a -> Maybe b
       andThen f ma =
-          try ma as
-              Nothing then
-                  Nothing
-              Just a then
-                  f a
+          as (a -> Maybe b) -> Maybe a -> Maybe b
 
-      map : (a -> b) -> Maybe a -> Maybe b
+          try ma as
+              Nothing: Nothing
+              Just a: f a
+
       map f m =
+        as (a -> b) -> Maybe a -> Maybe b
+
         try m as
-          Nothing then
-            Nothing
-          Just v then
-            Just (f v)
+          Nothing: Nothing
+          Just v: Just (f v)
         """
     )
 
@@ -99,22 +97,23 @@ moduleMaybe =
 moduleText =
     ( "SPCore/Text"
     , """
-      fromInt : Number -> Text
       fromInt n =
+        as Number -> Text
         "<native>"
 
-      join : Text -> List Text -> Text
       join sep listOfText =
+        as Text -> List Text -> Text
+
         try listOfText as
-            SPCore.Nil then
+            SPCore.Nil:
               ""
 
-            SPCore.Cons head tail then
+            SPCore.Cons head tail:
               rec ls acc =
                 try ls as
-                  SPCore.Nil then
+                  SPCore.Nil:
                     acc
-                  SPCore.Cons h t then
+                  SPCore.Cons h t:
                     rec t << acc .. sep .. h
 
               rec tail head
@@ -125,32 +124,35 @@ moduleText =
 moduleList =
     ( "SPCore/List"
     , """
-each : List a -> (a -> b) -> None
 each ls f =
+    as List a -> (a -> b) -> None
+
     try ls as
-        SPCore.Nil then
+        SPCore.Nil:
             None
 
-        SPCore.Cons head tail then
+        SPCore.Cons head tail:
             f head
             each tail f
 
 
-reverse : List a -> List a
 reverse aList =
+    as List a -> List a
+
     rec ls acc =
         try ls as
-            SPCore.Nil then
+            SPCore.Nil:
                 acc
 
-            SPCore.Cons head tail then
+            SPCore.Cons head tail:
                 rec tail (SPCore.Cons head acc)
 
     rec aList []
 
 
-repeat : Number -> a -> List a
 repeat n a =
+    as Number -> a -> List a
+
     rec c acc =
         if c > 0 then rec (c - 1) (SPCore.Cons a acc) else acc
 
@@ -180,8 +182,8 @@ This function is here just to illustrate how to use mutables.
 It's very much not a practical pseudo random generator.
 
 #]
-number : Number -> Number -> Seed @> Number
 number min max @wrappedSeed =
+    as Number -> Number -> Seed @> Number
 
     Seed seed = wrappedSeed
 
@@ -1225,29 +1227,33 @@ alias Vec2 = Number
 
 
 # Declarations can have a type annotation
-floatSix : Float
 floatSix =
+    as Float
+
     # parens are not needed for calling functions
     addThreeNumbers 1 2 3
 
 
-# if-then-else always yields a value
-fibonacci : Int -> Int
 fibonacci n =
+    as Int -> Int
+
+    # if-then-else always yields a value
     if n < 2 then n else n + fibonacci (n - 1)
 
 
-# operators can be used prefixed, like functions
-# `left - right` becomes `(-) right left`
-subtractTwoFrom : Vec2 -> Vec2
 subtractTwoFrom n =
+    as Vec2 -> Vec2
+
+    # operators can be used prefixed, like functions
+    # `left - right` becomes `(-) right left`
     (-) 2 n
 
 
 # Square brackets for Lists.
 # All items must be of the same type
-listOfText : [ Text ]
-listOfText = [
+listOfText =
+    as [ Text ]
+    [
     , "Gary"
     , "Bikini Bottom"
     , "I'm ready! Promotion!"
@@ -1257,8 +1263,8 @@ listOfText = [
 # `>>` and `<<` are just syntactic sugar, read them as "send to".
 # They help using less parens and help visualizing how a value is
 # transformed step-by-step.
-repeatHello : Int -> Text
 repeatHello times =
+    as Int -> Text
     "Hello!"
         >> List.repeat times
         >> Text.join ", "
@@ -1266,15 +1272,16 @@ repeatHello times =
 
 
 # When you see `@`, it means "this stuff is mutable"
-average : List Int -> Float
 average numbers =
+    as List Int -> Float
+
     # mutable variables can only be local and can't leave their scope.
     # `average` is still a pure function.
     n @= 0
     sum @= 0
 
     # anonymous functions start with `fn`
-    List.each numbers fn x =
+    List.each numbers fn x:
         @n += 1
         @sum += x
 
@@ -1283,8 +1290,9 @@ average numbers =
 
 
 # The argument preceding `@>` is mutable
-generateTwoRandomNumbers : Int -> Int -> Random.Seed @> Int & Int
 generateTwoRandomNumbers min max @seed =
+    as Int -> Int -> Random.Seed @> Int & Int
+
     # '&' is used for tuples
     Random.number min max @seed & Random.number min max @seed
 
@@ -1298,29 +1306,34 @@ union LoadingState payload =
     , Error Text
     , Available payload
 
-getStatusName : LoadingState payload -> Text
 getStatusName loadingState =
-    try loadingState as
-        NotRequested then "Not needed"
-        Requested then "Awaiting server response"
-        Error message then "Error: " .. message
-        Available _ then "Successfully loaded"
+    as LoadingState payload -> Text
 
-getPayload : LoadingState payload -> Maybe payload
+    try loadingState as
+        NotRequested: "Not needed"
+        Requested: "Awaiting server response"
+        Error message: "Error: " .. message
+        Available _: "Successfully loaded"
+
 getPayload loadingState =
-    try loadingState as Available payload then Just payload else Nothing
+    as LoadingState payload -> Maybe payload
+
+    # TBH not sure if single-line try..as should be a thing
+    try loadingState as Available payload: Just payload else Nothing
 
 
 
 # Records
 
-alias Crab = {
-    , name : Text
-    , money : Float
+alias Crab =
+    {
+    , name as Text
+    , money as Float
     }
 
-eugeneKrabs : Crab
-eugeneKrabs = {
+eugeneKrabs =
+    as Crab
+    {
     , name = "Eugene H. Krabs"
     , money = 2 #TODO 2_345_678.90
     }
@@ -1329,19 +1342,21 @@ eugeneKrabs = {
 # TODO add a record access example
 
 
-earnMoney : Float -> Crab -> Crab
 earnMoney profit crab =
+    as Float -> Crab -> Crab
+
     # `.money` is a shorthand for `crab.money`
     { crab with money = .money + profit }
 
 
 # to-notation
-getAllHouses : (Text -> Maybe house) -> Maybe { rock : house, moai : house, pineapple : house }
 getAllHouses getAsset =
+    as (Text -> Maybe house) -> Maybe { rock as house, moai as house, pineapple as house }
+
     to = Maybe.andThen
-    getAsset "rock" >> to fn rock =
-    getAsset "moai" >> to fn moai =
-    getAsset "pineapple" >> to fn pineapple =
+    getAsset "rock" >> to fn rock:
+    getAsset "moai" >> to fn moai:
+    getAsset "pineapple" >> to fn pineapple:
        Just { rock, moai, pineapple }
     """
         |> String.trim

@@ -2,8 +2,20 @@ Possible alternative syntax
 ===========================
 
 
+
 Things that should probably be implemented
 ------------------------------------------
+
+
+
+# Distinguish `as` in `try..as` from `as` in annotations
+
+  * try..as -> match..to
+  * try..as -> try..on
+  * blah x =
+      is { ext with z is Int }
+  * if value like
+
 
 
 # Use `:` instead of `then` in if statements
