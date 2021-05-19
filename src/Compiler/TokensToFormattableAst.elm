@@ -703,7 +703,7 @@ inlineStatementOrBlockWithAnnotation =
 typeAnnotation : Parser FA.Type
 typeAnnotation =
     do (kind Token.As) <| \_ ->
-    do typeExpr <| \ty ->
+    do (inlineOrIndented typeExpr) <| \ty ->
     succeed ty
 
 

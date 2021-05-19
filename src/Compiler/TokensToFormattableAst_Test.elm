@@ -371,7 +371,23 @@ lists =
                     |> Ok
             }
         , simpleTest
-            { name = "multiline"
+            { name = "multiline canonical"
+            , run = \_ -> firstEvaluation """
+                 a =
+                   [
+                   , 1
+                   , 2
+                   ]
+                 """
+            , expected =
+                [ FA.Literal p <| Types.Literal.Number "1"
+                , FA.Literal p <| Types.Literal.Number "2"
+                ]
+                    |> FA.List p
+                    |> Ok
+            }
+        , simpleTest
+            { name = "multiline compact"
             , run = \_ -> firstEvaluation """
                  a = [
                    , 1
@@ -404,6 +420,29 @@ records =
             }
         , simpleTest
             { name = "multiline"
+            , run =
+                \_ ->
+                    """
+                    a =
+                      {
+                      , x = 1
+                      , y = 2
+                      }
+                    """
+                        |> firstEvaluation
+            , expected =
+                Ok
+                    (FA.Record p
+                        { attrs =
+                            [ ( "x", Just (FA.Literal p <| Types.Literal.Number "1") )
+                            , ( "y", Just (FA.Literal p <| Types.Literal.Number "2") )
+                            ]
+                        , extends = Nothing
+                        }
+                    )
+            }
+        , simpleTest
+            { name = "multiline compact"
             , run =
                 \_ ->
                     """
@@ -444,6 +483,27 @@ records =
             }
         , simpleTest
             { name = "annotation, multiline"
+            , run =
+                \_ ->
+                    """
+                    a =
+                      as
+                       {
+                       , x as Bool
+                       }
+                      a
+                    """
+                        |> firstAnnotation
+            , expected =
+                Ok
+                    (FA.TypeRecord p
+                        { extends = Nothing
+                        , attrs = [ ( "x", Just <| FA.TypeName p "Bool" ) ]
+                        }
+                    )
+            }
+        , simpleTest
+            { name = "annotation, multiline compact"
             , run =
                 \_ ->
                     """
