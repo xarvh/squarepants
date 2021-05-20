@@ -1,0 +1,68 @@
+{
+    "sourceDirs": [
+        {
+            "path": "sp"
+        }
+    ],
+    "libraries": [
+        {
+            "source": "spcore",
+            "modules": [
+                {
+                    "path": "SPCore",
+                    "importAs": "SPCore",
+                    "globalValues": [
+                        "None",
+                        "True",
+                        "False"
+                    ],
+                    "globalTypes": [
+                        "None",
+                        "Bool",
+                        "Text",
+                        "List",
+                        "Number"
+                    ]
+                },
+                {
+                    "path": "SPCore/List",
+                    "importAs": "List",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPCore/Maybe",
+                    "importAs": "Maybe",
+                    "globalValues": [
+                        "Just",
+                        "Nothing"
+                    ],
+                    "globalTypes": [
+                        "Maybe"
+                    ]
+                },
+                {
+                    "path": "SPCore/Random",
+                    "importAs": "Random",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPCore/Text",
+                    "importAs": "Text",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPCore/Debug",
+                    "importAs": "Debug",
+                    "globalValues": [
+                        "log",
+                        "todo"
+                    ],
+                    "globalTypes": []
+                }
+            ]
+        }
+    ]
+}

@@ -9,6 +9,10 @@ import Json.Decode as D exposing (Decoder)
 import Types.Meta exposing (Meta)
 
 
+
+-- TODO importAs -> visibleAs ?
+
+
 type alias MetaFile =
     { sourceDirs : List SourceDir
     , libraries : List Library
@@ -55,8 +59,10 @@ stringToMetaFile json =
 
 toMeta : MetaFile -> Meta
 toMeta metaFile =
-    metaFile.sourceDirs
-        |> List.concatMap .moduleExceptions
+    [ List.concatMap .modules metaFile.libraries
+    , List.concatMap .moduleExceptions metaFile.sourceDirs
+    ]
+        |> List.concat
         |> List.foldl insertModule Types.Meta.init
 
 
@@ -96,10 +102,10 @@ fileDecoder =
 sourceDirDecoder : Decoder SourceDir
 sourceDirDecoder =
     do (D.field "path" D.string) <| \path ->
-    do (D.field "moduleExceptions" <| D.list moduleDecoder) <| \moduleExceptions ->
+    do (D.maybe <| D.field "moduleExceptions" <| D.list moduleDecoder) <| \moduleExceptions ->
     D.succeed
         { path = path
-        , moduleExceptions = moduleExceptions
+        , moduleExceptions = Maybe.withDefault [] moduleExceptions
         }
 
 
