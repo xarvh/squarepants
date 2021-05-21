@@ -2,6 +2,32 @@ Possible alternative syntax
 ===========================
 
 
+Unsolved Problems
+-----------------
+
+# do-notation
+
+    to = Result.andThen
+    blah blah blah >> to fn blahOutput:
+    someotherline >> to fn otherThingy:
+    doStuffWith blahOutput otherThingy
+
+  - Is not super clear
+  - It is not obvious that lower lines depend on higher lines
+  - Forces the eyes to parse the end of the line to get the new variable name
+  + Uses known syntax
+
+
+  payload Result.do (tryToAccessPayload arg1 arg2)
+
+  on payload ? Result.from : (tryToAccessPayload arg1 arg2)
+
+
+
+
+
+
+
 
 Things that should probably be implemented
 ------------------------------------------
@@ -41,6 +67,8 @@ Things that are worth considering but need thinking
 ---------------------------------------------------
 
 
+
+
 # Remove support for `else` in try..as
 
 
@@ -65,9 +93,9 @@ sumTwoNumbers a b =
 
 
 
-Let's go wild
--------------
 
+Obsolete
+--------
 
 
 # Use `:` instead of `=`
@@ -117,57 +145,3 @@ Also, what do we use for mutable assignment?
     x ::@ 4
 
     @{binop} a b: a @ (a binop b)
-
-
-* Should `:` be used for all block declarations?
-    For example, instead of `then` in try..as:
-
-    try blah as
-      pa1:
-          blah
-      pa2:
-          blah
-      _:
-          blah
-
-      else
-          blah
-
-the one-liner looks ugly
-    try blah as x: expr else expr # looks ugly
-
-unless we go python
-    try blah as x: expr else: expr
-
-    try blah as x then expr else blah
-
-    `if..then` would stay an exception
-
-    if x:
-      blah
-    else:
-      blah
-
-    if x: blah else: blah
-
-
-
-
-Obsolete
---------
-
-
-# use `is` instead of `:` for HasType
-
-    sumTwoNumbers is Int -> Int -> Int
-    sumTwoNumbers a b =
-      a + b
-
-    # annotation name can be omitted
-    is Int -> Int -> Int
-    sumTwoNumbers a b =
-      a + b
-
-    alias Point = { x is Int, y is Int }
-
-

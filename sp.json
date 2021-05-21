@@ -48,6 +48,12 @@
                     "globalTypes": []
                 },
                 {
+                    "path": "SPCore/Result",
+                    "importAs": "Result",
+                    "globalValues": [ "Ok", "Err" ],
+                    "globalTypes": [ "Result" ]
+                },
+                {
                     "path": "SPCore/Text",
                     "importAs": "Text",
                     "globalValues": [],
