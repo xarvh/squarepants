@@ -213,9 +213,23 @@ discardSecond a b =
 inlineOrIndented : Parser a -> Parser a
 inlineOrIndented p =
     oneOf
-        [ surroundStrict Token.BlockStart Token.BlockEnd p
-        , discardFirst (maybe <| kind Token.NewSiblingLine) p
+        [ block p
+        , p
         ]
+
+
+inlineOrBelowOrIndented : Parser a -> Parser a
+inlineOrBelowOrIndented p =
+    oneOf
+        [ block p
+        , discardFirst (kind Token.NewSiblingLine) p
+        , p
+        ]
+
+
+maybeWithDefault : a -> Parser a -> Parser a
+maybeWithDefault a p =
+    oneOf [ p, succeed a ]
 
 
 surroundStrict : Token.Kind -> Token.Kind -> Parser a -> Parser a
@@ -227,10 +241,10 @@ surroundMultiline : Token.Kind -> Token.Kind -> Parser a -> Parser a
 surroundMultiline left right content =
     discardFirst
         (kind left)
-        (inlineOrIndented
+        (inlineOrBelowOrIndented
             (discardSecond
                 content
-                (inlineOrIndented (kind right))
+                (inlineOrBelowOrIndented (kind right))
             )
         )
 
@@ -338,7 +352,7 @@ typeAlias =
     do (kind <| Token.Name { mutable = False } "alias") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
-    do (inlineOrIndented typeExpr) <| \ty ->
+    do (inlineOrBelowOrIndented typeExpr) <| \ty ->
     if mutable then
         Parser.abort errorCantUseMutableAssignmentHere
 
@@ -356,7 +370,7 @@ unionDef =
     do (kind <| Token.Name { mutable = False } "union") <| \_ ->
     do (oneOrMore nonMutName) <| \( name, args ) ->
     do defop <| \{ mutable } ->
-    do (inlineOrIndented <| rawList typeExpr) <| \cons ->
+    do (inlineOrBelowOrIndented <| rawList typeExpr) <| \cons ->
     if mutable then
         Parser.abort errorCantUseMutableAssignmentHere
 
@@ -608,7 +622,7 @@ try =
             succeed ( [ pna ], Just def )
 
         multi =
-            Parser.surroundWith (kind Token.BlockStart) (kind Token.BlockEnd) <|
+            block <|
                 do (zeroOrMore (maybeNewLine patternAndAccept)) <| \pnas ->
                 do (maybe default) <| \mdef ->
                 succeed ( pnas, mdef )
@@ -667,10 +681,7 @@ inlineStatementOrBlock : Parser (OneOrMore FA.Statement)
 inlineStatementOrBlock =
     oneOf
         [ do (Parser.breakCircularDefinition <| \_ -> expr) <| \e -> succeed ( FA.Evaluation e, [] )
-        , Parser.surroundWith
-            (kind Token.BlockStart)
-            (kind Token.BlockEnd)
-            (oomSeparatedBy (kind Token.NewSiblingLine) statement)
+        , block (oomSeparatedBy (kind Token.NewSiblingLine) statement)
         ]
 
 
@@ -687,10 +698,7 @@ inlineStatementOrBlockWithAnnotation =
     in
     oneOf
         [ do (Parser.breakCircularDefinition <| \_ -> expr) <| \e -> succeed ( Nothing, [ FA.Evaluation e ] )
-        , Parser.surroundWith
-            (kind Token.BlockStart)
-            (kind Token.BlockEnd)
-            blockWithAnnotation
+        , block blockWithAnnotation
         ]
 
 
@@ -703,7 +711,7 @@ inlineStatementOrBlockWithAnnotation =
 typeAnnotation : Parser FA.Type
 typeAnnotation =
     do (kind Token.As) <| \_ ->
-    do (inlineOrIndented typeExpr) <| \ty ->
+    do (inlineOrBelowOrIndented typeExpr) <| \ty ->
     succeed ty
 
 
@@ -965,15 +973,42 @@ patternApplication param =
 
 functionApplicationOr : Parser FA.Expression -> Parser FA.Expression
 functionApplicationOr higher =
-    do here <| \start ->
-    do higher <| \e ->
-    do (zeroOrMore higher) <| \args ->
-    do here <| \end ->
-    if args == [] then
-        succeed e
+    let
+        recInlineOrIndented : List FA.Expression -> Parser (List FA.Expression)
+        recInlineOrIndented accum =
+            do higher <| \h ->
+            let
+                r =
+                    h :: accum
+            in
+            oneOf
+                -- after at least one indented block, allow arguments to appear also as siblings (ie, right below)
+                [ block (recInlineOrIndentedOrBelow r)
+                , recInlineOrIndented r
+                , succeed r
+                ]
 
-    else
-        succeed <| FA.FunctionCall ( start, end ) e args
+        recInlineOrIndentedOrBelow : List FA.Expression -> Parser (List FA.Expression)
+        recInlineOrIndentedOrBelow accum =
+            do higher <| \h ->
+            let
+                r =
+                    h :: accum
+            in
+            maybeWithDefault r <| inlineOrBelowOrIndented (recInlineOrIndentedOrBelow r)
+    in
+    do here <| \start ->
+    do (recInlineOrIndented []) <| \reversedArgs ->
+    do here <| \end ->
+    case List.reverse reversedArgs of
+        [] ->
+            fail
+
+        [ fnExpression ] ->
+            succeed fnExpression
+
+        fnExpression :: args ->
+            succeed <| FA.FunctionCall ( start, end ) fnExpression args
 
 
 
