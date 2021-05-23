@@ -517,7 +517,7 @@ record : Token.Kind -> (FA.Pos -> FA.RecordArgs a -> a) -> Parser a -> Parser a
 record assign constructor main =
     let
         attrAssignment =
-            discardFirst (kind assign) main
+            discardFirst (kind assign) (inlineOrBelowOrIndented main)
 
         attr =
             do nonMutName <| \name ->
