@@ -1375,10 +1375,8 @@ reorderStatements stats =
 
 errorUnboundVariable : CA.Pos -> String -> Res a
 errorUnboundVariable pos s =
-    Error.makeRes
-        pos.n
-        [ Error.showLines pos.c 2 pos.s
-        , Error.text <| "unbound variable: " ++ s
+    makeRes pos
+        [ Error.text <| "unbound variable: " ++ s
         ]
 
 
@@ -1389,7 +1387,6 @@ errorCannotUnify ctx subs a b =
     , Error.text <| "* t2 = " ++ HumanCA.typeToString b
     , Error.text <| "why : " ++ ctx.why
     , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
-    , Error.showLines ctx.pos.c 2 ctx.pos.s
     , subs
         |> Dict.toList
         |> List.sortBy Tuple.first
@@ -1397,7 +1394,7 @@ errorCannotUnify ctx subs a b =
         |> String.join "\n"
         |> Error.codeBlock
     ]
-        |> Error.makeRes ctx.pos.n
+        |> makeRes ctx.pos
         |> TyGen.wrap
 
 
@@ -1407,7 +1404,6 @@ errorCycle ctx subs a b =
     , Error.text <| "* t2 = " ++ HumanCA.typeToString b
     , Error.text <| "why : " ++ ctx.why
     , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
-    , Error.showLines ctx.pos.c 2 ctx.pos.s
     , subs
         |> Dict.toList
         |> List.sortBy Tuple.first
@@ -1415,18 +1411,13 @@ errorCycle ctx subs a b =
         |> String.join "\n"
         |> Error.codeBlock
     ]
-        |> Error.makeRes ctx.pos.n
+        |> makeRes ctx.pos
         |> TyGen.wrap
 
 
 errorAnnotationTooGeneral : Substitutions -> Type -> Set String -> Type -> Set String -> TR a
 errorAnnotationTooGeneral subs annotation annotationForall inferredType inferredForall =
-    let
-        pos =
-            CA.typePos annotation
-    in
     [ Error.text <| "Annotation is too general"
-    , Error.showLines pos.c 2 pos.s
     , Error.text <| "type annotated: " ++ HumanCA.typeToString annotation
     , Error.text <| "type inferred : " ++ HumanCA.typeToString inferredType
     , Error.text ""
@@ -1434,8 +1425,18 @@ errorAnnotationTooGeneral subs annotation annotationForall inferredType inferred
     , Error.text <| "forall inferred : " ++ Debug.toString (Set.toList inferredForall)
     , showSubs subs
     ]
-        |> Error.makeRes pos.n
+        |> makeRes (CA.typePos annotation)
         |> TyGen.wrap
+
+
+makeRes : CA.Pos -> List Error.ContentDiv -> Res a
+makeRes pos content =
+    Error.res
+        { moduleName = pos.n
+        , start = pos.s
+        , end = pos.e
+        , description = \_ -> content
+        }
 
 
 showSubs : Substitutions -> Error.ContentDiv
@@ -1451,7 +1452,7 @@ showSubs subs =
 showLine : String -> Int -> String
 showLine code pos =
     let
-        ( line, _ ) =
+        { line } =
             Error.positionToLineAndColumn code pos
 
         lines =

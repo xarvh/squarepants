@@ -7,7 +7,8 @@ codeTest =
 lexTokens s _ =
     as Text -> Text -> Result Error (List Token)
 
-    Compiler/GetTokens.lexer s
+    Ok []
+#    Compiler/GetTokens.lexer s
 
 
 tests =
@@ -17,18 +18,15 @@ tests =
         [
         , Test.Group "keywords"
             [
-            , codeTest
-                {
-                , name = "[reg] `fn` is a keyword"
-                , run = lexTokens "fn = 1"
-                , expected =
-                    Ok
+            , codeTest "[reg] `fn` is a keyword"
+                (lexTokens "fn = 1")
+                    (Ok
                         [
                         , { end = 0, kind = Token.NewSiblingLine, start = 0 }
                         , { end = 2, kind = Token.Fn, start = 0 }
                         , { end = 4, kind = Token.Defop { mutable = False }, start = 3 }
                         , { end = 6, kind = Token.NumberLiteral "1", start = 5 }
                         ]
-                }
+                    )
             ]
         ]

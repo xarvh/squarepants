@@ -87,7 +87,7 @@ runParser parser ts =
     ts
         |> Parser.parse (Syntax.discardSecond parser Parser.end) Syntax.unconsIgnoreComments
         |> Syntax.outcomeToResult "Test" "" ts
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString ""
 
 
 firstStatement : String -> Result String FA.Statement
@@ -95,7 +95,7 @@ firstStatement code =
     code
         |> Compiler.TestHelpers.stringToFormattableModule
         |> Result.map (List.map (FA.posMap_statement applyDummyPos))
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString code
         |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 

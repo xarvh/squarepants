@@ -33,9 +33,22 @@ removePos fold_helper target =
         |> Tuple.first
 
 
-resErrorToString : Res a -> Result String a
-resErrorToString =
-    Result.mapError (\e -> Error.flatten e [] |> List.map Error.toString |> String.join "\n\n")
+errorToString : Error.ErrorEnv -> Error.Error -> String
+errorToString eenv e =
+    Error.flatten e []
+        |> List.map (Error.toString eenv)
+        |> String.join "\n\n"
+
+
+resErrorToString : String -> Res a -> Result String a
+resErrorToString code =
+    let
+        eenv =
+            { metaFile = { sourceDirs = [], libraries = [] }
+            , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = code }
+            }
+    in
+    Result.mapError (errorToString eenv)
 
 
 stringToCanonicalModuleWithPos : String -> Res CA.AllDefs

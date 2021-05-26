@@ -25,7 +25,7 @@ andThenMapError transformError f =
 stringToTokens : String -> String -> Res (List Token)
 stringToTokens moduleName code =
     code
-        |> Compiler.StringToTokens.lexer
+        |> Compiler.StringToTokens.lexer moduleName
 
 
 stringToFormattableAst : String -> String -> Res FA.Module

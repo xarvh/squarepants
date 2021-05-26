@@ -139,19 +139,27 @@ onModule meta allDefs =
 errorShadowing : ( String, ( CA.Pos, CA.Pos ) ) -> Error.Error
 errorShadowing ( varName, ( second, first ) ) =
     if first == globalPos then
-        Error.makeError
-            second.n
-            [ Error.showLines second.c 2 second.s
-            , Error.text <| "the variable name " ++ varName ++ " is used already by a global value"
-            ]
+        Error.err
+            { moduleName = second.n
+            , start = second.s
+            , end = second.e
+            , description =
+                \_ ->
+                    [ Error.text <| "the variable name " ++ varName ++ " is used already by a global value"
+                    ]
+            }
 
     else
-        Error.makeError
-            second.n
-            [ Error.showLines second.c 2 second.s
-            , Error.text <| "value " ++ varName ++ " was already declared here: "
-            , Error.showLines first.c 2 first.s
-            ]
+        Error.err
+            { moduleName = second.n
+            , start = second.s
+            , end = second.e
+            , description =
+                \_ ->
+                    [ Error.text <| "value " ++ varName ++ " was already declared here: "
+                    , Error.showLines first.c 2 first.s
+                    ]
+            }
 
 
 onBlock : ReadOnly -> Env -> List CA.Statement -> Out -> Out

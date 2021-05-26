@@ -387,7 +387,9 @@ stringToStructuredName env pos rawString =
                             -- `Module.Type`
                             -- `Module.Constructor`
                             if tail /= [] then
-                                errorTodo "Type or Constructor can't have attributes!"
+                                Error.faSimple env.ro.currentModule pos "Type or Constructor can't have attributes!"
+
+
 
                             else
                                 do (validateDefName second) <| \defName ->
@@ -1219,11 +1221,11 @@ translateType ro faType =
 
 
 errorExperimentingWithNoExtensibleTypes : ReadOnly -> FA.Pos -> Res a
-errorExperimentingWithNoExtensibleTypes ro ( start, end ) =
-    Error.makeRes ro.currentModule
-        [ Error.showLines ro.code 2 start
-        , Error.text "For now extensible types are disabled, I want to see if it's good to do without them"
-        ]
+errorExperimentingWithNoExtensibleTypes ro pos =
+    Error.faSimple
+        ro.currentModule
+        pos
+        "For now extensible types are disabled, I want to see if it's good to do without them"
 
 
 
@@ -1290,27 +1292,23 @@ maybeResultToResultMaybe maybeResult =
 
 
 errorRecordUpdateShorthandOutsideRecordUpdate : FA.Pos -> String -> Env -> Res a
-errorRecordUpdateShorthandOutsideRecordUpdate ( start, end ) rawString env =
-    Error.makeRes
+errorRecordUpdateShorthandOutsideRecordUpdate pos rawString env =
+    Error.faSimple
         env.ro.currentModule
-        [ Error.showLines env.ro.code 2 start
-        , Error.text <| Error.inlineCode rawString ++ " looks like a record update shorthand, but we are not inside a record update!"
-        ]
+        pos
+        ("`" ++ rawString ++ "` looks like a record update shorthand, but we are not inside a record update!")
 
 
 errorCantDeclareAFunctionHere : Env -> String -> List CA.Parameter -> FA.Pattern -> Res a
 errorCantDeclareAFunctionHere env name params originalPattern =
-    Error.makeRes
+    Error.faSimple
         env.ro.currentModule
-        [ Error.showLines env.ro.code 2 (Tuple.first <| FA.patternPos originalPattern)
-        , Error.text "it seems like there is a function declaration inside a pattern?"
-        ]
+        (FA.patternPos originalPattern)
+        "it seems like there is a function declaration inside a pattern?"
 
 
 errorRootDefinitionsCantBeMutable : Env -> CA.LocalValueDef -> Res a
 errorRootDefinitionsCantBeMutable env def =
-    Error.makeRes
-        env.ro.currentModule
-        [ Error.showLines env.ro.code 2 (CA.patternPos def.pattern).s
-        , Error.text "mutable values can be declared only inside functions."
-        ]
+    Error.caSimple
+        (CA.patternPos def.pattern)
+        "mutable values can be declared only inside functions."

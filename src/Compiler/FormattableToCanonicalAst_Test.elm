@@ -55,7 +55,7 @@ firstDefinition : String -> String -> Result String CA.RootValueDef
 firstDefinition name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString code
         |> Result.andThen (CA.findValue ("Test." ++ name) >> Result.fromMaybe "Dict fail")
 
 
@@ -63,7 +63,7 @@ firstEvaluation : String -> String -> Result String CA.Expression
 firstEvaluation name code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString code
         |> Result.andThen (CA.findValue ("Test." ++ name) >> Result.fromMaybe "findValue fail")
         |> Result.andThen (\def -> List.head def.body |> Result.fromMaybe "head fail")
         |> Result.andThen (asEvaluation >> Result.fromMaybe "asEval fail")
@@ -72,7 +72,7 @@ firstEvaluation name code =
 stringToCanonicalModule code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString code
 
 
 asEvaluation : CA.Statement -> Maybe CA.Expression
@@ -98,7 +98,7 @@ transformAB code =
     in
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString code
         |> Result.andThen (findAB >> Result.fromMaybe "findAB fail")
 
 
@@ -129,7 +129,7 @@ transformABC code =
     in
     code
         |> Compiler.TestHelpers.stringToCanonicalModule
-        |> Compiler.TestHelpers.resErrorToString
+        |> Compiler.TestHelpers.resErrorToString code
         |> Result.andThen (findABC >> Result.fromMaybe "findABC fail")
 
 

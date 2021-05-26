@@ -24,7 +24,7 @@ applyAndGet : (CA.RootDef -> Maybe a) -> String -> String -> Result String a
 applyAndGet getAs name code =
     code
         |> TH.stringToCanonicalModule
-        |> TH.resErrorToString
+        |> TH.resErrorToString code
         |> Result.andThen (Dict.get ("Test." ++ name) >> Result.fromMaybe "dict error!")
         |> Result.andThen (getAs >> Result.fromMaybe "wrong variant")
 
@@ -33,7 +33,7 @@ applyAndGetValue : String -> String -> Result String CA.RootValueDef
 applyAndGetValue name code =
     code
         |> TH.stringToCanonicalModule
-        |> TH.resErrorToString
+        |> TH.resErrorToString code
         |> Result.andThen (CA.findValue ("Test." ++ name) >> Result.fromMaybe "findValue error!")
 
 

@@ -98,7 +98,7 @@ infer name code =
     code
         |> TH.stringToCanonicalModuleWithPos
         |> Result.andThen (TI.inspectModule preamble)
-        |> TH.resErrorToString
+        |> TH.resErrorToString code
         |> Result.andThen
             (\( mod, env, subs ) ->
                 env

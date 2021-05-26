@@ -111,38 +111,60 @@ module_ =
 --
 
 
+makeErr : String -> List Token -> String -> Error.Error
+makeErr moduleName state message =
+    let
+        ( start, end ) =
+            case state of
+                [] ->
+                    ( -1, -1 )
+
+                token :: _ ->
+                    ( token.start, token.end )
+    in
+    Error.err
+        { moduleName = moduleName
+        , start = start
+        , end = end
+        , description = \_ -> [ Error.text message ]
+        }
+
+
 errorOptionsExhausted : String -> String -> List Token -> Error.Error
 errorOptionsExhausted moduleName code nonConsumedTokens =
     case nonConsumedTokens of
         [] ->
-            Error.makeError moduleName
-                [ Error.text "I got to the end of file and I can't make sense of it. =(" ]
+            Error.err
+                { moduleName = moduleName
+                , start = -1
+                , end = -1
+                , description =
+                    \_ ->
+                        [ Error.text "I got to the end of file and I can't make sense of it. =("
+                        ]
+                }
 
         token :: _ ->
-            Error.makeError moduleName
-                [ Error.text "I got stuck parsing at this point:"
-                , Error.showLines code 2 token.start
-                ]
+            Error.err
+                { moduleName = moduleName
+                , start = token.start
+                , end = token.end
+                , description =
+                    \_ ->
+                        [ Error.text "I got stuck parsing at this point:"
+                        ]
+                }
 
 
 errorCantUseMutableAssignmentHere : String -> String -> List Token -> Error.Error
 errorCantUseMutableAssignmentHere moduleName code state =
-    Error.makeError moduleName
-        [ Error.text "errorCantUseMutableAssignmentHere" ]
+    makeErr moduleName state "Can't use mutable assignment here"
 
 
 abort : String -> Parser a
 abort message =
     Parser.abort <| \moduleName code readState ->
-    Error.makeError moduleName
-        [ Error.text message
-        , case readState of
-            [] ->
-                Error.text "at EOF"
-
-            token :: _ ->
-                Error.showLines code 2 token.start
-        ]
+    makeErr moduleName readState message
 
 
 

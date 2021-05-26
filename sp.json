@@ -1,7 +1,25 @@
 {
     "sourceDirs": [
         {
-            "path": "sp"
+            "path": "sp",
+            "moduleExceptions": [
+                {
+                    "path": "Test",
+                    "importAs": "Test",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Test"
+                    ]
+                },
+                {
+                    "path": "Types/Token",
+                    "importAs": "Token",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Token"
+                    ]
+                }
+            ]
         }
     ],
     "libraries": [
@@ -50,8 +68,13 @@
                 {
                     "path": "SPCore/Result",
                     "importAs": "Result",
-                    "globalValues": [ "Ok", "Err" ],
-                    "globalTypes": [ "Result" ]
+                    "globalValues": [
+                        "Ok",
+                        "Err"
+                    ],
+                    "globalTypes": [
+                        "Result"
+                    ]
                 },
                 {
                     "path": "SPCore/Text",

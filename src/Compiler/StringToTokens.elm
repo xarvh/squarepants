@@ -23,6 +23,7 @@ import Types.Token as Token exposing (Token)
 type alias ReadState =
     { pos : Int
     , codeAsString : String
+    , moduleName : String
     , code : List Char
     , multiCommentDepth : Int
     , indentStack : List Int
@@ -37,9 +38,10 @@ type alias ReadState =
 --
 
 
-lexer : String -> Res (List Token)
-lexer codeAsString =
+lexer : String -> String -> Res (List Token)
+lexer moduleName codeAsString =
     { pos = -1
+    , moduleName = moduleName
     , multiCommentDepth = 0
     , code = '\n' :: String.toList codeAsString
     , codeAsString = codeAsString
@@ -425,13 +427,13 @@ lexSoftQuotedString startPos state =
 
                 '\n' :: rest ->
                     -- https://www.reddit.com/r/ProgrammingLanguages/comments/l0ptdl/why_do_so_many_languages_not_allow_string/gjvrcg2/
-                    errorNewLineInsideSoftQuote pos
+                    errorNewLineInsideSoftQuote pos state
 
                 char :: rest ->
                     rec (pos + 1) False rest
 
                 [] ->
-                    errorUnterminatedTextLiteral pos
+                    errorUnterminatedTextLiteral pos state
     in
     rec state.pos False state.code
 
@@ -494,7 +496,7 @@ lexHardQuotedString startPos state =
                     rec (pos + 1) False 0 rest
 
                 [] ->
-                    errorUnterminatedTextLiteral pos
+                    errorUnterminatedTextLiteral pos state
     in
     rec state.pos False 0 state.code
 
@@ -540,7 +542,7 @@ lexMultiLineComment startPos state =
                     rec (pos + 1) depth rest
 
                 [] ->
-                    errorUnterminatedMultilineComment pos
+                    errorUnterminatedMultilineComment pos state
     in
     rec state.pos 0 state.code
 
@@ -677,21 +679,29 @@ mapFind f ls =
 
 errorBadIndent : Int -> Int -> Int -> ReadState -> Res a
 errorBadIndent lastIndent newIndent endPos state =
-    Error.makeRes
-        "TODO"
-        [ Error.showLines (String.fromList state.code) 2 endPos
-        , Error.text <| "last indent was at row " ++ String.fromInt lastIndent
-        , Error.text <| "but this new indent is at row " ++ String.fromInt newIndent
-        ]
+    Error.res
+        { moduleName = state.moduleName
+        , start = state.pos
+        , end = endPos
+        , description =
+            \_ ->
+                [ Error.text <| "last indent was at row " ++ String.fromInt lastIndent
+                , Error.text <| "but this new indent is at row " ++ String.fromInt newIndent
+                ]
+        }
 
 
 errorTab : ReadState -> Res a
 errorTab state =
-    Error.makeRes
-        "TODO"
-        [ Error.showLines (String.fromList state.code) 2 state.pos
-        , Error.text <| "Tab support is not yet implemented =*("
-        ]
+    Error.res
+        { moduleName = state.moduleName
+        , start = state.pos
+        , end = state.pos + 1
+        , description =
+            \_ ->
+                [ Error.text <| "Tab support is not yet implemented =*("
+                ]
+        }
 
 
 errorInvalidToken : Int -> String -> ReadState -> Error
@@ -703,31 +713,49 @@ errorInvalidToken start codeBlock state =
                 |> List.take 1
                 |> String.join ""
     in
-    Error.makeError
-        "TODO"
-        [ Error.text <| "Not sure what `" ++ token ++ "` means"
-        ]
+    Error.err
+        { moduleName = state.moduleName
+        , start = state.pos
+        , end = state.pos + String.length token
+        , description =
+            \_ ->
+                [ Error.text <| "Not sure what `" ++ token ++ "` means"
+                ]
+        }
+
+
+makeErrorTodo : Int -> ReadState -> String -> Res a
+makeErrorTodo pos state message =
+    Error.res
+        { moduleName = state.moduleName
+        , start = state.pos
+        , end = pos
+        , description =
+            \_ ->
+                [ Error.text message
+                ]
+        }
 
 
 errorUnknownOperator pos state =
-    Error.makeError
-        "TODO"
-        [ Error.text "Unknown operator" ]
+    Error.err
+        { moduleName = state.moduleName
+        , start = state.pos
+        , end = pos
+        , description =
+            \_ ->
+                [ Error.text "Unknown operator"
+                ]
+        }
 
 
-errorNewLineInsideSoftQuote pos =
-    Error.makeRes
-        "TODO"
-        [ Error.text "single-quoted strings can't go on multiple lines, use \\n or a triple-quoted string instead" ]
+errorNewLineInsideSoftQuote pos state =
+    makeErrorTodo pos state "single-quoted strings can't go on multiple lines, use \\n or a triple-quoted string instead"
 
 
-errorUnterminatedTextLiteral pos =
-    Error.makeRes
-        "TODO"
-        [ Error.text "unterminated text literal" ]
+errorUnterminatedTextLiteral pos state =
+    makeErrorTodo pos state "unterminated text literal"
 
 
-errorUnterminatedMultilineComment pos =
-    Error.makeRes
-        "TODO"
-        [ Error.text "unterminated multiline comment" ]
+errorUnterminatedMultilineComment pos state =
+    makeErrorTodo pos state "unterminated multiline comment"

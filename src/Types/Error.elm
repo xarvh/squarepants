@@ -2,6 +2,11 @@ module Types.Error exposing (..)
 
 -- TODO move this in Compiler/
 
+import Dict exposing (Dict)
+import MetaFile exposing (MetaFile)
+import Types.CanonicalAst as CA
+import Types.FormattableAst as FA
+
 
 type alias Res a =
     Result Error a
@@ -12,9 +17,17 @@ type Error
     | Nested (List Error)
 
 
+type alias ErrorEnv =
+    { metaFile : MetaFile
+    , moduleByName : Dict String { fsPath : String, content : String }
+    }
+
+
 type alias ErrorArgs =
-    { file : String
-    , content : List ContentDiv
+    { moduleName : String
+    , start : Int
+    , end : Int
+    , description : ErrorEnv -> List ContentDiv
     }
 
 
@@ -26,26 +39,50 @@ type ContentDiv
 
 
 ----
---- Helpers
+--- Builders
 --
 
 
 errorTodo : String -> Res a
 errorTodo s =
-    makeRes "TODO" [ text s ]
+    res
+        { moduleName = "errorTodo"
+        , start = -1
+        , end = -1
+        , description = \_ -> [ text s ]
+        }
 
 
-makeError : String -> List ContentDiv -> Error
-makeError file content =
-    { file = file
-    , content = content
-    }
-        |> Simple
+err : ErrorArgs -> Error
+err =
+    Simple
 
 
-makeRes : String -> List ContentDiv -> Res a
-makeRes file content =
-    Err <| makeError file content
+{-| TODO move to FA as FA.res -}
+faSimple : String -> FA.Pos -> String -> Res a
+faSimple moduleName ( start, end ) message =
+    res
+        { moduleName = moduleName
+        , start = start
+        , end = end
+        , description = \_ -> [ text message ]
+        }
+
+
+{-| TODO move to CA as CA.res -}
+caSimple : CA.Pos -> String -> Res a
+caSimple pos message =
+    res
+        { moduleName = pos.n
+        , start = pos.s
+        , end = pos.e
+        , description = \_ -> [ text message ]
+        }
+
+
+res : ErrorArgs -> Res a
+res =
+    Simple >> Err
 
 
 text : String -> ContentDiv
@@ -66,7 +103,7 @@ inlineCode s =
 showLines : String -> Int -> Int -> ContentDiv
 showLines code lineSpan pos =
     let
-        ( line, _ ) =
+        { line } =
             positionToLineAndColumn code pos
 
         lines =
@@ -84,6 +121,47 @@ showLines code lineSpan pos =
         |> CodeBlockWithLineNumber (start + 1)
 
 
+showCodeBlock : String -> { line : Int, col : Int } -> { line : Int, col : Int } -> ContentDiv
+showCodeBlock code start end =
+    if start == end then
+        CodeBlockWithLineNumber 0 []
+
+    else
+        let
+            {- TODO
+               if start and end are on the same line, highlight the word
+               if start and end are on different line, hightlight the block
+            -}
+            extraLines =
+                2
+
+            lines =
+                String.split "\n" code
+
+            maxLines =
+                List.length lines
+
+            startLine =
+                start.line - extraLines - 1 |> clamp 0 (maxLines - 1)
+
+            endLine =
+                end.line + extraLines |> clamp 0 (maxLines - 1)
+
+            size =
+                endLine - startLine
+        in
+        lines
+            |> List.drop startLine
+            |> List.take size
+            |> CodeBlockWithLineNumber (startLine + 1)
+
+
+
+----
+--- View
+--
+
+
 flatten : Error -> List ErrorArgs -> List ErrorArgs
 flatten e accum =
     case e of
@@ -94,7 +172,7 @@ flatten e accum =
             List.foldl flatten accum ls
 
 
-positionToLineAndColumn : String -> Int -> ( Int, Int )
+positionToLineAndColumn : String -> Int -> { line : Int, col : Int }
 positionToLineAndColumn s index =
     let
         before =
@@ -115,36 +193,40 @@ positionToLineAndColumn s index =
         colNumber =
             index - lastNewLineIndex
     in
-    ( lineNumber, colNumber )
+    { line = lineNumber, col = colNumber }
 
 
-
-----
---- View
---
-
-
-toString : ErrorArgs -> String
-toString eArgs =
+toString : ErrorEnv -> ErrorArgs -> String
+toString eEnv eArgs =
     let
         hr =
-            "== ERROR!!! =================================="
+            "-- ERROR!!! ------------------------------"
 
-        file =
-            if eArgs.file /= "" then
-                [ "# " ++ eArgs.file
-                , ""
-                ]
+        mod =
+            eEnv.moduleByName
+                |> Dict.get eArgs.moduleName
+                |> Maybe.withDefault
+                    { fsPath = eArgs.moduleName ++ " <unknown file>"
+                    , content = ""
+                    }
 
-            else
-                []
+        start =
+            positionToLineAndColumn mod.content eArgs.start
 
-        content =
-            eArgs.content
+        end =
+            positionToLineAndColumn mod.content eArgs.end
+
+        location =
+            mod.fsPath ++ " " ++ String.fromInt start.line ++ ":" ++ String.fromInt start.col
+
+        description =
+            eEnv
+                |> eArgs.description
+                |> (::) (showCodeBlock mod.content start end)
                 |> List.concatMap (contentDivToString >> String.split "\n")
                 |> List.map ((++) "  ")
     in
-    hr :: file ++ content |> String.join "\n"
+    hr :: location :: "" :: description |> String.join "\n"
 
 
 contentDivToString : ContentDiv -> String

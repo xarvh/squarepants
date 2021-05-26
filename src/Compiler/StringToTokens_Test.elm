@@ -11,9 +11,9 @@ simpleTest =
     Test.simple Debug.toString
 
 
-lexTokens : String -> String -> Result Error (List Token)
+lexTokens : String -> a -> Result Error (List Token)
 lexTokens s _ =
-    Lexer.lexer s
+    Lexer.lexer "Test" s
 
 
 non_mut_name =

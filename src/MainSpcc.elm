@@ -19,6 +19,14 @@ import Types.Meta exposing (Meta)
 
 
 
+-- TODO this should go somewhere in Types and be used in ErrorEnv
+
+
+type alias ModuleByName =
+    Dict String { fsPath : String, content : String }
+
+
+
 --
 
 
@@ -87,10 +95,6 @@ loadEntry path entry accum =
 --
 
 
-type alias ModuleByName =
-    Dict String { fullPath : String, content : String }
-
-
 fileToModuleName : String -> String -> String
 fileToModuleName sourceDirPath fileNamePath =
     fileNamePath
@@ -104,7 +108,7 @@ loadSourceDir path =
         insertFile fileName content =
             Dict.insert
                 (fileToModuleName path fileName)
-                { fullPath = fileName
+                { fsPath = fileName
                 , content = content
                 }
     in
@@ -149,6 +153,12 @@ loadMetaFile =
 makeProgram : MetaFile -> ModuleByName -> Result String String
 makeProgram metaFile files =
     let
+        errorEnv : Types.Error.ErrorEnv
+        errorEnv =
+            { metaFile = metaFile
+            , moduleByName = files
+            }
+
         meta =
             MetaFile.toMeta metaFile
 
@@ -161,7 +171,7 @@ makeProgram metaFile files =
                 |> Compiler.TestHelpers.unindent
                 |> (\fa -> Compiler.Pipeline.stringToCanonicalAst meta moduleName fa)
                 |> Result.map (Dict.union acc)
-                |> Compiler.TestHelpers.resErrorToString
+                |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
     do (Lib.dict_foldRes compileAndInsert files Prelude.prelude) <| \allDefs ->
     let
@@ -169,7 +179,7 @@ makeProgram metaFile files =
         withAliases =
             allDefs
                 |> Compiler.ApplyAliases.applyAliasesToModule
-                |> Compiler.TestHelpers.resErrorToString
+                |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
     do withAliases <| \alsDefs ->
     let
@@ -177,7 +187,7 @@ makeProgram metaFile files =
         blah =
             alsDefs
                 |> TI.inspectModule Dict.empty
-                |> Compiler.TestHelpers.resErrorToString
+                |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
     do blah <| \( typedProgram, env, subs ) ->
     typedProgram

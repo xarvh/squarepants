@@ -65,9 +65,12 @@ moduleMain =
     ( "Main"
     , """
 result =
-  s @= Random.Seed 3
+    as [ Int ]
 
-  Random.number 0 5 @s
+    doStuff "StringToTokens"
+        []
+
+
       """
     )
 
@@ -300,7 +303,7 @@ viewMaybeRes code f maybeRes =
             Html.text ""
 
         Just res ->
-            case Compiler.TestHelpers.resErrorToString res of
+            case Compiler.TestHelpers.resErrorToString code res of
                 Err e ->
                     Html.code [] [ Html.text e ]
 
@@ -460,7 +463,7 @@ viewCodeEditor model code =
 
 viewSyntaxHighlight : Meta -> String -> List (Html msg)
 viewSyntaxHighlight meta code =
-    case Compiler.StringToTokens.lexer code of
+    case Compiler.StringToTokens.lexer "<TODO module name>" code of
         Err _ ->
             [ Html.text code ]
 
@@ -598,7 +601,7 @@ viewFileStages model rawCode =
             Compiler.TestHelpers.unindent rawCode
 
         tokens =
-            onJust (Just <| Ok code) Compiler.StringToTokens.lexer
+            onJust (Just <| Ok code) (Compiler.StringToTokens.lexer model.selectedFile)
 
         faModule =
             onJust tokens (Compiler.TokensToFormattableAst.parse code model.selectedFile)
@@ -644,6 +647,11 @@ viewProgram model =
         do =
             Lib.result_do
 
+        eenv =
+                    { metaFile = { sourceDirs = [], libraries = [] }
+                    , moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
+                    }
+
         compileAndInsert : Meta -> String -> String -> CA.AllDefs -> Result String CA.AllDefs
         compileAndInsert meta fileName code acc =
             if fileName == metaFileName then
@@ -654,7 +662,7 @@ viewProgram model =
                     |> Compiler.TestHelpers.unindent
                     |> (\fa -> Compiler.Pipeline.stringToCanonicalAst meta fileName fa)
                     |> Result.map (Dict.union acc)
-                    |> Compiler.TestHelpers.resErrorToString
+                    |> Compiler.TestHelpers.resErrorToString code
 
         emitModule : TI.Substitutions -> CA.AllDefs -> Result x String
         emitModule subs caModule =
@@ -672,7 +680,7 @@ viewProgram model =
                 withAliases =
                     allDefs
                         |> Compiler.ApplyAliases.applyAliasesToModule
-                        |> Compiler.TestHelpers.resErrorToString
+                        |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
             in
             do withAliases <| \alsDefs ->
             let
@@ -680,7 +688,7 @@ viewProgram model =
                 blah =
                     alsDefs
                         |> TI.inspectModule Dict.empty
-                        |> Compiler.TestHelpers.resErrorToString
+                        |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
             in
             do blah <| \( typedProgram, env, subs ) ->
             Ok ( subs, typedProgram )
