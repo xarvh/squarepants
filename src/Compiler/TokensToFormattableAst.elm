@@ -11,7 +11,7 @@ import Types.Token as Token exposing (Token)
 
 
 type alias MakeError =
-    String -> String -> List Token -> Error.Error
+    String -> List Token -> Error.Error
 
 
 type alias Parser a =
@@ -39,21 +39,23 @@ here =
 
 parse : String -> String -> List Token -> Res (List FA.Statement)
 parse moduleName code tokens =
-    tokens
-        |> Parser.parse module_ unconsIgnoreComments
-        |> outcomeToResult moduleName code tokens
+    let
+        ( failureStates, outcome ) =
+            Parser.parse module_ unconsIgnoreComments tokens
+    in
+    outcomeToResult moduleName tokens failureStates outcome
 
 
-outcomeToResult : String -> String -> List Token -> Parser.Outcome (List Token) MakeError a -> Res a
-outcomeToResult moduleName code tokens outcome =
+outcomeToResult : String -> List Token -> List (List Token) -> Parser.Outcome (List Token) MakeError a -> Res a
+outcomeToResult moduleName tokens failureStates outcome =
     case outcome of
         Parser.Success readState output ->
             Ok output
 
         Parser.Abort readState makeError ->
-            Err <| makeError moduleName code readState
+            Err <| makeError moduleName readState
 
-        Parser.Failure failureStatesAsTree ->
+        Parser.Failure ->
             let
                 findMin state best =
                     if List.length state < List.length best then
@@ -63,11 +65,9 @@ outcomeToResult moduleName code tokens outcome =
                         best
 
                 readState =
-                    failureStatesAsTree
-                        |> Parser.flattenTree
-                        |> List.foldl findMin tokens
+                    List.foldl findMin tokens failureStates
             in
-            Err <| errorOptionsExhausted moduleName code readState
+            Err <| errorOptionsExhausted moduleName readState
 
 
 unconsIgnoreComments : List Token -> Maybe ( Token, List Token )
@@ -130,8 +130,8 @@ makeErr moduleName state message =
         }
 
 
-errorOptionsExhausted : String -> String -> List Token -> Error.Error
-errorOptionsExhausted moduleName code nonConsumedTokens =
+errorOptionsExhausted : String -> List Token -> Error.Error
+errorOptionsExhausted moduleName nonConsumedTokens =
     case nonConsumedTokens of
         [] ->
             Error.err
@@ -151,19 +151,19 @@ errorOptionsExhausted moduleName code nonConsumedTokens =
                 , end = token.end
                 , description =
                     \_ ->
-                        [ Error.text "I got stuck parsing at this point:"
+                        [ Error.text "I got stuck parsing there. =("
                         ]
                 }
 
 
-errorCantUseMutableAssignmentHere : String -> String -> List Token -> Error.Error
-errorCantUseMutableAssignmentHere moduleName code state =
+errorCantUseMutableAssignmentHere : String -> List Token -> Error.Error
+errorCantUseMutableAssignmentHere moduleName state =
     makeErr moduleName state "Can't use mutable assignment here"
 
 
 abort : String -> Parser a
 abort message =
-    Parser.abort <| \moduleName code readState ->
+    Parser.abort <| \moduleName readState ->
     makeErr moduleName readState message
 
 

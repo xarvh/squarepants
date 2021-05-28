@@ -33,7 +33,7 @@ import Prelude
 import Set exposing (Set)
 import Test
 import Types.CanonicalAst as CA exposing (Pos)
-import Types.Error exposing (Res)
+import Types.Error exposing (Res, ErrorEnv)
 import Types.FormattableAst as FA
 import Types.Literal as Literal
 import Types.Meta exposing (Meta)
@@ -42,16 +42,20 @@ import Types.Token as Token exposing (Token)
 
 runTests =
     False
-        || True
+
+
+
+--         || True
 
 
 initialFiles =
     [ moduleMain
-    , moduleMaybe
-    , moduleList
-    , moduleText
-    , moduleRandom
-    , languageOverview
+
+    --     , moduleMaybe
+    --     , moduleList
+    --     , moduleText
+    --     , moduleRandom
+    --     , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -64,13 +68,26 @@ metaFileName =
 moduleMain =
     ( "Main"
     , """
-result =
-    as [ Int ]
+tests =
+    as Test
 
-    doStuff "StringToTokens"
-        []
-
-
+    blah "StringToTokens"
+        [
+        , meh "keywords"
+            [
+            , codeTest
+                {
+                , name = "[reg] `fn` is a keyword"
+                , run = lexTokens "fn = 1"
+                , expected = Ok
+                        , { end = 0, kind = Token.NewSiblingLine, start = 0 }
+                        , { end = 2, kind = Token.Fn, start = 0 }
+                        , { end = 4, kind = Token.Defop { mutable = False }, start = 3 }
+                        , { end = 6, kind = Token.NumberLiteral "1", start = 5 }
+                        ]
+                }
+            ]
+        ]
       """
     )
 
@@ -296,14 +313,14 @@ onJust maybeResA f =
 --
 
 
-viewMaybeRes : String -> (a -> Html msg) -> Maybe (Res a) -> Html msg
-viewMaybeRes code f maybeRes =
+viewMaybeRes : ErrorEnv -> (a -> Html msg) -> Maybe (Res a) -> Html msg
+viewMaybeRes eenv f maybeRes =
     case maybeRes of
         Nothing ->
             Html.text ""
 
         Just res ->
-            case Compiler.TestHelpers.resErrorToString code res of
+            case Result.mapError (Compiler.TestHelpers.errorToString eenv) res of
                 Err e ->
                     Html.code [] [ Html.text e ]
 
@@ -597,6 +614,11 @@ viewMeta model code =
 viewFileStages : Model -> String -> Html Msg
 viewFileStages model rawCode =
     let
+        eenv =
+            { metaFile = { sourceDirs = [], libraries = [] }
+            , moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
+            }
+
         code =
             Compiler.TestHelpers.unindent rawCode
 
@@ -626,17 +648,17 @@ viewFileStages model rawCode =
         [ Html.li
             []
             [ Html.h6 [] [ Html.text "Canonical AST" ]
-            , viewMaybeRes code viewCanonicalAst caModule
+            , viewMaybeRes eenv viewCanonicalAst caModule
             ]
         , Html.li
             []
             [ Html.h6 [] [ Html.text "Formattable AST" ]
-            , viewMaybeRes code viewFormattableAst faModule
+            , viewMaybeRes eenv viewFormattableAst faModule
             ]
         , Html.li
             []
             [ Html.h6 [] [ Html.text "Tokens" ]
-            , viewMaybeRes code viewTokens tokens
+            , viewMaybeRes eenv viewTokens tokens
             ]
         ]
 
@@ -648,9 +670,9 @@ viewProgram model =
             Lib.result_do
 
         eenv =
-                    { metaFile = { sourceDirs = [], libraries = [] }
-                    , moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
-                    }
+            { metaFile = { sourceDirs = [], libraries = [] }
+            , moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
+            }
 
         compileAndInsert : Meta -> String -> String -> CA.AllDefs -> Result String CA.AllDefs
         compileAndInsert meta fileName code acc =
@@ -662,7 +684,7 @@ viewProgram model =
                     |> Compiler.TestHelpers.unindent
                     |> (\fa -> Compiler.Pipeline.stringToCanonicalAst meta fileName fa)
                     |> Result.map (Dict.union acc)
-                    |> Compiler.TestHelpers.resErrorToString code
+                    |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
 
         emitModule : TI.Substitutions -> CA.AllDefs -> Result x String
         emitModule subs caModule =

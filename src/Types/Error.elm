@@ -4,6 +4,7 @@ module Types.Error exposing (..)
 
 import Dict exposing (Dict)
 import MetaFile exposing (MetaFile)
+import Set exposing (Set)
 import Types.CanonicalAst as CA
 import Types.FormattableAst as FA
 
@@ -34,7 +35,12 @@ type alias ErrorArgs =
 type ContentDiv
     = Text String
     | CodeBlock String
-    | CodeBlockWithLineNumber Int (List String)
+    | CodeBlockWithLineNumber Int (List Highlight) (List String)
+
+
+type Highlight
+    = HighlightWord { line : Int, colStart : Int, colEnd : Int }
+    | HighlightBlock { lineStart : Int, lineEnd : Int }
 
 
 
@@ -58,7 +64,8 @@ err =
     Simple
 
 
-{-| TODO move to FA as FA.res -}
+{-| TODO move to FA as FA.res
+-}
 faSimple : String -> FA.Pos -> String -> Res a
 faSimple moduleName ( start, end ) message =
     res
@@ -69,7 +76,8 @@ faSimple moduleName ( start, end ) message =
         }
 
 
-{-| TODO move to CA as CA.res -}
+{-| TODO move to CA as CA.res
+-}
 caSimple : CA.Pos -> String -> Res a
 caSimple pos message =
     res
@@ -118,20 +126,23 @@ showLines code lineSpan pos =
     lines
         |> List.drop start
         |> List.take size
-        |> CodeBlockWithLineNumber (start + 1)
+        |> CodeBlockWithLineNumber (start + 1) []
 
 
 showCodeBlock : String -> { line : Int, col : Int } -> { line : Int, col : Int } -> ContentDiv
 showCodeBlock code start end =
-    if start == end then
-        CodeBlockWithLineNumber 0 []
+    if end.line < 0 then
+        CodeBlockWithLineNumber 0 [] []
 
     else
         let
-            {- TODO
-               if start and end are on the same line, highlight the word
-               if start and end are on different line, hightlight the block
-            -}
+            highlight =
+                if start.line /= end.line then
+                    HighlightBlock { lineStart = start.line, lineEnd = end.line }
+
+                else
+                    HighlightWord { line = start.line, colStart = start.col, colEnd = end.col }
+
             extraLines =
                 2
 
@@ -153,7 +164,7 @@ showCodeBlock code start end =
         lines
             |> List.drop startLine
             |> List.take size
-            |> CodeBlockWithLineNumber (startLine + 1)
+            |> CodeBlockWithLineNumber (startLine + 1) [ highlight ]
 
 
 
@@ -238,22 +249,58 @@ contentDivToString div =
         CodeBlock s ->
             "\n```\n" ++ s ++ "\n```\n"
 
-        CodeBlockWithLineNumber start ls ->
-            let
-                pad =
-                    (start + List.length ls)
-                        |> String.fromInt
-                        |> String.length
+        CodeBlockWithLineNumber start highlights ls ->
+            fmtBlock start highlights ls
 
-                fmtLine index line =
-                    ((index + start)
-                        |> String.fromInt
-                        |> String.padLeft pad ' '
-                    )
-                        ++ " | "
-                        ++ line
-            in
-            ls
-                |> List.indexedMap fmtLine
-                |> String.join "\n"
-                |> (\s -> s ++ "\n")
+
+highlightSplit : Highlight -> ( Dict Int ( Int, Int ), Set Int ) -> ( Dict Int ( Int, Int ), Set Int )
+highlightSplit h ( words, lines ) =
+    case h of
+        HighlightWord { line, colStart, colEnd } ->
+            ( Dict.insert line ( colStart, colEnd ) words
+            , lines
+            )
+
+        HighlightBlock { lineStart, lineEnd } ->
+            ( words
+            , List.range lineStart lineEnd
+                |> List.foldl Set.insert lines
+            )
+
+
+fmtBlock : Int -> List Highlight -> List String -> String
+fmtBlock start highlights ls =
+    let
+        ( words, lines ) =
+            List.foldl highlightSplit ( Dict.empty, Set.empty ) highlights
+
+        pad =
+            (start + List.length ls)
+                |> String.fromInt
+                |> String.length
+
+        wordHighlight lineNumber =
+            case Dict.get lineNumber words of
+                Nothing ->
+                    ""
+
+                Just ( s, e ) ->
+                    "\n"
+                        ++ String.repeat pad " "
+                        ++ "   "
+                        ++ String.repeat (s - 1) " "
+                        ++ String.repeat (e - s) "^"
+
+        fmtLine index line =
+            ((index + start)
+                |> String.fromInt
+                |> String.padLeft pad ' '
+            )
+                ++ " | "
+                ++ line
+                ++ wordHighlight (index + start)
+    in
+    ls
+        |> List.indexedMap fmtLine
+        |> String.join "\n"
+        |> (\s -> s ++ "\n")

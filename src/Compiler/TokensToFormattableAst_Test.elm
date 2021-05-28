@@ -14,7 +14,8 @@ import Types.Token as Token exposing (Token)
 tests : Test
 tests =
     Test.Group "TokensToFormattableAst"
-        [ lambdas
+        [ errors
+        , lambdas
         , annotations
         , unionDefs
         , lists
@@ -84,9 +85,12 @@ asEvaluation s =
 
 runParser : Syntax.Parser a -> List Token -> Result String a
 runParser parser ts =
-    ts
-        |> Parser.parse (Syntax.discardSecond parser Parser.end) Syntax.unconsIgnoreComments
-        |> Syntax.outcomeToResult "Test" "" ts
+    let
+        ( failStates, outcome ) =
+            Parser.parse (Syntax.discardSecond parser Parser.end) Syntax.unconsIgnoreComments ts
+    in
+    outcome
+        |> Syntax.outcomeToResult "Test" ts failStates
         |> Compiler.TestHelpers.resErrorToString ""
 
 
@@ -118,6 +122,43 @@ firstAnnotation code =
         |> firstStatement
         |> Result.andThen asDefinition
         |> Result.andThen (.maybeAnnotation >> Result.fromMaybe "no annotation")
+
+
+
+----
+---
+--
+
+
+errors : Test
+errors =
+    Test.Group "Errors"
+        [ codeTest "[reg] simple assignment, inline"
+            """
+            tests =
+                as Test
+
+                blah "StringToTokens"
+                    [
+                    , meh "keywords"
+                        [
+                        , codeTest
+                            {
+                            , name = "[reg] `fn` is a keyword"
+                            , run = lexTokens "fn = 1"
+                            , expected = Ok
+                                    , { end = 0, kind = Token.NewSiblingLine, start = 0 }
+                                    , { end = 2, kind = Token.Fn, start = 0 }
+                                    , { end = 4, kind = Token.Defop { mutable = False }, start = 3 }
+                                    , { end = 6, kind = Token.NumberLiteral "1", start = 5 }
+                                    ]
+                            }
+                        ]
+                    ]
+            """
+            firstDefinition
+            (Test.errContain "xxx")
+        ]
 
 
 
