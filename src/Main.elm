@@ -33,7 +33,7 @@ import Prelude
 import Set exposing (Set)
 import Test
 import Types.CanonicalAst as CA exposing (Pos)
-import Types.Error exposing (Res, ErrorEnv)
+import Types.Error exposing (ErrorEnv, Res)
 import Types.FormattableAst as FA
 import Types.Literal as Literal
 import Types.Meta exposing (Meta)
@@ -69,25 +69,8 @@ moduleMain =
     ( "Main"
     , """
 tests =
-    as Test
-
-    blah "StringToTokens"
-        [
-        , meh "keywords"
-            [
-            , codeTest
-                {
-                , name = "[reg] `fn` is a keyword"
-                , run = lexTokens "fn = 1"
-                , expected = Ok
-                        , { end = 0, kind = Token.NewSiblingLine, start = 0 }
-                        , { end = 2, kind = Token.Fn, start = 0 }
-                        , { end = 4, kind = Token.Defop { mutable = False }, start = 3 }
-                        , { end = 6, kind = Token.NumberLiteral "1", start = 5 }
-                        ]
-                }
-            ]
-        ]
+    (Ok
+    )
       """
     )
 
@@ -251,17 +234,20 @@ tests =
 type alias Model =
     { files : Dict String String
     , selectedFile : String
+    , hidden : Set String
     }
 
 
 type Msg
     = OnInput String
     | OnSelect String
+    | OnToggle String
 
 
 init : Model
 init =
     { files = Dict.fromList initialFiles
+    , hidden = Set.empty
     , selectedFile =
         --         "Language/Overview"
         initialFiles
@@ -279,6 +265,13 @@ update msg model =
 
         OnSelect name ->
             { model | selectedFile = name }
+
+        OnToggle id ->
+            if Set.member id model.hidden then
+                { model | hidden = Set.remove id model.hidden }
+
+            else
+                { model | hidden = Set.insert id model.hidden }
 
 
 
@@ -643,23 +636,59 @@ viewFileStages model rawCode =
                 Err e ->
                     Just <| Types.Error.errorTodo e
     in
-    Html.ul
+    Html.div
         []
-        [ Html.li
-            []
-            [ Html.h6 [] [ Html.text "Canonical AST" ]
-            , viewMaybeRes eenv viewCanonicalAst caModule
+        [ viewHide "Canonical AST"
+            model
+            [ viewMaybeRes eenv viewCanonicalAst caModule
             ]
-        , Html.li
-            []
-            [ Html.h6 [] [ Html.text "Formattable AST" ]
-            , viewMaybeRes eenv viewFormattableAst faModule
+        , viewHide "Formattable AST"
+            model
+            [ viewMaybeRes eenv viewFormattableAst faModule
             ]
-        , Html.li
-            []
-            [ Html.h6 [] [ Html.text "Tokens" ]
-            , viewMaybeRes eenv viewTokens tokens
+        , viewHide "Tokens"
+            model
+            [ viewMaybeRes eenv viewTokens tokens
             ]
+        ]
+
+
+viewHide : String -> Model -> List (Html Msg) -> Html Msg
+viewHide id model content =
+    let
+        isHidden =
+            Set.member id model.hidden
+    in
+    Html.div
+        []
+        (viewHideCheckbox id model
+            :: (if isHidden then
+                    []
+
+                else
+                    content
+               )
+        )
+
+
+viewHideCheckbox : String -> Model -> Html Msg
+viewHideCheckbox id model =
+    let
+        isHidden =
+            Set.member id model.hidden
+    in
+    Html.div
+        [ class "row pointer"
+        , Html.Events.onClick <| OnToggle id
+        ]
+        [ Html.input
+            [ Html.Attributes.type_ "checkbox"
+            , Html.Attributes.checked <| not isHidden
+            ]
+            []
+        , Html.div
+            []
+            [ Html.text id ]
         ]
 
 

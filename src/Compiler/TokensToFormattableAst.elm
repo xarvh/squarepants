@@ -244,7 +244,7 @@ inlineOrBelowOrIndented : Parser a -> Parser a
 inlineOrBelowOrIndented p =
     oneOf
         [ block p
-        , discardFirst (kind Token.NewSiblingLine) p
+        , sib p
         , p
         ]
 
@@ -503,8 +503,10 @@ expr =
 
 
 parens : Parser a -> Parser a
-parens main =
-    surroundStrict (Token.RoundParen Token.Open) (Token.RoundParen Token.Closed) main
+parens =
+    Parser.surroundWith
+        (kind <| Token.RoundParen Token.Open)
+        (inlineOrBelowOrIndented <| kind <| Token.RoundParen Token.Closed)
 
 
 
@@ -889,7 +891,7 @@ lambda =
                      b
                      c
                   -}
-                  oneOrMore (discardFirst (kind Token.NewSiblingLine) statement)
+                  oneOrMore (sib statement)
                 , {-
                      fn x = a
 

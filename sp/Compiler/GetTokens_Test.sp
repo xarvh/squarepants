@@ -18,7 +18,8 @@ tests =
         [
         , Test.Group "keywords"
             [
-            , codeTest "[reg] `fn` is a keyword" (lexTokens "fn = 1") (Ok
+            , codeTest "[reg] `fn` is a keyword" (lexTokens "fn = 1")
+                    (Ok
                         [
                         , { end = 0, kind = Token.NewSiblingLine, start = 0 }
                         , { end = 2, kind = Token.Fn, start = 0 }

@@ -289,7 +289,7 @@ fmtBlock start highlights ls =
                         ++ String.repeat pad " "
                         ++ "   "
                         ++ String.repeat (s - 1) " "
-                        ++ String.repeat (e - s) "^"
+                        ++ String.repeat (max 1 <| e - s) "^"
 
         fmtLine index line =
             ((index + start)

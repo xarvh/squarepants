@@ -24,6 +24,8 @@ css =
   max-width: 90vw;
 }
 
+.pointer { cursor: pointer; }
+
 
 body {
   background: #151515;
