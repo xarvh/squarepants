@@ -65,3 +65,57 @@ isOkAndEqualTo expectedOk =
               else
                   Just "TODO"
 
+
+
+#
+# Test running
+#
+
+
+outcomesRec path test accum =
+    as Text -> Test -> [ Text & TestOutcome ] -> [ Text & TestOutcome ]
+
+    try test as
+        Single name f:
+            path .. name & f () :: accum
+
+        NotNow t:
+            path .. getName t & Skipped :: accum
+
+        Group pathSegment ts:
+            List.foldl (outcomesRec (path .. pathSegment .. " / ")) accum ts
+
+
+getName test =
+    as Test -> String
+
+    try test as
+        Single n f:
+            n
+
+        Group n ls:
+            n
+
+        NotNow t:
+            getName t
+
+
+flatten =
+    as [ Test ] -> [ Text & TestOutcome ]
+
+    List.foldl (outcomesRec "") []
+
+
+errorsFirst outcome =
+    as TestOutcome -> Number
+
+    try outcome as
+        Error e:
+            -1
+
+        Skipped:
+            0
+
+        Success:
+            1
+
