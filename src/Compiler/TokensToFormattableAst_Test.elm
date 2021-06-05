@@ -15,6 +15,7 @@ tests : Test
 tests =
     Test.Group "TokensToFormattableAst"
         [ errors
+        , parens
         , lambdas
         , annotations
         , unionDefs
@@ -157,7 +158,32 @@ errors =
                     ]
             """
             firstDefinition
-            (Test.errContain "xxx")
+            (Test.errContain
+                """
+  14 |                         , { end = 0, kind = Token.NewSiblingLine, start = 0 }
+                                 ^
+  """
+            )
+        ]
+
+
+
+----
+---
+--
+
+
+parens : Test
+parens =
+    Test.Group "Parens"
+        [ codeTest "Can exist on multiple lines"
+            """
+          tests =
+              (Ok
+              )
+          """
+            firstDefinition
+            Test.justOk
         ]
 
 

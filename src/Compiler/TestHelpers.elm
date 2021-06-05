@@ -45,7 +45,7 @@ resErrorToString code =
     let
         eenv =
             { metaFile = { sourceDirs = [], libraries = [] }
-            , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = code }
+            , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = unindent code }
             }
     in
     Result.mapError (errorToString eenv)

@@ -49,3 +49,19 @@ isOk =
 
           Ok actualOk:
               Nothing
+
+
+isOkAndEqualTo expectedOk =
+    as ok -> CodeExpectation ok
+
+    CodeExpectation fn toString result:
+      try result as
+          Err e:
+              Just e
+
+          Ok actualOk:
+              if actualOk == expectedOk then
+                  Nothing
+              else
+                  Just "TODO"
+

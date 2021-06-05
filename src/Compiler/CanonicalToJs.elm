@@ -23,6 +23,7 @@ nativeNonOps =
         |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
+        |> Dict.insert "==" "sp_compare"
 
 
 nativeBinops : Dict String { jsSymb : JA.Name, mutates : Bool, fnName : String }
@@ -169,6 +170,46 @@ const sp_clone = (src) => {
  }
 
  return src;
+}
+
+
+const sp_compare = (a) => (b) => {
+  if (a === b)
+    return true
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b)) return false;
+
+    const l = a.length;
+    if (l !== b.length) return false;
+
+    let i = 0;
+    while (i < l) {
+      if (!sp_compare(a[i], b[i])) return false;
+      ++i;
+    }
+
+    return true;
+  }
+
+  if (typeof(a) === 'object') {
+    if (typeof(b) !== 'object') return false;
+
+    const keys = Object.keys(a);
+    const l = keys.length;
+    if (l !== Object.keys(b).length) return false;
+
+    let i = 0;
+    while (i < l) {
+      let k = keys[i];
+      if (!sp_compare(a[k], b[k])) return false;
+      ++i;
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 
