@@ -389,8 +389,6 @@ stringToStructuredName env pos rawString =
                             if tail /= [] then
                                 Error.faSimple env.ro.currentModule pos "Type or Constructor can't have attributes!"
 
-
-
                             else
                                 do (validateDefName second) <| \defName ->
                                 do (translateModName first) <| \modName ->
@@ -791,6 +789,21 @@ translateExpression env faExpr =
                 (translateStatementBlock env true)
                 (translateStatementBlock env false)
 
+        FA.Unop pos op faOperand ->
+            do (translateExpression env faOperand) <| \caOperand ->
+            case op of
+                "+" ->
+                    Ok caOperand
+
+                "-" ->
+                    makeUnop (tp env.ro pos) "unop:-" caOperand
+
+                "not" ->
+                    makeUnop (tp env.ro pos) "not" caOperand
+
+                _ ->
+                    Error.faSimple env.ro.currentModule pos <| "I don't know what this unary operator is: `" ++ op ++ "`"
+
         FA.Binop pos group sepList ->
             translateBinops env pos group sepList
 
@@ -845,8 +858,18 @@ translateExpression env faExpr =
                             |> Result.map (\caBlock -> [ ( CA.PatternDiscard (tp env.ro pos), caBlock ) ])
                 )
 
-        _ ->
-            errorTodo <| "FA expression type not supported for now:" ++ Debug.toString faExpr
+
+makeUnop : CA.Pos -> String -> CA.Expression -> Res CA.Expression
+makeUnop p caName caOperand =
+    CA.Call p
+        (CA.Variable p
+            { isRoot = True
+            , name = caName
+            , attrPath = []
+            }
+        )
+        (CA.ArgumentExpression caOperand)
+        |> Ok
 
 
 makeUpdateTarget : Env -> Maybe FA.Expression -> Res { maybeName : Maybe CA.VariableArgs, wrapper : CA.Expression -> CA.Expression }

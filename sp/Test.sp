@@ -77,7 +77,7 @@ outcomesRec path test accum =
 
     try test as
         Single name f:
-            path .. name & f () :: accum
+            path .. name & List.Cons (f None) accum
 
         NotNow t:
             path .. getName t & Skipped :: accum
