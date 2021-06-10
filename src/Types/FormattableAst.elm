@@ -13,7 +13,7 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 -}
 
 import SepList exposing (SepList)
-import Types.Binop as Binop exposing (Binop)
+import Types.Op as Op exposing (Binop, Unop)
 import Types.Literal as Literal
 
 
@@ -67,8 +67,8 @@ type Expression
     | Mutable Pos String
     | Lambda Pos (List Pattern) (List Statement)
     | FunctionCall Pos Expression (List Expression)
-    | Binop Pos Binop.Precedence (SepList Binop Expression)
-    | Unop Pos String Expression
+    | Binop Pos Op.Precedence (SepList Binop Expression)
+    | Unop Pos Unop Expression
     | If
         Pos
         { isOneLine : Bool

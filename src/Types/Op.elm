@@ -1,6 +1,12 @@
-module Types.Binop exposing (..)
+module Types.Op exposing (..)
 
 import Types.CanonicalAst as CA
+
+
+type alias Unop =
+    { symbol : String
+    , ty : CA.Type
+    }
 
 
 type alias Binop =

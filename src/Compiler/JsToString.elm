@@ -56,6 +56,9 @@ emitExpr l expression =
         JA.Call ref args ->
             "(" ++ emitExpr l ref ++ ")(" ++ String.join ", " (List.map (emitExpr l) args) ++ ")"
 
+        JA.Unop op left ->
+            op ++ "(" ++ emitExpr l left ++ ")"
+
         JA.Binop op left right ->
             "(" ++ emitExpr l left ++ " " ++ op ++ " " ++ emitExpr l right ++ ")"
 

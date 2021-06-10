@@ -3,9 +3,9 @@ module Prelude exposing (..)
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import MetaFile exposing (MetaFile)
-import Types.Binop as Binop exposing (Binop)
 import Types.CanonicalAst as CA exposing (Type)
 import Types.Meta exposing (Meta)
+import Types.Op as Op exposing (Binop, Unop)
 
 
 
@@ -106,8 +106,22 @@ meta =
 prelude : CA.AllDefs
 prelude =
     Core.coreModule
+        |> (\m -> Dict.foldl insertUnop m unops)
         |> (\m -> Dict.foldl insertBinop m binops)
         |> (\m -> List.foldl insertFunction m functions)
+
+
+insertUnop : String -> Unop -> CA.AllDefs -> CA.AllDefs
+insertUnop _ u =
+    { name = u.symbol
+    , localName = u.symbol
+    , pos = pos
+    , isNative = True
+    , body = []
+    , maybeAnnotation = Just u.ty
+    }
+        |> CA.Value
+        |> Dict.insert u.symbol
 
 
 insertBinop : String -> Binop -> CA.AllDefs -> CA.AllDefs
@@ -155,6 +169,47 @@ tyVar n =
 
 tyFun from to =
     CA.TypeFunction pos from False to
+
+
+
+----
+--- Unops
+--
+
+
+unops : Dict String Unop
+unops =
+    [ unaryPlus
+    , unaryMinus
+    , not_
+    ]
+        |> List.foldl (\op -> Dict.insert op.symbol op) Dict.empty
+
+
+typeUnopUniform : CA.Type -> CA.Type
+typeUnopUniform ty =
+    CA.TypeFunction pos ty False ty
+
+
+unaryPlus : Unop
+unaryPlus =
+    { symbol = "0 +"
+    , ty = typeBinopUniform Core.textType
+    }
+
+
+unaryMinus : Unop
+unaryMinus =
+    { symbol = "0 -"
+    , ty = typeBinopUniform Core.textType
+    }
+
+
+not_ : Unop
+not_ =
+    { symbol = "not"
+    , ty = typeBinopUniform Core.boolType
+    }
 
 
 
@@ -209,8 +264,8 @@ typeBinopUniform ty =
 textConcat : Binop
 textConcat =
     { symbol = ".."
-    , precedence = Binop.Addittive
-    , associativity = Binop.Right
+    , precedence = Op.Addittive
+    , associativity = Op.Right
     , ty = typeBinopUniform Core.textType
     }
 
@@ -218,8 +273,8 @@ textConcat =
 tuple : Binop
 tuple =
     { symbol = "&"
-    , precedence = Binop.Tuple
-    , associativity = Binop.NonAssociative
+    , precedence = Op.Tuple
+    , associativity = Op.NonAssociative
     , ty =
         Dict.empty
             |> Dict.insert "first" (tyVar "a")
@@ -236,8 +291,8 @@ listCons =
             tyVar "item"
     in
     { symbol = "::"
-    , precedence = Binop.Cons
-    , associativity = Binop.Right
+    , precedence = Op.Cons
+    , associativity = Op.Right
     , ty = typeBinop False item (Core.listType item) (Core.listType item)
     }
 
@@ -245,8 +300,8 @@ listCons =
 mutableAssign : Binop
 mutableAssign =
     { symbol = ":="
-    , precedence = Binop.Mutop
-    , associativity = Binop.Left
+    , precedence = Op.Mutop
+    , associativity = Op.Left
     , ty = typeBinop True (tyVar "a") (tyVar "a") Core.noneType
     }
 
@@ -258,8 +313,8 @@ mutableAssign =
 and : Binop
 and =
     { symbol = "and"
-    , precedence = Binop.Logical
-    , associativity = Binop.Right
+    , precedence = Op.Logical
+    , associativity = Op.Right
     , ty = typeBinopUniform Core.boolType
     }
 
@@ -267,8 +322,8 @@ and =
 or : Binop
 or =
     { symbol = "or"
-    , precedence = Binop.Logical
-    , associativity = Binop.Right
+    , precedence = Op.Logical
+    , associativity = Op.Right
     , ty = typeBinopUniform Core.boolType
     }
 
@@ -276,8 +331,8 @@ or =
 add : Binop
 add =
     { symbol = "+"
-    , precedence = Binop.Addittive
-    , associativity = Binop.Left
+    , precedence = Op.Addittive
+    , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
     }
 
@@ -285,8 +340,8 @@ add =
 subtract : Binop
 subtract =
     { symbol = "-"
-    , precedence = Binop.Addittive
-    , associativity = Binop.Left
+    , precedence = Op.Addittive
+    , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
     }
 
@@ -294,8 +349,8 @@ subtract =
 multiply : Binop
 multiply =
     { symbol = "*"
-    , precedence = Binop.Multiplicative
-    , associativity = Binop.Left
+    , precedence = Op.Multiplicative
+    , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
     }
 
@@ -303,8 +358,8 @@ multiply =
 divide : Binop
 divide =
     { symbol = "/"
-    , precedence = Binop.Multiplicative
-    , associativity = Binop.Left
+    , precedence = Op.Multiplicative
+    , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
     }
 
@@ -312,8 +367,8 @@ divide =
 mutableAdd : Binop
 mutableAdd =
     { symbol = "+="
-    , precedence = Binop.Mutop
-    , associativity = Binop.NonAssociative
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
     , ty = typeBinop True Core.numberType Core.numberType Core.noneType
     }
 
@@ -321,8 +376,8 @@ mutableAdd =
 mutableSubtract : Binop
 mutableSubtract =
     { symbol = "-="
-    , precedence = Binop.Mutop
-    , associativity = Binop.NonAssociative
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
     , ty = typeBinop True Core.numberType Core.numberType Core.noneType
     }
 
@@ -340,8 +395,8 @@ anyNonFunction =
 equal : Binop
 equal =
     { symbol = "=="
-    , precedence = Binop.Comparison
-    , associativity = Binop.Left
+    , precedence = Op.Comparison
+    , associativity = Op.Left
     , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
     }
 
@@ -349,8 +404,8 @@ equal =
 lesserThan : Binop
 lesserThan =
     { symbol = "<"
-    , precedence = Binop.Comparison
-    , associativity = Binop.Left
+    , precedence = Op.Comparison
+    , associativity = Op.Left
     , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
     }
 
@@ -358,8 +413,8 @@ lesserThan =
 greaterThan : Binop
 greaterThan =
     { symbol = ">"
-    , precedence = Binop.Comparison
-    , associativity = Binop.Left
+    , precedence = Op.Comparison
+    , associativity = Op.Left
     , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
     }
 
@@ -371,8 +426,8 @@ greaterThan =
 sendRight : Binop
 sendRight =
     { symbol = ">>"
-    , precedence = Binop.Pipe
-    , associativity = Binop.Left
+    , precedence = Op.Pipe
+    , associativity = Op.Left
     , ty =
         typeBinop False
             (tyVar "a")
@@ -384,8 +439,8 @@ sendRight =
 sendLeft : Binop
 sendLeft =
     { symbol = "<<"
-    , precedence = Binop.Pipe
-    , associativity = Binop.Right
+    , precedence = Op.Pipe
+    , associativity = Op.Right
     , ty =
         typeBinop False
             (tyFun (tyVar "a") (tyVar "b"))

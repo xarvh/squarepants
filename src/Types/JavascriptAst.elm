@@ -20,6 +20,10 @@ type Expr
       -- `name`
     | Var Name
       --
+      -- -a
+      -- !a
+    | Unop String Expr
+      --
       -- (a + b)
     | Binop String Expr Expr
       --

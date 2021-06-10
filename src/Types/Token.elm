@@ -1,6 +1,6 @@
 module Types.Token exposing (..)
 
-import Types.Binop
+import Types.Op
 
 
 type alias Token =
@@ -33,8 +33,8 @@ type
     | With
       -- Ops
     | Defop { mutable : Bool }
-    | Unop String
-    | Binop String Types.Binop.Binop
+    | Unop Types.Op.Unop
+    | Binop String Types.Op.Binop
     | Arrow { mutable : Bool }
       -- Parens
     | RoundParen OpenOrClosed

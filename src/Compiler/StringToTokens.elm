@@ -276,7 +276,7 @@ recognisedTokens =
                                 Token.Binop m Prelude.or
 
                             "not" ->
-                                Token.Unop match
+                                Token.Unop Prelude.not_
 
                             _ ->
                                 case String.uncons match of
@@ -303,7 +303,17 @@ recognisedTokens =
           -- the `>` at the end is to avoid matching `->`
           { regex = "^[ ]+[+-][^ >=]"
           , consumed = \match -> String.length match - 1
-          , constructor = String.trimLeft >> String.dropRight 1 >> Token.Unop >> Ok
+          , constructor =
+                \m ->
+                    case m |> String.trimLeft |> String.dropRight 1 of
+                        "+" ->
+                            Token.Unop Prelude.unaryPlus |> Ok
+
+                        "-" ->
+                            Token.Unop Prelude.unaryMinus |> Ok
+
+                        _ ->
+                            Err errorUnknownOperator
           }
         , -- Squiggles
           { regex = "^[ ]*[=+\\-*/:><!&^|@]+"

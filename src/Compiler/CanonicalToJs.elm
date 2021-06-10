@@ -11,10 +11,11 @@ import Types.JavascriptAst as JA
 import Types.Literal
 
 
-nativeNonOps : Dict String JA.Name
-nativeNonOps =
-    nativeBinops
-        |> Dict.map (always .fnName)
+allNatives : Dict String JA.Name
+allNatives =
+    Dict.empty
+        |> Dict.union (Dict.map (always .fnName) nativeBinops)
+        |> Dict.insert "not" "sp_not"
         |> Dict.insert Core.trueValue "true"
         |> Dict.insert Core.falseValue "false"
         |> Dict.insert Core.noneValue "null"
@@ -277,7 +278,7 @@ clone expr =
 
 translatePath : String -> JA.Name
 translatePath s =
-    case Dict.get s nativeNonOps of
+    case Dict.get s allNatives of
         Just nv ->
             nv
 
@@ -530,9 +531,16 @@ translateExpr env expression =
                     jaExpr
 
                 Nothing ->
-                    JA.Call
-                        (translateExpr env ref)
-                        [ translateArg { nativeBinop = False } env arg ]
+                    let
+                        jsArg =
+                            translateArg { nativeBinop = False } env arg
+                    in
+                    case maybeNativeUnop env ref jsArg of
+                        Just jaExpr ->
+                            jaExpr
+
+                        Nothing ->
+                            JA.Call (translateExpr env ref) [ jsArg ]
 
         CA.If _ ar ->
             JA.Conditional
@@ -647,6 +655,27 @@ accessAttrsButTheLast attrHead attrTail e =
             )
     in
     List.foldl fold ( e, attrHead ) attrTail
+
+
+maybeNativeUnop : Env -> CA.Expression -> JA.Expr -> Maybe JA.Expr
+maybeNativeUnop env reference argument =
+    case reference of
+        CA.Variable _ { name } ->
+            case name of
+                "not" ->
+                    Just <| JA.Unop "!" argument
+
+                "0-" ->
+                    Just <| JA.Unop "-" argument
+
+                "0+" ->
+                    Just <| argument
+
+                _ ->
+                    Nothing
+
+        _ ->
+            Nothing
 
 
 maybeNativeBinop : Env -> CA.Expression -> CA.Argument -> Maybe JA.Expr
@@ -868,7 +897,7 @@ translateUnion : CA.UnionDef -> List JA.Statement
 translateUnion def =
     def.constructors
         |> Dict.toList
-        |> List.filter (\( name, args ) -> not <| Dict.member name nativeNonOps)
+        |> List.filter (\( name, args ) -> not <| Dict.member name allNatives)
         |> List.map translateUnionConstructor
 
 

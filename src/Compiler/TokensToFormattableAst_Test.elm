@@ -5,7 +5,7 @@ import Compiler.TokensToFormattableAst as Syntax
 import Parser
 import Prelude
 import Test exposing (Test)
-import Types.Binop as Binop
+import Types.Op as Op
 import Types.FormattableAst as FA
 import Types.Literal
 import Types.Token as Token exposing (Token)
@@ -736,7 +736,7 @@ binops =
     let
         sendBtoC b c =
             FA.Binop p
-                Binop.Pipe
+                Op.Pipe
                 ( FA.Variable p { isBinop = False } "b"
                 , [ ( Prelude.sendRight
                     , FA.Variable p { isBinop = False } "c"
@@ -746,7 +746,7 @@ binops =
 
         sendBtoCtoD b c d =
             FA.Binop p
-                Binop.Pipe
+                Op.Pipe
                 ( FA.Variable p { isBinop = False } "b"
                 , [ ( Prelude.sendRight
                     , FA.Variable p { isBinop = False } "c"

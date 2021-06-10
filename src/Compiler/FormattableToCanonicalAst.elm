@@ -4,11 +4,11 @@ import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import Lib
 import SepList exposing (SepList)
-import Types.Binop as Binop exposing (Binop)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res, errorTodo)
 import Types.FormattableAst as FA
 import Types.Meta exposing (Meta)
+import Types.Op as Op exposing (Binop)
 import Types.Token as Token
 
 
@@ -790,19 +790,20 @@ translateExpression env faExpr =
                 (translateStatementBlock env false)
 
         FA.Unop pos op faOperand ->
+            let
+                p =
+                    tp env.ro pos
+            in
             do (translateExpression env faOperand) <| \caOperand ->
-            case op of
-                "+" ->
-                    Ok caOperand
-
-                "-" ->
-                    makeUnop (tp env.ro pos) "unop:-" caOperand
-
-                "not" ->
-                    makeUnop (tp env.ro pos) "not" caOperand
-
-                _ ->
-                    Error.faSimple env.ro.currentModule pos <| "I don't know what this unary operator is: `" ++ op ++ "`"
+            CA.Call p
+                (CA.Variable p
+                    { isRoot = True
+                    , name = op.symbol
+                    , attrPath = []
+                    }
+                )
+                (CA.ArgumentExpression caOperand)
+                |> Ok
 
         FA.Binop pos group sepList ->
             translateBinops env pos group sepList
@@ -857,19 +858,6 @@ translateExpression env faExpr =
                         translateStatementBlock env faBlock
                             |> Result.map (\caBlock -> [ ( CA.PatternDiscard (tp env.ro pos), caBlock ) ])
                 )
-
-
-makeUnop : CA.Pos -> String -> CA.Expression -> Res CA.Expression
-makeUnop p caName caOperand =
-    CA.Call p
-        (CA.Variable p
-            { isRoot = True
-            , name = caName
-            , attrPath = []
-            }
-        )
-        (CA.ArgumentExpression caOperand)
-        |> Ok
 
 
 makeUpdateTarget : Env -> Maybe FA.Expression -> Res { maybeName : Maybe CA.VariableArgs, wrapper : CA.Expression -> CA.Expression }
@@ -955,7 +943,7 @@ translateArgument env faExpr =
                 |> Result.map CA.ArgumentExpression
 
 
-translateBinops : Env -> FA.Pos -> Binop.Precedence -> SepList Binop FA.Expression -> Res CA.Expression
+translateBinops : Env -> FA.Pos -> Op.Precedence -> SepList Binop FA.Expression -> Res CA.Expression
 translateBinops env pos group ( firstItem, firstTail ) =
     case firstTail of
         [] ->
@@ -963,7 +951,7 @@ translateBinops env pos group ( firstItem, firstTail ) =
 
         ( firstSep, secondItem ) :: [] ->
             case group of
-                Binop.Tuple ->
+                Op.Tuple ->
                     Result.map2
                         (\first second ->
                             Dict.empty
@@ -984,7 +972,7 @@ translateBinops env pos group ( firstItem, firstTail ) =
                     ( secondSep, thirdItem ) :: thirdTail
             in
             case group of
-                Binop.Comparison ->
+                Op.Comparison ->
                     if notAllSeparators (sameDirectionAs firstSep) secondTail then
                         -- TODO actually list the seps
                         errorTodo "can't mix comparison ops with different direction"
@@ -993,14 +981,14 @@ translateBinops env pos group ( firstItem, firstTail ) =
                         -- TODO expand `a < b < c` to `a < b && b < c` without calculating b twice
                         errorTodo "NI compops expansion"
 
-                Binop.Logical ->
+                Op.Logical ->
                     if notAllSeparators ((==) firstSep) secondTail then
                         errorTodo "Mixing `and` and `or` is ambiguous. Use parens!"
 
                     else
                         translateBinopSepList_rightAssociative env pos firstItem firstTail
 
-                Binop.Tuple ->
+                Op.Tuple ->
                     if thirdTail /= [] then
                         errorTodo "Tuples can't have more than 3 items, use a record instead."
 
@@ -1017,17 +1005,17 @@ translateBinops env pos group ( firstItem, firstTail ) =
                             (translateExpression env secondItem)
                             (translateExpression env thirdItem)
 
-                Binop.Pipe ->
+                Op.Pipe ->
                     if notAllSeparators ((==) firstSep) secondTail then
                         errorTodo "Mixing pipes is ambigous. Use parens."
 
-                    else if firstSep.associativity == Binop.Right then
+                    else if firstSep.associativity == Op.Right then
                         translateBinopSepList_rightAssociative env pos firstItem firstTail
 
                     else
                         translateBinopSepList_leftAssociative env pos firstItem firstTail
 
-                Binop.Mutop ->
+                Op.Mutop ->
                     errorTodo "mutops can't be chained"
 
                 _ ->

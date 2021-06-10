@@ -3,7 +3,7 @@ module Compiler.TokensToFormattableAst exposing (..)
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, higherOr, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
-import Types.Binop as Binop exposing (Binop)
+import Types.Op as Op exposing (Binop, Unop)
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Literal
@@ -475,22 +475,22 @@ expr =
         , higherOr lambda
         , functionApplicationOr
         , unopsOr
-        , binopsOr Binop.Exponential
-        , binopsOr Binop.Multiplicative
-        , binopsOr Binop.Addittive
+        , binopsOr Op.Exponential
+        , binopsOr Op.Multiplicative
+        , binopsOr Op.Addittive
 
         -- Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
-        , binopsOr Binop.Comparison
+        , binopsOr Op.Comparison
 
         --
-        , binopsOr Binop.Cons
+        , binopsOr Op.Cons
 
         -- Tuples are chained (ie, `a & b & c` makes a tuple3)
-        , binopsOr Binop.Tuple
+        , binopsOr Op.Tuple
 
         -- TODO pipes can't actually be mixed
-        , binopsOr Binop.Pipe
-        , binopsOr Binop.Mutop
+        , binopsOr Op.Pipe
+        , binopsOr Op.Mutop
         , higherOr <| if_
         , higherOr <| try
         ]
@@ -772,7 +772,7 @@ typeTupleOr higher =
     let
         binopAndPrev : Parser FA.Type
         binopAndPrev =
-            discardFirst (binaryOperators Binop.Tuple) higher
+            discardFirst (binaryOperators Op.Tuple) higher
     in
     do here <| \start ->
     do higher <| \head ->
@@ -936,12 +936,12 @@ pattern =
         [ higherOr <| parens nest
         , higherOr <| list FA.PatternList nest
         , higherOr <| record (Token.Defop { mutable = False }) FA.PatternRecord nest
-        , patternBinopOr Binop.Cons FA.PatternCons
-        , patternBinopOr Binop.Tuple FA.PatternTuple
+        , patternBinopOr Op.Cons FA.PatternCons
+        , patternBinopOr Op.Tuple FA.PatternTuple
         ]
 
 
-patternBinopOr : Binop.Precedence -> (FA.Pos -> List FA.Pattern -> FA.Pattern) -> Parser FA.Pattern -> Parser FA.Pattern
+patternBinopOr : Op.Precedence -> (FA.Pos -> List FA.Pattern -> FA.Pattern) -> Parser FA.Pattern -> Parser FA.Pattern
 patternBinopOr precedenceGroup constructor higher =
     do here <| \start ->
     do (sepList (binaryOperators precedenceGroup) higher) <| \( head, sepTail ) ->
@@ -1055,7 +1055,7 @@ unopsOr higher =
             succeed right
 
 
-unaryOperator : Parser ( String, Token )
+unaryOperator : Parser ( Unop, Token )
 unaryOperator =
     do oneToken <| \token ->
     case token.kind of
@@ -1084,7 +1084,7 @@ binopInsideParens =
             fail
 
 
-binopsOr : Binop.Precedence -> Parser FA.Expression -> Parser FA.Expression
+binopsOr : Op.Precedence -> Parser FA.Expression -> Parser FA.Expression
 binopsOr group higher =
     do here <| \start ->
     do (sepList (binaryOperators group) higher) <| \( head, sepTail ) ->
@@ -1097,7 +1097,7 @@ binopsOr group higher =
             |> succeed
 
 
-binaryOperators : Binop.Precedence -> Parser Binop
+binaryOperators : Op.Precedence -> Parser Binop
 binaryOperators group =
     do oneToken <| \token ->
     case token.kind of
