@@ -57,7 +57,7 @@ unaryAddittiveOps =
             , expected =
                 Ok
                     [ { kind = Token.BlockStart, start = 0, end = 1 }
-                    , { kind = Token.Unop "-", start = 1, end = 2 }
+                    , { kind = Token.Unop Prelude.unaryMinus, start = 1, end = 2 }
                     , { kind = non_mut_name "a", start = 2, end = 3 }
                     , { kind = Token.BlockEnd, start = 3, end = 3 }
                     ]
@@ -70,7 +70,7 @@ unaryAddittiveOps =
                     [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
                     , { kind = non_mut_name "a", start = 0, end = 1 }
                     , { kind = Token.Binop " -" Prelude.subtract, start = 2, end = 3 }
-                    , { kind = Token.Unop "-", start = 4, end = 5 }
+                    , { kind = Token.Unop Prelude.unaryMinus, start = 4, end = 5 }
                     , { kind = non_mut_name "a", start = 5, end = 6 }
                     ]
             }

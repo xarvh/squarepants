@@ -194,21 +194,21 @@ typeUnopUniform ty =
 unaryPlus : Unop
 unaryPlus =
     { symbol = "0 +"
-    , ty = typeBinopUniform Core.textType
+    , ty = typeUnopUniform Core.numberType
     }
 
 
 unaryMinus : Unop
 unaryMinus =
     { symbol = "0 -"
-    , ty = typeBinopUniform Core.textType
+    , ty = typeUnopUniform Core.numberType |> Debug.log "unaryMinus"
     }
 
 
 not_ : Unop
 not_ =
     { symbol = "not"
-    , ty = typeBinopUniform Core.boolType
+    , ty = typeUnopUniform Core.boolType
     }
 
 

@@ -4,6 +4,7 @@ import Compiler.CoreModule as Core
 import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Lib
+import Prelude
 import RefHierarchy
 import Set exposing (Set)
 import Types.CanonicalAst as CA
@@ -25,6 +26,14 @@ allNatives =
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_compare"
+
+
+nativeUnops : Dict String { jsSymb : JA.Name }
+nativeUnops =
+    Dict.empty
+        |> Dict.insert Prelude.unaryPlus.symbol { jsSymb = "+" }
+        |> Dict.insert Prelude.unaryMinus.symbol { jsSymb = "-" }
+        |> Dict.insert Prelude.not_.symbol { jsSymb = "!" }
 
 
 nativeBinops : Dict String { jsSymb : JA.Name, mutates : Bool, fnName : String }
@@ -661,18 +670,12 @@ maybeNativeUnop : Env -> CA.Expression -> JA.Expr -> Maybe JA.Expr
 maybeNativeUnop env reference argument =
     case reference of
         CA.Variable _ { name } ->
-            case name of
-                "not" ->
-                    Just <| JA.Unop "!" argument
-
-                "0-" ->
-                    Just <| JA.Unop "-" argument
-
-                "0+" ->
-                    Just <| argument
-
-                _ ->
+            case Dict.get name nativeUnops of
+                Nothing ->
                     Nothing
+
+                Just { jsSymb } ->
+                    JA.Unop jsSymb argument |> Just
 
         _ ->
             Nothing
