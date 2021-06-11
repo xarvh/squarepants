@@ -22,6 +22,7 @@ allNatives =
         |> Dict.insert Core.noneValue "null"
         |> Dict.insert "SPCore/Debug.log" "sp_log"
         |> Dict.insert "SPCore/Debug.todo" "sp_todo"
+        |> Dict.insert "SPCore/Debug.toHuman" "sp_toHuman"
         |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
@@ -236,6 +237,31 @@ const sp_todo = (message) => {
 const sp_log = (message) => (thing) => {
   console.log(message, thing);
   return thing;
+}
+
+const asList = (a) => {
+  if (!Array.isArray(a))
+    return false;
+
+  if (a[0] === 'SPCore.Cons')
+    return [ a[1] ].concat(asList(a[2]));
+
+  if (a[0] === 'SPCore.Nil')
+    return [];
+
+  return false;
+}
+
+const asFunction = (a) => {
+  return typeof a === 'function' ? '<function>' : false
+}
+
+const replacer = (key, value) => {
+  return asList(value) || asFunction(value) || value;
+}
+
+const sp_toHuman = (a) => {
+  return JSON.stringify(a, replacer, 4);
 }
 
 const sp_cons = (list) => (item) => {

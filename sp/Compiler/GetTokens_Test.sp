@@ -3,7 +3,7 @@
 codeTest =
     as Text -> Text -> (Text -> Result Text ok) -> Test.CodeExpectation ok -> Test
 
-    Test.codeTest (fn _: "TODO")
+    Test.codeTest Debug.toHuman
 
 
 lexTokens s =

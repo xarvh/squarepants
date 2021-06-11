@@ -201,7 +201,7 @@ unaryPlus =
 unaryMinus : Unop
 unaryMinus =
     { symbol = "0 -"
-    , ty = typeUnopUniform Core.numberType |> Debug.log "unaryMinus"
+    , ty = typeUnopUniform Core.numberType
     }
 
 
@@ -459,6 +459,7 @@ functions : List ( String, String, CA.Type )
 functions =
     [ debugTodo
     , debugLog
+    , debugToHuman
     ]
 
 
@@ -480,4 +481,12 @@ debugLog =
     , "log"
     , tyFun Core.textType
         (tyFun (tyVar "a") (tyVar "a"))
+    )
+
+
+debugToHuman : ( String, String, CA.Type )
+debugToHuman =
+    ( "SPCore/Debug"
+    , "toHuman"
+    , tyFun (tyVar "a") Core.textType
     )

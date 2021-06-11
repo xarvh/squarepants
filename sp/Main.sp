@@ -43,5 +43,5 @@ testOutcomeToText name outcome =
 main argv =
   allTests
       >> Test.flatten
-      >> fn (name & outcome): testOutcomeToText name outcome
+      >> List.map (fn (name & outcome): testOutcomeToText name outcome)
       >> Text.join "\n"

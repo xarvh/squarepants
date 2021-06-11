@@ -3,10 +3,10 @@ module Compiler.TokensToFormattableAst exposing (..)
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, higherOr, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
-import Types.Op as Op exposing (Binop, Unop)
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Literal
+import Types.Op as Op exposing (Binop, Unop)
 import Types.Token as Token exposing (Token)
 
 
@@ -482,11 +482,11 @@ expr =
         -- Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
         , binopsOr Op.Comparison
 
-        --
-        , binopsOr Op.Cons
-
         -- Tuples are chained (ie, `a & b & c` makes a tuple3)
         , binopsOr Op.Tuple
+
+        --
+        , binopsOr Op.Cons
 
         -- TODO pipes can't actually be mixed
         , binopsOr Op.Pipe

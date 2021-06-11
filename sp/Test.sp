@@ -29,20 +29,20 @@ union CodeExpectation ok =
     , CodeExpectation ((ok -> Text) -> Result Text ok -> Maybe Text)
 
 
-codeTest toString title code functionToTest (CodeExpectation toMaybeError) =
+codeTest toText title code functionToTest (CodeExpectation toMaybeError) =
     as (ok -> Text) -> Text -> Text -> (Text -> Result Text ok) -> CodeExpectation ok -> Test
 
     Single (title .. "\n\n" .. code) fn None:
       code
           >> functionToTest
-          >> toMaybeError toString
+          >> toMaybeError toText
           >> maybeToOutcome
 
 
 isOk =
     as CodeExpectation ok
 
-    CodeExpectation fn toString result:
+    CodeExpectation fn toText result:
       try result as
           Err e:
               Just e
@@ -54,7 +54,7 @@ isOk =
 isOkAndEqualTo expectedOk =
     as ok -> CodeExpectation ok
 
-    CodeExpectation fn toString result:
+    CodeExpectation fn toText result:
       try result as
           Err e:
               Just e
@@ -63,7 +63,14 @@ isOkAndEqualTo expectedOk =
               if actualOk == expectedOk then
                   Nothing
               else
-                  Just "TODO"
+                  [ "expected = "
+                  , toText expectedOk
+                  , ""
+                  , "actual = "
+                  , toText actualOk
+                  ]
+                      >> Text.join "\n"
+                      >> Just
 
 
 
@@ -77,17 +84,17 @@ outcomesRec path test accum =
 
     try test as
         Single name f:
-            path .. name & List.Cons (f None) accum
+            path .. name & (f None) :: accum
 
         NotNow t:
             path .. getName t & Skipped :: accum
 
         Group pathSegment ts:
-            List.foldl (outcomesRec (path .. pathSegment .. " / ")) accum ts
+            List.foldl (outcomesRec (path .. pathSegment .. " / ")) ts accum
 
 
 getName test =
-    as Test -> String
+    as Test -> Text
 
     try test as
         Single n f:
@@ -100,10 +107,10 @@ getName test =
             getName t
 
 
-flatten =
+flatten tests =
     as [ Test ] -> [ Text & TestOutcome ]
 
-    List.foldl (outcomesRec "") []
+    List.foldl (outcomesRec "") tests []
 
 
 errorsFirst outcome =
