@@ -6,6 +6,12 @@ fromInt n =
     "<native>"
 
 
+split separator target =
+    as Text -> Text -> [ Text ]
+
+    [ "<native>" ]
+
+
 join sep listOfText =
     as Text -> List Text -> Text
 

@@ -1,5 +1,5 @@
 
-map f aList =
+map f =
     as (a -> b) -> [ a ] -> [ b ]
 
     rec ls =
@@ -8,9 +8,10 @@ map f aList =
                 []
 
             head :: tail:
+                # TODO make it TCO friendly
                 (f head) :: (rec tail)
 
-    aList >> rec >> reverse
+    rec
 
 
 each ls f =

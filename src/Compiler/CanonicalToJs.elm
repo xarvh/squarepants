@@ -24,6 +24,7 @@ allNatives =
         |> Dict.insert "SPCore/Debug.todo" "sp_todo"
         |> Dict.insert "SPCore/Debug.toHuman" "sp_toHuman"
         |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
+        |> Dict.insert "SPCore/Text.split" "text_split"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_compare"
@@ -265,10 +266,21 @@ const sp_toHuman = (a) => {
 }
 
 const sp_cons = (list) => (item) => {
-  return [ \"""" ++ Core.listCons.name ++ """", item, list];
+  return [ '""" ++ Core.listCons.name ++ """', item, list];
 }
 
 const text_fromInt = (n) => '' + n;
+
+const text_split = (separator) => (target) => array_toList(target.split(separator));
+
+const array_toList = (array) => {
+  let length = array.length;
+  let list = [ '""" ++ Core.listNil.name ++ """' ];
+  for (let i = length - 1; i >= 0; i--) {
+      list = [ '""" ++ Core.listCons.name ++ """', array[i], list ];
+  }
+  return list;
+}
     """
 
 
