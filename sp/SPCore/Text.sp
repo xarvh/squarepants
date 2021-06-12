@@ -1,15 +1,47 @@
 
+length s =
+    as Text -> Number
+
+    # native
+    -1
+
+
+slice start end s =
+    as Number -> Number -> Text -> Text
+
+    # native
+    ""
+
 
 fromInt n =
     as Number -> Text
 
-    "<native>"
+    # native
+    ""
+
+
+startsWith sub s =
+    as Text -> Text -> Bool
+
+    # native
+    False
+
+
+# HACK
+# Produces "" if it can't match anything, or if the regex is invalid.
+# Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
+startsWithRegex regex s =
+    as Text -> Text -> Text
+
+    # native
+    ""
 
 
 split separator target =
     as Text -> Text -> [ Text ]
 
-    [ "<native>" ]
+    # native
+    []
 
 
 join sep listOfText =
@@ -28,3 +60,4 @@ join sep listOfText =
                 rec t << acc .. sep .. h
 
           rec tail head
+

@@ -25,6 +25,10 @@ allNatives =
         |> Dict.insert "SPCore/Debug.toHuman" "sp_toHuman"
         |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
         |> Dict.insert "SPCore/Text.split" "text_split"
+        |> Dict.insert "SPCore/Text.length" "text_length"
+        |> Dict.insert "SPCore/Text.slice" "text_slice"
+        |> Dict.insert "SPCore/Text.startsWith" "text_startsWith"
+        |> Dict.insert "SPCore/Text.startsWithRegex" "text_startsWithRegex"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_compare"
@@ -272,6 +276,27 @@ const sp_cons = (list) => (item) => {
 const text_fromInt = (n) => '' + n;
 
 const text_split = (separator) => (target) => array_toList(target.split(separator));
+
+const text_length = (s) => s.length;
+
+const text_slice = (start) => (end) => (s) => s.slice(start, end);
+
+const text_startsWith = (sub) => (s) => s.startsWith(sub);
+
+const text_startsWithRegex = (regex) => {
+  let re;
+  try {
+    re = new RegExp('^' + regex);
+  } catch (e) {
+    return () => ""
+  }
+
+  return (s) => {
+    let m = s.match(re);
+    return m ? m[0] : "";
+  }
+}
+
 
 const array_toList = (array) => {
   let length = array.length;

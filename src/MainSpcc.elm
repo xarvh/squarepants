@@ -215,7 +215,7 @@ spcc process =
             do (loadAllSourceDir (List.map .path metaFile.sourceDirs) Dict.empty) <| \modsByName ->
             case makeProgram metaFile modsByName of
                 Err err ->
-                    exit err
+                    exit <| err ++ "\n"
 
                 Ok js ->
                     Posix.IO.File.writeContentsTo (Debug.log "" outFile) js

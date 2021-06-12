@@ -1387,12 +1387,7 @@ errorCannotUnify ctx subs a b =
     , Error.text <| "* t2 = " ++ HumanCA.typeToString b
     , Error.text <| "why : " ++ ctx.why
     , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
-    , subs
-        |> Dict.toList
-        |> List.sortBy Tuple.first
-        |> List.map (\( n, ( t, ctx_ ) ) -> n ++ " = " ++ HumanCA.typeToString t)
-        |> String.join "\n"
-        |> Error.codeBlock
+--     , showSubs subs
     ]
         |> makeRes ctx.pos
         |> TyGen.wrap
@@ -1404,12 +1399,7 @@ errorCycle ctx subs a b =
     , Error.text <| "* t2 = " ++ HumanCA.typeToString b
     , Error.text <| "why : " ++ ctx.why
     , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
-    , subs
-        |> Dict.toList
-        |> List.sortBy Tuple.first
-        |> List.map (\( n, ( t, ctx_ ) ) -> n ++ " = " ++ HumanCA.typeToString t)
-        |> String.join "\n"
-        |> Error.codeBlock
+    , showSubs subs
     ]
         |> makeRes ctx.pos
         |> TyGen.wrap

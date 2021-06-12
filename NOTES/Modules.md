@@ -141,6 +141,55 @@ Problems
 1. Implementing the libraries system will be a pain
 
 
+Human?
+======
+Not very "human" and not particularly terse, but would use the same parser as the rest of the language
+
+```
+[
+, SourceDir
+    {
+    , path = "sp"
+    , moduleExceptions =
+        [
+        {
+        , path = Test
+        , importAs = Test
+        , globalValues = []
+        , globalTypes =
+             [
+             , Test
+             ]
+        }
+        ,
+        {
+        , path = Types/Token
+        , importAs = Token
+        , globalValues = []
+        , globalTypes =
+            [
+            , Token
+            ]
+        }
+        ,
+        {
+        , path = Types/Error
+        , importAs = Error
+        , globalValues = []
+        , globalTypes =
+            [
+            , Error
+            , Res
+            ]
+        }
+        ]
+    }
+]
+```
+
+
+
+
 
 JSON?
 ====
