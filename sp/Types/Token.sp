@@ -28,7 +28,7 @@ union Kind =
     , With
     # Ops
     , Defop { mutable as Bool }
-    , Unop Text
+    , Unop Text Types/Unop.Unop
     , Binop Text Types/Binop.Binop
     , Arrow { mutable as Bool }
     # Parens

@@ -9,8 +9,9 @@ codeTest =
 lexTokens s =
     as Text -> Result Text (List Token)
 
-    Ok []
-#    Compiler/GetTokens.lexer s
+    s
+        >> Compiler/GetTokens.lexer "Test"
+        >> Result.mapError Debug.toHuman
 
 
 tests =
@@ -22,7 +23,7 @@ tests =
             [
             , codeTest "[reg] `fn` is a keyword"
                 "fn = 1"
-                (lexTokens )
+                lexTokens
                 (Test.isOkAndEqualTo
                     [
                     , { end = 0, kind = Token.NewSiblingLine, start = 0 }

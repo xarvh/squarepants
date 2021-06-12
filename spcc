@@ -1,2 +1,3 @@
 #!/bin/sh
-./lib/elm-posix/shell/elm-cli src/MainSpcc.elm --debug $@ 2>&1 |grep -v "Compiled in DEBUG mode"
+./lib/elm-posix/shell/elm-cli src/MainSpcc.elm --debug $@
+

@@ -1,5 +1,12 @@
 
 
-lexer = 1
+
+
+
+
+lexer moduleName moduleCode =
+    as Text -> Text -> Res [ Token ]
+
+    Ok []
 
 

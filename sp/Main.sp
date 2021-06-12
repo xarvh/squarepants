@@ -25,6 +25,13 @@ red =
     color "\x1b[31m"
 
 
+indent s =
+    as Text -> Text
+    s
+      >> Text.split "\n"
+      >> List.map (fn l: "  " .. l)
+      >> Text.join "\n"
+
 
 testOutcomeToText name outcome =
     as Text -> Test.TestOutcome -> Text
@@ -37,7 +44,7 @@ testOutcomeToText name outcome =
             yellow << "? " .. name
 
         Test.Error error:
-            (red << "X " .. name) .. "\n" .. error
+            (red << "-----------------------\nX " .. name) .. "\n" .. indent error
 
 
 main argv =

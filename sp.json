@@ -18,6 +18,15 @@
                     "globalTypes": [
                         "Token"
                     ]
+                },
+                {
+                    "path": "Types/Error",
+                    "importAs": "Error",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Error",
+                        "Res"
+                    ]
                 }
             ]
         }
