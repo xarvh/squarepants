@@ -45,6 +45,7 @@ startsWith sub b =
 regexMatch regex b =
     as Text -> Buffer -> Maybe (Text & Buffer)
 
+    # TODO use try..as once it is fixed
     match = Text.startsWithRegex regex b.tail
     if match == "" then
         Nothing
@@ -55,9 +56,21 @@ regexMatch regex b =
 #
 # Lexer
 #
+alias ReadState =
+    {
+    , buffer as Buffer
+    #, codeAsString as String
+    , moduleName as Text
+    #, code as List Char
+    , multiCommentDepth as Number
+    , indentStack as [ Number ]
+    , maybeIndentToAdd as Maybe Number
+    , accum as [ Token ]
+    }
+
+
 lexer moduleName moduleCode =
     as Text -> Text -> Res [ Token ]
 
     Ok []
-
 

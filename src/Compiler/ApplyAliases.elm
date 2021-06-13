@@ -251,7 +251,12 @@ applyAliasesToAliases als =
                 |> Dict.values
                 |> RefHierarchy.reorder .name findAllRefs_alias
     in
-    Lib.list_foldlRes (processAlias als) orderedAliases Dict.empty
+    case orderedAliases of
+        Err circular ->
+            errorTodo <| "circular alias: " ++ String.join " <- " circular
+
+        Ok oa ->
+            Lib.list_foldlRes (processAlias als) oa Dict.empty
 
 
 processAlias : Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
@@ -261,7 +266,7 @@ processAlias allAliases al processedAliases =
             if Dict.member name allAliases then
                 case Dict.get name processedAliases of
                     Nothing ->
-                        errorTodo "circular!"
+                        Debug.todo <| "ApplyAliases should-not-happen: " ++ name
 
                     Just processedAlias ->
                         Ok (Just processedAlias)

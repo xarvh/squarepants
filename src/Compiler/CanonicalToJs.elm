@@ -450,7 +450,12 @@ translateAll subs ca =
                 |> List.partition isFunctionBlock
 
         reorderedNonFuns =
-            RefHierarchy.reorder .name (CA.rootToLocalDef >> getValueRefs) nonFns
+            case RefHierarchy.reorder .name (CA.rootToLocalDef >> getValueRefs) nonFns of
+                Ok rnf ->
+                    rnf
+
+                Err circular ->
+                    Debug.todo <| "CanonicalToJs circular non-function values: " ++ Debug.toString circular
 
         env =
             { subs = subs

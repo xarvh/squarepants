@@ -1,6 +1,7 @@
 module RefHierarchy exposing (..)
 
 import Dict exposing (Dict)
+import Lib
 import Set exposing (Set)
 
 
@@ -106,82 +107,63 @@ import Set exposing (Set)
 -}
 
 
-{-| |
+type alias State comparable =
+    { unresolved : Set comparable
+    , resolved : List comparable
+    }
 
-Function and alias definitions can reference each other, so we order them from
-the ones which hopefully do not reference any sibling to those that reference many.
 
-The algorithm is terrible but for now it will do.
-
+{-| <https://www.electricmonk.nl/docs/dependency_resolving_algorithm/dependency_resolving_algorithm.html>
 -}
-reorder : (item -> comparable) -> (item -> Set comparable) -> List item -> List item
-reorder getName getSiblingRefs items =
+resolve : (comparable -> List comparable) -> comparable -> State comparable -> Result (List comparable) (State comparable)
+resolve getEdges target state0 =
+    if List.member target state0.resolved then
+        Ok state0
+
+    else if Set.member target state0.unresolved then
+        Err [ target ]
+
+    else
+        case Lib.list_foldlRes (resolve getEdges) (getEdges target) { state0 | unresolved = Set.insert target state0.unresolved } of
+            Err path ->
+                Err <| target :: path
+
+            Ok stateF ->
+                Ok
+                    { unresolved = Set.remove target stateF.unresolved
+                    , resolved = target :: stateF.resolved
+                    }
+
+
+{-| TODO this function is a dumpster fire and I don't care because I'll rewrite it anyway in SP
+-}
+reorder : (node -> comparable) -> (node -> Set comparable) -> List node -> Result (List comparable) (List node)
+reorder getId getTooManyEdges nodes =
     let
-        names : Set comparable
-        names =
-            items
-                |> List.map getName
-                |> Set.fromList
+        nodesById : Dict comparable node
+        nodesById =
+            List.foldl (\n -> Dict.insert (getId n) n) Dict.empty nodes
 
-        -- For each name, find all names it directly references
-        -- And remove those that are not direct siblings
-        referencedSiblings : Dict comparable (Set comparable)
-        referencedSiblings =
-            List.foldl (\item -> Dict.insert (getName item) (Set.intersect names (getSiblingRefs item))) Dict.empty items
+        idsList : List comparable
+        idsList =
+            Dict.keys nodesById
 
-        findAllNestedSiblingReferences : comparable -> Set comparable -> Set comparable
-        findAllNestedSiblingReferences name accum =
-            if Set.member name accum then
-                accum
+        idsSet : Set comparable
+        idsSet =
+            Set.fromList idsList
 
-            else
-                Set.foldl
-                    findAllNestedSiblingReferences
-                    (Set.insert name accum)
-                    (Dict.get name referencedSiblings |> Maybe.withDefault Set.empty)
-
-        -- For each name, find all the sibling it references AND the sibling /they/ reference (ie, recurse over the referenced sibs)
-        --
-        -- This is brute and horribly inefficient, but I don't have any brain for anything better.
-        --
-        allNestedSiblingRefs : Dict comparable (Set comparable)
-        allNestedSiblingRefs =
-            Dict.map (\k v -> findAllNestedSiblingReferences k Set.empty) referencedSiblings
-
-        oneReferencesTwo : comparable -> comparable -> Bool
-        oneReferencesTwo one two =
-            case Dict.get one allNestedSiblingRefs of
-                Nothing ->
-                    -- should not happen
-                    False
-
-                Just set ->
-                    Set.member two set
-
-        order : item -> item -> Order
-        order aItem bItem =
-            let
-                a =
-                    getName aItem
-
-                b =
-                    getName bItem
-            in
-            case ( oneReferencesTwo a b, oneReferencesTwo b a ) of
-                ( True, True ) ->
-                    -- Mutually recursive, order doesn't matter
-                    EQ
-
-                ( True, False ) ->
-                    -- A should go after B
-                    GT
-
-                ( False, True ) ->
-                    -- A should go before B
-                    LT
-
-                ( False, False ) ->
-                    -- Neither references the other, order doesn't matter
-                    EQ
+        getEdges : comparable -> List comparable
+        getEdges id =
+            Dict.get id nodesById
+                |> Maybe.map getTooManyEdges
+                |> Maybe.withDefault Set.empty
+                -- TODO getTooManyEdges will produce references to things that aren't nodes (ex: aliases referencing non-alias types)
+                -- This is a problem of the caller, not one that this function should deal with
+                |> Set.intersect idsSet
+                |> Set.toList
     in
-    List.sortWith order items
+    { unresolved = Set.empty
+    , resolved = []
+    }
+        |> Lib.list_foldlRes (resolve getEdges) idsList
+        |> Result.map (.resolved >> List.filterMap (\id -> Dict.get id nodesById) >> List.reverse)

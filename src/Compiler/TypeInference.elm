@@ -1053,11 +1053,6 @@ inspectBlock stats parentEnv subs =
             |> TyGen.wrap
 
     else
-        --         let
-        --             ( definitions, newStats ) =
-        --                 reorderStatements stats
-        --         in
-        --         do_nr (list_foldl_nr insertDefinition definitions parentEnv) <| \localEnv ->
         do_nr (inspectStatementRec stats Core.noneType parentEnv subs) <| \typeAndEnvAndSubs ->
         TyGen.wrap <|
             let
@@ -1320,54 +1315,6 @@ findAllRefs_statementBlock statements =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
 
 
-{-| TODO move this outr of this module
--}
-reorderStatements : List CA.Statement -> ( List CA.LocalValueDef, List CA.Statement )
-reorderStatements stats =
-    let
-        definitionOrStatement stat =
-            case stat of
-                CA.Definition d ->
-                    Lib.Left d
-
-                _ ->
-                    Lib.Right stat
-
-        -- A statement list can contain definitions, creating its own scope
-        -- Definitions can be recursive and in general appear in any order, so we want to add them to the environment before we inspect them
-        ( definitions, nonDefs ) =
-            Lib.partition definitionOrStatement stats
-
-        -- Via patterns, a single definition can define multiple names, so we need to reference them by index instead
-        indexedDefs =
-            definitions
-                |> List.indexedMap Tuple.pair
-
-        indexByName =
-            List.foldl
-                (\( index, def ) dict -> Dict.foldl (\name pos -> Dict.insert name index) dict (CA.patternNames def.pattern))
-                Dict.empty
-                indexedDefs
-
-        findAllIndexes : ( Int, CA.LocalValueDef ) -> Set Int
-        findAllIndexes ( index, def ) =
-            def
-                |> findAllRefs_definition
-                |> Set.toList
-                |> List.filterMap (\s -> Dict.get s indexByName)
-                |> Set.fromList
-
-        -- Also, we need to reorder them, so that dependent sibling defs come after
-        orderedDefinitions =
-            RefHierarchy.reorder Tuple.first findAllIndexes indexedDefs
-
-        newStats =
-            List.map (Tuple.second >> CA.Definition) orderedDefinitions ++ nonDefs
-    in
-    ( definitions, newStats )
-
-
-
 ----
 --- Errors
 --
@@ -1387,7 +1334,8 @@ errorCannotUnify ctx subs a b =
     , Error.text <| "* t2 = " ++ HumanCA.typeToString b
     , Error.text <| "why : " ++ ctx.why
     , Error.text <| "expr = " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
---     , showSubs subs
+
+    --     , showSubs subs
     ]
         |> makeRes ctx.pos
         |> TyGen.wrap
