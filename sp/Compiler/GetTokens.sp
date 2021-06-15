@@ -79,6 +79,7 @@ lexer moduleName moduleCode =
     as Text -> Text -> Res [ Token ]
 
     { buffer = init << "\n" .. moduleCode
+    #, codeAsString = moduleCode
     , moduleName = moduleName
     , multiCommentDepth = 0
     , indentStack = []
@@ -260,3 +261,69 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
 
 
 
+contentLineToTokens startPos state =
+    as Number -> ReadState -> Res ReadState
+
+    contentLine =
+        Text.slice startPos (pos state.buffer) state.codeAsString
+
+    state.accum
+        # TODO (horrible) I'm adding a space in front so that indent will not
+        # eat all of the spaces in front of "  -a", so that `-` can be recognised as Unop
+        >> contentLineToTokensRec (" " .. contentLine) (startPos - 1)
+        >> Result.mapError (fn stateToError: stateToError state)
+        >> Result.map (fn tokens: { state with accum = tokens })
+
+
+contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
+    as Text -> Number -> [ Token ] -> Result (ReadState -> Error) [ Token ]
+
+    try Text.trimLeft untrimmedBlock as
+        "":
+            Ok tokenAccu
+
+        codeBlock:
+            spaces =
+                Text.length untrimmedBlock - Text.length codeBlock
+
+            start =
+                untrimmedPos + spaces
+
+            tryMatch ( regex & constructor ) =
+                try Regex.find regex untrimmedBlock as
+                    match :: tail:
+                        Just << match & constructor
+
+                    []:
+                        Nothing
+
+            try mapFind tryMatch recognisedTokens as
+                Nothing:
+                    Err << errorInvalidToken start codeBlock
+
+                Just ( match & constructor ):
+                    try constructor match.match as
+                        Err stateToError:
+                            Err << stateToError start
+
+                        Ok ( tokenKind & charsConsumed ):
+                            tokenStart =
+                                # TODO maybe should just assert that match.index is 0?
+                                start + match.index
+
+                            tokenEnd =
+                                tokenStart + charsConsumed - spaces
+
+                            token =
+                                { kind = tokenKind
+                                , start = tokenStart
+                                , end = tokenEnd
+                                }
+
+                            newBlock =
+                                Text.dropLeft charsConsumed untrimmedBlock
+
+                            accu =
+                                token :: tokenAccu
+
+                            contentLineToTokensRec newBlock tokenEnd accu
