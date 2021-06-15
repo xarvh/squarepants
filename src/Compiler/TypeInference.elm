@@ -463,9 +463,15 @@ type alias UnifyRecordsFold =
 
 
 unifyRecords : ErrorContext -> ( Maybe String, Dict String Type ) -> ( Maybe String, Dict String Type ) -> Substitutions -> TR Substitutions
-unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
+unifyRecords ctx a b subs0 =
     -- TODO if aArg == bArg do nothing
     let
+        ( a_ext, a_attrs ) =
+            a
+
+        ( b_ext, b_attrs ) =
+            b
+
         initState : UnifyRecordsFold
         initState =
             { aOnly = Dict.empty
@@ -511,9 +517,7 @@ unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
         case ( a_ext, b_ext ) of
             ( Just aName, Nothing ) ->
                 if aOnly /= Dict.empty then
-                    "a has attributes that do not exist in b"
-                        |> errorTodo
-                        |> TyGen.wrap
+                    errorRecordDoesNotHaveAttributes ctx b aOnly
 
                 else
                     -- substitute a with b
@@ -523,9 +527,7 @@ unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
 
             ( Nothing, Just bName ) ->
                 if bOnly /= Dict.empty then
-                    "b has attributes that do not exist in a"
-                        |> errorTodo
-                        |> TyGen.wrap
+                    errorRecordDoesNotHaveAttributes ctx a bOnly
 
                 else
                     -- substitute b with a
@@ -556,6 +558,18 @@ unifyRecords ctx ( a_ext, a_attrs ) ( b_ext, b_attrs ) subs0 =
                     |> Dict.insert bName ( subTy, ctx )
                     |> Ok
                     |> TyGen.wrap
+
+
+errorRecordDoesNotHaveAttributes : ErrorContext -> ( Maybe String, Dict String Type ) -> Dict String Type -> TR a
+errorRecordDoesNotHaveAttributes ctx ( ext, attrs ) missingAttrs =
+    -- TODO Would be nice to tell the user *which* exact record
+    [ Error.text <| "trying to access attributes that are not in the record: " ++ (Dict.keys missingAttrs |> String.join ", ")
+    , Error.text <| "available record attrs: " ++ (Dict.keys attrs |> String.join ", ")
+    , Error.text <| "why : " ++ ctx.why
+    , Error.text <| "expr : " ++ String.slice ctx.pos.s ctx.pos.e ctx.pos.c
+    ]
+        |> makeRes ctx.pos
+        |> TyGen.wrap
 
 
 literalToType : Types.Literal.Value -> Type
@@ -1313,6 +1327,7 @@ findAllRefs_arg arg =
 findAllRefs_statementBlock : List CA.Statement -> Set String
 findAllRefs_statementBlock statements =
     List.foldl (\stat -> Set.union (findAllRefs_statement stat)) Set.empty statements
+
 
 
 ----

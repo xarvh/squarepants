@@ -52,6 +52,12 @@ regexMatch regex b =
     else
         Just << match & consume (Text.length match) b
 
+atEnd b =
+    as Buffer -> Bool
+
+    b.tail == ""
+
+
 
 #
 # Lexer
@@ -72,5 +78,185 @@ alias ReadState =
 lexer moduleName moduleCode =
     as Text -> Text -> Res [ Token ]
 
-    Ok []
+    { buffer = init << "\n" .. moduleCode
+    , moduleName = moduleName
+    , multiCommentDepth = 0
+    , indentStack = []
+    , maybeIndentToAdd = Just 0
+    , accum = []
+    }
+        >> lexerStep
+
+
+lexerStep state =
+    as ReadState -> Res [Token]
+
+    if atEnd state.buffer then
+        state
+            >> closeOpenBlocks
+            >> List.reverse
+            >> Ok
+    else
+        # TODO assert that each iteration eats at least one char
+        state
+            >> lexContent pos state.buffer
+            >> Result.map lexerStep
+
+
+closeOpenBlocks state =
+    as ReadState -> [ Token ]
+
+    blockEnd =
+        as Token
+        {
+        , kind = Token.BlockEnd
+        , start = pos state.buffer
+        , end = pos state.buffer
+        }
+
+    List.foldl (fn stack accum: blockEnd :: accum) state.indentStack state.accum
+
+
+lexContent startPos state =
+    as Number -> ReadState -> Res ReadState
+
+
+    tryString string contentAhead updateState =
+        as Bool -> Text -> Number -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
+
+        p = pos state.buffer
+
+        state.buffer
+            >> startsWith string
+            >> Maybe.map fn newBuffer:
+                Ok state
+                    >> chainIf (contentAhead or p > startPos) (addIndentTokens startPos)
+                    >> chainIf (p > startPos) (contentLineToTokens startPos)
+                    >> Result.andThen fn newState:
+                        updateState { newState with buffer = newBuffer }
+
+
+    maybeSuccessfulTry =
+        [
+        , fn _: tryString "\"\"\"" True (lexHardQuotedString p)
+        , fn _: tryString "\"" True (lexSoftQuotedString p)
+        , fn _: tryString "#" False (lexSingleLineComment p)
+        , fn _: tryString "[#" False (lexMultiLineComment p)
+        , fn _: tryString "\n" False (lexIndent >> Ok)
+        , fn _:
+            if atEnd state.buffer then
+                Nothing
+            else
+                lexContent startPos { state with buffer = consume 1 .buffer }
+        , fn _: tryString "" False Ok
+        ]
+            >> List.mapFirst (fn f: f None)
+
+    try maybeSuccessfulTry as
+      Just result:
+          result
+
+      Nothing:
+          Debug.todo "rewrite this function because it's terrible"
+
+
+chainIf predicate f result =
+    as Bool -> (state -> Result err state) -> Result err state -> Result err state
+
+    result >> Result.andThen fn state:
+        if predicate then
+            f state
+
+        else
+            Ok state
+
+
+
+addIndentTokens endPos state =
+    as Number -> ReadState -> Res ReadState
+
+    try state.maybeIndentToAdd as
+        Nothing:
+            Ok state
+
+        Just newIndent:
+            addIndentTokensRec endPos newIndent True { state with maybeIndentToAdd = Nothing } state.indentStack
+
+
+addIndentTokensRec endPos newIndent isFirstRecursion state stack =
+    as Number -> Number -> Bool -> ReadState -> List Number -> Res ReadState
+
+    lastIndent & poppedStack =
+        try stack as
+            []:
+                0 & []
+
+            head :: tail:
+                head & tail
+
+    makeToken kind =
+        { kind = kind
+        , start = endPos - newIndent
+        , end = endPos
+        }
+
+    if newIndent == lastIndent then
+        [#
+           ```
+           lastIndent
+           newIndent
+           ```
+
+           ```
+           previousRecursionIndent
+             lastIndent
+           newIndent
+           ```
+        #]
+        Ok { state with accum = makeToken Token.NewSiblingLine :: state.accum, indentStack = stack }
+
+    else if newIndent > lastIndent then
+        if isFirstRecursion then
+            [#
+               ```
+               lastIndent
+                 newIndent
+               ```
+            #]
+            Ok
+                { state with
+                , accum = makeToken Token.BlockStart :: state.accum
+                , indentStack = newIndent :: state.indentStack
+                }
+
+        else
+            [# This is an error:
+               ```
+               previousRecursionIndent
+                   lastIndent
+                 newIndent
+               ```
+            #]
+            Error.res
+                {
+                , moduleName = state.moduleName
+                , start = pos state.buffer
+                , end = endPos
+                , description =
+                    fn _:
+                        [
+                        , Error.text << "last indent was at row " .. Text.fromInt lastIndent
+                        , Error.text << "but this new indent is at row " .. Text.fromInt newIndent
+                        ]
+                }
+
+
+
+
+
+
+    else
+        addIndentTokensRec endPos newIndent False { state with accum = makeToken Token.BlockEnd :: state.accum } poppedStack
+
+
 

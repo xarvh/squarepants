@@ -24,7 +24,6 @@ alias Args =
     }
 
 
-
 union ContentDiv =
     , Text Text
     , CodeBlock Text
@@ -34,3 +33,15 @@ union ContentDiv =
 union Highlight =
     , HighlightWord { line as Number, colStart as Number, colEnd as Number }
     , HighlightBlock { lineStart as Number, lineEnd as Number }
+
+
+res ea =
+    as Args -> Res a
+
+    ea >> Simple >> Err
+
+
+text =
+    as Text -> ContentDiv
+
+    Text

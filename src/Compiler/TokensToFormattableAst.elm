@@ -357,8 +357,11 @@ rawList : Parser a -> Parser (OneOrMore a)
 rawList item =
     let
         sibsep =
-            do (maybe <| kind Token.NewSiblingLine) <| \_ ->
-            kind Token.Comma
+            -- TODO was:
+            --             do (maybe <| kind Token.NewSiblingLine) <| \_ ->
+            --             kind Token.Comma
+            -- but I didn't test it properly
+            inlineOrBelowOrIndented <| kind Token.Comma
     in
     discardFirst (maybe sibsep) (oomSeparatedBy sibsep item)
 
@@ -481,6 +484,7 @@ expr =
 
         -- Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
         , binopsOr Op.Comparison
+        , binopsOr Op.Logical
 
         -- Tuples are chained (ie, `a & b & c` makes a tuple3)
         , binopsOr Op.Tuple

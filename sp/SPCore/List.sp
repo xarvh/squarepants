@@ -14,6 +14,21 @@ map f =
     rec
 
 
+mapFirst f ls =
+    as (a -> Maybe b) -> List a -> Maybe b
+
+    try ls as
+        []:
+            Nothing
+
+        head :: tail:
+            r = f head
+            if r == Nothing then
+                mapFirst f tail
+            else
+                r
+
+
 each ls f =
     as [ a ] -> (a -> b) -> None
 

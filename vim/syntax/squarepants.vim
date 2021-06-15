@@ -5,7 +5,7 @@
 " Keywords
 syn keyword spConditional else if then
 syn keyword spAlias alias
-syn keyword spTypedef fn try as union
+syn keyword spTypedef fn try as union with
 
 " Operators
 syn keyword spOperator and or
