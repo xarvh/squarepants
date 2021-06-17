@@ -4,6 +4,16 @@ union Result error a =
     , Ok a
 
 
+map f result =
+    as (a -> b) -> Result e a -> Result e b
+
+    try result as
+        Err e:
+            Err e
+
+        Ok a:
+            Ok (f a)
+
 
 andThen f result =
     as (a -> Result e b) -> Result e a -> Result e b

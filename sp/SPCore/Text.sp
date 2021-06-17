@@ -1,3 +1,7 @@
+#
+# Native functions
+#
+
 
 length s =
     as Text -> Number
@@ -27,6 +31,15 @@ startsWith sub s =
     False
 
 
+trimLeft s =
+    as Text -> Text
+
+    # native
+    Debug.todo "implement native!"
+
+
+
+
 # HACK
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
@@ -42,6 +55,11 @@ split separator target =
 
     # native
     []
+
+
+#
+# Non native functions
+#
 
 
 join sep listOfText =

@@ -751,7 +751,8 @@ inspectPatternBlock env ( pattern, block ) ( patternType, expectedBlockType, sub
     -- TODO why are we using insertVariableFromLambda? -_-
     do_nr (inspectPattern (insertVariableFromLambda False) pattern patternType ( env, subs )) <| \( env1, subs1 ) ->
     do_nr (inspectBlock block env1 subs1) <| \( inferredBlockType, _, subs2 ) ->
-    do_nr (unify { why = "pa block", pos = todoPos } expectedBlockType inferredBlockType subs2) <| \subs3 ->
+    -- TODO pos should be the block position, not the pattern's
+    do_nr (unify { why = "pa block", pos = CA.patternPos pattern } expectedBlockType inferredBlockType subs2) <| \subs3 ->
     ( refineType subs3 patternType
     , refineType subs3 inferredBlockType
     , subs3
@@ -967,7 +968,7 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
                 |> unify { why = "pattern literal", pos = pos } ty (literalToType literal)
                 |> andEnv env
 
-        CA.PatternConstructor _ path args ->
+        CA.PatternConstructor pos path args ->
             case Dict.get path env of
                 Nothing ->
                     ("undeclared constructor: " ++ path)
@@ -977,7 +978,7 @@ inspectPattern insertVariable pattern ty ( env, subs ) =
                 Just envEntry ->
                     TyGen.do (instantiateType envEntry.type_ envEntry.forall) <| \instantiatedType ->
                     do_nr (reversedZipConstructorArgs args instantiatedType [] |> TyGen.wrap) <| \( patternType, argsAndTypes ) ->
-                    do_nr (unify { why = "PatternConstructor", pos = todoPos } ty patternType subs) <| \subs1 ->
+                    do_nr (unify { why = "PatternConstructor", pos = pos } ty patternType subs) <| \subs1 ->
                     let
                         fold ( argPattern, argType ) eas =
                             inspectPattern insertVariable argPattern argType eas

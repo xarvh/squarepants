@@ -65,7 +65,7 @@ atEnd b =
 alias ReadState =
     {
     , buffer as Buffer
-    #, codeAsString as String
+    , codeAsString as Text
     , moduleName as Text
     #, code as List Char
     , multiCommentDepth as Number
@@ -79,7 +79,7 @@ lexer moduleName moduleCode =
     as Text -> Text -> Res [ Token ]
 
     { buffer = init << "\n" .. moduleCode
-    #, codeAsString = moduleCode
+    , codeAsString = moduleCode
     , moduleName = moduleName
     , multiCommentDepth = 0
     , indentStack = []
@@ -121,23 +121,25 @@ closeOpenBlocks state =
 lexContent startPos state =
     as Number -> ReadState -> Res ReadState
 
-
     tryString string contentAhead updateState =
         as Bool -> Text -> Number -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
 
-        p = pos state.buffer
+        p =
+            pos state.buffer
 
-        state.buffer
-            >> startsWith string
-            >> Maybe.map fn newBuffer:
+        try startsWith string state.buffer as
+            Nothing:
+                Nothing
+
+            Just newBuffer:
                 Ok state
                     >> chainIf (contentAhead or p > startPos) (addIndentTokens startPos)
                     >> chainIf (p > startPos) (contentLineToTokens startPos)
-                    >> Result.andThen fn newState:
-                        updateState { newState with buffer = newBuffer }
-
+                    >> Result.andThen (fn newState: updateState { newState with buffer = newBuffer })
+                    >> Just
 
     maybeSuccessfulTry =
+        as Maybe (a -> Maybe (Res ReadState))
         [
         , fn _: tryString "\"\"\"" True (lexHardQuotedString p)
         , fn _: tryString "\"" True (lexSoftQuotedString p)
@@ -275,6 +277,10 @@ contentLineToTokens startPos state =
         >> Result.map (fn tokens: { state with accum = tokens })
 
 
+
+alias Regex = Text -> Text
+
+
 contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
     as Text -> Number -> [ Token ] -> Result (ReadState -> Error) [ Token ]
 
@@ -290,40 +296,188 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                 untrimmedPos + spaces
 
             tryMatch ( regex & constructor ) =
-                try Regex.find regex untrimmedBlock as
-                    match :: tail:
-                        Just << match & constructor
+                as Regex & ( Text -> cons ) -> Maybe (Text & constructor)
+                match =
+                    regex untrimmedBlock
 
-                    []:
-                        Nothing
+                # TODO use try..as once it's fixed
+                if match == "" then
+                    Nothing
+                else
+                    Just << match & constructor
 
-            try mapFind tryMatch recognisedTokens as
-                Nothing:
-                    Err << errorInvalidToken start codeBlock
+            Ok []
+#            try List.mapFirst tryMatch recognisedTokens as
+#                Nothing:
+#                    Err << errorInvalidToken start codeBlock
+#
+#                Just ( match & constructor ):
+#                    try constructor match.match as
+#                        Err stateToError:
+#                            Err << stateToError start
+#
+#                        Ok ( tokenKind & charsConsumed ):
+#                            tokenStart =
+#                                # TODO maybe should just assert that match.index is 0?
+#                                start + match.index
+#
+#                            tokenEnd =
+#                                tokenStart + charsConsumed - spaces
+#
+#                            token =
+#                                { kind = tokenKind
+#                                , start = tokenStart
+#                                , end = tokenEnd
+#                                }
+#
+#                            newBlock =
+#                                Text.dropLeft charsConsumed untrimmedBlock
+#
+#                            accu =
+#                                token :: tokenAccu
+#
+#                            contentLineToTokensRec newBlock tokenEnd accu
 
-                Just ( match & constructor ):
-                    try constructor match.match as
-                        Err stateToError:
-                            Err << stateToError start
 
-                        Ok ( tokenKind & charsConsumed ):
-                            tokenStart =
-                                # TODO maybe should just assert that match.index is 0?
-                                start + match.index
+alias Constructor = Text -> Result (Number -> ReadState -> Error) ( Token.Kind & Number )
 
-                            tokenEnd =
-                                tokenStart + charsConsumed - spaces
 
-                            token =
-                                { kind = tokenKind
-                                , start = tokenStart
-                                , end = tokenEnd
-                                }
+recognisedTokens =
+    as List ( Regex & Constructor )
 
-                            newBlock =
-                                Text.dropLeft charsConsumed untrimmedBlock
+    recordEntryToTuple record =
+        Text.startsWithRegex record.regex
+        &
+        fn match:
+            match
+                >> record.constructor
+                >> Result.map fn kind: kind & record.consumed match
 
-                            accu =
-                                token :: tokenAccu
+    parenRegex s kind =
+        {
+        , regex = "[ ]*\\" .. s
+        , consumed = Text.length
+        , constructor = fn match: Ok kind
+        }
 
-                            contentLineToTokensRec newBlock tokenEnd accu
+    List.map recordEntryToTuple
+        [
+        , { # Numbers
+          , regex = "[ ]*[0-9]+[.]?[0-9_]*"
+          , consumed = Text.length
+          , constructor = fn match: match >> Text.trimLeft >> Token.NumberLiteral >> Ok
+          }
+        , { # Words
+          , regex = "[ ]*[@]?[a-zA-Z._][a-zA-Z./_0-9]*"
+          , consumed = Text.length
+          , constructor =
+                fn m:
+                    match =
+                            Text.trimLeft m
+
+                    (try match as
+                        "..":
+                            Token.Binop m Prelude.textConcat
+
+                        "fn":
+                            Token.Fn
+
+                        "if":
+                            Token.If
+
+                        "try":
+                            Token.Try
+
+                        "as":
+                            Token.As
+
+                        "then":
+                            Token.Then
+
+                        "else":
+                            Token.Else
+
+                        "with":
+                            Token.With
+
+                        "and":
+                            Token.Binop m Prelude.and_
+
+                        "or":
+                            Token.Binop m Prelude.or_
+
+                        "not":
+                            Token.Unop Prelude.not_
+
+                        _ :
+                            try String.uncons match as
+                                Nothing:
+                                    Debug.todo "not happening"
+
+                                Just ( head & tail ):
+                                    if head == "@" then
+                                        Token.Name { mutable = True } tail
+
+                                    else
+                                        Token.Name { mutable = False } match
+                    )
+                        >> Ok
+          }
+
+        # Parens
+        , parenRegex "(" << Token.RoundParen Token.Open
+        , parenRegex ")" << Token.RoundParen Token.Closed
+        , parenRegex "[" << Token.SquareBracket Token.Open
+        , parenRegex "]" << Token.SquareBracket Token.Closed
+        , parenRegex "{" << Token.CurlyBrace Token.Open
+        , parenRegex "}" << Token.CurlyBrace Token.Closed
+        , parenRegex "," << Token.Comma
+        , { # Unary addittive
+            # the `>` at the end is to avoid matching `->`
+          , regex = "[ ]+[+-][^ >=]"
+          , consumed = fn match: Text.length match - 1
+          , constructor =
+                fn m:
+                    try m >> Text.trimLeft >> Text.dropRight 1 as
+                        "+":
+                            Token.Unop Prelude.unaryPlus >> Ok
+
+                        "-":
+                            Token.Unop Prelude.unaryMinus >> Ok
+
+                        _ :
+                            Err errorUnknownOperator
+          }
+        , { # Squiggles
+          , regex = "[ ]*[=+\\-*/:><!&^|@]+"
+          , consumed = Text.length
+          , constructor =
+                fn m:
+                    match =
+                        Text.trimLeft m
+
+                    try match as
+                        "->":
+                            Ok << Token.Arrow { mutable = False }
+
+                        "@>":
+                            Ok << Token.Arrow { mutable = True }
+
+                        ":":
+                            Ok << Token.Colon
+
+                        "=":
+                            Ok << Token.Defop { mutable = False }
+
+                        "@=":
+                            Ok << Token.Defop { mutable = True }
+
+                        _:
+                            try Dict.get match Prelude.binops as
+                                Nothing:
+                                    Err errorUnknownOperator
+
+                                Just binop:
+                                    Ok << Token.Binop m binop
+          }
+        ]
