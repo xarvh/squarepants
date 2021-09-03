@@ -33,6 +33,14 @@ Things that should probably be implemented
 ------------------------------------------
 
 
+# Add notation to extend records
+
+  { extend someRecord with someAttribute = 1, someOtherAttribute = 2 }
+
+  If someRecord already has someAttribute or someOtherAttribute, the type checker should produce an error.
+
+
+
 
 # Distinguish `as` in `try..as` from `as` in annotations
 
