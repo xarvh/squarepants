@@ -16,6 +16,7 @@ pointless, but hey, I'm having fun).
 import Dict exposing (Dict)
 import Prelude
 import Regex exposing (Regex)
+import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Error, Res)
 import Types.Token as Token exposing (Token)
 
@@ -690,9 +691,7 @@ mapFind f ls =
 errorBadIndent : Int -> Int -> Int -> ReadState -> Res a
 errorBadIndent lastIndent newIndent endPos state =
     Error.res
-        { moduleName = state.moduleName
-        , start = state.pos
-        , end = endPos
+        { pos = CA.P state.moduleName state.pos endPos
         , description =
             \_ ->
                 [ Error.text <| "last indent was at row " ++ String.fromInt lastIndent
@@ -704,9 +703,7 @@ errorBadIndent lastIndent newIndent endPos state =
 errorTab : ReadState -> Res a
 errorTab state =
     Error.res
-        { moduleName = state.moduleName
-        , start = state.pos
-        , end = state.pos + 1
+        { pos = CA.P state.moduleName state.pos (state.pos + 1)
         , description =
             \_ ->
                 [ Error.text <| "Tab support is not yet implemented =*("
@@ -724,9 +721,7 @@ errorInvalidToken start codeBlock state =
                 |> String.join ""
     in
     Error.err
-        { moduleName = state.moduleName
-        , start = state.pos
-        , end = state.pos + String.length token
+        { pos = CA.P state.moduleName state.pos (state.pos + String.length token)
         , description =
             \_ ->
                 [ Error.text <| "Not sure what `" ++ token ++ "` means"
@@ -737,9 +732,7 @@ errorInvalidToken start codeBlock state =
 makeErrorTodo : Int -> ReadState -> String -> Res a
 makeErrorTodo pos state message =
     Error.res
-        { moduleName = state.moduleName
-        , start = state.pos
-        , end = pos
+        { pos = CA.P state.moduleName state.pos pos
         , description =
             \_ ->
                 [ Error.text message
@@ -749,9 +742,7 @@ makeErrorTodo pos state message =
 
 errorUnknownOperator pos state =
     Error.err
-        { moduleName = state.moduleName
-        , start = state.pos
-        , end = pos
+        { pos = CA.P state.moduleName state.pos pos
         , description =
             \_ ->
                 [ Error.text "Unknown operator"

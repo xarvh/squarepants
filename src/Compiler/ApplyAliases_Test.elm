@@ -8,16 +8,8 @@ import Test exposing (Test)
 import Types.CanonicalAst as CA
 
 
-isOk =
-    Test.isOk Debug.toString
-
-
-simpleTest =
-    Test.simple Debug.toString
-
-
-hasError =
-    Test.hasError Debug.toString
+codeTest =
+    Test.codeTest Debug.toString
 
 
 applyAndGet : (CA.RootDef -> Maybe a) -> String -> String -> Result String a
@@ -47,83 +39,65 @@ tests : Test
 tests =
     Test.Group "ApplyAliases"
         [ Test.Group "annotations"
-            [ simpleTest
-                { name = "simple"
-                , run =
-                    \_ ->
-                        """
-                        alias A b c = List b
-                        a =
-                          as A Number Bool
-                          a
-                        """
-                            |> applyAndGetValue "a"
-                            |> Result.map .maybeAnnotation
-                , expected =
-                    [ CA.TypeConstant p "SPCore.Number" [] ]
-                        |> CA.TypeConstant p "SPCore.List"
-                        |> CA.TypeAlias p "Test.A"
-                        |> Just
-                        |> Ok
-                }
-            , hasError
-                { name = "Reject wrong number of args"
-                , run =
-                    \_ ->
-                        """
+            [ codeTest "simple"
+                """
+                alias A b c = List b
+                a =
+                  as A Number Bool
+                  a
+                """
+                (applyAndGetValue "a" >> Result.map .maybeAnnotation)
+                ([ CA.TypeConstant p "SPCore.Number" []
+                 ]
+                    |> CA.TypeConstant p "SPCore.List"
+                    |> CA.TypeAlias p "Test.A"
+                    |> Just
+                    |> Test.okEqual
+                )
+            , codeTest "Reject wrong number of args"
+                """
                         alias A b c = List b
                         a =
                           as A Bool
                           a
                         """
-                            |> applyAndGetValue "a"
-                , test = Test.errorShouldContain "alias Test.A needs 2 args, but was used with 1"
-                }
-            , simpleTest
-                { name = "record"
-                , run =
-                    \_ ->
-                        """
+                (applyAndGetValue "a")
+                (Test.errContain "alias Test.A needs 2 args, but was used with 1")
+            , codeTest "record"
+                """
                         alias A b = { x as b, y as b }
                         a =
                           as A Bool
                           a
                         """
-                            |> applyAndGetValue "a"
-                            |> Result.map .maybeAnnotation
-                , expected =
-                    Dict.empty
-                        |> Dict.insert "x" (CA.TypeConstant p "SPCore.Bool" [])
-                        |> Dict.insert "y" (CA.TypeConstant p "SPCore.Bool" [])
-                        |> CA.TypeRecord p Nothing
-                        |> CA.TypeAlias p "Test.A"
-                        |> Just
-                        |> Ok
-                }
+                (applyAndGetValue "a" >> Result.map .maybeAnnotation)
+                (Dict.empty
+                    |> Dict.insert "x" (CA.TypeConstant p "SPCore.Bool" [])
+                    |> Dict.insert "y" (CA.TypeConstant p "SPCore.Bool" [])
+                    |> CA.TypeRecord p Nothing
+                    |> CA.TypeAlias p "Test.A"
+                    |> Just
+                    |> Test.okEqual
+                )
             ]
         , Test.Group "unions"
-            [ simpleTest
-                { name = "simple"
-                , run =
-                    \_ ->
-                        """
+            [ codeTest "simple"
+                """
                         alias A b c = List b
                         union B x = B1 (A Bool x)
                         """
-                            |> applyAndGet CA.asUnion "B"
-                            |> Result.map .constructors
-                , expected =
-                    Ok <|
-                        Dict.singleton "Test.B1"
-                            [ CA.TypeAlias p
-                                "Test.A"
-                                (CA.TypeConstant p
-                                    "SPCore.List"
-                                    [ CA.TypeConstant p "SPCore.Bool" []
-                                    ]
-                                )
-                            ]
-                }
+                (applyAndGet CA.asUnion "B" >> Result.map .constructors)
+                (Test.okEqual <|
+                    Dict.singleton "Test.B1"
+                        [ CA.TypeAlias p
+                            "Test.A"
+                            (CA.TypeConstant p
+                                "SPCore.List"
+                                [ CA.TypeConstant p "SPCore.Bool" []
+                                ]
+                            )
+                        ]
+                )
             ]
 
         {-

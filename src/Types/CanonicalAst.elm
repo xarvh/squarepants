@@ -9,6 +9,7 @@ module Types.CanonicalAst exposing (..)
 -}
 
 import Dict exposing (Dict)
+import StateMonad as M exposing (M, do, return)
 import Types.Literal
 
 
@@ -16,33 +17,38 @@ type alias AllDefs =
     Dict String RootDef
 
 
-{-| moduleName + start + end must be unique for every expression, because they are used to build a unique id
+{-| The position of a piece of code
 -}
-type alias Pos =
-    { n : String
-    , c : String
-    , s : Int
-    , e : Int
-    }
-
-
-posToUid : Pos -> String
-posToUid pos =
-    pos.n ++ " " ++ String.fromInt pos.s ++ " " ++ String.fromInt pos.e
-
-
-posDummy : Pos
-posDummy =
-    { n = ""
-    , c = ""
-    , s = -1
-    , e = -1
-    }
+type Pos
+    = -- actual position: module reference, start, end
+      P String Int Int
+    | -- stripped
+      S
+    | -- defined natively, usually in Core or Prelude
+      N
+    | -- defined as test
+      T
+    | -- inferred
+      I Int
+      {-
+         TODO the following ones need to be removed
+      -}
+    | -- error todo
+      E
+    | -- Formattable to canonical todo
+      F
+    | -- ScopeCheck HACK
+      G
+      -- Union
+    | U
 
 
 
 ----
 --- Root
+--
+--
+-- TODO allow alias/union definitions within a block?
 --
 
 
@@ -60,6 +66,7 @@ type alias AliasDef =
 
 
 type alias UnionDef =
+    -- TODO add position for def and for each constructor!
     { name : String
     , args : List String
     , constructors : Dict String (List Type)
@@ -101,10 +108,22 @@ rootToLocalDef r =
 
 type Type
     = TypeConstant Pos String (List Type)
-    | TypeVariable Pos String
+    | TypeVariable Pos (List RejectFunction) String
     | TypeFunction Pos Type Bool Type
     | TypeRecord Pos (Maybe String) (Dict String Type)
     | TypeAlias Pos String Type
+
+
+{-| TODO do I need the Pos?
+-}
+type
+    RejectFunction
+    -- set by user
+    = Us Pos
+      -- parameter is mutable
+    | Pa Pos
+      -- it's a record
+    | Re Pos
 
 
 
@@ -143,7 +162,7 @@ type Parameter
 
 type Argument
     = ArgumentExpression Expression
-    | ArgumentMutable VariableArgs
+    | ArgumentMutable Pos VariableArgs
 
 
 type alias VariableArgs =
@@ -283,7 +302,7 @@ typePos ty =
         TypeConstant p _ _ ->
             p
 
-        TypeVariable p _ ->
+        TypeVariable p _ _ ->
             p
 
         TypeFunction p _ _ _ ->
@@ -300,397 +319,250 @@ typePos ty =
 ----
 --- Crawler
 --
-{-
-   TODO rename extensionFold_* to posFold_*
-   TODO have two separate set of functions, one for removing the Pos and the other for building an accumulator.
--}
 
 
-type Fold
-    = FoldExpr Expression
-    | FoldType Type
-    | FoldPattern Pattern
-    | FoldMutParam String
-    | FoldRootValueDef RootValueDef
+type PosMap
+    = PosMap_Expr Expression
+    | PosMap_Type Type
+    | PosMap_Pattern Pattern
+    | PosMap_MutParam String
+    | PosMap_RootValueDef RootValueDef
+    | PosMap_MutableArg VariableArgs
 
 
-extensionFold_module : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( AllDefs, acc ) -> ( AllDefs, acc )
-extensionFold_module f ( a_defs, acc0 ) =
+posMap_module : (PosMap -> Pos -> M acc Pos) -> AllDefs -> M acc AllDefs
+posMap_module f a_defs =
     let
-        fold name a_rootDef ( b_defs, accX ) =
+        fold name a_rootDef =
             case a_rootDef of
                 Alias a_aliasDef ->
-                    Tuple.mapFirst
-                        (\b_rootDef -> Dict.insert name (Alias b_rootDef) b_defs)
-                        (extensionFold_aliasDef f ( a_aliasDef, accX ))
+                    do (posMap_aliasDef f a_aliasDef) <| \b ->
+                    return <| Alias b
 
                 Union a_unionDef ->
-                    Tuple.mapFirst
-                        (\b_rootDef -> Dict.insert name (Union b_rootDef) b_defs)
-                        (extensionFold_unionDef f ( a_unionDef, accX ))
+                    do (posMap_unionDef f a_unionDef) <| \b ->
+                    return <| Union b
 
                 Value a_valueDef ->
-                    Tuple.mapFirst
-                        (\b_rootDef -> Dict.insert name (Value b_rootDef) b_defs)
-                        (extensionFold_rootValueDef f ( a_valueDef, accX ))
+                    do (posMap_rootValueDef f a_valueDef) <| \b ->
+                    return <| Value b
     in
-    Dict.foldl fold ( Dict.empty, acc0 ) a_defs
+    M.dict_map fold a_defs
 
 
-extensionFold_rootValueDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( RootValueDef, acc ) -> ( RootValueDef, acc )
-extensionFold_rootValueDef f ( def, acc0 ) =
-    let
-        ( b_body, acc1 ) =
-            extensionFold_block f ( def.body, acc0 )
+posMap_rootValueDef : (PosMap -> Pos -> M acc Pos) -> RootValueDef -> M acc RootValueDef
+posMap_rootValueDef f def =
+    do (posMap_block f def.body) <| \b_body ->
+    do
+        (case def.maybeAnnotation of
+            Nothing ->
+                return def.maybeAnnotation
 
-        ( b_ann, acc2 ) =
-            case def.maybeAnnotation of
-                Nothing ->
-                    ( def.maybeAnnotation, acc1 )
-
-                Just ty ->
-                    extensionFold_type f ( ty, acc1 ) |> Tuple.mapFirst Just
-
-        ( b_pos, acc3 ) =
-            f (FoldRootValueDef def) ( def.pos, acc2 )
-    in
-    ( { name = def.name
-      , localName = def.localName
-      , pos = b_pos
-      , isNative = def.isNative
-      , maybeAnnotation = b_ann
-      , body = b_body
-      }
-    , acc3
-    )
+            Just ty ->
+                do (posMap_type f ty) <| (Just >> return)
+        )
+    <| \b_ann ->
+    do (f (PosMap_RootValueDef def) def.pos) <| \b_pos ->
+    return
+        { name = def.name
+        , localName = def.localName
+        , pos = b_pos
+        , isNative = def.isNative
+        , maybeAnnotation = b_ann
+        , body = b_body
+        }
 
 
-extensionFold_aliasDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( AliasDef, acc ) -> ( AliasDef, acc )
-extensionFold_aliasDef f ( def, acc ) =
-    ( def.ty, acc )
-        |> extensionFold_type f
-        |> Tuple.mapFirst
-            (\b_ty ->
-                { name = def.name
-                , args = def.args
-                , ty = b_ty
-                }
-            )
+posMap_aliasDef : (PosMap -> Pos -> M acc Pos) -> AliasDef -> M acc AliasDef
+posMap_aliasDef f def =
+    do (posMap_type f def.ty) <| \b_ty ->
+    return
+        { name = def.name
+        , args = def.args
+        , ty = b_ty
+        }
 
 
-extensionFold_unionDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( UnionDef, acc ) -> ( UnionDef, acc )
-extensionFold_unionDef f ( def, acc ) =
-    let
-        foldConstructor constructorName a_constructorArgs ( b_constructors, accX ) =
-            a_constructorArgs
-                |> List.foldr foldArgument ( [], accX )
-                |> Tuple.mapFirst (\b_constructorArgs -> Dict.insert constructorName b_constructorArgs b_constructors)
-
-        foldArgument a_arg ( b_args, accX ) =
-            extensionFold_type f ( a_arg, accX )
-                |> Tuple.mapFirst (\b_arg -> b_arg :: b_args)
-    in
-    def.constructors
-        |> Dict.foldl foldConstructor ( Dict.empty, acc )
-        |> Tuple.mapFirst
-            (\b_constructors ->
-                { name = def.name
-                , args = def.args
-                , constructors = b_constructors
-                }
-            )
+posMap_unionDef : (PosMap -> Pos -> M acc Pos) -> UnionDef -> M acc UnionDef
+posMap_unionDef f def =
+    do (M.dict_map (\k -> M.list_map (posMap_type f)) def.constructors) <| \cons ->
+    return
+        { name = def.name
+        , args = def.args
+        , constructors = cons
+        }
 
 
-extensionFold_valueDef : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( LocalValueDef, acc ) -> ( LocalValueDef, acc )
-extensionFold_valueDef f ( def, acc0 ) =
-    let
-        ( b_body, acc1 ) =
-            extensionFold_block f ( def.body, acc0 )
+posMap_valueDef : (PosMap -> Pos -> M acc Pos) -> LocalValueDef -> M acc LocalValueDef
+posMap_valueDef f def =
+    do (posMap_block f def.body) <| \b_body ->
+    do
+        (case def.maybeAnnotation of
+            Nothing ->
+                return def.maybeAnnotation
 
-        ( b_ann, acc2 ) =
-            case def.maybeAnnotation of
-                Nothing ->
-                    ( def.maybeAnnotation, acc1 )
-
-                Just ty ->
-                    extensionFold_type f ( ty, acc1 ) |> Tuple.mapFirst Just
-
-        ( b_pattern, acc3 ) =
-            extensionFold_pattern f ( def.pattern, acc2 )
-    in
-    ( { pattern = b_pattern
-      , mutable = def.mutable
-      , maybeAnnotation = b_ann
-      , body = b_body
-      }
-    , acc3
-    )
+            Just ty ->
+                do (posMap_type f ty) <| (Just >> return)
+        )
+    <| \b_ann ->
+    do (posMap_pattern f def.pattern) <| \b_pattern ->
+    return
+        { pattern = b_pattern
+        , mutable = def.mutable
+        , maybeAnnotation = b_ann
+        , body = b_body
+        }
 
 
-extensionFold_type : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Type, acc ) -> ( Type, acc )
-extensionFold_type f ( ty, acc0 ) =
+posMap_type : (PosMap -> Pos -> M acc Pos) -> Type -> M acc Type
+posMap_type f ty =
     let
         fty =
-            f (FoldType ty)
+            f (PosMap_Type ty)
     in
     case ty of
         TypeConstant a_pos name a_args ->
-            let
-                ( b_pos, acc1 ) =
-                    fty ( a_pos, acc0 )
+            do (fty a_pos) <| \b_pos ->
+            do (M.list_map (posMap_type f) a_args) <| \b_args ->
+            return <| TypeConstant b_pos name b_args
 
-                ( b_args, acc2 ) =
-                    List.foldr fold ( [], acc1 ) a_args
-
-                fold a_arg ( args, accX ) =
-                    extensionFold_type f ( a_arg, accX )
-                        |> Tuple.mapFirst (\b_arg -> b_arg :: args)
-            in
-            ( TypeConstant b_pos name b_args
-            , acc2
-            )
-
-        TypeVariable a_pos name ->
-            fty ( a_pos, acc0 )
-                |> Tuple.mapFirst (\b_pos -> TypeVariable b_pos name)
+        TypeVariable a_pos allowFunctions name ->
+            do (fty a_pos) <| \b_pos ->
+            return <| TypeVariable b_pos allowFunctions name
 
         TypeFunction a_pos a_from fromIsMut a_to ->
-            let
-                ( b_pos, acc1 ) =
-                    fty ( a_pos, acc0 )
-
-                ( b_from, acc2 ) =
-                    extensionFold_type f ( a_from, acc1 )
-
-                ( b_to, acc3 ) =
-                    extensionFold_type f ( a_to, acc2 )
-            in
-            ( TypeFunction b_pos b_from fromIsMut b_to
-            , acc3
-            )
+            do (fty a_pos) <| \b_pos ->
+            do (posMap_type f a_from) <| \b_from ->
+            do (posMap_type f a_to) <| \b_to ->
+            return <| TypeFunction b_pos b_from fromIsMut b_to
 
         TypeRecord a_pos ext a_attrs ->
-            let
-                ( b_pos, acc1 ) =
-                    fty ( a_pos, acc0 )
-
-                fold attr_name a_ty ( attrs, accX ) =
-                    Tuple.mapFirst
-                        (\b_arg -> Dict.insert attr_name b_arg attrs)
-                        (extensionFold_type f ( a_ty, accX ))
-
-                ( b_attrs, acc2 ) =
-                    Dict.foldl fold ( Dict.empty, acc1 ) a_attrs
-            in
-            ( TypeRecord b_pos ext b_attrs
-            , acc2
-            )
+            do (fty a_pos) <| \b_pos ->
+            do (M.dict_map (\k -> posMap_type f) a_attrs) <| \b_attrs ->
+            return <| TypeRecord b_pos ext b_attrs
 
         TypeAlias a_pos name a_ty ->
-            let
-                ( b_pos, acc1 ) =
-                    fty ( a_pos, acc0 )
-
-                ( b_ty, acc2 ) =
-                    extensionFold_type f ( a_ty, acc1 )
-            in
-            ( TypeAlias b_pos name b_ty
-            , acc2
-            )
+            do (fty a_pos) <| \b_pos ->
+            do (posMap_type f a_ty) <| \b_ty ->
+            return <| TypeAlias b_pos name b_ty
 
 
-extensionFold_expression : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Expression, acc ) -> ( Expression, acc )
-extensionFold_expression fFold ( expr, acc ) =
+posMap_expression : (PosMap -> Pos -> M acc Pos) -> Expression -> M acc Expression
+posMap_expression fFold expr =
     let
         f =
-            FoldExpr >> fFold
+            PosMap_Expr >> fFold
     in
     case expr of
         Literal a_pos ar ->
-            Tuple.mapFirst (\b_pos -> Literal b_pos ar) (f expr ( a_pos, acc ))
+            do (f expr a_pos) <| \b_pos ->
+            return <| Literal b_pos ar
 
         Variable a_pos args ->
-            Tuple.mapFirst (\b_pos -> Variable b_pos args) (f expr ( a_pos, acc ))
+            do (f expr a_pos) <| \b_pos ->
+            return <| Variable b_pos args
 
         Lambda a_pos a_param a_body ->
-            let
-                ( b_pos, acc1 ) =
-                    f expr ( a_pos, acc )
+            do (f expr a_pos) <| \b_pos ->
+            do (posMap_block fFold a_body) <| \b_body ->
+            do
+                (case a_param of
+                    ParameterMutable pos name ->
+                        do (fFold (PosMap_MutParam name) pos) <| \p ->
+                        return <| ParameterMutable p name
 
-                ( b_body, acc2 ) =
-                    extensionFold_block fFold ( a_body, acc1 )
-
-                ( b_param, acc3 ) =
-                    case a_param of
-                        ParameterMutable pos name ->
-                            fFold (FoldMutParam name) ( pos, acc2 )
-                                |> Tuple.mapFirst (\p -> ParameterMutable p name)
-
-                        ParameterPattern a_pattern ->
-                            extensionFold_pattern fFold ( a_pattern, acc2 )
-                                |> Tuple.mapFirst ParameterPattern
-            in
-            ( Lambda b_pos b_param b_body
-            , acc3
-            )
+                    ParameterPattern a_pattern ->
+                        do (posMap_pattern fFold a_pattern) <| \pa ->
+                        return <| ParameterPattern pa
+                )
+            <| \b_param ->
+            return <| Lambda b_pos b_param b_body
 
         Record a_pos a_ext a_attrs ->
-            let
-                ( b_pos, acc1 ) =
-                    f expr ( a_pos, acc )
-
-                fold name a_expr ( attrs, aX ) =
-                    Tuple.mapFirst
-                        (\b_expr -> Dict.insert name b_expr attrs)
-                        (extensionFold_expression fFold ( a_expr, aX ))
-
-                ( b_attrs, acc2 ) =
-                    Dict.foldl fold ( Dict.empty, acc1 ) a_attrs
-            in
-            ( Record b_pos a_ext b_attrs
-            , acc2
-            )
+            do (f expr a_pos) <| \b_pos ->
+            do (M.dict_map (\k -> posMap_expression fFold) a_attrs) <| \b_attrs ->
+            return <| Record b_pos a_ext b_attrs
 
         Call a_pos a_ref a_arg ->
-            let
-                ( b_pos, acc1 ) =
-                    f expr ( a_pos, acc )
-
-                ( b_ref, acc2 ) =
-                    extensionFold_expression fFold ( a_ref, acc1 )
-
-                ( b_arg, acc3 ) =
-                    extensionFold_argument fFold ( a_arg, acc2 )
-            in
-            ( Call b_pos b_ref b_arg
-            , acc3
-            )
+            do (f expr a_pos) <| \b_pos ->
+            do (posMap_expression fFold a_ref) <| \b_ref ->
+            do (posMap_argument fFold a_arg) <| \b_arg ->
+            return <| Call b_pos b_ref b_arg
 
         If a_pos ar ->
-            let
-                -- TODO use a `do blah <| \b_meh ->` to avoid using accX?
-                ( b_pos, acc1 ) =
-                    f expr ( a_pos, acc )
-
-                ( b_cond, acc2 ) =
-                    extensionFold_block fFold ( ar.condition, acc1 )
-
-                ( b_true, acc3 ) =
-                    extensionFold_block fFold ( ar.true, acc2 )
-
-                ( b_false, acc4 ) =
-                    extensionFold_block fFold ( ar.false, acc3 )
-            in
-            ( If b_pos { condition = b_cond, true = b_true, false = b_false }
-            , acc4
-            )
+            do (f expr a_pos) <| \b_pos ->
+            do (posMap_block fFold ar.condition) <| \b_cond ->
+            do (posMap_block fFold ar.true) <| \b_true ->
+            do (posMap_block fFold ar.false) <| \b_false ->
+            return <| If b_pos { condition = b_cond, true = b_true, false = b_false }
 
         Try a_pos a_value a_tries ->
+            do (f expr a_pos) <| \b_pos ->
+            do (posMap_expression fFold a_value) <| \b_value ->
             let
-                ( b_pos, acc1 ) =
-                    f expr ( a_pos, acc )
-
-                ( b_value, acc2 ) =
-                    extensionFold_expression fFold ( a_value, acc1 )
-
-                fold ( a_pattern, a_block ) ( pasAndBlocks, accX0 ) =
-                    let
-                        ( b_block, accX1 ) =
-                            extensionFold_block fFold ( a_block, accX0 )
-
-                        ( b_pattern, accX2 ) =
-                            extensionFold_pattern fFold ( a_pattern, accX1 )
-                    in
-                    ( ( b_pattern, b_block ) :: pasAndBlocks, accX2 )
-
-                ( b_patterns, acc3 ) =
-                    List.foldr fold ( [], acc2 ) a_tries
+                fold ( a_pattern, a_block ) =
+                    do (posMap_block fFold a_block) <| \b_block ->
+                    do (posMap_pattern fFold a_pattern) <| \b_pattern ->
+                    return ( b_pattern, b_block )
             in
-            ( Try b_pos b_value b_patterns
-            , acc3
-            )
+            do (M.list_map fold a_tries) <| \b_patterns ->
+            return <| Try b_pos b_value b_patterns
 
 
-extensionFold_pattern : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Pattern, acc ) -> ( Pattern, acc )
-extensionFold_pattern fFold ( pattern, acc ) =
+posMap_pattern : (PosMap -> Pos -> M acc Pos) -> Pattern -> M acc Pattern
+posMap_pattern fFold pattern =
     let
         f =
-            FoldPattern >> fFold
+            PosMap_Pattern >> fFold
     in
     case pattern of
         PatternDiscard a_pos ->
-            Tuple.mapFirst (\b_pos -> PatternDiscard b_pos) (f pattern ( a_pos, acc ))
+            do (f pattern a_pos) <| \b_pos ->
+            return <| PatternDiscard b_pos
 
         PatternAny a_pos name ->
-            Tuple.mapFirst (\b_pos -> PatternAny b_pos name) (f pattern ( a_pos, acc ))
+            do (f pattern a_pos) <| \b_pos ->
+            return <| PatternAny b_pos name
 
         PatternLiteral a_pos value ->
-            Tuple.mapFirst (\b_pos -> PatternLiteral b_pos value) (f pattern ( a_pos, acc ))
+            do (f pattern a_pos) <| \b_pos ->
+            return <| PatternLiteral b_pos value
 
         PatternConstructor a_pos name a_args ->
-            let
-                ( b_pos, acc1 ) =
-                    f pattern ( a_pos, acc )
-
-                fold a_arg ( b_args, accX ) =
-                    extensionFold_pattern fFold ( a_arg, accX )
-                        |> Tuple.mapFirst (\b_arg -> b_arg :: b_args)
-
-                ( b_as, acc2 ) =
-                    List.foldr fold ( [], acc1 ) a_args
-            in
-            ( PatternConstructor b_pos name b_as
-            , acc2
-            )
+            do (f pattern a_pos) <| \b_pos ->
+            do (M.list_map (posMap_pattern fFold) a_args) <| \b_args ->
+            return <| PatternConstructor b_pos name b_args
 
         PatternRecord a_pos a_attrs ->
-            let
-                ( b_pos, acc1 ) =
-                    f pattern ( a_pos, acc )
-
-                fold name a_pa ( attrs, aX ) =
-                    Tuple.mapFirst
-                        (\b_pa -> Dict.insert name b_pa attrs)
-                        (extensionFold_pattern fFold ( a_pa, aX ))
-
-                ( b_attrs, acc2 ) =
-                    Dict.foldl fold ( Dict.empty, acc1 ) a_attrs
-            in
-            ( PatternRecord b_pos b_attrs
-            , acc2
-            )
+            do (f pattern a_pos) <| \b_pos ->
+            do (M.dict_map (\k -> posMap_pattern fFold) a_attrs) <| \b_attrs ->
+            return <| PatternRecord b_pos b_attrs
 
 
-extensionFold_block : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( List Statement, acc ) -> ( List Statement, acc )
-extensionFold_block f ( block, acc ) =
-    let
-        fold a_stat ( b_stats, accX ) =
-            Tuple.mapFirst
-                (\b_stat -> b_stat :: b_stats)
-                (extensionFold_statement f ( a_stat, accX ))
-    in
-    List.foldr fold ( [], acc ) block
+posMap_block : (PosMap -> Pos -> M acc Pos) -> List Statement -> M acc (List Statement)
+posMap_block f block =
+    M.list_map (posMap_statement f) block
 
 
-extensionFold_argument : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Argument, acc ) -> ( Argument, acc )
-extensionFold_argument f ( arg, acc ) =
+posMap_argument : (PosMap -> Pos -> M acc Pos) -> Argument -> M acc Argument
+posMap_argument f arg =
     case arg of
         ArgumentExpression expr ->
-            ( expr, acc )
-                |> extensionFold_expression f
-                |> Tuple.mapFirst ArgumentExpression
+            do (posMap_expression f expr) <| \e ->
+            return <| ArgumentExpression e
 
-        ArgumentMutable ar ->
-            ( arg, acc )
+        ArgumentMutable pos ar ->
+            do (f (PosMap_MutableArg ar) pos) <| \p ->
+            return <| ArgumentMutable p ar
 
 
-extensionFold_statement : (Fold -> ( Pos, acc ) -> ( Pos, acc )) -> ( Statement, acc ) -> ( Statement, acc )
-extensionFold_statement f ( stat, acc ) =
+posMap_statement : (PosMap -> Pos -> M acc Pos) -> Statement -> M acc Statement
+posMap_statement f stat =
     case stat of
         Definition ar ->
-            Tuple.mapFirst Definition (extensionFold_valueDef f ( ar, acc ))
+            do (posMap_valueDef f ar) <| \d ->
+            return <| Definition d
 
         Evaluation expr ->
-            ( expr, acc )
-                |> extensionFold_expression f
-                |> Tuple.mapFirst Evaluation
+            do (posMap_expression f expr) <| \e ->
+            return <| Evaluation e

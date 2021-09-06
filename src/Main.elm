@@ -11,6 +11,7 @@ import Compiler.FormattableToCanonicalAst_Test
 import Compiler.JsToString
 import Compiler.JsToString_Test
 import Compiler.Pipeline
+import Compiler.ScopeCheck_Test
 import Compiler.StringToTokens
 import Compiler.StringToTokens_Test
 import Compiler.TestHelpers
@@ -31,6 +32,7 @@ import OneOrMore exposing (OneOrMore)
 import Parser
 import Prelude
 import Set exposing (Set)
+import StateMonad as M exposing (M, do, return)
 import Test
 import Types.CanonicalAst as CA exposing (Pos)
 import Types.Error exposing (ErrorEnv, Res)
@@ -42,10 +44,18 @@ import Types.Token as Token exposing (Token)
 
 runTests =
     False
+--         || True
 
 
+moduleMain =
+    ( "Main"
+    , """
 
-        || True
+upd a =
+  { a with c = .c }
+
+      """
+    )
 
 
 initialFiles =
@@ -63,16 +73,6 @@ initialFiles =
 
 metaFileName =
     "meta"
-
-
-moduleMain =
-    ( "Main"
-    , """
-tests =
-    (Ok
-    )
-      """
-    )
 
 
 moduleMaybe =
@@ -221,13 +221,12 @@ tests =
         Test.viewList
             [ Compiler.StringToTokens_Test.tests
             , Compiler.TokensToFormattableAst_Test.tests
-            , Compiler.TypeInference_Test.tests
-
-            --             , Compiler.FindUndeclared_Test.tests
-            , Compiler.ApplyAliases_Test.tests
-            , Compiler.JsToString_Test.tests
-            , Compiler.CanonicalToJs_Test.tests
             , Compiler.FormattableToCanonicalAst_Test.tests
+            , Compiler.ScopeCheck_Test.tests
+            , Compiler.ApplyAliases_Test.tests
+            , Compiler.TypeInference_Test.tests
+            , Compiler.CanonicalToJs_Test.tests
+            , Compiler.JsToString_Test.tests
             ]
 
 
@@ -715,10 +714,10 @@ viewProgram model =
                     |> Result.map (Dict.union acc)
                     |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
 
-        emitModule : TI.Substitutions -> CA.AllDefs -> Result x String
-        emitModule subs caModule =
+        emitModule : CA.AllDefs -> Result x String
+        emitModule caModule =
             caModule
-                |> Compiler.CanonicalToJs.translateAll subs
+                |> Compiler.CanonicalToJs.translateAll
                 |> List.map (Compiler.JsToString.emitStatement 0)
                 |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
                 |> String.join "\n\n"
@@ -734,15 +733,10 @@ viewProgram model =
                         |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
             in
             do withAliases <| \alsDefs ->
-            let
-                blah : Result String ( CA.AllDefs, TI.Env, TI.Substitutions )
-                blah =
-                    alsDefs
-                        |> TI.inspectModule Dict.empty
-                        |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
-            in
-            do blah <| \( typedProgram, env, subs ) ->
-            Ok ( subs, typedProgram )
+            alsDefs
+                |> TI.allDefsToEnvAndValues
+                |> (\( env, values ) -> TI.fromAllValueDefs env values)
+                |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
 
         titleAndPreCode title text =
             Html.li
@@ -767,20 +761,40 @@ viewProgram model =
                             [ Html.text e ]
                         ]
 
-                    Ok ( subs, program ) ->
-                        [ titleAndPreCode
-                            "JavaScript value for Mod.result:"
-                            (case Compiler.JsToString_Test.runProgram "Main.result" subs program of
-                                Ok res ->
-                                    res
+                    Ok env ->
+                        -- subs, program ) ->
+                        {-
+                           [ titleAndPreCode
+                               "JavaScript value for Mod.result:"
+                               (case Compiler.JsToString_Test.runProgram "Main.result" subs program of
+                                   Ok res ->
+                                       res
 
-                                Err message ->
-                                    "Error: ### " ++ message ++ " ###"
-                            )
-                        , program
-                            |> emitModule subs
-                            |> Result.withDefault "error"
-                            |> titleAndPreCode "Evaluated JavaScript code:"
+                                   Err message ->
+                                       "Error: ### " ++ message ++ " ###"
+                               )
+                           , program
+                               |> emitModule subs
+                               |> Result.withDefault "error"
+                               |> titleAndPreCode "Evaluated JavaScript code:"
+                           ]
+                        -}
+                        [ Html.text "All ok"
+                        , env.instanceVariables
+                            |> Dict.filter (\name _ -> not <| Dict.member name Prelude.prelude)
+                            |> Dict.toList
+                            |> List.map
+                                (\( name, va ) ->
+                                    Html.li
+                                        [ style "min-width" "400px" ]
+                                        [ Html.pre
+                                            []
+                                            [ (name ++ " as " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: " )
+                                                |> Html.text
+                                            ]
+                                        ]
+                                )
+                            |> Html.ul []
                         ]
         )
 
@@ -813,18 +827,13 @@ viewProgram model =
                |> Html.div []
            ]
 -}
-
-
-viewSchema : TI.EnvEntry -> String
-viewSchema schema =
-    [ "forall: [" ++ String.join "," (Set.toList schema.forall) ++ "]"
-    , "mutable: " ++ Debug.toString schema.mutable
-    , "type: " ++ HumanCA.typeToString schema.type_
-    ]
-        |> String.join " ### "
-
-
-
+-- viewSchema : TI.EnvEntry -> String
+-- viewSchema schema =
+--     [ "forall: [" ++ String.join "," (Set.toList schema.forall) ++ "]"
+--     , "mutable: " ++ Debug.toString schema.mutable
+--     , "type: " ++ HumanCA.typeToString schema.type_
+--     ]
+--         |> String.join " ### "
 {-
    ----
    --- Undeclared
@@ -1069,7 +1078,7 @@ viewCaExpression expr =
                 [ viewCaExpression reference
                 , I
                     (case argument of
-                        CA.ArgumentMutable args ->
+                        CA.ArgumentMutable _ args ->
                             S <| "@" ++ args.name ++ String.join ":" args.attrPath
 
                         CA.ArgumentExpression e ->
@@ -1101,8 +1110,8 @@ viewCaExpression expr =
 
         --CA.Try
         _ ->
-            ( expr, () )
-                |> CA.extensionFold_expression (\_ _ -> ( CA.posDummy, () ))
+            ()
+                |> CA.posMap_expression (\_ _ -> return CA.S) expr
                 |> Tuple.second
                 |> Debug.toString
                 |> S

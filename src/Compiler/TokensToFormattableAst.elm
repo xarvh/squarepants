@@ -3,6 +3,7 @@ module Compiler.TokensToFormattableAst exposing (..)
 import OneOrMore exposing (OneOrMore)
 import Parser exposing (do, fail, higherOr, maybe, oneOf, oneOrMore, succeed, zeroOrMore)
 import SepList exposing (SepList)
+import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
 import Types.Literal
@@ -123,9 +124,7 @@ makeErr moduleName state message =
                     ( token.start, token.end )
     in
     Error.err
-        { moduleName = moduleName
-        , start = start
-        , end = end
+        { pos = CA.P moduleName start end
         , description = \_ -> [ Error.text message ]
         }
 
@@ -135,9 +134,8 @@ errorOptionsExhausted moduleName nonConsumedTokens =
     case nonConsumedTokens of
         [] ->
             Error.err
-                { moduleName = moduleName
-                , start = -1
-                , end = -1
+                -- TODO use a dedicated CA.Pos constructor?
+                { pos = CA.P moduleName -1 -1
                 , description =
                     \_ ->
                         [ Error.text "I got to the end of file and I can't make sense of it. =("
@@ -146,9 +144,7 @@ errorOptionsExhausted moduleName nonConsumedTokens =
 
         token :: _ ->
             Error.err
-                { moduleName = moduleName
-                , start = token.start
-                , end = token.end
+                { pos = CA.P moduleName token.start token.end
                 , description =
                     \_ ->
                         [ Error.text "I got stuck parsing there. =("

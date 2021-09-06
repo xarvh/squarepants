@@ -4,6 +4,7 @@ import Compiler.ApplyAliases
 import Compiler.Pipeline
 import Dict exposing (Dict)
 import Prelude exposing (meta)
+import StateMonad as M exposing (M, do, return)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
@@ -15,21 +16,17 @@ moduleName =
 
 p : CA.Pos
 p =
-    { n = "th"
-    , c = ""
-    , s = 0
-    , e = 0
-    }
+    CA.T
 
 
 type alias CA_Fold_Function target acc =
-    (CA.Fold -> ( CA.Pos, acc ) -> ( CA.Pos, acc )) -> ( target, acc ) -> ( target, acc )
+    (CA.PosMap -> CA.Pos -> M acc CA.Pos) -> target -> M acc target
 
 
 removePos : CA_Fold_Function target () -> target -> target
-removePos fold_helper target =
-    ( target, () )
-        |> fold_helper (\_ _ -> ( p, () ))
+removePos posMap_something target =
+    ()
+        |> posMap_something (\_ _ -> return CA.T) target
         |> Tuple.first
 
 
@@ -64,7 +61,7 @@ stringToCanonicalModule : String -> Res CA.AllDefs
 stringToCanonicalModule code =
     code
         |> stringToCanonicalModuleWithPos
-        |> Result.map (removePos CA.extensionFold_module)
+        |> Result.map (removePos CA.posMap_module)
 
 
 stringToFormattableModule : String -> Res FA.Module

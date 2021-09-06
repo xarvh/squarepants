@@ -189,6 +189,9 @@ https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontri
   https://www.researchgate.net/publication/2528716_Generalizing_Hindley-Milner_Type_Inference_Algorithms
   https://github.com/cronokirby/heeren-2002/blob/master/lang.hs
 
+* Algorithm W https://github.com/ebresafegaga/AlgorithmW
+
+* Once mutation is available, switch to Algorithm J? https://github.com/jfecher/algorithm-j
 
 * Parser error friendliness: https://www.reddit.com/r/ProgrammingLanguages/comments/k9u35g/whats_an_useful_debugging_output_for_a_simple/
 

@@ -37,16 +37,12 @@ codeTest =
     Test.codeTest Debug.toString
 
 
-simpleTest =
-    Test.simple Debug.toString
+simpleTest { name, code, run, expected } =
+    Test.codeTest Debug.toString name code run (Test.okEqual expected)
 
 
-isOk =
-    Test.isOk Debug.toString
-
-
-hasError =
-    Test.hasError Debug.toString
+hasError { name, code, run, test } =
+    Test.codeTest Debug.toString name code run test
 
 
 constant n =
@@ -65,6 +61,21 @@ tyNone =
     constant "SPCore.None"
 
 
+forall : String -> List CA.RejectFunction -> Dict String TI.TypeVariable
+forall n rf =
+    Dict.singleton n { definedAt = CA.S, rf = rf }
+
+
+forallMany : List String -> Dict String TI.TypeVariable
+forallMany =
+    List.map (\n -> ( n, { definedAt = CA.S, rf = [] } )) >> Dict.fromList
+
+
+forallTuple : List ( String, List CA.RejectFunction ) -> Dict String TI.TypeVariable
+forallTuple =
+    List.foldl (\( n, rf ) -> Dict.insert n { definedAt = CA.S, rf = rf }) Dict.empty
+
+
 
 ----
 --- These should be removed once we get rid of the old record declarations
@@ -76,7 +87,7 @@ typeFunction { from, fromIsMutable, to } =
 
 
 typeVariable { name } =
-    CA.TypeVariable p name
+    CA.TypeVariable p [] name
 
 
 typeConstant { ref, args } =
@@ -93,135 +104,166 @@ typeRecord { extensible, attrs } =
 --
 
 
-infer : String -> String -> Result String TI.EnvEntry
+testDefs : Dict String Type
+testDefs =
+    Dict.empty
+        |> Dict.insert "Test.add" (function tyNumber (function tyNumber tyNumber))
+        |> Dict.insert "Test.reset" (typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone })
+
+
+infer : String -> String -> Result String { forall : Dict String TI.TypeVariable, type_ : Type, mutable : Bool }
 infer name code =
     code
         |> TH.stringToCanonicalModuleWithPos
-        |> Result.andThen (TI.inspectModule preamble)
+        |> Result.map (Dict.union Prelude.prelude >> TI.allDefsToEnvAndValues)
+        |> Result.andThen (\( env, values ) -> TI.fromAllValueDefs (addTestDefs env) values)
         |> TH.resErrorToString code
         |> Result.andThen
-            (\( mod, env, subs ) ->
-                env
+            (\env ->
+                env.instanceVariables
                     |> Dict.get ("Test." ++ name)
-                    |> Maybe.map normalizeSchema
+                    --|> Maybe.map normalizeSchema
                     |> Result.fromMaybe "Dict fail"
-                    |> Result.map (\schema -> { schema | type_ = TH.removePos CA.extensionFold_type schema.type_ })
+                    |> Result.map
+                        (\var ->
+                            { type_ = TH.removePos CA.posMap_type var.ty
+                            , forall = Dict.map stripPosFromTyvar var.freeTypeVariables
+                            , mutable = var.isMutable
+                            }
+                        )
             )
 
 
-preamble : TI.Env
-preamble =
+stripPosFromTyvar : name -> TI.TypeVariable -> TI.TypeVariable
+stripPosFromTyvar name tyvar =
     let
-        em x =
-            { type_ = x
-            , forall = Set.empty
-            , mutable = False
-            }
+        stripRf rf =
+            case rf of
+                CA.Us _ ->
+                    CA.Us CA.S
+
+                CA.Pa _ ->
+                    CA.Pa CA.S
+
+                CA.Re _ ->
+                    CA.Re CA.S
     in
-    [ ( "Test.add", em <| function tyNumber (function tyNumber tyNumber) )
-    , ( "Test.reset", em <| typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone } )
-    ]
-        |> Dict.fromList
+    { definedAt = CA.S
+    , rf = List.map stripRf tyvar.rf
+    }
+
+
+addTestDefs : TI.Env -> TI.Env
+addTestDefs env =
+    let
+        add : String -> Type -> Dict String TI.InstanceVariable -> Dict String TI.InstanceVariable
+        add name ty =
+            Dict.insert name
+                { definedAt = CA.T
+                , ty = ty
+                , freeTypeVariables = TI.typeTyvars ty
+                , isMutable = False
+                }
+    in
+    { env | instanceVariables = Dict.foldl add env.instanceVariables testDefs }
 
 
 
 ----
 --- "t2" -> "a"
 --
-
-
-normalizeSchema : TI.EnvEntry -> TI.EnvEntry
-normalizeSchema schema =
-    let
-        ( ty, dict ) =
-            normalizeType Dict.empty schema.type_
-
-        replaceName name =
-            Dict.get name dict |> Maybe.withDefault name
-    in
-    { schema
-        | type_ = ty
-        , forall = Set.map replaceName schema.forall
-    }
-
-
-normalizeName : Dict String String -> String -> ( String, Dict String String )
-normalizeName dict name =
-    case Dict.get name dict of
-        Just new ->
-            ( new, dict )
-
-        Nothing ->
-            if String.toInt name == Nothing then
-                ( name, dict )
-
-            else
-                let
-                    n =
-                        Dict.size dict + 1 |> String.fromInt
-                in
-                ( n, Dict.insert name n dict )
-
-
-normalizeType : Dict String String -> Type -> ( Type, Dict String String )
-normalizeType dict ty =
-    case ty of
-        CA.TypeConstant pos name args ->
-            let
-                fold arg ( ars, d ) =
-                    normalizeType d arg
-                        |> Tuple.mapFirst (\na -> na :: ars)
-
-                ( reversedArgs, dict1 ) =
-                    List.foldl fold ( [], dict ) args
-            in
-            ( CA.TypeConstant pos name (List.reverse reversedArgs)
-            , dict1
-            )
-
-        CA.TypeVariable pos name ->
-            normalizeName dict name
-                |> Tuple.mapFirst (CA.TypeVariable pos)
-
-        CA.TypeFunction pos from0 fromIsMut to0 ->
-            let
-                ( from, d1 ) =
-                    normalizeType dict from0
-
-                ( to, d2 ) =
-                    normalizeType d1 to0
-            in
-            ( CA.TypeFunction pos from fromIsMut to
-            , d2
-            )
-
-        CA.TypeRecord pos ext0 attrs0 ->
-            let
-                ( et, d1 ) =
-                    case ext0 of
-                        Nothing ->
-                            ( Nothing, dict )
-
-                        Just e ->
-                            normalizeName dict e |> Tuple.mapFirst Just
-
-                fold name attr ( accum, d ) =
-                    normalizeType d attr
-                        |> Tuple.mapFirst (\na -> Dict.insert name na accum)
-
-                ( attrs, d2 ) =
-                    Dict.foldl fold ( Dict.empty, d1 ) attrs0
-            in
-            ( CA.TypeRecord pos et attrs
-            , d2
-            )
-
-        CA.TypeAlias pos path t ->
-            normalizeType dict t
-                |> Tuple.mapFirst (CA.TypeAlias pos path)
-
-
-
+-- TODO move to Human/?
+-- normalizeSchema : TI.EnvEntry -> TI.EnvEntry
+-- normalizeSchema schema =
+--     let
+--         ( ty, dict ) =
+--             normalizeType Dict.empty schema.type_
+--
+--         replaceName name =
+--             Dict.get name dict |> Maybe.withDefault name
+--     in
+--     { schema
+--         | type_ = ty
+--         , forall = Set.map replaceName schema.forall
+--     }
+--
+--
+-- normalizeName : Dict String String -> String -> ( String, Dict String String )
+-- normalizeName dict name =
+--     case Dict.get name dict of
+--         Just new ->
+--             ( new, dict )
+--
+--         Nothing ->
+--             if String.toInt name == Nothing then
+--                 ( name, dict )
+--
+--             else
+--                 let
+--                     n =
+--                         Dict.size dict + 1 |> String.fromInt
+--                 in
+--                 ( n, Dict.insert name n dict )
+--
+--
+-- normalizeType : Dict String String -> Type -> ( Type, Dict String String )
+-- normalizeType dict ty =
+--     case ty of
+--         CA.TypeConstant pos name args ->
+--             let
+--                 fold arg ( ars, d ) =
+--                     normalizeType d arg
+--                         |> Tuple.mapFirst (\na -> na :: ars)
+--
+--                 ( reversedArgs, dict1 ) =
+--                     List.foldl fold ( [], dict ) args
+--             in
+--             ( CA.TypeConstant pos name (List.reverse reversedArgs)
+--             , dict1
+--             )
+--
+--         CA.TypeVariable pos name ->
+--             normalizeName dict name
+--                 |> Tuple.mapFirst (CA.TypeVariable pos)
+--
+--         CA.TypeFunction pos from0 fromIsMut to0 ->
+--             let
+--                 ( from, d1 ) =
+--                     normalizeType dict from0
+--
+--                 ( to, d2 ) =
+--                     normalizeType d1 to0
+--             in
+--             ( CA.TypeFunction pos from fromIsMut to
+--             , d2
+--             )
+--
+--         CA.TypeRecord pos ext0 attrs0 ->
+--             let
+--                 ( et, d1 ) =
+--                     case ext0 of
+--                         Nothing ->
+--                             ( Nothing, dict )
+--
+--                         Just e ->
+--                             normalizeName dict e |> Tuple.mapFirst Just
+--
+--                 fold name attr ( accum, d ) =
+--                     normalizeType d attr
+--                         |> Tuple.mapFirst (\na -> Dict.insert name na accum)
+--
+--                 ( attrs, d2 ) =
+--                     Dict.foldl fold ( Dict.empty, d1 ) attrs0
+--             in
+--             ( CA.TypeRecord pos et attrs
+--             , d2
+--             )
+--
+--         CA.TypeAlias pos path t ->
+--             normalizeType dict t
+--                 |> Tuple.mapFirst (CA.TypeAlias pos path)
+--
+--
 ----
 --- Functions
 --
@@ -230,56 +272,53 @@ normalizeType dict ty =
 functions : Test
 functions =
     Test.Group "functions"
-        [ simpleTest
-            { name = "Known function with correct params"
-            , run = \_ -> infer "a" "a = add 3 1"
-            , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
-            }
-        , hasError
-            { name = "Known function with wrong params"
-            , run = \_ -> infer "a" "a = add False"
-            , test = Test.errorShouldContain "SPCore.Bool"
-            }
+        [ codeTest "Known function with correct params"
+            "a = add 3 1"
+            (infer "a")
+            (Test.okEqual
+                { type_ = tyNumber
+                , forall = Dict.empty
+                , mutable = False
+                }
+            )
+        , codeTest "Known function with wrong params"
+            "a = add False"
+            (infer "a")
+            (Test.errContain "SPCore.Bool")
         , simpleTest
             { name = "Function inference 1"
-            , run = \_ -> infer "a" "a x = add x 1"
+            , code = "a x = add x 1"
+            , run = infer "a"
             , expected =
-                Ok
-                    { type_ = function tyNumber tyNumber
-                    , forall = Set.empty
-                    , mutable = False
-                    }
+                { type_ = function tyNumber tyNumber
+                , forall = Dict.empty
+                , mutable = False
+                }
             }
         , simpleTest
             { name = "Function inference 2: same as 1, but with swapped args"
-            , run = \_ -> infer "a" "a x = add 1 x"
+            , code = "a x = add 1 x"
+            , run = infer "a"
             , expected =
-                Ok
-                    { type_ = function tyNumber tyNumber
-                    , forall = Set.empty
-                    , mutable = False
-                    }
+                { type_ = function tyNumber tyNumber
+                , forall = Dict.empty
+                , mutable = False
+                }
             }
-        , hasError
-            { name = "Function args can't shadow other names"
-            , run = \_ -> infer "a" "a = fn a: 1"
-            , test = Test.errorShouldContain "function parameter `a` shadows env variable"
-            }
-            |> Test.NotNow
         , simpleTest
             { name = "[reg] fn has type None"
-            , run = \_ -> infer "a" "a = fn x: 1"
+            , code = "a = fn x: 1"
+            , run = infer "a"
             , expected =
-                Ok
-                    { forall = Set.fromList [ "1" ]
-                    , mutable = False
-                    , type_ =
-                        typeFunction
-                            { from = typeVariable { name = "1" }
-                            , fromIsMutable = False
-                            , to = typeConstant { ref = "SPCore.Number", args = [] }
-                            }
-                    }
+                { forall = forall "0" []
+                , mutable = False
+                , type_ =
+                    typeFunction
+                        { from = typeVariable { name = "0" }
+                        , fromIsMutable = False
+                        , to = typeConstant { ref = "SPCore.Number", args = [] }
+                        }
+                }
             }
 
         --
@@ -288,7 +327,7 @@ functions =
             a x y z = x + y + z
             """
             (infer "a")
-            Test.justOk
+            Test.isOk
 
         --
         , codeTest "Annotation should be consistent with mutability"
@@ -298,7 +337,7 @@ functions =
               a
             """
             (infer "f")
-            (Test.errContain "mutability")
+            (Test.errContain "IncompatibleMutability")
         ]
 
 
@@ -313,26 +352,24 @@ statements =
     Test.Group "statements"
         [ simpleTest
             { name = "Statement blocks should return the last statement's type"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                 a =
                   3
                   False
                 """
-            , expected = Ok { type_ = constant "SPCore.Bool", forall = Set.empty, mutable = False }
+            , run = infer "a"
+            , expected = { type_ = constant "SPCore.Bool", forall = Dict.empty, mutable = False }
             }
         , simpleTest
             { name = "Definition statement return type None"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                 a =
                   f x = 3
                 """
-            , expected = Ok { type_ = tyNone, forall = Set.empty, mutable = False }
+            , run = infer "a"
+            , expected = { type_ = tyNone, forall = Dict.empty, mutable = False }
             }
         , codeTest "Local values can't shadow root values"
             """
@@ -372,95 +409,112 @@ variableTypes =
     Test.Group "variable types"
         [ simpleTest
             { name = "Identity"
-            , run =
-                \_ ->
-                    infer "id"
-                        """
-                        id a =
-                          as a -> a
-                          a
-                        """
-            , expected =
-                Ok
-                    { type_ =
-                        typeFunction
-                            { from = typeVariable { name = "a" }
-                            , fromIsMutable = False
-                            , to = typeVariable { name = "a" }
-                            }
-                    , forall = Set.singleton "a"
-                    , mutable = False
-                    }
-            }
-        , simpleTest
-            { name = "Identity, no annotation"
-            , run =
-                \_ ->
-                    infer "id"
-                        """
-                        id a = a
-                        """
-            , expected =
-                Ok
-                    { type_ =
-                        typeFunction
-                            { from = typeVariable { name = "1" }
-                            , fromIsMutable = False
-                            , to = typeVariable { name = "1" }
-                            }
-                    , forall = Set.singleton "1"
-                    , mutable = False
-                    }
-            }
-        , hasError
-            { name = "Reject disconnected forall var types?"
-            , run =
-                \_ ->
-                    infer "id"
-                        """
-                        id l =
-                          as a -> b
-                          l
-                        """
-            , test = Test.errorShouldContain "too general"
-            }
-        , isOk
-            { name = "TyVar definitions: lambda scope"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                a b =
-                  f x = x
-                  f 3
-                  f False
+            , code =
                 """
-            }
-        , isOk
-            { name = "TyVar definitions: non-lambda scope"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                a =
-                  f x = x
-                  f 3
-                  f False
+                id a =
+                  as a -> a
+                  a
                 """
-            }
-        , isOk
-            { name = "TyVar definitions: root scope"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                        a x = x
-                        g =
-                          a 3
-                          a False
-                        """
+            , run = infer "id"
+            , expected =
+                { type_ =
+                    typeFunction
+                        { from = typeVariable { name = "a" }
+                        , fromIsMutable = False
+                        , to = typeVariable { name = "a" }
+                        }
+                , forall = forall "a" []
+                , mutable = False
+                }
             }
 
+        {-
+           , simpleTest
+               { name = "Identity, no annotation"
+               , code =
+                   """
+                           id a = a
+                           """
+               , run = infer "id"
+               , expected =
+                   { type_ =
+                       typeFunction
+                           { from = typeVariable { name = "0" }
+                           , fromIsMutable = False
+                           , to = typeVariable { name = "0" }
+                           }
+                   , forall = forall "0" []
+                   , mutable = False
+                   }
+               }
+           , codeTest "Reject disconnected forall var types?"
+               """
+               id l =
+                 as a -> b
+                 l
+               """
+               (infer "id")
+               (Test.errContain "too general")
+           , codeTest "TyVar definitions: lambda scope"
+               """
+                   a b =
+                     f x = x
+                     f 3
+                     f False
+                   """
+               (infer "a")
+               Test.isOk
+           , codeTest "TyVar definitions: non-lambda scope"
+               """
+                   a =
+                     f x = x
+                     f 3
+                     f False
+                   """
+               (infer "a")
+               Test.isOk
+           , codeTest "TyVar definitions: root scope"
+               """
+                           a x = x
+                           g =
+                             a 3
+                             a False
+                           """
+               (infer "a")
+               Test.isOk
+
+           -- TODO Implement self recursion and mutual recursion
+           , codeTest "[reg] statements, assignments, free vars"
+               """
+               id a = a
+
+               x q =
+                     s = id q
+                     s
+               """
+               (infer "x")
+               (Test.okEqual
+                   { forall = forall "2" []
+                   , mutable = False
+                   , type_ =
+                       typeFunction
+                           { from = typeVariable { name = "2" }
+                           , fromIsMutable = False
+                           , to = typeVariable { name = "2" }
+                           }
+                   }
+               )
+           , codeTest "[reg] ??? TI failure"
+               """
+               rec acc =
+                   if True then
+                       acc
+                   else
+                       rec [] "" [] acc
+               """
+               (infer "rec")
+               (Test.errContain "annotation")
+        -}
         {- OBSOLETE
 
            Since now we allow mutual recursion only across root lambda definitions, these tests are obsolete.
@@ -486,7 +540,7 @@ variableTypes =
                            b x = x
                            a = b 1
                            """
-               , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
+               , expected = Ok { type_ = tyNumber, forall = Dict.empty, mutable = False }
                }
            , simpleTest
                -- See note for the test above!
@@ -498,7 +552,7 @@ variableTypes =
                            b x = x
                            c = b 1
                            """
-               , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
+               , expected = Ok { type_ = tyNumber, forall = Dict.empty, mutable = False }
                }
            , simpleTest
                -- See note for the test above!
@@ -512,40 +566,9 @@ variableTypes =
                              b x = x
                              a
                            """
-               , expected = Ok { type_ = tyNumber, forall = Set.empty, mutable = False }
+               , expected = Ok { type_ = tyNumber, forall = Dict.empty, mutable = False }
                }
         -}
-        -- TODO Test self recursion and mutual recursion
-        , codeTest "[reg] statements, assignments, free vars"
-            """
-            id a = a
-
-            x q =
-                  s = id q
-                  s
-            """
-            (infer "x")
-            (Test.okEqual
-                { forall = Set.fromList [ "1" ]
-                , mutable = False
-                , type_ =
-                    typeFunction
-                        { from = typeVariable { name = "1" }
-                        , fromIsMutable = False
-                        , to = typeVariable { name = "1" }
-                        }
-                }
-            )
-        , codeTest "[reg] ??? TI failure"
-            """
-            rec acc =
-                if True then
-                    acc
-                else
-                    rec [] "" [] acc
-            """
-            (infer "rec")
-            (Test.errContain "")
         ]
 
 
@@ -589,111 +612,98 @@ mutability =
     Test.Group "mutability"
         [ hasError
             { name = "Statement blocks that define mutables can't return functions"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                        a =
-                          x @= 1
-                          fn y: y
-                        """
-            , test = Test.errorShouldContain "statement blocks that define mutables can't return functions"
+            , code =
+                """
+                a =
+                  x @= 1
+                  fn y: y
+                """
+            , run = infer "a"
+            , test = Test.errContain "can't return functions"
             }
-
-        {-
-           , simpleTest
-               { name = "Infer lambda arg mutability"
-               , run =
-                   \_ ->
-                       infer "a"
-                           """
-                           a =
-                             q x =
-                               reset @x
-                             q
-                           """
-               , expected =
-                   Ok
-                       { type_ = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
-                       , forall = Set.empty
-                       , mutable = False
-                       }
-               }
-        -}
+        , codeTest "Immutable variables can't be used as mutable"
+            """
+            a x =
+              @x := 1
+            """
+            (infer "a")
+            (Test.errContain "mutable")
         , hasError
             { name = "Detect mismatching annotations"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                        a =
-                          as Number -> None
-                          reset
-                        """
-            , test = Test.errorShouldContain "mutability clash"
+            , code =
+                """
+                a =
+                  as Number -> None
+                  reset
+                """
+            , run = infer "a"
+            , test = Test.errContain "IncompatibleMutability"
             }
         , simpleTest
             { name = "Correctly unify annotation's mutability"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                         a =
                           as Number @> None
                           reset
                         """
+            , run = infer "a"
             , expected =
-                Ok
-                    { type_ = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
-                    , forall = Set.empty
-                    , mutable = False
-                    }
+                { type_ = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
+                , forall = Dict.empty
+                , mutable = False
+                }
             }
         , hasError
             { name = "Functions can't be mutable 1"
-            , run = \_ -> infer "a" "a @= fn x: x"
-            , test = Test.errorShouldContain "mutable"
+            , code = "a @= fn x: x"
+            , run = infer "a"
+            , test = Test.errContain "mutable"
             }
-        , simpleTest
-            { name = "Functions can't be mutable 2"
-            , run = \_ -> infer "a" "a f = @f := (fn x: x)"
-            , expected = Err "these mutable values contain functions: f"
-            }
-            |> Test.NotNow
+        , codeTest "Functions can't be mutable 2"
+            """
+            a @f =
+              @f := (fn x: x)
+            """
+            (infer "a")
+            (Test.errContain "these mutable values contain functions: f")
         , hasError
             { name = "Lambda argument mutability is correctly inferred"
-            , run = \_ -> infer "a" "a = fn x: reset x"
-            , test = Test.errorShouldContain "mutability clash"
+            , code = "a = fn x: reset x"
+            , run = infer "a"
+            , test = Test.errContain "mutability clash"
             }
         , hasError
             { name = "*Nested* lambda argument mutability is correctly inferred"
-            , run = \_ -> infer "a" "a = fn x: (fn y: reset y) x"
-            , test = Test.errorShouldContain "mutability clash"
+            , code = "a = fn x: (fn y: reset y) x"
+            , run = infer "a"
+            , test = Test.errContain "mutability clash"
             }
         , hasError
             { name = "Functions can't be mutable (annotation)"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                         a @=
                           as Number -> Number
                           add 1
                         """
-            , test = Test.errorShouldContain "mutable"
+            , run = infer "a"
+            , test = Test.errContain "mutable"
             }
         , hasError
             { name = "args that are functions can't be mutable (annotation)"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                         a =
                           as (Int -> Int) @> Int
                           a
                         """
-            , test = Test.errorShouldContain "mutable"
+            , run = infer "a"
+            , test = Test.errContain "mutable"
             }
+
+        -- TODO is validating annotation a responsibility of TypeInference?
+        --             |> Test.NotNow
         ]
 
 
@@ -708,35 +718,33 @@ higherOrderTypes =
     Test.Group "higher order types"
         [ simpleTest
             { name = "Parse precedence"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                         a l =
                           as List a -> List a
                           l
                         """
+            , run = infer "a"
             , expected =
-                Ok
-                    { type_ =
-                        typeFunction
-                            { from = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
-                            , fromIsMutable = False
-                            , to = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
-                            }
-                    , mutable = False
-                    , forall = Set.singleton "a"
-                    }
+                { type_ =
+                    typeFunction
+                        { from = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
+                        , fromIsMutable = False
+                        , to = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
+                        }
+                , mutable = False
+                , forall = forall "a" []
+                }
             }
         , simpleTest
             { name = "Union type constructors"
-            , run = \_ -> infer "L" "union X a = L"
+            , code = "union X a = L"
+            , run = infer "L"
             , expected =
-                Ok
-                    { type_ = typeConstant { args = [ typeVariable { name = "a" } ], ref = "Test.X" }
-                    , mutable = False
-                    , forall = Set.singleton "a"
-                    }
+                { type_ = typeConstant { args = [ typeVariable { name = "a" } ], ref = "Test.X" }
+                , mutable = False
+                , forall = forall "a" []
+                }
             }
         ]
 
@@ -750,97 +758,93 @@ higherOrderTypes =
 records : Test
 records =
     Test.Group "Records"
-        [ simpleTest
-            { name = "Attribute access"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
-                        a b = b.meh.blah
-                        """
-            , expected =
-                Ok
-                    { forall = Set.fromList [ "1", "2", "3" ]
-                    , mutable = False
-                    , type_ =
-                        typeFunction
-                            { from =
-                                typeRecord
-                                    { attrs =
-                                        Dict.singleton "meh"
-                                            (typeRecord
-                                                { attrs = Dict.singleton "blah" (typeVariable { name = "3" })
-                                                , extensible = Just "2"
-                                                }
-                                            )
-                                    , extensible = Just "1"
-                                    }
-                            , fromIsMutable = False
-                            , to = typeVariable { name = "3" }
-                            }
-                    }
-            }
+        [ codeTest "Attribute access"
+            """
+            a b = b.meh.blah
+            """
+            (infer "a")
+            (Test.okEqual
+                { forall =
+                    forallTuple
+                        [ ( "1", [ CA.Re CA.S ] )
+                        , ( "3", [ CA.Re CA.S ] )
+                        , ( "4", [] )
+                        ]
+                , mutable = False
+                , type_ =
+                    typeFunction
+                        { from =
+                            typeRecord
+                                { attrs =
+                                    Dict.singleton "meh"
+                                        (typeRecord
+                                            { attrs = Dict.singleton "blah" (typeVariable { name = "4" })
+                                            , extensible = Just "3"
+                                            }
+                                        )
+                                , extensible = Just "1"
+                                }
+                        , fromIsMutable = False
+                        , to = typeVariable { name = "4" }
+                        }
+                }
+            )
         , simpleTest
             { name = "Attribute mutation"
-            , run =
-                \_ ->
-                    infer "a"
-                        """
+            , code =
+                """
                         a @b = @b.meh.blah += 1
                         """
+            , run = infer "a"
             , expected =
-                Ok
-                    { forall = Set.fromList [ "1", "2" ]
-                    , mutable = False
-                    , type_ =
-                        typeFunction
-                            { from =
-                                typeRecord
-                                    { attrs =
-                                        Dict.singleton "meh"
-                                            (typeRecord
-                                                { attrs = Dict.singleton "blah" (typeConstant { ref = "SPCore.Number", args = [] })
-                                                , extensible = Just "2"
-                                                }
-                                            )
-                                    , extensible = Just "1"
-                                    }
-                            , fromIsMutable = True
-                            , to = typeConstant { ref = "SPCore.None", args = [] }
-                            }
-                    }
+                { forall =
+                    forallTuple
+                        [ ( "1", [ CA.Re CA.S ] )
+                        , ( "3", [ CA.Re CA.S ] )
+                        ]
+                , mutable = False
+                , type_ =
+                    typeFunction
+                        { from =
+                            typeRecord
+                                { attrs =
+                                    Dict.singleton "meh"
+                                        (typeRecord
+                                            { attrs = Dict.singleton "blah" (typeConstant { ref = "SPCore.Number", args = [] })
+                                            , extensible = Just "3"
+                                            }
+                                        )
+                                , extensible = Just "1"
+                                }
+                        , fromIsMutable = True
+                        , to = typeConstant { ref = "SPCore.None", args = [] }
+                        }
+                }
             }
-        , isOk
-            { name = "Tuple3 direct item mutability"
-            , run =
-                \_ ->
-                    infer "x"
-                        """
+        , codeTest "Tuple3 direct item mutability"
+            """
                         x =
                           a @= 3 & False & 2
 
                           @a.third += 1
                         """
-            }
-        , isOk
-            { name = "Tuple2 direct item mutability, annotated"
-            , run =
-                \_ ->
-                    infer "x"
-                        """
-                        x =
-                           a @=
-                             as Number & Number
-                             1 & 2
+            (infer "x")
+            Test.isOk
+        , codeTest "Tuple2 direct item mutability, annotated"
+            """
+            x =
+               a @=
+                 as Number & Number
+                 1 & 2
 
-                           @a.first += 1
-                        """
-            }
+               @a.first += 1
+            """
+            (infer "x")
+            Test.isOk
         , simpleTest
             { name = "functional update"
-            , run =
-                \_ ->
-                    infer "a" "a b = { b with x = 1 }"
+            , code = "a b = { b with x = 1 }"
+            , run = infer "a"
             , expected =
                 let
                     re =
@@ -849,45 +853,46 @@ records =
                             , extensible = Just "1"
                             }
                 in
-                Ok
-                    { forall = Set.fromList [ "1" ]
-                    , mutable = False
-                    , type_ =
-                        typeFunction
-                            { from = re
-                            , fromIsMutable = False
-                            , to = re
-                            }
-                    }
+                { forall =
+                    forallTuple
+                        [ ( "1", [ CA.Re CA.S ] )
+                        ]
+                , mutable = False
+                , type_ =
+                    typeFunction
+                        { from = re
+                        , fromIsMutable = False
+                        , to = re
+                        }
+                }
             }
-        , simpleTest
-            { name = "instantiate and refine inferred records"
-            , run =
-                \_ ->
-                    infer "c"
-                        """
-                        a t = { t with x = 1 }
-                        c = a
-                        """
-            , expected =
-                let
-                    re =
-                        typeRecord
-                            { attrs = Dict.singleton "x" (typeConstant { args = [], ref = "SPCore.Number" })
-                            , extensible = Just "1"
-                            }
-                in
-                Ok
-                    { forall = Set.fromList [ "1" ]
-                    , mutable = False
-                    , type_ =
-                        typeFunction
-                            { from = re
-                            , fromIsMutable = False
-                            , to = re
-                            }
-                    }
-            }
+        , codeTest "instantiate and refine inferred records"
+            """
+            a t = { t with x = 1 }
+            c = a
+            """
+            (infer "c")
+            (let
+                re =
+                    typeRecord
+                        { attrs = Dict.singleton "x" (typeConstant { args = [], ref = "SPCore.Number" })
+                        , extensible = Just "3"
+                        }
+             in
+             Test.okEqual
+                { forall =
+                    forallTuple
+                        [ ( "3", [ CA.Re CA.S ] )
+                        ]
+                , mutable = False
+                , type_ =
+                    typeFunction
+                        { from = re
+                        , fromIsMutable = False
+                        , to = re
+                        }
+                }
+            )
         , codeTest "[reg] excessive forallness in records"
             """
             x q =
@@ -896,7 +901,11 @@ records =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Set.fromList [ "2", "1" ]
+                { forall =
+                    forallTuple
+                        [ ( "1", [ CA.Re CA.S ] )
+                        , ( "2", [] )
+                        ]
                 , mutable = False
                 , type_ =
                     typeFunction
@@ -919,7 +928,7 @@ records =
               { a with c = .c + 1 }
             """
             (infer "upd")
-            Test.justOk
+            Test.isOk
         ]
 
 
@@ -941,7 +950,7 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { forall = Set.fromList [ "1" ]
+                { forall = forall "1" []
                 , mutable = False
                 , type_ =
                     typeFunction
@@ -964,17 +973,17 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { forall = Set.fromList [ "2", "1" ]
+                { forall = forallTuple [ ( "1", [] ), ( "2", [ CA.Re CA.S ] ) ]
                 , mutable = False
                 , type_ =
                     typeFunction
                         { from =
                             typeRecord
-                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "2" } ) ]
-                                , extensible = Just "1"
+                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "1" } ) ]
+                                , extensible = Just "2"
                                 }
                         , fromIsMutable = False
-                        , to = typeVariable { name = "2" }
+                        , to = typeVariable { name = "1" }
                         }
                 }
             )
@@ -1003,8 +1012,7 @@ patterns =
             """
             (infer "result")
             --
-            Test.justOk
-            |> Test.NotNow
+            Test.isOk
         ]
 
 
@@ -1026,7 +1034,7 @@ try_as =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Set.fromList []
+                { forall = Dict.empty
                 , mutable = False
                 , type_ =
                     typeFunction
@@ -1078,7 +1086,7 @@ if_then =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Set.fromList []
+                { forall = Dict.empty
                 , mutable = False
                 , type_ =
                     typeFunction

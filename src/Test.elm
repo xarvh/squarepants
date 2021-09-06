@@ -63,10 +63,8 @@ codeTest toString title code functionToTest (CodeExpectation toMaybeError) =
         |> maybeToOutcome
 
 
-{-| TODO remove old-system isOk below and rename this to isOk
--}
-justOk : CodeExpectation ok
-justOk =
+isOk : CodeExpectation ok
+isOk =
     CodeExpectation <| \toString result ->
     case result of
         Err e ->
@@ -74,6 +72,7 @@ justOk =
 
         Ok actualOk ->
             Nothing
+
 
 freeform : (ok -> Maybe String) -> CodeExpectation ok
 freeform test =
@@ -83,7 +82,8 @@ freeform test =
             Just e
 
         Ok actualOk ->
-          test actualOk
+            test actualOk
+
 
 okEqual : ok -> CodeExpectation ok
 okEqual expectedOk =
@@ -141,90 +141,6 @@ errContain subString =
             ]
                 |> String.join "\n"
                 |> Just
-
-
-
-----
---- Constructors
---
-
-
-simple :
-    (outcome -> String)
-    ->
-        { name : String
-        , run : String -> outcome
-        , expected : outcome
-        }
-    -> Test
-simple toString { name, run, expected } =
-    Single name
-        (\() ->
-            let
-                actual =
-                    run name
-            in
-            if actual == expected then
-                Success
-
-            else
-                [ "Expected: "
-                , toString expected
-                , "\n"
-                , "Actual  : "
-                , toString actual
-                ]
-                    |> String.join ""
-                    |> Error
-        )
-
-
-isOk :
-    (error -> String)
-    ->
-        { name : String
-        , run : String -> Result error outcome
-        }
-    -> Test
-isOk toString { name, run } =
-    Single name
-        (\() ->
-            case run name of
-                Ok _ ->
-                    Success
-
-                Err e ->
-                    Error <| toString e
-        )
-
-
-hasError :
-    (outcome -> String)
-    ->
-        { name : String
-        , run : String -> Result error outcome
-        , test : error -> Maybe String
-        }
-    -> Test
-hasError toString { name, run, test } =
-    Single name
-        (\() ->
-            case run name of
-                Ok outcome ->
-                    Error <| "Ok: " ++ toString outcome
-
-                Err e ->
-                    maybeToOutcome <| test e
-        )
-
-
-errorShouldContain : String -> String -> Maybe String
-errorShouldContain s error =
-    if String.contains s error then
-        Nothing
-
-    else
-        Just <| "\nThe error... \n\n" ++ error ++ "\n\n...should contain \"" ++ s ++ "\""
 
 
 

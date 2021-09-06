@@ -3,7 +3,7 @@ module Compiler.ScopeCheck exposing (..)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Types.CanonicalAst as CA
-import Types.Error as Error exposing (Res, errorTodo)
+import Types.Error as Error exposing (Error, Res)
 import Types.Meta exposing (Meta)
 
 
@@ -26,31 +26,31 @@ type alias Env =
 
 type alias Out =
     { dependencies : Dict String (Set String)
-    , shadowing : List ( String, ( CA.Pos, CA.Pos ) )
+    , errors : List Error
     }
-
-
-type DoTheShadowingOut
-    = ShadowingFound Out
-    | EnvUpdated Env
 
 
 {-| HACK this is just a placeholder
 -}
 globalPos : CA.Pos
 globalPos =
-    { n = "--global--"
-    , c = ""
-    , s = -1
-    , e = -1
-    }
+    CA.G
 
 
-doTheShadowing : ReadOnly -> CA.Pattern -> Env -> Out -> DoTheShadowingOut
-doTheShadowing ro pa env out =
+insertVariablesInEnv : String -> ReadOnly -> CA.Pattern -> Env -> Out -> Result Out Env
+insertVariablesInEnv context ro pa env out =
     let
         names =
             CA.patternNames pa
+
+        pairToShadowing : String -> ( CA.Pos, CA.Pos ) -> Error
+        pairToShadowing name ( shadowing, shadowed ) =
+            errorShadowing
+                { name = name
+                , shadowed = shadowed
+                , shadowing = shadowing
+                , context = context
+                }
 
         shadowedGlobals =
             intersectAndPair names ro.meta.globalValues
@@ -66,14 +66,53 @@ doTheShadowing ro pa env out =
             |> Dict.union (Dict.map (\k -> Tuple.mapSecond (always globalPos)) shadowedGlobals)
             |> Dict.union shadowedRoot
             |> Dict.union shadowedLocals
-            |> Dict.toList
-            |> (\new -> { out | shadowing = out.shadowing ++ new })
-            |> ShadowingFound
+            |> Dict.map pairToShadowing
+            |> Dict.values
+            |> (\new -> { out | errors = out.errors ++ new })
+            |> Err
 
     else
         names
             |> Dict.foldl Dict.insert env
-            |> EnvUpdated
+            |> Ok
+
+
+type alias ShadowingParams =
+    { name : String
+    , shadowed : CA.Pos
+    , shadowing : CA.Pos
+    , context : String
+    }
+
+
+errorShadowing : ShadowingParams -> Error
+errorShadowing s =
+    if s.shadowed == globalPos then
+        Error.err
+            { pos = s.shadowing
+            , description =
+                \_ ->
+                    [ Error.text <| "the name `" ++ s.name ++ "` is used already by a global value."
+                    , Error.text "check meta.json!"
+                    , Error.text "TODO link to [why shadowing is not allowed]"
+                    ]
+            }
+
+    else
+        Error.err
+            { pos = s.shadowing
+            , description =
+                \eEnv ->
+                    let
+                        { location, block } =
+                            Error.posToHuman eEnv s.shadowed
+                    in
+                    [ Error.text <| "You are declaring a " ++ s.context ++ " called `" ++ s.name ++ "` but that name is already used here: "
+                    , Error.text ""
+                    , block
+                    , Error.text "TODO link to [why shadowing is not allowed]"
+                    ]
+            }
 
 
 doTheDependency ro env pos var out =
@@ -116,50 +155,23 @@ onModule meta allDefs =
 
         init =
             { dependencies = Dict.empty
-            , shadowing = []
+            , errors = []
             }
 
-        { dependencies, shadowing } =
+        { dependencies, errors } =
             values
                 |> Dict.values
                 |> List.foldl (\vdef -> onBlock ro Dict.empty vdef.body) init
 
         -- TODO : check also dependencies and type variables used in aliases and unions
     in
-    if shadowing /= [] then
-        shadowing
-            |> List.map errorShadowing
+    if errors /= [] then
+        errors
             |> Error.Nested
             |> Err
 
     else
         Ok dependencies
-
-
-errorShadowing : ( String, ( CA.Pos, CA.Pos ) ) -> Error.Error
-errorShadowing ( varName, ( second, first ) ) =
-    if first == globalPos then
-        Error.err
-            { moduleName = second.n
-            , start = second.s
-            , end = second.e
-            , description =
-                \_ ->
-                    [ Error.text <| "the variable name " ++ varName ++ " is used already by a global value"
-                    ]
-            }
-
-    else
-        Error.err
-            { moduleName = second.n
-            , start = second.s
-            , end = second.e
-            , description =
-                \_ ->
-                    [ Error.text <| "value " ++ varName ++ " was already declared here: "
-                    , Error.showLines first.c 2 first.s
-                    ]
-            }
 
 
 onBlock : ReadOnly -> Env -> List CA.Statement -> Out -> Out
@@ -175,14 +187,14 @@ onStatement : ReadOnly -> CA.Statement -> ( Env, Out ) -> ( Env, Out )
 onStatement ro stat ( env, out ) =
     case stat of
         CA.Definition def ->
-            case doTheShadowing ro def.pattern env out of
-                ShadowingFound out1 ->
+            case insertVariablesInEnv "definition" ro def.pattern env out of
+                Err err ->
                     -- Stop here so that redundant errors won't pile up
                     ( env
-                    , out1
+                    , err
                     )
 
-                EnvUpdated env1 ->
+                Ok env1 ->
                     ( env1
                     , onBlock ro env1 def.body out
                     )
@@ -206,12 +218,12 @@ onExpr ro env expression out =
                         CA.ParameterMutable po n ->
                             CA.PatternAny po n
             in
-            case doTheShadowing ro pattern env out of
-                ShadowingFound out1 ->
+            case insertVariablesInEnv "function argument" ro pattern env out of
+                Err out1 ->
                     -- Stop here so that redundant errors won't pile up
                     out1
 
-                EnvUpdated env1 ->
+                Ok env1 ->
                     onBlock ro env1 body out
 
         CA.Variable pos var ->
@@ -239,7 +251,7 @@ onExpr ro env expression out =
 
                 out2 =
                     case argument of
-                        CA.ArgumentMutable mut ->
+                        CA.ArgumentMutable _ mut ->
                             out1
 
                         CA.ArgumentExpression e ->
@@ -260,11 +272,11 @@ onExpr ro env expression out =
                     onExpr ro env expr out
 
                 doPattern ( pattern, block ) outX =
-                    case doTheShadowing ro pattern env outX of
-                        ShadowingFound outX1 ->
+                    case insertVariablesInEnv "matching variable" ro pattern env outX of
+                        Err outX1 ->
                             outX1
 
-                        EnvUpdated env1 ->
+                        Ok env1 ->
                             onBlock ro env1 block outX
 
                 out2 =

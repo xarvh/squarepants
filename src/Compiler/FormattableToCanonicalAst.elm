@@ -56,22 +56,14 @@ do a b =
 
 todoPos : CA.Pos
 todoPos =
-    { n = "TODO"
-    , c = ""
-    , s = -1
-    , e = -1
-    }
+    CA.F
 
 
 {-| translate position
 -}
 tp : ReadOnly -> FA.Pos -> CA.Pos
 tp ro ( start, end ) =
-    { n = ro.currentModule
-    , c = ro.code
-    , s = start
-    , e = end
-    }
+    CA.P ro.currentModule start end
 
 
 
@@ -925,7 +917,7 @@ translateArgument env faExpr =
                         , name = name
                         , attrPath = attrPath
                         }
-                            |> CA.ArgumentMutable
+                            |> CA.ArgumentMutable (tp env.ro pos)
                             |> Ok
 
                     else
@@ -1179,7 +1171,7 @@ translateType ro faType =
 
                     else
                         name
-                            |> CA.TypeVariable todoPos
+                            |> CA.TypeVariable todoPos []
                             |> Ok
 
                 StructuredName_TypeOrCons { name, mod } ->
@@ -1260,12 +1252,22 @@ wrapLambda ro faWholePos param bodyAccum =
                     CA.patternPos pa
 
         lambdaPos =
-            { paramPos | e = end }
+            posReplaceEnd end paramPos
     in
     [ bodyAccum
         |> CA.Lambda lambdaPos param
         |> CA.Evaluation
     ]
+
+
+posReplaceEnd : Int -> CA.Pos -> CA.Pos
+posReplaceEnd end pos =
+    case pos of
+        CA.P m s e ->
+            CA.P m s end
+
+        _ ->
+            pos
 
 
 firstErrorRec : List o -> List (Result e o) -> Result e (List o)

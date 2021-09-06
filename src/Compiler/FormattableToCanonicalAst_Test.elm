@@ -35,20 +35,12 @@ tests =
 --
 
 
-simpleTest =
-    Test.simple Debug.toString
-
-
 codeTest =
     Test.codeTest Debug.toString
 
 
-isOk =
-    Test.isOk Debug.toString
-
-
-hasError =
-    Test.hasError Debug.toString
+hasError { name, code, run, test } =
+    Test.codeTest Debug.toString name code run test
 
 
 firstDefinition : String -> String -> Result String CA.RootValueDef
@@ -144,23 +136,26 @@ unionTypes =
     Test.Group "unionTypes"
         [ hasError
             { name = "name starts with uppercase"
-            , run = \_ -> stringToCanonicalModule "union a = A"
-            , test = Test.errorShouldContain "uppercase"
+            , code = "union a = A"
+            , run = stringToCanonicalModule
+            , test = Test.errContain "uppercase"
             }
         , hasError
             { name = "constructor names start with uppercase"
-            , run = \_ -> stringToCanonicalModule "union A = a"
-            , test = Test.errorShouldContain "constructor"
+            , code = "union A = a"
+            , run = stringToCanonicalModule
+            , test = Test.errContain "constructor"
             }
         , hasError
             { name = "tuples op precedence"
-            , run = \_ -> stringToCanonicalModule "union A = X Bool & Bool"
-            , test = Test.errorShouldContain "operators"
+            , code = "union A = X Bool & Bool"
+            , run = stringToCanonicalModule
+            , test = Test.errContain "operators"
             }
-        , isOk
-            { name = "tuples op precedence works with parens"
-            , run = \_ -> stringToCanonicalModule "union A = X (Bool & Bool)"
-            }
+        , codeTest "tuples op precedence works with parens"
+            "union A = X (Bool & Bool)"
+            stringToCanonicalModule
+            Test.isOk
         ]
 
 
@@ -208,31 +203,27 @@ binops =
 lists : Test
 lists =
     Test.Group "Lists"
-        [ simpleTest
-            { name = "list type sugar"
-            , run =
-                \_ ->
-                    firstDefinition "l"
-                        """
+        [ codeTest "list type sugar"
+            """
                         l =
                           as [ SPCore.Bool ]
                           l
                         """
-            , expected =
-                Ok
-                    { body = [ CA.Evaluation (CA.Variable p { name = "Test.l", isRoot = True, attrPath = [] }) ]
-                    , maybeAnnotation =
-                        Just
-                            (CA.TypeConstant p
-                                "SPCore.List"
-                                [ CA.TypeConstant p "SPCore.Bool" [] ]
-                            )
-                    , isNative = False
-                    , name = "Test.l"
-                    , localName = "l"
-                    , pos = p
-                    }
-            }
+            (firstDefinition "l")
+            (Test.okEqual
+                { body = [ CA.Evaluation (CA.Variable p { name = "Test.l", isRoot = True, attrPath = [] }) ]
+                , maybeAnnotation =
+                    Just
+                        (CA.TypeConstant p
+                            "SPCore.List"
+                            [ CA.TypeConstant p "SPCore.Bool" [] ]
+                        )
+                , isNative = False
+                , name = "Test.l"
+                , localName = "l"
+                , pos = p
+                }
+            )
         ]
 
 
@@ -245,80 +236,72 @@ lists =
 tuples : Test
 tuples =
     Test.Group "Tuples"
-        [ simpleTest
-            { name = "tuple2"
-            , run = \_ -> firstEvaluation "a" "a = 1 & 2"
-            , expected =
-                Ok
-                    (CA.Record p
-                        Nothing
-                        (Dict.fromList
-                            [ ( "first", CA.Literal p (Literal.Number "1") )
-                            , ( "second", CA.Literal p (Literal.Number "2") )
-                            ]
-                        )
+        [ codeTest "tuple2"
+            "a = 1 & 2"
+            (firstEvaluation "a")
+            (Test.okEqual <|
+                CA.Record p
+                    Nothing
+                    (Dict.fromList
+                        [ ( "first", CA.Literal p (Literal.Number "1") )
+                        , ( "second", CA.Literal p (Literal.Number "2") )
+                        ]
                     )
-            }
-        , simpleTest
-            { name = "tuple3"
-            , run = \_ -> firstEvaluation "a" "a = 1 & 2 & 3"
-            , expected =
-                Ok
-                    (CA.Record p
-                        Nothing
-                        (Dict.fromList
-                            [ ( "first", CA.Literal p (Literal.Number "1") )
-                            , ( "second", CA.Literal p (Literal.Number "2") )
-                            , ( "third", CA.Literal p (Literal.Number "3") )
-                            ]
-                        )
+            )
+        , codeTest "tuple3"
+            "a = 1 & 2 & 3"
+            (firstEvaluation "a")
+            (Test.okEqual <|
+                CA.Record p
+                    Nothing
+                    (Dict.fromList
+                        [ ( "first", CA.Literal p (Literal.Number "1") )
+                        , ( "second", CA.Literal p (Literal.Number "2") )
+                        , ( "third", CA.Literal p (Literal.Number "3") )
+                        ]
                     )
-            }
+            )
         , hasError
             { name = "tuple4"
-            , run = \_ -> firstEvaluation "a" "a = 1 & 2 & 3 & 4"
-            , test = Test.errorShouldContain "use a record"
+            , code = "a = 1 & 2 & 3 & 4"
+            , run = firstEvaluation "a"
+            , test = Test.errContain "use a record"
             }
-        , simpleTest
-            { name = "tuple2 type"
-            , run =
-                \_ ->
-                    firstDefinition "a"
-                        """
+        , codeTest "tuple2 type"
+            """
                         a =
                           as Blah & Blah
                           a
                         """
-            , expected =
-                Ok
-                    { body = [ CA.Evaluation (CA.Variable p { name = "Test.a", attrPath = [], isRoot = True }) ]
-                    , maybeAnnotation =
-                        Just
-                            (CA.TypeRecord p
-                                Nothing
-                                (Dict.fromList
-                                    [ ( "first", CA.TypeConstant p "Test.Blah" [] )
-                                    , ( "second", CA.TypeConstant p "Test.Blah" [] )
-                                    ]
-                                )
+            (firstDefinition "a")
+            (Test.okEqual
+                { body = [ CA.Evaluation (CA.Variable p { name = "Test.a", attrPath = [], isRoot = True }) ]
+                , maybeAnnotation =
+                    Just
+                        (CA.TypeRecord p
+                            Nothing
+                            (Dict.fromList
+                                [ ( "first", CA.TypeConstant p "Test.Blah" [] )
+                                , ( "second", CA.TypeConstant p "Test.Blah" [] )
+                                ]
                             )
-                    , name = "Test.a"
-                    , localName = "a"
-                    , isNative = False
-                    , pos = p
-                    }
-            }
+                        )
+                , name = "Test.a"
+                , localName = "a"
+                , isNative = False
+                , pos = p
+                }
+            )
         , hasError
             { name = "tuple4, type"
-            , run =
-                \_ ->
-                    firstDefinition "a"
-                        """
+            , code =
+                """
                         a =
                           as Blah & Blah & Blah & Blah
                           a
                         """
-            , test = Test.errorShouldContain "Use a record"
+            , run = firstDefinition "a"
+            , test = Test.errContain "Use a record"
             }
         ]
 
@@ -333,10 +316,16 @@ moduleAndAttributePaths : Test
 moduleAndAttributePaths =
     let
         accept s =
-            isOk { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s) }
+            codeTest s
+                ("a = " ++ s)
+                (firstDefinition "a")
+                Test.isOk
 
         reject s m =
-            hasError { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s), test = Test.errorShouldContain m }
+            codeTest s
+                ("a = " ++ s)
+                (firstDefinition "a")
+                (Test.errContain m)
     in
     Test.Group "Module and Attribute Paths"
         [ accept "blah.blah.blah"
@@ -360,33 +349,24 @@ moduleAndAttributePaths =
 
 records : Test
 records =
-    let
-        accept s =
-            isOk { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s) }
-
-        reject s m =
-            hasError { name = s, run = \_ -> firstDefinition "a" ("a = " ++ s), test = Test.errorShouldContain m }
-    in
     Test.Group "Records"
-        [ simpleTest
-            { name = "functional update"
-            , run = \_ -> firstEvaluation "a" "a = { m with b, c = 1 }"
-            , expected =
-                [ ( "c", CA.Literal p (Literal.Number "1") )
-                , ( "b", CA.Variable p { attrPath = [], name = "Test.b", isRoot = True } )
-                ]
-                    |> Dict.fromList
-                    |> CA.Record p (Just { isRoot = True, attrPath = [], name = "Test.m" })
-                    |> Ok
-            }
-        , simpleTest
-            { name = "update shorthand"
-            , run = \_ -> firstEvaluation "b" "b = { a.k with y = .x }"
-            , expected =
-                Dict.singleton "y" (CA.Variable p { isRoot = True, attrPath = [ "k", "x" ], name = "Test.a" })
-                    |> CA.Record p (Just { isRoot = True, attrPath = [ "k" ], name = "Test.a" })
-                    |> Ok
-            }
+        [ codeTest "functional update"
+            "a = { m with b, c = 1 }"
+            (firstEvaluation "a")
+            ([ ( "c", CA.Literal p (Literal.Number "1") )
+             , ( "b", CA.Variable p { attrPath = [], name = "Test.b", isRoot = True } )
+             ]
+                |> Dict.fromList
+                |> CA.Record p (Just { isRoot = True, attrPath = [], name = "Test.m" })
+                |> Test.okEqual
+            )
+        , codeTest "update shorthand"
+            "b = { a.k with y = .x }"
+            (firstEvaluation "b")
+            (Dict.singleton "y" (CA.Variable p { isRoot = True, attrPath = [ "k", "x" ], name = "Test.a" })
+                |> CA.Record p (Just { isRoot = True, attrPath = [ "k" ], name = "Test.a" })
+                |> Test.okEqual
+            )
         , codeTest "annotation, extensible"
             """
             a =
@@ -409,14 +389,13 @@ patterns =
     Test.Group "Patterns"
         [ hasError
             { name = "can't declare functions inside patterns "
-            , run =
-                \_ ->
-                    """
-                    x =
-                      c (a b) = 2
-                    """
-                        |> firstEvaluation "x"
-            , test = Test.errorShouldContain "function"
+            , code =
+                """
+                x =
+                  c (a b) = 2
+                """
+            , run = firstEvaluation "x"
+            , test = Test.errContain "function"
             }
         , codeTest "[reg] record patterns are NOT extensible"
             """
@@ -446,7 +425,7 @@ annotations =
               a
             """
             (firstDefinition "x")
-            Test.justOk
+            Test.isOk
 
         --
         , codeTest "annotation on immutable value"
@@ -456,7 +435,7 @@ annotations =
               3
             """
             (firstEvaluation "b")
-            Test.justOk
+            Test.isOk
         ]
 
 
@@ -507,7 +486,7 @@ functions =
               fn a b: 1
             """
             (firstEvaluation "f")
-            Test.justOk
+            Test.isOk
         , codeTest "short function notation"
             """
             a x y z = x + y + z

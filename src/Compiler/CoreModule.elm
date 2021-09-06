@@ -14,11 +14,7 @@ root name =
 
 p : Pos
 p =
-    { n = "Core"
-    , c = ""
-    , s = -2
-    , e = -2
-    }
+    CA.N
 
 
 {-| This module contains all the types that are necessary for the syntax.
@@ -200,8 +196,8 @@ listNil =
 listCons =
     { name = root "Cons"
     , args =
-        [ CA.TypeVariable p "item"
-        , CA.TypeConstant p (root "List") [ CA.TypeVariable p "item" ]
+        [ CA.TypeVariable p [] "item"
+        , CA.TypeConstant p (root "List") [ CA.TypeVariable p [] "item" ]
         ]
     }
 

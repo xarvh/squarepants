@@ -28,7 +28,7 @@ type alias GetAlias =
 replaceType : GetAlias -> Type -> Res Type
 replaceType ga ty =
     case ty of
-        CA.TypeVariable pos name ->
+        CA.TypeVariable pos af name ->
             Ok ty
 
         CA.TypeFunction pos from fromIsMutable to ->
@@ -230,7 +230,7 @@ normalizeExpr ga expr =
 normalizeArg : GetAlias -> CA.Argument -> Res CA.Argument
 normalizeArg ga arg =
     case arg of
-        CA.ArgumentMutable _ ->
+        CA.ArgumentMutable _ _ ->
             Ok arg
 
         CA.ArgumentExpression expr ->
@@ -282,7 +282,7 @@ processAlias allAliases al processedAliases =
 expandAliasVariables : Dict Name Type -> Type -> Type
 expandAliasVariables typeByArgName ty =
     case ty of
-        CA.TypeVariable pos name ->
+        CA.TypeVariable pos af name ->
             case Dict.get name typeByArgName of
                 Nothing ->
                     ty
@@ -327,7 +327,7 @@ findAllRefs_type ty =
         CA.TypeConstant pos ref args ->
             List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton ref) args
 
-        CA.TypeVariable pos name ->
+        CA.TypeVariable pos af name ->
             Set.empty
 
         CA.TypeFunction pos from maybeMut to ->

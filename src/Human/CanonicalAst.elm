@@ -41,9 +41,13 @@ typeToPriAndString type_ =
                 |> String.join " "
             )
 
-        CA.TypeVariable pos name ->
+        CA.TypeVariable pos af name ->
             ( 0
-            , name
+            , if af == [] then
+                name
+
+              else
+                "!" ++ name
             )
 
         CA.TypeFunction pos from fromIsMut to ->
@@ -73,7 +77,7 @@ typeToPriAndString type_ =
                         |> String.join ", "
             in
             ( 0
-            , [ "{ "
+            , [ "{"
               , case extend of
                     Nothing ->
                         ""
@@ -81,9 +85,9 @@ typeToPriAndString type_ =
                     Just n ->
                         n ++ " with"
               , attrsString
-              , " }"
+              , "}"
               ]
-                |> String.join ""
+                |> String.join " "
             )
 
         CA.TypeAlias pos name ty2 ->

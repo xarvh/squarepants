@@ -3,7 +3,6 @@ module Compiler.JsToString_Test exposing (..)
 import Compiler.CanonicalToJs
 import Compiler.JsToString
 import Compiler.TestHelpers
-import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Markdown
 import Test exposing (Test)
@@ -27,8 +26,8 @@ codeTest =
     Test.codeTest Debug.toString
 
 
-runProgram : String -> TI.Substitutions -> CA.AllDefs -> Result String String
-runProgram variable subs mod =
+runProgram : String -> CA.AllDefs -> Result String String
+runProgram variable mod =
     let
         endStatements =
             [ Compiler.CanonicalToJs.translatePath variable ++ ";" ]
@@ -43,7 +42,7 @@ runProgram variable subs mod =
                 Ok s
     in
     mod
-        |> Compiler.CanonicalToJs.translateAll subs
+        |> Compiler.CanonicalToJs.translateAll
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (\stats ->
                 (Compiler.CanonicalToJs.nativeDefinitions :: stats ++ endStatements)
@@ -57,9 +56,9 @@ eval : String -> String -> Result String String
 eval variable code =
     code
         |> Compiler.TestHelpers.stringToCanonicalModuleWithPos
-        |> Result.andThen (TI.inspectModule Dict.empty)
+        --|> Result.andThen (TI.inspectModule Dict.empty)
         |> Compiler.TestHelpers.resErrorToString code
-        |> Result.andThen (\( mod, env, subs ) -> runProgram variable subs mod)
+        |> Result.andThen (\mod -> runProgram variable mod)
 
 
 self : Test

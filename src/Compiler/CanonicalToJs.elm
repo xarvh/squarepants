@@ -1,12 +1,12 @@
 module Compiler.CanonicalToJs exposing (..)
 
 import Compiler.CoreModule as Core
-import Compiler.TypeInference as TI
 import Dict exposing (Dict)
 import Lib
 import Prelude
 import RefHierarchy
 import Set exposing (Set)
+import StateMonad as M exposing (M, do, return)
 import Types.CanonicalAst as CA
 import Types.JavascriptAst as JA
 import Types.Literal
@@ -63,7 +63,7 @@ nativeBinopToFunction : String -> { jsSymb : JA.Name, mutates : Bool, fnName : S
 nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
     let
         d =
-            CA.posDummy
+            CA.N
     in
     ([ CA.Evaluation
         (CA.Lambda d
@@ -80,7 +80,7 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
                                 )
                             )
                             ((if mutates then
-                                CA.ArgumentMutable
+                                CA.ArgumentMutable d
 
                               else
                                 CA.ArgumentExpression << CA.Variable d
@@ -93,7 +93,7 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
             ]
         )
      ]
-        |> translateBodyToExpr { subs = Dict.empty, mutables = Set.empty }
+        |> translateBodyToExpr { mutables = Set.empty }
         |> JA.Define fnName
     )
         :: acc
@@ -146,7 +146,6 @@ nativeBinopsAsFns =
 
 type alias Env =
     { mutables : Set JA.Name
-    , subs : TI.Substitutions
     }
 
 
@@ -404,27 +403,27 @@ getValueDefName def =
 getValueRefs : CA.LocalValueDef -> Set String
 getValueRefs def =
     let
-        fn fold ( ext, set ) =
+        fn : CA.PosMap -> a -> M (Set String) a
+        fn fold ext =
             case fold of
-                CA.FoldExpr (CA.Variable _ args) ->
-                    ( ext
-                    , if args.isRoot then
-                        Set.insert args.name set
+                CA.PosMap_Expr (CA.Variable _ args) ->
+                    if args.isRoot then
+                        do (M.update (Set.insert args.name)) <| \_ ->
+                        return ext
 
-                      else
-                        set
-                    )
+                    else
+                        return ext
 
                 _ ->
-                    ( ext, set )
+                    return ext
     in
-    ( def, Set.empty )
-        |> CA.extensionFold_valueDef fn
+    Set.empty
+        |> CA.posMap_valueDef fn def
         |> Tuple.second
 
 
-translateAll : TI.Substitutions -> CA.AllDefs -> List JA.Statement
-translateAll subs ca =
+translateAll : CA.AllDefs -> List JA.Statement
+translateAll ca =
     let
         ( aliases, unions, values ) =
             CA.split ca
@@ -458,8 +457,7 @@ translateAll subs ca =
                     Debug.todo <| "CanonicalToJs circular non-function values: " ++ Debug.toString circular
 
         env =
-            { subs = subs
-            , mutables = Set.empty
+            { mutables = Set.empty
             }
 
         vals =
@@ -685,7 +683,7 @@ translateArg { nativeBinop } env arg =
         CA.ArgumentExpression e ->
             translateExpr env e
 
-        CA.ArgumentMutable { name, attrPath } ->
+        CA.ArgumentMutable _ { name, attrPath } ->
             if nativeBinop then
                 --SP: @x.a.b += blah
                 --JS: x.obj[x.attr].a.b += blah

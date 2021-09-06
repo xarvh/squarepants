@@ -5,7 +5,7 @@ module Types.Error exposing (..)
 import Dict exposing (Dict)
 import MetaFile exposing (MetaFile)
 import Set exposing (Set)
-import Types.CanonicalAst as CA
+import Types.CanonicalAst as CA exposing (Pos)
 import Types.FormattableAst as FA
 
 
@@ -25,9 +25,7 @@ type alias ErrorEnv =
 
 
 type alias ErrorArgs =
-    { moduleName : String
-    , start : Int
-    , end : Int
+    { pos : CA.Pos
     , description : ErrorEnv -> List ContentDiv
     }
 
@@ -52,9 +50,7 @@ type Highlight
 errorTodo : String -> Res a
 errorTodo s =
     res
-        { moduleName = "errorTodo"
-        , start = -1
-        , end = -1
+        { pos = CA.E
         , description = \_ -> [ text s ]
         }
 
@@ -69,9 +65,7 @@ err =
 faSimple : String -> FA.Pos -> String -> Res a
 faSimple moduleName ( start, end ) message =
     res
-        { moduleName = moduleName
-        , start = start
-        , end = end
+        { pos = CA.P moduleName start end
         , description = \_ -> [ text message ]
         }
 
@@ -81,9 +75,7 @@ faSimple moduleName ( start, end ) message =
 caSimple : CA.Pos -> String -> Res a
 caSimple pos message =
     res
-        { moduleName = pos.n
-        , start = pos.s
-        , end = pos.e
+        { pos = pos
         , description = \_ -> [ text message ]
         }
 
@@ -213,31 +205,68 @@ toString eEnv eArgs =
         hr =
             "-- ERROR!!! ------------------------------"
 
-        mod =
-            eEnv.moduleByName
-                |> Dict.get eArgs.moduleName
-                |> Maybe.withDefault
-                    { fsPath = eArgs.moduleName ++ " <unknown file>"
-                    , content = ""
-                    }
-
-        start =
-            positionToLineAndColumn mod.content eArgs.start
-
-        end =
-            positionToLineAndColumn mod.content eArgs.end
-
-        location =
-            mod.fsPath ++ " " ++ String.fromInt start.line ++ ":" ++ String.fromInt start.col
+        { location, block } =
+            posToHuman eEnv eArgs.pos
 
         description =
             eEnv
                 |> eArgs.description
-                |> (::) (showCodeBlock mod.content start end)
+                |> (::) block
                 |> List.concatMap (contentDivToString >> String.split "\n")
                 |> List.map ((++) "  ")
     in
     hr :: location :: "" :: description |> String.join "\n"
+
+
+posToHuman : ErrorEnv -> Pos -> { location : String, block : ContentDiv }
+posToHuman eEnv pos =
+    let
+        noBlock loc =
+            { location = loc
+            , block = text ""
+            }
+    in
+    case pos of
+        CA.P moduleName startAsInt endAsInt ->
+            case Dict.get moduleName eEnv.moduleByName of
+                Just mod ->
+                    let
+                        start =
+                            positionToLineAndColumn mod.content startAsInt
+
+                        end =
+                            positionToLineAndColumn mod.content endAsInt
+                    in
+                    { location = mod.fsPath ++ " " ++ String.fromInt start.line ++ ":" ++ String.fromInt start.col
+                    , block = showCodeBlock mod.content start end
+                    }
+
+                Nothing ->
+                    noBlock <| "<The module name is `" ++ moduleName ++ "` but I can't find it. This is a compiler bug.>"
+
+        CA.N ->
+            noBlock "<native code>"
+
+        CA.S ->
+            noBlock "<the location information has been stripped>"
+
+        CA.T ->
+            noBlock "<defined in test modules>"
+
+        CA.I n ->
+            noBlock <| "<inferred " ++ String.fromInt n ++ ">"
+
+        CA.E ->
+            noBlock "<errorTodo, get rid of me!>"
+
+        CA.F ->
+            noBlock "<FormattableToCanonicalAst todo, get rid of me!>"
+
+        CA.G ->
+            noBlock "<global value defined in the meta.json>"
+
+        CA.U ->
+            noBlock "<union type, get rid of me!>"
 
 
 contentDivToString : ContentDiv -> String

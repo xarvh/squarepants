@@ -156,15 +156,17 @@ insertFunction ( moduleName, localName, ty ) =
 
 pos : CA.Pos
 pos =
-    { n = "prelude"
-    , c = ""
-    , s = -1
-    , e = -1
-    }
+    CA.N
 
 
+anyNonFunction : Type
+anyNonFunction =
+    CA.TypeVariable pos [ CA.Us pos ] "a"
+
+
+tyVar : String -> Type
 tyVar n =
-    CA.TypeVariable pos n
+    CA.TypeVariable pos [] n
 
 
 tyFun from to =
@@ -302,7 +304,7 @@ mutableAssign =
     { symbol = ":="
     , precedence = Op.Mutop
     , associativity = Op.Left
-    , ty = typeBinop True (tyVar "a") (tyVar "a") Core.noneType
+    , ty = typeBinop True anyNonFunction anyNonFunction Core.noneType
     }
 
 
@@ -384,12 +386,6 @@ mutableSubtract =
 
 
 -- Comparison
-
-
-anyNonFunction : Type
-anyNonFunction =
-    -- TODO we need a CA.TypeNonFunction or something
-    tyVar "nonFunction"
 
 
 equal : Binop
