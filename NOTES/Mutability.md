@@ -9,6 +9,7 @@ return a lambda or any Type that can contain a lambda.
 ^ These are to prevent hiding mutable state inside closures
 
 
+
 Syntax
 ======
 
@@ -45,6 +46,24 @@ Right now I'm choosing to use `@` rather than `mut` because
   * `@` can stick to its target without spaces, so it's more obvious what its target is
 
 
+# Mutating ADTs
+union UnitGoal
+  = Attack EnemyId
+  | MoveTo Vec2
+  | RunTo Vec2
+
+try @goal as
+    Attack blah:
+        @blah := 2
+
+    MoveTo v2:
+        @v2.x += 2
+
+    else:
+        None
+
+
+
 Libraries
 =========
 
@@ -54,6 +73,39 @@ Ideally, types that are optimized for mutation will have library functions that 
 
 Unsolved problems
 =================
+
+
+# No monads?
+
+The current rule is safe but prevents using mutability to make a state monad more performing:
+
+```
+type alias M state a =
+    state -> ( a, state )
+
+newId : Monad Id
+newId state =
+    ( state.nextId
+    , { state | nextId = state.nextId + 1 }
+    )
+```
+
+could be done without allocations as:
+
+```
+type alias M state a =
+    state @> a
+
+newId : Monad Id
+newId state =
+    id = state.nextId
+    @state.nextId += 1
+    id
+```
+
+Is there a way to relax the second rule to allow this optimization?
+
+
 
 # Invisible mutation
 
