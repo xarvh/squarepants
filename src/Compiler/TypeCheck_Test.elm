@@ -683,21 +683,10 @@ mutability =
             { name = "Functions can't be mutable (annotation)"
             , code =
                 """
-                        a @=
-                          as Number -> Number
-                          add 1
-                        """
-            , run = infer "a"
-            , test = Test.errContain "mutable"
-            }
-        , hasError
-            { name = "args that are functions can't be mutable (annotation)"
-            , code =
+                a @=
+                  as Number -> Number
+                  add 1
                 """
-                        a =
-                          as (Int -> Int) @> Int
-                          a
-                        """
             , run = infer "a"
             , test = Test.errContain "mutable"
             }

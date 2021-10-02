@@ -3,6 +3,21 @@ module Lib exposing (..)
 import Dict exposing (Dict)
 
 
+ifThenJust : Bool -> a -> Maybe a
+ifThenJust condition value =
+    if condition then
+        Just value
+
+    else
+        Nothing
+
+
+
+----
+---
+--
+
+
 list_foldlRes : (item -> accum -> Result error accum) -> List item -> accum -> Result error accum
 list_foldlRes f ls accum =
     case ls of
@@ -43,8 +58,6 @@ dict_mapRes f aDict =
 tuple_mapSecondRes : (b -> Result err c) -> ( a, b ) -> Result err ( a, c )
 tuple_mapSecondRes f ( a, b ) =
     Result.map (\c -> ( a, c )) (f b)
-
-
 
 
 

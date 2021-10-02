@@ -13,8 +13,12 @@ import Dict exposing (Dict)
 import Lib
 import RefHierarchy
 import Set exposing (Set)
-import Types.CanonicalAst as CA exposing (Type)
+import Types.CanonicalAst as CA exposing (Pos, Type)
 import Types.Error as Error exposing (Res, errorTodo)
+
+
+do =
+    Lib.result_do
 
 
 type alias Name =
@@ -25,8 +29,14 @@ type alias GetAlias =
     Name -> Res (Maybe CA.AliasDef)
 
 
-replaceType : GetAlias -> Type -> Res Type
-replaceType ga ty =
+
+----
+---
+--
+
+
+expandType : GetAlias -> Type -> Res Type
+expandType ga ty =
     case ty of
         CA.TypeVariable pos af name ->
             Ok ty
@@ -34,12 +44,12 @@ replaceType ga ty =
         CA.TypeFunction pos from fromIsMutable to ->
             Result.map2
                 (\f t -> CA.TypeFunction pos f fromIsMutable t)
-                (replaceType ga from)
-                (replaceType ga to)
+                (expandType ga from)
+                (expandType ga to)
 
         CA.TypeRecord pos extensible attrs ->
             attrs
-                |> Lib.dict_mapRes (\k -> replaceType ga)
+                |> Lib.dict_mapRes (\k -> expandType ga)
                 |> Result.map (CA.TypeRecord pos extensible)
 
         CA.TypeAlias pos path t ->
@@ -47,7 +57,7 @@ replaceType ga ty =
             errorTodo "Did we apply aliases twice?"
 
         CA.TypeConstant pos ref args ->
-            Lib.result_do (Lib.list_mapRes (replaceType ga) args) <| \replacedArgs ->
+            do (Lib.list_mapRes (expandType ga) args) <| \replacedArgs ->
             case ga ref of
                 Err e ->
                     Err e
@@ -72,6 +82,64 @@ replaceType ga ty =
                             |> Ok
 
 
+expandAndValidateType : GetAlias -> Type -> Res Type
+expandAndValidateType ga rawTy =
+    do (expandType ga rawTy) <| \expandedTy ->
+    case findMutableArgsThatContainFunctions Nothing expandedTy of
+        [] ->
+            Ok expandedTy
+
+        errors ->
+            let
+                -- TODO typeToPos?
+                pos =
+                    CA.S
+
+                m =
+                    -- TODO show the actual positions
+                    "Mutable arguments can't be or contain functions!" :: List.map Debug.toString errors
+            in
+            errorTodo (String.join "\n" m)
+
+
+findMutableArgsThatContainFunctions : Maybe Pos -> Type -> List ( Pos, Pos )
+findMutableArgsThatContainFunctions nonFunctionPos ty =
+    case ty of
+        CA.TypeConstant _ _ _ ->
+            []
+
+        CA.TypeVariable _ _ name ->
+            {- TODO
+                if mutable then
+                    Just "variable types can't be mutable"
+
+               ----> except they can, they must be if we want to have functions
+               capable of manipulating mutable containers
+
+            -}
+            []
+
+        CA.TypeAlias _ path t ->
+            findMutableArgsThatContainFunctions nonFunctionPos t
+
+        CA.TypeFunction functionPos from fromIsMutable to ->
+            [ case nonFunctionPos of
+                Just constraintPos ->
+                    [ ( constraintPos, functionPos ) ]
+
+                Nothing ->
+                    []
+            , findMutableArgsThatContainFunctions (Lib.ifThenJust fromIsMutable functionPos) from
+            , findMutableArgsThatContainFunctions nonFunctionPos to
+            ]
+                |> List.concat
+
+        CA.TypeRecord _ ext attrs ->
+            attrs
+                |> Dict.values
+                |> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+
+
 
 ----
 --- Main
@@ -81,9 +149,6 @@ replaceType ga ty =
 applyAliasesToModule : CA.AllDefs -> Res CA.AllDefs
 applyAliasesToModule mod =
     let
-        do =
-            Lib.result_do
-
         ( aliases, unions, values ) =
             CA.split mod
     in
@@ -120,7 +185,7 @@ applyAliasesToUnions aliases =
             Ok <| Dict.get name aliases
 
         mapConstructor name args =
-            Lib.list_mapRes (replaceType getAlias) args
+            Lib.list_mapRes (expandAndValidateType getAlias) args
 
         mapUnion name union =
             Result.map
@@ -170,7 +235,7 @@ normalizeAnnotation ga maybeType =
             Ok Nothing
 
         Just ty ->
-            replaceType ga ty |> Result.map Just
+            expandAndValidateType ga ty |> Result.map Just
 
 
 normalizeBlock : GetAlias -> List CA.Statement -> Res (List CA.Statement)
@@ -274,7 +339,7 @@ processAlias allAliases al processedAliases =
             else
                 Ok Nothing
     in
-    Lib.result_do (replaceType getAlias al.ty) <| \ty ->
+    do (expandAndValidateType getAlias al.ty) <| \ty ->
     Dict.insert al.name { al | ty = ty } processedAliases
         |> Ok
 
