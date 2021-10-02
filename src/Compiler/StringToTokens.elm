@@ -694,8 +694,8 @@ errorBadIndent lastIndent newIndent endPos state =
         { pos = CA.P state.moduleName state.pos endPos
         , description =
             \_ ->
-                [ Error.text <| "last indent was at row " ++ String.fromInt lastIndent
-                , Error.text <| "but this new indent is at row " ++ String.fromInt newIndent
+                [ "last indent was at row " ++ String.fromInt lastIndent
+                , "but this new indent is at row " ++ String.fromInt newIndent
                 ]
         }
 
@@ -706,7 +706,7 @@ errorTab state =
         { pos = CA.P state.moduleName state.pos (state.pos + 1)
         , description =
             \_ ->
-                [ Error.text <| "Tab support is not yet implemented =*("
+                [ "Tab support is not yet implemented =*("
                 ]
         }
 
@@ -724,7 +724,7 @@ errorInvalidToken start codeBlock state =
         { pos = CA.P state.moduleName state.pos (state.pos + String.length token)
         , description =
             \_ ->
-                [ Error.text <| "Not sure what `" ++ token ++ "` means"
+                [ "Not sure what `" ++ token ++ "` means"
                 ]
         }
 
@@ -735,7 +735,7 @@ makeErrorTodo pos state message =
         { pos = CA.P state.moduleName state.pos pos
         , description =
             \_ ->
-                [ Error.text message
+                [ message
                 ]
         }
 
@@ -745,7 +745,7 @@ errorUnknownOperator pos state =
         { pos = CA.P state.moduleName state.pos pos
         , description =
             \_ ->
-                [ Error.text "Unknown operator"
+                [ "Unknown operator"
                 ]
         }
 

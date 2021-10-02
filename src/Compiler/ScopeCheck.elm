@@ -92,9 +92,9 @@ errorShadowing s =
             { pos = s.shadowing
             , description =
                 \_ ->
-                    [ Error.text <| "the name `" ++ s.name ++ "` is used already by a global value."
-                    , Error.text "check meta.json!"
-                    , Error.text "TODO link to [why shadowing is not allowed]"
+                    [ "the name `" ++ s.name ++ "` is used already by a global value."
+                    , "check meta.json!"
+                    , "TODO link to [why shadowing is not allowed]"
                     ]
             }
 
@@ -107,10 +107,10 @@ errorShadowing s =
                         { location, block } =
                             Error.posToHuman eEnv s.shadowed
                     in
-                    [ Error.text <| "You are declaring a " ++ s.context ++ " called `" ++ s.name ++ "` but that name is already used here: "
-                    , Error.text ""
+                    [ "You are declaring a " ++ s.context ++ " called `" ++ s.name ++ "` but that name is already used here: "
+                    , ""
                     , block
-                    , Error.text "TODO link to [why shadowing is not allowed]"
+                    , "TODO link to [why shadowing is not allowed]"
                     ]
             }
 

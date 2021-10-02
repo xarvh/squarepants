@@ -1,8 +1,6 @@
 module Compiler.TypeCheck exposing (..)
 
-{-|
-
-This module implements what is think is the (Damas)-Hindley-Milner inference algorithm, but I'm not sure.
+{-| This module implements what is think is the (Damas)-Hindley-Milner inference algorithm, but I'm not sure.
 
 
 ## Algorithm
@@ -83,13 +81,17 @@ Mutability enters the algorithm at 3 different points:
 
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
-import Human.CanonicalAst as HCA
+import Human.CanonicalAst
 import RefHierarchy
 import Set exposing (Set)
 import StateMonad as M exposing (M, do, return)
 import Types.CanonicalAst as CA exposing (Pos, Type)
 import Types.Error as Error exposing (Error, Res)
 import Types.Literal
+
+
+typeToText =
+    Human.CanonicalAst.typeToString
 
 
 {-| TODO do we define this somewhere else?
@@ -366,7 +368,7 @@ fromBlock env0 block =
         head :: tail ->
             -- A block is actually allowed to return tyvars that allow functions
             if typeContainsFunctions { checkTyvars = False } stateF.inferredType then
-                errorTodo head "blocks that define mutables can't return functions"
+                addError head [ "blocks that define mutables can't return functions" ]
 
             else
                 return stateF.inferredType
@@ -440,16 +442,16 @@ checkFreeVariables pos annotatedType blockType =
     in
     if Dict.size annotatedFreeVars > Dict.size actualFreeVars then
         do
-            (monadError pos
-                [ Error.text "The annotation is too general"
-                , Error.text ""
-                , Error.text <| "The annotation uses: " ++ String.join ", " (Dict.keys annotatedFreeVars)
-                , error_type annotatedType
-                , Error.text ""
-                , Error.text <| "But the actual type uses only: " ++ String.join ", " (Dict.keys actualFreeVars)
-                , error_type blockType
-                , Error.text ""
-                , Error.text <| "The annotation has " ++ String.fromInt (Dict.size annotatedFreeVars - Dict.size actualFreeVars) ++ " type variables too many"
+            (addError pos
+                [ "The annotation is too general"
+                , ""
+                , "The annotation uses: " ++ String.join ", " (Dict.keys annotatedFreeVars)
+                , typeToText annotatedType
+                , ""
+                , "But the actual type uses only: " ++ String.join ", " (Dict.keys actualFreeVars)
+                , typeToText blockType
+                , ""
+                , "The annotation has " ++ String.fromInt (Dict.size annotatedFreeVars - Dict.size actualFreeVars) ++ " type variables too many"
                 ]
             )
         <| \_ ->
@@ -601,7 +603,7 @@ unifyFunctionOnCallAndYieldReturnType env pos callReferenceType callIsMutable ca
     case callReferenceType of
         CA.TypeFunction _ refArgumentType refIsMutable refReturnType ->
             if callIsMutable /= refIsMutable then
-                errorTodo pos "mutability clash 2"
+                addError pos [ "mutability clash 2" ]
 
             else
                 do (unify pos UnifyReason_CallArgument callArgumentType refArgumentType) <| \unifiedArgumentType ->
@@ -619,7 +621,7 @@ unifyFunctionOnCallAndYieldReturnType env pos callReferenceType callIsMutable ca
                dealt with to reduce error messages noise.
             -}
             if rf /= [] then
-                errorTodo pos (rf |> List.map Debug.toString |> String.join ", ")
+                addError pos [ rf |> List.map Debug.toString |> String.join ", " ]
 
             else
                 do (newType pos []) <| \returnType ->
@@ -679,7 +681,7 @@ fromArgument env argument =
                         return ( True, ty )
 
                     else if typeContainsFunctions { checkTyvars = True } var.ty then
-                        do (errorTodo pos "mutable arguments can't allow functions") <| \ty ->
+                        do (addError pos [ "mutable arguments can't allow functions" ]) <| \ty ->
                         return ( True, ty )
 
                     else
@@ -689,10 +691,10 @@ fromArgument env argument =
 
 errorTryingToMutateAnImmutable : Pos -> Name -> Monad Type
 errorTryingToMutateAnImmutable pos name =
-    monadError pos
-        [ Error.text <| "You are trying to mutate variable `" ++ name ++ "` but it was declared as not mutable!"
-        , Error.text ""
-        , Error.text "TODO [link to wiki page that explains how to declare variables]"
+    addError pos
+        [ "You are trying to mutate variable `" ++ name ++ "` but it was declared as not mutable!"
+        , ""
+        , "TODO [link to wiki page that explains how to declare variables]"
         ]
 
 
@@ -872,7 +874,7 @@ unifyConstructorWithItsArgs p =
         -- Error: Argument needed but not given!
         ( CA.TypeFunction _ from _ to, [] ) ->
             -- TODO tell how many are needed and how many are actually given
-            do (errorTodo p.pos <| "Type constructor " ++ p.ref ++ " is missing an argument " ++ String.fromInt p.argIndex) <| \ety ->
+            do (addError p.pos [ "Type constructor " ++ p.ref ++ " is missing an argument " ++ String.fromInt p.argIndex ]) <| \ety ->
             return ( p.vars, ety )
 
         -- No arguments needed, no arguments given
@@ -884,7 +886,7 @@ unifyConstructorWithItsArgs p =
         -- Error: no argument needed, but argument given!
         ( _, head :: tail ) ->
             -- TODO tell how many are needed and how many are actually given
-            do (errorTodo p.pos <| "Type constructor " ++ p.ref ++ " has too many args") <| \ety ->
+            do (addError p.pos [ "Type constructor " ++ p.ref ++ " has too many args" ]) <| \ety ->
             return ( p.vars, ety )
 
 
@@ -938,8 +940,8 @@ unify pos reason a b =
 NOTE: the t1 should be the type with an actual position in the code because its position is the one that will be used.
 
 TODO: when do I refine the environment?
-  ----> never, ideally: if it's a definition we know its value after inferring its body, if it's a lambda parameter we know it when we stop using it.
-  Keeping the subs up to date should be enough
+----> never, ideally: if it's a definition we know its value after inferring its body, if it's a lambda parameter we know it when we stop using it.
+Keeping the subs up to date should be enough
 
 Are substitutions interesting only against a specific environment instance?
 
@@ -1044,13 +1046,13 @@ unify_ reason pos1 rf t1 t2 =
             unifyRecords reason pos rf ( a_ext, a_attrs ) ( b_ext, b_attrs )
 
         _ ->
-            monadError pos1
-                [ Error.text "unify_"
-                , Error.text "t1:"
-                , error_type t1
-                , Error.text "t2:"
-                , error_type t2
-                , Error.text <| Debug.toString reason
+            addError pos1
+                [ "unify_"
+                , "t1:"
+                , typeToText t1
+                , "t2:"
+                , typeToText t2
+                , Debug.toString reason
                 ]
 
 
@@ -1064,12 +1066,12 @@ addSubstitution { overrideIsAnError } reason name rf ty =
     -- TODO no need to do a dict.get if not overrideIsAnError
     case ( overrideIsAnError, Dict.get name subs ) of
         ( True, Just sub ) ->
-            monadError (CA.I 3)
-                [ Error.text <| "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
-                , Error.text <| "Old type " ++ HCA.typeToString ty
-                , Error.text <| "New type " ++ HCA.typeToString sub
-                , Error.text <| "This is not your fault, it's a bug in the Squarepants compiler."
-                , Error.text <| Debug.toString reason
+            addError (CA.I 3)
+                [ "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
+                , "Old type " ++ typeToText ty
+                , "New type " ++ typeToText sub
+                , "This is not your fault, it's a bug in the Squarepants compiler."
+                , Debug.toString reason
                 ]
 
         _ ->
@@ -1081,9 +1083,9 @@ addSubstitution { overrideIsAnError } reason name rf ty =
                     List.any (typeHasTyvar name) (Dict.values subs)
             in
             if typeHasTyvar name ty then
-                monadError (CA.I 14)
-                    [ Error.text <| "Compiler bug: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ HCA.typeToString ty
-                    , Error.text "This is not your fault, it's a bug in the Squarepants compiler."
+                addError (CA.I 14)
+                    [ "Compiler bug: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText ty
+                    , "This is not your fault, it's a bug in the Squarepants compiler."
                     ]
                 {- TODO re-think and properly implement NonFunction check and its propagation to non-constrained tyvars.
 
@@ -1093,19 +1095,18 @@ addSubstitution { overrideIsAnError } reason name rf ty =
                 -}
 
             else if newTyContainsSubbedTyvars && newNameIsUsedInSubbingTypes then
-                monadError (CA.I 24)
-                    [ Error.text "Compiler bug: mutually circular substitution"
-                    , Error.text <| "On tyvar: `" ++ name ++ "`, with subbing type: " ++ HCA.typeToString ty
-                    , Error.text "This is not your fault, it's a bug in the Squarepants compiler."
-                    , Error.text ""
-                    , Error.text "circular subs:"
+                addError (CA.I 24)
+                    [ "Compiler bug: mutually circular substitution"
+                    , "On tyvar: `" ++ name ++ "`, with subbing type: " ++ typeToText ty
+                    , "This is not your fault, it's a bug in the Squarepants compiler."
+                    , ""
+                    , "circular subs:"
                     , subs
                         |> Dict.filter (\k -> typeHasTyvar name)
                         |> Debug.toString
-                        |> Error.text
-                    , Error.text ""
-                    , Error.text <| "name: " ++ name
-                    , Error.text <| "ty: " ++ HCA.typeToString ty
+                    , ""
+                    , "name: " ++ name
+                    , "ty: " ++ typeToText ty
                     ]
 
             else
@@ -1495,22 +1496,10 @@ replaceTypeVariables subs ty =
                     Debug.todo "replacing record extension with non-var" (Debug.toString what)
 
 
-monadError : CA.Pos -> List Error.ContentDiv -> Monad Type
-monadError pos message =
-    let
-        args : Error.ErrorArgs
-        args =
-            { pos = pos
-            , description = \errorEnv -> message
-            }
-    in
-    do (insertError (Error.err args)) <| \() ->
+addError : CA.Pos -> List String -> Monad Type
+addError pos message =
+    do (insertError (Error.markdown pos (always message))) <| \() ->
     newType pos []
-
-
-error_type : Type -> Error.ContentDiv
-error_type =
-    HCA.typeToString >> Error.text
 
 
 
@@ -1521,8 +1510,8 @@ error_type =
 
 errorUndefinedVariable : Pos -> Name -> Monad Type
 errorUndefinedVariable pos name =
-    monadError pos
-        [ Error.text <| "Undefined variable: " ++ name
+    addError pos
+        [ "Undefined variable: " ++ name
         ]
 
 
@@ -1569,37 +1558,37 @@ errorIncompatibleTypes reason pos unifiedType clashes =
     in
     case unifiedType of
         CA.TypeVariable p rf unifiedTypeName ->
-            [ [ Error.text title ]
+            [ [ title ]
             , clashes
                 |> Dict.toList
                 |> List.concatMap
                     (\( clashPlaceholderName, clash ) ->
-                        [ Error.text <| Debug.toString clash.err
-                        , error_type clash.t1
-                        , error_type clash.t2
+                        [ Debug.toString clash.err
+                        , typeToText clash.t1
+                        , typeToText clash.t2
                         ]
                     )
             ]
                 |> List.concat
-                |> monadError pos
+                |> addError pos
 
         _ ->
             let
                 info =
                     -- TODO the layout should change depending on the reason, not only the title
-                    [ Error.text "The type seems to be something like"
-                    , error_type unifiedType
-                    , Error.text ""
-                    , Error.text "However I can't reconcile the following:"
+                    [ "The type seems to be something like"
+                    , typeToText unifiedType
+                    , ""
+                    , "However I can't reconcile the following:"
                     ]
 
                 --clashToError : ( Id, TypeClash ) -> List String
                 clashToError ( name, clash ) =
-                    [ Error.text ""
-                    , Error.text <| "`" ++ name ++ "` can be two incompatible types:"
-                    , error_type clash.t1
-                    , error_type clash.t2
-                    , Error.text <| "(" ++ Debug.toString clash.err ++ ")"
+                    [ ""
+                    , "`" ++ name ++ "` can be two incompatible types:"
+                    , typeToText clash.t1
+                    , typeToText clash.t2
+                    , "(" ++ Debug.toString clash.err ++ ")"
                     ]
 
                 clashErrors =
@@ -1607,17 +1596,17 @@ errorIncompatibleTypes reason pos unifiedType clashes =
                         |> Dict.toList
                         |> List.concatMap clashToError
             in
-            [ [ Error.text title ]
+            [ [ title ]
             , info
             , clashErrors
             ]
                 |> List.concat
-                |> monadError pos
+                |> addError pos
 
 
 errorTodo : CA.Pos -> String -> Monad Type
 errorTodo pos message =
-    monadError pos [ Error.text message ]
+    addError pos [ message ]
 
 
 

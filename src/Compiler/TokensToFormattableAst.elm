@@ -125,7 +125,7 @@ makeErr moduleName state message =
     in
     Error.err
         { pos = CA.P moduleName start end
-        , description = \_ -> [ Error.text message ]
+        , description = \_ -> [ message ]
         }
 
 
@@ -138,7 +138,7 @@ errorOptionsExhausted moduleName nonConsumedTokens =
                 { pos = CA.P moduleName -1 -1
                 , description =
                     \_ ->
-                        [ Error.text "I got to the end of file and I can't make sense of it. =("
+                        [ "I got to the end of file and I can't make sense of it. =("
                         ]
                 }
 
@@ -147,7 +147,7 @@ errorOptionsExhausted moduleName nonConsumedTokens =
                 { pos = CA.P moduleName token.start token.end
                 , description =
                     \_ ->
-                        [ Error.text "I got stuck parsing there. =("
+                        [ "I got stuck parsing there. =("
                         ]
                 }
 

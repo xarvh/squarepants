@@ -26,14 +26,8 @@ type alias ErrorEnv =
 
 type alias ErrorArgs =
     { pos : CA.Pos
-    , description : ErrorEnv -> List ContentDiv
+    , description : ErrorEnv -> List String
     }
-
-
-type ContentDiv
-    = Text String
-    | CodeBlock String
-    | CodeBlockWithLineNumber Int (List Highlight) (List String)
 
 
 type Highlight
@@ -51,7 +45,7 @@ errorTodo : String -> Res a
 errorTodo s =
     res
         { pos = CA.E
-        , description = \_ -> [ text s ]
+        , description = \_ -> [ s ]
         }
 
 
@@ -60,13 +54,21 @@ err =
     Simple
 
 
+markdown : Pos -> (ErrorEnv -> List String) -> Error
+markdown pos envToMarkdownRows =
+    Simple
+        { pos = pos
+        , description = envToMarkdownRows
+        }
+
+
 {-| TODO move to FA as FA.res
 -}
 faSimple : String -> FA.Pos -> String -> Res a
 faSimple moduleName ( start, end ) message =
     res
         { pos = CA.P moduleName start end
-        , description = \_ -> [ text message ]
+        , description = \_ -> [ message ]
         }
 
 
@@ -76,7 +78,7 @@ caSimple : CA.Pos -> String -> Res a
 caSimple pos message =
     res
         { pos = pos
-        , description = \_ -> [ text message ]
+        , description = \_ -> [ message ]
         }
 
 
@@ -85,46 +87,15 @@ res =
     Simple >> Err
 
 
-text : String -> ContentDiv
-text =
-    Text
-
-
-codeBlock : String -> ContentDiv
-codeBlock =
-    CodeBlock
-
-
 inlineCode : String -> String
 inlineCode s =
     "`" ++ s ++ "`"
 
 
-showLines : String -> Int -> Int -> ContentDiv
-showLines code lineSpan pos =
-    let
-        { line } =
-            positionToLineAndColumn code pos
-
-        lines =
-            String.split "\n" code
-
-        start =
-            line - lineSpan - 1 |> clamp 0 (List.length lines - 1)
-
-        size =
-            line - start + lineSpan |> max 1
-    in
-    lines
-        |> List.drop start
-        |> List.take size
-        |> CodeBlockWithLineNumber (start + 1) []
-
-
-showCodeBlock : String -> { line : Int, col : Int } -> { line : Int, col : Int } -> ContentDiv
+showCodeBlock : String -> { line : Int, col : Int } -> { line : Int, col : Int } -> String
 showCodeBlock code start end =
     if end.line < 0 then
-        CodeBlockWithLineNumber 0 [] []
+        ""
 
     else
         let
@@ -156,7 +127,7 @@ showCodeBlock code start end =
         lines
             |> List.drop startLine
             |> List.take size
-            |> CodeBlockWithLineNumber (startLine + 1) [ highlight ]
+            |> fmtBlock (startLine + 1) [ highlight ]
 
 
 
@@ -212,18 +183,18 @@ toString eEnv eArgs =
             eEnv
                 |> eArgs.description
                 |> (::) block
-                |> List.concatMap (contentDivToString >> String.split "\n")
+                |> List.concatMap (String.split "\n")
                 |> List.map ((++) "  ")
     in
     hr :: location :: "" :: description |> String.join "\n"
 
 
-posToHuman : ErrorEnv -> Pos -> { location : String, block : ContentDiv }
+posToHuman : ErrorEnv -> Pos -> { location : String, block : String }
 posToHuman eEnv pos =
     let
         noBlock loc =
             { location = loc
-            , block = text ""
+            , block = ""
             }
     in
     case pos of
@@ -267,19 +238,6 @@ posToHuman eEnv pos =
 
         CA.U ->
             noBlock "<union type, get rid of me!>"
-
-
-contentDivToString : ContentDiv -> String
-contentDivToString div =
-    case div of
-        Text s ->
-            s
-
-        CodeBlock s ->
-            "\n```\n" ++ s ++ "\n```\n"
-
-        CodeBlockWithLineNumber start highlights ls ->
-            fmtBlock start highlights ls
 
 
 highlightSplit : Highlight -> ( Dict Int ( Int, Int ), Set Int ) -> ( Dict Int ( Int, Int ), Set Int )
