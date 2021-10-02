@@ -17,8 +17,8 @@ import Compiler.StringToTokens_Test
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
-import Compiler.TypeInference as TI
-import Compiler.TypeInference_Test
+import Compiler.TypeCheck as TC
+import Compiler.TypeCheck_Test
 import Css
 import Dict exposing (Dict)
 import Html exposing (Html)
@@ -44,7 +44,7 @@ import Types.Token as Token exposing (Token)
 
 runTests =
     False
---         || True
+        || True
 
 
 moduleMain =
@@ -224,7 +224,7 @@ tests =
             , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.ScopeCheck_Test.tests
             , Compiler.ApplyAliases_Test.tests
-            , Compiler.TypeInference_Test.tests
+            , Compiler.TypeCheck_Test.tests
             , Compiler.CanonicalToJs_Test.tests
             , Compiler.JsToString_Test.tests
             ]
@@ -734,8 +734,8 @@ viewProgram model =
             in
             do withAliases <| \alsDefs ->
             alsDefs
-                |> TI.allDefsToEnvAndValues
-                |> (\( env, values ) -> TI.fromAllValueDefs env values)
+                |> TC.allDefsToEnvAndValues
+                |> (\( env, values ) -> TC.fromAllValueDefs env values)
                 |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
 
         titleAndPreCode title text =
@@ -803,7 +803,7 @@ viewProgram model =
 ----
 --- Inference
 --
--- viewInference : (TI.Eas -> Html msg
+-- viewInference : (TC.Eas -> Html msg
 {-
    viewInference ( mod, env, subs ) =
        Html.div
@@ -827,7 +827,7 @@ viewProgram model =
                |> Html.div []
            ]
 -}
--- viewSchema : TI.EnvEntry -> String
+-- viewSchema : TC.EnvEntry -> String
 -- viewSchema schema =
 --     [ "forall: [" ++ String.join "," (Set.toList schema.forall) ++ "]"
 --     , "mutable: " ++ Debug.toString schema.mutable

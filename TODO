@@ -1,7 +1,4 @@
 
-
-* rename typeInference to type check
-
 * errors use markdown
 
 * Validate union constructor types and type annotations

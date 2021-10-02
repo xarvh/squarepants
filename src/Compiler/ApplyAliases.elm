@@ -1,10 +1,10 @@
 module Compiler.ApplyAliases exposing (..)
 
-{-| The alternative to this module is to make Compiler.TypeInference do it instead,
+{-| The alternative to this module is to make Compiler.TypeCheck do it instead,
 but at least for now I want to keep that module as light as possible.
 
 Later on, it might be good to solve alias dependencies and maybe unions, then allow
-TypeInference to do the replacement of annotations on the fly, which would avoid
+TypeCheck to do the replacement of annotations on the fly, which would avoid
 allocating another AST.
 
 -}

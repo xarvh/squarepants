@@ -5,7 +5,7 @@ import Compiler.CanonicalToJs
 import Compiler.JsToString
 import Compiler.Pipeline
 import Compiler.TestHelpers
-import Compiler.TypeInference as TI
+import Compiler.TypeCheck as TC
 import Dict exposing (Dict)
 import Lib
 import MetaFile exposing (MetaFile)
@@ -183,10 +183,10 @@ makeProgram metaFile files =
     in
     do withAliases <| \alsDefs ->
     let
-        blah : Result String ( CA.AllDefs, TI.Env, TI.Substitutions )
+        blah : Result String ( CA.AllDefs, TC.Env, TC.Substitutions )
         blah =
             alsDefs
-                |> TI.inspectModule Dict.empty
+                |> TC.inspectModule Dict.empty
                 |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
     do blah <| \( typedProgram, env, subs ) ->

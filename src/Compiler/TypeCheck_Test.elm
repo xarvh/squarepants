@@ -1,8 +1,8 @@
-module Compiler.TypeInference_Test exposing (..)
+module Compiler.TypeCheck_Test exposing (..)
 
 import Compiler.CoreModule
 import Compiler.TestHelpers as TH exposing (p)
-import Compiler.TypeInference as TI
+import Compiler.TypeCheck as TI
 import Dict exposing (Dict)
 import Lib
 import Prelude
@@ -14,7 +14,7 @@ import Types.Error exposing (Res)
 
 tests : Test
 tests =
-    Test.Group "TypeInference"
+    Test.Group "TypeCheck"
         [ functions
         , statements
         , variableTypes
@@ -701,9 +701,6 @@ mutability =
             , run = infer "a"
             , test = Test.errContain "mutable"
             }
-
-        -- TODO is validating annotation a responsibility of TypeInference?
-        --             |> Test.NotNow
         ]
 
 
@@ -995,7 +992,7 @@ patterns =
              I don't fully understand what causes it.
 
              Still, the problem is caused at least in part by the fact that I'm not instantiating the type for type constructors when inferring patterns
-             (In TypeInference.inspectPattern#CA.PatternConstructor) which is definitely something worth fixing.
+             (In TypeCheck.fromPattern#CA.PatternConstructor) which is definitely something worth fixing.
 
              But still, I don't understand the problem enough to reproduce it reliably.
           -}

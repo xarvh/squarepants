@@ -1,6 +1,6 @@
-module Compiler.TypeInference exposing (..)
+module Compiler.TypeCheck exposing (..)
 
-{-| TODO rename to TypeCheck
+{-|
 
 This module implements what is think is the (Damas)-Hindley-Milner inference algorithm, but I'm not sure.
 
@@ -938,8 +938,8 @@ unify pos reason a b =
 NOTE: the t1 should be the type with an actual position in the code because its position is the one that will be used.
 
 TODO: when do I refine the environment?
-Given the constraints on ordering and annotations, do I ever need to?
-Is it enough if I keep the substitutions up to date? (ie, I apply the new substitutions to the old ones?)
+  ----> never, ideally: if it's a definition we know its value after inferring its body, if it's a lambda parameter we know it when we stop using it.
+  Keeping the subs up to date should be enough
 
 Are substitutions interesting only against a specific environment instance?
 
