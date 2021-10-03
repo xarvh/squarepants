@@ -168,6 +168,16 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 Stuff that seems good but needs thinking
 ----------------------------------------
 
+* Remove the `alias` keyword entirely
+  We don't declare variables as `var x = 1`, so why should we use `alias X = Int`?
+
+      Blah x = Maybe x
+
+  Pros: one less keyword, more concise, more elegant
+  Con: less readable for noobs? The pros are very small.
+
+
+
 https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontrivial_hashing_algorithm_in_your/
 
 * record & patterns

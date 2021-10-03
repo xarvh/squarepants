@@ -119,7 +119,8 @@ firstAnnotation code =
     code
         |> firstStatement
         |> Result.andThen asDefinition
-        |> Result.andThen (.maybeAnnotation >> Result.fromMaybe "no annotation")
+        -- TODO test also the nonFn field!!!
+        |> Result.andThen (.maybeAnnotation >> Maybe.map .ty >> Result.fromMaybe "no annotation")
 
 
 

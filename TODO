@@ -1,10 +1,1 @@
 
-* Do I need the `alias` keyword at all?
-
-      Blah x = Maybe x
-
-
-* Properly implement NonFunction check
-
-
-

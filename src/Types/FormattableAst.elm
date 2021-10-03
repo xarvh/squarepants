@@ -13,11 +13,12 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 -}
 
 import SepList exposing (SepList)
-import Types.Op as Op exposing (Binop, Unop)
 import Types.Literal as Literal
+import Types.Op as Op exposing (Binop, Unop)
 
 
 type alias Pos =
+    -- TODO can we use the same pos as CA?
     ( Int, Int )
 
 
@@ -28,11 +29,18 @@ type alias Module =
 type alias ValueDef =
     { pattern : Pattern
     , mutable : Bool
-    , maybeAnnotation : Maybe Type
+    , maybeAnnotation : Maybe Annotation
     , body : List Statement
 
     -- TODO move it in the statement constructor?
     , pos : Pos
+    }
+
+
+type alias Annotation =
+    { pos : Pos
+    , ty : Type
+    , nonFn : List String
     }
 
 
@@ -151,7 +159,7 @@ posMap_statement f stat =
             Definition
                 { pattern = posMap_pattern f def.pattern
                 , mutable = def.mutable
-                , maybeAnnotation = Maybe.map (posMap_type f) def.maybeAnnotation
+                , maybeAnnotation = Maybe.map (posMap_annotation f) def.maybeAnnotation
                 , body = List.map (posMap_statement f) def.body
                 , pos = f def.pos
                 }
@@ -169,6 +177,14 @@ posMap_statement f stat =
                 , args = ar.args
                 , constructors = List.map (posMap_type f) ar.constructors
                 }
+
+
+posMap_annotation : (Pos -> Pos) -> Annotation -> Annotation
+posMap_annotation f ann =
+    { pos = f ann.pos
+    , ty = posMap_type f ann.ty
+    , nonFn = ann.nonFn
+    }
 
 
 posMap_expression : (Pos -> Pos) -> Expression -> Expression

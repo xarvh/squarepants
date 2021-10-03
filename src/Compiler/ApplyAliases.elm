@@ -38,7 +38,7 @@ type alias GetAlias =
 expandType : GetAlias -> Type -> Res Type
 expandType ga ty =
     case ty of
-        CA.TypeVariable pos af name ->
+        CA.TypeVariable pos name ->
             Ok ty
 
         CA.TypeFunction pos from fromIsMutable to ->
@@ -108,7 +108,7 @@ findMutableArgsThatContainFunctions nonFunctionPos ty =
         CA.TypeConstant _ _ _ ->
             []
 
-        CA.TypeVariable _ _ name ->
+        CA.TypeVariable _ name ->
             {- TODO
                 if mutable then
                     Just "variable types can't be mutable"
@@ -202,7 +202,7 @@ applyAliasesToUnions aliases =
 
 
 type alias ValueDef a =
-    { a | maybeAnnotation : Maybe CA.Type, body : List CA.Statement }
+    { a | maybeAnnotation : Maybe CA.Annotation, body : List CA.Statement }
 
 
 applyAliasesToValues : Dict Name CA.AliasDef -> Dict String (ValueDef a) -> Res (Dict String (ValueDef a))
@@ -228,14 +228,17 @@ normalizeValueDef ga vdef =
         (normalizeBlock ga vdef.body)
 
 
-normalizeAnnotation : GetAlias -> Maybe Type -> Res (Maybe Type)
+normalizeAnnotation : GetAlias -> Maybe CA.Annotation -> Res (Maybe CA.Annotation)
 normalizeAnnotation ga maybeType =
     case maybeType of
         Nothing ->
             Ok Nothing
 
-        Just ty ->
-            expandAndValidateType ga ty |> Result.map Just
+        Just ann ->
+            do (expandAndValidateType ga ann.ty) <| \ty ->
+            { ann | ty = ty }
+                |> Just
+                |> Ok
 
 
 normalizeBlock : GetAlias -> List CA.Statement -> Res (List CA.Statement)
@@ -347,7 +350,7 @@ processAlias allAliases al processedAliases =
 expandAliasVariables : Dict Name Type -> Type -> Type
 expandAliasVariables typeByArgName ty =
     case ty of
-        CA.TypeVariable pos af name ->
+        CA.TypeVariable pos name ->
             case Dict.get name typeByArgName of
                 Nothing ->
                     ty
@@ -392,7 +395,7 @@ findAllRefs_type ty =
         CA.TypeConstant pos ref args ->
             List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton ref) args
 
-        CA.TypeVariable pos af name ->
+        CA.TypeVariable pos name ->
             Set.empty
 
         CA.TypeFunction pos from maybeMut to ->

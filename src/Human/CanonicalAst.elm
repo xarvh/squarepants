@@ -41,13 +41,9 @@ typeToPriAndString type_ =
                 |> String.join " "
             )
 
-        CA.TypeVariable pos af name ->
+        CA.TypeVariable pos name ->
             ( 0
-            , if af == [] then
-                name
-
-              else
-                "!" ++ name
+            , name
             )
 
         CA.TypeFunction pos from fromIsMut to ->

@@ -17,6 +17,7 @@ type alias Binop =
     -- It is actually used only for pipes, everything else is hardcoded or derived from the precedence group
     , associativity : LeftOrRight
     , ty : CA.Type
+    , nonFn : List String
     }
 
 

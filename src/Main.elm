@@ -50,10 +50,8 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-
-upd a =
-  { a with c = .c }
-
+a @f =
+  @f := (fn x: x)
       """
     )
 
@@ -989,7 +987,7 @@ viewCaLocalDefinition : CA.LocalValueDef -> Indent
 viewCaLocalDefinition def =
     L
         [ def.maybeAnnotation
-            |> Maybe.map (\x -> viewCaPattern def.pattern ++ " : " ++ HumanCA.typeToString x)
+            |> Maybe.map (\x -> viewCaPattern def.pattern ++ " : " ++ HumanCA.typeToString x.ty)
             |> M
         , S <| viewCaPattern def.pattern ++ " = "
         , I <| L <| List.map viewCaStatement def.body
@@ -1000,7 +998,7 @@ viewCaRootDefinition : CA.RootValueDef -> Indent
 viewCaRootDefinition def =
     L
         [ def.maybeAnnotation
-            |> Maybe.map (\x -> def.name ++ " : " ++ HumanCA.typeToString x)
+            |> Maybe.map (\x -> def.name ++ " : " ++ HumanCA.typeToString x.ty)
             |> M
         , S <| def.name ++ " = "
         , I <| L <| List.map viewCaStatement def.body

@@ -196,8 +196,8 @@ listNil =
 listCons =
     { name = root "Cons"
     , args =
-        [ CA.TypeVariable p [] "item"
-        , CA.TypeConstant p (root "List") [ CA.TypeVariable p [] "item" ]
+        [ CA.TypeVariable p "item"
+        , CA.TypeConstant p (root "List") [ CA.TypeVariable p "item" ]
         ]
     }
 

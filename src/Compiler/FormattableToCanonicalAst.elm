@@ -471,15 +471,21 @@ translateDefinition isRoot env fa =
         |> Ok
 
 
-translateMaybeAnnotation : ReadOnly -> FA.ValueDef -> Res (Maybe CA.Type)
+translateMaybeAnnotation : ReadOnly -> FA.ValueDef -> Res (Maybe CA.Annotation)
 translateMaybeAnnotation ro fa =
     case fa.maybeAnnotation of
         Nothing ->
             Ok Nothing
 
         Just annotation ->
-            translateType ro annotation
-                |> Result.map Just
+            do (translateType ro annotation.ty) <| \ty ->
+            -- TODO check that nonFn contains only variables acutally present in ty
+            { pos = tp ro annotation.pos
+            , ty = ty
+            , nonFn = List.foldl (\v -> Dict.insert v CA.F) Dict.empty annotation.nonFn
+            }
+                |> Just
+                |> Ok
 
 
 
@@ -525,7 +531,7 @@ translatePatternOrFunction : Env -> FA.Pattern -> Res POF
 translatePatternOrFunction env fa =
     case fa of
         FA.PatternAny pos True s ->
-            errorTodo "can't mutable here"
+            errorTodo "This is the wrong place to use `@`"
 
         FA.PatternAny pos False s ->
             translatePatternOrFunction env (FA.PatternApplication pos s [])
@@ -1171,7 +1177,7 @@ translateType ro faType =
 
                     else
                         name
-                            |> CA.TypeVariable todoPos []
+                            |> CA.TypeVariable todoPos
                             |> Ok
 
                 StructuredName_TypeOrCons { name, mod } ->

@@ -214,10 +214,13 @@ lists =
                 { body = [ CA.Evaluation (CA.Variable p { name = "Test.l", isRoot = True, attrPath = [] }) ]
                 , maybeAnnotation =
                     Just
-                        (CA.TypeConstant p
-                            "SPCore.List"
-                            [ CA.TypeConstant p "SPCore.Bool" [] ]
-                        )
+                        { pos = p
+                        , ty =
+                            CA.TypeConstant p
+                                "SPCore.List"
+                                [ CA.TypeConstant p "SPCore.Bool" [] ]
+                        , nonFn = Dict.empty
+                        }
                 , isNative = False
                 , name = "Test.l"
                 , localName = "l"
@@ -278,14 +281,17 @@ tuples =
                 { body = [ CA.Evaluation (CA.Variable p { name = "Test.a", attrPath = [], isRoot = True }) ]
                 , maybeAnnotation =
                     Just
-                        (CA.TypeRecord p
-                            Nothing
-                            (Dict.fromList
-                                [ ( "first", CA.TypeConstant p "Test.Blah" [] )
-                                , ( "second", CA.TypeConstant p "Test.Blah" [] )
-                                ]
-                            )
-                        )
+                        { pos = p
+                        , ty =
+                            CA.TypeRecord p
+                                Nothing
+                                (Dict.fromList
+                                    [ ( "first", CA.TypeConstant p "Test.Blah" [] )
+                                    , ( "second", CA.TypeConstant p "Test.Blah" [] )
+                                    ]
+                                )
+                        , nonFn = Dict.empty
+                        }
                 , name = "Test.a"
                 , localName = "a"
                 , isNative = False

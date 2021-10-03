@@ -17,8 +17,8 @@ Every time a mutable is used in an operation that could mutate it, it must have 
 
 
 # Declaration uses @ in the operator
-aMutableDict @: Dict String Int
 aMutableDict @=
+    as Dict String Int
     Dict.empty
 
 
@@ -27,16 +27,16 @@ aMutableDict @=
 
 @aRecord.someIntAttribute += 1
 
-thisFunctionMayOrMayNotModifyItsFirstArg : @Dict String Int -> None
-thisFunctionMayOrMayNotModifyItsFirstArg @aMutableDict
+thisFunctionMayOrMayNotModifyItsFirstArg @aMutableDict =
+    as Dict String Int -> None
 
 
 # Reference does not use @
 Dict.get "something" aMutableDict
 
 
-# Mutable function args do not use @
-someFunction thisIsAMutableArg =
+# Mutable function args must use @
+someFunction @thisIsAMutableArg =
   @thisIsAMutableArg += 1
 
 

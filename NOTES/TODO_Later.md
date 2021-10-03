@@ -1,6 +1,8 @@
 Stuff that is important but I can get away without for now
 ----------------------------------------------------------
 
+* NonFunction errors are useless to a human; NonFunction needs more tests
+
 * `alias A = { attr : c }` should not be valid
   -> Restore FindUndeclared
 
@@ -14,9 +16,3 @@ Stuff that is important but I can get away without for now
     * get all canonical stuff
     * start from entry, collect and order only needed stuff
     * only then run type inference
-
-* CA.Ast Pos:
-   alias Pos = Int
-   Dict Int PosStuff?
-
-

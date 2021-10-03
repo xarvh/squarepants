@@ -46,6 +46,15 @@ run state m =
     m state
 
 
+
+--
+
+
+map : (a -> b) -> M state a -> M state b
+map f m =
+    do m (f >> return)
+
+
 list_foldl : (item -> accum -> M state accum) -> List item -> accum -> M state accum
 list_foldl f items accum =
     case items of

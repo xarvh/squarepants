@@ -109,28 +109,24 @@ type alias Name =
 
 type alias Env =
     { instanceVariables : Dict Name InstanceVariable
-    , constrainedTypeVariables : Dict Name TypeVariable
+    , typeVariables : Dict Name Pos
     }
 
 
 initEnv : Env
 initEnv =
     { instanceVariables = Dict.empty
-    , constrainedTypeVariables = Dict.empty
+
+    -- These are only the type variables explicitly defined in type annotations
+    , typeVariables = Dict.empty
     }
 
 
 type alias InstanceVariable =
     { definedAt : CA.Pos
     , ty : Type
-    , freeTypeVariables : Dict Name TypeVariable
+    , freeTypeVariables : Dict Name { nonFn : Bool }
     , isMutable : Bool
-    }
-
-
-type alias TypeVariable =
-    { definedAt : CA.Pos
-    , rf : List CA.RejectFunction
     }
 
 
@@ -143,9 +139,10 @@ type alias TypeVariable =
 type alias State =
     { nextName : Int
     , errors : List Error
-
-    -- TODO not sure they should be here, substitutions might make sense only within a specific environment
     , substitutions : Subs
+
+    -- Type variables that cannot accept functions
+    , nonFnTyvars : Dict Name (List CA.RejectFunction)
 
     -- This is used only by the unify function, which resets it every time
     --
@@ -160,6 +157,7 @@ initState =
     { nextName = 0
     , errors = []
     , substitutions = Dict.empty
+    , nonFnTyvars = Dict.empty
     , typeClashesByPlaceholderId = Dict.empty
     }
 
@@ -192,9 +190,9 @@ newName f state =
     )
 
 
-newType : Pos -> List CA.RejectFunction -> Monad Type
-newType pos rf =
-    newName (CA.TypeVariable pos rf)
+newType : Pos -> Monad Type
+newType pos =
+    newName (CA.TypeVariable pos)
 
 
 insertError : Error -> Monad ()
@@ -204,10 +202,18 @@ insertError e state =
     )
 
 
-getSubstitutions : Monad Subs
-getSubstitutions state =
-    ( state.substitutions
+get : (State -> a) -> Monad a
+get getter state =
+    ( getter state
     , state
+    )
+
+
+setNonFn : Name -> Monad ()
+setNonFn name state =
+    ( ()
+      -- TODO value should not be an empty list?
+    , { state | nonFnTyvars = Dict.insert name [] state.nonFnTyvars }
     )
 
 
@@ -283,11 +289,11 @@ fromRootDefinition def env =
             fromDefinition env False (CA.PatternAny def.pos def.name) def.maybeAnnotation def.body
 
 
-makeNative : Type -> CA.RootValueDef -> InstanceVariable
-makeNative ty def =
+makeNative : CA.Annotation -> CA.RootValueDef -> InstanceVariable
+makeNative ann def =
     { definedAt = def.pos
-    , ty = ty
-    , freeTypeVariables = getFreeTypeVars Dict.empty ty
+    , ty = ann.ty
+    , freeTypeVariables = getFreeTypeVars Dict.empty ann.nonFn ann.ty
     , isMutable = False
     }
 
@@ -323,13 +329,13 @@ insertAnnotatedRootValue def env =
         Nothing ->
             env
 
-        Just ty ->
+        Just ann ->
             { env
                 | instanceVariables =
                     Dict.insert def.name
                         { definedAt = def.pos
-                        , ty = ty
-                        , freeTypeVariables = getFreeTypeVars Dict.empty ty
+                        , ty = ann.ty
+                        , freeTypeVariables = getFreeTypeVars Dict.empty ann.nonFn ann.ty
                         , isMutable = False
                         }
                         env.instanceVariables
@@ -367,7 +373,7 @@ fromBlock env0 block =
 
         head :: tail ->
             -- A block is actually allowed to return tyvars that allow functions
-            if typeContainsFunctions { checkTyvars = False } stateF.inferredType then
+            if typeContainsFunctions stateF.inferredType then
                 addError head [ "blocks that define mutables can't return functions" ]
 
             else
@@ -396,11 +402,11 @@ fromStatement env statement =
 
 applySubsToType : Type -> Monad Type
 applySubsToType ty =
-    do getSubstitutions <| \subs ->
+    do (get .substitutions) <| \subs ->
     return <| replaceTypeVariables subs ty
 
 
-fromDefinition : Env -> Bool -> CA.Pattern -> Maybe Type -> List CA.Statement -> Monad Env
+fromDefinition : Env -> Bool -> CA.Pattern -> Maybe CA.Annotation -> List CA.Statement -> Monad Env
 fromDefinition env isMutable pattern maybeAnnotation body =
     case maybeAnnotation of
         Nothing ->
@@ -417,17 +423,17 @@ fromDefinition env isMutable pattern maybeAnnotation body =
             do (unify patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty) <| \unifiedType ->
             do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| return
 
-        Just annotatedType ->
+        Just annotation ->
             -- There is an annotation: allow recursive definitions
             -- This means that we can add it to the environment before we actually infer it
             do (fromPattern env pattern Dict.empty) <| \patternOut ->
-            do (unify patternOut.pos UnifyReason_AnnotationVsPattern annotatedType patternOut.ty) <| \_ ->
+            do (unify patternOut.pos UnifyReason_AnnotationVsPattern annotation.ty patternOut.ty) <| \_ ->
             -- applySubsToPatternVarsAndAddThemToEnv also adds type variables, which is why we're using it here!
             -- TODO maybe I should make it more explicit? Use an ad-hoc function?
             do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| \env1 ->
             do (fromBlock env1 body) <| \bodyType ->
-            do (unify patternOut.pos UnifyReason_AnnotationVsBlock annotatedType bodyType) <| \unifiedBlockType ->
-            do (checkFreeVariables patternOut.pos annotatedType bodyType) <| \() ->
+            do (unify patternOut.pos UnifyReason_AnnotationVsBlock annotation.ty bodyType) <| \unifiedBlockType ->
+            do (checkFreeVariables patternOut.pos annotation.ty bodyType) <| \() ->
             return env1
 
 
@@ -550,17 +556,19 @@ fromExpression env expression =
 
         CA.Lambda pos param body ->
             do (fromParameter env param) <| \( isMutable, patternOut ) ->
-            let
-                bodyEnv =
-                    insertPatternVars Dict.empty True isMutable patternOut.vars env
-            in
+            do (insertPatternVars Dict.empty True isMutable patternOut.vars env) <| \bodyEnv ->
             do (fromBlock bodyEnv body) <| \bodyType ->
             -- fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
             -- fromBlock instead infers paramType fully, but will not apply the substitutions it creates
             -- So we just pull out the substitutions and apply them to paramType
-            do getSubstitutions <| \subs ->
-            CA.TypeFunction pos (replaceTypeVariables subs patternOut.ty) isMutable bodyType
-                |> return
+            do (applySubsToType patternOut.ty) <| \refinedPatternOutTy ->
+            if isMutable && typeContainsFunctions refinedPatternOutTy then
+                -- TODO be a bit more descriptive, maybe name the arguments
+                errorTodo pos <| "mutable args cannot be functions"
+
+            else
+                CA.TypeFunction pos refinedPatternOutTy isMutable bodyType
+                    |> return
 
         CA.Call pos reference argument ->
             -- first of all, let's get our children types
@@ -572,14 +580,14 @@ fromExpression env expression =
         CA.If pos ar ->
             do (fromBlock env ar.condition) <| \conditionType ->
             do (unify pos UnifyReason_IfCondition conditionType Core.boolType) <| \_ ->
-            do getSubstitutions <| \s ->
+            do (get .substitutions) <| \s ->
             do (fromBlock env ar.true) <| \trueType ->
             do (fromBlock env ar.false) <| \falseType ->
             unify pos UnifyReason_IfBranches trueType falseType
 
         CA.Try pos value patternsAndBlocks ->
             do (fromExpression env value) <| \tryType ->
-            do (newType pos []) <| \newBlockType ->
+            do (newType pos) <| \newBlockType ->
             do (M.list_foldl (fromPatternAndBlock env) patternsAndBlocks ( tryType, newBlockType )) <| \( patternType, inferredBlockType ) ->
             return inferredBlockType
 
@@ -607,31 +615,16 @@ unifyFunctionOnCallAndYieldReturnType env pos callReferenceType callIsMutable ca
 
             else
                 do (unify pos UnifyReason_CallArgument callArgumentType refArgumentType) <| \unifiedArgumentType ->
-                do getSubstitutions <| \subs ->
-                return <| replaceTypeVariables subs refReturnType
+                applySubsToType refReturnType
 
-        CA.TypeVariable pos_ rf name ->
-            {-
-               I don't think there's any way this could happen normally:
-               * if it's a variable, we should have a function type already in the env
-               * if it's a lambda, we should have inferred it
-               * it could be a recursive function, but with a recursive function we infer its type anyway as a function...?
-
-               Regardless, it definitely can happen if an undefined variable is being used as a function, and it must be
-               dealt with to reduce error messages noise.
-            -}
-            if rf /= [] then
-                addError pos [ rf |> List.map Debug.toString |> String.join ", " ]
-
-            else
-                do (newType pos []) <| \returnType ->
-                let
-                    ty =
-                        CA.TypeFunction pos callArgumentType callIsMutable returnType
-                in
-                do (unify pos UnifyReason_IsBeingCalledAsAFunction callReferenceType ty) <| \_ ->
-                do getSubstitutions <| \subs ->
-                return <| replaceTypeVariables subs returnType
+        CA.TypeVariable pos_ name ->
+            do (newType pos) <| \returnType ->
+            let
+                ty =
+                    CA.TypeFunction pos callArgumentType callIsMutable returnType
+            in
+            do (unify pos UnifyReason_IsBeingCalledAsAFunction callReferenceType ty) <| \_ ->
+            applySubsToType returnType
 
         _ ->
             unifyError NotAFunction callReferenceType callReferenceType
@@ -680,7 +673,8 @@ fromArgument env argument =
                         do (errorTryingToMutateAnImmutable pos name) <| \ty ->
                         return ( True, ty )
 
-                    else if typeContainsFunctions { checkTyvars = True } var.ty then
+                    else if typeContainsFunctions var.ty then
+                        -- TODO what about constrained/unconstrained tyvars?
                         do (addError pos [ "mutable arguments can't allow functions" ]) <| \ty ->
                         return ( True, ty )
 
@@ -707,7 +701,7 @@ fromParameter env param =
 
         CA.ParameterMutable pos paramName ->
             -- TypeNonFunction
-            do (newType pos [ CA.Pa pos ]) <| \ty ->
+            do (newType pos) <| \ty ->
             return
                 ( True
                 , { vars = Dict.singleton paramName ( pos, ty )
@@ -798,11 +792,11 @@ fromPattern : Env -> CA.Pattern -> PatternVars -> Monad PatternOut
 fromPattern env pattern vars =
     case pattern of
         CA.PatternDiscard pos ->
-            do (newType pos []) <| \ty ->
+            do (newType pos) <| \ty ->
             return <| PatternOut vars pos ty
 
         CA.PatternAny pos name ->
-            do (newType pos []) <| \ty ->
+            do (newType pos) <| \ty ->
             return <| PatternOut (Dict.insert name ( pos, ty ) vars) pos ty
 
         CA.PatternLiteral pos literal ->
@@ -879,7 +873,7 @@ unifyConstructorWithItsArgs p =
 
         -- No arguments needed, no arguments given
         ( _, [] ) ->
-            do getSubstitutions <| \subs ->
+            do (get .substitutions) <| \subs ->
             -- TODO should I apply subs here?
             return ( p.vars, p.ty )
 
@@ -924,7 +918,7 @@ type UnifyError
 
 unify : CA.Pos -> UnifyReason -> Type -> Type -> Monad Type
 unify pos reason a b =
-    do (unify_ reason pos [] a b) <| \unifiedType ->
+    do (unify_ reason pos a b) <| \unifiedType ->
     do popClashingtypes <| \typeClashes ->
     if typeClashes == Dict.empty then
         return unifiedType
@@ -946,8 +940,8 @@ Keeping the subs up to date should be enough
 Are substitutions interesting only against a specific environment instance?
 
 -}
-unify_ : UnifyReason -> Pos -> List CA.RejectFunction -> Type -> Type -> Monad Type
-unify_ reason pos1 rf t1 t2 =
+unify_ : UnifyReason -> Pos -> Type -> Type -> Monad Type
+unify_ reason pos1 t1 t2 =
     {- TODO
        if constructors didn't have pos, we could test `t1 == t2` and exit early
 
@@ -955,10 +949,10 @@ unify_ reason pos1 rf t1 t2 =
     -}
     case ( t1, t2 ) of
         ( CA.TypeAlias pos _ aliased, _ ) ->
-            unify_ reason pos rf aliased t2
+            unify_ reason pos aliased t2
 
         ( _, CA.TypeAlias _ _ aliased ) ->
-            unify_ reason pos1 rf t1 aliased
+            unify_ reason pos1 t1 aliased
 
         ( CA.TypeConstant pos ref1 args1, CA.TypeConstant _ ref2 args2 ) ->
             if ref1 /= ref2 then
@@ -967,69 +961,48 @@ unify_ reason pos1 rf t1 t2 =
             else
                 let
                     fold arg1 arg2 =
-                        unify_ reason pos rf arg1 arg2
+                        unify_ reason pos arg1 arg2
                 in
                 -- TODO should I check arity here?
-                do (M.list_map2 (unify_ reason pos rf) args1 args2) <| \argTypes ->
-                do getSubstitutions <| \subs ->
+                do (M.list_map2 (unify_ reason pos) args1 args2) <| \argTypes ->
+                do (get .substitutions) <| \subs ->
                 argTypes
                     |> List.map (replaceTypeVariables subs)
                     |> CA.TypeConstant pos ref1
                     |> return
 
-        ( CA.TypeVariable pos rf1 v1_name, CA.TypeVariable _ rf2 v2_name ) ->
+        ( CA.TypeVariable pos v1_name, CA.TypeVariable _ v2_name ) ->
             if v1_name == v2_name then
                 return t1
 
             else
-                do getSubstitutions <| \subs ->
+                do (get .substitutions) <| \subs ->
                 case ( Dict.get v1_name subs, Dict.get v2_name subs ) of
                     ( Just sub1, Just sub2 ) ->
-                        let
-                            rfn =
-                                rf ++ rf1 ++ rf2
-                        in
-                        do (unify_ reason pos1 rfn sub1 sub2) <| \v ->
-                        do (addSubstitution { overrideIsAnError = False } reason v1_name rfn v) <| \_ ->
-                        do (addSubstitution { overrideIsAnError = False } reason v2_name rfn v) <| \subbedTy ->
+                        do (unify_ reason pos1 sub1 sub2) <| \v ->
+                        do (addSubstitution { overrideIsAnError = False } reason v1_name v) <| \_ ->
+                        do (addSubstitution { overrideIsAnError = False } reason v2_name v) <| \subbedTy ->
                         return subbedTy
 
                     ( Nothing, Just sub2 ) ->
-                        addSubstitution { overrideIsAnError = True } reason v1_name (rf ++ rf1) t2
+                        addSubstitution { overrideIsAnError = True } reason v1_name t2
 
                     _ ->
-                        addSubstitution { overrideIsAnError = True } reason v2_name (rf ++ rf2) t1
+                        addSubstitution { overrideIsAnError = True } reason v2_name t1
 
-        ( CA.TypeVariable _ rf1 name1, _ ) ->
-            addSubstitution { overrideIsAnError = True } reason name1 rf1 t2
+        ( CA.TypeVariable _ name1, _ ) ->
+            addSubstitution { overrideIsAnError = True } reason name1 t2
 
-        ( _, CA.TypeVariable _ rf2 name2 ) ->
-            addSubstitution { overrideIsAnError = True } reason name2 rf2 t1
+        ( _, CA.TypeVariable _ name2 ) ->
+            addSubstitution { overrideIsAnError = True } reason name2 t1
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
-            if rf /= [] then
-                unifyError (NonFunctionContainsFunction rf) t1 t2
-
-            else if a_fromIsMutable /= b_fromIsMutable then
+            if a_fromIsMutable /= b_fromIsMutable then
                 unifyError IncompatibleMutability t1 t2
 
             else
-                {- TODO
-                     should this be checked here? This is not really an **unification** error
-
-                     It doesn't look like this problem can arise as result of a unification. o_O
-
-                   let
-                       newNf =
-                           if a_fromIsMutable then
-                               "mutable args can't be or contain functions" :: rf
-
-                           else
-                               rf
-                   in
-                -}
-                do (unify_ reason pos rf a_from b_from) <| \unified_from ->
-                do getSubstitutions <| \subs_ ->
+                do (unify_ reason pos a_from b_from) <| \unified_from ->
+                do (get .substitutions) <| \subs_ ->
                 {- Without the replacement here, a function annotation will produce circular substitutions
 
                    id a =
@@ -1037,13 +1010,13 @@ unify_ reason pos1 rf t1 t2 =
                        a
 
                 -}
-                do (unify_ reason pos rf (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)) <| \unified_to ->
-                do getSubstitutions <| \subs ->
+                do (unify_ reason pos (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)) <| \unified_to ->
+                do (get .substitutions) <| \subs ->
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
                     |> return
 
         ( CA.TypeRecord pos a_ext a_attrs, CA.TypeRecord _ b_ext b_attrs ) ->
-            unifyRecords reason pos rf ( a_ext, a_attrs ) ( b_ext, b_attrs )
+            unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs )
 
         _ ->
             addError pos1
@@ -1056,160 +1029,6 @@ unify_ reason pos1 rf t1 t2 =
                 ]
 
 
-addSubstitution : { overrideIsAnError : Bool } -> UnifyReason -> Name -> List CA.RejectFunction -> Type -> Monad Type
-addSubstitution { overrideIsAnError } reason name rf ty =
-    --     let
-    --         _ =
-    --             Debug.log "addSubstitution" { reason = reason, name = name, ty = ty }
-    --     in
-    do getSubstitutions <| \subs ->
-    -- TODO no need to do a dict.get if not overrideIsAnError
-    case ( overrideIsAnError, Dict.get name subs ) of
-        ( True, Just sub ) ->
-            addError (CA.I 3)
-                [ "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
-                , "Old type " ++ typeToText ty
-                , "New type " ++ typeToText sub
-                , "This is not your fault, it's a bug in the Squarepants compiler."
-                , Debug.toString reason
-                ]
-
-        _ ->
-            let
-                newTyContainsSubbedTyvars =
-                    List.any (\tyvarName -> typeHasTyvar tyvarName ty) (Dict.keys subs)
-
-                newNameIsUsedInSubbingTypes =
-                    List.any (typeHasTyvar name) (Dict.values subs)
-            in
-            if typeHasTyvar name ty then
-                addError (CA.I 14)
-                    [ "Compiler bug: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText ty
-                    , "This is not your fault, it's a bug in the Squarepants compiler."
-                    ]
-                {- TODO re-think and properly implement NonFunction check and its propagation to non-constrained tyvars.
-
-                   else if rf /= [] && typeContainsFunctions { checkTyvars = True } ty then
-                       -- TODO this one unification error does not need two types, but a type and a name?
-                       unifyError (NonFunctionContainsFunction rf) (CA.TypeVariable (CA.I 12) rf name) ty
-                -}
-
-            else if newTyContainsSubbedTyvars && newNameIsUsedInSubbingTypes then
-                addError (CA.I 24)
-                    [ "Compiler bug: mutually circular substitution"
-                    , "On tyvar: `" ++ name ++ "`, with subbing type: " ++ typeToText ty
-                    , "This is not your fault, it's a bug in the Squarepants compiler."
-                    , ""
-                    , "circular subs:"
-                    , subs
-                        |> Dict.filter (\k -> typeHasTyvar name)
-                        |> Debug.toString
-                    , ""
-                    , "name: " ++ name
-                    , "ty: " ++ typeToText ty
-                    ]
-
-            else
-                let
-                    ( updatedSubs, updatedNewType ) =
-                        if newTyContainsSubbedTyvars then
-                            let
-                                -- apply old subs to ty
-                                t =
-                                    replaceTypeVariables subs ty
-                            in
-                            ( Dict.insert name t subs
-                            , t
-                            )
-
-                        else if newNameIsUsedInSubbingTypes then
-                            -- apply new substitution to all old substitutions
-                            ( subs
-                                |> Dict.map (\k -> replaceTypeVariables (Dict.singleton name ty))
-                                |> Dict.insert name ty
-                            , ty
-                            )
-
-                        else
-                            ( Dict.insert name ty subs
-                            , ty
-                            )
-                in
-                \state ->
-                    ( updatedNewType
-                    , { state | substitutions = updatedSubs }
-                    )
-
-
-typeContainsFunctions : { checkTyvars : Bool } -> Type -> Bool
-typeContainsFunctions p ty =
-    case ty of
-        CA.TypeConstant _ _ _ ->
-            False
-
-        CA.TypeVariable _ rf _ ->
-            p.checkTyvars && rf == []
-
-        CA.TypeFunction _ from fromIsMutable to ->
-            True
-
-        CA.TypeAlias _ path t ->
-            typeContainsFunctions p t
-
-        CA.TypeRecord _ extensible attrs ->
-            attrs
-                |> Dict.values
-                |> List.any (typeContainsFunctions p)
-
-
-typeHasTyvar : Name -> Type -> Bool
-typeHasTyvar n ty =
-    case ty of
-        CA.TypeVariable pos rf name ->
-            n == name
-
-        CA.TypeFunction _ from fromIsMutable to ->
-            typeHasTyvar n from || typeHasTyvar n to
-
-        CA.TypeConstant pos ref args ->
-            List.any (typeHasTyvar n) args
-
-        CA.TypeAlias _ path t ->
-            typeHasTyvar n t
-
-        CA.TypeRecord pos extensible attrs ->
-            Just n == extensible || List.any (typeHasTyvar n) (Dict.values attrs)
-
-
-typeTyvars : Type -> Dict Name TypeVariable
-typeTyvars ty =
-    case ty of
-        CA.TypeVariable pos rf name ->
-            -- TODO is pos equivalent to definedAt?
-            Dict.singleton name { definedAt = pos, rf = rf }
-
-        CA.TypeFunction _ from fromIsMutable to ->
-            Dict.union (typeTyvars from) (typeTyvars to)
-
-        CA.TypeConstant pos ref args ->
-            List.foldl (\a -> Dict.union (typeTyvars a)) Dict.empty args
-
-        CA.TypeAlias _ path t ->
-            typeTyvars t
-
-        CA.TypeRecord pos extensible attrs ->
-            let
-                init =
-                    case extensible of
-                        Nothing ->
-                            Dict.empty
-
-                        Just name ->
-                            Dict.singleton name { definedAt = pos, rf = [ CA.Re pos ] }
-            in
-            Dict.foldl (\n t -> Dict.union (typeTyvars t)) init attrs
-
-
 type alias UnifyRecordsFold =
     { aOnly : Dict Name Type
     , bOnly : Dict Name Type
@@ -1217,8 +1036,8 @@ type alias UnifyRecordsFold =
     }
 
 
-unifyRecords : UnifyReason -> Pos -> List CA.RejectFunction -> ( Maybe String, Dict String Type ) -> ( Maybe String, Dict String Type ) -> Monad Type
-unifyRecords reason pos rf ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
+unifyRecords : UnifyReason -> Pos -> ( Maybe String, Dict String Type ) -> ( Maybe String, Dict String Type ) -> Monad Type
+unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
     let
         init : UnifyRecordsFold
         init =
@@ -1242,7 +1061,7 @@ unifyRecords reason pos rf ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
         { aOnly, bOnly, both } =
             Dict.merge onA onBoth onB a_attrs b_attrs init
     in
-    do (M.dict_map (\k ( a, b ) -> unify_ reason pos rf a b) both) <| \bothUnified ->
+    do (M.dict_map (\k ( a, b ) -> unify_ reason pos a b) both) <| \bothUnified ->
     case ( a_ext, b_ext ) of
         ( Just aName, Nothing ) ->
             unifyToNonExtensibleRecord reason aName aOnly bOnly bothUnified
@@ -1264,8 +1083,8 @@ unifyRecords reason pos rf ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                 sub =
                     CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
             in
-            do (addSubstitution { overrideIsAnError = True } reason aName rf sub) <| \_ ->
-            do (addSubstitution { overrideIsAnError = True } reason bName rf sub) <| \_ ->
+            do (addSubstitution { overrideIsAnError = True } reason aName sub) <| \_ ->
+            do (addSubstitution { overrideIsAnError = True } reason bName sub) <| \_ ->
             return sub
 
 
@@ -1277,7 +1096,7 @@ unifyToNonExtensibleRecord reason aName aOnly bOnly bothUnified =
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
-        do (addSubstitution { overrideIsAnError = True } reason aName [ CA.Re (CA.I 7) ] (CA.TypeRecord (CA.I 5) Nothing bOnly)) <| \_ ->
+        do (addSubstitution { overrideIsAnError = True } reason aName (CA.TypeRecord (CA.I 5) Nothing bOnly)) <| \_ ->
         Dict.union bothUnified bOnly
             |> CA.TypeRecord (CA.I 6) Nothing
             |> return
@@ -1290,13 +1109,235 @@ unifyError : UnifyError -> Type -> Type -> Monad Type
 unifyError error t1 t2 =
     do (newName identity) <| \name ->
     do (insertTypeClash name t1 t2 error) <| \() ->
-    return <| CA.TypeVariable (CA.I 0) [] name
+    return <| CA.TypeVariable (CA.I 0) name
+
+
+
+----
+--- Add substitutions
+--
+
+
+addSubstitution : { overrideIsAnError : Bool } -> UnifyReason -> Name -> Type -> Monad Type
+addSubstitution { overrideIsAnError } reason name ty =
+    --     let
+    --         _ =
+    --             Debug.log "addSubstitution" { reason = reason, name = name, ty = ty }
+    --     in
+    do (checkOverrides overrideIsAnError reason name ty) <| \_ ->
+    do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
+    do (flagFreeVars freeVarsToFlag) <| \_ ->
+    do (checkRecursion name ty) <| \re ->
+    case re of
+        Err t ->
+            return t
+
+        Ok { newTyContainsSubbedTyvars, newNameIsUsedInSubbingTypes } ->
+            do (get .substitutions) <| \subs ->
+            let
+                ( updatedSubs, updatedNewType ) =
+                    if newTyContainsSubbedTyvars then
+                        let
+                            -- apply old subs to ty
+                            t =
+                                replaceTypeVariables subs ty
+                        in
+                        ( Dict.insert name t subs
+                        , t
+                        )
+
+                    else if newNameIsUsedInSubbingTypes then
+                        -- apply new substitution to all old substitutions
+                        ( subs
+                            |> Dict.map (\k -> replaceTypeVariables (Dict.singleton name ty))
+                            |> Dict.insert name ty
+                        , ty
+                        )
+
+                    else
+                        ( Dict.insert name ty subs
+                        , ty
+                        )
+            in
+            \state ->
+                ( updatedNewType
+                , { state | substitutions = updatedSubs }
+                )
+
+
+checkOverrides : Bool -> UnifyReason -> Name -> Type -> Monad Type
+checkOverrides overrideIsAnError reason name ty =
+    if not overrideIsAnError then
+        return ty
+
+    else
+        do (get .substitutions) <| \subs ->
+        case Dict.get name subs of
+            Nothing ->
+                return ty
+
+            Just sub ->
+                addError (CA.I 3)
+                    [ "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
+                    , "Old type " ++ typeToText ty
+                    , "New type " ++ typeToText sub
+                    , "This is not your fault, it's a bug in the Squarepants compiler."
+                    , Debug.toString reason
+                    ]
+
+
+checkRecursion : Name -> Type -> Monad (Result Type { newTyContainsSubbedTyvars : Bool, newNameIsUsedInSubbingTypes : Bool })
+checkRecursion name ty =
+    -- Check self recursion
+    if typeHasTyvar name ty then
+        addError (CA.I 14)
+            [ "Compiler bug: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText ty
+            , "This is not your fault, it's a bug in the Squarepants compiler."
+            ]
+            |> M.map Err
+
+    else
+        do (get .substitutions) <| \subs ->
+        -- Check mutual recursion
+        let
+            newTyContainsSubbedTyvars =
+                List.any (\tyvarName -> typeHasTyvar tyvarName ty) (Dict.keys subs)
+
+            newNameIsUsedInSubbingTypes =
+                List.any (typeHasTyvar name) (Dict.values subs)
+        in
+        if newTyContainsSubbedTyvars && newNameIsUsedInSubbingTypes then
+            addError (CA.I 24)
+                [ "Compiler bug: mutually circular substitution"
+                , "On tyvar: `" ++ name ++ "`, with subbing type: " ++ typeToText ty
+                , "This is not your fault, it's a bug in the Squarepants compiler."
+                , ""
+                , "circular subs:"
+                , subs
+                    |> Dict.filter (\k -> typeHasTyvar name)
+                    |> Debug.toString
+                , ""
+                , "name: " ++ name
+                , "ty: " ++ typeToText ty
+                ]
+                |> M.map Err
+
+        else
+            { newTyContainsSubbedTyvars = newTyContainsSubbedTyvars
+            , newNameIsUsedInSubbingTypes = newNameIsUsedInSubbingTypes
+            }
+                |> Ok
+                |> return
+
+
+checkNonFunction : Name -> Type -> Monad { freeVarsToFlag : List Name }
+checkNonFunction name ty =
+    let
+        nope =
+            { freeVarsToFlag = [] }
+    in
+    do (get .nonFnTyvars) <| \nonFnTyvars ->
+    case Dict.get name nonFnTyvars of
+        Nothing ->
+            return nope
+
+        Just rejectReasons ->
+            -- type should not contain function
+            if typeContainsFunctions ty then
+                {- TODO how do I talk about this type?
+
+                   "The type of `f`"?
+
+                -}
+                do (errorTodo (CA.I 26) <| "type `" ++ name ++ "` should not contain functions, but is " ++ typeToText ty) <| \_ ->
+                return nope
+
+            else
+                -- blah!
+                -- TODO constrained vars inside ty should all reject functions
+                -- TODO non-constraned vars should be flagged with reject function
+                return nope
+
+
+flagFreeVars : List Name -> Monad ()
+flagFreeVars names =
+    -- TODO!!!!
+    return ()
 
 
 
 ----
 --- Various helpers
 --
+
+
+typeContainsFunctions : Type -> Bool
+typeContainsFunctions ty =
+    case ty of
+        CA.TypeConstant _ _ _ ->
+            False
+
+        CA.TypeVariable _ _ ->
+            False
+
+        CA.TypeFunction _ from fromIsMutable to ->
+            True
+
+        CA.TypeAlias _ path t ->
+            typeContainsFunctions t
+
+        CA.TypeRecord _ extensible attrs ->
+            attrs
+                |> Dict.values
+                |> List.any typeContainsFunctions
+
+
+typeHasTyvar : Name -> Type -> Bool
+typeHasTyvar n ty =
+    case ty of
+        CA.TypeVariable pos name ->
+            n == name
+
+        CA.TypeFunction _ from fromIsMutable to ->
+            typeHasTyvar n from || typeHasTyvar n to
+
+        CA.TypeConstant pos ref args ->
+            List.any (typeHasTyvar n) args
+
+        CA.TypeAlias _ path t ->
+            typeHasTyvar n t
+
+        CA.TypeRecord pos extensible attrs ->
+            Just n == extensible || List.any (typeHasTyvar n) (Dict.values attrs)
+
+
+typeTyvars : Type -> Dict Name Pos
+typeTyvars ty =
+    case ty of
+        CA.TypeVariable pos name ->
+            -- TODO is pos equivalent to definedAt?
+            Dict.singleton name pos
+
+        CA.TypeFunction _ from fromIsMutable to ->
+            Dict.union (typeTyvars from) (typeTyvars to)
+
+        CA.TypeConstant pos ref args ->
+            List.foldl (\a -> Dict.union (typeTyvars a)) Dict.empty args
+
+        CA.TypeAlias _ path t ->
+            typeTyvars t
+
+        CA.TypeRecord pos extensible attrs ->
+            let
+                init =
+                    case extensible of
+                        Nothing ->
+                            Dict.empty
+
+                        Just name ->
+                            Dict.singleton name pos
+            in
+            Dict.foldl (\n t -> Dict.union (typeTyvars t)) init attrs
 
 
 applyAttributePath : Pos -> List Name -> Type -> Monad Type
@@ -1320,7 +1361,7 @@ applyAttributePath pos attrPath =
 
                 Nothing ->
                     do (newName identity) <| \extName ->
-                    do (newType pos []) <| \attrType ->
+                    do (newType pos) <| \attrType ->
                     let
                         re : Type
                         re =
@@ -1332,12 +1373,12 @@ applyAttributePath pos attrPath =
     M.list_foldl wrap attrPath
 
 
-insertPatternVars : Subs -> Bool -> Bool -> PatternVars -> Env -> Env
-insertPatternVars subs isParameter isMutable vars env =
-    Dict.foldl (insertPatternVar subs isParameter isMutable) env vars
+insertPatternVars : Subs -> Bool -> Bool -> PatternVars -> Env -> Monad Env
+insertPatternVars subs isParameter isMutable =
+    M.dict_foldl (insertPatternVar subs isParameter isMutable)
 
 
-insertPatternVar : Subs -> Bool -> Bool -> Name -> ( Pos, Type ) -> Env -> Env
+insertPatternVar : Subs -> Bool -> Bool -> Name -> ( Pos, Type ) -> Env -> Monad Env
 insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
     let
         refinedTy =
@@ -1368,10 +1409,10 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
                     Dict.empty
 
                 else
-                    getFreeTypeVars env.constrainedTypeVariables refinedTy
+                    getFreeTypeVars env.typeVariables Dict.empty refinedTy
             }
             env.instanceVariables
-    , constrainedTypeVariables =
+    , typeVariables =
         if isParameter then
             {-
 
@@ -1386,16 +1427,17 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
                if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
 
             -}
-            Dict.foldl Dict.insert env.constrainedTypeVariables (typeTyvars refinedTy)
+            Dict.foldl Dict.insert env.typeVariables (typeTyvars refinedTy)
 
         else
-            env.constrainedTypeVariables
+            env.typeVariables
     }
+        |> return
 
 
 applySubsToPatternVarsAndAddThemToEnv : Bool -> PatternVars -> Env -> Monad Env
 applySubsToPatternVarsAndAddThemToEnv isMutable vars env =
-    do getSubstitutions <| \subs ->
+    do (get .substitutions) <| \subs ->
     let
         {-
            Consider:
@@ -1409,18 +1451,19 @@ applySubsToPatternVarsAndAddThemToEnv isMutable vars env =
            we use for the records are also constrained!
 
         -}
+        meh : Name -> Dict Name Pos -> Dict Name Pos
         meh typeVarName constrainedVars =
             case Dict.get typeVarName subs of
                 Nothing ->
                     constrainedVars
 
                 Just ty ->
-                    Dict.foldl Dict.insert constrainedVars (typeTyvars ty)
+                    Dict.foldl (\n p -> Dict.insert n p) constrainedVars (typeTyvars ty)
 
         env1 =
-            { env | constrainedTypeVariables = List.foldl meh env.constrainedTypeVariables (Dict.keys env.constrainedTypeVariables) }
+            { env | typeVariables = List.foldl meh env.typeVariables (Dict.keys env.typeVariables) }
     in
-    return <| insertPatternVars subs False isMutable vars env1
+    insertPatternVars subs False isMutable vars env1
 
 
 replaceTypeVariablesWithNew : InstanceVariable -> Monad Type
@@ -1433,20 +1476,34 @@ replaceTypeVariablesWithNew var =
         return <| replaceTypeVariables newTypeByOldType var.ty
 
 
-generateNewTypeVariables : Dict Name TypeVariable -> Monad Subs
+generateNewTypeVariables : Dict Name { nonFn : Bool } -> Monad Subs
 generateNewTypeVariables tyvarByName =
     let
-        apply : Name -> TypeVariable -> Subs -> Monad Subs
-        apply name0 tyvar subs =
+        apply : Name -> { nonFn : Bool } -> Subs -> Monad Subs
+        apply name0 { nonFn } subs =
             do (newName identity) <| \name1 ->
-            return <| Dict.insert name0 (CA.TypeVariable tyvar.definedAt tyvar.rf name1) subs
+            do
+                (if nonFn then
+                    setNonFn name1
+
+                 else
+                    return ()
+                )
+            <| \() ->
+            return <| Dict.insert name0 (CA.TypeVariable (CA.I 11) name1) subs
     in
     M.dict_foldl apply tyvarByName Dict.empty
 
 
-getFreeTypeVars : Dict Name TypeVariable -> Type -> Dict Name TypeVariable
-getFreeTypeVars envVars ty =
-    Dict.foldl (\name v -> Dict.remove name) (typeTyvars ty) envVars
+getFreeTypeVars : Dict Name Pos -> Dict Name Pos -> Type -> Dict Name { nonFn : Bool }
+getFreeTypeVars envVars nonFn ty =
+    let
+        --posToTyvar : Name -> Pos -> TypeVariable
+        posToTyvar name pos =
+            { nonFn = Dict.member name nonFn }
+    in
+    Dict.diff (typeTyvars ty) envVars
+        |> Dict.map posToTyvar
 
 
 
@@ -1459,11 +1516,11 @@ replaceTypeVariables subs ty =
         CA.TypeConstant pos ref args ->
             CA.TypeConstant pos ref (List.map (replaceTypeVariables subs) args)
 
-        CA.TypeVariable _ rf name ->
+        CA.TypeVariable _ name ->
             case Dict.get name subs of
                 Just substitutionType ->
-                    -- a substitution exists for the variable type v
-                    replaceTypeVariables subs substitutionType
+                    -- addSubstitution always applies all subs to each sub's type, so we don't need to apply them here
+                    substitutionType
 
                 Nothing ->
                     -- no substitution, return the type as-is
@@ -1483,7 +1540,7 @@ replaceTypeVariables subs ty =
                 Nothing ->
                     CA.TypeRecord pos extensible (Dict.map (\name -> replaceTypeVariables subs) attrs)
 
-                Just (CA.TypeVariable p rf n) ->
+                Just (CA.TypeVariable p n) ->
                     CA.TypeRecord pos (Just n) (Dict.map (\name -> replaceTypeVariables subs) attrs)
 
                 Just (CA.TypeRecord _ ext2 attrs2) ->
@@ -1499,7 +1556,7 @@ replaceTypeVariables subs ty =
 addError : CA.Pos -> List String -> Monad Type
 addError pos message =
     do (insertError (Error.markdown pos (always message))) <| \() ->
-    newType pos []
+    newType pos
 
 
 
@@ -1557,7 +1614,7 @@ errorIncompatibleTypes reason pos unifiedType clashes =
                     "You are trying to update the " ++ String.join ", " attrNames ++ " attributes"
     in
     case unifiedType of
-        CA.TypeVariable p rf unifiedTypeName ->
+        CA.TypeVariable p unifiedTypeName ->
             [ [ title ]
             , clashes
                 |> Dict.toList
@@ -1626,7 +1683,7 @@ addConstructor : CA.UnionDef -> Name -> List Type -> Env -> Env
 addConstructor unionDef ctorName ctorArgs env =
     let
         args =
-            List.map (\name -> CA.TypeVariable (CA.I 8) [] name) unionDef.args
+            List.map (\name -> CA.TypeVariable (CA.I 8) name) unionDef.args
 
         fold ty accum =
             CA.TypeFunction (CA.I 9) ty False accum
@@ -1634,17 +1691,11 @@ addConstructor unionDef ctorName ctorArgs env =
         ctorType =
             List.foldr fold (CA.TypeConstant (CA.I 10) unionDef.name args) ctorArgs
 
-        nameToTyvar : Name -> TypeVariable
-        nameToTyvar name =
-            { definedAt = CA.U
-            , rf = []
-            }
-
         var : InstanceVariable
         var =
             { ty = ctorType
             , definedAt = CA.I 11
-            , freeTypeVariables = List.foldl (\n -> Dict.insert n (nameToTyvar n)) Dict.empty unionDef.args
+            , freeTypeVariables = List.foldl (\n -> Dict.insert n { nonFn = False }) Dict.empty unionDef.args
             , isMutable = False
             }
     in

@@ -24,6 +24,7 @@ tests =
         , patterns
         , try_as
         , if_then
+        , nonFunction
         ]
 
 
@@ -61,19 +62,14 @@ tyNone =
     constant "SPCore.None"
 
 
-forall : String -> List CA.RejectFunction -> Dict String TI.TypeVariable
-forall n rf =
-    Dict.singleton n { definedAt = CA.S, rf = rf }
+ftv : String -> Dict String { nonFn : Bool }
+ftv n =
+    Dict.singleton n { nonFn = False }
 
 
-forallMany : List String -> Dict String TI.TypeVariable
-forallMany =
-    List.map (\n -> ( n, { definedAt = CA.S, rf = [] } )) >> Dict.fromList
-
-
-forallTuple : List ( String, List CA.RejectFunction ) -> Dict String TI.TypeVariable
+forallTuple : List ( String, List CA.RejectFunction ) -> Dict String { nonFn : Bool }
 forallTuple =
-    List.foldl (\( n, rf ) -> Dict.insert n { definedAt = CA.S, rf = rf }) Dict.empty
+    List.foldl (\( n, rf ) -> Dict.insert n { nonFn = rf /= [] }) Dict.empty
 
 
 
@@ -87,7 +83,7 @@ typeFunction { from, fromIsMutable, to } =
 
 
 typeVariable { name } =
-    CA.TypeVariable p [] name
+    CA.TypeVariable p name
 
 
 typeConstant { ref, args } =
@@ -111,7 +107,10 @@ testDefs =
         |> Dict.insert "Test.reset" (typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone })
 
 
-infer : String -> String -> Result String { forall : Dict String TI.TypeVariable, type_ : Type, mutable : Bool }
+
+-- infer : String -> String -> Result String { freeTypeVariables : Dict String TI.TypeVariable, ty : Type, isMutable : Bool }
+
+
 infer name code =
     code
         |> TH.stringToCanonicalModuleWithPos
@@ -126,31 +125,12 @@ infer name code =
                     |> Result.fromMaybe "Dict fail"
                     |> Result.map
                         (\var ->
-                            { type_ = TH.removePos CA.posMap_type var.ty
-                            , forall = Dict.map stripPosFromTyvar var.freeTypeVariables
-                            , mutable = var.isMutable
+                            { ty = TH.removePos CA.posMap_type var.ty
+                            , freeTypeVariables = var.freeTypeVariables
+                            , isMutable = var.isMutable
                             }
                         )
             )
-
-
-stripPosFromTyvar : name -> TI.TypeVariable -> TI.TypeVariable
-stripPosFromTyvar name tyvar =
-    let
-        stripRf rf =
-            case rf of
-                CA.Us _ ->
-                    CA.Us CA.S
-
-                CA.Pa _ ->
-                    CA.Pa CA.S
-
-                CA.Re _ ->
-                    CA.Re CA.S
-    in
-    { definedAt = CA.S
-    , rf = List.map stripRf tyvar.rf
-    }
 
 
 addTestDefs : TI.Env -> TI.Env
@@ -161,7 +141,9 @@ addTestDefs env =
             Dict.insert name
                 { definedAt = CA.T
                 , ty = ty
-                , freeTypeVariables = TI.typeTyvars ty
+
+                -- TODO populate nonFn
+                , freeTypeVariables = Dict.map (\k p -> { nonFn = False }) (TI.typeTyvars ty)
                 , isMutable = False
                 }
     in
@@ -177,14 +159,14 @@ addTestDefs env =
 -- normalizeSchema schema =
 --     let
 --         ( ty, dict ) =
---             normalizeType Dict.empty schema.type_
+--             normalizeType Dict.empty schema.ty
 --
 --         replaceName name =
 --             Dict.get name dict |> Maybe.withDefault name
 --     in
 --     { schema
---         | type_ = ty
---         , forall = Set.map replaceName schema.forall
+--         | ty = ty
+--         , freeTypeVariables = Set.map replaceName schema.freeTypeVariables
 --     }
 --
 --
@@ -276,9 +258,9 @@ functions =
             "a = add 3 1"
             (infer "a")
             (Test.okEqual
-                { type_ = tyNumber
-                , forall = Dict.empty
-                , mutable = False
+                { ty = tyNumber
+                , freeTypeVariables = Dict.empty
+                , isMutable = False
                 }
             )
         , codeTest "Known function with wrong params"
@@ -290,9 +272,9 @@ functions =
             , code = "a x = add x 1"
             , run = infer "a"
             , expected =
-                { type_ = function tyNumber tyNumber
-                , forall = Dict.empty
-                , mutable = False
+                { ty = function tyNumber tyNumber
+                , freeTypeVariables = Dict.empty
+                , isMutable = False
                 }
             }
         , simpleTest
@@ -300,9 +282,9 @@ functions =
             , code = "a x = add 1 x"
             , run = infer "a"
             , expected =
-                { type_ = function tyNumber tyNumber
-                , forall = Dict.empty
-                , mutable = False
+                { ty = function tyNumber tyNumber
+                , freeTypeVariables = Dict.empty
+                , isMutable = False
                 }
             }
         , simpleTest
@@ -310,9 +292,9 @@ functions =
             , code = "a = fn x: 1"
             , run = infer "a"
             , expected =
-                { forall = forall "0" []
-                , mutable = False
-                , type_ =
+                { freeTypeVariables = ftv "0"
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from = typeVariable { name = "0" }
                         , fromIsMutable = False
@@ -359,7 +341,7 @@ statements =
                   False
                 """
             , run = infer "a"
-            , expected = { type_ = constant "SPCore.Bool", forall = Dict.empty, mutable = False }
+            , expected = { ty = constant "SPCore.Bool", freeTypeVariables = Dict.empty, isMutable = False }
             }
         , simpleTest
             { name = "Definition statement return type None"
@@ -369,7 +351,7 @@ statements =
                   f x = 3
                 """
             , run = infer "a"
-            , expected = { type_ = tyNone, forall = Dict.empty, mutable = False }
+            , expected = { ty = tyNone, freeTypeVariables = Dict.empty, isMutable = False }
             }
         , codeTest "Local values can't shadow root values"
             """
@@ -417,14 +399,14 @@ variableTypes =
                 """
             , run = infer "id"
             , expected =
-                { type_ =
+                { ty =
                     typeFunction
                         { from = typeVariable { name = "a" }
                         , fromIsMutable = False
                         , to = typeVariable { name = "a" }
                         }
-                , forall = forall "a" []
-                , mutable = False
+                , freeTypeVariables = ftv "a"
+                , isMutable = False
                 }
             }
 
@@ -437,17 +419,17 @@ variableTypes =
                            """
                , run = infer "id"
                , expected =
-                   { type_ =
+                   { ty =
                        typeFunction
                            { from = typeVariable { name = "0" }
                            , fromIsMutable = False
                            , to = typeVariable { name = "0" }
                            }
-                   , forall = forall "0" []
-                   , mutable = False
+                   , freeTypeVariables = freeTypeVariables "0" []
+                   , isMutable = False
                    }
                }
-           , codeTest "Reject disconnected forall var types?"
+           , codeTest "Reject disconnected freeTypeVariables var types?"
                """
                id l =
                  as a -> b
@@ -494,9 +476,9 @@ variableTypes =
                """
                (infer "x")
                (Test.okEqual
-                   { forall = forall "2" []
-                   , mutable = False
-                   , type_ =
+                   { freeTypeVariables = freeTypeVariables "2" []
+                   , isMutable = False
+                   , ty =
                        typeFunction
                            { from = typeVariable { name = "2" }
                            , fromIsMutable = False
@@ -540,7 +522,7 @@ variableTypes =
                            b x = x
                            a = b 1
                            """
-               , expected = Ok { type_ = tyNumber, forall = Dict.empty, mutable = False }
+               , expected = Ok { ty = tyNumber, freeTypeVariables = Dict.empty, isMutable = False }
                }
            , simpleTest
                -- See note for the test above!
@@ -552,7 +534,7 @@ variableTypes =
                            b x = x
                            c = b 1
                            """
-               , expected = Ok { type_ = tyNumber, forall = Dict.empty, mutable = False }
+               , expected = Ok { ty = tyNumber, freeTypeVariables = Dict.empty, isMutable = False }
                }
            , simpleTest
                -- See note for the test above!
@@ -566,7 +548,7 @@ variableTypes =
                              b x = x
                              a
                            """
-               , expected = Ok { type_ = tyNumber, forall = Dict.empty, mutable = False }
+               , expected = Ok { ty = tyNumber, freeTypeVariables = Dict.empty, isMutable = False }
                }
         -}
         ]
@@ -649,9 +631,9 @@ mutability =
                         """
             , run = infer "a"
             , expected =
-                { type_ = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
-                , forall = Dict.empty
-                , mutable = False
+                { ty = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
+                , freeTypeVariables = Dict.empty
+                , isMutable = False
                 }
             }
         , hasError
@@ -660,13 +642,22 @@ mutability =
             , run = infer "a"
             , test = Test.errContain "mutable"
             }
-        , codeTest "Functions can't be mutable 2"
+        , codeTest
+            "Functions can't be mutable 2"
             """
             a @f =
               @f := (fn x: x)
             """
             (infer "a")
-            (Test.errContain "these mutable values contain functions: f")
+            (Test.errContain "mutable args cannot be functions")
+        , codeTest
+            "Functions can't be mutable 3"
+            """
+            a @f =
+              f 1
+            """
+            (infer "a")
+            (Test.errContain "mutable args cannot be functions")
         , hasError
             { name = "Lambda argument mutability is correctly inferred"
             , code = "a = fn x: reset x"
@@ -690,6 +681,18 @@ mutability =
             , run = infer "a"
             , test = Test.errContain "mutable"
             }
+        , codeTest
+            "Mutables can contain functions via free tyvars"
+            """
+            a x =
+              s @= x
+              s
+
+            z =
+              a (fn x: x)
+            """
+            (infer "a")
+            Test.isOk
         ]
 
 
@@ -712,14 +715,14 @@ higherOrderTypes =
                         """
             , run = infer "a"
             , expected =
-                { type_ =
+                { ty =
                     typeFunction
                         { from = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
                         , fromIsMutable = False
                         , to = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
                         }
-                , mutable = False
-                , forall = forall "a" []
+                , isMutable = False
+                , freeTypeVariables = ftv "a"
                 }
             }
         , simpleTest
@@ -727,9 +730,9 @@ higherOrderTypes =
             , code = "union X a = L"
             , run = infer "L"
             , expected =
-                { type_ = typeConstant { args = [ typeVariable { name = "a" } ], ref = "Test.X" }
-                , mutable = False
-                , forall = forall "a" []
+                { ty = typeConstant { args = [ typeVariable { name = "a" } ], ref = "Test.X" }
+                , isMutable = False
+                , freeTypeVariables = ftv "a"
                 }
             }
         ]
@@ -750,14 +753,14 @@ records =
             """
             (infer "a")
             (Test.okEqual
-                { forall =
+                { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [ CA.Re CA.S ] )
-                        , ( "3", [ CA.Re CA.S ] )
+                        [ ( "1", [] )
+                        , ( "3", [] )
                         , ( "4", [] )
                         ]
-                , mutable = False
-                , type_ =
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from =
                             typeRecord
@@ -783,13 +786,13 @@ records =
                         """
             , run = infer "a"
             , expected =
-                { forall =
+                { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [ CA.Re CA.S ] )
-                        , ( "3", [ CA.Re CA.S ] )
+                        [ ( "1", [] )
+                        , ( "3", [] )
                         ]
-                , mutable = False
-                , type_ =
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from =
                             typeRecord
@@ -839,12 +842,12 @@ records =
                             , extensible = Just "1"
                             }
                 in
-                { forall =
+                { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [ CA.Re CA.S ] )
+                        [ ( "1", [] )
                         ]
-                , mutable = False
-                , type_ =
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from = re
                         , fromIsMutable = False
@@ -866,12 +869,12 @@ records =
                         }
              in
              Test.okEqual
-                { forall =
+                { freeTypeVariables =
                     forallTuple
-                        [ ( "3", [ CA.Re CA.S ] )
+                        [ ( "3", [] )
                         ]
-                , mutable = False
-                , type_ =
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from = re
                         , fromIsMutable = False
@@ -887,13 +890,13 @@ records =
             """
             (infer "x")
             (Test.okEqual
-                { forall =
+                { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [ CA.Re CA.S ] )
+                        [ ( "1", [] )
                         , ( "2", [] )
                         ]
-                , mutable = False
-                , type_ =
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from =
                             typeRecord
@@ -936,9 +939,9 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { forall = forall "1" []
-                , mutable = False
-                , type_ =
+                { freeTypeVariables = ftv "1"
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from =
                             typeConstant
@@ -959,9 +962,9 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { forall = forallTuple [ ( "1", [] ), ( "2", [ CA.Re CA.S ] ) ]
-                , mutable = False
-                , type_ =
+                { freeTypeVariables = forallTuple [ ( "1", [] ), ( "2", [] ) ]
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from =
                             typeRecord
@@ -1020,9 +1023,9 @@ try_as =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Dict.empty
-                , mutable = False
-                , type_ =
+                { freeTypeVariables = Dict.empty
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from = typeConstant { ref = "SPCore.Bool", args = [] }
                         , fromIsMutable = False
@@ -1072,9 +1075,9 @@ if_then =
             """
             (infer "x")
             (Test.okEqual
-                { forall = Dict.empty
-                , mutable = False
-                , type_ =
+                { freeTypeVariables = Dict.empty
+                , isMutable = False
+                , ty =
                     typeFunction
                         { from = typeConstant { ref = "SPCore.Bool", args = [] }
                         , fromIsMutable = False
@@ -1102,4 +1105,31 @@ if_then =
             """
             (infer "x")
             (Test.errContain "SPCore.Number")
+        ]
+
+
+
+----
+--- NonFunction
+--
+
+
+nonFunction : Test
+nonFunction =
+    Test.Group "NonFunction"
+        [ codeTest
+            """
+            Basic functionality
+            """
+            """
+            blah a =
+              as List a -> List a
+              with a NonFunction
+              a
+
+            meh =
+              blah [fn x: x]
+            """
+            (infer "meh")
+            (Test.errContain "should not contain functions")
         ]

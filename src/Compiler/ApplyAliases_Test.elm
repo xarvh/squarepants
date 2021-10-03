@@ -46,7 +46,7 @@ tests =
                   as A Number Bool
                   a
                 """
-                (applyAndGetValue "a" >> Result.map .maybeAnnotation)
+                (applyAndGetValue "a" >> Result.map (.maybeAnnotation >> Maybe.map .ty))
                 ([ CA.TypeConstant p "SPCore.Number" []
                  ]
                     |> CA.TypeConstant p "SPCore.List"
@@ -70,7 +70,7 @@ tests =
                   as A Bool
                   a
                 """
-                (applyAndGetValue "a" >> Result.map .maybeAnnotation)
+                (applyAndGetValue "a" >> Result.map (.maybeAnnotation >> Maybe.map .ty))
                 (Dict.empty
                     |> Dict.insert "x" (CA.TypeConstant p "SPCore.Bool" [])
                     |> Dict.insert "y" (CA.TypeConstant p "SPCore.Bool" [])

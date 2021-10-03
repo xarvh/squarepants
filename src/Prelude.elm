@@ -118,7 +118,12 @@ insertUnop _ u =
     , pos = pos
     , isNative = True
     , body = []
-    , maybeAnnotation = Just u.ty
+    , maybeAnnotation =
+        Just
+            { pos = pos
+            , ty = u.ty
+            , nonFn = Dict.empty
+            }
     }
         |> CA.Value
         |> Dict.insert u.symbol
@@ -131,7 +136,12 @@ insertBinop _ b =
     , pos = pos
     , isNative = True
     , body = []
-    , maybeAnnotation = Just b.ty
+    , maybeAnnotation =
+        Just
+            { pos = pos
+            , ty = b.ty
+            , nonFn = List.foldl (\n -> Dict.insert n pos) Dict.empty b.nonFn
+            }
     }
         |> CA.Value
         |> Dict.insert b.symbol
@@ -148,7 +158,12 @@ insertFunction ( moduleName, localName, ty ) =
     , pos = pos
     , isNative = True
     , body = []
-    , maybeAnnotation = Just ty
+    , maybeAnnotation =
+        Just
+            { pos = pos
+            , ty = ty
+            , nonFn = Dict.empty
+            }
     }
         |> CA.Value
         |> Dict.insert name
@@ -159,14 +174,9 @@ pos =
     CA.N
 
 
-anyNonFunction : Type
-anyNonFunction =
-    CA.TypeVariable pos [ CA.Us pos ] "a"
-
-
 tyVar : String -> Type
 tyVar n =
-    CA.TypeVariable pos [] n
+    CA.TypeVariable pos n
 
 
 tyFun from to =
@@ -269,6 +279,7 @@ textConcat =
     , precedence = Op.Addittive
     , associativity = Op.Right
     , ty = typeBinopUniform Core.textType
+    , nonFn = []
     }
 
 
@@ -283,6 +294,7 @@ tuple =
             |> Dict.insert "second" (tyVar "b")
             |> CA.TypeRecord pos Nothing
             |> typeBinop False (tyVar "a") (tyVar "b")
+    , nonFn = []
     }
 
 
@@ -296,6 +308,7 @@ listCons =
     , precedence = Op.Cons
     , associativity = Op.Right
     , ty = typeBinop False item (Core.listType item) (Core.listType item)
+    , nonFn = []
     }
 
 
@@ -304,7 +317,8 @@ mutableAssign =
     { symbol = ":="
     , precedence = Op.Mutop
     , associativity = Op.Left
-    , ty = typeBinop True anyNonFunction anyNonFunction Core.noneType
+    , ty = typeBinop True (tyVar "a") (tyVar "a") Core.noneType
+    , nonFn = [ "a" ]
     }
 
 
@@ -318,6 +332,7 @@ and =
     , precedence = Op.Logical
     , associativity = Op.Right
     , ty = typeBinopUniform Core.boolType
+    , nonFn = []
     }
 
 
@@ -327,6 +342,7 @@ or =
     , precedence = Op.Logical
     , associativity = Op.Right
     , ty = typeBinopUniform Core.boolType
+    , nonFn = []
     }
 
 
@@ -336,6 +352,7 @@ add =
     , precedence = Op.Addittive
     , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
+    , nonFn = []
     }
 
 
@@ -345,6 +362,7 @@ subtract =
     , precedence = Op.Addittive
     , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
+    , nonFn = []
     }
 
 
@@ -354,6 +372,7 @@ multiply =
     , precedence = Op.Multiplicative
     , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
+    , nonFn = []
     }
 
 
@@ -363,6 +382,7 @@ divide =
     , precedence = Op.Multiplicative
     , associativity = Op.Left
     , ty = typeBinopUniform Core.numberType
+    , nonFn = []
     }
 
 
@@ -372,6 +392,7 @@ mutableAdd =
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
     , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+    , nonFn = []
     }
 
 
@@ -381,6 +402,7 @@ mutableSubtract =
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
     , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+    , nonFn = []
     }
 
 
@@ -393,7 +415,8 @@ equal =
     { symbol = "=="
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
+    , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType
+    , nonFn = [ "a" ]
     }
 
 
@@ -402,7 +425,8 @@ lesserThan =
     { symbol = "<"
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
+    , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType
+    , nonFn = [ "a" ]
     }
 
 
@@ -411,7 +435,8 @@ greaterThan =
     { symbol = ">"
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , ty = typeBinop False anyNonFunction anyNonFunction Core.boolType
+    , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType
+    , nonFn = [ "a" ]
     }
 
 
@@ -429,6 +454,7 @@ sendRight =
             (tyVar "a")
             (tyFun (tyVar "a") (tyVar "b"))
             (tyVar "b")
+    , nonFn = []
     }
 
 
@@ -442,6 +468,7 @@ sendLeft =
             (tyFun (tyVar "a") (tyVar "b"))
             (tyVar "a")
             (tyVar "b")
+    , nonFn = []
     }
 
 

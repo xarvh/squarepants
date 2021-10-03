@@ -183,15 +183,16 @@ makeProgram metaFile files =
     in
     do withAliases <| \alsDefs ->
     let
-        blah : Result String ( CA.AllDefs, TC.Env, TC.Substitutions )
+        blah : Result String (  TC.Env )
         blah =
             alsDefs
-                |> TC.inspectModule Dict.empty
+                |> TC.allDefsToEnvAndValues
+                |> (\( env, values ) -> TC.fromAllValueDefs env values)
                 |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
-    do blah <| \( typedProgram, env, subs ) ->
-    typedProgram
-        |> Compiler.CanonicalToJs.translateAll subs
+    do blah <| \( env ) ->
+    alsDefs
+        |> Compiler.CanonicalToJs.translateAll
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
         |> String.join "\n\n"
@@ -205,8 +206,8 @@ makeProgram metaFile files =
 --
 
 
-spcc : Process -> IO ()
-spcc process =
+program : Process -> IO ()
+program process =
     -- argv[0]: MainSpcc.elm
     -- argv[1]: --debug
     case List.drop 2 process.argv of
@@ -222,8 +223,3 @@ spcc process =
 
         _ ->
             exit "no output file specified"
-
-
-program : Posix.IO.PosixProgram
-program =
-    Posix.IO.program spcc

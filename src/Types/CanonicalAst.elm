@@ -77,16 +77,23 @@ type alias RootValueDef =
     { name : String
     , localName : String
     , pos : Pos
-    , maybeAnnotation : Maybe Type
+    , maybeAnnotation : Maybe Annotation
     , isNative : Bool
     , body : List Statement
+    }
+
+
+type alias Annotation =
+    { pos : Pos
+    , ty : Type
+    , nonFn : Dict String Pos
     }
 
 
 type alias LocalValueDef =
     { pattern : Pattern
     , mutable : Bool
-    , maybeAnnotation : Maybe Type
+    , maybeAnnotation : Maybe Annotation
     , body : List Statement
     }
 
@@ -108,7 +115,7 @@ rootToLocalDef r =
 
 type Type
     = TypeConstant Pos String (List Type)
-    | TypeVariable Pos (List RejectFunction) String
+    | TypeVariable Pos String
     | TypeFunction Pos Type Bool Type
     | TypeRecord Pos (Maybe String) (Dict String Type)
     | TypeAlias Pos String Type
@@ -122,8 +129,7 @@ type
     = Us Pos
       -- parameter is mutable
     | Pa Pos
-      -- it's a record
-    | Re Pos
+
 
 
 
@@ -302,7 +308,7 @@ typePos ty =
         TypeConstant p _ _ ->
             p
 
-        TypeVariable p _ _ ->
+        TypeVariable p _ ->
             p
 
         TypeFunction p _ _ _ ->
@@ -328,6 +334,8 @@ type PosMap
     | PosMap_MutParam String
     | PosMap_RootValueDef RootValueDef
     | PosMap_MutableArg VariableArgs
+    | PosMap_Annotation Annotation
+    | PosMap_NonFunction String
 
 
 posMap_module : (PosMap -> Pos -> M acc Pos) -> AllDefs -> M acc AllDefs
@@ -353,15 +361,7 @@ posMap_module f a_defs =
 posMap_rootValueDef : (PosMap -> Pos -> M acc Pos) -> RootValueDef -> M acc RootValueDef
 posMap_rootValueDef f def =
     do (posMap_block f def.body) <| \b_body ->
-    do
-        (case def.maybeAnnotation of
-            Nothing ->
-                return def.maybeAnnotation
-
-            Just ty ->
-                do (posMap_type f ty) <| (Just >> return)
-        )
-    <| \b_ann ->
+    do (posMap_annotation f def.maybeAnnotation) <| \b_ann ->
     do (f (PosMap_RootValueDef def) def.pos) <| \b_pos ->
     return
         { name = def.name
@@ -371,6 +371,24 @@ posMap_rootValueDef f def =
         , maybeAnnotation = b_ann
         , body = b_body
         }
+
+
+posMap_annotation : (PosMap -> Pos -> M acc Pos) -> Maybe Annotation -> M acc (Maybe Annotation)
+posMap_annotation f maybeAnnotation =
+    case maybeAnnotation of
+        Nothing ->
+            return Nothing
+
+        Just ann ->
+            do (f (PosMap_Annotation ann) ann.pos) <| \pos ->
+            do (posMap_type f ann.ty) <| \ty ->
+            do (M.dict_map (\name -> f (PosMap_NonFunction name)) ann.nonFn) <| \nf ->
+            { pos = pos
+            , ty = ty
+            , nonFn = nf
+            }
+                |> Just
+                |> return
 
 
 posMap_aliasDef : (PosMap -> Pos -> M acc Pos) -> AliasDef -> M acc AliasDef
@@ -396,15 +414,7 @@ posMap_unionDef f def =
 posMap_valueDef : (PosMap -> Pos -> M acc Pos) -> LocalValueDef -> M acc LocalValueDef
 posMap_valueDef f def =
     do (posMap_block f def.body) <| \b_body ->
-    do
-        (case def.maybeAnnotation of
-            Nothing ->
-                return def.maybeAnnotation
-
-            Just ty ->
-                do (posMap_type f ty) <| (Just >> return)
-        )
-    <| \b_ann ->
+    do (posMap_annotation f def.maybeAnnotation) <| \b_ann ->
     do (posMap_pattern f def.pattern) <| \b_pattern ->
     return
         { pattern = b_pattern
@@ -426,9 +436,9 @@ posMap_type f ty =
             do (M.list_map (posMap_type f) a_args) <| \b_args ->
             return <| TypeConstant b_pos name b_args
 
-        TypeVariable a_pos allowFunctions name ->
+        TypeVariable a_pos name ->
             do (fty a_pos) <| \b_pos ->
-            return <| TypeVariable b_pos allowFunctions name
+            return <| TypeVariable b_pos name
 
         TypeFunction a_pos a_from fromIsMut a_to ->
             do (fty a_pos) <| \b_pos ->

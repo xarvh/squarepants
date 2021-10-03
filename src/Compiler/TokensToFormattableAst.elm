@@ -709,7 +709,7 @@ inlineStatementOrBlock =
         ]
 
 
-inlineStatementOrBlockWithAnnotation : Parser ( Maybe FA.Type, List FA.Statement )
+inlineStatementOrBlockWithAnnotation : Parser ( Maybe FA.Annotation, List FA.Statement )
 inlineStatementOrBlockWithAnnotation =
     let
         blockWithAnnotation =
@@ -732,11 +732,27 @@ inlineStatementOrBlockWithAnnotation =
 --
 
 
-typeAnnotation : Parser FA.Type
+typeAnnotation : Parser FA.Annotation
 typeAnnotation =
+    do here <| \start ->
     do (kind Token.As) <| \_ ->
     do (inlineOrBelowOrIndented typeExpr) <| \ty ->
-    succeed ty
+    do (maybe (inlineOrBelowOrIndented nonFunction)) <| \nf ->
+    do here <| \end ->
+    succeed
+        { pos = ( start, end )
+        , ty = ty
+        , nonFn = Maybe.withDefault [] nf
+        }
+
+
+nonFunction : Parser (List String)
+nonFunction =
+    do (kind Token.With) <| \_ ->
+    do (rawList nonMutName) <| \nf ->
+    do nonMutName <| \n ->
+    -- TODO do something with nonMutName
+    succeed <| OneOrMore.toList nf
 
 
 typeTerm : Parser FA.Type
