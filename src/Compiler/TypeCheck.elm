@@ -909,6 +909,7 @@ type UnifyReason
     | UnifyReason_ConstructorArgument UnifyConstructorWithItsArgsParams
     | UnifyReason_AttributeAccess Name
     | UnifyReason_AttributeUpdate (List Name)
+    | UnifyReason_Override
 
 
 type UnifyError
@@ -986,6 +987,7 @@ unify_ reason pos1 t1 t2 =
                 case ( Dict.get v1_name subs, Dict.get v2_name subs ) of
                     ( Just sub1, Just sub2 ) ->
                         do (unify_ reason pos1 sub1 sub2) <| \v ->
+                        -- I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
                         do (addSubstitution { overrideIsAnError = False } reason v1_name v) <| \_ ->
                         do (addSubstitution { overrideIsAnError = False } reason v2_name v) <| \subbedTy ->
                         return subbedTy
@@ -1173,23 +1175,31 @@ addSubstitution { overrideIsAnError } reason name ty =
 
 checkOverrides : Bool -> UnifyReason -> Name -> Type -> Monad Type
 checkOverrides overrideIsAnError reason name ty =
-    if not overrideIsAnError then
-        return ty
+    do (get .substitutions) <| \subs ->
+    case Dict.get name subs of
+        Nothing ->
+            return ty
 
-    else
-        do (get .substitutions) <| \subs ->
-        case Dict.get name subs of
-            Nothing ->
-                return ty
+        Just sub ->
+            {-
 
-            Just sub ->
-                addError (CA.I 3)
-                    [ "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
-                    , "Old type " ++ typeToText ty
-                    , "New type " ++ typeToText sub
-                    , "This is not your fault, it's a bug in the Squarepants compiler."
-                    , Debug.toString reason
-                    ]
+               if not overrideIsAnError then
+                   return ty
+
+               else
+
+                           addError (CA.I 3)
+                               [ "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
+                               , "Old type " ++ typeToText ty
+                               , "New type " ++ typeToText sub
+                               , "This is not your fault, it's a bug in the Squarepants compiler."
+                               , Debug.toString reason
+                               ]
+            -}
+            -- I slapped this here randomly, it will come back biting me in the ass when it runs in infinite circles
+            -- Also, it's late at night and I really don't know what I'm doing.
+            -- Also hey it's working WTF
+            unify_ UnifyReason_Override (CA.I 777) ty sub
 
 
 checkRecursion : Name -> Type -> Monad (Result Type { newTyContainsSubbedTyvars : Bool, newNameIsUsedInSubbingTypes : Bool })
@@ -1626,6 +1636,9 @@ errorIncompatibleTypes reason pos unifiedType clashes =
 
                 UnifyReason_AttributeUpdate attrNames ->
                     "You are trying to update the " ++ String.join ", " attrNames ++ " attributes"
+
+                UnifyReason_Override ->
+                    "this is addSubstitution running a UnifyReason_Override, I don't know what I'm doing"
     in
     case unifiedType of
         CA.TypeVariable p unifiedTypeName ->

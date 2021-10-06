@@ -50,20 +50,18 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-a @f =
-  @f := (fn x: x)
+result = 1
       """
     )
 
 
 initialFiles =
     [ moduleMain
-
-    --     , moduleMaybe
-    --     , moduleList
-    --     , moduleText
-    --     , moduleRandom
-    --     , languageOverview
+    , moduleMaybe
+    , moduleList
+    , moduleText
+    , moduleRandom
+    , languageOverview
     , ( metaFileName, Prelude.metaString )
     ]
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -103,7 +101,7 @@ moduleText =
         "<native>"
 
       join sep listOfText =
-        as Text -> List Text -> Text
+        as Text -> [Text] -> Text
 
         try listOfText as
             SPCore.Nil:
@@ -111,6 +109,7 @@ moduleText =
 
             SPCore.Cons head tail:
               rec ls acc =
+                as [Text] -> Text -> Text
                 try ls as
                   SPCore.Nil:
                     acc
@@ -141,6 +140,7 @@ reverse aList =
     as List a -> List a
 
     rec ls acc =
+        as [a] -> [a] -> [a]
         try ls as
             SPCore.Nil:
                 acc
@@ -155,6 +155,7 @@ repeat n a =
     as Number -> a -> List a
 
     rec c acc =
+        as Number -> [a] -> [a]
         if c > 0 then rec (c - 1) (SPCore.Cons a acc) else acc
 
     rec n []
@@ -787,7 +788,7 @@ viewProgram model =
                                         [ style "min-width" "400px" ]
                                         [ Html.pre
                                             []
-                                            [ (name ++ " as " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: " )
+                                            [ (name ++ " as " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: ")
                                                 |> Html.text
                                             ]
                                         ]
