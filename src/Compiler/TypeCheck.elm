@@ -1100,7 +1100,7 @@ unifyToNonExtensibleRecord : UnifyReason -> Name -> Dict Name Type -> Dict Name 
 unifyToNonExtensibleRecord reason aName aOnly bOnly bothUnified =
     if aOnly /= Dict.empty then
         -- b is missing attributes but is not extensible
-        Debug.todo "errorRecordDoesNotHaveAttributes b aOnly"
+        errorTodo (CA.I 12) <| "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
