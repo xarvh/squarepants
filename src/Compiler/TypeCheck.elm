@@ -109,16 +109,20 @@ type alias Name =
 
 type alias Env =
     { instanceVariables : Dict Name InstanceVariable
+
+    -- These are only the type variables explicitly defined in type annotations
     , typeVariables : Dict Name Pos
+
+    -- This is used to produce nicer errors for when a recursive function is not annotated
+    , nonAnnotatedRecursives : Dict Name Pos
     }
 
 
 initEnv : Env
 initEnv =
     { instanceVariables = Dict.empty
-
-    -- These are only the type variables explicitly defined in type annotations
     , typeVariables = Dict.empty
+    , nonAnnotatedRecursives = Dict.empty
     }
 
 
@@ -413,13 +417,15 @@ fromDefinition env isMutable pattern maybeAnnotation body =
             -- No annotation: recursive definitions are not allowed
             -- This means that *first* we infer the definition, *then* we add it to the environment
             --
-            -- TODO if the user tries to use the variable recursively, tell them they need an annotation
-            --
             -- TODO ability to infer recursive definitions, but only if I don't have to rewrite everything
             --
-            do (fromBlock env body) <| \bodyType_ ->
-            do (applySubsToType bodyType_) <| \bodyType ->
             do (fromPattern env pattern Dict.empty) <| \patternOut ->
+            let
+                env1 =
+                    { env | nonAnnotatedRecursives = Dict.foldl (\name ( pos, ty ) -> Dict.insert name pos) env.nonAnnotatedRecursives patternOut.vars }
+            in
+            do (fromBlock env1 body) <| \bodyType_ ->
+            do (applySubsToType bodyType_) <| \bodyType ->
             do (unify patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty) <| \unifiedType ->
             do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| return
 
@@ -483,7 +489,7 @@ fromExpression env expression =
         CA.Variable pos { name, attrPath } ->
             case Dict.get name env.instanceVariables of
                 Nothing ->
-                    errorUndefinedVariable pos name
+                    errorUndefinedVariable env pos name
 
                 Just var ->
                     {-
@@ -665,7 +671,7 @@ fromArgument env argument =
         CA.ArgumentMutable pos { name, attrPath } ->
             case Dict.get name env.instanceVariables of
                 Nothing ->
-                    do (errorUndefinedVariable pos name) <| \ty ->
+                    do (errorUndefinedVariable env pos name) <| \ty ->
                     return ( True, ty )
 
                 Just var ->
@@ -808,7 +814,7 @@ fromPattern env pattern vars =
                     -- TODO still add all variables defined in the args, otherwise there will
                     -- missing variables that will trigger misleading "undefined variable" errors
                     -- (ie, use unifyConstructorWithItsArgs anyway)
-                    do (errorUndefinedVariable pos ref) <| \ety ->
+                    do (errorUndefinedVariable env pos ref) <| \ety ->
                     return <| PatternOut vars pos ety
 
                 Just instanceVar ->
@@ -1384,7 +1390,8 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
         refinedTy =
             replaceTypeVariables subs ty
     in
-    { instanceVariables =
+    { nonAnnotatedRecursives = env.nonAnnotatedRecursives
+    , instanceVariables =
         Dict.insert name
             { definedAt = pos
             , ty = refinedTy
@@ -1565,11 +1572,18 @@ addError pos message =
 --
 
 
-errorUndefinedVariable : Pos -> Name -> Monad Type
-errorUndefinedVariable pos name =
-    addError pos
-        [ "Undefined variable: " ++ name
-        ]
+errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
+errorUndefinedVariable env pos name =
+    case Dict.get name env.nonAnnotatedRecursives of
+        Nothing ->
+            addError pos
+                [ "Undefined variable: " ++ name
+                ]
+
+        Just defPos ->
+            addError pos
+                [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
+                ]
 
 
 errorIncompatibleTypes : UnifyReason -> CA.Pos -> Type -> Dict Name TypeClash -> Monad Type
