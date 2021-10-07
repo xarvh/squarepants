@@ -1123,11 +1123,20 @@ addSubstitution : Pos -> UnifyReason -> Name -> Type -> Monad Type
 addSubstitution pos reason name rawTy =
     do (applySubsToType rawTy) <| \ty ->
     if typeHasTyvar name ty then
-        addError pos
-            [ "COMPILER BUG: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText ty
-            , ""
-            , "This is not your fault, it's a bug in the Squarepants compiler."
-            ]
+        -- TODO This feels a bit like a hacky work around.
+        -- Maybe it's because I don't call applySubsToType enough before calling unify?
+        -- Then again, it feels more robust?
+        -- Too much feeling, not enough understanding.
+        if typeIsTyvar name ty then
+            return ty
+
+        else
+            addError pos
+                [ "COMPILER BUG: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText rawTy
+                , ""
+                , "This is not your fault, it's a bug in the Squarepants compiler."
+                , Debug.toString reason
+                ]
 
     else
         do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
@@ -1154,6 +1163,16 @@ addSubstitution pos reason name rawTy =
                                 |> Dict.insert name ty
                       }
                     )
+
+
+typeIsTyvar : Name -> Type -> Bool
+typeIsTyvar name ty =
+    case ty of
+        CA.TypeVariable _ n ->
+            n == name
+
+        _ ->
+            False
 
 
 checkNonFunction : Name -> Type -> Monad { freeVarsToFlag : List Name }

@@ -173,9 +173,6 @@ positionToLineAndColumn s index =
 toString : ErrorEnv -> ErrorArgs -> String
 toString eEnv eArgs =
     let
-        hr =
-            "-- ERROR!!! ------------------------------"
-
         { location, block } =
             posToHuman eEnv eArgs.pos
 
@@ -186,7 +183,7 @@ toString eEnv eArgs =
                 |> List.concatMap (String.split "\n")
                 |> List.map ((++) "  ")
     in
-    hr :: location :: "" :: description |> String.join "\n"
+    String.padRight 50 '-' (location ++ " ") :: "" :: description |> String.join "\n"
 
 
 posToHuman : ErrorEnv -> Pos -> { location : String, block : String }
