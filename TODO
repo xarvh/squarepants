@@ -1,1 +1,1 @@
-
+* Rename Number to Int, since `Number` will become the generic class

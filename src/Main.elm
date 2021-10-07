@@ -21,6 +21,7 @@ import Compiler.TypeCheck as TC
 import Compiler.TypeCheck_Test
 import Css
 import Dict exposing (Dict)
+import GeneratedModules
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
@@ -56,111 +57,15 @@ result = 1
 
 
 initialFiles =
-    [ moduleMain
-    , moduleMaybe
-    , moduleList
-    , moduleText
-    , moduleRandom
-    , languageOverview
-    , ( metaFileName, Prelude.metaString )
+    [ [ moduleMain ]
+    , GeneratedModules.modules
+    , [ languageOverview
+      , moduleRandom
+      , ( metaFileName, Prelude.metaString )
+      ]
     ]
+        |> List.concat
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
-
-
-metaFileName =
-    "meta"
-
-
-moduleMaybe =
-    ( "SPCore/Maybe"
-    , """
-      union Maybe a = Nothing, Just a
-
-      andThen f ma =
-          as (a -> Maybe b) -> Maybe a -> Maybe b
-
-          try ma as
-              Nothing: Nothing
-              Just a: f a
-
-      map f m =
-        as (a -> b) -> Maybe a -> Maybe b
-
-        try m as
-          Nothing: Nothing
-          Just v: Just (f v)
-        """
-    )
-
-
-moduleText =
-    ( "SPCore/Text"
-    , """
-      fromInt n =
-        as Number -> Text
-        "<native>"
-
-      join sep listOfText =
-        as Text -> [Text] -> Text
-
-        try listOfText as
-            SPCore.Nil:
-              ""
-
-            SPCore.Cons head tail:
-              rec ls acc =
-                as [Text] -> Text -> Text
-                try ls as
-                  SPCore.Nil:
-                    acc
-                  SPCore.Cons h t:
-                    rec t << acc .. sep .. h
-
-              rec tail head
-        """
-    )
-
-
-moduleList =
-    ( "SPCore/List"
-    , """
-each ls f =
-    as List a -> (a -> b) -> None
-
-    try ls as
-        SPCore.Nil:
-            None
-
-        SPCore.Cons head tail:
-            f head
-            each tail f
-
-
-reverse aList =
-    as List a -> List a
-
-    rec ls acc =
-        as [a] -> [a] -> [a]
-        try ls as
-            SPCore.Nil:
-                acc
-
-            SPCore.Cons head tail:
-                rec tail (SPCore.Cons head acc)
-
-    rec aList []
-
-
-repeat n a =
-    as Number -> a -> List a
-
-    rec c acc =
-        as Number -> [a] -> [a]
-        if c > 0 then rec (c - 1) (SPCore.Cons a acc) else acc
-
-    rec n []
-        """
-    )
 
 
 moduleRandom =
@@ -204,6 +109,11 @@ number min max @wrappedSeed =
         seed
       """
     )
+
+
+
+metaFileName =
+    "meta"
 
 
 languageOverview =

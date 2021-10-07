@@ -1,8 +1,9 @@
 
 map f =
-    as (a -> b) -> [ a ] -> [ b ]
+    as (a -> b) -> [a] -> [b]
 
     rec ls =
+        as [a] -> [b]
         try ls as
             []:
                 []
@@ -30,7 +31,7 @@ mapFirst f ls =
 
 
 each ls f =
-    as [ a ] -> (a -> b) -> None
+    as [a] -> (a -> b) -> None
 
     try ls as
         []:
@@ -42,9 +43,10 @@ each ls f =
 
 
 reverse aList =
-    as [ a ] -> [ a ]
+    as [a] -> [a]
 
     rec ls acc =
+        as [a] -> [a] -> [a]
         try ls as
             []:
                 acc
@@ -59,6 +61,7 @@ repeat n a =
     as Number -> a -> [ a ]
 
     rec c acc =
+        as Number -> [a] -> [a]
         if c > 0 then rec (c - 1) (a :: acc) else acc
 
     rec n []

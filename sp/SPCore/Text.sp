@@ -72,6 +72,7 @@ join sep listOfText =
         SPCore.Cons head tail:
           rec ls acc =
             as [ Text ] -> Text -> Text
+
             try ls as
               SPCore.Nil:
                 acc
