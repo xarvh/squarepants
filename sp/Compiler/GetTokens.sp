@@ -6,7 +6,7 @@
 alias Buffer =
     {
     , tail as Text
-    , pos as Number
+    , pos as Int
     }
 
 
@@ -19,13 +19,13 @@ init s =
 
 
 pos b =
-    as Buffer -> Number
+    as Buffer -> Int
 
     b.pos
 
 
 consume l b =
-    as Number -> Buffer -> Buffer
+    as Int -> Buffer -> Buffer
 
     {
     , tail = Text.slice 0 l b.tail
@@ -68,9 +68,9 @@ alias ReadState =
     , codeAsString as Text
     , moduleName as Text
     #, code as List Char
-    , multiCommentDepth as Number
-    , indentStack as [ Number ]
-    , maybeIndentToAdd as Maybe Number
+    , multiCommentDepth as Int
+    , indentStack as [ Int ]
+    , maybeIndentToAdd as Maybe Int
     , accum as [ Token ]
     }
 
@@ -100,8 +100,8 @@ lexerStep state =
     else
         # TODO assert that each iteration eats at least one char
         state
-            >> lexContent pos state.buffer
-            >> Result.map lexerStep
+            >> lexContent (pos state.buffer)
+            >> Result.andThen lexerStep
 
 
 closeOpenBlocks state =
@@ -119,10 +119,10 @@ closeOpenBlocks state =
 
 
 lexContent startPos state =
-    as Number -> ReadState -> Res ReadState
+    as Int -> ReadState -> Res ReadState
 
     tryString string contentAhead updateState =
-        as Bool -> Text -> Number -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
+        as Text -> Bool -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
 
         p =
             pos state.buffer
@@ -176,7 +176,7 @@ chainIf predicate f result =
 
 
 addIndentTokens endPos state =
-    as Number -> ReadState -> Res ReadState
+    as Int -> ReadState -> Res ReadState
 
     try state.maybeIndentToAdd as
         Nothing:
@@ -187,7 +187,7 @@ addIndentTokens endPos state =
 
 
 addIndentTokensRec endPos newIndent isFirstRecursion state stack =
-    as Number -> Number -> Bool -> ReadState -> List Number -> Res ReadState
+    as Int -> Int -> Bool -> ReadState -> List Int -> Res ReadState
 
     lastIndent & poppedStack =
         try stack as
@@ -264,7 +264,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
 
 
 contentLineToTokens startPos state =
-    as Number -> ReadState -> Res ReadState
+    as Int -> ReadState -> Res ReadState
 
     contentLine =
         Text.slice startPos (pos state.buffer) state.codeAsString
@@ -282,7 +282,7 @@ alias Regex = Text -> Text
 
 
 contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
-    as Text -> Number -> [ Token ] -> Result (ReadState -> Error) [ Token ]
+    as Text -> Int -> [ Token ] -> Result (ReadState -> Error) [ Token ]
 
     try Text.trimLeft untrimmedBlock as
         "":
@@ -339,7 +339,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
 #                            contentLineToTokensRec newBlock tokenEnd accu
 
 
-alias Constructor = Text -> Result (Number -> ReadState -> Error) ( Token.Kind & Number )
+alias Constructor = Text -> Result (Int -> ReadState -> Error) ( Token.Kind & Int )
 
 
 recognisedTokens =
@@ -362,7 +362,7 @@ recognisedTokens =
 
     List.map recordEntryToTuple
         [
-        , { # Numbers
+        , { # Ints
           , regex = "[ ]*[0-9]+[.]?[0-9_]*"
           , consumed = Text.length
           , constructor = fn match: match >> Text.trimLeft >> Token.NumberLiteral >> Ok
@@ -410,7 +410,7 @@ recognisedTokens =
                             Token.Unop Prelude.not_
 
                         _ :
-                            try String.uncons match as
+                            try Text.uncons match as
                                 Nothing:
                                     Debug.todo "not happening"
 
@@ -440,13 +440,13 @@ recognisedTokens =
                 fn m:
                     try m >> Text.trimLeft >> Text.dropRight 1 as
                         "+":
-                            Token.Unop Prelude.unaryPlus >> Ok
+                            Ok << Token.Unop Prelude.unaryPlus
 
                         "-":
-                            Token.Unop Prelude.unaryMinus >> Ok
+                            Ok << Token.Unop Prelude.unaryMinus
 
-                        _ :
-                            Err errorUnknownOperator
+                        op :
+                            Err << errorUnknownOperator op
           }
         , { # Squiggles
           , regex = "[ ]*[=+\\-*/:><!&^|@]+"
@@ -472,12 +472,16 @@ recognisedTokens =
                         "@=":
                             Ok << Token.Defop { mutable = True }
 
-                        _:
+                        op:
                             try Dict.get match Prelude.binops as
                                 Nothing:
-                                    Err errorUnknownOperator
+                                    Err << errorUnknownOperator op
 
                                 Just binop:
                                     Ok << Token.Binop m binop
           }
         ]
+
+errorUnknownOperator op =
+    as Text -> Int -> ReadState -> Error
+    Debug.todo "not implemented: errorUnknownOperator"

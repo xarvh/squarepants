@@ -1,1 +1,8 @@
-* Rename Number to Int, since `Number` will become the generic class
+* Types that don't exist because their module does not exist should not reach typeCheck
+      ---> Should Apply Alias do it?
+
+* Should error when type constants don't have enough params?
+
+* TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
+
+* Humanize must break a type into multiple lines

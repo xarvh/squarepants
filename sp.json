@@ -52,10 +52,26 @@
                     ]
                 },
                 {
+                    "path": "Prelude",
+                    "importAs": "Prelude",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Int"
+                    ]
+                },
+                {
                     "path": "SPCore/List",
                     "importAs": "List",
                     "globalValues": [],
                     "globalTypes": []
+                },
+                {
+                    "path": "SPCore/Dict",
+                    "importAs": "Dict",
+                    "globalValues": [],
+                    "globalTypes": [
+                      "Dict"
+                    ]
                 },
                 {
                     "path": "SPCore/Maybe",

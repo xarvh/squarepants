@@ -3,6 +3,6 @@ default:
 
 spspcc:
 	reset
-	./spcc build/out.js
+	./spcc sp/Main.sp build/out.js
 	node build/out.js
 

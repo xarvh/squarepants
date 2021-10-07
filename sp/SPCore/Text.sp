@@ -4,21 +4,21 @@
 
 
 length s =
-    as Text -> Number
+    as Text -> Int
 
     # native
     -1
 
 
 slice start end s =
-    as Number -> Number -> Text -> Text
+    as Int -> Int -> Text -> Text
 
     # native
     ""
 
 
 fromInt n =
-    as Number -> Text
+    as Int -> Text
 
     # native
     ""
@@ -35,8 +35,21 @@ trimLeft s =
     as Text -> Text
 
     # native
-    Debug.todo "implement native!"
+    Debug.todo "trimLeft must be implemented natively"
 
+
+dropRight n s =
+    as Int -> Text -> Text
+
+    # native
+    Debug.todo "dropRight must be implemented natively"
+
+
+uncons s =
+    as Text -> Maybe (Text & Text)
+
+    # native
+    Debug.todo "uncons must be implemented natively"
 
 
 

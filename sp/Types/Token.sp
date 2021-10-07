@@ -1,8 +1,8 @@
 
 alias Token =
     { kind as Kind
-    , start as Number
-    , end as Number
+    , start as Int
+    , end as Int
     }
 
 
@@ -28,7 +28,7 @@ union Kind =
     , With
     # Ops
     , Defop { mutable as Bool }
-    , Unop Text Types/Unop.Unop
+    , Unop Types/Unop.Unop
     , Binop Text Types/Binop.Binop
     , Arrow { mutable as Bool }
     # Parens

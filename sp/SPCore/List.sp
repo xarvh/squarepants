@@ -58,10 +58,10 @@ reverse aList =
 
 
 repeat n a =
-    as Number -> a -> [ a ]
+    as Int -> a -> [ a ]
 
     rec c acc =
-        as Number -> [a] -> [a]
+        as Int -> [a] -> [a]
         if c > 0 then rec (c - 1) (a :: acc) else acc
 
     rec n []
