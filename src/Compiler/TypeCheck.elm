@@ -84,7 +84,7 @@ import Dict exposing (Dict)
 import Human.CanonicalAst
 import RefHierarchy
 import Set exposing (Set)
-import StateMonad as M exposing (M, do, return, get)
+import StateMonad as M exposing (M, do, get, return)
 import Types.CanonicalAst as CA exposing (Pos, Type)
 import Types.Error as Error exposing (Error, Res)
 import Types.Literal
@@ -981,21 +981,21 @@ unify_ reason pos1 t1 t2 =
                     ( Just sub1, Just sub2 ) ->
                         do (unify_ reason pos1 sub1 sub2) <| \v ->
                         -- I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
-                        do (addSubstitution { overrideIsAnError = False } reason v1_name v) <| \_ ->
-                        do (addSubstitution { overrideIsAnError = False } reason v2_name v) <| \subbedTy ->
+                        do (addSubstitution pos reason v1_name v) <| \_ ->
+                        do (addSubstitution pos reason v2_name v) <| \subbedTy ->
                         return subbedTy
 
                     ( Nothing, Just sub2 ) ->
-                        addSubstitution { overrideIsAnError = True } reason v1_name t2
+                        addSubstitution pos reason v1_name t2
 
                     _ ->
-                        addSubstitution { overrideIsAnError = True } reason v2_name t1
+                        addSubstitution pos reason v2_name t1
 
-        ( CA.TypeVariable _ name1, _ ) ->
-            addSubstitution { overrideIsAnError = True } reason name1 t2
+        ( CA.TypeVariable pos name1, _ ) ->
+            addSubstitution pos reason name1 t2
 
-        ( _, CA.TypeVariable _ name2 ) ->
-            addSubstitution { overrideIsAnError = True } reason name2 t1
+        ( _, CA.TypeVariable pos name2 ) ->
+            addSubstitution pos reason name2 t1
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
             if a_fromIsMutable /= b_fromIsMutable then
@@ -1065,10 +1065,10 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
     do (M.dict_map (\k ( a, b ) -> unify_ reason pos a b) both) <| \bothUnified ->
     case ( a_ext, b_ext ) of
         ( Just aName, Nothing ) ->
-            unifyToNonExtensibleRecord reason aName aOnly bOnly bothUnified
+            unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified
 
         ( Nothing, Just bName ) ->
-            unifyToNonExtensibleRecord reason bName bOnly aOnly bothUnified
+            unifyToNonExtensibleRecord pos reason bName bOnly aOnly bothUnified
 
         ( Nothing, Nothing ) ->
             if bOnly == Dict.empty && aOnly == Dict.empty then
@@ -1084,22 +1084,22 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                 sub =
                     CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
             in
-            do (addSubstitution { overrideIsAnError = True } reason aName sub) <| \_ ->
-            do (addSubstitution { overrideIsAnError = True } reason bName sub) <| \_ ->
+            do (addSubstitution pos reason aName sub) <| \_ ->
+            do (addSubstitution pos reason bName sub) <| \_ ->
             return sub
 
 
-unifyToNonExtensibleRecord : UnifyReason -> Name -> Dict Name Type -> Dict Name Type -> Dict Name Type -> Monad Type
-unifyToNonExtensibleRecord reason aName aOnly bOnly bothUnified =
+unifyToNonExtensibleRecord : Pos -> UnifyReason -> Name -> Dict Name Type -> Dict Name Type -> Dict Name Type -> Monad Type
+unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
     if aOnly /= Dict.empty then
         -- b is missing attributes but is not extensible
-        errorTodo (CA.I 12) <| "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
+        errorTodo pos <| "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
-        do (addSubstitution { overrideIsAnError = True } reason aName (CA.TypeRecord (CA.I 5) Nothing bOnly)) <| \_ ->
+        do (addSubstitution pos reason aName (CA.TypeRecord (CA.I 5) Nothing bOnly)) <| \_ ->
         Dict.union bothUnified bOnly
-            |> CA.TypeRecord (CA.I 6) Nothing
+            |> CA.TypeRecord pos Nothing
             |> return
 
 
@@ -1119,124 +1119,41 @@ unifyError error t1 t2 =
 --
 
 
-addSubstitution : { overrideIsAnError : Bool } -> UnifyReason -> Name -> Type -> Monad Type
-addSubstitution { overrideIsAnError } reason name ty =
-    --     let
-    --         _ =
-    --             Debug.log "addSubstitution" { reason = reason, name = name, ty = ty }
-    --     in
-    do (checkOverrides overrideIsAnError reason name ty) <| \_ ->
-    do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
-    do (flagFreeVars freeVarsToFlag) <| \_ ->
-    do (checkRecursion name ty) <| \re ->
-    case re of
-        Err t ->
-            return t
-
-        Ok { newTyContainsSubbedTyvars, newNameIsUsedInSubbingTypes } ->
-            do (get .substitutions) <| \subs ->
-            let
-                ( updatedSubs, updatedNewType ) =
-                    if newTyContainsSubbedTyvars then
-                        let
-                            -- apply old subs to ty
-                            t =
-                                replaceTypeVariables subs ty
-                        in
-                        ( Dict.insert name t subs
-                        , t
-                        )
-
-                    else if newNameIsUsedInSubbingTypes then
-                        -- apply new substitution to all old substitutions
-                        ( subs
-                            |> Dict.map (\k -> replaceTypeVariables (Dict.singleton name ty))
-                            |> Dict.insert name ty
-                        , ty
-                        )
-
-                    else
-                        ( Dict.insert name ty subs
-                        , ty
-                        )
-            in
-            \state ->
-                ( updatedNewType
-                , { state | substitutions = updatedSubs }
-                )
-
-
-checkOverrides : Bool -> UnifyReason -> Name -> Type -> Monad Type
-checkOverrides overrideIsAnError reason name ty =
-    do (get .substitutions) <| \subs ->
-    case Dict.get name subs of
-        Nothing ->
-            return ty
-
-        Just sub ->
-            {-
-
-               if not overrideIsAnError then
-                   return ty
-
-               else
-
-                           addError (CA.I 3)
-                               [ "Compiler bug: Substitution for tyvar `" ++ name ++ "` is being overwritten."
-                               , "Old type " ++ typeToText ty
-                               , "New type " ++ typeToText sub
-                               , "This is not your fault, it's a bug in the Squarepants compiler."
-                               , Debug.toString reason
-                               ]
-            -}
-            -- I slapped this here randomly, it will come back biting me in the ass when it runs in infinite circles
-            -- Also, it's late at night and I really don't know what I'm doing.
-            -- Also hey it's working WTF
-            unify_ UnifyReason_Override (CA.I 777) ty sub
-
-
-checkRecursion : Name -> Type -> Monad (Result Type { newTyContainsSubbedTyvars : Bool, newNameIsUsedInSubbingTypes : Bool })
-checkRecursion name ty =
-    -- Check self recursion
+addSubstitution : Pos -> UnifyReason -> Name -> Type -> Monad Type
+addSubstitution pos reason name rawTy =
+    do (applySubsToType rawTy) <| \ty ->
     if typeHasTyvar name ty then
-        addError (CA.I 14)
-            [ "Compiler bug: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText ty
+        addError pos
+            [ "COMPILER BUG: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText ty
+            , ""
             , "This is not your fault, it's a bug in the Squarepants compiler."
             ]
-            |> M.map Err
 
     else
+        do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
+        do (flagFreeVars freeVarsToFlag) <| \_ ->
         do (get .substitutions) <| \subs ->
-        -- Check mutual recursion
-        let
-            newTyContainsSubbedTyvars =
-                List.any (\tyvarName -> typeHasTyvar tyvarName ty) (Dict.keys subs)
+        case Dict.get name subs of
+            {-
+               The tyvar has already been substituted
+               This means that it has been already applied to all other subs and `name` does not appear in the subs.
 
-            newNameIsUsedInSubbingTypes =
-                List.any (typeHasTyvar name) (Dict.values subs)
-        in
-        if newTyContainsSubbedTyvars && newNameIsUsedInSubbingTypes then
-            addError (CA.I 24)
-                [ "Compiler bug: mutually circular substitution"
-                , "On tyvar: `" ++ name ++ "`, with subbing type: " ++ typeToText ty
-                , "This is not your fault, it's a bug in the Squarepants compiler."
-                , ""
-                , "circular subs:"
-                , subs
-                    |> Dict.filter (\k -> typeHasTyvar name)
-                    |> Debug.toString
-                , ""
-                , "name: " ++ name
-                , "ty: " ++ typeToText ty
-                ]
-                |> M.map Err
+               Is this enough to exclude infinite calls between unify_ and addSubstitution?
+            -}
+            Just sub ->
+                unify_ reason pos ty sub
 
-        else
-            { newTyContainsSubbedTyvars = newTyContainsSubbedTyvars
-            , newNameIsUsedInSubbingTypes = newNameIsUsedInSubbingTypes
-            }
-                |> Ok
-                |> return
+            Nothing ->
+                -- apply new substitution to all old substitutions
+                \state ->
+                    ( ty
+                    , { state
+                        | substitutions =
+                            state.substitutions
+                                |> Dict.map (\k -> replaceTypeVariables (Dict.singleton name ty))
+                                |> Dict.insert name ty
+                      }
+                    )
 
 
 checkNonFunction : Name -> Type -> Monad { freeVarsToFlag : List Name }
