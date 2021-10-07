@@ -84,7 +84,7 @@ import Dict exposing (Dict)
 import Human.CanonicalAst
 import RefHierarchy
 import Set exposing (Set)
-import StateMonad as M exposing (M, do, return)
+import StateMonad as M exposing (M, do, return, get)
 import Types.CanonicalAst as CA exposing (Pos, Type)
 import Types.Error as Error exposing (Error, Res)
 import Types.Literal
@@ -203,13 +203,6 @@ insertError : Error -> Monad ()
 insertError e state =
     ( ()
     , { state | errors = e :: state.errors }
-    )
-
-
-get : (State -> a) -> Monad a
-get getter state =
-    ( getter state
-    , state
     )
 
 

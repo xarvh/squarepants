@@ -4,6 +4,7 @@ import Compiler.CoreModule
 import Compiler.TestHelpers as TH exposing (p)
 import Compiler.TypeCheck as TI
 import Dict exposing (Dict)
+import Human.CanonicalAst as HCA
 import Lib
 import Prelude
 import Set exposing (Set)
@@ -107,10 +108,27 @@ testDefs =
         |> Dict.insert "Test.reset" (typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone })
 
 
+type alias Out =
+    { freeTypeVariables : Dict String { nonFn : Bool }
+    , ty : Type
+    , isMutable : Bool
+    }
 
--- infer : String -> String -> Result String { freeTypeVariables : Dict String TI.TypeVariable, ty : Type, isMutable : Bool }
+
+cleanUpVar : TI.InstanceVariable -> Out
+cleanUpVar var =
+    let
+        ( ty, tyvars ) =
+            --(TH.removePos CA.posMap_type var.ty, var.freeTypeVariables)
+            HCA.normalizeTypeAndTyvars (TH.removePos CA.posMap_type var.ty) var.freeTypeVariables
+    in
+    { ty = ty
+    , freeTypeVariables = tyvars
+    , isMutable = var.isMutable
+    }
 
 
+infer : String -> String -> Result String Out
 infer name code =
     code
         |> TH.stringToCanonicalModuleWithPos
@@ -121,15 +139,8 @@ infer name code =
             (\env ->
                 env.instanceVariables
                     |> Dict.get ("Test." ++ name)
-                    --|> Maybe.map normalizeSchema
                     |> Result.fromMaybe "Dict fail"
-                    |> Result.map
-                        (\var ->
-                            { ty = TH.removePos CA.posMap_type var.ty
-                            , freeTypeVariables = var.freeTypeVariables
-                            , isMutable = var.isMutable
-                            }
-                        )
+                    |> Result.map cleanUpVar
             )
 
 
@@ -151,101 +162,6 @@ addTestDefs env =
 
 
 
-----
---- "t2" -> "a"
---
--- TODO move to Human/?
--- normalizeSchema : TI.EnvEntry -> TI.EnvEntry
--- normalizeSchema schema =
---     let
---         ( ty, dict ) =
---             normalizeType Dict.empty schema.ty
---
---         replaceName name =
---             Dict.get name dict |> Maybe.withDefault name
---     in
---     { schema
---         | ty = ty
---         , freeTypeVariables = Set.map replaceName schema.freeTypeVariables
---     }
---
---
--- normalizeName : Dict String String -> String -> ( String, Dict String String )
--- normalizeName dict name =
---     case Dict.get name dict of
---         Just new ->
---             ( new, dict )
---
---         Nothing ->
---             if String.toInt name == Nothing then
---                 ( name, dict )
---
---             else
---                 let
---                     n =
---                         Dict.size dict + 1 |> String.fromInt
---                 in
---                 ( n, Dict.insert name n dict )
---
---
--- normalizeType : Dict String String -> Type -> ( Type, Dict String String )
--- normalizeType dict ty =
---     case ty of
---         CA.TypeConstant pos name args ->
---             let
---                 fold arg ( ars, d ) =
---                     normalizeType d arg
---                         |> Tuple.mapFirst (\na -> na :: ars)
---
---                 ( reversedArgs, dict1 ) =
---                     List.foldl fold ( [], dict ) args
---             in
---             ( CA.TypeConstant pos name (List.reverse reversedArgs)
---             , dict1
---             )
---
---         CA.TypeVariable pos name ->
---             normalizeName dict name
---                 |> Tuple.mapFirst (CA.TypeVariable pos)
---
---         CA.TypeFunction pos from0 fromIsMut to0 ->
---             let
---                 ( from, d1 ) =
---                     normalizeType dict from0
---
---                 ( to, d2 ) =
---                     normalizeType d1 to0
---             in
---             ( CA.TypeFunction pos from fromIsMut to
---             , d2
---             )
---
---         CA.TypeRecord pos ext0 attrs0 ->
---             let
---                 ( et, d1 ) =
---                     case ext0 of
---                         Nothing ->
---                             ( Nothing, dict )
---
---                         Just e ->
---                             normalizeName dict e |> Tuple.mapFirst Just
---
---                 fold name attr ( accum, d ) =
---                     normalizeType d attr
---                         |> Tuple.mapFirst (\na -> Dict.insert name na accum)
---
---                 ( attrs, d2 ) =
---                     Dict.foldl fold ( Dict.empty, d1 ) attrs0
---             in
---             ( CA.TypeRecord pos et attrs
---             , d2
---             )
---
---         CA.TypeAlias pos path t ->
---             normalizeType dict t
---                 |> Tuple.mapFirst (CA.TypeAlias pos path)
---
---
 ----
 --- Functions
 --
@@ -292,11 +208,11 @@ functions =
             , code = "a = fn x: 1"
             , run = infer "a"
             , expected =
-                { freeTypeVariables = ftv "0"
+                { freeTypeVariables = ftv "a"
                 , isMutable = False
                 , ty =
                     typeFunction
-                        { from = typeVariable { name = "0" }
+                        { from = typeVariable { name = "a" }
                         , fromIsMutable = False
                         , to = typeConstant { ref = "SPCore.Number", args = [] }
                         }
@@ -332,28 +248,31 @@ functions =
 statements : Test
 statements =
     Test.Group "statements"
-        [ simpleTest
-            { name = "Statement blocks should return the last statement's type"
-            , code =
-                """
-                a =
-                  3
-                  False
-                """
-            , run = infer "a"
-            , expected = { ty = constant "SPCore.Bool", freeTypeVariables = Dict.empty, isMutable = False }
-            }
-        , simpleTest
-            { name = "Definition statement return type None"
-            , code =
-                """
+        [ codeTest
+            """
+            Statement blocks should return the last statement's type
+            """
+            """
+            a =
+              3
+              False
+            """
+            (infer "a")
+            (Test.okEqual { ty = constant "SPCore.Bool", freeTypeVariables = Dict.empty, isMutable = False })
+        , codeTest
+            """
+            Definition statement return type None
+            """
+            """
                 a =
                   f x = 3
                 """
-            , run = infer "a"
-            , expected = { ty = tyNone, freeTypeVariables = Dict.empty, isMutable = False }
-            }
-        , codeTest "Local values can't shadow root values"
+            (infer "a")
+            (Test.okEqual { ty = tyNone, freeTypeVariables = Dict.empty, isMutable = False })
+        , codeTest
+            """
+            Local values can't shadow root values
+            """
             """
             a = 1
             b =
@@ -362,7 +281,10 @@ statements =
             """
             (infer "b")
             (Test.errContain "already")
-        , codeTest "Prevent local redeclarations"
+        , codeTest
+            """
+            Prevent local redeclarations
+            """
             """
             b =
               a = 1
@@ -370,7 +292,10 @@ statements =
             """
             (infer "b")
             (Test.errContain "declar")
-        , codeTest "Prevent root redeclarations"
+        , codeTest
+            """
+            Prevent root redeclarations
+            """
             """
             a = 1
             a = 1
@@ -755,9 +680,9 @@ records =
             (Test.okEqual
                 { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [] )
-                        , ( "3", [] )
-                        , ( "4", [] )
+                        [ ( "a", [] )
+                        , ( "b", [] )
+                        , ( "c", [] )
                         ]
                 , isMutable = False
                 , ty =
@@ -767,29 +692,30 @@ records =
                                 { attrs =
                                     Dict.singleton "meh"
                                         (typeRecord
-                                            { attrs = Dict.singleton "blah" (typeVariable { name = "4" })
-                                            , extensible = Just "3"
+                                            { attrs = Dict.singleton "blah" (typeVariable { name = "c" })
+                                            , extensible = Just "b"
                                             }
                                         )
-                                , extensible = Just "1"
+                                , extensible = Just "a"
                                 }
                         , fromIsMutable = False
-                        , to = typeVariable { name = "4" }
+                        , to = typeVariable { name = "c" }
                         }
                 }
             )
-        , simpleTest
-            { name = "Attribute mutation"
-            , code =
-                """
-                        a @b = @b.meh.blah += 1
-                        """
-            , run = infer "a"
-            , expected =
+        , codeTest
+            """
+            Attribute mutation
+            """
+            """
+            a @b = @b.meh.blah += 1
+            """
+            (infer "a")
+            (Test.okEqual
                 { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [] )
-                        , ( "3", [] )
+                        [ ( "a", [] )
+                        , ( "b", [] )
                         ]
                 , isMutable = False
                 , ty =
@@ -800,23 +726,23 @@ records =
                                     Dict.singleton "meh"
                                         (typeRecord
                                             { attrs = Dict.singleton "blah" (typeConstant { ref = "SPCore.Number", args = [] })
-                                            , extensible = Just "3"
+                                            , extensible = Just "b"
                                             }
                                         )
-                                , extensible = Just "1"
+                                , extensible = Just "a"
                                 }
                         , fromIsMutable = True
                         , to = typeConstant { ref = "SPCore.None", args = [] }
                         }
                 }
-            }
+            )
         , codeTest "Tuple3 direct item mutability"
             """
-                        x =
-                          a @= 3 & False & 2
+            x =
+              a @= 3 & False & 2
 
-                          @a.third += 1
-                        """
+              @a.third += 1
+            """
             (infer "x")
             Test.isOk
         , codeTest "Tuple2 direct item mutability, annotated"
@@ -839,12 +765,12 @@ records =
                     re =
                         typeRecord
                             { attrs = Dict.singleton "x" (typeConstant { args = [], ref = "SPCore.Number" })
-                            , extensible = Just "1"
+                            , extensible = Just "a"
                             }
                 in
                 { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [] )
+                        [ ( "a", [] )
                         ]
                 , isMutable = False
                 , ty =
@@ -865,13 +791,13 @@ records =
                 re =
                     typeRecord
                         { attrs = Dict.singleton "x" (typeConstant { args = [], ref = "SPCore.Number" })
-                        , extensible = Just "3"
+                        , extensible = Just "a"
                         }
              in
              Test.okEqual
                 { freeTypeVariables =
                     forallTuple
-                        [ ( "3", [] )
+                        [ ( "a", [] )
                         ]
                 , isMutable = False
                 , ty =
@@ -892,19 +818,19 @@ records =
             (Test.okEqual
                 { freeTypeVariables =
                     forallTuple
-                        [ ( "1", [] )
-                        , ( "2", [] )
+                        [ ( "a", [] )
+                        , ( "b", [] )
                         ]
                 , isMutable = False
                 , ty =
                     typeFunction
                         { from =
                             typeRecord
-                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "2" } ) ]
-                                , extensible = Just "1"
+                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "b" } ) ]
+                                , extensible = Just "a"
                                 }
                         , fromIsMutable = False
-                        , to = typeVariable { name = "2" }
+                        , to = typeVariable { name = "b" }
                         }
                 }
             )
@@ -939,17 +865,17 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { freeTypeVariables = ftv "1"
+                { freeTypeVariables = ftv "a"
                 , isMutable = False
                 , ty =
                     typeFunction
                         { from =
                             typeConstant
-                                { args = [ typeVariable { name = "1" } ]
+                                { args = [ typeVariable { name = "a" } ]
                                 , ref = "SPCore.List"
                                 }
                         , fromIsMutable = False
-                        , to = typeVariable { name = "1" }
+                        , to = typeVariable { name = "a" }
                         }
                 }
             )
@@ -962,17 +888,17 @@ patterns =
             (infer "x")
             --
             (Test.okEqual
-                { freeTypeVariables = forallTuple [ ( "1", [] ), ( "2", [] ) ]
+                { freeTypeVariables = forallTuple [ ( "a", [] ), ( "b", [] ) ]
                 , isMutable = False
                 , ty =
                     typeFunction
                         { from =
                             typeRecord
-                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "1" } ) ]
-                                , extensible = Just "2"
+                                { attrs = Dict.fromList [ ( "first", typeVariable { name = "b" } ) ]
+                                , extensible = Just "a"
                                 }
                         , fromIsMutable = False
-                        , to = typeVariable { name = "1" }
+                        , to = typeVariable { name = "b" }
                         }
                 }
             )

@@ -46,6 +46,13 @@ run state m =
     m state
 
 
+get : (state -> a) -> M state a
+get getter state =
+    ( getter state
+    , state
+    )
+
+
 
 --
 
@@ -53,6 +60,25 @@ run state m =
 map : (a -> b) -> M state a -> M state b
 map f m =
     do m (f >> return)
+
+
+
+-- Maybe
+
+
+maybe_map : (a -> M state b) -> Maybe a -> M state (Maybe b)
+maybe_map f ma =
+    case ma of
+        Nothing ->
+            return Nothing
+
+        Just a ->
+            do (f a) <| \b ->
+            return <| Just b
+
+
+
+-- List
 
 
 list_foldl : (item -> accum -> M state accum) -> List item -> accum -> M state accum
@@ -83,6 +109,10 @@ list_map2 f la lb =
             return (c :: accum)
     in
     do (list_foldl apply (List.map2 Tuple.pair la lb) []) (List.reverse >> return)
+
+
+
+-- Dict
 
 
 dict_foldl : (comparable -> item -> accum -> M state accum) -> Dict comparable item -> accum -> M state accum
