@@ -612,21 +612,16 @@ fromExpression env expression =
                     return unifiedType
 
 
-
-checkTotality : Env -> Type -> List (CA.Pattern, block) -> Monad ()
+checkTotality : Env -> Type -> List ( CA.Pattern, block ) -> Monad ()
 checkTotality env patternType patternsAndBlocks =
-  let
-      wim =
-        List.foldl (\(pa, block) -> addPattern env patternType pa) WIM_All patternsAndBlocks
-          |> Debug.log "wim"
-
-
-
-
-  in
-  return ()
-
-
+    let
+        wim =
+            WIM_All
+              |> M.list_foldl (\( pa, block ) -> addPattern env patternType pa) patternsAndBlocks
+              |> M.run []
+              |> Debug.log "wim"
+    in
+    return ()
 
 
 unifyFunctionOnCallAndYieldReturnType : Env -> CA.Pos -> Type -> Bool -> Type -> Monad Type
@@ -1732,11 +1727,11 @@ allDefsToEnvAndValues allDefs =
 
 
    try aList as
-     Nil ----------> WIM_Some [ ("Cons", [ WIM_All, WIM_All ]) ]
+     Nil ----------> WIM_Union [ ("Cons", [ WIM_All, WIM_All ]) ]
 
 
    try aList as
-     Nil ----------> WIM_Some [ ("Cons", [ WIM_All, WIM_All ]) ]
+     Nil ----------> WIM_Union [ ("Cons", [ WIM_All, WIM_All ]) ]
      Cons a (Cons b) {--->
        Some [
          "Cons", [
@@ -1755,58 +1750,115 @@ allDefsToEnvAndValues allDefs =
 -}
 type WIM
     = WIM_All
-    | WIM_Some (Dict Name (List WIM))
+    | WIM_None
+    | WIM_Union (Dict Name (List WIM))
+    | WIM_Literal (Set String)
 
 
+type alias TotalityM a =
+    M (List String) a
 
 
-addPattern : Env -> Type -> CA.Pattern -> WIM -> WIM
+literalToString =
+    Debug.toString
+
+
+addPattern : Env -> Type -> CA.Pattern -> WIM -> TotalityM WIM
 addPattern env ty pattern wim =
     case pattern of
         CA.PatternDiscard _ ->
-            WIM_Some Dict.empty
+            return WIM_None
 
         CA.PatternAny _ _ ->
-            WIM_Some Dict.empty
+            return WIM_None
+
+        CA.PatternLiteral _ value ->
+            case wim of
+                WIM_All ->
+                    value
+                        |> literalToString
+                        |> Set.singleton
+                        |> WIM_Literal
+                        |> return
+
+                WIM_Literal set ->
+                    let
+                        s =
+                            literalToString value
+                    in
+                    if Set.member s set then
+                        patternUnreachable wim
+
+                    else
+                        set
+                            |> Set.insert s
+                            |> WIM_Literal
+                            |> return
+
+                WIM_None ->
+                    patternUnreachable wim
+
+                _ ->
+                    Debug.todo "wrong WIM for pattern literal"
 
         CA.PatternConstructor _ name argPatterns ->
             let
-                ( dict, argWims ) =
-                    case wim of
-                        WIM_All ->
-                            let
-                                nameToAllArgs : Name -> List WIM
-                                nameToAllArgs =
-                                    constructorArgTypes env >> List.map (always WIM_All)
-                            in
-                            ( List.foldl (\( n, wims ) -> Dict.insert n wims) Dict.empty (typeToConstructorsWIMArgs env ty)
-                            , nameToAllArgs name
-                            )
+                nameToAllArgs : Name -> List WIM
+                nameToAllArgs =
+                    constructorArgTypes env >> List.map (always WIM_All)
 
-                        WIM_Some d ->
-                            case Dict.get name d of
-                                Nothing ->
-                                    Debug.todo "pattern unreachable"
-
-                                Just argsWim ->
-                                    ( d
-                                    , argsWim
-                                    )
-
-                newArgWims =
-                    List.map3 (addPattern env) (constructorArgTypes env name) argPatterns argWims
-
-                newDict =
-                    if List.all ((==) (WIM_Some Dict.empty)) newArgWims then
-                        Dict.remove name dict
+                updateDict argWims dict =
+                    do (M.list_map identity <| List.map3 (addPattern env) (constructorArgTypes env name) argPatterns argWims) <| \argWims_new ->
+                    if List.any ((/=) (WIM_Union Dict.empty)) argWims_new then
+                        -- some of the constructor arguments are not total, update the dict
+                        dict
+                            |> Dict.insert name argWims_new
+                            |> WIM_Union
+                            |> return
 
                     else
-                        Dict.insert name newArgWims dict
+                        -- No combination is missing from this constructor, remove it
+                        let
+                            newDict =
+                                Dict.remove name dict
+                        in
+                        if newDict == Dict.empty then
+                            -- the whole union is clear!
+                            return WIM_None
+
+                        else
+                            return <| WIM_Union newDict
             in
-            WIM_Some newDict
+            case wim of
+                WIM_All ->
+                    ty
+                        |> typeToConstructorsWIMArgs env
+                        |> List.foldl (\( n, wims ) -> Dict.insert n wims) Dict.empty
+                        |> updateDict (nameToAllArgs name)
+
+                WIM_Union d ->
+                    case Dict.get name d of
+                        Nothing ->
+                            patternUnreachable wim
+
+                        Just argsWim ->
+                            updateDict argsWim d
+
+                WIM_None ->
+                    patternUnreachable wim
+
+                _ ->
+                    Debug.todo "wrong WIM for PatternConstructor"
 
         _ ->
             Debug.todo "addPattern NI"
+
+
+patternUnreachable : wim -> TotalityM wim
+patternUnreachable wim errors =
+    ( wim
+    , "pattern unreachable" :: errors
+    )
 
 
 constructorArgTypes : Env -> Name -> List Type
