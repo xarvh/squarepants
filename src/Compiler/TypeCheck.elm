@@ -115,6 +115,10 @@ type alias Env =
 
     -- This is used to produce nicer errors for when a recursive function is not annotated
     , nonAnnotatedRecursives : Dict Name Pos
+
+    -- These two are used by the pattern totality checker
+    , constructorArgsByName : Dict Name (List Type)
+    , unionConstructorsAndWIMs : Dict Name (List ( Name, List WIM ))
     }
 
 
@@ -123,6 +127,8 @@ initEnv =
     { instanceVariables = Dict.empty
     , typeVariables = Dict.empty
     , nonAnnotatedRecursives = Dict.empty
+    , constructorArgsByName = Dict.empty
+    , unionConstructorsAndWIMs = Dict.empty
     }
 
 
@@ -1328,57 +1334,57 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
     let
         refinedTy =
             replaceTypeVariables subs ty
-    in
-    { nonAnnotatedRecursives = env.nonAnnotatedRecursives
-    , instanceVariables =
-        Dict.insert name
-            { definedAt = pos
-            , ty = refinedTy
-            , isMutable = isMutable
-            , freeTypeVariables =
+
+        instanceVariables =
+            Dict.insert name
+                { definedAt = pos
+                , ty = refinedTy
+                , isMutable = isMutable
+                , freeTypeVariables =
+                    {-
+                       Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
+
+                       i.e: `x = Nothing` has type `Maybe a`, but once I mutate it to `@x := Just 1` its type would
+                       change to `Maybe Number` and we don't want that.
+
+                       Function parameters instead are **totally determined by how they are used in the function's body**,
+                       so they are always added to the scope as non-free type variables.
+                       If we turned them into free type variables, the block would not be able to constrain them.
+
+                       Defined instance values are **totally determined by their definition**, how they are used must not
+                       affect their type, so each time they are used they can be used with different free type vars.
+
+                       TODO: what about instance variables added by try..as patterns?
+                    -}
+                    if isMutable || isParameter then
+                        Dict.empty
+
+                    else
+                        getFreeTypeVars env.typeVariables Dict.empty refinedTy
+                }
+                env.instanceVariables
+
+        typeVariables =
+            if isParameter then
                 {-
-                   Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
 
-                   i.e: `x = Nothing` has type `Maybe a`, but once I mutate it to `@x := Just 1` its type would
-                   change to `Maybe Number` and we don't want that.
+                   Within the function body, the type of the parameter must be considered non-free!
 
-                   Function parameters instead are **totally determined by how they are used in the function's body**,
-                   so they are always added to the scope as non-free type variables.
-                   If we turned them into free type variables, the block would not be able to constrain them.
+                   Consider:
 
-                   Defined instance values are **totally determined by their definition**, how they are used must not
-                   affect their type, so each time they are used they can be used with different free type vars.
+                       x q =
+                             p = q
+                             p
 
-                   TODO: what about instance variables added by try..as patterns?
+                   if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
+
                 -}
-                if isMutable || isParameter then
-                    Dict.empty
+                Dict.foldl Dict.insert env.typeVariables (typeTyvars refinedTy)
 
-                else
-                    getFreeTypeVars env.typeVariables Dict.empty refinedTy
-            }
-            env.instanceVariables
-    , typeVariables =
-        if isParameter then
-            {-
-
-               Within the function body, the type of the parameter must be considered non-free!
-
-               Consider:
-
-                   x q =
-                         p = q
-                         p
-
-               if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
-
-            -}
-            Dict.foldl Dict.insert env.typeVariables (typeTyvars refinedTy)
-
-        else
-            env.typeVariables
-    }
-        |> return
+            else
+                env.typeVariables
+    in
+    return { env | instanceVariables = instanceVariables, typeVariables = typeVariables }
 
 
 applySubsToPatternVarsAndAddThemToEnv : Bool -> PatternVars -> Env -> Monad Env
@@ -1633,6 +1639,7 @@ errorTodo pos message =
 addConstructors : CA.UnionDef -> Env -> Env
 addConstructors def env =
     Dict.foldl (addConstructor def) env def.constructors
+        |> addUnionConstructorsAndWIMs def
 
 
 addConstructor : CA.UnionDef -> Name -> List Type -> Env -> Env
@@ -1655,7 +1662,24 @@ addConstructor unionDef ctorName ctorArgs env =
             , isMutable = False
             }
     in
-    { env | instanceVariables = Dict.insert ctorName var env.instanceVariables }
+    { env
+        | instanceVariables = Dict.insert ctorName var env.instanceVariables
+        , constructorArgsByName = Dict.insert ctorName ctorArgs env.constructorArgsByName
+    }
+
+
+addUnionConstructorsAndWIMs : CA.UnionDef -> Env -> Env
+addUnionConstructorsAndWIMs def env =
+    { env
+        | unionConstructorsAndWIMs =
+            Dict.insert
+                def.name
+                (def.constructors
+                    |> Dict.map (\k -> List.map (always WIM_All))
+                    |> Dict.toList
+                )
+                env.unionConstructorsAndWIMs
+    }
 
 
 allDefsToEnvAndValues : Dict Name CA.RootDef -> ( Env, List CA.RootValueDef )
@@ -1716,15 +1740,8 @@ type WIM
     | WIM_Some (Dict Name (List WIM))
 
 
-
-type alias Params =
-    { constructorArgTypes : Name -> List Type
-    , typeToConstructors : Type -> List Name
-    }
-
-
-addPattern : Params -> Type -> CA.Pattern -> WIM -> WIM
-addPattern params ty pattern wim =
+addPattern : Env -> Type -> CA.Pattern -> WIM -> WIM
+addPattern env ty pattern wim =
     case pattern of
         CA.PatternDiscard _ ->
             WIM_Some Dict.empty
@@ -1740,9 +1757,9 @@ addPattern params ty pattern wim =
                             let
                                 nameToAllArgs : Name -> List WIM
                                 nameToAllArgs =
-                                    params.constructorArgTypes >> List.map (always WIM_All)
+                                    constructorArgTypes env >> List.map (always WIM_All)
                             in
-                            ( List.foldl (\n -> Dict.insert n (nameToAllArgs n)) Dict.empty (params.typeToConstructors ty)
+                            ( List.foldl (\( n, wims ) -> Dict.insert n wims) Dict.empty (typeToConstructorsWIMArgs env ty)
                             , nameToAllArgs name
                             )
 
@@ -1757,7 +1774,7 @@ addPattern params ty pattern wim =
                                     )
 
                 newArgWims =
-                    List.map3 (addPattern params) (params.constructorArgTypes name) argPatterns argWims
+                    List.map3 (addPattern env) (constructorArgTypes env name) argPatterns argWims
 
                 newDict =
                     if List.all ((==) (WIM_Some Dict.empty)) newArgWims then
@@ -1770,3 +1787,28 @@ addPattern params ty pattern wim =
 
         _ ->
             Debug.todo ""
+
+
+constructorArgTypes : Env -> Name -> List Type
+constructorArgTypes env name =
+    case Dict.get name env.constructorArgsByName of
+        Just args ->
+            args
+
+        Nothing ->
+            Debug.todo <| "no constructor: " ++ name
+
+
+typeToConstructorsWIMArgs : Env -> Type -> List ( Name, List WIM )
+typeToConstructorsWIMArgs env ty =
+    case ty of
+        CA.TypeConstant pos ref args ->
+            case Dict.get ref env.unionConstructorsAndWIMs of
+                Just constructorAndWims ->
+                    constructorAndWims
+
+                _ ->
+                    Debug.todo <| "union not in unionConstructorsAndWIMs: " ++ ref
+
+        _ ->
+            Debug.todo "was expecting a union type here..."
