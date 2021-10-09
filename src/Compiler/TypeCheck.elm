@@ -1674,17 +1674,27 @@ allDefsToEnvAndValues allDefs =
 -- Pattern Totality
 --------------------
 {-
+    What Is Missing?
+
+    * Without any pattern, we're missing everything, so WIM_All
+
+    * When we find a constructor, we're missing
+        - Whatever is missing from its argument
+        - All other constructors (minus those covered already)
+
+    * When we find a discard or a variable, we're not missing anything more
+
 
    try aList as
-     <no patterns>  ----> All
+     <no patterns>  ----> WIM_All
 
 
    try aList as
-     Nil ----------> Some [ ("Cons", [ All, All ]) ]
+     Nil ----------> WIM_Some [ ("Cons", [ WIM_All, WIM_All ]) ]
 
 
    try aList as
-     Nil ----------> Some [ ("Cons", [ All, All ]) ]
+     Nil ----------> WIM_Some [ ("Cons", [ WIM_All, WIM_All ]) ]
      Cons a (Cons b) {--->
        Some [
          "Cons", [
@@ -1702,52 +1712,41 @@ allDefsToEnvAndValues allDefs =
 {-| What Is Missing ?
 -}
 type WIM
-    = All
-    | Some (Dict Name (List WIM))
+    = WIM_All
+    | WIM_Some (Dict Name (List WIM))
 
-
-
--- normalize: None == Some Dict.empty
 
 
 type alias Params =
-    { constructorNameToArgs : Name -> List Type
-    , getConstructorNames : Type -> List Name
+    { constructorArgTypes : Name -> List Type
+    , typeToConstructors : Type -> List Name
     }
-
-
-isNone : WIM -> Bool
-isNone wim =
-    wim == Some Dict.empty
 
 
 addPattern : Params -> Type -> CA.Pattern -> WIM -> WIM
 addPattern params ty pattern wim =
     case pattern of
         CA.PatternDiscard _ ->
-            Some Dict.empty
+            WIM_Some Dict.empty
 
         CA.PatternAny _ _ ->
-            Some Dict.empty
+            WIM_Some Dict.empty
 
         CA.PatternConstructor _ name argPatterns ->
             let
-                argTypes =
-                    params.constructorNameToArgs name
-
                 ( dict, argWims ) =
                     case wim of
-                        All ->
+                        WIM_All ->
                             let
                                 nameToAllArgs : Name -> List WIM
                                 nameToAllArgs =
-                                    params.constructorNameToArgs >> List.map (always All)
+                                    params.constructorArgTypes >> List.map (always WIM_All)
                             in
-                            ( List.foldl (\n -> Dict.insert n (nameToAllArgs n)) Dict.empty (params.getConstructorNames ty)
+                            ( List.foldl (\n -> Dict.insert n (nameToAllArgs n)) Dict.empty (params.typeToConstructors ty)
                             , nameToAllArgs name
                             )
 
-                        Some d ->
+                        WIM_Some d ->
                             case Dict.get name d of
                                 Nothing ->
                                     Debug.todo "pattern unreachable"
@@ -1758,16 +1757,16 @@ addPattern params ty pattern wim =
                                     )
 
                 newArgWims =
-                    List.map3 (addPattern params) argTypes argPatterns argWims
+                    List.map3 (addPattern params) (params.constructorArgTypes name) argPatterns argWims
 
                 newDict =
-                    if List.all isNone newArgWims then
+                    if List.all ((==) (WIM_Some Dict.empty)) newArgWims then
                         Dict.remove name dict
 
                     else
                         Dict.insert name newArgWims dict
             in
-            Some newDict
+            WIM_Some newDict
 
         _ ->
             Debug.todo ""
