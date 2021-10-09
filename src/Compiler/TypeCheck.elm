@@ -594,6 +594,7 @@ fromExpression env expression =
             do (fromExpression env value) <| \tryType ->
             do (newType pos) <| \newBlockType ->
             do (M.list_foldl (fromPatternAndBlock env) patternsAndBlocks ( tryType, newBlockType )) <| \( patternType, inferredBlockType ) ->
+            do (checkTotality env patternType patternsAndBlocks) <| \_ ->
             return inferredBlockType
 
         CA.Record pos maybeExt attrValues ->
@@ -609,6 +610,23 @@ fromExpression env expression =
                     do (newName identity) <| \name ->
                     do (unify pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) <| \unifiedType ->
                     return unifiedType
+
+
+
+checkTotality : Env -> Type -> List (CA.Pattern, block) -> Monad ()
+checkTotality env patternType patternsAndBlocks =
+  let
+      wim =
+        List.foldl (\(pa, block) -> addPattern env patternType pa) WIM_All patternsAndBlocks
+          |> Debug.log "wim"
+
+
+
+
+  in
+  return ()
+
+
 
 
 unifyFunctionOnCallAndYieldReturnType : Env -> CA.Pos -> Type -> Bool -> Type -> Monad Type
@@ -1740,6 +1758,8 @@ type WIM
     | WIM_Some (Dict Name (List WIM))
 
 
+
+
 addPattern : Env -> Type -> CA.Pattern -> WIM -> WIM
 addPattern env ty pattern wim =
     case pattern of
@@ -1786,7 +1806,7 @@ addPattern env ty pattern wim =
             WIM_Some newDict
 
         _ ->
-            Debug.todo ""
+            Debug.todo "addPattern NI"
 
 
 constructorArgTypes : Env -> Name -> List Type

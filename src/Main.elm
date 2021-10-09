@@ -45,7 +45,10 @@ import Types.Token as Token exposing (Token)
 
 runTests =
     False
-        || True
+
+
+
+--         || True
 
 
 moduleMain =
@@ -57,12 +60,12 @@ result = 1
 
 
 initialFiles =
-    [ [ moduleMain ]
-    , GeneratedModules.modules
-    , [ languageOverview
-      , moduleRandom
+    [ [ moduleMain
       , ( metaFileName, Prelude.metaString )
+--       , languageOverview
+--       , moduleRandom
       ]
+--     , GeneratedModules.modules
     ]
         |> List.concat
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
@@ -109,7 +112,6 @@ number min max @wrappedSeed =
         seed
       """
     )
-
 
 
 metaFileName =
