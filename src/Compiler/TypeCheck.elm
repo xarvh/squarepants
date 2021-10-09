@@ -617,9 +617,9 @@ checkTotality env patternType patternsAndBlocks =
     let
         wim =
             WIM_All
-              |> M.list_foldl (\( pa, block ) -> addPattern env patternType pa) patternsAndBlocks
-              |> M.run []
-              |> Debug.log "wim"
+                |> M.list_foldl (\( pa, block ) -> addPattern env patternType pa) patternsAndBlocks
+                |> M.run []
+                |> Debug.log "wim"
     in
     return ()
 
@@ -1765,90 +1765,75 @@ literalToString =
 
 addPattern : Env -> Type -> CA.Pattern -> WIM -> TotalityM WIM
 addPattern env ty pattern wim =
-    case pattern of
-        CA.PatternDiscard _ ->
+    let
+        nameToAllArgs : Name -> List WIM
+        nameToAllArgs =
+            constructorArgTypes env >> List.map (always WIM_All)
+
+        updateUnionConstructors : Name -> List CA.Pattern -> List WIM -> Dict Name (List WIM) -> TotalityM WIM
+        updateUnionConstructors constructorName argPatterns argWims missingConstructors =
+            do (M.list_map identity <| List.map3 (addPattern env) (constructorArgTypes env constructorName) argPatterns argWims) <| \argWims_new ->
+            if List.any ((/=) (WIM_Union Dict.empty)) argWims_new then
+                -- some of the constructor arguments are not total, update the dict
+                missingConstructors
+                    |> Dict.insert constructorName argWims_new
+                    |> WIM_Union
+                    |> return
+
+            else
+                -- No combination is missing from this constructor, remove it
+                let
+                    newDict =
+                        Dict.remove constructorName missingConstructors
+                in
+                if newDict == Dict.empty then
+                    -- the whole union is clear!
+                    return WIM_None
+
+                else
+                    return <| WIM_Union newDict
+    in
+    case ( pattern, ty, wim ) of
+        ( CA.PatternDiscard _, _, _ ) ->
             return WIM_None
 
-        CA.PatternAny _ _ ->
+        ( CA.PatternAny _ _, _, _ ) ->
             return WIM_None
 
-        CA.PatternLiteral _ value ->
-            case wim of
-                WIM_All ->
-                    value
-                        |> literalToString
-                        |> Set.singleton
-                        |> WIM_Literal
-                        |> return
+        ( CA.PatternLiteral _ value, _, WIM_All ) ->
+            value
+                |> literalToString
+                |> Set.singleton
+                |> WIM_Literal
+                |> return
 
-                WIM_Literal set ->
-                    let
-                        s =
-                            literalToString value
-                    in
-                    if Set.member s set then
-                        patternUnreachable wim
-
-                    else
-                        set
-                            |> Set.insert s
-                            |> WIM_Literal
-                            |> return
-
-                WIM_None ->
-                    patternUnreachable wim
-
-                _ ->
-                    Debug.todo "wrong WIM for pattern literal"
-
-        CA.PatternConstructor _ name argPatterns ->
+        ( CA.PatternLiteral _ value, _, WIM_Literal nonMissingValues ) ->
             let
-                nameToAllArgs : Name -> List WIM
-                nameToAllArgs =
-                    constructorArgTypes env >> List.map (always WIM_All)
-
-                updateDict argWims dict =
-                    do (M.list_map identity <| List.map3 (addPattern env) (constructorArgTypes env name) argPatterns argWims) <| \argWims_new ->
-                    if List.any ((/=) (WIM_Union Dict.empty)) argWims_new then
-                        -- some of the constructor arguments are not total, update the dict
-                        dict
-                            |> Dict.insert name argWims_new
-                            |> WIM_Union
-                            |> return
-
-                    else
-                        -- No combination is missing from this constructor, remove it
-                        let
-                            newDict =
-                                Dict.remove name dict
-                        in
-                        if newDict == Dict.empty then
-                            -- the whole union is clear!
-                            return WIM_None
-
-                        else
-                            return <| WIM_Union newDict
+                s =
+                    literalToString value
             in
-            case wim of
-                WIM_All ->
-                    ty
-                        |> typeToConstructorsWIMArgs env
-                        |> List.foldl (\( n, wims ) -> Dict.insert n wims) Dict.empty
-                        |> updateDict (nameToAllArgs name)
+            if Set.member s nonMissingValues then
+                patternUnreachable wim
 
-                WIM_Union d ->
-                    case Dict.get name d of
-                        Nothing ->
-                            patternUnreachable wim
+            else
+                nonMissingValues
+                    |> Set.insert s
+                    |> WIM_Literal
+                    |> return
 
-                        Just argsWim ->
-                            updateDict argsWim d
+        ( CA.PatternConstructor _ name argPatterns, CA.TypeConstant _ unionTypeName _, WIM_All ) ->
+            unionTypeName
+                |> typeToConstructorsWIMArgs env
+                |> List.foldl (\( n, wims ) -> Dict.insert n wims) Dict.empty
+                |> updateUnionConstructors name argPatterns (nameToAllArgs name)
 
-                WIM_None ->
+        ( CA.PatternConstructor _ name argPatterns, _, WIM_Union missingConstructors ) ->
+            case Dict.get name missingConstructors of
+                Nothing ->
                     patternUnreachable wim
 
-                _ ->
-                    Debug.todo "wrong WIM for PatternConstructor"
+                Just argsWim ->
+                    updateUnionConstructors name argPatterns argsWim missingConstructors
 
         _ ->
             Debug.todo "addPattern NI"
@@ -1871,16 +1856,11 @@ constructorArgTypes env name =
             Debug.todo <| "no constructor: " ++ name
 
 
-typeToConstructorsWIMArgs : Env -> Type -> List ( Name, List WIM )
-typeToConstructorsWIMArgs env ty =
-    case ty of
-        CA.TypeConstant pos ref args ->
-            case Dict.get ref env.unionConstructorsAndWIMs of
-                Just constructorAndWims ->
-                    constructorAndWims
-
-                _ ->
-                    Debug.todo <| "union not in unionConstructorsAndWIMs: " ++ ref
+typeToConstructorsWIMArgs : Env -> Name -> List ( Name, List WIM )
+typeToConstructorsWIMArgs env unionName =
+    case Dict.get unionName env.unionConstructorsAndWIMs of
+        Just constructorAndWims ->
+            constructorAndWims
 
         _ ->
-            Debug.todo "was expecting a union type here..."
+            Debug.todo <| "union not in unionConstructorsAndWIMs: " ++ unionName
