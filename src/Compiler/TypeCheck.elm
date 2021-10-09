@@ -1667,3 +1667,107 @@ allDefsToEnvAndValues allDefs =
     ( Dict.foldl (\name -> addConstructors) initEnv unions
     , Dict.values values
     )
+
+
+
+--------------------
+-- Pattern Totality
+--------------------
+{-
+
+   try aList as
+     <no patterns>  ----> All
+
+
+   try aList as
+     Nil ----------> Some [ ("Cons", [ All, All ]) ]
+
+
+   try aList as
+     Nil ----------> Some [ ("Cons", [ All, All ]) ]
+     Cons a (Cons b) {--->
+       Some [
+         "Cons", [
+             -- 1st argument
+             None
+             -- 2nd argument
+             Nil
+         ]
+       ]
+     -}
+
+-}
+
+
+{-| What Is Missing ?
+-}
+type WIM
+    = All
+    | Some (Dict Name (List WIM))
+
+
+
+-- normalize: None == Some Dict.empty
+
+
+type alias Params =
+    { constructorNameToArgs : Name -> List Type
+    , getConstructorNames : Type -> List Name
+    }
+
+
+isNone : WIM -> Bool
+isNone wim =
+    wim == Some Dict.empty
+
+
+addPattern : Params -> Type -> CA.Pattern -> WIM -> WIM
+addPattern params ty pattern wim =
+    case pattern of
+        CA.PatternDiscard _ ->
+            Some Dict.empty
+
+        CA.PatternAny _ _ ->
+            Some Dict.empty
+
+        CA.PatternConstructor _ name argPatterns ->
+            let
+                argTypes =
+                    params.constructorNameToArgs name
+
+                ( dict, argWims ) =
+                    case wim of
+                        All ->
+                            let
+                                nameToAllArgs : Name -> List WIM
+                                nameToAllArgs =
+                                    params.constructorNameToArgs >> List.map (always All)
+                            in
+                            ( List.foldl (\n -> Dict.insert n (nameToAllArgs n)) Dict.empty (params.getConstructorNames ty)
+                            , nameToAllArgs name
+                            )
+
+                        Some d ->
+                            case Dict.get name d of
+                                Nothing ->
+                                    Debug.todo "pattern unreachable"
+
+                                Just argsWim ->
+                                    ( d
+                                    , argsWim
+                                    )
+
+                newArgWims =
+                    List.map3 (addPattern params) argTypes argPatterns argWims
+
+                newDict =
+                    if List.all isNone newArgWims then
+                        Dict.remove name dict
+
+                    else
+                        Dict.insert name newArgWims dict
+            in
+            Some newDict
+
+        _ ->
+            Debug.todo ""
