@@ -313,8 +313,8 @@ recognisedTokens =
                         "-" ->
                             Token.Unop Prelude.unaryMinus |> Ok
 
-                        _ ->
-                            Err errorUnknownOperator
+                        op ->
+                            Err <| errorUnknownOperator op
           }
         , -- Squiggles
           { regex = "^[ ]*[=+\\-*/:><!&^|@]+"
@@ -341,10 +341,10 @@ recognisedTokens =
                         "@=" ->
                             Ok <| Token.Defop { mutable = True }
 
-                        _ ->
+                        op ->
                             case Dict.get match Prelude.binops of
                                 Nothing ->
-                                    Err errorUnknownOperator
+                                    Err <| errorUnknownOperator op
 
                                 Just binop ->
                                     Ok <| Token.Binop m binop
@@ -740,12 +740,15 @@ makeErrorTodo pos state message =
         }
 
 
-errorUnknownOperator pos state =
+errorUnknownOperator : String -> Int -> ReadState -> Error
+errorUnknownOperator op pos state =
     Error.err
-        { pos = CA.P state.moduleName state.pos pos
+        { pos = CA.P state.moduleName pos (pos + String.length op)
         , description =
             \_ ->
-                [ "Unknown operator"
+                [ "`" ++ op ++ "` looks like an operator but I don't recognize it."
+
+                -- TODO: provide a list of valid operators?
                 ]
         }
 

@@ -183,7 +183,7 @@ toString eEnv eArgs =
                 |> List.concatMap (String.split "\n")
                 |> List.map ((++) "  ")
     in
-    String.padRight 50 '-' (location ++ " ") :: "" :: description |> String.join "\n"
+    String.padRight 50 '-' (location ++ " ") :: "" :: description ++ [ "" ] |> String.join "\n"
 
 
 posToHuman : ErrorEnv -> Pos -> { location : String, block : String }

@@ -245,6 +245,7 @@ binops =
     , mutableAdd
     , mutableSubtract
     , equal
+    , notEqual
     , lesserThan
     , greaterThan
     , sendRight
@@ -413,6 +414,16 @@ mutableSubtract =
 equal : Binop
 equal =
     { symbol = "=="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType
+    , nonFn = [ "a" ]
+    }
+
+
+notEqual : Binop
+notEqual =
+    { symbol = "/="
     , precedence = Op.Comparison
     , associativity = Op.Left
     , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType

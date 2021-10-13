@@ -1512,16 +1512,31 @@ addError pos message =
 
 
 errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
-errorUndefinedVariable env pos name =
+errorUndefinedVariable env pos rootName =
+    let
+        -- TODO
+        -- FormattableToCanonicalAst turns an undeclared `variableName` into `module.variableName`
+        -- This is not ideal, but since the code to do the resolution is messy already, for now will have to do
+        name =
+            rootName
+                |> String.split "."
+                |> List.reverse
+                |> List.head
+                |> Maybe.withDefault rootName
+    in
     case Dict.get name env.nonAnnotatedRecursives of
         Nothing ->
             addError pos
-                [ "Undefined variable: " ++ name
+                [ "Undefine variable: " ++ name
+                , ""
+                , "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
                 ]
 
         Just defPos ->
             addError pos
                 [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
+                , ""
+                , "This is a limit of the compiler, not sure when I'll have the time to fix it."
                 ]
 
 
