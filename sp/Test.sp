@@ -60,7 +60,7 @@ isOkAndEqualTo expectedOk =
               Just e
 
           Ok actualOk:
-              if actualOk == expectedOk then
+              if actualOk == expectedOk:
                   Nothing
               else
                   [ "expected = "

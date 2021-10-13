@@ -28,7 +28,7 @@ mapFirst f ls =
 
         head :: tail:
             r = f head
-            if r == Nothing then
+            if r == Nothing:
                 mapFirst f tail
             else
                 r
@@ -66,7 +66,7 @@ repeat n a =
 
     rec c acc =
         is Int -> [a] -> [a]
-        if c > 0 then rec (c - 1) (a :: acc) else acc
+        if c > 0: rec (c - 1) (a :: acc) else acc
 
     rec n []
 

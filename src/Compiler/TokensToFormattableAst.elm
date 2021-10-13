@@ -594,13 +594,14 @@ if_ =
     in
     do (kind Token.If) <| \ifToken ->
     do expr <| \condition ->
-    do (maybe <| maybeNewLine Token.Then) <| \maybeThen ->
+    do (maybe <| maybeNewLine Token.Colon) <| \maybeThen ->
     if maybeThen == Nothing then
-        abort "`if` should be followed by a `then` but I can't find it"
+        abort "`if` should be followed by a `:` but I can't find it"
 
     else
         do inlineStatementOrBlock <| \true ->
         do (maybeNewLine Token.Else) <| \_ ->
+        do (maybe <| kind Token.Colon) <| \_ ->
         do inlineStatementOrBlock <| \false ->
         do here <| \end ->
         { isOneLine = False

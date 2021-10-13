@@ -36,7 +36,7 @@ consume l b =
 startsWith sub b =
     is Text -> Buffer -> Maybe Buffer
 
-    if Text.startsWith sub b.tail then
+    if Text.startsWith sub b.tail:
         Just << consume (Text.length sub) b
     else
         Nothing
@@ -47,7 +47,7 @@ regexMatch regex b =
 
     # TODO use try..as once it is fixed
     match = Text.startsWithRegex regex b.tail
-    if match == "" then
+    if match == "":
         Nothing
     else
         Just << match & consume (Text.length match) b
@@ -69,7 +69,7 @@ readWhile test =
                 counter & list
 
             head :: tail:
-                if test head then
+                if test head:
                     rec (counter + 1) tail
 
                 else
@@ -110,7 +110,7 @@ lexer moduleName moduleCode =
 lexerStep state =
     is ReadState -> Res [Token]
 
-    if atEnd state.buffer then
+    if atEnd state.buffer:
         state
             >> closeOpenBlocks
             >> List.reverse
@@ -166,7 +166,7 @@ lexContent startPos state =
         , fn _: tryString "[#" False (lexMultiLineComment p)
         , fn _: tryString "\n" False (fn x: x >> lexIndent >> Ok)
         , fn _:
-            if atEnd state.buffer then
+            if atEnd state.buffer:
                 Nothing
             else
                 Just << lexContent startPos { state with buffer = consume 1 .buffer }
@@ -191,7 +191,7 @@ chainIf predicate f result =
     is Bool -> (state -> Result err state) -> Result err state -> Result err state
 
     result >> Result.andThen fn state:
-        if predicate then
+        if predicate:
             f state
 
         else
@@ -227,7 +227,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
         , end = endPos
         }
 
-    if newIndent == lastIndent then
+    if newIndent == lastIndent:
         [#
            ```
            lastIndent
@@ -242,8 +242,8 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
         #]
         Ok { state with accum = makeToken Token.NewSiblingLine :: state.accum, indentStack = stack }
 
-    else if newIndent > lastIndent then
-        if isFirstRecursion then
+    else if newIndent > lastIndent:
+        if isFirstRecursion:
             [#
                ```
                lastIndent
@@ -325,7 +325,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                     regex untrimmedBlock
 
                 # TODO use try..as once it's fixed
-                if match == "" then
+                if match == "":
                     Nothing
                 else
                     Just << match & constructor
@@ -439,7 +439,7 @@ recognisedTokens =
                                     Debug.todo "not happening"
 
                                 Just ( head & tail ):
-                                    if head == "@" then
+                                    if head == "@":
                                         Token.Name { mutable = True } tail
 
                                     else
@@ -575,7 +575,7 @@ lexSoftQuotedString startPos state =
                     endPos =
                         pos + 1
 
-                    if isEscape then
+                    if isEscape:
                         rec endPos False rest
 
                     else
@@ -640,10 +640,10 @@ lexHardQuotedString startPos state =
                     endPos =
                         pos + 1
 
-                    if isEscape then
+                    if isEscape:
                         rec endPos False 0 rest
 
-                    else if doubleQuotes < 2 then
+                    else if doubleQuotes < 2:
                         rec endPos False (doubleQuotes + 1) rest
 
                     else
@@ -692,7 +692,7 @@ lexMultiLineComment startPos state =
                     endPos =
                         pos + 2
 
-                    if depth > 0 then
+                    if depth > 0:
                         rec endPos (depth - 1) rest
 
                     else

@@ -148,7 +148,7 @@ ifs =
         [ codeTest "basic sanity"
             """
             a =
-              if True then
+              if True:
                 1
               else
                 2

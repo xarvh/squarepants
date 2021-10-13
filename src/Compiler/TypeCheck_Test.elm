@@ -24,7 +24,7 @@ tests =
         , records
         , patterns
         , try_as
-        , if_then
+        , if_else
         , nonFunction
         ]
 
@@ -414,7 +414,7 @@ variableTypes =
            , codeTest "[reg] ??? TI failure"
                """
                rec acc =
-                   if True then
+                   if True:
                        acc
                    else
                        rec [] "" [] acc
@@ -986,17 +986,17 @@ try_as =
 
 
 ----
---- if..then
+--- if..else
 --
 
 
-if_then : Test
-if_then =
-    Test.Group "if..then"
+if_else : Test
+if_else =
+    Test.Group "if..else"
         [ codeTest "basic functionality"
             """
             x q =
-              if q then 1
+              if q: 1
               else 2
             """
             (infer "x")
@@ -1016,7 +1016,7 @@ if_then =
         , codeTest "rejects non-bool conditions"
             """
             x q =
-              if 1 then 1
+              if 1: 1
               else 2
             """
             (infer "x")
@@ -1026,7 +1026,7 @@ if_then =
         , codeTest "rejects non-matching blocks"
             """
             x q =
-              if q then 2
+              if q: 2
               else False
             """
             (infer "x")

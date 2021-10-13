@@ -57,11 +57,12 @@ result = 1
 
 
 initialFiles =
-    [ [ moduleMain ]
+    [ [ moduleMain
+      , ( metaFileName, Prelude.metaString )
+      ]
     , GeneratedModules.modules
     , [ languageOverview
       , moduleRandom
-      , ( metaFileName, Prelude.metaString )
       ]
     ]
         |> List.concat
@@ -101,15 +102,14 @@ number min max @wrappedSeed =
           >> Seed
 
     # TODO implement `clamp`
-    if seed > max then
+    if seed > max:
         max
-    else if seed < min then
+    else if seed < min:
         min
     else
         seed
       """
     )
-
 
 
 metaFileName =
@@ -1215,7 +1215,7 @@ fibonacci n =
     is Int -> Int
 
     # if-then-else always yields a value
-    if n < 2 then n else n + fibonacci (n - 1)
+    if n < 2: n else: n + fibonacci (n - 1)
 
 
 subtractTwoFrom n =

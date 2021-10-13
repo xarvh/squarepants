@@ -559,6 +559,21 @@ records =
             """
             firstDefinition
             Test.isOk
+        , codeTest "[reg] real-world use"
+            """
+            { state with
+                , pos = endPos
+                , code = rest
+                , accum =
+                    { kind = Token.Comment
+                    , start = startPos
+                    , end = endPos
+                    }
+                        :: state.accum
+            }
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 
@@ -566,13 +581,13 @@ ifs : Test
 ifs =
     Test.Group "Ifs"
         [ codeTest "inline"
-            "a = if a then b else c"
+            "a = if a: b else c"
             firstEvaluation
             Test.isOk
         , codeTest "multiline, formatted"
             """
                     x =
-                      if a then
+                      if a:
                         b
                       else
                         c
@@ -582,7 +597,7 @@ ifs =
         , codeTest "multiline, compact"
             """
                     x =
-                      if a then b
+                      if a: b
                       else c
                     """
             firstEvaluation
