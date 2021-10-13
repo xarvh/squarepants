@@ -255,7 +255,7 @@ highlightSplit h ( words, lines ) =
 fmtBlock : Int -> List Highlight -> List String -> String
 fmtBlock start highlights ls =
     let
-        ( words, lines ) =
+        ( highlightedWords, highlightedLines ) =
             List.foldl highlightSplit ( Dict.empty, Set.empty ) highlights
 
         pad =
@@ -264,7 +264,7 @@ fmtBlock start highlights ls =
                 |> String.length
 
         wordHighlight lineNumber =
-            case Dict.get lineNumber words of
+            case Dict.get lineNumber highlightedWords of
                 Nothing ->
                     ""
 
@@ -275,14 +275,25 @@ fmtBlock start highlights ls =
                         ++ String.repeat (s - 1) " "
                         ++ String.repeat (max 1 <| e - s) "^"
 
-        fmtLine index line =
-            ((index + start)
+        lineDem lineIndex =
+            if Set.member lineIndex highlightedLines then
+                " > "
+
+            else
+                " | "
+
+        fmtLine i line =
+            let
+                index =
+                    i + start
+            in
+            (index
                 |> String.fromInt
                 |> String.padLeft pad ' '
             )
-                ++ " | "
+                ++ lineDem index
                 ++ line
-                ++ wordHighlight (index + start)
+                ++ wordHighlight index
     in
     ls
         |> List.indexedMap fmtLine

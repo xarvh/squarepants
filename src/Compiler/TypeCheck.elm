@@ -1021,12 +1021,12 @@ unify_ reason pos1 t1 t2 =
 
         _ ->
             addError pos1
-                [ "unify_"
-                , "t1:"
-                , typeToText t1
-                , "t2:"
-                , typeToText t2
-                , Debug.toString reason
+                [ "Type mismatch on " ++ Debug.toString reason
+                , ""
+                , "t1 = " ++ typeToText t1
+                , ""
+                , "t2 = " ++ typeToText t2
+                , ""
                 ]
 
 

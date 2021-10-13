@@ -89,13 +89,17 @@ typeToPriAndString type_ =
 
         CA.TypeAlias pos name ty2 ->
             ( 0
-            , [ "<"
-              , name
-              , "="
-              , typeToString ty2
-              , ">"
-              ]
-                |> String.join " "
+              {-
+
+                 , [ "<"
+                   , name
+                   , "="
+                   , typeToString ty2
+                   , ">"
+                   ]
+                     |> String.join " "
+              -}
+            , name
             )
 
 
