@@ -1007,7 +1007,7 @@ unify_ reason pos1 t1 t2 =
                 {- Without the replacement here, a function annotation will produce circular substitutions
 
                    id a =
-                       as a -> a
+                       is a -> a
                        a
 
                 -}

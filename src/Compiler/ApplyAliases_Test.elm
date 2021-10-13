@@ -43,7 +43,7 @@ tests =
                 """
                 alias A b c = List b
                 a =
-                  as A Number Bool
+                  is A Number Bool
                   a
                 """
                 (applyAndGetValue "a" >> Result.map (.maybeAnnotation >> Maybe.map .ty))
@@ -58,16 +58,16 @@ tests =
                 """
                 alias A b c = List b
                 a =
-                  as A Bool
+                  is A Bool
                   a
                 """
                 (applyAndGetValue "a")
                 (Test.errContain "alias Test.A needs 2 args, but was used with 1")
             , codeTest "record"
                 """
-                alias A b = { x as b, y as b }
+                alias A b = { x is b, y is b }
                 a =
-                  as A Bool
+                  is A Bool
                   a
                 """
                 (applyAndGetValue "a" >> Result.map (.maybeAnnotation >> Maybe.map .ty))
@@ -82,7 +82,7 @@ tests =
             , codeTest "Reject mutable args that contain functions"
                 """
                 a =
-                  as (Int -> Int) @> Int
+                  is (Int -> Int) @> Int
                   a
                 """
                 (applyAndGetValue "a")
@@ -110,7 +110,7 @@ tests =
         , Test.Group "aliases"
             [ codeTest "Reject mutable args that contain functions"
                 """
-                alias X = { x as Text -> Text } @> Text
+                alias X = { x is Text -> Text } @> Text
                 """
                 (applyAndGet CA.asAlias "X")
                 (Test.errContain "contain function")

@@ -5,7 +5,7 @@ union Result error a =
 
 
 map f result =
-    as (a -> b) -> Result e a -> Result e b
+    is (a -> b) -> Result e a -> Result e b
 
     try result as
         Err e:
@@ -16,7 +16,7 @@ map f result =
 
 
 andThen f result =
-    as (a -> Result e b) -> Result e a -> Result e b
+    is (a -> Result e b) -> Result e a -> Result e b
 
     try result as
         Err e:
@@ -27,7 +27,7 @@ andThen f result =
 
 
 mapError f result =
-    as (e1 -> e2) -> Result e1 a -> Result e2 a
+    is (e1 -> e2) -> Result e1 a -> Result e2 a
 
     try result as
         Ok a:

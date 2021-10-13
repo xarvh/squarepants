@@ -41,6 +41,7 @@ metaString =
           "globalValues": [
           ],
           "globalTypes": [
+              "Int"
           ]
         }, {
           "path": "SPCore/Maybe",

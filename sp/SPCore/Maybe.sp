@@ -5,7 +5,7 @@ union Maybe a =
 
 
 andThen f ma =
-    as (a -> Maybe b) -> Maybe a -> Maybe b
+    is (a -> Maybe b) -> Maybe a -> Maybe b
 
     try ma as
         Nothing: Nothing
@@ -13,7 +13,7 @@ andThen f ma =
 
 
 map f m =
-  as (a -> b) -> Maybe a -> Maybe b
+  is (a -> b) -> Maybe a -> Maybe b
 
   try m as
     Nothing: Nothing

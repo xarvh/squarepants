@@ -4,34 +4,34 @@ alias Int =
 
 # TODO
 binops =
-    as Dict Text binop
+    is Dict Text binop
     Dict.empty
 
 
 
 unaryPlus =
-    as Types/Unop.Unop
+    is Types/Unop.Unop
     { symbol = "0 +"
 #    , ty = typeUnopUniform Core.numberType
     }
 
 
 unaryMinus =
-    as Types/Unop.Unop
+    is Types/Unop.Unop
     { symbol = "0 -"
 #    , ty = typeUnopUniform Core.numberType
     }
 
 
 not_ =
-    as Types/Unop.Unop
+    is Types/Unop.Unop
     { symbol = "not"
 #    , ty = typeUnopUniform Core.boolType
     }
 
 
 and_ =
-    as Types/Binop.Binop
+    is Types/Binop.Binop
     { symbol = "and"
 #    , precedence = Op.Logical
 #    , associativity = Op.Right
@@ -41,7 +41,7 @@ and_ =
 
 
 or_ =
-    as Types/Binop.Binop
+    is Types/Binop.Binop
     { symbol = "or"
 #    , precedence = Op.Logical
 #    , associativity = Op.Right
@@ -50,7 +50,7 @@ or_ =
     }
 
 textConcat =
-    as Types/Binop.Binop
+    is Types/Binop.Binop
     { symbol = ".."
 #    , precedence = Op.Addittive
 #    , associativity = Op.Right

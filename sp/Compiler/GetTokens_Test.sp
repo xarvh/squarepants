@@ -1,13 +1,13 @@
 
 
 codeTest =
-    as Text -> Text -> (Text -> Result Text ok) -> Test.CodeExpectation ok -> Test
+    is Text -> Text -> (Text -> Result Text ok) -> Test.CodeExpectation ok -> Test
 
     Test.codeTest Debug.toHuman
 
 
 lexTokens s =
-    as Text -> Result Text (List Token)
+    is Text -> Result Text (List Token)
 
     s
         >> Compiler/GetTokens.lexer "Test"
@@ -15,7 +15,7 @@ lexTokens s =
 
 
 tests =
-    as Test
+    is Test
 
     Test.Group "StringToTokens"
         [

@@ -4,49 +4,49 @@
 
 
 length s =
-    as Text -> Int
+    is Text -> Int
 
     # native
     -1
 
 
 slice start end s =
-    as Int -> Int -> Text -> Text
+    is Int -> Int -> Text -> Text
 
     # native
     ""
 
 
 fromInt n =
-    as Int -> Text
+    is Int -> Text
 
     # native
     ""
 
 
 startsWith sub s =
-    as Text -> Text -> Bool
+    is Text -> Text -> Bool
 
     # native
     False
 
 
 trimLeft s =
-    as Text -> Text
+    is Text -> Text
 
     # native
     Debug.todo "trimLeft must be implemented natively"
 
 
 dropRight n s =
-    as Int -> Text -> Text
+    is Int -> Text -> Text
 
     # native
     Debug.todo "dropRight must be implemented natively"
 
 
 uncons s =
-    as Text -> Maybe (Text & Text)
+    is Text -> Maybe (Text & Text)
 
     # native
     Debug.todo "uncons must be implemented natively"
@@ -57,14 +57,14 @@ uncons s =
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
 startsWithRegex regex s =
-    as Text -> Text -> Text
+    is Text -> Text -> Text
 
     # native
     ""
 
 
 split separator target =
-    as Text -> Text -> [ Text ]
+    is Text -> Text -> [ Text ]
 
     # native
     []
@@ -76,7 +76,7 @@ split separator target =
 
 
 join sep listOfText =
-    as Text -> List Text -> Text
+    is Text -> List Text -> Text
 
     try listOfText as
         SPCore.Nil:
@@ -84,7 +84,7 @@ join sep listOfText =
 
         SPCore.Cons head tail:
           rec ls acc =
-            as [ Text ] -> Text -> Text
+            is [ Text ] -> Text -> Text
 
             try ls as
               SPCore.Nil:

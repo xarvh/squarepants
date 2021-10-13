@@ -206,7 +206,7 @@ lists =
         [ codeTest "list type sugar"
             """
                         l =
-                          as [ SPCore.Bool ]
+                          is [ SPCore.Bool ]
                           l
                         """
             (firstDefinition "l")
@@ -273,7 +273,7 @@ tuples =
         , codeTest "tuple2 type"
             """
                         a =
-                          as Blah & Blah
+                          is Blah & Blah
                           a
                         """
             (firstDefinition "a")
@@ -303,7 +303,7 @@ tuples =
             , code =
                 """
                         a =
-                          as Blah & Blah & Blah & Blah
+                          is Blah & Blah & Blah & Blah
                           a
                         """
             , run = firstDefinition "a"
@@ -376,7 +376,7 @@ records =
         , codeTest "annotation, extensible"
             """
             a =
-              as { b with x as Bool }
+              is { b with x is Bool }
               a
             """
             (firstEvaluation "a")
@@ -426,7 +426,7 @@ annotations =
             """
             x =
               a @=
-                as Number
+                is Number
                 3
               a
             """
@@ -437,7 +437,7 @@ annotations =
         , codeTest "annotation on immutable value"
             """
             b =
-              as Number
+              is Number
               3
             """
             (firstEvaluation "b")

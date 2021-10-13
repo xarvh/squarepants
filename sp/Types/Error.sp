@@ -10,17 +10,17 @@ union Error =
 
 alias Env =
     {
-#    , metaFile as MetaFile
-#    , moduleByName as Dict Text { fsPath as Text, content as Text }
+#    , metaFile is MetaFile
+#    , moduleByName is Dict Text { fsPath is Text, content is Text }
     }
 
 
 alias Args =
     {
-    , moduleName as Text
-    , start as Number
-    , end as Number
-    , description as Env -> List ContentDiv
+    , moduleName is Text
+    , start is Number
+    , end is Number
+    , description is Env -> List ContentDiv
     }
 
 
@@ -31,17 +31,17 @@ union ContentDiv =
 
 
 union Highlight =
-    , HighlightWord { line as Number, colStart as Number, colEnd as Number }
-    , HighlightBlock { lineStart as Number, lineEnd as Number }
+    , HighlightWord { line is Number, colStart is Number, colEnd is Number }
+    , HighlightBlock { lineStart is Number, lineEnd is Number }
 
 
 res ea =
-    as Args -> Res a
+    is Args -> Res a
 
     ea >> Simple >> Err
 
 
 text =
-    as Text -> ContentDiv
+    is Text -> ContentDiv
 
     Text

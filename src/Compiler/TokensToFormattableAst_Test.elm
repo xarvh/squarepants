@@ -135,7 +135,7 @@ errors =
         [ codeTest "[reg] simple assignment, inline"
             """
             tests =
-                as Test
+                is Test
 
                 blah "StringToTokens"
                     [
@@ -287,7 +287,7 @@ annotations =
         [ codeTest "Mutability 1"
             """
                         a =
-                          as Number @> Int -> None
+                          is Number @> Int -> None
                           1
                         """
             firstAnnotation
@@ -305,7 +305,7 @@ annotations =
         , codeTest "Mutability 2"
             """
                         a =
-                          as Number -> Int @> None
+                          is Number -> Int @> None
                           1
                         """
             firstAnnotation
@@ -323,7 +323,7 @@ annotations =
         , codeTest "Tuple precedence"
             """
                         a =
-                          as Int & Int -> Bool
+                          is Int & Int -> Bool
                           a
                         """
             firstAnnotation
@@ -498,7 +498,7 @@ records =
         , codeTest "annotation, inline"
             """
                     a =
-                      as { x as Bool }
+                      is { x is Bool }
                       a
                     """
             firstAnnotation
@@ -511,9 +511,9 @@ records =
         , codeTest "annotation, multiline"
             """
                     a =
-                      as
+                      is
                        {
-                       , x as Bool
+                       , x is Bool
                        }
                       a
                     """
@@ -527,8 +527,8 @@ records =
         , codeTest "annotation, multiline compact"
             """
                     a =
-                      as {
-                       , x as Bool
+                      is {
+                       , x is Bool
                        }
                       a
                     """

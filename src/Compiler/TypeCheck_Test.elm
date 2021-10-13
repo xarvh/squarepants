@@ -231,7 +231,7 @@ functions =
         , codeTest "Annotation should be consistent with mutability"
             """
             f a =
-              as Number @> Number
+              is Number @> Number
               a
             """
             (infer "f")
@@ -319,7 +319,7 @@ variableTypes =
             , code =
                 """
                 id a =
-                  as a -> a
+                  is a -> a
                   a
                 """
             , run = infer "id"
@@ -357,7 +357,7 @@ variableTypes =
            , codeTest "Reject disconnected freeTypeVariables var types?"
                """
                id l =
-                 as a -> b
+                 is a -> b
                  l
                """
                (infer "id")
@@ -540,7 +540,7 @@ mutability =
             , code =
                 """
                 a =
-                  as Number -> None
+                  is Number -> None
                   reset
                 """
             , run = infer "a"
@@ -551,7 +551,7 @@ mutability =
             , code =
                 """
                         a =
-                          as Number @> None
+                          is Number @> None
                           reset
                         """
             , run = infer "a"
@@ -600,7 +600,7 @@ mutability =
             , code =
                 """
                 a @=
-                  as Number -> Number
+                  is Number -> Number
                   add 1
                 """
             , run = infer "a"
@@ -635,7 +635,7 @@ higherOrderTypes =
             , code =
                 """
                         a l =
-                          as List a -> List a
+                          is List a -> List a
                           l
                         """
             , run = infer "a"
@@ -749,7 +749,7 @@ records =
             """
             x =
                a @=
-                 as Number & Number
+                 is Number & Number
                  1 & 2
 
                @a.first += 1
@@ -836,10 +836,10 @@ records =
             )
         , codeTest "[reg] refineType when the record has a non-extensible alias"
             """
-            alias A = { c as Number, d as Number }
+            alias A = { c is Number, d is Number }
 
             upd a =
-              as A -> A
+              is A -> A
               { a with c = .c + 1 }
             """
             (infer "upd")
@@ -917,7 +917,7 @@ patterns =
           codeTest "[rec] Constructors should instantiate their variable types"
             """
             each ls f =
-                as List a -> (a -> b) -> None
+                is List a -> (a -> b) -> None
                 try ls as
                     SPCore.Nil:
                         None
@@ -1049,7 +1049,7 @@ nonFunction =
             """
             """
             blah a =
-              as List a -> List a
+              is List a -> List a
               with a NonFunction
               a
 

@@ -1,9 +1,13 @@
 
+# HACK
+alias Int = Number
+
+
 map f =
-    as (a -> b) -> [a] -> [b]
+    is (a -> b) -> [a] -> [b]
 
     rec ls =
-        as [a] -> [b]
+        is [a] -> [b]
         try ls as
             []:
                 []
@@ -16,7 +20,7 @@ map f =
 
 
 mapFirst f ls =
-    as (a -> Maybe b) -> List a -> Maybe b
+    is (a -> Maybe b) -> List a -> Maybe b
 
     try ls as
         []:
@@ -31,7 +35,7 @@ mapFirst f ls =
 
 
 each ls f =
-    as [a] -> (a -> b) -> None
+    is [a] -> (a -> b) -> None
 
     try ls as
         []:
@@ -43,10 +47,10 @@ each ls f =
 
 
 reverse aList =
-    as [a] -> [a]
+    is [a] -> [a]
 
     rec ls acc =
-        as [a] -> [a] -> [a]
+        is [a] -> [a] -> [a]
         try ls as
             []:
                 acc
@@ -58,17 +62,17 @@ reverse aList =
 
 
 repeat n a =
-    as Int -> a -> [ a ]
+    is Int -> a -> [ a ]
 
     rec c acc =
-        as Int -> [a] -> [a]
+        is Int -> [a] -> [a]
         if c > 0 then rec (c - 1) (a :: acc) else acc
 
     rec n []
 
 
 foldl function aList init =
-    as (item -> state -> state) -> [ item ] -> state -> state
+    is (item -> state -> state) -> [ item ] -> state -> state
 
     try aList as
       []:

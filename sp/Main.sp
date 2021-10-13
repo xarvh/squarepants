@@ -1,6 +1,6 @@
 
 allTests =
-    as [ Test ]
+    is [ Test ]
 
     [
     , Compiler/GetTokens_Test.tests
@@ -8,7 +8,7 @@ allTests =
 
 
 color code text =
-    as Text -> Text -> Text
+    is Text -> Text -> Text
 
     code .. text .. "\x1b[0m"
 
@@ -26,7 +26,7 @@ red =
 
 
 indent s =
-    as Text -> Text
+    is Text -> Text
     s
       >> Text.split "\n"
       >> List.map (fn l: "  " .. l)
@@ -34,7 +34,7 @@ indent s =
 
 
 testOutcomeToText name outcome =
-    as Text -> Test.TestOutcome -> Text
+    is Text -> Test.TestOutcome -> Text
 
     try outcome as
         Test.Success:

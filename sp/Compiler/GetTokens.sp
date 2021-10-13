@@ -5,13 +5,13 @@
 #
 alias Buffer =
     {
-    , tail as Text
-    , pos as Int
+    , tail is Text
+    , pos is Int
     }
 
 
 init s =
-    as Text -> Buffer
+    is Text -> Buffer
     {
     , tail = s
     , pos = 0
@@ -19,13 +19,13 @@ init s =
 
 
 pos b =
-    as Buffer -> Int
+    is Buffer -> Int
 
     b.pos
 
 
 consume l b =
-    as Int -> Buffer -> Buffer
+    is Int -> Buffer -> Buffer
 
     {
     , tail = Text.slice 0 l b.tail
@@ -34,7 +34,7 @@ consume l b =
 
 
 startsWith sub b =
-    as Text -> Buffer -> Maybe Buffer
+    is Text -> Buffer -> Maybe Buffer
 
     if Text.startsWith sub b.tail then
         Just << consume (Text.length sub) b
@@ -43,7 +43,7 @@ startsWith sub b =
 
 
 regexMatch regex b =
-    as Text -> Buffer -> Maybe (Text & Buffer)
+    is Text -> Buffer -> Maybe (Text & Buffer)
 
     # TODO use try..as once it is fixed
     match = Text.startsWithRegex regex b.tail
@@ -53,16 +53,16 @@ regexMatch regex b =
         Just << match & consume (Text.length match) b
 
 atEnd b =
-    as Buffer -> Bool
+    is Buffer -> Bool
 
     b.tail == ""
 
 
 readWhile test =
-    as (char -> Bool) -> List char -> Int & List char
+    is (char -> Bool) -> List char -> Int & List char
 
     rec counter list =
-        as Int -> List char -> Int & List char
+        is Int -> List char -> Int & List char
 
         try list as
             []:
@@ -82,19 +82,19 @@ readWhile test =
 #
 alias ReadState =
     {
-    , buffer as Buffer
-    , codeAsString as Text
-    , moduleName as Text
-    #, code as List Char
-    , multiCommentDepth as Int
-    , indentStack as [ Int ]
-    , maybeIndentToAdd as Maybe Int
-    , accum as [ Token ]
+    , buffer is Buffer
+    , codeAsString is Text
+    , moduleName is Text
+    #, code is List Char
+    , multiCommentDepth is Int
+    , indentStack is [ Int ]
+    , maybeIndentToAdd is Maybe Int
+    , accum is [ Token ]
     }
 
 
 lexer moduleName moduleCode =
-    as Text -> Text -> Res [ Token ]
+    is Text -> Text -> Res [ Token ]
 
     { buffer = init << "\n" .. moduleCode
     , codeAsString = moduleCode
@@ -108,7 +108,7 @@ lexer moduleName moduleCode =
 
 
 lexerStep state =
-    as ReadState -> Res [Token]
+    is ReadState -> Res [Token]
 
     if atEnd state.buffer then
         state
@@ -123,10 +123,10 @@ lexerStep state =
 
 
 closeOpenBlocks state =
-    as ReadState -> [ Token ]
+    is ReadState -> [ Token ]
 
     blockEnd =
-        as Token
+        is Token
         {
         , kind = Token.BlockEnd
         , start = pos state.buffer
@@ -137,10 +137,10 @@ closeOpenBlocks state =
 
 
 lexContent startPos state =
-    as Int -> ReadState -> Res ReadState
+    is Int -> ReadState -> Res ReadState
 
     tryString string contentAhead updateState =
-        as Text -> Bool -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
+        is Text -> Bool -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
 
         p =
             pos state.buffer
@@ -158,7 +158,7 @@ lexContent startPos state =
 
 
     xxx =
-        as [a -> Maybe (Res ReadState)]
+        is [a -> Maybe (Res ReadState)]
         [
         , fn _: tryString "\"\"\"" True (lexHardQuotedString p)
         , fn _: tryString "\"" True (lexSoftQuotedString p)
@@ -176,7 +176,7 @@ lexContent startPos state =
 
 
     maybeSuccessfulTry =
-        as Maybe (Res ReadState)
+        is Maybe (Res ReadState)
         List.mapFirst (fn f: f None) xxx
 
     try maybeSuccessfulTry as
@@ -188,7 +188,7 @@ lexContent startPos state =
 
 
 chainIf predicate f result =
-    as Bool -> (state -> Result err state) -> Result err state -> Result err state
+    is Bool -> (state -> Result err state) -> Result err state -> Result err state
 
     result >> Result.andThen fn state:
         if predicate then
@@ -200,7 +200,7 @@ chainIf predicate f result =
 
 
 addIndentTokens endPos state =
-    as Int -> ReadState -> Res ReadState
+    is Int -> ReadState -> Res ReadState
 
     try state.maybeIndentToAdd as
         Nothing:
@@ -211,7 +211,7 @@ addIndentTokens endPos state =
 
 
 addIndentTokensRec endPos newIndent isFirstRecursion state stack =
-    as Int -> Int -> Bool -> ReadState -> List Int -> Res ReadState
+    is Int -> Int -> Bool -> ReadState -> List Int -> Res ReadState
 
     lastIndent & poppedStack =
         try stack as
@@ -288,7 +288,7 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
 
 
 contentLineToTokens startPos state =
-    as Int -> ReadState -> Res ReadState
+    is Int -> ReadState -> Res ReadState
 
     contentLine =
         Text.slice startPos (pos state.buffer) state.codeAsString
@@ -306,7 +306,7 @@ alias Regex = Text -> Text
 
 
 contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
-    as Text -> Int -> [ Token ] -> Result (ReadState -> Error) [ Token ]
+    is Text -> Int -> [ Token ] -> Result (ReadState -> Error) [ Token ]
 
     try Text.trimLeft untrimmedBlock as
         "":
@@ -320,7 +320,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                 untrimmedPos + spaces
 
             tryMatch ( regex & constructor ) =
-                as Regex & ( Text -> cons ) -> Maybe (Text & constructor)
+                is Regex & ( Text -> cons ) -> Maybe (Text & constructor)
                 match =
                     regex untrimmedBlock
 
@@ -367,7 +367,7 @@ alias Constructor = Text -> Result (Int -> ReadState -> Error) ( Token.Kind & In
 
 
 recognisedTokens =
-    as List ( Regex & Constructor )
+    is List ( Regex & Constructor )
 
     recordEntryToTuple record =
         Text.startsWithRegex record.regex
@@ -507,7 +507,7 @@ recognisedTokens =
         ]
 
 errorUnknownOperator op =
-    as Text -> Int -> ReadState -> Error
+    is Text -> Int -> ReadState -> Error
     Debug.todo "not implemented: errorUnknownOperator"
 
 
@@ -522,7 +522,7 @@ errorUnknownOperator op =
 
 #]
 lexSingleLineComment startPos state =
-        as Int -> ReadState -> Res ReadState
+        is Int -> ReadState -> Res ReadState
 
         length & rest =
             readWhile (fn c: c /= "\n") state.code
@@ -562,20 +562,19 @@ lexSingleLineComment startPos state =
 
 #]
 lexSoftQuotedString startPos state =
-        as Int -> ReadState -> Res ReadState
+        is Int -> ReadState -> Res ReadState
 
         rec pos isEscape code =
-            as Int -> Bool -> Text -> Res ReadState
+            is Int -> Bool -> Text -> Res ReadState
 
             try code as
                 "\\" :: rest:
                     rec (pos + 1) (not isEscape) rest
 
                 "\"" :: rest:
-                    let
-                        endPos =
-                            pos + 1
-                    in
+                    endPos =
+                        pos + 1
+
                     if isEscape then
                         rec endPos False rest
 
@@ -628,20 +627,19 @@ lexSoftQuotedString startPos state =
 
 #]
 lexHardQuotedString startPos state =
-        as Int -> ReadState -> Res ReadState
+        is Int -> ReadState -> Res ReadState
 
         rec pos isEscape doubleQuotes code =
-            as Int -> Bool -> Int -> Text -> Res ReadState
+            is Int -> Bool -> Int -> Text -> Res ReadState
 
             try code as
                 "\\" :: rest:
                     rec (pos + 1) (not isEscape) 0 rest
 
                 "\"" :: rest:
-                    let
-                        endPos =
-                            pos + 1
-                    in
+                    endPos =
+                        pos + 1
+
                     if isEscape then
                         rec endPos False 0 rest
 
@@ -683,18 +681,17 @@ lexHardQuotedString startPos state =
 
 #]
 lexMultiLineComment startPos state =
-        as Int -> ReadState -> Res ReadState
+        is Int -> ReadState -> Res ReadState
 
         rec pos depth code =
-            case code of
+            try code as
                 "[" :: "#" :: rest:
                     rec (pos + 1) (depth + 1) rest
 
                 "#" :: "]" :: rest:
-                    let
-                        endPos =
-                            pos + 2
-                    in
+                    endPos =
+                        pos + 2
+
                     if depth > 0 then
                         rec endPos (depth - 1) rest
 
@@ -726,9 +723,9 @@ NewSiblingLine, BlockStart, Block will be added only when we see that the line a
 
 #]
 lexIndent state =
-    as ReadState -> ReadState
+    is ReadState -> ReadState
 
-    ( newIndent, newCode ) =
+    newIndent & newCode =
         readWhile (fn c: c == " ") state.code
 
     { state with

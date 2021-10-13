@@ -128,7 +128,7 @@ mutation =
                 f @l
 
             f @a =
-                as Number @> Number
+                is Number @> Number
                 a
             """
             (eval "Test.result")

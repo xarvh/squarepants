@@ -90,7 +90,7 @@ It's very much not a practical pseudo random generator.
 
 #]
 number min max @wrappedSeed =
-    as Number -> Number -> Seed @> Number
+    is Number -> Number -> Seed @> Number
 
     Seed seed = wrappedSeed
 
@@ -698,7 +698,7 @@ viewProgram model =
                                         [ style "min-width" "400px" ]
                                         [ Html.pre
                                             []
-                                            [ (name ++ " as " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: ")
+                                            [ (name ++ " is " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: ")
                                                 |> Html.text
                                             ]
                                         ]
@@ -1205,21 +1205,21 @@ alias Vec2 = Number
 
 # Declarations can have a type annotation
 floatSix =
-    as Float
+    is Float
 
     # parens are not needed for calling functions
     addThreeNumbers 1 2 3
 
 
 fibonacci n =
-    as Int -> Int
+    is Int -> Int
 
     # if-then-else always yields a value
     if n < 2 then n else n + fibonacci (n - 1)
 
 
 subtractTwoFrom n =
-    as Vec2 -> Vec2
+    is Vec2 -> Vec2
 
     # operators can be used prefixed, like functions
     # `left - right` becomes `(-) right left`
@@ -1229,7 +1229,7 @@ subtractTwoFrom n =
 # Square brackets for Lists.
 # All items must be of the same type
 listOfText =
-    as [ Text ]
+    is [ Text ]
     [
     , "Gary"
     , "Bikini Bottom"
@@ -1241,7 +1241,7 @@ listOfText =
 # They help using less parens and help visualizing how a value is
 # transformed step-by-step.
 repeatHello times =
-    as Int -> Text
+    is Int -> Text
     "Hello!"
         >> List.repeat times
         >> Text.join ", "
@@ -1250,7 +1250,7 @@ repeatHello times =
 
 # When you see `@`, it means "this stuff is mutable"
 average numbers =
-    as List Int -> Float
+    is List Int -> Float
 
     # mutable variables can only be local and can't leave their scope.
     # `average` is still a pure function.
@@ -1268,7 +1268,7 @@ average numbers =
 
 # The argument preceding `@>` is mutable
 generateTwoRandomNumbers min max @seed =
-    as Int -> Int -> Random.Seed @> Int & Int
+    is Int -> Int -> Random.Seed @> Int & Int
 
     # '&' is used for tuples
     Random.number min max @seed & Random.number min max @seed
@@ -1284,7 +1284,7 @@ union LoadingState payload =
     , Available payload
 
 getStatusName loadingState =
-    as LoadingState payload -> Text
+    is LoadingState payload -> Text
 
     try loadingState as
         NotRequested: "Not needed"
@@ -1293,7 +1293,7 @@ getStatusName loadingState =
         Available _: "Successfully loaded"
 
 getPayload loadingState =
-    as LoadingState payload -> Maybe payload
+    is LoadingState payload -> Maybe payload
 
     # TBH not sure if single-line try..as should be a thing
     try loadingState as Available payload: Just payload else Nothing
@@ -1304,12 +1304,12 @@ getPayload loadingState =
 
 alias Crab =
     {
-    , name as Text
-    , money as Float
+    , name is Text
+    , money is Float
     }
 
 eugeneKrabs =
-    as Crab
+    is Crab
     {
     , name = "Eugene H. Krabs"
     , money = 2 #TODO 2_345_678.90
@@ -1320,7 +1320,7 @@ eugeneKrabs =
 
 
 earnMoney profit crab =
-    as Float -> Crab -> Crab
+    is Float -> Crab -> Crab
 
     # `.money` is a shorthand for `crab.money`
     { crab with money = .money + profit }
@@ -1328,7 +1328,7 @@ earnMoney profit crab =
 
 # to-notation
 getAllHouses getAsset =
-    as (Text -> Maybe house) -> Maybe { rock as house, moai as house, pineapple as house }
+    is (Text -> Maybe house) -> Maybe { rock is house, moai is house, pineapple is house }
 
     to = Maybe.andThen
     getAsset "rock" >> to fn rock:

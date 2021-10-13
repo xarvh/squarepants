@@ -735,7 +735,7 @@ inlineStatementOrBlockWithAnnotation =
 typeAnnotation : Parser FA.Annotation
 typeAnnotation =
     do here <| \start ->
-    do (kind Token.As) <| \_ ->
+    do (kind Token.Is) <| \_ ->
     do (inlineOrBelowOrIndented typeExpr) <| \ty ->
     do (maybe (inlineOrBelowOrIndented nonFunction)) <| \nf ->
     do here <| \end ->
@@ -776,7 +776,7 @@ typeExpr =
         -- the `Or` stands for `Or higher priority parser`
         [ higherOr <| typeParens nest
         , higherOr <| typeList nest
-        , higherOr <| record Token.As FA.TypeRecord nest
+        , higherOr <| record Token.Is FA.TypeRecord nest
         , typeApplicationOr
         , typeTupleOr
         , typeFunctionOr

@@ -261,6 +261,9 @@ recognisedTokens =
                             "as" ->
                                 Token.As
 
+                            "is" ->
+                                Token.Is
+
                             "then" ->
                                 Token.Then
 

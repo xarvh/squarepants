@@ -27,6 +27,7 @@ type
     | If
     | Try
     | As
+    | Is
     | Colon
     | Then
     | Else
