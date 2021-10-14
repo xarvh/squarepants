@@ -1,8 +1,8 @@
 
 alias Token =
-    { kind as Kind
-    , start as Int
-    , end as Int
+    { kind is Kind
+    , start is Int
+    , end is Int
     }
 
 
@@ -16,21 +16,21 @@ union Kind =
     # Terms
     , TextLiteral Text
     , NumberLiteral Text
-    , Name { mutable as Bool } Text
+    , Name { mutable is Bool } Text
     # Keywords
     , Fn
     , If
     , Try
     , As
+    , Is
     , Colon
-    , Then
     , Else
     , With
     # Ops
-    , Defop { mutable as Bool }
+    , Defop { mutable is Bool }
     , Unop Types/Unop.Unop
     , Binop Text Types/Binop.Binop
-    , Arrow { mutable as Bool }
+    , Arrow { mutable is Bool }
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed

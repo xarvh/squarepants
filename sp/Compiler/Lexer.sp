@@ -85,7 +85,7 @@ alias ReadState =
     , buffer is Buffer
     , codeAsString is Text
     , moduleName is Text
-    #, code is List Char
+    , code is List Text
     , multiCommentDepth is Int
     , indentStack is [ Int ]
     , maybeIndentToAdd is Maybe Int
@@ -99,6 +99,7 @@ lexer moduleName moduleCode =
     { buffer = init << "\n" .. moduleCode
     , codeAsString = moduleCode
     , moduleName = moduleName
+    , code = Text.break moduleCode
     , multiCommentDepth = 0
     , indentStack = []
     , maybeIndentToAdd = Just 0
@@ -415,8 +416,8 @@ recognisedTokens =
                         "as":
                             Token.As
 
-                        "then":
-                            Token.Then
+                        "is":
+                            Token.Is
 
                         "else":
                             Token.Else
@@ -564,16 +565,16 @@ lexSingleLineComment startPos state =
 lexSoftQuotedString startPos state =
         is Int -> ReadState -> Res ReadState
 
-        rec pos isEscape code =
+        rec currentPos isEscape code =
             is Int -> Bool -> Text -> Res ReadState
 
             try code as
                 "\\" :: rest:
-                    rec (pos + 1) (not isEscape) rest
+                    rec (currentPos + 1) (not isEscape) rest
 
                 "\"" :: rest:
                     endPos =
-                        pos + 1
+                        currentPos + 1
 
                     if isEscape:
                         rec endPos False rest
@@ -581,7 +582,7 @@ lexSoftQuotedString startPos state =
                     else
                         Ok
                             { state with
-                                , pos = endPos
+                                , currentPos = endPos
                                 , code = rest
                                 , accum =
                                     { kind =
@@ -597,13 +598,13 @@ lexSoftQuotedString startPos state =
 
                 "\n" :: rest:
                     # https://www.reddit.com/r/ProgrammingLanguages/comments/l0ptdl/why_do_so_many_languages_not_allow_string/gjvrcg2/
-                    errorNewLineInsideSoftQuote pos state
+                    errorNewLineInsideSoftQuote currentPos state
 
                 char :: rest:
-                    rec (pos + 1) False rest
+                    rec (currentPos + 1) False rest
 
                 []:
-                    errorUnterminatedTextLiteral pos state
+                    errorUnterminatedTextLiteral currentPos state
 
         rec state.pos False state.code
 
@@ -629,16 +630,16 @@ lexSoftQuotedString startPos state =
 lexHardQuotedString startPos state =
         is Int -> ReadState -> Res ReadState
 
-        rec pos isEscape doubleQuotes code =
+        rec currentPos isEscape doubleQuotes code =
             is Int -> Bool -> Int -> Text -> Res ReadState
 
             try code as
                 "\\" :: rest:
-                    rec (pos + 1) (not isEscape) 0 rest
+                    rec (currentPos + 1) (not isEscape) 0 rest
 
                 "\"" :: rest:
                     endPos =
-                        pos + 1
+                        currentPos + 1
 
                     if isEscape:
                         rec endPos False 0 rest
@@ -664,10 +665,10 @@ lexHardQuotedString startPos state =
                             }
 
                 char :: rest:
-                    rec (pos + 1) False 0 rest
+                    rec (currentPos + 1) False 0 rest
 
                 []:
-                    errorUnterminatedTextLiteral pos state
+                    errorUnterminatedTextLiteral currentPos state
 
         rec state.pos False 0 state.code
 
@@ -683,14 +684,14 @@ lexHardQuotedString startPos state =
 lexMultiLineComment startPos state =
         is Int -> ReadState -> Res ReadState
 
-        rec pos depth code =
+        rec currentPos depth code =
             try code as
                 "[" :: "#" :: rest:
-                    rec (pos + 1) (depth + 1) rest
+                    rec (currentPos + 1) (depth + 1) rest
 
                 "#" :: "]" :: rest:
                     endPos =
-                        pos + 2
+                        currentPos + 2
 
                     if depth > 0:
                         rec endPos (depth - 1) rest
@@ -709,10 +710,10 @@ lexMultiLineComment startPos state =
                             }
 
                 char :: rest:
-                    rec (pos + 1) depth rest
+                    rec (currentPos + 1) depth rest
 
                 []:
-                    errorUnterminatedMultilineComment pos state
+                    errorUnterminatedMultilineComment currentPos state
 
         rec state.pos 0 state.code
 

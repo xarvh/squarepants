@@ -1,3 +1,3 @@
 alias Unop = {
-  , symbol as Text
+  , symbol is Text
   }

@@ -1501,7 +1501,12 @@ replaceTypeVariables subs ty =
 
 addError : CA.Pos -> List String -> Monad Type
 addError pos message =
-    do (insertError (Error.markdown pos (always message))) <| \() ->
+    addErrorWithEEnv pos (always message)
+
+
+addErrorWithEEnv : CA.Pos -> (Error.ErrorEnv -> List String) -> Monad Type
+addErrorWithEEnv pos messageConstructor =
+    do (insertError (Error.markdown pos messageConstructor)) <| \() ->
     newType pos
 
 
@@ -1512,32 +1517,29 @@ addError pos message =
 
 
 errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
-errorUndefinedVariable env pos rootName =
+errorUndefinedVariable env pos normalizedName =
+    addErrorWithEEnv pos <| \errorEnv ->
     let
-        -- TODO
-        -- FormattableToCanonicalAst turns an undeclared `variableName` into `module.variableName`
-        -- This is not ideal, but since the code to do the resolution is messy already, for now will have to do
         name =
-            rootName
-                |> String.split "."
-                |> List.reverse
-                |> List.head
-                |> Maybe.withDefault rootName
+            Error.posToToken errorEnv pos
     in
     case Dict.get name env.nonAnnotatedRecursives of
         Nothing ->
-            addError pos
-                [ "Undefine variable: " ++ name
-                , ""
-                , "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
-                ]
+            [ "Undefined variable: " ++ name
+            , ""
+            , case String.split "." name of
+                moduleName :: valueName :: [] ->
+                    "Module `" ++ moduleName ++ "` does not seem to expose a variable called `" ++ valueName ++ "`."
+
+                _ ->
+                    "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
+            ]
 
         Just defPos ->
-            addError pos
-                [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
-                , ""
-                , "This is a limit of the compiler, not sure when I'll have the time to fix it."
-                ]
+            [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
+            , ""
+            , "This is a limit of the compiler, not sure when I'll have the time to fix it."
+            ]
 
 
 errorIncompatibleTypes : UnifyReason -> CA.Pos -> Type -> Dict Name TypeClash -> Monad Type

@@ -1,3 +1,3 @@
 alias Binop = {
-    , symbol as Text
+    , symbol is Text
     }

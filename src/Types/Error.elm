@@ -186,6 +186,21 @@ toString eEnv eArgs =
     String.padRight 50 '-' (location ++ " ") :: "" :: description ++ [ "" ] |> String.join "\n"
 
 
+posToToken : ErrorEnv -> Pos -> String
+posToToken eEnv pos =
+    case pos of
+        CA.P moduleName startAsInt endAsInt ->
+            case Dict.get moduleName eEnv.moduleByName of
+                Just mod ->
+                    String.slice startAsInt endAsInt mod.content
+
+                Nothing ->
+                    "<posToToken error: no module '" ++ moduleName ++ "'>"
+
+        _ ->
+            "<posToToken error: " ++ Debug.toString pos ++ ">"
+
+
 posToHuman : ErrorEnv -> Pos -> { location : String, block : String }
 posToHuman eEnv pos =
     let
