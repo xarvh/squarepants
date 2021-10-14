@@ -1,12 +1,3 @@
-* Update syntax
-
-    if cond: onTrue else: onFalse
-    if cond: onTrue else onFalse
-
-    annotations use `is` instead of `as`
-
-
-
 * Types that don't exist because their module does not exist should not reach typeCheck
       ---> Should Apply Alias do it?
 

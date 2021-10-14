@@ -555,7 +555,7 @@ record assign constructor main =
 
         content start =
             do (maybe updateTarget) <| \maybeUpdateTarget ->
-            do (rawList attr) <| \attrs ->
+            do (inlineOrBelowOrIndented <| rawList attr) <| \attrs ->
             do here <| \end ->
             { extends = maybeUpdateTarget
             , attrs = OneOrMore.toList attrs

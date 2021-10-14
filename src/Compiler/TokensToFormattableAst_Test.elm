@@ -561,16 +561,17 @@ records =
             Test.isOk
         , codeTest "[reg] real-world use"
             """
-            { state with
-                , pos = endPos
-                , code = rest
-                , accum =
-                    { kind = Token.Comment
-                    , start = startPos
-                    , end = endPos
-                    }
-                        :: state.accum
-            }
+            a =
+              { state with
+                  , pos = endPos
+                  , code = rest
+                  , accum =
+                      { kind = Token.Comment
+                      , start = startPos
+                      , end = endPos
+                      }
+                          :: state.accum
+              }
             """
             firstDefinition
             Test.isOk
