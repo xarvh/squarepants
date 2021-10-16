@@ -1129,11 +1129,11 @@ translateSimpleBinop env pos left op right =
 --
 
 
-addAttributes : ReadOnly -> List ( String, Maybe FA.Type ) -> Dict String CA.Type -> Res CA.Type
-addAttributes ro faAttrs caAttrsAccum =
+addAttributes : ReadOnly -> FA.Pos -> List ( String, Maybe FA.Type ) -> Dict String CA.Type -> Res CA.Type
+addAttributes ro pos faAttrs caAttrsAccum =
     case faAttrs of
         [] ->
-            CA.TypeRecord todoPos Nothing caAttrsAccum
+            CA.TypeRecord (tp ro pos) Nothing caAttrsAccum
                 |> Ok
 
         ( name, maybeFaType ) :: faTail ->
@@ -1142,7 +1142,7 @@ addAttributes ro faAttrs caAttrsAccum =
                     Maybe.withDefault (FA.TypeName {- TODO -} ( -1, -1 ) name) maybeFaType
             in
             do (translateType ro faType) <| \caType ->
-            addAttributes ro faTail (Dict.insert name caType caAttrsAccum)
+            addAttributes ro pos faTail (Dict.insert name caType caAttrsAccum)
 
 
 startsWithUpperChar : String -> Bool
@@ -1226,7 +1226,7 @@ translateType ro faType =
                 errorExperimentingWithNoExtensibleTypes ro p
 
             else
-                addAttributes ro recordArgs.attrs Dict.empty
+                addAttributes ro p recordArgs.attrs Dict.empty
 
 
 errorExperimentingWithNoExtensibleTypes : ReadOnly -> FA.Pos -> Res a

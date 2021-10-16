@@ -1016,8 +1016,8 @@ unify_ reason pos1 t1 t2 =
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
                     |> return
 
-        ( CA.TypeRecord pos a_ext a_attrs, CA.TypeRecord _ b_ext b_attrs ) ->
-            unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs )
+        ( CA.TypeRecord _ a_ext a_attrs, CA.TypeRecord _ b_ext b_attrs ) ->
+            unifyRecords reason pos1 ( a_ext, a_attrs ) ( b_ext, b_attrs )
 
         _ ->
             addError pos1
@@ -1093,7 +1093,10 @@ unifyToNonExtensibleRecord : Pos -> UnifyReason -> Name -> Dict Name Type -> Dic
 unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
     if aOnly /= Dict.empty then
         -- b is missing attributes but is not extensible
-        errorTodo pos <| "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
+        addError pos
+          [ "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
+          , Debug.toString reason
+          ]
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`

@@ -566,7 +566,7 @@ lexSoftQuotedString startPos state =
         is Int -> ReadState -> Res ReadState
 
         rec currentPos isEscape code =
-            is Int -> Bool -> Text -> Res ReadState
+            is Int -> Bool -> [Text] -> Res ReadState
 
             try code as
                 "\\" :: rest:
@@ -582,7 +582,7 @@ lexSoftQuotedString startPos state =
                     else
                         Ok
                             { state with
-                                , currentPos = endPos
+                                , buffer = consume (endPos - startPos) state.buffer
                                 , code = rest
                                 , accum =
                                     { kind =
@@ -606,7 +606,7 @@ lexSoftQuotedString startPos state =
                 []:
                     errorUnterminatedTextLiteral currentPos state
 
-        rec state.pos False state.code
+        rec (pos state.buffer) False state.code
 
 
 [# TESTS
