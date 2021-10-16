@@ -1,62 +1,3 @@
-#
-# Buffer
-#
-# I don't know yet how I want to implement text parsing, so I'll keep it abstract for now
-#
-alias Buffer =
-    {
-    , tail is Text
-    , pos is Int
-    }
-
-
-init s =
-    is Text -> Buffer
-    {
-    , tail = s
-    , pos = 0
-    }
-
-
-pos b =
-    is Buffer -> Int
-
-    b.pos
-
-
-consume l b =
-    is Int -> Buffer -> Buffer
-
-    {
-    , tail = Text.slice 0 l b.tail
-    , pos = b.pos + l
-    }
-
-
-startsWith sub b =
-    is Text -> Buffer -> Maybe Buffer
-
-    if Text.startsWith sub b.tail:
-        Just << consume (Text.length sub) b
-    else
-        Nothing
-
-
-regexMatch regex b =
-    is Text -> Buffer -> Maybe (Text & Buffer)
-
-    # TODO use try..as once it is fixed
-    match = Text.startsWithRegex regex b.tail
-    if match == "":
-        Nothing
-    else
-        Just << match & consume (Text.length match) b
-
-atEnd b =
-    is Buffer -> Bool
-
-    b.tail == ""
-
 
 readWhile test =
     is (char -> Bool) -> List char -> Int & List char
@@ -77,15 +18,14 @@ readWhile test =
 
     rec 0
 
+
 #
 # Lexer
 #
 alias ReadState =
     {
     , buffer is Buffer
-    , codeAsString is Text
     , moduleName is Text
-    , code is List Text
     , multiCommentDepth is Int
     , indentStack is [ Int ]
     , maybeIndentToAdd is Maybe Int
@@ -93,25 +33,50 @@ alias ReadState =
     }
 
 
-lexer moduleName moduleCode =
-    is Text -> Text -> Res [ Token ]
+readStateInit moduleName moduleCode =
+    is Text -> Text -> ReadState
 
-    { buffer = init << "\n" .. moduleCode
-    , codeAsString = moduleCode
+    { buffer = Buffer.init << "\n" .. moduleCode
     , moduleName = moduleName
-    , code = Text.break moduleCode
     , multiCommentDepth = 0
     , indentStack = []
     , maybeIndentToAdd = Just 0
     , accum = []
     }
-        >> lexerStep
+
+
+getPos state =
+    is ReadState -> Int
+
+    Buffer.pos state.buffer
+
+
+
+resError pos state message =
+    is Int -> ReadState -> [Text] -> Res a
+
+    #Error.markdown (CA.P state.moduleName (getPos state) pos) message
+    Error.res
+        {
+        , moduleName = state.moduleName
+        , start = pos
+        , end = getPos state
+        , description = fn _: List.map Error.text message
+        }
+
+
+
+lexer moduleName moduleCode =
+    is Text -> Text -> Res [ Token ]
+
+    readStateInit moduleName moduleCode >> lexerStep
+
 
 
 lexerStep state =
     is ReadState -> Res [Token]
 
-    if atEnd state.buffer:
+    if Buffer.atEnd state.buffer:
         state
             >> closeOpenBlocks
             >> List.reverse
@@ -119,7 +84,7 @@ lexerStep state =
     else
         # TODO assert that each iteration eats at least one char
         state
-            >> lexContent (pos state.buffer)
+            >> lexContent (getPos state)
             >> Result.andThen lexerStep
 
 
@@ -167,13 +132,12 @@ lexContent startPos state =
         , fn _: tryString "[#" False (lexMultiLineComment p)
         , fn _: tryString "\n" False (fn x: x >> lexIndent >> Ok)
         , fn _:
-            if atEnd state.buffer:
+            if Buffer.atEnd state.buffer:
                 Nothing
             else
                 Just << lexContent startPos { state with buffer = consume 1 .buffer }
         , fn _: tryString "" False Ok
         ]
-
 
 
     maybeSuccessfulTry =
@@ -292,7 +256,7 @@ contentLineToTokens startPos state =
     is Int -> ReadState -> Res ReadState
 
     contentLine =
-        Text.slice startPos (pos state.buffer) state.codeAsString
+        Buffer.slice startPos (getPos state) state.buffer
 
     state.accum
         # TODO (horrible) I'm adding a space in front so that indent will not
@@ -529,10 +493,10 @@ lexSingleLineComment startPos state =
             readWhile (fn c: c /= "\n") state.code
 
         endPos =
-            state.pos + length
+            getPos state + length
 
         { state with
-            , pos = endPos
+            , buffer = consume (endPos - startPos) state.buffer
             , code = rest
             , accum =
                 { kind = Token.Comment
@@ -565,29 +529,26 @@ lexSingleLineComment startPos state =
 lexSoftQuotedString startPos state =
         is Int -> ReadState -> Res ReadState
 
-        rec currentPos isEscape code =
-            is Int -> Bool -> [Text] -> Res ReadState
+        rec isEscape bf0 =
+            is Bool -> Buffer -> Res ReadState
 
-            try code as
-                "\\" :: rest:
-                    rec (currentPos + 1) (not isEscape) rest
+            try Buffer.readOne bf0 as
+                "\\" & bf1:
+                    rec (not isEscape) bf1
 
-                "\"" :: rest:
-                    endPos =
-                        currentPos + 1
-
+                "\"" & bf1:
                     if isEscape:
-                        rec endPos False rest
+                        rec False bf1
 
-                    else
+                    else:
+                        endPos = Buffer.pos bf1
                         Ok
                             { state with
-                                , buffer = consume (endPos - startPos) state.buffer
-                                , code = rest
+                                , buffer = bf1
                                 , accum =
                                     { kind =
-                                        state.codeAsString
-                                            >> String.slice (startPos + 1) (endPos - 1)
+                                        state.buffer
+                                            >> Buffer.slice (startPos + 1) (endPos - 1)
                                             # TODO transform escapes and reject non-escapable chars
                                             >> Token.TextLiteral
                                     , start = startPos
@@ -596,17 +557,25 @@ lexSoftQuotedString startPos state =
                                         :: state.accum
                             }
 
-                "\n" :: rest:
+                "\n" & bf1:
                     # https://www.reddit.com/r/ProgrammingLanguages/comments/l0ptdl/why_do_so_many_languages_not_allow_string/gjvrcg2/
-                    errorNewLineInsideSoftQuote currentPos state
+                    resError (Buffer.pos bf1) state
+                        [
+                        , "Single-quoted text cannot contain newlines."
+                        , "Is it possible you forgot a closing \"?"
+                        , "If you want a Text with multiple lines, use the triple quotes \"\"\" instead."
+                        ]
 
-                char :: rest:
-                    rec (currentPos + 1) False rest
+                "" & bf1:
+                    resError startPos state
+                        [
+                        , "The file ended without a \" to close the text!"
+                        ]
 
-                []:
-                    errorUnterminatedTextLiteral currentPos state
+                char & bf1:
+                    rec False bf1
 
-        rec (pos state.buffer) False state.code
+        rec False state.buffer
 
 
 [# TESTS
@@ -630,32 +599,31 @@ lexSoftQuotedString startPos state =
 lexHardQuotedString startPos state =
         is Int -> ReadState -> Res ReadState
 
-        rec currentPos isEscape doubleQuotes code =
-            is Int -> Bool -> Int -> Text -> Res ReadState
+        rec isEscape doubleQuotes bf0 =
+            is Bool -> Int -> Buffer -> Res ReadState
 
-            try code as
-                "\\" :: rest:
-                    rec (currentPos + 1) (not isEscape) 0 rest
+            try Buffer.readOne bf0 as
+                "\\" & bf1:
+                    rec (not isEscape) 0 bf1
 
-                "\"" :: rest:
+                "\"" & bf1:
                     endPos =
-                        currentPos + 1
+                        Buffer.pos bf1
 
                     if isEscape:
-                        rec endPos False 0 rest
+                        rec False 0 bf1
 
                     else if doubleQuotes < 2:
-                        rec endPos False (doubleQuotes + 1) rest
+                        rec False (doubleQuotes + 1) bf1
 
                     else
                         Ok
                             { state with
-                                , pos = endPos
-                                , code = rest
+                                , buffer = bf1
                                 , accum =
                                     { kind =
-                                        state.codeAsString
-                                            >> String.slice (startPos + 3) (endPos - 3)
+                                        state.buffer
+                                            >> Buffer.slice (startPos + 3) (endPos - 3)
                                             # TODO transform escapes and reject non-escapable chars
                                             >> Token.TextLiteral
                                     , start = startPos
@@ -664,13 +632,17 @@ lexHardQuotedString startPos state =
                                         :: state.accum
                             }
 
-                char :: rest:
-                    rec (currentPos + 1) False 0 rest
+                "" & bf1:
+                    resError (Buffer.pos bf1) state [
+                        , "The file ended without a \"\"\" to close the text!"
+                        ]
 
-                []:
-                    errorUnterminatedTextLiteral currentPos state
+                char & bf1:
+                    rec False 0 bf1
 
-        rec state.pos False 0 state.code
+
+        rec False 0 state.buffer
+
 
 
 [# TESTS

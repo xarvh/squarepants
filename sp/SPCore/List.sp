@@ -81,3 +81,13 @@ foldl function aList init =
       head :: tail:
           foldl function tail (function head init)
 
+
+drop n ls =
+    is Int -> [a] -> [a]
+
+    if n == 0:
+      ls
+    else:
+      try ls as
+          []: []
+          head :: tail: drop (n - 1) tail

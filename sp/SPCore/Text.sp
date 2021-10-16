@@ -52,19 +52,6 @@ uncons s =
     Debug.todo "uncons must be implemented natively"
 
 
-break text =
-    is Text -> [ Text ]
-
-    rec t accum =
-        is Text -> [Text] -> [Text]
-
-        try uncons t as
-            Nothing: accum
-            Just (head & rest): rec rest (head :: accum)
-
-    rec text [] >> List.reverse
-
-
 
 # HACK
 # Produces "" if it can't match anything, or if the regex is invalid.

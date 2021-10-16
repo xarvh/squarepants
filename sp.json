@@ -52,6 +52,19 @@
                     ]
                 },
                 {
+                    "path": "SPLib/Basics",
+                    "globalValues": [ "min", "max" ],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPLib/Buffer",
+                    "importAs": "Buffer",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Buffer"
+                    ]
+                },
+                {
                     "path": "SPCore/List",
                     "importAs": "List",
                     "globalValues": [],
