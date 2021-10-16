@@ -152,6 +152,16 @@ a = 1
                 , { kind = Token.NumberLiteral "1", start = 7, end = 8 }
                 ]
             )
+        , codeTest "[reg] nested comments allow a spurious newline?"
+            """
+[#[##]#]
+a = 1
+            """
+            lexTokens
+            (Test.okEqual
+                [ { kind = Token.Comment, start = 0, end = 7 }
+                ]
+            )
         , codeTest "Single line"
             "# hello"
             lexTokens

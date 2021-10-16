@@ -565,8 +565,12 @@ translatePatternOrFunction env fa =
                             NotSpecified ->
                                 -- it's a function or variable!
                                 if faArgs == [] then
-                                    name
-                                        |> CA.PatternAny (tp env.ro pos)
+                                    (if name == "_" then
+                                        CA.PatternDiscard (tp env.ro pos)
+
+                                     else
+                                        CA.PatternAny (tp env.ro pos) name
+                                    )
                                         |> POF_Pattern
                                         |> Ok
 

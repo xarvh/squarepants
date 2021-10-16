@@ -1,4 +1,9 @@
 
+identity a =
+    is a -> a
+    a
+
+
 max a b =
     is a -> a -> a
     with a NonFunciton
@@ -11,3 +16,4 @@ min a b =
     with a NonFunciton
 
     if a < b: a else: b
+

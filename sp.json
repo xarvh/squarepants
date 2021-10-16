@@ -53,7 +53,7 @@
                 },
                 {
                     "path": "SPLib/Basics",
-                    "globalValues": [ "min", "max" ],
+                    "globalValues": [ "identity", "min", "max" ],
                     "globalTypes": []
                 },
                 {

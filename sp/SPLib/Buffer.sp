@@ -28,7 +28,7 @@ pos b =
     b.pos
 
 
-consume length b =
+skipAheadBy length b =
     is Int -> Buffer -> Buffer
     { b with
     , tailList = List.drop length b.tailList
@@ -37,34 +37,27 @@ consume length b =
     }
 
 
-consumeTo endPos b =
+skipAheadTo endPos b =
     is Int -> Buffer -> Buffer
 
-    consume (max 0 (endPos - b.pos)) b
+    skipAheadBy (max 0 (endPos - b.pos)) b
 
 
-readOne b =
-    is Buffer -> Text & Buffer
+next b =
+    is Buffer -> Text
 
     try b.tailList as
-        []: "" & b
+        []: ""
+        h :: _: h
 
-        char :: rest:
-            b1 =
-              { b with
-              , tailList = rest
-              , tailText = Text.slice 0 1 b.tailText
-              , pos = b.pos + 1
-              }
 
-            char & b1
 
 
 startsWith sub b =
     is Text -> Buffer -> Maybe Buffer
 
     if Text.startsWith sub b.tailText:
-        Just << consume (Text.length sub) b
+        Just << skipAheadBy (Text.length sub) b
     else
         Nothing
 
@@ -77,7 +70,7 @@ regexMatch regex b =
     if match == "":
         Nothing
     else
-        Just << match & consume (Text.length match) b
+        Just << match & skipAheadBy (Text.length match) b
 
 atEnd b =
     is Buffer -> Bool

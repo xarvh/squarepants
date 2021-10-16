@@ -1,22 +1,41 @@
 
 readWhile test =
-    is (char -> Bool) -> List char -> Int & List char
+    is (Text -> Bool) -> Buffer -> Int & Buffer
 
-    rec counter list =
-        is Int -> List char -> Int & List char
+    rec counter b =
+        is Int -> Buffer -> Int & Buffer
 
-        try list as
-            []:
-                counter & list
-
-            head :: tail:
-                if test head:
-                    rec (counter + 1) tail
-
-                else
-                    counter & list
+        try Buffer.next b as
+            "": counter & b
+            char:
+                if test char:
+                  rec (counter + 1) (Buffer.skipAheadBy 1 b)
+                else:
+                  counter & b
 
     rec 0
+
+
+readOne b =
+    is Buffer -> Text & Buffer
+
+    try Buffer.next b as
+        "": "" & b
+        char: char & Buffer.skipAheadBy 1 b
+
+
+
+tryList ls default =
+    is [ None -> Maybe b ] -> (None -> b) -> b
+
+    try List.mapFirst (fn f: f None) ls as
+        Just b: b
+        Nothing: default None
+
+
+
+
+
 
 
 #
@@ -95,8 +114,8 @@ closeOpenBlocks state =
         is Token
         {
         , kind = Token.BlockEnd
-        , start = pos state.buffer
-        , end = pos state.buffer
+        , start = Buffer.pos state.buffer
+        , end = Buffer.pos state.buffer
         }
 
     List.foldl (fn stack accum: blockEnd :: accum) state.indentStack state.accum
@@ -105,51 +124,33 @@ closeOpenBlocks state =
 lexContent startPos state =
     is Int -> ReadState -> Res ReadState
 
-    tryString string contentAhead updateState =
-        is Text -> Bool -> (ReadState -> Res ReadState) -> Maybe (Res ReadState)
+    runLexer contentAhead lexFunction buffer =
+      is Bool -> (Int -> ReadState -> Res ReadState) -> Buffer -> Res ReadState
+      p = Buffer.pos buffer
+      Ok state
+          >> chainIf (contentAhead or p > startPos) (addIndentTokens startPos)
+          >> chainIf (p > startPos) (contentLineToTokens startPos)
+          >> Result.andThen (fn newState: lexFunction startPos { newState with buffer = buffer })
 
-        p =
-            pos state.buffer
+    ts string contentAhead lexFunction _ =
+        is Text -> Bool -> (Int -> ReadState -> Res ReadState) -> None -> Maybe (Res ReadState)
 
-        try startsWith string state.buffer as
-            Nothing:
-                Nothing
+        state.buffer
+          >> Buffer.startsWith string
+          >> Maybe.map (runLexer contentAhead lexFunction)
 
-            Just newBuffer:
-                Ok state
-                    >> chainIf (contentAhead or p > startPos) (addIndentTokens startPos)
-                    >> chainIf (p > startPos) (contentLineToTokens startPos)
-                    >> Result.andThen (fn newState: updateState { newState with buffer = newBuffer })
-                    >> Just
-
-
-    xxx =
-        is [a -> Maybe (Res ReadState)]
+    tryList
         [
-        , fn _: tryString "\"\"\"" True (lexHardQuotedString p)
-        , fn _: tryString "\"" True (lexSoftQuotedString p)
-        , fn _: tryString "#" False (lexSingleLineComment p)
-        , fn _: tryString "[#" False (lexMultiLineComment p)
-        , fn _: tryString "\n" False (fn x: x >> lexIndent >> Ok)
-        , fn _:
-            if Buffer.atEnd state.buffer:
-                Nothing
-            else
-                Just << lexContent startPos { state with buffer = consume 1 .buffer }
-        , fn _: tryString "" False Ok
+        , ts "\"\"\"" True lexHardQuotedString
+        , ts "\"" True lexSoftQuotedString
+        , ts "#" False lexSingleLineComment
+        , ts "[#" False lexMultiLineComment
+        , ts "\n" False lexIndent
         ]
-
-
-    maybeSuccessfulTry =
-        is Maybe (Res ReadState)
-        List.mapFirst (fn f: f None) xxx
-
-    try maybeSuccessfulTry as
-      Just result:
-          result
-
-      Nothing:
-          Debug.todo "rewrite this function because it's terrible"
+        fn _:
+            try readOne state.buffer as
+              "" & b: runLexer False (fn _: Ok) b
+              char & b: lexContent startPos { state with buffer = b }
 
 
 chainIf predicate f result =
@@ -172,11 +173,11 @@ addIndentTokens endPos state =
             Ok state
 
         Just newIndent:
-            addIndentTokensRec endPos newIndent True { state with maybeIndentToAdd = Nothing } state.indentStack
+            addIndentTokensRec endPos newIndent True state.indentStack { state with maybeIndentToAdd = Nothing }
 
 
-addIndentTokensRec endPos newIndent isFirstRecursion state stack =
-    is Int -> Int -> Bool -> ReadState -> List Int -> Res ReadState
+addIndentTokensRec endPos newIndent isFirstRecursion stack state =
+    is Int -> Int -> Bool -> List Int -> ReadState -> Res ReadState
 
     lastIndent & poppedStack =
         try stack as
@@ -205,7 +206,11 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
            newIndent
            ```
         #]
-        Ok { state with accum = makeToken Token.NewSiblingLine :: state.accum, indentStack = stack }
+        { state with
+        , accum = makeToken Token.NewSiblingLine :: state.accum
+        , indentStack = stack
+        }
+          >> Ok
 
     else if newIndent > lastIndent:
         if isFirstRecursion:
@@ -215,11 +220,11 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
                  newIndent
                ```
             #]
-            Ok
-                { state with
-                , accum = makeToken Token.BlockStart :: state.accum
-                , indentStack = newIndent :: state.indentStack
-                }
+            { state with
+            , accum = makeToken Token.BlockStart :: state.accum
+            , indentStack = newIndent :: state.indentStack
+            }
+              >> Ok
 
         else
             [# This is an error:
@@ -229,26 +234,14 @@ addIndentTokensRec endPos newIndent isFirstRecursion state stack =
                  newIndent
                ```
             #]
-            Error.res
-                {
-                , moduleName = state.moduleName
-                , start = pos state.buffer
-                , end = endPos
-                , description =
-                    fn _:
-                        [
-                        , Error.text << "last indent was at row " .. Text.fromInt lastIndent
-                        , Error.text << "but this new indent is at row " .. Text.fromInt newIndent
-                        ]
-                }
-
-
-
-
-
+            resError endPos state
+                [
+                , "last indent was at row " .. Text.fromInt lastIndent
+                , "but this new indent is at row " .. Text.fromInt newIndent
+                ]
 
     else
-        addIndentTokensRec endPos newIndent False { state with accum = makeToken Token.BlockEnd :: state.accum } poppedStack
+        addIndentTokensRec endPos newIndent False poppedStack { state with accum = makeToken Token.BlockEnd :: state.accum }
 
 
 
@@ -489,19 +482,15 @@ errorUnknownOperator op =
 lexSingleLineComment startPos state =
         is Int -> ReadState -> Res ReadState
 
-        length & rest =
-            readWhile (fn c: c /= "\n") state.code
-
-        endPos =
-            getPos state + length
+        length & buffer =
+            readWhile (fn c: c /= "\n") state.buffer
 
         { state with
-            , buffer = consume (endPos - startPos) state.buffer
-            , code = rest
+            , buffer = buffer
             , accum =
                 { kind = Token.Comment
                 , start = startPos
-                , end = endPos
+                , end = Buffer.pos buffer
                 }
                     :: state.accum
         }
@@ -532,7 +521,7 @@ lexSoftQuotedString startPos state =
         rec isEscape bf0 =
             is Bool -> Buffer -> Res ReadState
 
-            try Buffer.readOne bf0 as
+            try readOne bf0 as
                 "\\" & bf1:
                     rec (not isEscape) bf1
 
@@ -602,7 +591,7 @@ lexHardQuotedString startPos state =
         rec isEscape doubleQuotes bf0 =
             is Bool -> Int -> Buffer -> Res ReadState
 
-            try Buffer.readOne bf0 as
+            try readOne bf0 as
                 "\\" & bf1:
                     rec (not isEscape) 0 bf1
 
@@ -653,41 +642,41 @@ lexHardQuotedString startPos state =
   - state.pos is updated manually, so it should be tested!
 
 #]
-lexMultiLineComment startPos state =
-        is Int -> ReadState -> Res ReadState
+lexMultiLineComment _ state =
+    is startPos -> ReadState -> Res ReadState
 
-        rec currentPos depth code =
-            try code as
-                "[" :: "#" :: rest:
-                    rec (currentPos + 1) (depth + 1) rest
+    rec depth b0 =
+        is Int -> Buffer -> Res ReadState
 
-                "#" :: "]" :: rest:
-                    endPos =
-                        currentPos + 2
+        sw text f =
+            Buffer.startsWith text b0 >> Maybe.map f
 
-                    if depth > 0:
-                        rec endPos (depth - 1) rest
+        tryList
+          [ sw "[#" << rec (depth + 1)
+          , sw "#]" << fn b1:
+              if depth > 0:
+                  rec (depth - 1) b1
+              else:
+                  Ok
+                      { state with
+                          , buffer = b1
+                          , accum =
+                              { kind = Token.Comment
+                              , start = Buffer.pos state.buffer
+                              , end = Buffer.pos b1
+                              }
+                                  :: state.accum
+                      }
+          ]
+          fn _: try readOne b0 as
+              "" & b1:
+                    resError (Buffer.pos b1) state [
+                        , "The file ended without a `#]` to close the comment!"
+                        ]
+              char & b1:
+                rec depth b1
 
-                    else
-                        Ok
-                            { state with
-                                , pos = endPos
-                                , code = rest
-                                , accum =
-                                    { kind = Token.Comment
-                                    , start = startPos
-                                    , end = endPos
-                                    }
-                                        :: state.accum
-                            }
-
-                char :: rest:
-                    rec (currentPos + 1) depth rest
-
-                []:
-                    errorUnterminatedMultilineComment currentPos state
-
-        rec state.pos 0 state.code
+    rec 0 state.buffer
 
 
 [# LexIndent will successfully match anything, because a length 0 indent is valid.
@@ -695,14 +684,14 @@ lexMultiLineComment startPos state =
 NewSiblingLine, BlockStart, Block will be added only when we see that the line actually contains something.
 
 #]
-lexIndent state =
-    is ReadState -> ReadState
+lexIndent _ state =
+    is startPos -> ReadState -> Res ReadState
 
-    newIndent & newCode =
-        readWhile (fn c: c == " ") state.code
+    newIndent & buffer =
+        readWhile (fn c: c == " ") state.buffer
 
     { state with
-        , pos = newIndent + state.pos
-        , code = newCode
+        , buffer = buffer
         , maybeIndentToAdd = Just newIndent
     }
+        >> Ok

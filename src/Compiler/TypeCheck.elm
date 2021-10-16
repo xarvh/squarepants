@@ -613,10 +613,10 @@ unifyFunctionOnCallAndYieldReturnType env pos callReferenceType callIsMutable ca
                 addError pos [ "mutability clash 2" ]
 
             else
-                do (unify pos UnifyReason_CallArgument callArgumentType refArgumentType) <| \unifiedArgumentType ->
+                do (unify pos UnifyReason_CallArgument refArgumentType callArgumentType) <| \unifiedArgumentType ->
                 applySubsToType refReturnType
 
-        CA.TypeVariable pos_ name ->
+        CA.TypeVariable _ name ->
             do (newType pos) <| \returnType ->
             let
                 ty =
