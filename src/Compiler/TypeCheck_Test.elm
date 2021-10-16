@@ -844,6 +844,19 @@ records =
             """
             (infer "upd")
             Test.isOk
+        , codeTest "[reg] infinite recursion on addSubstitution/unify_"
+            """
+            alias B = { l is [Text] }
+
+            readOne b =
+                is  B -> Text & B
+
+                try b.l as
+                    []: "" & b
+                    h :: t: h & { b with l = t }
+            """
+            (infer "readOne")
+            Test.isOk
         ]
 
 

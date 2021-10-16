@@ -942,11 +942,6 @@ Are substitutions interesting only against a specific environment instance?
 -}
 unify_ : UnifyReason -> Pos -> Type -> Type -> Monad Type
 unify_ reason pos1 t1 t2 =
-    {- TODO
-       if constructors didn't have pos, we could test `t1 == t2` and exit early
-
-        This is the one time I regret having pos as a constructor param instead than as a wrapper.
-    -}
     case ( t1, t2 ) of
         ( CA.TypeAlias pos _ aliased, _ ) ->
             unify_ reason pos aliased t2
@@ -1079,14 +1074,18 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                 unifyError IncompatibleRecords (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
 
         ( Just aName, Just bName ) ->
-            do (newName identity) <| \new ->
-            let
-                sub =
-                    CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
-            in
-            do (addSubstitution pos reason aName sub) <| \_ ->
-            do (addSubstitution pos reason bName sub) <| \_ ->
-            return sub
+            if aName == bName && aOnly == Dict.empty && bOnly == Dict.empty then
+                return <| CA.TypeRecord pos (Just aName) bothUnified
+
+            else
+                do (newName identity) <| \new ->
+                let
+                    sub =
+                        CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
+                in
+                do (addSubstitution pos reason aName sub) <| \_ ->
+                do (addSubstitution pos reason bName sub) <| \_ ->
+                return sub
 
 
 unifyToNonExtensibleRecord : Pos -> UnifyReason -> Name -> Dict Name Type -> Dict Name Type -> Dict Name Type -> Monad Type
@@ -1094,9 +1093,9 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
     if aOnly /= Dict.empty then
         -- b is missing attributes but is not extensible
         addError pos
-          [ "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
-          , Debug.toString reason
-          ]
+            [ "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
+            , Debug.toString reason
+            ]
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
