@@ -21,7 +21,7 @@ import Compiler.TypeCheck as TC
 import Compiler.TypeCheck_Test
 import Css
 import Dict exposing (Dict)
-import GeneratedModules
+import SpModulesAsStrings
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
@@ -61,7 +61,7 @@ initialFiles =
       , ( metaFileName, Prelude.metaString )
       ]
     , if runTests then
-        GeneratedModules.modules
+        SpModulesAsStrings.modules
 
       else
         []
