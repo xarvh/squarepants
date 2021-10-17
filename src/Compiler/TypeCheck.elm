@@ -908,7 +908,7 @@ type UnifyReason
 type UnifyError
     = IncompatibleTypes
     | IncompatibleMutability
-    | IncompatibleRecords
+    | IncompatibleRecords (List Name) (List Name) (List Name)
     | Cycle Name
     | NotAFunction
     | NonFunctionContainsFunction (List CA.RejectFunction)
@@ -1064,7 +1064,14 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                 return (CA.TypeRecord (CA.I 4) Nothing bothUnified)
 
             else
-                unifyError IncompatibleRecords (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
+                let
+                    e =
+                        IncompatibleRecords
+                            (Dict.keys bOnly)
+                            (Dict.keys aOnly)
+                            (Dict.keys bothUnified)
+                in
+                unifyError e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
 
         ( Just aName, Just bName ) ->
             if aName == bName && aOnly == Dict.empty && bOnly == Dict.empty then
