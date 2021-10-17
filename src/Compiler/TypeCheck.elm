@@ -613,7 +613,7 @@ unifyFunctionOnCallAndYieldReturnType env pos callReferenceType callIsMutable ca
                 addError pos [ "mutability clash 2" ]
 
             else
-                do (unify pos UnifyReason_CallArgument refArgumentType callArgumentType) <| \unifiedArgumentType ->
+                do (unify pos (UnifyReason_CallArgument pos) refArgumentType callArgumentType) <| \unifiedArgumentType ->
                 applySubsToType refReturnType
 
         CA.TypeVariable _ name ->
@@ -893,7 +893,7 @@ type UnifyReason
     = UnifyReason_AnnotationVsPattern
     | UnifyReason_AnnotationVsBlock
     | UnifyReason_DefBlockVsPattern
-    | UnifyReason_CallArgument
+    | UnifyReason_CallArgument Pos
     | UnifyReason_IsBeingCalledAsAFunction
     | UnifyReason_IfCondition
     | UnifyReason_IfBranches
@@ -906,7 +906,7 @@ type UnifyReason
 
 
 type UnifyError
-    = IncompatibleTypes Name Name
+    = IncompatibleTypes
     | IncompatibleMutability
     | IncompatibleRecords
     | Cycle Name
@@ -951,7 +951,7 @@ unify_ reason pos1 t1 t2 =
 
         ( CA.TypeConstant pos ref1 args1, CA.TypeConstant _ ref2 args2 ) ->
             if ref1 /= ref2 then
-                unifyError (IncompatibleTypes ref1 ref2) t1 t2
+                unifyError IncompatibleTypes t1 t2
 
             else
                 let
@@ -1015,14 +1015,7 @@ unify_ reason pos1 t1 t2 =
             unifyRecords reason pos1 ( a_ext, a_attrs ) ( b_ext, b_attrs )
 
         _ ->
-            addError pos1
-                [ "Type mismatch on " ++ Debug.toString reason
-                , ""
-                , "t1 = " ++ typeToText t1
-                , ""
-                , "t2 = " ++ typeToText t2
-                , ""
-                ]
+            unifyError IncompatibleTypes t1 t2
 
 
 type alias UnifyRecordsFold =
@@ -1545,8 +1538,16 @@ errorUndefinedVariable env pos normalizedName =
 
 
 errorIncompatibleTypes : UnifyReason -> CA.Pos -> Type -> Dict Name TypeClash -> Monad Type
-errorIncompatibleTypes reason pos unifiedType clashes =
+errorIncompatibleTypes reason pos_whatever unifiedType clashes =
     let
+        pos =
+            case reason of
+                UnifyReason_CallArgument p ->
+                    p
+
+                _ ->
+                    pos_whatever
+
         title =
             case reason of
                 UnifyReason_AnnotationVsBlock ->
@@ -1558,7 +1559,7 @@ errorIncompatibleTypes reason pos unifiedType clashes =
                 UnifyReason_DefBlockVsPattern ->
                     "The definition block cannot be unpacked into the pattern"
 
-                UnifyReason_CallArgument ->
+                UnifyReason_CallArgument _ ->
                     "The function cannot accept arguments of this type"
 
                 UnifyReason_IsBeingCalledAsAFunction ->
@@ -1618,8 +1619,11 @@ errorIncompatibleTypes reason pos unifiedType clashes =
                 clashToError ( name, clash ) =
                     [ ""
                     , "`" ++ name ++ "` can be two incompatible types:"
+                    , ""
                     , typeToText clash.t1
+                    , ""
                     , typeToText clash.t2
+                    , ""
                     , "(" ++ Debug.toString clash.err ++ ")"
                     ]
 

@@ -648,7 +648,7 @@ lexMultiLineComment _ state =
     rec depth b0 =
         is Int -> Buffer -> Res ReadState
 
-        sw text f =
+        sw text f _ =
             Buffer.startsWith text b0 >> Maybe.map f
 
         tryList
