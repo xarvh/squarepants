@@ -17,3 +17,7 @@ min a b =
 
     if a < b: a else: b
 
+
+assert c m =
+  if not c: todo m
+  else: None

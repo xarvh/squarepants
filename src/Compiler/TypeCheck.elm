@@ -1518,25 +1518,41 @@ addErrorWithEEnv pos messageConstructor =
 --- Errors
 --
 
+{- TODO this should go somewhere else -}
+splitName : String -> (Maybe String, String)
+splitName s =
+            case String.split "." s of
+                moduleName :: valueName :: [] ->
+                  (Just moduleName, valueName)
+                _ ->
+                  (Nothing, s)
+
+
 
 errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
 errorUndefinedVariable env pos normalizedName =
     addErrorWithEEnv pos <| \errorEnv ->
     let
-        name =
+        rawName =
             Error.posToToken errorEnv pos
+
+        (maybeRawModuleName, name) =
+          splitName rawName
+
+        (maybeNormalizedModuleName, _) =
+          splitName normalizedName
     in
     case Dict.get name env.nonAnnotatedRecursives of
         Nothing ->
-            case String.split "." name of
-                moduleName :: valueName :: [] ->
-                    case Dict.get moduleName errorEnv.moduleByName of
+            case (maybeRawModuleName, maybeNormalizedModuleName) of
+                (Just rawModuleName, Just normalizedModuleName) ->
+                    case Dict.get normalizedModuleName errorEnv.moduleByName of
                         Just _ ->
-                            [ "Module `" ++ moduleName ++ "` does not seem to expose a variable called `" ++ valueName ++ "`."
+                            [ "Module `" ++ normalizedModuleName ++ "` does not seem to expose a variable called `" ++ name ++ "`."
                             ]
 
                         Nothing ->
-                            [ "I can't find any module called `" ++ moduleName ++ "`."
+                            [ "I can't find any module called `" ++ normalizedModuleName ++ "`."
                             ]
 
                 _ ->

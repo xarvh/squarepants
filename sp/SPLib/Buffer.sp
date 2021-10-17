@@ -4,21 +4,26 @@
 #
 alias Buffer =
     {
+    , pos is Int
     , tailList is [Text]
     , tailText is Text
+    , fullSize is Int
     # fullText is used only by slice. Should it actually live here?
     , fullText is Text
-    , pos is Int
     }
 
 
 init s =
     is Text -> Buffer
+
+    assert ((List.length << Text.split "" s) == Text.length s) "BLAH"
+
     {
+    , pos = 0
     , tailList = Text.split "" s
     , tailText = s
+    , fullSize = Text.length s
     , fullText = s
-    , pos = 0
     }
 
 
@@ -30,10 +35,13 @@ pos b =
 
 skipAheadBy length b =
     is Int -> Buffer -> Buffer
+
+    d = min length (b.fullSize - b.pos)
+
     { b with
-    , tailList = List.drop length b.tailList
-    , tailText = Text.slice 0 length b.tailText
-    , pos = b.pos + length
+    , tailList = List.drop d .tailList
+    , tailText = Text.slice 0 d .tailText
+    , pos = .pos + d
     }
 
 

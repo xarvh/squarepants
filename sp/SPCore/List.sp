@@ -3,6 +3,18 @@
 alias Int = Number
 
 
+length =
+    is [a] -> Int
+
+    rec n ls =
+      is Int -> [a] -> Int
+      try ls as
+        []: n
+        h :: t: rec (n + 1) t
+
+    rec 0
+
+
 map f =
     is (a -> b) -> [a] -> [b]
 

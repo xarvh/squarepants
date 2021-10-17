@@ -53,7 +53,7 @@
                 },
                 {
                     "path": "SPLib/Basics",
-                    "globalValues": [ "identity", "min", "max" ],
+                    "globalValues": [ "assert", "identity", "min", "max" ],
                     "globalTypes": []
                 },
                 {
