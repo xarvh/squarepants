@@ -10,7 +10,7 @@ lexTokens s =
     is Text -> Result Text (List Token)
 
     s
-        >> Compiler/GetTokens.lexer "Test"
+        >> Compiler/Lexer.lexer "Test"
         >> Result.mapError Debug.toHuman
 
 

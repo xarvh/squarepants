@@ -3,7 +3,7 @@ allTests =
     is [ Test ]
 
     [
-    , Compiler/GetTokens_Test.tests
+    , Compiler/Lexer_Test.tests
     ]
 
 

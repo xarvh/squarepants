@@ -51,13 +51,7 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-alias R = { x is Int, y is Int }
-
-rec s =
-    is R -> R
-
-    if True: { s with y = .y }
-    else: rec { s with y = .y }
+      result = 1 /= 2
       """
     )
 
@@ -578,13 +572,13 @@ viewFileStages model rawCode =
 viewHide : String -> Model -> List (Html Msg) -> Html Msg
 viewHide id model content =
     let
-        isHidden =
+        isVisible =
             Set.member id model.hidden
     in
     Html.div
         []
         (viewHideCheckbox id model
-            :: (if isHidden then
+            :: (if not isVisible then
                     []
 
                 else
@@ -646,6 +640,7 @@ viewProgram model =
                 |> String.join "\n\n"
                 |> Ok
 
+        programResult : Meta -> Result String (CA.AllDefs, TC.Env)
         programResult meta =
             do (Lib.dict_foldRes (compileAndInsert meta) model.files Prelude.prelude) <| \allDefs ->
             let
@@ -658,7 +653,7 @@ viewProgram model =
             do withAliases <| \alsDefs ->
             alsDefs
                 |> TC.allDefsToEnvAndValues
-                |> (\( env, values ) -> TC.fromAllValueDefs env values)
+                |> (\( env, values ) -> TC.fromAllValueDefs env values |> Result.map (Tuple.pair alsDefs))
                 |> Result.mapError (Compiler.TestHelpers.errorToString eenv)
 
         titleAndPreCode title text =
@@ -684,25 +679,22 @@ viewProgram model =
                             [ Html.text e ]
                         ]
 
-                    Ok env ->
-                        -- subs, program ) ->
-                        {-
-                           [ titleAndPreCode
-                               "JavaScript value for Mod.result:"
-                               (case Compiler.JsToString_Test.runProgram "Main.result" subs program of
-                                   Ok res ->
-                                       res
+                    Ok (alsDefs, env) ->
+                        [ titleAndPreCode
+                            "JavaScript value for Mod.result:"
+                            (case Compiler.JsToString_Test.runProgram "Main.result" alsDefs of
+                                Ok res ->
+                                    res
 
-                                   Err message ->
-                                       "Error: ### " ++ message ++ " ###"
-                               )
-                           , program
-                               |> emitModule subs
-                               |> Result.withDefault "error"
-                               |> titleAndPreCode "Evaluated JavaScript code:"
-                           ]
-                        -}
-                        [ Html.text "All ok"
+                                Err message ->
+                                    "Error: ### " ++ message ++ " ###"
+                            )
+--                         , program
+--                             |> emitModule subs
+--                             |> Result.withDefault "error"
+--                             |> titleAndPreCode "Evaluated JavaScript code:"
+                        , Html.hr [] []
+                        , Html.text "No compile errors"
                         , env.instanceVariables
                             |> Dict.filter (\name _ -> not <| Dict.member name Prelude.prelude)
                             |> Dict.toList

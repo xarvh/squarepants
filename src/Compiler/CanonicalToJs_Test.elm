@@ -189,6 +189,14 @@ try =
             """
             (eval "Test.result")
             (Test.okEqual """{"k":6,"w":6,"x":2,"y":11,"z":3}""")
+        , codeTest "[reg]: pattern any"
+            """
+            result =
+               try 2 as
+                 x: x
+            """
+            (eval "Test.result")
+            (Test.okEqual "2")
         ]
 
 

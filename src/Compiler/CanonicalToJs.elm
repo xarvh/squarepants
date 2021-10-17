@@ -29,9 +29,11 @@ allNatives =
         |> Dict.insert "SPCore/Text.slice" "text_slice"
         |> Dict.insert "SPCore/Text.startsWith" "text_startsWith"
         |> Dict.insert "SPCore/Text.startsWithRegex" "text_startsWithRegex"
+        |> Dict.insert "SPCore/Text.trimLeft" "text_trimLeft"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_compare"
+        |> Dict.insert "/=" "sp_compare_not"
 
 
 nativeUnops : Dict String { jsSymb : JA.Name }
@@ -53,6 +55,8 @@ nativeBinops =
         |> Dict.insert ".." { jsSymb = "+", mutates = False, fnName = "strcon" }
         |> Dict.insert ">" { jsSymb = ">", mutates = False, fnName = "greaterThan" }
         |> Dict.insert "<" { jsSymb = "<", mutates = False, fnName = "lesserThan" }
+        |> Dict.insert "or" { jsSymb = "||", mutates = False, fnName = "or" }
+        |> Dict.insert "and" { jsSymb = "&&", mutates = False, fnName = "and" }
 
 
 none =
@@ -228,6 +232,11 @@ const sp_compare = (a) => (b) => {
 }
 
 
+const sp_compare_not = (a) => (b) => {
+  return !sp_compare(a, b);
+}
+
+
 const sp_divide = (right) => (left) => {
   if (right === 0) return 0;
   return left / right;
@@ -294,6 +303,11 @@ const text_startsWithRegex = (regex) => {
     let m = s.match(re);
     return m ? m[0] : "";
   }
+}
+
+
+const text_trimLeft = (s) => {
+  return s.trimLeft();
 }
 
 
@@ -654,7 +668,7 @@ translateExpr env expression =
                 testPa ( pattern, block ) =
                     let
                         extraStats =
-                            patternDefinitions tryName pattern
+                            assignPattern pattern (JA.Var tryName) []
 
                         condition =
                             testPattern pattern init []
