@@ -1,59 +1,141 @@
+
 alias Int =
     Number
 
 
-# TODO
-binops =
-    is Dict Text binop
-    Dict.empty
+#
+# Helpers
+#
 
+[#
+typeBinop mutates left right return =
+    is Bool -> CA.Type -> CA.Type -> CA.Type -> CA.Type
+    CA.TypeFunction pos
+        right
+        False
+        (CA.TypeFunction pos
+            left
+            mutates
+            return
+        )
+
+
+typeBinopUniform ty =
+    typeBinop False ty ty ty
+#]
+
+
+
+binops =
+    is Dict Text Op.Binop
+    [
+    , and_
+    , or_
+    , textConcat
+    , subtract
+    , multiply
+    , divide
+    , mutableAdd
+    , mutableSubtract
+    ]
+      >> (fn list: List.foldl (fn bop: Dict.insert bop.symbol bop) list Dict.empty)
 
 
 unaryPlus =
-    is Types/Unop.Unop
+    is Op.Unop
     { symbol = "0 +"
 #    , ty = typeUnopUniform Core.numberType
     }
 
 
 unaryMinus =
-    is Types/Unop.Unop
+    is Op.Unop
     { symbol = "0 -"
 #    , ty = typeUnopUniform Core.numberType
     }
 
 
 not_ =
-    is Types/Unop.Unop
+    is Op.Unop
     { symbol = "not"
 #    , ty = typeUnopUniform Core.boolType
     }
 
 
 and_ =
-    is Types/Binop.Binop
+    is Op.Binop
     { symbol = "and"
-#    , precedence = Op.Logical
-#    , associativity = Op.Right
+    , precedence = Op.Logical
+    , associativity = Op.Right
 #    , ty = typeBinopUniform Core.boolType
-#    , nonFn = []
+    , nonFn = []
     }
 
 
 or_ =
-    is Types/Binop.Binop
+    is Op.Binop
     { symbol = "or"
-#    , precedence = Op.Logical
-#    , associativity = Op.Right
+    , precedence = Op.Logical
+    , associativity = Op.Right
 #    , ty = typeBinopUniform Core.boolType
-#    , nonFn = []
+    , nonFn = []
     }
 
 textConcat =
-    is Types/Binop.Binop
+    is Op.Binop
     { symbol = ".."
-#    , precedence = Op.Addittive
-#    , associativity = Op.Right
+    , precedence = Op.Addittive
+    , associativity = Op.Right
 #    , ty = typeBinopUniform Core.textType
-#    , nonFn = []
+    , nonFn = []
+    }
+
+
+subtract =
+    is Op.Binop
+    { symbol = "-"
+    , precedence = Op.Addittive
+    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+    , nonFn = []
+    }
+
+
+multiply =
+    is Op.Binop
+    { symbol = "*"
+    , precedence = Op.Multiplicative
+    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+    , nonFn = []
+    }
+
+
+divide =
+    is Op.Binop
+    { symbol = "/"
+    , precedence = Op.Multiplicative
+    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+    , nonFn = []
+    }
+
+
+mutableAdd =
+    is Op.Binop
+    { symbol = "+="
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
+#    , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+    , nonFn = []
+    }
+
+
+mutableSubtract =
+    is Op.Binop
+    { symbol = "-="
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
+#    , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+    , nonFn = []
     }

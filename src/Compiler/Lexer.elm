@@ -1,4 +1,4 @@
-module Compiler.StringToTokens exposing (..)
+module Compiler.Lexer exposing (..)
 
 {-| I wanted to use patterns like `char0 :: char1 :: rest` to run most of the lexing,
 on the assumption that Elm can execute that fast and because it was nice to read.

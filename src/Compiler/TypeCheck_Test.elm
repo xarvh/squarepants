@@ -236,6 +236,18 @@ functions =
             """
             (infer "f")
             (Test.errContain "IncompatibleMutability")
+        --
+        , codeTest
+            """
+            [reg] recursion check confuses values of different modules?
+            """
+            """
+            x =
+              blah =
+                 Text.blah ""
+            """
+            (infer "x")
+            Test.isOk
         ]
 
 

@@ -1,9 +1,12 @@
 module Compiler.FormattableToCanonicalAst exposing (..)
 
+--, do, get, return)
+
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import Lib
 import SepList exposing (SepList)
+import StateMonad as M exposing (M)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res, errorTodo)
 import Types.FormattableAst as FA
@@ -26,6 +29,8 @@ type alias Env =
     { maybeUpdateTarget : Maybe CA.VariableArgs
     , nonRootValues : Dict String CA.Pos
     , ro : ReadOnly
+    , defsPath : List String
+    , tyvarTranslations : Dict String String
     }
 
 
@@ -41,6 +46,8 @@ initEnv ro =
     { maybeUpdateTarget = Nothing
     , nonRootValues = Dict.empty
     , ro = ro
+    , defsPath = []
+    , tyvarTranslations = Dict.empty
     }
 
 
@@ -91,13 +98,9 @@ insertRootStatement ro faStatement caModule =
             errorTodo "Root Evaluations don't really do much =|"
 
         FA.Definition fa ->
-            let
-                env =
-                    initEnv ro
-            in
-            do (translateDefinition True env fa) <| \localDef ->
+            do (translateDefinition True (initEnv ro) fa) <| \localDef ->
             if localDef.mutable then
-                errorRootDefinitionsCantBeMutable env localDef
+                errorRootDefinitionsCantBeMutable localDef
 
             else
                 case localDef.pattern of
@@ -408,25 +411,6 @@ stringToStructuredName env pos rawString =
 ----
 --- Definition
 --
-{-
-   translateRootDefinition : FA.ValueDef -> Res (CA.RootDef ())
-   translateRootDefinition fa =
-       case fa.pattern of
-           FA.PatternAny name ->
-               Result.map3
-                   (\maybeAnnotation body caParameters ->
-                       { name = name
-                       , maybeAnnotation = maybeAnnotation
-                       , body = List.foldr wrapLambda body caParameters
-                       }
-                   )
-                   (translateMaybeAnnotation fa)
-                   (translateStatementBlock Nothing fa.body)
-                   (Lib.list_mapRes translatePattern fa.parameters)
-
-           _ ->
-               errorTodo "Root definitions can't be patterns"
--}
 
 
 insertParamNames : CA.Parameter -> Dict String CA.Pos -> Dict String CA.Pos
@@ -441,7 +425,6 @@ insertParamNames param =
 
 translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.LocalValueDef
 translateDefinition isRoot env fa =
-    do (translateMaybeAnnotation env.ro fa) <| \maybeAnnotation ->
     do (translatePatternOrFunction env fa.pattern) <| \patternOrFunction ->
     let
         ( namePattern, params ) =
@@ -459,11 +442,32 @@ translateDefinition isRoot env fa =
             else
                 Dict.union (CA.patternNames namePattern) env.nonRootValues
 
-        localEnv =
-            { env | nonRootValues = List.foldl insertParamNames nonRootValues1 params }
+        toDefsPath tyvarName =
+            if isRoot then
+                [ makeRootName env.ro.currentModule tyvarName ]
+
+            else
+                tyvarName :: env.defsPath
+
+        defsPath =
+            namePattern
+                |> CA.patternNames
+                |> Dict.keys
+                |> List.head
+                |> Maybe.map toDefsPath
+                |> Maybe.withDefault env.defsPath
+
+        localEnv0 =
+            { env
+                | nonRootValues = List.foldl insertParamNames nonRootValues1 params
+                , defsPath = defsPath
+            }
     in
-    do (translateStatementBlock localEnv fa.body) <| \body ->
+    -- translateMaybeAnnotation adds scoped tyvars to env
+    do (translateMaybeAnnotation localEnv0 fa) <| \( localEnv1, maybeAnnotation ) ->
+    do (translateStatementBlock localEnv1 fa.body) <| \body ->
     { pattern = namePattern
+    , defsPath = defsPath
     , mutable = fa.mutable
     , maybeAnnotation = maybeAnnotation
     , body = List.foldr (wrapLambda env.ro fa.pos) body params
@@ -471,21 +475,79 @@ translateDefinition isRoot env fa =
         |> Ok
 
 
-translateMaybeAnnotation : ReadOnly -> FA.ValueDef -> Res (Maybe CA.Annotation)
-translateMaybeAnnotation ro fa =
+translateMaybeAnnotation : Env -> FA.ValueDef -> Res ( Env, Maybe CA.Annotation )
+translateMaybeAnnotation env0 fa =
     case fa.maybeAnnotation of
         Nothing ->
-            Ok Nothing
+            Ok ( env0, Nothing )
 
         Just annotation ->
-            do (translateType ro annotation.ty) <| \ty ->
+            do (translateType env0.ro annotation.ty) <| \rawTy ->
+            let
+                thing =
+                    M.do (translateTyvars rawTy) <| \ty_ ->
+                    M.do (M.list_map translateTyvarName annotation.nonFn) <| \nonFn_ ->
+                    M.return ( ty_, nonFn_ )
+
+                ( ( ty, nonFn ), env1 ) =
+                    M.run env0 thing
+            in
             -- TODO check that nonFn contains only variables acutally present in ty
-            { pos = tp ro annotation.pos
-            , ty = ty
-            , nonFn = List.foldl (\v -> Dict.insert v CA.F) Dict.empty annotation.nonFn
-            }
+            ( env1
+            , { pos = tp env1.ro annotation.pos
+              , ty = ty
+              , nonFn = List.foldl (\v -> Dict.insert v CA.F) Dict.empty nonFn
+              }
                 |> Just
+            )
                 |> Ok
+
+
+type alias EnvMonad a =
+    M Env a
+
+
+translateTyvars : CA.Type -> EnvMonad CA.Type
+translateTyvars type_ =
+    case type_ of
+        CA.TypeConstant p ref args ->
+            M.do (M.list_map translateTyvars args) <| \a ->
+            M.return <| CA.TypeConstant p ref a
+
+        CA.TypeFunction p from fromIsMutable to ->
+            M.do (translateTyvars from) <| \f ->
+            M.do (translateTyvars to) <| \t ->
+            M.return <| CA.TypeFunction p f fromIsMutable t
+
+        CA.TypeAlias p path ty ->
+            M.do (translateTyvars ty) <| \t ->
+            M.return <| CA.TypeAlias p path t
+
+        CA.TypeRecord p extensible attrs ->
+            M.do (M.dict_map (\k -> translateTyvars) attrs) <| \a ->
+            M.do (M.maybe_map translateTyvarName extensible) <| \e ->
+            M.return <| CA.TypeRecord p e a
+
+        CA.TypeVariable p name ->
+            M.do (translateTyvarName name) <| \n ->
+            M.return <| CA.TypeVariable p n
+
+
+translateTyvarName : String -> EnvMonad String
+translateTyvarName name =
+    M.do (M.get .tyvarTranslations) <| \tyvarTranslations ->
+    case Dict.get name tyvarTranslations of
+        Just translatedName ->
+            M.return translatedName
+
+        Nothing ->
+            M.do (M.get .defsPath) <| \defsPath ->
+            let
+                uniqueName =
+                    String.join "#" <| name :: defsPath
+            in
+            M.do (M.update (\env -> { env | tyvarTranslations = Dict.insert name uniqueName env.tyvarTranslations })) <| \_ ->
+            M.return uniqueName
 
 
 
@@ -1330,8 +1392,8 @@ errorCantDeclareAFunctionHere env name params originalPattern =
         "it seems like there is a function declaration inside a pattern?"
 
 
-errorRootDefinitionsCantBeMutable : Env -> CA.LocalValueDef -> Res a
-errorRootDefinitionsCantBeMutable env def =
+errorRootDefinitionsCantBeMutable : CA.LocalValueDef -> Res a
+errorRootDefinitionsCantBeMutable def =
     Error.caSimple
         (CA.patternPos def.pattern)
         "mutable values can be declared only inside functions."

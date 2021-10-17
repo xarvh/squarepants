@@ -19,3 +19,11 @@ map f m =
     Nothing: Nothing
     Just v: Just (f v)
 
+
+withDefault default maybe =
+  is a -> Maybe a -> a
+
+  try maybe as
+    Just v: v
+    Nothing: default
+

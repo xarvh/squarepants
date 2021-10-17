@@ -110,8 +110,33 @@ type alias Name =
 type alias Env =
     { instanceVariables : Dict Name InstanceVariable
 
-    -- These are only the type variables explicitly defined in type annotations
-    , typeVariables : Dict Name Pos
+    {-
+       Every time we use a value in an expression, we must re-instantiate its free variables, because each time they can be used in a different way.
+
+       Because of this each Definition has a `freeTypeVariables` field.
+
+       To figure out `freeTypeVariables` we can't simply take all tyvars we find in the definition's type, because:
+
+       1) a tyvar that is free in a parent definition should not be considered free in children definitions:
+
+         parent =
+           as List a
+
+           child =
+             as a -> a
+             ...
+
+           ...
+
+       2) the placeholder tyvar of an argument should not be considered free while we infer the type of a function, otherwise we keep reinstantitiating it and we never figure out anything.
+
+         f x =
+           { first } = x
+           first
+
+       By keeping track of which tyvars should NOT be considered free, we can figure out the correct `freeTypeVariables` field for each child definition.
+    -}
+    , nonFreeTyvars : Dict Name Pos
 
     -- This is used to produce nicer errors for when a recursive function is not annotated
     , nonAnnotatedRecursives : Dict Name Pos
@@ -121,7 +146,7 @@ type alias Env =
 initEnv : Env
 initEnv =
     { instanceVariables = Dict.empty
-    , typeVariables = Dict.empty
+    , nonFreeTyvars = Dict.empty
     , nonAnnotatedRecursives = Dict.empty
     }
 
@@ -976,21 +1001,21 @@ unify_ reason pos1 t1 t2 =
                     ( Just sub1, Just sub2 ) ->
                         do (unify_ reason pos1 sub1 sub2) <| \v ->
                         -- I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
-                        do (addSubstitution pos reason v1_name v) <| \_ ->
-                        do (addSubstitution pos reason v2_name v) <| \subbedTy ->
+                        do (addSubstitution "vv1" pos reason v1_name v) <| \_ ->
+                        do (addSubstitution "vv2" pos reason v2_name v) <| \subbedTy ->
                         return subbedTy
 
                     ( Nothing, Just sub2 ) ->
-                        addSubstitution pos reason v1_name t2
+                        addSubstitution "vv3" pos reason v1_name t2
 
                     _ ->
-                        addSubstitution pos reason v2_name t1
+                        addSubstitution "vv4" pos reason v2_name t1
 
         ( CA.TypeVariable pos name1, _ ) ->
-            addSubstitution pos reason name1 t2
+            addSubstitution "vl" pos reason name1 t2
 
         ( _, CA.TypeVariable pos name2 ) ->
-            addSubstitution pos reason name2 t1
+            addSubstitution "vr" pos reason name2 t1
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
             if a_fromIsMutable /= b_fromIsMutable then
@@ -1083,8 +1108,8 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                     sub =
                         CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
                 in
-                do (addSubstitution pos reason aName sub) <| \_ ->
-                do (addSubstitution pos reason bName sub) <| \_ ->
+                do (addSubstitution "jj1" pos reason aName sub) <| \_ ->
+                do (addSubstitution "jj2" pos reason bName sub) <| \_ ->
                 return sub
 
 
@@ -1100,7 +1125,7 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
         do (newName Just) <| \ext ->
-        do (addSubstitution pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
+        do (addSubstitution "ne" pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
         Dict.union bothUnified bOnly
             |> CA.TypeRecord pos Nothing
             |> return
@@ -1122,9 +1147,20 @@ unifyError error t1 t2 =
 --
 
 
-addSubstitution : Pos -> UnifyReason -> Name -> Type -> Monad Type
-addSubstitution pos reason name rawTy =
+addSubstitution : String -> Pos -> UnifyReason -> Name -> Type -> Monad Type
+addSubstitution debugCode pos reason name rawTy =
     do (applySubsToType rawTy) <| \ty ->
+    let
+        x =
+            ( name, ty, rawTy )
+
+        _ =
+            if String.toInt name == Nothing then
+                Debug.log "addSubstitution on annotated tyvar" x
+
+            else
+                x
+    in
     if typeHasTyvar name ty then
         -- TODO This feels a bit like a hacky work around.
         -- Maybe it's because I don't call applySubsToType enough before calling unify?
@@ -1134,12 +1170,8 @@ addSubstitution pos reason name rawTy =
             return ty
 
         else
-            addError pos
-                [ "COMPILER BUG: Trying to add a cyclical substitution for tyvar `" ++ name ++ "`: " ++ typeToText rawTy
-                , ""
-                , "This is not your fault, it's a bug in the Squarepants compiler."
-                , Debug.toString reason
-                ]
+            unifyError (Cycle name) (CA.TypeVariable pos name) ty
+
 
     else
         do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
@@ -1222,8 +1254,8 @@ flagFreeVars names =
 typeContainsFunctions : Type -> Bool
 typeContainsFunctions ty =
     case ty of
-        CA.TypeConstant _ _ _ ->
-            False
+        CA.TypeConstant _ _ args ->
+          List.any typeContainsFunctions args
 
         CA.TypeVariable _ _ ->
             False
@@ -1358,10 +1390,10 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
                     Dict.empty
 
                 else
-                    getFreeTypeVars env.typeVariables Dict.empty refinedTy
+                    getFreeTypeVars env.nonFreeTyvars Dict.empty refinedTy
             }
             env.instanceVariables
-    , typeVariables =
+    , nonFreeTyvars =
         if isParameter then
             {-
 
@@ -1376,10 +1408,10 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
                if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
 
             -}
-            Dict.foldl Dict.insert env.typeVariables (typeTyvars refinedTy)
+            Dict.foldl Dict.insert env.nonFreeTyvars (typeTyvars refinedTy)
 
         else
-            env.typeVariables
+            env.nonFreeTyvars
     }
         |> return
 
@@ -1410,7 +1442,7 @@ applySubsToPatternVarsAndAddThemToEnv isMutable vars env =
                     Dict.foldl (\n p -> Dict.insert n p) constrainedVars (typeTyvars ty)
 
         env1 =
-            { env | typeVariables = List.foldl meh env.typeVariables (Dict.keys env.typeVariables) }
+            { env | nonFreeTyvars = List.foldl meh env.nonFreeTyvars (Dict.keys env.nonFreeTyvars) }
     in
     insertPatternVars subs False isMutable vars env1
 
@@ -1445,13 +1477,13 @@ generateNewTypeVariables tyvarByName =
 
 
 getFreeTypeVars : Dict Name Pos -> Dict Name Pos -> Type -> Dict Name { nonFn : Bool }
-getFreeTypeVars envVars nonFn ty =
+getFreeTypeVars nonFreeTyvars nonFn ty =
     let
         --posToTyvar : Name -> Pos -> TypeVariable
         posToTyvar name pos =
             { nonFn = Dict.member name nonFn }
     in
-    Dict.diff (typeTyvars ty) envVars
+    Dict.diff (typeTyvars ty) nonFreeTyvars
         |> Dict.map posToTyvar
 
 
@@ -1517,16 +1549,17 @@ addErrorWithEEnv pos messageConstructor =
 ----
 --- Errors
 --
-
 {- TODO this should go somewhere else -}
-splitName : String -> (Maybe String, String)
-splitName s =
-            case String.split "." s of
-                moduleName :: valueName :: [] ->
-                  (Just moduleName, valueName)
-                _ ->
-                  (Nothing, s)
 
+
+splitName : String -> ( Maybe String, String )
+splitName s =
+    case String.split "." s of
+        moduleName :: valueName :: [] ->
+            ( Just moduleName, valueName )
+
+        _ ->
+            ( Nothing, s )
 
 
 errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
@@ -1536,16 +1569,16 @@ errorUndefinedVariable env pos normalizedName =
         rawName =
             Error.posToToken errorEnv pos
 
-        (maybeRawModuleName, name) =
-          splitName rawName
+        ( maybeRawModuleName, name ) =
+            splitName rawName
 
-        (maybeNormalizedModuleName, _) =
-          splitName normalizedName
+        ( maybeNormalizedModuleName, _ ) =
+            splitName normalizedName
     in
     case Dict.get name env.nonAnnotatedRecursives of
         Nothing ->
-            case (maybeRawModuleName, maybeNormalizedModuleName) of
-                (Just rawModuleName, Just normalizedModuleName) ->
+            case ( maybeRawModuleName, maybeNormalizedModuleName ) of
+                ( Just rawModuleName, Just normalizedModuleName ) ->
                     case Dict.get normalizedModuleName errorEnv.moduleByName of
                         Just _ ->
                             [ "Module `" ++ normalizedModuleName ++ "` does not seem to expose a variable called `" ++ name ++ "`."

@@ -92,6 +92,7 @@ type alias Annotation =
 
 type alias LocalValueDef =
     { pattern : Pattern
+    , defsPath : List String
     , mutable : Bool
     , maybeAnnotation : Maybe Annotation
     , body : List Statement
@@ -101,6 +102,7 @@ type alias LocalValueDef =
 rootToLocalDef : RootValueDef -> LocalValueDef
 rootToLocalDef r =
     { pattern = PatternAny r.pos r.name
+    , defsPath = [ r.name ]
     , mutable = False
     , maybeAnnotation = r.maybeAnnotation
     , body = r.body
@@ -171,6 +173,21 @@ type Argument
     | ArgumentMutable Pos VariableArgs
 
 
+{-TODO
+  union SymbolReference symbolName =
+    #`value`
+    #    -> locale
+    #    -> globale in metafile
+    , Internal symbolName
+    , Root ModuleName symbolName
+    , Global ModuleName symbolName
+
+    #`Module.value`
+    #    -> direct
+    #    -> module alias
+    , Direct ModuleName symbolName
+    , Aliased ModuleAlias ModuleName symbolName
+-}
 type alias VariableArgs =
     { name : String
     , attrPath : List String
@@ -419,6 +436,7 @@ posMap_valueDef f def =
     return
         { pattern = b_pattern
         , mutable = def.mutable
+        , defsPath = def.defsPath
         , maybeAnnotation = b_ann
         , body = b_body
         }

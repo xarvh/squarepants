@@ -1,5 +1,5 @@
 union Test =
-    , Single Text (None -> TestOutcome)
+    , Single Text Text (None -> TestOutcome)
     , Group Text [ Test ]
     , NotNow Test
 
@@ -32,7 +32,7 @@ union CodeExpectation ok =
 codeTest toText title code functionToTest (CodeExpectation toMaybeError) =
     is (ok -> Text) -> Text -> Text -> (Text -> Result Text ok) -> CodeExpectation ok -> Test
 
-    Single (title .. "\n\n" .. code) fn None:
+    Single title code fn None:
       code
           >> functionToTest
           >> toMaybeError toText
@@ -80,14 +80,14 @@ isOkAndEqualTo expectedOk =
 
 
 outcomesRec path test accum =
-    is Text -> Test -> [ Text & TestOutcome ] -> [ Text & TestOutcome ]
+    is Text -> Test -> [ Text & Text & TestOutcome ] -> [ Text & Text & TestOutcome ]
 
     try test as
-        Single name f:
-            path .. name & (f None) :: accum
+        Single name code f:
+            path .. name & code & (f None) :: accum
 
         NotNow t:
-            path .. getName t & Skipped :: accum
+            path .. getName t & "" & Skipped :: accum
 
         Group pathSegment ts:
             List.foldl (outcomesRec (path .. pathSegment .. " / ")) ts accum
@@ -97,7 +97,7 @@ getName test =
     is Test -> Text
 
     try test as
-        Single n f:
+        Single n code f:
             n
 
         Group n ls:
@@ -108,7 +108,7 @@ getName test =
 
 
 flatten tests =
-    is [ Test ] -> [ Text & TestOutcome ]
+    is [ Test ] -> [ Text & Text & TestOutcome ]
 
     List.foldl (outcomesRec "") tests []
 

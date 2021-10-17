@@ -12,20 +12,34 @@
                     ]
                 },
                 {
-                    "path": "Types/Token",
-                    "importAs": "Token",
-                    "globalValues": [],
-                    "globalTypes": [
-                        "Token"
-                    ]
-                },
-                {
-                    "path": "Types/Error",
+                    "path": "Compiler/Error",
                     "importAs": "Error",
                     "globalValues": [],
                     "globalTypes": [
                         "Error",
                         "Res"
+                    ]
+                },
+                {
+                    "path": "Types/Op",
+                    "importAs": "Op",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
+                    "path": "Types/Pos",
+                    "importAs": "Pos",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Pos"
+                    ]
+                },
+                {
+                    "path": "Types/Token",
+                    "importAs": "Token",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Token"
                     ]
                 }
             ]
@@ -52,32 +66,11 @@
                     ]
                 },
                 {
-                    "path": "SPLib/Basics",
-                    "globalValues": [ "assert", "identity", "min", "max" ],
-                    "globalTypes": []
-                },
-                {
-                    "path": "SPLib/Buffer",
-                    "importAs": "Buffer",
-                    "globalValues": [],
-                    "globalTypes": [
-                        "Buffer"
-                    ]
-                },
-                {
                     "path": "SPCore/List",
                     "importAs": "List",
                     "globalValues": [],
                     "globalTypes": [
                         "Int"
-                    ]
-                },
-                {
-                    "path": "SPCore/Dict",
-                    "importAs": "Dict",
-                    "globalValues": [],
-                    "globalTypes": [
-                      "Dict"
                     ]
                 },
                 {
@@ -89,6 +82,50 @@
                     ],
                     "globalTypes": [
                         "Maybe"
+                    ]
+                },
+                {
+                    "path": "SPCore/Text",
+                    "importAs": "Text",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPCore/Debug",
+                    "importAs": "Debug",
+                    "globalValues": [
+                        "log",
+                        "todo"
+                    ],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPCore/Basics",
+                    "globalValues": [ "assert", "clamp", "identity", "min", "max" ],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPLib/Buffer",
+                    "importAs": "Buffer",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Buffer"
+                    ]
+                },
+                {
+                    "path": "SPCore/Dict",
+                    "importAs": "Dict",
+                    "globalValues": [],
+                    "globalTypes": [
+                      "Dict"
+                    ]
+                },
+                {
+                    "path": "SPCore/Set",
+                    "importAs": "Set",
+                    "globalValues": [],
+                    "globalTypes": [
+                      "Set"
                     ]
                 },
                 {
@@ -107,21 +144,6 @@
                     "globalTypes": [
                         "Result"
                     ]
-                },
-                {
-                    "path": "SPCore/Text",
-                    "importAs": "Text",
-                    "globalValues": [],
-                    "globalTypes": []
-                },
-                {
-                    "path": "SPCore/Debug",
-                    "importAs": "Debug",
-                    "globalValues": [
-                        "log",
-                        "todo"
-                    ],
-                    "globalTypes": []
                 }
             ]
         }

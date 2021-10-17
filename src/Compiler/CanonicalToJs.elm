@@ -30,10 +30,11 @@ allNatives =
         |> Dict.insert "SPCore/Text.startsWith" "text_startsWith"
         |> Dict.insert "SPCore/Text.startsWithRegex" "text_startsWithRegex"
         |> Dict.insert "SPCore/Text.trimLeft" "text_trimLeft"
+        |> Dict.insert "SPCore/Text.dropLeft" "text_dropLeft"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
-        |> Dict.insert "==" "sp_compare"
-        |> Dict.insert "/=" "sp_compare_not"
+        |> Dict.insert "==" "sp_equal"
+        |> Dict.insert "/=" "sp_not_equal"
 
 
 nativeUnops : Dict String { jsSymb : JA.Name }
@@ -192,7 +193,7 @@ const sp_clone = (src) => {
 }
 
 
-const sp_compare = (a) => (b) => {
+const sp_equal = (a) => (b) => {
   if (a === b)
     return true
 
@@ -204,7 +205,7 @@ const sp_compare = (a) => (b) => {
 
     let i = 0;
     while (i < l) {
-      if (!sp_compare(a[i], b[i])) return false;
+      if (!sp_equal(a[i])(b[i])) return false;
       ++i;
     }
 
@@ -221,7 +222,7 @@ const sp_compare = (a) => (b) => {
     let i = 0;
     while (i < l) {
       let k = keys[i];
-      if (!sp_compare(a[k], b[k])) return false;
+      if (!sp_equal(a[k])(b[k])) return false;
       ++i;
     }
 
@@ -232,8 +233,8 @@ const sp_compare = (a) => (b) => {
 }
 
 
-const sp_compare_not = (a) => (b) => {
-  return !sp_compare(a, b);
+const sp_not_equal = (a) => (b) => {
+  return !sp_equal(a)(b);
 }
 
 
@@ -248,7 +249,7 @@ const sp_todo = (message) => {
 }
 
 const sp_log = (message) => (thing) => {
-  console.log(message, thing);
+  console.log(message, JSON.stringify(thing, null, 2));
   return thing;
 }
 
@@ -308,6 +309,11 @@ const text_startsWithRegex = (regex) => {
 
 const text_trimLeft = (s) => {
   return s.trimLeft();
+}
+
+
+const text_dropLeft = (n) => (s) => {
+  return s.slice(n);
 }
 
 
@@ -847,7 +853,7 @@ translateBodyToEither env extra caBody =
 quoteAndEscape : String -> String
 quoteAndEscape s =
     -- TODO escape
-    "\"" ++ s ++ "\""
+    "\"" ++ String.replace "\n" "\\n" s ++ "\""
 
 
 accessWithBracketsInt : Int -> JA.Expr -> JA.Expr

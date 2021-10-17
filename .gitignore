@@ -5,4 +5,5 @@ elm-stuff/
 artifacts.dat
 index.html
 build/
-generated/GeneratedModules.elm
+generated/*.elm
+generated/SPTests/*.elm

@@ -4,11 +4,11 @@ cd "$(dirname "$0")"/..
 
 FILES=`find sp/* |grep SPCore.*sp`
 
-OUT=generated/GeneratedModules.elm
+OUT=generated/SpModulesAsStrings.elm
 
 
 
-echo "module GeneratedModules exposing (..)" >$OUT
+echo "module SpModulesAsStrings exposing (..)" >$OUT
 echo "modules =" >>$OUT
 
 line_prefix="["
@@ -32,3 +32,8 @@ done
 
 echo "  ]" >>$OUT
 
+###
+
+echo "meta = \"\"\"" >>$OUT
+cat sp.json >>$OUT
+echo "\"\"\"" >>$OUT

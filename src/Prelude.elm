@@ -3,6 +3,7 @@ module Prelude exposing (..)
 import Compiler.CoreModule as Core
 import Dict exposing (Dict)
 import MetaFile exposing (MetaFile)
+import SpModulesAsStrings
 import Types.CanonicalAst as CA exposing (Type)
 import Types.Meta exposing (Meta)
 import Types.Op as Op exposing (Binop, Unop)
@@ -16,71 +17,77 @@ import Types.Op as Op exposing (Binop, Unop)
 
 
 metaString =
-    """
-    {
-      "sourceDirs": [{
-        "path": "",
-        "moduleExceptions": [{
-          "path": "SPCore",
-          "importAs": "SPCore",
-          "globalValues": [
-            "None",
-            "True",
-            "False"
-          ],
-          "globalTypes": [
-            "None",
-            "Bool",
-            "Text",
-            "List",
-            "Number"
-          ]
-        }, {
-          "path": "SPCore/List",
-          "importAs": "List",
-          "globalValues": [
-          ],
-          "globalTypes": [
-              "Int"
-          ]
-        }, {
-          "path": "SPCore/Maybe",
-          "importAs": "Maybe",
-          "globalValues": [
-            "Just",
-            "Nothing"
-          ],
-          "globalTypes": [
-            "Maybe"
-          ]
-        }, {
-          "path": "SPCore/Random",
-          "importAs": "Random",
-          "globalValues": [
-          ],
-          "globalTypes": [
-          ]
-        }, {
-          "path": "SPCore/Text",
-          "importAs": "Text",
-          "globalValues": [
-          ],
-          "globalTypes": [
-          ]
-        }, {
-          "path": "SPCore/Debug",
-          "importAs": "Debug",
-          "globalValues": [
-            "log",
-            "todo"
-          ],
-          "globalTypes": [
-          ]
-        }]
-      }],
-      "libraries": []
-    }
-    """
+    SpModulesAsStrings.meta
+
+
+
+{-
+   """
+   {
+     "sourceDirs": [{
+       "path": "",
+       "moduleExceptions": [{
+         "path": "SPCore",
+         "importAs": "SPCore",
+         "globalValues": [
+           "None",
+           "True",
+           "False"
+         ],
+         "globalTypes": [
+           "None",
+           "Bool",
+           "Text",
+           "List",
+           "Number"
+         ]
+       }, {
+         "path": "SPCore/List",
+         "importAs": "List",
+         "globalValues": [
+         ],
+         "globalTypes": [
+             "Int"
+         ]
+       }, {
+         "path": "SPCore/Maybe",
+         "importAs": "Maybe",
+         "globalValues": [
+           "Just",
+           "Nothing"
+         ],
+         "globalTypes": [
+           "Maybe"
+         ]
+       }, {
+         "path": "SPCore/Random",
+         "importAs": "Random",
+         "globalValues": [
+         ],
+         "globalTypes": [
+         ]
+       }, {
+         "path": "SPCore/Text",
+         "importAs": "Text",
+         "globalValues": [
+         ],
+         "globalTypes": [
+         ]
+       }, {
+         "path": "SPCore/Debug",
+         "importAs": "Debug",
+         "globalValues": [
+           "log",
+           "todo"
+         ],
+         "globalTypes": [
+         ]
+       }]
+     }],
+     "libraries": []
+   }
+   """
+-}
 
 
 metaFile : MetaFile

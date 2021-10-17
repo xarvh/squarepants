@@ -15,6 +15,7 @@ tests : Test
 tests =
     Test.Group "TokensToFormattableAst"
         [ errors
+        , values
         , parens
         , lambdas
         , annotations
@@ -171,6 +172,24 @@ errors =
 --
 
 
+values : Test
+values =
+    Test.Group "Values"
+        [ codeTest "[reg] Unop"
+            """
+            r = f -n
+            """
+            firstDefinition
+            Test.isOk
+        ]
+
+
+
+----
+---
+--
+
+
 parens : Test
 parens =
     Test.Group "Parens"
@@ -278,6 +297,16 @@ lambdas =
                             ]
                     ]
             }
+        , codeTest
+            """
+            Single tuple args can be unpacked without parens
+            """
+            """
+            x =
+              fn a & b: a
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 
@@ -286,10 +315,10 @@ annotations =
     Test.Group "Annotations"
         [ codeTest "Mutability 1"
             """
-                        a =
-                          is Number @> Int -> None
-                          1
-                        """
+            a =
+              is Number @> Int -> None
+              1
+            """
             firstAnnotation
             (Test.okEqual
                 (FA.TypeFunction p

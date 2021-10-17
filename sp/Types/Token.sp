@@ -28,8 +28,8 @@ union Kind =
     , With
     # Ops
     , Defop { mutable is Bool }
-    , Unop Types/Unop.Unop
-    , Binop Text Types/Binop.Binop
+    , Unop Op.Unop
+    , Binop Text Op.Binop
     , Arrow { mutable is Bool }
     # Parens
     , RoundParen OpenOrClosed

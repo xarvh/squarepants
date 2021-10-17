@@ -1,6 +1,8 @@
 * Types that don't exist because their module does not exist should not reach typeCheck
       ---> Should Apply Alias do it?
 
+* Test SPCore/List?
+
 * Should error when type constants don't have enough params?
 
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?

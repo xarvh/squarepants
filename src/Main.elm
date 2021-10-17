@@ -12,8 +12,8 @@ import Compiler.JsToString
 import Compiler.JsToString_Test
 import Compiler.Pipeline
 import Compiler.ScopeCheck_Test
-import Compiler.StringToTokens
-import Compiler.StringToTokens_Test
+import Compiler.Lexer
+import SPTests.Lexer_Test
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
@@ -21,7 +21,7 @@ import Compiler.TypeCheck as TC
 import Compiler.TypeCheck_Test
 import Css
 import Dict exposing (Dict)
-import GeneratedModules
+import SpModulesAsStrings
 import Html exposing (Html)
 import Html.Attributes exposing (class, style)
 import Html.Events
@@ -51,7 +51,8 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-      result = 1 /= 2
+result =
+    Text.padRight 20 "@" ""
       """
     )
 
@@ -61,7 +62,7 @@ initialFiles =
       , ( metaFileName, Prelude.metaString )
       ]
     , if runTests then
-        GeneratedModules.modules
+        SpModulesAsStrings.modules
 
       else
         []
@@ -98,7 +99,7 @@ This function is here just to illustrate how to use mutables.
 It's very much not a practical pseudo random generator.
 
 #]
-number min max @wrappedSeed =
+number min_ max_ @wrappedSeed =
     is Number -> Number -> Seed @> Number
 
     Seed seed = wrappedSeed
@@ -110,10 +111,10 @@ number min max @wrappedSeed =
           >> Seed
 
     # TODO implement `clamp`
-    if seed > max:
-        max
-    else if seed < min:
-        min
+    if seed > max_:
+        max_
+    else if seed < min_:
+        min_
     else
         seed
       """
@@ -136,7 +137,7 @@ tests =
 
     else
         Test.viewList
-            [ Compiler.StringToTokens_Test.tests
+            [ SPTests.Lexer_Test.tests
             , Compiler.TokensToFormattableAst_Test.tests
             , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.ScopeCheck_Test.tests
@@ -389,7 +390,7 @@ viewCodeEditor model code =
 
 viewSyntaxHighlight : Meta -> String -> List (Html msg)
 viewSyntaxHighlight meta code =
-    case Compiler.StringToTokens.lexer "<TODO module name>" code of
+    case Compiler.Lexer.lexer "<TODO module name>" code of
         Err _ ->
             [ Html.text code ]
 
@@ -532,7 +533,7 @@ viewFileStages model rawCode =
             Compiler.TestHelpers.unindent rawCode
 
         tokens =
-            onJust (Just <| Ok code) (Compiler.StringToTokens.lexer model.selectedFile)
+            onJust (Just <| Ok code) (Compiler.Lexer.lexer model.selectedFile)
 
         faModule =
             onJust tokens (Compiler.TokensToFormattableAst.parse code model.selectedFile)
@@ -1273,11 +1274,11 @@ average numbers =
 
 
 # The argument preceding `@>` is mutable
-generateTwoRandomNumbers min max @seed =
+generateTwoRandomNumbers min_ max_ @seed =
     is Int -> Int -> Random.Seed @> Int & Int
 
     # '&' is used for tuples
-    Random.number min max @seed & Random.number min max @seed
+    Random.number min_ max_ @seed & Random.number min_ max_ @seed
 
 
 

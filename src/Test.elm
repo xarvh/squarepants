@@ -85,6 +85,10 @@ freeform test =
             test actualOk
 
 
+isOkAndEqualTo =
+    okEqual
+
+
 okEqual : ok -> CodeExpectation ok
 okEqual expectedOk =
     CodeExpectation <| \toString result ->

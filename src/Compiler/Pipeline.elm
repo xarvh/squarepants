@@ -2,7 +2,7 @@ module Compiler.Pipeline exposing (..)
 
 import Compiler.FormattableToCanonicalAst
 import Compiler.ScopeCheck
-import Compiler.StringToTokens
+import Compiler.Lexer
 import Compiler.TokensToFormattableAst
 import Dict exposing (Dict)
 import Types.CanonicalAst as CA
@@ -25,7 +25,7 @@ andThenMapError transformError f =
 stringToTokens : String -> String -> Res (List Token)
 stringToTokens moduleName code =
     code
-        |> Compiler.StringToTokens.lexer moduleName
+        |> Compiler.Lexer.lexer moduleName
 
 
 stringToFormattableAst : String -> String -> Res FA.Module

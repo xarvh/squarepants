@@ -38,19 +38,51 @@ trimLeft s =
     Debug.todo "trimLeft must be implemented natively"
 
 
-dropRight n s =
+dropLeft n s =
     is Int -> Text -> Text
 
     # native
-    Debug.todo "dropRight must be implemented natively"
+    Debug.todo "dropLeft must be implemented natively"
 
 
-uncons s =
-    is Text -> Maybe (Text & Text)
+dropRight n s =
+    is Int -> Text -> Text
 
-    # native
-    Debug.todo "uncons must be implemented natively"
+    if n > 0:
+        # TODO use -n once the parser is fixed
+        slice 0 (0 - n) s
+    else:
+        s
 
+
+padLeft minLength pad s =
+    is Int -> Text -> Text -> Text
+
+    textLength = Text.length s
+
+    if textLength < minLength:
+      times = (textLength - minLength) / Text.length pad
+      repeat times pad .. s
+    else:
+      s
+
+
+padRight minLength pad s =
+    is Int -> Text -> Text -> Text
+
+    textLength = Text.length s
+
+    if textLength < minLength:
+      times = (textLength - minLength) / Text.length pad
+      s .. repeat times pad
+    else:
+      s
+
+
+repeat n s =
+    is Int -> Text -> Text
+
+    join "" << List.repeat n s
 
 
 # HACK
