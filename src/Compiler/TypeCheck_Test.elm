@@ -857,6 +857,18 @@ records =
             """
             (infer "readOne")
             Test.isOk
+        , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
+            """
+            alias R = { x is Int, y is Int }
+
+            rec s =
+                is R -> R
+
+                if True: { s with y = .y }
+                else: rec { s with y = .y }
+            """
+            (infer "rec")
+            Test.isOk
         ]
 
 
@@ -1044,18 +1056,6 @@ if_else =
             """
             (infer "x")
             (Test.errContain "SPCore.Number")
-        , codeTest "[reg] problem with records and recursion?"
-            """
-            alias R = { x is Int, y is Int }
-
-            rec s =
-                is R -> R
-
-                if True: { s with y = .y }
-                else: rec { s with y = .y }
-            """
-            (infer "rec")
-            Test.isOk
         ]
 
 

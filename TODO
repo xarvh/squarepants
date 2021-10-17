@@ -6,3 +6,6 @@
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
 
 * Humanize must break a type into multiple lines
+
+
+* later: Compiler should be able to produce a stacktrace

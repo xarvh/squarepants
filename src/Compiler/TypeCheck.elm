@@ -1099,7 +1099,8 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
-        do (addSubstitution pos reason aName (CA.TypeRecord (CA.I 5) Nothing bOnly)) <| \_ ->
+        do (newName Just) <| \ext ->
+        do (addSubstitution pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
         Dict.union bothUnified bOnly
             |> CA.TypeRecord pos Nothing
             |> return

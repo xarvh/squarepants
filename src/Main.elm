@@ -51,7 +51,13 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-result = 1
+alias R = { x is Int, y is Int }
+
+rec s =
+    is R -> R
+
+    if True: { s with y = .y }
+    else: rec { s with y = .y }
       """
     )
 
@@ -60,10 +66,18 @@ initialFiles =
     [ [ moduleMain
       , ( metaFileName, Prelude.metaString )
       ]
-    , GeneratedModules.modules
-    , [ languageOverview
-      , moduleRandom
-      ]
+    , if runTests then
+        GeneratedModules.modules
+
+      else
+        []
+    , if runTests then
+        [ languageOverview
+        , moduleRandom
+        ]
+
+      else
+        []
     ]
         |> List.concat
         |> List.map (Tuple.mapSecond Compiler.TestHelpers.unindent)
