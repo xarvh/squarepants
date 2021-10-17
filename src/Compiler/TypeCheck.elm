@@ -1528,15 +1528,22 @@ errorUndefinedVariable env pos normalizedName =
     in
     case Dict.get name env.nonAnnotatedRecursives of
         Nothing ->
-            [ "Undefined variable: " ++ name
-            , ""
-            , case String.split "." name of
+            case String.split "." name of
                 moduleName :: valueName :: [] ->
-                    "Module `" ++ moduleName ++ "` does not seem to expose a variable called `" ++ valueName ++ "`."
+                    case Dict.get moduleName errorEnv.moduleByName of
+                        Just _ ->
+                            [ "Module `" ++ moduleName ++ "` does not seem to expose a variable called `" ++ valueName ++ "`."
+                            ]
+
+                        Nothing ->
+                            [ "I can't find any module called `" ++ moduleName ++ "`."
+                            ]
 
                 _ ->
-                    "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
-            ]
+                    [ "Undefined value: " ++ name
+                    , ""
+                    , "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
+                    ]
 
         Just defPos ->
             [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
