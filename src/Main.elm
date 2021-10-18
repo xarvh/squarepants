@@ -13,7 +13,7 @@ import Compiler.JsToString_Test
 import Compiler.Pipeline
 import Compiler.ScopeCheck_Test
 import Compiler.StringToTokens
-import Compiler.StringToTokens_Test
+import SPTests.Lexer_Test
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
@@ -136,7 +136,7 @@ tests =
 
     else
         Test.viewList
-            [ Compiler.StringToTokens_Test.tests
+            [ SPTests.Lexer_Test.tests
             , Compiler.TokensToFormattableAst_Test.tests
             , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.ScopeCheck_Test.tests

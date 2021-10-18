@@ -6,3 +6,4 @@ artifacts.dat
 index.html
 build/
 generated/*.elm
+generated/SPTests/*.elm

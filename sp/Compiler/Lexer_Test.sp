@@ -23,11 +23,6 @@ non_mut_name =
     Token.Name { mutable = False }
 
 
-
-##### Start of Elm-compatible part
-
-
-
 tests =
     Test.Group "Lexer"
         [ keywords
@@ -41,7 +36,7 @@ tests =
 keywords =
     Test.Group "keywords"
         [ codeTest "[reg] `fn` is a keyword"
-            "f = 1"
+            "fn = 1"
             lexTokens
             (Test.isOkAndEqualTo
                 [ { end = 0, kind = Token.NewSiblingLine, start = 0 }
