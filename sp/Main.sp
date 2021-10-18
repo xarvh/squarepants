@@ -33,22 +33,22 @@ indent s =
       >> Text.join "\n"
 
 
-testOutcomeToText name outcome =
-    is Text -> Test.TestOutcome -> Text
+testOutcomeToText name code outcome =
+    is Text -> Text -> Test.TestOutcome -> Text
 
     try outcome as
         Test.Success:
-            green << "* " .. name
+            green << "* PASS: " .. name
 
         Test.Skipped:
-            yellow << "? " .. name
+            yellow << "* skip: " .. name
 
         Test.Error error:
-            (red << "-----------------------\nX " .. name) .. "\n" .. indent error
+            (red << "FAIL ! " .. name) .. "\n" .. indent code .. "\n" .. indent error
 
 
 main argv =
   allTests
       >> Test.flatten
-      >> List.map (fn (name & outcome): testOutcomeToText name outcome)
+      >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
       >> Text.join "\n"

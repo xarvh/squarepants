@@ -57,3 +57,53 @@ textConcat =
 #    , ty = typeBinopUniform Core.textType
 #    , nonFn = []
     }
+
+
+#subtract : Binop
+subtract =
+    { symbol = "-"
+#    , precedence = Op.Addittive
+#    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+#    , nonFn = []
+    }
+
+
+#multiply : Binop
+multiply =
+    { symbol = "*"
+#    , precedence = Op.Multiplicative
+#    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+#    , nonFn = []
+    }
+
+
+#divide : Binop
+divide =
+    { symbol = "/"
+#    , precedence = Op.Multiplicative
+#    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+#    , nonFn = []
+    }
+
+
+#mutableAdd : Binop
+mutableAdd =
+    { symbol = "+="
+#    , precedence = Op.Mutop
+#    , associativity = Op.NonAssociative
+#    , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+#    , nonFn = []
+    }
+
+
+#mutableSubtract : Binop
+mutableSubtract =
+    { symbol = "-="
+#    , precedence = Op.Mutop
+#    , associativity = Op.NonAssociative
+#    , ty = typeBinop True Core.numberType Core.numberType Core.noneType
+#    , nonFn = []
+    }
