@@ -73,7 +73,7 @@
                     ]
                 },
                 {
-                    "path": "SPCore/Dict",
+                    "path": "SPLib/Dict",
                     "importAs": "Dict",
                     "globalValues": [],
                     "globalTypes": [
