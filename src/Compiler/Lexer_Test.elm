@@ -1,6 +1,6 @@
 module SPTests.Lexer_Test exposing (..)
 
-import Compiler.StringToTokens as Lexer
+import Compiler.Lexer
 import Compiler.TestHelpers
 import Prelude
 import Test exposing (Test)
@@ -14,7 +14,7 @@ codeTest =
 
 lexTokens : String -> Result String (List Token)
 lexTokens s =
-    Lexer.lexer "Test" s
+    Compiler.Lexer.lexer "Test" s
         |> Compiler.TestHelpers.resErrorToString s
 
 

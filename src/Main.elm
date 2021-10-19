@@ -12,7 +12,7 @@ import Compiler.JsToString
 import Compiler.JsToString_Test
 import Compiler.Pipeline
 import Compiler.ScopeCheck_Test
-import Compiler.StringToTokens
+import Compiler.Lexer
 import SPTests.Lexer_Test
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
@@ -389,7 +389,7 @@ viewCodeEditor model code =
 
 viewSyntaxHighlight : Meta -> String -> List (Html msg)
 viewSyntaxHighlight meta code =
-    case Compiler.StringToTokens.lexer "<TODO module name>" code of
+    case Compiler.Lexer.lexer "<TODO module name>" code of
         Err _ ->
             [ Html.text code ]
 
@@ -532,7 +532,7 @@ viewFileStages model rawCode =
             Compiler.TestHelpers.unindent rawCode
 
         tokens =
-            onJust (Just <| Ok code) (Compiler.StringToTokens.lexer model.selectedFile)
+            onJust (Just <| Ok code) (Compiler.Lexer.lexer model.selectedFile)
 
         faModule =
             onJust tokens (Compiler.TokensToFormattableAst.parse code model.selectedFile)
