@@ -74,19 +74,14 @@ getPos state =
 resError pos state message =
     is Int -> ReadState -> [Text] -> Res a
 
-    #Error.markdown (CA.P state.moduleName (getPos state) pos) message
-    Error.res
-        {
-        , moduleName = state.moduleName
-        , start = pos
-        , end = getPos state
-        , description = fn _: message
-        }
+    # TODO is `pos` the start position?
+    # TODO is `getPos state` the end position?
+    Error.res (Pos.P state.moduleName pos (getPos state)) fn _: message
 
 
 
 lexer moduleName moduleCode =
-    is Text -> Text -> Res [ Token ]
+    is Text -> Text -> Res [Token]
 
     readStateInit moduleName moduleCode >> lexerStep
 

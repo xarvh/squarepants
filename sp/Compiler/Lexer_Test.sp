@@ -11,7 +11,8 @@ lexTokens s =
 
     s
         >> Compiler/Lexer.lexer "Test"
-        >> Result.mapError Debug.toHuman
+        >> Compiler/TestHelpers.resErrorToText s
+
 
 lexTokensAndDrop n s =
     s

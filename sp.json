@@ -12,20 +12,28 @@
                     ]
                 },
                 {
-                    "path": "Types/Token",
-                    "importAs": "Token",
-                    "globalValues": [],
-                    "globalTypes": [
-                        "Token"
-                    ]
-                },
-                {
                     "path": "Compiler/Error",
                     "importAs": "Error",
                     "globalValues": [],
                     "globalTypes": [
                         "Error",
                         "Res"
+                    ]
+                },
+                {
+                    "path": "Types/Pos",
+                    "importAs": "Pos",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Pos"
+                    ]
+                },
+                {
+                    "path": "Types/Token",
+                    "importAs": "Token",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Token"
                     ]
                 }
             ]
@@ -52,32 +60,11 @@
                     ]
                 },
                 {
-                    "path": "SPLib/Basics",
-                    "globalValues": [ "assert", "identity", "min", "max" ],
-                    "globalTypes": []
-                },
-                {
-                    "path": "SPLib/Buffer",
-                    "importAs": "Buffer",
-                    "globalValues": [],
-                    "globalTypes": [
-                        "Buffer"
-                    ]
-                },
-                {
                     "path": "SPCore/List",
                     "importAs": "List",
                     "globalValues": [],
                     "globalTypes": [
                         "Int"
-                    ]
-                },
-                {
-                    "path": "SPLib/Dict",
-                    "importAs": "Dict",
-                    "globalValues": [],
-                    "globalTypes": [
-                      "Dict"
                     ]
                 },
                 {
@@ -89,23 +76,6 @@
                     ],
                     "globalTypes": [
                         "Maybe"
-                    ]
-                },
-                {
-                    "path": "SPCore/Random",
-                    "importAs": "Random",
-                    "globalValues": [],
-                    "globalTypes": []
-                },
-                {
-                    "path": "SPCore/Result",
-                    "importAs": "Result",
-                    "globalValues": [
-                        "Ok",
-                        "Err"
-                    ],
-                    "globalTypes": [
-                        "Result"
                     ]
                 },
                 {
@@ -122,6 +92,44 @@
                         "todo"
                     ],
                     "globalTypes": []
+                },
+                {
+                    "path": "SPLib/Basics",
+                    "globalValues": [ "assert", "identity", "min", "max" ],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPLib/Buffer",
+                    "importAs": "Buffer",
+                    "globalValues": [],
+                    "globalTypes": [
+                        "Buffer"
+                    ]
+                },
+                {
+                    "path": "SPLib/Dict",
+                    "importAs": "Dict",
+                    "globalValues": [],
+                    "globalTypes": [
+                      "Dict"
+                    ]
+                },
+                {
+                    "path": "SPLib/Random",
+                    "importAs": "Random",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
+                    "path": "SPLib/Result",
+                    "importAs": "Result",
+                    "globalValues": [
+                        "Ok",
+                        "Err"
+                    ],
+                    "globalTypes": [
+                        "Result"
+                    ]
                 }
             ]
         }
