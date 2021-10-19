@@ -20,7 +20,7 @@
                     ]
                 },
                 {
-                    "path": "Types/Error",
+                    "path": "Compiler/Error",
                     "importAs": "Error",
                     "globalValues": [],
                     "globalTypes": [

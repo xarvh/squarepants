@@ -15,6 +15,7 @@ tests : Test
 tests =
     Test.Group "TokensToFormattableAst"
         [ errors
+        , values
         , parens
         , lambdas
         , annotations
@@ -162,6 +163,24 @@ errors =
                                  ^
   """
             )
+        ]
+
+
+
+----
+---
+--
+
+
+values : Test
+values =
+    Test.Group "Values"
+        [ codeTest "[reg] Unop"
+            """
+            r = f -n
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 

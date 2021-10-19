@@ -30,6 +30,7 @@ allNatives =
         |> Dict.insert "SPCore/Text.startsWith" "text_startsWith"
         |> Dict.insert "SPCore/Text.startsWithRegex" "text_startsWithRegex"
         |> Dict.insert "SPCore/Text.trimLeft" "text_trimLeft"
+        |> Dict.insert "SPCore/Text.dropLeft" "text_dropLeft"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_equal"
@@ -308,6 +309,11 @@ const text_startsWithRegex = (regex) => {
 
 const text_trimLeft = (s) => {
   return s.trimLeft();
+}
+
+
+const text_dropLeft = (n) => (s) => {
+  return s.slice(n);
 }
 
 

@@ -20,14 +20,8 @@ alias Args =
     , moduleName is Text
     , start is Number
     , end is Number
-    , description is Env -> List ContentDiv
+    , description is Env -> List Text
     }
-
-
-union ContentDiv =
-    , Text Text
-    , CodeBlock Text
-    , CodeBlockWithLineNumber Number [ Highlight ] [ Text ]
 
 
 union Highlight =
@@ -39,9 +33,3 @@ res ea =
     is Args -> Res a
 
     ea >> Simple >> Err
-
-
-text =
-    is Text -> ContentDiv
-
-    Text

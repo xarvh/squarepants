@@ -55,7 +55,7 @@ alias ReadState =
 readStateInit moduleName moduleCode =
     is Text -> Text -> ReadState
 
-    { buffer = Buffer.init << "\n" .. moduleCode
+    { buffer = Buffer.init << moduleCode
     , moduleName = moduleName
     , multiCommentDepth = 0
     , indentStack = []
@@ -80,7 +80,7 @@ resError pos state message =
         , moduleName = state.moduleName
         , start = pos
         , end = getPos state
-        , description = fn _: List.map Error.text message
+        , description = fn _: message
         }
 
 
@@ -137,7 +137,8 @@ lexContent startPos state =
 
         state.buffer
           >> Buffer.startsWith string
-          >> Maybe.map (runLexer contentAhead lexFunction)
+          >> Maybe.map fn b:
+                  runLexer contentAhead lexFunction b
 
     tryList
         [
@@ -148,7 +149,8 @@ lexContent startPos state =
         , ts "\n" False lexIndent
         ]
         fn _:
-            try readOne state.buffer as
+            x = readOne state.buffer
+            try x as
               "" & b: runLexer False (fn _: Ok) b
               char & b: lexContent startPos { state with buffer = b }
 
@@ -278,7 +280,7 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                 untrimmedPos + spaces
 
             tryMatch ( regex & constructor ) =
-                is Regex & ( Text -> cons ) -> Maybe (Text & constructor)
+                is Regex & Constructor -> Maybe (Text & Constructor)
                 match =
                     regex untrimmedBlock
 
@@ -288,37 +290,44 @@ contentLineToTokensRec untrimmedBlock untrimmedPos tokenAccu =
                 else
                     Just << match & constructor
 
-            Ok []
-#            try List.mapFirst tryMatch recognisedTokens as
-#                Nothing:
-#                    Err << errorInvalidToken start codeBlock
-#
-#                Just ( match & constructor ):
-#                    try constructor match.match as
-#                        Err stateToError:
-#                            Err << stateToError start
-#
-#                        Ok ( tokenKind & charsConsumed ):
-#                            tokenStart =
-#                                # TODO maybe should just assert that match.index is 0?
-#                                start + match.index
-#
-#                            tokenEnd =
-#                                tokenStart + charsConsumed - spaces
-#
-#                            token =
-#                                { kind = tokenKind
-#                                , start = tokenStart
-#                                , end = tokenEnd
-#                                }
-#
-#                            newBlock =
-#                                Text.dropLeft charsConsumed untrimmedBlock
-#
-#                            accu =
-#                                token :: tokenAccu
-#
-#                            contentLineToTokensRec newBlock tokenEnd accu
+            try List.mapFirst tryMatch recognisedTokens as
+                Nothing:
+                    Err fn state:
+                        Error.Simple
+                            {
+                            , moduleName = state.moduleName
+                            , start = start
+                            , end = start + 10
+                            , description = fn _:
+                                [ "Unrecognized token: `" .. codeBlock .. "`"
+                                ]
+                            }
+
+                Just ( match & constructor ):
+                    try constructor match as
+                        Err stateToError:
+                            Err << stateToError start
+
+                        Ok ( tokenKind & charsConsumed ):
+                            tokenStart =
+                                start
+
+                            tokenEnd =
+                                tokenStart + charsConsumed - spaces
+
+                            token =
+                                { kind = tokenKind
+                                , start = tokenStart
+                                , end = tokenEnd
+                                }
+
+                            newBlock =
+                                Text.dropLeft charsConsumed untrimmedBlock
+
+                            accu =
+                                token :: tokenAccu
+
+                            contentLineToTokensRec newBlock tokenEnd accu
 
 
 alias Constructor = Text -> Result (Int -> ReadState -> Error) ( Token.Kind & Int )
@@ -392,16 +401,11 @@ recognisedTokens =
                             Token.Unop Prelude.not_
 
                         _ :
-                            try Text.uncons match as
-                                Nothing:
-                                    Debug.todo "not happening"
-
-                                Just ( head & tail ):
-                                    if head == "@":
-                                        Token.Name { mutable = True } tail
-
-                                    else
-                                        Token.Name { mutable = False } match
+                            first = Text.slice 0 1 match
+                            if first == "@":
+                                Token.Name { mutable = True } (Text.dropLeft 1 match)
+                            else
+                                Token.Name { mutable = False } match
                     )
                         >> Ok
           }
@@ -464,9 +468,18 @@ recognisedTokens =
           }
         ]
 
-errorUnknownOperator op =
+errorUnknownOperator op start state =
     is Text -> Int -> ReadState -> Error
-    Debug.todo "not implemented: errorUnknownOperator"
+
+    Error.Simple
+        {
+        , moduleName = state.moduleName
+        , start = start
+        , end = start + Text.length op
+        , description = fn _:
+            [ "Unknown operator: `" .. op .. "`"
+            ]
+        }
 
 
 #

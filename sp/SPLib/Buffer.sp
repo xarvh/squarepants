@@ -38,11 +38,16 @@ skipAheadBy length b =
 
     d = min length (b.fullSize - b.pos)
 
-    { b with
-    , tailList = List.drop d .tailList
-    , tailText = Text.slice 0 d .tailText
-    , pos = .pos + d
-    }
+    x =
+      { b with
+      , tailList = List.drop d .tailList
+      , tailText = Text.dropLeft d .tailText
+      , pos = .pos + d
+      }
+
+    assert (List.length x.tailList == Text.length x.tailText) "GAAK"
+
+    x
 
 
 skipAheadTo endPos b =
