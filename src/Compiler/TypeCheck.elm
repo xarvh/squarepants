@@ -976,21 +976,21 @@ unify_ reason pos1 t1 t2 =
                     ( Just sub1, Just sub2 ) ->
                         do (unify_ reason pos1 sub1 sub2) <| \v ->
                         -- I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
-                        do (addSubstitution pos reason v1_name v) <| \_ ->
-                        do (addSubstitution pos reason v2_name v) <| \subbedTy ->
+                        do (addSubstitution "vv1" pos reason v1_name v) <| \_ ->
+                        do (addSubstitution "vv2" pos reason v2_name v) <| \subbedTy ->
                         return subbedTy
 
                     ( Nothing, Just sub2 ) ->
-                        addSubstitution pos reason v1_name t2
+                        addSubstitution "vv3" pos reason v1_name t2
 
                     _ ->
-                        addSubstitution pos reason v2_name t1
+                        addSubstitution "vv4" pos reason v2_name t1
 
         ( CA.TypeVariable pos name1, _ ) ->
-            addSubstitution pos reason name1 t2
+            addSubstitution "vl" pos reason name1 t2
 
         ( _, CA.TypeVariable pos name2 ) ->
-            addSubstitution pos reason name2 t1
+            addSubstitution "vr" pos reason name2 t1
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
             if a_fromIsMutable /= b_fromIsMutable then
@@ -1083,8 +1083,8 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                     sub =
                         CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
                 in
-                do (addSubstitution pos reason aName sub) <| \_ ->
-                do (addSubstitution pos reason bName sub) <| \_ ->
+                do (addSubstitution "jj1" pos reason aName sub) <| \_ ->
+                do (addSubstitution "jj2" pos reason bName sub) <| \_ ->
                 return sub
 
 
@@ -1100,7 +1100,7 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
         do (newName Just) <| \ext ->
-        do (addSubstitution pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
+        do (addSubstitution "ne" pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
         Dict.union bothUnified bOnly
             |> CA.TypeRecord pos Nothing
             |> return
@@ -1122,8 +1122,17 @@ unifyError error t1 t2 =
 --
 
 
-addSubstitution : Pos -> UnifyReason -> Name -> Type -> Monad Type
-addSubstitution pos reason name rawTy =
+addSubstitution : String -> Pos -> UnifyReason -> Name -> Type -> Monad Type
+addSubstitution debugCode pos reason name rawTy =
+    let
+        x = (debugCode, name, rawTy)
+
+        _ =
+          if String.toInt name == Nothing then
+            Debug.log "ARG" x
+          else
+            x
+    in
     do (applySubsToType rawTy) <| \ty ->
     if typeHasTyvar name ty then
         -- TODO This feels a bit like a hacky work around.

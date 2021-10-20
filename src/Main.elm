@@ -51,7 +51,38 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-      result = 1 /= 2
+foldl f dict init =
+    is (k -> v -> acc -> acc) -> Dict k v -> acc -> acc
+    init
+
+toList dict =
+    is Dict k v -> [k & v]
+    []
+
+merge leftStep bothStep rightStep leftDict rightDict initialResult =
+  is  (key -> a -> res -> res) -> (key -> a -> b -> res -> res) -> (key -> b -> res -> res) -> Dict key a -> Dict key b -> res -> res
+  with key NonFunction
+
+  stepState rKey rValue (list & res) =
+    is key -> b -> [key & a] & res -> [key & a] & res
+    try list as
+      []:
+        (list & rightStep rKey rValue res)
+
+      (lKey & lValue) :: rest:
+        if lKey < rKey:
+          stepState rKey rValue (rest & leftStep lKey lValue res)
+
+        else if lKey > rKey:
+          (list & rightStep rKey rValue res)
+
+        else
+          (rest & bothStep lKey lValue rValue res)
+
+  (leftovers & intermediateResult) =
+    foldl stepState rightDict (toList leftDict & initialResult)
+
+  List.foldl (fn (k & v) res: leftStep k v res) leftovers intermediateResult
       """
     )
 

@@ -394,32 +394,30 @@ diff t1 t2 =
   foldl (fn k v t: remove k t) t2 t1
 
 
-
 merge leftStep bothStep rightStep leftDict rightDict initialResult =
-  is  (key -> a -> result -> result) -> (key -> a -> b -> result -> result) -> (key -> b -> result -> result) -> Dict key a -> Dict key b -> result -> result
+  is  (key -> a -> res -> res) -> (key -> a -> b -> res -> res) -> (key -> b -> res -> res) -> Dict key a -> Dict key b -> res -> res
   with key NonFunction
 
-  stepState rKey rValue (list & result) =
-      is key -> b -> [key & b] & result -> [key & b] & result
-      try list as
-        []:
-          (list & rightStep rKey rValue result)
+  stepState rKey rValue (list & res) =
+    is key -> b -> [key & a] & res -> [key & a] & res
+    try list as
+      []:
+        (list & rightStep rKey rValue res)
 
-        (lKey & lValue) :: rest:
-          if lKey < rKey:
-            stepState rKey rValue (rest & leftStep lKey lValue result)
+      (lKey & lValue) :: rest:
+        if lKey < rKey:
+          stepState rKey rValue (rest & leftStep lKey lValue res)
 
-          else if lKey > rKey:
-            (list & rightStep rKey rValue result)
+        else if lKey > rKey:
+          (list & rightStep rKey rValue res)
 
-          else
-            (rest & bothStep lKey lValue rValue result)
+        else
+          (rest & bothStep lKey lValue rValue res)
 
   (leftovers & intermediateResult) =
-      foldl stepState rightDict (toList leftDict & initialResult)
+    foldl stepState rightDict (toList leftDict & initialResult)
 
-  List.foldl (fn (k & v) result: leftStep k v result) leftovers intermediateResult
-
+  List.foldl (fn (k & v) res: leftStep k v res) leftovers intermediateResult
 
 
 # TRANSFORM
