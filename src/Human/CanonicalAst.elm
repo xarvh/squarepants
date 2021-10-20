@@ -42,12 +42,12 @@ typeToPriAndString type_ =
                 |> String.join " "
             )
 
-        CA.TypeVariable pos name ->
+        CA.TypeVariable pos (CA.TyVarGenerated id) ->
             ( 0
-            , String.fromInt name
+            , String.fromInt id
             )
 
-        CA.TypeAnnTyVar pos name ->
+        CA.TypeVariable pos (CA.TyVarAnnotated name) ->
             ( 0
             , name
             )
@@ -85,7 +85,7 @@ typeToPriAndString type_ =
                         ""
 
                     Just n ->
-                        n ++ " with"
+                        Debug.toString n ++ " with"
               , attrsString
               , "}"
               ]
@@ -208,13 +208,9 @@ normType ty =
             do (M.list_map normType args) <| \args_n ->
             return <| CA.TypeConstant pos name args_n
 
-        CA.TypeVariable pos name ->
---             do (normName name) <| \n ->
-            return <| CA.TypeAnnTyVar pos "TODO normType"
-
-        CA.TypeAnnTyVar pos name ->
---             do (normName name) <| \n ->
-            return <| CA.TypeAnnTyVar pos "TODO normType"
+        CA.TypeVariable pos tyvar ->
+            do (normTyVar tyvar) <| \t ->
+            return <| CA.TypeVariable pos t
 
         CA.TypeFunction pos from0 fromIsMut to0 ->
             do (normType from0) <| \from1 ->
@@ -222,13 +218,19 @@ normType ty =
             return <| CA.TypeFunction pos from1 fromIsMut to1
 
         CA.TypeRecord pos ext0 attrs0 ->
-            do (M.maybe_map normName ext0) <| \ext1 ->
+            do (M.maybe_map normTyVar ext0) <| \ext1 ->
             do (M.dict_map (\k -> normType) attrs0) <| \attrs1 ->
             return <| CA.TypeRecord pos ext1 attrs1
 
         CA.TypeAlias pos path t ->
             do (normType t) <| \t1 ->
             return <| CA.TypeAlias pos path t1
+
+
+normTyVar : CA.TyVar -> NormMonad CA.TyVar
+normTyVar tyvar =
+    -- TODO
+    return <| CA.TyVarAnnotated <| Debug.toString tyvar
 
 
 normName : String -> NormMonad String

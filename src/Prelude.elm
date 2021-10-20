@@ -177,7 +177,7 @@ pos =
 
 tyVar : String -> Type
 tyVar n =
-    CA.TypeVariable pos n
+    CA.TypeVariable pos (CA.TyVarAnnotated n)
 
 
 tyFun from to =

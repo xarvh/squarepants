@@ -38,10 +38,7 @@ type alias GetAlias =
 expandType : GetAlias -> Type -> Res Type
 expandType ga ty =
     case ty of
-        CA.TypeVariable pos name ->
-            Ok ty
-
-        CA.TypeAnnTyVar pos name ->
+        CA.TypeVariable pos _ ->
             Ok ty
 
         CA.TypeFunction pos from fromIsMutable to ->
@@ -120,9 +117,6 @@ findMutableArgsThatContainFunctions nonFunctionPos ty =
                capable of manipulating mutable containers
 
             -}
-            []
-
-        CA.TypeAnnTyVar _ name ->
             []
 
         CA.TypeAlias _ path t ->
@@ -356,10 +350,10 @@ processAlias allAliases al processedAliases =
 expandAliasVariables : Dict Name Type -> Type -> Type
 expandAliasVariables typeByArgName ty =
     case ty of
-        CA.TypeVariable pos name ->
+        CA.TypeVariable pos (CA.TyVarGenerated _) ->
           ty
 
-        CA.TypeAnnTyVar pos name ->
+        CA.TypeVariable pos (CA.TyVarAnnotated name) ->
             case Dict.get name typeByArgName of
                 Nothing ->
                     ty
@@ -404,10 +398,7 @@ findAllRefs_type ty =
         CA.TypeConstant pos ref args ->
             List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton ref) args
 
-        CA.TypeVariable pos name ->
-            Set.empty
-
-        CA.TypeAnnTyVar pos name ->
+        CA.TypeVariable pos _ ->
             Set.empty
 
         CA.TypeFunction pos from maybeMut to ->

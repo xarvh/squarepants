@@ -174,7 +174,7 @@ type alias TypeClash =
 
 
 type alias Subs =
-    Dict Name Type
+    Dict Int Type
 
 
 
@@ -187,9 +187,9 @@ type alias Monad a =
     M State a
 
 
-newName : (Name -> a) -> Monad a
+newName : (Int -> a) -> Monad a
 newName f state =
-    ( f (String.fromInt state.nextName)
+    ( f state.nextName
     , { state | nextName = state.nextName + 1 }
     )
 
@@ -914,6 +914,7 @@ type UnifyError
     | NonFunctionContainsFunction (List CA.RejectFunction)
     | OkThisIsActuallyPossible
     | NI String
+    | ShouldBeDifferent Name Name
 
 
 unify : CA.Pos -> UnifyReason -> Type -> Type -> Monad Type
@@ -966,7 +967,7 @@ unify_ reason pos1 t1 t2 =
                     |> CA.TypeConstant pos ref1
                     |> return
 
-        ( CA.TypeVariable pos v1_name, CA.TypeVariable _ v2_name ) ->
+        ( CA.TypeVariable pos (CA.TyVarGenerated v1_name), CA.TypeVariable _ (CA.TyVarGenerated v2_name) ) ->
             if v1_name == v2_name then
                 return t1
 
@@ -986,11 +987,14 @@ unify_ reason pos1 t1 t2 =
                     _ ->
                         addSubstitution "vv4" pos reason v2_name t1
 
-        ( CA.TypeVariable pos name1, _ ) ->
+        ( CA.TypeVariable pos (CA.TyVarGenerated name1), _ ) ->
             addSubstitution "vl" pos reason name1 t2
 
-        ( _, CA.TypeVariable pos name2 ) ->
+        ( _, CA.TypeVariable pos (CA.TyVarGenerated name2) ) ->
             addSubstitution "vr" pos reason name2 t1
+
+        ( CA.TypeVariable _ (CA.TyVarAnnotated n1), CA.TypeVariable _ (CA.TyVarAnnotated n2) ) ->
+            unifyError (ShouldBeDifferent n1 n2) t1 t2
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
             if a_fromIsMutable /= b_fromIsMutable then
@@ -1025,7 +1029,7 @@ type alias UnifyRecordsFold =
     }
 
 
-unifyRecords : UnifyReason -> Pos -> ( Maybe String, Dict String Type ) -> ( Maybe String, Dict String Type ) -> Monad Type
+unifyRecords : UnifyReason -> Pos -> ( Maybe CA.TyVar, Dict String Type ) -> ( Maybe CA.TyVar, Dict String Type ) -> Monad Type
 unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
     let
         init : UnifyRecordsFold
@@ -1078,17 +1082,20 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                 return <| CA.TypeRecord pos (Just aName) bothUnified
 
             else
-                do (newName identity) <| \new ->
-                let
-                    sub =
-                        CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
-                in
-                do (addSubstitution "jj1" pos reason aName sub) <| \_ ->
-                do (addSubstitution "jj2" pos reason bName sub) <| \_ ->
-                return sub
+                {-
+                   do (newName identity) <| \new ->
+                   let
+                       sub =
+                           CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
+                   in
+                   do (addSubstitution "jj1" pos reason aName sub) <| \_ ->
+                   do (addSubstitution "jj2" pos reason bName sub) <| \_ ->
+                   return sub
+                -}
+                addError pos [ "TODO, not implemented" ]
 
 
-unifyToNonExtensibleRecord : Pos -> UnifyReason -> Name -> Dict Name Type -> Dict Name Type -> Dict Name Type -> Monad Type
+unifyToNonExtensibleRecord : Pos -> UnifyReason -> CA.TyVar -> Dict Name Type -> Dict Name Type -> Dict Name Type -> Monad Type
 unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
     if aOnly /= Dict.empty then
         -- b is missing attributes but is not extensible
@@ -1098,12 +1105,17 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
             ]
 
     else
-        -- the `a` tyvar should contain the missing attributes, ie `bOnly`
-        do (newName Just) <| \ext ->
-        do (addSubstitution "ne" pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
-        Dict.union bothUnified bOnly
-            |> CA.TypeRecord pos Nothing
-            |> return
+        case aName of
+            CA.TyVarAnnotated name ->
+                addError pos [ "TODO not implemented unifyToNonExtensibleRecord" ]
+
+            CA.TyVarGenerated id ->
+                -- the `a` tyvar should contain the missing attributes, ie `bOnly`
+                do (newName Just) <| \ext ->
+                do (addSubstitution "ne" pos reason id (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
+                Dict.union bothUnified bOnly
+                    |> CA.TypeRecord pos Nothing
+                    |> return
 
 
 {-| TODO Rename to type clash?
@@ -1122,16 +1134,18 @@ unifyError error t1 t2 =
 --
 
 
-addSubstitution : String -> Pos -> UnifyReason -> Name -> Type -> Monad Type
+addSubstitution : String -> Pos -> UnifyReason -> Int -> Type -> Monad Type
 addSubstitution debugCode pos reason name rawTy =
     let
-        x = (debugCode, name, rawTy)
+        x =
+            ( debugCode, name, rawTy )
 
-        _ =
-          if String.toInt name == Nothing then
-            Debug.log "ARG" x
-          else
-            x
+--         _ =
+--             if String.toInt name == Nothing then
+--                 Debug.log "ARG" x
+-- 
+--             else
+--                 x
     in
     do (applySubsToType rawTy) <| \ty ->
     if typeHasTyvar name ty then
@@ -1409,7 +1423,7 @@ applySubsToPatternVarsAndAddThemToEnv isMutable vars env =
            we use for the records are also constrained!
 
         -}
-        meh : Name -> Dict Name Pos -> Dict Name Pos
+        meh : Int -> Dict Name Pos -> Dict Name Pos
         meh typeVarName constrainedVars =
             case Dict.get typeVarName subs of
                 Nothing ->
@@ -1526,16 +1540,17 @@ addErrorWithEEnv pos messageConstructor =
 ----
 --- Errors
 --
-
 {- TODO this should go somewhere else -}
-splitName : String -> (Maybe String, String)
-splitName s =
-            case String.split "." s of
-                moduleName :: valueName :: [] ->
-                  (Just moduleName, valueName)
-                _ ->
-                  (Nothing, s)
 
+
+splitName : String -> ( Maybe String, String )
+splitName s =
+    case String.split "." s of
+        moduleName :: valueName :: [] ->
+            ( Just moduleName, valueName )
+
+        _ ->
+            ( Nothing, s )
 
 
 errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
@@ -1545,16 +1560,16 @@ errorUndefinedVariable env pos normalizedName =
         rawName =
             Error.posToToken errorEnv pos
 
-        (maybeRawModuleName, name) =
-          splitName rawName
+        ( maybeRawModuleName, name ) =
+            splitName rawName
 
-        (maybeNormalizedModuleName, _) =
-          splitName normalizedName
+        ( maybeNormalizedModuleName, _ ) =
+            splitName normalizedName
     in
     case Dict.get name env.nonAnnotatedRecursives of
         Nothing ->
-            case (maybeRawModuleName, maybeNormalizedModuleName) of
-                (Just rawModuleName, Just normalizedModuleName) ->
+            case ( maybeRawModuleName, maybeNormalizedModuleName ) of
+                ( Just rawModuleName, Just normalizedModuleName ) ->
                     case Dict.get normalizedModuleName errorEnv.moduleByName of
                         Just _ ->
                             [ "Module `" ++ normalizedModuleName ++ "` does not seem to expose a variable called `" ++ name ++ "`."
@@ -1702,7 +1717,7 @@ addConstructor : CA.UnionDef -> Name -> List Type -> Env -> Env
 addConstructor unionDef ctorName ctorArgs env =
     let
         args =
-            List.map (\name -> CA.TypeVariable (CA.I 8) name) unionDef.args
+            List.map (\name -> CA.TypeVariable (CA.I 8) (CA.TyVarAnnotated name)) unionDef.args
 
         fold ty accum =
             CA.TypeFunction (CA.I 9) ty False accum

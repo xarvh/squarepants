@@ -115,11 +115,16 @@ rootToLocalDef r =
 
 type Type
     = TypeConstant Pos String (List Type)
-    | TypeVariable Pos Int
-    | TypeAnnTyVar Pos String
+    | TypeVariable Pos TyVar
     | TypeFunction Pos Type Bool Type
-    | TypeRecord Pos (Maybe String) (Dict String Type)
+    | TypeRecord Pos (Maybe TyVar) (Dict String Type)
     | TypeAlias Pos String Type
+
+
+type TyVar
+    = TyVarGenerated Int
+      -- TODO Annotated should have Pos, TypeVariable above should not
+    | TyVarAnnotated String
 
 
 {-| TODO do I need the Pos?
@@ -130,7 +135,6 @@ type
     = Us Pos
       -- parameter is mutable
     | Pa Pos
-
 
 
 
@@ -172,21 +176,24 @@ type Argument
     | ArgumentMutable Pos VariableArgs
 
 
-{-TODO
-  union SymbolReference symbolName =
-    #`value`
-    #    -> locale
-    #    -> globale in metafile
-    , Internal symbolName
-    , Root ModuleName symbolName
-    , Global ModuleName symbolName
 
-    #`Module.value`
-    #    -> direct
-    #    -> module alias
-    , Direct ModuleName symbolName
-    , Aliased ModuleAlias ModuleName symbolName
+{- TODO
+   union SymbolReference symbolName =
+     #`value`
+     #    -> locale
+     #    -> globale in metafile
+     , Internal symbolName
+     , Root ModuleName symbolName
+     , Global ModuleName symbolName
+
+     #`Module.value`
+     #    -> direct
+     #    -> module alias
+     , Direct ModuleName symbolName
+     , Aliased ModuleAlias ModuleName symbolName
 -}
+
+
 type alias VariableArgs =
     { name : String
     , attrPath : List String
@@ -327,9 +334,6 @@ typePos ty =
         TypeVariable p _ ->
             p
 
-        TypeAnnTyVar p _ ->
-            p
-
         TypeFunction p _ _ _ ->
             p
 
@@ -455,13 +459,9 @@ posMap_type f ty =
             do (M.list_map (posMap_type f) a_args) <| \b_args ->
             return <| TypeConstant b_pos name b_args
 
-        TypeVariable a_pos name ->
+        TypeVariable a_pos tyvar ->
             do (fty a_pos) <| \b_pos ->
-            return <| TypeVariable b_pos name
-
-        TypeAnnTyVar a_pos name ->
-            do (fty a_pos) <| \b_pos ->
-            return <| TypeAnnTyVar b_pos name
+            return <| TypeVariable b_pos tyvar
 
         TypeFunction a_pos a_from fromIsMut a_to ->
             do (fty a_pos) <| \b_pos ->

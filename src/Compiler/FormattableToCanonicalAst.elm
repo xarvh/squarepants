@@ -1181,7 +1181,8 @@ translateType ro faType =
 
                     else
                         name
-                            |> CA.TypeAnnTyVar todoPos
+                            |> CA.TyVarAnnotated
+                            |> CA.TypeVariable todoPos
                             |> Ok
 
                 StructuredName_TypeOrCons { name, mod } ->
