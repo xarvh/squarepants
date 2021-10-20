@@ -1,34 +1,74 @@
-
 # HACK
 alias Int = Number
+
+
+foldl function aList init =
+    is (item -> state -> state) -> [item] -> state -> state
+
+    try aList as
+      []:
+          init
+
+      head :: tail:
+          foldl function tail (function head init)
+
+
+foldr f list init =
+    is (item -> state -> state) -> [item] -> state -> state
+
+    foldrHelper acc ctr ls =
+        is state -> Int -> List item -> state
+        try ls as
+            []:
+                acc
+
+            a :: r1:
+                try r1 as
+                    []:
+                        f a acc
+
+                    b :: r2:
+                        try r2 as
+                            []:
+                                f a (f b acc)
+
+                            c :: r3:
+                                try r3 as
+                                    []:
+                                        f a (f b (f c acc))
+
+                                    d :: r4:
+                                          res =
+                                              if ctr > 500:
+                                                  foldl f acc (reverse r4)
+                                              else
+                                                  foldrHelper f acc (ctr + 1) r4
+
+                                          f a (f b (f c (f d res)))
+    foldrHelper f init 0 list
 
 
 length =
     is [a] -> Int
 
-    rec n ls =
-      is Int -> [a] -> Int
-      try ls as
-        []: n
-        h :: t: rec (n + 1) t
-
-    rec 0
+    foldl (fn _ a: a + 1) 0
 
 
 map f =
     is (a -> b) -> [a] -> [b]
 
-    rec ls =
-        is [a] -> [b]
-        try ls as
-            []:
-                []
+    foldr (fn x acc: (f x) :: acc) xs []
 
-            head :: tail:
-                # TODO make it TCO friendly
-                (f head) :: (rec tail)
 
-    rec
+filter f ls =
+    is (item -> Bool) -> [item] -> [item]
+
+    foldr (fn item acc: if f a: a :: acc else acc) ls []
+
+
+filterMap f xs =
+  is (a -> Maybe b) -> [a] -> [b]
+  foldr (fn a acc: try f a as Just b: b :: acc else acc) [] xs
 
 
 mapFirst f ls =
@@ -61,16 +101,7 @@ each ls f =
 reverse aList =
     is [a] -> [a]
 
-    rec ls acc =
-        is [a] -> [a] -> [a]
-        try ls as
-            []:
-                acc
-
-            head :: tail:
-                rec tail (head :: acc)
-
-    rec aList []
+    foldl (::) aList []
 
 
 repeat n a =
@@ -83,17 +114,6 @@ repeat n a =
     rec n []
 
 
-foldl function aList init =
-    is (item -> state -> state) -> [ item ] -> state -> state
-
-    try aList as
-      []:
-          init
-
-      head :: tail:
-          foldl function tail (function head init)
-
-
 drop n ls =
     is Int -> [a] -> [a]
 
@@ -103,3 +123,14 @@ drop n ls =
       try ls as
           []: []
           head :: tail: drop (n - 1) tail
+
+smallest ls =
+    is [a] -> Maybe a
+    with a NonFunction
+
+    try list as
+      x :: xs:
+        Just (foldl min x xs)
+
+      _:
+        Nothing

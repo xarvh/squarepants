@@ -171,6 +171,21 @@ type Argument
     | ArgumentMutable Pos VariableArgs
 
 
+{-TODO
+  union SymbolReference symbolName =
+    #`value`
+    #    -> locale
+    #    -> globale in metafile
+    , Internal symbolName
+    , Root ModuleName symbolName
+    , Global ModuleName symbolName
+
+    #`Module.value`
+    #    -> direct
+    #    -> module alias
+    , Direct ModuleName symbolName
+    , Aliased ModuleAlias ModuleName symbolName
+-}
 type alias VariableArgs =
     { name : String
     , attrPath : List String

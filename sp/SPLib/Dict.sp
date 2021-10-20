@@ -374,10 +374,10 @@ singleton key value =
 
 
 
-union t1 t2 =
+join t1 t2 =
   is Dict key v -> Dict key v -> Dict key v
   with key NonFunction
-  foldl insert t2 t1
+  foldl insert t1 t2
 
 
 
@@ -391,7 +391,7 @@ intersect t1 t2 =
 diff t1 t2 =
   is Dict key a -> Dict key b -> Dict key a
   with key NonFunction
-  foldl (fn k v t: remove k t) t1 t2
+  foldl (fn k v t: remove k t) t2 t1
 
 
 
@@ -416,9 +416,9 @@ merge leftStep bothStep rightStep leftDict rightDict initialResult =
             (rest & bothStep lKey lValue rValue result)
 
   (leftovers & intermediateResult) =
-      foldl stepState (toList leftDict & initialResult) rightDict
+      foldl stepState rightDict (toList leftDict & initialResult)
 
-  List.foldl (fn (k & v) result: leftStep k v result) intermediateResult leftovers
+  List.foldl (fn (k & v) result: leftStep k v result) leftovers intermediateResult
 
 
 
@@ -437,32 +437,32 @@ map func dict =
 
 
 
-foldl func acc dict =
-  is (k -> v -> b -> b) -> b -> Dict k v -> b
+foldl func dict acc = 
+  is (k -> v -> b -> b) -> Dict k v -> b -> b
   try dict as
     RBEmpty_elm_builtin:
       acc
 
     RBNode_elm_builtin _ key value left right:
-      foldl func (func key value (foldl func acc left)) right
+      foldl func right (func key value (foldl func left acc))
 
 
 
-foldr func acc t =
-  is (k -> v -> b -> b) -> b -> Dict k v -> b
+foldr func t acc =
+  is (k -> v -> b -> b) -> Dict k v -> b -> b
   try t as
     RBEmpty_elm_builtin:
       acc
 
     RBNode_elm_builtin _ key value left right:
-      foldr func (func key value (foldr func acc right)) left
+      foldr func left (func key value (foldr func right acc))
 
 
 
 filter isGood dict =
   is (key -> v -> Bool) -> Dict key v -> Dict key v
   with key NonFunction
-  foldl (fn k v d: if isGood k v: insert k v d else d) empty dict
+  foldl (fn k v d: if isGood k v: insert k v d else d) dict empty
 
 
 
@@ -477,7 +477,7 @@ partition isGood dict =
       else
         (t1 & insert key value t2)
 
-  foldl add (empty & empty) dict
+  foldl add dict (empty & empty)
 
 
 # LISTS
@@ -486,19 +486,26 @@ partition isGood dict =
 
 keys dict =
   is Dict k v -> List k
-  foldr (fn key value keyList: key :: keyList) [] dict
+  foldr (fn key value keyList: key :: keyList) dict []
 
 
 
 values dict =
   is Dict k v -> List v
-  foldr (fn key value valueList: value :: valueList) [] dict
+  foldr (fn key value valueList: value :: valueList) dict []
 
 
 
 toList dict =
-  is Dict k v -> List (k & v)
-  foldr (fn key value list: (key & value) :: list) [] dict
+  is Dict k v -> [k & v]
+
+  f =
+    is k -> v -> [k & v] -> [k & v]
+    fn key value list:
+       key & value :: list
+
+  foldr f dict []
+
 
 
 

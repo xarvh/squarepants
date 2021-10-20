@@ -21,7 +21,7 @@ unindent multilineText =
 
     minLead =
         lines
-            >> List.filter (Text.any ((/=) " "))
+            >> List.filter (fn s: Text.trimLeft s /= "") #Text.any ((/=) " "))
             >> List.map countLeadingSpaces
             >> List.minimum
             >> Maybe.withDefault 0
