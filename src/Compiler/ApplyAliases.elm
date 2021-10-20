@@ -41,6 +41,9 @@ expandType ga ty =
         CA.TypeVariable pos name ->
             Ok ty
 
+        CA.TypeAnnTyVar pos name ->
+            Ok ty
+
         CA.TypeFunction pos from fromIsMutable to ->
             Result.map2
                 (\f t -> CA.TypeFunction pos f fromIsMutable t)
@@ -117,6 +120,9 @@ findMutableArgsThatContainFunctions nonFunctionPos ty =
                capable of manipulating mutable containers
 
             -}
+            []
+
+        CA.TypeAnnTyVar _ name ->
             []
 
         CA.TypeAlias _ path t ->
@@ -351,6 +357,9 @@ expandAliasVariables : Dict Name Type -> Type -> Type
 expandAliasVariables typeByArgName ty =
     case ty of
         CA.TypeVariable pos name ->
+          ty
+
+        CA.TypeAnnTyVar pos name ->
             case Dict.get name typeByArgName of
                 Nothing ->
                     ty
@@ -396,6 +405,9 @@ findAllRefs_type ty =
             List.foldl (\ar -> Set.union (findAllRefs_type ar)) (Set.singleton ref) args
 
         CA.TypeVariable pos name ->
+            Set.empty
+
+        CA.TypeAnnTyVar pos name ->
             Set.empty
 
         CA.TypeFunction pos from maybeMut to ->

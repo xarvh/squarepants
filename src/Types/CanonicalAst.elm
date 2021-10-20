@@ -115,7 +115,8 @@ rootToLocalDef r =
 
 type Type
     = TypeConstant Pos String (List Type)
-    | TypeVariable Pos String
+    | TypeVariable Pos Int
+    | TypeAnnTyVar Pos String
     | TypeFunction Pos Type Bool Type
     | TypeRecord Pos (Maybe String) (Dict String Type)
     | TypeAlias Pos String Type
@@ -326,6 +327,9 @@ typePos ty =
         TypeVariable p _ ->
             p
 
+        TypeAnnTyVar p _ ->
+            p
+
         TypeFunction p _ _ _ ->
             p
 
@@ -454,6 +458,10 @@ posMap_type f ty =
         TypeVariable a_pos name ->
             do (fty a_pos) <| \b_pos ->
             return <| TypeVariable b_pos name
+
+        TypeAnnTyVar a_pos name ->
+            do (fty a_pos) <| \b_pos ->
+            return <| TypeAnnTyVar b_pos name
 
         TypeFunction a_pos a_from fromIsMut a_to ->
             do (fty a_pos) <| \b_pos ->

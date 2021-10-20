@@ -44,6 +44,11 @@ typeToPriAndString type_ =
 
         CA.TypeVariable pos name ->
             ( 0
+            , String.fromInt name
+            )
+
+        CA.TypeAnnTyVar pos name ->
+            ( 0
             , name
             )
 
@@ -204,8 +209,12 @@ normType ty =
             return <| CA.TypeConstant pos name args_n
 
         CA.TypeVariable pos name ->
-            do (normName name) <| \n ->
-            return <| CA.TypeVariable pos n
+--             do (normName name) <| \n ->
+            return <| CA.TypeAnnTyVar pos "TODO normType"
+
+        CA.TypeAnnTyVar pos name ->
+--             do (normName name) <| \n ->
+            return <| CA.TypeAnnTyVar pos "TODO normType"
 
         CA.TypeFunction pos from0 fromIsMut to0 ->
             do (normType from0) <| \from1 ->
