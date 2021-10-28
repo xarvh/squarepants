@@ -196,7 +196,7 @@ makeProgram metaFile files =
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
         |> String.join "\n\n"
-        |> (\s -> s ++ "console.log($Main$main())")
+        |> (\s -> s ++ "console.log($Main$main(process.argv[2] || ''))")
         |> Ok
 
 

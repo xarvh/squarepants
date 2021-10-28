@@ -1,14 +1,11 @@
 #
-# TODO I don't know yet how I want to implement sequential text access in a way that allows pattern matching
-# so for now I'll use this module to hide the fact that it's very inefficient
+# TODO I don't know yet how I want to implement fast sequential access
+# so for now I'll jusr wrap everything in this module to hide the implementation
 #
 alias Buffer =
     {
-    , pos is Int
-    , tailList is [Text]
-    , tailText is Text
+    , nextPos is Int
     , fullSize is Int
-    # fullText is used only by slice. Should it actually live here?
     , fullText is Text
     }
 
@@ -16,79 +13,20 @@ alias Buffer =
 init s =
     is Text -> Buffer
 
-    assert ((List.length << Text.split "" s) == Text.length s) "BLAH"
-
     {
-    , pos = 0
-    , tailList = Text.split "" s
-    , tailText = s
+    , nextPos = 0
     , fullSize = Text.length s
     , fullText = s
     }
 
 
-pos b =
-    is Buffer -> Int
+readOne b =
+    is Buffer -> Text & Buffer
 
-    b.pos
-
-
-skipAheadBy length b =
-    is Int -> Buffer -> Buffer
-
-    d = min length (b.fullSize - b.pos)
-
-    x =
-      { b with
-      , tailList = List.drop d .tailList
-      , tailText = Text.dropLeft d .tailText
-      , pos = .pos + d
-      }
-
-    assert (List.length x.tailList == Text.length x.tailText) "GAAK"
-
-    x
-
-
-skipAheadTo endPos b =
-    is Int -> Buffer -> Buffer
-
-    skipAheadBy (max 0 (endPos - b.pos)) b
-
-
-next b =
-    is Buffer -> Text
-
-    try b.tailList as
-        []: ""
-        h :: _: h
-
-
-
-
-startsWith sub b =
-    is Text -> Buffer -> Maybe Buffer
-
-    if Text.startsWith sub b.tailText:
-        Just << skipAheadBy (Text.length sub) b
+    if b.nextPos < b.fullSize:
+      Text.slice b.nextPos (b.nextPos + 1) b.fullText & { b with nextPos = .nextPos + 1 }
     else
-        Nothing
-
-
-regexMatch regex b =
-    is Text -> Buffer -> Maybe (Text & Buffer)
-
-    # TODO use try..as once it is fixed
-    match = Text.startsWithRegex regex b.tailText
-    if match == "":
-        Nothing
-    else
-        Just << match & skipAheadBy (Text.length match) b
-
-atEnd b =
-    is Buffer -> Bool
-
-    b.tailText == ""
+      "" & b
 
 
 slice start end b =

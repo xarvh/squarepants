@@ -85,6 +85,13 @@ repeat n s =
     join "" << List.repeat n s
 
 
+replace toRemove toPut s =
+    is Text -> Text -> Text -> Text
+
+    # TODO use a native
+    s >> Text.split toRemove >> Text.join toPut
+
+
 # HACK
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.

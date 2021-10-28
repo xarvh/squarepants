@@ -249,33 +249,42 @@ const sp_todo = (message) => {
 }
 
 const sp_log = (message) => (thing) => {
-  console.log(message, JSON.stringify(thing, null, 2));
+  console.log(message, sp_toHuman(thing));
   return thing;
 }
 
-const asList = (a) => {
-  if (!Array.isArray(a))
-    return false;
+const asList = (arrayAccum, list) => {
+  if (list[0] === '""" ++ Core.listCons.name ++ """') {
+    arrayAccum.push(sp_toHuman(list[1]));
+    return asList(arrayAccum, list[2]);
+  }
 
-  if (a[0] === 'SPCore.Cons')
-    return [ a[1] ].concat(asList(a[2]));
-
-  if (a[0] === 'SPCore.Nil')
-    return [];
+  if (list[0] === '""" ++ Core.listNil.name ++ """')
+    return '[' + arrayAccum.join(', ') + ']';
 
   return false;
 }
 
-const asFunction = (a) => {
-  return typeof a === 'function' ? '<function>' : false
-}
-
-const replacer = (key, value) => {
-  return asList(value) || asFunction(value) || value;
+const asUnion = (a) => {
+  return a[0] + ' ' + a.slice(1).map(arg => '(' + sp_toHuman(arg) + ')').join(' ');
 }
 
 const sp_toHuman = (a) => {
-  return JSON.stringify(a, replacer, 4);
+
+  if (Array.isArray(a))
+    return asList([], a) || asUnion(a);
+
+  if (typeof a === 'function') {
+    return '<function>';
+  }
+
+  if (typeof a === 'object') {
+    x = [];
+    for (let i in a) x.push(i + ' = ' + sp_toHuman(a[i]));
+    return '{' + x.join(', ') + '}';
+  }
+
+  return JSON.stringify(a, null, 0);
 }
 
 const sp_cons = (list) => (item) => {

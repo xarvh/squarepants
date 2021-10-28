@@ -91,6 +91,16 @@ textConcat =
     }
 
 
+add =
+    is Op.Binop
+    { symbol = "+"
+    , precedence = Op.Addittive
+    , associativity = Op.Left
+#    , ty = typeBinopUniform Core.numberType
+    , nonFn = []
+    }
+
+
 subtract =
     is Op.Binop
     { symbol = "-"

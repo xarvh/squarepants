@@ -1,36 +1,29 @@
 Possible alternative syntax
 ===========================
 
+# Restore `as` instead of `is`
 
-Unsolved Problems
------------------
-
-# do-notation
-
-    to = Result.andThen
-    blah blah blah >> to fn blahOutput:
-    someotherline >> to fn otherThingy:
-    doStuffWith blahOutput otherThingy
-
-  - Is not super clear
-  - It is not obvious that lower lines depend on higher lines
-  - Forces the eyes to parse the end of the line to get the new variable name
-  + Uses known syntax
-
-
-  payload Result.do (tryToAccessPayload arg1 arg2)
-
-  on payload ? Result.from : (tryToAccessPayload arg1 arg2)
-
-
-
-
-
-
+# Remove support for `else` in try..as
 
 
 Things that should probably be implemented
 ------------------------------------------
+
+
+# Function annotation:
+    Instead of: `a -> (b -> c) -> c`
+
+    have `a, (b: c): c`
+
+    a: (b @: c): c
+
+
+    I don't like how mutation is annotated
+    Prefixing the @ requires more parens.
+
+    Int: (@(Maybe Int): Int): Int
+
+    Int -> (Maybe Int @> Int) -> Int
 
 
 # Add notation to extend records
@@ -40,58 +33,13 @@ Things that should probably be implemented
   If someRecord already has someAttribute or someOtherAttribute, the type checker should produce an error.
 
 
-
-
-# Distinguish `as` in `try..as` from `as` in annotations
-
-  * try..as -> match..to
-  * try..as -> try..on
-  * blah x =
-      is { ext with z is Int }
-  * if value like
-
-
-
-# Use `:` instead of `then` in if statements
-
-  * if expr: blah1 else: blah2
-
-  * if expr: blah1 else blah2
-
-  -> Both `else` and `else:` are valid
-  -> auto-formatting will turn `else` into `else:`
-
-  + This has the advantage that `then` is not a keyword any more
-  - `else:` is super ugly
-
-
-
-
-
-
-
-
 Things that are worth considering but need thinking
 ---------------------------------------------------
 
 
-
-
-# Remove support for `else` in try..as
-
-
-# Use `to` instead of `->` for function types
-
-sumTwoNumbers is Int to Int to Int
-sumTwoNumbers a b =
-  a + b
-
-
-
-
 # Hide curryness in types
 
-  Int, Int = Int
+  Int, Int: Int
 
 * `Int -> Int -> Int` is obscure.
 * it would be nice to have less to type than ` -> `
@@ -104,6 +52,20 @@ sumTwoNumbers a b =
 
 Obsolete
 --------
+
+
+# Use `to` instead of `->` for function types
+
+sumTwoNumbers is Int to Int to Int
+sumTwoNumbers a b =
+  a + b
+
+
+# Distinguish `as` in `try..as` from `as` in annotations
+
+  * try..as -> match..to
+  * try..as -> try..on
+  * if value like
 
 
 # Use `:` instead of `=`
@@ -153,3 +115,42 @@ Also, what do we use for mutable assignment?
     x ::@ 4
 
     @{binop} a b: a @ (a binop b)
+
+
+# do-notation
+
+    onOk = Result.onOk
+    blah blah blah >> onOk fn blahOutput:
+    someotherline >> onOk fn otherThingy:
+    doStuffWith blahOutput otherThingy
+
+  - Is not super clear
+  - It is not obvious that lower lines depend on higher lines
+  - Forces the eyes to parse the end of the line to get the new variable name
+  + Uses known syntax
+
+
+  payload Result.do (tryToAccessPayload arg1 arg2)
+
+  on payload ? Result.from : (tryToAccessPayload arg1 arg2)
+
+
+# Use `:` instead of `then` in if statements
+
+  * if expr: blah1 else: blah2
+
+  * if expr: blah1 else blah2
+
+  -> Both `else` and `else:` are valid
+  -> auto-formatting will turn `else` into `else:`
+
+  + This has the advantage that `then` is not a keyword any more
+  - `else:` is super ugly
+
+
+
+
+
+
+
+

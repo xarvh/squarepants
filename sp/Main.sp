@@ -47,8 +47,19 @@ testOutcomeToText name code outcome =
             (red << "FAIL ! " .. name) .. "\n" .. indent code .. "\n" .. indent error
 
 
-main argv =
-  allTests
-      >> Test.flatten
-      >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
-      >> Text.join "\n"
+main arg =
+  if arg == "":
+      allTests
+          >> Test.flatten
+          >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
+          >> Text.join "\n"
+
+  else:
+      try Compiler/Lexer_Test.lexTokens arg as
+          Err err: err
+          Ok tokens:
+              tokens
+                  >> List.map Debug.toHuman
+                  >> Text.join "\n"
+                  >> fn s: "===============================\n" .. s
+

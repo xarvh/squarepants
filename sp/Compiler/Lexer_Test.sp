@@ -1,3 +1,53 @@
+# TODO some tests that should be added:
+[# TESTS for single quote text
+
+  - `"\""` passes
+
+  - `"\n"` passes
+
+  - `"
+    "` fails
+
+  - `"sdf\\asdf\\"` passes
+
+  - `"sdf\\\asdf\\"` passes
+
+  - `"sdf\\asdf\\\"` fails
+
+  - state.pos is updated manually, so it should be tested!
+
+#]
+
+[# TESTS for triple quoted text
+
+  - """ passes
+
+  - "\\n" passes
+
+  - "
+    " fails
+
+  - "sdf\\asdf\\" passes
+
+  - "sdf\\\\asdf\\" passes
+
+  - "sdf\\asdf\\" fails
+
+  - state.pos is updated manually, so it should be tested!
+
+#]
+
+
+[# TESTS
+
+  multiline comment tests:
+
+  - properly nested comments should pass
+  - improperly nested comments should fail
+  - non-terminated comments should fail
+  - state.pos is updated manually, so it should be tested!
+
+#]
 
 
 codeTest =
@@ -21,7 +71,7 @@ lexTokensAndDrop n s =
 
 
 non_mut_name =
-    Token.Name { mutable = False }
+    Token.Name Token.NameNoModifier
 
 
 tests =
@@ -53,13 +103,12 @@ keywords =
 unaryAddittiveOps =
     Test.Group "Unary addittive ops"
         [ codeTest "-a"
-            " -a"
+            "-a"
             lexTokens
             (Test.isOkAndEqualTo
-                [ { kind = Token.BlockStart, start = 0, end = 1 }
-                , { kind = Token.Unop Prelude.unaryMinus, start = 1, end = 2 }
-                , { kind = non_mut_name "a", start = 2, end = 3 }
-                , { kind = Token.BlockEnd, start = 3, end = 3 }
+                [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
+                , { kind = Token.Unop Prelude.unaryMinus, start = 0, end = 1 }
+                , { kind = non_mut_name "a", start = 1, end = 2 }
                 ]
             )
         , codeTest "a - -a"
@@ -68,7 +117,7 @@ unaryAddittiveOps =
             (Test.isOkAndEqualTo
                 [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
                 , { kind = non_mut_name "a", start = 0, end = 1 }
-                , { kind = Token.Binop " -" Prelude.subtract, start = 2, end = 3 }
+                , { kind = Token.Binop Prelude.subtract, start = 2, end = 3 }
                 , { kind = Token.Unop Prelude.unaryMinus, start = 4, end = 5 }
                 , { kind = non_mut_name "a", start = 5, end = 6 }
                 ]
@@ -79,7 +128,7 @@ unaryAddittiveOps =
             (Test.isOkAndEqualTo
                 [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
                 , { kind = non_mut_name "a", start = 0, end = 1 }
-                , { kind = Token.Binop "-" Prelude.subtract, start = 1, end = 2 }
+                , { kind = Token.Unop Prelude.unaryMinus, start = 1, end = 2 }
                 , { kind = non_mut_name "a", start = 2, end = 3 }
                 ]
             )
@@ -96,7 +145,7 @@ unaryAddittiveOps =
             lexTokens
             (Test.isOkAndEqualTo
                 [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
-                , { kind = Token.Binop "-=" Prelude.mutableSubtract, start = 0, end = 2 }
+                , { kind = Token.Binop Prelude.mutableSubtract, start = 0, end = 2 }
                 ]
             )
         ]
@@ -105,11 +154,7 @@ unaryAddittiveOps =
 indentation =
     Test.Group "Blocks, sibling lines, indentation"
         [ codeTest "1"
-            """
-a =
- 1
-b = 1
-"""
+            "\na =\n 1\nb = 1"
             lexTokens
             (Test.isOkAndEqualTo
                 [ { kind = Token.NewSiblingLine, start = 1, end = 1 }
@@ -132,13 +177,11 @@ b = 1
 comments =
     Test.Group "Comments"
         [ codeTest "[reg] statement after comment"
-            """
-#
-a = 1
-                """
+            "\n#\na = 1\n"
             lexTokens
             (Test.isOkAndEqualTo
-                [ { kind = Token.Comment, start = 1, end = 2 }
+                [ { kind = Token.NewSiblingLine, start = 1, end = 1 }
+                , { kind = Token.Comment, start = 1, end = 2 }
                 , { kind = Token.NewSiblingLine, start = 3, end = 3 }
                 , { kind = non_mut_name "a", start = 3, end = 4 }
                 , { kind = Token.Defop { mutable = False }, start = 5, end = 6 }
@@ -146,20 +189,23 @@ a = 1
                 ]
             )
         , codeTest "[reg] nested comments allow a spurious newline?"
-            """
-[#[##]#]
-a = 1
-            """
+            "\n[#[##]#]\na = 1\n"
             lexTokens
             (Test.isOkAndEqualTo
-                [ { kind = Token.Comment, start = 0, end = 7 }
+                [ { kind = Token.NewSiblingLine, start = 1, end = 1 }
+                , { kind = Token.Comment, start = 1, end = 8 }
+                , { kind = Token.NewSiblingLine , start = 10, end = 10 }
+                , { kind = non_mut_name "a", start = 10, end = 11 }
+                , { kind = Token.Defop { mutable = False }, start = 12, end = 13 }
+                , { kind = Token.NumberLiteral "1", start = 14, end = 15 }
                 ]
             )
         , codeTest "Single line"
             "# hello"
             lexTokens
             (Test.isOkAndEqualTo
-                [ { kind = Token.Comment, start = 0, end = 7 }
+                [ { kind = Token.NewSiblingLine, start = 0, end = 0 }
+                , { kind = Token.Comment, start = 0, end = 7 }
                 ]
             )
         , codeTest "Multi line"
@@ -176,13 +222,16 @@ a [# inline #] = 1
 """
             lexTokens
             (Test.isOkAndEqualTo
-                [ { kind = Token.Comment, start = 1, end = 18 }
+                [ { kind = Token.NewSiblingLine, start = 1, end = 1 }
+                , { kind = Token.Comment, start = 1, end = 17 }
                 , { kind = Token.NewSiblingLine, start = 20, end = 20 }
                 , { kind = non_mut_name "a", start = 20, end = 21 }
-                , { kind = Token.Comment, start = 22, end = 34 }
+                , { kind = Token.Comment, start = 22, end = 33 }
                 , { kind = Token.Defop { mutable = False }, start = 35, end = 36 }
                 , { kind = Token.NumberLiteral "1", start = 37, end = 38 }
-                , { kind = Token.Comment, start = 40, end = 60 }
+                , { kind = Token.NewSiblingLine, start = 40, end = 40 }
+                , { kind = Token.Comment, start = 40, end = 59 }
+                , { kind = Token.NewSiblingLine, start = 62, end = 62 }
                 , { kind = Token.Comment, start = 62, end = 79 }
                 ]
             )
@@ -194,11 +243,11 @@ underscores =
         [ codeTest "'_' is a Name"
             "_"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ { kind = Token.Name { mutable = False } "_", start = 0, end = 1 } ])
+            (Test.isOkAndEqualTo [ { kind = Token.Name Token.NameNoModifier "_", start = 0, end = 1 } ])
         , codeTest "'_10_20' is a Name"
             "_10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ { kind = Token.Name { mutable = False } "_10_20", start = 0, end = 6 } ])
+            (Test.isOkAndEqualTo [ { kind = Token.Name Token.NameNoModifier "_10_20", start = 0, end = 6 } ])
         , codeTest "'10_20' is a Number"
             "10_20"
             (lexTokensAndDrop 1)
