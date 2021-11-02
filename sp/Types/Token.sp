@@ -1,9 +1,9 @@
 
 # TODO what if this was `Token Int Int Kind`?
 alias Token =
-    { kind is Kind
-    , start is Int
-    , end is Int
+    { kind as Kind
+    , start as Int
+    , end as Int
     }
 
 
@@ -40,10 +40,10 @@ union Kind =
     , Else
     , With
     # Ops
-    , Defop { mutable is Bool }
+    , Defop { mutable as Bool }
     , Unop Op.Unop
     , Binop Op.Binop
-    , Arrow { mutable is Bool }
+    , Arrow { mutable as Bool }
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed
@@ -52,5 +52,5 @@ union Kind =
     #
     , ErrorUnknownOp Text
     , ErrorBlock Text
-    , ErrorUnterminated Text # TODO check that everywhere it is used start position is set
+    , ErrorUnterminated Text # TODO check that everywhere it as used start position as set
 

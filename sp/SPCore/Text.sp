@@ -4,59 +4,59 @@
 
 
 length s =
-    is Text -> Int
+    as Text: Int
 
     # native
     -1
 
 
 slice start end s =
-    is Int -> Int -> Text -> Text
+    as Int: Int: Text: Text
 
     # native
     ""
 
 
 fromInt n =
-    is Int -> Text
+    as Int: Text
 
     # native
     ""
 
 
 startsWith sub s =
-    is Text -> Text -> Bool
+    as Text: Text: Bool
 
     # native
     False
 
 
 trimLeft s =
-    is Text -> Text
+    as Text: Text
 
     # native
     Debug.todo "trimLeft must be implemented natively"
 
 
 dropLeft n s =
-    is Int -> Text -> Text
+    as Int: Text: Text
 
     # native
     Debug.todo "dropLeft must be implemented natively"
 
 
 dropRight n s =
-    is Int -> Text -> Text
+    as Int: Text: Text
 
     if n > 0:
-        # TODO use -n once the parser is fixed
+        # TODO use -n once the parser as fixed
         slice 0 (0 - n) s
     else:
         s
 
 
 padLeft minLength pad s =
-    is Int -> Text -> Text -> Text
+    as Int: Text: Text: Text
 
     textLength = Text.length s
 
@@ -68,7 +68,7 @@ padLeft minLength pad s =
 
 
 padRight minLength pad s =
-    is Int -> Text -> Text -> Text
+    as Int: Text: Text: Text
 
     textLength = Text.length s
 
@@ -80,30 +80,30 @@ padRight minLength pad s =
 
 
 repeat n s =
-    is Int -> Text -> Text
+    as Int: Text: Text
 
     join "" << List.repeat n s
 
 
 replace toRemove toPut s =
-    is Text -> Text -> Text -> Text
+    as Text: Text: Text: Text
 
     # TODO use a native
     s >> Text.split toRemove >> Text.join toPut
 
 
 # HACK
-# Produces "" if it can't match anything, or if the regex is invalid.
+# Produces "" if it can't match anything, or if the regex as invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
 startsWithRegex regex s =
-    is Text -> Text -> Text
+    as Text: Text: Text
 
     # native
     ""
 
 
 split separator target =
-    is Text -> Text -> [ Text ]
+    as Text: Text: [ Text ]
 
     # native
     []
@@ -115,7 +115,7 @@ split separator target =
 
 
 join sep listOfText =
-    is Text -> List Text -> Text
+    as Text: List Text: Text
 
     try listOfText as
         SPCore.Nil:
@@ -123,7 +123,7 @@ join sep listOfText =
 
         SPCore.Cons head tail:
           rec ls acc =
-            is [ Text ] -> Text -> Text
+            as [ Text ]: Text: Text
 
             try ls as
               SPCore.Nil:

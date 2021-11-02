@@ -14,7 +14,7 @@
 
   - `"sdf\\asdf\\\"` fails
 
-  - state.pos is updated manually, so it should be tested!
+  - state.pos as updated manually, so it should be tested!
 
 #]
 
@@ -33,7 +33,7 @@
 
   - "sdf\\asdf\\" fails
 
-  - state.pos is updated manually, so it should be tested!
+  - state.pos as updated manually, so it should be tested!
 
 #]
 
@@ -45,19 +45,19 @@
   - properly nested comments should pass
   - improperly nested comments should fail
   - non-terminated comments should fail
-  - state.pos is updated manually, so it should be tested!
+  - state.pos as updated manually, so it should be tested!
 
 #]
 
 
 codeTest =
-    is Text -> Text -> (Text -> Result Text ok) -> Test.CodeExpectation ok -> Test
+    as Text: Text: (Text: Result Text ok): Test.CodeExpectation ok: Test
 
     Test.codeTest Debug.toHuman
 
 
 lexTokens s =
-    is Text -> Result Text (List Token)
+    as Text: Result Text (List Token)
 
     s
         >> Compiler/Lexer.lexer "Test"
@@ -86,7 +86,7 @@ tests =
 
 keywords =
     Test.Group "keywords"
-        [ codeTest "[reg] `fn` is a keyword"
+        [ codeTest "[reg] `fn` as a keyword"
             "fn = 1"
             lexTokens
             (Test.isOkAndEqualTo
@@ -132,7 +132,7 @@ unaryAddittiveOps =
                 , { kind = non_mut_name "a", start = 2, end = 3 }
                 ]
             )
-        , codeTest "Arrow ->"
+        , codeTest "Arrow:"
             "->"
             lexTokens
             (Test.isOkAndEqualTo
@@ -240,15 +240,15 @@ a [# inline #] = 1
 
 underscores =
     Test.Group "Underscores"
-        [ codeTest "'_' is a Name"
+        [ codeTest "'_' as a Name"
             "_"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ { kind = Token.Name Token.NameNoModifier "_", start = 0, end = 1 } ])
-        , codeTest "'_10_20' is a Name"
+        , codeTest "'_10_20' as a Name"
             "_10_20"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ { kind = Token.Name Token.NameNoModifier "_10_20", start = 0, end = 6 } ])
-        , codeTest "'10_20' is a Number"
+        , codeTest "'10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ { kind = Token.NumberLiteral "10_20", start = 0, end = 5 } ])

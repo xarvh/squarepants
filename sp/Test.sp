@@ -1,5 +1,5 @@
 union Test =
-    , Single Text Text (None -> TestOutcome)
+    , Single Text Text (None: TestOutcome)
     , Group Text [ Test ]
     , NotNow Test
 
@@ -11,7 +11,7 @@ union TestOutcome =
 
 
 maybeToOutcome m =
-    is Maybe Text -> TestOutcome
+    as Maybe Text: TestOutcome
     try m as
         Just e:
             Error e
@@ -26,11 +26,11 @@ maybeToOutcome m =
 
 
 union CodeExpectation ok =
-    , CodeExpectation ((ok -> Text) -> Result Text ok -> Maybe Text)
+    , CodeExpectation ((ok: Text): Result Text ok: Maybe Text)
 
 
 codeTest toText title code functionToTest (CodeExpectation toMaybeError) =
-    is (ok -> Text) -> Text -> Text -> (Text -> Result Text ok) -> CodeExpectation ok -> Test
+    as (ok: Text): Text: Text: (Text: Result Text ok): CodeExpectation ok: Test
 
     Single title code fn None:
       code
@@ -40,7 +40,7 @@ codeTest toText title code functionToTest (CodeExpectation toMaybeError) =
 
 
 isOk =
-    is CodeExpectation ok
+    as CodeExpectation ok
 
     CodeExpectation fn toText result:
       try result as
@@ -52,7 +52,7 @@ isOk =
 
 
 isOkAndEqualTo expectedOk =
-    is ok -> CodeExpectation ok
+    as ok: CodeExpectation ok
 
     CodeExpectation fn toText result:
       try result as
@@ -80,7 +80,7 @@ isOkAndEqualTo expectedOk =
 
 
 outcomesRec path test accum =
-    is Text -> Test -> [ Text & Text & TestOutcome ] -> [ Text & Text & TestOutcome ]
+    as Text: Test: [ Text & Text & TestOutcome ]: [ Text & Text & TestOutcome ]
 
     try test as
         Single name code f:
@@ -94,7 +94,7 @@ outcomesRec path test accum =
 
 
 getName test =
-    is Test -> Text
+    as Test: Text
 
     try test as
         Single n code f:
@@ -108,13 +108,13 @@ getName test =
 
 
 flatten tests =
-    is [ Test ] -> [ Text & Text & TestOutcome ]
+    as [ Test ]: [ Text & Text & TestOutcome ]
 
     List.foldl (outcomesRec "") tests []
 
 
 errorsFirst outcome =
-    is TestOutcome -> Number
+    as TestOutcome: Number
 
     try outcome as
         Error e:

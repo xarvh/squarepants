@@ -29,6 +29,7 @@ type
     | As
     | Is
     | Colon
+    | MutableColon
     | Then
     | Else
     | With
@@ -36,7 +37,6 @@ type
     | Defop { mutable : Bool }
     | Unop Types.Op.Unop
     | Binop String Types.Op.Binop
-    | Arrow { mutable : Bool }
       -- Parens
     | RoundParen OpenOrClosed
     | SquareBracket OpenOrClosed

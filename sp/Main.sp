@@ -1,6 +1,6 @@
 
 allTests =
-    is [ Test ]
+    as [ Test ]
 
     [
     , Compiler/Lexer_Test.tests
@@ -8,7 +8,7 @@ allTests =
 
 
 color code text =
-    is Text -> Text -> Text
+    as Text: Text: Text
 
     code .. text .. "\x1b[0m"
 
@@ -26,7 +26,7 @@ red =
 
 
 indent s =
-    is Text -> Text
+    as Text: Text
     s
       >> Text.split "\n"
       >> List.map (fn l: "  " .. l)
@@ -34,7 +34,7 @@ indent s =
 
 
 testOutcomeToText name code outcome =
-    is Text -> Text -> Test.TestOutcome -> Text
+    as Text: Text: Test.TestOutcome: Text
 
     try outcome as
         Test.Success:

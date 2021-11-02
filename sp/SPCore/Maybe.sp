@@ -5,7 +5,7 @@ union Maybe a =
 
 
 andThen f ma =
-    is (a -> Maybe b) -> Maybe a -> Maybe b
+    as (a: Maybe b): Maybe a: Maybe b
 
     try ma as
         Nothing: Nothing
@@ -13,7 +13,7 @@ andThen f ma =
 
 
 map f m =
-  is (a -> b) -> Maybe a -> Maybe b
+  as (a: b): Maybe a: Maybe b
 
   try m as
     Nothing: Nothing
@@ -21,7 +21,7 @@ map f m =
 
 
 withDefault default maybe =
-  is a -> Maybe a -> a
+  as a: Maybe a: a
 
   try maybe as
     Just v: v

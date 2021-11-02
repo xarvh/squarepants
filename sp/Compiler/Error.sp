@@ -1,11 +1,11 @@
 
 alias Env =
     {
-#    , metaFile is MetaFile
-    , moduleByName is Dict Text { fsPath is Text, content is Text }
+#    , metaFile as MetaFile
+    , moduleByName as Dict Text { fsPath as Text, content as Text }
     }
 
-alias Description = Env -> [Text]
+alias Description = Env: [Text]
 
 union Error =
     , Simple Pos Description
@@ -17,7 +17,7 @@ alias Res a =
 
 
 res pos desc =
-    is Pos -> Description -> Res a
+    as Pos: Description: Res a
 
     Err << Simple pos desc
 
@@ -27,8 +27,8 @@ res pos desc =
 
 
 union Highlight =
-    , HighlightWord { line is Number, colStart is Number, colEnd is Number }
-    , HighlightBlock { lineStart is Number, lineEnd is Number }
+    , HighlightWord { line as Number, colStart as Number, colEnd as Number }
+    , HighlightBlock { lineStart as Number, lineEnd as Number }
 
 
 
@@ -36,7 +36,7 @@ union Highlight =
 
 
 flatten e accum =
-    is Error -> [Pos & Description] -> [Pos & Description]
+    as Error: [Pos & Description]: [Pos & Description]
     try e as
         Simple pos descr:
             pos & descr :: accum
@@ -51,7 +51,7 @@ flatten e accum =
 
 
 positionToLineAndColumn s index =
-    is Text -> Int -> { line is Int, col is Int }
+    as Text: Int: { line as Int, col as Int }
 
     before =
         Text.slice 0 index s
@@ -72,7 +72,7 @@ positionToLineAndColumn s index =
 
 
 highlightSplit h ( words & lines ) =
-    is Highlight -> ( Dict Int ( Int & Int ) & Set Int ) -> ( Dict Int ( Int & Int ) & Set Int )
+    as Highlight: ( Dict Int ( Int & Int ) & Set Int ): ( Dict Int ( Int & Int ) & Set Int )
     try h as
         HighlightWord { line, colStart, colEnd }:
             ( Dict.insert line ( colStart & colEnd ) words
@@ -86,7 +86,7 @@ highlightSplit h ( words & lines ) =
 
 
 fmtBlock start highlights ls =
-    is Int -> [Highlight] -> [Text] -> Text
+    as Int: [Highlight]: [Text]: Text
 
     ( highlightedWords & highlightedLines ) =
         List.foldl highlightSplit highlights ( Dict.empty & Set.empty )
@@ -134,7 +134,7 @@ fmtBlock start highlights ls =
 
 
 showCodeBlock code start end =
-    is Text -> { line is Int, col is Int } -> { line is Int, col is Int } -> Text
+    as Text: { line as Int, col as Int }: { line as Int, col as Int }: Text
     if end.line < 0:
         ""
 
@@ -174,7 +174,7 @@ showCodeBlock code start end =
 
 
 posToHuman eEnv pos =
-    is Env -> Pos -> { location is Text, block is Text }
+    as Env: Pos: { location as Text, block as Text }
 
     noBlock loc =
         { location = loc
@@ -196,7 +196,7 @@ posToHuman eEnv pos =
                     }
 
                 Nothing:
-                    noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This is a compiler bug.>"
+                    noBlock << "<The module name as `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
 
         Pos.N:
             noBlock "<native code>"
@@ -227,7 +227,7 @@ posToHuman eEnv pos =
 
 
 toText env pos desc =
-    is Env -> Pos -> Description -> Text
+    as Env: Pos: Description: Text
 
     { location, block } =
         posToHuman env pos

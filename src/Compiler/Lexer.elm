@@ -329,11 +329,8 @@ recognisedTokens =
                             String.trimLeft m
                     in
                     case match of
-                        "->" ->
-                            Ok <| Token.Arrow { mutable = False }
-
-                        "@>" ->
-                            Ok <| Token.Arrow { mutable = True }
+                        "@:" ->
+                            Ok <| Token.MutableColon
 
                         ":" ->
                             Ok <| Token.Colon

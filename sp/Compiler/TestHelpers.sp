@@ -1,12 +1,12 @@
 
 unindent multilineText =
-    is Text -> Text
+    as Text: Text
 
     lines =
         Text.split "\n" multilineText
 
     countLeadingSpaces line =
-        is Text -> Int
+        as Text: Int
 
         line
           >> Text.startsWithRegex "[ ]*"
@@ -25,7 +25,7 @@ unindent multilineText =
 
 
 errorToText eenv e =
-    is Error.Env -> Error -> Text
+    as Error.Env: Error: Text
 
     Error.flatten e []
         >> List.map (fn (pos & descr): Error.toText eenv pos descr)
@@ -33,7 +33,7 @@ errorToText eenv e =
 
 
 resErrorToText code =
-    is Text -> Res a -> Result Text a
+    as Text: Res a: Result Text a
 
     eenv =
         { #metaFile = { sourceDirs = [], libraries = [] }

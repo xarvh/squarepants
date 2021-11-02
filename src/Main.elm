@@ -13,7 +13,7 @@ import Compiler.JsToString_Test
 import Compiler.Pipeline
 import Compiler.ScopeCheck_Test
 import Compiler.Lexer
-import SPTests.Lexer_Test
+-- import SPTests.Lexer_Test
 import Compiler.TestHelpers
 import Compiler.TokensToFormattableAst
 import Compiler.TokensToFormattableAst_Test
@@ -137,8 +137,8 @@ tests =
 
     else
         Test.viewList
-            [ SPTests.Lexer_Test.tests
-            , Compiler.TokensToFormattableAst_Test.tests
+--             [ SPTests.Lexer_Test.tests
+            [ Compiler.TokensToFormattableAst_Test.tests
             , Compiler.FormattableToCanonicalAst_Test.tests
             , Compiler.ScopeCheck_Test.tests
             , Compiler.ApplyAliases_Test.tests
@@ -466,7 +466,7 @@ tokenToClass meta token =
         Token.Binop _ _ ->
             "op"
 
-        Token.Arrow _ ->
+        Token.MutableColon ->
             "op"
 
         -- Parens

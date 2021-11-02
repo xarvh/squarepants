@@ -12,10 +12,10 @@ union Mode =
     , Word Token.NameModifier
     , NumberLiteral
     , Squiggles
-    , SingleQuote { lastEscape is Int }
-    , TripleQuote { lastEscape is Int, closingQuotes is Int }
+    , SingleQuote { lastEscape as Int }
+    , TripleQuote { lastEscape as Int, closingQuotes as Int }
     , LineComment
-    , BlockComment { nesting is Int, previous is Text }
+    , BlockComment { nesting as Int, previous as Text }
 
 
 union TabsOrSpaces =
@@ -26,19 +26,19 @@ union TabsOrSpaces =
 
 alias ReadState =
     {
-    , buffer is Buffer
-    , errors is [Error]
-    , indentStack is [Int]
-    , mode is Mode
-    , moduleName is Text
-    , start is Int
-    , tabsOrSpaces is TabsOrSpaces
-    , tokens is [Token]
+    , buffer as Buffer
+    , errors as [Error]
+    , indentStack as [Int]
+    , mode as Mode
+    , moduleName as Text
+    , start as Int
+    , tabsOrSpaces as TabsOrSpaces
+    , tokens as [Token]
     }
 
 
 readStateInit moduleName moduleCode =
-    is Text -> Text -> ReadState
+    as Text: Text: ReadState
 
     { buffer = Buffer.init moduleCode
     , errors = []
@@ -52,13 +52,13 @@ readStateInit moduleName moduleCode =
 
 
 getPos state =
-    is ReadState -> Int
+    as ReadState: Int
 
     state.buffer.nextPos
 
 
 addError message state =
-    is Text -> ReadState -> ReadState
+    as Text: ReadState: ReadState
 
     end =
         getPos state
@@ -73,14 +73,14 @@ addError message state =
 
 
 setMode mode state =
-    is Mode -> ReadState -> ReadState
+    as Mode: ReadState: ReadState
 
 #    log "setMode: " mode
     { state with mode = mode }
 
 
 absAddToken =
-    is Int -> Int -> Token.Kind -> ReadState -> ReadState
+    as Int: Int: Token.Kind: ReadState: ReadState
 
     fn start end kind state:
 #        log "absAddToken" ( Debug.toHuman start .. " " .. Debug.toHuman end .. " " .. Debug.toHuman kind )
@@ -91,21 +91,21 @@ absAddToken =
 
 
 relAddToken =
-    is Int -> Int -> Token.Kind -> ReadState -> ReadState
+    as Int: Int: Token.Kind: ReadState: ReadState
     fn ds de kind state:
         pos = getPos state
         absAddToken (pos + ds) (pos + de) kind state
 
 
 addOneIndentToken =
-    is Token.Kind -> ReadState -> ReadState
+    as Token.Kind: ReadState: ReadState
     fn kind state:
         pos = getPos state
         { state with tokens = { start = pos, end = pos, kind } :: .tokens }
 
 
 getChunk =
-    is ReadState -> Int & Int & Text
+    as ReadState: Int & Int & Text
     fn state:
         start = state.start
         end = getPos state
@@ -116,19 +116,19 @@ getChunk =
 # Words (names, keywords, logical ops)
 #
 isWordStart char =
-    is Text -> Bool
+    as Text: Bool
 
     Text.startsWithRegex "[a-zA-Z._]" char /= ""
 
 
 isWordBody char =
-    is Text -> Bool
+    as Text: Bool
 
     Text.startsWithRegex "[a-zA-Z./_0-9]" char /= ""
 
 
 addWordToken modifier state =
-    is Token.NameModifier -> ReadState -> ReadState
+    as Token.NameModifier: ReadState: ReadState
 
     start & end & chunk =
         getChunk state
@@ -152,7 +152,7 @@ addWordToken modifier state =
 
         Just kind & _:
             state
-              >> addError (chunk .. " is a keyword, you can't really use it this way")
+              >> addError (chunk .. " as a keyword, you can't really use it this way")
 
         _:
             state
@@ -163,21 +163,21 @@ addWordToken modifier state =
 # Number literals
 #
 isNumber char =
-    is Text -> Bool
+    as Text: Bool
 
     Text.startsWithRegex "[0-9_.]" char /= ""
 
 
 addNumberToken state =
-    is ReadState -> ReadState
+    as ReadState: ReadState
 
     start & end & chunk =
         getChunk state
 
-    # TODO ensure that there is one or zero dots
-    # This is probably best done in lexOne
+    # TODO ensure that there as one or zero dots
+    # This as probably best done in lexOne
 
-    # TODO ensure that there is at least one actual figure
+    # TODO ensure that there as at least one actual figure
 
     # TODO what about exponential notation?
 
@@ -189,7 +189,7 @@ addNumberToken state =
 # Squiggles (ops and symbols)
 #
 isSquiggle char =
-    is Text -> Bool
+    as Text: Bool
 
     try char as
        "=": True
@@ -207,7 +207,7 @@ isSquiggle char =
 
 
 addSquiggleToken nextIsSpace state =
-    is Bool -> ReadState -> ReadState
+    as Bool: ReadState: ReadState
 
     start & end & chunk =
         getChunk state
@@ -236,7 +236,7 @@ addSquiggleToken nextIsSpace state =
 # Parens and comma
 #
 addParenOrCommaToken char state =
-    is Text -> ReadState -> ReadState
+    as Text: ReadState: ReadState
 
     start & end & chunk =
         getChunk state
@@ -262,7 +262,7 @@ addParenOrCommaToken char state =
 # Outer machine state lexer
 #
 lexOne char state =
-    is Text -> ReadState -> ReadState
+    as Text: ReadState: ReadState
 
     # TODO rewrite the whole thing with ReadState mutable?
 
@@ -512,7 +512,7 @@ lexOne char state =
                 >> setMode (BlockComment { nesting = 1, previous = "" })
           else:
             state
-                # TODO replace with -1 once it is supported
+                # TODO replace with -1 once it as supported
                 >> relAddToken (0 - 1) 0 (Token.SquareBracket Token.Open)
                 >> setMode Default
 
@@ -541,7 +541,7 @@ lexOne char state =
 
 
 tryIndent indentChar char state =
-    is Text -> Text -> ReadState -> ReadState
+    as Text: Text: ReadState: ReadState
 
     if char == indentChar or char == "":
         state
@@ -551,7 +551,7 @@ tryIndent indentChar char state =
             >> addError "mixing tabs and spaces!"
 
     else if char == "\n":
-        # line is empty, ignore
+        # line as empty, ignore
         { state with
         , start = getPos state + 1
         }
@@ -565,7 +565,7 @@ tryIndent indentChar char state =
 
 
 addIndentTokens state =
-    is ReadState -> ReadState
+    as ReadState: ReadState
 
     start =
         state.start
@@ -616,7 +616,7 @@ addIndentTokens state =
 
 
 dropIndentStack indentLength state =
-    is Int -> ReadState -> ReadState
+    as Int: ReadState: ReadState
 
     lastIndent & rest =
         try state.indentStack as
@@ -625,7 +625,7 @@ dropIndentStack indentLength state =
 
     if indentLength > lastIndent:
         [#
-           This is a bad indent, but we can probably parse it anyway, so that spfmt can fix it
+           This as a bad indent, but we can probably parse it anyway, so that spfmt can fix it
            ```
            indent
                lastIndent
@@ -662,10 +662,10 @@ dropIndentStack indentLength state =
 
 
 closeOpenBlocks state =
-    is ReadState -> [ Token ]
+    as ReadState: [ Token ]
 
     blockEnd =
-        is Token
+        as Token
         {
         , kind = Token.BlockEnd
         , start = getPos state
@@ -676,7 +676,7 @@ closeOpenBlocks state =
 
 
 lexerStep state =
-    is ReadState -> Res [Token]
+    as ReadState: Res [Token]
 
     try Buffer.readOne state.buffer as
         "" & _:
@@ -702,7 +702,7 @@ lexerStep state =
 
 
 lexer moduleName moduleCode =
-    is Text -> Text -> Res [Token]
+    as Text: Text: Res [Token]
 
     lexerStep << readStateInit moduleName moduleCode
 

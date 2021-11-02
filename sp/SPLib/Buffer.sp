@@ -4,14 +4,14 @@
 #
 alias Buffer =
     {
-    , nextPos is Int
-    , fullSize is Int
-    , fullText is Text
+    , nextPos as Int
+    , fullSize as Int
+    , fullText as Text
     }
 
 
 init s =
-    is Text -> Buffer
+    as Text: Buffer
 
     {
     , nextPos = 0
@@ -21,7 +21,7 @@ init s =
 
 
 readOne b =
-    is Buffer -> Text & Buffer
+    as Buffer: Text & Buffer
 
     if b.nextPos < b.fullSize:
       Text.slice b.nextPos (b.nextPos + 1) b.fullText & { b with nextPos = .nextPos + 1 }
@@ -30,6 +30,6 @@ readOne b =
 
 
 slice start end b =
-    is Int -> Int -> Buffer -> Text
+    as Int: Int: Buffer: Text
 
     Text.slice start end b.fullText

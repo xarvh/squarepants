@@ -3,7 +3,7 @@ alias Int = Number
 
 
 foldl function aList init =
-    is (item -> state -> state) -> [item] -> state -> state
+    as (item: state: state): [item]: state: state
 
     try aList as
       []:
@@ -14,10 +14,10 @@ foldl function aList init =
 
 
 foldr f list init =
-    is (item -> state -> state) -> [item] -> state -> state
+    as (item: state: state): [item]: state: state
 
     foldrHelper acc ctr ls =
-        is state -> Int -> List item -> state
+        as state: Int: List item: state
         try ls as
             []:
                 acc
@@ -49,22 +49,22 @@ foldr f list init =
 
 
 length list  =
-    is [a] -> Int
+    as [a]: Int
 
     foldl (fn _ a: a + 1) list 0
 
 
 map f list =
-    is (a -> b) -> [a] -> [b]
+    as (a: b): [a]: [b]
 
     foldr (fn x acc: (f x) :: acc) list []
 
 
 map2 f =
-  is (a -> b -> c) -> [a] -> [b] -> [c]
+  as (a: b: c): [a]: [b]: [c]
 
   rec accum ax bx =
-      is [c] -> [a] -> [b] -> [c]
+      as [c]: [a]: [b]: [c]
 
       try ax & bx as
         ahead :: atail & bhead :: btail :
@@ -76,10 +76,10 @@ map2 f =
 
 
 range low high =
-    is Int -> Int -> [Int]
+    as Int: Int: [Int]
 
     rec accum up =
-        is [Int] -> Int -> [Int]
+        as [Int]: Int: [Int]
         if up > low:
             rec (up :: accum) (up - 1)
         else:
@@ -89,10 +89,10 @@ range low high =
 
 
 indexedMap f =
-    is (Int -> a -> b) -> [a] -> [b]
+    as (Int: a: b): [a]: [b]
 
     rec accum n list =
-      is [b] -> Int -> [a] -> [b]
+      as [b]: Int: [a]: [b]
       try list as
         []: reverse accum
         h :: t: rec (f n h :: accum) (n + 1) t
@@ -101,25 +101,25 @@ indexedMap f =
 
 
 append xs ys =
-  is List a -> List a -> List a
+  as List a: List a: List a
   try ys as
     []: xs
     _: foldr SPCore.Cons ys xs
 
 
 concat lists =
-  is List (List a) -> List a
+  as List (List a): List a
   foldr append lists []
 
 
 concatMap f list =
-    is (a -> [b]) -> [a] -> [b]
+    as (a: [b]): [a]: [b]
 
     concat << map f list
 
 
 head list =
-    is [a] -> Maybe a
+    as [a]: Maybe a
 
     try list as
       []: Nothing
@@ -127,7 +127,7 @@ head list =
 
 
 last list =
-    is [a] -> Maybe a
+    as [a]: Maybe a
     try list as
         []: Nothing
         h :: []: Just h
@@ -135,7 +135,7 @@ last list =
 
 
 take n list =
-    is Int -> [a] -> [a]
+    as Int: [a]: [a]
     if n < 1: list
     else:
       try list as
@@ -144,18 +144,18 @@ take n list =
 
 
 filter f ls =
-    is (item -> Bool) -> [item] -> [item]
+    as (item: Bool): [item]: [item]
 
     foldr (fn item acc: if f item: item :: acc else acc) ls []
 
 
 filterMap f xs =
-  is (a -> Maybe b) -> [a] -> [b]
+  as (a: Maybe b): [a]: [b]
   foldr (fn a acc: try f a as Just b: b :: acc else acc) [] xs
 
 
 mapFirst f ls =
-    is (a -> Maybe b) -> List a -> Maybe b
+    as (a: Maybe b): List a: Maybe b
 
     try ls as
         []:
@@ -170,7 +170,7 @@ mapFirst f ls =
 
 
 each ls f =
-    is [a] -> (a -> b) -> None
+    as [a]: (a: b): None
 
     try ls as
         []:
@@ -182,23 +182,23 @@ each ls f =
 
 
 reverse aList =
-    is [a] -> [a]
+    as [a]: [a]
 
     foldl SPCore.Cons aList []
 
 
 repeat n a =
-    is Int -> a -> [ a ]
+    as Int: a: [ a ]
 
     rec c acc =
-        is Int -> [a] -> [a]
+        as Int: [a]: [a]
         if c > 0: rec (c - 1) (a :: acc) else acc
 
     rec n []
 
 
 drop n ls =
-    is Int -> [a] -> [a]
+    as Int: [a]: [a]
 
     if n == 0:
       ls
@@ -208,7 +208,7 @@ drop n ls =
           h :: tail: drop (n - 1) tail
 
 minimum list =
-    is [a] -> Maybe a
+    as [a]: Maybe a
     with a NonFunction
 
     try list as

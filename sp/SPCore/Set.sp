@@ -4,35 +4,35 @@ alias Set a =
 
 
 empty =
-  is Set a
+  as Set a
   with a NonFunction
 
   Dict.empty
 
 
 member a set =
-  is a -> Set a -> Bool
+  as a: Set a: Bool
   with a NonFunction
 
   Dict.get a set /= Nothing
 
 
 size =
-  is Set a -> Int
+  as Set a: Int
   with a NonFunction
 
   Dict.size
 
 
 insert a =
-  is a -> Set a -> Set a
+  as a: Set a: Set a
   with a NonFunction
 
   Dict.insert a None
 
 
 remove =
-  is a -> Set a -> Set a
+  as a: Set a: Set a
   with a NonFunction
 
   Dict.remove

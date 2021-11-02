@@ -9,7 +9,7 @@ alias Int =
 
 [#
 typeBinop mutates left right return =
-    is Bool -> CA.Type -> CA.Type -> CA.Type -> CA.Type
+    as Bool: CA.Type: CA.Type: CA.Type: CA.Type
     CA.TypeFunction pos
         right
         False
@@ -27,7 +27,7 @@ typeBinopUniform ty =
 
 
 binops =
-    is Dict Text Op.Binop
+    as Dict Text Op.Binop
     [
     , and_
     , or_
@@ -42,28 +42,28 @@ binops =
 
 
 unaryPlus =
-    is Op.Unop
+    as Op.Unop
     { symbol = "0 +"
 #    , ty = typeUnopUniform Core.numberType
     }
 
 
 unaryMinus =
-    is Op.Unop
+    as Op.Unop
     { symbol = "0 -"
 #    , ty = typeUnopUniform Core.numberType
     }
 
 
 not_ =
-    is Op.Unop
+    as Op.Unop
     { symbol = "not"
 #    , ty = typeUnopUniform Core.boolType
     }
 
 
 and_ =
-    is Op.Binop
+    as Op.Binop
     { symbol = "and"
     , precedence = Op.Logical
     , associativity = Op.Right
@@ -73,7 +73,7 @@ and_ =
 
 
 or_ =
-    is Op.Binop
+    as Op.Binop
     { symbol = "or"
     , precedence = Op.Logical
     , associativity = Op.Right
@@ -82,7 +82,7 @@ or_ =
     }
 
 textConcat =
-    is Op.Binop
+    as Op.Binop
     { symbol = ".."
     , precedence = Op.Addittive
     , associativity = Op.Right
@@ -92,7 +92,7 @@ textConcat =
 
 
 add =
-    is Op.Binop
+    as Op.Binop
     { symbol = "+"
     , precedence = Op.Addittive
     , associativity = Op.Left
@@ -102,7 +102,7 @@ add =
 
 
 subtract =
-    is Op.Binop
+    as Op.Binop
     { symbol = "-"
     , precedence = Op.Addittive
     , associativity = Op.Left
@@ -112,7 +112,7 @@ subtract =
 
 
 multiply =
-    is Op.Binop
+    as Op.Binop
     { symbol = "*"
     , precedence = Op.Multiplicative
     , associativity = Op.Left
@@ -122,7 +122,7 @@ multiply =
 
 
 divide =
-    is Op.Binop
+    as Op.Binop
     { symbol = "/"
     , precedence = Op.Multiplicative
     , associativity = Op.Left
@@ -132,7 +132,7 @@ divide =
 
 
 mutableAdd =
-    is Op.Binop
+    as Op.Binop
     { symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
@@ -142,7 +142,7 @@ mutableAdd =
 
 
 mutableSubtract =
-    is Op.Binop
+    as Op.Binop
     { symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative

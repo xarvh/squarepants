@@ -2,7 +2,7 @@
 
 alias Unop =
     {
-    , symbol is Text
+    , symbol as Text
     }
 
 
@@ -26,9 +26,9 @@ union Precedence =
 
 alias Binop =
     {
-    , precedence is Op.Precedence
-    , associativity is Op.Associativity
-    , symbol is Text
-    #, ty is CA.Type
-    , nonFn is [Text]
+    , precedence as Op.Precedence
+    , associativity as Op.Associativity
+    , symbol as Text
+    #, ty as CA.Type
+    , nonFn as [Text]
     }

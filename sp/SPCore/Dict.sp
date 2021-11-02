@@ -4,7 +4,7 @@
 union Order = GT, EQ, LT
 
 compare a b =
-  is v -> v -> Order
+  as v: v: Order
   with v NonFunction
 
   if a > b: GT
@@ -23,13 +23,13 @@ union Dict key v =
 
 
 empty =
-  is Dict key v
+  as Dict key v
   with key NonFunction
   RBEmpty_elm_builtin
 
 
 get targetKey dict =
-  is key -> Dict key v -> Maybe v
+  as key: Dict key v: Maybe v
   with key NonFunction
 
   try dict as
@@ -50,7 +50,7 @@ get targetKey dict =
 
 
 member key dict =
-  is key -> Dict key v -> Bool
+  as key: Dict key v: Bool
   with key NonFunction
 
   try get key dict as
@@ -63,11 +63,11 @@ member key dict =
 
 
 size =
-  is Dict key v -> Int
+  as Dict key v: Int
   with key NonFunction
 
   sizeHelp n dict =
-    is Int -> Dict key v -> Int
+    as Int: Dict key v: Int
 
     try dict as
       RBEmpty_elm_builtin:
@@ -81,7 +81,7 @@ size =
 
 
 isEmpty dict =
-  is Dict key v -> Bool
+  as Dict key v: Bool
   try dict as
     RBEmpty_elm_builtin:
       True
@@ -92,9 +92,9 @@ isEmpty dict =
 
 
 insert key value dict =
-  is key -> v -> Dict key v -> Dict key v
+  as key: v: Dict key v: Dict key v
   with key NonFunction
-  # Root node is always Black
+  # Root node as always Black
   try insertHelp key value dict as
     RBNode_elm_builtin Red k v l r:
       RBNode_elm_builtin Black k v l r
@@ -104,7 +104,7 @@ insert key value dict =
 
 
 insertHelp key value dict =
-  is key -> v -> Dict key v -> Dict key v
+  as key: v: Dict key v: Dict key v
   with key NonFunction
   try dict as
     RBEmpty_elm_builtin:
@@ -125,7 +125,7 @@ insertHelp key value dict =
 
 
 balance color key value left right =
-  is NColor -> key -> v -> Dict key v -> Dict key v -> Dict key v
+  as NColor: key: v: Dict key v: Dict key v: Dict key v
   try right as
     RBNode_elm_builtin Red rK rV rLeft rRight:
       try left as
@@ -156,9 +156,9 @@ balance color key value left right =
 
 
 remove key dict =
-  is key -> Dict key v -> Dict key v
+  as key: Dict key v: Dict key v
   with key NonFunction
-  # Root node is always Black
+  # Root node as always Black
   try removeHelp key dict as
     RBNode_elm_builtin Red k v l r:
       RBNode_elm_builtin Black k v l r
@@ -169,7 +169,7 @@ remove key dict =
 
 
 removeHelp targetKey dict =
-  is key -> Dict key v -> Dict key v
+  as key: Dict key v: Dict key v
   with key NonFunction
   try dict as
     RBEmpty_elm_builtin:
@@ -198,7 +198,7 @@ removeHelp targetKey dict =
 
 
 removeHelpPrepEQGT targetKey dict color key value left right =
-  is key -> Dict key v -> NColor -> key -> v -> Dict key v -> Dict key v -> Dict key v
+  as key: Dict key v: NColor: key: v: Dict key v: Dict key v: Dict key v
   with key NonFunction
   try left as
     RBNode_elm_builtin Red lK lV lLeft lRight:
@@ -223,7 +223,7 @@ removeHelpPrepEQGT targetKey dict color key value left right =
 
 
 removeHelpEQGT targetKey dict =
-  is key -> Dict key v -> Dict key v
+  as key: Dict key v: Dict key v
   with key NonFunction
   try dict as
     RBNode_elm_builtin color key value left right:
@@ -242,7 +242,7 @@ removeHelpEQGT targetKey dict =
 
 
 getMin dict =
-  is Dict key v -> Dict key v
+  as Dict key v: Dict key v
   try dict as
     RBNode_elm_builtin _ _ _ left _:
       try left as
@@ -256,7 +256,7 @@ getMin dict =
 
 
 removeMin dict =
-  is Dict key v -> Dict key v
+  as Dict key v: Dict key v
   try dict as
     RBNode_elm_builtin color key value left right:
       try left as
@@ -285,7 +285,7 @@ removeMin dict =
 
 
 moveRedLeft dict =
-  is Dict key v -> Dict key v
+  as Dict key v: Dict key v
   try dict as
     RBNode_elm_builtin clr k v (RBNode_elm_builtin lClr lK lV lLeft lRight) (RBNode_elm_builtin rClr rK rV (RBNode_elm_builtin Red rlK rlV rlL rlR) rRight):
       RBNode_elm_builtin
@@ -318,7 +318,7 @@ moveRedLeft dict =
 
 
 moveRedRight dict =
-  is Dict key v -> Dict key v
+  as Dict key v: Dict key v
   try dict as
     RBNode_elm_builtin clr k v (RBNode_elm_builtin lClr lK lV (RBNode_elm_builtin Red llK llV llLeft llRight) lRight) (RBNode_elm_builtin rClr rK rV rLeft rRight):
       RBNode_elm_builtin
@@ -352,7 +352,7 @@ moveRedRight dict =
 
 
 update targetKey alter dictionary =
-  is key -> (Maybe v -> Maybe v) -> Dict key v -> Dict key v
+  as key: (Maybe v: Maybe v): Dict key v: Dict key v
   with key NonFunction
   try alter (get targetKey dictionary) as
     Just value:
@@ -364,9 +364,9 @@ update targetKey alter dictionary =
 
 
 singleton key value =
-  is key -> v -> Dict key v
+  as key: v: Dict key v
   with key NonFunction
-  # Root node is always Black
+  # Root node as always Black
   RBNode_elm_builtin Black key value RBEmpty_elm_builtin RBEmpty_elm_builtin
 
 
@@ -375,31 +375,31 @@ singleton key value =
 
 
 join t1 t2 =
-  is Dict key v -> Dict key v -> Dict key v
+  as Dict key v: Dict key v: Dict key v
   with key NonFunction
   foldl insert t1 t2
 
 
 
 intersect t1 t2 =
-  is Dict key v -> Dict key v -> Dict key v
+  as Dict key v: Dict key v: Dict key v
   with key NonFunction
   filter (fn k _: member k t2) t1
 
 
 
 diff t1 t2 =
-  is Dict key a -> Dict key b -> Dict key a
+  as Dict key a: Dict key b: Dict key a
   with key NonFunction
   foldl (fn k v t: remove k t) t2 t1
 
 
 merge leftStep bothStep rightStep leftDict rightDict initialResult =
-  is  (key -> a -> res -> res) -> (key -> a -> b -> res -> res) -> (key -> b -> res -> res) -> Dict key a -> Dict key b -> res -> res
+  as  (key: a: res: res): (key: a: b: res: res): (key: b: res: res): Dict key a: Dict key b: res: res
   with key NonFunction
 
   stepState rKey rValue (list & res) =
-    is key -> b -> [key & a] & res -> [key & a] & res
+    as key: b: [key & a] & res: [key & a] & res
     try list as
       []:
         (list & rightStep rKey rValue res)
@@ -425,7 +425,7 @@ merge leftStep bothStep rightStep leftDict rightDict initialResult =
 
 
 map func dict =
-  is (k -> a -> b) -> Dict k a -> Dict k b
+  as (k: a: b): Dict k a: Dict k b
   try dict as
     RBEmpty_elm_builtin:
       RBEmpty_elm_builtin
@@ -436,7 +436,7 @@ map func dict =
 
 
 foldl func dict acc = 
-  is (k -> v -> b -> b) -> Dict k v -> b -> b
+  as (k: v: b: b): Dict k v: b: b
   try dict as
     RBEmpty_elm_builtin:
       acc
@@ -447,7 +447,7 @@ foldl func dict acc =
 
 
 foldr func t acc =
-  is (k -> v -> b -> b) -> Dict k v -> b -> b
+  as (k: v: b: b): Dict k v: b: b
   try t as
     RBEmpty_elm_builtin:
       acc
@@ -458,14 +458,14 @@ foldr func t acc =
 
 
 filter isGood dict =
-  is (key -> v -> Bool) -> Dict key v -> Dict key v
+  as (key: v: Bool): Dict key v: Dict key v
   with key NonFunction
   foldl (fn k v d: if isGood k v: insert k v d else d) dict empty
 
 
 
 partition isGood dict =
-  is (key -> v -> Bool) -> Dict key v -> (Dict key v & Dict key v)
+  as (key: v: Bool): Dict key v: (Dict key v & Dict key v)
   with key NonFunction
 
   add key value (t1 & t2) =
@@ -483,22 +483,22 @@ partition isGood dict =
 
 
 keys dict =
-  is Dict k v -> List k
+  as Dict k v: List k
   foldr (fn key value keyList: key :: keyList) dict []
 
 
 
 values dict =
-  is Dict k v -> List v
+  as Dict k v: List v
   foldr (fn key value valueList: value :: valueList) dict []
 
 
 
 toList dict =
-  is Dict k v -> [k & v]
+  as Dict k v: [k & v]
 
   f =
-    is k -> v -> [k & v] -> [k & v]
+    as k: v: [k & v]: [k & v]
     fn key value list:
        key & value :: list
 
@@ -508,7 +508,7 @@ toList dict =
 
 
 fromList assocs =
-  is List (key & v) -> Dict key v
+  as List (key & v): Dict key v
   with key NonFunction
 
   List.foldl (fn (key & value) dict: insert key value dict) assocs empty
