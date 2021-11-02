@@ -37,7 +37,9 @@
                 {
                     "path": "Types/Token",
                     "importAs": "Token",
-                    "globalValues": [],
+                    "globalValues": [
+                        "Token"
+                    ],
                     "globalTypes": [
                         "Token"
                     ]

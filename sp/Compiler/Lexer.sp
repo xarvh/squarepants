@@ -85,7 +85,7 @@ absAddToken =
     fn start end kind state:
 #        log "absAddToken" ( Debug.toHuman start .. " " .. Debug.toHuman end .. " " .. Debug.toHuman kind )
         { state with
-        , tokens = { start, end, kind } :: .tokens
+        , tokens = Token start end kind :: .tokens
         , start = end
         }
 
@@ -101,7 +101,7 @@ addOneIndentToken =
     as Token.Kind: ReadState: ReadState
     fn kind state:
         pos = getPos state
-        { state with tokens = { start = pos, end = pos, kind } :: .tokens }
+        { state with tokens = Token pos pos kind :: .tokens }
 
 
 getChunk =
@@ -217,10 +217,9 @@ addSquiggleToken nextIsSpace state =
 
     try chunk as
         ":": add << Token.Colon
+        "@:": add << Token.MutableColon
         "=": add << Token.Defop { mutable = False }
         "@=": add << Token.Defop { mutable = True }
-        "->": add << Token.Arrow { mutable = False }
-        "@>": add << Token.Arrow { mutable = True }
         "-": add << (if nextIsSpace: Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace: Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:
@@ -664,15 +663,10 @@ dropIndentStack indentLength state =
 closeOpenBlocks state =
     as ReadState: [ Token ]
 
-    blockEnd =
-        as Token
-        {
-        , kind = Token.BlockEnd
-        , start = getPos state
-        , end = getPos state
-        }
+    pos =
+        getPos state
 
-    List.foldl (fn stack accum: blockEnd :: accum) state.indentStack state.tokens
+    List.foldl (fn stack accum: Token pos pos Token.BlockEnd :: accum) state.indentStack state.tokens
 
 
 lexerStep state =

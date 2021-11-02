@@ -1,10 +1,5 @@
 
-# TODO what if this was `Token Int Int Kind`?
-alias Token =
-    { kind as Kind
-    , start as Int
-    , end as Int
-    }
+union Token = Token Int Int Kind
 
 
 union NameModifier =
@@ -37,13 +32,13 @@ union Kind =
     , As
     , Is
     , Colon
+    , MutableColon
     , Else
     , With
     # Ops
     , Defop { mutable as Bool }
     , Unop Op.Unop
     , Binop Op.Binop
-    , Arrow { mutable as Bool }
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed
