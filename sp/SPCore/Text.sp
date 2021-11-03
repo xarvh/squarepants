@@ -3,6 +3,13 @@
 #
 
 
+forEach text f =
+    as Text: (Text: None): None
+
+    # native
+    None
+
+
 length s =
     as Text: Int
 
@@ -108,6 +115,14 @@ split separator target =
     # native
     []
 
+
+contains sub str =
+    as Text: Text: Bool
+
+    # TODO use a native
+    try split sub str as
+      [ _ ]: False
+      _: True
 
 #
 # Non native functions

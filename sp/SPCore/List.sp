@@ -134,13 +134,57 @@ last list =
         h :: t: last t
 
 
-take n list =
+take =
     as Int: [a]: [a]
-    if n < 1: list
-    else:
-      try list as
-        []: []
-        h :: tail: take (n - 1) tail
+    takeFast 0
+
+
+# Shamelessly stolen from https://github.com/elm/core/blob/1.0.5/src/List.elm
+takeFast ctr n list =
+  as Int: Int: [a]: [a]
+  if n < 1:
+    []
+  else
+    try n & list as
+        _ & []:
+          list
+
+        1 & x :: _:
+          [ x ]
+
+        2 & x :: y :: _:
+          [ x, y ]
+
+        3 & x :: y :: z :: _:
+          [ x, y, z ]
+
+        _ & x :: y :: z :: w :: tl:
+          cons = SPCore.Cons
+          if ctr > 1000:
+            cons x (cons y (cons z (cons w (takeTailRec (n - 4) tl))))
+          else
+            cons x (cons y (cons z (cons w (takeFast (ctr + 1) (n - 4) tl))))
+
+        _ :
+          list
+
+
+takeTailRec n list =
+  as Int: [a]: [a]
+  reverse (takeReverse n list [])
+
+
+takeReverse n list kept =
+  as Int: [a]: [a]: [a]
+  if n < 1:
+    kept
+  else
+    try list as
+      []:
+        kept
+
+      x :: xs:
+        takeReverse (n - 1) xs (SPCore.Cons x kept)
 
 
 filter f ls =

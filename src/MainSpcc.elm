@@ -196,7 +196,8 @@ makeProgram metaFile files =
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
         |> String.join "\n\n"
-        |> (\s -> s ++ "console.log($Main$main(process.argv[2] || ''))")
+        |> (\s -> s ++ "const fs = require('fs');\n")
+        |> (\s -> s ++ "fs.readFile(process.argv[2] || '', (err, file) => console.log($Main$main(err ? '' : file.toString())))")
         |> Ok
 
 

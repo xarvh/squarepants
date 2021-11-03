@@ -162,7 +162,7 @@ showCodeBlock code start end =
             end.line + extraLines >> clamp 0 (maxLines - 1)
 
         size =
-            endLine - startLine
+            max 1 << endLine - startLine
 
         lines
             >> List.drop startLine
@@ -247,6 +247,4 @@ toText env pos desc =
     , ""
     ]
         >> Text.join "\n"
-
-
 

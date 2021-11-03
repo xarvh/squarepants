@@ -77,16 +77,20 @@ non_mut_name =
 tests =
     Test.Group "Lexer"
         [ keywords
+        , ops
         , unaryAddittiveOps
         , indentation
         , comments
         , underscores
+        , position
+        , textLiterals
         ]
 
 
 keywords =
     Test.Group "keywords"
-        [ codeTest "[reg] `fn` as a keyword"
+        [
+        , codeTest "[reg] `fn` as a keyword"
             "fn = 1"
             lexTokens
             (Test.isOkAndEqualTo
@@ -96,7 +100,32 @@ keywords =
                 , Token 5 6 << Token.NumberLiteral "1"
                 ]
             )
+        , codeTest
+            "[reg] can't @ keywords"
+            "@with"
+            lexTokens
+            (Test.errorContains ["keyword"] )
+        ]
 
+
+ops =
+    Test.Group "Operators"
+        [
+        , codeTest "[reg] .. set Default"
+            ".. []"
+            lexTokens
+            (Test.isOkAndEqualTo
+                [ Token 0 0 << Token.NewSiblingLine
+                , Token 0 2 << Token.Binop Prelude.textConcat
+                , Token 3 4 << Token.SquareBracket Token.Open
+                , Token 4 5 << Token.SquareBracket Token.Closed
+                ]
+            )
+        , codeTest
+            "[reg] can't @ keywords"
+            "@with"
+            lexTokens
+            (Test.errorContains ["keyword"] )
         ]
 
 
@@ -235,6 +264,18 @@ a [# inline #] = 1
                 , Token 62 79 << Token.Comment
                 ]
             )
+        , codeTest
+            "brackets"
+            "[]"
+            lexTokens
+            (Test.isOkAndEqualTo
+                [
+                , Token 0 0 << Token.NewSiblingLine
+                , Token 0 1 << Token.SquareBracket Token.Open
+                , Token 1 2 << Token.SquareBracket Token.Closed
+                ]
+            )
+
         ]
 
 
@@ -252,4 +293,45 @@ underscores =
             "10_20"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ Token 0 5 << Token.NumberLiteral "10_20" ])
+        ]
+
+
+position =
+    Test.Group "Position"
+        [
+        , codeTest
+            "[reg] ops position"
+            "blah <>"
+            lexTokens
+            (Test.errorContains ["blah <>"])
+        , codeTest
+            "[reg] ops position, with newline"
+            "blah <>\n"
+            lexTokens
+            (Test.errorContains ["blah <>"])
+        ]
+
+
+textLiterals =
+    Test.Group "Text literals"
+        [
+        , codeTest
+            "Empty Text"
+            "\"\""
+            lexTokens
+            (Test.isOkAndEqualTo [
+                , Token 0 0 << Token.NewSiblingLine
+                , Token 0 2 << Token.TextLiteral ""
+                ]
+            )
+        , codeTest
+            "Followed by colon"
+            "\"n\":\n"
+            lexTokens
+            (Test.isOkAndEqualTo [
+                , Token 0 0 << Token.NewSiblingLine
+                , Token 0 3 << Token.TextLiteral "n"
+                , Token 3 4 << Token.Colon
+                ]
+            )
         ]

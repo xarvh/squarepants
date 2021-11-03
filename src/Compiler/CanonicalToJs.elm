@@ -31,6 +31,7 @@ allNatives =
         |> Dict.insert "SPCore/Text.startsWithRegex" "text_startsWithRegex"
         |> Dict.insert "SPCore/Text.trimLeft" "text_trimLeft"
         |> Dict.insert "SPCore/Text.dropLeft" "text_dropLeft"
+        |> Dict.insert "SPCore/Text.forEach" "text_forEach"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_equal"
@@ -279,7 +280,7 @@ const sp_toHuman = (a) => {
   }
 
   if (typeof a === 'object') {
-    x = [];
+    let x = [];
     for (let i in a) x.push(i + ' = ' + sp_toHuman(a[i]));
     return '{' + x.join(', ') + '}';
   }
@@ -323,6 +324,12 @@ const text_trimLeft = (s) => {
 
 const text_dropLeft = (n) => (s) => {
   return s.slice(n);
+}
+
+
+const text_forEach = (s) => (f) => {
+  for (let i of s) f(i);
+  return null;
 }
 
 

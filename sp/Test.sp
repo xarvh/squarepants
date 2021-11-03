@@ -72,6 +72,21 @@ isOkAndEqualTo expectedOk =
                       >> Text.join "\n"
                       >> Just
 
+errorContains snippets =
+    as [Text]: CodeExpectation ok
+
+    CodeExpectation fn toText result:
+      try result as
+          Ok ok:
+              Just << "I was expecting an error, but got: Ok " .. toText ok
+
+          Err e:
+              missing =
+                  snippets >> List.filter fn sn: not Text.contains sn e
+              if missing == []:
+                  Nothing
+              else:
+                  Just << "Error message is missing snippets: " .. Text.join ", " missing
 
 
 #

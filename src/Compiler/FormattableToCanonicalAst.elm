@@ -75,6 +75,17 @@ tp ro ( start, end ) =
 
 
 ----
+--- Errors
+--
+
+
+faError : ReadOnly -> FA.Pos -> String -> Res a
+faError ro pos msg =
+    Error.faSimple ro.currentModule pos msg
+
+
+
+----
 --- Module
 --
 
@@ -593,7 +604,8 @@ translatePatternOrFunction : Env -> FA.Pattern -> Res POF
 translatePatternOrFunction env fa =
     case fa of
         FA.PatternAny pos True s ->
-            errorTodo "This is the wrong place to use `@`"
+            -- TODO this happens (to me) when I use `=` in place of `:=`, so maybe change the message?
+            faError env.ro pos "This is the wrong place to use `@`"
 
         FA.PatternAny pos False s ->
             translatePatternOrFunction env (FA.PatternApplication pos s [])
@@ -993,13 +1005,12 @@ translateArgument env faExpr =
                             |> Ok
 
                     else
-                        { sname = sname
-                        , env = { env | maybeUpdateTarget = Nothing }
-                        , rawName = faName
-                        }
-                            |> Debug.toString
-                            |> (++) "only values declared inside a function scope can be mutated!"
-                            |> errorTodo
+                        [ "only values declared inside a function scope can be mutated!"
+                        , Debug.toString sname
+                        , faName
+                        ]
+                            |> String.join "\n"
+                            |> faError env.ro pos
 
         _ ->
             faExpr
