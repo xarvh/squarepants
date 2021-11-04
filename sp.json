@@ -21,6 +21,12 @@
                     ]
                 },
                 {
+                    "path": "Types/FormattableAST",
+                    "importAs": "FA",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
                     "path": "Types/Op",
                     "importAs": "Op",
                     "globalValues": [],

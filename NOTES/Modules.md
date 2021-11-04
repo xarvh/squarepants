@@ -20,7 +20,9 @@ Rules
 Requirements
 ============
 
-* Given a module, it should be straightforward to figure out which file declares it
+* Given a module, it should be straightforward to figure out where it is defined
+
+* Given any global value, it should be trivial for both human and machine to verify where it is declared
 
 * Make two different versions of the same package coexist
 
@@ -106,7 +108,9 @@ library =
         original = HTTP
 ```
 
-* All `importAs` entries must be unique.
+* All `importAs` entries (and non-overridden `original`) must be unique.
+
+* The file format is parsed to sp's FormattableAST, which means tools like syntax highlighing and sp-format work with it.
 
 * Source directories make available all modules they contain (they are loaded on demand)
 
