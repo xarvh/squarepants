@@ -4,6 +4,8 @@ Concept
 All imports are specified in a single file, used by the whole project, so you
 don't have to repeat them for each module.
 
+Libraries define their own modules file and can hide modules and definitions.
+
 
 Rules
 =====
@@ -15,14 +17,12 @@ Rules
 * No side effects on module load
 
 
-
 Requirements
 ============
 
 * Given a module, it should be straightforward to figure out which file declares it
 
 * Make two different versions of the same package coexist
-
 
 
 Tooling
@@ -34,7 +34,6 @@ The compiler executable can also safely perform renames all over the source dirs
   - types and symbols?
 
 
-
 Project-wide import
 ===================
 
@@ -42,73 +41,81 @@ There is no import/use/require/include statement.
 
 Every module available can be directly referenced from every other module in the project.
 
-TODO: what about circular dependencies?
-
 Modules are loaded only if and when referenced.
 
-Available modules are determined by the project's single configuration file, and can come from source dirs or libraries:
-```toml
+Available modules are determined by the project's single configuration file, `modules.sp`, and can come from source dirs or libraries:
+```sp
 
-[library]
-  source = "http://www.github.com/xarvh/spcore#master"
-  docs = "http://wiki.github.com/xarvh/spcore"
+library =
+    source = "http://www.github.com/xarvh/spcore#master"
 
-  [[module]]
-    original = "Basics"
-    importAs = "Basics"
-    globalTypes = [ "Bool" ]
-    globalValues = [ "True", "False" ]
+    module =
+        original = SPCore/Maybe
+        importAs = Maybe
+        globalTypes = [ Maybe ]
+        globalValues = [ Just, Nothing ]
 
-  [[module]]
-    original = "Dict"
-    importAs = "Dict"
-    globalTypes = [ "Dict" ]
+    module =
+        original = SPCore/Basics
+        # importAs, globalTypes and globalValues can be omitted
+        globalTypes = [ Bool ]
+        globalValues = [ True, False, identity ]
 
-
-[library]
-  # local directories can be loaded as libraries
-  source = "lib/fast-dict/"
-
-  [[module]]
-    original = "Dict"
-    importAs = "FastDict"
-    globals = []
+    module =
+        original = SPCore/Dict
+        importAs = Dict
+        globalTypes = [ Dict ]
 
 
-[source dir]
+library =
+    # local directories can be loaded as libraries
+    source = "lib/fast-dict/"
 
-  # Unlike libraries, all modules in the path will be made available by default,
-  # imported with their original name (determined by their file path relative
-  # to `path` below) and with no exposed globals.
-  path = "src/"
+    module =
+        # importAs allows libraries with clashing names (or even different versions of the same library) to coexist
+        original = Dict
+        importAs = FastDict
+        globals = []
 
-  # Exceptions can be defined inside the [[module]] blocks below
-  [[module]]
-    original = "CanonicalAst"
-    importAs = "CA"
-    globalTypes = [ "Expr" ]
 
+sourceDir =
+    # Unlike libraries, all modules in the path will be made available by default,
+    # imported with their original name (determined by their file path relative
+    # to `path` below) and with no exposed globals.
+    path = "src/"
+
+    # Exceptions can be defined inside the [[module]] blocks below
+    module =
+        original = Types/CanonicalAst
+        importAs = CA
+        globalTypes = [ Expr ]
+
+
+# `path` and `source` (and `original`?) fields accept system environment variables.
+# This allows to use different modules for different compile targets.
+# If an env variable is not defined, it will cause a compiler error.
+
+sourceDir =
+    path = "$LOCALE_CODE/translations/"
+    module =
+        original = L10n
+
+library =
+    source = "$MOCK_OR_PROD"
+    module =
+        original = HTTP
 ```
 
-* All `importAs` and `exposing` entries must be unique.
-
-* alias names probably should not contain `.`?
+* All `importAs` entries must be unique.
 
 * Source directories make available all modules they contain (they are loaded on demand)
 
-* No value or type is exposed automatically from source directories.
-
-* Libraries can be local directories or remote packages or whatever.
-    The modules they expose must be listed in the config file.
-
-* Unlike source directories, libraries define their own global modules and variables.
-
 * Source dir modules expose everything by default (except values without annotation?)
 
-* Library modules expose things by documenting them
+* Unlike source directories, libraries have their own modules.so and define their own global modules and variables.
 
-* `source`, `path`, `original` can use `$(ENV_VAR)` to interpolate environment variables.
-  (The compiler will fail if any referenced variable is not defined in the system env)
+* Libraries can be local directories or remote packages or whatever.
+  The modules they expose must be listed in their modules.sp (format to be defined).
 
 
 Hoped Advantages
@@ -125,131 +132,17 @@ Hoped Advantages
 
 6. You can expose `log` from `Debug` and then remove it enitrely or remap it to something else entirely (or just use the rename tool)
 
-7. `Debug.toString` (or however we call it) can print the name paths that actually work in the program.
-
+7. `toHuman` can print the module paths in the same format that the user sees and writes them, and that can be cut and pasted in the program.
 
 
 Problems
 ========
 
-1. Still don't know which format to use. See below.
+* Is it ok to allow a constructor to be global but not its type?
 
-1. Is it ok to allow a constructor to be global but not its type?
+* Is it ok to allow a type to have some global constructors and some non-global ones?
 
-1. Is it ok to allow a type to have some global constructors and some non-global ones?
+* Implementing the libraries system will be a pain
 
-1. Implementing the libraries system will be a pain
-
-
-Human?
-======
-Not very "human" and not particularly terse, but would use the same parser as the rest of the language
-
-```
-[
-, SourceDir
-    {
-    , path = "sp"
-    , moduleExceptions =
-        [
-        {
-        , path = Test
-        , importAs = Test
-        , globalValues = []
-        , globalTypes =
-             [
-             , Test
-             ]
-        }
-        ,
-        {
-        , path = Types/Token
-        , importAs = Token
-        , globalValues = []
-        , globalTypes =
-            [
-            , Token
-            ]
-        }
-        ,
-        {
-        , path = Types/Error
-        , importAs = Error
-        , globalValues = []
-        , globalTypes =
-            [
-            , Error
-            , Res
-            ]
-        }
-        ]
-    }
-]
-```
-
-
-
-
-
-JSON?
-====
-It's a pain for humans to read and write and does not support comments.
-
-I'd rather include a compiler command that outputs the module file in json format.
-
-```json
-[
-    {
-        "type": "library",
-        "source": "http://www.github.com/xarvh/spcore#master",
-        "modules": [
-            {
-                "original": "Basics",
-                "importAs": "Basics",
-                "globals": [
-                    "Bool",
-                    "True",
-                    "False"
-                ]
-            },
-            {
-                "original": "Dict",
-                "importAs": "Dict",
-                "globals": [
-                    "Dict"
-                ]
-            }
-        ]
-    },
-    {
-        "type": "library",
-        "#": "local directories can be loaded as libraries",
-        "source": "lib/fast-dict/",
-        "modules": [
-            {
-                "original": "Dict",
-                "importAs": "FastDict",
-                "globals": []
-            }
-        ]
-    },
-    {
-        "type": "source dir",
-        "#0": "Unlike libraries, all modules in the path will be made available by default,",
-        "#1": "imported with their original name (determined by their file path relative",
-        "#2": "to `path` below) and with no exposed globals.",
-        "path": "src/",
-        "#3": "Exceptions can be defined inside the [[module]] blocks below",
-        "module exceptions": [
-            {
-                "original": "CanonicalAst",
-                "importAs": "CA",
-                "globals": [
-                    "Expr"
-                ]
-            }
-        ]
-    }
-]
-```
+* How much of a problem are circular dependencies?
 
