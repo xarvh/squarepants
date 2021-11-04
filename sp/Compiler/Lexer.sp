@@ -51,8 +51,8 @@ readStateInit moduleName moduleCode =
     }
 
 
-getPos state =
-    as ReadState: Int
+getPos @state =
+    as ReadState@: Int
 
     state.buffer.nextPos
 
@@ -61,7 +61,7 @@ addError message @state =
     as Text: ReadState@: None
 
     end =
-        getPos state
+        getPos @state
 
     error =
         Error.Simple (Pos.P state.moduleName state.start end) fn _: [ message ]
@@ -89,22 +89,22 @@ absAddToken =
 relAddToken =
     as Int: Int: Token.Kind: ReadState@: None
     fn ds de kind @state:
-        pos = getPos state
+        pos = getPos @state
         absAddToken (pos + ds) (pos + de) kind @state
 
 
 addOneIndentToken =
     as Token.Kind: ReadState@: None
     fn kind @state:
-        pos = getPos state
+        pos = getPos @state
         @state.tokens := Token pos pos kind :: state.tokens
 
 
 getChunk =
-    as ReadState: Int & Int & Text
-    fn state:
+    as ReadState@: Int & Int & Text
+    fn @state:
         start = state.start
-        end = getPos state
+        end = getPos @state
         start & end & Buffer.slice state.start end state.buffer
 
 
@@ -128,7 +128,7 @@ addWordToken modifier @state =
 
     start = state.start
 
-    end = getPos state
+    end = getPos @state
 
     ds = (if modifier == Token.NameNoModifier: 0 else 1)
 
@@ -171,7 +171,7 @@ addNumberToken @state =
     as ReadState@: None
 
     start & end & chunk =
-        getChunk state
+        getChunk @state
 
     # TODO ensure that there as one or zero dots
     # This as probably best done in lexOne
@@ -209,7 +209,7 @@ addSquiggleToken nextIsSpace @state =
     as Bool: ReadState@: None
 
     start & end & chunk =
-        getChunk state
+        getChunk @state
 
     add kind =
         absAddToken start end kind @state
@@ -261,7 +261,7 @@ lexOne char @state =
 
     # position of char
     pos =
-        getPos state
+        getPos @state
 
 #    log "-> lexOne: " char
 
@@ -308,11 +308,11 @@ lexOne char @state =
                 setMode ContentOpeningQuotes_One @state
 
             "\n":
-                @state.start := getPos state + 1
+                @state.start := getPos @state + 1
                 setMode Indent @state
 
             " ":
-                @state.start := getPos state + 1
+                @state.start := getPos @state + 1
 
             _:
               if isWordStart char:
@@ -469,7 +469,7 @@ lexOne char @state =
 
         LineComment:
           if char == "\n" or char == "":
-                  absAddToken state.start (getPos state) Token.Comment @state
+                  absAddToken state.start (getPos @state) Token.Comment @state
                   setMode Default @state
                   lexOne char @state
           else
@@ -496,7 +496,7 @@ lexOne char @state =
                 if nesting > 1:
                   continueWithDeltaNesting (0 - 1)
                 else
-                      absAddToken state.start (getPos state) Token.Comment @state
+                      absAddToken state.start (getPos @state) Token.Comment @state
                       setMode Default @state
 
             _ & "":
@@ -518,7 +518,7 @@ tryIndent indentChar char @state =
 
     else if char == "\n":
         # line as empty, ignore
-        @state.start := getPos state + 1
+        @state.start := getPos @state + 1
         setMode Indent @state
 
     else
@@ -534,7 +534,7 @@ addIndentTokens @state =
         state.start
 
     end =
-        getPos state
+        getPos @state
 
     indentLength =
         end - start
@@ -624,11 +624,11 @@ dropIndentStack indentLength @state =
         dropIndentStack indentLength @state
 
 
-closeOpenBlocks state =
-    as ReadState: [ Token ]
+closeOpenBlocks @state =
+    as ReadState@: [ Token ]
 
     pos =
-        getPos state
+        getPos @state
 
     List.foldl (fn stack accum: Token pos pos Token.BlockEnd :: accum) state.indentStack state.tokens
 
@@ -645,8 +645,7 @@ lexer moduleName moduleCode =
     lexOne "" @state
 
     if state.errors == []:
-        state
-            >> closeOpenBlocks
+        closeOpenBlocks @state
             >> List.reverse
             >> Ok
     else

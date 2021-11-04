@@ -885,7 +885,7 @@ translateExpression env faExpr =
             translateBinops env pos group sepList
 
         FA.Mutable pos name ->
-            errorTodo "mutable values can be used only as arguments for function or mutation operators"
+            faError env.ro pos <| name ++ ": mutable values can be used only as arguments for function or mutation operators"
 
         FA.Record pos faArgs ->
             do (makeUpdateTarget env faArgs.extends) <| \caUpdateTarget ->
