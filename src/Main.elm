@@ -51,8 +51,13 @@ runTests =
 moduleMain =
     ( "Main"
     , """
-result =
-    Text.padRight 20 "@" ""
+union O r e o = O r e o
+
+
+run rToOreo r =
+    as (r: O r e o): r: O r e o
+
+    rToOreo r
       """
     )
 
@@ -100,7 +105,7 @@ It's very much not a practical pseudo random generator.
 
 #]
 number min_ max_ @wrappedSeed =
-    is Number -> Number -> Seed @> Number
+    as Number: Number: Seed @: Number
 
     Seed seed = wrappedSeed
 
@@ -447,9 +452,6 @@ tokenToClass meta token =
         Token.As ->
             "keyword"
 
-        Token.Then ->
-            "keyword"
-
         Token.Else ->
             "keyword"
 
@@ -705,7 +707,7 @@ viewProgram model =
                                         [ style "min-width" "400px" ]
                                         [ Html.pre
                                             []
-                                            [ (name ++ " is " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: ")
+                                            [ (name ++ " as " ++ HumanCA.typeToString va.ty ++ " ### [" ++ Debug.toString va.freeTypeVariables ++ "]: ")
                                                 |> Html.text
                                             ]
                                         ]
@@ -1212,21 +1214,21 @@ alias Vec2 = Number
 
 # Declarations can have a type annotation
 floatSix =
-    is Float
+    as Float
 
     # parens are not needed for calling functions
     addThreeNumbers 1 2 3
 
 
 fibonacci n =
-    is Int -> Int
+    as Int: Int
 
     # if-then-else always yields a value
     if n < 2: n else: n + fibonacci (n - 1)
 
 
 subtractTwoFrom n =
-    is Vec2 -> Vec2
+    as Vec2: Vec2
 
     # operators can be used prefixed, like functions
     # `left - right` becomes `(-) right left`
@@ -1236,7 +1238,7 @@ subtractTwoFrom n =
 # Square brackets for Lists.
 # All items must be of the same type
 listOfText =
-    is [ Text ]
+    as [ Text ]
     [
     , "Gary"
     , "Bikini Bottom"
@@ -1248,7 +1250,7 @@ listOfText =
 # They help using less parens and help visualizing how a value is
 # transformed step-by-step.
 repeatHello times =
-    is Int -> Text
+    as Int: Text
     "Hello!"
         >> List.repeat times
         >> Text.join ", "
@@ -1257,7 +1259,7 @@ repeatHello times =
 
 # When you see `@`, it means "this stuff is mutable"
 average numbers =
-    is List Int -> Float
+    as List Int: Float
 
     # mutable variables can only be local and can't leave their scope.
     # `average` is still a pure function.
@@ -1273,9 +1275,9 @@ average numbers =
     sum / n
 
 
-# The argument preceding `@>` is mutable
+# The argument preceding `@:` is mutable
 generateTwoRandomNumbers min_ max_ @seed =
-    is Int -> Int -> Random.Seed @> Int & Int
+    as Int: Int: Random.Seed @: Int & Int
 
     # '&' is used for tuples
     Random.number min_ max_ @seed & Random.number min_ max_ @seed
@@ -1291,7 +1293,7 @@ union LoadingState payload =
     , Available payload
 
 getStatusName loadingState =
-    is LoadingState payload -> Text
+    as LoadingState payload: Text
 
     try loadingState as
         NotRequested: "Not needed"
@@ -1300,7 +1302,7 @@ getStatusName loadingState =
         Available _: "Successfully loaded"
 
 getPayload loadingState =
-    is LoadingState payload -> Maybe payload
+    as LoadingState payload: Maybe payload
 
     # TBH not sure if single-line try..as should be a thing
     try loadingState as Available payload: Just payload else Nothing
@@ -1311,12 +1313,12 @@ getPayload loadingState =
 
 alias Crab =
     {
-    , name is Text
-    , money is Float
+    , name as Text
+    , money as Float
     }
 
 eugeneKrabs =
-    is Crab
+    as Crab
     {
     , name = "Eugene H. Krabs"
     , money = 2 #TODO 2_345_678.90
@@ -1327,7 +1329,7 @@ eugeneKrabs =
 
 
 earnMoney profit crab =
-    is Float -> Crab -> Crab
+    as Float: Crab: Crab
 
     # `.money` is a shorthand for `crab.money`
     { crab with money = .money + profit }
@@ -1335,7 +1337,7 @@ earnMoney profit crab =
 
 # to-notation
 getAllHouses getAsset =
-    is (Text -> Maybe house) -> Maybe { rock is house, moai is house, pineapple is house }
+    as (Text: Maybe house): Maybe { rock as house, moai as house, pineapple as house }
 
     to = Maybe.andThen
     getAsset "rock" >> to fn rock:

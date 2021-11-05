@@ -264,9 +264,6 @@ recognisedTokens =
                             "is" ->
                                 Token.Is
 
-                            "then" ->
-                                Token.Then
-
                             "else" ->
                                 Token.Else
 

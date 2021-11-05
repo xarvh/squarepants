@@ -30,7 +30,6 @@ type
     | Is
     | Colon
     | MutableColon
-    | Then
     | Else
     | With
       -- Ops

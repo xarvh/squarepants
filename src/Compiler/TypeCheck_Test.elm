@@ -672,6 +672,18 @@ higherOrderTypes =
                 , freeTypeVariables = ftv "a"
                 }
             }
+          , codeTest
+            "[reg] type check mistakes a union type with free tyvars for a free tyvar?"
+            """
+            union O r e o = O r e o
+
+            run rToOreo r =
+                as (r: O r e o): r: O r e o
+
+                rToOreo r
+            """
+            (infer "run")
+            Test.isOk
         ]
 
 
@@ -951,7 +963,7 @@ patterns =
 
              But still, I don't understand the problem enough to reproduce it reliably.
           -}
-          codeTest "[rec] Constructors should instantiate their variable types"
+          codeTest "[reg] Constructors should instantiate their variable types"
             """
             each ls f =
                 is List a -> (a -> b) -> None
