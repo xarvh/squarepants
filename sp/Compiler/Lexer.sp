@@ -108,6 +108,46 @@ getChunk =
         start & end & Buffer.slice state.start end state.buffer
 
 
+unindent raw =
+    as Text: Text
+
+    [#
+          blah """hello"""
+
+          meh """
+              hello
+              blah
+              """
+    #]
+
+    if not Text.startsWith "\n" raw:
+        raw
+    else
+        multilineText =
+            Text.dropLeft 1 raw
+
+        lines =
+            Text.split "\n" multilineText
+
+        countLeadingSpaces line =
+            as Text: Int
+
+            line
+                >> Text.startsWithRegex "[ ]*"
+                >> Text.length
+
+        minLead =
+            lines
+                >> List.filter (fn s: Text.trimLeft s /= "") #Text.any ((/=) " "))
+                >> List.map countLeadingSpaces
+                >> List.minimum
+                >> Maybe.withDefault 0
+
+        lines
+            >> List.map (Text.dropLeft minLead)
+            >> Text.join "\n"
+
+
 #
 # Words (names, keywords, logical ops)
 #
@@ -413,7 +453,9 @@ lexOne char @state =
                   end = pos + 1
 
                   value =
-                      Buffer.slice (start + 1) (end - 1) state.buffer
+                      state.buffer
+                          >> Buffer.slice (start + 1) (end - 1)
+                          >> Text.replace "\\\"" "\""
 
                   absAddToken start end (Token.TextLiteral value) @state
                   setMode Default @state
@@ -453,8 +495,9 @@ lexOne char @state =
                     end = pos + 1
 
                     value =
-                        # TODO also unindent
-                        Buffer.slice (start + 3) (end - 3) state.buffer
+                        state.buffer
+                            >> Buffer.slice (start + 3) (end - 3)
+                            >> unindent
 
                     absAddToken start end (Token.TextLiteral value) @state
                     setMode Default @state

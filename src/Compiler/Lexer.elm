@@ -425,6 +425,7 @@ lexSoftQuotedString startPos state =
                                     { kind =
                                         state.codeAsString
                                             |> String.slice (startPos + 1) (endPos - 1)
+                                            |> String.replace "\\\"" "\""
                                             -- TODO transform escapes and reject non-escapable chars
                                             |> Token.TextLiteral
                                     , start = startPos
@@ -492,7 +493,7 @@ lexHardQuotedString startPos state =
                                     { kind =
                                         state.codeAsString
                                             |> String.slice (startPos + 3) (endPos - 3)
-                                            -- TODO transform escapes and reject non-escapable chars
+                                            |> unindent
                                             |> Token.TextLiteral
                                     , start = startPos
                                     , end = endPos
@@ -507,6 +508,42 @@ lexHardQuotedString startPos state =
                     errorUnterminatedTextLiteral pos state
     in
     rec state.pos False 0 state.code
+
+
+unindent : String -> String
+unindent raw =
+    case String.uncons raw of
+        Just ( '\n', multilineString ) ->
+            let
+                lines =
+                    String.lines multilineString
+
+                countLeadingSpaces line =
+                    case String.uncons line of
+                        Nothing ->
+                            0
+
+                        Just ( char, xs ) ->
+                            case char of
+                                ' ' ->
+                                    1 + countLeadingSpaces xs
+
+                                _ ->
+                                    0
+
+                minLead =
+                    lines
+                        |> List.filter (String.any ((/=) ' '))
+                        |> List.map countLeadingSpaces
+                        |> List.minimum
+                        |> Maybe.withDefault 0
+            in
+            lines
+                |> List.map (String.dropLeft minLead)
+                |> String.join "\n"
+
+        _ ->
+            raw
 
 
 {-| TESTS

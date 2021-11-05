@@ -251,17 +251,17 @@ a [# inline #] = 1
 """
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token 1 1 << Token.NewSiblingLine
-                , Token 1 17 << Token.Comment
-                , Token 20 20 << Token.NewSiblingLine
-                , Token 20 21 << non_mut_name "a"
-                , Token 22 33 << Token.Comment
-                , Token 35 36 << Token.Defop { mutable = False }
-                , Token 37 38 << Token.NumberLiteral "1"
-                , Token 40 40 << Token.NewSiblingLine
-                , Token 40 59 << Token.Comment
-                , Token 62 62 << Token.NewSiblingLine
-                , Token 62 79 << Token.Comment
+                [ Token 0 0 << Token.NewSiblingLine
+                , Token 0 16 << Token.Comment
+                , Token 19 19 << Token.NewSiblingLine
+                , Token 19 20 << non_mut_name "a"
+                , Token 21 32 << Token.Comment
+                , Token 34 35 << Token.Defop { mutable = False }
+                , Token 36 37 << Token.NumberLiteral "1"
+                , Token 39 39 << Token.NewSiblingLine
+                , Token 39 58 << Token.Comment
+                , Token 61 61 << Token.NewSiblingLine
+                , Token 61 78 << Token.Comment
                 ]
             )
         , codeTest

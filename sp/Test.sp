@@ -86,7 +86,10 @@ errorContains snippets =
               if missing == []:
                   Nothing
               else:
-                  Just << "Error message is missing snippets: " .. Text.join ", " missing
+                  indentedError =
+                      e >> Text.split "\n" >> List.map (fn l: "    " .. l) >> Text.join "\n"
+
+                  Just << "Error message:\n\n" .. indentedError .. "\n\nis missing snippets: " .. Text.join ", " missing
 
 
 #

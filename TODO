@@ -1,10 +1,16 @@
-* Types that don't exist because their module does not exist should not reach typeCheck
-      ---> Should Apply Alias do it?
 
-* Should error when type constants don't have enough params?
+* Annotate every lambda with their function name and argument number, so that we can give better errors?
+* When we pass args to unify, we should specify a context or name for each
+* When a constructor can't be found, its type should be assumed as a new free tyvar, but its args should be dealt with normally
+
+* List.sort
+* Add test for triple quotes containing quotes
+* Move unindent into Lexer and apply it to triple quotes (and test it?)
+
 
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
 
 * Humanize must break a type into multiple lines
 
 * later: Compiler should be able to produce a stacktrace
+

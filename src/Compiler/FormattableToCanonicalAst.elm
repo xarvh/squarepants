@@ -1082,7 +1082,7 @@ translateBinops env pos group ( firstItem, firstTail ) =
 
                 Op.Pipe ->
                     if notAllSeparators ((==) firstSep) secondTail then
-                        errorTodo "Mixing pipes is ambigous. Use parens."
+                        faError env.ro pos "Mixing pipes is ambigous. Use parens."
 
                     else if firstSep.associativity == Op.Right then
                         translateBinopSepList_rightAssociative env pos firstItem firstTail

@@ -90,7 +90,7 @@ runParser parser ts =
     in
     outcome
         |> Syntax.outcomeToResult "Test" ts failStates
-        |> Compiler.TestHelpers.resErrorToString ""
+        |> Compiler.TestHelpers.resErrorToText ""
 
 
 firstStatement : String -> Result String FA.Statement
@@ -98,7 +98,7 @@ firstStatement code =
     code
         |> Compiler.TestHelpers.stringToFormattableModule
         |> Result.map (List.map (FA.posMap_statement applyDummyPos))
-        |> Compiler.TestHelpers.resErrorToString code
+        |> Compiler.TestHelpers.resErrorToText code
         |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 
@@ -136,7 +136,7 @@ errors =
         [ codeTest "[reg] simple assignment, inline"
             """
             tests =
-                is Test
+                as Test
 
                 blah "StringToTokens"
                     [
@@ -144,7 +144,7 @@ errors =
                         [
                         , codeTest
                             {
-                            , name = "[reg] `fn` is a keyword"
+                            , name = "[reg] `fn` as a keyword"
                             , run = lexTokens "fn = 1"
                             , expected = Ok
                                     , { end = 0, kind = Token.NewSiblingLine, start = 0 }
@@ -316,7 +316,7 @@ annotations =
         [ codeTest "Mutability 1"
             """
             a =
-              is Number @> Int -> None
+              as Number @: Int: None
               1
             """
             firstAnnotation
@@ -334,7 +334,7 @@ annotations =
         , codeTest "Mutability 2"
             """
                         a =
-                          is Number -> Int @> None
+                          as Number: Int @: None
                           1
                         """
             firstAnnotation
@@ -352,7 +352,7 @@ annotations =
         , codeTest "Tuple precedence"
             """
                         a =
-                          is Int & Int -> Bool
+                          as Int & Int: Bool
                           a
                         """
             firstAnnotation
@@ -527,7 +527,7 @@ records =
         , codeTest "annotation, inline"
             """
                     a =
-                      is { x is Bool }
+                      as { x as Bool }
                       a
                     """
             firstAnnotation
@@ -540,9 +540,9 @@ records =
         , codeTest "annotation, multiline"
             """
                     a =
-                      is
+                      as
                        {
-                       , x is Bool
+                       , x as Bool
                        }
                       a
                     """
@@ -556,8 +556,8 @@ records =
         , codeTest "annotation, multiline compact"
             """
                     a =
-                      is {
-                       , x is Bool
+                      as {
+                       , x as Bool
                        }
                       a
                     """

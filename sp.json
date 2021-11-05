@@ -21,7 +21,7 @@
                     ]
                 },
                 {
-                    "path": "Types/FormattableAST",
+                    "path": "Types/FormattableAst",
                     "importAs": "FA",
                     "globalValues": [],
                     "globalTypes": []
@@ -99,6 +99,12 @@
                     "globalTypes": []
                 },
                 {
+                    "path": "SPCore/Tuple",
+                    "importAs": "Tuple",
+                    "globalValues": [],
+                    "globalTypes": []
+                },
+                {
                     "path": "SPCore/Debug",
                     "importAs": "Debug",
                     "globalValues": [
@@ -119,6 +125,12 @@
                     "globalTypes": [
                         "Buffer"
                     ]
+                },
+                {
+                    "path": "SPLib/Parser",
+                    "importAs": "Parser",
+                    "globalValues": [],
+                    "globalTypes": []
                 },
                 {
                     "path": "SPCore/Dict",

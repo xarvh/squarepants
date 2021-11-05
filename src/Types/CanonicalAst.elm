@@ -66,7 +66,9 @@ type alias AliasDef =
 
 
 type alias UnionDef =
-    -- TODO add position for def and for each constructor!
+    -- TODO add pos?
+    -- TODO add position for each constructor!
+    -- TODO remove name and add resolvedName, userName
     { name : String
     , args : List String
     , constructors : Dict String (List Type)
@@ -163,6 +165,19 @@ type Expression
     | Try Pos Expression (List ( Pattern, List Statement ))
 
 
+expressionPos : Expression -> Pos
+expressionPos e =
+  case e of
+    Literal pos _ -> pos
+    Variable pos _ -> pos
+    Lambda pos _ _ -> pos
+    Record pos _ _ -> pos
+    Call pos _ _ -> pos
+    If pos _ -> pos
+    Try pos _ _ -> pos
+
+
+
 type Parameter
     = ParameterPattern Pattern
     | ParameterMutable Pos String
@@ -171,6 +186,13 @@ type Parameter
 type Argument
     = ArgumentExpression Expression
     | ArgumentMutable Pos VariableArgs
+
+
+argumentPos : Argument -> Pos
+argumentPos arg =
+  case arg of
+    ArgumentExpression e -> expressionPos e
+    ArgumentMutable pos _ -> pos
 
 
 {-TODO

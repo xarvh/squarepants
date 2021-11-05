@@ -25,8 +25,44 @@ type alias Name =
     String
 
 
+type T
+    = T_Alias CA.AliasDef
+    | T_Union CA.UnionDef
+
+
+{-| TODO Rename to GetT
+-}
 type alias GetAlias =
-    Name -> Res (Maybe CA.AliasDef)
+    Pos -> Name -> Res T
+
+
+getAliasSimple : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> GetAlias
+getAliasSimple aliases uns pos name =
+    case Dict.get name aliases of
+        Just a ->
+            Ok <| T_Alias a
+
+        Nothing ->
+            case Dict.get name uns of
+                Just u ->
+                    Ok <| T_Union u
+
+                Nothing ->
+                    errorUndefinedType pos name
+
+
+
+----
+
+
+error : Pos -> List String -> Res a
+error pos description =
+    Error.res { pos = pos, description = \_ -> description }
+
+
+errorUndefinedType : Pos -> Name -> Res a
+errorUndefinedType pos name =
+    error pos [ "Undefined type: `" ++ name ++ "`" ]
 
 
 
@@ -54,52 +90,58 @@ expandType ga ty =
 
         CA.TypeAlias pos path t ->
             -- it's easy to deal with, but it shouldn't happen O_O
-            errorTodo "Did we apply aliases twice?"
+            error pos [ "Did we apply aliases twice?" ]
 
         CA.TypeConstant pos ref args ->
-            do (Lib.list_mapRes (expandType ga) args) <| \replacedArgs ->
-            case ga ref of
-                Err e ->
-                    Err e
+            do (Lib.list_mapRes (expandType ga) args) <|
+                \replacedArgs ->
+                    case ga pos ref of
+                        Err e ->
+                            Err e
 
-                Ok Nothing ->
-                    replacedArgs
-                        |> CA.TypeConstant pos ref
-                        |> Ok
+                        Ok (T_Union un) ->
+                            if List.length replacedArgs /= List.length un.args then
+                                error pos [ "union " ++ un.name ++ " needs " ++ String.fromInt (List.length un.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs) ]
 
-                Ok (Just al) ->
-                    if List.length al.args /= List.length replacedArgs then
-                        errorTodo <| "alias " ++ al.name ++ " needs " ++ String.fromInt (List.length al.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs)
+                            else
+                                replacedArgs
+                                    |> CA.TypeConstant pos ref
+                                    |> Ok
 
-                    else
-                        let
-                            typeByArgName =
-                                List.map2 Tuple.pair al.args replacedArgs |> Dict.fromList
-                        in
-                        al.ty
-                            |> expandAliasVariables typeByArgName
-                            |> CA.TypeAlias pos ref
-                            |> Ok
+                        Ok (T_Alias al) ->
+                            if List.length al.args /= List.length replacedArgs then
+                                error pos [ "alias " ++ al.name ++ " needs " ++ String.fromInt (List.length al.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs) ]
+
+                            else
+                                let
+                                    typeByArgName =
+                                        List.map2 Tuple.pair al.args replacedArgs |> Dict.fromList
+                                in
+                                al.ty
+                                    |> expandAliasVariables typeByArgName
+                                    |> CA.TypeAlias pos ref
+                                    |> Ok
 
 
 expandAndValidateType : GetAlias -> Type -> Res Type
 expandAndValidateType ga rawTy =
-    do (expandType ga rawTy) <| \expandedTy ->
-    case findMutableArgsThatContainFunctions Nothing expandedTy of
-        [] ->
-            Ok expandedTy
+    do (expandType ga rawTy) <|
+        \expandedTy ->
+            case findMutableArgsThatContainFunctions Nothing expandedTy of
+                [] ->
+                    Ok expandedTy
 
-        errors ->
-            let
-                -- TODO typeToPos?
-                pos =
-                    CA.S
+                errors ->
+                    let
+                        -- TODO typeToPos?
+                        pos =
+                            CA.S
 
-                m =
-                    -- TODO show the actual positions
-                    "Mutable arguments can't be or contain functions!" :: List.map Debug.toString errors
-            in
-            errorTodo (String.join "\n" m)
+                        m =
+                            -- TODO show the actual positions
+                            "Mutable arguments can't be or contain functions!" :: List.map Debug.toString errors
+                    in
+                    errorTodo (String.join "\n" m)
 
 
 findMutableArgsThatContainFunctions : Maybe Pos -> Type -> List ( Pos, Pos )
@@ -152,23 +194,26 @@ applyAliasesToModule mod =
         ( aliases, unions, values ) =
             CA.split mod
     in
-    do (applyAliasesToAliases aliases) <| \resolved_aliases ->
-    do (applyAliasesToUnions resolved_aliases unions) <| \resolved_unions ->
-    do (applyAliasesToValues resolved_aliases values) <| \resolved_values ->
-    let
-        a0 =
-            Dict.empty
+    do (applyAliasesToAliases unions aliases) <|
+        \resolved_aliases ->
+            do (applyAliasesToUnions resolved_aliases unions) <|
+                \resolved_unions ->
+                    do (applyAliasesToValues resolved_aliases unions values) <|
+                        \resolved_values ->
+                            let
+                                a0 =
+                                    Dict.empty
 
-        a1 =
-            Dict.foldl (\k v -> Dict.insert k (CA.Alias v)) a0 resolved_aliases
+                                a1 =
+                                    Dict.foldl (\k v -> Dict.insert k (CA.Alias v)) a0 resolved_aliases
 
-        a2 =
-            Dict.foldl (\k v -> Dict.insert k (CA.Union v)) a1 resolved_unions
+                                a2 =
+                                    Dict.foldl (\k v -> Dict.insert k (CA.Union v)) a1 resolved_unions
 
-        a3 =
-            Dict.foldl (\k v -> Dict.insert k (CA.Value v)) a2 resolved_values
-    in
-    Ok a3
+                                a3 =
+                                    Dict.foldl (\k v -> Dict.insert k (CA.Value v)) a2 resolved_values
+                            in
+                            Ok a3
 
 
 
@@ -178,21 +223,21 @@ applyAliasesToModule mod =
 
 
 applyAliasesToUnions : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Res (Dict Name CA.UnionDef)
-applyAliasesToUnions aliases =
+applyAliasesToUnions aliases uns =
     let
-        getAlias : GetAlias
-        getAlias name =
-            Ok <| Dict.get name aliases
+        ga : GetAlias
+        ga =
+            getAliasSimple aliases uns
 
         mapConstructor name args =
-            Lib.list_mapRes (expandAndValidateType getAlias) args
+            Lib.list_mapRes (expandAndValidateType ga) args
 
         mapUnion name union =
             Result.map
                 (\cs -> { union | constructors = cs })
                 (Lib.dict_mapRes mapConstructor union.constructors)
     in
-    Lib.dict_mapRes mapUnion
+    Lib.dict_mapRes mapUnion uns
 
 
 
@@ -205,12 +250,12 @@ type alias ValueDef a =
     { a | maybeAnnotation : Maybe CA.Annotation, body : List CA.Statement }
 
 
-applyAliasesToValues : Dict Name CA.AliasDef -> Dict String (ValueDef a) -> Res (Dict String (ValueDef a))
-applyAliasesToValues aliases =
+applyAliasesToValues : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Dict String (ValueDef a) -> Res (Dict String (ValueDef a))
+applyAliasesToValues aliases uns =
     let
         ga : GetAlias
-        ga name =
-            Dict.get name aliases |> Ok
+        ga =
+            getAliasSimple aliases uns
     in
     Lib.dict_mapRes (\k -> normalizeValueDef ga)
 
@@ -235,10 +280,11 @@ normalizeAnnotation ga maybeType =
             Ok Nothing
 
         Just ann ->
-            do (expandAndValidateType ga ann.ty) <| \ty ->
-            { ann | ty = ty }
-                |> Just
-                |> Ok
+            do (expandAndValidateType ga ann.ty) <|
+                \ty ->
+                    { ann | ty = ty }
+                        |> Just
+                        |> Ok
 
 
 normalizeBlock : GetAlias -> List CA.Statement -> Res (List CA.Statement)
@@ -311,8 +357,8 @@ normalizeArg ga arg =
 --
 
 
-applyAliasesToAliases : Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
-applyAliasesToAliases als =
+applyAliasesToAliases : Dict Name CA.UnionDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
+applyAliasesToAliases uns als =
     let
         orderedAliases =
             als
@@ -324,27 +370,34 @@ applyAliasesToAliases als =
             errorTodo <| "circular alias: " ++ String.join " <- " circular
 
         Ok oa ->
-            Lib.list_foldlRes (processAlias als) oa Dict.empty
+            Lib.list_foldlRes (processAlias uns als) oa Dict.empty
 
 
-processAlias : Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
-processAlias allAliases al processedAliases =
+processAlias : Dict Name CA.UnionDef -> Dict Name CA.AliasDef -> CA.AliasDef -> Dict Name CA.AliasDef -> Res (Dict Name CA.AliasDef)
+processAlias uns allAliases al processedAliases =
     let
-        getAlias name =
+        getAlias : GetAlias
+        getAlias pos name =
             if Dict.member name allAliases then
                 case Dict.get name processedAliases of
                     Nothing ->
                         Debug.todo <| "ApplyAliases should-not-happen: " ++ name
 
                     Just processedAlias ->
-                        Ok (Just processedAlias)
+                        Ok <| T_Alias processedAlias
 
             else
-                Ok Nothing
+                case Dict.get name uns of
+                    Just un ->
+                        Ok <| T_Union un
+
+                    Nothing ->
+                        errorUndefinedType pos name
     in
-    do (expandAndValidateType getAlias al.ty) <| \ty ->
-    Dict.insert al.name { al | ty = ty } processedAliases
-        |> Ok
+    do (expandAndValidateType getAlias al.ty) <|
+        \ty ->
+            Dict.insert al.name { al | ty = ty } processedAliases
+                |> Ok
 
 
 expandAliasVariables : Dict Name Type -> Type -> Type

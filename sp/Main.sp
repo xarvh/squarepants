@@ -4,6 +4,7 @@ allTests =
 
     [
     , Compiler/Lexer_Test.tests
+    , Compiler/Parser_Test.tests
     ]
 
 

@@ -43,7 +43,7 @@ tests =
                 """
                 alias A b c = List b
                 a =
-                  is A Number Bool
+                  as A Number Bool
                   a
                 """
                 (applyAndGetValue "a" >> Result.map (.maybeAnnotation >> Maybe.map .ty))
@@ -58,16 +58,16 @@ tests =
                 """
                 alias A b c = List b
                 a =
-                  is A Bool
+                  as A Bool
                   a
                 """
                 (applyAndGetValue "a")
                 (Test.errContain "alias Test.A needs 2 args, but was used with 1")
             , codeTest "record"
                 """
-                alias A b = { x is b, y is b }
+                alias A b = { x as b, y as b }
                 a =
-                  is A Bool
+                  as A Bool
                   a
                 """
                 (applyAndGetValue "a" >> Result.map (.maybeAnnotation >> Maybe.map .ty))
@@ -82,11 +82,24 @@ tests =
             , codeTest "Reject mutable args that contain functions"
                 """
                 a =
-                  is (Int -> Int) @> Int
+                  as (Number: Number) @: Number
                   a
                 """
                 (applyAndGetValue "a")
                 (Test.errContain "utable")
+            , codeTest
+                """
+                Complain when annotated types don't have enough arguments
+                """
+                """
+                union O r = O r
+
+                run =
+                    as O
+                    O 1
+                """
+                (applyAndGetValue "run")
+                (Test.errContain "arg")
             ]
         , Test.Group "unions"
             [ codeTest "simple"
@@ -110,7 +123,7 @@ tests =
         , Test.Group "aliases"
             [ codeTest "Reject mutable args that contain functions"
                 """
-                alias X = { x is Text -> Text } @> Text
+                alias X = { x as Text: Text } @: Text
                 """
                 (applyAndGet CA.asAlias "X")
                 (Test.errContain "contain function")
@@ -135,7 +148,7 @@ tests =
                , run =
                    \_ ->
                        """
-                       alias A = B -> B
+                       alias A = B: B
                        alias B = [ A ]
                        """
                            |> applyAndGet CA.asAlias "B"

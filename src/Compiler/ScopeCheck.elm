@@ -93,7 +93,7 @@ errorShadowing s =
             , description =
                 \_ ->
                     [ "the name `" ++ s.name ++ "` is used already by a global value."
-                    , "check meta.json!"
+                    , "check modules.sp!"
                     , "TODO link to [why shadowing is not allowed]"
                     ]
             }

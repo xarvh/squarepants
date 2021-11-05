@@ -436,16 +436,29 @@ getValueDefName def =
         |> Maybe.withDefault "BLARGH"
 
 
-getValueRefs : CA.LocalValueDef -> Set String
-getValueRefs def =
+getValueRefs : Set String -> Dict String CA.RootValueDef -> CA.RootValueDef -> Set String
+getValueRefs path0 functionDefs def =
     let
+        path =
+            -- Keep track of the defs we have descended already, so we can avoid circular recursions
+            Set.insert def.name path0
+
         fn : CA.PosMap -> a -> M (Set String) a
         fn fold ext =
             case fold of
                 CA.PosMap_Expr (CA.Variable _ args) ->
-                    if args.isRoot then
-                        do (M.update (Set.insert args.name)) <| \_ ->
-                        return ext
+                    if args.isRoot && not (Set.member args.name path) then
+                        case Dict.get args.name functionDefs of
+                            Nothing ->
+                                -- value is non-function, let RefHierarchy sort it normally
+                                do (M.update (Set.insert args.name)) <| \_ ->
+                                return ext
+
+                            Just functionDef ->
+                                -- functions don't need to be reordered, but can be used to define static values
+                                -- When this happens, all their own references need to be considered.
+                                do (M.update (Set.union (getValueRefs path functionDefs functionDef))) <| \_ ->
+                                return ext
 
                     else
                         return ext
@@ -453,8 +466,7 @@ getValueRefs def =
                 _ ->
                     return ext
     in
-    Set.empty
-        |> CA.posMap_valueDef fn def
+    CA.posMap_rootValueDef fn def Set.empty
         |> Tuple.second
 
 
@@ -484,8 +496,11 @@ translateAll ca =
                 |> Dict.values
                 |> List.partition isFunctionBlock
 
+        fnsDict =
+            List.foldl (\d -> Dict.insert d.name d) Dict.empty fns
+
         reorderedNonFuns =
-            case RefHierarchy.reorder .name (CA.rootToLocalDef >> getValueRefs) nonFns of
+            case RefHierarchy.reorder .name (getValueRefs Set.empty fnsDict) nonFns of
                 Ok rnf ->
                     rnf
 
@@ -868,8 +883,13 @@ translateBodyToEither env extra caBody =
 
 quoteAndEscape : String -> String
 quoteAndEscape s =
-    -- TODO escape
-    "\"" ++ String.replace "\n" "\\n" s ++ "\""
+    let
+        escaped =
+          s
+            |> String.replace "\n" "\\n"
+            |> String.replace "\"" "\\\""
+    in
+    "\"" ++ escaped ++ "\""
 
 
 accessWithBracketsInt : Int -> JA.Expr -> JA.Expr

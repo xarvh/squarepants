@@ -10,20 +10,20 @@ Arguments:
 
 #]
 alias Parser token output =
-    Rejections token: (State token): Rejections token & Outcome token output
+    [[token]]: [token]: [[token]] & Outcome token output
 
 
-alias State token = [token]
-alias Rejections token = [State token]
+#alias State token = [token]
+#alias Rejections token = [State token]
 
 union Outcome token output =
-    , Accepted (State token) output
+    , Accepted [token] output
     , Rejected
-    , Aborted (State token) Text
+    , Aborted [token] Text
 
 
 runParser parser readState =
-    as Parser token output: State token: Rejections token & Outcome token output
+    as Parser token output: [token]: [[token]] & Outcome token output
 
     parser [ readState ] readState
 
@@ -211,6 +211,11 @@ oneOrMore p =
 
     tuple2 p (zeroOrMore p)
 
+
+# This is used so that `expression` functions don't keep calling themselves right at their definition
+breakCircularDefinition a =
+    as (None: Parser t o): Parser t o
+    accept None >> then a
 
 
 [# If SP allowed cyclic values in let expressions, we could use this

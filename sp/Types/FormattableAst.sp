@@ -28,7 +28,7 @@ alias Annotation =
     {
     , pos as Pos
     , ty as Type
-    , nonFn as List String
+    , nonFn as [Text]
     }
 
 
@@ -36,13 +36,13 @@ union Statement =
     , Evaluation Pos Expression
     , Definition Pos ValueDef
     , TypeAlias Pos {
-        , name as String
-        , args as List String
+        , name as Text
+        , args as [Text]
         , ty as Type
         }
     , UnionDef Pos {
-        , name as String
-        , args as List String
+        , name as Text
+        , args as [Text]
 
         # constructors are parsed into a TypePolymorphic
         , constructors as List Type
@@ -50,21 +50,31 @@ union Statement =
 
 
 union Type =
-    , TypeName Pos String
-    , TypePolymorphic Pos String (List Type)
+    , TypeName Pos Text
+    , TypePolymorphic Pos Text (List Type)
     , TypeFunction Pos Type Bool Type
     , TypeTuple Pos (List Type)
     , TypeRecord Pos (RecordArgs Type)
 
 
+# expr op expr op expr op...
+alias SepList sep item =
+      item & [ sep & item ]
+
+sepList_mapItem f ( a & la ) =
+    as (a: b): SepList sep a: SepList sep b
+    f a & List.map (Tuple.mapSecond f) la
+
+
 union Expression =
-    , Literal Pos Literal.Value
-    , Variable Pos { isBinop as Bool } String
-    , Mutable Pos String
+    , LiteralText Pos Text
+    , LiteralNumber Pos Text
+    , Variable Pos { isBinop as Bool } Text
+    , Mutable Pos Text
     , Lambda Pos (List Pattern) (List Statement)
     , FunctionCall Pos Expression (List Expression)
-    , Binop Pos Op.Precedence (SepList Binop Expression)
-    , Unop Pos Unop Expression
+    , Binop Pos Op.Precedence (SepList Op.Binop Expression)
+    , Unop Pos Op.Unop Expression
     , If Pos {
         , isOneLine as Bool
         , condition as Expression
@@ -81,10 +91,28 @@ union Expression =
     , List Pos (List Expression)
 
 
+expressionPos expr =
+    as Expression: Pos
+    try expr as
+       LiteralText pos _: pos
+       LiteralNumber pos _: pos
+       Variable pos _ _: pos
+       Mutable pos _: pos
+       Lambda pos _ _: pos
+       FunctionCall pos _ _: pos
+       Binop pos _ _: pos
+       Unop pos _ _: pos
+       If pos _: pos
+       Try pos _: pos
+       Record pos _: pos
+       List pos _: pos
+
+
 union Pattern =
-    , PatternAny Pos Bool String
-    , PatternLiteral Pos Literal.Value
-    , PatternApplication Pos String (List Pattern)
+    , PatternAny Pos Bool Text
+    , PatternLiteralNumber Pos Text
+    , PatternLiteralText Pos Text
+    , PatternApplication Pos Text (List Pattern)
     , PatternList Pos (List Pattern)
     , PatternRecord Pos (RecordArgs Pattern)
     , PatternCons Pos (List Pattern)
@@ -94,7 +122,7 @@ union Pattern =
 alias RecordArgs expr =
     {
     , extends as Maybe expr
-    , attrs as [ String & Maybe expr ]
+    , attrs as [ Text & Maybe expr ]
     }
 
 
@@ -109,7 +137,10 @@ patternPos pa =
         PatternAny p _ _:
             p
 
-        PatternLiteral p _:
+        PatternLiteralNumber p _:
+            p
+
+        PatternLiteralText p _:
             p
 
         PatternApplication p _ _:
@@ -128,7 +159,6 @@ patternPos pa =
             p
 
 
-[#
 recordArgs_map f ar =
     as (a: b): RecordArgs a: RecordArgs b
     {
@@ -141,27 +171,26 @@ recordArgs_map f ar =
 posMap_statement f stat =
     as (Pos: Pos): Statement: Statement
     try stat as
-        Evaluation e:
-            Evaluation (posMap_expression f e)
+        Evaluation p e:
+            Evaluation (f p) (posMap_expression f e)
 
-        Definition def:
-            Definition
+        Definition p def:
+            Definition (f p)
                 { pattern = posMap_pattern f def.pattern
                 , mutable = def.mutable
                 , maybeAnnotation = Maybe.map (posMap_annotation f) def.maybeAnnotation
                 , body = List.map (posMap_statement f) def.body
-                , pos = f def.pos
                 }
 
-        TypeAlias ar:
-            TypeAlias
+        TypeAlias p ar:
+            TypeAlias (f p)
                 { name = ar.name
                 , args = ar.args
                 , ty = posMap_type f ar.ty
                 }
 
-        UnionDef ar:
-            UnionDef
+        UnionDef p ar:
+            UnionDef (f p)
                 { name = ar.name
                 , args = ar.args
                 , constructors = List.map (posMap_type f) ar.constructors
@@ -180,8 +209,11 @@ posMap_annotation f ann =
 posMap_expression f expr =
     as (Pos: Pos): Expression: Expression
     try expr as
-        Literal pos value:
-            Literal (f pos) value
+        LiteralNumber pos value:
+            LiteralNumber (f pos) value
+
+        LiteralText pos value:
+            LiteralText (f pos) value
 
         Variable pos isbin name:
             Variable (f pos) isbin name
@@ -200,7 +232,7 @@ posMap_expression f expr =
                 (List.map (posMap_expression f) args)
 
         Binop pos group sepList:
-            Binop (f pos) group (SepList.mapItem (posMap_expression f) sepList)
+            Binop (f pos) group (sepList_mapItem (posMap_expression f) sepList)
 
         Unop pos name right:
             Unop (f pos) name (posMap_expression f right)
@@ -234,8 +266,11 @@ posMap_pattern f pa =
         PatternAny pos mutable name:
             PatternAny (f pos) mutable name
 
-        PatternLiteral pos val:
-            PatternLiteral (f pos) val
+        PatternLiteralNumber pos val:
+            PatternLiteralNumber (f pos) val
+
+        PatternLiteralText pos val:
+            PatternLiteralText (f pos) val
 
         PatternApplication pos cons pas:
             PatternApplication (f pos) cons (List.map (posMap_pattern f) pas)
@@ -270,4 +305,3 @@ posMap_type f ty =
 
         TypeRecord pos ar:
             TypeRecord (f pos) (recordArgs_map (posMap_type f) ar)
-#]

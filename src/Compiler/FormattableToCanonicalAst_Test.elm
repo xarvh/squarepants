@@ -206,7 +206,7 @@ lists =
         [ codeTest "list type sugar"
             """
                         l =
-                          is [ SPCore.Bool ]
+                          as [ SPCore.Bool ]
                           l
                         """
             (firstDefinition "l")
@@ -273,7 +273,7 @@ tuples =
         , codeTest "tuple2 type"
             """
                         a =
-                          is Blah & Blah
+                          as Number & Number
                           a
                         """
             (firstDefinition "a")
@@ -286,8 +286,8 @@ tuples =
                             CA.TypeRecord p
                                 Nothing
                                 (Dict.fromList
-                                    [ ( "first", CA.TypeConstant p "Test.Blah" [] )
-                                    , ( "second", CA.TypeConstant p "Test.Blah" [] )
+                                    [ ( "first", CA.TypeConstant p "SPCore.Number" [] )
+                                    , ( "second", CA.TypeConstant p "SPCore.Number" [] )
                                     ]
                                 )
                         , nonFn = Dict.empty
@@ -303,7 +303,7 @@ tuples =
             , code =
                 """
                         a =
-                          is Blah & Blah & Blah & Blah
+                          as Blah & Blah & Blah & Blah
                           a
                         """
             , run = firstDefinition "a"
@@ -376,7 +376,7 @@ records =
         , codeTest "annotation, extensible"
             """
             a =
-              is { b with x is Bool }
+              as { b with x as Bool }
               a
             """
             (firstEvaluation "a")
@@ -426,7 +426,7 @@ annotations =
             """
             x =
               a @=
-                is Number
+                as Number
                 3
               a
             """
@@ -437,7 +437,7 @@ annotations =
         , codeTest "annotation on immutable value"
             """
             b =
-              is Number
+              as Number
               3
             """
             (firstEvaluation "b")

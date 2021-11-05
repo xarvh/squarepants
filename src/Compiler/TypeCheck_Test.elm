@@ -231,7 +231,7 @@ functions =
         , codeTest "Annotation should be consistent with mutability"
             """
             f a =
-              is Number @> Number
+              as Number @: Number
               a
             """
             (infer "f")
@@ -331,18 +331,18 @@ variableTypes =
             , code =
                 """
                 id a =
-                  is a -> a
+                  as a: a
                   a
                 """
             , run = infer "id"
             , expected =
                 { ty =
                     typeFunction
-                        { from = typeVariable { name = "a" }
+                        { from = typeVariable { name = "a#Test.id" }
                         , fromIsMutable = False
-                        , to = typeVariable { name = "a" }
+                        , to = typeVariable { name = "a#Test.id" }
                         }
-                , freeTypeVariables = ftv "a"
+                , freeTypeVariables = ftv "a#Test.id"
                 , isMutable = False
                 }
             }
@@ -369,7 +369,7 @@ variableTypes =
            , codeTest "Reject disconnected freeTypeVariables var types?"
                """
                id l =
-                 is a -> b
+                 as a: b
                  l
                """
                (infer "id")
@@ -552,7 +552,7 @@ mutability =
             , code =
                 """
                 a =
-                  is Number -> None
+                  as Number: None
                   reset
                 """
             , run = infer "a"
@@ -563,7 +563,7 @@ mutability =
             , code =
                 """
                         a =
-                          is Number @> None
+                          as Number @: None
                           reset
                         """
             , run = infer "a"
@@ -612,7 +612,7 @@ mutability =
             , code =
                 """
                 a @=
-                  is Number -> Number
+                  as Number: Number
                   add 1
                 """
             , run = infer "a"
@@ -646,20 +646,20 @@ higherOrderTypes =
             { name = "Parse precedence"
             , code =
                 """
-                        a l =
-                          is List a -> List a
-                          l
-                        """
+                a l =
+                  as List a: List a
+                  l
+                """
             , run = infer "a"
             , expected =
                 { ty =
                     typeFunction
-                        { from = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
+                        { from = typeConstant { args = [ typeVariable { name = "a#Test.a" } ], ref = "SPCore.List" }
                         , fromIsMutable = False
-                        , to = typeConstant { args = [ typeVariable { name = "a" } ], ref = "SPCore.List" }
+                        , to = typeConstant { args = [ typeVariable { name = "a#Test.a" } ], ref = "SPCore.List" }
                         }
                 , isMutable = False
-                , freeTypeVariables = ftv "a"
+                , freeTypeVariables = ftv "a#Test.a"
                 }
             }
         , simpleTest
@@ -773,7 +773,7 @@ records =
             """
             x =
                a @=
-                 is Number & Number
+                 as Number & Number
                  1 & 2
 
                @a.first += 1
@@ -860,20 +860,20 @@ records =
             )
         , codeTest "[reg] refineType when the record has a non-extensible alias"
             """
-            alias A = { c is Number, d is Number }
+            alias A = { c as Number, d as Number }
 
             upd a =
-              is A -> A
+              as A: A
               { a with c = .c + 1 }
             """
             (infer "upd")
             Test.isOk
         , codeTest "[reg] infinite recursion on addSubstitution/unify_"
             """
-            alias B = { l is [Text] }
+            alias B = { l as [Text] }
 
             readOne b =
-                is  B -> Text & B
+                as  B: Text & B
 
                 try b.l as
                     []: "" & b
@@ -883,10 +883,10 @@ records =
             Test.isOk
         , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
             """
-            alias R = { x is Int, y is Int }
+            alias R = { x as Number, y as Number }
 
             rec s =
-                is R -> R
+                as R: R
 
                 if True: { s with y = .y }
                 else: rec { s with y = .y }
@@ -966,7 +966,7 @@ patterns =
           codeTest "[reg] Constructors should instantiate their variable types"
             """
             each ls f =
-                is List a -> (a -> b) -> None
+                as List a: (a: b): None
                 try ls as
                     SPCore.Nil:
                         None
@@ -1098,7 +1098,7 @@ nonFunction =
             """
             """
             blah a =
-              is List a -> List a
+              as List a: List a
               with a NonFunction
               a
 

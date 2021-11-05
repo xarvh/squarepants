@@ -1,29 +1,4 @@
 
-unindent multilineText =
-    as Text: Text
-
-    lines =
-        Text.split "\n" multilineText
-
-    countLeadingSpaces line =
-        as Text: Int
-
-        line
-          >> Text.startsWithRegex "[ ]*"
-          >> Text.length
-
-    minLead =
-        lines
-            >> List.filter (fn s: Text.trimLeft s /= "") #Text.any ((/=) " "))
-            >> List.map countLeadingSpaces
-            >> List.minimum
-            >> Maybe.withDefault 0
-
-    lines
-        >> List.map (Text.dropLeft minLead)
-        >> Text.join "\n"
-
-
 errorToText eenv e =
     as Error.Env: Error: Text
 
@@ -37,7 +12,22 @@ resErrorToText code =
 
     eenv =
         { #metaFile = { sourceDirs = [], libraries = [] }
-        , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = unindent code }
+        , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = code }
         }
 
     Result.mapError (errorToText eenv)
+
+
+textToFormattableModule code =
+    as Text: Res [FA.Statement]
+
+    tokensResult =
+        as Res [Token]
+        Compiler/Lexer.lexer "Test" code
+
+    tokensToStatsResult tokens =
+        as [Token]: Res [FA.Statement]
+        Compiler/Parser.parse "Test" tokens
+
+    Result.andThen tokensToStatsResult tokensResult
+

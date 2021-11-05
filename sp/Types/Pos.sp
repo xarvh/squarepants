@@ -23,3 +23,17 @@ union Pos =
     , G
     # Union
     , U
+
+
+start pos =
+    as Pos: Int
+    try pos as
+        P m s e: s
+        _: 0
+
+
+end pos =
+    as Pos: Int
+    try pos as
+        P m s e: e
+        _: 0

@@ -51,17 +51,17 @@ typeToPriAndString type_ =
             let
                 arrow =
                     if fromIsMut then
-                        "@>"
+                        " @: "
 
                     else
-                        "->"
+                        ": "
             in
             ( 2
             , [ parensIfGreaterThan 1 from
               , arrow
               , parensIfGreaterThan 2 to
               ]
-                |> String.join " "
+                |> String.join ""
             )
 
         CA.TypeRecord pos extend attrs ->
@@ -70,7 +70,7 @@ typeToPriAndString type_ =
                     attrs
                         |> Dict.toList
                         |> List.sortBy Tuple.first
-                        |> List.map (\( name, ty ) -> name ++ " : " ++ typeToString ty)
+                        |> List.map (\( name, ty ) -> name ++ " as " ++ typeToString ty)
                         |> String.join ", "
             in
             ( 0
