@@ -54,19 +54,26 @@ library =
     module =
         original = SPCore/Maybe
         importAs = Maybe
-        globalTypes = [ Maybe ]
-        globalValues = [ Just, Nothing ]
+        globalTypes =
+            Maybe
+        globalValues =
+            Just
+            Nothing
 
     module =
         original = SPCore/Basics
         # importAs, globalTypes and globalValues can be omitted
-        globalTypes = [ Bool ]
-        globalValues = [ True, False, identity ]
+        globalTypes =
+            Bool
+        globalValues =
+            True
+            False
+            identity
 
     module =
         original = SPCore/Dict
         importAs = Dict
-        globalTypes = [ Dict ]
+        globalTypes = Dict
 
 
 library =

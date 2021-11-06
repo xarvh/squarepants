@@ -64,7 +64,7 @@ run rToOreo r =
 
 initialFiles =
     [ [ moduleMain
-      , ( metaFileName, Prelude.metaString )
+      , ( metaFileName, SpModulesAsStrings.meta )
       ]
     , if runTests then
         SpModulesAsStrings.modules
@@ -127,7 +127,7 @@ number min_ max_ @wrappedSeed =
 
 
 metaFileName =
-    "meta"
+    "modules"
 
 
 languageOverview =
@@ -202,7 +202,7 @@ update msg model =
 --
 
 
-getMeta : Model -> Result String Meta
+getMeta : Model -> Res Meta
 getMeta model =
     model.files
         |> Dict.get metaFileName
@@ -283,11 +283,7 @@ viewFilesSelector model =
                 , Html.Attributes.disabled <| model.selectedFile == name
                 , class "ml"
                 ]
-                [ if name == metaFileName then
-                    Html.text <| name ++ ".json"
-
-                  else
-                    Html.text <| name ++ ".sp"
+                [ Html.text <| name ++ ".sp"
                 ]
     in
     Html.div
@@ -515,7 +511,7 @@ viewMeta : Model -> String -> Html Msg
 viewMeta model code =
     case getMeta model of
         Err s ->
-            Html.text s
+            Html.text (Debug.toString s)
 
         Ok meta ->
             meta
@@ -527,8 +523,7 @@ viewFileStages : Model -> String -> Html Msg
 viewFileStages model rawCode =
     let
         eenv =
-            { metaFile = { sourceDirs = [], libraries = [] }
-            , moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
+            { moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
             }
 
         code =
@@ -553,7 +548,7 @@ viewFileStages model rawCode =
                     onJust faModule (\fa -> Compiler.FormattableToCanonicalAst.translateModule ro fa Dict.empty)
 
                 Err e ->
-                    Just <| Types.Error.errorTodo e
+                    Just (Err e)
     in
     Html.div
         []
@@ -618,8 +613,7 @@ viewProgram model =
             Lib.result_do
 
         eenv =
-            { metaFile = { sourceDirs = [], libraries = [] }
-            , moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
+          { moduleByName = Dict.map (\k v -> { fsPath = k, content = v }) model.files
             }
 
         compileAndInsert : Meta -> String -> String -> CA.AllDefs -> Result String CA.AllDefs
@@ -672,7 +666,7 @@ viewProgram model =
         ]
         (case getMeta model of
             Err e ->
-                [ Html.text e ]
+                [ Html.text <| Debug.toString e ]
 
             Ok meta ->
                 case programResult meta of

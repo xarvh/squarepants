@@ -35,5 +35,5 @@ echo "  ]" >>$OUT
 ###
 
 echo "meta = \"\"\"" >>$OUT
-cat sp.json >>$OUT
+cat modules.sp >>$OUT
 echo "\"\"\"" >>$OUT

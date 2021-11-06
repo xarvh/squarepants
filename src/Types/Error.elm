@@ -3,7 +3,6 @@ module Types.Error exposing (..)
 -- TODO move this in Compiler/
 
 import Dict exposing (Dict)
-import MetaFile exposing (MetaFile)
 import Set exposing (Set)
 import Types.CanonicalAst as CA exposing (Pos)
 import Types.FormattableAst as FA
@@ -19,8 +18,7 @@ type Error
 
 
 type alias ErrorEnv =
-    { metaFile : MetaFile
-    , moduleByName : Dict String { fsPath : String, content : String }
+    { moduleByName : Dict String { fsPath : String, content : String }
     }
 
 

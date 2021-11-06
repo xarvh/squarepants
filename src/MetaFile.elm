@@ -1,21 +1,24 @@
 module MetaFile exposing (..)
 
--- import Compiler.StringToTokens
--- import Compiler.TokensToFormattableAst
--- import Types.FormattableAst as FA
-
+import Compiler.Lexer
+import Compiler.TokensToFormattableAst
 import Dict exposing (Dict)
-import Json.Decode as D exposing (Decoder)
+import SPON as M exposing (do, return)
+import Types.Error as Error exposing (Res)
+import Types.FormattableAst as FA
 import Types.Meta exposing (Meta)
-
-
-
--- TODO importAs -> visibleAs ?
 
 
 type alias MetaFile =
     { sourceDirs : List SourceDir
     , libraries : List Library
+    }
+
+
+initMetaFile : MetaFile
+initMetaFile =
+    { sourceDirs = []
+    , libraries = []
     }
 
 
@@ -45,16 +48,9 @@ type alias Module =
 --
 
 
-stringToMeta : String -> Result String Meta
+stringToMeta : String -> Res Meta
 stringToMeta =
-    stringToMetaFile >> Result.map toMeta
-
-
-stringToMetaFile : String -> Result String MetaFile
-stringToMetaFile json =
-    json
-        |> D.decodeString fileDecoder
-        |> Result.mapError D.errorToString
+    stringToMetaFile "modules.sp" >> Result.map toMeta
 
 
 toMeta : MetaFile -> Meta
@@ -81,53 +77,80 @@ insertModule mod meta =
 
 
 ----
---- JSON
+--- Reader
 --
 
 
-do a b =
-    D.andThen b a
+type RootEntry
+    = Lib Library
+    | Dir SourceDir
 
 
-fileDecoder : Decoder MetaFile
-fileDecoder =
-    do (D.field "sourceDirs" <| D.list sourceDirDecoder) <| \sds ->
-    do (D.field "libraries" <| D.list libraryDecoder) <| \libs ->
-    D.succeed
-        { sourceDirs = sds
-        , libraries = libs
-        }
-
-
-sourceDirDecoder : Decoder SourceDir
-sourceDirDecoder =
-    do (D.field "path" D.string) <| \path ->
-    do (D.maybe <| D.field "moduleExceptions" <| D.list moduleDecoder) <| \moduleExceptions ->
-    D.succeed
+moduleReader : M.Reader Module
+moduleReader =
+    M.do (M.field "path" M.varName) <| \path ->
+    M.do (M.maybe <| M.field "importAs" M.varName) <| \importAs ->
+    M.do (M.maybe <| M.field "globalTypes" (M.many M.varName)) <| \globalTypes ->
+    M.do (M.maybe <| M.field "globalValues" (M.many M.varName)) <| \globalValues ->
+    M.return
         { path = path
-        , moduleExceptions = Maybe.withDefault [] moduleExceptions
+        , importAs = Maybe.withDefault path importAs
+        , globalTypes = Maybe.withDefault [] globalTypes
+        , globalValues = Maybe.withDefault [] globalValues
         }
 
 
-libraryDecoder : Decoder Library
-libraryDecoder =
-    do (D.field "source" D.string) <| \source ->
-    do (D.field "modules" <| D.list moduleDecoder) <| \modules ->
-    D.succeed
+libraryReader : M.Reader Library
+libraryReader =
+    M.do (M.field "source" M.string) <| \source ->
+    M.do (M.many <| M.field "module" moduleReader) <| \modules ->
+    M.return
         { source = source
         , modules = modules
         }
 
 
-moduleDecoder : Decoder Module
-moduleDecoder =
-    do (D.field "path" D.string) <| \path ->
-    do (D.maybe <| D.field "importAs" D.string) <| \maybeImportAs ->
-    do (D.maybe <| D.field "globalValues" <| D.list D.string) <| \maybeGlobalValues ->
-    do (D.maybe <| D.field "globalTypes" <| D.list D.string) <| \maybeGlobalTypes ->
-    D.succeed
+sourceDirectoryReader : M.Reader SourceDir
+sourceDirectoryReader =
+    M.do (M.field "path" M.string) <| \path ->
+    M.do (M.many <| M.field "module" moduleReader) <| \modules ->
+    M.return
         { path = path
-        , importAs = Maybe.withDefault "" maybeImportAs
-        , globalValues = Maybe.withDefault [] maybeGlobalValues
-        , globalTypes = Maybe.withDefault [] maybeGlobalTypes
+        , moduleExceptions = modules
         }
+
+
+metaFileReader : M.Reader (List RootEntry)
+metaFileReader =
+    [ M.do (M.field "library" libraryReader) <| \lib -> M.return <| Lib lib
+    , M.do (M.field "sourceDir" sourceDirectoryReader) <| \dir -> M.return <| Dir dir
+    ]
+        |> M.oneOf
+        |> M.many
+
+
+stringToMetaFile : String -> String -> Res MetaFile
+stringToMetaFile sponName sponContent =
+    let
+        insert : RootEntry -> MetaFile -> MetaFile
+        insert rootEntry metaFile =
+            case rootEntry of
+                Lib lib ->
+                    { metaFile | libraries = lib :: metaFile.libraries }
+
+                Dir dir ->
+                    { metaFile | sourceDirs = dir :: metaFile.sourceDirs }
+
+        statementsToResMetaFile : List FA.Statement -> Res MetaFile
+        statementsToResMetaFile statements =
+            case M.run metaFileReader statements of
+                Err message ->
+                    Error.errorTodo message
+
+                Ok rootEntries ->
+                    Ok <| List.foldl insert initMetaFile rootEntries
+    in
+    sponContent
+        |> Compiler.Lexer.lexer sponName
+        |> Result.andThen (Compiler.TokensToFormattableAst.parse sponName sponContent)
+        |> Result.andThen statementsToResMetaFile

@@ -3,15 +3,34 @@ module Compiler.TestHelpers exposing (..)
 import Compiler.ApplyAliases
 import Compiler.Pipeline
 import Dict exposing (Dict)
-import Prelude exposing (meta)
+import MetaFile
+import Prelude
+import SpModulesAsStrings
 import StateMonad as M exposing (M, do, return)
 import Types.CanonicalAst as CA
 import Types.Error as Error exposing (Res)
 import Types.FormattableAst as FA
+import Types.Meta exposing (Meta)
 
 
 moduleName =
     "Test"
+
+
+meta : Meta
+meta =
+    let
+        metaResult =
+            SpModulesAsStrings.meta
+                |> MetaFile.stringToMetaFile "modules"
+                |> resErrorToString SpModulesAsStrings.meta
+    in
+    case metaResult of
+        Ok f ->
+            MetaFile.toMeta f
+
+        Err error ->
+            Debug.todo <| "TestHelpers MetaFile error: " ++ error
 
 
 p : CA.Pos
@@ -41,8 +60,7 @@ resErrorToString : String -> Res a -> Result String a
 resErrorToString code =
     let
         eenv =
-            { metaFile = { sourceDirs = [], libraries = [] }
-            , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = unindent code }
+            { moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = unindent code }
             }
     in
     Result.mapError (errorToString eenv)
