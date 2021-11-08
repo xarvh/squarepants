@@ -90,7 +90,7 @@ runParser parser ts =
     in
     outcome
         |> Syntax.outcomeToResult "Test" ts failStates
-        |> Compiler.TestHelpers.resErrorToText ""
+        |> Compiler.TestHelpers.resErrorToString ""
 
 
 firstStatement : String -> Result String FA.Statement
@@ -98,7 +98,7 @@ firstStatement code =
     code
         |> Compiler.TestHelpers.stringToFormattableModule
         |> Result.map (List.map (FA.posMap_statement applyDummyPos))
-        |> Compiler.TestHelpers.resErrorToText code
+        |> Compiler.TestHelpers.resErrorToString code
         |> Result.andThen (List.head >> Result.fromMaybe "no head")
 
 

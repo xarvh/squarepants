@@ -541,6 +541,7 @@ unindent raw =
             lines
                 |> List.map (String.dropLeft minLead)
                 |> String.join "\n"
+                |> String.trimRight
 
         _ ->
             raw

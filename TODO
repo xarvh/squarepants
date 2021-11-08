@@ -3,9 +3,9 @@
 * When we pass args to unify, we should specify a context or name for each
 * When a constructor can't be found, its type should be assumed as a new free tyvar, but its args should be dealt with normally
 
-* List.sort
+* List.sort (or Array.sort?)
 * Add test for triple quotes containing quotes
-* Move unindent into Lexer and apply it to triple quotes (and test it?)
+* Test lexing of triple quotes (unindent!)
 
 
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
@@ -13,4 +13,49 @@
 * Humanize must break a type into multiple lines
 
 * later: Compiler should be able to produce a stacktrace
+
+* sp-format should recognize and preserve two main modes from the input format: a compact and an expanded one
+
+
+
+
+
+
+
+
+type Array a
+
+#
+# Array.push @theArray theNewItem
+#
+push =
+    as Array a @: a: None
+
+#
+# Array.get theArray index
+#
+get =
+    as Array a: Int: Maybe a
+
+#
+# Array.set @theArray index newItemValue
+#
+set =
+    as Array a @: Int: a: Bool
+
+#
+# Array.sort @theArray
+#
+sortBy =
+    as Array a @: (a: b): None
+    with b NonFunction
+
+
+List.sortBy fun ls =
+    as (a: b): List a: List a
+    with b NonFunction
+
+    array @= Array.fromList ls
+    Array.sortBy @array fun
+    Array.toList array
 

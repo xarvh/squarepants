@@ -115,7 +115,7 @@
                 },
                 {
                     "path": "SPCore/Basics",
-                    "globalValues": [ "assert", "clamp", "identity", "min", "max" ],
+                    "globalValues": [ "assert", "clamp", "identity", "modBy", "min", "max" ],
                     "globalTypes": []
                 },
                 {

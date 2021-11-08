@@ -14,6 +14,9 @@ color code text =
     code .. text .. "\x1b[0m"
 
 
+blue =
+    color  "\x1b[34m"
+
 green =
     color "\x1b[32m"
 
@@ -48,6 +51,15 @@ testOutcomeToText name code outcome =
             (red << "FAIL ! " .. name) .. "\n" .. indent code .. "\n" .. indent error
 
 
+formattedToConsoleColoredText formattedText =
+    as Error.FormattedText: Text
+    try formattedText as
+        Error.FormattedText_Default t: t
+        Error.FormattedText_Emphasys t: yellow t
+        Error.FormattedText_Warning t: red t
+        Error.FormattedText_Decoration t: blue t
+
+
 main arg =
   if arg == "":
       allTests
@@ -56,9 +68,17 @@ main arg =
           >> Text.join "\n"
 
   else:
-      try Compiler/TestHelpers.textToFormattableModule arg >> Compiler/TestHelpers.resErrorToText arg as
-          Err err:
-              err
+      result =
+          arg
+              >> Compiler/TestHelpers.textToFormattableModule
+              >> Result.mapError (Error.toFormattedText << Compiler/TestHelpers.dummyErrorEnv arg)
+
+      try result as
+          Err formattedErrors:
+              formattedErrors
+                  >> List.map formattedToConsoleColoredText
+                  >> Text.join ""
+
           Ok statements:
               statements
                   >> List.map Debug.toHuman

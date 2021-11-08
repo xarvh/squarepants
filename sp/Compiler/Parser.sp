@@ -20,8 +20,8 @@ here =
     Parser.here >> then fn tokens:
     Parser.accept
         (try tokens as
-            next :: rest:
-                next.start
+            Token mod start end :: rest:
+                start
 
             []:
                 0

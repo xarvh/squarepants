@@ -684,6 +684,30 @@ higherOrderTypes =
             """
             (infer "run")
             Test.isOk
+        , codeTest
+            """
+            [reg] Wrong should be Text
+            """
+            """
+            union O o = O Text o
+
+            fun _ a =
+                as Number: Text: O wrong
+
+                O a a
+            """
+            (infer "fun")
+            (Test.errContain "wrong")
+        , codeTest
+            """
+            [reg] Should complain about undefined type argument
+            """
+            """
+            union O a = O Text output
+            x = 1
+            """
+            (infer "x")
+            (Test.errContain "undefined")
         ]
 
 

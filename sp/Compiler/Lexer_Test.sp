@@ -61,7 +61,7 @@ lexTokens s =
 
     s
         >> Compiler/Lexer.lexer "Test"
-        >> Compiler/TestHelpers.resErrorToText s
+        >> Compiler/TestHelpers.resErrorToStrippedText s
 
 
 lexTokensAndDrop n s =

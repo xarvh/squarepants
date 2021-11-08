@@ -22,9 +22,69 @@ res pos desc =
     Err << Simple pos desc
 
 
-###
+#
+# Formatted text
+#
+union FormattedText =
+    , FormattedText_Default Text
+    , FormattedText_Emphasys Text
+    , FormattedText_Warning Text
+    , FormattedText_Decoration Text
 
 
+toFormattedText eenv e =
+    as Env: Error: [FormattedText]
+
+    newline =
+        FormattedText_Default ""
+
+    tupleToFormattedText (pos & descr) =
+        toText eenv pos descr
+
+    flatten e []
+        >> List.concatMap tupleToFormattedText
+
+
+#
+# It would be more reliable to declare errors diectly in FormattedText, but I tried it and it was a pain.
+# So until I have a better idea, errors are declared as strings and we'll need to transform them back to FormattedText
+#
+formatSeparator = "$|$|$"
+formatSuffix = "$`$`$"
+formatWrap fmtName text = formatSeparator .. fmtName .. formatSuffix .. text .. formatSeparator
+
+breakDownText text =
+  as Text: [FormattedText]
+
+  formatSnippet index snippet =
+      as Int: Text: FormattedText
+
+      if modBy 2 index == 0:
+          FormattedText_Default snippet
+      else
+          try Text.split formatSuffix snippet as
+              ["emphasys", s]: FormattedText_Emphasys s
+              ["warning", s]: FormattedText_Warning s
+              ["decoration", s]: FormattedText_Decoration s
+              _: FormattedText_Default snippet
+
+  text
+      >> Text.split formatSeparator
+      >> List.indexedMap formatSnippet
+
+emph =
+    formatWrap "emphasys"
+
+warn =
+    formatWrap "warning"
+
+deco =
+    formatWrap "decoration"
+
+
+#
+#
+#
 
 union Highlight =
     , HighlightWord { line as Number, colStart as Number, colEnd as Number }
@@ -106,11 +166,11 @@ fmtBlock start highlights ls =
                     .. Text.repeat pad " "
                     .. "   "
                     .. Text.repeat (s - 1) " "
-                    .. Text.repeat (max 1 << e - s) "^"
+                    .. warn (Text.repeat (max 1 << e - s) "^")
 
     lineDem lineIndex =
         if Set.member lineIndex highlightedLines:
-            " > "
+            warn " > "
 
         else
             " | "
@@ -227,7 +287,7 @@ posToHuman eEnv pos =
 
 
 toText env pos desc =
-    as Env: Pos: Description: Text
+    as Env: Pos: Description: [FormattedText]
 
     { location, block } =
         posToHuman env pos
@@ -241,10 +301,13 @@ toText env pos desc =
             >> Text.join "\n"
 
     [
-    , Text.padRight 50 "-" (location .. " ")
+    , ""
+    , ""
+    , deco << Text.padRight 50 "-" (location .. " ")
     , ""
     , description
     , ""
     ]
         >> Text.join "\n"
+        >> breakDownText
 

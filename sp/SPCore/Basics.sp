@@ -27,6 +27,13 @@ clamp low high n =
     else n
 
 
+modBy a b =
+    as Int: Int: Int
+
+    # Native
+    0
+
+
 assert c m =
   if not c: todo m
   else: None

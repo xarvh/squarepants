@@ -152,10 +152,22 @@ unionTypes =
             , run = stringToCanonicalModule
             , test = Test.errContain "operators"
             }
-        , codeTest "tuples op precedence works with parens"
+        , codeTest
+            """
+            Tuples op precedence works with parens
+            """
             "union A = X (Bool & Bool)"
             stringToCanonicalModule
             Test.isOk
+        , codeTest
+            """
+            [reg] Should reject uppercase arg name
+            """
+            """
+            union Outcome Token output = A
+            """
+            stringToCanonicalModule
+            (Test.errContain "Token")
         ]
 
 

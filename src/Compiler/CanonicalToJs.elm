@@ -29,9 +29,11 @@ allNatives =
         |> Dict.insert "SPCore/Text.slice" "text_slice"
         |> Dict.insert "SPCore/Text.startsWith" "text_startsWith"
         |> Dict.insert "SPCore/Text.startsWithRegex" "text_startsWithRegex"
+        |> Dict.insert "SPCore/Text.replaceRegex" "text_replaceRegex"
         |> Dict.insert "SPCore/Text.trimLeft" "text_trimLeft"
         |> Dict.insert "SPCore/Text.dropLeft" "text_dropLeft"
         |> Dict.insert "SPCore/Text.forEach" "text_forEach"
+        |> Dict.insert "SPCore/Basics.modBy" "basics_modBy"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_equal"
@@ -317,6 +319,18 @@ const text_startsWithRegex = (regex) => {
 }
 
 
+const text_replaceRegex = (regex) => {
+  let re;
+  try {
+    re = new RegExp(regex, 'g');
+  } catch (e) {
+    return () => () => ""
+  }
+
+  return (replacer) => (s) => s.replace(re, replacer);
+}
+
+
 const text_trimLeft = (s) => {
   return s.trimLeft();
 }
@@ -331,6 +345,9 @@ const text_forEach = (s) => (f) => {
   for (let i of s) f(i);
   return null;
 }
+
+
+const basics_modBy = (a) => (b) => b % a;
 
 
 const array_toList = (array) => {

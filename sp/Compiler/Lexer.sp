@@ -73,7 +73,6 @@ addError message @state =
 setMode mode @state =
     as Mode: ReadState@: None
 
-#    log "setMode: " mode
     @state.mode := mode
 
 
@@ -81,7 +80,6 @@ absAddToken =
     as Int: Int: Token.Kind: ReadState@: None
 
     fn start end kind @state:
-#        log "absAddToken" ( Debug.toHuman start .. " " .. Debug.toHuman end .. " " .. Debug.toHuman kind )
         @state.tokens := Token start end kind :: state.tokens
         @state.start := end
 
@@ -138,7 +136,7 @@ unindent raw =
 
         minLead =
             lines
-                >> List.filter (fn s: Text.trimLeft s /= "") #Text.any ((/=) " "))
+                >> List.filter (fn s: Text.trimLeft s /= "")
                 >> List.map countLeadingSpaces
                 >> List.minimum
                 >> Maybe.withDefault 0
@@ -146,6 +144,7 @@ unindent raw =
         lines
             >> List.map (Text.dropLeft minLead)
             >> Text.join "\n"
+            >> Text.replaceRegex "\n[ ]*$" ""
 
 
 #
@@ -302,8 +301,6 @@ lexOne char @state =
     # position of char
     pos =
         getPos @state
-
-#    log "-> lexOne: " char
 
     try state.mode as
 
@@ -586,8 +583,6 @@ addIndentTokens @state =
         state.indentStack
             >> List.head
             >> Maybe.withDefault 0
-
-#    log "addIndentTokens" << { indentLength, lastIndent, start, end }
 
     if indentLength == lastIndent:
         [#

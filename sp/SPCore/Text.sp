@@ -109,6 +109,12 @@ startsWithRegex regex s =
     ""
 
 
+replaceRegex regex replaceWith s =
+    as Text: Text: Text: Text
+    # native
+    ""
+
+
 split separator target =
     as Text: Text: [ Text ]
 

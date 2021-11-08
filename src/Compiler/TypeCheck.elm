@@ -456,7 +456,7 @@ fromDefinition env isMutable pattern maybeAnnotation body =
             -- TODO maybe I should make it more explicit? Use an ad-hoc function?
             do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| \env1 ->
             do (fromBlock env1 body) <| \bodyType ->
-            do (unify patternOut.pos UnifyReason_AnnotationVsBlock annotation.ty bodyType) <| \unifiedBlockType ->
+            do (unify patternOut.pos (UnifyReason_AnnotationVsBlock pattern annotation body) annotation.ty bodyType) <| \unifiedBlockType ->
             do (checkFreeVariables patternOut.pos annotation.ty bodyType) <| \() ->
             return env1
 
@@ -926,7 +926,7 @@ unifyConstructorWithItsArgs p =
 
 type UnifyReason
     = UnifyReason_AnnotationVsPattern
-    | UnifyReason_AnnotationVsBlock
+    | UnifyReason_AnnotationVsBlock CA.Pattern CA.Annotation (List CA.Statement)
     | UnifyReason_DefBlockVsPattern
     | UnifyReason_CallArgument { reference : Pos, argument : Pos }
     | UnifyReason_IsBeingCalledAsAFunction
@@ -1654,14 +1654,14 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
                     , block
                     , ""
                     , "the argument type seems to be: "
+                    , clashToStrings
+                        { typeSeemsToBe = "The argument type seems to be"
+                        , type1_is = "The functon expects:"
+                        , type2_is = "But the actual argument is:"
+                        , unifiedType = unifiedType
+                        , clashes = clashes
+                        }
                     ]
-                        ++ clashToStrings
-                            { typeSeemsToBe = "The argument type seems to be"
-                            , type1_is = "The functon expects:"
-                            , type2_is = "But the actual argument is:"
-                            , unifiedType = unifiedType
-                            , clashes = clashes
-                            }
             in
             addErrorWithEEnv pos.argument makeError
 
@@ -1670,7 +1670,7 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
                 pos =
                     case List.map CA.statementPos block of
                         [] ->
-                            CA.SWW
+                            pos_whatever
 
                         h :: t ->
                             List.foldl CA.range h t
@@ -1678,16 +1678,55 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
                 makeError eenv =
                     [ "This try..as block produces a different type than the blocks precedeng it."
                     , ""
+                    , clashToStrings
+                        { typeSeemsToBe = "The block type seems to be"
+                        , type1_is = "The previous block(s) produce:"
+                        , type2_is = "But this block produces:"
+                        , unifiedType = unifiedType
+                        , clashes = clashes
+                        }
                     ]
-                        ++ clashToStrings
-                            { typeSeemsToBe = "The block type seems to be"
-                            , type1_is = "The previous block(s) produce:"
-                            , type2_is = "But this block produces:"
-                            , unifiedType = unifiedType
-                            , clashes = clashes
-                            }
             in
             addErrorWithEEnv pos makeError
+
+        UnifyReason_AnnotationVsBlock pattern annotation body ->
+            let
+                headerPos =
+                    CA.range (CA.patternPos pattern) annotation.pos
+
+                lastStatementPos =
+                    case List.reverse body of
+                        [] ->
+                            pos_whatever
+
+                        last :: t ->
+                            CA.statementPos last
+
+                name =
+                    pattern
+                        |> CA.patternNames
+                        |> Dict.keys
+                        |> String.join ", "
+
+                makeError eenv =
+                    let
+                        { location, block } =
+                            Error.posToHuman eenv headerPos
+                    in
+                    [ "The definition of " ++ name ++ " does not match the annotation:"
+                    , ""
+                    , block
+                    , ""
+                    , clashToStrings
+                        { typeSeemsToBe = "The produced type seems to be"
+                        , type1_is = "The annotation says:"
+                        , type2_is = "But this definition produces:"
+                        , unifiedType = unifiedType
+                        , clashes = clashes
+                        }
+                    ]
+            in
+            addErrorWithEEnv lastStatementPos makeError
 
         _ ->
             let
@@ -1696,17 +1735,11 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
 
                 title =
                     case reason of
-                        UnifyReason_AnnotationVsBlock ->
-                            "The type of the definition does not match the annotation"
-
                         UnifyReason_AnnotationVsPattern ->
                             "The pattern unpacking is not compatible with the annotation"
 
                         UnifyReason_DefBlockVsPattern ->
                             "The definition block cannot be unpacked into the pattern"
-
-                        UnifyReason_CallArgument _ ->
-                            "The function cannot accept arguments of this type"
 
                         UnifyReason_IsBeingCalledAsAFunction ->
                             "This is being called as if it was a function"
@@ -1720,9 +1753,6 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
                         UnifyReason_TryPattern ->
                             "try..as patterns should have the same type"
 
-                        UnifyReason_TryBlock _ ->
-                            "try..as blocks should have the same type"
-
                         UnifyReason_ConstructorArgument p ->
                             "Argument " ++ String.fromInt p.argIndex ++ " to type constructor " ++ p.ref ++ " does not match the constructor definition"
 
@@ -1734,17 +1764,21 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
 
                         UnifyReason_Override ->
                             "this is addSubstitution running a UnifyReason_Override, I don't know what I'm doing"
+
+                        _ ->
+                            Debug.todo <| Debug.toString reason ++ " should not even get here"
             in
-            title
-                :: ""
-                :: "The type seems to be something like"
-                :: clashToStrings
-                    { typeSeemsToBe = "type seems to be"
-                    , type1_is = "t1 is:"
-                    , type2_is = "but t2 is:"
-                    , unifiedType = unifiedType
-                    , clashes = clashes
-                    }
+            [ title
+            , ""
+            , "The type seems to be something like"
+            , clashToStrings
+                { typeSeemsToBe = "type seems to be"
+                , type1_is = "t1 is:"
+                , type2_is = "but t2 is:"
+                , unifiedType = unifiedType
+                , clashes = clashes
+                }
+            ]
                 |> addError pos_whatever
 
 
@@ -1757,60 +1791,61 @@ type alias ClashToStringsParams =
     }
 
 
-clashToStrings : ClashToStringsParams -> List String
+clashToStrings : ClashToStringsParams -> String
 clashToStrings params =
-    List.concat <|
-        case params.unifiedType of
-            CA.TypeVariable p unifiedTypeName ->
-                [ params.clashes
-                    |> Dict.toList
-                    |> List.concatMap
-                        (\( clashPlaceholderName, clash ) ->
-                            [ params.type1_is
-                            , ""
-                            , "  " ++ typeToText clash.t1
-                            , ""
-                            , params.type2_is
-                            , ""
-                            , "  " ++ typeToText clash.t2
-                            , ""
-                            , unifyErrorToString clash.err
-                            ]
-                        )
-                ]
-
-            _ ->
-                let
-                    info =
-                        -- TODO the layout should change depending on the reason, not only the title
-                        [ params.typeSeemsToBe
-                        , typeToText params.unifiedType
+    case params.unifiedType of
+        CA.TypeVariable p unifiedTypeName ->
+            params.clashes
+                |> Dict.toList
+                |> List.concatMap
+                    (\( clashPlaceholderName, clash ) ->
+                        [ params.type1_is
                         , ""
-                        , "However I can't reconcile the following:"
-                        ]
-
-                    --clashToError : ( Id, TypeClash ) -> List String
-                    clashToError ( name, clash ) =
-                        [ ""
-                        , "* `" ++ name ++ "`"
-                        , ""
-                        , "  " ++ params.type1_is
                         , "  " ++ typeToText clash.t1
                         , ""
-                        , "  " ++ params.type2_is
+                        , params.type2_is
+                        , ""
                         , "  " ++ typeToText clash.t2
                         , ""
-                        , "  " ++ unifyErrorToString clash.err
+                        , unifyErrorToString clash.err
                         ]
+                    )
+                |> String.join "\n"
 
-                    clashErrors =
-                        params.clashes
-                            |> Dict.toList
-                            |> List.concatMap clashToError
-                in
-                [ info
-                , clashErrors
-                ]
+        _ ->
+            let
+                info =
+                    -- TODO the layout should change depending on the reason, not only the title
+                    [ params.typeSeemsToBe
+                    , typeToText params.unifiedType
+                    , ""
+                    , "However I can't reconcile the following:"
+                    ]
+
+                --clashToError : ( Id, TypeClash ) -> List String
+                clashToError ( name, clash ) =
+                    [ ""
+                    , "* `" ++ name ++ "`"
+                    , ""
+                    , "  " ++ params.type1_is
+                    , "  " ++ typeToText clash.t1
+                    , ""
+                    , "  " ++ params.type2_is
+                    , "  " ++ typeToText clash.t2
+                    , ""
+                    , "  " ++ unifyErrorToString clash.err
+                    ]
+
+                clashErrors =
+                    params.clashes
+                        |> Dict.toList
+                        |> List.concatMap clashToError
+            in
+            [ info
+            , clashErrors
+            ]
+                |> List.concat
+                |> String.join "\n"
 
 
 errorTodo : CA.Pos -> String -> Monad Type

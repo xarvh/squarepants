@@ -54,7 +54,7 @@ firstStatement code =
     code
         >> Compiler/TestHelpers.textToFormattableModule
         >> Result.map (List.map (FA.posMap_statement fn _: p))
-        >> Compiler/TestHelpers.resErrorToText code
+        >> Compiler/TestHelpers.resErrorToStrippedText code
         >> Result.andThen grabFirst
 
 
@@ -134,14 +134,8 @@ errors =
                     ]
             """
             firstDefinition
-            (Test.errorContains
-                [ """
-  14 |                         , { end = 0, kind = Token.NewSiblingLine, start = 0 }
-                                 ^
-  """ ]
-            )
+            (Test.errorContains [ "end = 0" ])
         ]
-
 
 
 #
@@ -408,7 +402,10 @@ lists =
                  """
             firstEvaluationOfDefinition
             ([ FA.LiteralNumber p "1", FA.LiteralNumber p "2" ] >> FA.List p >> Test.isOkAndEqualTo)
-        , codeTest "multiline compact"
+        , codeTest
+            """
+            Multiline compact
+            """
             """
                  a = [
                    , 1

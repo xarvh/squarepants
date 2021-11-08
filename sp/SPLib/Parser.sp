@@ -120,11 +120,10 @@ thenWithDefault fallbackParser chainedParser firstParser =
 [#| Pulls out the current state
 #]
 here =
-    as Parser t readState
+    as Parser t [t]
 
     fn rejections readState:
         rejections & Accepted readState readState
-
 
 
 #
