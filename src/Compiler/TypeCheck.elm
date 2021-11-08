@@ -331,9 +331,8 @@ getValueRefs def =
             case fold of
                 CA.PosMap_Expr (CA.Variable _ args) ->
                     if args.isRoot then
-                        do (M.update (Set.insert args.name)) <|
-                            \_ ->
-                                return ext
+                        do (M.update (Set.insert args.name)) <| \_ ->
+                        return ext
 
                     else
                         return ext
@@ -376,62 +375,57 @@ fromBlock env0 block =
             }
 
         upd statement state =
-            do (fromStatement state.env statement) <|
-                \( env, maybeMutableDefinitionId, inferredType ) ->
-                    return
-                        { env = env
-                        , inferredType = inferredType
-                        , mutableDefs =
-                            case maybeMutableDefinitionId of
-                                Nothing ->
-                                    state.mutableDefs
+            do (fromStatement state.env statement) <| \( env, maybeMutableDefinitionId, inferredType ) ->
+            return
+                { env = env
+                , inferredType = inferredType
+                , mutableDefs =
+                    case maybeMutableDefinitionId of
+                        Nothing ->
+                            state.mutableDefs
 
-                                Just definitionId ->
-                                    definitionId :: state.mutableDefs
-                        }
+                        Just definitionId ->
+                            definitionId :: state.mutableDefs
+                }
     in
-    do (M.list_foldl upd block state0) <|
-        \stateF ->
-            case stateF.mutableDefs of
-                [] ->
-                    return stateF.inferredType
+    do (M.list_foldl upd block state0) <| \stateF ->
+    case stateF.mutableDefs of
+        [] ->
+            return stateF.inferredType
 
-                head :: tail ->
-                    -- A block is actually allowed to return tyvars that allow functions
-                    if typeContainsFunctions stateF.inferredType then
-                        addError head [ "blocks that define mutables can't return functions" ]
+        head :: tail ->
+            -- A block is actually allowed to return tyvars that allow functions
+            if typeContainsFunctions stateF.inferredType then
+                addError head [ "blocks that define mutables can't return functions" ]
 
-                    else
-                        return stateF.inferredType
+            else
+                return stateF.inferredType
 
 
 fromStatement : Env -> CA.Statement -> Monad ( Env, Maybe CA.Pos, Type )
 fromStatement env statement =
     case statement of
         CA.Evaluation expr ->
-            do (fromExpression env expr) <|
-                \expressionType ->
-                    return ( env, Nothing, expressionType )
+            do (fromExpression env expr) <| \expressionType ->
+            return ( env, Nothing, expressionType )
 
         CA.Definition def ->
-            do (fromDefinition env def.mutable def.pattern def.maybeAnnotation def.body) <|
-                \env1 ->
-                    return
-                        ( env1
-                        , if def.mutable then
-                            Just <| CA.patternPos def.pattern
+            do (fromDefinition env def.mutable def.pattern def.maybeAnnotation def.body) <| \env1 ->
+            return
+                ( env1
+                , if def.mutable then
+                    Just <| CA.patternPos def.pattern
 
-                          else
-                            Nothing
-                        , Core.noneType
-                        )
+                  else
+                    Nothing
+                , Core.noneType
+                )
 
 
 applySubsToType : Type -> Monad Type
 applySubsToType ty =
-    do (get .substitutions) <|
-        \subs ->
-            return <| replaceTypeVariables subs ty
+    do (get .substitutions) <| \subs ->
+    return <| replaceTypeVariables subs ty
 
 
 fromDefinition : Env -> Bool -> CA.Pattern -> Maybe CA.Annotation -> List CA.Statement -> Monad Env
@@ -443,38 +437,28 @@ fromDefinition env isMutable pattern maybeAnnotation body =
             --
             -- TODO ability to infer recursive definitions, but only if I don't have to rewrite everything
             --
-            do (fromPattern env pattern Dict.empty) <|
-                \patternOut ->
-                    let
-                        env1 =
-                            { env | nonAnnotatedRecursives = Dict.foldl (\name ( pos, ty ) -> Dict.insert name pos) env.nonAnnotatedRecursives patternOut.vars }
-                    in
-                    do (fromBlock env1 body) <|
-                        \bodyType_ ->
-                            do (applySubsToType bodyType_) <|
-                                \bodyType ->
-                                    do (unify patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty) <|
-                                        \unifiedType ->
-                                            do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| return
+            do (fromPattern env pattern Dict.empty) <| \patternOut ->
+            let
+                env1 =
+                    { env | nonAnnotatedRecursives = Dict.foldl (\name ( pos, ty ) -> Dict.insert name pos) env.nonAnnotatedRecursives patternOut.vars }
+            in
+            do (fromBlock env1 body) <| \bodyType_ ->
+            do (applySubsToType bodyType_) <| \bodyType ->
+            do (unify patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty) <| \unifiedType ->
+            do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| return
 
         Just annotation ->
             -- There is an annotation: allow recursive definitions
             -- This means that we can add it to the environment before we actually infer it
-            do (fromPattern env pattern Dict.empty) <|
-                \patternOut ->
-                    do (unify patternOut.pos UnifyReason_AnnotationVsPattern annotation.ty patternOut.ty) <|
-                        \_ ->
-                            -- applySubsToPatternVarsAndAddThemToEnv also adds type variables, which is why we're using it here!
-                            -- TODO maybe I should make it more explicit? Use an ad-hoc function?
-                            do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <|
-                                \env1 ->
-                                    do (fromBlock env1 body) <|
-                                        \bodyType ->
-                                            do (unify patternOut.pos UnifyReason_AnnotationVsBlock annotation.ty bodyType) <|
-                                                \unifiedBlockType ->
-                                                    do (checkFreeVariables patternOut.pos annotation.ty bodyType) <|
-                                                        \() ->
-                                                            return env1
+            do (fromPattern env pattern Dict.empty) <| \patternOut ->
+            do (unify patternOut.pos UnifyReason_AnnotationVsPattern annotation.ty patternOut.ty) <| \_ ->
+            -- applySubsToPatternVarsAndAddThemToEnv also adds type variables, which is why we're using it here!
+            -- TODO maybe I should make it more explicit? Use an ad-hoc function?
+            do (applySubsToPatternVarsAndAddThemToEnv isMutable patternOut.vars env) <| \env1 ->
+            do (fromBlock env1 body) <| \bodyType ->
+            do (unify patternOut.pos UnifyReason_AnnotationVsBlock annotation.ty bodyType) <| \unifiedBlockType ->
+            do (checkFreeVariables patternOut.pos annotation.ty bodyType) <| \() ->
+            return env1
 
 
 checkFreeVariables : Pos -> Type -> Type -> Monad ()
@@ -500,9 +484,8 @@ checkFreeVariables pos annotatedType blockType =
                 , "The annotation has " ++ String.fromInt (Dict.size annotatedFreeVars - Dict.size actualFreeVars) ++ " type variables too many"
                 ]
             )
-        <|
-            \_ ->
-                return ()
+        <| \_ ->
+        return ()
 
     else
         return ()
@@ -582,89 +565,69 @@ fromExpression env expression =
 
                        In this case we do NOT instantiate a new variable!
                     -}
-                    do (replaceTypeVariablesWithNew var) <|
-                        \varType ->
-                            {-
+                    do (replaceTypeVariablesWithNew var) <| \varType ->
+                    {-
 
-                               Dealing with attributes as a special case (rather than just as an access function)
-                               allows Squarepants to mutate single attributes of a mutable record:
+                       Dealing with attributes as a special case (rather than just as an access function)
+                       allows Squarepants to mutate single attributes of a mutable record:
 
-                               @someRecord.someAttribute += 1
+                       @someRecord.someAttribute += 1
 
-                               @someRecord.someOtherAttribute.someNestedAttribute := "Squidward"
+                       @someRecord.someOtherAttribute.someNestedAttribute := "Squidward"
 
-                            -}
-                            applyAttributePath pos attrPath varType
+                    -}
+                    applyAttributePath pos attrPath varType
 
         CA.Lambda pos param body ->
-            do (fromParameter env param) <|
-                \( isMutable, patternOut ) ->
-                    do (insertPatternVars Dict.empty True isMutable patternOut.vars env) <|
-                        \bodyEnv ->
-                            do (fromBlock bodyEnv body) <|
-                                \bodyType ->
-                                    -- fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
-                                    -- fromBlock instead infers paramType fully, but will not apply the substitutions it creates
-                                    -- So we just pull out the substitutions and apply them to paramType
-                                    do (applySubsToType patternOut.ty) <|
-                                        \refinedPatternOutTy ->
-                                            if isMutable && typeContainsFunctions refinedPatternOutTy then
-                                                -- TODO be a bit more descriptive, maybe name the arguments
-                                                errorTodo pos <| "mutable args cannot be functions"
+            do (fromParameter env param) <| \( isMutable, patternOut ) ->
+            do (insertPatternVars Dict.empty True isMutable patternOut.vars env) <| \bodyEnv ->
+            do (fromBlock bodyEnv body) <| \bodyType ->
+            -- fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
+            -- fromBlock instead infers paramType fully, but will not apply the substitutions it creates
+            -- So we just pull out the substitutions and apply them to paramType
+            do (applySubsToType patternOut.ty) <| \refinedPatternOutTy ->
+            if isMutable && typeContainsFunctions refinedPatternOutTy then
+                -- TODO be a bit more descriptive, maybe name the arguments
+                errorTodo pos <| "mutable args cannot be functions"
 
-                                            else
-                                                CA.TypeFunction pos refinedPatternOutTy isMutable bodyType
-                                                    |> return
+            else
+                CA.TypeFunction pos refinedPatternOutTy isMutable bodyType
+                    |> return
 
         CA.Call pos reference argument ->
             -- first of all, let's get our children types
-            do (fromExpression env reference) <|
-                \referenceType ->
-                    do (fromArgument env argument) <|
-                        \( fromIsMutable, argumentType ) ->
-                            -- the type of the call itself is the return type of the lamba
-                            unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
+            do (fromExpression env reference) <| \referenceType ->
+            do (fromArgument env argument) <| \( fromIsMutable, argumentType ) ->
+            -- the type of the call itself is the return type of the lamba
+            unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
 
         CA.If pos ar ->
-            do (fromBlock env ar.condition) <|
-                \conditionType ->
-                    do (unify pos UnifyReason_IfCondition conditionType Core.boolType) <|
-                        \_ ->
-                            do (get .substitutions) <|
-                                \s ->
-                                    do (fromBlock env ar.true) <|
-                                        \trueType ->
-                                            do (fromBlock env ar.false) <|
-                                                \falseType ->
-                                                    unify pos UnifyReason_IfBranches trueType falseType
+            do (fromBlock env ar.condition) <| \conditionType ->
+            do (unify pos UnifyReason_IfCondition conditionType Core.boolType) <| \_ ->
+            do (get .substitutions) <| \s ->
+            do (fromBlock env ar.true) <| \trueType ->
+            do (fromBlock env ar.false) <| \falseType ->
+            unify pos UnifyReason_IfBranches trueType falseType
 
         CA.Try pos value patternsAndBlocks ->
-            do (fromExpression env value) <|
-                \tryType ->
-                    do (newType pos) <|
-                        \newBlockType ->
-                            do (M.list_foldl (fromPatternAndBlock env) patternsAndBlocks ( tryType, newBlockType )) <|
-                                \( patternType, inferredBlockType ) ->
-                                    return inferredBlockType
+            do (fromExpression env value) <| \tryType ->
+            do (newType pos) <| \newBlockType ->
+            do (M.list_foldl (fromPatternAndBlock env) patternsAndBlocks ( tryType, newBlockType )) <| \( patternType, inferredBlockType ) ->
+            return inferredBlockType
 
         CA.Record pos maybeExt attrValues ->
-            do (M.dict_map (\k -> fromExpression env) attrValues) <|
-                \attrTypes ->
-                    case maybeExt of
-                        Nothing ->
-                            return <| CA.TypeRecord pos Nothing attrTypes
+            do (M.dict_map (\k -> fromExpression env) attrValues) <| \attrTypes ->
+            case maybeExt of
+                Nothing ->
+                    return <| CA.TypeRecord pos Nothing attrTypes
 
-                        Just variableArgs ->
-                            -- TODO here it would be easier to support an entire expression
-                            do (fromExpression env (CA.Variable pos variableArgs)) <|
-                                \ty_ ->
-                                    do (applySubsToType ty_) <|
-                                        \ty ->
-                                            do (newName identity) <|
-                                                \name ->
-                                                    do (unify pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) <|
-                                                        \unifiedType ->
-                                                            return unifiedType
+                Just variableArgs ->
+                    -- TODO here it would be easier to support an entire expression
+                    do (fromExpression env (CA.Variable pos variableArgs)) <| \ty_ ->
+                    do (applySubsToType ty_) <| \ty ->
+                    do (newName identity) <| \name ->
+                    do (unify pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) <| \unifiedType ->
+                    return unifiedType
 
 
 unifyFunctionOnCallAndYieldReturnType : Env -> CA.Expression -> Type -> Bool -> CA.Argument -> Type -> Monad Type
@@ -685,20 +648,17 @@ unifyFunctionOnCallAndYieldReturnType env reference referenceType callIsMutable 
                             , argument = CA.argumentPos argument
                             }
                 in
-                do (unify pos reason refArgumentType callArgumentType) <|
-                    \unifiedArgumentType ->
-                        applySubsToType refReturnType
+                do (unify pos reason refArgumentType callArgumentType) <| \unifiedArgumentType ->
+                applySubsToType refReturnType
 
         CA.TypeVariable pos name ->
-            do (newType pos) <|
-                \returnType ->
-                    let
-                        ty =
-                            CA.TypeFunction pos callArgumentType callIsMutable returnType
-                    in
-                    do (unify pos UnifyReason_IsBeingCalledAsAFunction referenceType ty) <|
-                        \_ ->
-                            applySubsToType returnType
+            do (newType pos) <| \returnType ->
+            let
+                ty =
+                    CA.TypeFunction pos callArgumentType callIsMutable returnType
+            in
+            do (unify pos UnifyReason_IsBeingCalledAsAFunction referenceType ty) <| \_ ->
+            applySubsToType returnType
 
         _ ->
             unifyError NotAFunction referenceType referenceType
@@ -719,52 +679,42 @@ fromLiteral l =
 
 fromPatternAndBlock : Env -> ( CA.Pattern, List CA.Statement ) -> ( Type, Type ) -> Monad ( Type, Type )
 fromPatternAndBlock env ( pattern, block ) ( patternTypeSoFar, blockTypeSoFar ) =
-    do (fromPattern env pattern Dict.empty) <|
-        \patternOut ->
-            do (unify patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar) <|
-                \unifiedPatternType ->
-                    -- TODO do I really need to apply subs here?
-                    do (applySubsToPatternVarsAndAddThemToEnv False patternOut.vars env) <|
-                        \patternEnv ->
-                            do (fromBlock patternEnv block) <|
-                                \blockType ->
-                                    -- TODO pos should be the block's last statement
-                                    do (unify patternOut.pos UnifyReason_TryBlock blockType blockTypeSoFar) <|
-                                        \unifiedBlockType ->
-                                            return ( unifiedPatternType, unifiedBlockType )
+    do (fromPattern env pattern Dict.empty) <| \patternOut ->
+    do (unify patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar) <| \unifiedPatternType ->
+    -- TODO do I really need to apply subs here?
+    do (applySubsToPatternVarsAndAddThemToEnv False patternOut.vars env) <| \patternEnv ->
+    do (fromBlock patternEnv block) <| \blockType ->
+    -- TODO pos should be the block's last statement
+    do (unify patternOut.pos (UnifyReason_TryBlock block) blockTypeSoFar blockType) <| \unifiedBlockType ->
+    return ( unifiedPatternType, unifiedBlockType )
 
 
 fromArgument : Env -> CA.Argument -> Monad ( Bool, Type )
 fromArgument env argument =
     case argument of
         CA.ArgumentExpression expr ->
-            do (fromExpression env expr) <|
-                \ty ->
-                    return ( False, ty )
+            do (fromExpression env expr) <| \ty ->
+            return ( False, ty )
 
         CA.ArgumentMutable pos { name, attrPath } ->
             case Dict.get name env.instanceVariables of
                 Nothing ->
-                    do (errorUndefinedVariable env pos name) <|
-                        \ty ->
-                            return ( True, ty )
+                    do (errorUndefinedVariable env pos name) <| \ty ->
+                    return ( True, ty )
 
                 Just var ->
                     if not var.isMutable then
-                        do (errorTryingToMutateAnImmutable pos name) <|
-                            \ty ->
-                                return ( True, ty )
+                        do (errorTryingToMutateAnImmutable pos name) <| \ty ->
+                        return ( True, ty )
 
                     else if typeContainsFunctions var.ty then
                         -- TODO what about constrained/unconstrained tyvars?
-                        do (addError pos [ "mutable arguments can't allow functions" ]) <|
-                            \ty ->
-                                return ( True, ty )
+                        do (addError pos [ "mutable arguments can't allow functions" ]) <| \ty ->
+                        return ( True, ty )
 
                     else
-                        do (applyAttributePath pos attrPath var.ty) <|
-                            \ty ->
-                                return ( True, ty )
+                        do (applyAttributePath pos attrPath var.ty) <| \ty ->
+                        return ( True, ty )
 
 
 errorTryingToMutateAnImmutable : Pos -> Name -> Monad Type
@@ -780,21 +730,19 @@ fromParameter : Env -> CA.Parameter -> Monad ( Bool, PatternOut )
 fromParameter env param =
     case param of
         CA.ParameterPattern pattern ->
-            do (fromPattern env pattern Dict.empty) <|
-                \patternOut ->
-                    return ( False, patternOut )
+            do (fromPattern env pattern Dict.empty) <| \patternOut ->
+            return ( False, patternOut )
 
         CA.ParameterMutable pos paramName ->
             -- TypeNonFunction
-            do (newType pos) <|
-                \ty ->
-                    return
-                        ( True
-                        , { vars = Dict.singleton paramName ( pos, ty )
-                          , pos = pos
-                          , ty = ty
-                          }
-                        )
+            do (newType pos) <| \ty ->
+            return
+                ( True
+                , { vars = Dict.singleton paramName ( pos, ty )
+                  , pos = pos
+                  , ty = ty
+                  }
+                )
 
 
 {-| Patterns are special because they are the one way to **add variables to the env**.
@@ -878,14 +826,12 @@ fromPattern : Env -> CA.Pattern -> PatternVars -> Monad PatternOut
 fromPattern env pattern vars =
     case pattern of
         CA.PatternDiscard pos ->
-            do (newType pos) <|
-                \ty ->
-                    return <| PatternOut vars pos ty
+            do (newType pos) <| \ty ->
+            return <| PatternOut vars pos ty
 
         CA.PatternAny pos name ->
-            do (newType pos) <|
-                \ty ->
-                    return <| PatternOut (Dict.insert name ( pos, ty ) vars) pos ty
+            do (newType pos) <| \ty ->
+            return <| PatternOut (Dict.insert name ( pos, ty ) vars) pos ty
 
         CA.PatternLiteral pos literal ->
             return <| PatternOut vars pos (fromLiteral literal)
@@ -896,41 +842,35 @@ fromPattern env pattern vars =
                     -- TODO still add all variables defined in the args, otherwise there will
                     -- missing variables that will trigger misleading "undefined variable" errors
                     -- (ie, use unifyConstructorWithItsArgs anyway)
-                    do (errorUndefinedVariable env pos ref) <|
-                        \ety ->
-                            return <| PatternOut vars pos ety
+                    do (errorUndefinedVariable env pos ref) <| \ety ->
+                    return <| PatternOut vars pos ety
 
                 Just instanceVar ->
-                    do (replaceTypeVariablesWithNew instanceVar) <|
-                        \constructorTy ->
-                            let
-                                p : UnifyConstructorWithItsArgsParams
-                                p =
-                                    { env = env
-                                    , ref = ref
-                                    , pos = pos
-                                    , ty = constructorTy
-                                    , args = args
-                                    , argIndex = 0
-                                    , vars = vars
-                                    }
-                            in
-                            do (unifyConstructorWithItsArgs p) <|
-                                \( patternVars, patternTy ) ->
-                                    return <| PatternOut patternVars pos patternTy
+                    do (replaceTypeVariablesWithNew instanceVar) <| \constructorTy ->
+                    let
+                        p : UnifyConstructorWithItsArgsParams
+                        p =
+                            { env = env
+                            , ref = ref
+                            , pos = pos
+                            , ty = constructorTy
+                            , args = args
+                            , argIndex = 0
+                            , vars = vars
+                            }
+                    in
+                    do (unifyConstructorWithItsArgs p) <| \( patternVars, patternTy ) ->
+                    return <| PatternOut patternVars pos patternTy
 
         CA.PatternRecord pos attrs ->
             let
                 blah name pa ( varsX, attrTypes ) =
-                    do (fromPattern env pa varsX) <|
-                        \paOut ->
-                            return ( paOut.vars, Dict.insert name paOut.ty attrTypes )
+                    do (fromPattern env pa varsX) <| \paOut ->
+                    return ( paOut.vars, Dict.insert name paOut.ty attrTypes )
             in
-            do (M.dict_foldl blah attrs ( vars, Dict.empty )) <|
-                \( vars1, attrTypes ) ->
-                    do (newName identity) <|
-                        \extName ->
-                            return <| PatternOut vars1 pos (CA.TypeRecord pos (Just extName) attrTypes)
+            do (M.dict_foldl blah attrs ( vars, Dict.empty )) <| \( vars1, attrTypes ) ->
+            do (newName identity) <| \extName ->
+            return <| PatternOut vars1 pos (CA.TypeRecord pos (Just extName) attrTypes)
 
 
 type alias UnifyConstructorWithItsArgsParams =
@@ -949,38 +889,33 @@ unifyConstructorWithItsArgs p =
     case ( p.ty, p.args ) of
         -- Argument needed, argument given
         ( CA.TypeFunction _ from _ to, head :: tail ) ->
-            do (fromPattern p.env head p.vars) <|
-                \{ vars, pos, ty } ->
-                    do (unify pos (UnifyReason_ConstructorArgument p) from ty) <|
-                        \unifiedFrom ->
-                            unifyConstructorWithItsArgs
-                                { p
-                                    | argIndex = p.argIndex + 1
-                                    , ty = to
-                                    , args = tail
-                                    , vars = vars
-                                }
+            do (fromPattern p.env head p.vars) <| \{ vars, pos, ty } ->
+            do (unify pos (UnifyReason_ConstructorArgument p) from ty) <| \unifiedFrom ->
+            unifyConstructorWithItsArgs
+                { p
+                    | argIndex = p.argIndex + 1
+                    , ty = to
+                    , args = tail
+                    , vars = vars
+                }
 
         -- Error: Argument needed but not given!
         ( CA.TypeFunction _ from _ to, [] ) ->
             -- TODO tell how many are needed and how many are actually given
-            do (addError p.pos [ "Type constructor " ++ p.ref ++ " is missing an argument " ++ String.fromInt p.argIndex ]) <|
-                \ety ->
-                    return ( p.vars, ety )
+            do (addError p.pos [ "Type constructor " ++ p.ref ++ " is missing an argument " ++ String.fromInt p.argIndex ]) <| \ety ->
+            return ( p.vars, ety )
 
         -- No arguments needed, no arguments given
         ( _, [] ) ->
-            do (get .substitutions) <|
-                \subs ->
-                    -- TODO should I apply subs here?
-                    return ( p.vars, p.ty )
+            do (get .substitutions) <| \subs ->
+            -- TODO should I apply subs here?
+            return ( p.vars, p.ty )
 
         -- Error: no argument needed, but argument given!
         ( _, head :: tail ) ->
             -- TODO tell how many are needed and how many are actually given
-            do (addError p.pos [ "Type constructor " ++ p.ref ++ " has too many args" ]) <|
-                \ety ->
-                    return ( p.vars, ety )
+            do (addError p.pos [ "Type constructor " ++ p.ref ++ " has too many args" ]) <| \ety ->
+            return ( p.vars, ety )
 
 
 
@@ -998,7 +933,7 @@ type UnifyReason
     | UnifyReason_IfCondition
     | UnifyReason_IfBranches
     | UnifyReason_TryPattern
-    | UnifyReason_TryBlock
+    | UnifyReason_TryBlock (List CA.Statement)
     | UnifyReason_ConstructorArgument UnifyConstructorWithItsArgsParams
     | UnifyReason_AttributeAccess Name
     | UnifyReason_AttributeUpdate (List Name)
@@ -1008,7 +943,7 @@ type UnifyReason
 type UnifyError
     = IncompatibleTypes
     | IncompatibleMutability
-    | IncompatibleRecords (List Name) (List Name) (List Name)
+    | IncompatibleRecords { aOnly : List Name, bOnly : List Name, bothUnified : List Name }
     | Cycle Name
     | NotAFunction
     | NonFunctionContainsFunction (List CA.RejectFunction)
@@ -1016,20 +951,45 @@ type UnifyError
     | NI String
 
 
+unifyErrorToString : UnifyError -> String
+unifyErrorToString ue =
+    case ue of
+        IncompatibleTypes ->
+            "The two types are incompatible."
+
+        IncompatibleMutability ->
+            "The mutability does not match."
+
+        IncompatibleRecords args ->
+            "The record types are not compatible" ++ Debug.toString args
+
+        Cycle name ->
+            "There is a cyclic dependency on " ++ name
+
+        NotAFunction ->
+            "You can't call this because it is not a function."
+
+        NonFunctionContainsFunction rejectFunctions ->
+            "NonFunction can't contain functions: " ++ Debug.toString rejectFunctions
+
+        OkThisIsActuallyPossible ->
+            "OkThisIsActuallyPossible?"
+
+        NI str ->
+            "Not Implemented: " ++ str
+
+
 unify : CA.Pos -> UnifyReason -> Type -> Type -> Monad Type
 unify pos reason a b =
-    do (unify_ reason pos a b) <|
-        \unifiedType ->
-            do popClashingtypes <|
-                \typeClashes ->
-                    if typeClashes == Dict.empty then
-                        return unifiedType
+    do (unify_ reason pos a b) <| \unifiedType ->
+    do popClashingtypes <| \typeClashes ->
+    if typeClashes == Dict.empty then
+        return unifiedType
 
-                    else
-                        -- there were type clashes, so turn them into errors
-                        do (errorIncompatibleTypes reason pos unifiedType typeClashes) <|
-                            \_ ->
-                                return unifiedType
+    else
+        -- there were type clashes, so turn them into errors
+        do (errorIncompatibleTypes reason pos unifiedType typeClashes) <| \_ ->
+        return unifiedType
 
 
 {-| Unification is always successful: if two types can't be unified, then the unification error is added to the state and a brand new type variable is returned in place of the clashing types.
@@ -1062,38 +1022,32 @@ unify_ reason pos1 t1 t2 =
                         unify_ reason pos arg1 arg2
                 in
                 -- TODO should I check arity here?
-                do (M.list_map2 (unify_ reason pos) args1 args2) <|
-                    \argTypes ->
-                        do (get .substitutions) <|
-                            \subs ->
-                                argTypes
-                                    |> List.map (replaceTypeVariables subs)
-                                    |> CA.TypeConstant pos ref1
-                                    |> return
+                do (M.list_map2 (unify_ reason pos) args1 args2) <| \argTypes ->
+                do (get .substitutions) <| \subs ->
+                argTypes
+                    |> List.map (replaceTypeVariables subs)
+                    |> CA.TypeConstant pos ref1
+                    |> return
 
         ( CA.TypeVariable pos v1_name, CA.TypeVariable _ v2_name ) ->
             if v1_name == v2_name then
                 return t1
 
             else
-                do (get .substitutions) <|
-                    \subs ->
-                        case ( Dict.get v1_name subs, Dict.get v2_name subs ) of
-                            ( Just sub1, Just sub2 ) ->
-                                do (unify_ reason pos1 sub1 sub2) <|
-                                    \v ->
-                                        -- I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
-                                        do (addSubstitution "vv1" pos reason v1_name v) <|
-                                            \_ ->
-                                                do (addSubstitution "vv2" pos reason v2_name v) <|
-                                                    \subbedTy ->
-                                                        return subbedTy
+                do (get .substitutions) <| \subs ->
+                case ( Dict.get v1_name subs, Dict.get v2_name subs ) of
+                    ( Just sub1, Just sub2 ) ->
+                        do (unify_ reason pos1 sub1 sub2) <| \v ->
+                        -- I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
+                        do (addSubstitution "vv1" pos reason v1_name v) <| \_ ->
+                        do (addSubstitution "vv2" pos reason v2_name v) <| \subbedTy ->
+                        return subbedTy
 
-                            ( Nothing, Just sub2 ) ->
-                                addSubstitution "vv3" pos reason v1_name t2
+                    ( Nothing, Just sub2 ) ->
+                        addSubstitution "vv3" pos reason v1_name t2
 
-                            _ ->
-                                addSubstitution "vv4" pos reason v2_name t1
+                    _ ->
+                        addSubstitution "vv4" pos reason v2_name t1
 
         ( CA.TypeVariable pos name1, _ ) ->
             addSubstitution "vl" pos reason name1 t2
@@ -1106,23 +1060,19 @@ unify_ reason pos1 t1 t2 =
                 unifyError IncompatibleMutability t1 t2
 
             else
-                do (unify_ reason pos a_from b_from) <|
-                    \unified_from ->
-                        do (get .substitutions) <|
-                            \subs_ ->
-                                {- Without the replacement here, a function annotation will produce circular substitutions
+                do (unify_ reason pos a_from b_from) <| \unified_from ->
+                do (get .substitutions) <| \subs_ ->
+                {- Without the replacement here, a function annotation will produce circular substitutions
 
-                                   id a =
-                                       is a -> a
-                                       a
+                   id a =
+                       is a -> a
+                       a
 
-                                -}
-                                do (unify_ reason pos (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)) <|
-                                    \unified_to ->
-                                        do (get .substitutions) <|
-                                            \subs ->
-                                                CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
-                                                    |> return
+                -}
+                do (unify_ reason pos (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)) <| \unified_to ->
+                do (get .substitutions) <| \subs ->
+                CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
+                    |> return
 
         ( CA.TypeRecord _ a_ext a_attrs, CA.TypeRecord _ b_ext b_attrs ) ->
             unifyRecords reason pos1 ( a_ext, a_attrs ) ( b_ext, b_attrs )
@@ -1163,46 +1113,43 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
         { aOnly, bOnly, both } =
             Dict.merge onA onBoth onB a_attrs b_attrs init
     in
-    do (M.dict_map (\k ( a, b ) -> unify_ reason pos a b) both) <|
-        \bothUnified ->
-            case ( a_ext, b_ext ) of
-                ( Just aName, Nothing ) ->
-                    unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified
+    do (M.dict_map (\k ( a, b ) -> unify_ reason pos a b) both) <| \bothUnified ->
+    case ( a_ext, b_ext ) of
+        ( Just aName, Nothing ) ->
+            unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified
 
-                ( Nothing, Just bName ) ->
-                    unifyToNonExtensibleRecord pos reason bName bOnly aOnly bothUnified
+        ( Nothing, Just bName ) ->
+            unifyToNonExtensibleRecord pos reason bName bOnly aOnly bothUnified
 
-                ( Nothing, Nothing ) ->
-                    if bOnly == Dict.empty && aOnly == Dict.empty then
-                        -- the two are the same
-                        return (CA.TypeRecord (CA.I 4) Nothing bothUnified)
+        ( Nothing, Nothing ) ->
+            if bOnly == Dict.empty && aOnly == Dict.empty then
+                -- the two are the same
+                return (CA.TypeRecord (CA.I 4) Nothing bothUnified)
 
-                    else
-                        let
-                            e =
-                                IncompatibleRecords
-                                    (Dict.keys bOnly)
-                                    (Dict.keys aOnly)
-                                    (Dict.keys bothUnified)
-                        in
-                        unifyError e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
+            else
+                let
+                    e =
+                        IncompatibleRecords
+                            { bOnly = Dict.keys bOnly
+                            , aOnly = Dict.keys aOnly
+                            , bothUnified = Dict.keys bothUnified
+                            }
+                in
+                unifyError e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
 
-                ( Just aName, Just bName ) ->
-                    if aName == bName && aOnly == Dict.empty && bOnly == Dict.empty then
-                        return <| CA.TypeRecord pos (Just aName) bothUnified
+        ( Just aName, Just bName ) ->
+            if aName == bName && aOnly == Dict.empty && bOnly == Dict.empty then
+                return <| CA.TypeRecord pos (Just aName) bothUnified
 
-                    else
-                        do (newName identity) <|
-                            \new ->
-                                let
-                                    sub =
-                                        CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
-                                in
-                                do (addSubstitution "jj1" pos reason aName sub) <|
-                                    \_ ->
-                                        do (addSubstitution "jj2" pos reason bName sub) <|
-                                            \_ ->
-                                                return sub
+            else
+                do (newName identity) <| \new ->
+                let
+                    sub =
+                        CA.TypeRecord pos (Just new) (Dict.union bOnly a_attrs)
+                in
+                do (addSubstitution "jj1" pos reason aName sub) <| \_ ->
+                do (addSubstitution "jj2" pos reason bName sub) <| \_ ->
+                return sub
 
 
 unifyToNonExtensibleRecord : Pos -> UnifyReason -> Name -> Dict Name Type -> Dict Name Type -> Dict Name Type -> Monad Type
@@ -1216,13 +1163,11 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
 
     else
         -- the `a` tyvar should contain the missing attributes, ie `bOnly`
-        do (newName Just) <|
-            \ext ->
-                do (addSubstitution "ne" pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <|
-                    \_ ->
-                        Dict.union bothUnified bOnly
-                            |> CA.TypeRecord pos Nothing
-                            |> return
+        do (newName Just) <| \ext ->
+        do (addSubstitution "ne" pos reason aName (CA.TypeRecord (CA.I 5) ext bOnly)) <| \_ ->
+        Dict.union bothUnified bOnly
+            |> CA.TypeRecord pos Nothing
+            |> return
 
 
 {-| TODO Rename to type clash?
@@ -1230,11 +1175,9 @@ TODO add position?
 -}
 unifyError : UnifyError -> Type -> Type -> Monad Type
 unifyError error t1 t2 =
-    do (newName identity) <|
-        \name ->
-            do (insertTypeClash name t1 t2 error) <|
-                \() ->
-                    return <| CA.TypeVariable (CA.I 0) name
+    do (newName identity) <| \name ->
+    do (insertTypeClash name t1 t2 error) <| \() ->
+    return <| CA.TypeVariable (CA.I 0) name
 
 
 
@@ -1245,58 +1188,54 @@ unifyError error t1 t2 =
 
 addSubstitution : String -> Pos -> UnifyReason -> Name -> Type -> Monad Type
 addSubstitution debugCode pos reason name rawTy =
-    do (applySubsToType rawTy) <|
-        \ty ->
-            let
-                x =
-                    ( name, ty, rawTy )
+    do (applySubsToType rawTy) <| \ty ->
+    let
+        x =
+            ( name, ty, rawTy )
 
-                _ =
-                    if String.toInt name == Nothing then
-                        Debug.log "addSubstitution on annotated tyvar" x
-
-                    else
-                        x
-            in
-            if typeHasTyvar name ty then
-                -- TODO This feels a bit like a hacky work around.
-                -- Maybe it's because I don't call applySubsToType enough before calling unify?
-                -- Then again, it feels more robust?
-                -- Too much feeling, not enough understanding.
-                if typeIsTyvar name ty then
-                    return ty
-
-                else
-                    unifyError (Cycle name) (CA.TypeVariable pos name) ty
+        _ =
+            if String.toInt name == Nothing then
+                Debug.log "addSubstitution on annotated tyvar" x
 
             else
-                do (checkNonFunction name ty) <|
-                    \{ freeVarsToFlag } ->
-                        do (flagFreeVars freeVarsToFlag) <|
-                            \_ ->
-                                do (get .substitutions) <|
-                                    \subs ->
-                                        case Dict.get name subs of
-                                            {-
-                                               The tyvar has already been substituted
-                                               This means that it has been already applied to all other subs and `name` does not appear in the subs.
+                x
+    in
+    if typeHasTyvar name ty then
+        -- TODO This feels a bit like a hacky work around.
+        -- Maybe it's because I don't call applySubsToType enough before calling unify?
+        -- Then again, it feels more robust?
+        -- Too much feeling, not enough understanding.
+        if typeIsTyvar name ty then
+            return ty
 
-                                               Is this enough to exclude infinite calls between unify_ and addSubstitution?
-                                            -}
-                                            Just sub ->
-                                                unify_ reason pos ty sub
+        else
+            unifyError (Cycle name) (CA.TypeVariable pos name) ty
 
-                                            Nothing ->
-                                                -- apply new substitution to all old substitutions
-                                                \state ->
-                                                    ( ty
-                                                    , { state
-                                                        | substitutions =
-                                                            state.substitutions
-                                                                |> Dict.map (\k -> replaceTypeVariables (Dict.singleton name ty))
-                                                                |> Dict.insert name ty
-                                                      }
-                                                    )
+    else
+        do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
+        do (flagFreeVars freeVarsToFlag) <| \_ ->
+        do (get .substitutions) <| \subs ->
+        case Dict.get name subs of
+            {-
+               The tyvar has already been substituted
+               This means that it has been already applied to all other subs and `name` does not appear in the subs.
+
+               Is this enough to exclude infinite calls between unify_ and addSubstitution?
+            -}
+            Just sub ->
+                unify_ reason pos ty sub
+
+            Nothing ->
+                -- apply new substitution to all old substitutions
+                \state ->
+                    ( ty
+                    , { state
+                        | substitutions =
+                            state.substitutions
+                                |> Dict.map (\k -> replaceTypeVariables (Dict.singleton name ty))
+                                |> Dict.insert name ty
+                      }
+                    )
 
 
 typeIsTyvar : Name -> Type -> Bool
@@ -1315,29 +1254,27 @@ checkNonFunction name ty =
         nope =
             { freeVarsToFlag = [] }
     in
-    do (get .nonFnTyvars) <|
-        \nonFnTyvars ->
-            case Dict.get name nonFnTyvars of
-                Nothing ->
-                    return nope
+    do (get .nonFnTyvars) <| \nonFnTyvars ->
+    case Dict.get name nonFnTyvars of
+        Nothing ->
+            return nope
 
-                Just rejectReasons ->
-                    -- type should not contain function
-                    if typeContainsFunctions ty then
-                        {- TODO how do I talk about this type?
+        Just rejectReasons ->
+            -- type should not contain function
+            if typeContainsFunctions ty then
+                {- TODO how do I talk about this type?
 
-                           "The type of `f`"?
+                   "The type of `f`"?
 
-                        -}
-                        do (errorTodo (CA.I 26) <| "type `" ++ name ++ "` should not contain functions, but is " ++ typeToText ty) <|
-                            \_ ->
-                                return nope
+                -}
+                do (errorTodo (CA.I 26) <| "type `" ++ name ++ "` should not contain functions, but is " ++ typeToText ty) <| \_ ->
+                return nope
 
-                    else
-                        -- blah!
-                        -- TODO constrained vars inside ty should all reject functions
-                        -- TODO non-constraned vars should be flagged with reject function
-                        return nope
+            else
+                -- blah!
+                -- TODO constrained vars inside ty should all reject functions
+                -- TODO non-constraned vars should be flagged with reject function
+                return nope
 
 
 flagFreeVars : List Name -> Monad ()
@@ -1441,18 +1378,15 @@ applyAttributePath pos attrPath =
                     return attrType
 
                 Nothing ->
-                    do (newName identity) <|
-                        \extName ->
-                            do (newType pos) <|
-                                \attrType ->
-                                    let
-                                        re : Type
-                                        re =
-                                            CA.TypeRecord (CA.I 2) (Just extName) (Dict.singleton attributeName attrType)
-                                    in
-                                    do (unify pos (UnifyReason_AttributeAccess attributeName) ty re) <|
-                                        \_ ->
-                                            return attrType
+                    do (newName identity) <| \extName ->
+                    do (newType pos) <| \attrType ->
+                    let
+                        re : Type
+                        re =
+                            CA.TypeRecord (CA.I 2) (Just extName) (Dict.singleton attributeName attrType)
+                    in
+                    do (unify pos (UnifyReason_AttributeAccess attributeName) ty re) <| \_ ->
+                    return attrType
     in
     M.list_foldl wrap attrPath
 
@@ -1522,34 +1456,33 @@ insertPatternVar subs isParameter isMutable name ( pos, ty ) env =
 
 applySubsToPatternVarsAndAddThemToEnv : Bool -> PatternVars -> Env -> Monad Env
 applySubsToPatternVarsAndAddThemToEnv isMutable vars env =
-    do (get .substitutions) <|
-        \subs ->
-            let
-                {-
-                   Consider:
+    do (get .substitutions) <| \subs ->
+    let
+        {-
+           Consider:
 
-                   x q =
-                         { first } = q
-                         first
+           x q =
+                 { first } = q
+                 first
 
-                   When we see that `q` must be a record, we need to replace its type.
-                   However, because the type of `q` is a constrained type variable, we need to make sure that the type(s)
-                   we use for the records are also constrained!
+           When we see that `q` must be a record, we need to replace its type.
+           However, because the type of `q` is a constrained type variable, we need to make sure that the type(s)
+           we use for the records are also constrained!
 
-                -}
-                meh : Name -> Dict Name Pos -> Dict Name Pos
-                meh typeVarName constrainedVars =
-                    case Dict.get typeVarName subs of
-                        Nothing ->
-                            constrainedVars
+        -}
+        meh : Name -> Dict Name Pos -> Dict Name Pos
+        meh typeVarName constrainedVars =
+            case Dict.get typeVarName subs of
+                Nothing ->
+                    constrainedVars
 
-                        Just ty ->
-                            Dict.foldl (\n p -> Dict.insert n p) constrainedVars (typeTyvars ty)
+                Just ty ->
+                    Dict.foldl (\n p -> Dict.insert n p) constrainedVars (typeTyvars ty)
 
-                env1 =
-                    { env | nonFreeTyvars = List.foldl meh env.nonFreeTyvars (Dict.keys env.nonFreeTyvars) }
-            in
-            insertPatternVars subs False isMutable vars env1
+        env1 =
+            { env | nonFreeTyvars = List.foldl meh env.nonFreeTyvars (Dict.keys env.nonFreeTyvars) }
+    in
+    insertPatternVars subs False isMutable vars env1
 
 
 replaceTypeVariablesWithNew : InstanceVariable -> Monad Type
@@ -1558,9 +1491,8 @@ replaceTypeVariablesWithNew var =
         return var.ty
 
     else
-        do (generateNewTypeVariables var.freeTypeVariables) <|
-            \newTypeByOldType ->
-                return <| replaceTypeVariables newTypeByOldType var.ty
+        do (generateNewTypeVariables var.freeTypeVariables) <| \newTypeByOldType ->
+        return <| replaceTypeVariables newTypeByOldType var.ty
 
 
 generateNewTypeVariables : Dict Name { nonFn : Bool } -> Monad Subs
@@ -1568,18 +1500,16 @@ generateNewTypeVariables tyvarByName =
     let
         apply : Name -> { nonFn : Bool } -> Subs -> Monad Subs
         apply name0 { nonFn } subs =
-            do (newName identity) <|
-                \name1 ->
-                    do
-                        (if nonFn then
-                            setNonFn name1
+            do (newName identity) <| \name1 ->
+            do
+                (if nonFn then
+                    setNonFn name1
 
-                         else
-                            return ()
-                        )
-                    <|
-                        \() ->
-                            return <| Dict.insert name0 (CA.TypeVariable (CA.I 11) name1) subs
+                 else
+                    return ()
+                )
+            <| \() ->
+            return <| Dict.insert name0 (CA.TypeVariable (CA.I 11) name1) subs
     in
     M.dict_foldl apply tyvarByName Dict.empty
 
@@ -1649,9 +1579,8 @@ addError pos message =
 
 addErrorWithEEnv : CA.Pos -> (Error.ErrorEnv -> List String) -> Monad Type
 addErrorWithEEnv pos messageConstructor =
-    do (insertError (Error.markdown pos messageConstructor)) <|
-        \() ->
-            newType pos
+    do (insertError (Error.markdown pos messageConstructor)) <| \() ->
+    newType pos
 
 
 
@@ -1673,42 +1602,41 @@ splitName s =
 
 errorUndefinedVariable : Env -> Pos -> Name -> Monad Type
 errorUndefinedVariable env pos normalizedName =
-    addErrorWithEEnv pos <|
-        \errorEnv ->
-            let
-                rawName =
-                    Error.posToToken errorEnv pos
+    addErrorWithEEnv pos <| \errorEnv ->
+    let
+        rawName =
+            Error.posToToken errorEnv pos
 
-                ( maybeRawModuleName, name ) =
-                    splitName rawName
+        ( maybeRawModuleName, name ) =
+            splitName rawName
 
-                ( maybeNormalizedModuleName, _ ) =
-                    splitName normalizedName
-            in
-            case Dict.get name env.nonAnnotatedRecursives of
-                Nothing ->
-                    case ( maybeRawModuleName, maybeNormalizedModuleName ) of
-                        ( Just rawModuleName, Just normalizedModuleName ) ->
-                            case Dict.get normalizedModuleName errorEnv.moduleByName of
-                                Just _ ->
-                                    [ "Module `" ++ normalizedModuleName ++ "` does not seem to expose a variable called `" ++ name ++ "`."
-                                    ]
-
-                                Nothing ->
-                                    [ "I can't find any module called `" ++ normalizedModuleName ++ "`."
-                                    ]
-
-                        _ ->
-                            [ "Undefined value: " ++ name
-                            , ""
-                            , "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
+        ( maybeNormalizedModuleName, _ ) =
+            splitName normalizedName
+    in
+    case Dict.get name env.nonAnnotatedRecursives of
+        Nothing ->
+            case ( maybeRawModuleName, maybeNormalizedModuleName ) of
+                ( Just rawModuleName, Just normalizedModuleName ) ->
+                    case Dict.get normalizedModuleName errorEnv.moduleByName of
+                        Just _ ->
+                            [ "Module `" ++ normalizedModuleName ++ "` does not seem to expose a variable called `" ++ name ++ "`."
                             ]
 
-                Just defPos ->
-                    [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
+                        Nothing ->
+                            [ "I can't find any module called `" ++ normalizedModuleName ++ "`."
+                            ]
+
+                _ ->
+                    [ "Undefined value: " ++ name
                     , ""
-                    , "This is a limit of the compiler, not sure when I'll have the time to fix it."
+                    , "I can't see a definition for `" ++ name ++ "` anywhere, so I don't know what it is."
                     ]
+
+        Just defPos ->
+            [ "To use function `" ++ name ++ "` recursively, you need to add a type annotation to its definition."
+            , ""
+            , "This is a limit of the compiler, not sure when I'll have the time to fix it."
+            ]
 
 
 errorIncompatibleTypes : UnifyReason -> CA.Pos -> Type -> Dict Name TypeClash -> Monad Type
@@ -1727,9 +1655,39 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
                     , ""
                     , "the argument type seems to be: "
                     ]
-                        ++ clashToStrings unifiedType clashes
+                        ++ clashToStrings
+                            { typeSeemsToBe = "The argument type seems to be"
+                            , type1_is = "The functon expects:"
+                            , type2_is = "But the actual argument is:"
+                            , unifiedType = unifiedType
+                            , clashes = clashes
+                            }
             in
             addErrorWithEEnv pos.argument makeError
+
+        UnifyReason_TryBlock block ->
+            let
+                pos =
+                    case List.map CA.statementPos block of
+                        [] ->
+                            CA.SWW
+
+                        h :: t ->
+                            List.foldl CA.range h t
+
+                makeError eenv =
+                    [ "This try..as block produces a different type than the blocks precedeng it."
+                    , ""
+                    ]
+                        ++ clashToStrings
+                            { typeSeemsToBe = "The block type seems to be"
+                            , type1_is = "The previous block(s) produce:"
+                            , type2_is = "But this block produces:"
+                            , unifiedType = unifiedType
+                            , clashes = clashes
+                            }
+            in
+            addErrorWithEEnv pos makeError
 
         _ ->
             let
@@ -1762,7 +1720,7 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
                         UnifyReason_TryPattern ->
                             "try..as patterns should have the same type"
 
-                        UnifyReason_TryBlock ->
+                        UnifyReason_TryBlock _ ->
                             "try..as blocks should have the same type"
 
                         UnifyReason_ConstructorArgument p ->
@@ -1780,22 +1738,43 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
             title
                 :: ""
                 :: "The type seems to be something like"
-                :: clashToStrings unifiedType clashes
+                :: clashToStrings
+                    { typeSeemsToBe = "type seems to be"
+                    , type1_is = "t1 is:"
+                    , type2_is = "but t2 is:"
+                    , unifiedType = unifiedType
+                    , clashes = clashes
+                    }
                 |> addError pos_whatever
 
 
-clashToStrings : Type -> Dict Name TypeClash -> List String
-clashToStrings unifiedType clashes =
+type alias ClashToStringsParams =
+    { typeSeemsToBe : String
+    , type1_is : String
+    , type2_is : String
+    , unifiedType : Type
+    , clashes : Dict Name TypeClash
+    }
+
+
+clashToStrings : ClashToStringsParams -> List String
+clashToStrings params =
     List.concat <|
-        case unifiedType of
+        case params.unifiedType of
             CA.TypeVariable p unifiedTypeName ->
-                [ clashes
+                [ params.clashes
                     |> Dict.toList
                     |> List.concatMap
                         (\( clashPlaceholderName, clash ) ->
-                            [ Debug.toString clash.err
-                            , typeToText clash.t1
-                            , typeToText clash.t2
+                            [ params.type1_is
+                            , ""
+                            , "  " ++ typeToText clash.t1
+                            , ""
+                            , params.type2_is
+                            , ""
+                            , "  " ++ typeToText clash.t2
+                            , ""
+                            , unifyErrorToString clash.err
                             ]
                         )
                 ]
@@ -1804,7 +1783,8 @@ clashToStrings unifiedType clashes =
                 let
                     info =
                         -- TODO the layout should change depending on the reason, not only the title
-                        [ typeToText unifiedType
+                        [ params.typeSeemsToBe
+                        , typeToText params.unifiedType
                         , ""
                         , "However I can't reconcile the following:"
                         ]
@@ -1812,17 +1792,19 @@ clashToStrings unifiedType clashes =
                     --clashToError : ( Id, TypeClash ) -> List String
                     clashToError ( name, clash ) =
                         [ ""
-                        , "`" ++ name ++ "` can be two incompatible types:"
+                        , "* `" ++ name ++ "`"
                         , ""
-                        , typeToText clash.t1
+                        , "  " ++ params.type1_is
+                        , "  " ++ typeToText clash.t1
                         , ""
-                        , typeToText clash.t2
+                        , "  " ++ params.type2_is
+                        , "  " ++ typeToText clash.t2
                         , ""
-                        , "(" ++ Debug.toString clash.err ++ ")"
+                        , "  " ++ unifyErrorToString clash.err
                         ]
 
                     clashErrors =
-                        clashes
+                        params.clashes
                             |> Dict.toList
                             |> List.concatMap clashToError
                 in

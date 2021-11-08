@@ -84,7 +84,7 @@ runParser moduleName envToParser tokens =
             message =
                 try readState as
                     []: "I got to the end of file and I can't make sense of it. =("
-                    _: "I got stuck parsing there. =("
+                    _: "I got stuck parsing here. =("
 
             makeError moduleName readState message
 

@@ -56,10 +56,11 @@ main arg =
           >> Text.join "\n"
 
   else:
-      try Compiler/Lexer_Test.lexTokens arg as
-          Err err: err
-          Ok tokens:
-              tokens
+      try Compiler/TestHelpers.textToFormattableModule arg >> Compiler/TestHelpers.resErrorToText arg as
+          Err err:
+              err
+          Ok statements:
+              statements
                   >> List.map Debug.toHuman
                   >> Text.join "\n"
                   >> fn s: "===============================\n" .. s

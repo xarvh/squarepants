@@ -251,6 +251,9 @@ posToHuman eEnv pos =
         CA.U ->
             noBlock "<union type, get rid of me!>"
 
+        CA.SWW ->
+            noBlock "<something went wrong -_- >"
+
 
 highlightSplit : Highlight -> ( Dict Int ( Int, Int ), Set Int ) -> ( Dict Int ( Int, Int ), Set Int )
 highlightSplit h ( words, lines ) =

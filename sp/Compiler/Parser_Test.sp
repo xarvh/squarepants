@@ -551,20 +551,20 @@ ifs =
             Test.isOk
         , codeTest "multiline, formatted"
             """
-                    x =
-                      if a:
-                        b
-                      else
-                        c
-                    """
+            x =
+                if a:
+                    b
+                else
+                    c
+            """
             firstEvaluationOfDefinition
             Test.isOk
         , codeTest "multiline, compact"
             """
-                    x =
-                      if a: b
-                      else c
-                    """
+            x =
+              if a: b
+              else c
+            """
             firstEvaluationOfDefinition
             Test.isOk
         ]

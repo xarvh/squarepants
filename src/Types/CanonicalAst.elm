@@ -30,6 +30,8 @@ type Pos
       T
     | -- inferred
       I Int
+    | -- Something Went Wrong
+      SWW
       {-
          TODO the following ones need to be removed
       -}
@@ -41,6 +43,23 @@ type Pos
       G
       -- Union
     | U
+
+
+range : Pos -> Pos -> Pos
+range a b =
+    case ( a, b ) of
+        ( P ma sa ea, P mb sb eb ) ->
+            if ma /= mb then
+                SWW
+
+            else
+                P ma (min sa sb) (max ea eb)
+
+        ( P _ _ _, _ ) ->
+            a
+
+        _ ->
+            b
 
 
 
@@ -125,6 +144,25 @@ type Type
     | TypeAlias Pos String Type
 
 
+typePos : Type -> Pos
+typePos ty =
+    case ty of
+        TypeConstant p _ _ ->
+            p
+
+        TypeVariable p _ ->
+            p
+
+        TypeFunction p _ _ _ ->
+            p
+
+        TypeRecord p _ _ ->
+            p
+
+        TypeAlias p _ _ ->
+            p
+
+
 {-| TODO do I need the Pos?
 -}
 type
@@ -133,7 +171,6 @@ type
     = Us Pos
       -- parameter is mutable
     | Pa Pos
-
 
 
 
@@ -146,6 +183,21 @@ type Statement
     = Definition LocalValueDef
       -- Evaluations are needed for return, mutation and debug
     | Evaluation Expression
+
+
+statementPos : Statement -> Pos
+statementPos stat =
+    case stat of
+        Definition def ->
+            case List.reverse def.body of
+                [] ->
+                    patternPos def.pattern
+
+                last :: _ ->
+                    range (patternPos def.pattern) (statementPos last)
+
+        Evaluation expr ->
+            expressionPos expr
 
 
 type Expression
@@ -167,15 +219,27 @@ type Expression
 
 expressionPos : Expression -> Pos
 expressionPos e =
-  case e of
-    Literal pos _ -> pos
-    Variable pos _ -> pos
-    Lambda pos _ _ -> pos
-    Record pos _ _ -> pos
-    Call pos _ _ -> pos
-    If pos _ -> pos
-    Try pos _ _ -> pos
+    case e of
+        Literal pos _ ->
+            pos
 
+        Variable pos _ ->
+            pos
+
+        Lambda pos _ _ ->
+            pos
+
+        Record pos _ _ ->
+            pos
+
+        Call pos _ _ ->
+            pos
+
+        If pos _ ->
+            pos
+
+        Try pos _ _ ->
+            pos
 
 
 type Parameter
@@ -190,26 +254,32 @@ type Argument
 
 argumentPos : Argument -> Pos
 argumentPos arg =
-  case arg of
-    ArgumentExpression e -> expressionPos e
-    ArgumentMutable pos _ -> pos
+    case arg of
+        ArgumentExpression e ->
+            expressionPos e
+
+        ArgumentMutable pos _ ->
+            pos
 
 
-{-TODO
-  union SymbolReference symbolName =
-    #`value`
-    #    -> locale
-    #    -> globale in metafile
-    , Internal symbolName
-    , Root ModuleName symbolName
-    , Global ModuleName symbolName
 
-    #`Module.value`
-    #    -> direct
-    #    -> module alias
-    , Direct ModuleName symbolName
-    , Aliased ModuleAlias ModuleName symbolName
+{- TODO
+   union SymbolReference symbolName =
+     #`value`
+     #    -> locale
+     #    -> globale in metafile
+     , Internal symbolName
+     , Root ModuleName symbolName
+     , Global ModuleName symbolName
+
+     #`Module.value`
+     #    -> direct
+     #    -> module alias
+     , Direct ModuleName symbolName
+     , Aliased ModuleAlias ModuleName symbolName
 -}
+
+
 type alias VariableArgs =
     { name : String
     , attrPath : List String
@@ -333,31 +403,6 @@ findValue name mod =
 
         _ ->
             Nothing
-
-
-
-----
---- Pos getters
---
-
-
-typePos : Type -> Pos
-typePos ty =
-    case ty of
-        TypeConstant p _ _ ->
-            p
-
-        TypeVariable p _ ->
-            p
-
-        TypeFunction p _ _ _ ->
-            p
-
-        TypeRecord p _ _ ->
-            p
-
-        TypeAlias p _ _ ->
-            p
 
 
 
