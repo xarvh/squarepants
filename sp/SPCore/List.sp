@@ -68,7 +68,7 @@ map2 f =
 
       try ax & bx as
         ahead :: atail & bhead :: btail :
-            rec (f ahead atail :: accum) atail btail
+            rec (f ahead bhead :: accum) atail btail
         _:
             reverse accum
 
@@ -193,9 +193,16 @@ filter f ls =
     foldr (fn item acc: if f item: item :: acc else acc) ls []
 
 
-filterMap f xs =
+filterMap f la =
   as (a: Maybe b): [a]: [b]
-  foldr (fn a acc: try f a as Just b: b :: acc else acc) [] xs
+
+  update a acc =
+      as a: [b]: [b]
+      try f a as
+         Just b: b :: acc
+         Nothing: acc
+
+  foldr update la []
 
 
 mapFirst f ls =
