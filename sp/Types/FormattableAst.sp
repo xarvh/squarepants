@@ -85,7 +85,6 @@ union Expression =
         , isOneLine as Bool
         , value as Expression
         , patterns as List ( Pattern & List Statement )
-        , maybeElse as Maybe (List Statement)
         }
     , Record Pos (RecordArgs Expression)
     , List Pos (List Expression)
@@ -250,7 +249,6 @@ posMap_expression f expr =
                 { isOneLine = ar.isOneLine
                 , value = posMap_expression f ar.value
                 , patterns = List.map (Tuple.mapBoth (posMap_pattern f) (List.map (posMap_statement f))) ar.patterns
-                , maybeElse = Maybe.map (List.map (posMap_statement f)) ar.maybeElse
                 }
 
         Record pos ar:

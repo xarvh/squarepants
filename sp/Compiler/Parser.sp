@@ -572,33 +572,14 @@ try_ env =
         inlineStatementOrBlock env >> then fn accept:
         Parser.accept ( p & accept )
 
-    default =
-        maybeNewLineKind Token.Else >> then fn _:
-        inlineStatementOrBlock env >> then fn oom:
-        Parser.accept oom
-
-    single =
-        patternAndAccept >> then fn pna:
-        default >> then fn def:
-        Parser.accept ( [ pna ] & Just def )
-
-    blah =
-        Parser.zeroOrMore (maybeNewLine patternAndAccept) >> then fn pnas:
-        Parser.maybe default >> then fn mdef:
-        Parser.accept ( pnas & mdef )
-
-    multi =
-        block blah
-
     kind Token.Try >> then fn (Token start _ _):
     expr env >> then fn value:
     maybeNewLineKind Token.As >> then fn _:
-    Parser.oneOf [ single, multi ] >> then fn ( patterns & maybeElse ):
+    block (Parser.zeroOrMore (maybeNewLine patternAndAccept)) >> then fn patterns:
     here >> then fn end:
     { isOneLine = False
     , value = value
     , patterns = patterns
-    , maybeElse = maybeElse
     }
         >> FA.Try (pos env start end)
         >> Parser.accept

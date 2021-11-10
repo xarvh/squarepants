@@ -570,10 +570,7 @@ ifs =
 tries =
     as Test
     Test.Group "Try"
-        [ codeTest "inline"
-            "x = try a as b: c else d"
-            firstEvaluationOfDefinition
-            Test.isOk
+        [
         , codeTest "multiline, formatted"
             """
             x =
@@ -582,8 +579,6 @@ tries =
                   c
                 d:
                   e
-                else
-                  f
             """
             firstEvaluationOfDefinition
             Test.isOk
@@ -593,7 +588,6 @@ tries =
               try a as
                 b: c
                 d: e
-                else f
             """
             firstEvaluationOfDefinition
             Test.isOk
