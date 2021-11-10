@@ -245,7 +245,7 @@ lambdas =
             )
         , codeTest
             """
-            Single tuple args can be unpacked without parens
+            SKIP Single tuple args can be unpacked without parens
             """
             """
             x =
@@ -546,7 +546,10 @@ ifs =
             "a = if a: b else c"
             firstEvaluationOfDefinition
             Test.isOk
-        , codeTest "multiline, formatted"
+        , codeTest
+            """
+            SKIP multiline, formatted
+            """
             """
             x =
                 if a:

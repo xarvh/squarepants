@@ -102,7 +102,12 @@ outcomesRec path test accum =
 
     try test as
         Single name code f:
-            path .. name & code & (f None) :: accum
+            # HACK?
+            if Text.startsWith "SKIP" name:
+              path .. name & "" & Skipped :: accum
+
+            else
+              path .. name & code & (f None) :: accum
 
         NotNow t:
             path .. getName t & "" & Skipped :: accum
