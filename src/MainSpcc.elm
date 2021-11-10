@@ -18,6 +18,10 @@ import Types.Error exposing (Res)
 import Types.Meta exposing (Meta)
 
 
+metafileName =
+    "modules.sp"
+
+
 
 -- TODO this should go somewhere in Types and be used in ErrorEnv
 
@@ -135,10 +139,18 @@ loadAllSourceDir dirs accum =
 
 loadMetaFile : IO MetaFile
 loadMetaFile =
-    do (loadFile "sp.json") <| \string ->
-    case MetaFile.stringToMetaFile string of
+    do (loadFile metafileName) <| \string ->
+    case MetaFile.stringToMetaFile metafileName string of
         Err err ->
-            exit err
+            let
+                errorEnv : Types.Error.ErrorEnv
+                errorEnv =
+                    { moduleByName = Dict.singleton metafileName { fsPath = metafileName, content = string }
+                    }
+            in
+            err
+                |> Compiler.TestHelpers.errorToString errorEnv
+                |> exit
 
         Ok metaFile ->
             return metaFile
@@ -155,8 +167,7 @@ makeProgram metaFile files =
     let
         errorEnv : Types.Error.ErrorEnv
         errorEnv =
-            { metaFile = metaFile
-            , moduleByName = files
+            { moduleByName = files
             }
 
         meta =
@@ -183,14 +194,14 @@ makeProgram metaFile files =
     in
     do withAliases <| \alsDefs ->
     let
-        blah : Result String (  TC.Env )
+        blah : Result String TC.Env
         blah =
             alsDefs
                 |> TC.allDefsToEnvAndValues
                 |> (\( env, values ) -> TC.fromAllValueDefs env values)
                 |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
-    do blah <| \( env ) ->
+    do blah <| \env ->
     alsDefs
         |> Compiler.CanonicalToJs.translateAll
         |> List.map (Compiler.JsToString.emitStatement 0)

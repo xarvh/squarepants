@@ -151,26 +151,20 @@ end =
     without consumeOne
 
 
-oneOf parsers =
+oneOf ps rejections readState =
     as [Parser t o]: Parser t o
 
-    rec rejections readState ps =
-        as [i]: i: [Parser t o]: [i] & Outcome t o
+    try ps as
+        []:
+            rejections & Rejected
 
-        try ps as
-            []:
-                rejections & Rejected
+        headParser :: tailParsers:
+            try headParser rejections readState as
+                re1 & Rejected:
+                    oneOf tailParsers re1 readState
 
-            headParser :: tailParsers:
-                try headParser rejections readState as
-                    re1 & Rejected:
-                        rec re1 readState tailParsers
-
-                    acceptedOrAborted:
-                        acceptedOrAborted
-
-    fn rejections readState:
-        rec rejections readState parsers
+                acceptedOrAborted:
+                    acceptedOrAborted
 
 
 maybe p =

@@ -177,7 +177,7 @@ type alias State =
     --
     -- When an unification fails, a new placeholder type variable is returned, and the two clashing types are recorder here
     --
-    , typeClashesByPlaceholderId : Dict Name TypeClash
+    , typeClashesByPlaceholderId : Maybe (Dict Name TypeClash)
     }
 
 
@@ -187,7 +187,7 @@ initState =
     , errors = []
     , substitutions = Dict.empty
     , nonFnTyvars = Dict.empty
-    , typeClashesByPlaceholderId = Dict.empty
+    , typeClashesByPlaceholderId = Nothing
     }
 
 
@@ -242,24 +242,37 @@ setNonFn name state =
 insertTypeClash : Name -> Type -> Type -> UnifyError -> Monad ()
 insertTypeClash id t1 t2 err state =
     ( ()
-    , { state
-        | typeClashesByPlaceholderId =
-            Dict.insert id
-                { t1 = t1
-                , t2 = t2
-                , err = err
-                }
-                state.typeClashesByPlaceholderId
-      }
+    , case state.typeClashesByPlaceholderId of
+        Nothing ->
+            { id = id
+            , t1 = t1
+            , t2 = t2
+            , err = err
+            }
+                |> Debug.toString
+                |> (++) "Inserting type clash outside of unify"
+                |> Debug.todo
+
+        Just dict ->
+            { state
+                | typeClashesByPlaceholderId =
+                    dict
+                        |> Dict.insert id { t1 = t1, t2 = t2, err = err }
+                        |> Just
+            }
     )
 
 
 popClashingtypes : Monad (Dict Name TypeClash)
 popClashingtypes state =
-    -- TODO avoid reallocation when state.typeClashesByPlaceholderId == Dict.empty?
-    ( state.typeClashesByPlaceholderId
-    , { state | typeClashesByPlaceholderId = Dict.empty }
-    )
+    case state.typeClashesByPlaceholderId of
+        Nothing ->
+            Debug.todo "popping a nothing!"
+
+        Just dict ->
+            ( dict
+            , { state | typeClashesByPlaceholderId = Nothing }
+            )
 
 
 
@@ -657,11 +670,18 @@ unifyFunctionOnCallAndYieldReturnType env reference referenceType callIsMutable 
                 ty =
                     CA.TypeFunction pos callArgumentType callIsMutable returnType
             in
-            do (unify pos UnifyReason_IsBeingCalledAsAFunction referenceType ty) <| \_ ->
+            do (unify pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty) <| \_ ->
             applySubsToType returnType
 
+        CA.TypeAlias pos _ ty ->
+            unifyFunctionOnCallAndYieldReturnType env reference ty callIsMutable argument callArgumentType
+
         _ ->
-            unifyError NotAFunction referenceType referenceType
+            addError (CA.expressionPos reference)
+                [ "This is being called like a function, but its type is"
+                , ""
+                , typeToText referenceType
+                ]
 
 
 fromLiteral : Types.Literal.Value -> Type
@@ -929,7 +949,7 @@ type UnifyReason
     | UnifyReason_AnnotationVsBlock CA.Pattern CA.Annotation (List CA.Statement)
     | UnifyReason_DefBlockVsPattern
     | UnifyReason_CallArgument { reference : Pos, argument : Pos }
-    | UnifyReason_IsBeingCalledAsAFunction
+    | UnifyReason_IsBeingCalledAsAFunction Pos Type
     | UnifyReason_IfCondition
     | UnifyReason_IfBranches
     | UnifyReason_TryPattern
@@ -945,10 +965,10 @@ type UnifyError
     | IncompatibleMutability
     | IncompatibleRecords { aOnly : List Name, bOnly : List Name, bothUnified : List Name }
     | Cycle Name
-    | NotAFunction
     | NonFunctionContainsFunction (List CA.RejectFunction)
     | OkThisIsActuallyPossible
     | NI String
+    | SubstitutingAnnotation Name
 
 
 unifyErrorToString : UnifyError -> String
@@ -966,9 +986,6 @@ unifyErrorToString ue =
         Cycle name ->
             "There is a cyclic dependency on " ++ name
 
-        NotAFunction ->
-            "You can't call this because it is not a function."
-
         NonFunctionContainsFunction rejectFunctions ->
             "NonFunction can't contain functions: " ++ Debug.toString rejectFunctions
 
@@ -978,18 +995,27 @@ unifyErrorToString ue =
         NI str ->
             "Not Implemented: " ++ str
 
+        SubstitutingAnnotation name ->
+            "SubstitutingAnnotation: " ++ name
+
 
 unify : CA.Pos -> UnifyReason -> Type -> Type -> Monad Type
 unify pos reason a b =
-    do (unify_ reason pos a b) <| \unifiedType ->
-    do popClashingtypes <| \typeClashes ->
-    if typeClashes == Dict.empty then
-        return unifiedType
+    do (get .typeClashesByPlaceholderId) <| \tc ->
+    if tc /= Nothing then
+        Debug.todo "typeClashesByPlaceholderId NOT EMPTY!"
 
     else
-        -- there were type clashes, so turn them into errors
-        do (errorIncompatibleTypes reason pos unifiedType typeClashes) <| \_ ->
-        return unifiedType
+        do (M.update (\s -> { s | typeClashesByPlaceholderId = Just Dict.empty })) <| \_ ->
+        do (unify_ reason pos a b) <| \unifiedType ->
+        do popClashingtypes <| \typeClashes ->
+        if typeClashes == Dict.empty then
+            return unifiedType
+
+        else
+            -- there were type clashes, so turn them into errors
+            do (errorIncompatibleTypes reason pos unifiedType typeClashes) <| \_ ->
+            return unifiedType
 
 
 {-| Unification is always successful: if two types can't be unified, then the unification error is added to the state and a brand new type variable is returned in place of the clashing types.
@@ -1014,7 +1040,7 @@ unify_ reason pos1 t1 t2 =
 
         ( CA.TypeConstant pos ref1 args1, CA.TypeConstant _ ref2 args2 ) ->
             if ref1 /= ref2 then
-                unifyError IncompatibleTypes t1 t2
+                unifyError pos1 IncompatibleTypes t1 t2
 
             else
                 let
@@ -1057,7 +1083,7 @@ unify_ reason pos1 t1 t2 =
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to, CA.TypeFunction _ b_from b_fromIsMutable b_to ) ->
             if a_fromIsMutable /= b_fromIsMutable then
-                unifyError IncompatibleMutability t1 t2
+                unifyError pos IncompatibleMutability t1 t2
 
             else
                 do (unify_ reason pos a_from b_from) <| \unified_from ->
@@ -1078,7 +1104,7 @@ unify_ reason pos1 t1 t2 =
             unifyRecords reason pos1 ( a_ext, a_attrs ) ( b_ext, b_attrs )
 
         _ ->
-            unifyError IncompatibleTypes t1 t2
+            unifyError pos1 IncompatibleTypes t1 t2
 
 
 type alias UnifyRecordsFold =
@@ -1135,7 +1161,7 @@ unifyRecords reason pos ( a_ext, a_attrs ) ( b_ext, b_attrs ) =
                             , bothUnified = Dict.keys bothUnified
                             }
                 in
-                unifyError e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
+                unifyError pos e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
 
         ( Just aName, Just bName ) ->
             if aName == bName && aOnly == Dict.empty && bOnly == Dict.empty then
@@ -1171,13 +1197,12 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
 
 
 {-| TODO Rename to type clash?
-TODO add position?
 -}
-unifyError : UnifyError -> Type -> Type -> Monad Type
-unifyError error t1 t2 =
+unifyError : Pos -> UnifyError -> Type -> Type -> Monad Type
+unifyError pos error t1 t2 =
     do (newName identity) <| \name ->
     do (insertTypeClash name t1 t2 error) <| \() ->
-    return <| CA.TypeVariable (CA.I 0) name
+    return <| CA.TypeVariable pos name
 
 
 
@@ -1189,16 +1214,20 @@ unifyError error t1 t2 =
 addSubstitution : String -> Pos -> UnifyReason -> Name -> Type -> Monad Type
 addSubstitution debugCode pos reason name rawTy =
     do (applySubsToType rawTy) <| \ty ->
+    if String.toInt name == Nothing then
+        unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name) ty
+
+    else
     let
         x =
             ( name, ty, rawTy )
 
-        _ =
-            if String.toInt name == Nothing then
-                Debug.log "addSubstitution on annotated tyvar" x
-
-            else
-                x
+        --         _ =
+        --             if String.toInt name == Nothing then
+        --                 Debug.log "addSubstitution on annotated tyvar" x
+        --
+        --             else
+        --                 x
     in
     if typeHasTyvar name ty then
         -- TODO This feels a bit like a hacky work around.
@@ -1209,7 +1238,7 @@ addSubstitution debugCode pos reason name rawTy =
             return ty
 
         else
-            unifyError (Cycle name) (CA.TypeVariable pos name) ty
+            unifyError pos (Cycle name) (CA.TypeVariable pos name) ty
 
     else
         do (checkNonFunction name ty) <| \{ freeVarsToFlag } ->
@@ -1728,6 +1757,13 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
             in
             addErrorWithEEnv lastStatementPos makeError
 
+        UnifyReason_IsBeingCalledAsAFunction pos referenceType ->
+            addError pos
+                [ "This expression is being called as if it was a function, but its type is:"
+                , ""
+                , typeToText referenceType
+                ]
+
         _ ->
             let
                 pos =
@@ -1740,9 +1776,6 @@ errorIncompatibleTypes reason pos_whatever unifiedType clashes =
 
                         UnifyReason_DefBlockVsPattern ->
                             "The definition block cannot be unpacked into the pattern"
-
-                        UnifyReason_IsBeingCalledAsAFunction ->
-                            "This is being called as if it was a function"
 
                         UnifyReason_IfCondition ->
                             "The expression inside `if ... :` should always be a Bool"
