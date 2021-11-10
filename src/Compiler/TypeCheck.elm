@@ -1211,25 +1211,32 @@ unifyError pos error t1 t2 =
 --
 
 
+isAnnotation : Name -> Bool
+isAnnotation n =
+    String.toInt n == Nothing
+
+
 addSubstitution : String -> Pos -> UnifyReason -> Name -> Type -> Monad Type
 addSubstitution debugCode pos reason name rawTy =
     do (applySubsToType rawTy) <| \ty ->
-    if String.toInt name == Nothing then
-        unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name) ty
+    if isAnnotation name then
+        case ty of
+            CA.TypeVariable _ subName ->
+                -- HACK
+                -- if the two variables are the same, we probably shouldn't even get here
+                if subName == name then
+                    return ty
 
-    else
-    let
-        x =
-            ( name, ty, rawTy )
+                else if isAnnotation subName then
+                    unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name) ty
 
-        --         _ =
-        --             if String.toInt name == Nothing then
-        --                 Debug.log "addSubstitution on annotated tyvar" x
-        --
-        --             else
-        --                 x
-    in
-    if typeHasTyvar name ty then
+                else
+                    addSubstitution (debugCode ++ " SWITCH") pos reason subName (CA.TypeVariable pos name)
+
+            _ ->
+                unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name) ty
+
+    else if typeHasTyvar name ty then
         -- TODO This feels a bit like a hacky work around.
         -- Maybe it's because I don't call applySubsToType enough before calling unify?
         -- Then again, it feels more robust?

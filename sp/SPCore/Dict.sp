@@ -415,9 +415,14 @@ merge leftStep bothStep rightStep leftDict rightDict initialResult =
           (rest & bothStep lKey lValue rValue res)
 
   (leftovers & intermediateResult) =
-    foldl stepState rightDict (toList leftDict & initialResult)
+      as [key & a] & res
+      foldl stepState rightDict (toList leftDict & initialResult)
 
-  List.foldl (fn (k & v) res: leftStep k v res) leftovers intermediateResult
+  liftLeftStep (k & v) res =
+      as (key & a): res: res
+      leftStep k v res
+
+  List.foldl liftLeftStep leftovers intermediateResult
 
 
 # TRANSFORM
@@ -435,7 +440,7 @@ map func dict =
 
 
 
-foldl func dict acc = 
+foldl func dict acc =
   as (k: v: b: b): Dict k v: b: b
   try dict as
     RBEmpty_elm_builtin:
