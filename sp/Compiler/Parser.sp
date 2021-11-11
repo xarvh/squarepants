@@ -46,6 +46,13 @@ makeError moduleName readState message =
     Error.res p (fn eenv: [ message ])
 
 
+# This is just a pr attempt at getting some sort of parser debugging
+palog m =
+    as Text: Parser Text
+    Parser.accept None >> then fn _:
+    Parser.accept (Debug.log "->" m)
+
+
 #
 # Main
 #
@@ -354,7 +361,6 @@ unionDef env =
 # Term
 #
 
-
 term env =
     as Env: Parser FA.Expression
 
@@ -408,8 +414,8 @@ expr env =
         , higherOr << list env FA.List nest
         , higherOr << record env (Token.Defop { mutable = False }) FA.Record nest
         , higherOr << lambda env
-        , functionApplicationOr env
         , unopsOr env
+        , functionApplicationOr env
         , binopsOr env Op.Exponential
         , binopsOr env Op.Multiplicative
         , binopsOr env Op.Addittive

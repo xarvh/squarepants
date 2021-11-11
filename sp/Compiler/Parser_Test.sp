@@ -147,9 +147,7 @@ values =
     as Test
     Test.Group "Values"
         [ codeTest "[reg] Unop"
-            """
-            r = f -n
-            """
+            "a = f -n"
             firstDefinition
             Test.isOk
         ]
