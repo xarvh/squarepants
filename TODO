@@ -1,9 +1,3 @@
-* Add test for triple quotes containing quotes
-
-* Test lexing of triple quotes (unindent!)
-
-
-
 
 * Annotate every lambda with their function name and argument number, so that we can give better errors?
 
@@ -16,6 +10,11 @@
 * later: Compiler should be able to produce a stacktrace
 
 * later: sp-format should recognize and preserve two main modes from the input format: a compact and an expanded one
+
+* Add test for triple quotes containing quotes
+
+* Add tests for Text functions
+
 
 * add test: it should be possible to write
 

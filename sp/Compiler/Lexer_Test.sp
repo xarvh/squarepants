@@ -56,6 +56,10 @@ codeTest =
     Test.codeTest Debug.toHuman
 
 
+valueTest =
+    Test.valueTest Debug.toHuman
+
+
 lexTokens s =
     as Text: Result Text (List Token)
 
@@ -333,5 +337,29 @@ textLiterals =
                 , Token 0 3 << Token.TextLiteral "n"
                 , Token 3 4 << Token.Colon
                 ]
+            )
+        , valueTest
+            """
+            Unindent function
+            """
+            (fn _:
+                [
+                , "\n"
+                , "  a\n"
+                , "      \n"
+                , "\n"
+                , "  b\n"
+                , "  "
+                ]
+                  >> Text.join ""
+                  >> Compiler/Lexer.unindent
+            )
+            (Test.isOkAndEqualTo << Text.join ""
+                    [
+                    , "a\n"
+                    , "    \n"
+                    , "\n"
+                    , "b"
+                    ]
             )
         ]
