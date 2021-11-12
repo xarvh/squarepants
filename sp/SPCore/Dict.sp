@@ -1,20 +1,6 @@
 ## Shamelessly translated from https://raw.githubusercontent.com/elm/core/1.0.5/src/Dict.elm
 
 
-union Order = GT, EQ, LT
-
-compare a b =
-  as v: v: Order
-  with v NonFunction
-
-  if a > b: GT
-  else if a < b: LT
-  else EQ
-
-
-#############
-
-
 union NColor = Red, Black
 
 union Dict key v =
@@ -37,15 +23,16 @@ get targetKey dict =
       Nothing
 
     RBNode_elm_builtin _ key value left right:
-      try compare targetKey key as
-        LT:
-          get targetKey left
+      try SPCore/Basics.compare targetKey key as
+        1:
+          get targetKey right
 
-        EQ:
+        0:
           Just value
 
-        GT:
-          get targetKey right
+        _:
+          get targetKey left
+
 
 
 
@@ -113,15 +100,16 @@ insertHelp key value dict =
       RBNode_elm_builtin Red key value RBEmpty_elm_builtin RBEmpty_elm_builtin
 
     RBNode_elm_builtin nColor nKey nValue nLeft nRight:
-      try compare key nKey as
-        LT:
-          balance nColor nKey nValue (insertHelp key value nLeft) nRight
+      try SPCore/Basics.compare key nKey as
+        1:
+          balance nColor nKey nValue nLeft (insertHelp key value nRight)
 
-        EQ:
+        0:
           RBNode_elm_builtin nColor nKey value nLeft nRight
 
-        GT:
-          balance nColor nKey nValue nLeft (insertHelp key value nRight)
+        _:
+          balance nColor nKey nValue (insertHelp key value nLeft) nRight
+
 
 
 balance color key value left right =
@@ -176,7 +164,7 @@ removeHelp targetKey dict =
       RBEmpty_elm_builtin
 
     RBNode_elm_builtin color key value left right:
-      if targetKey < key:
+      if SPCore/Basics.compare targetKey key == 0 - 1:
         try left as
           RBNode_elm_builtin Black _ _ lLeft _:
             try lLeft as
@@ -405,14 +393,19 @@ merge leftStep bothStep rightStep leftDict rightDict initialResult =
         (list & rightStep rKey rValue res)
 
       (lKey & lValue) :: rest:
-        if lKey < rKey:
-          stepState rKey rValue (rest & leftStep lKey lValue res)
+          try SPCore/Basics.compare lKey rKey as
+              1: list & rightStep rKey rValue res
+              0: rest & bothStep lKey lValue rValue res
+              _: stepState rKey rValue (rest & leftStep lKey lValue res)
 
-        else if lKey > rKey:
-          (list & rightStep rKey rValue res)
-
-        else
-          (rest & bothStep lKey lValue rValue res)
+#        if SPCore/Basics.compare lKey rKey == 0 - 1:
+#          stepState rKey rValue (rest & leftStep lKey lValue res)
+#
+#        else if SPCore/Basics.compare lKey rKey == 1:
+#          (list & rightStep rKey rValue res)
+#
+#        else
+#          (rest & bothStep lKey lValue rValue res)
 
   (leftovers & intermediateResult) =
       as [key & a] & res

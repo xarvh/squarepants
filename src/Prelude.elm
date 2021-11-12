@@ -6,6 +6,14 @@ import Types.CanonicalAst as CA exposing (Type)
 import Types.Op as Op exposing (Binop, Unop)
 
 
+type alias Function =
+    { moduleName : String
+    , localName : String
+    , ty : Type
+    , nonFn : List String
+    }
+
+
 
 ----
 --- Prelude
@@ -56,22 +64,22 @@ insertBinop _ b =
         |> Dict.insert b.symbol
 
 
-insertFunction : ( String, String, CA.Type ) -> CA.AllDefs -> CA.AllDefs
-insertFunction ( moduleName, localName, ty ) =
+insertFunction : Function -> CA.AllDefs -> CA.AllDefs
+insertFunction f =
     let
         name =
-            moduleName ++ "." ++ localName
+            f.moduleName ++ "." ++ f.localName
     in
     { name = name
-    , localName = localName
+    , localName = f.localName
     , pos = pos
     , isNative = True
     , body = []
     , maybeAnnotation =
         Just
             { pos = pos
-            , ty = ty
-            , nonFn = Dict.empty
+            , ty = f.ty
+            , nonFn = List.foldl (\n -> Dict.insert n pos) Dict.empty f.nonFn
             }
     }
         |> CA.Value
@@ -345,8 +353,8 @@ lesserThan =
     { symbol = "<"
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType
-    , nonFn = [ "a" ]
+    , ty = typeBinop False Core.numberType Core.numberType Core.boolType
+    , nonFn = []
     }
 
 
@@ -355,8 +363,28 @@ greaterThan =
     { symbol = ">"
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , ty = typeBinop False (tyVar "a") (tyVar "a") Core.boolType
-    , nonFn = [ "a" ]
+    , ty = typeBinop False Core.numberType Core.numberType Core.boolType
+    , nonFn = []
+    }
+
+
+lesserOrEqual : Binop
+lesserOrEqual =
+    { symbol = "<="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , ty = typeBinop False Core.numberType Core.numberType Core.boolType
+    , nonFn = []
+    }
+
+
+greaterOrEqual : Binop
+greaterOrEqual =
+    { symbol = ">="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , ty = typeBinop False Core.numberType Core.numberType Core.boolType
+    , nonFn = []
     }
 
 
@@ -398,38 +426,56 @@ sendLeft =
 --
 
 
-functions : List ( String, String, CA.Type )
+functions : List Function
 functions =
     [ debugTodo
     , debugLog
     , debugToHuman
+    , basicsCompare
     ]
+
+
+basicsCompare : Function
+basicsCompare =
+    { moduleName = "SPCore/Basics"
+    , localName = "compare"
+    , ty =
+        tyFun (tyVar "a")
+            (tyFun (tyVar "a")
+                Core.numberType
+            )
+    , nonFn = [ "a" ]
+    }
 
 
 
 -- SPCore/Debug
 
 
-debugTodo : ( String, String, CA.Type )
+debugTodo : Function
 debugTodo =
-    ( "SPCore/Debug"
-    , "todo"
-    , tyFun Core.textType (tyVar "a")
-    )
+    { moduleName = "SPCore/Debug"
+    , localName = "todo"
+    , ty = tyFun Core.textType (tyVar "a")
+    , nonFn = []
+    }
 
 
-debugLog : ( String, String, CA.Type )
+debugLog : Function
 debugLog =
-    ( "SPCore/Debug"
-    , "log"
-    , tyFun Core.textType
-        (tyFun (tyVar "a") (tyVar "a"))
-    )
+    { moduleName = "SPCore/Debug"
+    , localName = "log"
+    , ty =
+        tyFun Core.textType
+            (tyFun (tyVar "a") (tyVar "a"))
+    , nonFn = []
+    }
 
 
-debugToHuman : ( String, String, CA.Type )
+debugToHuman : Function
 debugToHuman =
-    ( "SPCore/Debug"
-    , "toHuman"
-    , tyFun (tyVar "a") Core.textType
-    )
+    { moduleName = "SPCore/Debug"
+    , localName = "toHuman"
+    , ty = tyFun (tyVar "a") Core.textType
+    , nonFn = []
+    }

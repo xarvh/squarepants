@@ -64,6 +64,7 @@ main arg =
   if arg == "":
       allTests
           >> Test.flatten
+          >> List.sortBy (fn (name & code & outcome): outcome & name)
           >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
           >> Text.join "\n"
 

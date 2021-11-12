@@ -1,19 +1,19 @@
-
-* Annotate every lambda with their function name and argument number, so that we can give better errors?
-
-* When a constructor can't be found, its type should be assumed as a new free tyvar, but its args should be dealt with normally
-
 * List.sortBy (or Array.sort?)
 
 * Add test for triple quotes containing quotes
 
 * Test lexing of triple quotes (unindent!)
 
+
+
+
+* Annotate every lambda with their function name and argument number, so that we can give better errors?
+
+* When a constructor can't be found, its type should be assumed as a new free tyvar, but its args should be dealt with normally
+
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
 
 * Humanize must break a type into multiple lines
-
-
 
 * later: Compiler should be able to produce a stacktrace
 
@@ -21,8 +21,18 @@
 
 
 
+* add test: tuples attributes are sorted in the right order
 
 
+* add test: it should be possible to write
+
+      allTests
+          >> Test.flatten
+          >> List.sortBy (fn (name & code & outcome): outcome & name)
+          >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
+          >> Text.join "\n"
+
+  without parens around the `fn`s
 
 
 

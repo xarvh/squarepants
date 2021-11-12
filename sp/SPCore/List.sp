@@ -2,6 +2,13 @@
 alias Int = Number
 
 
+sortBy function list =
+    as (a: b): [a]: [a]
+    with b NonFunction
+
+    todo "implemented natively"
+
+
 foldl function aList init =
     as (item: state: state): [item]: state: state
 
@@ -259,8 +266,7 @@ drop n ls =
           h :: tail: drop (n - 1) tail
 
 minimum list =
-    as [a]: Maybe a
-    with a NonFunction
+    as [Number]: Maybe Number
 
     try list as
       x :: xs:

@@ -34,6 +34,8 @@ allNatives =
         |> Dict.insert "SPCore/Text.dropLeft" "text_dropLeft"
         |> Dict.insert "SPCore/Text.forEach" "text_forEach"
         |> Dict.insert "SPCore/Basics.modBy" "basics_modBy"
+        |> Dict.insert "SPCore/Basics.compare" "basics_compare"
+        |> Dict.insert "SPCore/List.sortBy" "list_sortBy"
         |> Dict.insert "/" "sp_divide"
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_equal"
@@ -51,6 +53,7 @@ nativeUnops =
 nativeBinops : Dict String { jsSymb : JA.Name, mutates : Bool, fnName : String }
 nativeBinops =
     Dict.empty
+        -- fnName is used for when the op is used as a function such as `(+)`
         |> Dict.insert "+" { jsSymb = "+", mutates = False, fnName = "add" }
         |> Dict.insert "*" { jsSymb = "*", mutates = False, fnName = "mul" }
         |> Dict.insert "-" { jsSymb = "-", mutates = False, fnName = "sub" }
@@ -59,6 +62,8 @@ nativeBinops =
         |> Dict.insert ".." { jsSymb = "+", mutates = False, fnName = "strcon" }
         |> Dict.insert ">" { jsSymb = ">", mutates = False, fnName = "greaterThan" }
         |> Dict.insert "<" { jsSymb = "<", mutates = False, fnName = "lesserThan" }
+        |> Dict.insert ">=" { jsSymb = ">=", mutates = False, fnName = "greaterOrEqual" }
+        |> Dict.insert "<=" { jsSymb = "<=", mutates = False, fnName = "lesserOrEqual" }
         |> Dict.insert "or" { jsSymb = "||", mutates = False, fnName = "or" }
         |> Dict.insert "and" { jsSymb = "&&", mutates = False, fnName = "and" }
 
@@ -196,6 +201,11 @@ const sp_clone = (src) => {
 }
 
 
+//
+// Basic ops
+//
+
+
 const sp_equal = (a) => (b) => {
   if (a === b)
     return true
@@ -241,41 +251,70 @@ const sp_not_equal = (a) => (b) => {
 }
 
 
+const sp_compare = (a, b) => {
+
+  // union type
+  if (Array.isArray(a)) {
+    // compare constructor names
+    if (a[0] > b[0]) return 1;
+    if (b[0] > a[0]) return -1;
+    for (let i = 1; i < a.length; i++) {
+        const cmp = sp_compare(a[i], b[i]);
+        if (cmp) return cmp;
+    }
+    return 0;
+  }
+
+  if (typeof a === 'object') {
+    const keys = Object.keys(a).sort();
+    for (let k of keys) {
+        const cmp = sp_compare(a[k], b[k]);
+        if (cmp) return cmp;
+    }
+    return 0;
+  }
+
+  if (a > b) return 1;
+  if (a < b) return -1;
+  return 0;
+}
+
 const sp_divide = (right) => (left) => {
   if (right === 0) return 0;
   return left / right;
 }
 
 
+const basics_modBy = (a) => (b) => b % a;
+
+const basics_compare = (a) => (b) => sp_compare(a, b);
+
+
+//
+// Debug
+//
+
+
 const sp_todo = (message) => {
   throw new Error("TODO: " + message);
 }
+
 
 const sp_log = (message) => (thing) => {
   console.log(message, sp_toHuman(thing));
   return thing;
 }
 
-const asList = (arrayAccum, list) => {
-  if (list[0] === '""" ++ Core.listCons.name ++ """') {
-    arrayAccum.push(sp_toHuman(list[1]));
-    return asList(arrayAccum, list[2]);
-  }
 
-  if (list[0] === '""" ++ Core.listNil.name ++ """')
-    return '[' + arrayAccum.join(', ') + ']';
+//
+// To Human
+//
 
-  return false;
-}
-
-const asUnion = (a) => {
-  return a[0] + ' ' + a.slice(1).map(arg => '(' + sp_toHuman(arg) + ')').join(' ');
-}
 
 const sp_toHuman = (a) => {
 
   if (Array.isArray(a))
-    return asList([], a) || asUnion(a);
+    return sp_toHumanAsList([], a) || sp_toHumanAsUnion(a);
 
   if (typeof a === 'function') {
     return '<function>';
@@ -290,9 +329,29 @@ const sp_toHuman = (a) => {
   return JSON.stringify(a, null, 0);
 }
 
-const sp_cons = (list) => (item) => {
-  return [ '""" ++ Core.listCons.name ++ """', item, list];
+
+const sp_toHumanAsUnion = (a) => {
+  return a[0] + ' ' + a.slice(1).map(arg => '(' + sp_toHuman(arg) + ')').join(' ');
 }
+
+
+const sp_toHumanAsList = (arrayAccum, list) => {
+  if (list[0] === '""" ++ Core.listCons.name ++ """') {
+    arrayAccum.push(sp_toHuman(list[1]));
+    return sp_toHumanAsList(arrayAccum, list[2]);
+  }
+
+  if (list[0] === '""" ++ Core.listNil.name ++ """')
+    return '[' + arrayAccum.join(', ') + ']';
+
+  return false;
+}
+
+
+//
+// Text
+//
+
 
 const text_fromInt = (n) => '' + n;
 
@@ -318,7 +377,6 @@ const text_startsWithRegex = (regex) => {
   }
 }
 
-
 const text_replaceRegex = (regex) => {
   let re;
   try {
@@ -330,16 +388,13 @@ const text_replaceRegex = (regex) => {
   return (replacer) => (s) => s.replace(re, replacer);
 }
 
-
 const text_trimLeft = (s) => {
   return s.trimLeft();
 }
 
-
 const text_dropLeft = (n) => (s) => {
   return s.slice(n);
 }
-
 
 const text_forEach = (s) => (f) => {
   for (let i of s) f(i);
@@ -347,7 +402,16 @@ const text_forEach = (s) => (f) => {
 }
 
 
-const basics_modBy = (a) => (b) => b % a;
+
+
+//
+// Lists and Arrays
+//
+
+
+const sp_cons = (list) => (item) => {
+  return [ '""" ++ Core.listCons.name ++ """', item, list];
+}
 
 
 const array_toList = (array) => {
@@ -358,6 +422,24 @@ const array_toList = (array) => {
   }
   return list;
 }
+
+
+const list_toArray = (list) => {
+  const array = [];
+  const rec = (ls) => {
+    if (ls[0] === '""" ++ Core.listNil.name ++ """')
+      return array;
+
+    array.push(ls[1]);
+    return rec(ls[2]);
+  };
+
+  return rec(list);
+}
+
+
+const list_sortBy = (f) => (list) => array_toList(list_toArray(list).sort((a, b) => sp_compare(f(a), f(b))));
+
     """
 
 
