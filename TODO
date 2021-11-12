@@ -1,8 +1,11 @@
-* List.sortBy (or Array.sort?)
-
 * Add test for triple quotes containing quotes
 
 * Test lexing of triple quotes (unindent!)
+
+* add test: tuples attributes are sorted in the right order
+
+* Test Dict and List libs
+
 
 
 
@@ -18,11 +21,6 @@
 * later: Compiler should be able to produce a stacktrace
 
 * later: sp-format should recognize and preserve two main modes from the input format: a compact and an expanded one
-
-
-
-* add test: tuples attributes are sorted in the right order
-
 
 * add test: it should be possible to write
 
