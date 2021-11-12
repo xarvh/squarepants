@@ -29,6 +29,17 @@ union CodeExpectation ok =
     , CodeExpectation ((ok: Text): Result Text ok: Maybe Text)
 
 
+valueTest toText title generateValue (CodeExpectation toMaybeError) =
+    as (a: Text): Text: (None: a): CodeExpectation a: Test
+
+    Single title "" fn None:
+      None
+        >> generateValue
+        >> Ok
+        >> toMaybeError toText
+        >> maybeToOutcome
+
+
 codeTest toText title code functionToTest (CodeExpectation toMaybeError) =
     as (ok: Text): Text: Text: (Text: Result Text ok): CodeExpectation ok: Test
 

@@ -5,6 +5,8 @@ allTests =
     [
     , Compiler/Lexer_Test.tests
     , Compiler/Parser_Test.tests
+    , SPCore/List_Test.tests
+    , SPCore/Dict_Test.tests
     ]
 
 
@@ -60,11 +62,20 @@ formattedToConsoleColoredText formattedText =
         Error.FormattedText_Decoration t: blue t
 
 
+order outcome =
+    as Test.TestOutcome: Int
+    try outcome as
+        Test.Success: 0
+        Test.Skipped: 1
+        Test.Error _: 2
+
+
+
 main arg =
   if arg == "":
       allTests
           >> Test.flatten
-          >> List.sortBy (fn (name & code & outcome): outcome & name)
+          >> List.sortBy (fn (name & code & outcome): order outcome & name)
           >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
           >> Text.join "\n"
 
