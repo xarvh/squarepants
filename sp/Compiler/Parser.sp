@@ -147,6 +147,17 @@ nonMutName =
             Parser.reject
 
 
+nonMutNamePos env =
+    as Parser (At Text)
+    oneToken >> then fn token:
+    try token as
+        Token start end (Token.Name Token.NameNoModifier s):
+            Parser.accept << At (pos env start end) s
+
+        _:
+            Parser.reject
+
+
 defop =
     as Parser { mutable as Bool }
 
@@ -321,20 +332,20 @@ errorCantUseMutableAssignmentHere =
 typeAlias env =
     as Env: Parser FA.Statement
 
-    (kind << Token.Name Token.NameNoModifier "alias") >> then fn (Token start end _):
-    (Parser.oneOrMore nonMutName) >> then fn ( name & args ):
+    (kind << Token.Name Token.NameNoModifier "alias") >> then fn _:
+    (Parser.oneOrMore nonMutNamePos) >> then fn ( name & args ):
     defop >> then fn { mutable }:
     (inlineOrBelowOrIndented (typeExpr env)) >> then fn ty:
     if mutable:
         Parser.abort errorCantUseMutableAssignmentHere
 
     else
-        { name = name
+        { name = At name
         , args = args
         , ty = ty
         }
             # TODO use ty end instead
-            >> FA.TypeAlias (pos env start end)
+            >> FA.TypeAlias
             >> Parser.accept
 
 

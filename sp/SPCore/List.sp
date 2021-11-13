@@ -2,6 +2,13 @@
 alias Int = Number
 
 
+sort =
+    as [a]: [a]
+    with a NonFunction
+
+    sortBy identity
+
+
 sortBy function list =
     as (a: b): [a]: [a]
     with b NonFunction

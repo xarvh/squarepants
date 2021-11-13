@@ -1,3 +1,6 @@
+#
+# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work.
+#
 sourceDir =
     path = "sp"
 
@@ -24,7 +27,11 @@ sourceDir =
     module =
        path = Types/Pos
        importAs = Pos
-       globalTypes = Pos
+       globalTypes =
+            Pos
+            At
+       globalValues =
+            At
 
     module =
        path = Types/Token

@@ -35,9 +35,9 @@ alias Annotation =
 union Statement =
     , Evaluation Pos Expression
     , Definition Pos ValueDef
-    , TypeAlias Pos {
-        , name as Text
-        , args as [Text]
+    , TypeAlias {
+        , name as At Text
+        , args as [At Text]
         , ty as Type
         }
     , UnionDef Pos {

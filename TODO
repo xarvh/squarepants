@@ -1,13 +1,20 @@
 
+
+----> Caching system, because everything depends on that?
+
+
 * Annotate every lambda with their function name and argument number, so that we can give better errors?
 
 * When a constructor can't be found, its type should be assumed as a new free tyvar, but its args should be dealt with normally
+    (Or maybe we should first deal with undefined variables?)
 
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
 
 * Humanize must break a type into multiple lines
 
-* later: Compiler should be able to produce a stacktrace
+* later:
+        Compiler should be able to produce a stacktrace
+        Or better, a call tree, which would be very useful to debug the parser?
 
 * later: sp-format should recognize and preserve two main modes from the input format: a compact and an expanded one
 
@@ -25,6 +32,30 @@
           >> Text.join "\n"
 
   without parens around the `fn`s
+
+
+* How do we ensure that execution order is consistent in record expressions?
+        # which one gets executed first?
+        { b = doThingsWith @mutable
+        , a = doThingsWith @mutable
+        }
+
+
+
+
+* Macro: a definition that, given a type, provides me with the definition's body?
+
+        compare as {Type}: a: a: Int
+        compare type x y =
+            try type as
+                CA....
+                ????
+
+
+
+
+
+
 
 
 

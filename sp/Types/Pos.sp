@@ -25,6 +25,10 @@ union Pos =
     , U
 
 
+union At a =
+    At Pos a
+
+
 start pos =
     as Pos: Int
     try pos as
@@ -37,3 +41,20 @@ end pos =
     try pos as
         P m s e: e
         _: 0
+
+
+range a b =
+    as Pos: Pos: Pos
+
+    try a & b as
+        P ma sa ea & P mb sb eb:
+            if ma /= mb:
+                todo "trying to range across two different modules"
+            else
+                P ma (min sa sb) (max ea eb)
+
+        P _ _ _ & _:
+            a
+
+        _:
+            b
