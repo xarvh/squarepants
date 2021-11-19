@@ -689,13 +689,14 @@ definition : Parser FA.Statement
 definition =
     do here <| \start ->
     do pattern <| \p ->
+    do (maybe nonFunction) <| \maybeNf ->
     do defop <| \{ mutable } ->
-    do inlineStatementOrBlockWithAnnotation <| \( maybeAnnotation, body ) ->
+    do inlineStatementOrBlock <| \body ->
     do here <| \end ->
     { pattern = p
     , mutable = mutable
-    , body = body
-    , maybeAnnotation = maybeAnnotation
+    , maybeNonFn = maybeNf
+    , body = OneOrMore.toList body
     , pos = ( start, end )
     }
         |> FA.Definition
@@ -710,41 +711,16 @@ inlineStatementOrBlock =
         ]
 
 
-inlineStatementOrBlockWithAnnotation : Parser ( Maybe FA.Annotation, List FA.Statement )
-inlineStatementOrBlockWithAnnotation =
-    let
-        blockWithAnnotation =
-            do (maybe <| discardSecond typeAnnotation <| kind Token.NewSiblingLine) <| \maybeAnnotation ->
-            do (oomSeparatedBy (kind Token.NewSiblingLine) statement) <| \bl ->
-            succeed
-                ( maybeAnnotation
-                , OneOrMore.toList bl
-                )
-    in
-    oneOf
-        [ do (Parser.breakCircularDefinition <| \_ -> expr) <| \e -> succeed ( Nothing, [ FA.Evaluation e ] )
-        , block blockWithAnnotation
-        ]
-
-
 
 ----
 --- Types
 --
 
 
-typeAnnotation : Parser FA.Annotation
+typeAnnotation : Parser FA.Type
 typeAnnotation =
-    do here <| \start ->
     do (kind Token.As) <| \_ ->
-    do (inlineOrBelowOrIndented typeExpr) <| \ty ->
-    do (maybe (inlineOrBelowOrIndented nonFunction)) <| \nf ->
-    do here <| \end ->
-    succeed
-        { pos = ( start, end )
-        , ty = ty
-        , nonFn = Maybe.withDefault [] nf
-        }
+    inlineOrBelowOrIndented typeExpr
 
 
 nonFunction : Parser (List String)
@@ -895,12 +871,9 @@ typeApplicationOr higher =
 lambda : Parser FA.Expression
 lambda =
     let
-        def : Parser ( Token, OneOrMore FA.Pattern )
+        def : Parser FA.Pattern
         def =
-            do (kind Token.Fn) <| \fn ->
-            do (oneOrMore <| functionParameter pattern) <| \params ->
-            do (kind Token.Colon) <| \_ ->
-            succeed ( fn, params )
+            discardSecond pattern (kind Token.Colon)
 
         body : Parser (OneOrMore FA.Statement)
         body =
@@ -922,9 +895,9 @@ lambda =
                   inlineStatementOrBlock
                 ]
     in
-    do def <| \( fn, params ) ->
+    do def <| \param ->
     do body <| \b ->
-    FA.Lambda ( fn.start, fn.end ) (OneOrMore.toList params) (OneOrMore.toList b)
+    FA.Lambda (FA.patternPos param) param (OneOrMore.toList b)
         |> succeed
 
 
@@ -993,9 +966,10 @@ patternApplication param =
 
         Token.Name { mutable } name ->
             do (zeroOrMore param) <| \params ->
+            do (maybe typeAnnotation) <| \ma ->
             do here <| \end ->
             if params == [] then
-                FA.PatternAny ( token.start, token.end ) mutable name
+                FA.PatternAny ( token.start, token.end ) mutable name ma
                     |> succeed
 
             else if mutable then

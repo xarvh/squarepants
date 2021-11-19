@@ -1,30 +1,13 @@
 Possible alternative syntax
 ===========================
 
-# Restore `as` instead of `is`
-
-# Remove support for `else` in try..as
-
 
 Things that should probably be implemented
 ------------------------------------------
 
 
-# Function annotation:
-    Instead of: `a -> (b -> c) -> c`
-
-    have `a, (b: c): c`
-
-    a: (b @: c): c
-
-
-    I don't like how mutation is annotated
-    Prefixing the @ requires more parens.
-
-    Int: (@(Maybe Int): Int): Int
-
-    Int -> (Maybe Int @> Int) -> Int
-
+Things that are worth considering but need thinking
+---------------------------------------------------
 
 # Add notation to extend records
 
@@ -33,32 +16,18 @@ Things that should probably be implemented
   If someRecord already has someAttribute or someOtherAttribute, the type checker should produce an error.
 
 
-Things that are worth considering but need thinking
----------------------------------------------------
 
+# I don't like how mutation is annotated
 
-# Hide curryness in types
+    Prefixing the @ requires more parens.
 
-  Int, Int: Int
+    Int: (@ Maybe Int: Int): Int
 
-* `Int -> Int -> Int` is obscure.
-* it would be nice to have less to type than ` -> `
-* it would be nice to have a notation that's consistent with function declaration
-  -> but it's not doable because of parametric polymorphism (`List Int` or `List -> Int`?)
-
-
-
+    Int -> (Maybe Int @> Int) -> Int
 
 
 Obsolete
 --------
-
-
-# Use `to` instead of `->` for function types
-
-sumTwoNumbers is Int to Int to Int
-sumTwoNumbers a b =
-  a + b
 
 
 # Distinguish `as` in `try..as` from `as` in annotations
@@ -146,11 +115,4 @@ Also, what do we use for mutable assignment?
 
   + This has the advantage that `then` is not a keyword any more
   - `else:` is super ugly
-
-
-
-
-
-
-
 

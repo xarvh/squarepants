@@ -585,30 +585,22 @@ translateParameter env faParam =
 
 
 translatePattern : Env -> FA.Pattern -> Res CA.Pattern
-translatePattern env faPattern =
-    do (translatePatternOrFunction env faPattern) <| \either ->
-    case either of
-        POF_Pattern caPattern ->
-            Ok caPattern
-
-        POF_Function fn params ->
-            errorCantDeclareAFunctionHere env fn params faPattern
-
-
-type POF
-    = POF_Pattern CA.Pattern
-    | POF_Function String (List CA.Parameter)
-
-
-translatePatternOrFunction : Env -> FA.Pattern -> Res POF
-translatePatternOrFunction env fa =
+translatePattern env fa =
     case fa of
-        FA.PatternAny pos True s ->
+        FA.PatternAny pos True s maybeType ->
             -- TODO this happens (to me) when I use `=` in place of `:=`, so maybe change the message?
             faError env.ro pos "This is the wrong place to use `@`"
 
-        FA.PatternAny pos False s ->
-            translatePatternOrFunction env (FA.PatternApplication pos s [])
+        FA.PatternAny pos False "_" faType ->
+            if faType /= Nothing then
+                -- TODO allow annotation of discard patterns
+                faError env.ro pos "can't annotate discard patterns"
+            else
+                Ok <| CA.PatternDiscard pos
+
+        FA.PatternAny pos False s faType ->
+            do (Lib.maybe_mapRes (translateType env) faType) <| \caType ->
+            Ok <| CA.PatternAny pos s caType
 
         FA.PatternLiteral pos l ->
             CA.PatternLiteral (tp env.ro pos) l
@@ -625,33 +617,8 @@ translatePatternOrFunction env fa =
                         |> Ok
 
                 StructuredName_Value { name, mod, attrPath } ->
-                    if attrPath /= [] then
-                        errorTodo "can't use attribute access inside a pattern"
+                    Error.faSimple env.ro pos "you shouldn't have a value here"
 
-                    else
-                        case mod of
-                            AlreadyEmbedded ->
-                                errorTodo "can't use attribute shorthands inside a pattern"
-
-                            ResolvedTo _ ->
-                                errorTodo "It looks like you are trying to reference some module value, but I need just a new variable name"
-
-                            NotSpecified ->
-                                -- it's a function or variable!
-                                if faArgs == [] then
-                                    (if name == "_" then
-                                        CA.PatternDiscard (tp env.ro pos)
-
-                                     else
-                                        CA.PatternAny (tp env.ro pos) name
-                                    )
-                                        |> POF_Pattern
-                                        |> Ok
-
-                                else
-                                    do (Lib.list_mapRes (translateParameter env) faArgs) <| \caParams ->
-                                    POF_Function name caParams
-                                        |> Ok
 
         FA.PatternList pos fas ->
             let

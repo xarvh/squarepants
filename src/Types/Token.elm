@@ -23,14 +23,13 @@ type
     | NumberLiteral String
     | Name { mutable : Bool } String
       -- Keywords
-    | Fn
     | If
+    | Then
+    | Else
     | Try
     | As
-    | Is
     | Colon
     | MutableColon
-    | Else
     | With
       -- Ops
     | Defop { mutable : Bool }

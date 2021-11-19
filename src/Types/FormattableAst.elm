@@ -29,7 +29,7 @@ type alias Module =
 type alias ValueDef =
     { pattern : Pattern
     , mutable : Bool
-    , maybeAnnotation : Maybe Annotation
+    , maybeNonFn : Maybe (List String)
     , body : List Statement
 
     -- TODO move it in the statement constructor?
@@ -37,11 +37,11 @@ type alias ValueDef =
     }
 
 
-type alias Annotation =
-    { pos : Pos
-    , ty : Type
-    , nonFn : List String
-    }
+-- type alias Annotation =
+--     { pos : Pos
+--     , ty : Type
+--     , nonFn : List String
+--     }
 
 
 type Statement
@@ -73,7 +73,7 @@ type Expression
     = Literal Pos Literal.Value
     | Variable Pos { isBinop : Bool } String
     | Mutable Pos String
-    | Lambda Pos (List Pattern) (List Statement)
+    | Lambda Pos Pattern (List Statement)
     | FunctionCall Pos Expression (List Expression)
     | Binop Pos Op.Precedence (SepList Binop Expression)
     | Unop Pos Unop Expression
@@ -96,7 +96,7 @@ type Expression
 
 
 type Pattern
-    = PatternAny Pos Bool String
+    = PatternAny Pos Bool String (Maybe Type)
     | PatternLiteral Pos Literal.Value
     | PatternApplication Pos String (List Pattern)
     | PatternList Pos (List Pattern)
@@ -127,7 +127,7 @@ recordArgs_map f ar =
 patternPos : Pattern -> Pos
 patternPos pa =
     case pa of
-        PatternAny p _ _ ->
+        PatternAny p _ _ _ ->
             p
 
         PatternLiteral p _ ->
@@ -159,7 +159,7 @@ posMap_statement f stat =
             Definition
                 { pattern = posMap_pattern f def.pattern
                 , mutable = def.mutable
-                , maybeAnnotation = Maybe.map (posMap_annotation f) def.maybeAnnotation
+                , maybeNonFn = def.maybeNonFn --Maybe.map (posMap_annotation f) def.maybeAnnotation
                 , body = List.map (posMap_statement f) def.body
                 , pos = f def.pos
                 }
@@ -179,12 +179,12 @@ posMap_statement f stat =
                 }
 
 
-posMap_annotation : (Pos -> Pos) -> Annotation -> Annotation
-posMap_annotation f ann =
-    { pos = f ann.pos
-    , ty = posMap_type f ann.ty
-    , nonFn = ann.nonFn
-    }
+-- posMap_annotation : (Pos -> Pos) -> Annotation -> Annotation
+-- posMap_annotation f ann =
+--     { pos = f ann.pos
+--     , ty = posMap_type f ann.ty
+--     , nonFn = ann.nonFn
+--     }
 
 
 posMap_expression : (Pos -> Pos) -> Expression -> Expression
@@ -199,9 +199,9 @@ posMap_expression f expr =
         Mutable pos name ->
             Mutable (f pos) name
 
-        Lambda pos pas stats ->
+        Lambda pos pa stats ->
             Lambda (f pos)
-                (List.map (posMap_pattern f) pas)
+                (posMap_pattern f pa)
                 (List.map (posMap_statement f) stats)
 
         FunctionCall pos ref args ->
@@ -241,8 +241,8 @@ posMap_expression f expr =
 posMap_pattern : (Pos -> Pos) -> Pattern -> Pattern
 posMap_pattern f pa =
     case pa of
-        PatternAny pos mutable name ->
-            PatternAny (f pos) mutable name
+        PatternAny pos mutable name maybeType ->
+            PatternAny (f pos) mutable name (Maybe.map (posMap_type f) maybeType)
 
         PatternLiteral pos val ->
             PatternLiteral (f pos) val

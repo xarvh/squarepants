@@ -115,18 +115,23 @@ type alias LocalValueDef =
     { pattern : Pattern
     , defsPath : List String
     , mutable : Bool
-    , maybeAnnotation : Maybe Annotation
+    , nonFn : Dict String Pos
     , body : List Statement
     }
 
 
 rootToLocalDef : RootValueDef -> LocalValueDef
 rootToLocalDef r =
-    { pattern = PatternAny r.pos r.name
+    { pattern = PatternAny r.pos r.name (Maybe.map .ty r.maybeAnnotation)
     , defsPath = [ r.name ]
     , mutable = False
-    , maybeAnnotation = r.maybeAnnotation
     , body = r.body
+    , nonFn =
+         case r.maybeAnnotation of
+             Just ann ->
+                 ann.nonFn
+             Nothing ->
+                 Dict.empty
     }
 
 
@@ -298,7 +303,7 @@ type alias VariableArgs =
 
 type Pattern
     = PatternDiscard Pos
-    | PatternAny Pos String
+    | PatternAny Pos String (Maybe Type)
     | PatternLiteral Pos Types.Literal.Value
     | PatternConstructor Pos String (List Pattern)
     | PatternRecord Pos (Dict String Pattern)
@@ -310,7 +315,7 @@ patternNames p =
         PatternDiscard pos ->
             Dict.empty
 
-        PatternAny pos n ->
+        PatternAny pos n _ ->
             Dict.singleton n pos
 
         PatternLiteral pos _ ->
@@ -329,7 +334,7 @@ patternPos pa =
         PatternDiscard p ->
             p
 
-        PatternAny p n ->
+        PatternAny p n _ ->
             p
 
         PatternLiteral p _ ->
@@ -498,13 +503,13 @@ posMap_unionDef f def =
 posMap_valueDef : (PosMap -> Pos -> M acc Pos) -> LocalValueDef -> M acc LocalValueDef
 posMap_valueDef f def =
     do (posMap_block f def.body) <| \b_body ->
-    do (posMap_annotation f def.maybeAnnotation) <| \b_ann ->
     do (posMap_pattern f def.pattern) <| \b_pattern ->
     return
         { pattern = b_pattern
         , mutable = def.mutable
         , defsPath = def.defsPath
-        , maybeAnnotation = b_ann
+        -- TODO nonFn needs to be mapped too!
+        , nonFn = def.nonFn
         , body = b_body
         }
 
@@ -615,9 +620,10 @@ posMap_pattern fFold pattern =
             do (f pattern a_pos) <| \b_pos ->
             return <| PatternDiscard b_pos
 
-        PatternAny a_pos name ->
+        PatternAny a_pos name a_type ->
             do (f pattern a_pos) <| \b_pos ->
-            return <| PatternAny b_pos name
+            do (M.maybe_map (posMap_type fFold) a_type) <| \b_type ->
+            return <| PatternAny b_pos name b_type
 
         PatternLiteral a_pos value ->
             do (f pattern a_pos) <| \b_pos ->

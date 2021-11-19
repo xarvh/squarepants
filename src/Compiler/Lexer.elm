@@ -249,24 +249,20 @@ recognisedTokens =
                             ".." ->
                                 Token.Binop m Prelude.textConcat
 
-                            "fn" ->
-                                Token.Fn
-
                             "if" ->
                                 Token.If
+
+                            "then" ->
+                                Token.Then
+
+                            "else" ->
+                                Token.Else
 
                             "try" ->
                                 Token.Try
 
                             "as" ->
                                 Token.As
-
-                            "is" ->
-                                Token.Is
-
-                            "else" ->
-                                Token.Else
-
                             "with" ->
                                 Token.With
 

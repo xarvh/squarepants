@@ -222,7 +222,7 @@ listCons =
         item =
             tyVar "item"
     in
-    { symbol = "::"
+    { symbol = "%"
     , precedence = Op.Cons
     , associativity = Op.Right
     , ty = typeBinop False item (Core.listType item) (Core.listType item)

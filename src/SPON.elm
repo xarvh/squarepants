@@ -153,7 +153,7 @@ field fieldName fieldReader statements =
     case statements of
         (FA.Definition def) :: tail ->
             case def.pattern of
-                FA.PatternAny _ False name ->
+                FA.PatternAny _ False name Nothing ->
                     if name == fieldName then
                         case fieldReader def.body of
                             Accepted unreadStatements a ->
