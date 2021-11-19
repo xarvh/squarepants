@@ -37,8 +37,8 @@ alias ReadState =
     }
 
 
-readStateInit moduleName moduleCode =
-    as Text: Text: ReadState
+readStateInit as Text: Text: ReadState =
+    fn moduleName moduleCode:
 
     { buffer = Buffer.init moduleCode
     , errors = []
@@ -51,14 +51,14 @@ readStateInit moduleName moduleCode =
     }
 
 
-getPos @state =
-    as ReadState@: Int
+getPos as ReadState@: Int =
+    fn @state:
 
     state.buffer.nextPos
 
 
-addError message @state =
-    as Text: ReadState@: None
+addError as Text: ReadState@: None =
+    fn message @state:
 
     end =
         getPos @state
@@ -70,44 +70,38 @@ addError message @state =
     @state.start := end
 
 
-setMode mode @state =
-    as Mode: ReadState@: None
-
+setMode as Mode: ReadState@: None =
+    fn mode @state:
     @state.mode := mode
 
 
-absAddToken =
-    as Int: Int: Token.Kind: ReadState@: None
-
+absAddToken as Int: Int: Token.Kind: ReadState@: None =
     fn start end kind @state:
-        @state.tokens := Token start end kind :: state.tokens
-        @state.start := end
+    @state.tokens := Token start end kind :: state.tokens
+    @state.start := end
 
 
-relAddToken =
-    as Int: Int: Token.Kind: ReadState@: None
+relAddToken as Int: Int: Token.Kind: ReadState@: None =
     fn ds de kind @state:
-        pos = getPos @state
-        absAddToken (pos + ds) (pos + de) kind @state
+    pos = getPos @state
+    absAddToken (pos + ds) (pos + de) kind @state
 
 
-addOneIndentToken =
-    as Token.Kind: ReadState@: None
+addOneIndentToken as Token.Kind: ReadState@: None =
     fn kind @state:
-        pos = getPos @state
-        @state.tokens := Token pos pos kind :: state.tokens
+    pos = getPos @state
+    @state.tokens := Token pos pos kind :: state.tokens
 
 
-getChunk =
-    as ReadState@: Int & Int & Text
+getChunk as ReadState@: Int & Int & Text =
     fn @state:
-        start = state.start
-        end = getPos @state
-        start & end & Buffer.slice state.start end state.buffer
+    start = state.start
+    end = getPos @state
+    start & end & Buffer.slice state.start end state.buffer
 
 
-unindent raw =
-    as Text: Text
+unindent as Text: Text =
+    fn raw:
 
     [#
           blah """hello"""
@@ -150,20 +144,18 @@ unindent raw =
 #
 # Words (names, keywords, logical ops)
 #
-isWordStart char =
-    as Text: Bool
-
+isWordStart as Text: Bool =
+    fn char:
     Text.startsWithRegex "[a-zA-Z._]" char /= ""
 
 
-isWordBody char =
-    as Text: Bool
-
+isWordBody as Text: Bool =
+    fn char:
     Text.startsWithRegex "[a-zA-Z./_0-9]" char /= ""
 
 
-addWordToken modifier @state =
-    as Token.NameModifier: ReadState@: None
+addWordToken as Token.NameModifier: ReadState@: None =
+    fn modifier @state:
 
     start = state.start
 
@@ -200,14 +192,13 @@ addWordToken modifier @state =
 #
 # Number literals
 #
-isNumber char =
-    as Text: Bool
-
+isNumber as Text: Bool =
+    fn char:
     Text.startsWithRegex "[0-9_.]" char /= ""
 
 
-addNumberToken @state =
-    as ReadState@: None
+addNumberToken as ReadState@: None =
+    fn @state:
 
     start & end & chunk =
         getChunk @state
@@ -226,8 +217,8 @@ addNumberToken @state =
 #
 # Squiggles (ops and symbols)
 #
-isSquiggle char =
-    as Text: Bool
+isSquiggle as Text: Bool =
+    fn char:
 
     try char as
        "=": True
@@ -244,13 +235,14 @@ isSquiggle char =
        _: False
 
 
-addSquiggleToken nextIsSpace @state =
-    as Bool: ReadState@: None
+addSquiggleToken as Bool: ReadState@: None =
+    fn nextIsSpace @state:
 
     start & end & chunk =
         getChunk @state
 
-    add kind =
+    add =
+        fn kind:
         absAddToken start end kind @state
 
     try chunk as

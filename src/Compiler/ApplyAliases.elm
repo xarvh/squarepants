@@ -93,55 +93,53 @@ expandType ga ty =
             error pos [ "Did we apply aliases twice?" ]
 
         CA.TypeConstant pos ref args ->
-            do (Lib.list_mapRes (expandType ga) args) <|
-                \replacedArgs ->
-                    case ga pos ref of
-                        Err e ->
-                            Err e
+            do (Lib.list_mapRes (expandType ga) args) <| \replacedArgs ->
+            case ga pos ref of
+                Err e ->
+                    Err e
 
-                        Ok (T_Union un) ->
-                            if List.length replacedArgs /= List.length un.args then
-                                error pos [ "union " ++ un.name ++ " needs " ++ String.fromInt (List.length un.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs) ]
+                Ok (T_Union un) ->
+                    if List.length replacedArgs /= List.length un.args then
+                        error pos [ "union " ++ un.name ++ " needs " ++ String.fromInt (List.length un.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs) ]
 
-                            else
-                                replacedArgs
-                                    |> CA.TypeConstant pos ref
-                                    |> Ok
+                    else
+                        replacedArgs
+                            |> CA.TypeConstant pos ref
+                            |> Ok
 
-                        Ok (T_Alias al) ->
-                            if List.length al.args /= List.length replacedArgs then
-                                error pos [ "alias " ++ al.name ++ " needs " ++ String.fromInt (List.length al.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs) ]
+                Ok (T_Alias al) ->
+                    if List.length al.args /= List.length replacedArgs then
+                        error pos [ "alias " ++ al.name ++ " needs " ++ String.fromInt (List.length al.args) ++ " args, but was used with " ++ String.fromInt (List.length replacedArgs) ]
 
-                            else
-                                let
-                                    typeByArgName =
-                                        List.map2 Tuple.pair al.args replacedArgs |> Dict.fromList
-                                in
-                                al.ty
-                                    |> expandAliasVariables typeByArgName
-                                    |> CA.TypeAlias pos ref
-                                    |> Ok
+                    else
+                        let
+                            typeByArgName =
+                                List.map2 Tuple.pair al.args replacedArgs |> Dict.fromList
+                        in
+                        al.ty
+                            |> expandAliasVariables typeByArgName
+                            |> CA.TypeAlias pos ref
+                            |> Ok
 
 
 expandAndValidateType : GetAlias -> Type -> Res Type
 expandAndValidateType ga rawTy =
-    do (expandType ga rawTy) <|
-        \expandedTy ->
-            case findMutableArgsThatContainFunctions Nothing expandedTy of
-                [] ->
-                    Ok expandedTy
+    do (expandType ga rawTy) <| \expandedTy ->
+    case findMutableArgsThatContainFunctions Nothing expandedTy of
+        [] ->
+            Ok expandedTy
 
-                errors ->
-                    let
-                        -- TODO typeToPos?
-                        pos =
-                            CA.S
+        errors ->
+            let
+                -- TODO typeToPos?
+                pos =
+                    CA.S
 
-                        m =
-                            -- TODO show the actual positions
-                            "Mutable arguments can't be or contain functions!" :: List.map Debug.toString errors
-                    in
-                    errorTodo (String.join "\n" m)
+                m =
+                    -- TODO show the actual positions
+                    "Mutable arguments can't be or contain functions!" :: List.map Debug.toString errors
+            in
+            errorTodo (String.join "\n" m)
 
 
 findMutableArgsThatContainFunctions : Maybe Pos -> Type -> List ( Pos, Pos )
@@ -194,26 +192,23 @@ applyAliasesToModule mod =
         ( aliases, unions, values ) =
             CA.split mod
     in
-    do (applyAliasesToAliases unions aliases) <|
-        \resolved_aliases ->
-            do (applyAliasesToUnions resolved_aliases unions) <|
-                \resolved_unions ->
-                    do (applyAliasesToValues resolved_aliases unions values) <|
-                        \resolved_values ->
-                            let
-                                a0 =
-                                    Dict.empty
+    do (applyAliasesToAliases unions aliases) <| \resolved_aliases ->
+    do (applyAliasesToUnions resolved_aliases unions) <| \resolved_unions ->
+    do (applyAliasesToValues resolved_aliases unions values) <| \resolved_values ->
+    let
+        a0 =
+            Dict.empty
 
-                                a1 =
-                                    Dict.foldl (\k v -> Dict.insert k (CA.Alias v)) a0 resolved_aliases
+        a1 =
+            Dict.foldl (\k v -> Dict.insert k (CA.Alias v)) a0 resolved_aliases
 
-                                a2 =
-                                    Dict.foldl (\k v -> Dict.insert k (CA.Union v)) a1 resolved_unions
+        a2 =
+            Dict.foldl (\k v -> Dict.insert k (CA.Union v)) a1 resolved_unions
 
-                                a3 =
-                                    Dict.foldl (\k v -> Dict.insert k (CA.Value v)) a2 resolved_values
-                            in
-                            Ok a3
+        a3 =
+            Dict.foldl (\k v -> Dict.insert k (CA.Value v)) a2 resolved_values
+    in
+    Ok a3
 
 
 
@@ -244,24 +239,22 @@ applyAliasesToUnions aliases uns =
 ----
 --- Apply aliases to annotations
 --
+-- type alias ValueDef a =
+--     { a | maybeAnnotation : Maybe CA.Annotation, body : List CA.Statement }
 
 
-type alias ValueDef a =
-    { a | maybeAnnotation : Maybe CA.Annotation, body : List CA.Statement }
-
-
-applyAliasesToValues : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Dict String (ValueDef a) -> Res (Dict String (ValueDef a))
+applyAliasesToValues : Dict Name CA.AliasDef -> Dict Name CA.UnionDef -> Dict String CA.RootValueDef -> Res (Dict String CA.RootValueDef)
 applyAliasesToValues aliases uns =
     let
         ga : GetAlias
         ga =
             getAliasSimple aliases uns
     in
-    Lib.dict_mapRes (\k -> normalizeValueDef ga)
+    Lib.dict_mapRes (\k -> normalizeRootValueDef ga)
 
 
-normalizeValueDef : GetAlias -> ValueDef a -> Res (ValueDef a)
-normalizeValueDef ga vdef =
+normalizeRootValueDef : GetAlias -> CA.RootValueDef -> Res CA.RootValueDef
+normalizeRootValueDef ga vdef =
     Result.map2
         (\maybeAnnotation body ->
             { vdef
@@ -273,6 +266,38 @@ normalizeValueDef ga vdef =
         (normalizeBlock ga vdef.body)
 
 
+normalizeLocalValueDef : GetAlias -> CA.LocalValueDef -> Res CA.LocalValueDef
+normalizeLocalValueDef ga def =
+    do (normalizePattern ga def.pattern) <| \pa ->
+    do (normalizeBlock ga def.body) <| \body ->
+    Ok { def | pattern = pa, body = body }
+
+
+normalizePattern : GetAlias -> CA.Pattern -> Res CA.Pattern
+normalizePattern ga pa =
+    case pa of
+        CA.PatternDiscard _ ->
+            Ok pa
+
+        CA.PatternAny a_pos name Nothing ->
+            Ok pa
+
+        CA.PatternAny a_pos name (Just ty) ->
+            do (expandAndValidateType ga ty) <| \nty ->
+            Ok <| CA.PatternAny a_pos name (Just nty)
+
+        CA.PatternLiteral a_pos value ->
+            Ok pa
+
+        CA.PatternConstructor pos name args ->
+            do (Lib.list_mapRes (normalizePattern ga) args) <| \nargs ->
+            Ok <| CA.PatternConstructor pos name nargs
+
+        CA.PatternRecord pos attrs ->
+            do (Lib.dict_mapRes (\k -> normalizePattern ga) attrs) <| \nattrs ->
+            Ok <| CA.PatternRecord pos nattrs
+
+
 normalizeAnnotation : GetAlias -> Maybe CA.Annotation -> Res (Maybe CA.Annotation)
 normalizeAnnotation ga maybeType =
     case maybeType of
@@ -280,11 +305,10 @@ normalizeAnnotation ga maybeType =
             Ok Nothing
 
         Just ann ->
-            do (expandAndValidateType ga ann.ty) <|
-                \ty ->
-                    { ann | ty = ty }
-                        |> Just
-                        |> Ok
+            do (expandAndValidateType ga ann.ty) <| \ty ->
+            { ann | ty = ty }
+                |> Just
+                |> Ok
 
 
 normalizeBlock : GetAlias -> List CA.Statement -> Res (List CA.Statement)
@@ -296,7 +320,7 @@ normalizeStatement : GetAlias -> CA.Statement -> Res CA.Statement
 normalizeStatement ga s =
     case s of
         CA.Definition vdef ->
-            Result.map CA.Definition (normalizeValueDef ga vdef)
+            Result.map CA.Definition (normalizeLocalValueDef ga vdef)
 
         CA.Evaluation expr ->
             Result.map CA.Evaluation (normalizeExpr ga expr)
@@ -394,10 +418,9 @@ processAlias uns allAliases al processedAliases =
                     Nothing ->
                         errorUndefinedType pos name
     in
-    do (expandAndValidateType getAlias al.ty) <|
-        \ty ->
-            Dict.insert al.name { al | ty = ty } processedAliases
-                |> Ok
+    do (expandAndValidateType getAlias al.ty) <| \ty ->
+    Dict.insert al.name { al | ty = ty } processedAliases
+        |> Ok
 
 
 expandAliasVariables : Dict Name Type -> Type -> Type

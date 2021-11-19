@@ -20,8 +20,8 @@ Language Overview
     numberOne =
         1
 
-    # Declare a function
-    addThreeNumbers x y z =
+    # Declare a function with three parameters
+    addThreeNumbers = x: y: z:
         x + y + z
 
 
@@ -33,22 +33,24 @@ Language Overview
 
 
     # Declarations can have a type annotation
-    floatSix =
-        as Float
+    floatSix as Float =
 
         # parens are not needed for calling functions
         addThreeNumbers 1 2 3
 
 
-    fibonacci n =
-        as Int: Int
+    fibonacci as Int: Int =
+        n:
 
         # if-then-else always yields a value
-        if n < 2: n else: n + fibonacci (n - 1)
+        if n < 2 then
+            n
+        else
+            n + fibonacci (n - 1)
 
 
-    subtractTwoFrom n =
-        as Vec2: Vec2
+    subtractTwoFrom as Vec2: Vec2 =
+        n:
 
         # operators can be used prefixed, like functions
         # `left - right` becomes `(-) right left`
@@ -58,9 +60,7 @@ Language Overview
 
     # Square brackets mean "List".
     # All items must be of the same type
-    listOfText =
-        as [ Text ]
-        [
+    listOfText as [Text] = [
         , "Gary"
         , "Bikini Bottom"
         , "I'm ready! Promotion!"
@@ -70,8 +70,8 @@ Language Overview
     # `>>` and `<<` are just syntactic sugar, read them as "send to".
     # They help using less parens and help visualizing how a value is
     # transformed step-by-step.
-    repeatHello times =
-        as Int: Text
+    repeatHello as Int: Text =
+        times:
         "Hello!"
             >> List.repeat times
             >> Text.join ", "
@@ -80,16 +80,17 @@ Language Overview
 
     # When you see `@`, it means "this thing is mutable"
     # If you come from Haskell, think of it as sintactic sugar around the State monad.
-    average numbers =
-        as List Int: Float
+    #
+    # Notice that `average` is still a pure function.
+    #
+    average as [Int]: Float =
+        numbers:
 
         # mutable variables can only be local and can't leave their scope.
-        # `average` is still a pure function.
         n @= 0
         sum @= 0
 
-        # anonymous functions start with `fn`
-        List.each numbers fn x:
+        List.each numbers x:
             @n += 1
             @sum += x
 
@@ -98,12 +99,11 @@ Language Overview
 
 
     # The argument preceding `@:` is mutable
-    generateTwoRandomNumbers min_ max_ @seed =
-        as Int: Int: Random.Seed @: Int & Int
+    generateTwoRandomNumbers as Int: Int: Random.Seed @: Int & Int =
+        min_: max_: @seed:
 
         # '&' is used for tuples
         Random.number min_ max_ @seed & Random.number min_ max_ @seed
-
 
 
     # Algebraic Data Types
@@ -115,8 +115,8 @@ Language Overview
         , Error Text
         , Available payload
 
-    getStatusName loadingState =
-        as LoadingState payload: Text
+    getStatusName as LoadingState payload: Text =
+        loadingState:
 
         try loadingState as
             NotRequested: "Not needed"
@@ -124,8 +124,8 @@ Language Overview
             Error message: "Error: " .. message
             Available _: "Successfully loaded"
 
-    getPayload loadingState =
-        as LoadingState payload: Maybe payload
+    getPayload as LoadingState payload: Maybe payload =
+        loadingState:
 
         try loadingState as
             Available payload: Just payload
@@ -135,15 +135,12 @@ Language Overview
 
     # Records
 
-    alias Crab =
-        {
+    alias Crab = {
         , name as Text
         , money as Float
         }
 
-    eugeneKrabs =
-        as Crab
-        {
+    eugeneKrabs as Crab = {
         , name = "Eugene H. Krabs"
         , money = 2 #TODO 2_345_678.90
         }
@@ -152,21 +149,21 @@ Language Overview
     # TODO add a record access example
 
 
-    earnMoney profit crab =
-        as Float: Crab: Crab
+    earnMoney as Float: Crab: Crab =
+        profit: crab:
 
         # `.money` is a shorthand for `crab.money`
         { crab with money = .money + profit }
 
 
     # pseudo do-notation
-    getAllHouses getAsset =
-        as (Text: Maybe house): Maybe { rock as house, moai as house, pineapple as house }
+    getAllHouses as (Text: Maybe house): Maybe { rock as house, moai as house, pineapple as house } =
+        getAsset:
 
-        getAsset "rock" >> Maybe.onJust fn rock:
-        getAsset "moai" >> Maybe.onJust fn moai:
-        getAsset "pineapple" >> Maybe.onJust fn pineapple:
-       Just { rock, moai, pineapple }
+        getAsset "rock" >> Maybe.onJust rock:
+        getAsset "moai" >> Maybe.onJust moai:
+        getAsset "pineapple" >> Maybe.onJust pineapple:
+        Just { rock, moai, pineapple }
 
 
 
