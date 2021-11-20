@@ -1,5 +1,6 @@
 
-union Token = Token Int Int Kind
+union Token =
+    Token Int Int Kind
 
 
 union NameModifier =
@@ -24,16 +25,15 @@ union Kind =
     # Terms
     , TextLiteral Text # TODO add a flag to remember whether it was multiline or not
     , NumberLiteral Text
-    , Name NameModifier Text
+    , Name NameModifier Name
     # Keywords
-    , Fn
     , If
+    , Then
+    , Else
     , Try
     , As
-    , Is
     , Colon
     , MutableColon
-    , Else
     , With
     # Ops
     , Defop { mutable as Bool }

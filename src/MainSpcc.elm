@@ -203,7 +203,7 @@ makeProgram metaFile files =
     in
     do blah <| \env ->
     alsDefs
-        |> Compiler.CanonicalToJs.translateAll
+        |> Compiler.CanonicalToJs.translateAll errorEnv
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
         |> String.join "\n\n"

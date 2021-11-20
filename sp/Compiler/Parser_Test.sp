@@ -53,7 +53,7 @@ firstStatement code =
             head :: tail: Ok head
     code
         >> Compiler/TestHelpers.textToFormattableModule
-        >> Result.map (List.map (FA.posMap_statement fn _: p))
+        #>> Result.map (List.map (FA.posMap_statement fn _: p))
         >> Compiler/TestHelpers.resErrorToStrippedText code
         >> Result.andThen grabFirst
 
@@ -87,9 +87,9 @@ firstAnnotation code =
 
     grabAnnotation def =
         as FA.ValueDef: Result Text FA.Type
-        try def.maybeAnnotation as
-            Nothing: Err "no annotation"
-            Just ann: Ok ann.ty
+        try def.pattern as
+            FA.PatternAny pos name mutable (Just ty): Ok ty
+            _: Err "no annotation"
 
     code
         >> firstStatement
@@ -112,8 +112,7 @@ errors =
             [reg] error marker is completely off
             """
             """
-            tests =
-                as Test
+            tests as Test =
 
                 blah "StringToTokens"
                     [
@@ -190,15 +189,15 @@ lambdas =
             Inline nesting
             """
             """
-            fn a: fn b: 3
+            a: b: 3
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
-                    [ FA.PatternAny p False "a" ]
+                    ( FA.PatternAny p False "a" Nothing )
                     [ FA.Evaluation p <<
                         FA.Lambda p
-                            [ FA.PatternAny p False "b" ]
+                            ( FA.PatternAny p False "b" Nothing )
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -207,17 +206,17 @@ lambdas =
             Block nesting
             """
             """
-            fn a:
-              fn b:
+            a:
+              b:
                 3
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
-                    [ FA.PatternAny p False "a" ]
+                    ( FA.PatternAny p False "a" Nothing )
                     [ FA.Evaluation p <<
                         FA.Lambda p
-                            [ FA.PatternAny p False "b" ]
+                            ( FA.PatternAny p False "b" Nothing )
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -226,28 +225,28 @@ lambdas =
             Sibling nesting
             """
             """
-            fn a:
-            fn b:
+            a:
+            b:
             3
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
-                    [ FA.PatternAny p False "a" ]
+                    ( FA.PatternAny p False "a" Nothing )
                     [ FA.Evaluation p <<
                         FA.Lambda p
-                            [ FA.PatternAny p False "b" ]
+                            (FA.PatternAny p False "b" Nothing)
                             [ FA.Evaluation p << FA.LiteralNumber p "3"
                             ]
                     ]
             )
         , codeTest
             """
-            SKIP Single tuple args can be unpacked without parens
+            SKIP Tuple has precedence over lambda
             """
             """
             x =
-              fn a & b: a
+              a & b: a
             """
             firstDefinition
             Test.isOk
@@ -259,8 +258,7 @@ annotations =
     Test.Group "Annotations"
         [ codeTest "Mutability 1"
             """
-            a =
-              as Number @: Int: None
+            a as Number @: Int: None =
               1
             """
             firstAnnotation
@@ -277,10 +275,9 @@ annotations =
             )
         , codeTest "Mutability 2"
             """
-                        a =
-                          as Number: Int @: None
-                          1
-                        """
+            a as Number: Int @: None =
+              1
+            """
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
@@ -295,10 +292,9 @@ annotations =
             )
         , codeTest "Tuple precedence"
             """
-                        a =
-                          as Int & Int: Bool
-                          a
-                        """
+            a as Int & Int: Bool =
+              1
+            """
             firstAnnotation
             (Test.isOkAndEqualTo <<
                 FA.TypeFunction p
@@ -327,34 +323,45 @@ unionDefs =
     firstTypeDef =
         fn x: x >> firstStatement >> Result.andThen asTypeDef
 
-    Test.Group "Type Definitions"
-        [ codeTest "Parse inline def"
-            "union A b c = V1 b, V2 c, V3, V4 b c"
+    Test.Group
+        """
+        Type Definitions
+        """
+        [ codeTest
+            """
+            Parse inline def
+            """
+            """
+            union A b c = V1 b, V2 c, V3, V4 b c
+            """
             firstTypeDef
             (Test.isOkAndEqualTo
                 { args = [ "b", "c" ]
                 , constructors =
-                    [ FA.TypePolymorphic p "V1" [ FA.TypeName p "b" ]
-                    , FA.TypePolymorphic p "V2" [ FA.TypeName p "c" ]
-                    , FA.TypeName p "V3"
-                    , FA.TypePolymorphic p "V4" [ FA.TypeName p "b", FA.TypeName p "c" ]
+                    [ At p "V1" & [ FA.TypeName p "b" ]
+                    , At p "V2" & [ FA.TypeName p "c" ]
+                    , At p "V3" & []
+                    , At p "V4" & [ FA.TypeName p "b", FA.TypeName p "c" ]
                     ]
                 , name = "A"
                 }
             )
-        , codeTest "Parse multiline def"
+        , codeTest
             """
-                        union A =
-                           , V1
-                           , V2
-                        """
+            Parse multiline def
+            """
+            """
+            union A =
+               , V1
+               , V2
+            """
             firstTypeDef
             (Test.isOkAndEqualTo
                 { name = "A"
                 , args = []
                 , constructors =
-                    [ FA.TypeName p "V1"
-                    , FA.TypeName p "V2"
+                    [ At p "V1" & []
+                    , At p "V2" & []
                     ]
                 }
             )
@@ -365,12 +372,7 @@ unionDefs =
                 { args = []
                 , name = "A"
                 , constructors =
-                    [ FA.TypePolymorphic p
-                        "A"
-                        [ FA.TypePolymorphic p
-                            "List"
-                            [ FA.TypeName p "Int" ]
-                        ]
+                    [ At p "A" & [ FA.TypeList p ( FA.TypeName p "Int" ) ]
                     ]
                 }
             )
@@ -424,12 +426,12 @@ records =
             ({ attrs = [  "x" & (Just (FA.LiteralNumber p "1") ) ] , extends = Nothing } >> FA.Record p >> Test.isOkAndEqualTo)
         , codeTest "multiline"
             """
-                    a =
-                      {
-                      , x = 1
-                      , y = 2
-                      }
-                    """
+            a =
+              {
+              , x = 1
+              , y = 2
+              }
+            """
             firstEvaluationOfDefinition
             ({ attrs =
                 [ ( "x" & Just (FA.LiteralNumber p "1") )
@@ -442,11 +444,11 @@ records =
             )
         , codeTest "multiline compact"
             """
-                    a = {
-                      , x = 1
-                      , y = 2
-                      }
-                    """
+            a = {
+              , x = 1
+              , y = 2
+              }
+            """
             firstEvaluationOfDefinition
             ({ attrs =
                 [ ( "x" & Just (FA.LiteralNumber p "1") )
@@ -462,36 +464,33 @@ records =
             Annotation, inline
             """
             """
-            a =
-              as { x as Bool }
+            a as { x as Bool } =
               a
             """
             firstAnnotation
             ({ extends = Nothing , attrs = [  "x" & (Just << FA.TypeName p "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
         , codeTest
             """
-            annotation, multiline
+            SKIP Annotation, own line
             """
             """
-            a =
-              as
-               {
-               , x as Bool
-               }
-              a
+            a as
+               { x as Bool }
+               =
+               1
             """
             firstAnnotation
             ({ extends = Nothing , attrs = [  "x" & (Just << FA.TypeName p "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
         , codeTest
             """
-            Annotation, multiline compact
+            SKIP Annotation, multiline
             """
             """
-            a =
-              as {
+            a as {
                , x as Bool
                }
-              a
+                  =
+                  a
             """
             firstAnnotation
             ({ extends = Nothing , attrs = [ "x" & (Just << FA.TypeName p "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
@@ -504,7 +503,10 @@ records =
             """
             firstDefinition
             Test.isOk
-        , codeTest "[reg] simple assignment, as block"
+        , codeTest
+            """
+            [reg] simple assignment, as block
+            """
             """
             a =
               { b with c }
@@ -541,7 +543,7 @@ ifs =
     as Test
     Test.Group "Ifs"
         [ codeTest "inline"
-            "a = if a: b else c"
+            "a = if a then b else c"
             firstEvaluationOfDefinition
             Test.isOk
         , codeTest
@@ -550,7 +552,7 @@ ifs =
             """
             """
             x =
-                if a:
+                if a then
                     b
                 else
                     c
@@ -560,7 +562,7 @@ ifs =
         , codeTest "multiline, compact"
             """
             x =
-              if a: b
+              if a then b
               else c
             """
             firstEvaluationOfDefinition
@@ -601,7 +603,7 @@ patterns =
         [ codeTest "list unpacking"
             "[a, b] = x"
             (fn x: x >> firstDefinition >> Result.map fn y: y.pattern)
-            ([ FA.PatternAny p False "a", FA.PatternAny p False "b" ]
+            ([ FA.PatternAny p False "a" Nothing, FA.PatternAny p False "b" Nothing ]
                 >> FA.PatternList p
                 >> Test.isOkAndEqualTo
             )

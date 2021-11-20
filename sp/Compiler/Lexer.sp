@@ -175,11 +175,11 @@ addWordToken modifier @state =
 
     maybeKeywordKind =
         try chunk as
-            "fn": Just << Token.Fn
             "if": Just << Token.If
+            "then": Just << Token.Then
+            "else": Just << Token.Else
             "try": Just << Token.Try
             "as": Just << Token.As
-            "else": Just << Token.Else
             "with": Just << Token.With
             "and": Just << Token.Binop Prelude.and_
             "or": Just << Token.Binop Prelude.or_

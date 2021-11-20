@@ -1,6 +1,8 @@
 #
 # The position of a piece of code
 #
+# The names are kept very short to keep them debug-output-friendly
+#
 union Pos =
     # actual position: module reference, start, end
     , P Text Int Int

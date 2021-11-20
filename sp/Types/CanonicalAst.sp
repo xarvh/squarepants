@@ -1,109 +1,34 @@
 
 
-alias Name =
-    Text
-
-
-alias ModuleName =
-    Text
-
-
-#
-# This tells us where a module comes from.
-#
-# It has two requirements:
-#   1. It distinguishes two modules with the same name
-#   2. It tells us how to actually load the module
-#
-# TODO: for the time being, this is just a placeholder
-#
-union Source =
-    Source
-
-
 # A reference to a definition (alias, union, constructor or value doesn't matter)
 union Ref =
-    # This is for stuff defined inside the current function
-    , FunctionLocal Name
+    # This is for stuff defined inside the current function/block
+    , BlockLocal Name
     # This is for stuff defined inside the current module
     , ModuleLocal Name
     # This is for stuff defined outside the current module
-    , Foreign Source ModuleName Name
+    , Foreign Meta.UniqueSymbolReference
 
-
-#
-# Type
-#
 
 alias TyVarId =
     Int
 
 
-# TODO I can't base this on defPath because patterns without names make it non-unique
-# But probably I can use Pos?
-union UniqueTyvarKey =
-    UniqueTyvarKey Source ModuleName Int
-
-
 union Type =
     , TypeConstant Pos Ref [Type]
     , TypeGeneratedVar TyVarId
-    , TypeAnnotatedVar Pos UniqueTyvarKey Name
+    , TypeAnnotatedVar Pos Name
     , TypeFunction Pos Type Bool Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
     , TypeAlias Pos Ref Type
 
 
-typePos ty =
-    as Type: Pos
-    try ty as
-        TypeConstant p _ _: p
-        TypeVariable p _: p
-        TypeFunction p _ _ _: p
-        TypeRecord p _ _: p
-        TypeAlias p _ _: p
-
-
-#
-# Pattern
-#
-
-
 union Pattern =
-    , PatternDiscard Pos
-    , PatternAny Pos Text
+    , PatternAny Pos (Maybe Text) (Maybe Type)
     , PatternLiteralText Pos Text
-    # TODO: Should this be `IntLiteral`? What other Number types are allowed? Vecs?
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Ref [Pattern]
     , PatternRecord Pos (Dict Name Pattern)
-
-
-patternNames p =
-    as Pattern: Dict Name Pos
-    try p as
-        PatternDiscard pos: Dict.empty
-        PatternAny pos n: Dict.singleton n pos
-        PatternLiteralNumber pos _: Dict.empty
-        PatternLiteralText pos _: Dict.empty
-        PatternConstructor pos path ps: List.foldl (fn x: x >> patternNames >> Dict.join) ps Dict.empty
-        PatternRecord pos ps: Dict.foldl (fn k v: v >> patternNames >> Dict.join) ps Dict.empty
-
-
-patternPos pa =
-    as Pattern: Pos
-    try pa as
-        PatternDiscard p: p
-        PatternAny p n: p
-        PatternLiteralText p _: p
-        PatternLiteralNumber p _: p
-        PatternConstructor p path ps: p
-        PatternRecord p ps: p
-
-
-#
-# Statements
-#
 
 
 union Statement =
@@ -112,25 +37,12 @@ union Statement =
     , Evaluation Expression
 
 
-statementPos stat =
-    as Statement: Pos
-    try stat as
-        Definition def:
-            try List.reverse def.body as
-                []: patternPos def.pattern
-                last :: _: Pos.range (patternPos def.pattern) (statementPos last)
-
-        Evaluation expr:
-            expressionPos expr
-
-
 #
-# Expressions
+# Expression
 #
 
 
-alias VariableArgs =
-    {
+alias VariableArgs = {
     , ref as Ref
     , attrPath as [Name]
     }
@@ -147,17 +59,11 @@ union Argument =
     , ArgumentMutable Pos VariableArgs
 
 
-argumentPos arg =
-    as Argument: Pos
-    try arg as
-        ArgumentExpression e: expressionPos e
-        ArgumentMutable pos _: pos
-
-
 union Expression =
-    , LiteralNumber Pos Text
+    , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos VariableArgs
+    , Constructor Pos Ref
     , Lambda Pos Parameter [Statement]
     , Record Pos (Maybe VariableArgs) (Dict Name Expression)
     , Call Pos Expression Argument
@@ -171,21 +77,8 @@ union Expression =
     , Try Pos Expression [Pattern & [Statement]]
 
 
-expressionPos e =
-    as Expression: Pos
-    try e as
-        LiteralText pos _: pos
-        LiteralNumber pos _: pos
-        Variable pos _: pos
-        Lambda pos _ _: pos
-        Record pos _ _: pos
-        Call pos _ _: pos
-        If pos _: pos
-        Try pos _ _: pos
-
-
 #
-# Main definition stuff
+# Module
 #
 
 
@@ -198,7 +91,7 @@ alias AliasDef = {
 
 alias UnionDef = {
     , name as At Name
-    , args as [At Name]
+    , args as [Name]
     , constructors as Dict Name [Type]
     }
 
@@ -207,99 +100,139 @@ alias ValueDef = {
     , pattern as Pattern
     , native as Bool
     , mutable as Bool
-    , parentDefinitions as [Name]
-    , maybeAnnotation as Maybe Annotation
+    , parentDefinitions as [Pattern]
+    , nonFn as Dict Name None
     , body as [Statement]
     }
 
 
-alias Annotation = {
-    , asPos as Pos
-    , type as Type
-    , nonFn as Dict Text Pos
+alias Deps = {
+    , values as Dict Meta.UniqueSymbolReference None
+    , types as Dict Meta.UniqueSymbolReference None
     }
 
+alias Annotation = {
+    , type as Type
+    , nonFn as Dict Name None
+    }
 
-#
-# Module stuff
-#
-
-
-union ForeignAddress =
-    ForeignAddress Source ModuleName Name
-
-
-alias Deps = {
-    , values as Dict ForeignAddress None
-    , types as Dict ForeignAddress None
+alias RootValue = {
+    # valueDefsKey is used as a key to find the definition in valueDef
+    , valueDefsKey as Pattern
+    , maybeAnnotation as Maybe Annotation
     }
 
 
 alias Module = {
-    , source as Source
-    , name as ModuleName
-    , aliases as Dict Name ([#Deps &#] AliasDef)
-    , unions as Dict Name ([#Deps &#] UnionDef)
-
-    # this also contains constructors! =)
-    # The pattern is used to find the definition in valueDef
-    , exposedValues as Dict Name { [#deps as Deps,#] valueDefsKey as Pattern, type as Type }
+    # TODO uncomment Deps (and maybe drop value dependencies for aliases and unions, since they don't use them?)
+    , aliasDefs as Dict Name ([#Deps &#] AliasDef)
+    , unionDefs as Dict Name ([#Deps &#] UnionDef)
     , valueDefs as Dict Pattern ([#Deps &#] ValueDef)
-    , valueNames as Dict Name Pos
+
+    # these are redundant because it can be extracted from valueDefs and unionDefs above
+    , rootValues as Dict Name RootValue
+    , constructors as Dict Name Type
     }
 
 
+initModule =
+    as Module
+    {
+    , aliasDefs = Dict.empty
+    , unionDefs = Dict.empty
+    , valueDefs = Dict.empty
+    , rootValues = Dict.empty
+    , constructors = Dict.empty
+    }
+
+
+findValue name module =
+    as Text: Module: Maybe ValueDef
+
+    Dict.get name module.rootValues >> Maybe.andThen fn rv:
+    Dict.get rv.valueDefsKey module.valueDefs
+
+
 #
-# RootDef splitters
+# Pos helpers
 #
 
-[#
 
-asValue r =
-    as RootDef: Maybe ValueDef
-    try r as
-        Value v: Just v
-        _: Nothing
-
-
-asAlias r =
-    as RootDef: Maybe AliasDef
-    try r as
-        Alias a: Just a
-        _: Nothing
+typePos ty =
+    as Type: Pos
+    try ty as
+        TypeConstant p _ _: p
+        TypeGeneratedVar _: Pos.I 3
+        TypeAnnotatedVar p _: p
+        TypeFunction p _ _ _: p
+        TypeRecord p _ _: p
+        TypeAlias p _ _: p
 
 
-asUnion r =
-    as RootDef: Maybe UnionDef
-    try r as
-        Union u: Just u
-        _: Nothing
+patternPos pa =
+    as Pattern: Pos
+    try pa as
+        PatternAny p n _: p
+        PatternLiteralText p _: p
+        PatternLiteralNumber p _: p
+        PatternConstructor p path ps: p
+        PatternRecord p ps: p
 
 
-split =
-    as AllDefs: Dict String AliasDef & Dict String UnionDef & Dict String ValueDef
-
-    part3 n rootDef ( als, uns, vals ) =
-        case rootDef of
-            Alias a:
-                ( Dict.insert n a als, uns, vals )
-
-            Union u:
-                ( als, Dict.insert n u uns, vals )
-
-            Value v:
-                ( als, uns, Dict.insert n v vals )
-
-    Dict.foldl part3 ( Dict.empty, Dict.empty, Dict.empty )
+patternNames p =
+    as Pattern: Dict Name Pos
+    try p as
+        PatternAny pos Nothing _: Dict.empty
+        PatternAny pos (Just n) _: Dict.singleton n pos
+        PatternLiteralNumber pos _: Dict.empty
+        PatternLiteralText pos _: Dict.empty
+        PatternConstructor pos path ps: List.foldl (fn x: x >> patternNames >> Dict.join) ps Dict.empty
+        PatternRecord pos ps: Dict.foldl (fn k v: v >> patternNames >> Dict.join) ps Dict.empty
 
 
-findValue name mod =
-    as String: AllDefs: Maybe ValueDef
-    try Dict.get name mod as
-        Just (Value def): Just def
-        _: Nothing
+patternNamedTypes p =
+    as Pattern: Dict Name (Pos & Maybe Type)
+    try p as
+        PatternAny pos Nothing _: Dict.empty
+        PatternAny pos (Just n) maybeType: Dict.singleton n (pos & maybeType)
+        PatternLiteralNumber pos _: Dict.empty
+        PatternLiteralText pos _: Dict.empty
+        PatternConstructor pos path ps: List.foldl (fn x: x >> patternNamedTypes >> Dict.join) ps Dict.empty
+        PatternRecord pos ps: Dict.foldl (fn k v: v >> patternNamedTypes >> Dict.join) ps Dict.empty
 
-#]
+
+statementPos stat =
+    as Statement: Pos
+    try stat as
+        Definition def:
+            try List.reverse def.body as
+                []: patternPos def.pattern
+                last :: _: Pos.range (patternPos def.pattern) (statementPos last)
+
+        Evaluation expr:
+            expressionPos expr
+
+
+argumentPos arg =
+    as Argument: Pos
+    try arg as
+        ArgumentExpression e: expressionPos e
+        ArgumentMutable pos _: pos
+
+
+expressionPos e =
+    as Expression: Pos
+    try e as
+        LiteralText pos _: pos
+        LiteralNumber pos _: pos
+        Variable pos _: pos
+        Constructor pos _: pos
+        Lambda pos _ _: pos
+        Record pos _ _: pos
+        Call pos _ _: pos
+        If pos _: pos
+        Try pos _ _: pos
+
 
 
 #
@@ -308,19 +241,10 @@ findValue name mod =
 
 
 union PosMap =
-    , PosMap_ValueDef ValueDef Name
-    , PosMap_AliasName Name
-    , PosMap_AliasArgument Name
-    , PosMap_UnionName Name
-    , PosMap_UnionParam Name
-
     , PosMap_Type Type
     , PosMap_Expr Expression
     , PosMap_Pattern Pattern
-    , PosMap_MutParam Name
-    , PosMap_MutableArg VariableArgs
-    , PosMap_Annotation Annotation
-    , PosMap_NonFunction Name
+    , PosMap_Other
 
 
 [#
@@ -342,7 +266,6 @@ posMap_module f a_defs =
                     return <| Value b
     in
     M.dict_map fold a_defs
-#]
 
 
 posMap_atName f makePosMap @acc (At pos a)=
@@ -355,7 +278,6 @@ posMap_valueDef f @acc def =
     as (PosMap: acc @: Pos: Pos): acc @: ValueDef: ValueDef
 
     { def with
-    , primaryName = posMap_atName f (PosMap_ValueDef def) @acc def.primaryName
     , pattern = posMap_pattern f @acc def.pattern
     , maybeAnnotation = posMap_annotation f @acc def.maybeAnnotation
     , body = posMap_block f @acc def.body
@@ -399,8 +321,11 @@ posMap_type f @acc ty =
         TypeConstant a_pos name a_args:
           TypeConstant (fty a_pos) name (List.map (posMap_type f @acc) a_args)
 
-        TypeVariable a_pos name:
-            TypeVariable (fty a_pos) name
+        TypeGeneratedVar _:
+            ty
+
+        TypeAnnotatedVar a_pos unique name:
+            TypeAnnotatedVar (fty a_pos) unique name
 
         TypeFunction a_pos a_from fromIsMut a_to:
             TypeFunction (fty a_pos) (posMap_type f @acc a_from) fromIsMut (posMap_type f @acc a_to)
@@ -523,3 +448,5 @@ posMap_statement f @acc stat =
 #        Evaluation expr:
 #            do (posMap_expression f expr) <| \e:
 #            return <| Evaluation e
+
+#]

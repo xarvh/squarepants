@@ -631,7 +631,7 @@ viewProgram model =
         emitModule : CA.AllDefs -> Result x String
         emitModule caModule =
             caModule
-                |> Compiler.CanonicalToJs.translateAll
+                |> Compiler.CanonicalToJs.translateAll eenv
                 |> List.map (Compiler.JsToString.emitStatement 0)
                 |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
                 |> String.join "\n\n"

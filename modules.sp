@@ -17,12 +17,27 @@ sourceDir =
           Res
 
     module =
+       path = Compiler/CoreTypes
+       importAs = CoreTypes
+
+    module =
+       path = Types/CanonicalAst
+       importAs = CA
+
+    module =
        path = Types/FormattableAst
        importAs = FA
 
     module =
-       path = Types/Op
-       importAs = Op
+        path = Types/Meta
+        importAs = Meta
+        globalTypes =
+            Meta
+            Name
+
+    module =
+        path = Types/Op
+        importAs = Op
 
     module =
        path = Types/Pos
@@ -34,10 +49,12 @@ sourceDir =
             At
 
     module =
-       path = Types/Token
-       importAs = Token
-       globalTypes = Token
-       globalValues = Token
+        path = Types/Token
+        importAs = Token
+        globalTypes =
+            Token
+        globalValues =
+            Token
 
 
 library =

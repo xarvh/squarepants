@@ -6,6 +6,7 @@ valueTest =
 tests =
     Test.Group "SPCore/List"
         [ sortBy
+        , concat
         ]
 
 
@@ -70,3 +71,15 @@ sortBy =
             )
         ]
 
+
+
+concat =
+    Test.Group "concat"
+        [
+        , valueTest
+            """
+            concats two lists
+            """
+            fn _: List.concat [ [1, 2], [3, 4] ]
+            (Test.isOkAndEqualTo [ 1, 2, 3, 4])
+        ]

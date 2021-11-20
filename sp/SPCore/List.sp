@@ -2,6 +2,14 @@
 alias Int = Number
 
 
+any fun list =
+    as (a: Bool): [a]: Bool
+
+    try list as
+        []: False
+        h :: t: if fun h: True else any fun t
+
+
 sort =
     as [a]: [a]
     with a NonFunction
@@ -89,6 +97,27 @@ map2 f =
   rec []
 
 
+mapRes f list =
+    as (a: Result e b): [a]: Result e [b]
+
+    fun a acc = Result.map (fn b: b :: acc) (f a)
+
+    foldlRes fun list [] >> Result.map reverse
+
+
+foldlRes f ls accum =
+    as (item: accum: Result error accum): [item]: accum: Result error accum
+
+    try ls as
+        []:
+            Ok accum
+
+        h :: t:
+            try f h accum as
+                Err x: Err x
+                Ok newAccum: foldlRes f t newAccum
+
+
 range low high =
     as Int: Int: [Int]
 
@@ -118,7 +147,7 @@ append xs ys =
   as List a: List a: List a
   try ys as
     []: xs
-    _: foldr SPCore.Cons ys xs
+    _: foldr SPCore.Cons xs ys
 
 
 concat lists =

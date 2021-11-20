@@ -1,5 +1,6 @@
 module Compiler.JsToString_Test exposing (..)
 
+import Dict
 import Compiler.CanonicalToJs
 import Compiler.JsToString
 import Compiler.TestHelpers
@@ -42,7 +43,7 @@ runProgram variable mod =
                 Ok s
     in
     mod
-        |> Compiler.CanonicalToJs.translateAll
+        |> Compiler.CanonicalToJs.translateAll { moduleByName = Dict.empty }
         |> List.map (Compiler.JsToString.emitStatement 0)
         |> (\stats ->
                 (Compiler.CanonicalToJs.nativeDefinitions :: stats ++ endStatements)

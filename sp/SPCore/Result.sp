@@ -35,3 +35,12 @@ mapError f result =
 
         Err e1:
             Err (f e1)
+
+
+fromMaybe err maybe =
+    as err: Maybe a: Result err a
+
+    try maybe as
+        Nothing: Err err
+        Just a: Ok a
+

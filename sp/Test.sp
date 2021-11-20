@@ -50,6 +50,14 @@ codeTest toText title code functionToTest (CodeExpectation toMaybeError) =
           >> maybeToOutcome
 
 
+freeform test =
+    as (ok: Maybe Text): CodeExpectation ok
+    CodeExpectation << fn toText result:
+    try result as
+        Err e: Just e
+        Ok actualOk: test actualOk
+
+
 isOk =
     as CodeExpectation ok
 

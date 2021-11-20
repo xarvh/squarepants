@@ -19,3 +19,7 @@ mapBoth fa fb (a & b) =
     as (a: ma): (b: mb): a & b: ma & mb
     fa a & fb b
 
+pair a b =
+    as a: b: a & b
+    a & b
+

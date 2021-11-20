@@ -94,16 +94,6 @@ tests =
 keywords =
     Test.Group "keywords"
         [
-        , codeTest "[reg] `fn` as a keyword"
-            "fn = 1"
-            lexTokens
-            (Test.isOkAndEqualTo
-                [ Token 0 0 << Token.NewSiblingLine
-                , Token 0 2 << Token.Fn
-                , Token 3 4 << Token.Defop { mutable = False }
-                , Token 5 6 << Token.NumberLiteral "1"
-                ]
-            )
         , codeTest
             "[reg] can't @ keywords"
             "@with"

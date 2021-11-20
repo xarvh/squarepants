@@ -2,6 +2,13 @@
 
 ----> Caching system, because everything depends on that?
 
+----> Humanize must break a type into multiple lines
+
+
+
+* Duplicate name checks should be case-insensitive
+
+* Clean up At vs Pos?
 
 * Annotate every lambda with their function name and argument number, so that we can give better errors?
 
@@ -10,7 +17,6 @@
 
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
 
-* Humanize must break a type into multiple lines
 
 * later:
         Compiler should be able to produce a stacktrace
@@ -32,6 +38,16 @@
           >> Text.join "\n"
 
   without parens around the `fn`s
+
+
+* Remove support for prefix op notation (-) ?
+
+
+* Decide the precedence between :: and &, then write tests to ensure it works as it should
+    in both expressions and patterns.
+    ---> This is one more reason to replace :: with a better syntax
+    ---> squarepants-format should replace a :: b with [a, ...b]?
+
 
 
 * How do we ensure that execution order is consistent in record expressions?

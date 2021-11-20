@@ -444,6 +444,19 @@ foldl func dict acc =
 
 
 
+foldlRes func dict acc =
+    as (k: v: b: Result e b): Dict k v: b: Result e b
+    try dict as
+        RBEmpty_elm_builtin:
+            Ok acc
+
+        RBNode_elm_builtin _ key value left right:
+            foldlRes func left acc >> Result.andThen fn l:
+            func key value l >> Result.andThen fn f:
+            foldlRes func right f
+
+
+
 foldr func t acc =
   as (k: v: b: b): Dict k v: b: b
   try t as

@@ -8,6 +8,7 @@ import RefHierarchy
 import Set exposing (Set)
 import StateMonad as M exposing (M, do, return)
 import Types.CanonicalAst as CA
+import Types.Error exposing (ErrorEnv)
 import Types.JavascriptAst as JA
 import Types.Literal
 
@@ -23,7 +24,8 @@ allNatives =
         |> Dict.insert "SPCore/Debug.log" "sp_log"
         |> Dict.insert "SPCore/Debug.todo" "sp_todo"
         |> Dict.insert "SPCore/Debug.toHuman" "sp_toHuman"
-        |> Dict.insert "SPCore/Text.fromInt" "text_fromInt"
+        |> Dict.insert "SPCore/Text.fromNumber" "text_fromNumber"
+        |> Dict.insert "SPCore/Text.toNumber" "text_toNumber"
         |> Dict.insert "SPCore/Text.split" "text_split"
         |> Dict.insert "SPCore/Text.length" "text_length"
         |> Dict.insert "SPCore/Text.slice" "text_slice"
@@ -106,7 +108,7 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
             ]
         )
      ]
-        |> translateBodyToExpr { mutables = Set.empty }
+        |> translateBodyToExpr { mutables = Set.empty, errorEnv = { moduleByName = Dict.empty } }
         |> JA.Define fnName
     )
         :: acc
@@ -159,6 +161,7 @@ nativeBinopsAsFns =
 
 type alias Env =
     { mutables : Set JA.Name
+    , errorEnv : ErrorEnv
     }
 
 
@@ -306,6 +309,12 @@ const sp_log = (message) => (thing) => {
 }
 
 
+const sp_throw = function (errorName) {
+    console.error(...arguments);
+    throw new Error(errorName);
+}
+
+
 //
 // To Human
 //
@@ -353,7 +362,16 @@ const sp_toHumanAsList = (arrayAccum, list) => {
 //
 
 
-const text_fromInt = (n) => '' + n;
+const text_fromNumber = (n) => '' + n;
+
+const text_toNumber = (t) => {
+    const n = +t;
+
+    // TODO this is super brittle, replace it with a reference to the actual constructor names.
+    // Also, we need only the names, there is no point in specifying the whole path because they just need to be unique within the union type.
+    // The type checker already ensures that they will never be compared to anything else.
+    return isNaN(n) ? [ "SPCore/Maybe.Nothing" ] : [ "SPCore/Maybe.Just", n ];
+}
 
 const text_split = (separator) => (target) => array_toList(target.split(separator));
 
@@ -550,14 +568,16 @@ getValueRefs path0 functionDefs def =
                         case Dict.get args.name functionDefs of
                             Nothing ->
                                 -- value is non-function, let RefHierarchy sort it normally
-                                do (M.update (Set.insert args.name)) <| \_ ->
-                                return ext
+                                do (M.update (Set.insert args.name)) <|
+                                    \_ ->
+                                        return ext
 
                             Just functionDef ->
                                 -- functions don't need to be reordered, but can be used to define static values
                                 -- When this happens, all their own references need to be considered.
-                                do (M.update (Set.union (getValueRefs path functionDefs functionDef))) <| \_ ->
-                                return ext
+                                do (M.update (Set.union (getValueRefs path functionDefs functionDef))) <|
+                                    \_ ->
+                                        return ext
 
                     else
                         return ext
@@ -569,8 +589,8 @@ getValueRefs path0 functionDefs def =
         |> Tuple.second
 
 
-translateAll : CA.AllDefs -> List JA.Statement
-translateAll ca =
+translateAll : ErrorEnv -> CA.AllDefs -> List JA.Statement
+translateAll eenv ca =
     let
         ( aliases, unions, values ) =
             CA.split ca
@@ -608,6 +628,7 @@ translateAll ca =
 
         env =
             { mutables = Set.empty
+            , errorEnv = eenv
             }
 
         vals =
@@ -821,8 +842,19 @@ translateExpr env expression =
                     in
                     JA.If condition whenConditionMatches
 
+                human =
+                    Types.Error.posToHuman env.errorEnv pos
+
+                default =
+                    [ JA.Literal "'Missing pattern in try..as'"
+                    , JA.Literal ("'" ++ human.location ++ "'")
+                    , JA.Call (JA.Literal "sp_toHuman") [ JA.Var tryName ]
+                    ]
+                        |> JA.Call (JA.Literal "sp_throw")
+                        |> JA.Eval
+
                 allStatements =
-                    head :: List.map testPa tries
+                    (head :: List.map testPa tries) ++ [ default ]
             in
             JA.Call (JA.BlockLambda [] allStatements) []
 
@@ -984,9 +1016,9 @@ quoteAndEscape : String -> String
 quoteAndEscape s =
     let
         escaped =
-          s
-            |> String.replace "\n" "\\n"
-            |> String.replace "\"" "\\\""
+            s
+                |> String.replace "\n" "\\n"
+                |> String.replace "\"" "\\\""
     in
     "\"" ++ escaped ++ "\""
 
@@ -1020,9 +1052,13 @@ testPattern pattern valueToTest accum =
         CA.PatternConstructor _ path pas ->
             let
                 head =
-                    JA.Binop "==="
-                        (JA.Literal <| quoteAndEscape path)
-                        (accessWithBracketsInt 0 valueToTest)
+                    -- this is necessary because we use true, false and null for True, False and None respectively
+                    case Dict.get path allNatives of
+                        Just nv ->
+                            JA.Binop "===" (JA.Literal nv) (valueToTest)
+
+                        Nothing ->
+                            JA.Binop "===" (JA.Literal (quoteAndEscape path)) (accessWithBracketsInt 0 valueToTest)
 
                 foldArg argPattern ( index, acc ) =
                     ( index + 1

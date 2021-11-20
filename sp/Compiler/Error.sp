@@ -153,7 +153,7 @@ fmtBlock start highlights ls =
 
     pad =
         (start + List.length ls)
-            >> Text.fromInt
+            >> Text.fromNumber
             >> Text.length
 
     wordHighlight lineNumber =
@@ -180,7 +180,7 @@ fmtBlock start highlights ls =
             i + start
 
         (index
-            >> Text.fromInt
+            >> Text.fromNumber
             >> Text.padLeft pad " "
         )
             .. lineDem index
@@ -251,12 +251,12 @@ posToHuman eEnv pos =
                     end =
                         positionToLineAndColumn mod.content endAsInt
 
-                    { location = mod.fsPath .. " " .. Text.fromInt start.line .. ":" .. Text.fromInt start.col
+                    { location = mod.fsPath .. " " .. Text.fromNumber start.line .. ":" .. Text.fromNumber start.col
                     , block = showCodeBlock mod.content start end
                     }
 
                 Nothing:
-                    noBlock << "<The module name as `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
+                    noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
 
         Pos.N:
             noBlock "<native code>"
@@ -268,7 +268,7 @@ posToHuman eEnv pos =
             noBlock "<defined in test modules>"
 
         Pos.I n:
-            noBlock << "<inferred " .. Text.fromInt n .. ">"
+            noBlock << "<inferred " .. Text.fromNumber n .. ">"
 
         Pos.E:
             noBlock "<errorTodo, get rid of me!>"

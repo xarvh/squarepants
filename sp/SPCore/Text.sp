@@ -5,51 +5,42 @@
 
 forEach text f =
     as Text: (Text: None): None
-
-    # native
-    None
+    todo "native"
 
 
 length s =
     as Text: Int
-
-    # native
-    -1
+    todo "native"
 
 
 slice start end s =
     as Int: Int: Text: Text
-
-    # native
-    ""
+    todo "native"
 
 
-fromInt n =
-    as Int: Text
+fromNumber n =
+    as Number: Text
+    todo "native"
 
-    # native
-    ""
+
+toNumber s =
+    as Text: Maybe Number
+    todo "native"
 
 
 startsWith sub s =
     as Text: Text: Bool
-
-    # native
-    False
+    todo "native"
 
 
 trimLeft s =
     as Text: Text
-
-    # native
-    Debug.todo "trimLeft must be implemented natively"
+    todo "native"
 
 
 dropLeft n s =
     as Int: Text: Text
-
-    # native
-    Debug.todo "dropLeft must be implemented natively"
+    todo "native"
 
 
 dropRight n s =
@@ -104,22 +95,17 @@ replace toRemove toPut s =
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
 startsWithRegex regex s =
     as Text: Text: Text
-
-    # native
-    ""
+    todo "native"
 
 
 replaceRegex regex replaceWith s =
     as Text: Text: Text: Text
-    # native
-    ""
+    todo "native"
 
 
 split separator target =
     as Text: Text: [ Text ]
-
-    # native
-    []
+    todo "native"
 
 
 contains sub str =
