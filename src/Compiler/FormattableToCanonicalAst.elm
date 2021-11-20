@@ -470,6 +470,8 @@ translateDefinition isRoot env fa =
                 |> Maybe.map toDefsPath
                 |> Maybe.withDefault env.defsPath
 
+        -- TODO add tyvars to env
+
         localEnv0 =
             { env
                 | nonRootValues = nonRootValues1
@@ -477,8 +479,8 @@ translateDefinition isRoot env fa =
             }
     in
     -- translateMaybeAnnotation adds scoped tyvars to env
-    do (translateMaybeAnnotation localEnv0 fa) <| \( localEnv1, maybeAnnotation ) ->
-    do (translateStatementBlock localEnv1 fa.body) <| \body ->
+--     do (translateMaybeAnnotation localEnv0 fa) <| \( localEnv1, maybeAnnotation ) ->
+    do (translateStatementBlock localEnv0 fa.body) <| \body ->
     { pattern = pattern
     , defsPath = defsPath
     , mutable = fa.mutable
@@ -488,6 +490,7 @@ translateDefinition isRoot env fa =
         |> Ok
 
 
+{-
 translateMaybeAnnotation : Env -> FA.ValueDef -> Res ( Env, Maybe CA.Annotation )
 translateMaybeAnnotation env0 fa =
     case fa.maybeAnnotation of
@@ -514,6 +517,7 @@ translateMaybeAnnotation env0 fa =
                 |> Just
             )
                 |> Ok
+-}
 
 
 type alias EnvMonad a =
@@ -599,11 +603,11 @@ translatePattern env fa =
                 faError env.ro pos "can't annotate discard patterns"
 
             else
-                Ok <| CA.PatternDiscard pos
+                Ok <| CA.PatternDiscard (tp env.ro pos)
 
         FA.PatternAny pos False s faType ->
-            do (Lib.maybe_mapRes (translateType env) faType) <| \caType ->
-            Ok <| CA.PatternAny pos s caType
+            do (Lib.maybe_mapRes (translateType env.ro) faType) <| \caType ->
+            Ok <| CA.PatternAny (tp env.ro pos) s caType
 
         FA.PatternLiteral pos l ->
             CA.PatternLiteral (tp env.ro pos) l
@@ -618,7 +622,7 @@ translatePattern env fa =
                         |> Ok
 
                 StructuredName_Value { name, mod, attrPath } ->
-                    Error.faSimple env.ro pos "you shouldn't have a value here"
+                    faError env.ro pos "you shouldn't have a value here"
 
         FA.PatternList pos fas ->
             let
@@ -643,7 +647,7 @@ translatePattern env fa =
                         else
                             case maybePattern of
                                 Nothing ->
-                                    Dict.insert name (CA.PatternAny (tp env.ro pos) name) dict |> Ok
+                                    Dict.insert name (CA.PatternAny (tp env.ro pos) name Nothing) dict |> Ok
 
                                 Just faPattern ->
                                     faPattern

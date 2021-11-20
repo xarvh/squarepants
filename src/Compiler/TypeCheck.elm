@@ -849,7 +849,11 @@ fromPattern env pattern vars =
             do (newType pos) <| \ty ->
             return <| PatternOut vars pos ty
 
-        CA.PatternAny pos name ->
+        CA.PatternAny pos name Nothing ->
+            do (newType pos) <| \ty ->
+            return <| PatternOut (Dict.insert name ( pos, ty ) vars) pos ty
+
+        CA.PatternAny pos name Nothing ->
             do (newType pos) <| \ty ->
             return <| PatternOut (Dict.insert name ( pos, ty ) vars) pos ty
 

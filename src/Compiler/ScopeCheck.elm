@@ -216,7 +216,7 @@ onExpr ro env expression out =
                             pa
 
                         CA.ParameterMutable po n ->
-                            CA.PatternAny po n
+                            CA.PatternAny po n Nothing
             in
             case insertVariablesInEnv "function argument" ro pattern env out of
                 Err out1 ->
