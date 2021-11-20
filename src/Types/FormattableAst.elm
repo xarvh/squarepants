@@ -29,6 +29,7 @@ type alias Module =
 type alias ValueDef =
     { pattern : Pattern
     , mutable : Bool
+    -- TODO remove the maybe
     , maybeNonFn : Maybe (List String)
     , body : List Statement
 

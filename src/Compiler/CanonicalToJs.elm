@@ -80,10 +80,10 @@ nativeBinopToFunction spName { jsSymb, mutates, fnName } acc =
     in
     ([ CA.Evaluation
         (CA.Lambda d
-            (CA.ParameterPattern <| CA.PatternAny d "a")
+            (CA.ParameterPattern <| CA.PatternAny d "a" Nothing)
             [ CA.Evaluation
                 (CA.Lambda d
-                    (CA.ParameterPattern <| CA.PatternAny d "b")
+                    (CA.ParameterPattern <| CA.PatternAny d "b" Nothing)
                     [ CA.Evaluation
                         (CA.Call d
                             (CA.Call d
@@ -509,7 +509,7 @@ pickMainName : CA.Pattern -> Maybe JA.Name
 pickMainName pattern =
     Maybe.map (String.replace "/" "$" >> String.replace "." "$") <|
         case pattern of
-            CA.PatternAny _ name ->
+            CA.PatternAny _ name _ ->
                 Just <| "$" ++ name
 
             _ ->
@@ -1011,7 +1011,7 @@ testPattern pattern valueToTest accum =
         CA.PatternDiscard _ ->
             accum
 
-        CA.PatternAny _ name ->
+        CA.PatternAny _ name _ ->
             accum
 
         CA.PatternLiteral _ lit ->
@@ -1046,7 +1046,7 @@ assignPattern pattern exprAccum accum =
         CA.PatternDiscard _ ->
             accum
 
-        CA.PatternAny _ name ->
+        CA.PatternAny _ name _ ->
             if name == "_" then
                 accum
 
@@ -1074,7 +1074,7 @@ assignPattern pattern exprAccum accum =
 patternDefinitions : JA.Name -> CA.Pattern -> List JA.Statement
 patternDefinitions mainName pattern =
     case pattern of
-        CA.PatternAny pos _ ->
+        CA.PatternAny pos _ _ ->
             []
 
         _ ->

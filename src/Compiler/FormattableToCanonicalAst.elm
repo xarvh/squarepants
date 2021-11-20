@@ -115,7 +115,7 @@ insertRootStatement ro faStatement caModule =
 
             else
                 case localDef.pattern of
-                    CA.PatternAny caPos defName ->
+                    CA.PatternAny caPos defName ty ->
                         let
                             caName =
                                 makeRootName ro.currentModule defName
@@ -125,9 +125,19 @@ insertRootStatement ro faStatement caModule =
                                 { name = caName
                                 , localName = defName
                                 , pos = caPos
-                                , maybeAnnotation = localDef.maybeAnnotation
                                 , isNative = False
                                 , body = localDef.body
+                                , maybeAnnotation =
+                                    case ty of
+                                        Nothing ->
+                                            Nothing
+
+                                        Just aty ->
+                                            Just
+                                                { ty = aty
+                                                , pos = caPos
+                                                , nonFn = localDef.nonFn
+                                                }
                                 }
                         in
                         if Dict.member caName caModule then
@@ -436,22 +446,14 @@ insertParamNames param =
 
 translateDefinition : Bool -> Env -> FA.ValueDef -> Res CA.LocalValueDef
 translateDefinition isRoot env fa =
-    do (translatePatternOrFunction env fa.pattern) <| \patternOrFunction ->
+    do (translatePattern env fa.pattern) <| \pattern ->
     let
-        ( namePattern, params ) =
-            case patternOrFunction of
-                POF_Pattern p ->
-                    ( p, [] )
-
-                POF_Function n pas ->
-                    ( CA.PatternAny (tp env.ro fa.pos) n, pas )
-
         nonRootValues1 =
             if isRoot then
                 env.nonRootValues
 
             else
-                Dict.union (CA.patternNames namePattern) env.nonRootValues
+                Dict.union (CA.patternNames pattern) env.nonRootValues
 
         toDefsPath tyvarName =
             if isRoot then
@@ -461,7 +463,7 @@ translateDefinition isRoot env fa =
                 tyvarName :: env.defsPath
 
         defsPath =
-            namePattern
+            pattern
                 |> CA.patternNames
                 |> Dict.keys
                 |> List.head
@@ -470,18 +472,18 @@ translateDefinition isRoot env fa =
 
         localEnv0 =
             { env
-                | nonRootValues = List.foldl insertParamNames nonRootValues1 params
+                | nonRootValues = nonRootValues1
                 , defsPath = defsPath
             }
     in
     -- translateMaybeAnnotation adds scoped tyvars to env
     do (translateMaybeAnnotation localEnv0 fa) <| \( localEnv1, maybeAnnotation ) ->
     do (translateStatementBlock localEnv1 fa.body) <| \body ->
-    { pattern = namePattern
+    { pattern = pattern
     , defsPath = defsPath
     , mutable = fa.mutable
-    , maybeAnnotation = maybeAnnotation
-    , body = List.foldr (wrapLambda env.ro fa.pos) body params
+    , nonFn = List.foldl (\n -> Dict.insert n CA.E) Dict.empty (Maybe.withDefault [] fa.maybeNonFn)
+    , body = body
     }
         |> Ok
 
@@ -570,7 +572,7 @@ translateTyvarName name =
 translateParameter : Env -> FA.Pattern -> Res CA.Parameter
 translateParameter env faParam =
     case faParam of
-        FA.PatternAny pos True name ->
+        FA.PatternAny pos True name _ ->
             Ok <| CA.ParameterMutable (tp env.ro pos) name
 
         _ ->
@@ -595,6 +597,7 @@ translatePattern env fa =
             if faType /= Nothing then
                 -- TODO allow annotation of discard patterns
                 faError env.ro pos "can't annotate discard patterns"
+
             else
                 Ok <| CA.PatternDiscard pos
 
@@ -604,7 +607,6 @@ translatePattern env fa =
 
         FA.PatternLiteral pos l ->
             CA.PatternLiteral (tp env.ro pos) l
-                |> POF_Pattern
                 |> Ok
 
         FA.PatternApplication pos rawName faArgs ->
@@ -613,12 +615,10 @@ translatePattern env fa =
                 StructuredName_TypeOrCons { name, mod } ->
                     do (Lib.list_mapRes (translatePattern env) faArgs) <| \caArgs ->
                     CA.PatternConstructor (tp env.ro pos) (resolveValueName env.ro False mod name) caArgs
-                        |> POF_Pattern
                         |> Ok
 
                 StructuredName_Value { name, mod, attrPath } ->
                     Error.faSimple env.ro pos "you shouldn't have a value here"
-
 
         FA.PatternList pos fas ->
             let
@@ -628,7 +628,7 @@ translatePattern env fa =
             in
             fas
                 |> Lib.list_mapRes (translatePattern env)
-                |> Result.map (List.foldr fold (CA.PatternConstructor (tp env.ro pos) Core.listNil.name []) >> POF_Pattern)
+                |> Result.map (List.foldr fold (CA.PatternConstructor (tp env.ro pos) Core.listNil.name []))
 
         FA.PatternRecord pos recordArgs ->
             if recordArgs.extends /= Nothing then
@@ -651,7 +651,7 @@ translatePattern env fa =
                                         |> Result.map (\caPattern -> Dict.insert name caPattern dict)
                 in
                 Lib.list_foldlRes fold recordArgs.attrs Dict.empty
-                    |> Result.map (CA.PatternRecord (tp env.ro pos) >> POF_Pattern)
+                    |> Result.map (CA.PatternRecord (tp env.ro pos))
 
         FA.PatternCons pos pas ->
             do (Lib.list_mapRes (translatePattern env) pas) <| \caPas ->
@@ -661,7 +661,6 @@ translatePattern env fa =
                         (\item list -> CA.PatternConstructor (tp env.ro pos) Core.listCons.name [ item, list ])
                         last
                         rest
-                        |> POF_Pattern
                         |> Ok
 
                 [] ->
@@ -677,7 +676,7 @@ translatePattern env fa =
                         ]
                     }
                         |> FA.PatternRecord pos
-                        |> translatePatternOrFunction env
+                        |> translatePattern env
 
                 [ fa1, fa2, fa3 ] ->
                     { extends = Nothing
@@ -688,7 +687,7 @@ translatePattern env fa =
                         ]
                     }
                         |> FA.PatternRecord pos
-                        |> translatePatternOrFunction env
+                        |> translatePattern env
 
                 _ ->
                     errorTodo "tuples can be only of size 2 or 3"
@@ -705,15 +704,12 @@ insertDefinedNames env stat names =
     case stat of
         FA.Definition fa ->
             -- TODO is there a clean way to avoid translating the patterns twice?
-            case translatePatternOrFunction env fa.pattern of
+            case translatePattern env fa.pattern of
                 Err _ ->
                     names
 
-                Ok (POF_Pattern caPattern) ->
+                Ok caPattern ->
                     Dict.union names (CA.patternNames caPattern)
-
-                Ok (POF_Function fnName fnArgs) ->
-                    Dict.insert fnName todoPos names
 
         _ ->
             names
@@ -792,20 +788,15 @@ translateExpression env faExpr =
                     |> CA.Variable (tp env.ro pos)
                     |> Ok
 
-        FA.Lambda pos faParams faBody ->
-            do (Lib.list_mapRes (translateParameter env) faParams) <| \caParams ->
+        FA.Lambda pos faParam faBody ->
+            do (translateParameter env faParam) <| \caParam ->
             let
                 localEnv =
-                    { env | nonRootValues = List.foldl insertParamNames env.nonRootValues caParams }
+                    { env | nonRootValues = insertParamNames caParam env.nonRootValues }
             in
-            case caParams of
-                [] ->
-                    Debug.todo "TODO should not happen but should be fixable?"
-
-                caHead :: caTail ->
-                    do (translateStatementBlock localEnv faBody) <| \caBody ->
-                    CA.Lambda (tp env.ro pos) caHead (List.foldr (wrapLambda env.ro pos) caBody caTail)
-                        |> Ok
+            do (translateStatementBlock localEnv faBody) <| \caBody ->
+            CA.Lambda (tp env.ro pos) caParam caBody
+                |> Ok
 
         FA.FunctionCall pos reference arguments ->
             -- ref arg1 arg2 arg3...

@@ -39,6 +39,16 @@ list_mapRes f ls =
         |> Result.map List.reverse
 
 
+maybe_mapRes : (a -> Result error b) -> Maybe a -> Result error (Maybe b)
+maybe_mapRes f m =
+    case m of
+        Nothing ->
+            Ok Nothing
+
+        Just a ->
+            f a |> Result.map Just
+
+
 result_do a b =
     Result.andThen b a
 
