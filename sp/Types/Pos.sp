@@ -6,6 +6,8 @@
 union Pos =
     # actual position: module reference, start, end
     , P Text Int Int
+    # parsing reched the end of file
+    , End Text
     # stripped
     , S
     # defined natively, usually in Core or Prelude
@@ -14,17 +16,6 @@ union Pos =
     , T
     # inferred
     , I Int
-
-    #  TODO the following ones need to be removed
-
-    # error todo
-    , E
-    # Formattable to canonical todo
-    , F
-    # ScopeCheck HACK
-    , G
-    # Union
-    , U
 
 
 union At a =
@@ -60,3 +51,9 @@ range a b =
 
         _:
             b
+
+
+drop (At pos a) =
+    as At a: a
+    a
+

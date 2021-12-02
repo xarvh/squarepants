@@ -98,6 +98,10 @@ firstAnnotation code =
         >> Result.andThen grabAnnotation
 
 
+typeConstant name =
+    as Text: FA.Type
+    FA.TypeConstant p Nothing name []
+
 #
 #
 #
@@ -145,8 +149,20 @@ errors =
 values =
     as Test
     Test.Group "Values"
-        [ codeTest "[reg] Unop"
+        [
+        , codeTest "[reg] Unop"
             "a = f -n"
+            firstDefinition
+            Test.isOk
+        , codeTest
+            """
+            [reg] deal with spurious NewSiblingLine introduced by inline comments
+            """
+            """
+            library =
+                # "spcore" is a special value for the core library
+                source = "spcore"
+            """
             firstDefinition
             Test.isOk
         ]
@@ -264,12 +280,12 @@ annotations =
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
-                    (FA.TypeName p "Number")
+                    (typeConstant "Number")
                     True
                     (FA.TypeFunction p
-                        (FA.TypeName p "Int")
+                        (typeConstant "Int")
                         False
-                        (FA.TypeName p "None")
+                        (typeConstant "None")
                     )
                 )
             )
@@ -281,12 +297,12 @@ annotations =
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
-                    (FA.TypeName p "Number")
+                    (typeConstant "Number")
                     False
                     (FA.TypeFunction p
-                        (FA.TypeName p "Int")
+                        (typeConstant "Int")
                         True
-                        (FA.TypeName p "None")
+                        (typeConstant "None")
                     )
                 )
             )
@@ -299,12 +315,12 @@ annotations =
             (Test.isOkAndEqualTo <<
                 FA.TypeFunction p
                     (FA.TypeTuple p
-                        [ FA.TypeName p "Int"
-                        , FA.TypeName p "Int"
+                        [ typeConstant "Int"
+                        , typeConstant "Int"
                         ]
                     )
                     False
-                    (FA.TypeName p "Bool")
+                    (typeConstant "Bool")
             )
         ]
 
@@ -338,10 +354,10 @@ unionDefs =
             (Test.isOkAndEqualTo
                 { args = [ "b", "c" ]
                 , constructors =
-                    [ At p "V1" & [ FA.TypeName p "b" ]
-                    , At p "V2" & [ FA.TypeName p "c" ]
+                    [ At p "V1" & [ FA.TypeVariable p "b" ]
+                    , At p "V2" & [ FA.TypeVariable p "c" ]
                     , At p "V3" & []
-                    , At p "V4" & [ FA.TypeName p "b", FA.TypeName p "c" ]
+                    , At p "V4" & [ FA.TypeVariable p "b", FA.TypeVariable p "c" ]
                     ]
                 , name = "A"
                 }
@@ -372,7 +388,7 @@ unionDefs =
                 { args = []
                 , name = "A"
                 , constructors =
-                    [ At p "A" & [ FA.TypeList p ( FA.TypeName p "Int" ) ]
+                    [ At p "A" & [ FA.TypeList p ( typeConstant "Int") ]
                     ]
                 }
             )
@@ -423,7 +439,7 @@ records =
         [ codeTest "inline"
             "a = { x = 1 }"
             firstEvaluationOfDefinition
-            ({ attrs = [  "x" & (Just (FA.LiteralNumber p "1") ) ] , extends = Nothing } >> FA.Record p >> Test.isOkAndEqualTo)
+            ({ attrs = [ At p "x" & (Just (FA.LiteralNumber p "1") ) ] , extends = Nothing } >> FA.Record p >> Test.isOkAndEqualTo)
         , codeTest "multiline"
             """
             a =
@@ -434,8 +450,8 @@ records =
             """
             firstEvaluationOfDefinition
             ({ attrs =
-                [ ( "x" & Just (FA.LiteralNumber p "1") )
-                , ( "y" & Just (FA.LiteralNumber p "2") )
+                [ ( At p "x") & Just (FA.LiteralNumber p "1")
+                , ( At p "y") & Just (FA.LiteralNumber p "2")
                 ]
             , extends = Nothing
             }
@@ -451,8 +467,8 @@ records =
             """
             firstEvaluationOfDefinition
             ({ attrs =
-                [ ( "x" & Just (FA.LiteralNumber p "1") )
-                , ( "y" & Just (FA.LiteralNumber p "2") )
+                [ (At p "x") & Just (FA.LiteralNumber p "1")
+                , (At p "y") & Just (FA.LiteralNumber p "2")
                 ]
             , extends = Nothing
             }
@@ -468,7 +484,7 @@ records =
               a
             """
             firstAnnotation
-            ({ extends = Nothing , attrs = [  "x" & (Just << FA.TypeName p "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
+            ({ extends = Nothing , attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
         , codeTest
             """
             SKIP Annotation, own line
@@ -480,7 +496,7 @@ records =
                1
             """
             firstAnnotation
-            ({ extends = Nothing , attrs = [  "x" & (Just << FA.TypeName p "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
+            ({ extends = Nothing , attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
         , codeTest
             """
             SKIP Annotation, multiline
@@ -493,7 +509,7 @@ records =
                   a
             """
             firstAnnotation
-            ({ extends = Nothing , attrs = [ "x" & (Just << FA.TypeName p "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
+            ({ extends = Nothing, attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
         , codeTest
             """
             [reg] simple assignment, inline
@@ -617,7 +633,7 @@ x =
         , codeTest "record unpacking"
             "{ a, b } = x"
             (fn x: x >> firstDefinition >> Result.map fn y: y.pattern)
-            ({ extends = Nothing , attrs = [ ( "a" & Nothing ) , ( "b" & Nothing ) ] } >> FA.PatternRecord p >> Test.isOkAndEqualTo)
+            ({ extends = Nothing , attrs = [ At p "a" & Nothing, At p "b" & Nothing  ] } >> FA.PatternRecord p >> Test.isOkAndEqualTo)
         , codeTest "record unpacking, inner block"
             """
 x =
@@ -634,12 +650,12 @@ binops =
     sendBtoC b c =
         FA.Binop p
             Op.Pipe
-            ( FA.Variable p { isBinop = False } "b" & [ ( Prelude.sendRight & FA.Variable p { isBinop = False } "c") ])
+            ( FA.Variable p Nothing "b" [] & [ ( Prelude.sendRight & FA.Variable p Nothing "c" []) ])
 
     sendBtoCtoD b c d =
         FA.Binop p
             Op.Pipe
-            ( FA.Variable p { isBinop = False } "b" & [ ( Prelude.sendRight & FA.Variable p { isBinop = False } "c") , ( Prelude.sendRight & FA.Variable p { isBinop = False } "d") ])
+            ( FA.Variable p Nothing "b" [] & [ ( Prelude.sendRight & FA.Variable p Nothing "c" []) , ( Prelude.sendRight & FA.Variable p Nothing "d" []) ])
 
     Test.Group "Binops"
         [ codeTest "no indent"

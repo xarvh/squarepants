@@ -1,10 +1,8 @@
 
 union Outcome a =
     , Accepted [FA.Statement] a
-      # TODO add Pos
-    , Rejected Text
-      # TODO add Pos
-    , Failed Text
+    , Rejected (At Text)
+    , Failed (At Text)
 
 
 alias Reader a =
@@ -29,22 +27,55 @@ return a statements =
     Accepted statements a
 
 
-run readerA statements =
-    as Reader a: [FA.Statement]: Result Text a
+# HACK: I don't want to inject and Env in every function just to get the module name, at least for now
+posEnd =
+    as Pos
+    Pos.End ""
+
+
+unhackPosEnd moduleName pos =
+    as Text: Pos: Pos
+    try pos as
+        Pos.End _: Pos.End moduleName
+        _: pos
+
+
+run readerA sponName statements =
+    as Reader a: Text: [FA.Statement]: Res a
     try readerA statements as
         Accepted [] a:
             Ok a
 
-        Accepted rest a:
-            # TODO add rest starting position
-            Err "unread statements"
+        Accepted (head :: tail) a:
+            Error.res (FA.statementPos head) fn _: [ "unread statements" ]
 
-        Rejected r:
-            Err r
+        Rejected (At pos r):
+            Error.res (unhackPosEnd sponName pos) fn _: [ r ]
 
-        Failed r:
-            Err r
+        Failed (At pos r):
+            Error.res (unhackPosEnd sponName pos) fn _: [ r ]
 
+
+read reader sponName sponContent =
+    as Reader a: Text: Text: Res a
+
+    sponContent
+        >> Compiler/Lexer.lexer sponName
+        >> Result.andThen (Compiler/Parser.parse False sponName)
+        >> Result.andThen (run reader sponName)
+
+
+logHead statements =
+    as Reader None
+
+    try statements as
+        head :: tail:
+            log "LOG" head
+            None
+        []:
+            log "LOG" None
+
+    Accepted statements None
 
 
 #
@@ -52,31 +83,46 @@ run readerA statements =
 #
 
 
-string statements =
+text statements =
     as Reader Text
     try statements as
-        [ FA.Evaluation _ (FA.LiteralText pos text) ]:
-            Accepted [] text
+        [ FA.Evaluation _ (FA.LiteralText pos t) ]:
+            Accepted [] t
 
-        [ _ ]:
-            Rejected "expecting a text literal"
+        [ s ]:
+            Rejected << At (FA.statementPos s) "expecting a text literal"
 
         _:
-            Failed "expecting a single statement"
+            Failed << At posEnd "expecting a single statement"
 
 
-varName statements =
+upperName statements =
     as Reader Text
     try statements as
-        (FA.Evaluation _ (FA.Variable pos args name)) :: tail:
-            # TODO check args.isBinop?
+        FA.Evaluation _ (FA.Constructor pos Nothing name) :: tail:
             Accepted tail name
 
-        [ _ ]:
-            Rejected "expecting a list of variable or type names"
+        [ s ]:
+            Rejected << At (FA.statementPos s) "expecting an Uppercase name"
 
         _:
-            Failed "expecting a single statement"
+            Failed << At posEnd "expecting a statement"
+
+
+lowerOrUpperName statements =
+    as Reader Text
+    try statements as
+        (FA.Evaluation _ (FA.Variable pos Nothing name [])) :: tail:
+            Accepted tail name
+
+        (FA.Evaluation _ (FA.Constructor pos Nothing name)) :: tail:
+            Accepted tail name
+
+        [ s ]:
+            Rejected << At (FA.statementPos s) "expecting an Uppercase or lowercase name"
+
+        _:
+            Failed << At posEnd "expecting a single statement"
 
 
 
@@ -89,7 +135,12 @@ oneOf readers statements =
     as [Reader a]: Reader a
     try readers as
         []:
-            Rejected "options exhausted"
+            pos =
+                try statements as
+                    head :: _: FA.statementPos head
+                    _: posEnd
+
+            Rejected << At pos "options exhausted"
 
         headReader :: tail:
             try headReader statements as
@@ -151,17 +202,21 @@ field fieldName fieldReader statements =
             if name == fieldName:
                 try fieldReader body as
                     Accepted unreadStatements a:
-                        if unreadStatements == []:
-                            Accepted tail a
+                        try unreadStatements as
+                            []:
+                                Accepted tail a
 
-                        else
-                            Failed << "Unread statements: " .. Debug.toHuman unreadStatements
+                            head :: _:
+                                Failed << At (FA.statementPos head) << "Could not make sense of all the statements in field `" .. fieldName .. "`."
 
                     otherwise:
                         otherwise
 
             else
-                Rejected << "expecting `" .. fieldName .. " =`"
+                Rejected << At pos << "expecting `" .. fieldName .. " =`"
 
-        _:
-            Rejected "missing a simple assignment (ie `something = `)"
+        head :: tail:
+            Rejected << At (FA.statementPos head) "missing a simple assignment (ie `something = `)"
+
+        []:
+            Rejected << At posEnd "unexpected end of file"

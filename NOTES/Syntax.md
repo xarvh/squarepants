@@ -88,20 +88,50 @@ Also, what do we use for mutable assignment?
 
 # do-notation
 
+### Version 1, no new syntax
+
     onOk = Result.onOk
-    blah blah blah >> onOk fn blahOutput:
-    someotherline >> onOk fn otherThingy:
+    blah blah blah >> onOk blahOutput:
+    someotherline >> onOk otherThingy:
     doStuffWith blahOutput otherThingy
 
-  - Is not super clear
-  - It is not obvious that lower lines depend on higher lines
-  - Forces the eyes to parse the end of the line to get the new variable name
-  + Uses known syntax
++ Uses known syntax
++ Reading is enough to figure out exactly what is happening
+- Forces the eyes to parse the end of the line to get the new variable name
+- Doesn't look nice with multi-line statements
+- A lot more dense than normal declarations
+- Difficult to read at glance
 
 
-  payload Result.do (tryToAccessPayload arg1 arg2)
+### Version 2: ad-hoc =? syntax
 
-  on payload ? Result.from : (tryToAccessPayload arg1 arg2)
+    onOk =
+        Result.onOk
+
+    blahOutput =?
+        onOk << blah blah blah
+
+    otherThingy =?
+        newVariable = blah
+        someotherline newVariable
+            >> onOk
+
+    doStuffWith blahOutput otherThingy
+
++ More intuitive
++ Plays well with the rest of the style
+- Adds more syntax
+- More confusing to understand what is actually happening
+
+    functionArgument ?=
+        (something that gets the function as argument)
+
+    functionBody
+
+
+
+
+
 
 
 # Use `:` instead of `then` in if statements

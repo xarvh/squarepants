@@ -10,6 +10,30 @@ any fun list =
         h :: t: if fun h: True else any fun t
 
 
+all fun list =
+    as (a: Bool): [a]: Bool
+
+    try list as
+        []: True
+        h :: t:
+            if fun h:
+                all fun t
+            else
+                False
+
+
+find test list =
+    as (a: Bool): [a]: Maybe a
+
+    try list as
+        []: Nothing
+        h :: t:
+            if test h:
+                Just h
+            else
+                find test t
+
+
 sort =
     as [a]: [a]
     with a NonFunction

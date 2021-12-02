@@ -5,6 +5,11 @@
 ----> Humanize must break a type into multiple lines
 
 
+* Remove module name from Pos
+
+
+* When there is any collision between types, ensure that either types are replaced with a fresh tyvar, so that the error does not propagate?
+
 
 * Duplicate name checks should be case-insensitive
 
@@ -28,6 +33,7 @@
 
 * Add tests for Text functions
 
+* Add test: variable names and attr names cannot contain `/`
 
 * add test: it should be possible to write
 
@@ -56,6 +62,9 @@
         , a = doThingsWith @mutable
         }
 
+
+# All core iterators should have a test that ensures the order they call an argument function doesn't change
+    This is to ensure that if the argument function mutates stuff, the result is not implementation dependent
 
 
 

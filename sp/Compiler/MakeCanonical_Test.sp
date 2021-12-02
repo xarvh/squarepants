@@ -128,18 +128,7 @@ unionTypes =
         """
         Union types
         """
-        [ hasError
-            { name = "name starts with uppercase"
-            , code = "union a = A"
-            , run = textToCanonicalModule
-            , test = Test.errorContains ["uppercase"]
-            }
-        , hasError
-            { name = "constructor names start with uppercase"
-            , code = "union A = a"
-            , run = textToCanonicalModule
-            , test = Test.errorContains ["constructor"]
-            }
+        [
         , hasError
             { name = "SKIP tuples op precedence"
             , code = "union A = X Bool & Bool"
@@ -200,7 +189,7 @@ binops =
             """
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
-                CA.Variable p { ref = CA.Foreign (Meta.USR Meta.Core [] "-"), attrPath = [] }
+                CA.Variable p { ref = CA.RefRoot (CoreTypes.usr "-"), attrPath = [] }
             )
         ]
 
@@ -224,7 +213,7 @@ lists =
             """
             (firstDefinition "l")
             (Test.isOkAndEqualTo
-                { body = [ CA.Evaluation (CA.Variable p { ref = CA.ModuleLocal "l", attrPath = [] }) ]
+                { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }) ]
                 , native = False
                 , mutable = False
                 , pattern =
@@ -291,7 +280,7 @@ tuples =
             """
             (firstDefinition "a")
             (Test.isOkAndEqualTo
-                { body = [ CA.Evaluation (CA.Variable p { ref = CA.ModuleLocal "a", attrPath = [] }) ]
+                { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }) ]
                 , pattern =
                     CA.PatternAny p
                         (Just "a")
@@ -345,11 +334,11 @@ moduleAndAttributePaths =
         Module and Attribute Paths
         """
         [ accept "blah.blah.blah"
-        , reject "Blah.Blah.blah" "Constructor"
-        , reject "blah.Blah.blah" "lower"
+        , reject "Blah.Blah.blah" "constructor"
+        , reject "blah.Blah.blah" "case"
         , reject "List.blah.Blah" "lower"
-        , reject "List..blah" "dot"
-        , reject ".Blah" "shorthand"
+        , reject "List..blah" "space"
+        , reject ".Blah" "upper"
         , reject ".blah.blah" "shorthand"
         , reject ".blah" "shorthand"
         , reject "..." ""
@@ -373,16 +362,16 @@ records =
         , codeTest "functional update"
             "a = { m with b, c = 1 }"
             (firstEvaluation "a")
-            ([ ( "c" & CA.LiteralNumber p 1 ) , ( "b" & CA.Variable Pos.G { attrPath = [], ref = CA.ModuleLocal "b" } ) ]
+            ([ ( "c" & CA.LiteralNumber p 1 ) , ( "b" & CA.Variable p { attrPath = [], ref = TH.rootLocal "b" } ) ]
                 >> Dict.fromList
-                >> CA.Record p (Just { attrPath = [], ref = CA.ModuleLocal "m" })
+                >> CA.Record p (Just { attrPath = [], ref = TH.rootLocal "m" })
                 >> Test.isOkAndEqualTo
             )
         , codeTest "update shorthand"
             "b = { a.k with y = .x }"
             (firstEvaluation "b")
-            (Dict.singleton "y" (CA.Variable p { attrPath = [ "k", "x" ], ref = CA.ModuleLocal "a" })
-                >> CA.Record p (Just { attrPath = [ "k" ], ref = CA.ModuleLocal "a" })
+            (Dict.singleton "y" (CA.Variable p { attrPath = [ "k", "x" ], ref = TH.rootLocal "a" })
+                >> CA.Record p (Just { attrPath = [ "k" ], ref = TH.rootLocal "a" })
                 >> Test.isOkAndEqualTo
             )
         , codeTest "annotation, extensible"
@@ -407,17 +396,7 @@ patterns =
         """
         Patterns
         """
-        [ hasError
-            { name = "can't declare functions inside patterns "
-            , code =
-                """
-                x =
-                  c (a b) = 2
-                """
-            , run = firstEvaluation "x"
-            , test = Test.errorContains ["function"]
-            }
-        , codeTest "[reg] record patterns are NOT extensible"
+        [ codeTest "[reg] record patterns are NOT extensible"
             """
             a =
               { b with c } = d
@@ -478,8 +457,8 @@ pipes =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
                 CA.Call p
-                    (CA.Variable p { ref = CA.ModuleLocal "function", attrPath = [] })
-                    (CA.ArgumentExpression << CA.Variable p { ref = CA.ModuleLocal "thing", attrPath = [] })
+                    (CA.Variable p { ref = TH.rootLocal "function", attrPath = [] })
+                    (CA.ArgumentExpression << CA.Variable p { ref = TH.rootLocal "thing", attrPath = [] })
             )
         , codeTest "sendRight is inlined"
             """
@@ -488,8 +467,8 @@ pipes =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
                 CA.Call p
-                    (CA.Variable p { ref = CA.ModuleLocal "function", attrPath = [] })
-                    (CA.ArgumentExpression << CA.Variable p { ref = CA.ModuleLocal "thing", attrPath = [] })
+                    (CA.Variable p { ref = TH.rootLocal "function", attrPath = [] })
+                    (CA.ArgumentExpression << CA.Variable p { ref = TH.rootLocal "thing", attrPath = [] })
             )
         ]
 

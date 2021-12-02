@@ -25,8 +25,16 @@ sourceDir =
        importAs = CA
 
     module =
+       path = Human/CanonicalAst
+       importAs = HCA
+
+    module =
        path = Types/FormattableAst
        importAs = FA
+
+    module =
+       path = Compiler/TestHelpers
+       importAs = TH
 
     module =
         path = Types/Meta

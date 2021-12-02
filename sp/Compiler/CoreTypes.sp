@@ -7,11 +7,14 @@ p =
     as Pos
     Pos.N
 
+umr =
+    as Meta.UniqueModuleReference
+    Meta.UMR Meta.Core "SPCore"
 
 usr name =
     as Name: Meta.UniqueSymbolReference
 
-    Meta.USR Meta.Core [] name
+    Meta.USR umr name
 
 
 nameToType name =
@@ -19,7 +22,7 @@ nameToType name =
 
     name
         >> usr
-        >> CA.Foreign
+        >> CA.RefRoot
         >> CA.TypeConstant p
 
 
@@ -32,14 +35,13 @@ defToType { name = At _ name } =
 nameToRef name =
     as Name: CA.Ref
 
-    CA.Foreign << usr name
+    CA.RefRoot << usr name
 
 
 refToVariable ref =
     as CA.Ref: CA.Expression
 
     CA.Variable p { attrPath = [], ref }
-
 
 
 
@@ -102,7 +104,7 @@ noneDef =
 
     { name = At p noneName
     , args = []
-    , constructors = Dict.singleton noneName [ none ]
+    , constructors = Dict.singleton noneName (p & [])
     }
 
 
@@ -132,8 +134,8 @@ boolDef =
     , args = []
     , constructors =
         Dict.empty
-            >> Dict.insert "True" [ bool ]
-            >> Dict.insert "False" [ bool ]
+            >> Dict.insert "True" (p & [])
+            >> Dict.insert "False" (p & [])
     }
 
 
@@ -161,20 +163,15 @@ listDef =
     as CA.UnionDef
 
     item =
-        CA.TypeAnnotatedVar p "item"
-
-    consType =
-        CA.TypeFunction p item False
-            (CA.TypeFunction p (list item) False
-                (list item)
-            )
+        #CA.TypeAnnotatedVar p "item"
+        CA.TypeVariable p "item"
 
     { name = At p "List"
     , args = [ "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" [ list item ]
-            >> Dict.insert "Cons" [ consType ]
+            >> Dict.insert "Nil" (p & [])
+            >> Dict.insert "Cons" (p & [ item, list item ])
     }
 
 

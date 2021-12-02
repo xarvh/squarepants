@@ -45,9 +45,8 @@ makeError moduleName readState message =
 
     p =
         try readState as
-            # TODO use last token's end position?
-            []: Pos.E
-            Token start end k :: rest: Pos.P moduleName start end
+            []: Pos.P moduleName 0 1
+            Token start end k :: rest: Pos.End moduleName
 
     Error.res p (fn eenv: [ message ])
 
@@ -112,12 +111,17 @@ module_ env =
             , kind Token.NewSiblingLine
             ]
 
+    # This is called `zzz` rather than `end` because apparently there is some really
+    # bad problems with sorting that result in this (?) being declared before Parser.end?
+    zzz =
+        Parser.zeroOrMore (kind Token.NewSiblingLine) >> then fn _: Parser.end
+
     statements =
         oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
 
     Parser.oneOf
         [ Parser.map (fn _: []) Parser.end
-        , Parser.surroundWith start Parser.end statements
+        , Parser.surroundWith start zzz statements
         ]
 
 
@@ -140,24 +144,22 @@ kind targetKind =
         Parser.reject
 
 
-nonMutName =
-    as Parser Text
+upperNameBare env =
+    as Env: Parser (At Text)
     oneToken >> then fn token:
     try token as
-        Token _ _ (Token.Name Token.NameNoModifier s):
-            Parser.accept s
-
+        Token start end (Token.UpperName Nothing name):
+            Parser.accept << At (pos env start end) name
         _:
             Parser.reject
 
 
-nonMutNamePos env =
+lowerNameBare env =
     as Env: Parser (At Text)
     oneToken >> then fn token:
     try token as
-        Token start end (Token.Name Token.NameNoModifier s):
-            Parser.accept << At (pos env start end) s
-
+        Token start end (Token.LowerName Token.NameNoModifier Nothing name []):
+            Parser.accept << At (pos env start end) name
         _:
             Parser.reject
 
@@ -336,8 +338,9 @@ errorCantUseMutableAssignmentHere =
 typeAlias env =
     as Env: Parser FA.Statement
 
-    (kind << Token.Name Token.NameNoModifier "alias") >> then fn _:
-    (Parser.oneOrMore (nonMutNamePos env)) >> then fn ( name & args ):
+    kind (Token.LowerName Token.NameNoModifier Nothing "alias" []) >> then fn _:
+    upperNameBare env >> then fn name:
+    Parser.zeroOrMore (lowerNameBare env) >> then fn args:
     defop >> then fn { mutable }:
     (inlineOrBelowOrIndented (typeExpr env)) >> then fn ty:
     if mutable:
@@ -356,19 +359,20 @@ typeAlias env =
 unionDef env =
     as Env: Parser FA.Statement
 
-    (kind << Token.Name Token.NameNoModifier "union") >> then fn _:
-    (Parser.oneOrMore nonMutName) >> then fn ( name & args ):
+    kind (Token.LowerName Token.NameNoModifier Nothing "union" []) >> then fn _:
+    upperNameBare env >> then fn (At p name):
+    Parser.zeroOrMore (lowerNameBare env) >> then fn args:
     defop >> then fn { mutable }:
-    (inlineOrBelowOrIndented << rawList (unionConstructor env)) >> then fn cons:
+    inlineOrBelowOrIndented (rawList (unionConstructor env)) >> then fn cons:
     if mutable:
         Parser.abort errorCantUseMutableAssignmentHere
 
     else
         { name = name
-        , args = args
+        , args = List.map Pos.drop args
         , constructors = cons
         }
-            >> FA.UnionDef Pos.E
+            >> FA.UnionDef p
             >> Parser.accept
 
 
@@ -377,11 +381,8 @@ unionConstructor env =
 
     typeExpr env >> then fn type:
     try type as
-        FA.TypeName p name:
-            Parser.accept << At p name & []
-
-        FA.TypePolymorphic p name args:
-            Parser.accept << At p name & args
+        FA.TypeConstant p Nothing name args:
+            Parser.accept << (At p name) & args
 
         _:
             Parser.reject
@@ -395,26 +396,30 @@ term env =
     as Env: Parser FA.Expression
 
     oneToken >> then fn (Token start end k):
+
+    p =
+        pos env start end
+
     try k as
         Token.NumberLiteral s:
-            Parser.accept << FA.LiteralNumber (pos env start end) s
+            Parser.accept << FA.LiteralNumber p s
 
         Token.TextLiteral s:
-            Parser.accept << FA.LiteralText (pos env start end) s
+            Parser.accept << FA.LiteralText p s
 
-        Token.Name modifier s:
-            p = (pos env start end)
-            (try modifier as
-              Token.NameNoModifier:
-                  FA.Variable p { isBinop = False } s
+        Token.UpperName maybeModule name:
+            Parser.accept << FA.Constructor p maybeModule name
 
-              Token.NameMutable:
-                  FA.Mutable p s
+        Token.LowerName modifier maybeModule name attrs:
+            try modifier as
+                Token.NameNoModifier:
+                    Parser.accept << FA.Variable p maybeModule name attrs
 
-              Token.NameStartsWithDot:
-                  FA.RecordShorthand p s
-            )
-                >> Parser.accept
+                Token.NameMutable:
+                    Parser.accept << FA.Mutable p name attrs
+
+                Token.NameStartsWithDot:
+                    Parser.accept << FA.RecordShorthand p (name :: attrs)
 
         _:
             Parser.reject
@@ -520,7 +525,7 @@ record env assign constructor main =
         discardFirst (kind assign) (inlineOrBelowOrIndented main)
 
     attr =
-        nonMutName >> then fn name:
+        lowerNameBare env >> then fn name:
         Parser.maybe attrAssignment >> then fn maybeAssignment:
         Parser.accept ( name & maybeAssignment )
 
@@ -634,6 +639,9 @@ try_ env =
 statement env =
     as Env: Parser FA.Statement
     Parser.breakCircularDefinition fn _:
+    # This is here because inline comments might be followed by NewSiblingLine
+    # and I am not sure it's a responsibility of the lexer to deal with it.
+    Parser.maybe (kind Token.NewSiblingLine) >> then fn _:
     Parser.oneOf
         [ typeAlias env
         , unionDef env
@@ -647,16 +655,10 @@ definition env =
     as Env: Parser FA.Statement
     here >> then fn start:
     pattern env >> then fn p:
-    Parser.maybe (inlineOrBelowOrIndented nonFunction) >> then fn nf:
+    Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> then fn nf:
     inlineOrBelowOrIndented defop >> then fn { mutable }:
     inlineStatementOrBlock env >> then fn body:
 
-#    getpos st =
-#        try st as
-#            FA.Definition x _: x
-#            FA.Evaluation x _: x
-#            _: Pos.E
-#
 #    end =
 #        body
 #            >> List.reverse
@@ -688,25 +690,30 @@ inlineStatementOrBlock env =
 #
 
 
-nonFunction =
-    as Parser [Text]
+nonFunction env =
+    as Env: Parser [Text]
     kind Token.With >> then fn _:
-    rawList nonMutName >> then fn nf:
-    nonMutName >> then fn n:
+    rawList (lowerNameBare env) >> then fn nf:
+    upperNameBare env >> then fn (At _ n):
     if n == "NonFunction":
-        Parser.accept nf
+        Parser.accept << List.map Pos.drop nf
     else
         Parser.abort << "Only NonFunction is supported for now"
 
 
 typeTerm env =
     as Env: Parser FA.Type
-    here >> then fn s:
-    nonMutName >> then fn n:
-    here >> then fn e:
-    n
-        >> FA.TypeName (pos env s e)
-        >> Parser.accept
+
+    oneToken >> then fn (Token start end k):
+    try k as
+        Token.UpperName maybeModule name:
+            Parser.accept << FA.TypeConstant (pos env start end) maybeModule name []
+
+        Token.LowerName Token.NameNoModifier Nothing name []:
+            Parser.accept << FA.TypeVariable (pos env start end) name
+
+        _:
+            Parser.reject
 
 
 typeExpr env =
@@ -724,7 +731,7 @@ typeExpr env =
         [ higherOr << typeParens nest
         , higherOr << typeList env nest
         , higherOr << record env Token.As FA.TypeRecord nest
-        , typeApplicationOr env
+        , typeConstructorAppOr env
         , typeTupleOr env
         , typeFunctionOr env
         ]
@@ -822,20 +829,18 @@ arrow env =
             Parser.reject
 
 
-typeApplicationOr env higher =
+typeConstructorAppOr env higher =
     as Env: Parser FA.Type: Parser FA.Type
     higher >> then fn ty:
     try ty as
-        FA.TypeName p1 name:
+        FA.TypeConstant p1 maybeModule name []:
             (Parser.zeroOrMore higher) >> then fn args:
             here >> then fn end2:
             if args == []:
                 Parser.accept ty
 
             else
-                start1 = Pos.start p1
-                FA.TypePolymorphic (pos env start1 end2) name args
-                    >> Parser.accept
+                Parser.accept << FA.TypeConstant p1 maybeModule name args
 
         _:
             Parser.accept ty
@@ -896,7 +901,7 @@ pattern env =
         [ higherOr << parens nest
         , higherOr << list env FA.PatternList nest
         , higherOr << record env (Token.Defop { mutable = False }) FA.PatternRecord nest
-        , patternBinopOr env Op.Cons FA.PatternCons
+        , patternBinopOr env Op.Cons FA.PatternListCons
         , patternBinopOr env Op.Tuple FA.PatternTuple
         ]
 
@@ -912,39 +917,38 @@ functionParameter env nest =
         ]
 
 
-
 patternApplication env param =
     as Env: Parser FA.Pattern: Parser FA.Pattern
 
     oneToken >> then fn (Token start end k):
+
+    p = pos env start end
+
     try k as
         Token.NumberLiteral s:
             s
-                >> FA.PatternLiteralNumber (pos env start end)
+                >> FA.PatternLiteralNumber p
                 >> Parser.accept
 
         Token.TextLiteral s:
             s
-                >> FA.PatternLiteralText (pos env start end)
+                >> FA.PatternLiteralText p
                 >> Parser.accept
 
-        Token.Name modifier name:
+        Token.LowerName modifier Nothing name []:
+            thingy mutable =
+                Parser.maybe (inlineOrBelowOrIndented << typeAnnotation env) >> then fn maybeTy:
+                Parser.accept << FA.PatternAny p mutable name maybeTy
+
+            try modifier as
+                Token.NameNoModifier: thingy False
+                Token.NameMutable: thingy True
+                Token.NameStartsWithDot: Parser.reject
+
+        Token.UpperName maybeModule name:
             Parser.zeroOrMore param >> then fn params:
             here >> then fn end1:
-            try params & modifier as
-
-              _ & Token.NameStartsWithDot:
-                  Parser.reject
-
-              [] & _:
-                  Parser.maybe (inlineOrBelowOrIndented << typeAnnotation env) >> then fn maybeTy:
-                  Parser.accept << FA.PatternAny (pos env start end1) (modifier == Token.NameMutable) name maybeTy
-
-              _ & Token.NameMutable:
-                  Parser.reject
-
-              _:
-                  Parser.accept << FA.PatternApplication (pos env start end1) name params
+            Parser.accept << FA.PatternConstructor (pos env start end1) maybeModule name params
 
         _:
             Parser.reject
@@ -1062,7 +1066,7 @@ binopInsideParens env =
     oneToken >> then fn (Token start end k):
     try k as
         Token.Binop binop:
-            Parser.accept << FA.Variable (pos env start end) { isBinop = True } binop.symbol
+            Parser.accept << FA.PrefixBinop (pos env start end) binop.symbol
 
         _:
             Parser.reject

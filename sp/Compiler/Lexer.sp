@@ -162,6 +162,86 @@ isWordBody char =
     Text.startsWithRegex "[a-zA-Z./_0-9]" char /= ""
 
 
+startsWithUpperChar s =
+    as Text: Bool
+    try Text.startsWithRegex "[A-Z]" s as
+        "": False
+        _: True
+
+
+addLowerOrUpperWord start end modifier chunk @state =
+    as Int: Int: Token.NameModifier: Text: ReadState @: None
+
+    upperName maybeModule name =
+        try modifier as
+            Token.NameNoModifier:
+                absAddToken start end (Token.UpperName maybeModule name) @state
+
+            Token.NameStartsWithDot:
+                addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
+
+            Token.NameMutable:
+                addError ("Types or constructors can't be mutable on their own, only variables can!") @state
+
+    lowerName maybeModule name attrs =
+        if List.any startsWithUpperChar attrs:
+            addError "attribute names must start with a lowercase letter" @state
+        else
+            if maybeModule /= Nothing and modifier /= Token.NameNoModifier:
+                addError "can't use . or @ modifier on an imported value" @state
+            else
+                absAddToken start end (Token.LowerName modifier maybeModule name attrs) @state
+
+    snips =
+        Text.split "." chunk
+
+    if List.any (fn s: s == "") snips:
+        addError "use spaces around `..` to concatenate Text" @state
+    else
+      try snips as
+        []:
+            Debug.todo "should not happen"
+
+        [ one ]:
+            # value
+            # Type
+            # Constructor
+            if startsWithUpperChar one:
+                upperName Nothing one
+            else
+                lowerName Nothing one []
+
+        first :: second :: more:
+            # value.attr1
+            # value.attr1.attr2
+            # Module.value
+            # Module.Type
+            # Module.Constructor
+            try startsWithUpperChar first & startsWithUpperChar second as
+                # value.attr1
+                # value.attr1.attr2
+                False & False:
+                    lowerName Nothing first (second :: more)
+
+                # Module.value
+                # Module.value.attr
+                # Module.value.attr1.attr2
+                True & False:
+                    lowerName (Just first) second more
+
+                True & True:
+                    # Module.Type
+                    # Module.Constructor
+                    if more /= []:
+                        addError ("Types and constructors can't have .attributes") @state
+                    else
+                        upperName (Just first) second
+
+                False & True:
+                    # something.Something
+                    addError "Something wrong with uppercases?" @state
+
+
 addWordToken modifier @state =
     as Token.NameModifier: ReadState@: None
 
@@ -194,7 +274,7 @@ addWordToken modifier @state =
             addError (chunk .. " as a keyword, you can't really use it this way") @state
 
         _:
-            absAddToken start end (Token.Name modifier chunk) @state
+            addLowerOrUpperWord start end modifier chunk @state
 
 
 #
@@ -332,8 +412,8 @@ lexOne char @state =
                 setMode Dot @state
 
             "@":
+                @state.start := getPos @state
                 setMode Mutable @state
-
 
             "#":
                 setMode LineComment @state
@@ -352,17 +432,18 @@ lexOne char @state =
                 @state.start := getPos @state + 1
 
             _:
-              if isWordStart char:
-                  setMode (Word Token.NameNoModifier) @state
+                if isWordStart char:
+                    @state.start := getPos @state
+                    setMode (Word Token.NameNoModifier) @state
 
-              else if isNumber char:
-                  setMode NumberLiteral @state
+                else if isNumber char:
+                    setMode NumberLiteral @state
 
-              else if isSquiggle char:
-                  setMode Squiggles @state
+                else if isSquiggle char:
+                    setMode Squiggles @state
 
-              else:
-                  addParenOrCommaToken char @state
+                else:
+                    addParenOrCommaToken char @state
 
         Dot:
           if char == ".":
@@ -370,21 +451,23 @@ lexOne char @state =
               setMode Default @state
 
           else if isWordStart char:
-                  setMode (Word Token.NameStartsWithDot) @state
+              setMode (Word Token.NameStartsWithDot) @state
 
           else if isNumber char:
-                  setMode NumberLiteral @state
+              setMode NumberLiteral @state
+
           else
-                  addError "no idea what this is" @state
+              addError "no idea what this is" @state
 
         Mutable:
             if isWordStart char:
-                    setMode (Word Token.NameMutable) @state
+                setMode (Word Token.NameMutable) @state
 
             else if isSquiggle char:
-                    setMode Squiggles @state
+                setMode Squiggles @state
+
             else
-                    addError "no idea what this is" @state
+                addError "no idea what this is" @state
 
         Word modifier:
             if isWordBody char:

@@ -20,16 +20,23 @@ union Source =
     , SourcePlaceholder
 
 
-alias Path =
-    [Text]
+#
+# Uniqueliy identifies a module within a source.
+#
+# It is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
+#
+# ex: "SPCore/List"
+#
+alias ModulePath =
+    Text
 
 
 union UniqueModuleReference =
-    UMR Source Path
+    UMR Source ModulePath
 
 
 union UniqueSymbolReference =
-    USR Source Path Name
+    USR UniqueModuleReference Name
 
 
 alias Meta = {
@@ -55,3 +62,19 @@ init =
     , moduleVisibleAsToUmr = Dict.empty
     , umrToModuleVisibleAs = Dict.empty
     }
+
+
+spCorePath =
+    as Text
+    "SPCore"
+
+
+spCoreUmr =
+    as UniqueModuleReference
+    UMR Core spCorePath
+
+
+spCoreUSR =
+    as Name: UniqueSymbolReference
+    USR spCoreUmr
+

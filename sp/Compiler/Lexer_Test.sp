@@ -64,8 +64,8 @@ lexTokens s =
     as Text: Result Text (List Token)
 
     s
-        >> Compiler/Lexer.lexer "Test"
-        >> Compiler/TestHelpers.resErrorToStrippedText s
+        >> Compiler/Lexer.lexer TH.moduleName
+        >> TH.resErrorToStrippedText s
 
 
 lexTokensAndDrop n s =
@@ -74,8 +74,8 @@ lexTokensAndDrop n s =
         >> Result.map (List.drop n)
 
 
-non_mut_name =
-    Token.Name Token.NameNoModifier
+non_mut_name n =
+    Token.LowerName Token.NameNoModifier Nothing n []
 
 
 tests =
@@ -192,6 +192,38 @@ indentation =
                 , Token 12 13 << Token.NumberLiteral "1"
                 ]
             )
+        , codeTest
+            """
+            [reg] spurious spaces in front of field name
+            """
+            """
+            module =
+               importAs =
+                  SPCore
+               globalTypes =
+                  None
+            """
+            lexTokens
+            (Test.isOkAndEqualTo
+                [
+                , Token 0  0  << Token.NewSiblingLine
+                , Token 0  6  << Token.LowerName Token.NameNoModifier Nothing "module" []
+                , Token 7  8  << Token.Defop { mutable = False }
+                , Token 9 12 << Token.BlockStart
+                , Token 12 20 << Token.LowerName Token.NameNoModifier Nothing "importAs" []
+                , Token 21 22 << Token.Defop { mutable = False }
+                , Token 23 29 << Token.BlockStart
+                , Token 29 35 << Token.UpperName SPCore/Maybe.Nothing "SPCore"
+                , Token 39 39 << Token.BlockEnd
+                , Token 39 39 << Token.NewSiblingLine
+                , Token 39 50 << Token.LowerName Token.NameNoModifier Nothing "globalTypes" []
+                , Token 51 52 << Token.Defop { mutable = False }
+                , Token 53 59 << Token.BlockStart
+                , Token 59 63 << Token.UpperName Nothing "None"
+                , Token 63 63 << Token.BlockEnd
+                , Token 63 63 << Token.BlockEnd
+                ]
+            )
         ]
 
 
@@ -278,11 +310,11 @@ underscores =
         [ codeTest "'_' as a Name"
             "_"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token 0 1 << Token.Name Token.NameNoModifier "_" ])
+            (Test.isOkAndEqualTo [ Token 0 1 << Token.LowerName Token.NameNoModifier Nothing "_" []])
         , codeTest "'_10_20' as a Name"
             "_10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token 0 6 << Token.Name Token.NameNoModifier "_10_20" ])
+            (Test.isOkAndEqualTo [ Token 0 6 << Token.LowerName Token.NameNoModifier Nothing "_10_20" []])
         , codeTest "'10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)

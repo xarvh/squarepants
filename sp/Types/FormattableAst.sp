@@ -43,23 +43,12 @@ alias Constructor =
 
 
 union Type =
-    , TypeName Pos Name
-    , TypePolymorphic Pos Name [Type]
+    , TypeVariable Pos Name
+    , TypeConstant Pos (Maybe Name) Name [Type]
     , TypeFunction Pos Type Bool Type
     , TypeTuple Pos [Type]
     , TypeList Pos Type
     , TypeRecord Pos (RecordArgs Type)
-
-
-typePos type =
-    as Type: Pos
-    try type as
-        TypeName p _: p
-        TypePolymorphic p _ _: p
-        TypeFunction p _ _ _: p
-        TypeTuple p _: p
-        TypeList p _: p
-        TypeRecord p _: p
 
 
 # expr op expr op expr op...
@@ -74,9 +63,11 @@ sepList_mapItem f ( a & la ) =
 union Expression =
     , LiteralText Pos Text
     , LiteralNumber Pos Text
-    , Variable Pos { isBinop as Bool } Name
-    , Mutable Pos Name
-    , RecordShorthand Pos Name
+    , Variable Pos (Maybe Name) Name [Name]
+    , Constructor Pos (Maybe Name) Name
+    , Mutable Pos Name [Name]
+    , PrefixBinop Pos Text
+    , RecordShorthand Pos [Name]
     , Lambda Pos Pattern [Statement]
     , FunctionCall Pos Expression [Expression]
     , Binop Pos Op.Precedence (SepList Op.Binop Expression)
@@ -95,39 +86,20 @@ union Expression =
     , Record Pos (RecordArgs Expression)
     , List Pos [Expression]
 
-
-expressionPos expr =
-    as Expression: Pos
-    try expr as
-       LiteralText pos _: pos
-       LiteralNumber pos _: pos
-       Variable pos _ _: pos
-       Mutable pos _: pos
-       Lambda pos _ _: pos
-       FunctionCall pos _ _: pos
-       Binop pos _ _: pos
-       Unop pos _ _: pos
-       If pos _: pos
-       Try pos _: pos
-       Record pos _: pos
-       RecordShorthand pos _: pos
-       List pos _: pos
-
-
 union Pattern =
     , PatternAny Pos Bool Name (Maybe Type)
     , PatternLiteralNumber Pos Text
     , PatternLiteralText Pos Text
-    , PatternApplication Pos Name [Pattern]
+    , PatternConstructor Pos (Maybe Name) Name [Pattern]
     , PatternList Pos [Pattern]
+    , PatternListCons Pos [Pattern]
     , PatternRecord Pos (RecordArgs Pattern)
-    , PatternCons Pos [Pattern]
     , PatternTuple Pos [Pattern]
 
 
 alias RecordArgs expr = {
     , extends as Maybe expr
-    , attrs as [ Name & Maybe expr ]
+    , attrs as [ At Name & Maybe expr ]
     }
 
 
@@ -136,38 +108,81 @@ alias RecordArgs expr = {
 #
 
 
+statementPos statement =
+    as Statement: Pos
+
+    try statement as
+        Evaluation pos _: pos
+        Definition pos _: pos
+        TypeAlias { name = At pos _ }: pos
+        UnionDef pos _: pos
+
+
+typePos type =
+    as Type: Pos
+    try type as
+        TypeVariable p _: p
+        TypeConstant p _ _ _: p
+        TypeFunction p _ _ _: p
+        TypeTuple p _: p
+        TypeList p _: p
+        TypeRecord p _: p
+
+
+
+expressionPos expr =
+    as Expression: Pos
+    try expr as
+       LiteralText p _: p
+       LiteralNumber p _: p
+       Variable p _ _ _: p
+       Constructor p _ _: p
+       Mutable p _ _: p
+       PrefixBinop p _: p
+       Lambda p _ _: p
+       FunctionCall p _ _: p
+       Binop p _ _: p
+       Unop p _ _: p
+       If p _: p
+       Try p _: p
+       Record p _: p
+       RecordShorthand p _: p
+       List p _: p
+
+
+
 patternPos pa =
     as Pattern: Pos
     try pa as
         PatternAny p _ _ _: p
         PatternLiteralNumber p _: p
         PatternLiteralText p _: p
-        PatternApplication p _ _: p
+        PatternConstructor p _ _ _: p
         PatternList p _: p
+        PatternListCons p _: p
         PatternRecord p _: p
-        PatternCons p _: p
         PatternTuple p _: p
 
 
-patternNames pa =
+patternNames pattern =
     as Pattern: Dict Name Pos
 
     foldOver pas =
         List.foldl (fn p: p >> patternNames >> Dict.join) pas Dict.empty
 
-    insertAttr pos (name & maybePa) =
+    insertAttr ((At pos name) & maybePa) =
         try maybePa as
             Nothing: Dict.insert name pos
-            Just p: p >> patternNames >> Dict.join
+            Just pat: pat >> patternNames >> Dict.join
 
-    try pa as
+    try pattern as
         PatternAny pos _ n _: Dict.singleton n pos
         PatternLiteralNumber _ _: Dict.empty
         PatternLiteralText _ _: Dict.empty
-        PatternApplication _ _ pas: foldOver pas
+        PatternConstructor _ _ _ pas: foldOver pas
         PatternList _ pas: foldOver pas
-        PatternRecord pos ars: List.foldl (insertAttr pos) ars.attrs Dict.empty
-        PatternCons _ pas: foldOver pas
+        PatternListCons _ pas: foldOver pas
+        PatternRecord pos ars: List.foldl insertAttr ars.attrs Dict.empty
         PatternTuple _ pas: foldOver pas
 
 [#
@@ -298,11 +313,11 @@ posMap_pattern f pa =
 posMap_type f ty =
     as (Pos: Pos): Type: Type
     try ty as
-        TypeName pos name:
-            TypeName (f pos) name
+        TypeVariable pos name:
+            TypeVariable (f pos) name
 
-        TypePolymorphic pos name args:
-            TypePolymorphic (f pos) name (List.map (posMap_type f) args)
+        TypeConstant pos name args:
+            TypeConstant (f pos) name (List.map (posMap_type f) args)
 
         TypeFunction pos from mut to:
             TypeFunction (f pos) (posMap_type f from) mut (posMap_type f to)

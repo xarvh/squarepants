@@ -18,6 +18,53 @@ import Types.Error exposing (Res)
 import Types.Meta exposing (Meta)
 
 
+skippedModules =
+    Debug.log "skippedModules"
+        [ ""
+
+--         , "sp/Compiler/CoreTypes.sp"
+--         , "sp/Compiler/Error.sp"
+--         , "sp/Compiler/Lexer.sp"
+        ,  "sp/Compiler/Lexer_Test.sp"
+--         , "sp/Compiler/MakeCanonical.sp"
+        , "sp/Compiler/MakeCanonical_Test.sp"
+
+--         ,  "sp/Compiler/Parser.sp"
+        ,  "sp/Compiler/Parser_Test.sp"
+--         ,  "sp/Compiler/TestHelpers.sp"
+--         , "sp/Compiler/TypeCheck.sp"
+--         , "sp/Compiler/TypeCheck_Test.sp"
+
+        --         ,  "sp/DefaultModules.sp"
+--         , "sp/Human/CanonicalAst.sp"
+
+        --         ,  "sp/Main.sp"
+        --         ,  "sp/ModulesFile.sp"
+        --         ,  "sp/Prelude.sp"
+        --         ,  "sp/SPCore/Basics.sp"
+        --         ,  "sp/SPCore/Dict.sp"
+        --         ,  "sp/SPCore/Dict_Test.sp"
+        --         ,  "sp/SPCore/List.sp"
+        --         ,  "sp/SPCore/List_Test.sp"
+        --         ,  "sp/SPCore/Maybe.sp"
+        --         ,  "sp/SPCore/Result.sp"
+        --         ,  "sp/SPCore/Set.sp"
+        --         ,  "sp/SPCore/Text.sp"
+        --         ,  "sp/SPCore/Tuple.sp"
+        --         ,  "sp/SPLib/Buffer.sp"
+        --         ,  "sp/SPLib/Parser.sp"
+        --         ,  "sp/SPON.sp"
+        --         ,  "sp/StateMonad.sp"
+        --         ,  "sp/Test.sp"
+        --         ,  "sp/Types/CanonicalAst.sp"
+        --         ,  "sp/Types/FormattableAst.sp"
+        --         ,  "sp/Types/Meta.sp"
+        --         ,  "sp/Types/Op.sp"
+        --         ,  "sp/Types/Pos.sp"
+        --         ,  "sp/Types/Token.sp"
+        ]
+
+
 metafileName =
     "modules.sp"
 
@@ -55,8 +102,9 @@ loadFile =
 
 loadDirectory : String -> Dict String String -> IO (Dict String String)
 loadDirectory fullPath accum =
-    do (Posix.IO.File.readDir fullPath |> Posix.IO.exitOnError identity) <| \entries ->
-    loadAllEntries fullPath entries accum
+    do (Posix.IO.File.readDir fullPath |> Posix.IO.exitOnError identity) <|
+        \entries ->
+            loadAllEntries fullPath entries accum
 
 
 loadAllEntries : String -> List Posix.IO.File.Entry -> Dict String String -> IO (Dict String String)
@@ -66,6 +114,7 @@ loadAllEntries path entries accum =
             return accum
 
         head :: tail ->
+            --
             do (loadEntry path head accum) (loadAllEntries path tail)
 
 
@@ -86,10 +135,15 @@ loadEntry path entry accum =
                     fullPath =
                         pathJoin path fileName
                 in
-                do (loadFile fullPath) <| \content ->
-                accum
-                    |> Dict.insert fullPath content
-                    |> return
+                if List.member fullPath skippedModules then
+                    return accum
+
+                else
+                    do (loadFile fullPath) <|
+                        \content ->
+                            accum
+                                |> Dict.insert fullPath content
+                                |> return
 
             else
                 return accum
@@ -116,10 +170,11 @@ loadSourceDir path =
                 , content = content
                 }
     in
-    do (loadDirectory path Dict.empty) <| \filesByPath ->
-    filesByPath
-        |> Dict.foldl insertFile Dict.empty
-        |> return
+    do (loadDirectory path Dict.empty) <|
+        \filesByPath ->
+            filesByPath
+                |> Dict.foldl insertFile Dict.empty
+                |> return
 
 
 loadAllSourceDir : List String -> ModuleByName -> IO ModuleByName
@@ -129,8 +184,9 @@ loadAllSourceDir dirs accum =
             return accum
 
         head :: tail ->
-            do (loadSourceDir head) <| \modulesByName ->
-            loadAllSourceDir tail (Dict.union modulesByName accum)
+            do (loadSourceDir head) <|
+                \modulesByName ->
+                    loadAllSourceDir tail (Dict.union modulesByName accum)
 
 
 
@@ -139,21 +195,22 @@ loadAllSourceDir dirs accum =
 
 loadMetaFile : IO MetaFile
 loadMetaFile =
-    do (loadFile metafileName) <| \string ->
-    case MetaFile.stringToMetaFile metafileName string of
-        Err err ->
-            let
-                errorEnv : Types.Error.ErrorEnv
-                errorEnv =
-                    { moduleByName = Dict.singleton metafileName { fsPath = metafileName, content = string }
-                    }
-            in
-            err
-                |> Compiler.TestHelpers.errorToString errorEnv
-                |> exit
+    do (loadFile metafileName) <|
+        \string ->
+            case MetaFile.stringToMetaFile metafileName string of
+                Err err ->
+                    let
+                        errorEnv : Types.Error.ErrorEnv
+                        errorEnv =
+                            { moduleByName = Dict.singleton metafileName { fsPath = metafileName, content = string }
+                            }
+                    in
+                    err
+                        |> Compiler.TestHelpers.errorToString errorEnv
+                        |> exit
 
-        Ok metaFile ->
-            return metaFile
+                Ok metaFile ->
+                    return metaFile
 
 
 
@@ -184,32 +241,39 @@ makeProgram metaFile files =
                 |> Result.map (Dict.union acc)
                 |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
     in
-    do (Lib.dict_foldRes compileAndInsert files Prelude.prelude) <| \allDefs ->
-    let
-        withAliases : Result String CA.AllDefs
-        withAliases =
-            allDefs
-                |> Compiler.ApplyAliases.applyAliasesToModule
-                |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
-    in
-    do withAliases <| \alsDefs ->
-    let
-        blah : Result String TC.Env
-        blah =
-            alsDefs
-                |> TC.allDefsToEnvAndValues
-                |> (\( env, values ) -> TC.fromAllValueDefs env values)
-                |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
-    in
-    do blah <| \env ->
-    alsDefs
-        |> Compiler.CanonicalToJs.translateAll errorEnv
-        |> List.map (Compiler.JsToString.emitStatement 0)
-        |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
-        |> String.join "\n\n"
-        |> (\s -> s ++ "const fs = require('fs');\n")
-        |> (\s -> s ++ "fs.readFile(process.argv[2] || '', (err, file) => console.log($Main$main(err ? '' : file.toString())))")
-        |> Ok
+    do (Lib.dict_foldRes compileAndInsert files Prelude.prelude) <|
+        \allDefs ->
+            let
+                withAliases : Result String CA.AllDefs
+                withAliases =
+                    allDefs
+                        |> Compiler.ApplyAliases.applyAliasesToModule
+                        |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
+            in
+            do withAliases <|
+                \alsDefs ->
+                    let
+                        blah : Result String TC.Env
+                        blah =
+                            let
+                                _ =
+                                    Debug.log "typechecking..." ()
+                            in
+                            alsDefs
+                                |> TC.allDefsToEnvAndValues
+                                |> (\( env, values ) -> TC.fromAllValueDefs env values)
+                                |> Result.mapError (Compiler.TestHelpers.errorToString errorEnv)
+                    in
+                    do blah <|
+                        \env ->
+                            alsDefs
+                                |> Compiler.CanonicalToJs.translateAll errorEnv
+                                |> List.map (Compiler.JsToString.emitStatement 0)
+                                |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
+                                |> String.join "\n\n"
+                                |> (\s -> s ++ "const fs = require('fs');\n")
+                                |> (\s -> s ++ "fs.readFile(process.argv[2] || '', (err, file) => console.log($Main$main(err ? '' : file.toString())))")
+                                |> Ok
 
 
 
@@ -224,14 +288,16 @@ program process =
     -- argv[1]: --debug
     case List.drop 2 process.argv of
         outFile :: tail ->
-            do loadMetaFile <| \metaFile ->
-            do (loadAllSourceDir (List.map .path metaFile.sourceDirs) Dict.empty) <| \modsByName ->
-            case makeProgram metaFile modsByName of
-                Err err ->
-                    exit <| err ++ "\n"
+            do loadMetaFile <|
+                \metaFile ->
+                    do (loadAllSourceDir (List.map .path metaFile.sourceDirs) Dict.empty) <|
+                        \modsByName ->
+                            case makeProgram metaFile modsByName of
+                                Err err ->
+                                    exit <| err ++ "\n"
 
-                Ok js ->
-                    Posix.IO.File.writeContentsTo (Debug.log "" outFile) js
+                                Ok js ->
+                                    Posix.IO.File.writeContentsTo (Debug.log "" outFile) js
 
         _ ->
             exit "no output file specified"

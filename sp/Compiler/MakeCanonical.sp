@@ -37,6 +37,7 @@ alias Env = {
 
 
 alias ReadOnly = {
+    , currentModule as Meta.UniqueModuleReference
     , meta as Meta
     }
 
@@ -69,166 +70,43 @@ makeError pos msg =
     Error.res pos fn errorEnv: msg
 
 
-##
-# Structured Names
+
+#
+# Names resolution
 #
 
 
-union StructuredName =
-    , StructuredName_Value { name as Text , mod as Mod , attrPath as [Text] }
-    , StructuredName_TypeOrCons { name as Text , mod as Mod }
+resolveName getter ro declaredInsideFunction maybeModule name =
+    as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Bool: Maybe Name: Name: CA.Ref
 
+    try maybeModule as
+        Just moduleName:
+            try Dict.get moduleName ro.meta.moduleVisibleAsToUmr as
+                Just umr:
+                    CA.RefRoot (Meta.USR umr name)
 
-union Mod =
-    , ModuleNotSpecified
-    , ModuleSpecifiedAs Meta.UniqueModuleReference
+                Nothing:
+                    # TODO should this produce an error instead?
+                    # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
+                    #CA.RefRoot (Meta.USR Meta.SourcePlaceholder moduleName name)
+                    Debug.todo "resolveName can't find the module?"
 
-
-resolveName getter ro declaredInsideFunction mod name =
-    as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Bool: Mod: Text: CA.Ref
-    try mod as
-        ModuleSpecifiedAs (Meta.UMR source path):
-            CA.Foreign (Meta.USR source path name)
-
-        ModuleNotSpecified:
+        Nothing:
             try Dict.get name (getter ro.meta) as
                 Just global:
-                    CA.Foreign global
+                    CA.RefRoot global
 
                 Nothing:
                     if declaredInsideFunction:
-                        CA.BlockLocal name
+                        CA.RefBlock name
 
                     else
-                        CA.ModuleLocal name
+                        CA.RefRoot << Meta.USR ro.currentModule name
 
 
 resolveValueName =
-    as ReadOnly: Bool: Mod: Text: CA.Ref
+    as ReadOnly: Bool: Maybe Name: Name: CA.Ref
     resolveName (fn m: m.globalValues)
-
-
-resolveTypeName =
-    as ReadOnly: Bool: Mod: Text: CA.Ref
-    resolveName (fn m: m.globalTypes)
-
-
-#makeRootName modName defName =
-#    as Text: Text: Text
-#    modName .. "." .. defName
-
-validateAttrPath pos ap =
-        as Pos: [Text]: Res [Text]
-        if List.any startsWithUpperChar ap:
-            makeError pos [ "record attributes names must start with a lowercase letter" ]
-
-        else if List.any (Text.contains "/") ap:
-            makeError pos [ "`/` can't be used inside attribute names" ]
-
-        else if List.any ((==) "") ap:
-            makeError pos [ "Weird `..`?" ]
-
-        else
-            Ok ap
-
-
-stringToStructuredName env pos rawString =
-    as Env: Pos: Text: Res StructuredName
-    [#
-       value
-       value.attr1.attr2
-
-       Type
-       Constructor
-
-       Module.Type
-       Module.Constructor
-       Module.value
-       Module.value.attr1.attr2
-
-       Dir/Module.Type
-       Dir/Module.Constructor
-       Dir/Module.value
-       Dir/Module.value.attr1.attr2
-    #]
-
-    validateDefName name =
-        as Text: Res Text
-        # TODO can't be ""
-        if Text.contains "/" name:
-            makeError pos [ "value names can't contain `/`" ]
-
-        else if name == "":
-            makeError pos [ "weird double dots?" ]
-
-        else
-            Ok name
-
-    translateModName moduleName =
-        as Text: Res Meta.UniqueModuleReference
-        try Dict.get moduleName env.ro.meta.moduleVisibleAsToUmr as
-            Nothing: makeError pos [ "Can't find module `" .. moduleName .. "`" ]
-            Just umr: Ok umr
-
-    try Text.split "." rawString as
-        []:
-            makeError pos [ "name is empty Text !? should not happen" ]
-
-        first :: rest:
-            if not startsWithUpperChar first:
-                # `value`
-                # `value.attr1.attr2`
-                validateAttrPath pos rest >> onOk fn attrPath:
-                validateDefName first >> onOk fn name:
-                { name = name
-                , mod = ModuleNotSpecified
-                , attrPath = attrPath
-                }
-                    >> StructuredName_Value
-                    >> Ok
-
-            else
-                # first starts with upper char
-                try rest as
-                    []:
-                        # `SomeType`
-                        # `SomeConstructor`
-                        validateDefName first >> onOk fn name:
-                        { name = name
-                        , mod = ModuleNotSpecified
-                        }
-                            >> StructuredName_TypeOrCons
-                            >> Ok
-
-                    second :: tail:
-                        if startsWithUpperChar second:
-                            # `Module.Type`
-                            # `Module.Constructor`
-                            if tail /= []:
-                                makeError pos [ "Type or Constructor can't have attributes!" ]
-
-                            else
-                                validateDefName second >> onOk fn defName:
-                                translateModName first >> onOk fn umr:
-                                { name = defName
-                                , mod = ModuleSpecifiedAs umr
-                                }
-                                    >> StructuredName_TypeOrCons
-                                    >> Ok
-
-                        else
-                            # `Module.value`
-                            # `Module.value.attr1.attr2`
-                            validateDefName second >> onOk fn defName:
-                            translateModName first >> onOk fn umr:
-                            validateAttrPath pos tail >> onOk fn attrPath:
-                            { name = defName
-                            , mod = ModuleSpecifiedAs umr
-                            , attrPath = attrPath
-                            }
-                                >> StructuredName_Value
-                                >> Ok
-
 
 
 ##
@@ -313,27 +191,6 @@ translateDefinition isRoot env fa =
 #
 
 
-translateNameToSimpleVariable pos env s =
-    as Pos: Env: Text: Res Text
-
-    stringToStructuredName { env with maybeShorthandTarget = Nothing } pos s >> onOk fn sname:
-            try sname as
-                StructuredName_TypeOrCons { name, mod }:
-                    makeError pos [ s .. " is not a var name" ]
-
-                StructuredName_Value { name, mod, attrPath }:
-                    if attrPath /= []:
-                        makeError pos [ "can't use attribute access inside a pattern" ]
-
-                    else
-                        try mod as
-                            ModuleSpecifiedAs _:
-                                makeError pos [ "It looks like you are trying to reference some module value, but I need just a new variable name" ]
-
-                            ModuleNotSpecified:
-                                    Ok name
-
-
 translatePattern ann env fa =
     as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern
     try fa as
@@ -341,14 +198,13 @@ translatePattern ann env fa =
             # TODO this happens (to me) when I use `=` in place of `:=`, so maybe change the message?
             makeError pos [ "This is the wrong place to use `@`" ]
 
-        FA.PatternAny pos False s maybeFaType:
+        FA.PatternAny pos False name maybeFaType:
             if ann == Nothing and maybeFaType /= Nothing:
                 makeError pos [ "Can't use annotations here" ]
             else
-                translateNameToSimpleVariable pos env s >> onOk fn varName:
                 Maybe.mapRes (translateType ann env.ro) maybeFaType >> onOk fn maybeCaType:
 
-                n = if varName == "_": Nothing else Just varName
+                n = if name == "_": Nothing else Just name
                 Ok << CA.PatternAny pos n maybeCaType
 
         FA.PatternLiteralNumber pos l:
@@ -357,29 +213,9 @@ translatePattern ann env fa =
         FA.PatternLiteralText pos l:
             Ok << CA.PatternLiteralText pos l
 
-        FA.PatternApplication pos rawName faArgs:
-            stringToStructuredName { env with maybeShorthandTarget = Nothing } pos rawName >> onOk fn sname:
-            try sname as
-                StructuredName_TypeOrCons { name, mod }:
-                    List.mapRes (translatePattern ann env) faArgs >> onOk fn caArgs:
-                    Ok << CA.PatternConstructor pos (resolveValueName env.ro False mod name) caArgs
-
-                StructuredName_Value { name, mod, attrPath }:
-                    if attrPath /= []:
-                        makeError pos [ "can't use attribute access inside a pattern" ]
-
-                    else
-                        try mod as
-                            ModuleSpecifiedAs _:
-                                makeError pos [ "It looks like you are trying to reference some module value, but I need just a new variable name" ]
-
-                            ModuleNotSpecified:
-                                # it's a function or variable!
-                                if faArgs == []:
-                                    Ok << CA.PatternAny pos (if name == "_": Nothing else Just name) Nothing
-
-                                else
-                                    makeError pos [ "TODO This function needs rewriting" ]
+        FA.PatternConstructor pos maybeModule name faArgs:
+            List.mapRes (translatePattern ann env) faArgs >> onOk fn caArgs:
+            Ok << CA.PatternConstructor pos (resolveValueName env.ro False maybeModule name) caArgs
 
         FA.PatternList pos fas:
             fold pattern last =
@@ -394,14 +230,14 @@ translatePattern ann env fa =
                 makeError pos [ "can't use `with` inside patterns" ]
 
             else
-                fold ( name & maybePattern ) dict =
+                fold ( (At p name) & maybePattern ) dict =
                     if Dict.member name dict:
-                        makeError pos [ "duplicate attribute name in pattern: " .. name ]
+                        makeError p [ "duplicate attribute name in pattern: " .. name ]
 
                     else
                         try maybePattern as
                             Nothing:
-                                Ok << Dict.insert name (CA.PatternAny pos (Just name) Nothing) dict
+                                Ok << Dict.insert name (CA.PatternAny p (Just name) Nothing) dict
 
                             Just faPattern:
                                 faPattern
@@ -411,7 +247,7 @@ translatePattern ann env fa =
                 List.foldlRes fold recordArgs.attrs Dict.empty
                     >> Result.map (fn x: x >> CA.PatternRecord pos)
 
-        FA.PatternCons pos pas:
+        FA.PatternListCons pos pas:
             List.mapRes (translatePattern ann env) pas >> onOk fn caPas:
             try List.reverse caPas as
                 last :: rest:
@@ -427,8 +263,8 @@ translatePattern ann env fa =
                 [ fa1, fa2 ]:
                     { extends = Nothing
                     , attrs =
-                        [ "first" & Just fa1
-                        , "second" & Just fa2
+                        [ (At (FA.patternPos fa1) "first") & Just fa1
+                        , (At (FA.patternPos fa2) "second") & Just fa2
                         ]
                     }
                         >> FA.PatternRecord pos
@@ -437,9 +273,9 @@ translatePattern ann env fa =
                 [ fa1, fa2, fa3 ]:
                     { extends = Nothing
                     , attrs =
-                        [ "first" & Just fa1
-                        , "second" & Just fa2
-                        , "third" & Just fa3
+                        [ (At (FA.patternPos fa1) "first") & Just fa1
+                        , (At (FA.patternPos fa2) "second") & Just fa2
+                        , (At (FA.patternPos fa3) "third") & Just fa3
                         ]
                     }
                         >> FA.PatternRecord pos
@@ -530,50 +366,46 @@ translateExpression env faExpr =
         FA.LiteralText pos v:
             Ok << CA.LiteralText pos v
 
-        FA.Variable pos { isBinop } faName:
-            if isBinop:
-                { ref = CoreTypes.nameToRef faName
-                , attrPath = []
-                }
-                    >> CA.Variable pos
-                    >> Ok
+        FA.PrefixBinop pos symbol:
+            { ref = CoreTypes.nameToRef symbol
+            , attrPath = []
+            }
+                >> CA.Variable pos
+                >> Ok
 
-            else
-                stringToStructuredName env pos faName >> onOk fn sname:
-                try sname as
-                    StructuredName_Value a:
-                        declaredInsideFunction =
-                            Dict.member a.name env.nonRootValues
+        FA.Variable pos maybeModule name attrs:
+            declaredInsideFunction =
+                Dict.member name env.nonRootValues
 
-                        { ref = resolveValueName env.ro declaredInsideFunction a.mod a.name
-                        , attrPath = a.attrPath
-                        }
-                            >> CA.Variable pos
-                            >> Ok
+            { ref = resolveValueName env.ro declaredInsideFunction maybeModule name
+            , attrPath = attrs
+            }
+                >> CA.Variable pos
+                >> Ok
 
-                    StructuredName_TypeOrCons a:
-                        resolveValueName env.ro False a.mod a.name
-                            >> CA.Constructor pos
-                            >> Ok
+        FA.Constructor pos maybeModule name:
+            resolveValueName env.ro False maybeModule name
+                >> CA.Constructor pos
+                >> Ok
 
-        FA.Mutable pos name:
+        FA.Mutable pos name _:
             makeError pos [ name .. ": mutable values can be used only as arguments for function or mutation operators" ]
 
-        FA.RecordShorthand pos attrName:
+        FA.RecordShorthand pos attrPath:
             try env.maybeShorthandTarget as
                 Nothing:
                     makeError pos [
                         , "Record update shorthands must be used inside a record update such as"
-                        , "    { aRecord with anAttribute = doSomethingWith ." .. attrName .. " }"
+                        , "    { aRecord with anAttribute = doSomethingWith ." .. Text.join "." attrPath .. " }"
                         , "but we are not inside a record update!"
                         ]
+
                 Just shorthandTarget:
                     # Yes, you can write
                     #
                     #   { blah.x.y with z0 = .z1.w.x }
                     #
                     # Is this a good idea?
-                    validateAttrPath pos (Text.split "." attrName) >> onOk fn attrPath:
                     Ok << CA.Variable pos { shorthandTarget with attrPath = List.concat [ .attrPath, attrPath ] }
 
         FA.Lambda pos faParam faBody:
@@ -616,6 +448,7 @@ translateExpression env faExpr =
 
         FA.Record pos faArgs:
             makeUpdateTarget pos env faArgs.extends >> onOk fn caUpdateTarget:
+            # TODO use a Result.list_fold?
             translateAttrsRec { env with maybeShorthandTarget = caUpdateTarget.maybeName } faArgs.attrs Dict.empty >> onOk fn caAttrs:
             caAttrs
                 >> CA.Record pos caUpdateTarget.maybeName
@@ -678,12 +511,12 @@ makeUpdateTarget pos env maybeShorthandTarget =
 
 
 translateAttrsRec env faAttrs caAttrsAccum =
-    as Env: [Text & Maybe FA.Expression]: Dict Text CA.Expression: Res (Dict Text CA.Expression)
+    as Env: [(At Text) & Maybe FA.Expression]: Dict Text CA.Expression: Res (Dict Text CA.Expression)
     try faAttrs as
         []:
             Ok caAttrsAccum
 
-        (attrName & maybeAttrExpression) :: faTail:
+        ((At pos attrName) & maybeAttrExpression) :: faTail:
             exprRes =
                 try maybeAttrExpression as
                     Just faExpr:
@@ -693,11 +526,12 @@ translateAttrsRec env faAttrs caAttrsAccum =
                         declaredInsideFunction =
                             Dict.member attrName env.nonRootValues
 
-                        { ref = resolveValueName env.ro declaredInsideFunction ModuleNotSpecified attrName
+                        { ref = resolveValueName env.ro declaredInsideFunction Nothing attrName
                         , attrPath = []
                         }
-                            >> CA.Variable Pos.G
+                            >> CA.Variable pos
                             >> Ok
+
             exprRes >> onOk fn expr:
             translateAttrsRec env faTail (Dict.insert attrName expr caAttrsAccum)
 
@@ -705,27 +539,20 @@ translateAttrsRec env faAttrs caAttrsAccum =
 translateArgument env faExpr =
     as Env: FA.Expression: Res CA.Argument
     try faExpr as
-        FA.Mutable pos faName:
-            stringToStructuredName { env with maybeShorthandTarget = Nothing } pos faName >> onOk fn sname:
-            try sname as
-                StructuredName_TypeOrCons _:
-                    makeError pos [ "constructors can't be mutable?" ]
+        FA.Mutable pos name attrPath:
 
-                StructuredName_Value { name, mod, attrPath }:
-                    if mod == ModuleNotSpecified and Dict.member name env.nonRootValues:
-                        {
-                        , ref = CA.BlockLocal name
-                        , attrPath = attrPath
-                        }
-                            >> CA.ArgumentMutable pos
-                            >> Ok
+            if Dict.member name env.nonRootValues:
+                {
+                , ref = CA.RefBlock name
+                , attrPath
+                }
+                    >> CA.ArgumentMutable pos
+                    >> Ok
 
-                    else
-                        makeError pos
-                            [ "only values declared inside a function scope can be mutated!"
-                            , Debug.toHuman sname
-                            , faName
-                            ]
+            else
+                makeError pos
+                    [ "only values declared inside a function scope can be mutated!"
+                    ]
 
         _:
             faExpr
@@ -895,7 +722,7 @@ makeBinop pos left op right =
             CA.Call pos
                 (CA.Call pos
                     (CA.Variable pos {
-                        , ref = CA.Foreign (Meta.USR Meta.Core [] op.symbol)
+                        , ref = CA.RefRoot (Meta.spCoreUSR op.symbol)
                         , attrPath = []
                         }
                     )
@@ -919,25 +746,20 @@ translateSimpleBinop env pos left op right =
 
 
 addAttributes ro pos faAttrs caAttrsAccum =
-    as ReadOnly: Pos: [ Text & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type
+    as ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type
     try faAttrs as
         []:
             CA.TypeRecord pos Nothing caAttrsAccum
                 >> Ok
 
-        (name & maybeFaType) :: faTail:
-            faType =
-                Maybe.withDefault (FA.TypeName Pos.G name) maybeFaType
+        ((At p name) & maybeFaType) :: faTail:
+            try maybeFaType as
+                Nothing:
+                    makeError p [ "Attribute `" .. name .. "` must have a type" ]
 
-            translateType Nothing ro faType >> onOk fn caType:
-            addAttributes ro pos faTail (Dict.insert name caType caAttrsAccum)
-
-
-startsWithUpperChar s =
-    as Text: Bool
-    try Text.startsWithRegex "[A-Z]" s as
-        "": False
-        _: True
+                Just faType:
+                    translateType Nothing ro faType >> onOk fn caType:
+                    addAttributes ro p faTail (Dict.insert name caType caAttrsAccum)
 
 
 #
@@ -945,37 +767,21 @@ startsWithUpperChar s =
 #
 translateType mrf ro faType =
     as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type
+
     try faType as
-        FA.TypeName p name:
-            translateType mrf ro << FA.TypePolymorphic p name []
+        FA.TypeVariable pos name:
+            try mrf as
+                Nothing:
+                    Ok << CA.TypeVariable pos name
 
-        FA.TypePolymorphic pos rawName args:
-            stringToStructuredName (initEnv ro) pos rawName >> onOk fn sname:
-            try sname as
-                StructuredName_Value { name, mod, attrPath }:
-                    if args /= []:
-                        # TODO is this the correct error?
-                        makeError pos [ "rank 2 types are not supported" ]
+                Just renameFunction:
+                    Ok << CA.TypeVariable pos (renameFunction pos name)
 
-                    else if mod /= ModuleNotSpecified:
-                        makeError pos [ "this is not a valid name for a type variable" ]
-
-                    else if attrPath /= []:
-                        makeError pos [ "no attribute accessors on types" ]
-
-                    else
-                        try mrf as
-                            Nothing:
-                                Ok << CA.TypeAnnotatedVar pos name
-
-                            Just renameFunction:
-                                Ok << CA.TypeAnnotatedVar pos (renameFunction pos name)
-
-                StructuredName_TypeOrCons { name, mod }:
-                    List.mapRes (translateType mrf ro) args >> onOk fn caArgs:
-                    caArgs
-                        >> CA.TypeConstant pos (resolveTypeName ro False mod name)
-                        >> Ok
+        FA.TypeConstant pos maybeModule name args:
+            List.mapRes (translateType mrf ro) args >> onOk fn caArgs:
+            caArgs
+                >> CA.TypeConstant pos (resolveName (fn m: m.globalTypes) ro False maybeModule name)
+                >> Ok
 
         FA.TypeFunction pos fa_from fromIsMut fa_to:
             translateType mrf ro fa_from >> onOk fn ca_from:
@@ -1023,31 +829,19 @@ translateType mrf ro faType =
 # Union constructor
 #
 
-translateConstructor ro (At pos fa_name & fa_args) constructors =
-    as ReadOnly: (At Name & [FA.Type]): Dict Name [CA.Type]: Res (Dict Name [CA.Type])
 
-    stringToStructuredName (initEnv ro) pos fa_name >> onOk fn sname:
-    try sname as
-        StructuredName_Value _:
-            makeError pos [ "constructor name must start with a uppercase letter" ]
+translateConstructor ro (At pos name & fa_args) constructors =
+    as ReadOnly: (At Name & [FA.Type]): Dict Name (Pos & [CA.Type]): Res (Dict Name (Pos & [CA.Type]))
 
-        StructuredName_TypeOrCons consArgs:
-            if consArgs.mod /= ModuleNotSpecified:
-                makeError pos [ "something's wrong with  the cons name" ]
+    if Dict.member name constructors:
+        # TODO "union $whatever has two constructors with the same name!"
+        makeError pos [ "constructor " .. name .. " is duplicate" ]
 
-            else
-                name =
-                    consArgs.name
-
-                if Dict.member name constructors:
-                    # TODO "union $whatever has two constructors with the same name!"
-                    makeError pos [ "constructor " .. name .. " is duplicate" ]
-
-                else
-                    List.mapRes (translateType Nothing ro) fa_args >> onOk fn caArgs:
-                    constructors
-                        >> Dict.insert name caArgs
-                        >> Ok
+    else
+        List.mapRes (translateType Nothing ro) fa_args >> onOk fn caArgs:
+        constructors
+            >> Dict.insert name (pos & caArgs)
+            >> Ok
 
 
 #
@@ -1055,24 +849,25 @@ translateConstructor ro (At pos fa_name & fa_args) constructors =
 #
 
 
-constructorType unionName args =
-    as Name: [CA.Type]: CA.Type
-
-    CA.TypeConstant Pos.E (CA.ModuleLocal unionName) []
-        >> List.foldr (fn ar ty: CA.TypeFunction Pos.E ar False ty) args
-
-
 # Add constructors from union defs
-addUnionConstructors unionName def =
-    as Name: CA.UnionDef: Dict Name CA.Type: Res (Dict Name CA.Type)
+addUnionConstructors ro unionName def =
+    as ReadOnly: Name: CA.UnionDef: Dict Name CA.Type: Res (Dict Name CA.Type)
 
-    addConstructor ctorName ctorArgs d =
-        as Name: List CA.Type: Dict Name CA.Type: Res (Dict Name CA.Type)
+    constructorType pos args =
+        as Pos: [CA.Type]: CA.Type
+
+        def.args
+            >> List.map (CA.TypeVariable pos)
+            >> CA.TypeConstant pos (CA.RefRoot << Meta.USR ro.currentModule unionName)
+            >> List.foldr (fn ar ty: CA.TypeFunction pos ar False ty) args
+
+    addConstructor ctorName (pos & ctorArgs) d =
+        as Name: (Pos & List CA.Type): Dict Name CA.Type: Res (Dict Name CA.Type)
 
         if Dict.member ctorName d:
-            makeError Pos.E [ "duplicate constructor " .. ctorName ]
+            makeError pos [ "duplicate constructor " .. ctorName ]
         else
-            Ok << Dict.insert ctorName (constructorType unionName ctorArgs) d
+            Ok << Dict.insert ctorName (constructorType pos ctorArgs) d
 
     Dict.foldlRes addConstructor def.constructors
 
@@ -1123,36 +918,30 @@ insertRootStatement ro faStatement caModule =
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs:
                 makeError pos [ name .. " declared twice!" ]
 
-            else if not startsWithUpperChar name:
-                makeError pos [ "alias names should be uppercase" ]
-
             else
                 # TODO check args!
                 translateType Nothing ro fa.ty >> onOk fn type:
                 Ok { caModule with aliasDefs = Dict.insert name { name = fa.name, args = fa.args, type } .aliasDefs }
 
         FA.UnionDef pos fa:
-            name =
-                as Text
-                fa.name
-            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs:
-                makeError pos [ name .. " declared twice!" ]
-
-            else if not startsWithUpperChar name:
-                makeError pos [ "type name should be uppercase" ]
+            if Dict.member fa.name caModule.aliasDefs or Dict.member fa.name caModule.unionDefs:
+                makeError pos [ fa.name .. " declared twice!" ]
 
             else
                 List.foldlRes (translateConstructor ro) fa.constructors Dict.empty >> onOk fn constructors:
-                Ok { caModule with unionDefs = Dict.insert name { name = At pos name, args = fa.args, constructors } .unionDefs }
+                Ok { caModule with unionDefs = Dict.insert fa.name { name = At pos fa.name, args = fa.args, constructors } .unionDefs }
 
 
-translateModule ro faModule =
-    as ReadOnly: FA.Module: Res CA.Module
+translateModule ro modulePath faModule =
+    as ReadOnly: Meta.ModulePath: FA.Module: Res CA.Module
+
+    module =
+        CA.initModule Meta.SourcePlaceholder modulePath
 
     # Add all definitions
-    List.foldlRes (insertRootStatement ro) faModule CA.initModule >> onOk fn mod0:
+    List.foldlRes (insertRootStatement ro) faModule module >> onOk fn mod0:
     # Add constructors
-    Dict.foldlRes addUnionConstructors mod0.unionDefs Dict.empty >> onOk fn constructors:
+    Dict.foldlRes (addUnionConstructors ro) mod0.unionDefs Dict.empty >> onOk fn constructors:
     # Add root values
     Dict.foldlRes addValuePattern mod0.valueDefs Dict.empty >> onOk fn rootValues:
 

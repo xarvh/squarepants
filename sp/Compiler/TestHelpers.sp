@@ -1,25 +1,58 @@
 
 
 stripLocations =
-        True
+    True
 
 
+#
+# Modules and refs
+#
+moduleName =
+    "(test)"
+
+
+moduleUmr =
+    Meta.UMR Meta.SourcePlaceholder moduleName
+
+
+rootLocal name =
+    as Name: CA.Ref
+    CA.RefRoot << Meta.USR TH.moduleUmr name
+
+
+#
+# Meta
+#
 defaultMeta =
     as Meta
 
-    ModulesFile.toMeta DefaultModules.asRecord
-#    x =
-#        Result.mapError fn e:
-#            e
-#                >> Error.toFormattedText { moduleByName = Dict.singleton "DefaultModules" { fsPath = "DefaultModules.sp", content =  DefaultModules.asText } }
-#                >> formattedToStrippedText
+    eenv =
+        as Error.Env
+        {
+        , moduleByName =
+            Dict.singleton "DefaultModules" {
+                , fsPath = "DefaultModules.sp"
+                , content =  DefaultModules.asText
+                }
+        }
+
+    metaResult =
+        DefaultModules.asText
+            >> ModulesFile.textToMeta "DefaultModules"
+            >> Result.mapError (fn e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
+
+    try metaResult as
+        Err e:
+            log ("Error in DefaultModules.sp: " .. e) None
+#            Meta.init
+            Debug.todo "error loading DefaultModules.sp"
+        Ok m:
+            m
+
+
 #
-#    try ModulesFile.stringToMetaFile "DefaultModules" DefaultModules.asText >> x as
-#        Err e:
-#            Debug.todo  << "Error in DefaultModules.sp: " .. e
-#        Ok m:
-
-
+# Errors
+#
 formattedToStrippedText formatted =
     as [Error.FormattedText]: Text
 
@@ -40,7 +73,7 @@ dummyErrorEnv code =
     as Text: Error.Env
     {
     #, metaFile = { sourceDirs = [], libraries = [] }
-    , moduleByName = Dict.singleton "Test" { fsPath = "<TestPath>", content = code }
+    , moduleByName = Dict.singleton moduleName { fsPath = "<TestPath>", content = code }
     }
 
 
@@ -53,16 +86,24 @@ resErrorToStrippedText code =
             >> formattedToStrippedText
 
 
+#
+# Pipelines
+#
 textToFormattableModule code =
     as Text: Res [FA.Statement]
 
     tokensResult =
         as Res [Token]
-        Compiler/Lexer.lexer "Test" code
+        Compiler/Lexer.lexer moduleName code
+
+#    _ =
+#        tokensResult >> Result.map fn tokens:
+#            List.each tokens fn t:
+#                log "*" t
 
     tokensToStatsResult tokens =
         as [Token]: Res [FA.Statement]
-        Compiler/Parser.parse stripLocations "Test" tokens
+        Compiler/Parser.parse stripLocations moduleName tokens
 
     Result.andThen tokensToStatsResult tokensResult
 
@@ -70,9 +111,16 @@ textToFormattableModule code =
 textToCanonicalModule code =
     as Text: Res CA.Module
 
+    env =
+        as Compiler/MakeCanonical.ReadOnly
+        {
+        , currentModule = moduleUmr
+        , meta = defaultMeta
+        }
+
     code
         >> textToFormattableModule
-        >> Result.andThen (Compiler/MakeCanonical.translateModule { meta = defaultMeta })
+        >> Result.andThen (Compiler/MakeCanonical.translateModule env moduleName)
 
 
 #
@@ -80,9 +128,20 @@ textToCanonicalModule code =
 #
 boolType =
     as CA.Type
-    CA.TypeConstant Pos.T ("Bool" >> Meta.USR Meta.Core [] >> CA.Foreign) []
+    CA.TypeConstant Pos.T ("Bool" >> Meta.spCoreUSR >> CA.RefRoot) []
 
 
 numberType =
     as CA.Type
-    CA.TypeConstant Pos.T ("Number" >> Meta.USR Meta.Core [] >> CA.Foreign) []
+    CA.TypeConstant Pos.T ("Number" >> Meta.spCoreUSR >> CA.RefRoot) []
+
+
+noneType =
+    as CA.Type
+    CA.TypeConstant Pos.T ("None" >> Meta.spCoreUSR >> CA.RefRoot) []
+
+
+listType itemType =
+    as CA.Type: CA.Type
+    CA.TypeConstant Pos.T ("List" >> Meta.spCoreUSR >> CA.RefRoot) [ itemType ]
+

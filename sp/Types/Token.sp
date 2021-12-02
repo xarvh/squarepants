@@ -23,9 +23,10 @@ union Kind =
     # Comment
     , Comment
     # Terms
-    , TextLiteral Text # TODO add a flag to remember whether it was multiline or not
+    , TextLiteral Text
     , NumberLiteral Text
-    , Name NameModifier Name
+    , UpperName (Maybe Name) Name
+    , LowerName NameModifier (Maybe Name) Name [Name]
     # Keywords
     , If
     , Then

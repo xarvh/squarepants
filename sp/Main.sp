@@ -3,11 +3,12 @@ allTests =
     as [ Test ]
 
     [
-    , Compiler/Lexer_Test.tests
-    , Compiler/Parser_Test.tests
-    , Compiler/MakeCanonical_Test.tests
-    , SPCore/List_Test.tests
-    , SPCore/Dict_Test.tests
+#    , Compiler/Lexer_Test.tests
+#    , Compiler/Parser_Test.tests
+#    , Compiler/MakeCanonical_Test.tests
+    , Compiler/TypeCheck_Test.tests
+#    , SPCore/List_Test.tests
+#    , SPCore/Dict_Test.tests
     ]
 
 

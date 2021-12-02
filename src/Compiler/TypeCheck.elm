@@ -286,6 +286,9 @@ fromAllValueDefs env valueDefs =
     let
         ( annotated, nonAnnotated ) =
             List.partition (\d -> d.maybeAnnotation /= Nothing) valueDefs
+
+        _ =
+            Debug.log "START" ()
     in
     case RefHierarchy.reorder .name getValueRefs nonAnnotated of
         Err circulars ->
@@ -296,6 +299,9 @@ fromAllValueDefs env valueDefs =
 
         Ok orderedNonAnnotated ->
             let
+                _ =
+                    Debug.log "END" ()
+
                 allOrdered =
                     orderedNonAnnotated ++ annotated
 
@@ -1184,7 +1190,8 @@ unifyToNonExtensibleRecord pos reason aName aOnly bOnly bothUnified =
         -- b is missing attributes but is not extensible
         addError pos
             [ "record is missing attrs: " ++ (aOnly |> Dict.keys |> String.join ", ")
-            , Debug.toString reason
+            -- This causes a wall of text at least when we have a UnifyReason_ConstructorArgument
+            --, Debug.toString reason
             ]
 
     else

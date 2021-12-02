@@ -1,13 +1,11 @@
 
 
-# A reference to a definition (alias, union, constructor or value doesn't matter)
+# A reference to a defined variable, constructor, alias or union
 union Ref =
     # This is for stuff defined inside the current function/block
-    , BlockLocal Name
-    # This is for stuff defined inside the current module
-    , ModuleLocal Name
-    # This is for stuff defined outside the current module
-    , Foreign Meta.UniqueSymbolReference
+    , RefBlock Name
+    # This is for stuff defined at root level
+    , RefRoot Meta.UniqueSymbolReference
 
 
 alias TyVarId =
@@ -16,8 +14,16 @@ alias TyVarId =
 
 union Type =
     , TypeConstant Pos Ref [Type]
-    , TypeGeneratedVar TyVarId
-    , TypeAnnotatedVar Pos Name
+    #
+    # TODO before I can use this, I probably need to find out how to model the TypeRecord extension
+    #
+    # Maybe the way to go is to have a
+    #
+    #   type TyVarRef = Generated TyVarId, Annotated Pos Name
+    #
+    #, TypeGeneratedVar TyVarId
+    #, TypeAnnotatedVar Pos Name
+    , TypeVariable Pos Name
     , TypeFunction Pos Type Bool Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
     , TypeAlias Pos Ref Type
@@ -92,7 +98,7 @@ alias AliasDef = {
 alias UnionDef = {
     , name as At Name
     , args as [Name]
-    , constructors as Dict Name [Type]
+    , constructors as Dict Name (Pos & [Type])
     }
 
 
@@ -124,6 +130,9 @@ alias RootValue = {
 
 
 alias Module = {
+    , source as Meta.Source
+    , path as Meta.ModulePath
+
     # TODO uncomment Deps (and maybe drop value dependencies for aliases and unions, since they don't use them?)
     , aliasDefs as Dict Name ([#Deps &#] AliasDef)
     , unionDefs as Dict Name ([#Deps &#] UnionDef)
@@ -135,9 +144,11 @@ alias Module = {
     }
 
 
-initModule =
-    as Module
+initModule source path =
+    as Meta.Source: Meta.ModulePath: Module
     {
+    , source
+    , path
     , aliasDefs = Dict.empty
     , unionDefs = Dict.empty
     , valueDefs = Dict.empty
@@ -162,8 +173,9 @@ typePos ty =
     as Type: Pos
     try ty as
         TypeConstant p _ _: p
-        TypeGeneratedVar _: Pos.I 3
-        TypeAnnotatedVar p _: p
+        #TypeGeneratedVar _: Pos.I 3
+        #TypeAnnotatedVar p _: p
+        TypeVariable p _: p
         TypeFunction p _ _ _: p
         TypeRecord p _ _: p
         TypeAlias p _ _: p

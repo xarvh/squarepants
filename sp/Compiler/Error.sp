@@ -1,11 +1,18 @@
 
 alias Env =
     {
-#    , metaFile as MetaFile
+
+    # The meta file can be used to show values and types in the same way the user writes them
+    #    , metaFile as MetaFile
+
+    # TODO: should be moduleByUmr
     , moduleByName as Dict Text { fsPath as Text, content as Text }
     }
 
-alias Description = Env: [Text]
+
+alias Description =
+    Env: [Text]
+
 
 union Error =
     , Simple Pos Description
@@ -258,6 +265,25 @@ posToHuman eEnv pos =
                 Nothing:
                     noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
 
+        Pos.End moduleName:
+            try Dict.get moduleName eEnv.moduleByName as
+                Just mod:
+
+                    end =
+                        positionToLineAndColumn mod.content << Text.length mod.content - 1
+
+                    start =
+                        { line = end.line - 8
+                        , col = 0
+                        }
+
+                    { location = mod.fsPath .. " " .. Text.fromNumber end.line .. ":0 (end of file)"
+                    , block = showCodeBlock mod.content start end
+                    }
+
+                Nothing:
+                    noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
+
         Pos.N:
             noBlock "<native code>"
 
@@ -269,20 +295,6 @@ posToHuman eEnv pos =
 
         Pos.I n:
             noBlock << "<inferred " .. Text.fromNumber n .. ">"
-
-        Pos.E:
-            noBlock "<errorTodo, get rid of me!>"
-
-        Pos.F:
-            noBlock "<FormattableToCanonicalAst todo, get rid of me!>"
-
-        Pos.G:
-            noBlock "<global value defined in the meta.json>"
-
-        Pos.U:
-            noBlock "<union type, get rid of me!>"
-
-
 
 
 

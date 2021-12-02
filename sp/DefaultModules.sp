@@ -1,11 +1,4 @@
 
-#
-# TODO get this from a decoded string once the troubles with SPON are fixed
-#
-asRecord =
-    as ModulesFile.ModulesFile
-    { libraries = [ { , modules = [ { , globalTypes = [ "None" , "Bool" , "Text" , "List" , "Number" ] , globalValues = [ "None" , "True" , "False" ] , visibleAs = "SPCore" , path = "SPCore" } , { , globalTypes = [ "Int" ] , globalValues = [] , visibleAs = "List" , path = "SPCore/List" } , { , globalTypes = [ "Maybe" ] , globalValues = [ "Just" , "Nothing" ] , visibleAs = "Maybe" , path = "SPCore/Maybe" } , { , globalTypes = [] , globalValues = [] , visibleAs = "Text" , path = "SPCore/Text" } , { , globalTypes = [] , globalValues = [] , visibleAs = "Tuple" , path = "SPCore/Tuple" } , { , globalTypes = [] , globalValues = [ "log" , "todo" ] , visibleAs = "Debug" , path = "SPCore/Debug" } , { , globalTypes = [] , globalValues = [ "assert" , "clamp" , "identity" , "modBy" , "min" , "max" ] , visibleAs = "SPCore/Basics" , path = "SPCore/Basics" } , { , globalTypes = [ "Buffer" ] , globalValues = [] , visibleAs = "Buffer" , path = "SPLib/Buffer" } , { , globalTypes = [] , globalValues = [] , visibleAs = "Parser" , path = "SPLib/Parser" } , { , globalTypes = [ "Dict" ] , globalValues = [] , visibleAs = "Dict" , path = "SPCore/Dict" } , { , globalTypes = [ "Set" ] , globalValues = [] , visibleAs = "Set" , path = "SPCore/Set" } , { , globalTypes = [] , globalValues = [] , visibleAs = "Random" , path = "SPCore/Random" } , { , globalTypes = [ "Result" ] , globalValues = [ "Ok" , "Err" ] , visibleAs = "Result" , path = "SPCore/Result" } ] , source = "spcore" } ] , sourceDirs = [] }
-
 
 asText =
     """
