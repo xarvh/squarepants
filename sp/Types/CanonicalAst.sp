@@ -1,11 +1,20 @@
 
+#
+# All and TypeDef are not (yet) used for the AST, but just as intermediate types
+# Probably will be used in the AST once we properly track dependencies
+#
+alias All a =
+    Dict Meta.UniqueSymbolReference a
 
-# A reference to a defined variable, constructor, alias or union
-union Ref =
-    # This is for stuff defined inside the current function/block
-    , RefBlock Name
-    # This is for stuff defined at root level
-    , RefRoot Meta.UniqueSymbolReference
+
+union TypeDef =
+    , TypeDefAlias AliasDef
+    , TypeDefUnion UnionDef
+
+
+#
+# AST
+#
 
 
 alias TyVarId =
@@ -13,7 +22,7 @@ alias TyVarId =
 
 
 union Type =
-    , TypeConstant Pos Ref [Type]
+    , TypeConstant Pos Meta.UniqueSymbolReference [Type]
     #
     # TODO before I can use this, I probably need to find out how to model the TypeRecord extension
     #
@@ -26,14 +35,14 @@ union Type =
     , TypeVariable Pos Name
     , TypeFunction Pos Type Bool Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
-    , TypeAlias Pos Ref Type
+    , TypeAlias Pos Meta.UniqueSymbolReference Type
 
 
 union Pattern =
     , PatternAny Pos (Maybe Text) (Maybe Type)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos Ref [Pattern]
+    , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
     , PatternRecord Pos (Dict Name Pattern)
 
 
@@ -46,6 +55,14 @@ union Statement =
 #
 # Expression
 #
+
+
+# A reference to a defined variable
+union Ref =
+    # This is for stuff defined inside the current function/block
+    , RefBlock Name
+    # This is for stuff defined at root level
+    , RefRoot Meta.UniqueSymbolReference
 
 
 alias VariableArgs = {
@@ -69,7 +86,7 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos VariableArgs
-    , Constructor Pos Ref
+    , Constructor Pos Meta.UniqueSymbolReference
     , Lambda Pos Parameter [Statement]
     , Record Pos (Maybe VariableArgs) (Dict Name Expression)
     , Call Pos Expression Argument
@@ -89,16 +106,25 @@ union Expression =
 
 
 alias AliasDef = {
-    , name as At Name
+    , usr as Meta.UniqueSymbolReference
     , args as [At Name]
     , type as Type
     }
 
 
 alias UnionDef = {
-    , name as At Name
+    , usr as Meta.UniqueSymbolReference
     , args as [Name]
-    , constructors as Dict Name (Pos & [Type])
+    , constructors as Dict Name Constructor
+    }
+
+
+alias Constructor = {
+    , pos as Pos
+
+    # type and args are redundant
+    , type as Type
+    , args as [Type]
     }
 
 
@@ -107,7 +133,7 @@ alias ValueDef = {
     , native as Bool
     , mutable as Bool
     , parentDefinitions as [Pattern]
-    , nonFn as Dict Name None
+    , nonFn as Set Name
     , body as [Statement]
     }
 
@@ -130,38 +156,23 @@ alias RootValue = {
 
 
 alias Module = {
-    , source as Meta.Source
-    , path as Meta.ModulePath
+    , umr as Meta.UniqueModuleReference
 
     # TODO uncomment Deps (and maybe drop value dependencies for aliases and unions, since they don't use them?)
     , aliasDefs as Dict Name ([#Deps &#] AliasDef)
     , unionDefs as Dict Name ([#Deps &#] UnionDef)
     , valueDefs as Dict Pattern ([#Deps &#] ValueDef)
-
-    # these are redundant because it can be extracted from valueDefs and unionDefs above
-    , rootValues as Dict Name RootValue
-    , constructors as Dict Name Type
     }
 
 
-initModule source path =
-    as Meta.Source: Meta.ModulePath: Module
+initModule umr =
+    as Meta.UniqueModuleReference: Module
     {
-    , source
-    , path
+    , umr
     , aliasDefs = Dict.empty
     , unionDefs = Dict.empty
     , valueDefs = Dict.empty
-    , rootValues = Dict.empty
-    , constructors = Dict.empty
     }
-
-
-findValue name module =
-    as Text: Module: Maybe ValueDef
-
-    Dict.get name module.rootValues >> Maybe.andThen fn rv:
-    Dict.get rv.valueDefsKey module.valueDefs
 
 
 #
@@ -246,219 +257,58 @@ expressionPos e =
         Try pos _ _: pos
 
 
-
 #
-# Crawler
+# Stuff that should live in TypeCheck but I moved here so I don't have to compile TypeCheck
 #
 
 
-union PosMap =
-    , PosMap_Type Type
-    , PosMap_Expr Expression
-    , PosMap_Pattern Pattern
-    , PosMap_Other
-
-
-[#
-posMap_module as (PosMap: acc @: Pos: Pos): AllDefs: acc @: AllDefs
-posMap_module f a_defs =
-    let
-        fold name a_rootDef =
-            case a_rootDef of
-                Alias a_aliasDef:
-                    do (posMap_aliasDef f a_aliasDef) <| \b:
-                    return <| Alias b
-
-                Union a_unionDef:
-                    do (posMap_unionDef f a_unionDef) <| \b:
-                    return <| Union b
-
-                Value a_valueDef:
-                    do (posMap_rootValueDef f a_valueDef) <| \b:
-                    return <| Value b
-    in
-    M.dict_map fold a_defs
-
-
-posMap_atName f makePosMap @acc (At pos a)=
-    as (PosMap: acc @: Pos: Pos): (a: PosMap): acc @: At a: At a
-
-    At (f (makePosMap a) @acc pos) a
-
-
-posMap_valueDef f @acc def =
-    as (PosMap: acc @: Pos: Pos): acc @: ValueDef: ValueDef
-
-    { def with
-    , pattern = posMap_pattern f @acc def.pattern
-    , maybeAnnotation = posMap_annotation f @acc def.maybeAnnotation
-    , body = posMap_block f @acc def.body
+alias InstanceVariable =
+    { definedAt as Pos
+    , ty as Type
+    , freeTypeVariables as Dict Name { nonFn as Bool }
+    , isMutable as Bool
     }
 
 
-posMap_annotation f @acc maybeAnnotation =
-    as (PosMap: acc @: Pos: Pos): acc @: Maybe Annotation: Maybe Annotation
-    maybeAnnotation >> Maybe.map fn ann: {
-        , asPos = f (PosMap_Annotation ann) @acc ann.asPos
-        , ty = posMap_type f @acc ann.ty
-        , nonFn = Dict.map (fn name: f (PosMap_NonFunction name) @acc) ann.nonFn
-        }
+alias InstanceVariablesByRef =
+    Dict CA.Ref InstanceVariable
 
 
-posMap_aliasDef f @acc def =
-    as (PosMap: acc @: Pos: Pos): acc @: AliasDef: AliasDef
-    {
-    , name = posMap_atName f PosMap_AliasName @acc def.name
-    , args = List.map (posMap_atName f PosMap_AliasArgument @acc) def.args
-    , ty = posMap_type f @acc def.ty
-    }
+getFreeTypeVars nonFreeTyvars nonFn ty =
+    as Dict Name Pos: Dict Name a: Type: Dict Name { nonFn as Bool }
+
+    posToTyvar name pos =
+        # as Name: Pos: TypeVariable
+        { nonFn = Dict.member name nonFn }
+
+    Dict.diff (typeTyvars ty) nonFreeTyvars
+        >> Dict.map posToTyvar
 
 
-posMap_unionDef f @acc def =
-    as (PosMap: acc @: Pos: Pos): acc @: UnionDef: UnionDef
-    {
-    , name = posMap_atName f PosMap_UnionName @acc def.name
-    , args = List.map (posMap_atName f PosMap_UnionParam @acc) def.args
-    , constructors = Dict.map (fn name: List.map (posMap_type f @acc)) def.constructors
-    }
-
-
-posMap_type f @acc ty =
-    as (PosMap: acc @: Pos: Pos): acc @: Type: Type
-
-    fty =
-        f (PosMap_Type ty) @acc
-
+typeTyvars ty =
+    as Type: Dict Name Pos
     try ty as
-        TypeConstant a_pos name a_args:
-          TypeConstant (fty a_pos) name (List.map (posMap_type f @acc) a_args)
+        CA.TypeVariable pos name:
+            # TODO is pos equivalent to definedAt?
+            Dict.singleton name pos
 
-        TypeGeneratedVar _:
-            ty
+        CA.TypeFunction _ from fromIsMutable to:
+            Dict.join (typeTyvars from) (typeTyvars to)
 
-        TypeAnnotatedVar a_pos unique name:
-            TypeAnnotatedVar (fty a_pos) unique name
+        CA.TypeConstant pos ref args:
+            List.foldl (fn a: Dict.join (typeTyvars a)) args Dict.empty
 
-        TypeFunction a_pos a_from fromIsMut a_to:
-            TypeFunction (fty a_pos) (posMap_type f @acc a_from) fromIsMut (posMap_type f @acc a_to)
+        CA.TypeAlias _ path t:
+            typeTyvars t
 
-        TypeRecord a_pos ext a_attrs:
-            TypeRecord (fty a_pos) ext (Dict.map (fn k: posMap_type f @acc) a_attrs)
+        CA.TypeRecord pos extensible attrs:
+            init =
+                try extensible as
+                    Nothing:
+                        Dict.empty
 
-        TypeAlias a_pos name a_ty:
-            TypeAlias (fty a_pos) name (posMap_type f @acc a_ty)
+                    Just name:
+                        Dict.singleton name pos
 
+            Dict.foldl (fn n t: Dict.join (typeTyvars t)) attrs init
 
-
-
-posMap_parameter f @acc param =
-    as (PosMap: acc @: Pos: Pos): acc @: Parameter: Parameter
-    try param as
-        ParameterMutable pos name:
-            ParameterMutable (f (PosMap_MutParam name) @acc pos) name
-
-        ParameterPattern pattern:
-            ParameterPattern (posMap_pattern f @acc pattern)
-
-
-posMap_expression fFold @acc expr =
-    as (PosMap: acc @: Pos: Pos): acc @: Expression: Expression
-
-    f =
-        fFold (PosMap_Expr expr) @acc
-
-    try expr as
-        LiteralText a_pos v:
-            LiteralText (f a_pos) v
-
-        LiteralNumber a_pos v:
-            LiteralNumber (f a_pos) v
-
-        Variable a_pos args:
-            Variable (f a_pos) args
-
-        Lambda a_pos a_param a_body:
-            Lambda (f a_pos) (posMap_parameter fFold @acc a_param) (posMap_block fFold @acc a_body)
-
-        Record a_pos a_ext a_attrs:
-            Record (f a_pos) a_ext (Dict.map (fn k: posMap_expression fFold @acc) a_attrs)
-
-        Call a_pos a_ref a_arg:
-            Call (f a_pos) (posMap_expression fFold @acc a_ref) (posMap_argument fFold @acc a_arg)
-
-        If a_pos ar:
-            If (f a_pos) {
-                , condition = posMap_block fFold @acc ar.condition
-                , true = posMap_block fFold @acc ar.true
-                , false = posMap_block fFold @acc ar.false
-                }
-
-        Try a_pos a_value a_tries:
-            a_tries
-                >> List.map (fn (pa & block): posMap_pattern fFold @acc pa & posMap_block fFold @acc block)
-                >> Try (f a_pos) (posMap_expression fFold @acc a_value)
-
-
-posMap_pattern fFold @acc pattern =
-    as (PosMap: acc @: Pos: Pos): acc @: Pattern: Pattern
-    todo "NI"
-#    let
-#        f =
-#            PosMap_Pattern >> fFold
-#    in
-#    case pattern of
-#        PatternDiscard a_pos:
-#            do (f pattern a_pos) <| \b_pos:
-#            return <| PatternDiscard b_pos
-#
-#        PatternAny a_pos name:
-#            do (f pattern a_pos) <| \b_pos:
-#            return <| PatternAny b_pos name
-#
-#        PatternLiteral a_pos value:
-#            do (f pattern a_pos) <| \b_pos:
-#            return <| PatternLiteral b_pos value
-#
-#        PatternConstructor a_pos name a_args:
-#            do (f pattern a_pos) <| \b_pos:
-#            do (M.list_map (posMap_pattern fFold) a_args) <| \b_args:
-#            return <| PatternConstructor b_pos name b_args
-#
-#        PatternRecord a_pos a_attrs:
-#            do (f pattern a_pos) <| \b_pos:
-#            do (M.dict_map (\k: posMap_pattern fFold) a_attrs) <| \b_attrs:
-#            return <| PatternRecord b_pos b_attrs
-
-
-posMap_block f @acc block =
-    as (PosMap: acc @: Pos: Pos): acc @: [Statement]: [Statement]
-    todo ""
-#    M.list_map (posMap_statement f) block
-
-
-posMap_argument f @acc arg =
-    as (PosMap: acc @: Pos: Pos): acc @: Argument: Argument
-    todo ""
-#    case arg of
-#        ArgumentExpression expr:
-#            do (posMap_expression f expr) <| \e:
-#            return <| ArgumentExpression e
-#
-#        ArgumentMutable pos ar:
-#            do (f (PosMap_MutableArg ar) pos) <| \p:
-#            return <| ArgumentMutable p ar
-
-
-posMap_statement f @acc stat =
-    as (PosMap: acc @: Pos: Pos): acc @: Statement: Statement
-    todo ""
-#    case stat of
-#        Definition ar:
-#            do (posMap_valueDef f ar) <| \d:
-#            return <| Definition d
-#
-#        Evaluation expr:
-#            do (posMap_expression f expr) <| \e:
-#            return <| Evaluation e
-
-#]

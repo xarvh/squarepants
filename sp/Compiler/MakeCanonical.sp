@@ -54,12 +54,6 @@ initEnv ro =
     }
 
 
-# TODO: if it works, we can change andThen to onOk
-onOk =
-    Result.andThen
-
-
-
 #
 # Errors
 #
@@ -75,38 +69,56 @@ makeError pos msg =
 # Names resolution
 #
 
-
-resolveName getter ro declaredInsideFunction maybeModule name =
-    as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Bool: Maybe Name: Name: CA.Ref
+maybeForeignUsr getter ro maybeModule name =
+    as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe Name: Name: Maybe Meta.UniqueSymbolReference
 
     try maybeModule as
         Just moduleName:
             try Dict.get moduleName ro.meta.moduleVisibleAsToUmr as
                 Just umr:
-                    CA.RefRoot (Meta.USR umr name)
+                    Just << Meta.USR umr name
 
                 Nothing:
                     # TODO should this produce an error instead?
                     # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
                     #CA.RefRoot (Meta.USR Meta.SourcePlaceholder moduleName name)
-                    Debug.todo "resolveName can't find the module?"
+                    Debug.todo "resolveToUsr can't find the module?"
 
         Nothing:
-            try Dict.get name (getter ro.meta) as
-                Just global:
-                    CA.RefRoot global
-
-                Nothing:
-                    if declaredInsideFunction:
-                        CA.RefBlock name
-
-                    else
-                        CA.RefRoot << Meta.USR ro.currentModule name
+            Dict.get name (getter ro.meta)
 
 
-resolveValueName =
+resolveToUsr getter ro maybeModule name =
+    as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference
+
+    maybeForeignUsr getter ro maybeModule name
+        >> Maybe.withDefault (Meta.USR ro.currentModule name)
+
+
+resolveToValueRef ro declaredInsideFunction maybeModule name =
     as ReadOnly: Bool: Maybe Name: Name: CA.Ref
-    resolveName (fn m: m.globalValues)
+
+    try maybeForeignUsr (fn m: m.globalValues) ro maybeModule name as
+        Just usr:
+            CA.RefRoot usr
+
+        Nothing:
+            if declaredInsideFunction:
+                CA.RefBlock name
+
+            else
+                CA.RefRoot << Meta.USR ro.currentModule name
+
+
+resolveToTypeUsr =
+    as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference
+    resolveToUsr (fn m: m.globalTypes)
+
+
+resolveToConstructorUsr =
+    as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference
+    resolveToUsr (fn m: m.globalValues)
+
 
 
 ##
@@ -215,7 +227,7 @@ translatePattern ann env fa =
 
         FA.PatternConstructor pos maybeModule name faArgs:
             List.mapRes (translatePattern ann env) faArgs >> onOk fn caArgs:
-            Ok << CA.PatternConstructor pos (resolveValueName env.ro False maybeModule name) caArgs
+            Ok << CA.PatternConstructor pos (resolveToConstructorUsr env.ro maybeModule name) caArgs
 
         FA.PatternList pos fas:
             fold pattern last =
@@ -367,7 +379,7 @@ translateExpression env faExpr =
             Ok << CA.LiteralText pos v
 
         FA.PrefixBinop pos symbol:
-            { ref = CoreTypes.nameToRef symbol
+            { ref = CA.RefRoot << CoreTypes.makeUsr symbol
             , attrPath = []
             }
                 >> CA.Variable pos
@@ -377,14 +389,14 @@ translateExpression env faExpr =
             declaredInsideFunction =
                 Dict.member name env.nonRootValues
 
-            { ref = resolveValueName env.ro declaredInsideFunction maybeModule name
+            { ref = resolveToValueRef env.ro declaredInsideFunction maybeModule name
             , attrPath = attrs
             }
                 >> CA.Variable pos
                 >> Ok
 
         FA.Constructor pos maybeModule name:
-            resolveValueName env.ro False maybeModule name
+            resolveToConstructorUsr env.ro maybeModule name
                 >> CA.Constructor pos
                 >> Ok
 
@@ -439,7 +451,7 @@ translateExpression env faExpr =
         FA.Unop pos op faOperand:
             translateExpression env faOperand >> onOk fn caOperand:
             CA.Call pos
-                (CA.Variable pos { ref = CoreTypes.nameToRef op.symbol, attrPath = [] })
+                (CA.Variable pos { ref = CA.RefRoot << CoreTypes.makeUsr op.symbol, attrPath = [] })
                 (CA.ArgumentExpression caOperand)
             >> Ok
 
@@ -459,13 +471,13 @@ translateExpression env faExpr =
             cons item list =
                 CA.Call pos
                     (CA.Call pos
-                        (CoreTypes.refToVariable CoreTypes.cons)
+                        (CoreTypes.usrToVariable CoreTypes.cons)
                         (CA.ArgumentExpression item)
                     )
                     (CA.ArgumentExpression list)
 
             List.mapRes (translateExpression env) faItems >> onOk fn es:
-            Ok << List.foldr cons es (CoreTypes.refToVariable CoreTypes.nil)
+            Ok << List.foldr cons es (CoreTypes.usrToVariable CoreTypes.nil)
 
         FA.Try pos fa:
             translatePatternAndStatements ( faPattern & faStatements ) =
@@ -526,7 +538,7 @@ translateAttrsRec env faAttrs caAttrsAccum =
                         declaredInsideFunction =
                             Dict.member attrName env.nonRootValues
 
-                        { ref = resolveValueName env.ro declaredInsideFunction Nothing attrName
+                        { ref = resolveToValueRef env.ro declaredInsideFunction Nothing attrName
                         , attrPath = []
                         }
                             >> CA.Variable pos
@@ -780,7 +792,7 @@ translateType mrf ro faType =
         FA.TypeConstant pos maybeModule name args:
             List.mapRes (translateType mrf ro) args >> onOk fn caArgs:
             caArgs
-                >> CA.TypeConstant pos (resolveName (fn m: m.globalTypes) ro False maybeModule name)
+                >> CA.TypeConstant pos (resolveToTypeUsr ro maybeModule name)
                 >> Ok
 
         FA.TypeFunction pos fa_from fromIsMut fa_to:
@@ -830,69 +842,30 @@ translateType mrf ro faType =
 #
 
 
-translateConstructor ro (At pos name & fa_args) constructors =
-    as ReadOnly: (At Name & [FA.Type]): Dict Name (Pos & [CA.Type]): Res (Dict Name (Pos & [CA.Type]))
+translateConstructor ro unionType (At pos name & faArgs) constructors =
+    as ReadOnly: CA.Type: At Name & [FA.Type]: Dict Name CA.Constructor: Res (Dict Name CA.Constructor)
 
     if Dict.member name constructors:
         # TODO "union $whatever has two constructors with the same name!"
         makeError pos [ "constructor " .. name .. " is duplicate" ]
 
     else
-        List.mapRes (translateType Nothing ro) fa_args >> onOk fn caArgs:
-        constructors
-            >> Dict.insert name (pos & caArgs)
-            >> Ok
+        List.mapRes (translateType Nothing ro) faArgs >> onOk fn caArgs:
+
+        c =
+            as CA.Constructor
+            {
+            , pos
+            , type = List.foldr (fn ar ty: CA.TypeFunction pos ar False ty) caArgs unionType
+            , args = caArgs
+            }
+
+        Ok << Dict.insert name c constructors
 
 
 #
 # Module
 #
-
-
-# Add constructors from union defs
-addUnionConstructors ro unionName def =
-    as ReadOnly: Name: CA.UnionDef: Dict Name CA.Type: Res (Dict Name CA.Type)
-
-    constructorType pos args =
-        as Pos: [CA.Type]: CA.Type
-
-        def.args
-            >> List.map (CA.TypeVariable pos)
-            >> CA.TypeConstant pos (CA.RefRoot << Meta.USR ro.currentModule unionName)
-            >> List.foldr (fn ar ty: CA.TypeFunction pos ar False ty) args
-
-    addConstructor ctorName (pos & ctorArgs) d =
-        as Name: (Pos & List CA.Type): Dict Name CA.Type: Res (Dict Name CA.Type)
-
-        if Dict.member ctorName d:
-            makeError pos [ "duplicate constructor " .. ctorName ]
-        else
-            Ok << Dict.insert ctorName (constructorType pos ctorArgs) d
-
-    Dict.foldlRes addConstructor def.constructors
-
-
-# Add values from value defs
-addValuePattern pattern def =
-    as CA.Pattern: CA.ValueDef: Dict Name CA.RootValue: Res (Dict Name CA.RootValue)
-
-    addName name (pos & maybeType) d =
-        as Name: Pos & Maybe CA.Type: Dict Name CA.RootValue: Res (Dict Name CA.RootValue)
-
-        if Dict.member name d:
-            makeError pos [ "duplicate name " .. name ]
-        else
-            entry = {
-                , valueDefsKey = pattern
-                , maybeAnnotation = maybeType >> Maybe.map fn type: {
-                    , type
-                    , nonFn = def.nonFn
-                    }
-                }
-
-            Ok << Dict.insert name entry d
-
-    Dict.foldlRes addName (CA.patternNamedTypes def.pattern)
 
 
 insertRootStatement ro faStatement caModule =
@@ -921,29 +894,48 @@ insertRootStatement ro faStatement caModule =
             else
                 # TODO check args!
                 translateType Nothing ro fa.ty >> onOk fn type:
-                Ok { caModule with aliasDefs = Dict.insert name { name = fa.name, args = fa.args, type } .aliasDefs }
+
+                aliasDef =
+                    as CA.AliasDef
+                    {
+                    , usr = Meta.USR ro.currentModule (Pos.drop fa.name)
+                    , args = fa.args
+                    , type
+                    }
+
+                Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
 
         FA.UnionDef pos fa:
             if Dict.member fa.name caModule.aliasDefs or Dict.member fa.name caModule.unionDefs:
                 makeError pos [ fa.name .. " declared twice!" ]
 
             else
-                List.foldlRes (translateConstructor ro) fa.constructors Dict.empty >> onOk fn constructors:
-                Ok { caModule with unionDefs = Dict.insert fa.name { name = At pos fa.name, args = fa.args, constructors } .unionDefs }
+                usr =
+                    Meta.USR ro.currentModule fa.name
+
+                type =
+                    fa.args
+                        >> List.map (CA.TypeVariable pos)
+                        >> CA.TypeConstant pos usr
+
+                List.foldlRes (translateConstructor ro type) fa.constructors Dict.empty >> onOk fn constructors:
+
+                unionDef =
+                    as CA.UnionDef
+                    {
+                    , usr
+                    , args = fa.args
+                    , constructors
+                    }
+
+                Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
 
 
 translateModule ro modulePath faModule =
     as ReadOnly: Meta.ModulePath: FA.Module: Res CA.Module
 
     module =
-        CA.initModule Meta.SourcePlaceholder modulePath
+        CA.initModule << Meta.UMR Meta.SourcePlaceholder modulePath
 
     # Add all definitions
-    List.foldlRes (insertRootStatement ro) faModule module >> onOk fn mod0:
-    # Add constructors
-    Dict.foldlRes (addUnionConstructors ro) mod0.unionDefs Dict.empty >> onOk fn constructors:
-    # Add root values
-    Dict.foldlRes addValuePattern mod0.valueDefs Dict.empty >> onOk fn rootValues:
-
-    Ok { mod0 with rootValues, constructors }
-
+    List.foldlRes (insertRootStatement ro) faModule module

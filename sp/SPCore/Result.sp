@@ -15,7 +15,7 @@ map f result =
             Ok (f a)
 
 
-andThen f result =
+onOk f result =
     as (a: Result e b): Result e a: Result e b
 
     try result as

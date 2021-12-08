@@ -55,17 +55,17 @@ firstStatement code =
         >> Compiler/TestHelpers.textToFormattableModule
         #>> Result.map (List.map (FA.posMap_statement fn _: p))
         >> Compiler/TestHelpers.resErrorToStrippedText code
-        >> Result.andThen grabFirst
+        >> onOk grabFirst
 
 
 firstEvaluation code =
     as Text: Result Text FA.Expression
-    code >> firstStatement >> Result.andThen asEvaluation
+    code >> firstStatement >> onOk asEvaluation
 
 
 firstDefinition code =
     as Text: Result Text FA.ValueDef
-    code >> firstStatement >> Result.andThen asDefinition
+    code >> firstStatement >> onOk asDefinition
 
 
 firstEvaluationOfDefinition code =
@@ -78,8 +78,8 @@ firstEvaluationOfDefinition code =
 
     code
         >> firstDefinition
-        >> Result.andThen grabFirst
-        >> Result.andThen asEvaluation
+        >> onOk grabFirst
+        >> onOk asEvaluation
 
 
 firstAnnotation code =
@@ -93,9 +93,9 @@ firstAnnotation code =
 
     code
         >> firstStatement
-        >> Result.andThen asDefinition
+        >> onOk asDefinition
         # TODO test also the nonFn field!!!
-        >> Result.andThen grabAnnotation
+        >> onOk grabAnnotation
 
 
 typeConstant name =
@@ -266,6 +266,17 @@ lambdas =
             """
             firstDefinition
             Test.isOk
+        , codeTest
+            """
+            [reg] pass to function without parens
+            """
+            """
+            i =
+              x @= 1
+              xxx y: y
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 
@@ -337,7 +348,7 @@ unionDefs =
                 Err "no type def"
 
     firstTypeDef =
-        fn x: x >> firstStatement >> Result.andThen asTypeDef
+        fn x: x >> firstStatement >> onOk asTypeDef
 
     Test.Group
         """

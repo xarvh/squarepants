@@ -34,6 +34,19 @@ find test list =
                 find test t
 
 
+member a list =
+    as a: [a]: Bool
+
+    try list as
+        []: False
+
+        h :: t:
+            if a == h:
+                True
+            else
+                member a t
+
+
 sort =
     as [a]: [a]
     with a NonFunction

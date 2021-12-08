@@ -111,80 +111,66 @@ alias Type =
     CA.Type
 
 
-testEnv =
-    as Compiler/TypeCheck.Env
-
-    e =
-        Compiler/TypeCheck.initEnv TH.moduleUmr TH.defaultMeta
-
-    { e with
-    , instanceVariables =
-        .instanceVariables
-            >> Dict.insert
-                (CA.RefRoot << Meta.USR TH.moduleUmr "add")
-                { definedAt = Pos.T
-                , ty = function tyNumber (function tyNumber tyNumber)
-                , freeTypeVariables = Dict.empty
-                , isMutable = False
-                }
-            >> Dict.insert
-                (CA.RefRoot << Meta.USR TH.moduleUmr "reset")
-                { definedAt = Pos.T
-                , ty = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
-                , freeTypeVariables = Dict.empty
-                , isMutable = False
-                }
-    }
-
-
-
-
-
-
-
-alias Out =
-    { freeTypeVariables as Dict Text { nonFn as Bool }
+alias Out = {
+    , freeTypeVariables as Dict Text { nonFn as Bool }
     , ty as Type
     , isMutable as Bool
-    }
-
-
-cleanUpVar var =
-    as Compiler/TypeCheck.InstanceVariable: Out
-
-    ty & tyvars =
-        HCA.normalizeTypeAndTyvars var.ty var.freeTypeVariables
-
-    { ty = ty
-    , freeTypeVariables = var.freeTypeVariables
-    , isMutable = var.isMutable
     }
 
 
 infer name code =
     as Text: Text: Result Text Out
 
-    moduleResult =
-        as Res CA.Module
-        Compiler/TestHelpers.textToCanonicalModule code
+    tcEnvResult =
+        as Res Compiler/TypeCheck.Env
 
-    getInstanceVar env =
-        as Compiler/TypeCheck.Env: Result Text Out
-        try Dict.get (TH.rootLocal name) env.instanceVariables as
-            Nothing:
-                Err "Dict fail"
-            Just var:
-                Ok << cleanUpVar var
+        Compiler/TestHelpers.textToCanonicalModule code >> onOk fn module:
+        Compiler/Pipeline.globalExpandedTypes (Dict.singleton TH.moduleUmr module) >> onOk fn { types, constructors, instanceVariables }:
 
-    typeCheckModule m =
-        as CA.Module: Res Compiler/TypeCheck.Env
-        Compiler/TypeCheck.fromModule (Compiler/TypeCheck.addModuleToEnv m testEnv) m
+        env =
+            as Compiler/TypeCheck.Env
+            {
+            , types
+            , constructors
+            , currentModule = TH.moduleUmr
+            , meta = TH.defaultMeta
+            , nonFreeTyvars = Dict.empty
+            , nonAnnotatedRecursives = Dict.empty
+            , instanceVariables =
+                instanceVariables
+                    >> Dict.insert
+                        (CA.RefRoot << Meta.USR TH.moduleUmr "add")
+                        { definedAt = Pos.T
+                        , ty = function tyNumber (function tyNumber tyNumber)
+                        , freeTypeVariables = Dict.empty
+                        , isMutable = False
+                        }
+                    >> Dict.insert
+                        (CA.RefRoot << Meta.USR TH.moduleUmr "reset")
+                        { definedAt = Pos.T
+                        , ty = typeFunction { from = tyNumber, fromIsMutable = True, to = tyNone }
+                        , freeTypeVariables = Dict.empty
+                        , isMutable = False
+                        }
+            }
 
-    moduleResult
-        >> Result.andThen typeCheckModule
-        >> Compiler/TestHelpers.resErrorToStrippedText code
-        >> Result.andThen getInstanceVar
+        Compiler/TypeCheck.fromModule env module
 
+    Compiler/TestHelpers.resErrorToStrippedText code tcEnvResult >> onOk fn tcEnv:
+
+    try Dict.get (TH.rootLocal name) tcEnv.instanceVariables as
+        Nothing:
+            Err "dict fail"
+
+        Just var:
+            ty & tyvars =
+                HCA.normalizeTypeAndTyvars var.ty var.freeTypeVariables
+
+            Ok
+                { ty
+                , freeTypeVariables = var.freeTypeVariables
+                , isMutable = var.isMutable
+                }
 
 
 #
@@ -486,24 +472,29 @@ higherOrderTypes =
             , expected =
                 { ty =
                     typeFunction
-                        { from = CA.TypeConstant Pos.T (TH.rootLocal "T") [ typeVariable { name = "0a" } ]
+                        { from = CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable { name = "0a" } ]
                         , fromIsMutable = False
-                        , to = CA.TypeConstant Pos.T (TH.rootLocal "T") [ typeVariable { name = "0a" } ]
+                        , to = CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable { name = "0a" } ]
                         }
                 , isMutable = False
                 , freeTypeVariables = ftv "0a"
                 }
             }
-        , simpleTest
-            { name = "Union type constructors"
-            , code = "union X a = L"
-            , run = infer "L"
-            , expected =
-                { ty = typeConstant { args = [ typeVariable { name = "a" } ], ref = TH.rootLocal "X" }
+        , codeTest
+            """
+            Union type constructors
+            """
+            """
+            union X a = L
+            l = L
+            """
+            (infer "l")
+            (Test.isOkAndEqualTo
+                { ty = typeConstant { args = [ CA.TypeVariable (Pos.I 11) "a"], ref = TH.localType "X" }
                 , isMutable = False
-                , freeTypeVariables = ftv "a"
+                , freeTypeVariables = ftv "1"
                 }
-            }
+            )
         , codeTest
             "SKIP [reg] type check mistakes a union type with free tyvars for a free tyvar?"
             """

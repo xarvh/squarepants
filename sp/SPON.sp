@@ -61,8 +61,8 @@ read reader sponName sponContent =
 
     sponContent
         >> Compiler/Lexer.lexer sponName
-        >> Result.andThen (Compiler/Parser.parse False sponName)
-        >> Result.andThen (run reader sponName)
+        >> onOk (Compiler/Parser.parse False sponName)
+        >> onOk (run reader sponName)
 
 
 logHead statements =

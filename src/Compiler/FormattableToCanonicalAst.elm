@@ -61,11 +61,6 @@ do a b =
 --
 
 
-todoPos : CA.Pos
-todoPos =
-    CA.F
-
-
 {-| translate position
 -}
 tp : ReadOnly -> FA.Pos -> CA.Pos
@@ -746,7 +741,7 @@ insertDefinedNames env stat names =
                     Dict.union names (CA.patternNames caPattern)
 
                 Ok (POF_Function fnName fnArgs) ->
-                    Dict.insert fnName todoPos names
+                    Dict.insert fnName (CA.I 77) names
 
         _ ->
             names
@@ -979,7 +974,7 @@ translateAttrsRec env faAttrs caAttrsAccum =
                             , isRoot = not declaredInsideFunction
                             , attrPath = []
                             }
-                                |> CA.Variable todoPos
+                                |> CA.Variable (CA.P ("[HELLO IM TOO LAZY TO FIX THAT SO THERE IS AN UNDEFINED: " ++ attrName) 0 0)
                                 |> Ok
             in
             do exprRes <| \expr ->
@@ -1254,7 +1249,7 @@ translateType ro faType =
 
                     else
                         name
-                            |> CA.TypeVariable todoPos
+                            |> CA.TypeVariable (CA.I 79)
                             |> Ok
 
                 StructuredName_TypeOrCons { name, mod } ->

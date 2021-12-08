@@ -153,3 +153,4 @@ library =
        globalValues =
           Ok
           Err
+          onOk

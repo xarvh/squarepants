@@ -7,11 +7,13 @@ p =
     as Pos
     Pos.N
 
+
 umr =
     as Meta.UniqueModuleReference
     Meta.UMR Meta.Core "SPCore"
 
-usr name =
+
+makeUsr name =
     as Name: Meta.UniqueSymbolReference
 
     Meta.USR umr name
@@ -21,28 +23,20 @@ nameToType name =
     as Text: [CA.Type]: CA.Type
 
     name
-        >> usr
-        >> CA.RefRoot
+        >> makeUsr
         >> CA.TypeConstant p
 
 
-defToType { name = At _ name } =
+defToType def =
     as CA.UnionDef: [CA.Type]: CA.Type
 
-    nameToType name
+    CA.TypeConstant p def.usr
 
 
-nameToRef name =
-    as Name: CA.Ref
+usrToVariable u =
+    as Meta.UniqueSymbolReference: CA.Expression
 
-    CA.RefRoot << usr name
-
-
-refToVariable ref =
-    as CA.Ref: CA.Expression
-
-    CA.Variable p { attrPath = [], ref }
-
+    CA.Variable p { attrPath = [], ref = CA.RefRoot u }
 
 
 #
@@ -52,7 +46,8 @@ refToVariable ref =
 
 textDef =
     as CA.UnionDef
-    { name = At p "Text"
+    {
+    , usr = makeUsr "Text"
     , args = []
     , constructors = Dict.empty
     }
@@ -70,7 +65,7 @@ text =
 
 numberDef =
     as CA.UnionDef
-    { name = At p "Number"
+    { usr = makeUsr "Number"
     , args = []
     , constructors = Dict.empty
     }
@@ -95,16 +90,16 @@ none =
     nameToType noneName []
 
 noneValue =
-    as CA.Ref
-    nameToRef noneName
+    as Meta.UniqueSymbolReference
+    makeUsr noneName
 
 
 noneDef =
     as CA.UnionDef
 
-    { name = At p noneName
+    { usr = makeUsr noneName
     , args = []
-    , constructors = Dict.singleton noneName (p & [])
+    , constructors = Dict.singleton noneName { pos = p, args = [], type = none }
     }
 
 
@@ -114,13 +109,13 @@ noneDef =
 
 
 true =
-    as CA.Ref
-    nameToRef "True"
+    as Meta.UniqueSymbolReference
+    makeUsr "True"
 
 
 false =
-    as CA.Ref
-    nameToRef "False"
+    as Meta.UniqueSymbolReference
+    makeUsr "False"
 
 
 bool =
@@ -130,12 +125,12 @@ bool =
 
 boolDef =
     as CA.UnionDef
-    { name = At p "Bool"
+    { usr = makeUsr "Bool"
     , args = []
     , constructors =
         Dict.empty
-            >> Dict.insert "True" (p & [])
-            >> Dict.insert "False" (p & [])
+            >> Dict.insert "True" { pos = p, args = [], type = bool }
+            >> Dict.insert "False" { pos = p, args = [], type = bool }
     }
 
 
@@ -145,13 +140,13 @@ boolDef =
 
 
 nil =
-    as CA.Ref
-    nameToRef "Nil"
+    as Meta.UniqueSymbolReference
+    makeUsr "Nil"
 
 
 cons =
-    as CA.Ref
-    nameToRef "Cons"
+    as Meta.UniqueSymbolReference
+    makeUsr "Cons"
 
 
 list item =
@@ -166,12 +161,20 @@ listDef =
         #CA.TypeAnnotatedVar p "item"
         CA.TypeVariable p "item"
 
-    { name = At p "List"
+    consDef =
+        as CA.Constructor
+        {
+        , pos = p
+        , args = [ item, list item ]
+        , type = List.foldr (fn ar ty: CA.TypeFunction p ar False ty) [ item, list item ] (list item)
+        }
+
+    { usr = makeUsr "List"
     , args = [ "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" (p & [])
-            >> Dict.insert "Cons" (p & [ item, list item ])
+            >> Dict.insert "Nil" { pos = p, args = [], type = list item }
+            >> Dict.insert "Cons" consDef
     }
 
 
@@ -180,9 +183,10 @@ listDef =
 #
 
 
-defs =
+allDefs =
     as [CA.UnionDef]
-    [ noneDef
+    [
+    , noneDef
     , boolDef
     , listDef
     , textDef

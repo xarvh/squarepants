@@ -19,42 +19,36 @@ parensIf test s =
 # Ref
 #
 
-typeRefToText currentUmr meta ref =
-    as Meta.UniqueModuleReference: Meta: CA.Ref: Text
+usrToText currentUmr meta usr =
+    as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text
 
-    try ref as
-        CA.RefBlock name:
-            name
+    Meta.USR moduleUmr name =
+        usr
 
-        CA.RefRoot usr:
+    if currentUmr == moduleUmr:
+        name
+    else
+        maybeGlobal =
+            meta.globalTypes
+                # TODO Dict.find?
+                >> Dict.toList
+                >> List.find (fn (k & v): v == usr)
 
-            Meta.USR moduleUmr name =
-                usr
+        try maybeGlobal as
+            Just (k & v):
+                k
 
-            if currentUmr == moduleUmr:
-                name
-            else
-                maybeGlobal =
-                    meta.globalTypes
-                        # TODO Dict.find?
-                        >> Dict.toList
-                        >> List.find (fn (k & v): v == usr)
-
-                try maybeGlobal as
-                    Just (k & v):
-                        k
+            Nothing:
+                try Dict.get moduleUmr meta.umrToModuleVisibleAs as
+                    Just moduleAlias:
+                        moduleAlias .. "." .. name
 
                     Nothing:
-                        try Dict.get moduleUmr meta.umrToModuleVisibleAs as
-                            Just moduleAlias:
-                                moduleAlias .. "." .. name
+                        Meta.UMR souece modulePath =
+                            moduleUmr
 
-                            Nothing:
-                                Meta.UMR souece modulePath =
-                                    moduleUmr
-
-                                # INFORMATION LOSS: source
-                                modulePath .. "." .. name
+                        # INFORMATION LOSS: source
+                        modulePath .. "." .. name
 
 
 #
@@ -77,9 +71,9 @@ typeToPriorityAndText currentUmr meta type =
         parensIf (pri > threshold) str
 
     try type as
-        CA.TypeConstant pos ref args:
+        CA.TypeConstant pos usr args:
             ( (if args == []: 0 else 1)
-            & (typeRefToText currentUmr meta ref :: List.map (parensIfGreaterThan 0) args >> Text.join " ")
+            & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " ")
             )
 
         CA.TypeVariable pos name:
@@ -116,7 +110,7 @@ typeToPriorityAndText currentUmr meta type =
 
             ( 0 & Text.join " " l)
 
-        CA.TypeAlias pos ref ty2:
+        CA.TypeAlias pos usr ty2:
 #            typeToPriorityAndText currentUmr meta ty2
             # TODO: once we can display a type on multiple lines, we should expand the alias?
             ( 0
@@ -130,7 +124,7 @@ typeToPriorityAndText currentUmr meta type =
                    ]
                      >> Text.join " "
               #]
-            & typeRefToText currentUmr meta ref
+            & usrToText currentUmr meta usr
             )
 
 

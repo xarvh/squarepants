@@ -432,6 +432,18 @@ map func dict =
       RBNode_elm_builtin color key (func key value) (map func left) (map func right)
 
 
+mapRes func dict =
+  as (k: a: Result e b): Dict k a: Result e (Dict k b)
+  try dict as
+    RBEmpty_elm_builtin:
+        Ok RBEmpty_elm_builtin
+
+    RBNode_elm_builtin color key value left right:
+        func key value >> onOk fn one:
+        mapRes func left >> onOk fn two:
+        mapRes func right >> onOk fn three:
+        Ok << RBNode_elm_builtin color key one two three
+
 
 foldl func dict acc =
   as (k: v: b: b): Dict k v: b: b
@@ -451,8 +463,8 @@ foldlRes func dict acc =
             Ok acc
 
         RBNode_elm_builtin _ key value left right:
-            foldlRes func left acc >> Result.andThen fn l:
-            func key value l >> Result.andThen fn f:
+            foldlRes func left acc >> onOk fn l:
+            func key value l >> onOk fn f:
             foldlRes func right f
 
 

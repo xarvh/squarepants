@@ -15,6 +15,11 @@ moduleUmr =
     Meta.UMR Meta.SourcePlaceholder moduleName
 
 
+localType name =
+    as Name: Meta.UniqueSymbolReference
+    Meta.USR TH.moduleUmr name
+
+
 rootLocal name =
     as Name: CA.Ref
     CA.RefRoot << Meta.USR TH.moduleUmr name
@@ -105,7 +110,7 @@ textToFormattableModule code =
         as [Token]: Res [FA.Statement]
         Compiler/Parser.parse stripLocations moduleName tokens
 
-    Result.andThen tokensToStatsResult tokensResult
+    onOk tokensToStatsResult tokensResult
 
 
 textToCanonicalModule code =
@@ -120,7 +125,7 @@ textToCanonicalModule code =
 
     code
         >> textToFormattableModule
-        >> Result.andThen (Compiler/MakeCanonical.translateModule env moduleName)
+        >> onOk (Compiler/MakeCanonical.translateModule env moduleName)
 
 
 #
@@ -128,20 +133,20 @@ textToCanonicalModule code =
 #
 boolType =
     as CA.Type
-    CA.TypeConstant Pos.T ("Bool" >> Meta.spCoreUSR >> CA.RefRoot) []
+    CA.TypeConstant Pos.T ("Bool" >> Meta.spCoreUSR) []
 
 
 numberType =
     as CA.Type
-    CA.TypeConstant Pos.T ("Number" >> Meta.spCoreUSR >> CA.RefRoot) []
+    CA.TypeConstant Pos.T ("Number" >> Meta.spCoreUSR) []
 
 
 noneType =
     as CA.Type
-    CA.TypeConstant Pos.T ("None" >> Meta.spCoreUSR >> CA.RefRoot) []
+    CA.TypeConstant Pos.T ("None" >> Meta.spCoreUSR) []
 
 
 listType itemType =
     as CA.Type: CA.Type
-    CA.TypeConstant Pos.T ("List" >> Meta.spCoreUSR >> CA.RefRoot) [ itemType ]
+    CA.TypeConstant Pos.T ("List" >> Meta.spCoreUSR) [ itemType ]
 

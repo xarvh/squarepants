@@ -1,4 +1,4 @@
 default:
 	reset
-	./spcc sp/Main.sp build/out.js; xcowsay Done
+	NODE_OPTIONS="--max-old-space-size=16384" ./spcc sp/Main.sp build/out.js; xcowsay Done
 

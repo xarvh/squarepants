@@ -11,20 +11,20 @@ hasError { name, code, run, test } =
     Test.codeTest Debug.toHuman name code run test
 
 
-firstDefinition name code =
-    as Text: Text: Result Text CA.ValueDef
+firstDefinition code =
+    as Text: Result Text CA.ValueDef
     code
         >> Compiler/TestHelpers.textToCanonicalModule
         >> Compiler/TestHelpers.resErrorToStrippedText code
-        >> Result.andThen (fn mod: mod >> CA.findValue name >> Result.fromMaybe "findValue fail")
+        >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail")
 
 
 firstEvaluation name code =
     as Text: Text: Result Text CA.Expression
     code
-        >> firstDefinition name
-        >> Result.andThen (fn def: List.head def.body >> Result.fromMaybe "head fail")
-        >> Result.andThen (fn x: x >> asEvaluation >> Result.fromMaybe "asEval fail")
+        >> firstDefinition
+        >> onOk (fn def: List.head def.body >> Result.fromMaybe "head fail")
+        >> onOk (fn x: x >> asEvaluation >> Result.fromMaybe "asEval fail")
 
 
 textToCanonicalModule code =
@@ -48,15 +48,14 @@ transformAB code =
     as Text: Result Text ( CA.ValueDef & CA.ValueDef )
 
     findAB mod =
-        Maybe.map2
-            Tuple.pair
-            (CA.findValue "a" mod)
-            (CA.findValue "b" mod)
+        try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.pattern) as
+            [a, b]: Just (a & b)
+            _: Nothing
 
     code
         >> Compiler/TestHelpers.textToCanonicalModule
         >> Compiler/TestHelpers.resErrorToStrippedText code
-        >> Result.andThen (fn x: x >> findAB >> Result.fromMaybe "findAB fail")
+        >> onOk (fn x: x >> findAB >> Result.fromMaybe "findAB fail")
 
 
 shouldHaveSameAB getter =
@@ -87,7 +86,7 @@ shouldHaveSameAB getter =
 #    code
 #        >> Compiler/TestHelpers.textToCanonicalModule
 #        >> Compiler/TestHelpers.resErrorToStrippedText code
-#        >> Result.andThen (fn x: x >> findABC >> Result.fromMaybe "findABC fail")
+#        >> onOk (fn x: x >> findABC >> Result.fromMaybe "findABC fail")
 
 
 
@@ -189,7 +188,7 @@ binops =
             """
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
-                CA.Variable p { ref = CA.RefRoot (CoreTypes.usr "-"), attrPath = [] }
+                CA.Variable p { ref = CA.RefRoot (CoreTypes.makeUsr "-"), attrPath = [] }
             )
         ]
 
@@ -211,7 +210,7 @@ lists =
             l as [ Bool ] =
               l
             """
-            (firstDefinition "l")
+            firstDefinition
             (Test.isOkAndEqualTo
                 { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }) ]
                 , native = False
@@ -278,7 +277,7 @@ tuples =
             a as Number & Number =
               a
             """
-            (firstDefinition "a")
+            firstDefinition
             (Test.isOkAndEqualTo
                 { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }) ]
                 , pattern =
@@ -303,7 +302,7 @@ tuples =
                 a as Blah & Blah & Blah & Blah =
                   a
                 """
-            , run = firstDefinition "a"
+            , run = firstDefinition
             , test = Test.errorContains ["Use a record"]
             }
         ]
@@ -320,13 +319,13 @@ moduleAndAttributePaths =
     accept s =
         codeTest s
             ("a = " .. s)
-            (firstDefinition "a")
+            firstDefinition
             Test.isOk
 
     reject s m =
         codeTest s
             ("a = " .. s)
-            (firstDefinition "a")
+            firstDefinition
             (Test.errorContains [m])
 
     Test.Group
@@ -425,7 +424,7 @@ annotations =
                 3
               a
             """
-            (firstDefinition "x")
+            firstDefinition
             Test.isOk
 
         , codeTest "annotation on immutable value"

@@ -92,27 +92,24 @@ typeToText env =
 #
 # Env
 #
-# TODO rename to Scope?
 
 
 alias InstanceVariable =
-    { definedAt as Pos
-    , ty as Type
-    , freeTypeVariables as Dict Name { nonFn as Bool }
-    , isMutable as Bool
-    }
+    CA.InstanceVariable
 
 
 alias InstanceVariablesByRef =
-    Dict CA.Ref InstanceVariable
+    CA.InstanceVariablesByRef
 
 
+# rename to Scope?
 alias Env =
     {
     , currentModule as Meta.UniqueModuleReference
     , meta as Meta
     , instanceVariables as InstanceVariablesByRef
-
+    , constructors as CA.All CA.Constructor
+    , types as CA.All CA.TypeDef
     [#
        Every time we use a value in an expression, we must re-instantiate its free variables, because each time they can be used in a different way.
 
@@ -143,17 +140,6 @@ alias Env =
 
     # This is used to produce nicer errors for when a recursive function is not annotated
     , nonAnnotatedRecursives as Dict Name Pos
-    }
-
-
-initEnv currentModule meta =
-    as Meta.UniqueModuleReference: Meta: Env
-    {
-    , currentModule
-    , meta
-    , instanceVariables = coreInstanceVariables
-    , nonFreeTyvars = Dict.empty
-    , nonAnnotatedRecursives = Dict.empty
     }
 
 
@@ -327,109 +313,6 @@ popClashingtypes state =
 
         Just dict:
             dict & { state with typeClashesByPlaceholderId = Nothing }
-
-
-
-#
-# Populate Env
-#
-coreInstanceVariables =
-    as InstanceVariablesByRef
-
-    insertUnion unionDef =
-        as CA.UnionDef: InstanceVariablesByRef: InstanceVariablesByRef
-
-        insertCons name (pos & constructorArgs) =
-            as Name: (Pos & [CA.Type]): InstanceVariablesByRef: InstanceVariablesByRef
-
-            ref =
-                CA.RefRoot << Meta.spCoreUSR name
-
-            At _ unionName =
-                unionDef.name
-
-            type =
-                unionDef.args
-                    >> List.map (CA.TypeVariable Pos.N)
-                    >> CA.TypeConstant Pos.N (CA.RefRoot << Meta.spCoreUSR unionName)
-                    >> List.foldr (fn ar ty: CA.TypeFunction Pos.N ar False ty) constructorArgs
-
-            insertConstructor ref type
-
-        Dict.foldl insertCons unionDef.constructors
-
-    insertBinop symbol binop =
-        ref =
-            CA.RefRoot << Meta.spCoreUSR symbol
-
-        iv =
-            as InstanceVariable
-            {
-            , definedAt = Pos.N
-            , ty = binop.type
-            , freeTypeVariables = getFreeTypeVars Dict.empty Dict.empty binop.type
-            , isMutable = False
-            }
-
-        Dict.insert ref iv
-
-    Dict.empty
-        >> List.foldl insertUnion CoreTypes.defs
-        # TODO insert unops
-        >> Dict.foldl insertBinop Prelude.binops
-
-
-insertConstructor ref type instanceVariables =
-    as CA.Ref: CA.Type: Dict CA.Ref InstanceVariable: Dict CA.Ref InstanceVariable
-    var =
-        as InstanceVariable
-        {
-        # TODO this pos is most probably wrong, need a proper position
-        , definedAt = CA.typePos type
-        , ty = type
-        , freeTypeVariables = getFreeTypeVars Dict.empty Dict.empty type
-        , isMutable = False
-        }
-
-    log "adding cons" ref
-
-    Dict.insert ref var instanceVariables
-
-
-insertRootValue ref rootValue instanceVariables =
-    as CA.Ref: CA.RootValue: Dict CA.Ref InstanceVariable: Dict CA.Ref InstanceVariable
-
-    try rootValue.maybeAnnotation as
-        Nothing:
-            instanceVariables
-
-        Just annotation:
-            var =
-                as InstanceVariable
-                { definedAt = CA.patternPos rootValue.valueDefsKey
-                , ty = annotation.type
-                , freeTypeVariables = getFreeTypeVars Dict.empty annotation.nonFn annotation.type
-                , isMutable = False
-                }
-
-            Dict.insert ref var instanceVariables
-
-
-# TODO: this function should take only InstanceVariablesByRef as argument, because it can't and should not touch the rest
-# (in particular currentModule, since there isn't any)
-# The point is, Env should not even be definable while we're doing this
-addModuleToEnv module env =
-    as CA.Module: Env: Env
-
-    toRef name =
-        as Name: CA.Ref
-        CA.RefRoot << Meta.USR (Meta.UMR module.source module.path) name
-
-    { env with instanceVariables =
-        .instanceVariables
-            >> Dict.foldl (fn n: n >> toRef >> insertRootValue) module.rootValues
-            >> Dict.foldl (fn n: n >> toRef >> insertConstructor) module.constructors
-    }
 
 
 
@@ -645,11 +528,11 @@ checkFreeVariables env pos patternType blockType =
     as Env: Pos: Type: Type: Monad None
 
     annotatedFreeVars =
-        typeTyvars patternType
+        CA.typeTyvars patternType
             >> Dict.filter (fn name _: isAnnotation name)
 
     actualFreeVars =
-        typeTyvars blockType
+        CA.typeTyvars blockType
 
     if Dict.size annotatedFreeVars > Dict.size actualFreeVars:
         (addError pos
@@ -747,7 +630,7 @@ fromExpression env expression =
 
                        In this case we do NOT instantiate a new variable!
                     #]
-                    (replaceTypeVariablesWithNew var) >> then fn varType:
+                    (replaceTypeVariablesWithNew var.freeTypeVariables var.ty) >> then fn varType:
                     [#
 
                        Dealing with attributes as a special case (rather than just as an access function)
@@ -760,13 +643,13 @@ fromExpression env expression =
                     #]
                     applyAttributePath env pos attrPath varType
 
-        CA.Constructor pos ref:
-            try Dict.get ref env.instanceVariables as
+        CA.Constructor pos usr:
+            try Dict.get usr env.constructors as
                 Nothing:
-                    errorUndefinedVariable env pos ref
+                    errorUndefinedVariable env pos (CA.RefRoot usr)
 
-                Just var:
-                     replaceTypeVariablesWithNew var
+                Just c:
+                    replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
         CA.Lambda pos param body:
             (fromParameter env param) >> then fn ( isMutable & patternOut ):
@@ -1040,10 +923,20 @@ fromPattern env pattern vars_ =
 
     try pattern as
         CA.PatternAny pos maybeName maybeAnnotation:
+
             makeType =
                 try maybeAnnotation as
-                    Nothing: newType pos
-                    Just type: return type
+                    Nothing:
+                        newType pos
+
+                    Just type:
+                        try Compiler/ExpandTypes.expandAnnotation env.types type as
+                            Err e:
+                                insertError e >> then fn None:
+                                newType pos
+
+                            Ok t:
+                                return t
 
             makeType >> then fn type:
 
@@ -1060,31 +953,34 @@ fromPattern env pattern vars_ =
         CA.PatternLiteralText pos literal:
             return << makePatternOut vars pos CoreTypes.text
 
-        CA.PatternConstructor pos ref args:
-            try Dict.get ref env.instanceVariables as
-                Nothing:
-                    # TODO still add all variables defined in the args, otherwise there will
-                    # missing variables that will trigger misleading "undefined variable" errors
-                    # (ie, use unifyConstructorWithItsArgs anyway)
-                    errorUndefinedVariable env pos ref >> then fn ety:
-                    return << makePatternOut vars pos ety
+        CA.PatternConstructor pos usr args:
+            constructorTyM =
+                (try Dict.get usr env.constructors as
+                    Nothing:
+                        # TODO still add all variables defined in the args, otherwise there will
+                        # missing variables that will trigger misleading "undefined variable" errors
+                        # (ie, use unifyConstructorWithItsArgs anyway)
+                        errorUndefinedVariable env pos (CA.RefRoot usr)
 
-                Just instanceVar:
-                    (replaceTypeVariablesWithNew instanceVar) >> then fn constructorTy:
+                    Just c:
+                        replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type
+                )
 
-                    p =
-                        as UnifyConstructorWithItsArgsParams
-                        { env
-                        , ref
-                        , pos
-                        , ty = constructorTy
-                        , args
-                        , argIndex = 0
-                        , vars
-                        }
+            constructorTyM >> then fn constructorTy:
 
-                    (unifyConstructorWithItsArgs p) >> then fn ( patternVars & patternTy ):
-                    return << makePatternOut patternVars pos patternTy
+            p =
+                as UnifyConstructorWithItsArgsParams
+                { env
+                , usr
+                , pos
+                , ty = constructorTy
+                , args
+                , argIndex = 0
+                , vars
+                }
+
+            unifyConstructorWithItsArgs p >> then fn ( patternVars & patternTy ):
+            return << makePatternOut patternVars pos patternTy
 
         CA.PatternRecord pos attrs:
 
@@ -1100,7 +996,7 @@ fromPattern env pattern vars_ =
 
 alias UnifyConstructorWithItsArgsParams =
     { env as Env
-    , ref as CA.Ref
+    , usr as Meta.UniqueSymbolReference
     , pos as Pos
     , ty as Type
     , args as List CA.Pattern
@@ -1111,7 +1007,7 @@ alias UnifyConstructorWithItsArgsParams =
 
 unifyConstructorWithItsArgs p =
     as UnifyConstructorWithItsArgsParams: Monad ( PatternVars & Type )
-    try ( p.ty & p.args ) as
+    try p.ty & p.args as
         # Argument needed, argument given
         ( CA.TypeFunction _ from _ to & head :: tail ):
             (fromPattern p.env head p.vars) >> then fn { vars, pos, ty }:
@@ -1127,7 +1023,7 @@ unifyConstructorWithItsArgs p =
         # Error: Argument needed but not given!
         ( CA.TypeFunction _ from _ to & [] ):
             # TODO tell how many are needed and how many are actually given
-            (addError p.pos [ "Type constructor " .. Debug.toHuman p.ref .. " is missing argument #" .. Text.fromNumber p.argIndex ]) >> then fn ety:
+            (addError p.pos [ "Type constructor " .. Debug.toHuman p.usr .. " is missing argument #" .. Text.fromNumber p.argIndex ]) >> then fn ety:
             return ( p.vars & ety )
 
         # No arguments needed, no arguments given
@@ -1139,7 +1035,7 @@ unifyConstructorWithItsArgs p =
         # Error: no argument needed, but argument given!
         ( _ & head :: tail ):
             # TODO tell how many are needed and how many are actually given
-            (addError p.pos [ "Type constructor " .. Debug.toHuman p.ref .. " has too many args" ]) >> then fn ety:
+            (addError p.pos [ "Type constructor " .. Debug.toHuman p.usr .. " has too many args" ]) >> then fn ety:
             return ( p.vars & ety )
 
 
@@ -1572,34 +1468,6 @@ typeHasTyvar n ty =
             Just n == extensible or List.any (typeHasTyvar n) (Dict.values attrs)
 
 
-typeTyvars ty =
-    as Type: Dict Name Pos
-    try ty as
-        CA.TypeVariable pos name:
-            # TODO is pos equivalent to definedAt?
-            Dict.singleton name pos
-
-        CA.TypeFunction _ from fromIsMutable to:
-            Dict.join (typeTyvars from) (typeTyvars to)
-
-        CA.TypeConstant pos ref args:
-            List.foldl (fn a: Dict.join (typeTyvars a)) args Dict.empty
-
-        CA.TypeAlias _ path t:
-            typeTyvars t
-
-        CA.TypeRecord pos extensible attrs:
-            init =
-                try extensible as
-                    Nothing:
-                        Dict.empty
-
-                    Just name:
-                        Dict.singleton name pos
-
-            Dict.foldl (fn n t: Dict.join (typeTyvars t)) attrs init
-
-
 applyAttributePath env pos attrPath =
     as Env: Pos: List Name: Type: Monad Type
 
@@ -1688,7 +1556,7 @@ insertPatternVar { subs, isParameter, isMutable, isRoot } name { pos, type, isAn
                     Dict.empty
 
                 else
-                    getFreeTypeVars env.nonFreeTyvars Dict.empty refinedTy
+                    CA.getFreeTypeVars env.nonFreeTyvars Dict.empty refinedTy
             }
             .instanceVariables
     , nonFreeTyvars =
@@ -1706,7 +1574,7 @@ insertPatternVar { subs, isParameter, isMutable, isRoot } name { pos, type, isAn
                if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
 
             #]
-            Dict.foldl Dict.insert (typeTyvars refinedTy) env.nonFreeTyvars
+            Dict.foldl Dict.insert (CA.typeTyvars refinedTy) env.nonFreeTyvars
 
         else
             env.nonFreeTyvars
@@ -1738,20 +1606,21 @@ applySubsToNonFreeTyvars env =
                 constrainedVars
 
             Just ty:
-                Dict.foldl (fn n p: Dict.insert n p) (typeTyvars ty) constrainedVars
+                Dict.foldl (fn n p: Dict.insert n p) (CA.typeTyvars ty) constrainedVars
 
     return { env with nonFreeTyvars = List.foldl meh (Dict.keys env.nonFreeTyvars) env.nonFreeTyvars }
 
 
 
-replaceTypeVariablesWithNew var =
-    as InstanceVariable: Monad Type
-    if var.freeTypeVariables == Dict.empty:
-        return var.ty
+replaceTypeVariablesWithNew freeTypeVariables type =
+    as Dict Name { nonFn as Bool }: Type: Monad Type
+
+    if freeTypeVariables == Dict.empty:
+        return type
 
     else
-        (generateNewTypeVariables var.freeTypeVariables) >> then fn newTypeByOldType:
-        return << replaceTypeVariables newTypeByOldType var.ty
+        (generateNewTypeVariables freeTypeVariables) >> then fn newTypeByOldType:
+        return << replaceTypeVariables newTypeByOldType type
 
 
 generateNewTypeVariables tyvarByName =
@@ -1764,18 +1633,6 @@ generateNewTypeVariables tyvarByName =
         return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1) subs
 
     dict_foldl apply tyvarByName Dict.empty
-
-
-getFreeTypeVars nonFreeTyvars nonFn ty =
-    as Dict Name Pos: Dict Name a: Type: Dict Name { nonFn as Bool }
-
-    posToTyvar name pos =
-        # as Name: Pos: TypeVariable
-        { nonFn = Dict.member name nonFn }
-
-    Dict.diff (typeTyvars ty) nonFreeTyvars
-        >> Dict.map posToTyvar
-
 
 
 #FLAG
@@ -2011,7 +1868,7 @@ errorIncompatibleTypes env reason pos_whatever unifiedType clashes =
                         "try..as patterns should have the same type"
 
                     UnifyReason_ConstructorArgument p:
-                        "Argument " .. Text.fromNumber p.argIndex .. " to type constructor " .. (Debug.toHuman p.ref) .. " does not match the constructor definition"
+                        "Argument " .. Text.fromNumber p.argIndex .. " to type constructor " .. (Debug.toHuman p.usr) .. " does not match the constructor definition"
 
                     UnifyReason_AttributeAccess attrName:
                         "You are trying to access the ." .. attrName .. " attribute"

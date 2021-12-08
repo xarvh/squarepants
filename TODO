@@ -7,6 +7,10 @@
 
 * Remove module name from Pos
 
+* Translate ApplyAliases tests
+
+* try..as rejects function types outright
+    "Hey, is there an argument missing?"
 
 * When there is any collision between types, ensure that either types are replaced with a fresh tyvar, so that the error does not propagate?
 
