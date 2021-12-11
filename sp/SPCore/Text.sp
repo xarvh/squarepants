@@ -91,7 +91,7 @@ replace toRemove toPut s =
 
 
 # HACK
-# Produces "" if it can't match anything, or if the regex as invalid.
+# Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
 startsWithRegex regex s =
     as Text: Text: Text

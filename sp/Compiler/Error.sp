@@ -1,11 +1,8 @@
 
+
+# TODO: rewrite the whole thing so that each module has all the info and this type is not needed
 alias Env =
     {
-
-    # The meta file can be used to show values and types in the same way the user writes them
-    #    , metaFile as MetaFile
-
-    # TODO: should be moduleByUmr
     , moduleByName as Dict Text { fsPath as Text, content as Text }
     }
 

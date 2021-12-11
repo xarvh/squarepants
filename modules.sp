@@ -1,8 +1,12 @@
-#
-# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work.
-#
+[# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
+
 sourceDir =
     path = "sp"
+
+    module =
+       path = IO
+       importAs = IO
+       globalTypes = IO
 
     module =
        path = Test

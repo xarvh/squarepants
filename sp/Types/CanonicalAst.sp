@@ -157,6 +157,7 @@ alias RootValue = {
 
 alias Module = {
     , umr as Meta.UniqueModuleReference
+    , asText as Text
 
     # TODO uncomment Deps (and maybe drop value dependencies for aliases and unions, since they don't use them?)
     , aliasDefs as Dict Name ([#Deps &#] AliasDef)
@@ -165,10 +166,11 @@ alias Module = {
     }
 
 
-initModule umr =
-    as Meta.UniqueModuleReference: Module
+initModule asText umr =
+    as Text: Meta.UniqueModuleReference: Module
     {
     , umr
+    , asText
     , aliasDefs = Dict.empty
     , unionDefs = Dict.empty
     , valueDefs = Dict.empty

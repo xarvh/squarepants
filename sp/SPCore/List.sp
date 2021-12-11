@@ -61,6 +61,12 @@ sortBy function list =
     todo "implemented natively"
 
 
+indexBy getIndex list =
+    as (a: key): [a]: Dict key a
+    with key NonFunction
+    List.foldl (fn i: Dict.insert (getIndex i) i) list Dict.empty
+
+
 foldl function aList init =
     as (item: state: state): [item]: state: state
 

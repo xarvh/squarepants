@@ -21,31 +21,29 @@ import Types.Meta exposing (Meta)
 skippedModules =
     Debug.log "skippedModules"
         [ ""
-
---         , "sp/Compiler/CoreTypes.sp"
---         , "sp/Compiler/Error.sp"
---         , "sp/Compiler/Lexer.sp"
-        ,  "sp/Compiler/Lexer_Test.sp"
---         , "sp/Compiler/MakeCanonical.sp"
+        , "sp/Compiler/Lexer_Test.sp"
         , "sp/Compiler/MakeCanonical_Test.sp"
+        , "sp/Compiler/Parser_Test.sp"
+        , "sp/Compiler/TypeCheck_Test.sp"
+        , "sp/SPCore/Dict_Test.sp"
+        , "sp/SPCore/List_Test.sp"
 
---         ,  "sp/Compiler/Parser.sp"
-        ,  "sp/Compiler/Parser_Test.sp"
---         ,  "sp/Compiler/TestHelpers.sp"
---         , "sp/Compiler/TypeCheck.sp"
---         , "sp/Compiler/TypeCheck_Test.sp"
+        --         , "sp/Compiler/MakeCanonical.sp"
+        , "sp/Compiler/TypeCheck.sp"
 
+        --         ,  "sp/Compiler/Parser.sp"
+        --         ,  "sp/Compiler/TestHelpers.sp"
+        --         , "sp/Compiler/CoreTypes.sp"
+        --         , "sp/Compiler/Error.sp"
+        --         , "sp/Compiler/Lexer.sp"
         --         ,  "sp/DefaultModules.sp"
---         , "sp/Human/CanonicalAst.sp"
-
+        --         , "sp/Human/CanonicalAst.sp"
         --         ,  "sp/Main.sp"
         --         ,  "sp/ModulesFile.sp"
         --         ,  "sp/Prelude.sp"
         --         ,  "sp/SPCore/Basics.sp"
         --         ,  "sp/SPCore/Dict.sp"
-        --         ,  "sp/SPCore/Dict_Test.sp"
         --         ,  "sp/SPCore/List.sp"
-        --         ,  "sp/SPCore/List_Test.sp"
         --         ,  "sp/SPCore/Maybe.sp"
         --         ,  "sp/SPCore/Result.sp"
         --         ,  "sp/SPCore/Set.sp"
@@ -272,7 +270,11 @@ makeProgram metaFile files =
                                 |> (++) [ Compiler.CanonicalToJs.nativeDefinitions ]
                                 |> String.join "\n\n"
                                 |> (\s -> s ++ "const fs = require('fs');\n")
-                                |> (\s -> s ++ "fs.readFile(process.argv[2] || '', (err, file) => console.log($Main$main(err ? '' : file.toString())))")
+                                --|> (\s -> s ++ "fs.readFile(process.argv[2] || '', (err, file) => console.log($Main$main(err ? '' : file.toString())))")
+                                |> (\s -> s ++ """
+                                       const out = $Main$main({})(array_toList(process.argv.slice(1)))[1]('never');
+                                       if (out[1]) console.error(out[1]);
+                                       """)
                                 |> Ok
 
 

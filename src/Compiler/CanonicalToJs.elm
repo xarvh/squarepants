@@ -42,6 +42,12 @@ allNatives =
         |> Dict.insert "::" "sp_cons"
         |> Dict.insert "==" "sp_equal"
         |> Dict.insert "/=" "sp_not_equal"
+        -- Platform natives
+        |> Dict.insert "IO.parallel" "io_parallel"
+        |> Dict.insert "IO.readDir" "io_readDir"
+        |> Dict.insert "IO.readFile" "io_readFile"
+        |> Dict.insert "IO.writeFile" "io_writeFile"
+        |> Dict.insert "IO.writeStdout" "io_writeStdout"
 
 
 nativeUnops : Dict String { jsSymb : JA.Name }
@@ -189,7 +195,7 @@ unwrapMutable x =
 
 nativeDefinitions : String
 nativeDefinitions =
-    """
+    """#!/usr/bin/env node
 const sp_clone = (src) => {
  if (Array.isArray(src))
    return src.map(sp_clone);
@@ -457,6 +463,86 @@ const list_toArray = (list) => {
 
 
 const list_sortBy = (f) => (list) => array_toList(list_toArray(list).sort((a, b) => sp_compare(f(a), f(b))));
+
+
+//
+// Platform: IO
+//
+const io_wrap = (f) => [ "IO.IO", f ];
+
+const result_ok = (a) => [ "SPCore/Result.Ok", a ];
+const result_err = (e) => [ "SPCore/Result.Err", e ];
+
+const io_parallel = (iosAsList) => io_wrap((never) => {
+    // as [IO a]: IO [a]
+
+    const ios = list_toArray(iosAsList);
+
+    // TODO actually run them in parallel!
+
+    let arr = [];
+    for (let io of ios) {
+        const r = io[1](never);
+        if (r[0] === "SPCore/Result.Ok")
+            arr.push(r[1]);
+        else
+            return result_err(r[1]);
+    }
+
+    return result_ok(array_toList(arr));
+});
+
+
+const io_readDir = (dirPath) => io_wrap((never) => {
+    // as Text: IO [Bool & Text]
+
+    var entries;
+    try {
+        entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    } catch (e) {
+        return result_err(e.message);
+    }
+
+    return result_ok(array_toList(entries.map((dirent) => ({
+        first: dirent.isDirectory(),
+        second: dirent.name,
+    }))));
+});
+
+
+const io_readFile = (path) => io_wrap((never) => {
+    // as Text: IO Text
+
+    var content;
+    try {
+        content = fs.readFileSync(path, 'utf8');
+    } catch (e) {
+        return result_err(e.message);
+    }
+
+    return result_ok(content);
+});
+
+
+const io_writeFile = (path) => (content) => io_wrap((never) => {
+    // as Text: Text: IO None
+
+    try {
+        fs.writeFileSync(path, content);
+    } catch (e) {
+        return result_err(e.message);
+    }
+
+    return result_ok(null);
+});
+
+
+const io_writeStdout = (content) => io_wrap((never) => {
+    // as Text: IO None
+
+    console.info(content);
+    return result_ok(null);
+});
 
     """
 
@@ -849,6 +935,7 @@ translateExpr env expression =
                     [ JA.Literal "'Missing pattern in try..as'"
                     , JA.Literal ("'" ++ human.location ++ "'")
                     , JA.Call (JA.Literal "sp_toHuman") [ JA.Var tryName ]
+                    --, JA.Call (JA.Literal "console.log") [ JA.Call (JA.Literal "JSON.stringify") [ JA.Var tryName ]]
                     ]
                         |> JA.Call (JA.Literal "sp_throw")
                         |> JA.Eval

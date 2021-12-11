@@ -6,6 +6,91 @@ Things that should probably be implemented
 ------------------------------------------
 
 
+# Callback operator
+
+    meta ?=
+        loadMeta >> IO.onSuccess
+
+    fileLists as List (Text & Text) ?=
+        meta.sourceDirs
+            >> List.map fn sd: listSourceDir sd.path
+            >> IO.parallel
+            >> IO.onSuccess
+
+    modules as [CA.Module] ?=
+        fileLists
+            >> List.concat
+            >> List.filter isSpFile
+            >> List.map loadModule
+            >> IO.parallel
+            >> IO.onSuccess
+
+    expanded ?=
+        modules
+            >> List.indexBy fn m: m.umr
+            >> Compiler/Pipeline.globalExpandedTypes
+            >> onResSuccess
+
+    errorsAndEnvs ?=
+        modules
+            >> List.map typeCheckModule
+            >> IO.parallel
+            >> IO.onSuccess
+
+    # TODO emit js
+
+    IO.return None
+
+
+
++ much nicer to read and write
+- more difficult to figure out what is happening
+
+---> Instead of showing what happens on success, it might be a lot more clear to make explicit what happens on *error*
+    (ie, when the callback is NOT called!)
+
+
+
+    meta ?=
+        loadMeta >> IO.breakOnError
+
+    fileLists as List (Text & Text) ?=
+        meta.sourceDirs
+            >> List.map fn sd: listSourceDir sd.path
+            >> IO.parallel
+            >> IO.breakOnError
+
+    modules as [CA.Module] ?=
+        fileLists
+            >> List.concat
+            >> List.filter isSpFile
+            >> List.map loadModule
+            >> IO.parallel
+            >> IO.breakOnError
+
+    expanded ?=
+        modules
+            >> List.indexBy fn m: m.umr
+            >> Compiler/Pipeline.globalExpandedTypes
+            >> breakOnResError
+
+    errorsAndEnvs ?=
+        modules
+            >> List.map typeCheckModule
+            >> IO.parallel
+            >> IO.breakOnError
+
+    # TODO emit js
+
+    IO.return None
+
+
++ easier to follow the flow
+- more verbose
+
+
+
+
 Things that are worth considering but need thinking
 ---------------------------------------------------
 

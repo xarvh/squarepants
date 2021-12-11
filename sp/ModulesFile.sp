@@ -16,7 +16,7 @@ initModulesFile =
 
 alias SourceDir = {
     , path as Text
-    , moduleExceptions as [Module]
+    , modules as [Module]
     }
 
 
@@ -45,7 +45,7 @@ toMeta mf =
 
     Meta.init
         >> List.foldl insertLibrary mf.libraries
-        >> List.foldl (insertModule Meta.SourcePlaceholder) (List.concatMap (fn x: x.moduleExceptions) mf.sourceDirs)
+        >> List.foldl insertModules mf.sourceDirs
 
 
 insertLibrary lib meta =
@@ -56,6 +56,11 @@ insertLibrary lib meta =
     else
         List.foldl (insertModule Meta.Core) lib.modules meta
 
+
+insertModules sd =
+    as SourceDir: Meta: Meta
+
+    List.foldl (insertModule (Meta.SourceDir sd.path)) sd.modules
 
 
 insertModule source mod meta =
@@ -131,7 +136,7 @@ sourceDirectoryReader =
     SPON.many (SPON.field "module" moduleReader) >> SPON.onAcc fn modules:
     SPON.return
         { path = path
-        , moduleExceptions = modules
+        , modules = modules
         }
 
 

@@ -17,7 +17,7 @@ alias Name =
 #
 union Source =
     , Core
-    , SourcePlaceholder
+    , SourceDir Text
 
 
 #

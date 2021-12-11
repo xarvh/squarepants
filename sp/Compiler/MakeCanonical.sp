@@ -931,11 +931,11 @@ insertRootStatement ro faStatement caModule =
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
 
 
-translateModule ro modulePath faModule =
-    as ReadOnly: Meta.ModulePath: FA.Module: Res CA.Module
+translateModule ro asText umr faModule =
+    as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res CA.Module
 
     module =
-        CA.initModule << Meta.UMR Meta.SourcePlaceholder modulePath
+        CA.initModule asText umr
 
     # Add all definitions
     List.foldlRes (insertRootStatement ro) faModule module

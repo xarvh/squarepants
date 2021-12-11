@@ -12,7 +12,7 @@ moduleName =
 
 
 moduleUmr =
-    Meta.UMR Meta.SourcePlaceholder moduleName
+    Meta.UMR (Meta.SourceDir "<Test>") moduleName
 
 
 localType name =
@@ -125,7 +125,7 @@ textToCanonicalModule code =
 
     code
         >> textToFormattableModule
-        >> onOk (Compiler/MakeCanonical.translateModule env moduleName)
+        >> onOk (Compiler/MakeCanonical.translateModule env code moduleUmr)
 
 
 #

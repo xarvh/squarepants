@@ -56,27 +56,12 @@ textToCanonicalModule pars =
         , meta = pars.meta
         }
 
+    umr =
+        Meta.UMR pars.source pars.name
+
     pars
         >> textToFormattableModule
-        >> onOk (Compiler/MakeCanonical.translateModule ro pars.name)
-
-
-#
-# TODO: this will completely change once we actually build only the dependency tree
-#
-#loadAllModules meta contentByModuleName =
-#    as Meta: Dict Text Text: Res (Dict Meta.UniqueModuleReference CA.Module)
-#
-#    load moduleName moduleContent acc =
-#
-#    , meta as Meta
-#    , stripLocations as Bool
-#    , source as Meta.Source
-#    , name as Name
-#    , code as Text
-#
-#    Dict.foldlRes load contentByModuleName Dict.empty
-#
+        >> onOk (Compiler/MakeCanonical.translateModule ro pars.code umr)
 
 
 # ============================================================================
