@@ -3,7 +3,7 @@
     "source-directories": [
         "lib/elm-posix/src",
         "generated",
-        "src"
+        "elm-src"
     ],
     "elm-version": "0.19.1",
     "dependencies": {
