@@ -1,10 +1,25 @@
 
+----> TCO
+
 ----> Error.Env needs only the current module
 
 ----> Caching system, because everything depends on that?
 
 ----> Humanize must break a type into multiple lines
 
+
+
+* an inline lambda can't continue on a NewSiblingLine?
+    value
+        >> List.map x: blah
+        >> sblorp
+
+* Remove Pattern from FormattableAST and just use Expression for everything?
+    (This should simplify the parser and make it more accepting)
+
+* replace fold with for
+
+* :: -> List.stack?
 
 * Remove module name from Pos
 
@@ -13,8 +28,22 @@
 * try..as rejects function types outright
     "Hey, is there an argument missing?"
 
+* Parser test
+
+        here as Parser Int =
+            Parser.here >> andThen tokens:
+            Parser.accept
+                (try tokens as
+                    Token mod start end :: rest:
+                        start
+
+                    []:
+                        0
+                )
+
 * When there is any collision between types, ensure that either types are replaced with a fresh tyvar, so that the error does not propagate?
 
+* test: List.range 0 -1 == []
 
 * Duplicate name checks should be case-insensitive
 

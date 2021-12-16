@@ -400,7 +400,7 @@ mu =
         , codeTest
             "Functions can't be mutable 2"
             """
-            a = @f:
+            a = f@:
                 @f := (x: x)
             """
             (infer "a")
@@ -408,7 +408,7 @@ mu =
         , codeTest
             "Functions can't be mutable 3"
             """
-            a = @f:
+            a = f@:
               f 1
             """
             (infer "a")
@@ -569,7 +569,7 @@ records =
             Attribute mutation
             """
             """
-            a = @b: @b.meh.blah += 1
+            a = b@: @b.meh.blah += 1
             """
             (infer "a")
             (Test.isOkAndEqualTo

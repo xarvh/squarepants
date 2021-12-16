@@ -150,24 +150,24 @@ asModuleDirectory (isDirectory & name) =
         Nothing
 
 
-listSourceDir sourceDirRoot modulePath =
+listSourceDir sourceDirRoot modulePathWithTrailingSlash =
     as Text: Text: IO [Text]
 
     path =
-        sourceDirRoot .. "/" .. modulePath
+        sourceDirRoot .. "/" .. modulePathWithTrailingSlash
 
     IO.readDir path >> IO.onSuccess fn dirContents:
 
     directChildren =
         dirContents
             >> List.filterMap asModule
-            >> List.map (fn fileName: modulePath .. "/" .. fileName)
+            >> List.map (fn fileName: modulePathWithTrailingSlash .. fileName)
 
     getDescendants =
         as IO [[Text]]
         dirContents
             >> List.filterMap asModuleDirectory
-            >> List.map (fn subDir: listSourceDir sourceDirRoot (modulePath .. "/" .. subDir))
+            >> List.map (fn subDir: listSourceDir sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/"))
             >> IO.parallel
 
     getDescendants >> IO.onSuccess fn descendants:
@@ -274,12 +274,66 @@ loadMeta env =
 # Compile
 #
 
-typeCheckModule module =
-    Debug.todo ""
+typeCheckModule meta globals module =
+    as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env
+
+    env =
+        as Compiler/TypeCheck.Env
+        {
+        , currentModule = module.umr
+        , meta
+        , instanceVariables = globals.instanceVariables
+        , constructors = globals.constructors
+        , types = globals.types
+        , nonFreeTyvars = Dict.empty
+        , nonAnnotatedRecursives = Dict.empty
+        }
+
+    Compiler/TypeCheck.fromModule env module
 
 
-compile env target outputFile =
-    as IO.Env: a: Text: IO None
+getTargetUsr meta entryModule entryValue globals =
+    as Meta: Text: Text: CA.Globals: Res Meta.UniqueSymbolReference
+
+    # TODO translate entryModule?
+
+    asEntry ref =
+        as CA.Ref: Maybe Meta.UniqueSymbolReference
+        try ref as
+            CA.RefBlock _: Nothing
+            CA.RefRoot usr:
+                Meta.USR (Meta.UMR source moduleName) valueName =
+                    usr
+
+                if moduleName == entryModule and valueName == entryValue:
+                    Just usr
+                else
+                    Nothing
+
+    possibleTargets =
+        as [Meta.UniqueSymbolReference]
+        globals.instanceVariables
+            >> Dict.keys
+            >> List.filterMap asEntry
+
+    try possibleTargets as
+        []:
+            Debug.todo << "Can't find build target `" .. entryModule .. "." .. entryValue .. "` anywhere."
+
+        [ usr ]:
+            Ok usr
+
+        many:
+            x =
+                many
+                    >> List.map Debug.toHuman
+                    >> Text.join ", "
+            Debug.todo << "Multiple values match build target `" .. entryModule .. "." .. entryValue .. "`: " .. x
+
+
+
+compile env entryModule entryValue outputFile =
+    as IO.Env: Text: Text: Text: IO None
 
     log "Loading meta..." ""
     loadMeta env >> IO.onSuccess fn meta:
@@ -294,11 +348,6 @@ compile env target outputFile =
 
     loadAllModules >> IO.onSuccess fn modules:
 
-    log "Solving globals..." ""
-    x =
-        as Res { types as CA.All CA.TypeDef, constructors as CA.All CA.Constructor, instanceVariables as CA.InstanceVariablesByRef }
-        Compiler/Pipeline.globalExpandedTypes (List.indexBy (fn m: m.umr) modules)
-
     # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
     eenv =
         as Error.Env
@@ -310,19 +359,47 @@ compile env target outputFile =
             List.foldl (fn m: Dict.insert (getName m) { fsPath = Maybe.withDefault "CORE" << umrToFileName m.umr, content = m.asText }) modules Dict.empty
         }
 
-    x >> onResSuccess eenv fn expanded:
+
+    log "Solving globals..." ""
+    x =
+        as Res CA.Globals
+        Compiler/Pipeline.globalExpandedTypes (List.indexBy (fn m: m.umr) modules)
+
+    x >> onResSuccess eenv fn globals:
+
+    getTargetUsr meta entryModule entryValue globals >> onResSuccess eenv fn targetUsr:
 
     log "Type checking..." ""
+
     typeCheckModules =
         modules
-            >> List.map typeCheckModule
+            >> List.map (fn m: typeCheckModule meta globals m >> resToIo eenv)
             >> IO.parallel
 
-    typeCheckModules >> IO.onSuccess fn errorsAndEnvs:
+    typeCheckModules >> IO.onSuccess fn typeCheckEnvs:
 
-    # TODO emit js
+    log "Creating JS AST..." ""
+    jaStatements =
+        Compiler/CanonicalToJs.translateAll eenv globals modules
 
-    IO.succeed None
+    log "Emitting JS..." ""
+
+    callMain =
+        """
+
+        const out = """ .. Compiler/CanonicalToJs.translateUsr targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
+        if (out[1]) console.error(out[1]);
+        """
+
+    statements =
+        jaStatements
+            >> List.map (Compiler/JsToText.emitStatement 0)
+            >> Text.join "\n\n"
+
+    js =
+        Compiler/CanonicalToJs.nativeDefinitions .. statements .. callMain
+
+    IO.writeFile outputFile js
 
 
 
@@ -342,8 +419,14 @@ main env args =
                 >> Text.join "\n"
                 >> IO.writeStdout
 
-        [ self, entryModule, entryFunction, outputFile ]:
-            compile env (entryModule & entryFunction) outputFile
+        [ self, testFile ]:
+            umr = Meta.UMR (Meta.SourceDir "") testFile
+
+            loadModule Compiler/TestHelpers.defaultMeta umr testFile >> IO.onSuccess fn caModule:
+            IO.succeed None
+
+        [ self, entryModule, entryValue, outputFile ]:
+            compile env entryModule entryValue outputFile
 
         _:
             """

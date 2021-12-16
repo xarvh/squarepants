@@ -10,6 +10,20 @@ Everyone can write their own Platform, but, unlike libraries, not everyone can p
 Ideally there would be only a handful of published Platforms, each addressing a different niche use.
 
 
+Interface
+=========
+
+Each platform:
+
+* Provides a function that takes a list of definitions, in initialization order and produces... A string?
+
+* Can override the implementation of any function/value and in fact implements all native function/values.
+
+* Provides modules that can be used by the code (these modules are the only ones that can use Platform.native?)
+
+* Provides a default modules.sp?
+
+
 Publishing New Platforms
 ========================
 

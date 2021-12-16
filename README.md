@@ -8,7 +8,7 @@ Language Overview
 -----------------
 
     [#
-       SquarePants has no module header or import statements: instead, project-wide imports are
+       Squarepants has no module header or import statements: instead, project-wide imports are
        declared in `modules.sp` file.
 
        This keeps module aliases consistent across the app and allows a few tricks, such as

@@ -15,11 +15,10 @@ union OpenOrClosed =
 
 
 union Kind =
-    # Structure
-    , NewSiblingLine
+    # Block
+    , NewSiblingLine # TODO this divides statements within a block, find a better name for it
     , BlockStart
     , BlockEnd
-    , BadIndent
     # Comment
     , Comment
     # Terms

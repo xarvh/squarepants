@@ -33,12 +33,6 @@ defToType def =
     CA.TypeConstant p def.usr
 
 
-usrToVariable u =
-    as Meta.UniqueSymbolReference: CA.Expression
-
-    CA.Variable p { attrPath = [], ref = CA.RefRoot u }
-
-
 #
 # Text
 #
@@ -50,6 +44,7 @@ textDef =
     , usr = makeUsr "Text"
     , args = []
     , constructors = Dict.empty
+    , directTypeDeps = Set.empty
     }
 
 
@@ -68,6 +63,7 @@ numberDef =
     { usr = makeUsr "Number"
     , args = []
     , constructors = Dict.empty
+    , directTypeDeps = Set.empty
     }
 
 
@@ -100,6 +96,7 @@ noneDef =
     { usr = makeUsr noneName
     , args = []
     , constructors = Dict.singleton noneName { pos = p, args = [], type = none }
+    , directTypeDeps = Set.empty
     }
 
 
@@ -131,6 +128,7 @@ boolDef =
         Dict.empty
             >> Dict.insert "True" { pos = p, args = [], type = bool }
             >> Dict.insert "False" { pos = p, args = [], type = bool }
+    , directTypeDeps = Set.empty
     }
 
 
@@ -175,6 +173,7 @@ listDef =
         Dict.empty
             >> Dict.insert "Nil" { pos = p, args = [], type = list item }
             >> Dict.insert "Cons" consDef
+    , directTypeDeps = Set.empty
     }
 
 

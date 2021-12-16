@@ -68,7 +68,7 @@ union Expression =
     , Mutable Pos Name [Name]
     , PrefixBinop Pos Text
     , RecordShorthand Pos [Name]
-    , Lambda Pos Pattern [Statement]
+    , Lambda Pos Pattern Bool [Statement]
     , FunctionCall Pos Expression [Expression]
     , Binop Pos Op.Precedence (SepList Op.Binop Expression)
     , Unop Pos Op.Unop Expression
@@ -87,6 +87,7 @@ union Expression =
     , List Pos [Expression]
 
 union Pattern =
+    # TODO: remove the Bool from the pattern, it can never be mutable
     , PatternAny Pos Bool Name (Maybe Type)
     , PatternLiteralNumber Pos Text
     , PatternLiteralText Pos Text
@@ -139,7 +140,7 @@ expressionPos expr =
        Constructor p _ _: p
        Mutable p _ _: p
        PrefixBinop p _: p
-       Lambda p _ _: p
+       Lambda p _ _ _: p
        FunctionCall p _ _: p
        Binop p _ _: p
        Unop p _ _: p

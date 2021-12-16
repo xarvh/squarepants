@@ -177,14 +177,27 @@ values =
 parens =
     as Test
     Test.Group "Parens"
-        [ codeTest
+        [
+        , codeTest
             """
-            Can exist on multiple lines
+            SKIP Can exist on multiple lines even when useless
             """
             """
             tests =
                 (Ok
                 )
+            """
+            firstDefinition
+            Test.isOk
+        , codeTest
+            """
+            Can exist on multiple lines
+            """
+            """
+            tests =
+                blah
+                    (Ok
+                    )
             """
             firstDefinition
             Test.isOk
@@ -211,9 +224,11 @@ lambdas =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
+                    False
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             ( FA.PatternAny p False "b" Nothing )
+                            False
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -230,9 +245,11 @@ lambdas =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
+                    False
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             ( FA.PatternAny p False "b" Nothing )
+                            False
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -249,9 +266,11 @@ lambdas =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
+                    False
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             (FA.PatternAny p False "b" Nothing)
+                            False
                             [ FA.Evaluation p << FA.LiteralNumber p "3"
                             ]
                     ]

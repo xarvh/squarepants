@@ -35,6 +35,7 @@ union UniqueModuleReference =
     UMR Source ModulePath
 
 
+# TODO split type/constructor/value, rename to something less cryptic and make global
 union UniqueSymbolReference =
     USR UniqueModuleReference Name
 

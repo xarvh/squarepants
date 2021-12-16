@@ -24,15 +24,38 @@ union TabsOrSpaces =
     , Spaces
 
 
+alias Indent = {
+#    , pos as Int
+#    , line as Int
+    , indent as Int
+    , isBlock as Bool
+    }
+
+
 alias ReadState =
     {
     , buffer as Buffer
+
+    , column as Int
+    , line as Int
+    , lineIndent as Int
+
     , errors as [Error]
-    , indentStack as [Int]
-    , mode as Mode
+
+    # TODO get rid of this
     , moduleName as Text
-    , start as Int
+
+    # indent / block stuff
+    , soFarThereAreNoTokensInThisLine as Bool
+    , indentStack as [Indent]
+    , indentStartsABlock as Bool
+
+    # state machine
+    , mode as Mode
+    , tokenStart as Int
     , tabsOrSpaces as TabsOrSpaces
+
+    # accumulator
     , tokens as [Token]
     }
 
@@ -41,11 +64,20 @@ readStateInit moduleName moduleCode =
     as Text: Text: ReadState
 
     { buffer = Buffer.init moduleCode
+
+    , column = 0
+    , line = 0
+    , lineIndent = 0
+
     , errors = []
+
+    , soFarThereAreNoTokensInThisLine = True
     , indentStack = []
+    , indentStartsABlock = True
+
     , mode = Indent
-    , moduleName = moduleName
-    , start = 0
+    , moduleName
+    , tokenStart = 0
     , tabsOrSpaces = NoTabsOrSpacesYet
     , tokens = []
     }
@@ -64,10 +96,10 @@ addError message @state =
         getPos @state
 
     error =
-        Error.Simple (Pos.P state.moduleName state.start end) fn _: [ message ]
+        Error.Simple (Pos.P state.moduleName state.tokenStart end) fn _: [ message ]
 
     @state.errors := error :: state.errors
-    @state.start := end
+    @state.tokenStart := end
 
 
 setMode mode @state =
@@ -76,12 +108,86 @@ setMode mode @state =
     @state.mode := mode
 
 
-absAddToken =
+addIndentToken pos kind @state =
+    as Int: Token.Kind: ReadState@: None
+    @state.tokens := Token pos pos kind :: state.tokens
+
+
+updateIndent start end kind @state =
     as Int: Int: Token.Kind: ReadState@: None
 
+    #log "UPD" state.indentStack
+
+    manageIndent head =
+        #log "MAN" { li = state.lineIndent, he = head.indent }
+        if state.lineIndent > head.indent:
+
+            newIndent = {
+                , isBlock = state.indentStartsABlock
+                , indent = state.lineIndent
+                }
+
+            #log "NEW" newIndent
+
+            @state.indentStack := newIndent :: state.indentStack
+
+            if state.indentStartsABlock:
+                addIndentToken start Token.BlockStart @state
+            else
+                None
+
+        else
+            # this means that state.lineIndent == head.indent
+            if head.isBlock and kind /= Token.Comment:
+                addIndentToken start Token.NewSiblingLine @state
+            else
+                None
+
+
+    try state.indentStack as
+        head :: tail:
+            if state.lineIndent < head.indent:
+                @state.indentStack := tail
+                if head.isBlock:
+                    addIndentToken start Token.BlockEnd @state
+                else
+                    None
+
+                updateIndent start end kind @state
+            else
+                manageIndent head
+
+        []:
+            manageIndent { indent = 0, isBlock = True }
+
+
+# TODO Rename to addContentToken
+absAddToken =
+    as Int: Int: Token.Kind: ReadState@: None
     fn start end kind @state:
+
+        #log "ADD" { kind, col = state.column, li = state.lineIndent }
+        if state.soFarThereAreNoTokensInThisLine:
+            @state.soFarThereAreNoTokensInThisLine := False
+            updateIndent start end kind @state
+        else
+            None
+
+        indentStartsABlock =
+            try kind as
+                # maybe start block after these
+                Token.Then: True
+                Token.Else: True
+                Token.As: True
+                Token.Colon: True
+                Token.MutableColon: True
+                Token.Defop _: True
+                Token.Comment: state.indentStartsABlock
+                _: False
+
+        @state.indentStartsABlock := indentStartsABlock
         @state.tokens := Token start end kind :: state.tokens
-        @state.start := end
+        @state.tokenStart := end
 
 
 relAddToken =
@@ -101,9 +207,9 @@ addOneIndentToken =
 getChunk =
     as ReadState@: Int & Int & Text
     fn @state:
-        start = state.start
+        start = state.tokenStart
         end = getPos @state
-        start & end & Buffer.slice state.start end state.buffer
+        start & end & Buffer.slice state.tokenStart end state.buffer
 
 
 unindent raw =
@@ -245,13 +351,13 @@ addLowerOrUpperWord start end modifier chunk @state =
 addWordToken modifier @state =
     as Token.NameModifier: ReadState@: None
 
-    start = state.start
+    start = state.tokenStart
 
     end = getPos @state
 
     ds = (if modifier == Token.NameNoModifier: 0 else 1)
 
-    chunk = Buffer.slice (state.start + ds) end state.buffer
+    chunk = Buffer.slice (state.tokenStart + ds) end state.buffer
 
     maybeKeywordKind =
         try chunk as
@@ -412,7 +518,7 @@ lexOne char @state =
                 setMode Dot @state
 
             "@":
-                @state.start := getPos @state
+                @state.tokenStart := getPos @state
                 setMode Mutable @state
 
             "#":
@@ -425,15 +531,16 @@ lexOne char @state =
                 setMode ContentOpeningQuotes_One @state
 
             "\n":
-                @state.start := getPos @state + 1
+                @state.tokenStart := getPos @state + 1
+                @state.soFarThereAreNoTokensInThisLine := True
                 setMode Indent @state
 
             " ":
-                @state.start := getPos @state + 1
+                @state.tokenStart := getPos @state + 1
 
             _:
+                @state.tokenStart := getPos @state
                 if isWordStart char:
-                    @state.start := getPos @state
                     setMode (Word Token.NameNoModifier) @state
 
                 else if isNumber char:
@@ -504,6 +611,7 @@ lexOne char @state =
                   addError "there's no closing quotes" @state
 
           else:
+                @state.tokenStart := getPos @state - 1
                 setMode (SingleQuote { lastEscape = -1 }) @state
                 lexOne char @state
 
@@ -529,7 +637,7 @@ lexOne char @state =
           else
             try char as
               "\"":
-                  start = state.start
+                  start = state.tokenStart
                   end = pos + 1
 
                   value =
@@ -571,7 +679,7 @@ lexOne char @state =
                "\"":
                   if closingQuotes == 2:
                     # TODO maybe move away the finalization code from here?
-                    start = state.start
+                    start = state.tokenStart
                     end = pos + 1
 
                     value =
@@ -592,7 +700,7 @@ lexOne char @state =
 
         LineComment:
           if char == "\n" or char == "":
-                  absAddToken state.start (getPos @state) Token.Comment @state
+                  absAddToken state.tokenStart (getPos @state) Token.Comment @state
                   setMode Default @state
                   lexOne char @state
           else
@@ -619,7 +727,7 @@ lexOne char @state =
                 if nesting > 1:
                   continueWithDeltaNesting (0 - 1)
                 else
-                      absAddToken state.start (getPos @state) Token.Comment @state
+                      absAddToken state.tokenStart (getPos @state) Token.Comment @state
                       setMode Default @state
 
             _ & "":
@@ -640,109 +748,16 @@ tryIndent indentChar char @state =
             >> addError "mixing tabs and spaces!"
 
     else if char == "\n":
-        # line as empty, ignore
-        @state.start := getPos @state + 1
+        # line is empty, ignore
+        @state.tokenStart := getPos @state + 1
         setMode Indent @state
 
+    else if char == "#":
+        setMode LineComment @state
     else
-            addIndentTokens @state
-            setMode Default @state
-            lexOne char @state
-
-
-addIndentTokens @state =
-    as ReadState@: None
-
-    start =
-        state.start
-
-    end =
-        getPos @state
-
-    indentLength =
-        end - start
-
-    lastIndent =
-        state.indentStack
-            >> List.head
-            >> Maybe.withDefault 0
-
-    if indentLength == lastIndent:
-        [#
-           ```
-           lastIndent
-           newIndent
-           ```
-        #]
-        @state
-            >> absAddToken start end Token.NewSiblingLine
-
-    else if indentLength > lastIndent:
-        [#
-           ```
-           lastIndent
-             newIndent
-           ```
-        #]
-        @state.indentStack := indentLength :: state.indentStack
-        absAddToken start end Token.BlockStart @state
-    else
-        [#
-           Back one or more indents:
-           ```
-           indent
-               indent
-                   lastIndent
-               newIndent
-           ```
-        #]
-        dropIndentStack indentLength @state
-
-
-dropIndentStack indentLength @state =
-    as Int: ReadState@: None
-
-    lastIndent & rest =
-        try state.indentStack as
-            []: 0 & []
-            head :: tail: head & tail
-
-    if indentLength > lastIndent:
-        [#
-           This as a bad indent, but we can probably parse it anyway, so that spfmt can fix it
-           ```
-           indent
-               lastIndent
-                   indentDroppedByParentRecursion
-                 newIndent
-           ```
-        #]
-        @state.indentStack := indentLength :: state.indentStack
-        addOneIndentToken Token.BadIndent @state
-
-    else if indentLength == lastIndent:
-        [#
-           ```
-           indent
-               lastIndent
-                   indentDroppedByParentRecursion
-               newIndent
-           ```
-        #]
-        @state
-            >> addOneIndentToken Token.NewSiblingLine
-    else
-        [#
-           ```
-           indent
-            ...
-                 last
-               newIndent
-           ```
-        #]
-        @state.indentStack := rest
-        addOneIndentToken Token.BlockEnd @state
-        dropIndentStack indentLength @state
+        @state.lineIndent := state.column
+        setMode Default @state
+        lexOne char @state
 
 
 closeOpenBlocks @state =
@@ -761,7 +776,15 @@ lexer moduleName moduleCode =
 
     Text.forEach moduleCode fn char:
         lexOne char @state
+
         @state.buffer.nextPos += 1
+
+        if char == "\n":
+            @state.line += 1
+            @state.column := 0
+        else
+            @state.column += 1
+
 
     lexOne "" @state
 

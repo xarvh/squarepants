@@ -370,7 +370,7 @@ join t1 t2 =
 
 
 intersect t1 t2 =
-  as Dict key v: Dict key v: Dict key v
+  as Dict key v: Dict key v2: Dict key v
   with key NonFunction
   filter (fn k _: member k t2) t1
 
@@ -443,6 +443,11 @@ mapRes func dict =
         mapRes func left >> onOk fn two:
         mapRes func right >> onOk fn three:
         Ok << RBNode_elm_builtin color key one two three
+
+
+for dict fun init =
+    as Dict key a: (key: a: b: b): b: b
+    foldl fun dict init
 
 
 foldl func dict acc =

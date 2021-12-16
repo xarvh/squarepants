@@ -1788,7 +1788,7 @@ errorIncompatibleTypes env reason pos_whatever unifiedType clashes =
                         List.foldl Pos.range t h
 
             makeError eenv =
-                [ "This try..as block produces a different type than the blocks precedeng it."
+                [ "This try..as block produces a different type than the blocks preceding it."
                 , ""
                 , clashToTexts env
                     { typeSeemsToBe = "The block type seems to be"

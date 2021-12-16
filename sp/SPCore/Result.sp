@@ -44,3 +44,11 @@ fromMaybe err maybe =
         Nothing: Err err
         Just a: Ok a
 
+
+withDefault default result =
+    as a: Result e a: a
+
+    try result as
+        Ok a: a
+        Err _: default
+

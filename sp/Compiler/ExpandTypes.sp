@@ -288,7 +288,7 @@ expandAllTypes allTypes =
 
 
     orderedAliasesResult =
-        RefHierarchy.reorder (fn a: a.usr) (fn al: referencedAliases allAliases al.type) allAliases
+        RefHierarchy.reorder (fn al: referencedAliases allAliases al.type) allAliases
 
     try orderedAliasesResult as
         Err circular:

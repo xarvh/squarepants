@@ -82,7 +82,9 @@ maybeForeignUsr getter ro maybeModule name =
                     # TODO should this produce an error instead?
                     # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
                     #CA.RefRoot (Meta.USR Meta.SourcePlaceholder moduleName name)
-                    Debug.todo "resolveToUsr can't find the module?"
+#                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) fn x:
+#                        log "*" x
+                    Debug.todo << "resolveToUsr can't find the module: " .. moduleName
 
         Nothing:
             Dict.get name (getter ro.meta)
@@ -120,9 +122,121 @@ resolveToConstructorUsr =
     resolveToUsr (fn m: m.globalValues)
 
 
+#
+# Dependencies
+#
 
-##
-#- Definition
+
+typeDeps type acc =
+    as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolReference
+    try type as
+        CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.foldl typeDeps args
+        CA.TypeVariable _ _: acc
+        CA.TypeFunction _ from _ to: acc >> typeDeps from >> typeDeps to
+        CA.TypeRecord _ _ attrs: Dict.foldl (fn k: typeDeps) attrs acc
+        CA.TypeAlias _ _ _: todo "typeDeps: Should not happen"
+
+
+alias Deps = {
+    , types as Set Meta.UniqueSymbolReference
+    , cons as Set Meta.UniqueSymbolReference
+    , values as Set Meta.UniqueSymbolReference
+    }
+
+
+deps_init = {
+    , types = Set.empty
+    , cons = Set.empty
+    , values = Set.empty
+    }
+
+
+
+bodyDeps =
+    as [CA.Statement]: Deps: Deps
+    List.foldl statementDeps
+
+
+patternDeps pattern deps =
+    as CA.Pattern: Deps: Deps
+    try pattern as
+        CA.PatternConstructor _ usr ps: List.foldl patternDeps ps { deps with cons = Set.insert usr .cons }
+        CA.PatternRecord _ ps: Dict.foldl (fn k: patternDeps) ps deps
+        CA.PatternAny _ _ (Just type): { deps with types = typeDeps type .types }
+        CA.PatternAny _ _ Nothing: deps
+        CA.PatternLiteralNumber _ _: deps
+        CA.PatternLiteralText _ _: deps
+
+
+statementDeps s deps =
+    as CA.Statement: Deps: Deps
+    try s as
+        CA.Definition def: deps >> patternDeps def.pattern >> bodyDeps def.body
+        CA.Evaluation expr: expressionDeps expr deps
+
+
+expressionDeps expr deps =
+    as CA.Expression: Deps: Deps
+    try expr as
+        CA.LiteralNumber _ _:
+            deps
+
+        CA.LiteralText _ _:
+            deps
+
+        CA.Variable _ { ref = CA.RefRoot usr }:
+            { deps with values = Set.insert usr .values }
+
+        CA.Variable _ _:
+            deps
+
+        CA.Constructor _ usr:
+            { deps with cons = Set.insert usr .cons }
+
+        CA.Lambda _ (CA.ParameterPattern pa) body:
+            deps
+                >> patternDeps pa
+                >> bodyDeps body
+
+        CA.Lambda _ (CA.ParameterMutable _ _) body:
+            deps
+                >> bodyDeps body
+
+        CA.Record _ Nothing exprByName:
+            deps
+                >> Dict.foldl (fn name: expressionDeps) exprByName
+
+        CA.Record _ (Just { ref = CA.RefRoot usr }) exprByName:
+            { deps with values = Set.insert usr .values }
+                >> Dict.foldl (fn name: expressionDeps) exprByName
+
+        CA.Record _ _ exprByName:
+            deps
+                >> Dict.foldl (fn name: expressionDeps) exprByName
+
+        CA.Call _ e0 (CA.ArgumentExpression e1):
+            deps
+                >> expressionDeps e0
+                >> expressionDeps e1
+
+        CA.Call _ e0 (CA.ArgumentMutable _ _):
+            deps
+                >> expressionDeps e0
+
+        CA.If _ args:
+            deps
+                >> bodyDeps args.condition
+                >> bodyDeps args.true
+                >> bodyDeps args.false
+
+        CA.Try _ e patternsAndBodies:
+            deps
+                >> expressionDeps e
+                >> List.foldl (fn (p & b) d: d >> patternDeps p >> bodyDeps b) patternsAndBodies
+
+
+#
+# Definition
 #
 
 
@@ -187,6 +301,13 @@ translateDefinition isRoot env fa =
     List.foldlRes updNonFn fa.nonFn Dict.empty >> onOk fn nonFn:
 
     translateStatementBlock localEnv0 fa.body >> onOk fn body:
+
+    deps =
+        if isRoot:
+            deps_init >> patternDeps pattern >> bodyDeps body
+        else
+            deps_init
+
     Ok
         { pattern
         , native = False
@@ -194,6 +315,10 @@ translateDefinition isRoot env fa =
         , parentDefinitions = env.defsPath
         , nonFn
         , body
+        #
+        , directTypeDeps = deps.types
+        , directConsDeps = deps.cons
+        , directValueDeps = deps.values
         }
 
 
@@ -297,17 +422,17 @@ translatePattern ann env fa =
                     makeError pos [ "tuples can be only of size 2 or 3" ]
 
 
-translateParameter ann env faParam =
-    as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Parameter
-    try faParam as
-        FA.PatternAny pos True name Nothing:
+translateParameter env mutable faParam =
+    as Env: Bool: FA.Pattern: Res CA.Parameter
+    try faParam & mutable as
+        FA.PatternAny pos False name Nothing & True:
             Ok << CA.ParameterMutable pos name
 
-        FA.PatternAny pos True name _:
+        FA.PatternAny pos True name _ & _:
             makeError pos [ "Can't annotate this. =(", "TODO link to rationale for forbidding annotations" ]
 
         _:
-            translatePattern ann env faParam >> onOk fn caPattern:
+            translatePattern Nothing env faParam >> onOk fn caPattern:
             Ok << CA.ParameterPattern caPattern
 
 
@@ -420,8 +545,8 @@ translateExpression env faExpr =
                     # Is this a good idea?
                     Ok << CA.Variable pos { shorthandTarget with attrPath = List.concat [ .attrPath, attrPath ] }
 
-        FA.Lambda pos faParam faBody:
-            translateParameter Nothing env faParam >> onOk fn caParam:
+        FA.Lambda pos faParam mutable faBody:
+            translateParameter env mutable faParam >> onOk fn caParam:
             localEnv =
                 { env with nonRootValues = insertParamNames caParam .nonRootValues }
             translateStatementBlock localEnv faBody >> onOk fn caBody:
@@ -471,13 +596,13 @@ translateExpression env faExpr =
             cons item list =
                 CA.Call pos
                     (CA.Call pos
-                        (CoreTypes.usrToVariable CoreTypes.cons)
+                        (CA.Constructor pos CoreTypes.cons)
                         (CA.ArgumentExpression item)
                     )
                     (CA.ArgumentExpression list)
 
             List.mapRes (translateExpression env) faItems >> onOk fn es:
-            Ok << List.foldr cons es (CoreTypes.usrToVariable CoreTypes.nil)
+            Ok << List.foldr cons es (CA.Constructor pos CoreTypes.nil)
 
         FA.Try pos fa:
             translatePatternAndStatements ( faPattern & faStatements ) =
@@ -901,6 +1026,7 @@ insertRootStatement ro faStatement caModule =
                     , usr = Meta.USR ro.currentModule (Pos.drop fa.name)
                     , args = fa.args
                     , type
+                    , directTypeDeps = typeDeps type Set.empty
                     }
 
                 Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
@@ -926,6 +1052,8 @@ insertRootStatement ro faStatement caModule =
                     , usr
                     , args = fa.args
                     , constructors
+                    # I could probably break the deps by constructor, but would it be much useful in practice?
+                    , directTypeDeps = Dict.foldl (fn k c: List.foldl typeDeps c.args) constructors Set.empty
                     }
 
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }

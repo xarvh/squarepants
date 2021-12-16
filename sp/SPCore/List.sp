@@ -67,6 +67,11 @@ indexBy getIndex list =
     List.foldl (fn i: Dict.insert (getIndex i) i) list Dict.empty
 
 
+for list fun init =
+    as [item]: (item: state: state): state: state
+    foldl fun list init
+
+
 foldl function aList init =
     as (item: state: state): [item]: state: state
 
@@ -168,8 +173,10 @@ range low high =
         as [Int]: Int: [Int]
         if up > low:
             rec (up :: accum) (up - 1)
-        else:
+        else if up == low:
             up :: accum
+        else
+            accum
 
     rec [] high
 

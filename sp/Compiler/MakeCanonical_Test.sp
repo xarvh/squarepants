@@ -18,6 +18,12 @@ firstDefinition code =
         >> Compiler/TestHelpers.resErrorToStrippedText code
         >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail")
 
+firstDefinitionStripDeps code =
+    as Text: Result Text CA.ValueDef
+    code
+        >> firstDefinition
+        >> Result.map (fn v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty })
+
 
 firstEvaluation name code =
     as Text: Text: Result Text CA.Expression
@@ -210,7 +216,7 @@ lists =
             l as [ Bool ] =
               l
             """
-            firstDefinition
+            firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                 { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }) ]
                 , native = False
@@ -224,6 +230,10 @@ lists =
                         )
                 , nonFn = Dict.empty
                 , parentDefinitions = []
+
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
                 }
             )
         ]
@@ -277,7 +287,7 @@ tuples =
             a as Number & Number =
               a
             """
-            firstDefinition
+            firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                 { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }) ]
                 , pattern =
@@ -293,6 +303,9 @@ tuples =
                 , mutable = False
                 , nonFn = Dict.empty
                 , parentDefinitions = []
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
                 }
             )
         , hasError

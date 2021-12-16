@@ -137,8 +137,8 @@ resolve getEdges target state0 =
                     }
 
 
-reorder getId nodeToEdges nodesById =
-    as (node: key): (node: Set key): Dict key node: Result [key] [node]
+reorder nodeToEdges nodesById =
+    as (node: Set key): Dict key node: Result [key] [node]
     with key NonFunction
 
     keyToEdges id =

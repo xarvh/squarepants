@@ -46,7 +46,7 @@ makeError moduleName readState message =
     p =
         try readState as
             []: Pos.P moduleName 0 1
-            Token start end k :: rest: Pos.End moduleName
+            Token start end k :: rest: Pos.P moduleName start end
 
     Error.res p (fn eenv: [ message ])
 
@@ -106,15 +106,20 @@ module_ env =
     as Env: Parser [FA.Statement]
 
     start =
+        Parser.maybe (kind Token.NewSiblingLine)
+
+
+    e =
         Parser.oneOf
-            [ kind Token.BlockStart
+            [ kind Token.BlockEnd
             , kind Token.NewSiblingLine
             ]
 
     # This is called `zzz` rather than `end` because apparently there is some really
     # bad problems with sorting that result in this (?) being declared before Parser.end?
     zzz =
-        Parser.zeroOrMore (kind Token.NewSiblingLine) >> then fn _: Parser.end
+        Parser.zeroOrMore e >> then fn _:
+        Parser.end
 
     statements =
         oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
@@ -392,37 +397,149 @@ unionConstructor env =
 # Term
 #
 
-term env =
+#term env =
+#    as Env: Parser FA.Expression
+#
+#    oneToken >> then fn (Token start end k):
+#
+#    p =
+#        pos env start end
+#
+#    try k as
+#        Token.NumberLiteral s:
+#            Parser.accept << FA.LiteralNumber p s
+#
+#        Token.TextLiteral s:
+#            Parser.accept << FA.LiteralText p s
+#
+#        Token.UpperName maybeModule name:
+#            Parser.accept << FA.Constructor p maybeModule name
+#
+#        Token.LowerName modifier maybeModule name attrs:
+#            try modifier as
+#                Token.NameNoModifier:
+#                    # This is a HACK and probably the world would be a better place if I cleaned this up
+#                    # TODO clean this up once I have a better way to debug the parser
+#                    Parser.maybe lambdaColon >> then fn maybeColon:
+#                        try maybeColon as
+#                            Nothing:
+#                                Parser.accept << FA.Variable p maybeModule name attrs
+#
+#                            Just mutable:
+#                                lambdaBody env >> then fn b:
+#                                Parser.accept << FA.Lambda p (FA.PatternAny p False name Nothing) mutable b
+#
+#                Token.NameMutable:
+#                    Parser.accept << FA.Mutable p name attrs
+#
+#                Token.NameStartsWithDot:
+#                    Parser.accept << FA.RecordShorthand p (name :: attrs)
+#
+#        _:
+#            Parser.reject
+
+
+
+exprWithLeftDelimiter env =
     as Env: Parser FA.Expression
+
+    colon =
+        Parser.oneOf
+            [ kind Token.Colon >> Parser.map fn _: False
+            , kind Token.MutableColon >> Parser.map fn _: True
+            ]
+
+    maybeColon =
+        Parser.maybe colon
 
     oneToken >> then fn (Token start end k):
 
-    p =
-        pos env start end
+        p =
+            pos env start end
 
-    try k as
-        Token.NumberLiteral s:
-            Parser.accept << FA.LiteralNumber p s
+        try k as
+            Token.NumberLiteral s:
+                maybeColon >> then fn mc:
+                    try mc as
+                        Nothing: Parser.accept << FA.LiteralNumber p s
+                        Just mutable: lambdaParser env mutable (FA.PatternLiteralNumber p s)
 
-        Token.TextLiteral s:
-            Parser.accept << FA.LiteralText p s
 
-        Token.UpperName maybeModule name:
-            Parser.accept << FA.Constructor p maybeModule name
+            Token.TextLiteral s:
+                maybeColon >> then fn mc:
+                    try mc as
+                        Nothing: Parser.accept << FA.LiteralText p s
+                        Just mutable: lambdaParser env mutable (FA.PatternLiteralText p s)
 
-        Token.LowerName modifier maybeModule name attrs:
-            try modifier as
-                Token.NameNoModifier:
-                    Parser.accept << FA.Variable p maybeModule name attrs
+            Token.LowerName modifier maybeModule name attrs:
+                try modifier as
+                    Token.NameMutable:
+                        Parser.accept << FA.Mutable p name attrs
 
-                Token.NameMutable:
-                    Parser.accept << FA.Mutable p name attrs
+                    Token.NameStartsWithDot:
+                        Parser.accept << FA.RecordShorthand p (name :: attrs)
 
-                Token.NameStartsWithDot:
-                    Parser.accept << FA.RecordShorthand p (name :: attrs)
+                    Token.NameNoModifier:
+                        maybeColon >> then fn mc:
+                            try mc as
+                                Nothing: Parser.accept << FA.Variable p maybeModule name attrs
+                                # TODO also test that maybeModule == Nothing and attrs == []
+                                Just mutable: lambdaParser env mutable (FA.PatternAny p False name Nothing)
 
-        _:
-            Parser.reject
+            Token.UpperName maybeModule name:
+                maybeColon >> then fn mc:
+                    try mc as
+                        Nothing: Parser.accept << FA.Constructor p maybeModule name
+                        Just mutable: lambdaParser env mutable (FA.PatternConstructor p maybeModule name [])
+
+            Token.RoundParen Token.Open:
+                paParser =
+                    pattern env >> then fn pa:
+                    kind (Token.RoundParen Token.Closed) >> then fn _:
+                    colon >> then fn mutable:
+                    lambdaParser env mutable pa
+
+                exprParser =
+                    discardSecond
+                        (expr env)
+                        (kind (Token.RoundParen Token.Closed))
+
+                inlineOrBelowOrIndented << Parser.oneOf [ paParser, exprParser ]
+
+#            Token.SquareBracket Token.Open:
+#                paParser =
+#                    rawList (pattern env) >> then fn pas:
+#                    kind (Token.SquareBracket Token.Closed) >> then fn _:
+#                    colon >> then fn mutable:
+#                    lambdaParser env mutable (FA.PatternList p pas)
+#
+#                exprParser =
+#                    rawList (expr env) >> then fn exps:
+#                    kind (Token.SquareBracket Token.Closed) >> then fn _:
+#                    Parser.accept << FA.List p exps
+#
+#                Parser.oneOf [ paParser, exprParser ]
+
+#            Token.CurlyBrace Token.Open
+#                attrs, close brace, lambdaOrAppl
+
+            _:
+                Parser.reject
+
+#            Token.If
+#                expr, then, body, else, body
+#            Token.Try
+#                expr, as, pasAndBodies
+
+
+lambdaParser env mutable pa =
+    as Env: Bool: FA.Pattern: Parser FA.Expression
+
+    lambdaBody env >> then fn body:
+    Parser.accept << FA.Lambda (FA.patternPos pa) pa mutable body
+
+
+
 
 
 
@@ -440,41 +557,37 @@ expr env =
     nest =
         Parser.breakCircularDefinition fn _: expr env
 
-    Parser.oneOf
-        # I'm not sure putting the lambda here is a good idea, but I guess I'll find out when something bad happens...
-        # TODO the first lambda should just test the case of `term + colon + body`, not every possible pattern
-        [ lambda env
-        , Parser.expression
-            (term env)
-            # the `Or` stands for `Or higher priority parser`
-            [
-            , higherOr << parens (Parser.oneOf [ binopInsideParens env, nest ])
-            , higherOr << list env FA.List nest
-            , higherOr << record env (Token.Defop { mutable = False }) FA.Record nest
-            #, higherOr << lambda env
-            , unopsOr env
-            , functionApplicationOr env
-            , binopsOr env Op.Exponential
-            , binopsOr env Op.Multiplicative
-            , binopsOr env Op.Addittive
+    Parser.expression
+        (exprWithLeftDelimiter env)
+        # the `Or` stands for `Or higher priority parser`
+        [
+#        , higherOr << parens (Parser.oneOf [ binopInsideParens env, nest ])
+        , higherOr << list env FA.List nest
+        , higherOr << record env (Token.Defop { mutable = False }) FA.Record nest
+#        , higherOr << lambda env
+        , unopsOr env
+        , functionApplicationOr env
+        , binopsOr env Op.Exponential
+        , binopsOr env Op.Multiplicative
+        , binopsOr env Op.Addittive
 
-            # Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
-            , binopsOr env Op.Comparison
-            , binopsOr env Op.Logical
+        # Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
+        , binopsOr env Op.Comparison
+        , binopsOr env Op.Logical
 
-            # Tuples are chained (ie, `a & b & c` makes a tuple3)
-            , binopsOr env Op.Tuple
+        # Tuples are chained (ie, `a & b & c` makes a tuple3)
+        , binopsOr env Op.Tuple
 
-            #
-            , binopsOr env Op.Cons
+        #
+        , binopsOr env Op.Cons
 
-            # TODO pipes can't actually be mixed
-            , binopsOr env Op.Pipe
-            , binopsOr env Op.Mutop
-            , higherOr << if_ env
-            , higherOr << try_ env
-            ]
+        # TODO pipes can't actually be mixed
+        , binopsOr env Op.Pipe
+        , binopsOr env Op.Mutop
+        , higherOr << if_ env
+        , higherOr << try_ env
         ]
+
 
 
 
@@ -817,6 +930,7 @@ typeFunctionOr env higher =
 
 arrow env =
     as Env: Parser ( Bool & Pos )
+
     oneToken >> then fn (Token start end k):
     try k as
         Token.Colon:
@@ -831,6 +945,7 @@ arrow env =
 
 typeConstructorAppOr env higher =
     as Env: Parser FA.Type: Parser FA.Type
+
     higher >> then fn ty:
     try ty as
         FA.TypeConstant p1 maybeModule name []:
@@ -850,37 +965,46 @@ typeConstructorAppOr env higher =
 # Lambda
 #
 
+#lambdaColon =
+#    as Parser Bool
+#
+#    Parser.oneOf
+#        [ kind Token.Colon >> then fn _: Parser.accept False
+#        , kind Token.MutableColon >> then fn _: Parser.accept True
+#        ]
 
-lambda env =
-    as Env: Parser FA.Expression
 
-    body =
-        as Parser [FA.Statement]
-        Parser.oneOf
-            [ [#
-                 x:
-                 a
-                 b
-                 c
-              #]
-            , Parser.oneOrMore (sib (statement env)) >> then fn (h & t):
-              Parser.accept << h :: t
-              [#
-                 x: a
 
-                 x:
-                   a
 
-              #]
-            , inlineStatementOrBlock env
-            ]
+lambdaBody env =
+    as Env: Parser [FA.Statement]
+    Parser.oneOf
+        [ [#
+             x:
+             a
+             b
+             c
+          #]
+        , Parser.oneOrMore (sib (statement env)) >> then fn (h & t):
+          Parser.accept << h :: t
+          [#
+             x: a
 
-    Parser.here >> then fn h:
-    pattern env >> then fn param:
-    kind Token.Colon >> then fn _:
-    body >> then fn b:
-    # TODO do we even need the pos at this point?
-    Parser.accept << FA.Lambda (FA.patternPos param) param b
+             x:
+               a
+
+          #]
+        , inlineStatementOrBlock env
+        ]
+
+
+#lambda env =
+#    as Env: Parser FA.Expression
+#
+#    pattern env >> then fn param:
+#    lambdaColon >> then fn mutable:
+#    lambdaBody env >> then fn b:
+#    Parser.accept << FA.Lambda (FA.patternPos param) param mutable b
 
 
 #

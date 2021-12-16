@@ -37,6 +37,10 @@ sourceDir =
        importAs = FA
 
     module =
+       path = Types/JavascriptAst
+       importAs = JA
+
+    module =
        path = Compiler/TestHelpers
        importAs = TH
 

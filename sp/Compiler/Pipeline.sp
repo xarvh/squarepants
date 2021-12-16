@@ -38,6 +38,9 @@ textToFormattableModule pars =
         as Res [Token]
         Compiler/Lexer.lexer pars.name pars.code
 
+#    List.each (Result.withDefault [] tokensResult) fn token:
+#        log "*" token
+
     tokensToStatsResult tokens =
         as [Token]: Res [FA.Statement]
         Compiler/Parser.parse pars.stripLocations pars.name tokens
@@ -151,16 +154,35 @@ coreVariables =
 
         Dict.insert ref iv
 
+    insertCoreFunction coreFn =
+        as Prelude.Function: CA.InstanceVariablesByRef: CA.InstanceVariablesByRef
+
+        ref =
+            as CA.Ref
+            CA.RefRoot << coreFn.usr
+
+        iv =
+            as CA.InstanceVariable
+            {
+            , definedAt = Pos.N
+            , ty = coreFn.type
+            , freeTypeVariables = CA.getFreeTypeVars Dict.empty (Set.fromList coreFn.nonFn) coreFn.type
+            , isMutable = False
+            }
+
+        Dict.insert ref iv
+
     Dict.empty
         # TODO insert unops
         >> Dict.foldl insertBinop Prelude.binops
+        >> List.foldl insertCoreFunction Prelude.functions
 
 
 #
 # Alias expansion and basic type validation
 #
 globalExpandedTypes allModules =
-    as Dict Meta.UniqueModuleReference CA.Module: Res { types as CA.All CA.TypeDef, constructors as CA.All CA.Constructor, instanceVariables as CA.InstanceVariablesByRef }
+    as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals
 
     coreTypes
         # Collect types from all modules

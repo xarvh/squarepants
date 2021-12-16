@@ -104,11 +104,14 @@ union Expression =
 # Module
 #
 
+alias TypeDeps =
+    Set Meta.UniqueSymbolReference
 
 alias AliasDef = {
     , usr as Meta.UniqueSymbolReference
     , args as [At Name]
     , type as Type
+    , directTypeDeps as TypeDeps
     }
 
 
@@ -116,6 +119,7 @@ alias UnionDef = {
     , usr as Meta.UniqueSymbolReference
     , args as [Name]
     , constructors as Dict Name Constructor
+    , directTypeDeps as TypeDeps
     }
 
 
@@ -135,34 +139,33 @@ alias ValueDef = {
     , parentDefinitions as [Pattern]
     , nonFn as Set Name
     , body as [Statement]
+    #
+    , directTypeDeps as TypeDeps
+    , directConsDeps as Set Meta.UniqueSymbolReference
+    , directValueDeps as Set Meta.UniqueSymbolReference
     }
 
-
-alias Deps = {
-    , values as Dict Meta.UniqueSymbolReference None
-    , types as Dict Meta.UniqueSymbolReference None
-    }
 
 alias Annotation = {
     , type as Type
     , nonFn as Dict Name None
     }
 
-alias RootValue = {
-    # valueDefsKey is used as a key to find the definition in valueDef
-    , valueDefsKey as Pattern
-    , maybeAnnotation as Maybe Annotation
-    }
+
+#alias RootValue = {
+#    # valueDefsKey is used as a key to find the definition in valueDef
+#    , valueDefsKey as Pattern
+#    , maybeAnnotation as Maybe Annotation
+#    }
 
 
 alias Module = {
     , umr as Meta.UniqueModuleReference
     , asText as Text
 
-    # TODO uncomment Deps (and maybe drop value dependencies for aliases and unions, since they don't use them?)
-    , aliasDefs as Dict Name ([#Deps &#] AliasDef)
-    , unionDefs as Dict Name ([#Deps &#] UnionDef)
-    , valueDefs as Dict Pattern ([#Deps &#] ValueDef)
+    , aliasDefs as Dict Name AliasDef
+    , unionDefs as Dict Name UnionDef
+    , valueDefs as Dict Pattern ValueDef
     }
 
 
@@ -313,4 +316,16 @@ typeTyvars ty =
                         Dict.singleton name pos
 
             Dict.foldl (fn n t: Dict.join (typeTyvars t)) attrs init
+
+
+#
+# Stuff that should live in Pipeline?
+#
+
+
+alias Globals = {
+    , types as CA.All CA.TypeDef
+    , constructors as CA.All CA.Constructor
+    , instanceVariables as CA.InstanceVariablesByRef
+    }
 
