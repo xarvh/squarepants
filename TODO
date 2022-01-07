@@ -14,6 +14,10 @@
         >> List.map x: blah
         >> sblorp
 
+* lambdas can't unpack records?
+
+    { blah }: xxx
+
 * Remove Pattern from FormattableAST and just use Expression for everything?
     (This should simplify the parser and make it more accepting)
 

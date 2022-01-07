@@ -140,14 +140,10 @@ highlightSplit as Highlight: ( Dict Int ( Int & Int ) & Set Int ): ( Dict Int ( 
     words & lines = x
     try h as
         HighlightWord { line, colStart, colEnd }:
-            ( Dict.insert line ( colStart & colEnd ) words
-             & lines
-            )
+            ( Dict.insert line ( colStart & colEnd ) words & lines)
 
         HighlightBlock { lineStart, lineEnd }:
-            ( words
-             & (List.foldl Set.insert (List.range lineStart lineEnd) lines)
-            )
+            ( words & (List.foldl Set.insert (List.range lineStart lineEnd) lines))
 
 
 fmtBlock as Int: [Highlight]: [Text]: Text =
@@ -188,10 +184,12 @@ fmtBlock as Int: [Highlight]: [Text]: Text =
         index =
             i + start
 
-        (index
-            >> Text.fromNumber
-            >> Text.padLeft pad " "
-        )
+        s =
+            index
+                >> Text.fromNumber
+                >> Text.padLeft pad " "
+
+        s
             .. lineDem index
             .. line
             .. wordHighlight index
