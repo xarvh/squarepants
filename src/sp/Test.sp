@@ -105,7 +105,7 @@ errorContains as [Text]: CodeExpectation ok =
 
           Err e:
               missing =
-                  snippets >> List.filter sn: not_ (Text.contains sn e)
+                  snippets >> List.filter sn: not (Text.contains sn e)
               if missing == [] then
                   Nothing
               else:

@@ -80,7 +80,7 @@ concat as Test =
             """
             concats two lists
             """
-            _: List.concat [ [1, 2], [3, 4] ]
+            (_: List.concat [ [1, 2], [3, 4] ])
             (Test.isOkAndEqualTo [ 1, 2, 3, 4])
         ]
 

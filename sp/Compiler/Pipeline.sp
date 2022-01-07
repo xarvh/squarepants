@@ -136,6 +136,24 @@ expandAndInsertModuleAnnotations types module =
 coreVariables =
     as CA.InstanceVariablesByRef
 
+    insertUnop unop =
+        as Op.Unop: CA.InstanceVariablesByRef: CA.InstanceVariablesByRef
+
+        ref =
+            as CA.Ref
+            CA.RefRoot << Meta.spCoreUSR unop.symbol
+
+        iv =
+            as CA.InstanceVariable
+            {
+            , definedAt = Pos.N
+            , ty = unop.type
+            , freeTypeVariables = Dict.empty
+            , isMutable = False
+            }
+
+        Dict.insert ref iv
+
     insertBinop symbol binop =
         as Text: Op.Binop: CA.InstanceVariablesByRef: CA.InstanceVariablesByRef
 
@@ -173,7 +191,8 @@ coreVariables =
         Dict.insert ref iv
 
     Dict.empty
-        # TODO insert unops
+        >> insertUnop Prelude.unaryPlus
+        >> insertUnop Prelude.unaryMinus
         >> Dict.foldl insertBinop Prelude.binops
         >> List.foldl insertCoreFunction Prelude.functions
 

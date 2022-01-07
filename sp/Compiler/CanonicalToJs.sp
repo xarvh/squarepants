@@ -55,7 +55,7 @@ nativeUnops =
     Dict.empty
         >> Dict.insert Prelude.unaryPlus.symbol { jsSymb = "+" }
         >> Dict.insert Prelude.unaryMinus.symbol { jsSymb = "-" }
-        >> Dict.insert Prelude.not_.symbol { jsSymb = "!" }
+        #>> Dict.insert Prelude.not_.symbol { jsSymb = "!" }
 
 
 nativeBinops =

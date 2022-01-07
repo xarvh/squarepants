@@ -8,7 +8,7 @@ identity as a: a =
     a
 
 
-not_ as Bool: Bool =
+not as Bool: Bool =
     b:
     if b then False else True
 

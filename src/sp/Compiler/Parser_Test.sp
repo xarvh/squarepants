@@ -47,13 +47,18 @@ asEvaluation as FA.Statement: Result Text FA.Expression =
 firstStatement as Text: Result Text FA.Statement =
     code:
 
-    grabFirst = stats:
+    grabFirst =
+        stats:
         try stats as
             []: Err "Test says: no statements"
             head :: tail: Ok head
-    code
-        >> TH.textToFormattableModule
-        #>> Result.map (List.map (FA.posMap_statement _: p))
+
+    {
+    , stripLocations = True
+    , name = "Test"
+    , code
+    }
+        >> Compiler/Parser.textToFormattableModule
         >> TH.resErrorToStrippedText code
         >> onOk grabFirst
 

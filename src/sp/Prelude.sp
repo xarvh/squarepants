@@ -41,11 +41,6 @@ typeBinopUniform as CA.Type: CA.Type =
 #
 # Unops
 #
-not_ as Op.Unop = {
-    , symbol = "not"
-    , type = typeUnopUniform CoreTypes.bool
-    }
-
 unaryPlus as Op.Unop = {
     , symbol = "0 +"
     , type = typeUnopUniform CoreTypes.number
@@ -74,18 +69,18 @@ binops as Dict Text Op.Binop =
     , divide
     #
     , mutableAssign
-#    , mutableAdd
-#    , mutableSubtract
+    , mutableAdd
+    , mutableSubtract
     #
-#    , equal
-#    , notEqual
-#    , lesserThan
-#    , greaterThan
-#    , lesserOrEqualThan
-#    , greaterOrEqualThan
+    , equal
+    , notEqual
+    , lesserThan
+    , greaterThan
+    , lesserOrEqualThan
+    , greaterOrEqualThan
     #
-#    , sendRight
-#    , sendLeft
+    , sendRight
+    , sendLeft
     ]
       >> (list: List.foldl (bop: Dict.insert bop.symbol bop) list Dict.empty)
 
@@ -194,6 +189,111 @@ mutableAssign as Op.Binop = {
     , precedence = Op.Mutop
     , associativity = Op.Left
     , type = typeBinop True (tyVar "a") (tyVar "a") CoreTypes.none
+    , nonFn = []
+    }
+
+
+mutableAdd as Op.Binop = {
+    , symbol = "+="
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
+    , type = typeBinop True CoreTypes.number CoreTypes.number CoreTypes.none
+    , nonFn = []
+    }
+
+
+mutableSubtract as Op.Binop = {
+    , symbol = "-="
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
+    , type = typeBinop True CoreTypes.number CoreTypes.number CoreTypes.none
+    , nonFn = []
+    }
+
+
+#
+# Comparison
+#
+equal as Op.Binop =
+    { symbol = "=="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , nonFn = [ "a" ]
+    }
+
+
+notEqual as Op.Binop =
+    { symbol = "/="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , nonFn = [ "a" ]
+    }
+
+
+lesserThan as Op.Binop =
+    { symbol = "<"
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , nonFn = [ "a" ]
+    }
+
+
+greaterThan as Op.Binop =
+    { symbol = ">"
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , nonFn = [ "a" ]
+    }
+
+
+lesserOrEqualThan as Op.Binop =
+    { symbol = "<="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , nonFn = [ "a" ]
+    }
+
+
+greaterOrEqualThan as Op.Binop =
+    { symbol = ">="
+    , precedence = Op.Comparison
+    , associativity = Op.Left
+    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , nonFn = [ "a" ]
+    }
+
+
+
+#
+# Send
+#
+sendRight as Op.Binop = {
+    , symbol = ">>"
+    , precedence = Op.Pipe
+    , associativity = Op.Left
+    , type =
+        typeBinop False
+            (tyVar "a")
+            (tyFun (tyVar "a") False (tyVar "b"))
+            (tyVar "b")
+    , nonFn = []
+    }
+
+
+sendLeft as Op.Binop = {
+    , symbol = "<<"
+    , precedence = Op.Pipe
+    , associativity = Op.Right
+    , type =
+        typeBinop False
+            (tyFun (tyVar "a") False (tyVar "b"))
+            (tyVar "a")
+            (tyVar "b")
     , nonFn = []
     }
 

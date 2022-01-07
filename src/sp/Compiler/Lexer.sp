@@ -218,7 +218,7 @@ unindent as Text: Text =
               """
     #]
 
-    if not Text.startsWith "\n" raw then
+    if not << Text.startsWith "\n" raw then
         raw
     else
         multilineText =
@@ -362,7 +362,6 @@ addWordToken as Token.NameModifier: ReadState@: None =
             "with": Just << Token.With
             "and": Just << Token.Binop Prelude.and_
             "or": Just << Token.Binop Prelude.or_
-            "not": Just << Token.Unop Prelude.not_
             _: Nothing
 
     try maybeKeywordKind & modifier as
@@ -608,6 +607,7 @@ lexOne as Text: ReadState@: None =
 
         ContentOpeningQuotes_Two:
           if char == "\"" then
+                @state.tokenStart := getPos @state - 2
                 setMode (TripleQuote { lastEscape = -1, closingQuotes = 0 }) @state
           else:
                 # TODO replace with unary `-` once it works

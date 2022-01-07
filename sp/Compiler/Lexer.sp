@@ -369,7 +369,6 @@ addWordToken modifier @state =
             "with": Just << Token.With
             "and": Just << Token.Binop Prelude.and_
             "or": Just << Token.Binop Prelude.or_
-            "not": Just << Token.Unop Prelude.not_
             _: Nothing
 
     try maybeKeywordKind & modifier as
@@ -617,6 +616,7 @@ lexOne char @state =
 
         ContentOpeningQuotes_Two:
           if char == "\"":
+                @state.tokenStart := getPos @state - 2
                 setMode (TripleQuote { lastEscape = -1, closingQuotes = 0 }) @state
           else:
                 # TODO replace with unary `-` once it works

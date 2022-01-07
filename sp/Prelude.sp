@@ -45,12 +45,6 @@ typeBinopUniform ty =
 #
 # Unops
 #
-not_ =
-    as Op.Unop
-    { symbol = "not"
-    , type = typeUnopUniform CoreTypes.bool
-    }
-
 unaryPlus =
     as Op.Unop
     { symbol = "0 +"

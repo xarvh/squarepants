@@ -54,7 +54,7 @@ codeTest as Text: Text: (Text: Result Text ok): Test.CodeExpectation ok: Test =
     Test.codeTest SPCore.toHuman
 
 
-valueTest as Text: Text: (Text: Result Text ok): Test.CodeExpectation ok: Test =
+valueTest as Text: (None: a): Test.CodeExpectation a: Test =
     Test.valueTest SPCore.toHuman
 
 
@@ -72,7 +72,7 @@ lexTokensAndDrop as Int: Text: Result Text (List Token) =
         >> Result.map (List.drop n)
 
 
-non_mut_name as Token.Kind =
+non_mut_name as Text: Token.Kind =
     n: Token.LowerName Token.NameNoModifier Nothing n []
 
 

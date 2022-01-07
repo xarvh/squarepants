@@ -29,7 +29,7 @@ skippedModules =
         , "sp/SPCore/List_Test.sp"
 
         --         , "sp/Compiler/MakeCanonical.sp"
-        , "sp/Compiler/TypeCheck.sp"
+        --, "sp/Compiler/TypeCheck.sp"
 
         --         ,  "sp/Compiler/Parser.sp"
         --         ,  "sp/Compiler/TestHelpers.sp"

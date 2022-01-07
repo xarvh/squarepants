@@ -31,22 +31,6 @@ alias ModuleParams = {
     , code as Text
     }
 
-textToFormattableModule as ModuleParams: Res [FA.Statement] =
-    pars:
-
-    tokensResult as Res [Token] =
-        Compiler/Lexer.lexer pars.name pars.code
-
-    List.each (Result.withDefault [] tokensResult) token:
-        log "*" token
-
-    tokensToStatsResult as [Token]: Res [FA.Statement] =
-        tokens:
-        todo "tokensToStatsResult"
-        #Compiler/Parser.parse pars.stripLocations pars.name tokens
-
-    Result.onOk tokensToStatsResult tokensResult
-
 
 # STEP 1
 textToCanonicalModule as ModuleParams: Res CA.Module =
@@ -60,8 +44,12 @@ textToCanonicalModule as ModuleParams: Res CA.Module =
     umr =
         Meta.UMR pars.source pars.name
 
-    pars
-        >> textToFormattableModule
+    {
+    , stripLocations = pars.stripLocations
+    , name = pars.name
+    , code = pars.code
+    }
+        >> Compiler/Parser.textToFormattableModule
         >> Result.onOk statements:
             List.each statements (log "%")
             todo "textToCanonicalModule"

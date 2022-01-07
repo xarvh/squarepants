@@ -114,10 +114,10 @@ sourceDir =
        globalValues =
             clamp
             identity
+            not
             modBy
             min
             max
-            not_
 
     module =
        path = Dict
