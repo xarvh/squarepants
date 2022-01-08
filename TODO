@@ -27,6 +27,16 @@
 
 * Remove module name from Pos
 
+
+* bodyDeps requires an explicit argument in order not to cause a cyclical init dependency:
+
+        bodyDeps as [CA.Statement]: Deps: Deps =
+            stats:
+            List.foldl statementDeps stats
+
+  How do I allow it to be written point-free?
+
+
 * Translate ApplyAliases tests
 
 * try..as rejects function types outright

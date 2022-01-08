@@ -53,12 +53,11 @@ firstStatement as Text: Result Text FA.Statement =
             []: Err "Test says: no statements"
             head :: tail: Ok head
 
-    {
-    , stripLocations = True
-    , name = "Test"
-    , code
-    }
-        >> Compiler/Parser.textToFormattableModule
+    code
+        >> Compiler/Parser.textToFormattableModule {
+            , stripLocations = True
+            , name = "Test"
+            }
         >> TH.resErrorToStrippedText code
         >> onOk grabFirst
 

@@ -41,6 +41,7 @@ textDef as CA.UnionDef = {
     , usr = makeUsr "Text"
     , args = []
     , constructors = Dict.empty
+    , directTypeDeps = Set.empty
     }
 
 
@@ -57,6 +58,7 @@ numberDef as CA.UnionDef = {
     , usr = makeUsr "Number"
     , args = []
     , constructors = Dict.empty
+    , directTypeDeps = Set.empty
     }
 
 
@@ -84,6 +86,7 @@ noneDef as CA.UnionDef = {
     , usr = makeUsr noneName
     , args = []
     , constructors = Dict.singleton noneName { pos = p, args = [], type = none }
+    , directTypeDeps = Set.empty
     }
 
 
@@ -111,6 +114,7 @@ boolDef as CA.UnionDef = {
         Dict.empty
             >> Dict.insert "True" { pos = p, args = [], type = bool }
             >> Dict.insert "False" { pos = p, args = [], type = bool }
+    , directTypeDeps = Set.empty
     }
 
 
@@ -149,6 +153,7 @@ listDef as CA.UnionDef =
         Dict.empty
             >> Dict.insert "Nil" { pos = p, args = [], type = list item }
             >> Dict.insert "Cons" consDef
+    , directTypeDeps = Set.empty
     }
 
 

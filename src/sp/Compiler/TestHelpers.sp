@@ -1,9 +1,5 @@
 
 
-stripLocations as Bool =
-    True
-
-
 #
 # Modules and refs
 #
@@ -11,8 +7,12 @@ moduleName as Text =
     "(test)"
 
 
+source as Meta.Source =
+    Meta.SourceDir "<Test>"
+
+
 moduleUmr as Meta.UniqueModuleReference =
-    Meta.UMR (Meta.SourceDir "<Test>") moduleName
+    Meta.UMR source moduleName
 
 
 localType as Name: Meta.UniqueSymbolReference =
@@ -28,7 +28,7 @@ rootLocal as Name: CA.Ref =
 #
 # Meta
 #
-defaultMeta as Meta =
+meta as Meta =
 
     Meta.init
 

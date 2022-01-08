@@ -1,5 +1,5 @@
 
-
+#
 # TODO: rewrite the whole thing so that each module has all the info and this type is not needed
 alias Env =
     {
@@ -169,7 +169,7 @@ fmtBlock start highlights ls =
                 "\n"
                     .. Text.repeat pad " "
                     .. "   "
-                    .. Text.repeat (s - 1) " "
+                    .. Text.repeat s " "
                     .. warn (Text.repeat (max 1 << e - s) "^")
 
     lineDem lineIndex =

@@ -194,12 +194,11 @@ loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
 
     IO.readFile fileName  >> IO.onSuccess moduleAsText:
 
-    params as Compiler/Pipeline.ModuleParams = {
+    params as Compiler/MakeCanonical.Params = {
         , meta
         , stripLocations = False
         , source
         , name = moduleName
-        , code = moduleAsText
         }
 
     eenv as Error.Env = {
@@ -209,7 +208,7 @@ loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
             }
         }
 
-    resToIo eenv << Compiler/Pipeline.textToCanonicalModule params
+    resToIo eenv << Compiler/MakeCanonical.textToCanonicalModule params moduleAsText
 
 
 alias ModuleAndPath = {
@@ -335,7 +334,7 @@ main as IO.Program =
         [ self, testFile ]:
             umr = Meta.UMR (Meta.SourceDir "") testFile
 
-            loadModule TH.defaultMeta umr testFile >> IO.onSuccess caModule:
+            loadModule TH.meta umr testFile >> IO.onSuccess caModule:
             IO.succeed None
 
         [ self, entryModule, entryFunction, outputFile ]:

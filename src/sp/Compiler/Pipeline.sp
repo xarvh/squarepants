@@ -23,41 +23,6 @@
 # First module-by-module pass: load each module
 #
 
-alias ModuleParams = {
-    , meta as Meta
-    , stripLocations as Bool
-    , source as Meta.Source
-    , name as Name
-    , code as Text
-    }
-
-
-# STEP 1
-textToCanonicalModule as ModuleParams: Res CA.Module =
-    pars:
-
-#    ro as Compiler/MakeCanonical.ReadOnly = {
-#        , currentModule = Meta.UMR pars.source pars.name
-#        , meta = pars.meta
-#        }
-
-    umr =
-        Meta.UMR pars.source pars.name
-
-    {
-    , stripLocations = pars.stripLocations
-    , name = pars.name
-    , code = pars.code
-    }
-        >> Compiler/Parser.textToFormattableModule
-        >> Result.onOk statements:
-            List.each statements (log "%")
-            todo "textToCanonicalModule"
-
-#    pars
-#        >> textToFormattableModule
-#        >> onOk (Compiler/MakeCanonical.translateModule ro pars.code umr)
-
 
 # ============================================================================
 # First Global Pass

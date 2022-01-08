@@ -2,15 +2,14 @@
 alias Params = {
     , stripLocations as Bool
     , name as Name
-    , code as Text
     }
 
 
-textToFormattableModule as Params: Res [FA.Statement] =
-    pars:
+textToFormattableModule as Params: Text: Res [FA.Statement] =
+    pars: code:
 
     tokensResult as Res [Token] =
-        Compiler/Lexer.lexer pars.name pars.code
+        Compiler/Lexer.lexer pars.name code
 
     tokensToStatsResult as [Token]: Res [FA.Statement] =
         tokens:
