@@ -297,3 +297,50 @@ sendLeft as Op.Binop = {
     , nonFn = []
     }
 
+
+#
+# Functions
+#
+
+alias Function = {
+    , usr as Meta.UniqueSymbolReference
+    , type as CA.Type
+    , nonFn as [Text]
+    }
+
+
+functions as [Function] = [
+    , debugTodo
+    , debugLog
+    , debugToHuman
+    , compare
+    ]
+
+
+compare as Function = {
+    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "compare"
+    , type = tyFun (tyVar "a") False (tyFun (tyVar "a") False CoreTypes.number)
+    , nonFn = [ "a" ]
+    }
+
+
+debugTodo as Function = {
+    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "todo"
+    , type = tyFun CoreTypes.text False (tyVar "a")
+    , nonFn = []
+    }
+
+
+debugLog as Function = {
+    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "log"
+    , type = tyFun CoreTypes.text False (tyFun (tyVar "a") False (tyVar "a"))
+    , nonFn = []
+    }
+
+
+debugToHuman as Function = {
+    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "toHuman"
+    , type = tyFun (tyVar "a") False CoreTypes.text
+    , nonFn = []
+    }
+
