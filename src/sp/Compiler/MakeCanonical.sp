@@ -111,7 +111,7 @@ maybeForeignUsr as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe
                     #CA.RefRoot (Meta.USR Meta.SourcePlaceholder moduleName name)
 #                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
 #                        log "*" x
-                    SPCore.todo << "resolveToUsr can't find the module: " .. moduleName
+                    SPCore.todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
 
         Nothing:
             Dict.get name (getter ro.meta)

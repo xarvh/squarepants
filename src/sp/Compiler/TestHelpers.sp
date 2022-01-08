@@ -30,27 +30,25 @@ rootLocal as Name: CA.Ref =
 #
 meta as Meta =
 
-    Meta.init
+    eenv as Error.Env = {
+        , moduleByName =
+            Dict.singleton "DefaultModules" {
+                , fsPath = "<DefaultModules>"
+                , content = DefaultModules.asText
+                }
+        }
 
-#    eenv as Error.Env = {
-#        , moduleByName =
-#            Dict.singleton "DefaultModules" {
-#                , fsPath = "DefaultModules.sp"
-#                , content = DefaultModules.asText
-#                }
-#        }
-#
-#    metaResult =
-#        DefaultModules.asText
-#            >> ModulesFile.textToMeta "DefaultModules"
-#            >> Result.mapError (e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
-#
-#    try metaResult as
-#        Err e:
-#            log ("Error in DefaultModules.sp: " .. e) None
-#            Debug.todo "error loading DefaultModules.sp"
-#        Ok m:
-#            m
+    metaResult =
+        DefaultModules.asText
+            >> ModulesFile.textToMeta "DefaultModules"
+            >> Result.mapError (e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
+
+    try metaResult as
+        Err e:
+            log ("Error in DefaultModules.sp: " .. e) None
+            SPCore.todo "error loading DefaultModules.sp"
+        Ok m:
+            m
 
 
 #

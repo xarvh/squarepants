@@ -186,18 +186,6 @@ unwrapMutable x =
     JA.AccessWithBrackets (JA.AccessWithDot "attr" ja_x) (JA.AccessWithDot "obj" ja_x)
 
 
-
-
-listCons =
-    as Text
-    translateUsr CoreTypes.cons
-
-
-listNil =
-    as Text
-    translateUsr CoreTypes.nil
-
-
 clone expr =
     as JA.Expr: JA.Expr
     JA.Call (JA.Var "sp_clone") [ expr ]
@@ -1052,6 +1040,16 @@ not_ bool =
     if bool: False else True
 
 
+listCons =
+    as Text
+    translateUsr CoreTypes.cons
+
+
+listNil =
+    as Text
+    translateUsr CoreTypes.nil
+
+
 # This messes with Vim's syntax highlight, so I'm moving it at the end
 nativeDefinitions =
     as Text
@@ -1237,7 +1235,7 @@ const text_toNumber = (t) => {
     // TODO this is super brittle, replace it with a reference to the actual constructor names.
     // Also, we need only the names, there is no point in specifying the whole path because they just need to be unique within the union type.
     // The type checker already ensures that they will never be compared to anything else.
-    return isNaN(n) ? [ "SPCore/Maybe.Nothing" ] : [ "SPCore/Maybe.Just", n ];
+    return isNaN(n) ? [ "$corelib$Maybe$Nothing" ] : [ "$corelib$Maybe$Just", n ];
 }
 
 const text_split = (separator) => (target) => array_toList(target.split(separator));

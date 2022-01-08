@@ -57,11 +57,10 @@ run as Reader a: Text: [FA.Statement]: Res a =
 
 read as Reader a: Text: Text: Res a =
     reader: sponName: sponContent:
-    todo "SPON.read: lexer not available"
-#    sponContent
-#        >> Compiler/Lexer.lexer sponName
-#        >> onOk (Compiler/Parser.parse False sponName)
-#        >> onOk (run reader sponName)
+    sponContent
+        >> Compiler/Lexer.lexer sponName
+        >> onOk (Compiler/Parser.parse False sponName)
+        >> onOk (run reader sponName)
 
 
 logHead as Reader None =

@@ -1,7 +1,7 @@
 
 tests as Test =
     Test.Group "Parser"
-        [ errors
+        [
         , values
         , parens
         , lambdas
@@ -106,43 +106,6 @@ typeConstant as Text: FA.Type =
     name:
     FA.TypeConstant p Nothing name []
 
-#
-#
-#
-
-
-errors as Test =
-    Test.Group "Errors"
-        [
-        , codeTest
-            """
-            [reg] error marker is completely off
-            """
-            """
-            tests as Test =
-
-                blah "StringToTokens"
-                    [
-                    , meh "keywords"
-                        [
-                        , codeTest
-                            {
-                            , name = "[reg] `fn` as a keyword"
-                            , run = lexTokens "fn = 1"
-                            , expected = Ok
-                                    , { end = 0, kind = Token.NewSiblingLine, start = 0 }
-                                    , { end = 2, kind = Token.Fn, start = 0 }
-                                    , { end = 4, kind = Token.Defop { mutable = False }, start = 3 }
-                                    , { end = 6, kind = Token.NumberLiteral "1", start = 5 }
-                                    ]
-                            }
-                        ]
-                    ]
-            """
-            firstDefinition
-            (Test.errorContains [ "end = 0" ])
-        ]
-
 
 #
 #
@@ -168,7 +131,6 @@ values as Test =
             firstDefinition
             Test.isOk
         ]
-
 
 
 #
