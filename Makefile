@@ -1,6 +1,5 @@
-
 default:
 	reset
-	NODE_OPTIONS="--max-old-space-size=16384" /usr/bin/time -f %E ./spcc sp/Main.sp build/out.js || (xcowsay T_T; exit 1)
-	xcowsay Done
+	cd src; /usr/bin/time --format=%E node --stack-size=65500 ../spcc-stable Main main ../build/unstable || (xcowsay "spsp T_T"; exit 1)
+	xcowsay "spsp Done"
 

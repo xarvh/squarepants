@@ -1,3 +1,0 @@
-[submodule "lib/elm-posix"]
-	path = lib/elm-posix
-	url = git@github.com:albertdahlin/elm-posix.git

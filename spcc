@@ -1,3 +1,0 @@
-#!/bin/sh
-./lib/elm-posix/bin/elm-cli run --debug src-elm/MainSpcc.elm $@
-
