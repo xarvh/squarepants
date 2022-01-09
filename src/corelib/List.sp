@@ -1,4 +1,10 @@
 
+
+for as [item]: (item: state: state): state: state =
+    list: fun:
+    foldl fun list
+
+
 any as (a: Bool): [a]: Bool =
     fun: list:
 

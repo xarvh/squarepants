@@ -258,17 +258,66 @@ loadMeta as IO.Env: IO Meta =
         >> IO.succeed
 
 
-[#
+#
 # Compile
 #
 
-typeCheckModule as Meta: CA.Globals: CA.Module: Res a =
+typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
     meta: globals: module:
-    SPCore.todo ""
+
+    env as Compiler/TypeCheck.Env = {
+        , currentModule = module.umr
+        , meta
+        , instanceVariables = globals.instanceVariables
+        , constructors = globals.constructors
+        , types = globals.types
+        , nonFreeTyvars = Dict.empty
+        , nonAnnotatedRecursives = Dict.empty
+        }
+
+    Compiler/TypeCheck.fromModule env module
 
 
-compile as IO.Env: a: Text: IO None =
-    env: target: outputFile:
+getTargetUsr as Meta: Text: Text: CA.Globals: Res Meta.UniqueSymbolReference =
+    meta: entryModule: entryValue: globals:
+
+    # TODO translate entryModule?
+
+    asEntry as CA.Ref: Maybe Meta.UniqueSymbolReference =
+        ref:
+        try ref as
+            CA.RefBlock _: Nothing
+            CA.RefRoot usr:
+                Meta.USR (Meta.UMR source moduleName) valueName =
+                    usr
+
+                if moduleName == entryModule and valueName == entryValue then
+                    Just usr
+                else
+                    Nothing
+
+    possibleTargets as [Meta.UniqueSymbolReference] =
+        globals.instanceVariables
+            >> Dict.keys
+            >> List.filterMap asEntry
+
+    try possibleTargets as
+        []:
+            SPCore.todo << "Can't find build target `" .. entryModule .. "." .. entryValue .. "` anywhere."
+
+        [ usr ]:
+            Ok usr
+
+        many:
+            x =
+                many
+                    >> List.map SPCore.toHuman
+                    >> Text.join ", "
+            SPCore.todo << "Multiple values match build target `" .. entryModule .. "." .. entryValue .. "`: " .. x
+
+
+compile as IO.Env: Text: Text: Text: IO None =
+    env: entryModule: entryValue: outputFile:
 
     log "Loading meta..." ""
     loadMeta env >> IO.onSuccess meta:
@@ -282,36 +331,56 @@ compile as IO.Env: a: Text: IO None =
 
     loadAllModules >> IO.onSuccess modules:
 
-    log "Solving globals..." ""
-    solveGlobals as Res CA.Globals =
-        Compiler/Pipeline.globalExpandedTypes (List.indexBy (m: m.umr) modules)
-
     # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
     eenv as Error.Env =
-
-        getName =
-           mod:
-           Meta.UMR source name = mod.umr
-           name
+        getName = n:
+            { umr = Meta.UMR source name } = n
+            name
 
         { moduleByName =
             List.foldl (m: Dict.insert (getName m) { fsPath = Maybe.withDefault "CORE" << umrToFileName m.umr, content = m.asText }) modules Dict.empty
         }
 
-    solveGlobals >> onResSuccess eenv globals:
+
+    log "Solving globals..." ""
+    x as Res CA.Globals =
+        Compiler/Pipeline.globalExpandedTypes (List.indexBy (m: m.umr) modules)
+
+    x >> onResSuccess eenv globals:
+
+    getTargetUsr meta entryModule entryValue globals >> onResSuccess eenv targetUsr:
 
     log "Type checking..." ""
+
     typeCheckModules =
         modules
             >> List.map (m: typeCheckModule meta globals m >> resToIo eenv)
             >> IO.parallel
 
-    typeCheckModules >> IO.onSuccess errorsAndEnvs:
+    typeCheckModules >> IO.onSuccess typeCheckEnvs:
 
-    # TODO emit js
+    log "Creating JS AST..." ""
+    jaStatements =
+        Compiler/CanonicalToJs.translateAll eenv globals modules
 
-    IO.succeed None
-    #]
+    log "Emitting JS..." ""
+
+    callMain =
+        """
+
+        const out = """ .. Compiler/CanonicalToJs.translateUsr targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
+        if (out[1]) console.error(out[1]);
+        """
+
+    statements =
+        jaStatements
+            >> List.map (Compiler/JsToText.emitStatement 0)
+            >> Text.join "\n\n"
+
+    js =
+        Compiler/CanonicalToJs.nativeDefinitions .. statements .. callMain
+
+    IO.writeFile outputFile js
 
 
 
@@ -337,9 +406,8 @@ main as IO.Program =
             loadModule TH.meta umr testFile >> IO.onSuccess caModule:
             IO.succeed None
 
-        [ self, entryModule, entryFunction, outputFile ]:
-            todo "compile disabled"
-#            compile env (entryModule & entryFunction) outputFile
+        [ self, entryModule, entryValue, outputFile ]:
+            compile env entryModule entryValue outputFile
 
         _:
             """
