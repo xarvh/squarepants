@@ -163,8 +163,10 @@ range as Int: Int: [Int] =
         accum: up:
         if up > low then
             rec (up :: accum) (up - 1)
-        else:
+        else if up == low then
             up :: accum
+        else
+            accum
 
     rec [] high
 

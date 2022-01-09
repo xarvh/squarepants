@@ -14,9 +14,9 @@ codeTest as Text: Text: (Text: Result Text ok): Test.CodeExpectation ok: Test =
     Test.codeTest SPCore.toHuman
 
 
-eval as a: b: c =
-    _: _:
-    todo "CanonicalToJS.eval"
+eval as Text: Text: Result Text Text =
+    value: code:
+    Ok "CanonicalToJS.eval not implemented"
 
 
 #

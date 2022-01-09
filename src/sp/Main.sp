@@ -4,8 +4,9 @@ allTests as [ Test ] = [
     , Compiler/Parser_Test.tests
     , Compiler/MakeCanonical_Test.tests
     , Compiler/TypeCheck_Test.tests
-#    , SPCore/List_Test.tests
-#    , SPCore/Dict_Test.tests
+    #, Compiler/CanonicalToJs_Test.tests
+    , List_Test.tests
+    , Dict_Test.tests
     ]
 
 

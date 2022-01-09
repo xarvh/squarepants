@@ -1341,7 +1341,7 @@ const io_parallel = (iosAsList) => io_wrap((never) => {
     let arr = [];
     for (let io of ios) {
         const r = io[1](never);
-        if (r[0] === "SPCore/Result.Ok")
+        if (r[0] === "$corelib$Result$Ok")
             arr.push(r[1]);
         else
             return $corelib$Result$Err(r[1]);

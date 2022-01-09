@@ -27,6 +27,7 @@
 
 * Remove module name from Pos
 
+* Platforms should use their default modules.sp to figure out the USR of native values
 
 * bodyDeps requires an explicit argument in order not to cause a cyclical init dependency:
 

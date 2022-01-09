@@ -1026,13 +1026,15 @@ listCons as Text =
     translateUsr CoreTypes.cons
 
 
-listNil as Text = 
+listNil as Text =
     translateUsr CoreTypes.nil
 
 
 # This messes with Vim's syntax highlight, so I'm moving it at the end
-nativeDefinitions as Text = 
+nativeDefinitions as Text =
     """#!/usr/bin/env node
+
+//Error.stackTraceLimit = 100;
 
 const sp_clone = (src) => {
  if (Array.isArray(src))
@@ -1320,7 +1322,7 @@ const io_parallel = (iosAsList) => io_wrap((never) => {
     let arr = [];
     for (let io of ios) {
         const r = io[1](never);
-        if (r[0] === "SPCore/Result.Ok")
+        if (r[0] === "$corelib$Result$Ok")
             arr.push(r[1]);
         else
             return $corelib$Result$Err(r[1]);
