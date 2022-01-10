@@ -327,6 +327,8 @@ popClashingtypes as Monad (Dict Name TypeClash) =
 fromModule as Env: CA.Module: Res Env =
     env: module:
 
+    SPCore.benchStart None
+
     insert as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.ValueDef]: [CA.ValueDef] & [CA.ValueDef] =
         pa: def: (ann & nonAnn):
         allAnnotated =
@@ -376,6 +378,7 @@ fromModule as Env: CA.Module: Res Env =
                 , "Support for non-annotated root definitions is not yet implemented. =*("
                 , "These definitions need an annotation: " .. Text.join ", " names
                 ]
+                    >> btw SPCore.benchStop "type check"
 
         _:
             # Don't need to reorder a single non-annotated! =D
@@ -394,11 +397,13 @@ fromModule as Env: CA.Module: Res Env =
 
             if stateF.errors == [] then
                 Ok envF
+                    >> btw SPCore.benchStop "type check"
 
             else
                 stateF.errors
                     >> Error.Nested
                     >> Err
+                    >> btw SPCore.benchStop "type check"
 
 
 [# TODO It might be faster if we write down the references while we build the canonical AST

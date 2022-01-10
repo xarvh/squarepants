@@ -20,6 +20,8 @@ allNatives as Dict Meta.UniqueSymbolReference JA.Name =
         >> Dict.insert Prelude.debugLog.usr "sp_log"
         >> Dict.insert Prelude.debugTodo.usr "sp_todo"
         >> Dict.insert Prelude.debugToHuman.usr "sp_toHuman"
+        >> Dict.insert Prelude.debugBenchStart.usr "sp_benchStart"
+        >> Dict.insert Prelude.debugBenchStop.usr "sp_benchStop"
         >> Dict.insert Prelude.compare.usr "basics_compare"
         >> Dict.insert (corelib "Basics" "modBy") "basics_modBy"
         #
@@ -1036,6 +1038,10 @@ nativeDefinitions as Text =
 
 //Error.stackTraceLimit = 100;
 
+
+const { performance } = require('perf_hooks');
+
+
 const sp_clone = (src) => {
  if (Array.isArray(src))
    return src.map(sp_clone);
@@ -1159,6 +1165,75 @@ const sp_throw = function (errorName) {
     console.error(...arguments);
     throw new Error(errorName);
 }
+
+
+//
+// Benchmarking
+//
+
+
+var debug_benchStartTime = null;
+var debug_benchStartStack = null;
+var debug_benchEntries = {};
+
+
+const pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;
+
+
+const fmt = (n) => {
+    const s = Math.floor(n) + '';
+    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));
+}
+
+
+process.on('beforeExit', (code) => {
+    if (debug_benchStartStack !== null)
+        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);
+
+    const ks = Object.keys(debug_benchEntries);
+    if (ks.length) {
+        console.info("");
+        console.info("Benchmark results:");
+        ks.sort().forEach(k => {
+            const entry = debug_benchEntries[k];
+            console.info(
+                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',
+                    '   ',
+                    'Runs:', pad(6, '' + entry.n),
+                    '   ',
+                    'Key:', k,
+            );
+        });
+    }
+});
+
+
+const sp_benchStart = (none) => {
+    if (debug_benchStartStack !== null)
+        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);
+
+    debug_benchStartStack = new Error().stack;
+    debug_benchStartTime = performance.now();
+}
+
+
+const sp_benchStop = (name) => {
+    const now = performance.now();
+
+    if (debug_benchStartStack === null)
+        throw new Error("benchStop called while no benchmark is ongoing!");
+
+    debug_benchStartStack = null;
+
+    const dt = now - debug_benchStartTime;
+
+    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };
+    entry.dt += dt;
+    entry.n += 1;
+    debug_benchEntries[name] = entry;
+}
+
+
 
 
 //

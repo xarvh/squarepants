@@ -122,6 +122,7 @@ sourceDir =
             modBy
             min
             max
+            btw
 
     module =
        path = Dict

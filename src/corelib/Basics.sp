@@ -36,3 +36,8 @@ modBy as Int: Int: Int =
     # Native
     todo "modBy is native"
 
+
+btw as (a: b): a: c: c =
+    f: a: c:
+    f a
+    c

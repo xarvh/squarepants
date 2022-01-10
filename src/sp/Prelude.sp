@@ -310,10 +310,12 @@ alias Function = {
 
 
 functions as [Function] = [
+    , compare
     , debugTodo
     , debugLog
     , debugToHuman
-    , compare
+    , debugBenchStart
+    , debugBenchStop
     ]
 
 
@@ -344,3 +346,16 @@ debugToHuman as Function = {
     , nonFn = []
     }
 
+
+debugBenchStart as Function = {
+    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "benchStart"
+    , type = tyFun  CoreTypes.none False CoreTypes.none
+    , nonFn = []
+    }
+
+
+debugBenchStop as Function = {
+    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "benchStop"
+    , type = tyFun  CoreTypes.text False CoreTypes.none
+    , nonFn = []
+    }

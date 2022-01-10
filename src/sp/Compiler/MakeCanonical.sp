@@ -27,6 +27,7 @@ textToCanonicalModule as Params: Text: Res CA.Module =
 
 
 
+
 [#
     `Env` is immutable and depends only on the parent scopes.
     Which means, each scope will have a different one.
@@ -1076,9 +1077,12 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
 translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res CA.Module =
     ro: asText: umr: faModule:
 
+    SPCore.benchStart None
+
     module =
         CA.initModule asText umr
 
     # Add all definitions
     List.foldlRes (insertRootStatement ro) faModule module
+        >> btw SPCore.benchStop "translateModule"
 

@@ -1,9 +1,2 @@
-node_modules
-package-lock.json
-elm-stuff/
-#TODO
-artifacts.dat
-index.html
 build/
-generated/*.elm
-generated/SPTests/*.elm
+src/isolate-*-v8.log

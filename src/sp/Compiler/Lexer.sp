@@ -763,6 +763,8 @@ closeOpenBlocks as ReadState@: [ Token ] =
 lexer as Text: Text: Res [Token] =
     moduleName: moduleCode:
 
+    SPCore.benchStart None
+
     state @= readStateInit moduleName moduleCode
 
     Text.forEach moduleCode char:
@@ -783,8 +785,10 @@ lexer as Text: Text: Res [Token] =
         closeOpenBlocks @state
             >> List.reverse
             >> Ok
+            >> btw SPCore.benchStop "lexer"
     else
         state.errors
             >> Error.Nested
             >> Err
+            >> btw SPCore.benchStop "lexer"
 

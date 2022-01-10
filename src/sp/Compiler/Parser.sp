@@ -13,7 +13,9 @@ textToFormattableModule as Params: Text: Res [FA.Statement] =
 
     tokensToStatsResult as [Token]: Res [FA.Statement] =
         tokens:
+        SPCore.benchStart None
         parse pars.stripLocations pars.name tokens
+            >> btw SPCore.benchStop "parse"
 
     Result.onOk tokensToStatsResult tokensResult
 
