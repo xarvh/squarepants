@@ -127,45 +127,9 @@
 
 
 
+Target https://github.com/bytecodealliance/wasmtime ?
 
 
 
 
-
-
-type Array a
-
-#
-# Array.push @theArray theNewItem
-#
-push =
-    as Array a @: a: None
-
-#
-# Array.get theArray index
-#
-get =
-    as Array a: Int: Maybe a
-
-#
-# Array.set @theArray index newItemValue
-#
-set =
-    as Array a @: Int: a: Bool
-
-#
-# Array.sort @theArray
-#
-sortBy =
-    as Array a @: (a: b): None
-    with b NonFunction
-
-
-List.sortBy fun ls =
-    as (a: b): List a: List a
-    with b NonFunction
-
-    array @= Array.fromList ls
-    Array.sortBy @array fun
-    Array.toList array
 

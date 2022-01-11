@@ -55,7 +55,7 @@ alias ReadState = {
     , tabsOrSpaces as TabsOrSpaces
 
     # accumulator
-    , tokens as [Token]
+    , tokens as Array Token
     }
 
 
@@ -78,7 +78,7 @@ readStateInit as Text: Text: ReadState =
     , moduleName
     , tokenStart = 0
     , tabsOrSpaces = NoTabsOrSpacesYet
-    , tokens = []
+    , tokens = Array.fromList []
     }
 
 
@@ -108,7 +108,7 @@ setMode as Mode: ReadState@: None =
 
 addIndentToken as Int: Token.Kind: ReadState@: None =
     pos: kind: state@:
-    @state.tokens := Token pos pos kind :: state.tokens
+    Array.push @state.tokens << Token pos pos kind
 
 
 updateIndent as Int: Int: Token.Kind: ReadState@: None =
@@ -183,7 +183,7 @@ absAddToken as Int: Int: Token.Kind: ReadState@: None =
             _: False
 
     @state.indentStartsABlock := indentStartsABlock
-    @state.tokens := Token start end kind :: state.tokens
+    Array.push @state.tokens << Token start end kind
     @state.tokenStart := end
 
 
@@ -196,7 +196,7 @@ relAddToken as Int: Int: Token.Kind: ReadState@: None =
 addOneIndentToken as Token.Kind: ReadState@: None =
     kind: state@:
     pos = getPos @state
-    @state.tokens := Token pos pos kind :: state.tokens
+    Array.push @state.tokens << Token pos pos kind
 
 
 getChunk as ReadState@: Int & Int & Text =
@@ -751,13 +751,14 @@ tryIndent as Text: Text: ReadState@: None =
         lexOne char @state
 
 
-closeOpenBlocks as ReadState@: [ Token ] =
+closeOpenBlocks as ReadState@: None =
     state@:
 
     pos =
         getPos @state
 
-    List.foldl (stack: accum: Token pos pos Token.BlockEnd :: accum) state.indentStack state.tokens
+    List.each state.indentStack _:
+        Array.push @state.tokens << Token pos pos Token.BlockEnd
 
 
 lexer as Text: Text: Res [Token] =
@@ -783,7 +784,8 @@ lexer as Text: Text: Res [Token] =
 
     if state.errors == [] then
         closeOpenBlocks @state
-            >> List.reverse
+        state.tokens
+            >> Array.toList
             >> Ok
             >> btw SPCore.benchStop "lexer"
     else

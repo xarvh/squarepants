@@ -37,6 +37,14 @@ allNatives as Dict Meta.UniqueSymbolReference JA.Name =
         >> Dict.insert (corelib "Text" "dropLeft") "text_dropLeft"
         >> Dict.insert (corelib "Text" "forEach") "text_forEach"
         #
+        >> Dict.insert (corelib "Array" "push") "array_push"
+        >> Dict.insert (corelib "Array" "pop") "array_pop"
+        >> Dict.insert (corelib "Array" "get") "array_get"
+        >> Dict.insert (corelib "Array" "set") "array_set"
+        >> Dict.insert (corelib "Array" "sortBy") "array_sortBy"
+        >> Dict.insert (corelib "Array" "fromList") "array_fromList"
+        >> Dict.insert (corelib "Array" "toList") "array_toList"
+        #
         >> Dict.insert (corelib "List" "sortBy") "list_sortBy"
         #
         >> Dict.insert (Meta.spCoreUSR "/") "sp_divide"
@@ -1056,6 +1064,18 @@ const sp_clone = (src) => {
 }
 
 
+/*  HACK
+
+    TODO this is super brittle
+    once we have a proper Platform system in place, the platform can probably
+    use its internal Meta to figure out the proper constructor
+
+*/
+const maybe_nothing = [ "$corelib$Maybe$Nothing" ];
+const maybe_just = (a) => [ "$corelib$Maybe$Just", a ];
+
+
+
 //
 // Basic ops
 //
@@ -1288,10 +1308,7 @@ const text_fromNumber = (n) => '' + n;
 const text_toNumber = (t) => {
     const n = +t;
 
-    // TODO this is super brittle, replace it with a reference to the actual constructor names.
-    // Also, we need only the names, there is no point in specifying the whole path because they just need to be unique within the union type.
-    // The type checker already ensures that they will never be compared to anything else.
-    return isNaN(n) ? [ "$corelib$Maybe$Nothing" ] : [ "$corelib$Maybe$Just", n ];
+    return isNaN(n) ? maybe_nothing : maybe_just(n);
 }
 
 const text_split = (separator) => (target) => array_toList(target.split(separator));
@@ -1341,17 +1358,38 @@ const text_forEach = (s) => (f) => {
 }
 
 
-
-
 //
-// Lists and Arrays
+// Arrays
 //
 
-
-const sp_cons = (list) => (item) => {
-  return [ '""" .. listCons .. """', item, list];
+const array_push = (array) => (item) => {
+    array.obj[array.attr].push(item);
+    return null;
 }
 
+const array_pop = (array) => {
+    const a = array.obj[array.attr];
+    return a.length ? maybe_just(a.pop()) : maybe_nothing;
+}
+
+const array_get = (array) => (index) => {
+    const r = array[index];
+    return r === undefined ? maybe_nothing : maybe_just(r);
+}
+
+const array_set = (array) => (index) => (item) => {
+    if (index < 0) return false;
+    const a = array.obj[array.attr];
+    if (index >= a.length) return false;
+    a[index] = item;
+    return true;
+}
+
+const array_sortBy = (array) => (f) => {
+    const arr = array.obj[array.attr];
+    arr.sort((a, b) => sp_compare(f(a), f(b)));
+    return null;
+}
 
 const array_toList = (array) => {
   let length = array.length;
@@ -1362,8 +1400,7 @@ const array_toList = (array) => {
   return list;
 }
 
-
-const list_toArray = (list) => {
+const array_fromList = (list) => {
   const array = [];
   const rec = (ls) => {
     if (ls[0] === '""" .. listNil .. """')
@@ -1377,7 +1414,17 @@ const list_toArray = (list) => {
 }
 
 
-const list_sortBy = (f) => (list) => array_toList(list_toArray(list).sort((a, b) => sp_compare(f(a), f(b))));
+
+//
+// Lists
+//
+
+
+const sp_cons = (list) => (item) => {
+  return [ '""" .. listCons .. """', item, list];
+}
+
+const list_sortBy = (f) => (list) => array_toList(array_fromList(list).sort((a, b) => sp_compare(f(a), f(b))));
 
 
 //
@@ -1390,7 +1437,7 @@ const io_wrap = (f) => [ "IO.IO", f ];
 const io_parallel = (iosAsList) => io_wrap((never) => {
     // as [IO a]: IO [a]
 
-    const ios = list_toArray(iosAsList);
+    const ios = array_fromList(iosAsList);
 
     // TODO actually run them in parallel!
 

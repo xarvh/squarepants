@@ -92,6 +92,12 @@ sourceDir =
     path = "corelib"
 
     module =
+       path = Array
+       importAs = Array
+       globalTypes =
+          Array
+
+    module =
        path = List
        importAs = List
 
