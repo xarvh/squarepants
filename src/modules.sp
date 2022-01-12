@@ -131,6 +131,11 @@ sourceDir =
             btw
 
     module =
+       path = Hash
+       importAs = Hash
+       globalTypes = Hash
+
+    module =
        path = Dict
        importAs = Dict
        globalTypes = Dict

@@ -1,4 +1,7 @@
 
+-----> VIM colors
+-----> Remove one modules.sp and the ../
+
 ----> TCO
 
 ----> Error.Env needs only the current module
@@ -13,6 +16,19 @@
     value
         >> List.map x: blah
         >> sblorp
+
+
+* lexer doesn't like sibling with nested statements?
+        , valueTest
+            """
+            for
+            """
+            _:
+                []
+                    >> Hash.for (Hash.fromList [Just True & 2, Nothing & 4]) k: v: a:
+                        (v & k) :: a
+                    >> List.sortBy Tuple.first
+
 
 * lambdas can't unpack records?
 

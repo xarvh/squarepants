@@ -37,6 +37,13 @@ allNatives as Dict Meta.UniqueSymbolReference JA.Name =
         >> Dict.insert (corelib "Text" "dropLeft") "text_dropLeft"
         >> Dict.insert (corelib "Text" "forEach") "text_forEach"
         #
+        >> Dict.insert (corelib "Hash" "empty") "hash_empty"
+        >> Dict.insert (corelib "Hash" "insert") "hash_insert"
+        >> Dict.insert (corelib "Hash" "remove") "hash_remove"
+        >> Dict.insert (corelib "Hash" "get") "hash_get"
+        >> Dict.insert (corelib "Hash" "for") "hash_for"
+        >> Dict.insert (corelib "Hash" "each") "hash_each"
+        #
         >> Dict.insert (corelib "Array" "push") "array_push"
         >> Dict.insert (corelib "Array" "pop") "array_pop"
         >> Dict.insert (corelib "Array" "get") "array_get"
@@ -401,6 +408,10 @@ reorderModuleValues as [CA.Module]: Result [Meta.UniqueSymbolReference] [Node] =
                         else
                             Dict.insert usr node nf & f
 
+#    List.each (Dict.keys nonFunctionsByUsr) k:
+#        log "*" k
+
+
 #    fullDeps @=
 #        as Dict Meta.UniqueSymbolReference (Set Meta.UniqueSymbolReference)
 #        Dict.empty
@@ -442,10 +453,12 @@ reorderModuleValues as [CA.Module]: Result [Meta.UniqueSymbolReference] [Node] =
 
     log "nonFunctionsFullDependenciesByUsr" ""
 
+    SPCore.benchStart None
     nonFunctionsFullDependenciesByUsr as Dict Meta.UniqueSymbolReference (Set Meta.UniqueSymbolReference) =
         nonFunctionsByUsr >> Dict.map usr: node:
             Dict.intersect (getFullDependencies Set.empty usr node) nonFunctionsByUsr
 
+    SPCore.benchStop "nonFunctionsFullDependenciesByUsr"
 
 #    List.each (Dict.toList nonFunctionsFullDependenciesByUsr) (usr & deps):
 #        if isMeta usr then
@@ -526,6 +539,20 @@ translateNode as Env: Node: JA.Statement =
                 >> JA.Define (translateUsr usr)
 
 
+#btwIf as Bool: (a: a): a: a =
+#    condition: f: a:
+#    if condition then a else f a
+
+
+maybeCloneMutable as CA.ValueDef: JA.Expr: JA.Expr =
+    caDef: expr:
+    try caDef.mutable & List.reverse caDef.body as
+        True & (CA.Evaluation (CA.Variable _ ar) :: _):
+            clone expr
+        _:
+            expr
+
+
 translateLocalValueDef as Env: CA.ValueDef: ( List JA.Statement & Env ) =
     env: caDef:
     if caDef.body == [] then
@@ -541,6 +568,7 @@ translateLocalValueDef as Env: CA.ValueDef: ( List JA.Statement & Env ) =
                 a =
                     caDef.body
                         >> translateBodyToExpr env
+                        >> maybeCloneMutable caDef
                         >> wrapMutable caDef.mutable
                         >> JA.Define mainName
                 b =
@@ -1355,6 +1383,51 @@ const text_dropLeft = (n) => (s) => {
 const text_forEach = (s) => (f) => {
   for (let i of s) f(i);
   return null;
+}
+
+
+//
+// Hashes
+//
+
+const hash_empty = {};
+
+
+const hash_insert = (hash) => (key) => (value) => {
+    const h = hash.obj[hash.attr];
+    h[JSON.stringify(key)] = [key, value];
+    return null;
+}
+
+
+const hash_remove = (hash) => (key) => {
+    const h = hash.obj[hash.attr];
+    delete h[JSON.stringify(key)];
+    return null;
+}
+
+
+const hash_get = (hash) => (key) => {
+    const r = hash[JSON.stringify(key)];
+    return r === undefined ? maybe_nothing : maybe_just(r[1]);
+}
+
+
+const hash_for = (hash) => (f) => (acc) => {
+    for (let k in hash) {
+        const kv = hash[k];
+        acc = f(kv[0])(kv[1])(acc);
+    }
+    return acc;
+}
+
+
+const hash_each = (hash) => (f) => {
+    for (let k in hash) {
+        const kv = hash[k];
+        f(kv[0])(kv[1]);
+    }
+    return null;
 }
 
 
