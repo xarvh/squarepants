@@ -1,2 +1,2 @@
+*.log
 build/
-src/isolate-*-v8.log
