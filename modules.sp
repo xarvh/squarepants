@@ -4,11 +4,6 @@ sourceDir =
     path = "sp"
 
     module =
-       path = IO
-       importAs = IO
-       globalTypes = IO
-
-    module =
        path = Test
        importAs = Test
        globalTypes = Test
@@ -72,6 +67,93 @@ sourceDir =
         globalValues =
             Token
 
+    module =
+       path = SPLib/Buffer
+       importAs = Buffer
+       globalTypes = Buffer
+
+    module =
+       path = SPLib/Parser
+       importAs = Parser
+
+
+# This will be transformed into a platform
+sourceDir =
+    path = "posix"
+
+    module =
+       path = IO
+       importAs = IO
+       globalTypes = IO
+
+
+# This will be transformed into a lib
+sourceDir =
+    path = "corelib"
+
+    module =
+       path = Array
+       importAs = Array
+       globalTypes =
+          Array
+
+    module =
+       path = List
+       importAs = List
+
+    module =
+       path = Maybe
+       importAs = Maybe
+       globalTypes =
+          Maybe
+       globalValues =
+          Just
+          Nothing
+
+    module =
+       path = Text
+       importAs = Text
+
+    module =
+       path = Tuple
+       importAs = Tuple
+
+    module =
+       path = Basics
+       globalTypes = Int
+       globalValues =
+            clamp
+            identity
+            not
+            modBy
+            min
+            max
+            btw
+
+    module =
+       path = Hash
+       importAs = Hash
+       globalTypes = Hash
+
+    module =
+       path = Dict
+       importAs = Dict
+       globalTypes = Dict
+
+    module =
+       path = Set
+       importAs = Set
+       globalTypes = Set
+
+    module =
+       path = Result
+       importAs = Result
+       globalTypes = Result
+       globalValues =
+          Ok
+          Err
+          onOk
+
 
 library =
     # spcore" is a special value for the core library
@@ -90,75 +172,6 @@ library =
           None
           True
           False
-
-    module =
-       path = SPCore/List
-       importAs = List
-       globalTypes =
-          Int
-
-    module =
-       path = SPCore/Maybe
-       importAs = Maybe
-       globalTypes =
-          Maybe
-       globalValues =
-          Just
-          Nothing
-
-    module =
-       path = SPCore/Text
-       importAs = Text
-
-    module =
-       path = SPCore/Tuple
-       importAs = Tuple
-
-    module =
-       path = SPCore/Debug
-       importAs = Debug
-       globalValues =
           log
           todo
 
-    module =
-       path = SPCore/Basics
-       globalValues =
-            assert
-            clamp
-            identity
-            modBy
-            min
-            max
-
-    module =
-       path = SPLib/Buffer
-       importAs = Buffer
-       globalTypes = Buffer
-
-    module =
-       path = SPLib/Parser
-       importAs = Parser
-
-    module =
-       path = SPCore/Dict
-       importAs = Dict
-       globalTypes = Dict
-
-    module =
-       path = SPCore/Set
-       importAs = Set
-       globalTypes = Set
-
-    module =
-       path = SPCore/Random
-       importAs = Random
-
-    module =
-       path = SPCore/Result
-       importAs = Result
-       globalTypes = Result
-       globalValues =
-          Ok
-          Err
-          onOk

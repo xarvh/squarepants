@@ -1,12 +1,13 @@
 
------> VIM colors
------> Remove one modules.sp and the ../
+====> nonFunctionsFullDependenciesByUsr
+
+----> Caching system, because everything depends on that?
 
 ----> TCO
 
 ----> Error.Env needs only the current module
 
-----> Caching system, because everything depends on that?
+----> actual parallelism with io_parallel?
 
 ----> Humanize must break a type into multiple lines
 

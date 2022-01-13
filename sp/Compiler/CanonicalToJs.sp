@@ -279,7 +279,9 @@ translateSource as Meta.Source: Text =
             if Text.startsWithRegex "[a-zA-Z0-9_./]*$" path == "" then
                 SPCore.todo << "Invalid chars in source dir name: " .. path
             else
-                Text.replace "." "_" path
+                path
+                    >> Text.replace "." "_"
+                    >> Text.replace "/" "$"
 
 
 constructorArgumentName as Int: JA.Name =
