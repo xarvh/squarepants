@@ -2,17 +2,6 @@
 High Priority Stuff
 ===================
 
-====> nonFunctionsFullDependenciesByUsr
-
-        * bodyDeps requires an explicit argument in order not to cause a cyclical init dependency:
-
-                bodyDeps as [CA.Statement]: Deps: Deps =
-                    stats:
-                    List.foldl statementDeps stats
-
-          How do I allow it to be written point-free?
-
-
 ----> code instrumenting, track on which variables/expession sp_clone is used?
 
 
@@ -26,6 +15,17 @@ High Priority Stuff
 ----> actual parallelism with io_parallel?
 
 ----> Humanize must break a type into multiple lines
+
+
+
+Intermediate Representation
+===========================
+* contains inferred and annotated types
+    - for every try..as
+    - for every variable?
+
+* expands value def's patterns into several definitions
+    (generating dummy intermediate values)
 
 
 
@@ -80,6 +80,17 @@ Lexer / Parser
                     []:
                         0
                 )
+
+
+* parser sbarella con
+
+    s =
+        env & []
+            >> List.for block statement: (envX & depsAccum):
+                    statementDependencies envX statement
+                          >> Tuple.mapSecond (merge depsAccum)
+            >> Tuple.second
+
 
 
 Backlog?

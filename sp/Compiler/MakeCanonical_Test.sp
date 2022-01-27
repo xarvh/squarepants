@@ -95,7 +95,8 @@ tests as Test =
         """
         MakeCanonical
         """
-        [ unionTypes
+        [
+        , unionTypes
         , binops
         , tuples
         , lists

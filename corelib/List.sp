@@ -267,6 +267,24 @@ takeReverse as Int: [a]: [a]: [a] =
         takeReverse (n - 1) xs (SPCore.Cons x kept)
 
 
+takeWhile as (item: Bool): [item]: [item] =
+    test:
+
+    rec as [item]: [item]: [item] =
+      accum: list:
+      try list as
+          []:
+            reverse accum
+
+          head :: tail:
+              if test head then
+                rec (head :: accum) tail
+              else
+                reverse accum
+
+    rec []
+
+
 filter as (item: Bool): [item]: [item] =
     f: ls:
     foldr (item: acc: if f item then item :: acc else acc) ls []

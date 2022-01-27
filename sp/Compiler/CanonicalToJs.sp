@@ -354,10 +354,10 @@ union Node =
 
 
 
-reorderModuleValues as [CA.Module]: Result [Meta.UniqueSymbolReference] [Node] =
+reorderModuleValues as [CA.Module]: Result [[Meta.UniqueSymbolReference]] [Node] =
     modules:
 
-    log "nodesByUsr" ""
+    SPCore.benchStart None
 
     # Assign an USR to each name of each ValueDef
     nodesByUsr as Dict Meta.UniqueSymbolReference Node =
@@ -394,84 +394,6 @@ reorderModuleValues as [CA.Module]: Result [Meta.UniqueSymbolReference] [Node] =
                                         >> Dict.for jsStatementsByUsr usr: stat: a:
                                             Dict.insert usr (NodeName mainUsr stat) a
 
-
-    log "nonFunctionsByUsr" ""
-
-    (nonFunctionsByUsr as Dict Meta.UniqueSymbolReference Node) & (functions as [Node]) =
-        Dict.empty & [] >>
-            Dict.for nodesByUsr usr: node: (nf & f):
-                try node as
-                    NodeName _ _:
-                        Dict.insert usr node nf & f
-
-                    NodeDef _ def:
-                        if defIsFunction def then
-                            nf & (node :: f)
-                        else
-                            Dict.insert usr node nf & f
-
-#    List.each (Dict.keys nonFunctionsByUsr) k:
-#        log "*" k
-
-
-#    fullDeps @=
-#        as Dict Meta.UniqueSymbolReference (Set Meta.UniqueSymbolReference)
-#        Dict.empty
-
-    getFullDependencies as Set Meta.UniqueSymbolReference: Meta.UniqueSymbolReference: Node: Set Meta.UniqueSymbolReference =
-        ongoing: usr: node:
-
-        try node as
-            NodeName d_usr _:
-                Set.singleton d_usr
-
-            NodeDef _ def:
-#                try Dict.get usr fullDeps as
-#                    Just deps:
-#                        deps
-#
-#                    Nothing:
-                        newOngoing =
-                            Set.insert usr ongoing
-
-                        deps =
-                            def.directValueDeps
-                                >> Dict.for def.directValueDeps d_usr: _:
-                                    if Set.member d_usr newOngoing then
-                                        identity
-                                    else
-                                        try Dict.get d_usr nodesByUsr as
-                                            Nothing:
-                                                # native ops are not in nodesByUsr, skip them
-                                                identity
-                                            Just d_node:
-                                                Set.join (getFullDependencies newOngoing d_usr d_node)
-
-#                        @fullDeps := Dict.insert usr deps fullDeps
-
-                        deps
-
-
-
-    log "nonFunctionsFullDependenciesByUsr" ""
-
-    SPCore.benchStart None
-    nonFunctionsFullDependenciesByUsr as Dict Meta.UniqueSymbolReference (Set Meta.UniqueSymbolReference) =
-        nonFunctionsByUsr >> Dict.map usr: node:
-            Dict.intersect (getFullDependencies Set.empty usr node) nonFunctionsByUsr
-
-    SPCore.benchStop "nonFunctionsFullDependenciesByUsr"
-
-#    List.each (Dict.toList nonFunctionsFullDependenciesByUsr) (usr & deps):
-#        if isMeta usr then
-#            log ">" (usr & Dict.keys deps)
-#            None
-#        else
-#            None
-
-
-    log "reorder" ""
-
     nodeToDeps as Node: Set Meta.UniqueSymbolReference =
         node:
         try node as
@@ -479,20 +401,45 @@ reorderModuleValues as [CA.Module]: Result [Meta.UniqueSymbolReference] [Node] =
                 Set.singleton d_usr
 
             NodeDef usr def:
-                try Dict.get usr nonFunctionsFullDependenciesByUsr as
-                    Just deps:
-                        deps
-                    Nothing:
-                        SPCore.todo "nodeToDeps this should not happen?"
+                def.directValueDeps
 
-    RefHierarchy.reorder nodeToDeps nonFunctionsByUsr >> Result.map reorderedNonFunctionNodes:
 
-#        List.each reorderedNonFunctionNodes n:
-#            try n as
-#                NodeName usr _: log "*" usr
-#                NodeDef usr _: log "*" usr
+    circulars & reorderedNodes =
+        RefHierarchy.reorder nodeToDeps nodesByUsr
 
-        List.concat [ functions, reorderedNonFunctionNodes ]
+    SPCore.benchStop "reorderModuleValues"
+
+    errors =
+        circulars
+            >> List.filter (circularIsError nodesByUsr)
+
+    if errors /= [] then
+        Err errors
+    else
+        reorderedNodes
+            >> List.filterMap (usr: Dict.get usr nodesByUsr)
+            >> Ok
+
+
+
+circularIsError as Dict Meta.UniqueSymbolReference Node: [Meta.UniqueSymbolReference]: Bool =
+    nodesByUsr: usrs:
+
+    usrs >> List.any usr:
+      try Dict.get usr nodesByUsr as
+          Nothing:
+              # native or some special stuff?
+              False
+
+          Just (NodeName _ _):
+              True
+
+          Just (NodeDef _ def):
+              try def.body as
+                  [ CA.Evaluation (CA.Lambda _ _ _) ]:
+                      False
+                  _:
+                      True
 
 
 
@@ -1169,6 +1116,10 @@ const sp_compare = (a, b) => {
     }
     return 0;
   }
+
+  // None is represented as null
+  if (a === null)
+      return 0;
 
   if (typeof a === 'object') {
     const keys = Object.keys(a).sort();

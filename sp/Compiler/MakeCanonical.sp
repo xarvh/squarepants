@@ -179,6 +179,7 @@ deps_init = {
 
 
 bodyDeps as [CA.Statement]: Deps: Deps =
+    # We keep the `stats` explicit argument to avoid a circular initialization
     stats:
     List.foldl statementDeps stats
 
@@ -309,9 +310,9 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
 
     localEnv0 =
         { env with
-            , nonRootValues = nonRootValues1
-            , defsPath = pattern :: .defsPath
-            , tyvarRenames = dict
+        , nonRootValues = nonRootValues1
+        , defsPath = pattern :: .defsPath
+        , tyvarRenames = dict
         }
 
     updNonFn = tyvarName: nonFn:
@@ -333,8 +334,8 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
         else
             deps_init
 
-    Ok
-        { pattern
+    Ok {
+        , pattern
         , native = False
         , mutable = fa.mutable
         , parentDefinitions = env.defsPath

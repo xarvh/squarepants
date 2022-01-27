@@ -163,7 +163,8 @@ alias Module = {
 
 
 initModule as Text: Meta.UniqueModuleReference: Module =
-    asText: umr: {
+    asText: umr:
+    {
     , umr
     , asText
     , aliasDefs = Dict.empty

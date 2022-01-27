@@ -284,12 +284,13 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
         Dict.foldl insertAlias allTypes Dict.empty
 
 
-    orderedAliasesResult =
+    circulars & orderedAliasRefs =
         RefHierarchy.reorder (al: referencedAliases allAliases al.type) allAliases
 
-    try orderedAliasesResult as
-        Err circular:
-            error (Pos.I 121) [
+    if circulars /= [] then
+        circularToError =
+            circular:
+            Error.Simple (Pos.I 121) _: [
                 , "circular alias: "
                 , circular
                 #   >> List.filterMap (fn usr: Dict.get usr als)
@@ -297,10 +298,19 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
                     >> Text.join " <- "
                 ]
 
-        Ok oa:
-            Dict.empty
-                >> List.foldlRes (expandAndInsertAlias allTypes) oa
-                >> onOk (Dict.foldlRes (expandAndInsertUnion allTypes) allTypes)
+        circulars
+            >> List.map circularToError
+            >> Error.Nested
+            >> Err
+
+    else
+        oa =
+          orderedAliasRefs
+              >> List.filterMap (ref: Dict.get ref allAliases)
+
+        Dict.empty
+            >> List.foldlRes (expandAndInsertAlias allTypes) oa
+            >> onOk (Dict.foldlRes (expandAndInsertUnion allTypes) allTypes)
 
 
 #

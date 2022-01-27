@@ -9,6 +9,7 @@ allTests as [ Test ] = [
     , Array_Test.tests
     , List_Test.tests
     , Dict_Test.tests
+    , RefHierarchy_Test.tests
     ]
 
 
