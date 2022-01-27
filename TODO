@@ -1,17 +1,55 @@
 
+High Priority Stuff
+===================
+
 ====> nonFunctionsFullDependenciesByUsr
+
+        * bodyDeps requires an explicit argument in order not to cause a cyclical init dependency:
+
+                bodyDeps as [CA.Statement]: Deps: Deps =
+                    stats:
+                    List.foldl statementDeps stats
+
+          How do I allow it to be written point-free?
+
+
+----> code instrumenting, track on which variables/expession sp_clone is used?
+
 
 ----> Caching system, because everything depends on that?
 
 ----> TCO
 
 ----> Error.Env needs only the current module
+    > Remove module name from Pos
 
 ----> actual parallelism with io_parallel?
 
 ----> Humanize must break a type into multiple lines
 
 
+
+Lexer / Parser
+==============
+
+* lambdas can't unpack records?
+    { blah }: xxx
+
+* Add test for triple quotes containing quotes
+
+* Add tests for Text functions
+
+* Add test: variable names and attr names cannot contain `/`
+
+* add test: it should be possible to write
+
+      allTests
+          >> Test.flatten
+          >> List.sortBy (fn (name & code & outcome): outcome & name)
+          >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
+          >> Text.join "\n"
+
+  without parens around the `fn`s
 
 * an inline lambda can't continue on a NewSiblingLine?
     value
@@ -30,36 +68,6 @@
                         (v & k) :: a
                     >> List.sortBy Tuple.first
 
-
-* lambdas can't unpack records?
-
-    { blah }: xxx
-
-* Remove Pattern from FormattableAST and just use Expression for everything?
-    (This should simplify the parser and make it more accepting)
-
-* replace fold with for
-
-* :: -> List.stack?
-
-* Remove module name from Pos
-
-* Platforms should use their default modules.sp to figure out the USR of native values
-
-* bodyDeps requires an explicit argument in order not to cause a cyclical init dependency:
-
-        bodyDeps as [CA.Statement]: Deps: Deps =
-            stats:
-            List.foldl statementDeps stats
-
-  How do I allow it to be written point-free?
-
-
-* Translate ApplyAliases tests
-
-* try..as rejects function types outright
-    "Hey, is there an argument missing?"
-
 * Parser test
 
         here as Parser Int =
@@ -72,6 +80,26 @@
                     []:
                         0
                 )
+
+
+Backlog?
+========
+
+* Remove Pattern from FormattableAST and just use Expression for everything?
+    (This should simplify the parser and make it more accepting)
+
+* replace fold with for
+
+* Murder `::`
+    * have a List.stack
+    * have [a, b, ...c] syntax for expr and patterns
+
+
+* Platforms should use their default modules.sp to figure out the USR of native values
+
+
+* try..as rejects function types outright
+    "Hey, is there an argument missing?"
 
 * When there is any collision between types, ensure that either types are replaced with a fresh tyvar, so that the error does not propagate?
 
@@ -88,39 +116,13 @@
 
 * TypeCheck env can keep track of the last definition name and use that when referring to errors within blocks?
 
-
 * later:
         Compiler should be able to produce a stacktrace
         Or better, a call tree, which would be very useful to debug the parser?
 
 * later: sp-format should recognize and preserve two main modes from the input format: a compact and an expanded one
 
-* Add test for triple quotes containing quotes
-
-* Add tests for Text functions
-
-* Add test: variable names and attr names cannot contain `/`
-
-* add test: it should be possible to write
-
-      allTests
-          >> Test.flatten
-          >> List.sortBy (fn (name & code & outcome): outcome & name)
-          >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
-          >> Text.join "\n"
-
-  without parens around the `fn`s
-
-
 * Remove support for prefix op notation (-) ?
-
-
-* Decide the precedence between :: and &, then write tests to ensure it works as it should
-    in both expressions and patterns.
-    ---> This is one more reason to replace :: with a better syntax
-    ---> squarepants-format should replace a :: b with [a, ...b]?
-
-
 
 * How do we ensure that execution order is consistent in record expressions?
         # which one gets executed first?
@@ -128,11 +130,8 @@
         , a = doThingsWith @mutable
         }
 
-
 # All core iterators should have a test that ensures the order they call an argument function doesn't change
     This is to ensure that if the argument function mutates stuff, the result is not implementation dependent
-
-
 
 * Macro: a definition that, given a type, provides me with the definition's body?
 
@@ -142,11 +141,5 @@
                 CA....
                 ????
 
-
-
 Target https://github.com/bytecodealliance/wasmtime ?
-
-
-
-
 
