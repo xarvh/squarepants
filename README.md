@@ -1,7 +1,27 @@
 A language for humans and other bottom dwellers.
 
-
 ![Lambda Pants](logo/logo.svg)
+
+Squarepants is a programming language aimed at interactive applications.
+
+Its goals are accessibility, readability and minimalism instead of expressive power.
+
+Features:
+  * Static type check to prevent run-time exceptions, ie "if it compiles it runs"
+  * ML type system, with algebraic data types but without type classes
+  * Hybrid functional and imperative
+  * Immutable first, with support for local, contained mutation
+
+Not-yet-implemented features:
+  * An advanced module system borne out of my experience working on 200K LOC applications
+  * Support for linear algebra and hardware graphic acceleration as a first-class citizen
+
+
+Status
+------
+Squarepants can currently compile its own compiler to JavaScript running on Node.js
+
+The compiler is slow and the current priority is to make it a lot faster.
 
 
 Language Overview
