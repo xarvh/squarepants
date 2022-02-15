@@ -168,6 +168,16 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 Stuff that seems good but needs thinking
 ----------------------------------------
 
+
+* Shamefully copy Roc's tagged types, but without opaque constructors.
+
+  Instead, opacity should implemented via modules.sp, so that an exposed type can be tagged as "opaque".
+  This way any type alias or union or whatever can be treated, outside the library that implements it,
+  as an entirely opaque type.
+
+  --> These opaque types should probably not be extensible (but otherwise accept parameters).
+
+
 * Remove the `alias` keyword entirely
   We don't declare variables as `var x = 1`, so why should we use `alias X = Int`?
 
