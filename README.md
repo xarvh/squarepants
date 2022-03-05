@@ -10,7 +10,7 @@ Features:
   * Static type check to prevent run-time exceptions, ie "if it compiles it runs"
   * ML type system, with algebraic data types but without type classes
   * Hybrid functional and imperative
-  * Immutable first, with support for local, contained mutation
+  * Immutable first, with support for local, confined mutation ("what happens in the scope stays in the scope")
 
 Not-yet-implemented features:
   * An advanced module system borne out of my experience working on 200K LOC applications
