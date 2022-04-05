@@ -133,7 +133,7 @@ nativeBinopToFunction as Text: { jsSymb as JA.Name, mutates as Bool, fnName as T
 
 
 nativeBinopsAsFns =
-    Dict.foldl nativeBinopToFunction nativeBinops []
+    Dict.for nativeBinops nativeBinopToFunction []
 
 
 
@@ -928,7 +928,7 @@ testPattern as CA.Pattern: JA.Expr: List JA.Expr: List JA.Expr =
         CA.PatternRecord _ attrs:
             foldAttr = name: pa:
                 testPattern pa (JA.AccessWithDot name valueToTest)
-            Dict.foldl foldAttr attrs accum
+            Dict.for attrs foldAttr accum
 
 
 

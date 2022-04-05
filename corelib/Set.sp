@@ -59,7 +59,7 @@ diff as Set a: Set a: Set a =
 map as (a: b): Set a: Set b =
     f: set:
     #with a, b NonFunction
-    Dict.foldl (k: _: Dict.insert (f k) None) set Dict.empty
+    Dict.for set (k: _: Dict.insert (f k) None) Dict.empty
 
 
 toList as Set a: [a] =

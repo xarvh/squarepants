@@ -362,7 +362,8 @@ singleton as key: v: Dict key v =
 
 join as Dict key v: Dict key v: Dict key v =
   #with key NonFunction
-  foldl insert
+  a:
+  for a insert
 
 
 
@@ -376,7 +377,7 @@ intersect as Dict key a: Dict key b: Dict key a =
 diff as Dict key a: Dict key b: Dict key a =
   #with key NonFunction
   t1: t2:
-  foldl (k: v: t: remove k t) t2 t1
+  for t2 (k: v: t: remove k t) t1
 
 
 merge as (key: a: res: res): (key: a: b: res: res): (key: b: res: res): Dict key a: Dict key b: res: res =
@@ -406,7 +407,7 @@ merge as (key: a: res: res): (key: a: b: res: res): (key: b: res: res): Dict key
 #          (rest & bothStep lKey lValue rValue res)
 
   (leftovers as [key & a]) & (intermediateResult as res) =
-      foldl stepState rightDict (toList leftDict & initialResult)
+      for rightDict stepState (toList leftDict & initialResult)
 
   liftLeftStep as (key & a): res: res =
       t: res:
@@ -443,31 +444,26 @@ mapRes as (k: a: Result e b): Dict k a: Result e (Dict k b) =
         Ok << RBNode_elm_builtin color key one two three
 
 
-for as Dict key a: (key: a: b: b): b: b =
-    dict: fun:
-    foldl fun dict
-
-
-foldl as (k: v: b: b): Dict k v: b: b =
-  func: dict: acc:
+for as Dict k v: (k: v: b: b): b: b =
+  dict: func: acc:
   try dict as
     RBEmpty_elm_builtin:
       acc
 
     RBNode_elm_builtin _ key value left right:
-      foldl func right (func key value (foldl func left acc))
+      for right func (func key value (for left func acc))
 
 
-foldlRes as (k: v: b: Result e b): Dict k v: b: Result e b =
-    func: dict: acc:
+forRes as Dict k v: (k: v: b: Result e b): b: Result e b =
+    dict: func: acc:
     try dict as
         RBEmpty_elm_builtin:
             Ok acc
 
         RBNode_elm_builtin _ key value left right:
-            foldlRes func left acc >> onOk l:
+            forRes left func acc >> onOk l:
             func key value l >> onOk f:
-            foldlRes func right f
+            forRes right func f
 
 
 foldr as (k: v: b: b): Dict k v: b: b =
@@ -483,7 +479,7 @@ foldr as (k: v: b: b): Dict k v: b: b =
 filter as (key: v: Bool): Dict key v: Dict key v =
   #with key NonFunction
   isGood: dict:
-  foldl (k: v: d: if isGood k v then insert k v d else d) dict empty
+  for dict (k: v: d: if isGood k v then insert k v d else d) empty
 
 
 
@@ -500,7 +496,7 @@ partition as (key: v: Bool): Dict key v: (Dict key v & Dict key v) =
       else
         (t1 & insert key value t2)
 
-  foldl add dict (empty & empty)
+  for dict add (empty & empty)
 
 
 # LISTS

@@ -5,6 +5,16 @@ Possible alternative syntax
 Things that should probably be implemented
 ------------------------------------------
 
+# List packing instead of cons op
+
+  use
+
+        [ head, ...tail ]
+
+  in place of
+
+        head :: tail
+
 
 # Callback operator
 

@@ -159,7 +159,7 @@ typeDeps as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolRefere
         CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.foldl typeDeps args
         CA.TypeVariable _ _: acc
         CA.TypeFunction _ from _ to: acc >> typeDeps from >> typeDeps to
-        CA.TypeRecord _ _ attrs: Dict.foldl (k: typeDeps) attrs acc
+        CA.TypeRecord _ _ attrs: Dict.for attrs (k: typeDeps) acc
         CA.TypeAlias _ _ _: todo "typeDeps: Should not happen"
 
 
@@ -188,7 +188,7 @@ patternDeps as CA.Pattern: Deps: Deps =
     pattern: deps:
     try pattern as
         CA.PatternConstructor _ usr ps: List.foldl patternDeps ps { deps with cons = Set.insert usr .cons }
-        CA.PatternRecord _ ps: Dict.foldl (k: patternDeps) ps deps
+        CA.PatternRecord _ ps: Dict.for ps (k: patternDeps) deps
         CA.PatternAny _ _ (Just type): { deps with types = typeDeps type .types }
         CA.PatternAny _ _ Nothing: deps
         CA.PatternLiteralNumber _ _: deps
@@ -231,15 +231,15 @@ expressionDeps as CA.Expression: Deps: Deps =
 
         CA.Record _ Nothing exprByName:
             deps
-                >> Dict.foldl (name: expressionDeps) exprByName
+                >> Dict.for exprByName (name: expressionDeps)
 
         CA.Record _ (Just { ref = CA.RefRoot usr }) exprByName:
             { deps with values = Set.insert usr .values }
-                >> Dict.foldl (name: expressionDeps) exprByName
+                >> Dict.for exprByName (name: expressionDeps)
 
         CA.Record _ _ exprByName:
             deps
-                >> Dict.foldl (name: expressionDeps) exprByName
+                >> Dict.for exprByName (name: expressionDeps)
 
         CA.Call _ e0 (CA.ArgumentExpression e1):
             deps
@@ -1069,7 +1069,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                     , args = fa.args
                     , constructors
                     # I could probably break the deps by constructor, but would it be much useful in practice?
-                    , directTypeDeps = Dict.foldl (k: c: List.foldl typeDeps c.args) constructors Set.empty
+                    , directTypeDeps = Dict.for constructors (k: c: List.foldl typeDeps c.args) Set.empty
                     }
 
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }

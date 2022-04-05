@@ -208,7 +208,7 @@ patternNames as Pattern: Dict Name Pos =
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.foldl (x: x >> patternNames >> Dict.join) ps Dict.empty
-        PatternRecord pos ps: Dict.foldl (k: v: v >> patternNames >> Dict.join) ps Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 
 
 patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
@@ -219,7 +219,7 @@ patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.foldl (x: x >> patternNamedTypes >> Dict.join) ps Dict.empty
-        PatternRecord pos ps: Dict.foldl (k: v: v >> patternNamedTypes >> Dict.join) ps Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNamedTypes >> Dict.join) Dict.empty
 
 
 statementPos as Statement: Pos =
@@ -309,7 +309,7 @@ typeTyvars as Type: Dict Name Pos =
                     Just name:
                         Dict.singleton name pos
 
-            Dict.foldl (n: t: Dict.join (typeTyvars t)) attrs init
+            Dict.for attrs (n: t: Dict.join (typeTyvars t)) init
 
 
 #

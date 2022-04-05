@@ -145,7 +145,7 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
             Dict.join (referencedAliases allAliases from) (referencedAliases allAliases to)
 
         CA.TypeRecord pos extensible attrs:
-            Dict.foldl (name: t: Dict.join (referencedAliases allAliases t)) attrs Dict.empty
+            Dict.for attrs (name: t: Dict.join (referencedAliases allAliases t)) Dict.empty
 
         CA.TypeAlias pos path t:
             referencedAliases allAliases t
@@ -266,8 +266,8 @@ expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDe
 insertModuleTypes as CA.Module: CA.All CA.TypeDef: CA.All CA.TypeDef =
     module: allTypes:
     allTypes
-        >> Dict.foldl (name: def: Dict.insert def.usr << CA.TypeDefAlias def) module.aliasDefs
-        >> Dict.foldl (name: def: Dict.insert def.usr << CA.TypeDefUnion def) module.unionDefs
+        >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
+        >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
 expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
@@ -281,7 +281,7 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
                 CA.TypeDefAlias a: Dict.insert usr a acc
                 _: acc
 
-        Dict.foldl insertAlias allTypes Dict.empty
+        Dict.for allTypes insertAlias Dict.empty
 
 
     circulars & orderedAliasRefs =
@@ -304,13 +304,13 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
             >> Err
 
     else
-        oa =
+        oa as [CA.AliasDef] =
           orderedAliasRefs
               >> List.filterMap (ref: Dict.get ref allAliases)
 
         Dict.empty
             >> List.foldlRes (expandAndInsertAlias allTypes) oa
-            >> onOk (Dict.foldlRes (expandAndInsertUnion allTypes) allTypes)
+            >> onOk (Dict.forRes allTypes (expandAndInsertUnion allTypes))
 
 
 #

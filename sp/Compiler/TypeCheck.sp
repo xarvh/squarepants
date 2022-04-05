@@ -343,7 +343,7 @@ fromModule as Env: CA.Module: Res Env =
             ann & (def :: nonAnn)
 
     annotated & nonAnnotated =
-        Dict.foldl insert module.valueDefs ([] & [])
+        Dict.for module.valueDefs insert ([] & [])
 
     try nonAnnotated as
         first :: second :: tail:
@@ -1588,7 +1588,7 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
                if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
 
             #]
-            Dict.foldl Dict.insert (CA.typeTyvars refinedTy) env.nonFreeTyvars
+            Dict.for (CA.typeTyvars refinedTy) Dict.insert env.nonFreeTyvars
 
         else
             env.nonFreeTyvars
@@ -1620,7 +1620,7 @@ applySubsToNonFreeTyvars as Env: Monad Env =
                 constrainedVars
 
             Just ty:
-                Dict.foldl (n: p: Dict.insert n p) (CA.typeTyvars ty) constrainedVars
+                Dict.for (CA.typeTyvars ty) (n: p: Dict.insert n p) constrainedVars
 
     return { env with nonFreeTyvars = List.foldl meh (Dict.keys env.nonFreeTyvars) env.nonFreeTyvars }
 

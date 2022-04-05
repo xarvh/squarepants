@@ -232,7 +232,7 @@ normalizeTypeAndTyvars as Type: Dict Text a: ( Type & Dict Text a ) =
             >> Dict.insert
 
     tyvarsNew =
-        Dict.foldl replace tyvarsOld Dict.empty
+        Dict.for tyvarsOld replace Dict.empty
 
     ( tyNew & tyvarsNew )
 

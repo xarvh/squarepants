@@ -36,7 +36,7 @@ insertUnionConstructors as CA.TypeDef: CA.All CA.Constructor:  CA.All CA.Constru
             Meta.USR umr _ =
                 def.usr
 
-            Dict.foldl (name: Dict.insert (Meta.USR umr name)) def.constructors constructors
+            Dict.for def.constructors (name: Dict.insert (Meta.USR umr name)) constructors
 
 
 coreTypes as CA.All CA.TypeDef =
@@ -75,9 +75,9 @@ expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: CA.InstanceVar
 
 
     insertValueDef = def:
-        Dict.foldlRes (insertName def) (CA.patternNamedTypes def.pattern)
+        Dict.forRes (CA.patternNamedTypes def.pattern) (insertName def)
 
-    Dict.foldlRes (_: insertValueDef) module.valueDefs
+    Dict.forRes module.valueDefs (_: insertValueDef)
 
 
 coreVariables as CA.InstanceVariablesByRef =
@@ -130,7 +130,7 @@ coreVariables as CA.InstanceVariablesByRef =
     Dict.empty
         >> insertUnop Prelude.unaryPlus
         >> insertUnop Prelude.unaryMinus
-        >> Dict.foldl insertBinop Prelude.binops
+        >> Dict.for Prelude.binops insertBinop
         >> List.foldl insertCoreFunction Prelude.functions
 
 
@@ -142,7 +142,7 @@ globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals
 
     coreTypes
         # Collect types from all modules
-        >> Dict.foldl (_: Compiler/ExpandTypes.insertModuleTypes) allModules
+        >> Dict.for allModules (_: Compiler/ExpandTypes.insertModuleTypes)
 
         # resolve aliases and apply them to unions
         >> Compiler/ExpandTypes.expandAllTypes
@@ -151,9 +151,9 @@ globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals
             # populate constructors dict
             # (constructors in types are already expanded)
             constructors =
-                Dict.foldl (_: insertUnionConstructors) types coreConstructors
+                Dict.for types (_: insertUnionConstructors) coreConstructors
 
             # populate root variable types
-            Dict.foldlRes (_: expandAndInsertModuleAnnotations types) allModules coreVariables >> onOk instanceVariables:
+            Dict.forRes allModules (_: expandAndInsertModuleAnnotations types) coreVariables >> onOk instanceVariables:
             Ok { types, constructors, instanceVariables }
 
