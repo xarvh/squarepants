@@ -106,7 +106,7 @@ flatten as Error: [Pos & Description]: [Pos & Description] =
             pos & descr :: accum
 
         Nested ls:
-            List.foldl flatten ls accum
+            List.for ls flatten accum
 
 
 #
@@ -143,14 +143,14 @@ highlightSplit as Highlight: ( Dict Int ( Int & Int ) & Set Int ): ( Dict Int ( 
             ( Dict.insert line ( colStart & colEnd ) words & lines)
 
         HighlightBlock { lineStart, lineEnd }:
-            ( words & (List.foldl Set.insert (List.range lineStart lineEnd) lines))
+            ( words & (List.for (List.range lineStart lineEnd) Set.insert lines))
 
 
 fmtBlock as Int: [Highlight]: [Text]: Text =
     start: highlights: ls:
 
     ( highlightedWords & highlightedLines ) =
-        List.foldl highlightSplit highlights ( Dict.empty & Set.empty )
+        List.for highlights highlightSplit ( Dict.empty & Set.empty )
 
     pad =
         (start + List.length ls)

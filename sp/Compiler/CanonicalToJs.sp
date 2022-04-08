@@ -743,7 +743,7 @@ translateArg as { nativeBinop as Bool }: Env: CA.Argument: JA.Expr =
 
 accessAttrs as List Text: JA.Expr: JA.Expr =
     attrPath: e:
-    List.foldl JA.AccessWithDot attrPath e
+    List.for attrPath JA.AccessWithDot e
 
 
 accessAttrsButTheLast as Text: List Text: JA.Expr: ( JA.Expr & Text ) =
@@ -753,7 +753,7 @@ accessAttrsButTheLast as Text: List Text: JA.Expr: ( JA.Expr & Text ) =
         attr: ( expr & last ):
         ( JA.AccessWithDot last expr & attr)
 
-    List.foldl fold attrTail ( e & attrHead )
+    List.for attrTail fold ( e & attrHead )
 
 
 maybeNativeUnop as Env: CA.Expression: JA.Expr: Maybe JA.Expr =
@@ -809,7 +809,7 @@ binopChain as JA.Expr: Text: List JA.Expr: JA.Expr =
             default
 
         head :: tail:
-            List.foldl (JA.Binop op) tail head
+            List.for tail (JA.Binop op) head
 
 
 union Either a b =
@@ -922,7 +922,7 @@ testPattern as CA.Pattern: JA.Expr: List JA.Expr: List JA.Expr =
                 ( index + 1 & testPattern argPattern (accessWithBracketsInt index valueToTest) acc)
 
             ( 1 & (head :: accum) )
-                >> List.foldl foldArg pas
+                >> List.for pas foldArg
                 >> Tuple.second
 
         CA.PatternRecord _ attrs:
@@ -951,7 +951,7 @@ assignPattern as (Name: CA.Ref): (Name: JA.Statement: a: a): CA.Pattern: JA.Expr
             foldEveryArgument = ( index & pa ):
                 assignPattern nameToReference insert pa (accessConstructorArg (index + 1) exprAccum)
 
-            List.foldl foldEveryArgument (List.indexedMap Tuple.pair pas) accum
+            List.for (List.indexedMap Tuple.pair pas) foldEveryArgument accum
 
         CA.PatternRecord _ attrs:
             accum

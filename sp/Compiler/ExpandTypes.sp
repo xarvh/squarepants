@@ -136,7 +136,7 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
                 else
                     Set.empty
 
-            List.foldl (ar: Dict.join (referencedAliases allAliases ar)) args (Set.singleton usr)
+            List.for args (ar: Dict.join (referencedAliases allAliases ar)) (Set.singleton usr)
 
         CA.TypeVariable pos name:
             Dict.empty

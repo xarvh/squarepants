@@ -237,7 +237,7 @@ updateSd as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
             Just _: sd
             Nothing: { sd with modules = { path = name, visibleAs = name, globalValues = [], globalTypes = [] } :: .modules }
 
-    List.foldl insertModuleName fileNames
+    List.for fileNames insertModuleName
 
 
 loadMeta as IO.Env: IO Meta =
@@ -342,7 +342,7 @@ compile as IO.Env: Text: Text: Text: IO None =
             name
 
         { moduleByName =
-            List.foldl (m: Dict.insert (getName m) { fsPath = Maybe.withDefault "CORE" << umrToFileName m.umr, content = m.asText }) modules Dict.empty
+            List.for modules (m: Dict.insert (getName m) { fsPath = Maybe.withDefault "CORE" << umrToFileName m.umr, content = m.asText }) Dict.empty
         }
 
 

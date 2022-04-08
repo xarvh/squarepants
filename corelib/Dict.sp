@@ -414,7 +414,7 @@ merge as (key: a: res: res): (key: a: b: res: res): (key: b: res: res): Dict key
       (k & v) = t
       leftStep k v res
 
-  List.foldl liftLeftStep leftovers intermediateResult
+  List.for leftovers liftLeftStep intermediateResult
 
 
 # TRANSFORM
@@ -530,5 +530,5 @@ toList as Dict k v: [k & v] =
 fromList as List (key & v): Dict key v =
   #with key NonFunction
   assocs:
-  List.foldl (keyAndValue: dict: insert keyAndValue.first keyAndValue.second dict) assocs empty
+  List.for assocs (keyAndValue: dict: insert keyAndValue.first keyAndValue.second dict) empty
 

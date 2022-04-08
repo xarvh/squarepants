@@ -64,7 +64,7 @@ ftv as Text: Dict Text { nonFn as Bool } =
 
 forall as List Text: Dict Text { nonFn as Bool } =
     vars:
-    List.foldl (n: Dict.insert n { nonFn = False }) vars Dict.empty
+    List.for vars (n: Dict.insert n { nonFn = False }) Dict.empty
 
 
 

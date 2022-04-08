@@ -41,8 +41,8 @@ textToMeta as Text: Text: Res Meta =
 toMeta as ModulesFile: Meta =
     mf:
     Meta.init
-        >> List.foldl insertLibrary mf.libraries
-        >> List.foldl insertModules mf.sourceDirs
+        >> List.for mf.libraries insertLibrary
+        >> List.for mf.sourceDirs insertModules
 
 
 insertLibrary as Library: Meta: Meta =
@@ -51,12 +51,12 @@ insertLibrary as Library: Meta: Meta =
     if lib.source /= "spcore" then
         todo << "Library source `" .. lib.source .. "` is not supported."
     else
-        List.foldl (insertModule Meta.Core) lib.modules meta
+        List.for lib.modules (insertModule Meta.Core) meta
 
 
 insertModules as SourceDir: Meta: Meta =
     sd:
-    List.foldl (insertModule (Meta.SourceDir sd.path)) sd.modules
+    List.for sd.modules (insertModule (Meta.SourceDir sd.path))
 
 
 insertModule as Meta.Source: Module: Meta: Meta =
@@ -85,8 +85,8 @@ insertModule as Meta.Source: Module: Meta: Meta =
            >> Dict.insert varName
 
     {
-    , globalValues = List.foldl insertGlobal mod.globalValues meta.globalValues
-    , globalTypes = List.foldl insertGlobal mod.globalTypes meta.globalTypes
+    , globalValues = List.for mod.globalValues insertGlobal meta.globalValues
+    , globalTypes = List.for mod.globalTypes insertGlobal meta.globalTypes
     , moduleVisibleAsToUmr = Dict.insert visibleAs umr meta.moduleVisibleAsToUmr
     , umrToModuleVisibleAs = Dict.insert umr visibleAs meta.umrToModuleVisibleAs
     }
@@ -155,5 +155,5 @@ textToModulesFile as Text: Text: Res ModulesFile =
 
     sponContent
         >> SPON.read modulesFileReader sponName
-        >> Result.map rootEntries: List.foldl insert rootEntries initModulesFile
+        >> Result.map rootEntries: List.for rootEntries insert initModulesFile
 

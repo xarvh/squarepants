@@ -168,7 +168,7 @@ patternNames as Pattern: Dict Name Pos =
 
     foldOver =
         pas:
-        List.foldl (p: p >> patternNames >> Dict.join) pas Dict.empty
+        List.for pas (p: p >> patternNames >> Dict.join) Dict.empty
 
     insertAttr =
         a:
@@ -184,6 +184,6 @@ patternNames as Pattern: Dict Name Pos =
         PatternConstructor _ _ _ pas: foldOver pas
         PatternList _ pas: foldOver pas
         PatternListCons _ pas: foldOver pas
-        PatternRecord pos ars: List.foldl insertAttr ars.attrs Dict.empty
+        PatternRecord pos ars: List.for ars.attrs insertAttr Dict.empty
         PatternTuple _ pas: foldOver pas
 

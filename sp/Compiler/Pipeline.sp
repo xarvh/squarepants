@@ -40,11 +40,11 @@ insertUnionConstructors as CA.TypeDef: CA.All CA.Constructor:  CA.All CA.Constru
 
 
 coreTypes as CA.All CA.TypeDef =
-    List.foldl (def: Dict.insert def.usr << CA.TypeDefUnion def) CoreTypes.allDefs Dict.empty
+    List.for CoreTypes.allDefs (def: Dict.insert def.usr << CA.TypeDefUnion def) Dict.empty
 
 
 coreConstructors as CA.All CA.Constructor =
-    List.foldl (u: insertUnionConstructors (CA.TypeDefUnion u)) CoreTypes.allDefs Dict.empty
+    List.for CoreTypes.allDefs (u: insertUnionConstructors (CA.TypeDefUnion u)) Dict.empty
 
 
 expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: CA.InstanceVariablesByRef: Res CA.InstanceVariablesByRef =
@@ -131,7 +131,7 @@ coreVariables as CA.InstanceVariablesByRef =
         >> insertUnop Prelude.unaryPlus
         >> insertUnop Prelude.unaryMinus
         >> Dict.for Prelude.binops insertBinop
-        >> List.foldl insertCoreFunction Prelude.functions
+        >> List.for Prelude.functions insertCoreFunction
 
 
 #

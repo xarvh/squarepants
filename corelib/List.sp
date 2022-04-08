@@ -1,10 +1,5 @@
 
 
-for as [item]: (item: state: state): state: state =
-    list: fun:
-    foldl fun list
-
-
 any as (a: Bool): [a]: Bool =
     fun: list:
 
@@ -62,17 +57,17 @@ sortBy as (a: b): [a]: [a] =
 indexBy as (a: key): [a]: Dict key a =
     #with key NonFunction
     getIndex: list:
-    List.foldl (i: Dict.insert (getIndex i) i) list Dict.empty
+    for list (i: Dict.insert (getIndex i) i) Dict.empty
 
 
-foldl as (item: state: state): [item]: state: state =
-    function: aList: init:
+for as [item]: (item: state: state): state: state =
+    aList: function: init:
     try aList as
       []:
           init
 
       h :: tail:
-          foldl function tail (function h init)
+          for tail function (function h init)
 
 
 foldr as (item: state: state): [item]: state: state =
@@ -102,7 +97,7 @@ foldr as (item: state: state): [item]: state: state =
                                     d :: r4:
                                           res =
                                               if ctr > 500 then
-                                                  foldl f (reverse r4) acc
+                                                  for (reverse r4) f acc
                                               else
                                                   foldrHelper acc (ctr + 1) r4
 
@@ -112,7 +107,7 @@ foldr as (item: state: state): [item]: state: state =
 
 length as [a]: Int =
     list:
-    foldl (_: a: a + 1) list 0
+    for list (_: a: a + 1) 0
 
 
 map as (a: b): [a]: [b] =
@@ -329,7 +324,7 @@ each as [a]: (a: b): None =
 
 reverse as [a]: [a] =
     aList:
-    foldl SPCore.Cons aList []
+    for aList SPCore.Cons []
 
 
 repeat as Int: a: [ a ] =
@@ -357,7 +352,7 @@ minimum as [Number]: Maybe Number =
 
     try list as
       x :: xs:
-        Just (foldl min xs x)
+        Just (for xs min x)
 
       _:
         Nothing

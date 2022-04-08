@@ -207,7 +207,7 @@ patternNames as Pattern: Dict Name Pos =
         PatternAny pos (Just n) _: Dict.singleton n pos
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
-        PatternConstructor pos path ps: List.foldl (x: x >> patternNames >> Dict.join) ps Dict.empty
+        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
         PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 
 
@@ -218,7 +218,7 @@ patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
         PatternAny pos (Just n) maybeType: Dict.singleton n (pos & maybeType)
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
-        PatternConstructor pos path ps: List.foldl (x: x >> patternNamedTypes >> Dict.join) ps Dict.empty
+        PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
         PatternRecord pos ps: Dict.for ps (k: v: v >> patternNamedTypes >> Dict.join) Dict.empty
 
 
@@ -295,7 +295,7 @@ typeTyvars as Type: Dict Name Pos =
             Dict.join (typeTyvars from) (typeTyvars to)
 
         CA.TypeConstant pos ref args:
-            List.foldl (a: Dict.join (typeTyvars a)) args Dict.empty
+            List.for args (a: Dict.join (typeTyvars a)) Dict.empty
 
         CA.TypeAlias _ path t:
             typeTyvars t

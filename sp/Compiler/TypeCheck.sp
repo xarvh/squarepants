@@ -362,7 +362,7 @@ fromModule as Env: CA.Module: Res Env =
 
                         ( envF & stateF ) =
                             annotated
-                                >> List.foldl insertAnnotatedRootValue env
+                                >> List.for env insertAnnotatedRootValue
                                 >> M.list_foldl fromRootDefinition allOrdered
                                 >> M.run initState
 
@@ -1622,7 +1622,7 @@ applySubsToNonFreeTyvars as Env: Monad Env =
             Just ty:
                 Dict.for (CA.typeTyvars ty) (n: p: Dict.insert n p) constrainedVars
 
-    return { env with nonFreeTyvars = List.foldl meh (Dict.keys env.nonFreeTyvars) env.nonFreeTyvars }
+    return { env with nonFreeTyvars = List.for (Dict.keys env.nonFreeTyvars) meh env.nonFreeTyvars }
 
 
 
@@ -1800,7 +1800,7 @@ errorIncompatibleTypes as Env: UnifyReason: Pos: Type: Dict Name TypeClash: Mona
                         pos_whatever
 
                     h :: t:
-                        List.foldl Pos.range t h
+                        List.for t Pos.range h
 
             makeError = eenv:
                 [ "This try..as block produces a different type than the blocks preceding it."

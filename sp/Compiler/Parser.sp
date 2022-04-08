@@ -112,7 +112,7 @@ runParser as Text: Parser output: [Token]: Res output =
                 if List.length readState < List.length best then readState else best
 
             readState as [Token] =
-                List.foldl findMin failureStates tokens
+                List.for failureStates findMin tokens
 
             message =
                 try readState as
@@ -934,7 +934,7 @@ typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
         reverseRec ( False & firstPos & e ) es []
 
     thisIsMutable & return
-        >> List.foldl fold reversedArgs
+        >> List.for reversedArgs fold
         >> x: x.second
         >> Parser.accept
 

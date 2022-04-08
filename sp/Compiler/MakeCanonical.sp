@@ -156,7 +156,7 @@ resolveToConstructorUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReferenc
 typeDeps as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolReference =
     type: acc:
     try type as
-        CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.foldl typeDeps args
+        CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.for args typeDeps
         CA.TypeVariable _ _: acc
         CA.TypeFunction _ from _ to: acc >> typeDeps from >> typeDeps to
         CA.TypeRecord _ _ attrs: Dict.for attrs (k: typeDeps) acc
@@ -181,13 +181,13 @@ deps_init = {
 bodyDeps as [CA.Statement]: Deps: Deps =
     # We keep the `stats` explicit argument to avoid a circular initialization
     stats:
-    List.foldl statementDeps stats
+    List.for stats statementDeps
 
 
 patternDeps as CA.Pattern: Deps: Deps =
     pattern: deps:
     try pattern as
-        CA.PatternConstructor _ usr ps: List.foldl patternDeps ps { deps with cons = Set.insert usr .cons }
+        CA.PatternConstructor _ usr ps: List.for ps patternDeps { deps with cons = Set.insert usr .cons }
         CA.PatternRecord _ ps: Dict.for ps (k: patternDeps) deps
         CA.PatternAny _ _ (Just type): { deps with types = typeDeps type .types }
         CA.PatternAny _ _ Nothing: deps
@@ -259,7 +259,7 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.Try _ e patternsAndBodies:
             deps
                 >> expressionDeps e
-                >> List.foldl ((p & b): d: d >> patternDeps p >> bodyDeps b) patternsAndBodies
+                >> List.for patternsAndBodies ((p & b): d: d >> patternDeps p >> bodyDeps b)
 
 
 #
@@ -415,7 +415,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
             try List.reverse caPas as
                 last :: rest:
                      last
-                        >> List.foldl (item: list: CA.PatternConstructor pos CoreTypes.cons [ item, list ]) rest
+                        >> List.for rest (item: list: CA.PatternConstructor pos CoreTypes.cons [ item, list ])
                         >> Ok
 
                 []:
@@ -479,7 +479,7 @@ translateStatementBlock as Env: [FA.Statement]: Res [CA.Statement] =
                 futureNonRootValues
 
     lEnv0 as Env =
-        { env with futureNonRootValues = List.foldl insertNames stats env.futureNonRootValues }
+        { env with futureNonRootValues = List.for stats insertNames env.futureNonRootValues }
 
 
     insertCaStatement as FA.Statement: Env & [CA.Statement]: Res (Env & [CA.Statement]) =
@@ -584,7 +584,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
 
             translateExpression env reference >> onOk ref:
             List.mapRes (translateArgument env) arguments >> onOk args:
-            Ok << List.foldl fold args ref
+            Ok << List.for args fold ref
 
         FA.If pos { condition, true, false }:
             translateExpression env condition >> onOk c:
@@ -1069,7 +1069,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                     , args = fa.args
                     , constructors
                     # I could probably break the deps by constructor, but would it be much useful in practice?
-                    , directTypeDeps = Dict.for constructors (k: c: List.foldl typeDeps c.args) Set.empty
+                    , directTypeDeps = Dict.for constructors (k: c: List.for c.args typeDeps) Set.empty
                     }
 
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }

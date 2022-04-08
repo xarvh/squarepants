@@ -136,7 +136,7 @@ outcomesRec as Text: Test: [{ name as Text, code as Text, outcome as TestOutcome
             { name = path .. getName t, code = "", outcome = Skipped } :: accum
 
         Group pathSegment ts:
-            List.foldl (outcomesRec (path .. pathSegment .. " / ")) ts accum
+            List.for ts (outcomesRec (path .. pathSegment .. " / ")) accum
 
 
 getName as Test: Text =
@@ -156,7 +156,7 @@ getName as Test: Text =
 flatten as [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome }] =
     tests:
 
-    List.foldl (outcomesRec "") tests []
+    List.for tests (outcomesRec "") []
 
 
 errorsFirst as TestOutcome: Number =

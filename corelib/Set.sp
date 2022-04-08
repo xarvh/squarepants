@@ -70,5 +70,5 @@ toList as Set a: [a] =
 fromList as [a]: Set a =
     list:
     #with a NonFunction
-    List.foldl insert list Set.empty
+    List.for list insert Set.empty
 

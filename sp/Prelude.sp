@@ -82,7 +82,7 @@ binops as Dict Text Op.Binop =
     , sendRight
     , sendLeft
     ]
-      >> (list: List.foldl (bop: Dict.insert bop.symbol bop) list Dict.empty)
+      >> (list: List.for list (bop: Dict.insert bop.symbol bop) Dict.empty)
 
 
 
