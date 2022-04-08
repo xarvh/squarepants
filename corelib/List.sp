@@ -70,8 +70,8 @@ for as [item]: (item: state: state): state: state =
           for tail function (function h init)
 
 
-foldr as (item: state: state): [item]: state: state =
-    f: list: init:
+forReversed as [item]: (item: state: state): state: state =
+    list: f: init:
 
     foldrHelper as state: Int: List item: state =
         acc: ctr: ls:
@@ -112,7 +112,7 @@ length as [a]: Int =
 
 map as (a: b): [a]: [b] =
     f: list:
-    foldr (x: acc: (f x) :: acc) list []
+    forReversed list (x: acc: (f x) :: acc) []
 
 
 map2 as (a: b: c): [a]: [b]: [c] =
@@ -182,12 +182,12 @@ append as List a: List a: List a =
   xs: ys:
   try ys as
     []: xs
-    _: foldr SPCore.Cons xs ys
+    _: forReversed xs SPCore.Cons ys
 
 
 concat as List (List a): List a =
   lists:
-  foldr append lists []
+  forReversed lists append []
 
 
 concatMap as (a: [b]): [a]: [b] =
@@ -282,7 +282,7 @@ takeWhile as (item: Bool): [item]: [item] =
 
 filter as (item: Bool): [item]: [item] =
     f: ls:
-    foldr (item: acc: if f item then item :: acc else acc) ls []
+    forReversed ls (item: acc: if f item then item :: acc else acc) []
 
 
 filterMap as (a: Maybe b): [a]: [b] =
@@ -294,7 +294,7 @@ filterMap as (a: Maybe b): [a]: [b] =
          Just b: b :: acc
          Nothing: acc
 
-  foldr update la []
+  forReversed la update []
 
 
 mapFirst as (a: Maybe b): List a: Maybe b =

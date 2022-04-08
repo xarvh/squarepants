@@ -999,7 +999,7 @@ translateUnionConstructor as Meta.UniqueSymbolReference: CA.Constructor: JA.Stat
         JA.Array (JA.Literal name :: storedArgs)
 
     lambdas =
-        List.foldr (i: JA.SimpleLambda [ constructorArgumentName i ]) range expr
+        List.forReversed range (i: JA.SimpleLambda [ constructorArgumentName i ]) expr
 
     JA.Define (translateUsr usr) lambdas
 

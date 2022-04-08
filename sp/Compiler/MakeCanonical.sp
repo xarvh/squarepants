@@ -386,7 +386,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                 CA.PatternConstructor pos CoreTypes.cons [ pattern, last ]
 
             List.mapRes (translatePattern ann env) fas >> onOk cas:
-            Ok << List.foldr fold cas (CA.PatternConstructor pos CoreTypes.nil [])
+            Ok << List.forReversed cas fold (CA.PatternConstructor pos CoreTypes.nil [])
 
         FA.PatternRecord pos recordArgs:
             if recordArgs.extends /= Nothing then
@@ -626,7 +626,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                     (CA.ArgumentExpression list)
 
             List.mapRes (translateExpression env) faItems >> onOk es:
-            Ok << List.foldr cons es (CA.Constructor pos CoreTypes.nil)
+            Ok << List.forReversed es cons (CA.Constructor pos CoreTypes.nil)
 
         FA.Try pos fa:
             translatePatternAndStatements = ( faPattern & faStatements ):
@@ -1001,7 +1001,7 @@ translateConstructor as ReadOnly: CA.Type: At Name & [FA.Type]: Dict Name CA.Con
 
         c as CA.Constructor = {
             , pos
-            , type = List.foldr (ar: ty: CA.TypeFunction pos ar False ty) caArgs unionType
+            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar False ty) unionType
             , args = caArgs
             }
 

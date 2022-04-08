@@ -466,14 +466,14 @@ forRes as Dict k v: (k: v: b: Result e b): b: Result e b =
             forRes right func f
 
 
-foldr as (k: v: b: b): Dict k v: b: b =
-  func: t: acc:
+forReversed as Dict k v: (k: v: b: b): b: b =
+  t: func: acc:
   try t as
     RBEmpty_elm_builtin:
       acc
 
     RBNode_elm_builtin _ key value left right:
-      foldr func left (func key value (foldr func right acc))
+      forReversed left func (func key value (forReversed right func acc))
 
 
 filter as (key: v: Bool): Dict key v: Dict key v =
@@ -505,13 +505,13 @@ partition as (key: v: Bool): Dict key v: (Dict key v & Dict key v) =
 
 keys as Dict k v: List k =
   dict:
-  foldr (key: value: keyList: key :: keyList) dict []
+  forReversed dict (key: value: keyList: key :: keyList) []
 
 
 
 values as Dict k v: List v =
   dict:
-  foldr (key: value: valueList: value :: valueList) dict []
+  forReversed dict (key: value: valueList: value :: valueList) []
 
 
 
@@ -522,7 +522,7 @@ toList as Dict k v: [k & v] =
       key: value: list:
       key & value :: list
 
-  foldr f dict []
+  forReversed dict f []
 
 
 
