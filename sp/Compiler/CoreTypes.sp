@@ -82,10 +82,12 @@ noneValue as Meta.UniqueSymbolReference =
     makeUsr noneName
 
 
-noneDef as CA.UnionDef = {
-    , usr = makeUsr noneName
+noneDef as CA.UnionDef =
+    usr = makeUsr noneName
+    {
+    , usr
     , args = []
-    , constructors = Dict.singleton noneName { pos = p, args = [], type = none }
+    , constructors = Dict.singleton noneName { pos = p, args = [], type = none, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -107,13 +109,15 @@ bool as CA.Type =
     nameToType "Bool" []
 
 
-boolDef as CA.UnionDef = {
-    , usr = makeUsr "Bool"
+boolDef as CA.UnionDef =
+    usr = makeUsr "Bool"
+    {
+    , usr
     , args = []
     , constructors =
         Dict.empty
-            >> Dict.insert "True" { pos = p, args = [], type = bool }
-            >> Dict.insert "False" { pos = p, args = [], type = bool }
+            >> Dict.insert "True" { pos = p, args = [], type = bool, typeUsr = usr }
+            >> Dict.insert "False" { pos = p, args = [], type = bool, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -137,6 +141,9 @@ list as CA.Type: CA.Type =
 
 
 listDef as CA.UnionDef =
+    usr =
+        makeUsr "List"
+
     item =
         #CA.TypeAnnotatedVar p "item"
         CA.TypeVariable p "item"
@@ -145,13 +152,14 @@ listDef as CA.UnionDef =
         , pos = p
         , args = [ item, list item ]
         , type = List.forReversed [ item, list item ] (ar: ty: CA.TypeFunction p ar False ty) (list item)
+        , typeUsr = usr
         }
 
-    { usr = makeUsr "List"
+    { usr
     , args = [ "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" { pos = p, args = [], type = list item }
+            >> Dict.insert "Nil" { pos = p, args = [], type = list item, typeUsr = usr }
             >> Dict.insert "Cons" consDef
     , directTypeDeps = Set.empty
     }

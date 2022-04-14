@@ -226,8 +226,9 @@ list_map2 as (a: b: StateMonad.M state c): List a: List b: StateMonad.M state (L
 #    List.map2 (fn xx yy: f xx yy @s) xs ys
 
 
-list_foldl as (item: accum: StateMonad.M state accum): List item: accum: StateMonad.M state accum =
-    StateMonad.list_foldl
+list_for as List item: (item: accum: StateMonad.M state accum): accum: StateMonad.M state accum =
+    l: f:
+    StateMonad.list_foldl f l
 #list_foldl = #f xs init @s =
 #    as (x: acc: State @: acc): [x]: State @: acc
 #
@@ -242,8 +243,9 @@ dict_map as (comparable: a: StateMonad.M state b): Dict comparable a: StateMonad
 #    Dict.map (fn k v: f k v @s) d
 
 
-dict_foldl as (comparable: item: accum: StateMonad.M state accum): Dict comparable item: accum: StateMonad.M state accum =
-    StateMonad.dict_foldl
+dict_for as Dict comparable item: (comparable: item: accum: StateMonad.M state accum): accum: StateMonad.M state accum =
+    d: f:
+    StateMonad.dict_foldl f d
 #dict_foldl = # f d z @s =
 #    as (k: v: a: State @: a): Dict k v: State @: a
 #
@@ -258,9 +260,11 @@ m_update as (state: state): StateMonad.M state state =
 
 
 
-
-
-
+expandAlias as Type: Type =
+    type:
+    try type as
+        CA.TypeAlias _ _ t: expandAlias t
+        _: type
 
 
 
@@ -363,7 +367,7 @@ fromModule as Env: CA.Module: Res Env =
                         ( envF & stateF ) =
                             annotated
                                 >> List.for env insertAnnotatedRootValue
-                                >> M.list_foldl fromRootDefinition allOrdered
+                                >> M.list_for allOrdered fromRootDefinition
                                 >> M.run initState
 
             #]
@@ -392,7 +396,7 @@ fromModule as Env: CA.Module: Res Env =
 
             envF & stateF =
                 env
-                    >> StateMonad.list_foldl (fromDefinition True) allOrdered
+                    >> list_for allOrdered (fromDefinition True)
                     >> StateMonad.run initState
 
             if stateF.errors == [] then
@@ -431,6 +435,26 @@ TODO It might be _even faster_ if we use the references to decide what to compil
 #        >> Tuple.second
 
 
+
+
+
+list_foldlLast as (Bool: a: b: Monad b): [a]: b: Monad b =
+    update: list: init:
+
+    try list as
+        []:
+            return init
+
+        [last]:
+            update True last init
+
+        head :: tail:
+            update False head init >> andThen (list_foldlLast update tail)
+
+
+
+
+
 fromBlock as Env: List CA.Statement: Monad Type =
     env0: block:
 
@@ -442,7 +466,7 @@ fromBlock as Env: List CA.Statement: Monad Type =
         }
 
     upd =
-        statement: state:
+        isLast: statement: state:
         (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
         return
             { env = env
@@ -456,7 +480,7 @@ fromBlock as Env: List CA.Statement: Monad Type =
                         definitionId :: state.mutableDefs
             }
 
-    (list_foldl upd block state0) >> andThen stateF:
+    (list_foldlLast upd block state0) >> andThen stateF:
     try stateF.mutableDefs as
         []:
             return stateF.inferredType
@@ -508,6 +532,12 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
 
     if def.native then
         return env1
+
+    else if patternOut.isFullyAnnotated then
+        #TODO!!! replacing patternOut.ty with patternOut.type gives a super useless error
+        checkBlock env1 patternOut.ty def.body >> andThen None:
+        return env1
+
     else
         fromBlock env1 def.body >> andThen bodyType_:
         applySubsToType bodyType_ >> andThen bodyType:
@@ -561,6 +591,615 @@ checkFreeVariables as Env: Pos: Type: Type: Monad None =
         return None
 
 
+
+########
+
+
+onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key b =
+    da: db:
+
+    onAOnly =
+        key: a: (aOnly & both & bOnly):
+        Dict.insert key a aOnly & both & bOnly
+
+    onBOnly =
+        key: b: (aOnly & both & bOnly):
+        aOnly & both & Dict.insert key b bOnly
+
+    onBoth =
+        key: a: b: (aOnly & both & bOnly):
+        aOnly & Dict.insert key (a & b) both & bOnly
+
+    Dict.merge onAOnly onBoth onBOnly da db (Dict.empty & Dict.empty & Dict.empty)
+
+
+
+
+isCompatibleWith as Env: Type: Pos: Type: Monad None =
+    env: expectedType: pos: actualType:
+
+    try expectedType & actualType as
+
+      CA.TypeConstant _ expectedUsr expectedArgs & CA.TypeConstant _ actualUsr actualArgs:
+          if expectedUsr /= actualUsr then
+              addCheckError pos [
+                  , "This expression should be of type"
+                  , typeToText env expectedType
+                  , "but instead is"
+                  , typeToText env actualType
+                  ]
+          else
+            # I don't need to check that arg length is the same, do I?
+            None >> list_for (List.map2 Tuple.pair expectedArgs actualArgs) (e & a): None:
+                isCompatibleWith env e pos a
+
+
+      CA.TypeFunction _ eFrom eIsMut eTo & CA.TypeFunction _ aFrom aIsMut aTo:
+          if eIsMut /= aIsMut then
+              addCheckError pos [
+                  , "mutability clash"
+                  ]
+          else
+              isCompatibleWith env eFrom pos aFrom >> andThen _:
+              isCompatibleWith env eTo pos aTo
+
+      CA.TypeRecord _ (Just e) eAttrs & _:
+          addCheckError pos [
+              , "Extensible record annotation is experimentally disabled [TODO link to why]"
+              , ""
+              , "extension: " .. SPCore.toHuman e
+              , ""
+              , "attrs: " .. (eAttrs >> Dict.keys >> Text.join ", ")
+              ]
+
+      CA.TypeRecord _ Nothing eAttrs & CA.TypeRecord _ aExtension aAttrs:
+          eOnly & both & aOnly =
+              onlyBothOnly eAttrs aAttrs
+
+          if eOnly /= Dict.empty and aExtension == Nothing then
+              addCheckError pos [
+                  , "missing attributes: " .. SPCore.toHuman (Dict.keys eOnly)
+                  ]
+          else if aOnly /= Dict.empty then
+              addCheckError pos [
+                  , "extra attributes: " .. SPCore.toHuman (Dict.keys aOnly)
+                  ]
+          else
+              None >> dict_for both attrName: (eType & aType): None:
+                  isCompatibleWith env eType pos aType
+
+      CA.TypeAlias _ _ ty & _:
+          isCompatibleWith env ty pos actualType
+
+      _ & CA.TypeAlias _ _ ty:
+          isCompatibleWith env expectedType pos ty
+
+      _ & CA.TypeVariable _ actualName:
+          unify env pos UnifyReason_AnnotationSimple expectedType actualType >> andThen unifiedArgumentType:
+          return None
+#          try Dict.get actualName env.nonFreeTyvars as
+#              Nothing:
+#
+#              Just nonFreeTyvar:
+#                  addCheckError pos [
+#                      , "Different type variables"
+#                      , "Annotation uses `" .. typeToText env expectedType .. "`"
+#                      , "But actual type is `" .. actualName .. "` which is non-free: " .. SPCore.toHuman nonFreeTyvar
+#                      ]
+
+      _:
+          addCheckError pos [
+            , "I was expecting"
+            , typeToText env expectedType
+            , "but the actual type is: "
+            , typeToText env actualType
+            , "The two types are not compatible!"
+            ]
+
+
+addCheckConstructorError as Pos: Env: [CA.Pattern]: [Text]: Monad Env =
+    pos: env: remainingArgs: message:
+
+    addCheckError pos message >> andThen None:
+
+    env >> list_for remainingArgs argPattern: envX:
+        return envX
+        [# TODO add remaining args to env
+          fromPattern envX argPattern Dict.empty >> andThen patternOut:
+
+          { env with instanceVariables =
+              .instanceVariables
+                  >> Dict.insert (CA.RefBlock name) {
+                      , definedAt = pos
+                      , ty = annotation
+                      , freeTypeVariables = CA.getFreeTypeVars env.nonFreeTyvars Dict.empty annotation
+                      , isMutable = False
+                      }
+          }
+
+          ...
+
+          insertPatternVars
+              { subs = Dict.empty
+              , isParameter = False
+              , isMutable = False
+              , isRoot
+              }
+              patternOut.vars
+              env
+        #]
+
+
+checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
+  env: expectedType: pattern:
+
+  try expectedType as
+    CA.TypeAlias pos usr ty:
+      checkAndInsertPattern env ty pattern
+
+    _:
+      try pattern as
+
+        CA.PatternAny pos maybeName maybeAnnotation:
+
+            envWith =
+                name: type:
+                { env with instanceVariables =
+                    # TODO why keeping `env` implicit gives a shitton of errors?
+                    env.instanceVariables
+                        >> Dict.insert (CA.RefBlock name) {
+                            , definedAt = pos
+                            , ty = type
+                            , freeTypeVariables = CA.getFreeTypeVars env.nonFreeTyvars Dict.empty type
+                            , isMutable = False
+                            }
+                }
+
+            try maybeName & maybeAnnotation as
+
+                Just name & Just annotation:
+                    isCompatibleWith env expectedType pos annotation >> andThen None:
+                    return (envWith name annotation)
+
+                Just name & Nothing:
+                    return (envWith name expectedType)
+
+                Nothing & Just annotation:
+                    isCompatibleWith env expectedType pos annotation >> andThen None:
+                    return env
+
+                Nothing & Nothing:
+                    return env
+
+
+        CA.PatternLiteralNumber pos literal:
+            SPCore.todo "TODO needs proper type comparison without `pos`"
+            if expectedType == CoreTypes.number then
+
+                return env
+            else
+                addCheckError pos [ "This pattern is a Number, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
+                return env
+
+        CA.PatternLiteralText pos literal:
+            SPCore.todo "TODO needs proper type comparison without `pos`"
+            if expectedType == CoreTypes.text then
+                return env
+            else
+                addCheckError pos [ "This pattern is a Text, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
+                return env
+
+        CA.PatternConstructor pos usr args:
+            try Dict.get usr env.constructors as
+                Nothing:
+                    addCheckConstructorError pos env args [ "Unknown constructor: " .. SPCore.toHuman usr ]
+
+                Just constructor:
+                    try expectedType as
+                        # TODO!!! calling this `args` instead of `args_` should cause a shadowing error, why doesn't it trigger?
+                        CA.TypeConstant _ expectedUsr args_:
+                            if usr /= constructor.typeUsr then
+                                addCheckConstructorError pos env args [
+                                    , "Constructor produces " .. SPCore.toHuman constructor.typeUsr .. " but annotation requires " .. SPCore.toHuman expectedUsr
+                                    ]
+                            else
+                                # TODO!!! they type args should be applied to constructor.args
+                                checkConstructorWithItsArgs env pos 0 args constructor.args
+
+                        _:
+                            addCheckConstructorError pos env args [
+                                "This pattern is an union type, but the annotation expects a " .. typeToText env expectedType
+                            ]
+
+        CA.PatternRecord pos patternAttrs:
+            try expectedType as
+                CA.TypeRecord _ _ expectedTypeAttrs:
+                    env >> dict_for patternAttrs attrName: attrPattern: envX:
+                        try Dict.get attrName expectedTypeAttrs as
+                            Nothing:
+                                addCheckError pos [ "This record pattern has an attribute `" .. attrName .. "` but it is not avaiable in the annotation" ] >> andThen None:
+                                return envX
+                            Just expectedAttrType:
+                                checkAndInsertPattern envX expectedAttrType attrPattern
+
+                _:
+                    addCheckError pos [ "This pattern is a record, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
+                    return env
+
+
+checkConstructorWithItsArgs as Env: Pos: Int: [CA.Pattern]: [CA.Type]: Monad Env =
+    env: pos: index: actualArgs: expectedArgs:
+    try actualArgs & expectedArgs as
+
+        (actualHead :: actualTail) & (expectedHead :: expectedTail):
+            checkAndInsertPattern env expectedHead actualHead >> andThen updatedEnv:
+            checkConstructorWithItsArgs updatedEnv pos (index + 1) actualTail expectedTail
+
+        [] & (expectedHead :: expectedTail):
+            given = index
+            needed = index + List.length expectedArgs
+            addCheckError pos [ "Constructor needs " .. Text.fromNumber needed .. " arguments but was given only " .. Text.fromNumber given ] >> andThen None:
+            return env
+
+        (actualHead :: actualTail) & []:
+            addCheckConstructorError pos env actualArgs [ "more arguments than needed" ]
+
+        [] & []:
+            return env
+
+
+
+
+
+
+
+
+
+checkExpression as Env: Type: CA.Expression: Monad None =
+    env: expectedType_: expression:
+
+    expectedType =
+        expandAlias expectedType_
+
+    try expression as
+        CA.LiteralText pos l:
+            isCompatibleWith env expectedType pos CoreTypes.text
+
+        CA.LiteralNumber pos l:
+            isCompatibleWith env expectedType pos CoreTypes.number
+
+        CA.Variable pos { ref, attrPath }:
+            try Dict.get ref env.instanceVariables as
+                Nothing:
+                    # TODO: errorUndefinedVariable should return `Monad None`
+                    # Then I should have a helper to add a fresh tyvar when inferring?
+                    errorUndefinedVariable env pos ref >> andThen _:
+                    return None
+
+                Just var:
+                    #
+                    # x as [Text] =
+                    #     []
+                    #
+                    # TODO: create an `instantiateVariable` function?
+                    # TODO: what if we instantiate /after/ we applyAttributePath? Would it be faster?
+                    replaceTypeVariablesWithNew var.freeTypeVariables var.ty >> andThen instantiatedType:
+                    applyAttributePath env pos attrPath instantiatedType >> andThen ty:
+                    isCompatibleWith env expectedType pos ty
+
+        CA.Constructor pos usr:
+            try Dict.get usr env.constructors as
+                Nothing:
+                    errorUndefinedVariable env pos (CA.RefRoot usr) >> andThen _:
+                    return None
+
+                Just c:
+                    replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type >> andThen instantiatedType:
+                    #
+                    # x as Maybe Text =
+                    #     Nothing
+                    #
+                    isCompatibleWith env expectedType pos instantiatedType
+
+        CA.Lambda pos param body:
+            try expectedType & param as
+                CA.TypeFunction _ parameterType True returnType & CA.ParameterMutable parameterPos parameterName:
+                    ip =
+                        insertPatternVars
+                            { subs = Dict.empty
+                            , isParameter = True
+                            , isMutable = True
+                            , isRoot = False
+                            }
+                            (Dict.singleton parameterName { pos = parameterPos, type = parameterType, isAnnotated = True })
+                            env
+
+                    ip >> andThen localEnv:
+                    checkBlock localEnv returnType body
+
+                CA.TypeFunction _ parameterType False returnType & CA.ParameterPattern pattern:
+                    checkAndInsertPattern env parameterType pattern >> andThen localEnv:
+                    checkBlock localEnv returnType body
+
+                CA.TypeFunction _ _ isMutable _ & _:
+                    addCheckError pos [
+                        , "the function and the annotation have different mutability"
+                        ]
+
+                CA.TypeVariable pos name & _:
+                    if isAnnotation name then
+                        addCheckError pos [
+                            , "This is a function, but the annotation says it should be of type variable `" .. name .. "` which implies that it could be of any type!"
+                            ]
+                    else
+                        fromExpression env expression >> andThen actualType:
+                        unify env pos UnifyReason_IsLambda expectedType actualType >> andThen _:
+                        return None
+
+                _:
+                    addCheckError pos [
+                        , "This is a function, but the annotation says it should be a: "
+                        , typeToText env expectedType
+                        ]
+
+        CA.Call pos reference argument:
+
+            fromExpression env reference >> andThen referenceType_:
+
+            referenceType =
+                expandAlias referenceType_
+
+            try referenceType as
+
+                CA.TypeFunction _ parameterType isMutable returnType:
+                    try argument as
+
+                        CA.ArgumentExpression argumentExpression:
+                            [#
+
+                                reference as List a -> Maybe a
+
+                                argumentExpression as List Text
+
+                                => returnType as Maybe Text
+
+                            `parameterType` does not come from an annotation, but from inference
+                            Because of this we can't use it to check*, but instead we need to infer and unify it with the argument
+
+                            This is super important when the reference type contains type variables.
+
+                            #]
+                            fromExpression env argumentExpression >> andThen argumentType:
+
+                            reason =
+                                UnifyReason_CallArgument
+                                    { reference = pos
+                                    , argument = CA.argumentPos argument
+                                    }
+
+                            unify env pos reason argumentType parameterType >> andThen unifiedArgumentType:
+                            applySubsToType returnType >> andThen actualReturnType:
+                            isCompatibleWith env expectedType pos actualReturnType
+
+                        CA.ArgumentMutable pos { ref, attrPath }:
+                            try Dict.get ref env.instanceVariables as
+                                Nothing:
+                                    errorUndefinedVariable env pos ref >> andThen ty:
+                                    return None
+
+                                Just var:
+                                    if not var.isMutable then
+                                        ae =
+                                            addError pos
+                                                [ "You are trying to mutate variable `" .. (SPCore.toHuman ref) .. "` but it was declared as not mutable!"
+                                                , ""
+                                                , "TODO [link to wiki page that explains how to declare variables]"
+                                                ]
+                                        ae >> andThen ty:
+                                        return None
+
+                                    else if typeContainsFunctions var.ty then
+                                        # TODO what about constrained/unconstrained tyvars?
+                                        addError pos [ "mutable arguments can't allow functions" ] >> andThen ty:
+                                        return None
+
+                                    else
+                                        applyAttributePath env pos attrPath var.ty >> andThen ty:
+
+                                        # TODO: this is pretty much copied from CA.ArgumentExpression above, would be nice to merge the two
+                                        reason =
+                                            UnifyReason_CallArgument
+                                                { reference = pos
+                                                , argument = CA.argumentPos argument
+                                                }
+
+                                        unify env pos reason ty parameterType >> andThen unifiedArgumentType:
+                                        applySubsToType returnType >> andThen actualReturnType:
+                                        isCompatibleWith env expectedType pos actualReturnType
+
+                _:
+                    addCheckError pos [
+                        , "The code is trying to call this as if it was a function, but its type is: "
+                        , typeToText env referenceType
+                        ]
+
+        CA.If pos { condition, true, false }:
+            checkBlock env CoreTypes.bool condition >> andThen _:
+            checkBlock env expectedType true >> andThen _:
+            checkBlock env expectedType false
+
+
+        CA.Try pos value patternsAndBlocks:
+            fromExpression env value >> andThen inferredValueType:
+
+            inferredValueType >> list_for patternsAndBlocks (pattern & block): patternTypeSoFar:
+
+                fromPattern env pattern Dict.empty >> andThen patternOut:
+                unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> andThen unifiedPatternType:
+
+                # TODO do I really need to apply subs here?
+                applySubsToNonFreeTyvars env >> andThen env1:
+
+                get (x: x.substitutions) >> andThen subs:
+                ip =
+                    insertPatternVars
+                        { subs
+                        , isParameter = False
+                        , isMutable = False
+                        , isRoot = False
+                        }
+                        patternOut.vars
+                        env1
+
+                ip >> andThen patternEnv:
+
+                checkBlock patternEnv expectedType block
+                # TODO: totality check?
+
+                return unifiedPatternType
+
+            return None
+
+
+        CA.Record pos maybeExtending attrValueByName:
+            try expectedType as
+                CA.TypeRecord _ (Just _) attrTypeByName:
+                    addCheckError pos [
+                        , "Extensible record annotation is experimentally disabled [TODO link to why]"
+                        ]
+
+                CA.TypeRecord _ Nothing attrTypeByName:
+                    try maybeExtending as
+                        Nothing:
+                            xxx =
+                                None >> dict_for attrValueByName attrName: attrValue: None:
+                                    try Dict.get attrName attrTypeByName as
+                                        Nothing:
+                                            addCheckError pos [
+                                                , "This record has an attribute `" .. attrName .. "` which is not in the annotation."
+                                                ]
+
+                                        Just expectedAttrType:
+                                            checkExpression env expectedAttrType attrValue
+
+                            # The type must have all attributes that exist in the value
+                            xxx >> andThen None:
+                                None >> dict_for attrTypeByName attrName: attrType: None:
+                                    try Dict.get attrName attrTypeByName as
+                                        Nothing:
+                                            addCheckError pos [
+                                                , "This record is missing the attribute `" .. attrName .. "`"
+                                                ]
+
+                                        Just _:
+                                            return None
+
+                        Just extending:
+
+                            # extending needs to be of expectedType
+                            checkExpression env expectedType (CA.Variable pos extending) >> andThen None:
+
+                            # the rest of the attributes, we need to ensure that they belong in expectedType with the correct type
+                            None >> dict_for attrValueByName attrName: attrValue: None:
+                                try Dict.get attrName attrTypeByName as
+                                    Nothing:
+                                        addCheckError pos [
+                                            , "This record has an attribute `" .. attrName .. "` which is not in the annotation"
+                                            ]
+
+                                    Just expectedAttrType:
+                                        checkExpression env expectedAttrType attrValue
+
+
+                _:
+                    addCheckError pos [
+                        , "This is a record, but the annotation says that this should be a"
+                        , typeToText env expectedType
+                        ]
+
+
+
+[#
+  In theory checkStatement should produce an updated Env, because it might contain a Definition.
+  In practice, the only way to annotate a definition Statement is to put it at the end of a block,
+  so the new Env would get thrown away.
+
+  This probably can be cleaned up once we get rid of Statements alltogether.
+#]
+checkStatement as Env: Type: CA.Statement: Monad None =
+    env: expectedType: statement:
+    try statement as
+      CA.Definition def:
+          isNone =
+              try expectedType as
+                  CA.TypeConstant _ usr []:
+                      usr == CoreTypes.noneDef.usr
+
+                  _:
+                      False
+
+          if isNone then
+              fromDefinition False def env >> andThen newEnv:
+              return None
+
+          else
+              addCheckError (CA.patternPos def.pattern) [
+                  , "definitions yield None, but annotation expects a " .. typeToText env expectedType
+                  , SPCore.toHuman expectedType
+                  ]
+
+      CA.Evaluation expression:
+          checkExpression env expectedType expression
+
+
+checkBlock as Env: Type: [CA.Statement]: Monad None =
+    env0: expectedType: block:
+
+    # TODO most of this function is cut & paste from `fromBlock`.
+    # Would be nice to abstract the stuff that's repeated.
+
+    state0 =
+        { env = env0
+        , mutableDefs = []
+        , inferredType = CoreTypes.none
+        }
+
+    upd =
+        isLast: statement: state:
+        if isLast then
+            checkStatement state.env expectedType statement >> andThen None:
+            return state
+
+        else
+            (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
+            return
+                { env = env
+                , inferredType = inferredType
+                , mutableDefs =
+                    try maybeMutableDefinitionId as
+                        Nothing:
+                            state.mutableDefs
+
+                        Just definitionId:
+                            definitionId :: state.mutableDefs
+                }
+
+    (list_foldlLast upd block state0) >> andThen stateF:
+    try stateF.mutableDefs as
+        []:
+            return None
+
+        head :: tail:
+            # A block is actually allowed to return tyvars that allow functions
+            if typeContainsFunctions stateF.inferredType then
+                addCheckError head [ "blocks that define mutables can't return functions" ]
+
+            else
+                return None
+
+
+
+
 [# The general idea, and I don't know if it actually makes sense, is that we want a function that
 
 1.  for a given expression tries to figure out its type
@@ -569,6 +1208,7 @@ checkFreeVariables as Env: Pos: Type: Type: Monad None =
 #]
 fromExpression as Env: CA.Expression: Monad Type =
     env: expression:
+
     try expression as
         CA.LiteralText pos l:
             return CoreTypes.text
@@ -693,8 +1333,7 @@ fromExpression as Env: CA.Expression: Monad Type =
             unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
 
         CA.If pos ar:
-            (fromBlock env ar.condition) >> andThen conditionType:
-            (unify env pos UnifyReason_IfCondition conditionType CoreTypes.bool) >> andThen _:
+            checkBlock env CoreTypes.bool ar.condition >> andThen _:
             get (x: x.substitutions) >> andThen s:
             (fromBlock env ar.true) >> andThen trueType:
             (fromBlock env ar.false) >> andThen falseType:
@@ -703,7 +1342,7 @@ fromExpression as Env: CA.Expression: Monad Type =
         CA.Try pos value patternsAndBlocks:
             (fromExpression env value) >> andThen tryType:
             (newType pos) >> andThen newBlockType:
-            (list_foldl (fromPatternAndBlock env) patternsAndBlocks ( tryType & newBlockType )) >> andThen ( patternType & inferredBlockType ):
+            (list_for patternsAndBlocks (fromPatternAndBlock env) ( tryType & newBlockType )) >> andThen ( patternType & inferredBlockType ):
             return inferredBlockType
 
         CA.Record pos maybeExt attrValues:
@@ -832,7 +1471,7 @@ fromParameter as Env: CA.Parameter: Monad ( Bool & PatternOut ) =
             # TypeNonFunction
             (newType pos) >> andThen ty:
             vars = Dict.singleton paramName { pos, type = ty, isAnnotated = False }
-            return ( True & { vars, pos, ty })
+            return ( True & { vars, pos, ty, isFullyAnnotated = False })
 
 
 [# Patterns are special because they are the one way to **add variables to the env**.
@@ -915,17 +1554,24 @@ alias PatternOut =
     { vars as PatternVars
     , pos as Pos
     , ty as Type
+    , isFullyAnnotated as Bool
     }
 
 
 fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
-    env: pattern: vars_:
+    env:
+    pattern:
+    # This is used only when fromPattern calls itself recursively
+    vars_:
 
     vars as Dict Name PatternVar =
         vars_
 
     try pattern as
         CA.PatternAny pos maybeName maybeAnnotation:
+
+            isAnnotated =
+                maybeAnnotation /= Nothing
 
             makeType =
                 try maybeAnnotation as
@@ -946,15 +1592,15 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
             newVars =
                 try maybeName as
                     Nothing: vars
-                    Just name: Dict.insert name { pos, type, isAnnotated = maybeAnnotation /= Nothing } vars
+                    Just name: Dict.insert name { pos, type, isAnnotated } vars
 
-            return << { vars = newVars, pos, ty = type }
+            return << { vars = newVars, pos, ty = type, isFullyAnnotated = isAnnotated }
 
         CA.PatternLiteralNumber pos literal:
-            return << { vars, pos, ty = CoreTypes.number }
+            return << { vars, pos, ty = CoreTypes.number, isFullyAnnotated = True }
 
         CA.PatternLiteralText pos literal:
-            return << { vars,  pos, ty = CoreTypes.text }
+            return << { vars,  pos, ty = CoreTypes.text, isFullyAnnotated = True }
 
         CA.PatternConstructor pos usr args:
             constructorTyM =
@@ -978,21 +1624,28 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                 , args
                 , argIndex = 0
                 , vars
+                , isFullyAnnotated = True
                 }
 
-            unifyConstructorWithItsArgs p >> andThen ( patternVars & patternTy ):
-            return << { vars = patternVars, pos, ty = patternTy }
+            unifyConstructorWithItsArgs p >> andThen ( patternVars & patternTy & isFullyAnnotated ):
+            return << { vars = patternVars, pos, ty = patternTy, isFullyAnnotated }
 
         CA.PatternRecord pos attrs:
 
-            blah as Name: CA.Pattern: (PatternVars & Dict Name Type): Monad (PatternVars & Dict Name Type) =
-                name: pa: ( varsX & attrTypes ):
-                fromPattern env pa varsX >> andThen paOut:
-                return ( paOut.vars & Dict.insert name paOut.ty attrTypes )
+            # Ok, I want local aliases so I can annotate the horror below
 
-            dict_foldl blah attrs ( vars & Dict.empty ) >> andThen ( vars1 & attrTypes ):
-            newName identity >> andThen extName:
-            return << { vars = vars1, pos, ty = CA.TypeRecord pos (Just extName) attrTypes }
+            blah as Name: CA.Pattern: (PatternVars & Dict Name Type & Bool): Monad (PatternVars & Dict Name Type & Bool) =
+                name: pa: ( varsX & attrTypes & annotatedSoFar):
+                fromPattern env pa varsX >> andThen paOut:
+                return ( paOut.vars & Dict.insert name paOut.ty attrTypes & paOut.isFullyAnnotated and annotatedSoFar )
+
+            dict_for attrs blah ( vars & Dict.empty & True) >> andThen ( vars1 & attrTypes & isFullyAnnotated ):
+            #
+            # For the time being, if you unpack a record, you must unpack ALL of it
+            # This is IMHO better for readability, but only one way to find out...
+            #
+            #newName identity >> andThen extName:
+            return << { vars = vars1, pos, ty = CA.TypeRecord pos Nothing attrTypes, isFullyAnnotated }
 
 
 alias UnifyConstructorWithItsArgsParams =
@@ -1003,16 +1656,17 @@ alias UnifyConstructorWithItsArgsParams =
     , args as List CA.Pattern
     , argIndex as Int
     , vars as PatternVars
+    , isFullyAnnotated as Bool
     }
 
 
-unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( PatternVars & Type ) =
+unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( PatternVars & Type & Bool ) =
     p:
     try p.ty & p.args as
         # Argument needed, argument given
         ( CA.TypeFunction _ from _ to & head :: tail ):
             (fromPattern p.env head p.vars) >> andThen pa:
-            { vars, pos, ty } = pa
+            { vars, pos, ty, isFullyAnnotated } = pa
             (unify p.env pos (UnifyReason_ConstructorArgument p) from ty) >> andThen unifiedFrom:
             unifyConstructorWithItsArgs
                 { p with
@@ -1020,25 +1674,26 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
                     , ty = to
                     , args = tail
                     , vars = vars
+                    , isFullyAnnotated = isFullyAnnotated and p.isFullyAnnotated
                 }
 
         # Error: Argument needed but not given!
         ( CA.TypeFunction _ from _ to & [] ):
             # TODO tell how many are needed and how many are actually given
             (addError p.pos [ "Type constructor " .. SPCore.toHuman p.usr .. " is missing argument #" .. Text.fromNumber p.argIndex ]) >> andThen ety:
-            return ( p.vars & ety )
+            return ( p.vars & ety & p.isFullyAnnotated )
 
         # No arguments needed, no arguments given
         ( _ & [] ):
             get (x: x.substitutions) >> andThen subs:
             # TODO should I apply subs here?
-            return ( p.vars & p.ty )
+            return ( p.vars & p.ty & p.isFullyAnnotated )
 
         # Error: no argument needed, but argument given!
         ( _ & head :: tail ):
             # TODO tell how many are needed and how many are actually given
             (addError p.pos [ "Type constructor " .. SPCore.toHuman p.usr .. " has too many args" ]) >> andThen ety:
-            return ( p.vars & ety )
+            return ( p.vars & ety & p.isFullyAnnotated )
 
 
 
@@ -1048,7 +1703,7 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
 
 
 union UnifyReason =
-    , UnifyReason_AnnotationVsPattern
+    , UnifyReason_AnnotationSimple
     , UnifyReason_AnnotationVsBlock CA.Pattern CA.Annotation (List CA.Statement)
     , UnifyReason_DefBlockVsPattern
     , UnifyReason_CallArgument { reference as Pos, argument as Pos }
@@ -1061,6 +1716,7 @@ union UnifyReason =
     , UnifyReason_AttributeAccess Name
     , UnifyReason_AttributeUpdate (List Name)
     , UnifyReason_Override
+    , UnifyReason_IsLambda
 
 
 union UnifyError =
@@ -1496,7 +2152,7 @@ applyAttributePath as Env: Pos: List Name: Type: Monad Type =
                 (unify env pos (UnifyReason_AttributeAccess attributeName) ty re) >> andThen _:
                 return attrType
 
-    list_foldl wrap attrPath
+    list_for attrPath wrap
 
 
 alias InsertPatternVarsPars =
@@ -1507,8 +2163,8 @@ alias InsertPatternVarsPars =
     }
 
 insertPatternVars as InsertPatternVarsPars: PatternVars: Env: Monad Env =
-    pars:
-    dict_foldl (insertPatternVar pars)
+    pars: vars:
+    dict_for vars (insertPatternVar pars)
 
 
 insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
@@ -1647,7 +2303,7 @@ generateNewTypeVariables as Dict Name { nonFn as Bool }: Monad Subs =
         (if nonFn then setNonFn name1 else return None) >> andThen None:
         return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1) subs
 
-    dict_foldl apply tyvarByName Dict.empty
+    dict_for tyvarByName apply Dict.empty
 
 
 #FLAG
@@ -1694,6 +2350,11 @@ replaceTypeVariables as Subs: Type: Type =
 
                 Just what:
                     SPCore.todo "replacing record extension with non-var" (SPCore.toHuman what)
+
+
+addCheckError as Pos: [Text]: Monad None =
+    pos: message:
+    insertError (Error.Simple pos _: message)
 
 
 addError as Pos: List Text: Monad Type =
@@ -1867,8 +2528,8 @@ errorIncompatibleTypes as Env: UnifyReason: Pos: Type: Dict Name TypeClash: Mona
 
             title =
                 try reason as
-                    UnifyReason_AnnotationVsPattern:
-                        "The pattern unpacking is not compatible with the annotation"
+                    UnifyReason_AnnotationSimple:
+                        "The type is not compatible with the annotation"
 
                     UnifyReason_DefBlockVsPattern:
                         "The definition block cannot be unpacked into the pattern"
@@ -1893,6 +2554,9 @@ errorIncompatibleTypes as Env: UnifyReason: Pos: Type: Dict Name TypeClash: Mona
 
                     UnifyReason_Override:
                         "this is addSubstitution running a UnifyReason_Override, I don't know what I'm doing"
+
+                    UnifyReason_IsLambda:
+                        "this is a function, and its type should reflect that"
 
                     _:
                         SPCore.todo << SPCore.toHuman reason .. " should not even get here"

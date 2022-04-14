@@ -989,8 +989,8 @@ translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
 #
 
 
-translateConstructor as ReadOnly: CA.Type: At Name & [FA.Type]: Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
-    ro: unionType: (At pos name & faArgs): constructors:
+translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name & [FA.Type]: Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
+    ro: unionType: unionUsr: (At pos name & faArgs): constructors:
 
     if Dict.member name constructors then
         # TODO "union $whatever has two constructors with the same name!"
@@ -1001,6 +1001,7 @@ translateConstructor as ReadOnly: CA.Type: At Name & [FA.Type]: Dict Name CA.Con
 
         c as CA.Constructor = {
             , pos
+            , typeUsr = unionUsr
             , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar False ty) unionType
             , args = caArgs
             }
@@ -1062,7 +1063,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                         >> List.map (CA.TypeVariable pos)
                         >> CA.TypeConstant pos usr
 
-                List.foldlRes (translateConstructor ro type) fa.constructors Dict.empty >> onOk constructors:
+                List.foldlRes (translateConstructor ro type usr) fa.constructors Dict.empty >> onOk constructors:
 
                 unionDef as CA.UnionDef = {
                     , usr
