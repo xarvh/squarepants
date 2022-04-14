@@ -338,7 +338,7 @@ compile as IO.Env: Text: Text: Text: IO None =
     # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
     eenv as Error.Env =
         getName = n:
-            { umr = Meta.UMR source name } = n
+            Meta.UMR source name = n.umr
             name
 
         { moduleByName =
