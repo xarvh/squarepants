@@ -16,6 +16,8 @@ union Pos =
     , T
     # inferred
     , I Int
+    # generated
+    , G
 
 
 union At a =

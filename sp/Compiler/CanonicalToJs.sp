@@ -102,32 +102,26 @@ nativeBinopToFunction as Text: { jsSymb as JA.Name, mutates as Bool, fnName as T
     usr =
         CoreTypes.makeUsr spName
 
+    call1 =
+       CA.Call d
+          (CA.Variable d { attrPath = [], ref = CA.RefRoot usr })
+          (CA.ArgumentExpression
+              (CA.Variable d { attrPath = [], ref = CA.RefBlock "a" })
+          )
+
+    call1arg =
+        if mutates then
+            CA.ArgumentMutable d { attrPath = [], ref = CA.RefBlock "b" }
+        else
+            CA.ArgumentExpression << CA.Variable d { attrPath = [], ref = CA.RefBlock "b" }
+
     a =
-     [ CA.Evaluation
-        (CA.Lambda d
-            (CA.ParameterPattern << CA.PatternAny d (Just "a") Nothing)
-            [ CA.Evaluation
-                (CA.Lambda d
-                    (CA.ParameterPattern << CA.PatternAny d (Just "b") Nothing)
-                    [ CA.Evaluation
-                        (CA.Call d
-                            (CA.Call d
-                                (CA.Variable d { attrPath = [], ref = CA.RefRoot usr })
-                                (CA.ArgumentExpression
-                                    (CA.Variable d { attrPath = [], ref = CA.RefBlock "a" })
-                                )
-                            )
-                            ((if mutates then CA.ArgumentMutable d else x: x >> CA.Variable d >> CA.ArgumentExpression)
-                                { attrPath = [], ref = CA.RefBlock "b" }
-                            )
-                        )
-                    ]
-                )
-            ]
-        )
-     ]
-        >> translateBodyToExpr { mutables = Set.empty, errorEnv = { moduleByName = Dict.empty } }
-        >> JA.Define fnName
+      call1arg
+          >> CA.Call d call1
+          >> CA.Lambda d (CA.ParameterPattern (CA.PatternAny d (Just "b") Nothing))
+          >> CA.Lambda d (CA.ParameterPattern (CA.PatternAny d (Just "a") Nothing))
+          >> translateExpressionToExpression { tryCounter = 0, mutables = Set.empty, errorEnv = { moduleByName = Dict.empty } }
+          >> JA.Define fnName
 
     a :: acc
 
@@ -180,6 +174,7 @@ nativeBinopsAsFns =
 alias Env =
     { mutables as Set JA.Name
     , errorEnv as Error.Env
+    , tryCounter as Int
     }
 
 
@@ -289,8 +284,9 @@ constructorArgumentName as Int: JA.Name =
     "$" .. Text.fromNumber i
 
 
-tryName as JA.Name =
-    "$$try"
+envToTryName as Env: JA.Name & Env =
+    env:
+    "$$try" .. Text.fromNumber env.tryCounter & { env with tryCounter = .tryCounter + 1 }
 
 
 pickMainName as CA.Pattern: Maybe JA.Name =
@@ -328,13 +324,13 @@ getValueDefName as CA.ValueDef: Text =
 
 
 
-defIsFunction as CA.ValueDef: Bool =
-    def:
-    try def.body as
-        CA.Evaluation (CA.Lambda _ _ _) :: _ :
-            True
-        _:
-            False
+#defIsFunction as CA.ValueDef: Bool =
+#    def:
+#    try def.body as
+#        CA.Evaluation (CA.Lambda _ _ _) :: _ :
+#            True
+#        _:
+#            False
 
 
 makeUsr as CA.Module: Name: Meta.UniqueSymbolReference =
@@ -436,7 +432,7 @@ circularIsError as Dict Meta.UniqueSymbolReference Node: [Meta.UniqueSymbolRefer
 
           Just (NodeDef _ def):
               try def.body as
-                  [ CA.Evaluation (CA.Lambda _ _ _) ]:
+                  CA.Lambda _ _ _:
                       False
                   _:
                       True
@@ -457,6 +453,7 @@ translateAll as Error.Env: CA.Globals: [CA.Module]: List JA.Statement =
             env =
                 { mutables = Set.empty
                 , errorEnv = eenv
+                , tryCounter = 0
                 }
 
             values as [JA.Statement] =
@@ -484,7 +481,7 @@ translateNode as Env: Node: JA.Statement =
 
         NodeDef usr valueDef:
             valueDef.body
-                >> translateBodyToExpr env
+                >> translateExpressionToExpression env
                 >> JA.Define (translateUsr usr)
 
 
@@ -493,30 +490,31 @@ translateNode as Env: Node: JA.Statement =
 #    if condition then a else f a
 
 
+
 maybeCloneMutable as CA.ValueDef: JA.Expr: JA.Expr =
     caDef: expr:
-    try caDef.mutable & List.reverse caDef.body as
-        True & (CA.Evaluation (CA.Variable _ ar) :: _):
-            clone expr
-        _:
-            expr
+
+    if not caDef.mutable then
+        expr
+    else
+        try CA.skipLetIns caDef.body as
+            CA.Variable _ ar:
+                clone expr
+            _:
+                expr
 
 
 translateLocalValueDef as Env: CA.ValueDef: ( List JA.Statement & Env ) =
     env: caDef:
-    if caDef.body == [] then
-        ( [] & env )
-
-    else
         try pickMainName caDef.pattern as
             Nothing:
-                ( [ JA.Eval (translateBodyToExpr env caDef.body) ] & env)
+                ( [ JA.Eval (translateExpressionToExpression env caDef.body) ] & env)
 
             Just mainName:
 
                 a =
                     caDef.body
-                        >> translateBodyToExpr env
+                        >> translateExpressionToExpression env
                         >> maybeCloneMutable caDef
                         >> wrapMutable caDef.mutable
                         >> JA.Define mainName
@@ -528,16 +526,6 @@ translateLocalValueDef as Env: CA.ValueDef: ( List JA.Statement & Env ) =
                     env
 
                 ( a :: patternDefinitions mainName caDef.pattern ) & b
-
-
-translateStatement as Env: CA.Statement: ( List JA.Statement & Env ) =
-    env: s:
-    try s as
-        CA.Definition def:
-            translateLocalValueDef env def
-
-        CA.Evaluation expr:
-            ( [ JA.Eval (translateExpr env expr) ] & env)
 
 
 translateVar as Env: CA.VariableArgs: JA.Expr =
@@ -557,24 +545,30 @@ translateVar as Env: CA.VariableArgs: JA.Expr =
         accessAttrs attrPath (JA.Var jname)
 
 
-translateExpr as Env: CA.Expression: JA.Expr =
+union Either a b =
+    , Left a
+    , Right b
+
+
+translateExpressionToEither as Env: CA.Expression: Either JA.Expr [JA.Statement] =
     env: expression:
     try expression as
         CA.LiteralNumber _ num:
-            JA.Literal << Text.fromNumber num
+            Left << JA.Literal << Text.fromNumber num
 
         CA.LiteralText _ text:
-            JA.Literal << quoteAndEscape text
+            Left << JA.Literal << quoteAndEscape text
 
         CA.Variable _ ar:
-            translateVar env ar
+            Left << translateVar env ar
 
         CA.Constructor _ usr:
             try Dict.get usr allNatives as
                 Nothing:
-                    JA.Var (translateUsr usr)
+                    Left << JA.Var (translateUsr usr)
                 Just n:
-                    JA.Var n
+                    Left << JA.Var n
+
 
         CA.Lambda pos parameter body:
             ( args & extraJaStatements & localEnv ) =
@@ -592,21 +586,22 @@ translateExpr as Env: CA.Expression: JA.Expr =
                             Just mainName:
                                 ( [ mainName ] & patternDefinitions mainName pattern & env)
 
-            try translateBodyToEither localEnv extraJaStatements body as
-                Left expr:
-                    JA.SimpleLambda args expr
+            statements as [JA.Statement] =
+                try translateExpressionToEither localEnv body as
+                    Left expr: [JA.Return expr]
+                    Right block: block
 
-                Right block:
-                    JA.BlockLambda args block
+            Left << JA.BlockLambda args << List.concat [extraJaStatements, statements]
+
 
         CA.Record _ extends attrs:
             obj =
                 attrs
-                    >> Dict.map (k: translateExpr env)
+                    >> Dict.map (k: translateExpressionToExpression env)
                     >> JA.Record
             try extends as
                 Nothing:
-                    obj
+                    Left << obj
 
                 Just extend:
                     JA.Call (JA.Var "Object.assign")
@@ -614,27 +609,28 @@ translateExpr as Env: CA.Expression: JA.Expr =
                         , translateVar env extend
                         , obj
                         ]
+                        >> Left
 
         CA.Call _ ref arg:
             try maybeNativeBinop env ref arg as
                 Just jaExpr:
-                    jaExpr
+                    Left << jaExpr
 
                 Nothing:
                     jsArg =
                         translateArg { nativeBinop = False } env arg
                     try maybeNativeUnop env ref jsArg as
                         Just jaExpr:
-                            jaExpr
+                            Left << jaExpr
 
                         Nothing:
-                            JA.Call (translateExpr env ref) [ jsArg ]
+                            Left << JA.Call (translateExpressionToExpression env ref) [ jsArg ]
 
         CA.If _ ar:
-            JA.Conditional
-                (translateBodyToExpr env ar.condition)
-                (translateBodyToExpr env ar.true)
-                (translateBodyToExpr env ar.false)
+            Left << JA.Conditional
+                (translateExpressionToExpression env ar.condition)
+                (translateExpressionToExpression env ar.true)
+                (translateExpressionToExpression env ar.false)
 
         CA.Try pos value tries:
             [#
@@ -657,8 +653,11 @@ translateExpr as Env: CA.Expression: JA.Expr =
 
 
             #]
+            tryName & newEnv =
+                envToTryName env
+
             head =
-                JA.Define tryName (translateExpr env value)
+                JA.Define tryName (translateExpressionToExpression newEnv value)
 
             init =
                 JA.Var tryName
@@ -672,18 +671,18 @@ translateExpr as Env: CA.Expression: JA.Expr =
                         >> binopChain (JA.Literal "true") "&&"
 
                 whenConditionMatches =
-                    try translateBodyToEither env extraStats block as
+                    try translateExpressionToEither newEnv block as
                         Left e:
                             List.concat [extraStats, [ JA.Return e ] ]
 
                         Right bl:
                             # TODO two returns is better than zero, but one would be better than two...
-                            List.concat [ bl, [ JA.Return (JA.Literal "null") ]]
+                            List.concat [ extraStats, bl, [ JA.Return (JA.Literal "null") ]]
 
                 JA.If condition whenConditionMatches
 
             human =
-                Error.posToHuman env.errorEnv pos
+                Error.posToHuman newEnv.errorEnv pos
 
             default =
                 [ JA.Literal "'Missing pattern in try..as'"
@@ -694,10 +693,31 @@ translateExpr as Env: CA.Expression: JA.Expr =
                     >> JA.Call (JA.Literal "sp_throw")
                     >> JA.Eval
 
-            allStatements =
-                List.concat [ (head :: List.map testPa tries), [ default ] ]
+            Right << List.concat [ head :: List.map testPa tries, [ default ] ]
 
-            JA.Call (JA.BlockLambda [] allStatements) []
+        CA.LetIn valueDef expression:
+            defStatements & localEnv =
+                translateLocalValueDef env valueDef
+
+            exprStatements =
+                try translateExpressionToEither localEnv expression as
+                    Right stats: stats
+                    Left jaExpression: [JA.Return jaExpression]
+
+            Right << List.concat [ defStatements, exprStatements ]
+
+
+
+translateExpressionToExpression as Env: CA.Expression: JA.Expr =
+    env: expr:
+    try translateExpressionToEither env expr as
+        Left e:
+            e
+
+        Right block:
+            JA.Call (JA.BlockLambda [] block) []
+
+
 
 
 translateArg as { nativeBinop as Bool }: Env: CA.Argument: JA.Expr =
@@ -705,7 +725,7 @@ translateArg as { nativeBinop as Bool }: Env: CA.Argument: JA.Expr =
     { nativeBinop } = stuff
     try arg as
         CA.ArgumentExpression e:
-            translateExpr env e
+            translateExpressionToExpression env e
 
         CA.ArgumentMutable _ { ref, attrPath }:
             if nativeBinop then
@@ -759,7 +779,7 @@ accessAttrsButTheLast as Text: List Text: JA.Expr: ( JA.Expr & Text ) =
 maybeNativeUnop as Env: CA.Expression: JA.Expr: Maybe JA.Expr =
     env: reference: argument:
     try reference as
-        CA.Variable _ { ref = CA.RefRoot (Meta.USR _ name) }:
+        CA.Variable _ { ref = CA.RefRoot (Meta.USR _ name), attrPath }:
             try Dict.get name nativeUnops as
                 Nothing:
                     Nothing
@@ -778,13 +798,13 @@ none as Text =
 maybeNativeBinop as Env: CA.Expression: CA.Argument: Maybe JA.Expr =
     env: reference: argument:
     try reference as
-        # TODO check that USR sorce is Core?
-        CA.Call _ (CA.Variable _ { ref = CA.RefRoot (Meta.USR _ name) }) rightArg:
+        # TODO check that USR source is Core?
+        CA.Call _ (CA.Variable _ { ref = CA.RefRoot (Meta.USR _ name), attrPath }) rightArg:
             try Dict.get name nativeBinops as
                 Nothing:
                     Nothing
 
-                Just { jsSymb, mutates }:
+                Just { jsSymb, mutates, fnName }:
                     cons =
                         if mutates then
                             JA.Mutop jsSymb none
@@ -810,61 +830,6 @@ binopChain as JA.Expr: Text: List JA.Expr: JA.Expr =
 
         head :: tail:
             List.for tail (JA.Binop op) head
-
-
-union Either a b =
-    , Left a
-    , Right b
-
-
-translateBodyToExpr as Env: List CA.Statement: JA.Expr =
-    env: caBody:
-    try translateBodyToEither env [] caBody as
-        Left e:
-            e
-
-        Right block:
-            JA.Call (JA.BlockLambda [] block) []
-
-
-translateBodyToEither as Env: List JA.Statement: List CA.Statement: Either JA.Expr (List JA.Statement) =
-    env: extra: caBody:
-
-    reversedStats & env1 =
-        extra & env
-            >> List.for caBody caStat: (statsAccum & envX0):
-
-                newStats & envX1 =
-                    translateStatement envX0 caStat
-
-                allStats =
-                    statsAccum
-                        >> List.for newStats stat: acc: stat :: acc
-
-                allStats & envX1
-
-    try reversedStats as
-        []:
-            JA.Var "null"
-                >> Left
-
-        [ JA.Eval single ]:
-            single
-                >> Left
-
-        oldLast :: rest:
-            theParserContinuesSucking =
-                try oldLast as
-                    JA.Eval expr:
-                        JA.Return expr :: rest
-
-                    _:
-                        JA.Return (JA.Var none) :: oldLast :: rest
-
-            theParserContinuesSucking
-                >> List.reverse
-                >> Right
-
 
 
 #

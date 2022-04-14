@@ -17,10 +17,6 @@ union TypeDef =
 #
 
 
-alias TyVarId =
-    Int
-
-
 union Type =
     , TypeConstant Pos Meta.UniqueSymbolReference [Type]
     #
@@ -44,12 +40,6 @@ union Pattern =
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
     , PatternRecord Pos (Dict Name Pattern)
-
-
-union Statement =
-    , Definition ValueDef
-    # Evaluations are needed for return, mutation and debug
-    , Evaluation Expression
 
 
 #
@@ -87,17 +77,18 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos VariableArgs
     , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos Parameter [Statement]
-    , Record Pos (Maybe VariableArgs) (Dict Name Expression)
+    , Lambda Pos Parameter Expression
     , Call Pos Expression Argument
+    , Record Pos (Maybe VariableArgs) (Dict Name Expression)
+    , LetIn ValueDef Expression
     , If Pos {
         # we use the if also to get lazy ops and compacted compops, so even if the syntax does
         # not support statement blocks inside if condition, it's useful that the AST can model it.
-        , condition as [Statement]
-        , true as [Statement]
-        , false as [Statement]
+        , condition as Expression
+        , true as Expression
+        , false as Expression
         }
-    , Try Pos Expression [Pattern & [Statement]]
+    , Try Pos Expression [Pattern & Expression]
 
 
 #
@@ -139,7 +130,7 @@ alias ValueDef = {
     , mutable as Bool
     , parentDefinitions as [Pattern]
     , nonFn as Set Name
-    , body as [Statement]
+    , body as Expression
     #
     , directTypeDeps as TypeDeps
     , directConsDeps as Set Meta.UniqueSymbolReference
@@ -172,6 +163,21 @@ initModule as Text: Meta.UniqueModuleReference: Module =
     , unionDefs = Dict.empty
     , valueDefs = Dict.empty
     }
+
+
+
+#
+#
+#
+
+skipLetIns as Expression: Expression =
+    expr:
+    try expr as
+        LetIn def e: skipLetIns e
+        _: expr
+
+
+
 
 
 #
@@ -221,18 +227,6 @@ patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
         PatternRecord pos ps: Dict.for ps (k: v: v >> patternNamedTypes >> Dict.join) Dict.empty
-
-
-statementPos as Statement: Pos =
-    stat:
-    try stat as
-        Definition def:
-            try List.reverse def.body as
-                []: patternPos def.pattern
-                last :: _: Pos.range (patternPos def.pattern) (statementPos last)
-
-        Evaluation expr:
-            expressionPos expr
 
 
 argumentPos as Argument: Pos =

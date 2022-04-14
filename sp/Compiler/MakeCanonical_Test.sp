@@ -37,18 +37,7 @@ firstEvaluation as Text: Text: Result Text CA.Expression =
     name: code:
     code
         >> firstDefinition
-        >> onOk (def: List.head def.body >> Result.fromMaybe "head fail")
-        >> onOk (x: x >> asEvaluation >> Result.fromMaybe "asEval fail")
-
-
-asEvaluation as CA.Statement: Maybe CA.Expression =
-   s:
-   try s as
-        CA.Evaluation expr:
-            Just expr
-
-        _:
-            Nothing
+        >> onOk (def: Ok def.body)
 
 
 # TODO move this to Helpers?
@@ -203,7 +192,7 @@ lists as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }) ]
+                { body = CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }
                 , native = False
                 , mutable = False
                 , pattern =
@@ -272,7 +261,7 @@ tuples as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = [ CA.Evaluation (CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }) ]
+                { body = CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }
                 , pattern =
                     CA.PatternAny p
                         (Just "a")

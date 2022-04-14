@@ -15,6 +15,11 @@ alias Module =
     [Statement]
 
 
+union DefMode =
+    , DefNormal
+    , DefMutable
+    , DefCallback
+
 alias ValueDef = {
     , pattern as Pattern
     , mutable as Bool
@@ -24,6 +29,7 @@ alias ValueDef = {
 
 
 union Statement =
+    # TODO merge Evaluation and Definition, so that Evaluations are Definitions with discard pattern Pos.G
     , Evaluation Pos Expression
     , Definition Pos ValueDef
     , TypeAlias {
@@ -115,7 +121,7 @@ statementPos as Statement: Pos =
     try statement as
         Evaluation pos _: pos
         Definition pos _: pos
-        TypeAlias { name = At pos _ }: pos
+        TypeAlias { name = At pos _, args, ty }: pos
         UnionDef pos _: pos
 
 

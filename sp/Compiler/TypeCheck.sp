@@ -455,56 +455,56 @@ list_foldlLast as (Bool: a: b: Monad b): [a]: b: Monad b =
 
 
 
-fromBlock as Env: List CA.Statement: Monad Type =
-    env0: block:
+#fromBlock as Env: List CA.Statement: Monad Type =
+#    env0: block:
+#
+#    # this is another state, not the one defined above
+#    state0 =
+#        { env = env0
+#        , mutableDefs = []
+#        , inferredType = CoreTypes.none
+#        }
+#
+#    upd =
+#        isLast: statement: state:
+#        (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
+#        return
+#            { env = env
+#            , inferredType = inferredType
+#            , mutableDefs =
+#                try maybeMutableDefinitionId as
+#                    Nothing:
+#                        state.mutableDefs
+#
+#                    Just definitionId:
+#                        definitionId :: state.mutableDefs
+#            }
+#
+#    (list_foldlLast upd block state0) >> andThen stateF:
+#    try stateF.mutableDefs as
+#        []:
+#            return stateF.inferredType
+#
+#        head :: tail:
+#            # A block is actually allowed to return tyvars that allow functions
+#            if typeContainsFunctions stateF.inferredType then
+#                addError head [ "blocks that define mutables can't return functions" ]
+#
+#            else
+#                return stateF.inferredType
 
-    # this is another state, not the one defined above
-    state0 =
-        { env = env0
-        , mutableDefs = []
-        , inferredType = CoreTypes.none
-        }
 
-    upd =
-        isLast: statement: state:
-        (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
-        return
-            { env = env
-            , inferredType = inferredType
-            , mutableDefs =
-                try maybeMutableDefinitionId as
-                    Nothing:
-                        state.mutableDefs
-
-                    Just definitionId:
-                        definitionId :: state.mutableDefs
-            }
-
-    (list_foldlLast upd block state0) >> andThen stateF:
-    try stateF.mutableDefs as
-        []:
-            return stateF.inferredType
-
-        head :: tail:
-            # A block is actually allowed to return tyvars that allow functions
-            if typeContainsFunctions stateF.inferredType then
-                addError head [ "blocks that define mutables can't return functions" ]
-
-            else
-                return stateF.inferredType
-
-
-fromStatement as Env: CA.Statement: Monad ( Env & Maybe Pos & Type ) =
-    env: statement:
-    try statement as
-        CA.Evaluation expr:
-            (fromExpression env expr) >> andThen expressionType:
-            return ( env & Nothing & expressionType )
-
-        CA.Definition def:
-            (fromDefinition False def env) >> andThen env1:
-            x = if def.mutable then Just (CA.patternPos def.pattern) else Nothing
-            return ( env1 & x & CoreTypes.none )
+#fromStatement as Env: CA.Statement: Monad ( Env & Maybe Pos & Type ) =
+#    env: statement:
+#    try statement as
+#        CA.Evaluation expr:
+#            (fromExpression env expr) >> andThen expressionType:
+#            return ( env & Nothing & expressionType )
+#
+#        CA.Definition def:
+#            (fromDefinition False def env) >> andThen env1:
+#            x = if def.mutable then Just (CA.patternPos def.pattern) else Nothing
+#            return ( env1 & x & CoreTypes.none )
 
 
 applySubsToType as Type: Monad Type =
@@ -535,11 +535,11 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
 
     else if patternOut.isFullyAnnotated then
         #TODO!!! replacing patternOut.ty with patternOut.type gives a super useless error
-        checkBlock env1 patternOut.ty def.body >> andThen None:
+        checkExpression env1 patternOut.ty def.body >> andThen None:
         return env1
 
     else
-        fromBlock env1 def.body >> andThen bodyType_:
+        fromExpression env1 def.body >> andThen bodyType_:
         applySubsToType bodyType_ >> andThen bodyType:
         unify env1 patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty >> andThen unifiedType:
 
@@ -915,11 +915,11 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                             env
 
                     ip >> andThen localEnv:
-                    checkBlock localEnv returnType body
+                    checkExpression localEnv returnType body
 
                 CA.TypeFunction _ parameterType False returnType & CA.ParameterPattern pattern:
                     checkAndInsertPattern env parameterType pattern >> andThen localEnv:
-                    checkBlock localEnv returnType body
+                    checkExpression localEnv returnType body
 
                 CA.TypeFunction _ _ isMutable _ & _:
                     addCheckError pos [
@@ -1024,15 +1024,16 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         ]
 
         CA.If pos { condition, true, false }:
-            checkBlock env CoreTypes.bool condition >> andThen _:
-            checkBlock env expectedType true >> andThen _:
-            checkBlock env expectedType false
+            checkExpression env CoreTypes.bool condition >> andThen _:
+            checkExpression env expectedType true >> andThen _:
+            checkExpression env expectedType false
 
 
         CA.Try pos value patternsAndBlocks:
             fromExpression env value >> andThen inferredValueType:
 
-            inferredValueType >> list_for patternsAndBlocks (pattern & block): patternTypeSoFar:
+            xxx =
+              inferredValueType >> list_for patternsAndBlocks (pattern & block): patternTypeSoFar:
 
                 fromPattern env pattern Dict.empty >> andThen patternOut:
                 unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> andThen unifiedPatternType:
@@ -1053,11 +1054,12 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
                 ip >> andThen patternEnv:
 
-                checkBlock patternEnv expectedType block
+                checkExpression patternEnv expectedType block >> andThen None:
                 # TODO: totality check?
 
                 return unifiedPatternType
 
+            xxx >> andThen _:
             return None
 
 
@@ -1117,6 +1119,18 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         , typeToText env expectedType
                         ]
 
+        CA.LetIn valueDef expression:
+            fromDefinition False valueDef env >> andThen env1:
+
+            xxx =
+                if valueDef.mutable and typeContainsFunctions expectedType then
+                    addCheckError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ]
+                else
+                    return None
+
+            xxx >> andThen _:
+            checkExpression env1 expectedType expression
+
 
 
 [#
@@ -1126,76 +1140,76 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
   This probably can be cleaned up once we get rid of Statements alltogether.
 #]
-checkStatement as Env: Type: CA.Statement: Monad None =
-    env: expectedType: statement:
-    try statement as
-      CA.Definition def:
-          isNone =
-              try expectedType as
-                  CA.TypeConstant _ usr []:
-                      usr == CoreTypes.noneDef.usr
+#checkStatement as Env: Type: CA.Statement: Monad None =
+#    env: expectedType: statement:
+#    try statement as
+#      CA.Definition def:
+#          isNone =
+#              try expectedType as
+#                  CA.TypeConstant _ usr []:
+#                      usr == CoreTypes.noneDef.usr
+#
+#                  _:
+#                      False
+#
+#          if isNone then
+#              fromDefinition False def env >> andThen newEnv:
+#              return None
+#
+#          else
+#              addCheckError (CA.patternPos def.pattern) [
+#                  , "definitions yield None, but annotation expects a " .. typeToText env expectedType
+#                  , SPCore.toHuman expectedType
+#                  ]
+#
+#      CA.Evaluation expression:
+#          checkExpression env expectedType expression
 
-                  _:
-                      False
 
-          if isNone then
-              fromDefinition False def env >> andThen newEnv:
-              return None
-
-          else
-              addCheckError (CA.patternPos def.pattern) [
-                  , "definitions yield None, but annotation expects a " .. typeToText env expectedType
-                  , SPCore.toHuman expectedType
-                  ]
-
-      CA.Evaluation expression:
-          checkExpression env expectedType expression
-
-
-checkBlock as Env: Type: [CA.Statement]: Monad None =
-    env0: expectedType: block:
-
-    # TODO most of this function is cut & paste from `fromBlock`.
-    # Would be nice to abstract the stuff that's repeated.
-
-    state0 =
-        { env = env0
-        , mutableDefs = []
-        , inferredType = CoreTypes.none
-        }
-
-    upd =
-        isLast: statement: state:
-        if isLast then
-            checkStatement state.env expectedType statement >> andThen None:
-            return state
-
-        else
-            (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
-            return
-                { env = env
-                , inferredType = inferredType
-                , mutableDefs =
-                    try maybeMutableDefinitionId as
-                        Nothing:
-                            state.mutableDefs
-
-                        Just definitionId:
-                            definitionId :: state.mutableDefs
-                }
-
-    (list_foldlLast upd block state0) >> andThen stateF:
-    try stateF.mutableDefs as
-        []:
-            return None
-
-        head :: tail:
-            # A block is actually allowed to return tyvars that allow functions
-            if typeContainsFunctions stateF.inferredType then
-                addCheckError head [ "blocks that define mutables can't return functions" ]
-
-            else
-                return None
+#checkBlock as Env: Type: [CA.Statement]: Monad None =
+#    env0: expectedType: block:
+#
+#    # TODO most of this function is cut & paste from `fromBlock`.
+#    # Would be nice to abstract the stuff that's repeated.
+#
+#    state0 =
+#        { env = env0
+#        , mutableDefs = []
+#        , inferredType = CoreTypes.none
+#        }
+#
+#    upd =
+#        isLast: statement: state:
+#        if isLast then
+#            checkStatement state.env expectedType statement >> andThen None:
+#            return state
+#
+#        else
+#            (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
+#            return
+#                { env = env
+#                , inferredType = inferredType
+#                , mutableDefs =
+#                    try maybeMutableDefinitionId as
+#                        Nothing:
+#                            state.mutableDefs
+#
+#                        Just definitionId:
+#                            definitionId :: state.mutableDefs
+#                }
+#
+#    (list_foldlLast upd block state0) >> andThen stateF:
+#    try stateF.mutableDefs as
+#        []:
+#            return None
+#
+#        head :: tail:
+#            # A block is actually allowed to return tyvars that allow functions
+#            if typeContainsFunctions stateF.inferredType then
+#                addCheckError head [ "blocks that define mutables can't return functions" ]
+#
+#            else
+#                return None
 
 
 
@@ -1312,7 +1326,7 @@ fromExpression as Env: CA.Expression: Monad Type =
                     env
 
             ip >> andThen bodyEnv:
-            (fromBlock bodyEnv body) >> andThen bodyType:
+            (fromExpression bodyEnv body) >> andThen bodyType:
             # fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
             # fromBlock instead infers paramType fully, but will not apply the substitutions it creates
             # So we just pull out the substitutions and apply them to paramType
@@ -1333,10 +1347,10 @@ fromExpression as Env: CA.Expression: Monad Type =
             unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
 
         CA.If pos ar:
-            checkBlock env CoreTypes.bool ar.condition >> andThen _:
+            checkExpression env CoreTypes.bool ar.condition >> andThen _:
             get (x: x.substitutions) >> andThen s:
-            (fromBlock env ar.true) >> andThen trueType:
-            (fromBlock env ar.false) >> andThen falseType:
+            (fromExpression env ar.true) >> andThen trueType:
+            (fromExpression env ar.false) >> andThen falseType:
             unify env pos UnifyReason_IfBranches trueType falseType
 
         CA.Try pos value patternsAndBlocks:
@@ -1358,6 +1372,17 @@ fromExpression as Env: CA.Expression: Monad Type =
                     (newName identity) >> andThen name:
                     (unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) >> andThen unifiedType:
                     return unifiedType
+
+        CA.LetIn valueDef expression:
+            fromDefinition False valueDef env >> andThen env1:
+            fromExpression env1 expression >> andThen ty:
+            if valueDef.mutable and typeContainsFunctions ty then
+                addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> andThen _:
+                return ty
+            else
+                return ty
+
+
 
 
 unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argument: Type: Monad Type =
@@ -1400,7 +1425,7 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argu
                 ]
 
 
-fromPatternAndBlock as Env: ( CA.Pattern & List CA.Statement ): ( Type & Type ): Monad ( Type & Type ) =
+fromPatternAndBlock as Env: ( CA.Pattern & CA.Expression ): ( Type & Type ): Monad ( Type & Type ) =
     env: ( pattern & block ): ( patternTypeSoFar & blockTypeSoFar ):
     fromPattern env pattern Dict.empty >> andThen patternOut:
     unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> andThen unifiedPatternType:
@@ -1420,7 +1445,7 @@ fromPatternAndBlock as Env: ( CA.Pattern & List CA.Statement ): ( Type & Type ):
             env1
     ip >> andThen patternEnv:
 
-    fromBlock patternEnv block >> andThen blockType:
+    fromExpression patternEnv block >> andThen blockType:
     # TODO pos should be the block's last statement
     unify env patternOut.pos (UnifyReason_TryBlock block) blockTypeSoFar blockType >> andThen unifiedBlockType:
     return ( unifiedPatternType & unifiedBlockType )
@@ -1704,14 +1729,14 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
 
 union UnifyReason =
     , UnifyReason_AnnotationSimple
-    , UnifyReason_AnnotationVsBlock CA.Pattern CA.Annotation (List CA.Statement)
+    , UnifyReason_AnnotationVsBlock CA.Pattern CA.Annotation CA.Expression
     , UnifyReason_DefBlockVsPattern
     , UnifyReason_CallArgument { reference as Pos, argument as Pos }
     , UnifyReason_IsBeingCalledAsAFunction Pos Type
     , UnifyReason_IfCondition
     , UnifyReason_IfBranches
     , UnifyReason_TryPattern
-    , UnifyReason_TryBlock (List CA.Statement)
+    , UnifyReason_TryBlock CA.Expression
     , UnifyReason_ConstructorArgument UnifyConstructorWithItsArgsParams
     , UnifyReason_AttributeAccess Name
     , UnifyReason_AttributeUpdate (List Name)
@@ -2349,7 +2374,8 @@ replaceTypeVariables as Subs: Type: Type =
                         >> CA.TypeRecord pos ext2
 
                 Just what:
-                    SPCore.todo "replacing record extension with non-var" (SPCore.toHuman what)
+                    SPCore.log "what" (SPCore.toHuman what)
+                    SPCore.todo "replacing record extension with non-var"
 
 
 addCheckError as Pos: [Text]: Monad None =
@@ -2455,14 +2481,6 @@ errorIncompatibleTypes as Env: UnifyReason: Pos: Type: Dict Name TypeClash: Mona
 
         UnifyReason_TryBlock block:
 
-            pos =
-                try List.map CA.statementPos block as
-                    []:
-                        pos_whatever
-
-                    h :: t:
-                        List.for t Pos.range h
-
             makeError = eenv:
                 [ "This try..as block produces a different type than the blocks preceding it."
                 , ""
@@ -2475,19 +2493,16 @@ errorIncompatibleTypes as Env: UnifyReason: Pos: Type: Dict Name TypeClash: Mona
                     }
                 ]
 
-            addErrorWithEEnv pos makeError
+            addErrorWithEEnv (CA.expressionPos block) makeError
 
         UnifyReason_AnnotationVsBlock pattern annotation body:
             headerPos =
                 CA.patternPos pattern
 
             lastStatementPos =
-                try List.reverse body as
-                    []:
-                        pos_whatever
-
-                    last :: t:
-                        CA.statementPos last
+                body
+                    >> CA.skipLetIns
+                    >> CA.expressionPos
 
             name =
                 pattern
