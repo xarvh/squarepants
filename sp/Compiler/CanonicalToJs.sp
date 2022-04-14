@@ -980,11 +980,11 @@ accessConstructorArg as Int: JA.Expr: JA.Expr =
 
 
 translateUnionConstructor as Meta.UniqueSymbolReference: CA.Constructor: JA.Statement =
-    usr: stuff:
-    { type, args } = stuff
+    usr: cons:
+
     # const ConstructorName = ($1) => ($2) => [ "ConstructorName", $1, $2 ]
     n =
-        List.length args
+        List.length cons.args
 
     range =
         List.range 1 n

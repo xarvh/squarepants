@@ -163,6 +163,14 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
     makeNumType class_c size_c
   ```
 
+Note about unsigned: https://www.reddit.com/r/ProgrammingLanguages/comments/ub5vij/what_was_considered_problematic_with_unsigned/
+Unsigned might be needed for shaders or for external compatibility.
+If we decide they are needed, we might make them safer by:
+  * Allow conversion to and from unsigned types only via explicit call to conversion functions
+  * Instead of `U*` the type names should be `Unsigned*` to discourage usage.
+
+
+
 
 
 Stuff that seems good but needs thinking

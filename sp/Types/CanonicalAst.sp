@@ -127,6 +127,7 @@ alias Constructor = {
     , pos as Pos
 
     # type and args are redundant
+    , typeUsr as Meta.UniqueSymbolReference
     , type as Type
     , args as [Type]
     }
@@ -262,6 +263,7 @@ expressionPos as Expression: Pos =
 
 alias InstanceVariable =
     { definedAt as Pos
+    # TODO: ty -> type
     , ty as Type
     , freeTypeVariables as Dict Name { nonFn as Bool }
     , isMutable as Bool

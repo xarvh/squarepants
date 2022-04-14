@@ -256,6 +256,16 @@ statements as Test =
             (Test.isOkAndEqualTo { ty = CoreTypes.none, freeTypeVariables = Dict.empty, isMutable = False })
         , codeTest
             """
+            [reg] Definition statement with annotation return type None
+            """
+            """
+            a as None =
+              f = 3
+            """
+            (infer "a")
+            Test.isOk
+        , codeTest
+            """
             SKIP Local values can't shadow root values
             """
             """
@@ -287,6 +297,16 @@ statements as Test =
             """
             (infer "b")
             (Test.errorContains [ "declar"])
+        , codeTest
+            """
+            [reg] Annotated declarations are actually typechecked
+            """
+            """
+            x as None =
+                q = 1 + ""
+            """
+            (infer "x")
+            (Test.errorContains [])
         ]
 
 
@@ -311,6 +331,18 @@ variableTypes as Test =
                 , isMutable = False
                 }
             )
+
+        , codeTest
+            "Annotated vars are instantiated when referenced"
+            """
+            q as [item] =
+              SPCore.Nil
+
+            r as [Text] =
+                  q
+            """
+            (infer "r")
+            Test.isOk
         ]
 
 
@@ -401,6 +433,15 @@ mu as Test =
 
             z as x: x =
               a (x: x)
+            """
+            (infer "a")
+            Test.isOk
+        , codeTest
+            "[reg] Mutable assignment as last stament yields None"
+            """
+            a as None =
+                x @= 1
+                @x := 2
             """
             (infer "a")
             Test.isOk
@@ -659,13 +700,13 @@ patterns as Test =
             (infer "x")
             #
             (Test.isOkAndEqualTo
-                { freeTypeVariables = forall [ "2", "3" ]
+                { freeTypeVariables = forall [ "2" ]
                 , isMutable = False
                 , ty =
                     typeFunction
-                        (CA.TypeRecord Pos.T (Just "a") (Dict.fromList [ ( "first" & typeVariable "b" ) ]))
+                        (CA.TypeRecord Pos.T Nothing (Dict.fromList [ ( "first" & typeVariable "a" ) ]))
                         False
-                        (typeVariable "b")
+                        (typeVariable "a")
                 }
             )
          [# TODO
@@ -692,6 +733,22 @@ patterns as Test =
                   1 :: SPCore.Nil = SPCore.Nil
             """
             (infer "result")
+            #
+            Test.isOk
+            #
+        , codeTest
+            """
+            [reg] Trying to check against an inferred value?
+            """
+            """
+            tuple as Text & Number =
+                "" & 1
+
+            x =
+                (a as Text) & (b as Number) =
+                    tuple
+            """
+            (infer "x")
             #
             Test.isOk
         ]
@@ -741,6 +798,14 @@ try_as as Test =
             """
             (infer "x")
             (Test.errorContains [ "Number", "Bool" ])
+        , codeTest "[reg] actually infers blocks"
+            """
+            x as Number =
+              try "" as
+                "": y
+            """
+            (infer "x")
+            (Test.errorContains [ "y" ])
         ]
 
 

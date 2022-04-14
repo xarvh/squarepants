@@ -2,19 +2,38 @@
 High Priority Stuff
 ===================
 
-----> code instrumenting, track on which variables/expession sp_clone is used?
+* callback op
+  (So I can test the new type check)
 
+* All statements are let..ins?
+  (Get rid of statements)
 
-----> Caching system, because everything depends on that?
+* Union types behave like aliases (ie, become tag types)
+  (So I don't have to rewrite all code)
+  ---> What about recursive definitions?
 
-----> TCO
+* get rid of `alias` and `union`
 
-----> Error.Env needs only the current module
+* TypeOpaque
+
+* TypeGenerated vs TypeAnnotated?
+  or:
+    SpecifiedType = <TypeVariable name, ... >
+    InferredType = <Generated Int, Specified SpecifiedType>
+
+* Humanize must break a type into multiple lines
+
+* Caching system, because everything depends on that?
+
+* Error.Env needs only the current module
     > Remove module name from Pos
 
-----> actual parallelism with io_parallel?
+* TCO
 
-----> Humanize must break a type into multiple lines
+* code instrumenting, track on which variables/expession sp_clone is used?
+
+* actual parallelism with io_parallel?
+
 
 
 

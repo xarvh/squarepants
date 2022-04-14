@@ -18,7 +18,61 @@ Things that should probably be implemented
 
 # Callback operator
 
-    meta ?=
+Problem: this sucks:
+
+    ```
+    xxx =
+        valueType >> list_for patternsAndBlocks (pattern & block): typeSoFar:
+            fromPattern env pattern Dict.empty >> andThen patternOut:
+            unify patternOut.type typeSoFar
+
+    xxx >> andThen unifiedValueType:
+
+    doStuffWith unifiedValueType
+    ```
+
+
+Solution:
+
+    ```
+    unifiedValueType =:
+        valueType
+            >> list_for patternsAndBlocks (pattern & block): typeSoFar:
+                patternOut =:
+                    fromPattern env pattern Dict.empty >> stateCallback
+
+                unify patternOut.type typeSoFar
+            >> stateCallback
+
+    doStuffWith unifiedValueType
+    ```
+
+
+    --> However, consider:
+
+    ```
+    None :=
+        None >> dict_for attrValueByName attrName: attrValue: None:
+            try Dict.get attrName attrTypeByName as
+                Nothing:
+                    error << "missing attribute " .. attrName
+
+                Just expectedAttrType:
+                    checkExpression env attrType attrValue
+
+    doOtherStuffInsideTheMonad
+    ```
+
+    Is it obvious enough why we're using `:=`?
+    Is it obvious enough that this is a continuation?
+
+
+
+If we use `=:` or `:=` for this instead of `?=` then we need to use something different for `mutable assign` (such as `=!` ?)
+Or use `=!` for the callback op?
+
+
+    meta :=
         loadMeta >> IO.onSuccess
 
     fileLists as List (Text & Text) ?=
