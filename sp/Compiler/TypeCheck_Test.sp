@@ -357,6 +357,15 @@ mu as Test =
             """
             (infer "a")
             (Test.errorContains [ "can't return functions" ])
+        , codeTest
+            "Statement blocks that define mutables can't return functions (with annotation)"
+            """
+            a as y: y =
+              x @= 1
+              y: y
+            """
+            (infer "a")
+            (Test.errorContains [ "can't return functions" ])
         , codeTest "Immutable variables can't be used as mutable"
             """
             a = x:

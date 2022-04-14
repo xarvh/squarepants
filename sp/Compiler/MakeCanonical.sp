@@ -48,9 +48,9 @@ alias Env = {
     #
     , nonRootValues as Dict Text Pos
     #
-    # This is used to tell the user tha definitions must be in order
+    # TODO This is used to tell the user tha definitions must be in order
     #
-    , futureNonRootValues as Dict Text Pos
+    #, futureNonRootValues as Dict Text Pos
     #
     , defsPath as [CA.Pattern]
     #
@@ -75,7 +75,7 @@ initEnv as ReadOnly: Env =
     ro: {
     , maybeShorthandTarget = Nothing
     , nonRootValues = Dict.empty
-    , futureNonRootValues = Dict.empty
+    #, futureNonRootValues = Dict.empty
     , ro = ro
     , defsPath = []
     , tyvarRenames = Dict.empty
@@ -177,13 +177,6 @@ deps_init = {
     }
 
 
-
-bodyDeps as [CA.Statement]: Deps: Deps =
-    # We keep the `stats` explicit argument to avoid a circular initialization
-    stats:
-    List.for stats statementDeps
-
-
 patternDeps as CA.Pattern: Deps: Deps =
     pattern: deps:
     try pattern as
@@ -195,13 +188,6 @@ patternDeps as CA.Pattern: Deps: Deps =
         CA.PatternLiteralText _ _: deps
 
 
-statementDeps as CA.Statement: Deps: Deps =
-    s: deps:
-    try s as
-        CA.Definition def: deps >> patternDeps def.pattern >> bodyDeps def.body
-        CA.Evaluation expr: expressionDeps expr deps
-
-
 expressionDeps as CA.Expression: Deps: Deps =
     expr: deps:
     try expr as
@@ -211,7 +197,7 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.LiteralText _ _:
             deps
 
-        CA.Variable _ { ref = CA.RefRoot usr }:
+        CA.Variable _ { ref = CA.RefRoot usr, attrPath }:
             { deps with values = Set.insert usr .values }
 
         CA.Variable _ _:
@@ -223,17 +209,17 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.Lambda _ (CA.ParameterPattern pa) body:
             deps
                 >> patternDeps pa
-                >> bodyDeps body
+                >> expressionDeps body
 
         CA.Lambda _ (CA.ParameterMutable _ _) body:
             deps
-                >> bodyDeps body
+                >> expressionDeps body
 
         CA.Record _ Nothing exprByName:
             deps
                 >> Dict.for exprByName (name: expressionDeps)
 
-        CA.Record _ (Just { ref = CA.RefRoot usr }) exprByName:
+        CA.Record _ (Just { ref = CA.RefRoot usr, attrPath }) exprByName:
             { deps with values = Set.insert usr .values }
                 >> Dict.for exprByName (name: expressionDeps)
 
@@ -252,14 +238,20 @@ expressionDeps as CA.Expression: Deps: Deps =
 
         CA.If _ args:
             deps
-                >> bodyDeps args.condition
-                >> bodyDeps args.true
-                >> bodyDeps args.false
+                >> expressionDeps args.condition
+                >> expressionDeps args.true
+                >> expressionDeps args.false
 
         CA.Try _ e patternsAndBodies:
             deps
                 >> expressionDeps e
-                >> List.for patternsAndBodies ((p & b): d: d >> patternDeps p >> bodyDeps b)
+                >> List.for patternsAndBodies ((p & b): d: d >> patternDeps p >> expressionDeps b)
+
+        CA.LetIn valueDef expr:
+            deps
+                >> patternDeps valueDef.pattern
+                >> expressionDeps valueDef.body
+                >> expressionDeps expr
 
 
 #
@@ -330,7 +322,7 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
 
     deps =
         if isRoot then
-            deps_init >> patternDeps pattern >> bodyDeps body
+            deps_init >> patternDeps pattern >> expressionDeps body
         else
             deps_init
 
@@ -466,58 +458,49 @@ translateParameter as Env: Bool: FA.Pattern: Res CA.Parameter =
 #
 # Statement
 #
-
-
-translateStatementBlock as Env: [FA.Statement]: Res [CA.Statement] =
+translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
     env: stats:
 
-    insertNames = stat: futureNonRootValues:
-        try stat as
-            FA.Definition pos def:
-                Dict.join (FA.patternNames def.pattern) futureNonRootValues
-            _:
-                futureNonRootValues
-
-    lEnv0 as Env =
-        { env with futureNonRootValues = List.for stats insertNames env.futureNonRootValues }
-
-
-    insertCaStatement as FA.Statement: Env & [CA.Statement]: Res (Env & [CA.Statement]) =
-        faStat: (lEnvX & caStats):
-
-        translateStatement lEnvX faStat
-            >> Result.map (x: x >> Tuple.mapSecond (y: y :: caStats))
-
-    lEnv0 & []
-        >> List.foldlRes insertCaStatement stats
-        >> Result.map (x: x >> Tuple.second >> List.reverse)
-
-
-translateStatement as Env: FA.Statement: Res (Env & CA.Statement) =
-    env: faStat:
-    try faStat as
-        FA.Evaluation pos faExpr:
-            # TODO Non-return, non-mutable, non-debug evaluations should produce an error.
-            translateExpression env faExpr >> onOk e:
-            Ok << env & CA.Evaluation e
-
-        FA.Definition pos fa:
-            translateDefinition False env fa >> onOk d:
-            Ok << { env with nonRootValues = Dict.join (CA.patternNames d.pattern) .nonRootValues } & CA.Definition d
-
-        FA.TypeAlias fa:
+    try stats as
+        FA.TypeAlias fa :: _:
             At pos _ = fa.name
             makeError pos [ "Aliases can be declared only in the root scope" ]
 
-        FA.UnionDef pos fa:
+        FA.UnionDef pos fa :: _:
             makeError pos [ "Types can be declared only in the root scope" ]
+
+        []:
+            Ok << CA.Constructor Pos.G CoreTypes.noneValue
+
+        # Last evaluation in a block is the return statement
+        FA.Evaluation pos faExpr :: []:
+            translateExpression env faExpr >> onOk e:
+            Ok << e
+
+        # Non-last evaluation gets converted into a definition and then into a LetIn
+        FA.Evaluation pos faExpr :: tail:
+            # TODO Non-return, non-mutable, non-debug evaluations should produce an error.
+            valueDef as FA.ValueDef = {
+              , pattern = FA.PatternAny Pos.G False "_" Nothing
+              , mutable = False
+              , nonFn = []
+              , body = [ FA.Evaluation pos faExpr ]
+              }
+
+            translateDefinition False env valueDef >> onOk d:
+            translateStatementBlock env tail >> onOk tailBlockExpression:
+            Ok << CA.LetIn d tailBlockExpression
+
+        FA.Definition pos fa :: tail:
+            translateDefinition False env fa >> onOk d:
+            translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames d.pattern) .nonRootValues } tail >> onOk tailBlockExpression:
+            Ok << CA.LetIn d tailBlockExpression
 
 
 
 ##
 #- Expression
 #
-
 translateExpression as Env: FA.Expression: Res CA.Expression =
     env: faExpr:
     try faExpr as
@@ -586,11 +569,11 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             List.mapRes (translateArgument env) arguments >> onOk args:
             Ok << List.for args fold ref
 
-        FA.If pos { condition, true, false }:
+        FA.If pos { condition, true, false, isCompact }:
             translateExpression env condition >> onOk c:
             translateStatementBlock env true >> onOk t:
             translateStatementBlock env false >> onOk f:
-            { condition = [ CA.Evaluation c ]
+            { condition = c
             , true = t
             , false = f
             }
