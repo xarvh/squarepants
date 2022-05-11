@@ -798,6 +798,14 @@ try_as as Test =
             """
             (infer "x")
             (Test.errorContains [ "Number", "Bool" ])
+        , codeTest "[reg] actually infers blocks"
+            """
+            x as Number =
+              try "" as
+                "": y
+            """
+            (infer "x")
+            (Test.errorContains [ "y" ])
         ]
 
 
