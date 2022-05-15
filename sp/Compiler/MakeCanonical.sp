@@ -48,7 +48,7 @@ alias Env = {
     #
     , nonRootValues as Dict Text Pos
     #
-    # TODO This is used to tell the user tha definitions must be in order
+    # TODO This is used to tell the user that definitions must be in order
     #
     #, futureNonRootValues as Dict Text Pos
     #

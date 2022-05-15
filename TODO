@@ -5,14 +5,11 @@ High Priority Stuff
 * callback op
   (So I can test the new type check)
 
-* All statements are let..ins?
-  (Get rid of statements)
-
 * Union types behave like aliases (ie, become tag types)
   (So I don't have to rewrite all code)
   ---> What about recursive definitions?
 
-* get rid of `alias` and `union`
+* get rid of `union`
 
 * TypeOpaque
 
@@ -33,6 +30,19 @@ High Priority Stuff
 * code instrumenting, track on which variables/expession sp_clone is used?
 
 * actual parallelism with io_parallel?
+
+* Write tests and fix: `SPCore.todo "TODO needs proper type comparison without `pos`"`
+
+
+Error messages to improve
+=========================
+
+```
+attributeNotFoundOnRecord =
+    record = {}
+    record.nonExistentAttribute
+```
+
 
 
 

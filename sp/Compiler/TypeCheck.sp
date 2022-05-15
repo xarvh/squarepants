@@ -436,77 +436,6 @@ TODO It might be _even faster_ if we use the references to decide what to compil
 
 
 
-
-
-list_foldlLast as (Bool: a: b: Monad b): [a]: b: Monad b =
-    update: list: init:
-
-    try list as
-        []:
-            return init
-
-        [last]:
-            update True last init
-
-        head :: tail:
-            update False head init >> andThen (list_foldlLast update tail)
-
-
-
-
-
-#fromBlock as Env: List CA.Statement: Monad Type =
-#    env0: block:
-#
-#    # this is another state, not the one defined above
-#    state0 =
-#        { env = env0
-#        , mutableDefs = []
-#        , inferredType = CoreTypes.none
-#        }
-#
-#    upd =
-#        isLast: statement: state:
-#        (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
-#        return
-#            { env = env
-#            , inferredType = inferredType
-#            , mutableDefs =
-#                try maybeMutableDefinitionId as
-#                    Nothing:
-#                        state.mutableDefs
-#
-#                    Just definitionId:
-#                        definitionId :: state.mutableDefs
-#            }
-#
-#    (list_foldlLast upd block state0) >> andThen stateF:
-#    try stateF.mutableDefs as
-#        []:
-#            return stateF.inferredType
-#
-#        head :: tail:
-#            # A block is actually allowed to return tyvars that allow functions
-#            if typeContainsFunctions stateF.inferredType then
-#                addError head [ "blocks that define mutables can't return functions" ]
-#
-#            else
-#                return stateF.inferredType
-
-
-#fromStatement as Env: CA.Statement: Monad ( Env & Maybe Pos & Type ) =
-#    env: statement:
-#    try statement as
-#        CA.Evaluation expr:
-#            (fromExpression env expr) >> andThen expressionType:
-#            return ( env & Nothing & expressionType )
-#
-#        CA.Definition def:
-#            (fromDefinition False def env) >> andThen env1:
-#            x = if def.mutable then Just (CA.patternPos def.pattern) else Nothing
-#            return ( env1 & x & CoreTypes.none )
-
-
 applySubsToType as Type: Monad Type =
     ty:
     get (x: x.substitutions) >> andThen subs:
@@ -731,14 +660,12 @@ addCheckConstructorError as Pos: Env: [CA.Pattern]: [Text]: Monad Env =
 
 
 checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
-  env: expectedType: pattern:
+    env: expectedType_: pattern:
 
-  try expectedType as
-    CA.TypeAlias pos usr ty:
-      checkAndInsertPattern env ty pattern
+    expectedType =
+        expandAlias expectedType_
 
-    _:
-      try pattern as
+    try pattern as
 
         CA.PatternAny pos maybeName maybeAnnotation:
 
@@ -1130,87 +1057,6 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
             xxx >> andThen _:
             checkExpression env1 expectedType expression
-
-
-
-[#
-  In theory checkStatement should produce an updated Env, because it might contain a Definition.
-  In practice, the only way to annotate a definition Statement is to put it at the end of a block,
-  so the new Env would get thrown away.
-
-  This probably can be cleaned up once we get rid of Statements alltogether.
-#]
-#checkStatement as Env: Type: CA.Statement: Monad None =
-#    env: expectedType: statement:
-#    try statement as
-#      CA.Definition def:
-#          isNone =
-#              try expectedType as
-#                  CA.TypeConstant _ usr []:
-#                      usr == CoreTypes.noneDef.usr
-#
-#                  _:
-#                      False
-#
-#          if isNone then
-#              fromDefinition False def env >> andThen newEnv:
-#              return None
-#
-#          else
-#              addCheckError (CA.patternPos def.pattern) [
-#                  , "definitions yield None, but annotation expects a " .. typeToText env expectedType
-#                  , SPCore.toHuman expectedType
-#                  ]
-#
-#      CA.Evaluation expression:
-#          checkExpression env expectedType expression
-
-
-#checkBlock as Env: Type: [CA.Statement]: Monad None =
-#    env0: expectedType: block:
-#
-#    # TODO most of this function is cut & paste from `fromBlock`.
-#    # Would be nice to abstract the stuff that's repeated.
-#
-#    state0 =
-#        { env = env0
-#        , mutableDefs = []
-#        , inferredType = CoreTypes.none
-#        }
-#
-#    upd =
-#        isLast: statement: state:
-#        if isLast then
-#            checkStatement state.env expectedType statement >> andThen None:
-#            return state
-#
-#        else
-#            (fromStatement state.env statement) >> andThen ( env & maybeMutableDefinitionId & inferredType ):
-#            return
-#                { env = env
-#                , inferredType = inferredType
-#                , mutableDefs =
-#                    try maybeMutableDefinitionId as
-#                        Nothing:
-#                            state.mutableDefs
-#
-#                        Just definitionId:
-#                            definitionId :: state.mutableDefs
-#                }
-#
-#    (list_foldlLast upd block state0) >> andThen stateF:
-#    try stateF.mutableDefs as
-#        []:
-#            return None
-#
-#        head :: tail:
-#            # A block is actually allowed to return tyvars that allow functions
-#            if typeContainsFunctions stateF.inferredType then
-#                addCheckError head [ "blocks that define mutables can't return functions" ]
-#
-#            else
-#                return None
-
 
 
 
