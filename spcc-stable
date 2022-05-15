@@ -11306,7 +11306,7 @@ const $sp$Compiler$TypeCheck$replaceTypeVariables = (($subs) => {
       if (("$corelib$Maybe$Nothing" === ($$try1)[0])) {
         return $ty;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2344:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2190:12', (sp_toHuman)($$try1));
       return null;
     }
     if (("$sp$Types$CanonicalAst$TypeFunction" === ($$try0)[0])) {
@@ -11354,10 +11354,10 @@ const $sp$Compiler$TypeCheck$replaceTypeVariables = (($subs) => {
         return (sp_todo)("replacing record extension with non-var");
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2363:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2209:12', (sp_toHuman)($$try1));
       return null;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2339:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2185:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -11400,7 +11400,7 @@ const $sp$Compiler$TypeCheck$typeContainsFunctions = (($ty) => {
     const $extensible = ($$try0)[2];
     return (($corelib$List$any)($sp$Compiler$TypeCheck$typeContainsFunctions))(($corelib$Dict$values)($attrs));
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2117:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1963:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Human$CanonicalAst$parensIf = (($test) => {
@@ -11569,7 +11569,7 @@ const $sp$Compiler$TypeCheck$checkNonFunction = (($env) => {
             })))((($sp$Compiler$TypeCheck$errorTodo)(($sp$Types$Pos$I)(26)))(("type `" + ($name + ("` should not contain functions, but is " + (($sp$Compiler$TypeCheck$typeToText)($env))($ty))))))
             : ($sp$Compiler$TypeCheck$return)($nope));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2081:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1927:4', (sp_toHuman)($$try0));
       })))(($sp$Compiler$TypeCheck$get)((($x) => {
         return $x.nonFnTyvars;
       })));
@@ -11616,7 +11616,7 @@ const $sp$Compiler$TypeCheck$typeHasTyvar = (($n) => {
       const $pos = ($$try0)[1];
       return (((sp_equal)($extensible))(($corelib$Maybe$Just)($n)) || (($corelib$List$any)(($sp$Compiler$TypeCheck$typeHasTyvar)($n)))(($corelib$Dict$values)($attrs)));
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2138:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1984:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -11630,7 +11630,7 @@ const $sp$Compiler$TypeCheck$typeIsTyvar = (($name) => {
     if (true) {
       return false;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2066:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1912:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -11845,7 +11845,7 @@ const $sp$Compiler$TypeCheck$unifyRecords = (($env) => {
                   })))((((((($sp$Compiler$TypeCheck$addSubstitution)($env))("jj1"))($pos))($reason))($aName))($sub));
                 })))(($sp$Compiler$TypeCheck$newName)($corelib$Basics$identity)));
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1932:4', (sp_toHuman)($$try0));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1778:4', (sp_toHuman)($$try0));
           })))((($sp$Compiler$TypeCheck$dict_map)((($k) => {
             return ((a$$) => {
               const $b = a$$.second;
@@ -11929,7 +11929,7 @@ const $sp$Compiler$TypeCheck$unify_ = (($env) => {
                 if (true) {
                   return (((((($sp$Compiler$TypeCheck$addSubstitution)($env))("vv4"))($pos))($reason))($v2_name))($t1);
                 }
-                (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1854:16', (sp_toHuman)($$try1));
+                (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1700:16', (sp_toHuman)($$try1));
               })))(($sp$Compiler$TypeCheck$get)((($x) => {
                 return $x.substitutions;
               }))));
@@ -11984,7 +11984,7 @@ const $sp$Compiler$TypeCheck$unify_ = (($env) => {
           if (true) {
             return (((($sp$Compiler$TypeCheck$unifyError)($pos1))($sp$Compiler$TypeCheck$IncompatibleTypes))($t1))($t2);
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1823:4', (sp_toHuman)($$try0));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1669:4', (sp_toHuman)($$try0));
         });
       });
     });
@@ -12012,7 +12012,7 @@ const $sp$Compiler$TypeCheck$addSubstitution = (($env) => {
                   if (true) {
                     return (((($sp$Compiler$TypeCheck$unifyError)($pos))(($sp$Compiler$TypeCheck$SubstitutingAnnotation)($name)))((($sp$Types$CanonicalAst$TypeVariable)($pos))($name)))($ty);
                   }
-                  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2012:8', (sp_toHuman)($$try0));
+                  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1858:8', (sp_toHuman)($$try0));
                 }))()
                 : ((($sp$Compiler$TypeCheck$typeHasTyvar)($name))($ty)
                   ? ((($sp$Compiler$TypeCheck$typeIsTyvar)($name))($ty)
@@ -12040,7 +12040,7 @@ const $sp$Compiler$TypeCheck$addSubstitution = (($env) => {
                             });
                           });
                         }
-                        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2044:8', (sp_toHuman)($$try0));
+                        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1890:8', (sp_toHuman)($$try0));
                       })))(($sp$Compiler$TypeCheck$get)((($x) => {
                         return $x.substitutions;
                       })));
@@ -12085,7 +12085,7 @@ const $sp$Compiler$TypeCheck$unifyErrorToText = (($ue) => {
     const $name = ($$try0)[1];
     return ("SubstitutingAnnotation: " + $name);
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1761:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1607:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Compiler$TypeCheck$clashToTexts = (($env) => {
@@ -12111,7 +12111,7 @@ const $sp$Compiler$TypeCheck$clashToTexts = (($env) => {
       return (($corelib$Text$join)("\n"))(($corelib$List$concat)((($core$SPCore$Cons)($info))((($core$SPCore$Cons)($clashErrors))($core$SPCore$Nil))));
       return null;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2604:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2450:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -12260,7 +12260,7 @@ const $sp$Compiler$TypeCheck$errorIncompatibleTypes = (($env) => {
               if (true) {
                 return (sp_todo)(((sp_toHuman)($reason) + " should not even get here"));
               }
-              (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2545:16', (sp_toHuman)($$try1));
+              (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2391:16', (sp_toHuman)($$try1));
             }))();
             return (($sp$Compiler$TypeCheck$addError)($pos_whatever))((($core$SPCore$Cons)($title))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("The type seems to be something like"))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$clashToTexts)($env))(({
               clashes: $clashes,
@@ -12271,7 +12271,7 @@ const $sp$Compiler$TypeCheck$errorIncompatibleTypes = (($env) => {
             }))))($core$SPCore$Nil)))));
             return null;
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2458:4', (sp_toHuman)($$try0));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2304:4', (sp_toHuman)($$try0));
         });
       });
     });
@@ -12354,7 +12354,7 @@ const $sp$Compiler$TypeCheck$applyAttributePath = (($env) => {
             if (true) {
               return $corelib$Maybe$Nothing;
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2162:12', (sp_toHuman)($$try0));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2008:12', (sp_toHuman)($$try0));
           }))();
           const $$try0 = $maybeAttrType;
           if (("$corelib$Maybe$Just" === ($$try0)[0])) {
@@ -12371,7 +12371,7 @@ const $sp$Compiler$TypeCheck$applyAttributePath = (($env) => {
               })))(($sp$Compiler$TypeCheck$newType)($pos));
             })))(($sp$Compiler$TypeCheck$newName)($corelib$Basics$identity));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2168:8', (sp_toHuman)($$try0));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2014:8', (sp_toHuman)($$try0));
         });
       });
       return (($sp$Compiler$TypeCheck$list_for)($attrPath))($wrap);
@@ -12395,7 +12395,7 @@ const $sp$Compiler$TypeCheck$applySubsToNonFreeTyvars = (($env) => {
             });
           })))($constrainedVars);
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2299:8', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2145:8', (sp_toHuman)($$try0));
       });
     });
     return ($sp$Compiler$TypeCheck$return)((Object.assign)({}, $env, ({
@@ -12442,7 +12442,7 @@ const $sp$Compiler$TypeCheck$checkConstructorWithItsArgs = (($env) => {
           if ((("$core$SPCore$Nil" === ($$try0.first)[0]) && ("$core$SPCore$Nil" === ($$try0.second)[0]))) {
             return ($sp$Compiler$TypeCheck$return)($env);
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 832:4', (sp_toHuman)($$try0));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 759:4', (sp_toHuman)($$try0));
         });
       });
     });
@@ -12453,6 +12453,18 @@ const $sp$Compiler$TypeCheck$dict_for = (($d) => {
   return (($f) => {
     return (($sp$StateMonad$dict_foldl)($f))($d);
   });
+});
+
+const $sp$Compiler$TypeCheck$expandAlias = (($type) => {
+  const $$try0 = $type;
+  if (("$sp$Types$CanonicalAst$TypeAlias" === ($$try0)[0])) {
+    const $t = ($$try0)[3];
+    return ($sp$Compiler$TypeCheck$expandAlias)($t);
+  }
+  if (true) {
+    return $type;
+  }
+  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 265:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Compiler$TypeCheck$onlyBothOnly = (($da) => {
@@ -12593,152 +12605,142 @@ const $sp$Compiler$TypeCheck$isCompatibleWith = (($env) => {
         if (true) {
           return (($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)("I was expecting"))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$typeToText)($env))($expectedType)))((($core$SPCore$Cons)("but the actual type is: "))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$typeToText)($env))($actualType)))((($core$SPCore$Cons)("The two types are not compatible!"))($core$SPCore$Nil))))));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 621:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 550:4', (sp_toHuman)($$try0));
       });
     });
   });
 });
 
 const $sp$Compiler$TypeCheck$checkAndInsertPattern = (($env) => {
-  return (($expectedType) => {
+  return (($expectedType_) => {
     return (($pattern) => {
-      const $$try0 = $expectedType;
-      if (("$sp$Types$CanonicalAst$TypeAlias" === ($$try0)[0])) {
-        const $ty = ($$try0)[3];
-        const $usr = ($$try0)[2];
+      const $expectedType = ($sp$Compiler$TypeCheck$expandAlias)($expectedType_);
+      const $$try0 = $pattern;
+      if (("$sp$Types$CanonicalAst$PatternAny" === ($$try0)[0])) {
+        const $maybeAnnotation = ($$try0)[3];
+        const $maybeName = ($$try0)[2];
         const $pos = ($$try0)[1];
-        return ((($sp$Compiler$TypeCheck$checkAndInsertPattern)($env))($ty))($pattern);
-      }
-      if (true) {
-        const $$try1 = $pattern;
-        if (("$sp$Types$CanonicalAst$PatternAny" === ($$try1)[0])) {
-          const $maybeAnnotation = ($$try1)[3];
-          const $maybeName = ($$try1)[2];
-          const $pos = ($$try1)[1];
-          const $envWith = (($name) => {
-            return (($type) => {
-              return (Object.assign)({}, $env, ({
-                instanceVariables: ((($corelib$Dict$insert)(($sp$Types$CanonicalAst$RefBlock)($name)))(({
-                  definedAt: $pos,
-                  freeTypeVariables: ((($sp$Types$CanonicalAst$getFreeTypeVars)($env.nonFreeTyvars))($corelib$Dict$empty))($type),
-                  isMutable: false,
-                  ty: $type,
-                })))($env.instanceVariables),
-              }));
-            });
+        const $envWith = (($name) => {
+          return (($type) => {
+            return (Object.assign)({}, $env, ({
+              instanceVariables: ((($corelib$Dict$insert)(($sp$Types$CanonicalAst$RefBlock)($name)))(({
+                definedAt: $pos,
+                freeTypeVariables: ((($sp$Types$CanonicalAst$getFreeTypeVars)($env.nonFreeTyvars))($corelib$Dict$empty))($type),
+                isMutable: false,
+                ty: $type,
+              })))($env.instanceVariables),
+            }));
           });
-          const $$try2 = ({
-            first: $maybeName,
-            second: $maybeAnnotation,
-          });
-          if ((("$corelib$Maybe$Just" === ($$try2.first)[0]) && ("$corelib$Maybe$Just" === ($$try2.second)[0]))) {
-            const $annotation = ($$try2.second)[1];
-            const $name = ($$try2.first)[1];
-            return (($sp$Compiler$TypeCheck$andThen)((() => {
-              return ($sp$Compiler$TypeCheck$return)((($envWith)($name))($annotation));
-            })))((((($sp$Compiler$TypeCheck$isCompatibleWith)($env))($expectedType))($pos))($annotation));
-          }
-          if ((("$corelib$Maybe$Just" === ($$try2.first)[0]) && ("$corelib$Maybe$Nothing" === ($$try2.second)[0]))) {
-            const $name = ($$try2.first)[1];
-            return ($sp$Compiler$TypeCheck$return)((($envWith)($name))($expectedType));
-          }
-          if ((("$corelib$Maybe$Nothing" === ($$try2.first)[0]) && ("$corelib$Maybe$Just" === ($$try2.second)[0]))) {
-            const $annotation = ($$try2.second)[1];
-            return (($sp$Compiler$TypeCheck$andThen)((() => {
-              return ($sp$Compiler$TypeCheck$return)($env);
-            })))((((($sp$Compiler$TypeCheck$isCompatibleWith)($env))($expectedType))($pos))($annotation));
-          }
-          if ((("$corelib$Maybe$Nothing" === ($$try2.first)[0]) && ("$corelib$Maybe$Nothing" === ($$try2.second)[0]))) {
+        });
+        const $$try1 = ({
+          first: $maybeName,
+          second: $maybeAnnotation,
+        });
+        if ((("$corelib$Maybe$Just" === ($$try1.first)[0]) && ("$corelib$Maybe$Just" === ($$try1.second)[0]))) {
+          const $annotation = ($$try1.second)[1];
+          const $name = ($$try1.first)[1];
+          return (($sp$Compiler$TypeCheck$andThen)((() => {
+            return ($sp$Compiler$TypeCheck$return)((($envWith)($name))($annotation));
+          })))((((($sp$Compiler$TypeCheck$isCompatibleWith)($env))($expectedType))($pos))($annotation));
+        }
+        if ((("$corelib$Maybe$Just" === ($$try1.first)[0]) && ("$corelib$Maybe$Nothing" === ($$try1.second)[0]))) {
+          const $name = ($$try1.first)[1];
+          return ($sp$Compiler$TypeCheck$return)((($envWith)($name))($expectedType));
+        }
+        if ((("$corelib$Maybe$Nothing" === ($$try1.first)[0]) && ("$corelib$Maybe$Just" === ($$try1.second)[0]))) {
+          const $annotation = ($$try1.second)[1];
+          return (($sp$Compiler$TypeCheck$andThen)((() => {
             return ($sp$Compiler$TypeCheck$return)($env);
-          }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 758:12', (sp_toHuman)($$try2));
-          return null;
+          })))((((($sp$Compiler$TypeCheck$isCompatibleWith)($env))($expectedType))($pos))($annotation));
         }
-        if (("$sp$Types$CanonicalAst$PatternLiteralNumber" === ($$try1)[0])) {
-          const $literal = ($$try1)[2];
-          const $pos = ($$try1)[1];
-          (sp_todo)("TODO needs proper type comparison without `pos`");
-          return (((sp_equal)($sp$Compiler$CoreTypes$number))($expectedType)
-            ? ($sp$Compiler$TypeCheck$return)($env)
-            : (($sp$Compiler$TypeCheck$andThen)((() => {
-              return ($sp$Compiler$TypeCheck$return)($env);
-            })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This pattern is a Number, but the annotation says it should be " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil))));
-          return null;
+        if ((("$corelib$Maybe$Nothing" === ($$try1.first)[0]) && ("$corelib$Maybe$Nothing" === ($$try1.second)[0]))) {
+          return ($sp$Compiler$TypeCheck$return)($env);
         }
-        if (("$sp$Types$CanonicalAst$PatternLiteralText" === ($$try1)[0])) {
-          const $literal = ($$try1)[2];
-          const $pos = ($$try1)[1];
-          (sp_todo)("TODO needs proper type comparison without `pos`");
-          return (((sp_equal)($sp$Compiler$CoreTypes$text))($expectedType)
-            ? ($sp$Compiler$TypeCheck$return)($env)
-            : (($sp$Compiler$TypeCheck$andThen)((() => {
-              return ($sp$Compiler$TypeCheck$return)($env);
-            })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This pattern is a Text, but the annotation says it should be " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil))));
-          return null;
-        }
-        if (("$sp$Types$CanonicalAst$PatternConstructor" === ($$try1)[0])) {
-          const $args = ($$try1)[3];
-          const $usr = ($$try1)[2];
-          const $pos = ($$try1)[1];
-          const $$try2 = (($corelib$Dict$get)($usr))($env.constructors);
-          if (("$corelib$Maybe$Nothing" === ($$try2)[0])) {
-            return (((($sp$Compiler$TypeCheck$addCheckConstructorError)($pos))($env))($args))((($core$SPCore$Cons)(("Unknown constructor: " + (sp_toHuman)($usr))))($core$SPCore$Nil));
-          }
-          if (("$corelib$Maybe$Just" === ($$try2)[0])) {
-            const $constructor = ($$try2)[1];
-            const $$try3 = $expectedType;
-            if (("$sp$Types$CanonicalAst$TypeConstant" === ($$try3)[0])) {
-              const $args_ = ($$try3)[3];
-              const $expectedUsr = ($$try3)[2];
-              return (((sp_not_equal)($constructor.typeUsr))($usr)
-                ? (((($sp$Compiler$TypeCheck$addCheckConstructorError)($pos))($env))($args))((($core$SPCore$Cons)(("Constructor produces " + ((sp_toHuman)($constructor.typeUsr) + (" but annotation requires " + (sp_toHuman)($expectedUsr))))))($core$SPCore$Nil))
-                : ((((($sp$Compiler$TypeCheck$checkConstructorWithItsArgs)($env))($pos))(0))($args))($constructor.args));
-            }
-            if (true) {
-              return (((($sp$Compiler$TypeCheck$addCheckConstructorError)($pos))($env))($args))((($core$SPCore$Cons)(("This pattern is an union type, but the annotation expects a " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil));
-            }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 798:20', (sp_toHuman)($$try3));
-            return null;
-          }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 793:12', (sp_toHuman)($$try2));
-          return null;
-        }
-        if (("$sp$Types$CanonicalAst$PatternRecord" === ($$try1)[0])) {
-          const $patternAttrs = ($$try1)[2];
-          const $pos = ($$try1)[1];
-          const $$try2 = $expectedType;
-          if (("$sp$Types$CanonicalAst$TypeRecord" === ($$try2)[0])) {
-            const $expectedTypeAttrs = ($$try2)[3];
-            return ((($sp$Compiler$TypeCheck$dict_for)($patternAttrs))((($attrName) => {
-              return (($attrPattern) => {
-                return (($envX) => {
-                  const $$try3 = (($corelib$Dict$get)($attrName))($expectedTypeAttrs);
-                  if (("$corelib$Maybe$Nothing" === ($$try3)[0])) {
-                    return (($sp$Compiler$TypeCheck$andThen)((() => {
-                      return ($sp$Compiler$TypeCheck$return)($envX);
-                    })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This record pattern has an attribute `" + ($attrName + "` but it is not avaiable in the annotation"))))($core$SPCore$Nil)));
-                  }
-                  if (("$corelib$Maybe$Just" === ($$try3)[0])) {
-                    const $expectedAttrType = ($$try3)[1];
-                    return ((($sp$Compiler$TypeCheck$checkAndInsertPattern)($envX))($expectedAttrType))($attrPattern);
-                  }
-                  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 818:24', (sp_toHuman)($$try3));
-                });
-              });
-            })))($env);
-          }
-          if (true) {
-            return (($sp$Compiler$TypeCheck$andThen)((() => {
-              return ($sp$Compiler$TypeCheck$return)($env);
-            })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This pattern is a record, but the annotation says it should be " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil)));
-          }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 815:12', (sp_toHuman)($$try2));
-          return null;
-        }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 741:6', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 685:12', (sp_toHuman)($$try1));
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 736:2', (sp_toHuman)($$try0));
+      if (("$sp$Types$CanonicalAst$PatternLiteralNumber" === ($$try0)[0])) {
+        const $literal = ($$try0)[2];
+        const $pos = ($$try0)[1];
+        (sp_todo)("TODO needs proper type comparison without `pos`");
+        return (((sp_equal)($sp$Compiler$CoreTypes$number))($expectedType)
+          ? ($sp$Compiler$TypeCheck$return)($env)
+          : (($sp$Compiler$TypeCheck$andThen)((() => {
+            return ($sp$Compiler$TypeCheck$return)($env);
+          })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This pattern is a Number, but the annotation says it should be " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil))));
+        return null;
+      }
+      if (("$sp$Types$CanonicalAst$PatternLiteralText" === ($$try0)[0])) {
+        const $literal = ($$try0)[2];
+        const $pos = ($$try0)[1];
+        (sp_todo)("TODO needs proper type comparison without `pos`");
+        return (((sp_equal)($sp$Compiler$CoreTypes$text))($expectedType)
+          ? ($sp$Compiler$TypeCheck$return)($env)
+          : (($sp$Compiler$TypeCheck$andThen)((() => {
+            return ($sp$Compiler$TypeCheck$return)($env);
+          })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This pattern is a Text, but the annotation says it should be " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil))));
+        return null;
+      }
+      if (("$sp$Types$CanonicalAst$PatternConstructor" === ($$try0)[0])) {
+        const $args = ($$try0)[3];
+        const $usr = ($$try0)[2];
+        const $pos = ($$try0)[1];
+        const $$try1 = (($corelib$Dict$get)($usr))($env.constructors);
+        if (("$corelib$Maybe$Nothing" === ($$try1)[0])) {
+          return (((($sp$Compiler$TypeCheck$addCheckConstructorError)($pos))($env))($args))((($core$SPCore$Cons)(("Unknown constructor: " + (sp_toHuman)($usr))))($core$SPCore$Nil));
+        }
+        if (("$corelib$Maybe$Just" === ($$try1)[0])) {
+          const $constructor = ($$try1)[1];
+          const $$try2 = $expectedType;
+          if (("$sp$Types$CanonicalAst$TypeConstant" === ($$try2)[0])) {
+            const $args_ = ($$try2)[3];
+            const $expectedUsr = ($$try2)[2];
+            return (((sp_not_equal)($constructor.typeUsr))($usr)
+              ? (((($sp$Compiler$TypeCheck$addCheckConstructorError)($pos))($env))($args))((($core$SPCore$Cons)(("Constructor produces " + ((sp_toHuman)($constructor.typeUsr) + (" but annotation requires " + (sp_toHuman)($expectedUsr))))))($core$SPCore$Nil))
+              : ((((($sp$Compiler$TypeCheck$checkConstructorWithItsArgs)($env))($pos))(0))($args))($constructor.args));
+          }
+          if (true) {
+            return (((($sp$Compiler$TypeCheck$addCheckConstructorError)($pos))($env))($args))((($core$SPCore$Cons)(("This pattern is an union type, but the annotation expects a " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil));
+          }
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 725:20', (sp_toHuman)($$try2));
+          return null;
+        }
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 720:12', (sp_toHuman)($$try1));
+        return null;
+      }
+      if (("$sp$Types$CanonicalAst$PatternRecord" === ($$try0)[0])) {
+        const $patternAttrs = ($$try0)[2];
+        const $pos = ($$try0)[1];
+        const $$try1 = $expectedType;
+        if (("$sp$Types$CanonicalAst$TypeRecord" === ($$try1)[0])) {
+          const $expectedTypeAttrs = ($$try1)[3];
+          return ((($sp$Compiler$TypeCheck$dict_for)($patternAttrs))((($attrName) => {
+            return (($attrPattern) => {
+              return (($envX) => {
+                const $$try2 = (($corelib$Dict$get)($attrName))($expectedTypeAttrs);
+                if (("$corelib$Maybe$Nothing" === ($$try2)[0])) {
+                  return (($sp$Compiler$TypeCheck$andThen)((() => {
+                    return ($sp$Compiler$TypeCheck$return)($envX);
+                  })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This record pattern has an attribute `" + ($attrName + "` but it is not avaiable in the annotation"))))($core$SPCore$Nil)));
+                }
+                if (("$corelib$Maybe$Just" === ($$try2)[0])) {
+                  const $expectedAttrType = ($$try2)[1];
+                  return ((($sp$Compiler$TypeCheck$checkAndInsertPattern)($envX))($expectedAttrType))($attrPattern);
+                }
+                (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 745:24', (sp_toHuman)($$try2));
+              });
+            });
+          })))($env);
+        }
+        if (true) {
+          return (($sp$Compiler$TypeCheck$andThen)((() => {
+            return ($sp$Compiler$TypeCheck$return)($env);
+          })))((($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)(("This pattern is a record, but the annotation says it should be " + (($sp$Compiler$TypeCheck$typeToText)($env))($expectedType))))($core$SPCore$Nil)));
+        }
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 742:12', (sp_toHuman)($$try1));
+        return null;
+      }
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 668:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -12756,7 +12758,7 @@ const $sp$Compiler$TypeCheck$errorUndefinedVariable = (($env) => {
           if (("$corelib$Maybe$Nothing" === ($$try0)[0])) {
             return (($core$SPCore$Cons)(("Undefined value: " + $name)))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)(("I can't see a definition for `" + ($name + "` anywhere, so I don't know what it is."))))($core$SPCore$Nil)));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2420:8', (sp_toHuman)($$try0));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2266:8', (sp_toHuman)($$try0));
         });
         const $$try0 = $ref;
         if (("$sp$Types$CanonicalAst$RefBlock" === ($$try0)[0])) {
@@ -12780,25 +12782,13 @@ const $sp$Compiler$TypeCheck$errorUndefinedVariable = (($env) => {
               if (("$corelib$Maybe$Nothing" === ($$try1)[0])) {
                 return (($core$SPCore$Cons)(("The code references a `" + ($path + ("." + ($name + ("` with source `" + (sp_toHuman)($source))))))))((($core$SPCore$Cons)("However, I can't find any module with that path and source."))($core$SPCore$Nil));
               }
-              (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2444:16', (sp_toHuman)($$try1));
+              (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2290:16', (sp_toHuman)($$try1));
             }))());
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2433:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2279:4', (sp_toHuman)($$try0));
       }));
     });
   });
-});
-
-const $sp$Compiler$TypeCheck$expandAlias = (($type) => {
-  const $$try0 = $type;
-  if (("$sp$Types$CanonicalAst$TypeAlias" === ($$try0)[0])) {
-    const $t = ($$try0)[3];
-    return ($sp$Compiler$TypeCheck$expandAlias)($t);
-  }
-  if (true) {
-    return $type;
-  }
-  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 265:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Compiler$TypeCheck$checkFreeVariables = (($env) => {
@@ -12872,10 +12862,10 @@ const $sp$Compiler$TypeCheck$fromArgument = (($env) => {
               }));
             })))((((($sp$Compiler$TypeCheck$applyAttributePath)($env))($pos))($attrPath))($var.ty))));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1462:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1308:12', (sp_toHuman)($$try1));
       return null;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1456:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1302:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -12979,7 +12969,7 @@ const $sp$Compiler$TypeCheck$unifyConstructorWithItsArgs = (($p) => {
       }));
     })))((($sp$Compiler$TypeCheck$addError)($p.pos))((($core$SPCore$Cons)(("Type constructor " + ((sp_toHuman)($p.usr) + " has too many args"))))($core$SPCore$Nil)));
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1690:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1536:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Compiler$TypeCheck$fromPattern = (($env) => {
@@ -13010,10 +13000,10 @@ const $sp$Compiler$TypeCheck$fromPattern = (($env) => {
               const $t = ($$try2)[1];
               return ($sp$Compiler$TypeCheck$return)($t);
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1607:24', (sp_toHuman)($$try2));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1453:24', (sp_toHuman)($$try2));
             return null;
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1602:16', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1448:16', (sp_toHuman)($$try1));
         }))();
         return (($sp$Compiler$TypeCheck$andThen)((($type) => {
           const $newVars = ((() => {
@@ -13029,7 +13019,7 @@ const $sp$Compiler$TypeCheck$fromPattern = (($env) => {
                 type: $type,
               })))($vars);
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1618:16', (sp_toHuman)($$try1));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1464:16', (sp_toHuman)($$try1));
           }))();
           return ($sp$Compiler$TypeCheck$return)(({
             isFullyAnnotated: $isAnnotated,
@@ -13073,7 +13063,7 @@ const $sp$Compiler$TypeCheck$fromPattern = (($env) => {
             const $c = ($$try1)[1];
             return (($sp$Compiler$TypeCheck$replaceTypeVariablesWithNew)(((($sp$Types$CanonicalAst$getFreeTypeVars)($corelib$Dict$empty))($corelib$Dict$empty))($c.type)))($c.type);
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1632:16', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1478:16', (sp_toHuman)($$try1));
         }))();
         return (($sp$Compiler$TypeCheck$andThen)((($constructorTy) => {
           const $p = ({
@@ -13136,7 +13126,7 @@ const $sp$Compiler$TypeCheck$fromPattern = (($env) => {
         })));
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1595:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1441:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -13173,7 +13163,7 @@ const $sp$Compiler$TypeCheck$fromParameter = (($env) => {
         }));
       })))(($sp$Compiler$TypeCheck$newType)($pos));
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1490:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1336:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -13310,7 +13300,7 @@ const $sp$Compiler$TypeCheck$unifyFunctionOnCallAndYieldReturnType = (($env) => 
             if (true) {
               return (($sp$Compiler$TypeCheck$addError)(($sp$Types$CanonicalAst$expressionPos)($reference)))((($core$SPCore$Cons)("This is being called like a function, but its type is"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$typeToText)($env))($referenceType)))($core$SPCore$Nil))));
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1390:4', (sp_toHuman)($$try0));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1236:4', (sp_toHuman)($$try0));
           });
         });
       });
@@ -13345,7 +13335,7 @@ const $sp$Compiler$TypeCheck$fromExpression = (($env) => {
           return (((($sp$Compiler$TypeCheck$applyAttributePath)($env))($pos))($attrPath))($varType);
         })))((($sp$Compiler$TypeCheck$replaceTypeVariablesWithNew)($var.freeTypeVariables))($var.ty));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1234:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1080:12', (sp_toHuman)($$try1));
       return null;
     }
     if (("$sp$Types$CanonicalAst$Constructor" === ($$try0)[0])) {
@@ -13359,7 +13349,7 @@ const $sp$Compiler$TypeCheck$fromExpression = (($env) => {
         const $c = ($$try1)[1];
         return (($sp$Compiler$TypeCheck$replaceTypeVariablesWithNew)(((($sp$Types$CanonicalAst$getFreeTypeVars)($corelib$Dict$empty))($corelib$Dict$empty))($c.type)))($c.type);
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1308:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1154:12', (sp_toHuman)($$try1));
       return null;
     }
     if (("$sp$Types$CanonicalAst$Lambda" === ($$try0)[0])) {
@@ -13451,7 +13441,7 @@ const $sp$Compiler$TypeCheck$fromExpression = (($env) => {
             })))(($sp$Compiler$TypeCheck$applySubsToType)($ty_));
           })))((($sp$Compiler$TypeCheck$fromExpression)($env))((($sp$Types$CanonicalAst$Variable)($pos))($variableArgs)));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1364:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1210:12', (sp_toHuman)($$try1));
       })))((($sp$Compiler$TypeCheck$dict_map)((($k) => {
         return ($sp$Compiler$TypeCheck$fromExpression)($env);
       })))($attrValues));
@@ -13469,7 +13459,7 @@ const $sp$Compiler$TypeCheck$fromExpression = (($env) => {
         })))((($sp$Compiler$TypeCheck$fromExpression)($env1))($expression));
       })))(((($sp$Compiler$TypeCheck$fromDefinition)(false))($valueDef))($env));
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1226:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1072:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -13549,7 +13539,7 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
             })))((((($sp$Compiler$TypeCheck$applyAttributePath)($env))($pos))($attrPath))($instantiatedType));
           })))((($sp$Compiler$TypeCheck$replaceTypeVariablesWithNew)($var.freeTypeVariables))($var.ty));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 872:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 799:12', (sp_toHuman)($$try1));
         return null;
       }
       if (("$sp$Types$CanonicalAst$Constructor" === ($$try0)[0])) {
@@ -13567,7 +13557,7 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
             return (((($sp$Compiler$TypeCheck$isCompatibleWith)($env))($expectedType))($pos))($instantiatedType);
           })))((($sp$Compiler$TypeCheck$replaceTypeVariablesWithNew)(((($sp$Types$CanonicalAst$getFreeTypeVars)($corelib$Dict$empty))($corelib$Dict$empty))($c.type)))($c.type));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 891:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 818:12', (sp_toHuman)($$try1));
         return null;
       }
       if (("$sp$Types$CanonicalAst$Lambda" === ($$try0)[0])) {
@@ -13624,7 +13614,7 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
         if (true) {
           return (($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)("This is a function, but the annotation says it should be a: "))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$typeToText)($env))($expectedType)))($core$SPCore$Nil)));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 905:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 832:12', (sp_toHuman)($$try1));
         return null;
       }
       if (("$sp$Types$CanonicalAst$Call" === ($$try0)[0])) {
@@ -13688,16 +13678,16 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
                       })))(((((($sp$Compiler$TypeCheck$unify)($env))($pos))($reason))($ty))($parameterType));
                     })))((((($sp$Compiler$TypeCheck$applyAttributePath)($env))($pos))($attrPath))($var.ty))));
               }
-              (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 985:28', (sp_toHuman)($$try3));
+              (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 912:28', (sp_toHuman)($$try3));
               return null;
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 955:20', (sp_toHuman)($$try2));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 882:20', (sp_toHuman)($$try2));
             return null;
           }
           if (true) {
             return (($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)("The code is trying to call this as if it was a function, but its type is: "))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$typeToText)($env))($referenceType)))($core$SPCore$Nil)));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 952:12', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 879:12', (sp_toHuman)($$try1));
         })))((($sp$Compiler$TypeCheck$fromExpression)($env))($reference));
       }
       if (("$sp$Types$CanonicalAst$If" === ($$try0)[0])) {
@@ -13772,7 +13762,7 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
                     const $expectedAttrType = ($$try3)[1];
                     return ((($sp$Compiler$TypeCheck$checkExpression)($env))($expectedAttrType))($attrValue);
                   }
-                  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1078:36', (sp_toHuman)($$try3));
+                  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1005:36', (sp_toHuman)($$try3));
                 });
               });
             })))(null);
@@ -13787,7 +13777,7 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
                     if (("$corelib$Maybe$Just" === ($$try3)[0])) {
                       return ($sp$Compiler$TypeCheck$return)(null);
                     }
-                    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1090:36', (sp_toHuman)($$try3));
+                    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1017:36', (sp_toHuman)($$try3));
                   });
                 });
               })))(null);
@@ -13808,19 +13798,19 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
                       const $expectedAttrType = ($$try3)[1];
                       return ((($sp$Compiler$TypeCheck$checkExpression)($env))($expectedAttrType))($attrValue);
                     }
-                    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1106:32', (sp_toHuman)($$try3));
+                    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1033:32', (sp_toHuman)($$try3));
                   });
                 });
               })))(null);
             })))(((($sp$Compiler$TypeCheck$checkExpression)($env))($expectedType))((($sp$Types$CanonicalAst$Variable)($pos))($extending)));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1074:20', (sp_toHuman)($$try2));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1001:20', (sp_toHuman)($$try2));
           return null;
         }
         if (true) {
           return (($sp$Compiler$TypeCheck$addCheckError)($pos))((($core$SPCore$Cons)("This is a record, but the annotation says that this should be a"))((($core$SPCore$Cons)((($sp$Compiler$TypeCheck$typeToText)($env))($expectedType)))($core$SPCore$Nil)));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 1067:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 994:12', (sp_toHuman)($$try1));
         return null;
       }
       if (("$sp$Types$CanonicalAst$LetIn" === ($$try0)[0])) {
@@ -13835,7 +13825,7 @@ const $sp$Compiler$TypeCheck$checkExpression = (($env) => {
           })))($xxx);
         })))(((($sp$Compiler$TypeCheck$fromDefinition)(false))($valueDef))($env));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 864:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 791:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -13914,27 +13904,6 @@ const $sp$Compiler$TypeCheck$fromModule = (($env) => {
   });
 });
 
-const $sp$Compiler$TypeCheck$list_foldlLast = (($update) => {
-  return (($list) => {
-    return (($init) => {
-      const $$try0 = $list;
-      if (("$core$SPCore$Nil" === ($$try0)[0])) {
-        return ($sp$Compiler$TypeCheck$return)($init);
-      }
-      if ((("$core$SPCore$Cons" === ($$try0)[0]) && ("$core$SPCore$Nil" === (($$try0)[2])[0]))) {
-        const $last = ($$try0)[1];
-        return ((($update)(true))($last))($init);
-      }
-      if (("$core$SPCore$Cons" === ($$try0)[0])) {
-        const $tail = ($$try0)[2];
-        const $head = ($$try0)[1];
-        return (($sp$Compiler$TypeCheck$andThen)((($sp$Compiler$TypeCheck$list_foldlLast)($update))($tail)))(((($update)(false))($head))($init));
-      }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 444:4', (sp_toHuman)($$try0));
-    });
-  });
-});
-
 const $sp$Compiler$TypeCheck$splitName = (($s) => {
   const $$try0 = ((text_split)("."))($s);
   if ((("$core$SPCore$Cons" === ($$try0)[0]) && (("$core$SPCore$Cons" === (($$try0)[2])[0]) && ("$core$SPCore$Nil" === ((($$try0)[2])[2])[0])))) {
@@ -13951,7 +13920,7 @@ const $sp$Compiler$TypeCheck$splitName = (($s) => {
       second: $s,
     });
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2406:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Compiler/TypeCheck.sp 2252:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Compiler$TypeCheck_Test$outToHuman = (($out) => {
