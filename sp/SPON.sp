@@ -195,7 +195,7 @@ field as Text: Reader a: Reader a =
     fieldName: fieldReader: statements:
 
     try statements as
-        FA.Definition pos { body, pattern = FA.PatternAny _ False name Nothing, mutable, nonFn } :: tail:
+        FA.Definition pos { body, pattern = FA.PatternAny _ False name Nothing, modifier, nonFn } :: tail:
             if name == fieldName then
                 try fieldReader body as
                     Accepted unreadStatements a:

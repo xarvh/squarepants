@@ -15,14 +15,9 @@ alias Module =
     [Statement]
 
 
-union DefMode =
-    , DefNormal
-    , DefMutable
-    , DefCallback
-
 alias ValueDef = {
     , pattern as Pattern
-    , mutable as Bool
+    , modifier as Token.DefModifier
     , nonFn as [Name]
     , body as [Statement]
     }
