@@ -2,9 +2,6 @@
 High Priority Stuff
 ===================
 
-* callback op
-  (So I can test the new type check)
-
 * Union types behave like aliases (ie, become tag types)
   (So I don't have to rewrite all code)
   ---> What about recursive definitions?
@@ -17,6 +14,8 @@ High Priority Stuff
   or:
     SpecifiedType = <TypeVariable name, ... >
     InferredType = <Generated Int, Specified SpecifiedType>
+
+* Use `[a, ...b]` for Cons, use `::` for callbacks
 
 * Humanize must break a type into multiple lines
 
@@ -58,8 +57,30 @@ Intermediate Representation
 
 
 
+
+
+
+do-notation
+===========
+
+---> BIG problem: what if I forget a `>> andThen _:`?
+The statement is evaluated, but silently **not inserted in the monad chain**!!!!
+
+    # The first two are executed but ignored!!!
+    checkExpression env CoreTypes.bool condition >> cb
+    checkExpression env expectedType true >> cb
+    checkExpression env expectedType false
+
+
+This probably will be a problem regardless of the do-notation solution.
+Maybe can be addressed by requiring lone evaluations to have a Debug or a mutable? Would be very ad-hoc and ugly tho.
+
+
+
 Lexer / Parser
 ==============
+
+* Allow statements to start with a binop (see Notes/Syntax.md)
 
 * lambdas can't unpack records?
     { blah }: xxx
@@ -70,20 +91,10 @@ Lexer / Parser
 
 * Add test: variable names and attr names cannot contain `/`
 
-* add test: it should be possible to write
-
-      allTests
-          >> Test.flatten
-          >> List.sortBy (fn (name & code & outcome): outcome & name)
-          >> List.map (fn (name & code & outcome): testOutcomeToText name code outcome)
-          >> Text.join "\n"
-
-  without parens around the `fn`s
-
 * an inline lambda can't continue on a NewSiblingLine?
     value
-        >> List.map x: blah
-        >> sblorp
+    >> List.map x: blah
+    >> sblorp
 
 
 * lexer doesn't like sibling with nested statements?
@@ -115,10 +126,10 @@ Lexer / Parser
 
     s =
         env & []
-            >> List.for block statement: (envX & depsAccum):
-                    statementDependencies envX statement
-                          >> Tuple.mapSecond (merge depsAccum)
-            >> Tuple.second
+        >> List.for block statement: (envX & depsAccum):
+            statementDependencies envX statement
+            >> Tuple.mapSecond (merge depsAccum)
+        >> Tuple.second
 
 
 

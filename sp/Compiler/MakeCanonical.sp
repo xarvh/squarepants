@@ -329,7 +329,8 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
     Ok {
         , pattern
         , native = False
-        , mutable = fa.mutable
+        # TODO ugly, see above
+        , mutable = fa.modifier == Token.DefMutable
         , parentDefinitions = env.defsPath
         , nonFn
         , body
@@ -482,7 +483,7 @@ translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
             # TODO Non-return, non-mutable, non-debug evaluations should produce an error.
             valueDef as FA.ValueDef = {
               , pattern = FA.PatternAny Pos.G False "_" Nothing
-              , mutable = False
+              , modifier = Token.DefNormal
               , nonFn = []
               , body = [ FA.Evaluation pos faExpr ]
               }
