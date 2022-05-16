@@ -326,18 +326,24 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
         else
             deps_init
 
-    Ok {
-        , pattern
-        , native = False
-        , mutable = fa.mutable
-        , parentDefinitions = env.defsPath
-        , nonFn
-        , body
-        #
-        , directTypeDeps = deps.types
-        , directConsDeps = deps.cons
-        , directValueDeps = deps.values
-        }
+    # TODO this is an ugly way to check this
+    if fa.modifier == Token.DefCallback then
+        makeError (CA.patternPos pattern) [ "can't use a callback here" ]
+
+    else
+        Ok {
+            , pattern
+            , native = False
+            # TODO ugly, see above
+            , mutable = fa.modifier == Token.DefMutable
+            , parentDefinitions = env.defsPath
+            , nonFn
+            , body
+            #
+            , directTypeDeps = deps.types
+            , directConsDeps = deps.cons
+            , directValueDeps = deps.values
+            }
 
 
 
@@ -482,7 +488,7 @@ translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
             # TODO Non-return, non-mutable, non-debug evaluations should produce an error.
             valueDef as FA.ValueDef = {
               , pattern = FA.PatternAny Pos.G False "_" Nothing
-              , mutable = False
+              , modifier = Token.DefNormal
               , nonFn = []
               , body = [ FA.Evaluation pos faExpr ]
               }
@@ -492,9 +498,21 @@ translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
             Ok << CA.LetIn d tailBlockExpression
 
         FA.Definition pos fa :: tail:
-            translateDefinition False env fa >> onOk d:
-            translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames d.pattern) .nonRootValues } tail >> onOk tailBlockExpression:
-            Ok << CA.LetIn d tailBlockExpression
+            if fa.modifier == Token.DefCallback then
+
+                translateStatementBlock env fa.body >> onOk caller:
+
+                faCallback =
+                    FA.Lambda pos fa.pattern False tail
+
+                translateExpression env faCallback >> onOk caCallback:
+
+                Ok << CA.Call pos caller (CA.ArgumentExpression caCallback)
+
+            else
+                translateDefinition False env fa >> onOk d:
+                translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames d.pattern) .nonRootValues } tail >> onOk tailBlockExpression:
+                Ok << CA.LetIn d tailBlockExpression
 
 
 

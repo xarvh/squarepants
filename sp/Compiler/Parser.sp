@@ -188,12 +188,12 @@ lowerNameBare as Env: Parser (At Text) =
             Parser.reject
 
 
-defop as Parser { mutable as Bool } =
+defop as Parser Token.DefModifier =
 
     oneToken >> andThen token:
     try token as
-        Token _ _ (Token.Defop arg):
-            Parser.accept arg
+        Token _ _ (Token.Defop mod):
+            Parser.accept mod
 
         _:
             Parser.reject
@@ -351,8 +351,8 @@ rawList as Parser a: Parser [a] =
 #
 # Statements
 #
-errorCantUseMutableAssignmentHere as Text =
-    "Can't use mutable assignment here"
+errorShouldUseDefNormalHere as Text =
+    "You should use a normal `=` here."
 
 
 typeAlias as Env: Parser FA.Statement =
@@ -361,10 +361,10 @@ typeAlias as Env: Parser FA.Statement =
     kind (Token.LowerName Token.NameNoModifier Nothing "alias" []) >> andThen _:
     upperNameBare env >> andThen name:
     Parser.zeroOrMore (lowerNameBare env) >> andThen args:
-    defop >> andThen defopArgs:
+    defop >> andThen defModifier:
     inlineOrBelowOrIndented (typeExpr env) >> andThen ty:
-    if defopArgs.mutable then
-        Parser.abort errorCantUseMutableAssignmentHere
+    if defModifier /= Token.DefNormal then
+        Parser.abort errorShouldUseDefNormalHere
 
     else
         { name = name
@@ -382,10 +382,10 @@ unionDef as Env: Parser FA.Statement =
     kind (Token.LowerName Token.NameNoModifier Nothing "union" []) >> andThen _:
     upperNameBare env >> andThen (At p name):
     Parser.zeroOrMore (lowerNameBare env) >> andThen args:
-    defop >> andThen defopArgs:
+    defop >> andThen defModifier:
     inlineOrBelowOrIndented (rawList (unionConstructor env)) >> andThen cons:
-    if defopArgs.mutable then
-        Parser.abort errorCantUseMutableAssignmentHere
+    if defModifier /= Token.DefNormal then
+        Parser.abort errorShouldUseDefNormalHere
 
     else
         { name = name
@@ -575,7 +575,7 @@ expr as Env: Parser FA.Expression =
         [
 #        , higherOr << parens (Parser.oneOf [ binopInsideParens env, nest ])
         , higherOr << list env FA.List nest
-        , higherOr << record env (Token.Defop { mutable = False }) FA.Record nest
+        , higherOr << record env (Token.Defop Token.DefNormal) FA.Record nest
 #        , higherOr << lambda env
         , unopsOr env
         , functionApplicationOr env
@@ -781,7 +781,7 @@ definition as Env: Parser FA.Statement =
     here >> andThen start:
     pattern env >> andThen p:
     Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> andThen nf:
-    inlineOrBelowOrIndented defop >> andThen defopArgs:
+    inlineOrBelowOrIndented defop >> andThen defModifier:
     inlineStatementOrBlock env >> andThen body:
 
 #    end =
@@ -794,7 +794,7 @@ definition as Env: Parser FA.Statement =
 
     here >> andThen end:
     { pattern = p
-    , mutable = defopArgs.mutable
+    , modifier = defModifier
     , body = body
     , nonFn = Maybe.withDefault [] nf
     }
@@ -1036,7 +1036,7 @@ pattern as Env: Parser FA.Pattern =
         # the `Or` stands for `Or higher priority parser`
         [ higherOr << parens nest
         , higherOr << list env FA.PatternList nest
-        , higherOr << record env (Token.Defop { mutable = False }) FA.PatternRecord nest
+        , higherOr << record env (Token.Defop Token.DefNormal) FA.PatternRecord nest
         , patternBinopOr env Op.Cons FA.PatternListCons
         , patternBinopOr env Op.Tuple FA.PatternTuple
         ]
@@ -1049,7 +1049,7 @@ functionParameter as Env: Parser FA.Pattern: Parser FA.Pattern =
         [ patternApplication env Parser.reject
         , parens nest
         , list env FA.PatternList nest
-        , record env (Token.Defop { mutable = False }) FA.PatternRecord nest
+        , record env (Token.Defop Token.DefNormal) FA.PatternRecord nest
         ]
 
 

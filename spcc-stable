@@ -696,6 +696,18 @@ const $sp$Types$Token$Defop = (($1) => ([
   $1,
 ]));
 
+const $sp$Types$Token$DefNormal = ([
+  "$sp$Types$Token$DefNormal",
+]);
+
+const $sp$Types$Token$DefMutable = ([
+  "$sp$Types$Token$DefMutable",
+]);
+
+const $sp$Types$Token$DefCallback = ([
+  "$sp$Types$Token$DefCallback",
+]);
+
 const $sp$Types$Token$CurlyBrace = (($1) => ([
   "$sp$Types$Token$CurlyBrace",
   $1,
@@ -1145,18 +1157,6 @@ const $sp$Types$FormattableAst$Definition = (($1) => (($2) => ([
   $1,
   $2,
 ])));
-
-const $sp$Types$FormattableAst$DefNormal = ([
-  "$sp$Types$FormattableAst$DefNormal",
-]);
-
-const $sp$Types$FormattableAst$DefMutable = ([
-  "$sp$Types$FormattableAst$DefMutable",
-]);
-
-const $sp$Types$FormattableAst$DefCallback = ([
-  "$sp$Types$FormattableAst$DefCallback",
-]);
 
 const $sp$Types$FormattableAst$Constructor = (($1) => (($2) => (($3) => ([
   "$sp$Types$FormattableAst$Constructor",
@@ -6277,7 +6277,7 @@ const $sp$Compiler$Lexer$addParenOrCommaToken = (($char) => {
     if (true) {
       return (($sp$Compiler$Lexer$addError)(("I can't make sense of this piece of text: `" + ($char + "`"))))($state);
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 456:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 458:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -6481,14 +6481,13 @@ const $sp$Compiler$Lexer$addSquiggleToken = (($nextIsSpace) => {
       return ($add)($sp$Types$Token$MutableColon);
     }
     if (("=" === $$try0)) {
-      return ($add)(($sp$Types$Token$Defop)(({
-        mutable: false,
-      })));
+      return ($add)(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal));
+    }
+    if (("?" === $$try0)) {
+      return ($add)(($sp$Types$Token$Defop)($sp$Types$Token$DefCallback));
     }
     if (("@=" === $$try0)) {
-      return ($add)(($sp$Types$Token$Defop)(({
-        mutable: true,
-      })));
+      return ($add)(($sp$Types$Token$Defop)($sp$Types$Token$DefMutable));
     }
     if (("-" === $$try0)) {
       return ($add)(($nextIsSpace
@@ -6510,10 +6509,10 @@ const $sp$Compiler$Lexer$addSquiggleToken = (($nextIsSpace) => {
       if (("$corelib$Maybe$Nothing" === ($$try1)[0])) {
         return (($sp$Compiler$Lexer$addError)(("Invalid operator: `" + ($chunk + "`"))))($state);
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 440:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 442:12', (sp_toHuman)($$try1));
       return null;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 432:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 433:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -6624,6 +6623,9 @@ const $sp$Compiler$Lexer$isSquiggle = (($char) => {
   if (("^" === $$try0)) {
     return true;
   }
+  if (("?" === $$try0)) {
+    return true;
+  }
   if (true) {
     return false;
   }
@@ -6710,10 +6712,10 @@ const $sp$Compiler$Lexer$lexOne = (($char) => {
         if (true) {
           return ((($sp$Compiler$Lexer$tryIndent)(" "))($char))($state);
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 492:14', (sp_toHuman)($$try2));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 494:14', (sp_toHuman)($$try2));
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 484:10', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 486:10', (sp_toHuman)($$try1));
       return null;
     }
     if (("$sp$Compiler$Lexer$Default" === ($$try0)[0])) {
@@ -6758,7 +6760,7 @@ const $sp$Compiler$Lexer$lexOne = (($char) => {
               : (($sp$Compiler$Lexer$addParenOrCommaToken)($char))($state))));
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 503:10', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 505:10', (sp_toHuman)($$try1));
       return null;
     }
     if (("$sp$Compiler$Lexer$Dot" === ($$try0)[0])) {
@@ -6863,7 +6865,7 @@ const $sp$Compiler$Lexer$lexOne = (($char) => {
             if (true) {
               return null;
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 629:12', (sp_toHuman)($$try1));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 631:12', (sp_toHuman)($$try1));
           }))()));
       return null;
     }
@@ -6906,7 +6908,7 @@ const $sp$Compiler$Lexer$lexOne = (($char) => {
                 lastEscape: $lastEscape,
               }))))($state);
             }
-            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 669:13', (sp_toHuman)($$try1));
+            (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 671:13', (sp_toHuman)($$try1));
           }))()));
       return null;
     }
@@ -6961,10 +6963,10 @@ const $sp$Compiler$Lexer$lexOne = (($char) => {
       if (true) {
         return ($continueWithDeltaNesting)(0);
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 713:10', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 715:10', (sp_toHuman)($$try1));
       return null;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 481:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/Lexer.sp 483:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -7076,31 +7078,9 @@ const $sp$Compiler$Lexer_Test$non_mut_name = (($n) => {
   return (((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))($n))($core$SPCore$Nil);
 });
 
-const $sp$Compiler$Lexer_Test$comments = (($sp$Test$Group)("Comments"))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] statement after comment"))("\n#\na = 1\n"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(2))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(3))(3))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(3))(4))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(5))(6))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(7))(8))(($sp$Types$Token$NumberLiteral)("1"))))($core$SPCore$Nil)))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] nested comments allow a spurious newline?"))("\n[#[##]#]\na = 1\n"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(8))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(10))(10))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(10))(11))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(13))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(14))(15))(($sp$Types$Token$NumberLiteral)("1"))))($core$SPCore$Nil)))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("Single line"))("# hello"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(7))($sp$Types$Token$Comment)))($core$SPCore$Nil)))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("Multi line"))("[# single line #]\n\na [# inline #] = 1\n\n[#\n    multi line\n#]\n\n[# [# nested #] #]"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(16))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(19))(19))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(19))(20))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(21))(32))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(34))(35))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(36))(37))(($sp$Types$Token$NumberLiteral)("1"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(58))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(61))(78))($sp$Types$Token$Comment)))($core$SPCore$Nil))))))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("brackets"))("[]"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(1))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Open))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(2))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Closed))))($core$SPCore$Nil)))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] Inline comments should not break a block"))("allTests = [\n    , a\n#\n    ]"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(8))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("allTests"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(9))(10))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(11))(12))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Open))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(17))(18))($sp$Types$Token$Comma)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(19))(20))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("a"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(21))(22))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(27))(28))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Closed))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(28))(28))($sp$Types$Token$BlockEnd)))($core$SPCore$Nil)))))))))))))($core$SPCore$Nil)))))));
+const $sp$Compiler$Lexer_Test$comments = (($sp$Test$Group)("Comments"))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] statement after comment"))("\n#\na = 1\n"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(2))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(3))(3))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(3))(4))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(5))(6))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(7))(8))(($sp$Types$Token$NumberLiteral)("1"))))($core$SPCore$Nil)))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] nested comments allow a spurious newline?"))("\n[#[##]#]\na = 1\n"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(8))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(10))(10))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(10))(11))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(13))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(14))(15))(($sp$Types$Token$NumberLiteral)("1"))))($core$SPCore$Nil)))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("Single line"))("# hello"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(7))($sp$Types$Token$Comment)))($core$SPCore$Nil)))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("Multi line"))("[# single line #]\n\na [# inline #] = 1\n\n[#\n    multi line\n#]\n\n[# [# nested #] #]"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(16))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(19))(19))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(19))(20))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(21))(32))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(34))(35))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(36))(37))(($sp$Types$Token$NumberLiteral)("1"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(58))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(61))(78))($sp$Types$Token$Comment)))($core$SPCore$Nil))))))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("brackets"))("[]"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(1))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Open))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(2))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Closed))))($core$SPCore$Nil)))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] Inline comments should not break a block"))("allTests = [\n    , a\n#\n    ]"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(8))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("allTests"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(9))(10))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(11))(12))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Open))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(17))(18))($sp$Types$Token$Comma)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(19))(20))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("a"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(21))(22))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(27))(28))(($sp$Types$Token$SquareBracket)($sp$Types$Token$Closed))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(28))(28))($sp$Types$Token$BlockEnd)))($core$SPCore$Nil)))))))))))))($core$SPCore$Nil)))))));
 
-const $sp$Compiler$Lexer_Test$indentation = (($sp$Test$Group)("Blocks, sibling lines, indentation"))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("1"))("\na =\n 1\nb = 1"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(1))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(2))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(3))(4))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(6))(6))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(6))(7))(($sp$Types$Token$NumberLiteral)("1"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(8))(8))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(8))(8))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(8))(9))(($sp$Compiler$Lexer_Test$non_mut_name)("b"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(10))(11))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(13))(($sp$Types$Token$NumberLiteral)("1"))))($core$SPCore$Nil))))))))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] spurious spaces in front of field name"))("module =\n   importAs =\n      SPCore\n   globalTypes =\n      None"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(6))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("module"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(7))(8))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(12))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(20))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("importAs"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(21))(22))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(29))(29))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(29))(35))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("SPCore"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(39))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(39))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(50))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("globalTypes"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(51))(52))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(59))(59))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(59))(63))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("None"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(63))(63))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(63))(63))($sp$Types$Token$BlockEnd)))($core$SPCore$Nil))))))))))))))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("Blocks and not"))((($corelib$Text$join)("\n"))((($core$SPCore$Cons)("module ="))((($core$SPCore$Cons)("   i ="))((($core$SPCore$Cons)("        j"))((($core$SPCore$Cons)("            >> k"))((($core$SPCore$Cons)("            >> s"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   importAs ="))((($core$SPCore$Cons)("      SPCore"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   globalTypes ="))((($core$SPCore$Cons)("      None"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   a +     # no block start!"))((($core$SPCore$Cons)("        b   # no sibling"))((($core$SPCore$Cons)("        c"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   d =     # block start"))((($core$SPCore$Cons)("        e   # sibling!"))((($core$SPCore$Cons)("        f"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   g = h"))($core$SPCore$Nil))))))))))))))))))))))))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(6))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("module"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(7))(8))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(12))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(13))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("i"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(14))(15))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(24))(24))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(24))(25))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("j"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(38))(40))(($sp$Types$Token$Binop)(({
+const $sp$Compiler$Lexer_Test$indentation = (($sp$Test$Group)("Blocks, sibling lines, indentation"))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("1"))("\na =\n 1\nb = 1"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(1))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(1))(2))(($sp$Compiler$Lexer_Test$non_mut_name)("a"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(3))(4))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(6))(6))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(6))(7))(($sp$Types$Token$NumberLiteral)("1"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(8))(8))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(8))(8))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(8))(9))(($sp$Compiler$Lexer_Test$non_mut_name)("b"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(10))(11))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(13))(($sp$Types$Token$NumberLiteral)("1"))))($core$SPCore$Nil))))))))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] spurious spaces in front of field name"))("module =\n   importAs =\n      SPCore\n   globalTypes =\n      None"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(6))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("module"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(7))(8))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(12))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(20))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("importAs"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(21))(22))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(29))(29))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(29))(35))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("SPCore"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(39))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(39))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(39))(50))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("globalTypes"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(51))(52))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(59))(59))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(59))(63))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("None"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(63))(63))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(63))(63))($sp$Types$Token$BlockEnd)))($core$SPCore$Nil))))))))))))))))))))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("Blocks and not"))((($corelib$Text$join)("\n"))((($core$SPCore$Cons)("module ="))((($core$SPCore$Cons)("   i ="))((($core$SPCore$Cons)("        j"))((($core$SPCore$Cons)("            >> k"))((($core$SPCore$Cons)("            >> s"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   importAs ="))((($core$SPCore$Cons)("      SPCore"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   globalTypes ="))((($core$SPCore$Cons)("      None"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   a +     # no block start!"))((($core$SPCore$Cons)("        b   # no sibling"))((($core$SPCore$Cons)("        c"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   d =     # block start"))((($core$SPCore$Cons)("        e   # sibling!"))((($core$SPCore$Cons)("        f"))((($core$SPCore$Cons)(""))((($core$SPCore$Cons)("   g = h"))($core$SPCore$Nil))))))))))))))))))))))))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$isOkAndEqualTo)((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(0))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(0))(6))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("module"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(7))(8))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(12))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(12))(13))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("i"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(14))(15))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(24))(24))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(24))(25))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("j"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(38))(40))(($sp$Types$Token$Binop)(({
   associativity: $sp$Types$Op$Left,
   nonFn: $core$SPCore$Nil,
   precedence: $sp$Types$Op$Pipe,
@@ -7112,21 +7092,13 @@ const $sp$Compiler$Lexer_Test$indentation = (($sp$Test$Group)("Blocks, sibling l
   precedence: $sp$Types$Op$Pipe,
   symbol: ">>",
   type: (((($sp$Types$CanonicalAst$TypeFunction)($sp$Types$Pos$N))((((($sp$Types$CanonicalAst$TypeFunction)($sp$Types$Pos$N))((($sp$Types$CanonicalAst$TypeVariable)($sp$Types$Pos$N))("a")))(false))((($sp$Types$CanonicalAst$TypeVariable)($sp$Types$Pos$N))("b"))))(false))((((($sp$Types$CanonicalAst$TypeFunction)($sp$Types$Pos$N))((($sp$Types$CanonicalAst$TypeVariable)($sp$Types$Pos$N))("a")))(false))((($sp$Types$CanonicalAst$TypeVariable)($sp$Types$Pos$N))("b"))),
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(58))(59))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("s"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(64))(64))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(64))(64))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(64))(72))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("importAs"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(73))(74))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(81))(81))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(81))(87))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("SPCore"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(92))(92))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(92))(92))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(92))(103))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("globalTypes"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(104))(105))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(112))(112))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(112))(116))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("None"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(121))(121))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(121))(121))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(121))(122))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("a"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(123))(124))(($sp$Types$Token$Binop)(({
+})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(58))(59))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("s"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(64))(64))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(64))(64))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(64))(72))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("importAs"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(73))(74))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(81))(81))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(81))(87))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("SPCore"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(92))(92))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(92))(92))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(92))(103))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("globalTypes"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(104))(105))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(112))(112))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(112))(116))((($sp$Types$Token$UpperName)($corelib$Maybe$Nothing))("None"))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(121))(121))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(121))(121))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(121))(122))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("a"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(123))(124))(($sp$Types$Token$Binop)(({
   associativity: $sp$Types$Op$Left,
   nonFn: $core$SPCore$Nil,
   precedence: $sp$Types$Op$Addittive,
   symbol: "+",
   type: (((($sp$Types$CanonicalAst$TypeFunction)($sp$Types$Pos$N))(((($sp$Types$CanonicalAst$TypeConstant)($sp$Types$Pos$N))((($sp$Types$Meta$USR)((($sp$Types$Meta$UMR)($sp$Types$Meta$Core))("SPCore")))("Number")))($core$SPCore$Nil)))(false))((((($sp$Types$CanonicalAst$TypeFunction)($sp$Types$Pos$N))(((($sp$Types$CanonicalAst$TypeConstant)($sp$Types$Pos$N))((($sp$Types$Meta$USR)((($sp$Types$Meta$UMR)($sp$Types$Meta$Core))("SPCore")))("Number")))($core$SPCore$Nil)))(false))(((($sp$Types$CanonicalAst$TypeConstant)($sp$Types$Pos$N))((($sp$Types$Meta$USR)((($sp$Types$Meta$UMR)($sp$Types$Meta$Core))("SPCore")))("Number")))($core$SPCore$Nil))),
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(129))(146))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(155))(156))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("b"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(159))(171))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(180))(181))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("c"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(186))(186))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(186))(187))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("d"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(188))(189))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(194))(207))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(216))(216))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(216))(217))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("e"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(220))(230))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(239))(239))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(239))(240))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("f"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(245))(245))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(245))(245))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(245))(246))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("g"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(247))(248))(($sp$Types$Token$Defop)(({
-  mutable: false,
-})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(249))(250))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("h"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(250))(250))($sp$Types$Token$BlockEnd)))($core$SPCore$Nil)))))))))))))))))))))))))))))))))))))))))))))))))))($core$SPCore$Nil))));
+})))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(129))(146))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(155))(156))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("b"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(159))(171))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(180))(181))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("c"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(186))(186))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(186))(187))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("d"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(188))(189))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(194))(207))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(216))(216))($sp$Types$Token$BlockStart)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(216))(217))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("e"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(220))(230))($sp$Types$Token$Comment)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(239))(239))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(239))(240))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("f"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(245))(245))($sp$Types$Token$BlockEnd)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(245))(245))($sp$Types$Token$NewSiblingLine)))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(245))(246))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("g"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(247))(248))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(249))(250))((((($sp$Types$Token$LowerName)($sp$Types$Token$NameNoModifier))($corelib$Maybe$Nothing))("h"))($core$SPCore$Nil))))((($core$SPCore$Cons)(((($sp$Types$Token$Token)(250))(250))($sp$Types$Token$BlockEnd)))($core$SPCore$Nil)))))))))))))))))))))))))))))))))))))))))))))))))))($core$SPCore$Nil))));
 
 const $sp$Compiler$Lexer_Test$keywords = (($sp$Test$Group)("keywords"))((($core$SPCore$Cons)((((($sp$Compiler$Lexer_Test$codeTest)("[reg] can't @ keywords"))("@with"))($sp$Compiler$Lexer_Test$lexTokens))(($sp$Test$errorContains)((($core$SPCore$Cons)("keyword"))($core$SPCore$Nil)))))($core$SPCore$Nil));
 
@@ -7216,7 +7188,7 @@ const $sp$Compiler$MakeCanonical$translateType = (($mrf) => {
           const $renameFunction = ($$try1)[1];
           return ($corelib$Result$Ok)((($sp$Types$CanonicalAst$TypeVariable)($pos))((($renameFunction)($pos))($name)));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 915:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 933:12', (sp_toHuman)($$try1));
         return null;
       }
       if (("$sp$Types$FormattableAst$TypeConstant" === ($$try0)[0])) {
@@ -7267,7 +7239,7 @@ const $sp$Compiler$MakeCanonical$translateType = (($mrf) => {
         if (true) {
           return (($sp$Compiler$MakeCanonical$makeError)($pos))((($core$SPCore$Cons)("Tuples can only have size 2 or 3. Use a record."))($core$SPCore$Nil));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 934:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 952:12', (sp_toHuman)($$try1));
         return null;
       }
       if (("$sp$Types$FormattableAst$TypeList" === ($$try0)[0])) {
@@ -7284,7 +7256,7 @@ const $sp$Compiler$MakeCanonical$translateType = (($mrf) => {
           ? (($sp$Compiler$MakeCanonical$makeError)($p))((($core$SPCore$Cons)("For now extensible types are disabled, I want to see if it's good to do without them"))($core$SPCore$Nil))
           : (((($sp$Compiler$MakeCanonical$addAttributes)($ro))($p))($recordArgs.attrs))($corelib$Dict$empty));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 913:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 931:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -7312,10 +7284,10 @@ const $sp$Compiler$MakeCanonical$addAttributes = (($ro) => {
               return (((($sp$Compiler$MakeCanonical$addAttributes)($ro))($p))($faTail))(((($corelib$Dict$insert)($name))($caType))($caAttrsAccum));
             })))(((($sp$Compiler$MakeCanonical$translateType)($corelib$Maybe$Nothing))($ro))($faType));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 898:12', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 916:12', (sp_toHuman)($$try1));
           return null;
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 892:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 910:4', (sp_toHuman)($$try0));
       });
     });
   });
@@ -7548,7 +7520,7 @@ const $sp$Compiler$MakeCanonical$translateNumber = (($constructor) => {
         const $n = ($$try0)[1];
         return ($corelib$Result$Ok)((($constructor)($pos))($n));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 628:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 646:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -7587,7 +7559,7 @@ const $sp$Types$FormattableAst$patternPos = (($pa) => {
     const $p = ($$try0)[1];
     return $p;
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 161:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 156:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Compiler$MakeCanonical$translatePattern = (($ann) => {
@@ -7668,7 +7640,7 @@ const $sp$Compiler$MakeCanonical$translatePattern = (($ann) => {
                         return ((($corelib$Dict$insert)($name))($caPattern))($dict);
                       })))(((($sp$Compiler$MakeCanonical$translatePattern)($ann))($env))($faPattern));
                     }
-                    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 393:24', (sp_toHuman)($$try1));
+                    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 399:24', (sp_toHuman)($$try1));
                   }))());
               });
             });
@@ -7694,7 +7666,7 @@ const $sp$Compiler$MakeCanonical$translatePattern = (($ann) => {
           if (("$core$SPCore$Nil" === ($$try1)[0])) {
             return (($sp$Compiler$MakeCanonical$makeError)($pos))((($core$SPCore$Cons)("should not happen: empty cons pattern"))($core$SPCore$Nil));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 407:12', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 413:12', (sp_toHuman)($$try1));
         })))((($corelib$List$mapRes)((($sp$Compiler$MakeCanonical$translatePattern)($ann))($env)))($pas));
       }
       if (("$sp$Types$FormattableAst$PatternTuple" === ($$try0)[0])) {
@@ -7736,10 +7708,10 @@ const $sp$Compiler$MakeCanonical$translatePattern = (($ann) => {
         if (true) {
           return (($sp$Compiler$MakeCanonical$makeError)($pos))((($core$SPCore$Cons)("tuples can be only of size 2 or 3"))($core$SPCore$Nil));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 417:12', (sp_toHuman)($$try1));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 423:12', (sp_toHuman)($$try1));
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 351:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 357:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -7771,7 +7743,7 @@ const $sp$Compiler$MakeCanonical$makeUpdateTarget = (($pos) => {
         const $expr = (($$try0)[1])[1];
         return (($sp$Compiler$MakeCanonical$makeError)($pos))((($core$SPCore$Cons)("NI { (expr) with ...} not yet implemented =("))($core$SPCore$Nil));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 641:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 659:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -7815,7 +7787,7 @@ const $sp$Compiler$MakeCanonical$translateArgument = (($env) => {
     if (true) {
       return (($corelib$Result$map)($sp$Types$CanonicalAst$ArgumentExpression))((($sp$Compiler$MakeCanonical$translateExpression)($env))($faExpr));
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 685:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 703:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -7845,14 +7817,14 @@ const $sp$Compiler$MakeCanonical$translateAttrsRec = (($env) => {
             })));
             return null;
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 665:16', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 683:16', (sp_toHuman)($$try1));
         }))();
         return (($corelib$Result$onOk)((($expr) => {
           return ((($sp$Compiler$MakeCanonical$translateAttrsRec)($env))($faTail))(((($corelib$Dict$insert)($attrName))($expr))($caAttrsAccum));
         })))($exprRes);
         return null;
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 659:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 677:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -7871,7 +7843,7 @@ const $sp$Compiler$MakeCanonical$notAllSeparators = (($f) => {
         ? (($sp$Compiler$MakeCanonical$notAllSeparators)($f))($tail)
         : true);
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 783:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 801:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -7896,7 +7868,7 @@ const $sp$Compiler$MakeCanonical$sameDirectionAs = (($a) => {
         if (true) {
           return false;
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 801:8', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 819:8', (sp_toHuman)($$try0));
       }))());
   });
 });
@@ -7924,7 +7896,7 @@ const $sp$Compiler$MakeCanonical$makeBinop = (($pos) => {
             ref: ($sp$Types$CanonicalAst$RefRoot)(($sp$Types$Meta$spCoreUSR)($op.symbol)),
           }))))($right)))($left);
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 855:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 873:4', (sp_toHuman)($$try0));
       });
     });
   });
@@ -7946,7 +7918,7 @@ const $sp$Compiler$MakeCanonical$translateBinopSepListRec = (($env) => {
             return (((($sp$Compiler$MakeCanonical$translateBinopSepListRec)($env))($pos))((((($sp$Compiler$MakeCanonical$makeBinop)($pos))(($sp$Types$CanonicalAst$ArgumentExpression)($leftAccum)))($op))($caRight)))($tail);
           })))((($sp$Compiler$MakeCanonical$translateArgument)($env))($faRight));
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 839:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 857:4', (sp_toHuman)($$try0));
       });
     });
   });
@@ -7981,7 +7953,7 @@ const $sp$Compiler$MakeCanonical$translateBinopSepList_rightAssociative = (($env
               return ($corelib$Result$Ok)((((($sp$Compiler$MakeCanonical$makeBinop)($pos))(($sp$Types$CanonicalAst$ArgumentExpression)($caLeft)))($op))(($sp$Types$CanonicalAst$ArgumentExpression)($caRight)));
             })))((((($sp$Compiler$MakeCanonical$translateBinopSepList_rightAssociative)($env))($pos))($right))($tail));
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 821:4', (sp_toHuman)($$try0));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 839:4', (sp_toHuman)($$try0));
         })))((($sp$Compiler$MakeCanonical$translateExpression)($env))($left));
       });
     });
@@ -8028,7 +8000,7 @@ const $sp$Compiler$MakeCanonical$translateBinops = (($env) => {
           if (true) {
             return ((((($sp$Compiler$MakeCanonical$translateSimpleBinop)($env))($pos))($firstItem))($firstSep))($secondItem);
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 714:12', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 732:12', (sp_toHuman)($$try1));
           return null;
         }
         if ((("$core$SPCore$Cons" === ($$try0)[0]) && ("$core$SPCore$Cons" === (($$try0)[2])[0]))) {
@@ -8080,10 +8052,10 @@ const $sp$Compiler$MakeCanonical$translateBinops = (($env) => {
           if (true) {
             return (((($sp$Compiler$MakeCanonical$translateBinopSepList_rightAssociative)($env))($pos))($firstItem))($firstTail);
           }
-          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 732:12', (sp_toHuman)($$try1));
+          (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 750:12', (sp_toHuman)($$try1));
           return null;
         }
-        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 709:4', (sp_toHuman)($$try0));
+        (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 727:4', (sp_toHuman)($$try0));
       });
     });
   });
@@ -8111,7 +8083,7 @@ const $sp$Compiler$MakeCanonical$translateParameter = (($env) => {
           return ($corelib$Result$Ok)(($sp$Types$CanonicalAst$ParameterPattern)($caPattern));
         })))(((($sp$Compiler$MakeCanonical$translatePattern)($corelib$Maybe$Nothing))($env))($faParam));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 445:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 451:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -8173,7 +8145,7 @@ const $sp$Compiler$MakeCanonical$translateExpression = (($env) => {
           attrPath: ($corelib$List$concat)((($core$SPCore$Cons)($shorthandTarget.attrPath))((($core$SPCore$Cons)($attrPath))($core$SPCore$Nil))),
         }))));
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 539:12', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 557:12', (sp_toHuman)($$try1));
       return null;
     }
     if (("$sp$Types$FormattableAst$Lambda" === ($$try0)[0])) {
@@ -8289,7 +8261,7 @@ const $sp$Compiler$MakeCanonical$translateExpression = (($env) => {
       })))((($sp$Compiler$MakeCanonical$translateExpression)($env))($fa.value));
       return null;
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 506:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 524:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -8324,7 +8296,7 @@ const $sp$Compiler$MakeCanonical$translateStatementBlock = (($env) => {
       const $pos = (($$try0)[1])[1];
       const $valueDef = ({
         body: (($core$SPCore$Cons)((($sp$Types$FormattableAst$Evaluation)($pos))($faExpr)))($core$SPCore$Nil),
-        mutable: false,
+        modifier: $sp$Types$Token$DefNormal,
         nonFn: $core$SPCore$Nil,
         pattern: (((($sp$Types$FormattableAst$PatternAny)($sp$Types$Pos$G))(false))("_"))($corelib$Maybe$Nothing),
       });
@@ -8339,15 +8311,22 @@ const $sp$Compiler$MakeCanonical$translateStatementBlock = (($env) => {
       const $tail = ($$try0)[2];
       const $fa = (($$try0)[1])[2];
       const $pos = (($$try0)[1])[1];
-      return (($corelib$Result$onOk)((($d) => {
-        return (($corelib$Result$onOk)((($tailBlockExpression) => {
-          return ($corelib$Result$Ok)((($sp$Types$CanonicalAst$LetIn)($d))($tailBlockExpression));
-        })))((($sp$Compiler$MakeCanonical$translateStatementBlock)((Object.assign)({}, $env, ({
-          nonRootValues: (($corelib$Dict$join)(($sp$Types$CanonicalAst$patternNames)($d.pattern)))($env.nonRootValues),
-        }))))($tail));
-      })))(((($sp$Compiler$MakeCanonical$translateDefinition)(false))($env))($fa));
+      return (((sp_equal)($sp$Types$Token$DefCallback))($fa.modifier)
+        ? (($corelib$Result$onOk)((($caller) => {
+          const $faCallback = (((($sp$Types$FormattableAst$Lambda)($pos))($fa.pattern))(false))($tail);
+          return (($corelib$Result$onOk)((($caCallback) => {
+            return ($corelib$Result$Ok)(((($sp$Types$CanonicalAst$Call)($pos))($caller))(($sp$Types$CanonicalAst$ArgumentExpression)($caCallback)));
+          })))((($sp$Compiler$MakeCanonical$translateExpression)($env))($faCallback));
+        })))((($sp$Compiler$MakeCanonical$translateStatementBlock)($env))($fa.body))
+        : (($corelib$Result$onOk)((($d) => {
+          return (($corelib$Result$onOk)((($tailBlockExpression) => {
+            return ($corelib$Result$Ok)((($sp$Types$CanonicalAst$LetIn)($d))($tailBlockExpression));
+          })))((($sp$Compiler$MakeCanonical$translateStatementBlock)((Object.assign)({}, $env, ({
+            nonRootValues: (($corelib$Dict$join)(($sp$Types$CanonicalAst$patternNames)($d.pattern)))($env.nonRootValues),
+          }))))($tail));
+        })))(((($sp$Compiler$MakeCanonical$translateDefinition)(false))($env))($fa)));
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 464:4', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 470:4', (sp_toHuman)($$try0));
   });
 });
 
@@ -8446,17 +8425,19 @@ const $sp$Compiler$MakeCanonical$translateDefinition = (($isRoot) => {
             const $deps = ($isRoot
               ? (($sp$Compiler$MakeCanonical$expressionDeps)($body))((($sp$Compiler$MakeCanonical$patternDeps)($pattern))($sp$Compiler$MakeCanonical$deps_init))
               : $sp$Compiler$MakeCanonical$deps_init);
-            return ($corelib$Result$Ok)(({
-              body: $body,
-              directConsDeps: $deps.cons,
-              directTypeDeps: $deps.types,
-              directValueDeps: $deps.values,
-              mutable: $fa.mutable,
-              native: false,
-              nonFn: $nonFn,
-              parentDefinitions: $env.defsPath,
-              pattern: $pattern,
-            }));
+            return (((sp_equal)($sp$Types$Token$DefCallback))($fa.modifier)
+              ? (($sp$Compiler$MakeCanonical$makeError)(($sp$Types$CanonicalAst$patternPos)($pattern)))((($core$SPCore$Cons)("can't use a callback here"))($core$SPCore$Nil))
+              : ($corelib$Result$Ok)(({
+                body: $body,
+                directConsDeps: $deps.cons,
+                directTypeDeps: $deps.types,
+                directValueDeps: $deps.values,
+                mutable: ((sp_equal)($sp$Types$Token$DefMutable))($fa.modifier),
+                native: false,
+                nonFn: $nonFn,
+                parentDefinitions: $env.defsPath,
+                pattern: $pattern,
+              })));
           })))((($sp$Compiler$MakeCanonical$translateStatementBlock)($localEnv0))($fa.body));
         })))(((($corelib$List$foldlRes)($updNonFn))($fa.nonFn))($corelib$Dict$empty));
       })))(((($sp$Compiler$MakeCanonical$translatePattern)(($corelib$Maybe$Just)($renameTyvar)))($env))($fa.pattern));
@@ -8526,7 +8507,7 @@ const $sp$Types$FormattableAst$expressionPos = (($expr) => {
     const $p = ($$try0)[1];
     return $p;
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 141:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 136:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Types$Pos$drop = (($x) => {
@@ -8601,7 +8582,7 @@ const $sp$Compiler$MakeCanonical$insertRootStatement = (($ro) => {
             })))(((($corelib$List$foldlRes)(((($sp$Compiler$MakeCanonical$translateConstructor)($ro))($type))($usr)))($fa.constructors))($corelib$Dict$empty));
           }))());
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 1002:4', (sp_toHuman)($$try0));
+      (sp_throw)('Missing pattern in try..as', 'sp/Compiler/MakeCanonical.sp 1020:4', (sp_toHuman)($$try0));
     });
   });
 });
@@ -8779,8 +8760,8 @@ const $sp$Compiler$Parser$oomSeparatedBy = (($sep) => {
 const $sp$Compiler$Parser$defop = (($sp$Compiler$Parser$andThen)((($token) => {
   const $$try0 = $token;
   if ((("$sp$Types$Token$Token" === ($$try0)[0]) && ("$sp$Types$Token$Defop" === (($$try0)[3])[0]))) {
-    const $arg = (($$try0)[3])[1];
-    return ($sp$SPLib$Parser$accept)($arg);
+    const $mod = (($$try0)[3])[1];
+    return ($sp$SPLib$Parser$accept)($mod);
   }
   if (true) {
     return $sp$SPLib$Parser$reject;
@@ -9383,9 +9364,7 @@ const $sp$Compiler$Parser$patternApplication = (($env) => {
 
 const $sp$Compiler$Parser$functionParameter = (($env) => {
   return (($nest) => {
-    return ($sp$SPLib$Parser$oneOf)((($core$SPCore$Cons)((($sp$Compiler$Parser$patternApplication)($env))($sp$SPLib$Parser$reject)))((($core$SPCore$Cons)(($sp$Compiler$Parser$parens)($nest)))((($core$SPCore$Cons)(((($sp$Compiler$Parser$list)($env))($sp$Types$FormattableAst$PatternList))($nest)))((($core$SPCore$Cons)((((($sp$Compiler$Parser$record)($env))(($sp$Types$Token$Defop)(({
-      mutable: false,
-    }))))($sp$Types$FormattableAst$PatternRecord))($nest)))($core$SPCore$Nil)))));
+    return ($sp$SPLib$Parser$oneOf)((($core$SPCore$Cons)((($sp$Compiler$Parser$patternApplication)($env))($sp$SPLib$Parser$reject)))((($core$SPCore$Cons)(($sp$Compiler$Parser$parens)($nest)))((($core$SPCore$Cons)(((($sp$Compiler$Parser$list)($env))($sp$Types$FormattableAst$PatternList))($nest)))((($core$SPCore$Cons)((((($sp$Compiler$Parser$record)($env))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal)))($sp$Types$FormattableAst$PatternRecord))($nest)))($core$SPCore$Nil)))));
   });
 });
 
@@ -9416,9 +9395,7 @@ const $sp$Compiler$Parser$pattern = (($env) => {
     return ($sp$Compiler$Parser$pattern)($env);
   }));
   const $higherOr = $sp$SPLib$Parser$higherOr;
-  return (($sp$SPLib$Parser$expression)((($sp$Compiler$Parser$patternApplication)($env))((($sp$Compiler$Parser$functionParameter)($env))($nest))))((($core$SPCore$Cons)(($higherOr)(($sp$Compiler$Parser$parens)($nest))))((($core$SPCore$Cons)(($higherOr)(((($sp$Compiler$Parser$list)($env))($sp$Types$FormattableAst$PatternList))($nest))))((($core$SPCore$Cons)(($higherOr)((((($sp$Compiler$Parser$record)($env))(($sp$Types$Token$Defop)(({
-    mutable: false,
-  }))))($sp$Types$FormattableAst$PatternRecord))($nest))))((($core$SPCore$Cons)(((($sp$Compiler$Parser$patternBinopOr)($env))($sp$Types$Op$Cons))($sp$Types$FormattableAst$PatternListCons)))((($core$SPCore$Cons)(((($sp$Compiler$Parser$patternBinopOr)($env))($sp$Types$Op$Tuple))($sp$Types$FormattableAst$PatternTuple)))($core$SPCore$Nil))))));
+  return (($sp$SPLib$Parser$expression)((($sp$Compiler$Parser$patternApplication)($env))((($sp$Compiler$Parser$functionParameter)($env))($nest))))((($core$SPCore$Cons)(($higherOr)(($sp$Compiler$Parser$parens)($nest))))((($core$SPCore$Cons)(($higherOr)(((($sp$Compiler$Parser$list)($env))($sp$Types$FormattableAst$PatternList))($nest))))((($core$SPCore$Cons)(($higherOr)((((($sp$Compiler$Parser$record)($env))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal)))($sp$Types$FormattableAst$PatternRecord))($nest))))((($core$SPCore$Cons)(((($sp$Compiler$Parser$patternBinopOr)($env))($sp$Types$Op$Cons))($sp$Types$FormattableAst$PatternListCons)))((($core$SPCore$Cons)(((($sp$Compiler$Parser$patternBinopOr)($env))($sp$Types$Op$Tuple))($sp$Types$FormattableAst$PatternTuple)))($core$SPCore$Nil))))));
 });
 
 const $sp$SPLib$Parser$map = (($f) => {
@@ -9696,9 +9673,7 @@ const $sp$Compiler$Parser$expr = (($env) => {
   const $nest = ($sp$SPLib$Parser$breakCircularDefinition)((() => {
     return ($sp$Compiler$Parser$expr)($env);
   }));
-  return (($sp$SPLib$Parser$expression)(($sp$Compiler$Parser$exprWithLeftDelimiter)($env)))((($core$SPCore$Cons)(($higherOr)(((($sp$Compiler$Parser$list)($env))($sp$Types$FormattableAst$List))($nest))))((($core$SPCore$Cons)(($higherOr)((((($sp$Compiler$Parser$record)($env))(($sp$Types$Token$Defop)(({
-    mutable: false,
-  }))))($sp$Types$FormattableAst$Record))($nest))))((($core$SPCore$Cons)(($sp$Compiler$Parser$unopsOr)($env)))((($core$SPCore$Cons)(($sp$Compiler$Parser$functionApplicationOr)($env)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Exponential)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Multiplicative)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Addittive)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Comparison)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Logical)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Tuple)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Cons)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Pipe)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Mutop)))((($core$SPCore$Cons)(($higherOr)(($sp$Compiler$Parser$if_)($env))))((($core$SPCore$Cons)(($higherOr)(($sp$Compiler$Parser$try_)($env))))($core$SPCore$Nil))))))))))))))));
+  return (($sp$SPLib$Parser$expression)(($sp$Compiler$Parser$exprWithLeftDelimiter)($env)))((($core$SPCore$Cons)(($higherOr)(((($sp$Compiler$Parser$list)($env))($sp$Types$FormattableAst$List))($nest))))((($core$SPCore$Cons)(($higherOr)((((($sp$Compiler$Parser$record)($env))(($sp$Types$Token$Defop)($sp$Types$Token$DefNormal)))($sp$Types$FormattableAst$Record))($nest))))((($core$SPCore$Cons)(($sp$Compiler$Parser$unopsOr)($env)))((($core$SPCore$Cons)(($sp$Compiler$Parser$functionApplicationOr)($env)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Exponential)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Multiplicative)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Addittive)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Comparison)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Logical)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Tuple)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Cons)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Pipe)))((($core$SPCore$Cons)((($sp$Compiler$Parser$binopsOr)($env))($sp$Types$Op$Mutop)))((($core$SPCore$Cons)(($higherOr)(($sp$Compiler$Parser$if_)($env))))((($core$SPCore$Cons)(($higherOr)(($sp$Compiler$Parser$try_)($env))))($core$SPCore$Nil))))))))))))))));
 });
 
 const $sp$Compiler$Parser$inlineStatementOrBlock = (($env) => {
@@ -9742,12 +9717,12 @@ const $sp$Compiler$Parser$definition = (($env) => {
   return (($sp$Compiler$Parser$andThen)((($start) => {
     return (($sp$Compiler$Parser$andThen)((($p) => {
       return (($sp$Compiler$Parser$andThen)((($nf) => {
-        return (($sp$Compiler$Parser$andThen)((($defopArgs) => {
+        return (($sp$Compiler$Parser$andThen)((($defModifier) => {
           return (($sp$Compiler$Parser$andThen)((($body) => {
             return (($sp$Compiler$Parser$andThen)((($end) => {
               return ($sp$SPLib$Parser$accept)((($sp$Types$FormattableAst$Definition)(((($sp$Compiler$Parser$pos)($env))($start))($end)))(({
                 body: $body,
-                mutable: $defopArgs.mutable,
+                modifier: $defModifier,
                 nonFn: (($corelib$Maybe$withDefault)($core$SPCore$Nil))($nf),
                 pattern: $p,
               })));
@@ -9759,16 +9734,16 @@ const $sp$Compiler$Parser$definition = (($env) => {
   })))($sp$Compiler$Parser$here);
 });
 
-const $sp$Compiler$Parser$errorCantUseMutableAssignmentHere = "Can't use mutable assignment here";
+const $sp$Compiler$Parser$errorShouldUseDefNormalHere = "You should use a normal `=` here.";
 
 const $sp$Compiler$Parser$typeAlias = (($env) => {
   return (($sp$Compiler$Parser$andThen)((() => {
     return (($sp$Compiler$Parser$andThen)((($name) => {
       return (($sp$Compiler$Parser$andThen)((($args) => {
-        return (($sp$Compiler$Parser$andThen)((($defopArgs) => {
+        return (($sp$Compiler$Parser$andThen)((($defModifier) => {
           return (($sp$Compiler$Parser$andThen)((($ty) => {
-            return ($defopArgs.mutable
-              ? ($sp$SPLib$Parser$abort)($sp$Compiler$Parser$errorCantUseMutableAssignmentHere)
+            return (((sp_not_equal)($sp$Types$Token$DefNormal))($defModifier)
+              ? ($sp$SPLib$Parser$abort)($sp$Compiler$Parser$errorShouldUseDefNormalHere)
               : ($sp$SPLib$Parser$accept)(($sp$Types$FormattableAst$TypeAlias)(({
                 args: $args,
                 name: $name,
@@ -9806,10 +9781,10 @@ const $sp$Compiler$Parser$unionDef = (($env) => {
       const $name = (name$$)[2];
       const $p = (name$$)[1];
       return (($sp$Compiler$Parser$andThen)((($args) => {
-        return (($sp$Compiler$Parser$andThen)((($defopArgs) => {
+        return (($sp$Compiler$Parser$andThen)((($defModifier) => {
           return (($sp$Compiler$Parser$andThen)((($cons) => {
-            return ($defopArgs.mutable
-              ? ($sp$SPLib$Parser$abort)($sp$Compiler$Parser$errorCantUseMutableAssignmentHere)
+            return (((sp_not_equal)($sp$Types$Token$DefNormal))($defModifier)
+              ? ($sp$SPLib$Parser$abort)($sp$Compiler$Parser$errorShouldUseDefNormalHere)
               : ($sp$SPLib$Parser$accept)((($sp$Types$FormattableAst$UnionDef)($p))(({
                 args: (($corelib$List$map)($sp$Types$Pos$drop))($args),
                 constructors: $cons,
@@ -9999,7 +9974,7 @@ const $sp$Types$FormattableAst$statementPos = (($statement) => {
     const $pos = ($$try0)[1];
     return $pos;
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 121:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 116:4', (sp_toHuman)($$try0));
 });
 
 const $sp$SPON$field = (($fieldName) => {
@@ -10010,7 +9985,7 @@ const $sp$SPON$field = (($fieldName) => {
         const $tail = ($$try0)[2];
         const $name = ((($$try0)[1])[2].pattern)[3];
         const $nonFn = (($$try0)[1])[2].nonFn;
-        const $mutable = (($$try0)[1])[2].mutable;
+        const $modifier = (($$try0)[1])[2].modifier;
         const $body = (($$try0)[1])[2].body;
         const $pos = (($$try0)[1])[1];
         return (((sp_equal)($fieldName))($name)
@@ -10529,7 +10504,7 @@ const $sp$Compiler$MakeCanonical_Test$firstDefinitionStripDeps = (($code) => {
   })))(($sp$Compiler$MakeCanonical_Test$firstDefinition)($code));
 });
 
-const $sp$Compiler$MakeCanonical_Test$functions = (($sp$Test$Group)("Functions"))((($core$SPCore$Cons)((((($sp$Compiler$MakeCanonical_Test$codeTest)("[rec] lambda with two arguments"))("f =\n  a: b: 1"))(($sp$Compiler$MakeCanonical_Test$firstEvaluation)("f")))($sp$Test$isOk)))($core$SPCore$Nil));
+const $sp$Compiler$MakeCanonical_Test$functions = (($sp$Test$Group)("Functions"))((($core$SPCore$Cons)((((($sp$Compiler$MakeCanonical_Test$codeTest)("[rec] lambda with two arguments"))("f =\n  a: b: 1"))(($sp$Compiler$MakeCanonical_Test$firstEvaluation)("f")))($sp$Test$isOk)))((($core$SPCore$Cons)((((($sp$Compiler$MakeCanonical_Test$codeTest)("callback op"))("f =\n    arg ?\n        \"caller\"\n\n    \"callback body\""))(($sp$Compiler$MakeCanonical_Test$firstEvaluation)("f")))(($sp$Test$isOkAndEqualTo)(((($sp$Types$CanonicalAst$Call)($sp$Compiler$MakeCanonical_Test$p))((($sp$Types$CanonicalAst$LiteralText)($sp$Compiler$MakeCanonical_Test$p))("caller")))(($sp$Types$CanonicalAst$ArgumentExpression)(((($sp$Types$CanonicalAst$Lambda)($sp$Compiler$MakeCanonical_Test$p))(($sp$Types$CanonicalAst$ParameterPattern)(((($sp$Types$CanonicalAst$PatternAny)($sp$Compiler$MakeCanonical_Test$p))(($corelib$Maybe$Just)("arg")))($corelib$Maybe$Nothing))))((($sp$Types$CanonicalAst$LiteralText)($sp$Compiler$MakeCanonical_Test$p))("callback body"))))))))($core$SPCore$Nil)));
 
 const $sp$Compiler$TestHelpers$boolType = ((($sp$Types$CanonicalAst$TypeConstant)($sp$Types$Pos$T))(($sp$Types$Meta$spCoreUSR)("Bool")))($core$SPCore$Nil);
 
@@ -14919,7 +14894,7 @@ const $sp$Types$FormattableAst$patternNames = (($pattern) => {
       const $pat = ($$try0)[1];
       return ($corelib$Dict$join)(($sp$Types$FormattableAst$patternNames)($pat));
     }
-    (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 182:8', (sp_toHuman)($$try0));
+    (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 177:8', (sp_toHuman)($$try0));
   });
   const $$try0 = $pattern;
   if (("$sp$Types$FormattableAst$PatternAny" === ($$try0)[0])) {
@@ -14954,7 +14929,7 @@ const $sp$Types$FormattableAst$patternNames = (($pattern) => {
     const $pas = ($$try0)[2];
     return ($foldOver)($pas);
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 186:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 181:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Types$FormattableAst$sepList_mapItem = (($f) => {
@@ -14995,7 +14970,7 @@ const $sp$Types$FormattableAst$typePos = (($type) => {
     const $p = ($$try0)[1];
     return $p;
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 130:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Types/FormattableAst.sp 125:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Types$Pos$end = (($pos) => {

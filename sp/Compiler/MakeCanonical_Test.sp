@@ -468,6 +468,23 @@ functions as Test =
             """
             (firstEvaluation "f")
             Test.isOk
+        , codeTest "callback op"
+            """
+            f =
+                arg ?
+                    "caller"
+
+                "callback body"
+            """
+            (firstEvaluation "f")
+            (Test.isOkAndEqualTo <<
+                CA.Call p
+                    (CA.LiteralText p "caller")
+                    (CA.ArgumentExpression << CA.Lambda p
+                        (CA.ParameterPattern << CA.PatternAny p (Just "arg") Nothing)
+                        (CA.LiteralText p "callback body")
+                    )
+            )
 #        , codeTest "short function notation"
 #            """
 #            a = x: y: z: x + y + z

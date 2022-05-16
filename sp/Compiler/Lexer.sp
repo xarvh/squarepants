@@ -417,6 +417,7 @@ isSquiggle as Text: Bool =
        "!": True
        "&": True
        "^": True
+       "?": True
        _: False
 
 
@@ -432,8 +433,9 @@ addSquiggleToken as Bool: ReadState@: None =
     try chunk as
         ":": add << Token.Colon
         "@:": add << Token.MutableColon
-        "=": add << Token.Defop { mutable = False }
-        "@=": add << Token.Defop { mutable = True }
+        "=": add << Token.Defop Token.DefNormal
+        "?": add << Token.Defop Token.DefCallback
+        "@=": add << Token.Defop Token.DefMutable
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:
