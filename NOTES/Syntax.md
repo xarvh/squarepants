@@ -93,16 +93,16 @@ Maybe can be addressed by requiring lone evaluations to have a Debug or a mutabl
           Just expectedAttrType:
               checkExpression env expectedAttrType attrValue
 
-  next cb None:
+  then do None:
   return None
 
-  to is StateMonad.andThen
-
+  ```
   checkExpression env CoreTypes.bool condition
-  to None:
+  on Result.ok successValue:
   checkExpression env expectedType true
-  to None:
+  on done _:
   checkExpression env expectedType false
+  ```
 
 
 
