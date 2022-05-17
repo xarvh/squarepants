@@ -210,9 +210,9 @@ return as a: StateMonad.M state a =
 #    a
 
 
-#andThen =
-andThen as (a: StateMonad.M state b): StateMonad.M state a: StateMonad.M state b =
-    StateMonad.andThen
+cb as StateMonad.M state a: (a: StateMonad.M state b): StateMonad.M state b =
+    a: b:
+    StateMonad.andThen b a
 #    as (a: State @: b): State @: a: State @: b
 #
 #    f (m @s) @s
@@ -438,14 +438,17 @@ TODO It might be _even faster_ if we use the references to decide what to compil
 
 applySubsToType as Type: Monad Type =
     ty:
-    get (x: x.substitutions) >> andThen subs:
+    subs ?
+        get (x: x.substitutions) >> cb
+
     return << replaceTypeVariables subs ty
 
 
 fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
     isRoot: def: env:
 
-    fromPattern env def.pattern Dict.empty >> andThen patternOut:
+    patternOut ?
+        fromPattern env def.pattern Dict.empty >> cb
 
     ip =
         insertPatternVars
@@ -457,30 +460,43 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
             patternOut.vars
             env
 
-    ip >> andThen env1:
+    env1 ?
+        ip >> cb
 
     if def.native then
         return env1
 
     else if patternOut.isFullyAnnotated then
         #TODO!!! replacing patternOut.ty with patternOut.type gives a super useless error
-        checkExpression env1 patternOut.ty def.body >> andThen None:
+        None ?
+            checkExpression env1 patternOut.ty def.body >> cb
+
         return env1
 
     else
-        fromExpression env1 def.body >> andThen bodyType_:
-        applySubsToType bodyType_ >> andThen bodyType:
-        unify env1 patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty >> andThen unifiedType:
+        bodyType_ ?
+            fromExpression env1 def.body >> cb
 
-        checkFreeVariables env1 patternOut.pos patternOut.ty bodyType >> andThen None:
+        bodyType ?
+            applySubsToType bodyType_ >> cb
+
+        unifiedType ?
+            unify env1 patternOut.pos UnifyReason_DefBlockVsPattern bodyType patternOut.ty >> cb
+
+        None ?
+            checkFreeVariables env1 patternOut.pos patternOut.ty bodyType >> cb
 
         # We need to apply the subs to the tyvars that were assigned to any non-annotated name.
         #
         # TODO this can probably be cleaned up, I don't like to be calling insertPatternVars twice
         # so I should probably review how the function is used in the other two places and figure out
         # a cleaner way to do it
-        applySubsToNonFreeTyvars env1 >> andThen env2:
-        get (x: x.substitutions) >> andThen subs:
+        env2 ?
+            applySubsToNonFreeTyvars env1 >> cb
+
+        subs ?
+            get (x: x.substitutions) >> cb
+
         insertPatternVars
             { subs
             , isParameter = False
@@ -513,7 +529,7 @@ checkFreeVariables as Env: Pos: Type: Type: Monad None =
         , "The annotation has " .. Text.fromNumber (Dict.size annotatedFreeVars - Dict.size actualFreeVars) .. " type variables too many"
         ]
             >> addError pos
-            >> andThen _:
+            >> StateMonad.andThen _:
                 return None
 
     else
@@ -569,7 +585,9 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
                   , "mutability clash"
                   ]
           else
-              isCompatibleWith env eFrom pos aFrom >> andThen _:
+              None ?
+                  isCompatibleWith env eFrom pos aFrom >> cb
+
               isCompatibleWith env eTo pos aTo
 
       CA.TypeRecord _ (Just e) eAttrs & _:
@@ -604,7 +622,9 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
           isCompatibleWith env expectedType pos ty
 
       _ & CA.TypeVariable _ actualName:
-          unify env pos UnifyReason_AnnotationSimple expectedType actualType >> andThen unifiedArgumentType:
+          unifiedArgumentType ?
+              unify env pos UnifyReason_AnnotationSimple expectedType actualType >> cb
+
           return None
 #          try Dict.get actualName env.nonFreeTyvars as
 #              Nothing:
@@ -629,7 +649,8 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
 addCheckConstructorError as Pos: Env: [CA.Pattern]: [Text]: Monad Env =
     pos: env: remainingArgs: message:
 
-    addCheckError pos message >> andThen None:
+    None ?
+        addCheckError pos message >> cb
 
     env >> list_for remainingArgs argPattern: envX:
         return envX
@@ -685,14 +706,18 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
             try maybeName & maybeAnnotation as
 
                 Just name & Just annotation:
-                    isCompatibleWith env expectedType pos annotation >> andThen None:
+                    None ?
+                        isCompatibleWith env expectedType pos annotation >> cb
+
                     return (envWith name annotation)
 
                 Just name & Nothing:
                     return (envWith name expectedType)
 
                 Nothing & Just annotation:
-                    isCompatibleWith env expectedType pos annotation >> andThen None:
+                    None ?
+                        isCompatibleWith env expectedType pos annotation >> cb
+
                     return env
 
                 Nothing & Nothing:
@@ -705,7 +730,9 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
 
                 return env
             else
-                addCheckError pos [ "This pattern is a Number, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
+                None ?
+                    addCheckError pos [ "This pattern is a Number, but the annotation says it should be " .. typeToText env expectedType ] >> cb
+
                 return env
 
         CA.PatternLiteralText pos literal:
@@ -713,7 +740,9 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
             if expectedType == CoreTypes.text then
                 return env
             else
-                addCheckError pos [ "This pattern is a Text, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
+                None ?
+                    addCheckError pos [ "This pattern is a Text, but the annotation says it should be " .. typeToText env expectedType ] >> cb
+
                 return env
 
         CA.PatternConstructor pos usr args:
@@ -744,13 +773,17 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
                     env >> dict_for patternAttrs attrName: attrPattern: envX:
                         try Dict.get attrName expectedTypeAttrs as
                             Nothing:
-                                addCheckError pos [ "This record pattern has an attribute `" .. attrName .. "` but it is not avaiable in the annotation" ] >> andThen None:
+                                None ?
+                                    addCheckError pos [ "This record pattern has an attribute `" .. attrName .. "` but it is not avaiable in the annotation" ] >> cb
+
                                 return envX
                             Just expectedAttrType:
                                 checkAndInsertPattern envX expectedAttrType attrPattern
 
                 _:
-                    addCheckError pos [ "This pattern is a record, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
+                    None ?
+                        addCheckError pos [ "This pattern is a record, but the annotation says it should be " .. typeToText env expectedType ] >> cb
+
                     return env
 
 
@@ -759,13 +792,21 @@ checkConstructorWithItsArgs as Env: Pos: Int: [CA.Pattern]: [CA.Type]: Monad Env
     try actualArgs & expectedArgs as
 
         (actualHead :: actualTail) & (expectedHead :: expectedTail):
-            checkAndInsertPattern env expectedHead actualHead >> andThen updatedEnv:
+            updatedEnv ?
+                checkAndInsertPattern env expectedHead actualHead >> cb
+
             checkConstructorWithItsArgs updatedEnv pos (index + 1) actualTail expectedTail
 
         [] & (expectedHead :: expectedTail):
-            given = index
-            needed = index + List.length expectedArgs
-            addCheckError pos [ "Constructor needs " .. Text.fromNumber needed .. " arguments but was given only " .. Text.fromNumber given ] >> andThen None:
+            given =
+                index
+
+            needed =
+                index + List.length expectedArgs
+
+            None ?
+                addCheckError pos [ "Constructor needs " .. Text.fromNumber needed .. " arguments but was given only " .. Text.fromNumber given ] >> cb
+
             return env
 
         (actualHead :: actualTail) & []:
@@ -800,7 +841,9 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                 Nothing:
                     # TODO: errorUndefinedVariable should return `Monad None`
                     # Then I should have a helper to add a fresh tyvar when inferring?
-                    errorUndefinedVariable env pos ref >> andThen _:
+                    _ ?
+                        errorUndefinedVariable env pos ref >> cb
+
                     return None
 
                 Just var:
@@ -810,18 +853,25 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     #
                     # TODO: create an `instantiateVariable` function?
                     # TODO: what if we instantiate /after/ we applyAttributePath? Would it be faster?
-                    replaceTypeVariablesWithNew var.freeTypeVariables var.ty >> andThen instantiatedType:
-                    applyAttributePath env pos attrPath instantiatedType >> andThen ty:
+                    instantiatedType ?
+                        replaceTypeVariablesWithNew var.freeTypeVariables var.ty >> cb
+
+                    ty ?
+                        applyAttributePath env pos attrPath instantiatedType >> cb
+
                     isCompatibleWith env expectedType pos ty
 
         CA.Constructor pos usr:
             try Dict.get usr env.constructors as
                 Nothing:
-                    errorUndefinedVariable env pos (CA.RefRoot usr) >> andThen _:
+                    _ ?
+                        errorUndefinedVariable env pos (CA.RefRoot usr) >> cb
+
                     return None
 
                 Just c:
-                    replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type >> andThen instantiatedType:
+                    instantiatedType ?
+                        replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type >> cb
                     #
                     # x as Maybe Text =
                     #     Nothing
@@ -831,21 +881,23 @@ checkExpression as Env: Type: CA.Expression: Monad None =
         CA.Lambda pos param body:
             try expectedType & param as
                 CA.TypeFunction _ parameterType True returnType & CA.ParameterMutable parameterPos parameterName:
-                    ip =
-                        insertPatternVars
-                            { subs = Dict.empty
-                            , isParameter = True
-                            , isMutable = True
-                            , isRoot = False
-                            }
-                            (Dict.singleton parameterName { pos = parameterPos, type = parameterType, isAnnotated = True })
-                            env
 
-                    ip >> andThen localEnv:
+                    localEnv ?
+                        env
+                            >> insertPatternVars
+                              { subs = Dict.empty
+                              , isParameter = True
+                              , isMutable = True
+                              , isRoot = False
+                              }
+                              (Dict.singleton parameterName { pos = parameterPos, type = parameterType, isAnnotated = True })
+                            >> cb
+
                     checkExpression localEnv returnType body
 
                 CA.TypeFunction _ parameterType False returnType & CA.ParameterPattern pattern:
-                    checkAndInsertPattern env parameterType pattern >> andThen localEnv:
+                    localEnv ?
+                        checkAndInsertPattern env parameterType pattern >> cb
                     checkExpression localEnv returnType body
 
                 CA.TypeFunction _ _ isMutable _ & _:
@@ -859,8 +911,12 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                             , "This is a function, but the annotation says it should be of type variable `" .. name .. "` which implies that it could be of any type!"
                             ]
                     else
-                        fromExpression env expression >> andThen actualType:
-                        unify env pos UnifyReason_IsLambda expectedType actualType >> andThen _:
+                        actualType ?
+                            fromExpression env expression >> cb
+
+                        _ ?
+                            unify env pos UnifyReason_IsLambda expectedType actualType >> cb
+
                         return None
 
                 _:
@@ -871,7 +927,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
         CA.Call pos reference argument:
 
-            fromExpression env reference >> andThen referenceType_:
+            referenceType_ ?
+                fromExpression env reference >> cb
 
             referenceType =
                 expandAlias referenceType_
@@ -896,7 +953,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                             This is super important when the reference type contains type variables.
 
                             #]
-                            fromExpression env argumentExpression >> andThen argumentType:
+                            argumentType ?
+                                fromExpression env argumentExpression >> cb
 
                             reason =
                                 UnifyReason_CallArgument
@@ -904,14 +962,19 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                     , argument = CA.argumentPos argument
                                     }
 
-                            unify env pos reason argumentType parameterType >> andThen unifiedArgumentType:
-                            applySubsToType returnType >> andThen actualReturnType:
+                            unifiedArgumentType ?
+                                unify env pos reason argumentType parameterType >> cb
+
+                            actualReturnType ?
+                                applySubsToType returnType >> cb
+
                             isCompatibleWith env expectedType pos actualReturnType
 
                         CA.ArgumentMutable pos { ref, attrPath }:
                             try Dict.get ref env.instanceVariables as
                                 Nothing:
-                                    errorUndefinedVariable env pos ref >> andThen ty:
+                                    ty ?
+                                        errorUndefinedVariable env pos ref >> cb
                                     return None
 
                                 Just var:
@@ -922,16 +985,20 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                                 , ""
                                                 , "TODO [link to wiki page that explains how to declare variables]"
                                                 ]
-                                        ae >> andThen ty:
+                                        ty ?
+                                            ae >> cb
+
                                         return None
 
                                     else if typeContainsFunctions var.ty then
                                         # TODO what about constrained/unconstrained tyvars?
-                                        addError pos [ "mutable arguments can't allow functions" ] >> andThen ty:
+                                        ty ?
+                                            addError pos [ "mutable arguments can't allow functions" ] >> cb
                                         return None
 
                                     else
-                                        applyAttributePath env pos attrPath var.ty >> andThen ty:
+                                        ty ?
+                                            applyAttributePath env pos attrPath var.ty >> cb
 
                                         # TODO: this is pretty much copied from CA.ArgumentExpression above, would be nice to merge the two
                                         reason =
@@ -940,8 +1007,12 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                                 , argument = CA.argumentPos argument
                                                 }
 
-                                        unify env pos reason ty parameterType >> andThen unifiedArgumentType:
-                                        applySubsToType returnType >> andThen actualReturnType:
+                                        unifiedArgumentType ?
+                                            unify env pos reason ty parameterType >> cb
+
+                                        actualReturnType ?
+                                            applySubsToType returnType >> cb
+
                                         isCompatibleWith env expectedType pos actualReturnType
 
                 _:
@@ -951,24 +1022,35 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         ]
 
         CA.If pos { condition, true, false }:
-            checkExpression env CoreTypes.bool condition >> andThen _:
-            checkExpression env expectedType true >> andThen _:
+            _ ?
+                checkExpression env CoreTypes.bool condition >> cb
+
+            _ ?
+                checkExpression env expectedType true >> cb
+
             checkExpression env expectedType false
 
 
         CA.Try pos value patternsAndBlocks:
-            fromExpression env value >> andThen inferredValueType:
+            inferredValueType ?
+                fromExpression env value >> cb
 
             xxx =
               inferredValueType >> list_for patternsAndBlocks (pattern & block): patternTypeSoFar:
 
-                fromPattern env pattern Dict.empty >> andThen patternOut:
-                unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> andThen unifiedPatternType:
+                patternOut ?
+                    fromPattern env pattern Dict.empty >> cb
+
+                unifiedPatternType ?
+                    unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> cb
 
                 # TODO do I really need to apply subs here?
-                applySubsToNonFreeTyvars env >> andThen env1:
+                env1 ?
+                    applySubsToNonFreeTyvars env >> cb
 
-                get (x: x.substitutions) >> andThen subs:
+                subs ?
+                    get (x: x.substitutions) >> cb
+
                 ip =
                     insertPatternVars
                         { subs
@@ -979,14 +1061,17 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         patternOut.vars
                         env1
 
-                ip >> andThen patternEnv:
+                patternEnv ?
+                    ip >> cb
 
-                checkExpression patternEnv expectedType block >> andThen None:
+                None ?
+                    checkExpression patternEnv expectedType block >> cb
+
                 # TODO: totality check?
 
                 return unifiedPatternType
 
-            xxx >> andThen _:
+            _ ? xxx >> cb
             return None
 
 
@@ -1012,21 +1097,24 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                             checkExpression env expectedAttrType attrValue
 
                             # The type must have all attributes that exist in the value
-                            xxx >> andThen None:
-                                None >> dict_for attrTypeByName attrName: attrType: None:
-                                    try Dict.get attrName attrTypeByName as
-                                        Nothing:
-                                            addCheckError pos [
-                                                , "This record is missing the attribute `" .. attrName .. "`"
-                                                ]
+                            None ?
+                                xxx >> cb
 
-                                        Just _:
-                                            return None
+                            None >> dict_for attrTypeByName attrName: attrType: None:
+                                try Dict.get attrName attrTypeByName as
+                                    Nothing:
+                                        addCheckError pos [
+                                            , "This record is missing the attribute `" .. attrName .. "`"
+                                            ]
+
+                                    Just _:
+                                        return None
 
                         Just extending:
 
                             # extending needs to be of expectedType
-                            checkExpression env expectedType (CA.Variable pos extending) >> andThen None:
+                            None ?
+                                checkExpression env expectedType (CA.Variable pos extending) >> cb
 
                             # the rest of the attributes, we need to ensure that they belong in expectedType with the correct type
                             None >> dict_for attrValueByName attrName: attrValue: None:
@@ -1047,7 +1135,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         ]
 
         CA.LetIn valueDef expression:
-            fromDefinition False valueDef env >> andThen env1:
+            env1 ?
+                fromDefinition False valueDef env >> cb
 
             xxx =
                 if valueDef.mutable and typeContainsFunctions expectedType then
@@ -1055,7 +1144,9 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                 else
                     return None
 
-            xxx >> andThen _:
+            _ ?
+                xxx >> cb
+
             checkExpression env1 expectedType expression
 
 
@@ -1137,7 +1228,8 @@ fromExpression as Env: CA.Expression: Monad Type =
 
                        In this case we do NOT instantiate a new variable!
                     #]
-                    (replaceTypeVariablesWithNew var.freeTypeVariables var.ty) >> andThen varType:
+                    varType ?
+                        replaceTypeVariablesWithNew var.freeTypeVariables var.ty >> cb
                     [#
 
                        Dealing with attributes as a special case (rather than just as an access function)
@@ -1159,24 +1251,29 @@ fromExpression as Env: CA.Expression: Monad Type =
                     replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
         CA.Lambda pos param body:
-            (fromParameter env param) >> andThen ( isMutable & patternOut ):
+            isMutable & patternOut ?
+                fromParameter env param >> cb
 
-            ip =
-                insertPatternVars
-                    { subs = Dict.empty
-                    , isParameter = True
-                    , isMutable
-                    , isRoot = False
-                    }
-                    patternOut.vars
-                    env
+            bodyEnv ?
+                env
+                    >> insertPatternVars
+                        { subs = Dict.empty
+                        , isParameter = True
+                        , isMutable
+                        , isRoot = False
+                        }
+                        patternOut.vars
+                    >> cb
 
-            ip >> andThen bodyEnv:
-            (fromExpression bodyEnv body) >> andThen bodyType:
+            bodyType ?
+                fromExpression bodyEnv body >> cb
+
             # fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
             # fromBlock instead infers paramType fully, but will not apply the substitutions it creates
             # So we just pull out the substitutions and apply them to paramType
-            (applySubsToType patternOut.ty) >> andThen refinedPatternOutTy:
+            refinedPatternOutTy ?
+                applySubsToType patternOut.ty >> cb
+
             if isMutable and typeContainsFunctions refinedPatternOutTy then
                 # TODO be a bit more descriptive, maybe name the arguments
                 errorTodo pos << "mutable args cannot be functions"
@@ -1187,43 +1284,77 @@ fromExpression as Env: CA.Expression: Monad Type =
 
         CA.Call pos reference argument:
             # first of all, let's get our children types
-            (fromExpression env reference) >> andThen referenceType:
-            (fromArgument env argument) >> andThen ( fromIsMutable & argumentType ):
+            referenceType ?
+                fromExpression env reference >> cb
+
+            fromIsMutable & argumentType ?
+                fromArgument env argument >> cb
+
             # the type of the call itself is the return type of the lamba
             unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
 
         CA.If pos ar:
-            checkExpression env CoreTypes.bool ar.condition >> andThen _:
-            get (x: x.substitutions) >> andThen s:
-            (fromExpression env ar.true) >> andThen trueType:
-            (fromExpression env ar.false) >> andThen falseType:
+            None ?
+                checkExpression env CoreTypes.bool ar.condition >> cb
+
+            s ?
+                get (x: x.substitutions) >> cb
+
+            trueType ?
+                fromExpression env ar.true >> cb
+
+            falseType ?
+                fromExpression env ar.false >> cb
+
             unify env pos UnifyReason_IfBranches trueType falseType
 
         CA.Try pos value patternsAndBlocks:
-            (fromExpression env value) >> andThen tryType:
-            (newType pos) >> andThen newBlockType:
-            (list_for patternsAndBlocks (fromPatternAndBlock env) ( tryType & newBlockType )) >> andThen ( patternType & inferredBlockType ):
+            tryType ?
+                fromExpression env value >> cb
+
+            newBlockType ?
+                newType pos >> cb
+
+            patternType & inferredBlockType ?
+                list_for patternsAndBlocks (fromPatternAndBlock env) ( tryType & newBlockType ) >> cb
+
             return inferredBlockType
 
         CA.Record pos maybeExt attrValues:
-            (dict_map (k: fromExpression env) attrValues) >> andThen attrTypes:
+            attrTypes ?
+                dict_map (k: fromExpression env) attrValues >> cb
+
             try maybeExt as
                 Nothing:
                     return << CA.TypeRecord pos Nothing attrTypes
 
                 Just variableArgs:
                     # TODO here it would be easier to support an entire expression
-                    (fromExpression env (CA.Variable pos variableArgs)) >> andThen ty_:
-                    (applySubsToType ty_) >> andThen ty:
-                    (newName identity) >> andThen name:
-                    (unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) >> andThen unifiedType:
+                    ty_ ?
+                        fromExpression env (CA.Variable pos variableArgs) >> cb
+
+                    ty ?
+                        applySubsToType ty_ >> cb
+
+                    name ?
+                        newName identity >> cb
+
+                    unifiedType ?
+                        unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes) >> cb
+
                     return unifiedType
 
         CA.LetIn valueDef expression:
-            fromDefinition False valueDef env >> andThen env1:
-            fromExpression env1 expression >> andThen ty:
+            env1 ?
+                fromDefinition False valueDef env >> cb
+
+            ty ?
+                fromExpression env1 expression >> cb
+
             if valueDef.mutable and typeContainsFunctions ty then
-                addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> andThen _:
+                _ ?
+                    addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> cb
+
                 return ty
             else
                 return ty
@@ -1248,16 +1379,21 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argu
                         , argument = CA.argumentPos argument
                         }
 
-                (unify env pos reason refArgumentType callArgumentType) >> andThen unifiedArgumentType:
+                unifiedArgumentType ?
+                    unify env pos reason refArgumentType callArgumentType >> cb
+
                 applySubsToType refReturnType
 
         CA.TypeVariable pos name:
-            (newType pos) >> andThen returnType:
+            returnType ?
+                newType pos >> cb
 
             ty =
                 CA.TypeFunction pos callArgumentType callIsMutable returnType
 
-            (unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty) >> andThen _:
+            _ ?
+                unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty >> cb
+
             applySubsToType returnType
 
         CA.TypeAlias pos _ ty:
@@ -1273,27 +1409,38 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argu
 
 fromPatternAndBlock as Env: ( CA.Pattern & CA.Expression ): ( Type & Type ): Monad ( Type & Type ) =
     env: ( pattern & block ): ( patternTypeSoFar & blockTypeSoFar ):
-    fromPattern env pattern Dict.empty >> andThen patternOut:
-    unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> andThen unifiedPatternType:
+
+    patternOut ?
+        fromPattern env pattern Dict.empty >> cb
+
+    unifiedPatternType ?
+        unify env patternOut.pos UnifyReason_TryPattern patternOut.ty patternTypeSoFar >> cb
 
     # TODO do I really need to apply subs here?
-    applySubsToNonFreeTyvars env >> andThen env1:
+    env1 ?
+        applySubsToNonFreeTyvars env >> cb
 
-    get (x: x.substitutions) >> andThen subs:
-    ip =
-        insertPatternVars
-            { subs
-            , isParameter = False
-            , isMutable = False
-            , isRoot = False
-            }
-            patternOut.vars
-            env1
-    ip >> andThen patternEnv:
+    subs ?
+        get (x: x.substitutions) >> cb
 
-    fromExpression patternEnv block >> andThen blockType:
+    patternEnv ?
+        env1
+            >> insertPatternVars
+                { subs
+                , isParameter = False
+                , isMutable = False
+                , isRoot = False
+                }
+                patternOut.vars
+            >> cb
+
+    blockType ?
+        fromExpression patternEnv block >> cb
+
     # TODO pos should be the block's last statement
-    unify env patternOut.pos (UnifyReason_TryBlock block) blockTypeSoFar blockType >> andThen unifiedBlockType:
+    unifiedBlockType ?
+        unify env patternOut.pos (UnifyReason_TryBlock block) blockTypeSoFar blockType >> cb
+
     return ( unifiedPatternType & unifiedBlockType )
 
 
@@ -1301,13 +1448,17 @@ fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
     env: argument:
     try argument as
         CA.ArgumentExpression expr:
-            (fromExpression env expr) >> andThen ty:
+            ty ?
+                fromExpression env expr >> cb
+
             return ( False & ty )
 
         CA.ArgumentMutable pos { ref, attrPath }:
             try Dict.get ref env.instanceVariables as
                 Nothing:
-                    errorUndefinedVariable env pos ref >> andThen ty:
+                    ty ?
+                        errorUndefinedVariable env pos ref >> cb
+
                     return ( True & ty )
 
                 Just var:
@@ -1318,16 +1469,23 @@ fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
                                 , ""
                                 , "TODO [link to wiki page that explains how to declare variables]"
                                 ]
-                        ae >> andThen ty:
+
+                        ty ?
+                            ae >> cb
+
                         return ( True & ty )
 
                     else if typeContainsFunctions var.ty then
                         # TODO what about constrained/unconstrained tyvars?
-                        (addError pos [ "mutable arguments can't allow functions" ]) >> andThen ty:
+                        ty ?
+                            addError pos [ "mutable arguments can't allow functions" ] >> cb
+
                         return ( True & ty )
 
                     else
-                        (applyAttributePath env pos attrPath var.ty) >> andThen ty:
+                        ty ?
+                            applyAttributePath env pos attrPath var.ty >> cb
+
                         return ( True & ty )
 
 
@@ -1335,13 +1493,19 @@ fromParameter as Env: CA.Parameter: Monad ( Bool & PatternOut ) =
     env: param:
     try param as
         CA.ParameterPattern pattern:
-            (fromPattern env pattern Dict.empty) >> andThen patternOut:
+            patternOut ?
+                fromPattern env pattern Dict.empty >> cb
+
             return ( False & patternOut )
 
         CA.ParameterMutable pos paramName:
             # TypeNonFunction
-            (newType pos) >> andThen ty:
-            vars = Dict.singleton paramName { pos, type = ty, isAnnotated = False }
+            ty ?
+                newType pos >> cb
+
+            vars =
+                Dict.singleton paramName { pos, type = ty, isAnnotated = False }
+
             return ( True & { vars, pos, ty, isFullyAnnotated = False })
 
 
@@ -1452,13 +1616,16 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                     Just type:
                         try Compiler/ExpandTypes.expandAnnotation env.types type as
                             Err e:
-                                insertError e >> andThen None:
+                                None ?
+                                    insertError e >> cb
+
                                 newType pos
 
                             Ok t:
                                 return t
 
-            makeType >> andThen type:
+            type ?
+                makeType >> cb
 
             newVars =
                 try maybeName as
@@ -1485,7 +1652,8 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                     Just c:
                         replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
-            constructorTyM >> andThen constructorTy:
+            constructorTy ?
+                constructorTyM >> cb
 
             p as UnifyConstructorWithItsArgsParams = {
                 , env
@@ -1498,8 +1666,10 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                 , isFullyAnnotated = True
                 }
 
-            unifyConstructorWithItsArgs p >> andThen ( patternVars & patternTy & isFullyAnnotated ):
-            return << { vars = patternVars, pos, ty = patternTy, isFullyAnnotated }
+            patternVars & patternTy & isFullyAnnotated ?
+                unifyConstructorWithItsArgs p >> cb
+
+            return { vars = patternVars, pos, ty = patternTy, isFullyAnnotated }
 
         CA.PatternRecord pos attrs:
 
@@ -1507,16 +1677,21 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
 
             blah as Name: CA.Pattern: (PatternVars & Dict Name Type & Bool): Monad (PatternVars & Dict Name Type & Bool) =
                 name: pa: ( varsX & attrTypes & annotatedSoFar):
-                fromPattern env pa varsX >> andThen paOut:
+
+                paOut ?
+                    fromPattern env pa varsX >> cb
+
                 return ( paOut.vars & Dict.insert name paOut.ty attrTypes & paOut.isFullyAnnotated and annotatedSoFar )
 
-            dict_for attrs blah ( vars & Dict.empty & True) >> andThen ( vars1 & attrTypes & isFullyAnnotated ):
+            vars1 & attrTypes & isFullyAnnotated ?
+                dict_for attrs blah ( vars & Dict.empty & True) >> cb
+
             #
             # For the time being, if you unpack a record, you must unpack ALL of it
             # This is IMHO better for readability, but only one way to find out...
             #
             #newName identity >> andThen extName:
-            return << { vars = vars1, pos, ty = CA.TypeRecord pos Nothing attrTypes, isFullyAnnotated }
+            return { vars = vars1, pos, ty = CA.TypeRecord pos Nothing attrTypes, isFullyAnnotated }
 
 
 alias UnifyConstructorWithItsArgsParams =
@@ -1536,9 +1711,13 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
     try p.ty & p.args as
         # Argument needed, argument given
         ( CA.TypeFunction _ from _ to & head :: tail ):
-            (fromPattern p.env head p.vars) >> andThen pa:
-            { vars, pos, ty, isFullyAnnotated } = pa
-            (unify p.env pos (UnifyReason_ConstructorArgument p) from ty) >> andThen unifiedFrom:
+
+            { vars, pos, ty, isFullyAnnotated } ?
+                fromPattern p.env head p.vars >> cb
+
+            unifiedFrom ?
+                unify p.env pos (UnifyReason_ConstructorArgument p) from ty >> cb
+
             unifyConstructorWithItsArgs
                 { p with
                     , argIndex = p.argIndex + 1
@@ -1551,19 +1730,25 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
         # Error: Argument needed but not given!
         ( CA.TypeFunction _ from _ to & [] ):
             # TODO tell how many are needed and how many are actually given
-            (addError p.pos [ "Type constructor " .. SPCore.toHuman p.usr .. " is missing argument #" .. Text.fromNumber p.argIndex ]) >> andThen ety:
+            ety ?
+                addError p.pos [ "Type constructor " .. SPCore.toHuman p.usr .. " is missing argument #" .. Text.fromNumber p.argIndex ] >> cb
+
             return ( p.vars & ety & p.isFullyAnnotated )
 
         # No arguments needed, no arguments given
         ( _ & [] ):
-            get (x: x.substitutions) >> andThen subs:
+            subs ?
+                get (x: x.substitutions) >> cb
+
             # TODO should I apply subs here?
             return ( p.vars & p.ty & p.isFullyAnnotated )
 
         # Error: no argument needed, but argument given!
         ( _ & head :: tail ):
             # TODO tell how many are needed and how many are actually given
-            (addError p.pos [ "Type constructor " .. SPCore.toHuman p.usr .. " has too many args" ]) >> andThen ety:
+            ety ?
+                addError p.pos [ "Type constructor " .. SPCore.toHuman p.usr .. " has too many args" ] >> cb
+
             return ( p.vars & ety & p.isFullyAnnotated )
 
 
@@ -1634,20 +1819,30 @@ unifyErrorToText as UnifyError: Text =
 unify as Env: Pos: UnifyReason: Type: Type: Monad Type =
     env: pos: reason: a: b:
 
-    get (x: x.typeClashesByPlaceholderId) >> andThen tc:
+    tc ?
+        get (x: x.typeClashesByPlaceholderId) >> cb
+
     if tc /= Nothing then
         SPCore.todo "typeClashesByPlaceholderId NOT EMPTY!"
 
     else
-        m_update (s: { s with typeClashesByPlaceholderId = Just Dict.empty }) >> andThen _:
-        unify_ env reason pos a b >> andThen unifiedType:
-        popClashingtypes >> andThen typeClashes:
+        _ ?
+            m_update (s: { s with typeClashesByPlaceholderId = Just Dict.empty }) >> cb
+
+        unifiedType ?
+            unify_ env reason pos a b >> cb
+
+        typeClashes ?
+            popClashingtypes >> cb
+
         if typeClashes == Dict.empty then
             return unifiedType
 
         else
             # there were type clashes, so turn them into errors
-            errorIncompatibleTypes env reason pos unifiedType typeClashes >> andThen _:
+            _ ?
+                errorIncompatibleTypes env reason pos unifiedType typeClashes >> cb
+
             return unifiedType
 
 
@@ -1684,8 +1879,12 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                     unify_ env reason pos arg1 arg2
 
                 # TODO is this the correct place where to check arity?
-                (list_map2 (unify_ env reason pos) args1 args2) >> andThen argTypes:
-                get (x: x.substitutions) >> andThen subs:
+                argTypes ?
+                    list_map2 (unify_ env reason pos) args1 args2 >> cb
+
+                subs ?
+                    get (x: x.substitutions) >> cb
+
                 argTypes
                     >> List.map (replaceTypeVariables subs)
                     >> CA.TypeConstant pos ref1
@@ -1696,13 +1895,22 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                 return t1
 
             else
-                get (x: x.substitutions) >> andThen subs:
+                subs ?
+                    get (x: x.substitutions) >> cb
+
                 try ( Dict.get v1_name subs & Dict.get v2_name subs ) as
                     ( Just sub1 & Just sub2 ):
-                        (unify_ env reason pos1 sub1 sub2) >> andThen v:
+
+                        v ?
+                            unify_ env reason pos1 sub1 sub2 >> cb
+
                         # I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
-                        (addSubstitution env "vv1" pos reason v1_name v) >> andThen _:
-                        (addSubstitution env "vv2" pos reason v2_name v) >> andThen subbedTy:
+                        _ ?
+                            addSubstitution env "vv1" pos reason v1_name v >> cb
+
+                        subbedTy ?
+                            addSubstitution env "vv2" pos reason v2_name v >> cb
+
                         return subbedTy
 
                     ( Nothing & Just sub2 ):
@@ -1722,8 +1930,12 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                 unifyError pos IncompatibleMutability t1 t2
 
             else
-                (unify_ env reason pos a_from b_from) >> andThen unified_from:
-                get (x: x.substitutions) >> andThen subs_:
+                unified_from ?
+                    unify_ env reason pos a_from b_from >> cb
+
+                subs_ ?
+                    get (x: x.substitutions) >> cb
+
                 [# Without the replacement here, a function annotation will produce circular substitutions
 
                    id a =
@@ -1731,8 +1943,12 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                        a
 
                 #]
-                (unify_ env reason pos (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)) >> andThen unified_to:
-                get (x: x.substitutions) >> andThen subs:
+                unified_to ?
+                    unify_ env reason pos (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to) >> cb
+
+                subs ?
+                    get (x: x.substitutions) >> cb
+
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
                     >> return
 
@@ -1774,15 +1990,17 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe Text & Dict Text Type ): ( Maybe 
     { aOnly, bOnly, both } =
         Dict.merge onA onBoth onB a_attrs b_attrs init
 
-    (dict_map (k: ( a & b ): unify_ env reason pos a b) both) >> andThen bothUnified:
-    try ( a_ext & b_ext ) as
-        ( Just aName & Nothing ):
+    bothUnified ?
+        dict_map (k: ( a & b ): unify_ env reason pos a b) both >> cb
+
+    try a_ext & b_ext as
+        Just aName & Nothing:
             unifyToNonExtensibleRecord env pos reason aName aOnly bOnly bothUnified
 
-        ( Nothing & Just bName ):
+        Nothing & Just bName:
             unifyToNonExtensibleRecord env pos reason bName bOnly aOnly bothUnified
 
-        ( Nothing & Nothing ):
+        Nothing & Nothing:
             if bOnly == Dict.empty and aOnly == Dict.empty then
                 # the two are the same
                 return (CA.TypeRecord (Pos.I 4) Nothing bothUnified)
@@ -1803,13 +2021,18 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe Text & Dict Text Type ): ( Maybe 
                 return << CA.TypeRecord pos (Just aName) bothUnified
 
             else
-                (newName identity) >> andThen new:
+                new ?
+                    newName identity >> cb
 
                 sub =
                     CA.TypeRecord pos (Just new) (Dict.join bOnly a_attrs)
 
-                (addSubstitution env "jj1" pos reason aName sub) >> andThen _:
-                (addSubstitution env "jj2" pos reason bName sub) >> andThen _:
+                _ ?
+                    addSubstitution env "jj1" pos reason aName sub >> cb
+
+                _ ?
+                    addSubstitution env "jj2" pos reason bName sub >> cb
+
                 return sub
 
 
@@ -1824,8 +2047,12 @@ unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict 
 
     else
         # the `a` tyvar should contain the missing attributes, ie `bOnly`
-        (newName Just) >> andThen ext:
-        (addSubstitution env "ne" pos reason aName (CA.TypeRecord (Pos.I 5) ext bOnly)) >> andThen _:
+        ext ?
+            newName Just >> cb
+
+        _ ?
+            addSubstitution env "ne" pos reason aName (CA.TypeRecord (Pos.I 5) ext bOnly) >> cb
+
         Dict.join bothUnified bOnly
             >> CA.TypeRecord pos Nothing
             >> return
@@ -1835,8 +2062,12 @@ unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict 
 #]
 unifyError as Pos: UnifyError: Type: Type: Monad Type =
     pos: error: t1: t2:
-    (newName identity) >> andThen name:
-    (insertTypeClash name t1 t2 error) >> andThen None:
+    name ?
+        newName identity >> cb
+
+    None ?
+        insertTypeClash name t1 t2 error >> cb
+
     return << CA.TypeVariable pos name
 
 
@@ -1853,7 +2084,10 @@ isAnnotation as Name: Bool =
 
 addSubstitution as Env: Text: Pos: UnifyReason: Name: Type: Monad Type =
     env: debugCode: pos: reason: name: rawTy:
-    (applySubsToType rawTy) >> andThen ty:
+
+    ty ?
+        applySubsToType rawTy >> cb
+
     if isAnnotation name then
         try ty as
             CA.TypeVariable _ subName:
@@ -1883,10 +2117,18 @@ addSubstitution as Env: Text: Pos: UnifyReason: Name: Type: Monad Type =
             unifyError pos (Cycle name) (CA.TypeVariable pos name) ty
 
     else
-        (checkNonFunction env name ty) >> andThen nonFunction:
-        { freeVarsToFlag } = nonFunction
-        (flagFreeVars freeVarsToFlag) >> andThen _:
-        get (x: x.substitutions) >> andThen subs:
+        nonFunction ?
+            checkNonFunction env name ty >> cb
+
+        { freeVarsToFlag } =
+            nonFunction
+
+        _ ?
+            flagFreeVars freeVarsToFlag >> cb
+
+        subs ?
+            get (x: x.substitutions) >> cb
+
         try Dict.get name subs as
             [#
                The tyvar has already been substituted
@@ -1923,7 +2165,9 @@ checkNonFunction as Env: Name: Type: Monad { freeVarsToFlag as List Name } =
     nope =
         { freeVarsToFlag = [] }
 
-    get (x: x.nonFnTyvars) >> andThen nonFnTyvars:
+    nonFnTyvars ?
+        get (x: x.nonFnTyvars) >> cb
+
     try Dict.get name nonFnTyvars as
         Nothing:
             return nope
@@ -1936,7 +2180,9 @@ checkNonFunction as Env: Name: Type: Monad { freeVarsToFlag as List Name } =
                    "The type of `f`"?
 
                 #]
-                (errorTodo (Pos.I 26) << "type `" .. name .. "` should not contain functions, but is " .. typeToText env ty) >> andThen _:
+                _ ?
+                    errorTodo (Pos.I 26) ("type `" .. name .. "` should not contain functions, but is " .. typeToText env ty) >> cb
+
                 return nope
 
             else
@@ -2016,11 +2262,18 @@ applyAttributePath as Env: Pos: List Name: Type: Monad Type =
                 return attrType
 
             Nothing:
-                (newName identity) >> andThen extName:
-                (newType pos) >> andThen attrType:
+                extName ?
+                    newName identity >> cb
+
+                attrType ?
+                    newType pos >> cb
+
                 re as Type =
                     CA.TypeRecord (Pos.I 2) (Just extName) (Dict.singleton attributeName attrType)
-                (unify env pos (UnifyReason_AttributeAccess attributeName) ty re) >> andThen _:
+
+                _ ?
+                    unify env pos (UnifyReason_AttributeAccess attributeName) ty re >> cb
+
                 return attrType
 
     list_for attrPath wrap
@@ -2126,7 +2379,9 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
 applySubsToNonFreeTyvars as Env: Monad Env =
     env:
 
-    get (x: x.substitutions) >> andThen subs:
+    subs ?
+        get (x: x.substitutions) >> cb
+
     [#
        Consider:
 
@@ -2160,7 +2415,9 @@ replaceTypeVariablesWithNew as Dict Name { nonFn as Bool }: Type: Monad Type =
         return type
 
     else
-        (generateNewTypeVariables freeTypeVariables) >> andThen newTypeByOldType:
+        newTypeByOldType ?
+            generateNewTypeVariables freeTypeVariables >> cb
+
         return << replaceTypeVariables newTypeByOldType type
 
 
@@ -2169,9 +2426,16 @@ generateNewTypeVariables as Dict Name { nonFn as Bool }: Monad Subs =
 
     apply as Name: { nonFn as Bool }: Subs: Monad Subs =
         name0: arg: subs:
-        { nonFn } = arg
-        (newName identity) >> andThen name1:
-        (if nonFn then setNonFn name1 else return None) >> andThen None:
+
+        { nonFn } =
+            arg
+
+        name1 ?
+            newName identity >> cb
+
+        None ?
+            (if nonFn then setNonFn name1 else return None) >> cb
+
         return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1) subs
 
     dict_for tyvarByName apply Dict.empty
@@ -2236,7 +2500,10 @@ addError as Pos: List Text: Monad Type =
 
 addErrorWithEEnv as Pos: (Error.Env: List Text): Monad Type =
     pos: messageConstructor:
-    (insertError (Error.Simple pos messageConstructor)) >> andThen None:
+
+    None ?
+        insertError (Error.Simple pos messageConstructor) >> cb
+
     newType pos
 
 
