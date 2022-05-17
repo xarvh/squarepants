@@ -1,10 +1,6 @@
 https://www.vidarholen.net/~vidar/An_Empirical_Investigation_into_Programming_Language_Syntax.pdf
 
 
-Possible alternative syntax
-===========================
-
-
 Things that should probably be implemented
 ------------------------------------------
 
@@ -28,106 +24,87 @@ Things that should probably be implemented
 
 
 
-# Callback operator
-
-
-BIG problem: what if I forget a `None ?=`?
-The statement is evaluated, but silently **not inserted in the monad chain**!!!!
-
-
-
-
-
-If we use `=:` or `:=` for this instead of `?=` then we need to use something different for `mutable assign` (such as `=!` ?)
-Or use `=!` for the callback op?
-Or even `::`?
-
-
-    meta :=
-        loadMeta >> IO.onSuccess
-
-    fileLists as List (Text & Text) ?=
-        meta.sourceDirs
-            >> List.map fn sd: listSourceDir sd.path
-            >> IO.parallel
-            >> IO.onSuccess
-
-    modules as [CA.Module] ?=
-        fileLists
-            >> List.concat
-            >> List.filter isSpFile
-            >> List.map loadModule
-            >> IO.parallel
-            >> IO.onSuccess
-
-    expanded ?=
-        modules
-            >> List.indexBy fn m: m.umr
-            >> Compiler/Pipeline.globalExpandedTypes
-            >> onResSuccess
-
-    errorsAndEnvs ?=
-        modules
-            >> List.map typeCheckModule
-            >> IO.parallel
-            >> IO.onSuccess
-
-    # TODO emit js
-
-    IO.return None
-
-
-
-+ much nicer to read and write
-- more difficult to figure out what is happening
-
----> Instead of showing what happens on success, it might be a lot more clear to make explicit what happens on *error*
-    (ie, when the callback is NOT called!)
-
-
-
-    meta ?=
-        loadMeta >> IO.breakOnError
-
-    fileLists as List (Text & Text) ?=
-        meta.sourceDirs
-            >> List.map fn sd: listSourceDir sd.path
-            >> IO.parallel
-            >> IO.breakOnError
-
-    modules as [CA.Module] ?=
-        fileLists
-            >> List.concat
-            >> List.filter isSpFile
-            >> List.map loadModule
-            >> IO.parallel
-            >> IO.breakOnError
-
-    expanded ?=
-        modules
-            >> List.indexBy fn m: m.umr
-            >> Compiler/Pipeline.globalExpandedTypes
-            >> breakOnResError
-
-    errorsAndEnvs ?=
-        modules
-            >> List.map typeCheckModule
-            >> IO.parallel
-            >> IO.breakOnError
-
-    # TODO emit js
-
-    IO.return None
-
-
-+ easier to follow the flow
-- more verbose
-
-
-
 
 Things that are worth considering but need thinking
 ---------------------------------------------------
+
+# do-notation
+
+---> BIG problem: what if I forget a `None ?=`?
+The statement is evaluated, but silently **not inserted in the monad chain**!!!!
+
+    # The first two are executed but ignored!!!
+    checkExpression env CoreTypes.bool condition >> cb
+    checkExpression env expectedType true >> cb
+    checkExpression env expectedType false
+
+
+This probably will be a problem regardless of the do-notation solution.
+Maybe can be addressed by requiring lone evaluations to have a Debug or a mutable? Would be very ad-hoc and ugly tho.
+
+
+---> Once we have [ head, ...tail ] cons, we can use `::` in place of `?`
+
+
+---> The problems that the current do-notation has are:
+
+* Does not show clearly what is happening:
+
+* Uniform stuff does not look uniform:
+
+      _ ?
+          checkExpression env CoreTypes.bool condition >> cb
+
+      _ ?
+          checkExpression env expectedType true >> cb
+
+      checkExpression env expectedType false
+
+
+* It does not deal well with larger definition blocks:
+
+      xxx =
+          None >> dict_for attrValueByName attrName: attrValue: None:
+              try Dict.get attrName attrTypeByName as
+                  Nothing:
+                      addCheckError pos [
+                          , "This record has an attribute `" .. attrName .. "` which is not in the annotation."
+                          ]
+
+                  Just expectedAttrType:
+                      checkExpression env expectedAttrType attrValue
+
+      # The type must have all attributes that exist in the value
+      None ?
+          xxx >> cb
+
+
+---> Possible solutions:
+
+  Have a dedicated keyword such as `next` or `to` to put INBETWEEN statements:
+
+  None >> dict_for attrValueByName attrName: attrValue: None:
+      try Dict.get attrName attrTypeByName as
+          Nothing:
+              addCheckError pos [
+                  , "This record has an attribute `" .. attrName .. "` which is not in the annotation."
+                  ]
+
+          Just expectedAttrType:
+              checkExpression env expectedAttrType attrValue
+
+  next cb None:
+  return None
+
+  to is StateMonad.andThen
+
+  checkExpression env CoreTypes.bool condition
+  to None:
+  checkExpression env expectedType true
+  to None:
+  checkExpression env expectedType false
+
+
 
 # Add notation to extend records
 
