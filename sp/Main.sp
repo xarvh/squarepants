@@ -114,7 +114,14 @@ loadModulesFile as IO ModulesFile.ModulesFile =
 
     modulesFileName = "modules.sp"
 
-    IO.readFile modulesFileName >> IO.onSuccess modulesAsText:
+    IO.readFile modulesFileName >> IO.onResult result:
+
+    modulesAsText =
+        try result as
+            Ok f: f
+            Err _:
+                log "Using default modules.sp"
+                PlatformDefinition.platform.defaultModules
 
     eenv as Error.Env =
         {
@@ -243,7 +250,8 @@ updateSd as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
 loadMeta as IO.Env: IO Meta =
     env:
 
-    loadModulesFile >> IO.onSuccess modulesFile:
+    loadModulesFile
+    >> IO.onSuccess modulesFile:
 
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
     # before building Meta we need to add those that are not mentioned.
@@ -272,7 +280,7 @@ typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
     env as Compiler/TypeCheck.Env = {
         , currentModule = module.umr
         , meta
-        , instanceVariables = globals.instanceVariables
+        , instanceVariables = Dict.mapKeys CA.RefRoot globals.instanceVariables
         , constructors = globals.constructors
         , types = globals.types
         , nonFreeTyvars = Dict.empty
@@ -287,18 +295,15 @@ getTargetUsr as Meta: Text: Text: CA.Globals: Res Meta.UniqueSymbolReference =
 
     # TODO translate entryModule?
 
-    asEntry as CA.Ref: Maybe Meta.UniqueSymbolReference =
-        ref:
-        try ref as
-            CA.RefBlock _: Nothing
-            CA.RefRoot usr:
-                Meta.USR (Meta.UMR source moduleName) valueName =
-                    usr
+    asEntry as Meta.UniqueSymbolReference: Maybe Meta.UniqueSymbolReference =
+        usr:
+        Meta.USR (Meta.UMR source moduleName) valueName =
+            usr
 
-                if moduleName == entryModule and valueName == entryValue then
-                    Just usr
-                else
-                    Nothing
+        if moduleName == entryModule and valueName == entryValue then
+            Just usr
+        else
+            Nothing
 
     possibleTargets as [Meta.UniqueSymbolReference] =
         globals.instanceVariables
@@ -333,7 +338,11 @@ compile as IO.Env: Text: Text: Text: IO None =
             >> List.filterMap (umr: Maybe.map (loadModule meta umr) (umrToFileName umr))
             >> IO.parallel
 
-    loadAllModules >> IO.onSuccess modules:
+    loadAllModules >> IO.onSuccess userModules:
+
+    modules as Dict Meta.UniqueModuleReference CA.Module =
+        Prelude.coreModulesByUmr >> List.for userModules module:
+            Dict.insert module.umr module
 
     # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
     eenv as Error.Env =
@@ -342,13 +351,15 @@ compile as IO.Env: Text: Text: Text: IO None =
             name
 
         { moduleByName =
-            List.for modules (m: Dict.insert (getName m) { fsPath = Maybe.withDefault "CORE" << umrToFileName m.umr, content = m.asText }) Dict.empty
+            List.for (Dict.values modules) (m: Dict.insert (getName m) { fsPath = Maybe.withDefault "CORE" << umrToFileName m.umr, content = m.asText }) Dict.empty
         }
+
+
 
 
     log "Solving globals..." ""
     x as Res CA.Globals =
-        Compiler/Pipeline.globalExpandedTypes (List.indexBy (m: m.umr) modules)
+        Compiler/Pipeline.globalExpandedTypes modules
 
     x >> onResSuccess eenv globals:
 
@@ -357,32 +368,26 @@ compile as IO.Env: Text: Text: Text: IO None =
     log "Type checking..." ""
 
     typeCheckModules =
-        modules
+        (Dict.values modules)
             >> List.map (m: typeCheckModule meta globals m >> resToIo eenv)
             >> IO.parallel
 
     typeCheckModules >> IO.onSuccess typeCheckEnvs:
 
-    log "Creating JS AST..." ""
-    jaStatements =
-        Compiler/CanonicalToJs.translateAll eenv globals modules
 
-    log "Emitting JS..." ""
+    log "Emittable AST..." ""
+    Compiler/MakeEmittable.translateAll (Dict.values modules)
+    >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
+    >> onResSuccess eenv emittableStatements:
 
-    callMain =
-        """
-
-        const out = """ .. Compiler/CanonicalToJs.translateUsr targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
-        if (out[1]) console.error(out[1]);
-        """
-
-    statements =
-        jaStatements
-            >> List.map (Compiler/JsToText.emitStatement 0)
-            >> Text.join "\n\n"
-
+    log "= Platform specific stuff ="
     js =
-        Compiler/CanonicalToJs.nativeDefinitions .. statements .. callMain
+        PlatformDefinition.compile {
+            , errorEnv = eenv
+            , constructors = Dict.toList globals.constructors
+            }
+            targetUsr
+            emittableStatements
 
     IO.writeFile outputFile js
 

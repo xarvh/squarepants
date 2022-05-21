@@ -70,6 +70,12 @@ for as [item]: (item: state: state): state: state =
           for tail function (function h init)
 
 
+indexedFor as [item]: (Int: item: state: state): state: state =
+    aList: function: init:
+    for aList (item: (index & accum): index + 1 & function index item accum) (0 & init)
+    >> Tuple.second
+
+
 forReversed as [item]: (item: state: state): state: state =
     list: f: init:
 

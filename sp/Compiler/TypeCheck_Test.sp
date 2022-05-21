@@ -108,9 +108,16 @@ infer as Text: Text: Result Text Out =
             , source = TH.source
             , name = TH.moduleName
             }
+
         Compiler/MakeCanonical.textToCanonicalModule params code >> onOk module:
-        Compiler/Pipeline.globalExpandedTypes (Dict.singleton TH.moduleUmr module) >> onOk expandedTypes:
+
+        modules =
+            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
+
+        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
+
         { types, constructors, instanceVariables } = expandedTypes
+
         env as Compiler/TypeCheck.Env = {
             , types
             , constructors
@@ -121,19 +128,20 @@ infer as Text: Text: Result Text Out =
             , instanceVariables =
                 instanceVariables
                     >> Dict.insert
-                        (CA.RefRoot << Meta.USR TH.moduleUmr "add")
+                        (Meta.USR TH.moduleUmr "add")
                         { definedAt = Pos.T
                         , ty = function tyNumber (function tyNumber tyNumber)
                         , freeTypeVariables = Dict.empty
                         , isMutable = False
                         }
                     >> Dict.insert
-                        (CA.RefRoot << Meta.USR TH.moduleUmr "reset")
+                        (Meta.USR TH.moduleUmr "reset")
                         { definedAt = Pos.T
                         , ty = typeFunction tyNumber True tyNone
                         , freeTypeVariables = Dict.empty
                         , isMutable = False
                         }
+                    >> Dict.mapKeys CA.RefRoot
             }
 
         Compiler/TypeCheck.fromModule env module

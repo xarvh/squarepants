@@ -437,7 +437,7 @@ addSquiggleToken as Bool: ReadState@: None =
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:
-            try Dict.get chunk Prelude.binops as
+            try Dict.get chunk Prelude.binopsBySymbol as
                 Just binop:
                     add << Token.Binop binop
                 Nothing:

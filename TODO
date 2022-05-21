@@ -7,7 +7,39 @@ Error messages to improve
 attributeNotFoundOnRecord =
     record = {}
     record.nonExistentAttribute
+
+------> would be nice if it said what are the actual record attributes
 ```
+
+
+
+```
+sp/Compiler/EmittableToJs.sp 355:32 
+
+  355 |                     Just name & CA.Mutable:
+                                       ^^^^^^^^^^^
+  356 |                         { env with mutables = Set.insert name .mutables }
+  357 |                     _:
+
+  Module `Compiler/EmittableToJs` from source `$sp$Types$Meta$SourceDir ("sp")` does not seem to expose a variable called `Mutable`.
+
+
+-------> "Compiler/EmittableToJs" should be "Compiler/CanonicalAst"
+```
+
+
+```
+      # ----> This expression produces an Expr, but the patterns are TranslatedExpr
+      try translateExpressionToExpression env letExpression as
+          Inline expr:
+              Block << JA.Eval expr :: inStatements
+
+          Block stats:
+              Block << List.concat [stats, inStatements]
+
+------> right now says "patterns should all be the same", instead it should tell me that the pattern doesn't match the try..as value!
+```
+
 
 
 
@@ -40,72 +72,12 @@ Maybe can be addressed by requiring lone evaluations to have a Debug or a mutabl
 
 
 
-Lexer / Parser
-==============
-
-* lambdas can't unpack records?
-    { blah }: xxx
-
-* Add test for triple quotes containing quotes
-
-* Add tests for Text functions
-
-* Add test: variable names and attr names cannot contain `/`
-
-* an inline lambda can't continue on a NewSiblingLine?
-    value
-    >> List.map x: blah
-    >> sblorp
-
-
-* lexer doesn't like sibling with nested statements?
-        , valueTest
-            """
-            for
-            """
-            _:
-                []
-                    >> Hash.for (Hash.fromList [Just True & 2, Nothing & 4]) k: v: a:
-                        (v & k) :: a
-                    >> List.sortBy Tuple.first
-
-* Parser test
-
-        here as Parser Int =
-            Parser.here >> andThen tokens:
-            Parser.accept
-                (try tokens as
-                    Token mod start end :: rest:
-                        start
-
-                    []:
-                        0
-                )
-
-
-* parser sbarella con
-
-    s =
-        env & []
-        >> List.for block statement: (envX & depsAccum):
-            statementDependencies envX statement
-            >> Tuple.mapSecond (merge depsAccum)
-        >> Tuple.second
-
-
 
 Backlog?
 ========
 
 * Remove Pattern from FormattableAST and just use Expression for everything?
     (This should simplify the parser and make it more accepting)
-
-* replace fold with for
-
-* Murder `::`
-    * have a List.stack
-    * have [a, b, ...c] syntax for expr and patterns
-
 
 * Platforms should use their default modules.sp to figure out the USR of native values
 
@@ -133,8 +105,6 @@ Backlog?
         Or better, a call tree, which would be very useful to debug the parser?
 
 * later: sp-format should recognize and preserve two main modes from the input format: a compact and an expanded one
-
-* Remove support for prefix op notation (-) ?
 
 * How do we ensure that execution order is consistent in record expressions?
         # which one gets executed first?

@@ -40,6 +40,10 @@ union UniqueSymbolReference =
     USR UniqueModuleReference Name
 
 
+alias ByUsr a =
+    Dict Meta.UniqueSymbolReference a
+
+
 alias Meta = {
 
     # These resolve global symbol names

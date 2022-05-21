@@ -3,6 +3,7 @@
 alias Unop = {
     , symbol as Text
     , type as CA.Type
+    , usr as Meta.UniqueSymbolReference
     }
 
 
@@ -29,5 +30,6 @@ alias Binop = {
     , associativity as Op.Associativity
     , symbol as Text
     , type as CA.Type
+    , usr as Meta.UniqueSymbolReference
     , nonFn as [Text]
     }
