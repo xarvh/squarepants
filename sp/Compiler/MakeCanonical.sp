@@ -247,11 +247,11 @@ expressionDeps as CA.Expression: Deps: Deps =
                 >> expressionDeps e
                 >> List.for patternsAndBodies ((p & b): d: d >> patternDeps p >> expressionDeps b)
 
-        CA.LetIn valueDef expr:
+        CA.LetIn valueDef e:
             deps
                 >> patternDeps valueDef.pattern
                 >> expressionDeps valueDef.body
-                >> expressionDeps expr
+                >> expressionDeps e
 
 
 #
@@ -584,7 +584,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
         FA.Unop pos op faOperand:
             translateExpression env faOperand >> onOk caOperand:
             CA.Call pos
-                (CA.Variable pos { ref = CA.RefRoot << CoreTypes.makeUsr op.symbol, attrPath = [] })
+                (CA.Variable pos { ref = CA.RefRoot << op.usr, attrPath = [] })
                 (CA.ArgumentExpression caOperand)
             >> Ok
 
@@ -866,7 +866,7 @@ makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: CA.Expression =
             CA.Call pos
                 (CA.Call pos
                     (CA.Variable pos {
-                        , ref = CA.RefRoot (Meta.spCoreUSR op.symbol)
+                        , ref = CA.RefRoot op.usr
                         , attrPath = []
                         }
                     )

@@ -252,9 +252,8 @@ expressionPos as Expression: Pos =
 
 
 #
-# Stuff that should live in TypeCheck but I moved here so I don't have to compile TypeCheck
+# Stuff that should live... somewhere else?
 #
-
 
 alias InstanceVariable =
     { definedAt as Pos
@@ -265,58 +264,9 @@ alias InstanceVariable =
     }
 
 
-alias InstanceVariablesByRef =
-    Dict CA.Ref InstanceVariable
-
-
-getFreeTypeVars as Dict Name Pos: Dict Name a: Type: Dict Name { nonFn as Bool } =
-    nonFreeTyvars: nonFn: ty:
-
-    posToTyvar =
-        name: pos:
-        # as Name: Pos: TypeVariable
-        { nonFn = Dict.member name nonFn }
-
-    Dict.diff (typeTyvars ty) nonFreeTyvars
-        >> Dict.map posToTyvar
-
-
-typeTyvars as Type: Dict Name Pos =
-    ty:
-    try ty as
-        CA.TypeVariable pos name:
-            # TODO is pos equivalent to definedAt?
-            Dict.singleton name pos
-
-        CA.TypeFunction _ from fromIsMutable to:
-            Dict.join (typeTyvars from) (typeTyvars to)
-
-        CA.TypeConstant pos ref args:
-            List.for args (a: Dict.join (typeTyvars a)) Dict.empty
-
-        CA.TypeAlias _ path t:
-            typeTyvars t
-
-        CA.TypeRecord pos extensible attrs:
-            init =
-                try extensible as
-                    Nothing:
-                        Dict.empty
-
-                    Just name:
-                        Dict.singleton name pos
-
-            Dict.for attrs (n: t: Dict.join (typeTyvars t)) init
-
-
-#
-# Stuff that should live in Pipeline?
-#
-
-
 alias Globals = {
     , types as CA.All CA.TypeDef
     , constructors as CA.All CA.Constructor
-    , instanceVariables as CA.InstanceVariablesByRef
+    , instanceVariables as ByUsr InstanceVariable
     }
 

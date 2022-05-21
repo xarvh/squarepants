@@ -3,6 +3,31 @@ alias Int =
     Number
 
 
+coreUsr as Text: Meta.UniqueSymbolReference =
+    Meta.USR (Meta.UMR Meta.Core "SPCore")
+
+
+listUsr as Text: Meta.UniqueSymbolReference =
+    Meta.USR (Meta.UMR Meta.Core "SPCore/List")
+
+
+textUsr as Text: Meta.UniqueSymbolReference =
+    Meta.USR (Meta.UMR Meta.Core "SPCore/Text")
+
+
+numberUsr as Text: Meta.UniqueSymbolReference =
+    Meta.USR (Meta.UMR Meta.Core "SPCore/Number")
+
+
+debugUsr as Text: Meta.UniqueSymbolReference =
+    # TODO Meta.USR (Meta.UMR Meta.Core "SPCore/Debug")
+    Meta.USR (Meta.UMR Meta.Core "SPCore")
+
+
+tupleUsr as Text: Meta.UniqueSymbolReference =
+    Meta.USR (Meta.UMR Meta.Core "SPCore/Tuple")
+
+
 #
 # Helpers
 #
@@ -42,11 +67,14 @@ typeBinopUniform as CA.Type: CA.Type =
 # Unops
 #
 unaryPlus as Op.Unop = {
+    , usr = numberUsr "unaryPlus"
     , symbol = "0 +"
     , type = typeUnopUniform CoreTypes.number
     }
 
+
 unaryMinus as Op.Unop = {
+    , usr = numberUsr "unaryMinus"
     , symbol = "0 -"
     , type = typeUnopUniform CoreTypes.number
     }
@@ -55,8 +83,7 @@ unaryMinus as Op.Unop = {
 #
 # Binops
 #
-binops as Dict Text Op.Binop =
-    [
+binops as [Op.Binop] = [
     , and_
     , or_
     , textConcat
@@ -82,15 +109,18 @@ binops as Dict Text Op.Binop =
     , sendRight
     , sendLeft
     ]
-      >> (list: List.for list (bop: Dict.insert bop.symbol bop) Dict.empty)
 
+
+binopsBySymbol as Dict Text Op.Binop =
+    Dict.empty >> List.for binops (bop: Dict.insert bop.symbol bop)
 
 
 #
 # Core types ops
 #
-and_ as Op.Binop =
-    { symbol = "and"
+and_ as Op.Binop = {
+    , usr = coreUsr "and_"
+    , symbol = "and"
     , precedence = Op.Logical
     , associativity = Op.Right
     , type = typeBinopUniform CoreTypes.bool
@@ -98,16 +128,19 @@ and_ as Op.Binop =
     }
 
 
-or_ as Op.Binop =
-    { symbol = "or"
+or_ as Op.Binop = {
+    , usr = coreUsr "or_"
+    , symbol = "or"
     , precedence = Op.Logical
     , associativity = Op.Right
     , type = typeBinopUniform CoreTypes.bool
     , nonFn = []
     }
 
-textConcat as Op.Binop =
-    { symbol = ".."
+
+textConcat as Op.Binop = {
+    , usr = textUsr "concat"
+    , symbol = ".."
     , precedence = Op.Addittive
     , associativity = Op.Right
     , type = typeBinopUniform CoreTypes.text
@@ -119,7 +152,9 @@ listCons as Op.Binop =
     item =
         tyVar "item"
 
-    { symbol = "::"
+    {
+    , usr = listUsr "stack"
+    , symbol = "::"
     , precedence = Op.Cons
     , associativity = Op.Right
     , type = typeBinop False item (CoreTypes.list item) (CoreTypes.list item)
@@ -127,8 +162,9 @@ listCons as Op.Binop =
     }
 
 
-tuple as Op.Binop =
-    { symbol = "&"
+tuple as Op.Binop = {
+    , usr = tupleUsr "pair"
+    , symbol = "&"
     , precedence = Op.Tuple
     , associativity = Op.NonAssociative
     , type =
@@ -145,8 +181,9 @@ tuple as Op.Binop =
 #
 # Arithmetic ops
 #
-add as Op.Binop =
-    { symbol = "+"
+add as Op.Binop = {
+    , usr = numberUsr "add"
+    , symbol = "+"
     , precedence = Op.Addittive
     , associativity = Op.Left
     , type = typeBinopUniform CoreTypes.number
@@ -154,8 +191,9 @@ add as Op.Binop =
     }
 
 
-subtract as Op.Binop =
-    { symbol = "-"
+subtract as Op.Binop = {
+    , usr = numberUsr "subtract"
+    , symbol = "-"
     , precedence = Op.Addittive
     , associativity = Op.Left
     , type = typeBinopUniform CoreTypes.number
@@ -163,8 +201,9 @@ subtract as Op.Binop =
     }
 
 
-multiply as Op.Binop =
-    { symbol = "*"
+multiply as Op.Binop = {
+    , usr = numberUsr "multiply"
+    , symbol = "*"
     , precedence = Op.Multiplicative
     , associativity = Op.Left
     , type = typeBinopUniform CoreTypes.number
@@ -172,8 +211,9 @@ multiply as Op.Binop =
     }
 
 
-divide as Op.Binop =
-    { symbol = "/"
+divide as Op.Binop = {
+    , usr = numberUsr "divide"
+    , symbol = "/"
     , precedence = Op.Multiplicative
     , associativity = Op.Left
     , type = typeBinopUniform CoreTypes.number
@@ -185,6 +225,7 @@ divide as Op.Binop =
 # Mut ops
 #
 mutableAssign as Op.Binop = {
+    , usr = coreUsr "mutableAssign"
     , symbol = ":="
     , precedence = Op.Mutop
     , associativity = Op.Left
@@ -194,6 +235,7 @@ mutableAssign as Op.Binop = {
 
 
 mutableAdd as Op.Binop = {
+    , usr = numberUsr "mutableAdd"
     , symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
@@ -203,6 +245,7 @@ mutableAdd as Op.Binop = {
 
 
 mutableSubtract as Op.Binop = {
+    , usr = numberUsr "mutableSubtract"
     , symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
@@ -214,8 +257,9 @@ mutableSubtract as Op.Binop = {
 #
 # Comparison
 #
-equal as Op.Binop =
-    { symbol = "=="
+equal as Op.Binop = {
+    , usr = coreUsr "equal"
+    , symbol = "=="
     , precedence = Op.Comparison
     , associativity = Op.Left
     , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
@@ -223,8 +267,9 @@ equal as Op.Binop =
     }
 
 
-notEqual as Op.Binop =
-    { symbol = "/="
+notEqual as Op.Binop = {
+    , usr = coreUsr "notEqual"
+    , symbol = "/="
     , precedence = Op.Comparison
     , associativity = Op.Left
     , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
@@ -232,8 +277,9 @@ notEqual as Op.Binop =
     }
 
 
-lesserThan as Op.Binop =
-    { symbol = "<"
+lesserThan as Op.Binop = {
+    , usr = coreUsr "lesserThan"
+    , symbol = "<"
     , precedence = Op.Comparison
     , associativity = Op.Left
     , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
@@ -241,8 +287,9 @@ lesserThan as Op.Binop =
     }
 
 
-greaterThan as Op.Binop =
-    { symbol = ">"
+greaterThan as Op.Binop = {
+    , usr = coreUsr "greaterThan"
+    , symbol = ">"
     , precedence = Op.Comparison
     , associativity = Op.Left
     , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
@@ -250,8 +297,9 @@ greaterThan as Op.Binop =
     }
 
 
-lesserOrEqualThan as Op.Binop =
-    { symbol = "<="
+lesserOrEqualThan as Op.Binop = {
+    , usr = coreUsr "lesserOrEqualThan"
+    , symbol = "<="
     , precedence = Op.Comparison
     , associativity = Op.Left
     , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
@@ -259,8 +307,9 @@ lesserOrEqualThan as Op.Binop =
     }
 
 
-greaterOrEqualThan as Op.Binop =
-    { symbol = ">="
+greaterOrEqualThan as Op.Binop = {
+    , usr = coreUsr "greaterOrEqualThan"
+    , symbol = ">="
     , precedence = Op.Comparison
     , associativity = Op.Left
     , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
@@ -273,6 +322,7 @@ greaterOrEqualThan as Op.Binop =
 # Send
 #
 sendRight as Op.Binop = {
+    , usr = coreUsr "sendRight"
     , symbol = ">>"
     , precedence = Op.Pipe
     , associativity = Op.Left
@@ -286,6 +336,7 @@ sendRight as Op.Binop = {
 
 
 sendLeft as Op.Binop = {
+    , usr = coreUsr "sendLeft"
     , symbol = "<<"
     , precedence = Op.Pipe
     , associativity = Op.Right
@@ -320,42 +371,113 @@ functions as [Function] = [
 
 
 compare as Function = {
-    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "compare"
+    , usr = coreUsr "compare"
     , type = tyFun (tyVar "a") False (tyFun (tyVar "a") False CoreTypes.number)
     , nonFn = [ "a" ]
     }
 
 
 debugTodo as Function = {
-    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "todo"
+    , usr = debugUsr "todo"
     , type = tyFun CoreTypes.text False (tyVar "a")
     , nonFn = []
     }
 
 
 debugLog as Function = {
-    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "log"
+    , usr = debugUsr "log"
     , type = tyFun CoreTypes.text False (tyFun (tyVar "a") False (tyVar "a"))
     , nonFn = []
     }
 
 
 debugToHuman as Function = {
-    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "toHuman"
+    , usr = debugUsr "toHuman"
     , type = tyFun (tyVar "a") False CoreTypes.text
     , nonFn = []
     }
 
 
 debugBenchStart as Function = {
-    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "benchStart"
+    , usr = debugUsr "benchStart"
     , type = tyFun  CoreTypes.none False CoreTypes.none
     , nonFn = []
     }
 
 
 debugBenchStop as Function = {
-    , usr = Meta.USR (Meta.UMR Meta.Core "SPCore") "benchStop"
-    , type = tyFun  CoreTypes.text False CoreTypes.none
+    , usr = debugUsr "benchStop"
+    , type = tyFun CoreTypes.text False CoreTypes.none
     , nonFn = []
     }
+
+
+#
+# Modules
+#
+
+alias ModuleByUmr =
+    Dict Meta.UniqueModuleReference CA.Module
+
+
+insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
+    usr: type: nonFn:
+
+    Meta.USR umr name =
+        usr
+
+    def as CA.ValueDef = {
+        , pattern = CA.PatternAny Pos.N (Just name) (Just type)
+        , native = True
+        , mutable = False
+        , parentDefinitions = []
+        , nonFn = Set.fromList nonFn
+        , body = CA.LiteralText Pos.N name
+        #
+        , directTypeDeps = Dict.empty
+        , directConsDeps = Dict.empty
+        , directValueDeps = Dict.empty
+        }
+
+    update as Maybe CA.Module: Maybe CA.Module =
+        maybeModule:
+        maybeModule
+        >> Maybe.withDefault {
+            , umr
+            , asText = ""
+            , aliasDefs = Dict.empty
+            , unionDefs = Dict.empty
+            , valueDefs = Dict.empty
+            }
+        >> module: { module with valueDefs = Dict.insert def.pattern def .valueDefs }
+        >> Just
+
+    Dict.update umr update
+
+
+insertUnop as Op.Unop: ModuleByUmr: ModuleByUmr =
+    unop:
+    insertInModule unop.usr unop.type []
+
+
+insertBinop as Op.Binop: ModuleByUmr: ModuleByUmr =
+    binop:
+    insertInModule binop.usr binop.type binop.nonFn
+
+
+insertFunction as Function: ModuleByUmr: ModuleByUmr =
+    function:
+    insertInModule function.usr function.type function.nonFn
+
+
+coreModulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
+    Dict.empty
+    >> insertUnop unaryPlus
+    >> insertUnop unaryMinus
+    >> List.for binops insertBinop
+    >> List.for functions insertFunction
+
+
+coreModules as [CA.Module] =
+    Dict.values coreModulesByUmr
+

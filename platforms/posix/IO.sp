@@ -6,6 +6,7 @@ alias Env = {
 
 
 alias Program =
+    # TODO should return `IO Int` instead
     Env: [Text]: IO None
 
 

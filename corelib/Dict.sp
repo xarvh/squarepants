@@ -444,6 +444,11 @@ mapRes as (k: a: Result e b): Dict k a: Result e (Dict k b) =
         Ok << RBNode_elm_builtin color key one two three
 
 
+mapKeys as (k: j): Dict k a: Dict j a =
+    func: dict:
+    for dict (k: Dict.insert (func k)) Dict.empty
+
+
 for as Dict k v: (k: v: b: b): b: b =
   dict: func: acc:
   try dict as

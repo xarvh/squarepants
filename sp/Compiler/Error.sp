@@ -295,6 +295,9 @@ posToHuman as Env: Pos: { location as Text, block as Text } =
         Pos.I n:
             noBlock << "<inferred " .. Text.fromNumber n .. ">"
 
+        Pos.G:
+            noBlock "<generated>"
+
 
 
 toText as Env: Pos: Description: [FormattedText] =

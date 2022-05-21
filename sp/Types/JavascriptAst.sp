@@ -1,3 +1,10 @@
+#
+# TODO move this is a "JS emitter" library?
+#
+# TODO rename Expr to Expression
+#
+# TODO records use Lists of tuples rather than Dicts
+#
 
 
 alias Name =

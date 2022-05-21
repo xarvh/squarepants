@@ -88,24 +88,16 @@ typeToText as Env: Type: Text =
     HCA.typeToText env.currentModule env.meta
 
 
+
 #
 # Env
 #
-
-
-alias InstanceVariable =
-    CA.InstanceVariable
-
-
-alias InstanceVariablesByRef =
-    CA.InstanceVariablesByRef
-
 
 # rename to Scope?
 alias Env = {
     , currentModule as Meta.UniqueModuleReference
     , meta as Meta
-    , instanceVariables as InstanceVariablesByRef
+    , instanceVariables as Dict CA.Ref CA.InstanceVariable
     , constructors as CA.All CA.Constructor
     , types as CA.All CA.TypeDef
     [#
@@ -258,6 +250,10 @@ m_update as (state: state): StateMonad.M state state =
 
 
 
+#
+#
+#
+
 
 
 expandAlias as Type: Type =
@@ -322,6 +318,44 @@ popClashingtypes as Monad (Dict Name TypeClash) =
             dict & { state with typeClashesByPlaceholderId = Nothing }
 
 
+getFreeTypeVars as Dict Name Pos: Dict Name a: Type: Dict Name { nonFn as Bool } =
+    nonFreeTyvars: nonFn: ty:
+
+    posToTyvar =
+        name: pos:
+        # as Name: Pos: TypeVariable
+        { nonFn = Dict.member name nonFn }
+
+    Dict.diff (typeTyvars ty) nonFreeTyvars
+        >> Dict.map posToTyvar
+
+
+typeTyvars as Type: Dict Name Pos =
+    ty:
+    try ty as
+        CA.TypeVariable pos name:
+            # TODO is pos equivalent to definedAt?
+            Dict.singleton name pos
+
+        CA.TypeFunction _ from fromIsMutable to:
+            Dict.join (typeTyvars from) (typeTyvars to)
+
+        CA.TypeConstant pos ref args:
+            List.for args (a: Dict.join (typeTyvars a)) Dict.empty
+
+        CA.TypeAlias _ path t:
+            typeTyvars t
+
+        CA.TypeRecord pos extensible attrs:
+            init =
+                try extensible as
+                    Nothing:
+                        Dict.empty
+
+                    Just name:
+                        Dict.singleton name pos
+
+            Dict.for attrs (n: t: Dict.join (typeTyvars t)) init
 
 #
 # Inference
@@ -495,11 +529,11 @@ checkFreeVariables as Env: Pos: Type: Type: Monad None =
     env: pos: patternType: blockType:
 
     annotatedFreeVars =
-        CA.typeTyvars patternType
+        typeTyvars patternType
             >> Dict.filter (name: _: isAnnotation name)
 
     actualFreeVars =
-        CA.typeTyvars blockType
+        typeTyvars blockType
 
     if Dict.size annotatedFreeVars > Dict.size actualFreeVars then
         [ "The annotation is too general"
@@ -677,7 +711,7 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
                         >> Dict.insert (CA.RefBlock name) {
                             , definedAt = pos
                             , ty = type
-                            , freeTypeVariables = CA.getFreeTypeVars env.nonFreeTyvars Dict.empty type
+                            , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars Dict.empty type
                             , isMutable = False
                             }
                 }
@@ -821,7 +855,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     return None
 
                 Just c:
-                    replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type >> andThen instantiatedType:
+                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type >> andThen instantiatedType:
                     #
                     # x as Maybe Text =
                     #     Nothing
@@ -1046,7 +1080,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         , typeToText env expectedType
                         ]
 
-        CA.LetIn valueDef expression:
+        CA.LetIn valueDef e:
             fromDefinition False valueDef env >> andThen env1:
 
             xxx =
@@ -1056,7 +1090,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     return None
 
             xxx >> andThen _:
-            checkExpression env1 expectedType expression
+            checkExpression env1 expectedType e
 
 
 
@@ -1156,7 +1190,7 @@ fromExpression as Env: CA.Expression: Monad Type =
                     errorUndefinedVariable env pos (CA.RefRoot usr)
 
                 Just c:
-                    replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type
+                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
         CA.Lambda pos param body:
             (fromParameter env param) >> andThen ( isMutable & patternOut ):
@@ -1219,9 +1253,9 @@ fromExpression as Env: CA.Expression: Monad Type =
                     (unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) >> andThen unifiedType:
                     return unifiedType
 
-        CA.LetIn valueDef expression:
+        CA.LetIn valueDef e:
             fromDefinition False valueDef env >> andThen env1:
-            fromExpression env1 expression >> andThen ty:
+            fromExpression env1 e >> andThen ty:
             if valueDef.mutable and typeContainsFunctions ty then
                 addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> andThen _:
                 return ty
@@ -1483,7 +1517,7 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                         errorUndefinedVariable env pos (CA.RefRoot usr)
 
                     Just c:
-                        replaceTypeVariablesWithNew (CA.getFreeTypeVars Dict.empty Dict.empty c.type) c.type
+                        replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
             constructorTyM >> andThen constructorTy:
 
@@ -2096,7 +2130,7 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
                     Dict.empty
 
                 else
-                    CA.getFreeTypeVars env.nonFreeTyvars Dict.empty refinedTy
+                    getFreeTypeVars env.nonFreeTyvars Dict.empty refinedTy
             }
             # TODO use shorthand
             env.instanceVariables
@@ -2115,7 +2149,7 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
                if the type of `q` remains free, then every time we use `p`, `p` will get an entirely new type.
 
             #]
-            Dict.for (CA.typeTyvars refinedTy) Dict.insert env.nonFreeTyvars
+            Dict.for (typeTyvars refinedTy) Dict.insert env.nonFreeTyvars
 
         else
             env.nonFreeTyvars
@@ -2147,7 +2181,7 @@ applySubsToNonFreeTyvars as Env: Monad Env =
                 constrainedVars
 
             Just ty:
-                Dict.for (CA.typeTyvars ty) (n: p: Dict.insert n p) constrainedVars
+                Dict.for (typeTyvars ty) (n: p: Dict.insert n p) constrainedVars
 
     return { env with nonFreeTyvars = List.for (Dict.keys env.nonFreeTyvars) meh env.nonFreeTyvars }
 
@@ -2285,8 +2319,11 @@ errorUndefinedVariable as Env: Pos: CA.Ref: Monad Type =
                 onLocal name
             else
                 Meta.UMR source path =
-                    env.currentModule
+                    umr
 
+                # Decide whether the module exists or not
+                # TODO we should not rely on errorEnv for this test, but on whatever MakeCanonical is using
+                # Better: store the original?
                 try Dict.get path errorEnv.moduleByName as
                     Just mod:
                         [ "Module `" .. path .. "` from source `" .. SPCore.toHuman source .. "` does not seem to expose a variable called `" .. name .. "`."

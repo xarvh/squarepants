@@ -19,6 +19,10 @@
 #]
 
 
+getFreeTypeVars =
+    Compiler/TypeCheck.getFreeTypeVars
+
+
 # ============================================================================
 # First Global Pass
 #   * Expand and validate types
@@ -47,7 +51,7 @@ coreConstructors as CA.All CA.Constructor =
     List.for CoreTypes.allDefs (u: insertUnionConstructors (CA.TypeDefUnion u)) Dict.empty
 
 
-expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: CA.InstanceVariablesByRef: Res CA.InstanceVariablesByRef =
+expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.InstanceVariable: Res (ByUsr CA.InstanceVariable) =
     types: module:
 
     insertName = def: name: (pos & maybeType): d:
@@ -59,19 +63,17 @@ expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: CA.InstanceVar
 
                 Compiler/ExpandTypes.expandAnnotation types rawType >> onOk type:
 
-                ref as CA.Ref =
-                    name
-                        >> Meta.USR module.umr
-                        >> CA.RefRoot
+                usr =
+                    name >> Meta.USR module.umr
 
                 iv as CA.InstanceVariable = {
                     , definedAt = pos
                     , ty = type
-                    , freeTypeVariables = CA.getFreeTypeVars Dict.empty def.nonFn type
+                    , freeTypeVariables = getFreeTypeVars Dict.empty def.nonFn type
                     , isMutable = False
                     }
 
-                Ok << Dict.insert ref iv d
+                Ok << Dict.insert usr iv d
 
 
     insertValueDef = def:
@@ -80,13 +82,13 @@ expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: CA.InstanceVar
     Dict.forRes module.valueDefs (_: insertValueDef)
 
 
-coreVariables as CA.InstanceVariablesByRef =
+coreVariables as ByUsr CA.InstanceVariable =
 
-    insertUnop as Op.Unop: CA.InstanceVariablesByRef: CA.InstanceVariablesByRef =
+    insertUnop as Op.Unop: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
         unop:
 
-        ref as CA.Ref =
-            CA.RefRoot << Meta.spCoreUSR unop.symbol
+        usr =
+            Meta.spCoreUSR unop.symbol
 
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
@@ -95,42 +97,39 @@ coreVariables as CA.InstanceVariablesByRef =
             , isMutable = False
             }
 
-        Dict.insert ref iv
+        Dict.insert usr iv
 
-    insertBinop as Text: Op.Binop: CA.InstanceVariablesByRef: CA.InstanceVariablesByRef =
+    insertBinop as Text: Op.Binop: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
         symbol: binop:
 
-        ref as CA.Ref =
-            CA.RefRoot << Meta.spCoreUSR symbol
+        usr =
+            Meta.spCoreUSR symbol
 
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
             , ty = binop.type
-            , freeTypeVariables = CA.getFreeTypeVars Dict.empty (Set.fromList binop.nonFn) binop.type
+            , freeTypeVariables = getFreeTypeVars Dict.empty (Set.fromList binop.nonFn) binop.type
             , isMutable = False
             }
 
-        Dict.insert ref iv
+        Dict.insert usr iv
 
-    insertCoreFunction as Prelude.Function: CA.InstanceVariablesByRef: CA.InstanceVariablesByRef =
+    insertCoreFunction as Prelude.Function: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
         coreFn:
-
-        ref as CA.Ref =
-            CA.RefRoot << coreFn.usr
 
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
             , ty = coreFn.type
-            , freeTypeVariables = CA.getFreeTypeVars Dict.empty (Set.fromList coreFn.nonFn) coreFn.type
+            , freeTypeVariables = getFreeTypeVars Dict.empty (Set.fromList coreFn.nonFn) coreFn.type
             , isMutable = False
             }
 
-        Dict.insert ref iv
+        Dict.insert coreFn.usr iv
 
     Dict.empty
         >> insertUnop Prelude.unaryPlus
         >> insertUnop Prelude.unaryMinus
-        >> Dict.for Prelude.binops insertBinop
+        >> Dict.for Prelude.binopsBySymbol insertBinop
         >> List.for Prelude.functions insertCoreFunction
 
 

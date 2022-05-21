@@ -28,6 +28,10 @@ sourceDir =
        importAs = HCA
 
     module =
+       path = Types/EmittableAst
+       importAs = EA
+
+    module =
        path = Types/FormattableAst
        importAs = FA
 
@@ -45,6 +49,7 @@ sourceDir =
         globalTypes =
             Meta
             Name
+            ByUsr
 
     module =
         path = Types/Op
@@ -175,3 +180,9 @@ library =
           log
           todo
 
+    module =
+       path = SPCore/Debug
+       importAs = Debug
+#       globalValues =
+#          log
+#          todo
