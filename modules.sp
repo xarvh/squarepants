@@ -79,7 +79,7 @@ sourceDir =
 
 # This will be transformed into a platform
 sourceDir =
-    path = "posix"
+    path = "platforms/posix"
 
     module =
        path = IO

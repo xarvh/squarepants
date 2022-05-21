@@ -1,37 +1,4 @@
 
-High Priority Stuff
-===================
-
-* Union types behave like aliases (ie, become tag types)
-  (So I don't have to rewrite all code)
-  ---> What about recursive definitions?
-
-* get rid of `union`
-
-* TypeOpaque
-
-* TypeGenerated vs TypeAnnotated?
-  or:
-    SpecifiedType = <TypeVariable name, ... >
-    InferredType = <Generated Int, Specified SpecifiedType>
-
-* Use `[a, ...b]` for Cons, use `::` for callbacks
-
-* Humanize must break a type into multiple lines
-
-* Caching system, because everything depends on that?
-
-* Error.Env needs only the current module
-    > Remove module name from Pos
-
-* TCO
-
-* code instrumenting, track on which variables/expession sp_clone is used?
-
-* actual parallelism with io_parallel?
-
-* Write tests and fix: `SPCore.todo "TODO needs proper type comparison without `pos`"`
-
 
 Error messages to improve
 =========================
@@ -44,8 +11,6 @@ attributeNotFoundOnRecord =
 
 
 
-
-
 Intermediate Representation
 ===========================
 * contains inferred and annotated types
@@ -54,8 +19,6 @@ Intermediate Representation
 
 * expands value def's patterns into several definitions
     (generating dummy intermediate values)
-
-
 
 
 
@@ -79,8 +42,6 @@ Maybe can be addressed by requiring lone evaluations to have a Debug or a mutabl
 
 Lexer / Parser
 ==============
-
-* Allow statements to start with a binop (see Notes/Syntax.md)
 
 * lambdas can't unpack records?
     { blah }: xxx
