@@ -248,6 +248,7 @@ expressionPos as Expression: Pos =
         Call pos _ _: pos
         If pos _: pos
         Try pos _ _: pos
+        LetIn valueDef _: patternPos valueDef.pattern
 
 
 #

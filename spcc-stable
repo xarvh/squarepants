@@ -10945,7 +10945,7 @@ const $sp$Types$CanonicalAst$typeTyvars = (($ty) => {
         const $name = ($$try1)[1];
         return (($corelib$Dict$singleton)($name))($pos);
       }
-      (sp_throw)('Missing pattern in try..as', 'sp/Types/CanonicalAst.sp 301:16', (sp_toHuman)($$try1));
+      (sp_throw)('Missing pattern in try..as', 'sp/Types/CanonicalAst.sp 302:16', (sp_toHuman)($$try1));
     }))();
     return ((($corelib$Dict$for)($attrs))((($n) => {
       return (($t) => {
@@ -10954,7 +10954,7 @@ const $sp$Types$CanonicalAst$typeTyvars = (($ty) => {
     })))($init);
     return null;
   }
-  (sp_throw)('Missing pattern in try..as', 'sp/Types/CanonicalAst.sp 285:4', (sp_toHuman)($$try0));
+  (sp_throw)('Missing pattern in try..as', 'sp/Types/CanonicalAst.sp 286:4', (sp_toHuman)($$try0));
 });
 
 const $sp$Types$CanonicalAst$getFreeTypeVars = (($nonFreeTyvars) => {
@@ -12108,6 +12108,10 @@ const $sp$Types$CanonicalAst$expressionPos = (($e) => {
   if (("$sp$Types$CanonicalAst$Try" === ($$try0)[0])) {
     const $pos = ($$try0)[1];
     return $pos;
+  }
+  if (("$sp$Types$CanonicalAst$LetIn" === ($$try0)[0])) {
+    const $valueDef = ($$try0)[1];
+    return ($sp$Types$CanonicalAst$patternPos)($valueDef.pattern);
   }
   (sp_throw)('Missing pattern in try..as', 'sp/Types/CanonicalAst.sp 241:4', (sp_toHuman)($$try0));
 });
