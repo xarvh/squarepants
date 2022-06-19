@@ -1,7 +1,7 @@
 [# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
 
 sourceDir =
-    path = "sp"
+    path = "src"
 
     module =
        path = Test
@@ -83,90 +83,22 @@ sourceDir =
 
 
 # This will be transformed into a platform
-sourceDir =
-    path = "platforms/posix"
+library =
+    source = "core:posix"
 
     module =
        path = IO
-       importAs = IO
        globalTypes = IO
 
-
-# This will be transformed into a lib
-sourceDir =
-    path = "corelib"
-
     module =
-       path = Array
-       importAs = Array
-       globalTypes =
-          Array
-
-    module =
-       path = List
-       importAs = List
-
-    module =
-       path = Maybe
-       importAs = Maybe
-       globalTypes =
-          Maybe
-       globalValues =
-          Just
-          Nothing
-
-    module =
-       path = Text
-       importAs = Text
-
-    module =
-       path = Tuple
-       importAs = Tuple
-
-    module =
-       path = Basics
-       globalTypes = Int
-       globalValues =
-            clamp
-            identity
-            not
-            modBy
-            min
-            max
-            btw
-
-    module =
-       path = Hash
-       importAs = Hash
-       globalTypes = Hash
-
-    module =
-       path = Dict
-       importAs = Dict
-       globalTypes = Dict
-
-    module =
-       path = Set
-       importAs = Set
-       globalTypes = Set
-
-    module =
-       path = Result
-       importAs = Result
-       globalTypes = Result
-       globalValues =
-          Ok
-          Err
-          onOk
+       path = Path
 
 
 library =
-    # spcore" is a special value for the core library
-    source = "spcore"
+    source = "core:prelude"
 
     module =
-       path = SPCore
-       importAs = SPCore
+       path = Core
        globalTypes =
           None
           Bool
@@ -177,12 +109,64 @@ library =
           None
           True
           False
-          log
-          todo
 
     module =
-       path = SPCore/Debug
-       importAs = Debug
-#       globalValues =
-#          log
-#          todo
+       path = Debug
+       globalValues =
+          log
+          todo
+          toHuman
+
+    module =
+       path = Array
+       globalTypes =
+          Array
+
+    module =
+       path = List
+
+    module =
+        path = Maybe
+        globalTypes =
+            Maybe
+        globalValues =
+            Just
+            Nothing
+
+    module =
+        path = Text
+
+    module =
+        path = Tuple
+
+    module =
+        path = Basics
+        globalTypes = Int
+        globalValues =
+            clamp
+            identity
+            not
+            modBy
+            min
+            max
+            btw
+
+    module =
+        path = Hash
+        globalTypes = Hash
+
+    module =
+        path = Dict
+        globalTypes = Dict
+
+    module =
+        path = Set
+        globalTypes = Set
+
+    module =
+        path = Result
+        globalTypes = Result
+        globalValues =
+          Ok
+          Err
+          onOk
