@@ -189,7 +189,7 @@ sdItemToUMR as Meta.Source: Text: Meta.UniqueModuleReference =
     >> Meta.UMR source
 
 
-updateSd as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
+updateSourceDir as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
     fileNames:
 
     insertModuleName as Text: ModulesFile.SourceDir: ModulesFile.SourceDir =
@@ -207,11 +207,18 @@ loadMeta as IO.Env: Text: Text: IO Meta =
     loadModulesFile projectRoot
     >> IO.onSuccess modulesFileRaw:
 
+    resolvedDirs =
+        modulesFileRaw.sourceDirs
+        >> List.map sd: { sd with path = Path.resolve [ projectRoot, .path ] }
+
+    allDirs =
+        if List.any (sd: sd.path == entryModuleDir) resolvedDirs then
+            resolvedDirs
+        else
+            { path = entryModuleDir, modules = [] } :: resolvedDirs
+
     modulesFile =
-        # TODO check that entryModuleDir is not already in a sourceDir
-        { modulesFileRaw with
-        , sourceDirs = { path = entryModuleDir, modules = [] } :: .sourceDirs
-        }
+        { modulesFileRaw with sourceDirs = allDirs }
 
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
     # before building Meta we need to add those that are not mentioned.
@@ -224,7 +231,7 @@ loadMeta as IO.Env: Text: Text: IO Meta =
     >> IO.onSuccess allSourceDirLists:
 
     updatedSourceDirs as [ModulesFile.SourceDir] =
-        List.map2 updateSd allSourceDirLists modulesFile.sourceDirs
+        List.map2 updateSourceDir allSourceDirLists modulesFile.sourceDirs
 
     { modulesFile with sourceDirs = updatedSourceDirs }
     >> ModulesFile.toMeta
