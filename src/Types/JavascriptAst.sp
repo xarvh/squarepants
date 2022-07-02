@@ -1,5 +1,5 @@
 #
-# TODO move this is a "JS emitter" library?
+# TODO move this in Targets/JavaScript
 #
 # TODO rename Expr to Expression
 #

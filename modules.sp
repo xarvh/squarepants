@@ -97,6 +97,16 @@ library =
 library =
     source = "core:prelude"
 
+    # unlike sourceDirs, libraries don't automatically expose all available modules
+    module =
+        path = Array_Test
+    module =
+        path = Dict_Test
+    module =
+        path = Hash_Test
+    module =
+        path = List_Test
+
     module =
        path = Core
        globalTypes =

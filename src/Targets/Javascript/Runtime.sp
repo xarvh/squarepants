@@ -1,6 +1,4 @@
 
-# TODO rename this to jsRuntime or something
-
 
 # TODO get these from CoreTypes, then translate it via MakeEmittable.whateverItsName
 # TODO add Just and Nothing

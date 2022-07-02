@@ -5,10 +5,10 @@ allTests as [ Test ] = [
     , Compiler/MakeCanonical_Test.tests
     , Compiler/TypeCheck_Test.tests
     #, Compiler/CanonicalToJs_Test.tests
-#    , Hash_Test.tests
-#    , Array_Test.tests
-#    , List_Test.tests
-#    , Dict_Test.tests
+    , Hash_Test.tests
+    , Array_Test.tests
+    , List_Test.tests
+    , Dict_Test.tests
     , RefHierarchy_Test.tests
     ]
 

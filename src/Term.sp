@@ -1,7 +1,9 @@
+
 #
 # Terminal shenanigans
 #
 
+# TODO these code are for JS only. Move them in the JS platform?
 
 color as Text: Text: Text =
     code: text:
