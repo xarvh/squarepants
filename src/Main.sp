@@ -13,6 +13,47 @@ allTests as [ Test ] = [
     ]
 
 
+
+
+
+#
+# TODO would be nice to have an args library
+#
+alias Option state = {
+  , name as Text
+  , info as Text
+  , parser as Maybe Text: state: Result Text state
+  }
+
+
+parseArguments as [Option state]: [Text]: state: Result Text ([Text] & state) =
+    options: args: initState:
+
+    optionTexts & others =
+        List.partition (Text.startsWith "--") args
+
+    findOption as Text: state: Result Text state =
+        optionText: state:
+
+        try Text.split "=" optionText as
+            []:
+                Ok state
+
+            optionName :: rest:
+                try List.find (o: o.name == optionName) options as
+                    Nothing:
+                        Err << "Unknown option " .. optionName
+
+                    Just option:
+                        value = if rest == [] then Nothing else Just (Text.join "=" rest)
+                        option.parser value state
+
+    initState
+    >> List.forRes optionTexts findOption
+    >> Result.map (Tuple.pair others)
+
+
+
 #
 # Errors
 #
@@ -68,7 +109,6 @@ selftestMain as None: IO None =
           --> compile
 
           --platform=posix
-          --out=outputFile.js
 
           --platformflags?
 
@@ -87,8 +127,62 @@ union CliOptions =
         }
 
 
+alias CliState = {
+    , platform as Types/Platform.Platform
+    }
+
+
+cliDefaults as CliState = {
+    , platform = Platforms/Posix.platform
+    }
+
+
+availablePlatforms as [Types/Platform.Platform] = [
+    , Platforms/Posix.platform
+    , Platforms/RawJavaScript.platform
+]
+
+
+
+parsePlatformName as Maybe Text: CliState: Result Text CliState =
+    maybeValue: cliState:
+
+    try maybeValue as
+        Nothing:
+            Err "Please specify a platform name, for example: `--platform=posix`"
+
+        Just value:
+            try List.find (p: p.name == value) availablePlatforms as
+                Nothing:
+                    """
+  I don't know this platform name: `""" .. value .. """`
+
+  Valid platform names are:
+
+                    """
+                    ..
+                    (List.map (p: "    " .. p.name) availablePlatforms >> Text.join "\n")
+                    >> Err
+
+                Just platform:
+                    Ok { cliState with platform }
+          
+
+
+
+cliOptions as [Option CliState] = [
+  , {
+    , name = "--platform"
+    , info = "select build platform"
+    , parser = parsePlatformName
+    }
+]
+
+
+
 parseCli as [Text]: CliOptions =
     args:
+
 
     try args as
         self :: "selftest" :: tail:
@@ -114,22 +208,36 @@ parseCli as [Text]: CliOptions =
 main as IO.Program =
     env: args:
 
-    try parseCli args as
-        Help:
-            """
+    try parseArguments cliOptions args cliDefaults as
+        Err message:
+            IO.writeStdout message
 
-            Hi! This is the Squarepants compiler!
+        Ok (args & cliState):
+            try args as
+                self :: "selftest" :: tail:
+                    selftestMain None
 
-            To compile something, write:
+                self :: head :: tail:
+                    #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
+                    mainModulePath = head
+                    maybeOutputPath = List.head tail
+                    Compile.compileMain {
+                        , env
+                        , selfPath = self
+                        , entryModulePath = mainModulePath
+                        , maybeOutputPath
+                        , platform = cliState.platform
+                        }
 
-                squarepants pathToMainModule.sp
+                _:
+                    """
 
-            """
-            >> IO.writeStdout
+                    Hi! This is the Squarepants compiler!
 
-        Selftest:
-            selftestMain None
+                    To compile something, write:
 
-        Compile { self, mainModulePath, maybeOutputPath }:
-            Compile.compileMain env self mainModulePath maybeOutputPath
+                        squarepants pathToMainModule.sp
+
+                    """
+                    >> IO.writeStdout
 

@@ -309,8 +309,8 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
               >> List.filterMap (ref: Dict.get ref allAliases)
 
         Dict.empty
-            >> List.foldlRes (expandAndInsertAlias allTypes) oa
-            >> onOk (Dict.forRes allTypes (expandAndInsertUnion allTypes))
+        >> List.forRes oa (expandAndInsertAlias allTypes)
+        >> onOk (Dict.forRes allTypes (expandAndInsertUnion allTypes))
 
 
 #

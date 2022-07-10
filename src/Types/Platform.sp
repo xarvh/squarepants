@@ -12,5 +12,6 @@ alias Platform = {
     , compile as GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefinition]: Text
     , defaultModules as Text
     , quickstart as Text
+    , defaultOutputPath as Text
     }
 

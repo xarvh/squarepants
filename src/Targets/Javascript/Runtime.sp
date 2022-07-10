@@ -12,14 +12,7 @@ listNil as Text =
 
 
 nativeDefinitions as Text =
-    # HACK the stack size is needed because we don't yet have tail-call optimization. T_T
-    """#!/usr/bin/env -S node --stack-size=65500
-
-//Error.stackTraceLimit = 100;
-
-const { performance } = require('perf_hooks');
-
-
+    """
 const sp_clone = (src) => {
  if (Array.isArray(src))
    return src.map(sp_clone);
@@ -180,7 +173,8 @@ const fmt = (n) => {
 }
 
 
-process.on('beforeExit', (code) => {
+// TODO how should benchmark work in a browser?
+typeof process !== 'undefined' && process.on('beforeExit', (code) => {
     if (debug_benchStartStack !== null)
         console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);
 

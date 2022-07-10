@@ -45,8 +45,8 @@ onResSuccess as Error.Env: (a: IO b): Res a: IO b =
 #
 # Load modules.sp
 #
-loadModulesFile as Text: IO ModulesFile.ModulesFile =
-    projectRoot:
+loadModulesFile as Types/Platform.Platform: Text: IO ModulesFile.ModulesFile =
+    platform: projectRoot:
 
     path =
         [ projectRoot, modulesFileName ]
@@ -65,7 +65,7 @@ loadModulesFile as Text: IO ModulesFile.ModulesFile =
 
             Err _:
                 log "Using default modules.sp"
-                Platforms/Posix.platform.defaultModules
+                platform.defaultModules
 
     eenv as Error.Env =
         {
@@ -201,10 +201,10 @@ updateSourceDir as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
     List.for fileNames insertModuleName
 
 
-loadMeta as IO.Env: Text: Text: IO Meta =
-    env: entryModuleDir: projectRoot:
+loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
+    env: platform: entryModuleDir: projectRoot:
 
-    loadModulesFile projectRoot
+    loadModulesFile platform projectRoot
     >> IO.onSuccess modulesFileRaw:
 
     resolvedDirs =
@@ -303,15 +303,23 @@ mergeWithCore as CA.Module: CA.Module: CA.Module =
 
 
 
+alias CompileMainPars = {
+    , env as IO.Env
+    , selfPath as Text
+    , entryModulePath as Text
+    , maybeOutputPath as Maybe Text
+    , platform as Types/Platform.Platform
+    }
 
-compileMain as IO.Env: Text: Text: Maybe Text: IO None =
-    env: selfPath: entryModulePathUnresolved: maybeOutputFile:
+
+compileMain as CompileMainPars: IO None =
+    pars:
 
     #
     # Figure out project root
     #
     entryModulePath =
-        Path.resolve [ entryModulePathUnresolved ]
+        Path.resolve [ pars.entryModulePath ]
 
     entryModuleDir =
         Path.dirname entryModulePath
@@ -326,7 +334,7 @@ compileMain as IO.Env: Text: Text: Maybe Text: IO None =
     #
     # Load meta and figure out entry point's USR
     #
-    loadMeta env entryModuleDir projectRoot
+    loadMeta pars.env pars.platform entryModuleDir projectRoot
     >> IO.onSuccess meta:
 
 
@@ -349,7 +357,7 @@ compileMain as IO.Env: Text: Text: Maybe Text: IO None =
     #
     # Figure out corelib's root
     #
-    [ selfPath ]
+    [ pars.selfPath ]
     >> Path.resolve
     >> Path.dirname
     >> searchAncestorDirectories ((isDirectory & fileName): isDirectory and fileName == libDirectoryName)
@@ -359,7 +367,7 @@ compileMain as IO.Env: Text: Text: Maybe Text: IO None =
     corePath =
         try maybeCorelibParent as
             Nothing:
-                todo << "Error: I expect to find the " .. libDirectoryName .. " directory next to the spcc executable " .. selfPath .. " but I can't find it."
+                todo << "Error: I expect to find the " .. libDirectoryName .. " directory next to the spcc executable " .. pars.selfPath .. " but I can't find it."
 
             Just p:
                 Path.resolve [ p, libDirectoryName ]
@@ -369,8 +377,7 @@ compileMain as IO.Env: Text: Text: Maybe Text: IO None =
     #
     #
     outputFile =
-        # TODO: the platform should provide the name
-        Maybe.withDefault "out.js" maybeOutputFile
+        Maybe.withDefault pars.platform.defaultOutputPath pars.maybeOutputPath
 
 
     log "Loading modules..." ""
@@ -422,7 +429,7 @@ compileMain as IO.Env: Text: Text: Maybe Text: IO None =
 
     log "= Platform specific stuff ="
     js =
-        Platforms/Posix.compile {
+        pars.platform.compile {
             , errorEnv = eenv
             , constructors = Dict.toList globals.constructors
             }
@@ -430,5 +437,7 @@ compileMain as IO.Env: Text: Text: Maybe Text: IO None =
             emittableStatements
 
     IO.writeFile outputFile js
+    >> IO.onSuccess None:
 
+    IO.writeStdout << "---> " .. outputFile .. " written. =)"
 

@@ -5,6 +5,7 @@ platform as Types/Platform.Platform = {
     , compile
     , defaultModules = DefaultModules.asText .. posixModules
     , quickstart = "TODO"
+    , defaultOutputPath = "nodeExecutable.js"
     }
 
 
@@ -47,10 +48,21 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
             >> List.map (Targets/Javascript/JsToText.emitStatement 0)
             >> Text.join "\n\n"
 
-    Targets/Javascript/Runtime.nativeDefinitions .. runtime .. statements .. callMain
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. posixRuntime .. statements .. callMain
 
 
-runtime as Text =
+header as Text =
+    # HACK the stack size is needed because we don't yet have tail-call optimization. T_T
+    """#!/usr/bin/env -S node --stack-size=65500
+
+//Error.stackTraceLimit = 100;
+
+const { performance } = require('perf_hooks');
+
+"""
+
+
+posixRuntime as Text =
     """
 
 //

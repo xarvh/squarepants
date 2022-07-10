@@ -1,0 +1,40 @@
+<html>
+
+  <head>
+    <script src="index.js"></script>
+    <script src="squarepants.js"></script>
+    <link href="index.css" rel="stylesheet">
+  </head>
+
+  <body>
+
+    <div class="page">
+      <div class="column">
+        <div class="content">
+
+<textarea id="input" oninput="update()">
+function coloraPixel(x, y) {
+
+  rosso = x;
+  verde = 0;
+  blu = 0;
+
+  return { rosso, verde, blu };
+}
+</textarea>
+
+          <canvas id="output" width="300" height="300">
+          </canvas>
+
+        </div>
+
+        <div id="error">
+        </div>
+
+
+      </div>
+    </div>
+
+  </body>
+
+</html>

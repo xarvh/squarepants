@@ -316,9 +316,12 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
             Just tr:
                 Ok << Dict.insert tr None nonFn
 
-    List.foldlRes updNonFn fa.nonFn Dict.empty >> onOk nonFn:
+    Dict.empty
+    >> List.forRes fa.nonFn updNonFn
+    >> onOk nonFn:
 
-    translateStatementBlock localEnv0 fa.body >> onOk body:
+    translateStatementBlock localEnv0 fa.body
+    >> onOk body:
 
     deps =
         if isRoot then
@@ -400,8 +403,9 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                                     >> translatePattern ann env
                                     >> Result.map (caPattern: Dict.insert name caPattern dict)
 
-                List.foldlRes fold recordArgs.attrs Dict.empty
-                    >> Result.map (x: x >> CA.PatternRecord pos)
+                Dict.empty
+                >> List.forRes recordArgs.attrs fold
+                >> Result.map (x: x >> CA.PatternRecord pos)
 
         FA.PatternListCons pos pas:
             List.mapRes (translatePattern ann env) pas >> onOk caPas:
@@ -1047,7 +1051,9 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                         >> List.map (CA.TypeVariable pos)
                         >> CA.TypeConstant pos usr
 
-                List.foldlRes (translateConstructor ro type usr) fa.constructors Dict.empty >> onOk constructors:
+                Dict.empty
+                >> List.forRes fa.constructors (translateConstructor ro type usr)
+                >> onOk constructors:
 
                 unionDef as CA.UnionDef = {
                     , usr
@@ -1069,6 +1075,7 @@ translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res CA
         CA.initModule asText umr
 
     # Add all definitions
-    List.foldlRes (insertRootStatement ro) faModule module
-        >> btw Debug.benchStop "translateModule"
+    module
+    >> List.forRes faModule (insertRootStatement ro)
+    >> btw Debug.benchStop "translateModule"
 

@@ -141,11 +141,11 @@ mapRes as (a: Result e b): [a]: Result e [b] =
 
     fun = a: acc: Result.map (b: b :: acc) (f a)
 
-    foldlRes fun list [] >> Result.map reverse
+    forRes list fun [] >> Result.map reverse
 
 
-foldlRes as (item: accum: Result error accum): [item]: accum: Result error accum =
-    f: ls: accum:
+forRes as [item]: (item: accum: Result error accum): accum: Result error accum =
+    ls: f: accum:
 
     try ls as
         []:
@@ -154,7 +154,7 @@ foldlRes as (item: accum: Result error accum): [item]: accum: Result error accum
         h :: t:
             try f h accum as
                 Err x: Err x
-                Ok newAccum: foldlRes f t newAccum
+                Ok newAccum: forRes t f newAccum
 
 
 range as Int: Int: [Int] =
@@ -199,6 +199,16 @@ concat as [[a]]: [a] =
 concatMap as (a: [b]): [a]: [b] =
     f: list:
     concat << map f list
+
+
+partition as (item: Bool): [item]: [item] & [item] =
+    f: ls:
+
+    [] & [] >> forReversed ls item: (true & false):
+        if f item then
+          (item :: true) & false
+        else
+          true & (item :: false)
 
 
 head as [a]: Maybe a =
