@@ -8,7 +8,6 @@
 .column {
     display: flex;
     flex-direction: column;
-    align-items: center;
 }
 
 
@@ -24,15 +23,21 @@
 }
 
 
-#output {
+.output-wrapper {
     border: 2px solid black;
     padding: 2px;
     border-radius: 4px;
 }
 
+#output {
+}
+
 
 #error {
     margin-top: 20px;
-    color: red;
     font-family: monospace;
 }
+
+.yellow { color: yellow; }
+.red { color: red; }
+.blue { color: blue; }

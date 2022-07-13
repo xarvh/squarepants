@@ -1,9 +1,4 @@
-#!/usr/bin/env -S node --stack-size=65500
-
-//Error.stackTraceLimit = 100;
-
-const { performance } = require('perf_hooks');
-
+squarepantsMain = (function() {
 const sp_clone = (src) => {
  if (Array.isArray(src))
    return src.map(sp_clone);
@@ -433,92 +428,7 @@ const sp_cons = (list) => (item) => {
 }
 
 const list_sortBy = (f) => (list) => array_toList(array_fromList(list).sort((a, b) => sp_compare(f(a), f(b))));
-    
-//
-// Platform: IO
-//
-const fs = require('fs');
-const path = require('path');
-
-const io_wrap = (f) => [ "IO.IO", f ];
-
-const io_parallel = (iosAsList) => io_wrap((never) => {
-    // as [IO a]: IO [a]
-
-    const ios = array_fromList(iosAsList);
-
-    // TODO actually run them in parallel!
-
-    let arr = [];
-    for (let io of ios) {
-        const r = io[1](never);
-        if (r[0] === "Ok")
-            arr.push(r[1]);
-        else
-            return $core$Result$Err(r[1]);
-    }
-
-    return $core$Result$Ok(array_toList(arr));
-});
-
-
-const io_readDir = (dirPath) => io_wrap((never) => {
-    // as Text: IO [Bool & Text]
-
-    var entries;
-    try {
-        entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-
-    return $core$Result$Ok(array_toList(entries.map((dirent) => ({
-        first: dirent.isDirectory(),
-        second: dirent.name,
-    }))));
-});
-
-
-const io_readFile = (path) => io_wrap((never) => {
-    // as Text: IO Text
-
-    var content;
-    try {
-        content = fs.readFileSync(path, 'utf8');
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-
-    return $core$Result$Ok(content);
-});
-
-
-const io_writeFile = (path) => (content) => io_wrap((never) => {
-    // as Text: Text: IO None
-
-    try {
-        fs.writeFileSync(path, content);
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-
-    return $core$Result$Ok(null);
-});
-
-
-const io_writeStdout = (content) => io_wrap((never) => {
-    // as Text: IO None
-
-    console.info(content);
-    return $core$Result$Ok(null);
-});
-
-
-const path_resolve = (p) => path.resolve(...array_fromList(p));
-
-
-const path_dirname = path.dirname;
-const $core$Array$Array__ = (($1) => ([
+    const $core$Array$Array__ = (($1) => ([
   "Array__",
   $1,
 ]));
@@ -590,12 +500,12 @@ const $core$Result$Ok = (($1) => ([
   $1,
 ]));
 
-const $posix$IO$IO = (($1) => ([
+const $$home$nw$stuff$unstable$lib$posix$IO$IO = (($1) => ([
   "IO",
   $1,
 ]));
 
-const $posix$IO$Never = (($1) => ([
+const $$home$nw$stuff$unstable$lib$posix$IO$Never = (($1) => ([
   "Never",
   $1,
 ]));
@@ -1800,6 +1710,81 @@ const $$home$nw$stuff$unstable$src$Types$Token$With = ([
   "With",
 ]);
 
+const $$home$nw$stuff$unstable$lib$posix$IO$_run = (($never) => {
+  return (($r) => {
+    const $$neverToResult = $r;
+    const $neverToResult = ($$neverToResult)[1];
+    return ($neverToResult)($never);
+  });
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$fail = (($message) => {
+  return ($$home$nw$stuff$unstable$lib$posix$IO$IO)((($never) => {
+    return ($core$Result$Err)($message);
+  }));
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$onResult = (($f) => {
+  return (($m) => {
+    return ($$home$nw$stuff$unstable$lib$posix$IO$IO)((($never) => {
+      return (($$home$nw$stuff$unstable$lib$posix$IO$_run)($never))(($f)((($$home$nw$stuff$unstable$lib$posix$IO$_run)($never))($m)));
+    }));
+  });
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$onSuccess = (($f) => {
+  return (($m) => {
+    return ($$home$nw$stuff$unstable$lib$posix$IO$IO)((($never) => {
+      const $$try1 = (($$home$nw$stuff$unstable$lib$posix$IO$_run)($never))($m);
+      return ((($$try1)[0] === "Ok")
+        ? ((() => {
+          const $a = ($$try1)[1];
+          return (($$home$nw$stuff$unstable$lib$posix$IO$_run)($never))(($f)($a));
+        }))()
+        : ((($$try1)[0] === "Err")
+          ? ((() => {
+            const $e = ($$try1)[1];
+            return ($core$Result$Err)($e);
+          }))()
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/posix/IO.sp 40:8', (sp_toHuman)($$try1))));
+    }));
+  });
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$parallel = (() => {
+  return (sp_todo)("io.parallel");
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$readDir = (() => {
+  return (sp_todo)("io.readDir");
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$readFile = (() => {
+  return (sp_todo)("io.readFile");
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$succeed = (($a) => {
+  return ($$home$nw$stuff$unstable$lib$posix$IO$IO)((($never) => {
+    return ($core$Result$Ok)($a);
+  }));
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$writeFile = (() => {
+  return (sp_todo)("io.writeFile");
+});
+
+const $$home$nw$stuff$unstable$lib$posix$IO$writeStdout = (() => {
+  return (sp_todo)("io.writeStdout");
+});
+
+const $$home$nw$stuff$unstable$lib$posix$Path$dirname = (() => {
+  return (sp_todo)("Path.dirname");
+});
+
+const $$home$nw$stuff$unstable$lib$posix$Path$resolve = (() => {
+  return (sp_todo)("Path.resolve");
+});
+
 const $core$Text$join = (($sep) => {
   return (($listOfText) => {
     return ((($listOfText)[0] === "Nil")
@@ -1968,53 +1953,20 @@ const $core$List$map = (($f) => {
   });
 });
 
-const $posix$IO$_run = (($never) => {
-  return (($r) => {
-    const $$neverToResult = $r;
-    const $neverToResult = ($$neverToResult)[1];
-    return ($neverToResult)($never);
-  });
-});
-
-const $posix$IO$onSuccess = (($f) => {
-  return (($m) => {
-    return ($posix$IO$IO)((($never) => {
-      const $$try1 = (($posix$IO$_run)($never))($m);
-      return ((($$try1)[0] === "Ok")
-        ? ((() => {
-          const $a = ($$try1)[1];
-          return (($posix$IO$_run)($never))(($f)($a));
-        }))()
-        : ((($$try1)[0] === "Err")
-          ? ((() => {
-            const $e = ($$try1)[1];
-            return ($core$Result$Err)($e);
-          }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/posix/IO.sp 40:8', (sp_toHuman)($$try1))));
-    }));
-  });
-});
-
-const $posix$IO$succeed = (($a) => {
-  return ($posix$IO$IO)((($never) => {
-    return ($core$Result$Ok)($a);
-  }));
-});
-
 const $$home$nw$stuff$unstable$src$Compile$listSourceDir = (($sourceDirRoot) => {
   return (($modulePathWithTrailingSlash) => {
     const $path = ($sourceDirRoot + ("/" + $modulePathWithTrailingSlash));
-    return (($posix$IO$onSuccess)((($dirContents) => {
+    return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($dirContents) => {
       const $directChildren = (($core$List$map)((($fileName) => {
         return ($modulePathWithTrailingSlash + $fileName);
       })))((($core$List$filterMap)($$home$nw$stuff$unstable$src$Compile$asModule))($dirContents));
-      const $getDescendants = (io_parallel)((($core$List$map)((($subDir) => {
+      const $getDescendants = ($$home$nw$stuff$unstable$lib$posix$IO$parallel)((($core$List$map)((($subDir) => {
         return (($$home$nw$stuff$unstable$src$Compile$listSourceDir)($sourceDirRoot))(($modulePathWithTrailingSlash + ($subDir + "/")));
       })))((($core$List$filterMap)($$home$nw$stuff$unstable$src$Compile$asModuleDirectory))($dirContents)));
-      return (($posix$IO$onSuccess)((($descendants) => {
-        return ($posix$IO$succeed)(($core$List$concat)((($core$Core$Cons)($directChildren))((($core$Core$Cons)(($core$List$concat)($descendants)))($core$Core$Nil))));
+      return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($descendants) => {
+        return ($$home$nw$stuff$unstable$lib$posix$IO$succeed)(($core$List$concat)((($core$Core$Cons)($directChildren))((($core$Core$Cons)(($core$List$concat)($descendants)))($core$Core$Nil))));
       })))($getDescendants);
-    })))((io_readDir)($path));
+    })))(($$home$nw$stuff$unstable$lib$posix$IO$readDir)($path));
   });
 });
 
@@ -2716,23 +2668,17 @@ const $$home$nw$stuff$unstable$src$Compiler$Error$toFormattedText = (($eenv) => 
   });
 });
 
-const $posix$IO$fail = (($message) => {
-  return ($posix$IO$IO)((($never) => {
-    return ($core$Result$Err)($message);
-  }));
-});
-
 const $$home$nw$stuff$unstable$src$Compile$resToIo = (($errorEnv) => {
   return (($res) => {
     return ((($res)[0] === "Ok")
       ? ((() => {
         const $a = ($res)[1];
-        return ($posix$IO$succeed)($a);
+        return ($$home$nw$stuff$unstable$lib$posix$IO$succeed)($a);
       }))()
       : ((($res)[0] === "Err")
         ? ((() => {
           const $e = ($res)[1];
-          return ($posix$IO$fail)((($core$Text$join)(""))((($core$List$map)($$home$nw$stuff$unstable$src$Compile$formattedToConsoleColoredText))((($$home$nw$stuff$unstable$src$Compiler$Error$toFormattedText)($errorEnv))($e))));
+          return ($$home$nw$stuff$unstable$lib$posix$IO$fail)((($core$Text$join)(""))((($core$List$map)($$home$nw$stuff$unstable$src$Compile$formattedToConsoleColoredText))((($$home$nw$stuff$unstable$src$Compiler$Error$toFormattedText)($errorEnv))($e))));
         }))()
         : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 28:4', (sp_toHuman)($res))));
   });
@@ -5657,19 +5603,11 @@ const $core$Dict$singleton = (($key) => {
   });
 });
 
-const $posix$IO$onResult = (($f) => {
-  return (($m) => {
-    return ($posix$IO$IO)((($never) => {
-      return (($posix$IO$_run)($never))(($f)((($posix$IO$_run)($never))($m)));
-    }));
-  });
-});
-
 const $$home$nw$stuff$unstable$src$Compile$loadModulesFile = (($platform) => {
   return (($projectRoot) => {
-    const $path = (path_resolve)((($core$Core$Cons)($projectRoot))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compile$modulesFileName))($core$Core$Nil)));
+    const $path = ($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($projectRoot))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compile$modulesFileName))($core$Core$Nil)));
     ((sp_log)("Metafile: "))($path);
-    return (($posix$IO$onResult)((($result) => {
+    return (($$home$nw$stuff$unstable$lib$posix$IO$onResult)((($result) => {
       const $modulesAsText = ((($result)[0] === "Ok")
         ? ((() => {
           const $f = ($result)[1];
@@ -5688,7 +5626,7 @@ const $$home$nw$stuff$unstable$src$Compile$loadModulesFile = (($platform) => {
         })),
       });
       return (($$home$nw$stuff$unstable$src$Compile$resToIo)($eenv))((($$home$nw$stuff$unstable$src$ModulesFile$textToModulesFile)($$home$nw$stuff$unstable$src$Compile$modulesFileName))($modulesAsText));
-    })))((io_readFile)($path));
+    })))(($$home$nw$stuff$unstable$lib$posix$IO$readFile)($path));
   });
 });
 
@@ -5809,10 +5747,10 @@ const $$home$nw$stuff$unstable$src$Compile$loadMeta = (($env) => {
   return (($platform) => {
     return (($entryModuleDir) => {
       return (($projectRoot) => {
-        return (($posix$IO$onSuccess)((($modulesFileRaw) => {
+        return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($modulesFileRaw) => {
           const $resolvedDirs = (($core$List$map)((($sd) => {
             return (Object.assign)({}, $sd, ({
-              path: (path_resolve)((($core$Core$Cons)($projectRoot))((($core$Core$Cons)($sd.path))($core$Core$Nil))),
+              path: ($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($projectRoot))((($core$Core$Cons)($sd.path))($core$Core$Nil))),
             }));
           })))($modulesFileRaw.sourceDirs);
           const $allDirs = ((($core$List$any)((($sd) => {
@@ -5826,12 +5764,12 @@ const $$home$nw$stuff$unstable$src$Compile$loadMeta = (($env) => {
           const $modulesFile = (Object.assign)({}, $modulesFileRaw, ({
             sourceDirs: $allDirs,
           }));
-          const $getAllSourceDirLists = (io_parallel)((($core$List$map)((($sd) => {
+          const $getAllSourceDirLists = ($$home$nw$stuff$unstable$lib$posix$IO$parallel)((($core$List$map)((($sd) => {
             return (($$home$nw$stuff$unstable$src$Compile$listSourceDir)($sd.path))("");
           })))($modulesFile.sourceDirs));
-          return (($posix$IO$onSuccess)((($allSourceDirLists) => {
+          return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($allSourceDirLists) => {
             const $updatedSourceDirs = ((($core$List$map2)($$home$nw$stuff$unstable$src$Compile$updateSourceDir))($allSourceDirLists))($modulesFile.sourceDirs);
-            return ($posix$IO$succeed)(($$home$nw$stuff$unstable$src$ModulesFile$toMeta)((Object.assign)({}, $modulesFile, ({
+            return ($$home$nw$stuff$unstable$lib$posix$IO$succeed)(($$home$nw$stuff$unstable$src$ModulesFile$toMeta)((Object.assign)({}, $modulesFile, ({
               sourceDirs: $updatedSourceDirs,
             }))));
           })))($getAllSourceDirLists);
@@ -7373,7 +7311,7 @@ const $$home$nw$stuff$unstable$src$Compile$loadModule = (($meta) => {
       const $$moduleName = $umr;
       const $moduleName = ($$moduleName)[2];
       const $source = ($$moduleName)[1];
-      return (($posix$IO$onSuccess)((($moduleAsText) => {
+      return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($moduleAsText) => {
         const $params = ({
           meta: $meta,
           name: $moduleName,
@@ -7387,7 +7325,7 @@ const $$home$nw$stuff$unstable$src$Compile$loadModule = (($meta) => {
           })),
         });
         return (($$home$nw$stuff$unstable$src$Compile$resToIo)($eenv))((($$home$nw$stuff$unstable$src$Compiler$MakeCanonical$textToCanonicalModule)($params))($moduleAsText));
-      })))((io_readFile)($fileName));
+      })))(($$home$nw$stuff$unstable$lib$posix$IO$readFile)($fileName));
     });
   });
 });
@@ -7405,30 +7343,30 @@ const $$home$nw$stuff$unstable$src$Compile$mergeWithCore = (($coreModule) => {
 const $$home$nw$stuff$unstable$src$Compile$onResSuccess = (($errorEnv) => {
   return (($f) => {
     return (($res) => {
-      return (($posix$IO$onSuccess)($f))((($$home$nw$stuff$unstable$src$Compile$resToIo)($errorEnv))($res));
+      return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)($f))((($$home$nw$stuff$unstable$src$Compile$resToIo)($errorEnv))($res));
     });
   });
 });
 
 const $$home$nw$stuff$unstable$src$Compile$searchAncestorDirectories = (($isWantedFile) => {
   return (($searchDir) => {
-    return (($posix$IO$onResult)((($result) => {
+    return (($$home$nw$stuff$unstable$lib$posix$IO$onResult)((($result) => {
       return ((($result)[0] === "Err")
-        ? ($posix$IO$succeed)($core$Maybe$Nothing)
+        ? ($$home$nw$stuff$unstable$lib$posix$IO$succeed)($core$Maybe$Nothing)
         : ((($result)[0] === "Ok")
           ? ((() => {
             const $dirContents = ($result)[1];
             return ((($core$List$any)($isWantedFile))($dirContents)
-              ? ($posix$IO$succeed)(($core$Maybe$Just)($searchDir))
+              ? ($$home$nw$stuff$unstable$lib$posix$IO$succeed)(($core$Maybe$Just)($searchDir))
               : ((() => {
-                const $parent = (path_resolve)((($core$Core$Cons)($searchDir))((($core$Core$Cons)(".."))($core$Core$Nil)));
+                const $parent = ($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($searchDir))((($core$Core$Cons)(".."))($core$Core$Nil)));
                 return (((sp_equal)($searchDir))($parent)
-                  ? ($posix$IO$succeed)($core$Maybe$Nothing)
+                  ? ($$home$nw$stuff$unstable$lib$posix$IO$succeed)($core$Maybe$Nothing)
                   : (($$home$nw$stuff$unstable$src$Compile$searchAncestorDirectories)($isWantedFile))($parent));
               }))());
           }))()
           : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 267:4', (sp_toHuman)($result))));
-    })))((io_readDir)($searchDir));
+    })))(($$home$nw$stuff$unstable$lib$posix$IO$readDir)($searchDir));
   });
 });
 
@@ -11114,12 +11052,12 @@ const $$home$nw$stuff$unstable$src$Compile$umrToFileName = (($corePath) => {
     return ((($source)[0] === "SourceDir")
       ? ((() => {
         const $d = ($source)[1];
-        return (path_resolve)((($core$Core$Cons)($d))((($core$Core$Cons)(($name + ".sp")))($core$Core$Nil)));
+        return ($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($d))((($core$Core$Cons)(($name + ".sp")))($core$Core$Nil)));
       }))()
       : ((($source)[0] === "Core")
-        ? (path_resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("core")))($corePath))
+        ? ($$home$nw$stuff$unstable$lib$posix$Path$resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("core")))($corePath))
         : ((($source)[0] === "Posix")
-          ? (path_resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("posix")))($corePath))
+          ? ($$home$nw$stuff$unstable$lib$posix$Path$resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("posix")))($corePath))
           : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 142:4', (sp_toHuman)($source)))));
   });
 });
@@ -12292,11 +12230,11 @@ const $core$Result$mapError = (($f) => {
 });
 
 const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
-  const $entryModulePath = (path_resolve)((($core$Core$Cons)($pars.entryModulePath))($core$Core$Nil));
-  const $entryModuleDir = (path_dirname)($entryModulePath);
-  return (($posix$IO$onSuccess)((($maybeProjectRoot) => {
+  const $entryModulePath = ($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($pars.entryModulePath))($core$Core$Nil));
+  const $entryModuleDir = ($$home$nw$stuff$unstable$lib$posix$Path$dirname)($entryModulePath);
+  return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($maybeProjectRoot) => {
     const $projectRoot = (($core$Maybe$withDefault)($entryModuleDir))($maybeProjectRoot);
-    return (($posix$IO$onSuccess)((($meta) => {
+    return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($meta) => {
       const $maybeEntryUmr = (($core$List$find)((($umr) => {
         return ((sp_equal)($entryModulePath))((($$home$nw$stuff$unstable$src$Compile$umrToFileName)(""))($umr));
       })))(($core$Dict$values)($meta.moduleVisibleAsToUmr));
@@ -12308,21 +12246,21 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
             return (($$home$nw$stuff$unstable$src$Types$Meta$USR)($umr))("main");
           }))()
           : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 350:8', (sp_toHuman)($maybeEntryUmr))));
-      return (($posix$IO$onSuccess)((($maybeCorelibParent) => {
+      return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($maybeCorelibParent) => {
         const $corePath = ((($maybeCorelibParent)[0] === "Nothing")
           ? (sp_todo)(("Error: I expect to find the " + ($$home$nw$stuff$unstable$src$Compile$libDirectoryName + (" directory next to the spcc executable " + ($pars.selfPath + " but I can't find it.")))))
           : ((($maybeCorelibParent)[0] === "Just")
             ? ((() => {
               const $p = ($maybeCorelibParent)[1];
-              return (path_resolve)((($core$Core$Cons)($p))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compile$libDirectoryName))($core$Core$Nil)));
+              return ($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($p))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compile$libDirectoryName))($core$Core$Nil)));
             }))()
             : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 368:8', (sp_toHuman)($maybeCorelibParent))));
         const $outputFile = (($core$Maybe$withDefault)($pars.platform.defaultOutputPath))($pars.maybeOutputPath);
         ((sp_log)("Loading modules..."))("");
-        const $loadAllModules = (io_parallel)((($core$List$map)((($umr) => {
+        const $loadAllModules = ($$home$nw$stuff$unstable$lib$posix$IO$parallel)((($core$List$map)((($umr) => {
           return ((($$home$nw$stuff$unstable$src$Compile$loadModule)($meta))($umr))((($$home$nw$stuff$unstable$src$Compile$umrToFileName)($corePath))($umr));
         })))(($core$Dict$values)($meta.moduleVisibleAsToUmr)));
-        return (($posix$IO$onSuccess)((($userModules) => {
+        return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($userModules) => {
           const $modules = ((($core$List$for)($userModules))((($module) => {
             return (($core$Dict$update)($module.umr))((($maybeCore) => {
               return ((($maybeCore)[0] === "Nothing")
@@ -12355,10 +12293,10 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
           const $x = ($$home$nw$stuff$unstable$src$Compiler$Pipeline$globalExpandedTypes)($modules);
           return ((($$home$nw$stuff$unstable$src$Compile$onResSuccess)($eenv))((($globals) => {
             ((sp_log)("Type checking..."))("");
-            const $typeCheckModules = (io_parallel)((($core$List$map)((($m) => {
+            const $typeCheckModules = ($$home$nw$stuff$unstable$lib$posix$IO$parallel)((($core$List$map)((($m) => {
               return (($$home$nw$stuff$unstable$src$Compile$resToIo)($eenv))(((($$home$nw$stuff$unstable$src$Compile$typeCheckModule)($meta))($globals))($m));
             })))(($core$Dict$values)($modules)));
-            return (($posix$IO$onSuccess)((($typeCheckEnvs) => {
+            return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((($typeCheckEnvs) => {
               ((sp_log)("Emittable AST..."))("");
               return ((($$home$nw$stuff$unstable$src$Compile$onResSuccess)($eenv))((($emittableStatements) => {
                 (sp_log)("= Platform specific stuff =");
@@ -12366,9 +12304,9 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
                   constructors: ($core$Dict$toList)($globals.constructors),
                   errorEnv: $eenv,
                 })))($entryUsr))($emittableStatements);
-                return (($posix$IO$onSuccess)((() => {
-                  return (io_writeStdout)(("---> " + ($outputFile + " written. =)")));
-                })))(((io_writeFile)($outputFile))($js));
+                return (($$home$nw$stuff$unstable$lib$posix$IO$onSuccess)((() => {
+                  return ($$home$nw$stuff$unstable$lib$posix$IO$writeStdout)(("---> " + ($outputFile + " written. =)")));
+                })))((($$home$nw$stuff$unstable$lib$posix$IO$writeFile)($outputFile))($js));
               })))((($core$Result$mapError)((($e) => {
                 return (sp_todo)("MakeEmittable.translateAll returned Err");
               })))(($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateAll)(($core$Dict$values)($modules))));
@@ -12379,7 +12317,7 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
         const $isDirectory = $$fileName.first;
         const $fileName = $$fileName.second;
         return ($isDirectory && ((sp_equal)($$home$nw$stuff$unstable$src$Compile$libDirectoryName))($fileName));
-      })))((path_dirname)((path_resolve)((($core$Core$Cons)($pars.selfPath))($core$Core$Nil)))));
+      })))(($$home$nw$stuff$unstable$lib$posix$Path$dirname)(($$home$nw$stuff$unstable$lib$posix$Path$resolve)((($core$Core$Cons)($pars.selfPath))($core$Core$Nil)))));
     })))((((($$home$nw$stuff$unstable$src$Compile$loadMeta)($pars.env))($pars.platform))($entryModuleDir))($projectRoot));
   })))((($$home$nw$stuff$unstable$src$Compile$searchAncestorDirectories)((($$fileName) => {
     const $isDirectory = $$fileName.first;
@@ -15069,7 +15007,7 @@ const $$home$nw$stuff$unstable$src$Test$flatten = (($tests) => {
 });
 
 const $$home$nw$stuff$unstable$src$Main$selftestMain = (() => {
-  return (io_writeStdout)((($core$Text$join)("\n"))((($core$List$map)((($x) => {
+  return ($$home$nw$stuff$unstable$lib$posix$IO$writeStdout)((($core$Text$join)("\n"))((($core$List$map)((($x) => {
     return ((($$home$nw$stuff$unstable$src$Main$testOutcomeToText)($x.name))($x.code))($x.outcome);
   })))(((list_sortBy)((($x) => {
     return ({
@@ -15085,7 +15023,7 @@ const $$home$nw$stuff$unstable$src$Main$main = (($env) => {
     return ((($$try1)[0] === "Err")
       ? ((() => {
         const $message = ($$try1)[1];
-        return (io_writeStdout)($message);
+        return ($$home$nw$stuff$unstable$lib$posix$IO$writeStdout)($message);
       }))()
       : ((($$try1)[0] === "Ok")
         ? ((() => {
@@ -15113,7 +15051,7 @@ const $$home$nw$stuff$unstable$src$Main$main = (($env) => {
                 }));
               }))()
               : (true
-                ? (io_writeStdout)("\nHi! This is the Squarepants compiler!\n\nTo compile something, write:\n\n    squarepants pathToMainModule.sp\n")
+                ? ($$home$nw$stuff$unstable$lib$posix$IO$writeStdout)("\nHi! This is the Squarepants compiler!\n\nTo compile something, write:\n\n    squarepants pathToMainModule.sp\n")
                 : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 216:12', (sp_toHuman)($args)))));
         }))()
         : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 211:4', (sp_toHuman)($$try1))));
@@ -15403,6 +15341,172 @@ const $$home$nw$stuff$unstable$src$Types$Pos$range = (($a) => {
   });
 });
 
+const $$home$nw$stuff$unstable$tutorial$CompileText$blue = (($t) => {
+  return ("<span class=blue>" + ($t + "</span>"));
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$red = (($t) => {
+  return ("<span class=red>" + ($t + "</span>"));
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$yellow = (($t) => {
+  return ("<span class=yellow>" + ($t + "</span>"));
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$formattedToConsoleColoredText = (($formattedText) => {
+  return ((($formattedText)[0] === "FormattedText_Default")
+    ? ((() => {
+      const $t = ($formattedText)[1];
+      return $t;
+    }))()
+    : ((($formattedText)[0] === "FormattedText_Emphasys")
+      ? ((() => {
+        const $t = ($formattedText)[1];
+        return ($$home$nw$stuff$unstable$tutorial$CompileText$yellow)($t);
+      }))()
+      : ((($formattedText)[0] === "FormattedText_Warning")
+        ? ((() => {
+          const $t = ($formattedText)[1];
+          return ($$home$nw$stuff$unstable$tutorial$CompileText$red)($t);
+        }))()
+        : ((($formattedText)[0] === "FormattedText_Decoration")
+          ? ((() => {
+            const $t = ($formattedText)[1];
+            return ($$home$nw$stuff$unstable$tutorial$CompileText$blue)($t);
+          }))()
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/tutorial/CompileText.sp 17:4', (sp_toHuman)($formattedText))))));
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$loadModule = (($meta) => {
+  return (($umr) => {
+    return (($moduleAsText) => {
+      const $$moduleName = $umr;
+      const $moduleName = ($$moduleName)[2];
+      const $source = ($$moduleName)[1];
+      const $params = ({
+        meta: $meta,
+        name: $moduleName,
+        source: $source,
+        stripLocations: false,
+      });
+      const $eenv = ({
+        moduleByName: (($core$Dict$singleton)($moduleName))(({
+          content: $moduleAsText,
+          fsPath: "<user input>",
+        })),
+      });
+      return (($$home$nw$stuff$unstable$src$Compiler$MakeCanonical$textToCanonicalModule)($params))($moduleAsText);
+    });
+  });
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$resToConsoleText = (($errorEnv) => {
+  return (($res) => {
+    return ((($res)[0] === "Ok")
+      ? ((() => {
+        const $a = ($res)[1];
+        return ($core$Result$Ok)($a);
+      }))()
+      : ((($res)[0] === "Err")
+        ? ((() => {
+          const $e = ($res)[1];
+          return ($core$Result$Err)((($core$Text$join)(""))((($core$List$map)($$home$nw$stuff$unstable$tutorial$CompileText$formattedToConsoleColoredText))((($$home$nw$stuff$unstable$src$Compiler$Error$toFormattedText)($errorEnv))($e))));
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/tutorial/CompileText.sp 26:4', (sp_toHuman)($res))));
+  });
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$onResSuccess = (($errorEnv) => {
+  return (($f) => {
+    return (($res) => {
+      return (($core$Result$onOk)($f))((($$home$nw$stuff$unstable$tutorial$CompileText$resToConsoleText)($errorEnv))($res));
+    });
+  });
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$typeCheckModule = (($meta) => {
+  return (($globals) => {
+    return (($module) => {
+      const $env = ({
+        constructors: $globals.constructors,
+        currentModule: $module.umr,
+        instanceVariables: (($core$Dict$mapKeys)($$home$nw$stuff$unstable$src$Types$CanonicalAst$RefRoot))($globals.instanceVariables),
+        meta: $meta,
+        nonAnnotatedRecursives: $core$Dict$empty,
+        nonFreeTyvars: $core$Dict$empty,
+        types: $globals.types,
+      });
+      return (($$home$nw$stuff$unstable$src$Compiler$TypeCheck$fromModule)($env))($module);
+    });
+  });
+});
+
+const $$home$nw$stuff$unstable$tutorial$CompileText$main = ((() => {
+  const $platform = $$home$nw$stuff$unstable$src$Platforms$RawJavaScript$platform;
+  const $modulesFileName = "modules.sp";
+  const $inputFileName = "user_input";
+  const $meta = ((() => {
+    const $$try2 = (($$home$nw$stuff$unstable$src$ModulesFile$textToModulesFile)($modulesFileName))($platform.defaultModules);
+    return ((($$try2)[0] === "Ok")
+      ? ((() => {
+        const $m = ($$try2)[1];
+        return ($$home$nw$stuff$unstable$src$ModulesFile$toMeta)($m);
+      }))()
+      : ((($$try2)[0] === "Err")
+        ? ((() => {
+          const $err = ($$try2)[1];
+          const $eenv = ({
+            moduleByName: (($core$Dict$singleton)($modulesFileName))(({
+              content: $platform.defaultModules,
+              fsPath: $modulesFileName,
+            })),
+          });
+          const $errAsText = (($core$Text$join)(""))((($core$List$map)($$home$nw$stuff$unstable$tutorial$CompileText$formattedToConsoleColoredText))((($$home$nw$stuff$unstable$src$Compiler$Error$toFormattedText)($eenv))($err)));
+          ((sp_log)($errAsText))("--");
+          return (sp_todo)("This is a compiler bug, not your fault.");
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/tutorial/CompileText.sp 118:6', (sp_toHuman)($$try2))));
+  }))();
+  const $umr = (($$home$nw$stuff$unstable$src$Types$Meta$UMR)(($$home$nw$stuff$unstable$src$Types$Meta$SourceDir)($inputFileName)))($inputFileName);
+  const $entryUsr = (($$home$nw$stuff$unstable$src$Types$Meta$USR)($umr))("pixelColor");
+  return (($code) => {
+    const $eenv = ({
+      moduleByName: (($core$Dict$singleton)($inputFileName))(({
+        content: $code,
+        fsPath: "",
+      })),
+    });
+    return (($core$Result$onOk)((($module) => {
+      const $modules = (($core$Dict$singleton)($umr))($module);
+      const $globals = ((() => {
+        const $$try1 = ($$home$nw$stuff$unstable$src$Compiler$Pipeline$globalExpandedTypes)($modules);
+        return ((($$try1)[0] === "Err")
+          ? ((() => {
+            const $e = ($$try1)[1];
+            return (sp_todo)((sp_toHuman)($e));
+          }))()
+          : ((($$try1)[0] === "Ok")
+            ? ((() => {
+              const $g = ($$try1)[1];
+              return $g;
+            }))()
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/tutorial/CompileText.sp 168:8', (sp_toHuman)($$try1))));
+      }))();
+      const $typeCheckModules = (($core$List$mapRes)((($m) => {
+        return ((($$home$nw$stuff$unstable$tutorial$CompileText$typeCheckModule)($meta))($globals))($m);
+      })))(($core$Dict$values)($modules));
+      return ((($$home$nw$stuff$unstable$tutorial$CompileText$onResSuccess)($eenv))((($emittableStatements) => {
+        return ($core$Result$Ok)(((($platform.compile)(({
+          constructors: ($core$Dict$toList)($globals.constructors),
+          errorEnv: $eenv,
+        })))($entryUsr))($emittableStatements));
+      })))((($core$Result$mapError)((($e) => {
+        return (sp_todo)("MakeEmittable.translateAll returned Err");
+      })))(($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateAll)(($core$Dict$values)($modules))));
+    })))((($$home$nw$stuff$unstable$tutorial$CompileText$resToConsoleText)($eenv))(((($$home$nw$stuff$unstable$tutorial$CompileText$loadModule)($meta))($umr))($code)));
+  });
+}))();
+
 const $core$Core$sendLeft = "sendLeft";
 
 const $core$Core$sendRight = "sendRight";
@@ -15576,6 +15680,5 @@ const $core$Tuple$mapFirst = (($f) => {
 });
 
 const $core$Tuple$pair_$$$$ = "pair_$$$$";
-const out = $$home$nw$stuff$unstable$src$Main$main({})(array_toList(process.argv.slice(1)))[1]('never');
-        if (out[1]) console.error(out[1]);
-        
+ return $$home$nw$stuff$unstable$tutorial$CompileText$main;
+ })();

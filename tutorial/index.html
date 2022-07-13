@@ -1,8 +1,8 @@
 <html>
 
   <head>
+    <script src="squarepants.mjs"></script>
     <script src="index.js"></script>
-    <script src="squarepants.js"></script>
     <link href="index.css" rel="stylesheet">
   </head>
 
@@ -13,23 +13,25 @@
         <div class="content">
 
 <textarea id="input" oninput="update()">
-function coloraPixel(x, y) {
+pixelColor =
+  x: y:
 
-  rosso = x;
-  verde = 0;
-  blu = 0;
-
-  return { rosso, verde, blu };
-}
+  {
+  , r = 0
+  , g = x
+  , b = 0
+  }
 </textarea>
 
-          <canvas id="output" width="300" height="300">
-          </canvas>
+          <div class="output-wrapper">
+              <canvas id="output" width="300" height="300">
+              </canvas>
+          </div>
 
         </div>
 
-        <div id="error">
-        </div>
+        <pre id="error"><code>
+        </code></pre>
 
 
       </div>
