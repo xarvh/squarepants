@@ -149,6 +149,9 @@ umrToFileName as Text: Meta.UniqueModuleReference: Text =
         Meta.Posix:
             Path.resolve (corePath :: "posix" :: (Text.split "/" << name .. ".sp"))
 
+        Meta.Browser:
+            Path.resolve (corePath :: "browser" :: (Text.split "/" << name .. ".sp"))
+
 
 loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
     meta: umr: fileName:

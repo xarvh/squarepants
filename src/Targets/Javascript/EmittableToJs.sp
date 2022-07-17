@@ -6,29 +6,22 @@
 alias Env = {
     , mutables as Set JA.Name
     , errorEnv as Error.Env
-    , tryCounter as Int
+    , overrides as Dict EA.Name Override
     }
 
 
-alias Override =
-    Env: [EA.Expression & EA.Mutability]: JA.Expr
+#alias Override =
+#    Env: [EA.Expression & EA.Mutability]: JA.Expr
+
+union Override = Override (Env: [EA.Expression & EA.Mutability]: JA.Expr)
 
 
 # Adding a None argument to prevent a spurious circular dependency error
-overrides as None: Dict EA.Name Override =
-    None:
+coreOverrides as Dict EA.Name Override =
 
     corelib as Text: Text: Meta.UniqueSymbolReference =
         m: n:
         Meta.USR (Meta.UMR Meta.Core m) n
-
-    # TODO: move IO and Path overrides to Platforms/Posix
-    # (put overrides inside Env?)
-    ioModule =
-        Meta.USR (Meta.UMR Meta.Posix "IO")
-
-    pathModule =
-        Meta.USR (Meta.UMR Meta.Posix "Path")
 
     [
     , Prelude.unaryPlus.usr & unaryPlus
@@ -56,7 +49,8 @@ overrides as None: Dict EA.Name Override =
     , Prelude.listCons.usr & function  "sp_cons"
     , Prelude.equal.usr & function  "sp_equal"
     , Prelude.notEqual.usr & function  "sp_not_equal"
-    , corelib "Basics" "modBy" & function  "basics_modBy"
+    , corelib "Basics" "modBy" & function "basics_modBy"
+    , corelib "Basics" "round" & function "Math.round"
     #
     , Prelude.debugLog.usr & function "sp_log"
     , Prelude.debugTodo.usr & function "sp_todo"
@@ -93,25 +87,13 @@ overrides as None: Dict EA.Name Override =
     , corelib "Array" "toList" & function  "array_toList"
     #
     , corelib "List" "sortBy" & function  "list_sortBy"
-    #
-    # Platform natives
-    #
-    # TODO these should be in the platform
-    #
-    , ioModule "parallel" & function "io_parallel"
-    , ioModule "readDir" & function "io_readDir"
-    , ioModule "readFile" & function "io_readFile"
-    , ioModule "writeFile" & function "io_writeFile"
-    , ioModule "writeStdout" & function "io_writeStdout"
-    , pathModule "dirname" & function "path_dirname"
-    , pathModule "resolve" & function "path_resolve"
     ]
     >> Dict.fromList
     >> Dict.mapKeys Compiler/MakeEmittable.translateUsr
 
 
 unaryPlus as Override =
-    env: arguments:
+    Override env: arguments:
 
     try arguments as
         [ arg ]:
@@ -127,7 +109,7 @@ unaryPlus as Override =
 
 
 unaryMinus as Override =
-    env: arguments:
+    Override env: arguments:
 
     try arguments as
         [ arg ]:
@@ -145,7 +127,7 @@ unaryMinus as Override =
 binop as Text: Override =
     jsOp:
 
-    env: arguments:
+    Override env: arguments:
 
     try arguments as
         [ right, left ]:
@@ -169,7 +151,7 @@ binop as Text: Override =
 constructor as Text: Override =
     jsValue:
 
-    env: arguments:
+    Override env: arguments:
 
     JA.Var jsValue
 
@@ -177,7 +159,7 @@ constructor as Text: Override =
 function as Text: Override =
     jaName:
 
-    env: arguments:
+    Override env: arguments:
 
     JA.Var jaName
     >> wrapCalls env arguments
@@ -187,8 +169,8 @@ translateVariable as Env: Name: [Name]: [EA.Expression & EA.Mutability]: JA.Expr
     env: valueName: attrPath: eaArgs:
 
 
-    try Dict.get valueName (overrides None) as
-        Just override:
+    try Dict.get valueName env.overrides as
+        Just (Override override):
             override env eaArgs
             >> accessAttrs attrPath
 
@@ -662,7 +644,7 @@ translateConstructor as Meta.UniqueSymbolReference & CA.Constructor: JA.Statemen
 translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
     env: def:
 
-    try Dict.get def.name (overrides None) as
+    try Dict.get def.name env.overrides as
         Just _:
             Nothing
 
@@ -671,8 +653,18 @@ translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
             >> Just
 
 
-translateAll as Error.Env: [Meta.UniqueSymbolReference & CA.Constructor]: [EA.GlobalDefinition]: [JA.Statement] =
-    errorEnv: caConstructors: eaDefs:
+alias TranslateAllPars = {
+    , errorEnv as Error.Env
+    , caConstructors as [Meta.UniqueSymbolReference & CA.Constructor]
+    , eaDefs as [EA.GlobalDefinition]
+    , platformOverrides as [Meta.UniqueSymbolReference & Text]
+    }
+
+translateAll as TranslateAllPars : [JA.Statement] =
+    pars:
+
+    { errorEnv, caConstructors, eaDefs, platformOverrides } =
+        pars
 
     jaConstructors as [JA.Statement]=
         List.map translateConstructor caConstructors
@@ -680,7 +672,8 @@ translateAll as Error.Env: [Meta.UniqueSymbolReference & CA.Constructor]: [EA.Gl
     env as Env = {
       , mutables = Set.empty
       , errorEnv
-      , tryCounter = 0
+      , overrides = coreOverrides >> List.for platformOverrides (usr & runtimeName):
+          Dict.insert (Compiler/MakeEmittable.translateUsr usr) (function runtimeName)
       }
 
     jaStatements as [JA.Statement] =

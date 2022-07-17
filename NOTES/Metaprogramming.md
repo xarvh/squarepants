@@ -1,27 +1,33 @@
-What should it be?
+
+TypeOf
+======
+
+Special type: `TypeOf type`: the type of the internal representation of `type`.
+
+Operator: `typeof type`: the instance of the internal representation of `type`.
+
+    #
+    # Generate decoders
+    #
+    SPON.decoderFor as TypeOf a: SPON.Decoder a with a WithoutFunctions
+    SPON.encoderFor as TypeOf a: a: SPON with a WithoutFunctions
+
+    # example:
+    decodeEvent as Decoder Event
+        decoderFor (typeof Event)
+
+    #
+    # Dynamically compile and load code
+    #
+    compile as TypeOf a: CompileParams: Result Error a
+
+    # usage:
+    compile (typeof Shader) (typeof Params) params
+
+
+
+Macros? Templates?
 ==================
-
-Macros? Templates? Something else?
-
-
-
-Use cases
-=========
-
-* Automatically generate the `order : t -> Order` function for a given type
-
-  This is necessary for immutable Dict and Set
-
-  > However this could just be hardcoded
-
-
-* Automatically generate encoders and decoders (text/binary)
-
-  The user will probably want some control on how a specific type is serialized.
-  What about combining automatically generated and manually written enc/decs?
-
-
-* Generate GLSL?
 
 
 * Automatically generate annotations for big records

@@ -18,6 +18,7 @@ alias Name =
 union Source =
     , Core
     , Posix # This one is a HACK, until we have proper platform management
+    , Browser # This one is a HACK, until we have proper platform management
     , SourceDir Text
 
 

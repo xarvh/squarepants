@@ -32,7 +32,12 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll eenv constructors emittableStatements
+        Targets/Javascript/EmittableToJs.translateAll {
+            , errorEnv = eenv
+            , caConstructors = constructors
+            , eaDefs = emittableStatements
+            , platformOverrides = overrides
+            }
 
     log "Emitting JS..." ""
 
@@ -60,6 +65,26 @@ header as Text =
 const { performance } = require('perf_hooks');
 
 """
+
+
+
+overrides as [Meta.UniqueSymbolReference & Text] =
+
+    ioModule =
+        Meta.USR (Meta.UMR Meta.Posix "IO")
+
+    pathModule =
+        Meta.USR (Meta.UMR Meta.Posix "Path")
+
+    [
+    , ioModule "parallel" & "io_parallel"
+    , ioModule "readDir" & "io_readDir"
+    , ioModule "readFile" & "io_readFile"
+    , ioModule "writeFile" & "io_writeFile"
+    , ioModule "writeStdout" & "io_writeStdout"
+    , pathModule "dirname" & "path_dirname"
+    , pathModule "resolve" & "path_resolve"
+    ]
 
 
 posixRuntime as Text =

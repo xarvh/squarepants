@@ -16,6 +16,20 @@ sourceDir =
     module =
        path = Path
 
+
+library =
+    source = "core:browser"
+
+    module =
+        path = Html
+        globalTypes = Html
+        globalValues =
+            div
+
+    module =
+        path = VirtualDom
+
+
 sourceDir =
     path = "../src"
 
@@ -161,6 +175,7 @@ library =
             identity
             not
             modBy
+            round
             min
             max
             btw
