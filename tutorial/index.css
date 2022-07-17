@@ -16,7 +16,7 @@
 }
 
 
-#input {
+.input {
     width: 500px;
 
     margin-right: 10px;
@@ -29,11 +29,8 @@
     border-radius: 4px;
 }
 
-#output {
-}
 
-
-#error {
+.error {
     margin-top: 20px;
     font-family: monospace;
 }

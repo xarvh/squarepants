@@ -52,6 +52,7 @@ insertLibrary as Library: Meta: Meta =
     umr =
         try lib.source as
             "core:prelude": Meta.Core
+            "core:browser": Meta.Browser
             "core:posix": Meta.Posix
             _: todo << "Library source `" .. lib.source .. "` is not supported."
 

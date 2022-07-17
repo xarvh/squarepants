@@ -17,7 +17,12 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll eenv constructors emittableStatements
+        Targets/Javascript/EmittableToJs.translateAll {
+            , errorEnv = eenv
+            , caConstructors = constructors
+            , eaDefs = emittableStatements
+            , platformOverrides = []
+            }
 
     log "Emitting JS..." ""
 
@@ -30,5 +35,5 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
         Compiler/MakeEmittable.translateUsr targetUsr
 
     # TODO don't want to use a server, so `export default` will have to wait
-    "squarepantsMain = (function() {\n" .. Targets/Javascript/Runtime.nativeDefinitions .. statements .. "\n return " .. main .. ";\n })();"
+    "(function() {\n" .. Targets/Javascript/Runtime.nativeDefinitions .. statements .. "\n return " .. main .. ";\n })();"
 

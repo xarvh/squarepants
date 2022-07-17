@@ -140,6 +140,7 @@ cliDefaults as CliState = {
 availablePlatforms as [Types/Platform.Platform] = [
     , Platforms/Posix.platform
     , Platforms/RawJavaScript.platform
+    , Platforms/Browser.platform
 ]
 
 

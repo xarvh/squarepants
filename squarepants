@@ -900,6 +900,11 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Inline = (($
   $1,
 ]));
 
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Override = (($1) => ([
+  "Override",
+  $1,
+]));
+
 const $$home$nw$stuff$unstable$src$Test$CodeExpectation = (($1) => ([
   "CodeExpectation",
   $1,
@@ -1527,6 +1532,10 @@ const $$home$nw$stuff$unstable$src$Types$JavascriptAst$Var = (($1) => ([
   "Var",
   $1,
 ]));
+
+const $$home$nw$stuff$unstable$src$Types$Meta$Browser = ([
+  "Browser",
+]);
 
 const $$home$nw$stuff$unstable$src$Types$Meta$Core = ([
   "Core",
@@ -5642,7 +5651,7 @@ const $$home$nw$stuff$unstable$src$ModulesFile$textToModulesFile = (($sponName) 
                 sourceDirs: ((sp_cons)($mf.sourceDirs))($dir),
               }));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/ModulesFile.sp 153:8', (sp_toHuman)($rootEntry))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/ModulesFile.sp 154:8', (sp_toHuman)($rootEntry))));
       });
     });
     return (($core$Result$map)((($rootEntries) => {
@@ -5725,7 +5734,7 @@ const $$home$nw$stuff$unstable$src$Compile$updateSourceDir = (($fileNames) => {
               visibleAs: $name,
             })),
           }))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 197:8', (sp_toHuman)($$try1))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 200:8', (sp_toHuman)($$try1))));
     });
   });
   return (($core$List$for)($fileNames))($insertModuleName);
@@ -5755,11 +5764,13 @@ const $$home$nw$stuff$unstable$src$ModulesFile$insertLibrary = (($lib) => {
       const $$try1 = $lib.source;
       return (("core:prelude" === $$try1)
         ? $$home$nw$stuff$unstable$src$Types$Meta$Core
-        : (("core:posix" === $$try1)
-          ? $$home$nw$stuff$unstable$src$Types$Meta$Posix
-          : (true
-            ? (sp_todo)(("Library source `" + ($lib.source + "` is not supported.")))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/ModulesFile.sp 53:8', (sp_toHuman)($$try1)))));
+        : (("core:browser" === $$try1)
+          ? $$home$nw$stuff$unstable$src$Types$Meta$Browser
+          : (("core:posix" === $$try1)
+            ? $$home$nw$stuff$unstable$src$Types$Meta$Posix
+            : (true
+              ? (sp_todo)(("Library source `" + ($lib.source + "` is not supported.")))
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/ModulesFile.sp 53:8', (sp_toHuman)($$try1))))));
     }))();
     return ((($core$List$for)($lib.modules))(($$home$nw$stuff$unstable$src$ModulesFile$insertModule)($umr)))($meta);
   });
@@ -7427,7 +7438,7 @@ const $$home$nw$stuff$unstable$src$Compile$searchAncestorDirectories = (($isWant
                   : (($$home$nw$stuff$unstable$src$Compile$searchAncestorDirectories)($isWantedFile))($parent));
               }))());
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 267:4', (sp_toHuman)($result))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 270:4', (sp_toHuman)($result))));
     })))((io_readDir)($searchDir));
   });
 });
@@ -11120,7 +11131,9 @@ const $$home$nw$stuff$unstable$src$Compile$umrToFileName = (($corePath) => {
         ? (path_resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("core")))($corePath))
         : ((($source)[0] === "Posix")
           ? (path_resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("posix")))($corePath))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 142:4', (sp_toHuman)($source)))));
+          : ((($source)[0] === "Browser")
+            ? (path_resolve)(((sp_cons)(((sp_cons)(((text_split)("/"))(($name + ".sp"))))("browser")))($corePath))
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 142:4', (sp_toHuman)($source))))));
   });
 });
 
@@ -11138,9 +11151,9 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$circularIsError = (($g
               ? false
               : (true
                 ? true
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 391:14', (sp_toHuman)($$try2))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 394:14', (sp_toHuman)($$try2))));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 385:6', (sp_toHuman)($$try1))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 388:6', (sp_toHuman)($$try1))));
     })))($names);
   });
 });
@@ -11150,14 +11163,16 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateSource = (($s
     ? "core"
     : ((($src)[0] === "Posix")
       ? "posix"
-      : ((($src)[0] === "SourceDir")
-        ? ((() => {
-          const $path = ($src)[1];
-          return (((sp_equal)(""))(((text_startsWithRegex)("[a-zA-Z0-9_./]*$"))($path))
-            ? (sp_todo)(("Invalid chars in source dir name: " + $path))
-            : ((($core$Text$replace)("/"))("$"))(((($core$Text$replace)("."))("_"))($path)));
-        }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 45:4', (sp_toHuman)($src)))));
+      : ((($src)[0] === "Browser")
+        ? "browser"
+        : ((($src)[0] === "SourceDir")
+          ? ((() => {
+            const $path = ($src)[1];
+            return (((sp_equal)(""))(((text_startsWithRegex)("[a-zA-Z0-9_./]*$"))($path))
+              ? (sp_todo)(("Invalid chars in source dir name: " + $path))
+              : ((($core$Text$replace)("/"))("$"))(((($core$Text$replace)("."))("_"))($path)));
+          }))()
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 45:4', (sp_toHuman)($src))))));
 });
 
 const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$makeTextUsr = (($umr) => {
@@ -11195,9 +11210,9 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$pickMainName = (($patt
           }))()
           : ((($$try1)[0] === "Nil")
             ? $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$NoNamedVariables
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 94:12', (sp_toHuman)($$try1))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 97:12', (sp_toHuman)($$try1))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 89:4', (sp_toHuman)($pattern))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 92:4', (sp_toHuman)($pattern))));
 });
 
 const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$generateTryName = (($counter) => {
@@ -11260,7 +11275,7 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$testPattern = (($patte
                     });
                   })))($accum);
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 156:4', (sp_toHuman)($pattern)))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 159:4', (sp_toHuman)($pattern)))))));
     });
   });
 });
@@ -11301,7 +11316,7 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translatePatternRec = 
                       });
                     })))($accum);
                   }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 114:4', (sp_toHuman)($pattern))))))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 117:4', (sp_toHuman)($pattern))))))));
     });
   });
 });
@@ -11334,7 +11349,7 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateVariableArgs 
         const $usr = ($ref)[1];
         return ($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($usr);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 140:8', (sp_toHuman)($ref))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 143:8', (sp_toHuman)($ref))));
   return (($$home$nw$stuff$unstable$src$Types$EmittableAst$Variable)($variableName))($attrPath);
 });
 
@@ -11421,7 +11436,7 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateExpression = 
                             second: $$home$nw$stuff$unstable$src$Types$EmittableAst$Immutable,
                           })))(((($core$List$for)($namesAndExpressions))($wrapWithArgumentLetIn))((($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateExpression)($counter))($body)));
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 197:12', (sp_toHuman)($$try2)))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 200:12', (sp_toHuman)($$try2)))));
                 }))()
                 : ((($expression)[0] === "Record")
                   ? ((() => {
@@ -11485,7 +11500,7 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateExpression = 
                                     second: $wrap,
                                   });
                                 }))()
-                                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 245:16', (sp_toHuman)($value))));
+                                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 248:16', (sp_toHuman)($value))));
                             const $wrapWithLetIn = $$valueExpression.second;
                             const $valueExpression = $$valueExpression.first;
                             const $addTryPatternAndBlock = (($$block) => {
@@ -11562,9 +11577,9 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateExpression = 
                                       });
                                       return ($wrapWithActualLetIn)(((($core$List$forReversed)($namesAndExpressions))($wrapWithUnpackedPatternVar))((($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateExpression)($counter))($e)));
                                     }))()
-                                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 292:12', (sp_toHuman)($$try1)))));
+                                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 295:12', (sp_toHuman)($$try1)))));
                             }))()
-                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 179:4', (sp_toHuman)($expression))))))))))))));
+                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 182:4', (sp_toHuman)($expression))))))))))))));
   });
 });
 
@@ -11625,7 +11640,7 @@ const $$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateRootValueDef 
                 }));
               })))(((($core$Dict$insert)($mainUsrAsText))($mainDef))($accum));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 344:4', (sp_toHuman)($$try1)))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 347:4', (sp_toHuman)($$try1)))));
     });
   });
 });
@@ -12307,7 +12322,7 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
             const $umr = ($maybeEntryUmr)[1];
             return (($$home$nw$stuff$unstable$src$Types$Meta$USR)($umr))("main");
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 350:8', (sp_toHuman)($maybeEntryUmr))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 353:8', (sp_toHuman)($maybeEntryUmr))));
       return (($posix$IO$onSuccess)((($maybeCorelibParent) => {
         const $corePath = ((($maybeCorelibParent)[0] === "Nothing")
           ? (sp_todo)(("Error: I expect to find the " + ($$home$nw$stuff$unstable$src$Compile$libDirectoryName + (" directory next to the spcc executable " + ($pars.selfPath + " but I can't find it.")))))
@@ -12316,7 +12331,7 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
               const $p = ($maybeCorelibParent)[1];
               return (path_resolve)((($core$Core$Cons)($p))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compile$libDirectoryName))($core$Core$Nil)));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 368:8', (sp_toHuman)($maybeCorelibParent))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 371:8', (sp_toHuman)($maybeCorelibParent))));
         const $outputFile = (($core$Maybe$withDefault)($pars.platform.defaultOutputPath))($pars.maybeOutputPath);
         ((sp_log)("Loading modules..."))("");
         const $loadAllModules = (io_parallel)((($core$List$map)((($umr) => {
@@ -12332,7 +12347,7 @@ const $$home$nw$stuff$unstable$src$Compile$compileMain = (($pars) => {
                     const $core = ($maybeCore)[1];
                     return ($core$Maybe$Just)((($$home$nw$stuff$unstable$src$Compile$mergeWithCore)($core))($module));
                   }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 395:16', (sp_toHuman)($maybeCore))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 398:16', (sp_toHuman)($maybeCore))));
             }));
           })))($$home$nw$stuff$unstable$src$Prelude$coreModulesByUmr);
           const $eenv = ((() => {
@@ -13489,7 +13504,7 @@ const $$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$higherOrderTypes = ((
   freeTypeVariables: ($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$ftv)("1"),
   isMutable: false,
   ty: ((($$home$nw$stuff$unstable$src$Types$CanonicalAst$TypeConstant)($$home$nw$stuff$unstable$src$Types$Pos$T))(($$home$nw$stuff$unstable$src$Compiler$TestHelpers$localType)("X")))((($core$Core$Cons)((($$home$nw$stuff$unstable$src$Types$CanonicalAst$TypeVariable)(($$home$nw$stuff$unstable$src$Types$Pos$I)(11)))("a")))($core$Core$Nil)),
-})))))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("SKIP [reg] type check mistakes a union type with free tyvars for a free tyvar?"))("union O r e o = O r e o\n\nrun as (r: O r e o): r: O r e o = rToOreo: r:\n    rToOreo r"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("run")))($$home$nw$stuff$unstable$src$Test$isOk)))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("[reg] Wrong should be Text"))("union O o = O Text o\n\nfun as Number: Text: O wrong = _: a:\n    O a a"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("fun")))(($$home$nw$stuff$unstable$src$Test$errorContains)((($core$Core$Cons)("wrong"))($core$Core$Nil)))))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("SKIP [reg] Should complain about undefined type argument"))("union O a = O Text output\nx = 1"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("x")))(($$home$nw$stuff$unstable$src$Test$errorContains)((($core$Core$Cons)("undefined"))($core$Core$Nil)))))($core$Core$Nil))))));
+})))))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("SKIP [reg] type check mistakes a union type with free tyvars for a free tyvar?"))("union O r e o = O r e o\n\nrun as (r: O r e o): r: O r e o = rToOreo: r:\n    rToOreo r"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("run")))($$home$nw$stuff$unstable$src$Test$isOk)))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("[reg] Wrong should be Text"))("union O o = O Text o\n\nfun as Number: Text: O wrong = _: a:\n    O a a"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("fun")))(($$home$nw$stuff$unstable$src$Test$errorContains)((($core$Core$Cons)("wrong"))($core$Core$Nil)))))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("SKIP [reg] Should complain about undefined type argument"))("union O a = O Text output\nx = 1"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("x")))(($$home$nw$stuff$unstable$src$Test$errorContains)((($core$Core$Cons)("undefined"))($core$Core$Nil)))))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("[reg] Named vars can't be refined?"))("union Wrap a = W a\n\nf as a: Wrap a =\n    a: a"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("f")))(($$home$nw$stuff$unstable$src$Test$errorContains)((($core$Core$Cons)("Wrap"))($core$Core$Nil)))))($core$Core$Nil)))))));
 
 const $$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$if_else = (($$home$nw$stuff$unstable$src$Test$Group)("if..else"))((($core$Core$Cons)((((($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$codeTest)("basic functionality"))("x = q:\n  if q then 1\n  else 2"))(($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$infer)("x")))(($$home$nw$stuff$unstable$src$Test$isOkAndEqualTo)(({
   freeTypeVariables: $core$Dict$empty,
@@ -13941,40 +13956,58 @@ const $core$List_Test$tests = (($$home$nw$stuff$unstable$src$Test$Group)("List")
 
 const $$home$nw$stuff$unstable$src$Main$allTests = (($core$Core$Cons)($$home$nw$stuff$unstable$src$Compiler$Lexer_Test$tests))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compiler$Parser_Test$tests))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compiler$MakeCanonical_Test$tests))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Compiler$TypeCheck_Test$tests))((($core$Core$Cons)($core$Hash_Test$tests))((($core$Core$Cons)($core$Array_Test$tests))((($core$Core$Cons)($core$List_Test$tests))((($core$Core$Cons)($core$Dict_Test$tests))((($core$Core$Cons)($$home$nw$stuff$unstable$src$RefHierarchy_Test$tests))($core$Core$Nil)))))))));
 
-const $$home$nw$stuff$unstable$src$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+const $$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule = ($$home$nw$stuff$unstable$src$Types$Meta$USR)((($$home$nw$stuff$unstable$src$Types$Meta$UMR)($$home$nw$stuff$unstable$src$Types$Meta$Browser))("VirtualDom"));
 
-const $$home$nw$stuff$unstable$src$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = array_fromList(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(array_toList(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(array_toList(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path) => (content) => io_wrap((never) => {\n    // as Text: Text: IO None\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(null);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO None\n\n    console.info(content);\n    return $core$Result$Ok(null);\n});\n\n\nconst path_resolve = (p) => path.resolve(...array_fromList(p));\n\n\nconst path_dirname = path.dirname;\n";
-
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$constructorArgumentName = (($i) => {
-  return ("$" + (text_fromNumber)($i));
+const $$home$nw$stuff$unstable$src$Platforms$Browser$footer = (($targetUsr) => {
+  const $main = ($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($targetUsr);
+  const $updateDomNode = ($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)(($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("updateDomNode"));
+  return ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model = " + ($main + (".update(msg)(model);\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom = " + ($main + (".view(model);\n\n        " + ($updateDomNode + ("(newVirtualDom)(oldVirtualDom)(e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model = " + ($main + ".init(null);\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n    "))))))));
 });
 
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString = (($str) => {
-  const $escaped = ((($core$Text$replace)("\""))("\\\""))(((($core$Text$replace)("\n"))("\\n"))($str));
-  return ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)(("\"" + ($escaped + "\"")));
-});
+const $$home$nw$stuff$unstable$src$Platforms$Browser$header = "(function (win) {\n";
 
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateConstructor = (($$caCons) => {
-  const $usr = $$caCons.first;
-  const $caCons = $$caCons.second;
-  const $$slug = $usr;
-  const $slug = ($$slug)[2];
-  const $umr = ($$slug)[1];
-  const $usrAsText = ($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($usr);
-  const $argNames = (($core$List$indexedMap)((($index) => {
-    return (($name) => {
-      return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$constructorArgumentName)(($index + 1));
-    });
-  })))($caCons.args);
-  const $arrayHead = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString)($slug);
-  const $arrayTail = (($core$List$map)($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var))($argNames);
-  const $array = ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Array)(((sp_cons)($arrayTail))($arrayHead));
-  return (($$home$nw$stuff$unstable$src$Types$JavascriptAst$Define)($usrAsText))(((($core$List$forReversed)($argNames))((($argName) => {
-    return (($expr) => {
-      return (($$home$nw$stuff$unstable$src$Types$JavascriptAst$SimpleLambda)((($core$Core$Cons)($argName))($core$Core$Nil)))($expr);
-    });
-  })))($array));
-});
+const $$home$nw$stuff$unstable$src$Platforms$Browser$overrides = (($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsCreateTextNode"),
+  second: "virtualDom_jsCreateTextNode",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsCreateElement"),
+  second: "virtualDom_jsCreateElement",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsReplaceWith"),
+  second: "virtualDom_jsReplaceWith",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsAppendChild"),
+  second: "virtualDom_jsAppendChild",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsSetAttribute"),
+  second: "virtualDom_jsSetAttribute",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsRemoveAttribute"),
+  second: "virtualDom_jsRemoveAttribute",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsAddEventListener"),
+  second: "virtualDom_jsAddEventListener",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("jsRemoveEventListener"),
+  second: "virtualDom_jsRemoveEventListener",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("eventToText"),
+  second: "virtualDom_eventToText",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("eventToFloat"),
+  second: "virtualDom_eventToFloat",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("setChild"),
+  second: "virtualDom_setChild",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("removeAllChildrenStartingFromIndex"),
+  second: "virtualDom_removeAllChildrenStartingFromIndex",
+})))((($core$Core$Cons)(({
+  first: ($$home$nw$stuff$unstable$src$Platforms$Browser$virtualDomModule)("unsafeExecuteJavaScript"),
+  second: "virtualDom_unsafeExecuteJavaScript",
+})))($core$Core$Nil)))))))))))));
+
+const $$home$nw$stuff$unstable$src$Platforms$Browser$runtime = "const crawlObject = (path, type, object) => {\n\n    while(path[0] === 'Cons') {\n\n        const head = path[1];\n        const tail = path[2];\n\n        const o = object[head];\n\n        if (o === undefined) {\n            return [ 'Err', 'no field named: ' + head ];\n        }\n\n        object = o;\n        path = path[2];\n    }\n\n    return typeof object === type\n        ? [ 'Ok', object ]\n        : [ 'Err', 'wrong type: ' + typeof object ]\n        ;\n}\n\n\nconst virtualDom_eventToText = (path) => (event) => crawlObject(path, 'string', event);\nconst virtualDom_eventToFloat = (path) => (event) => crawlObject(path, 'number', event);\n\n// TODO ensure that those who must return None actually return None (ie, null)\nconst virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);\nconst virtualDom_jsCreateElement = (tag) => document.createElement(tag);\nconst virtualDom_jsReplaceWith = (new_) => (old) => { old.replaceWith(new_); return new_; }\nconst virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);\nconst virtualDom_jsSetAttribute = (name) => (value) => (node) => node.setAttribute(name, value);\nconst virtualDom_jsRemoveAttribute = (name) => (node) => node.removeAttribute(name);\n\n\nconst virtualDom_setChild = (upd) => (index) => (parentNode) => {\n    const child = parentNode.childNodes[index];\n    child && upd(child);\n};\n\n\nconst virtualDom_removeAllChildrenStartingFromIndex = (index) => (parentNode) => {\n    while(parentNode.childNodes[index]) {\n      parentNode.removeChild(parentNode.childNodes[index]);\n    }\n}\n\n\n// an EventHandler is a function that takes an Event and produces a msg\nconst virtualDom_jsAddEventListener = (eventName) => (handler) => (node) => {\n\n    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};\n\n    if (node.squarepantsEventHandlers[eventName]) {\n      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    }\n\n    const onEvent = (event) => dispatch(handler(event));\n    node.squarepantsEventHandlers[eventName] = onEvent;\n    node.addEventListener(eventName, onEvent);\n};\n\nconst virtualDom_jsRemoveEventListener = (eventName) => (handler) => (node) => {\n    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    node.squarepantsEventHandlers[eventName] = undefined;\n}\n\nconst virtualDom_unsafeExecuteJavaScript = (functionName) => (argument) => {\n    let error = null;\n\n    try {\n        const fn = functionName.split('.').reduce((obj, name) => obj[name], window);\n        fn(argument);\n    } catch (e) {\n      error = e;\n    }\n\n    return error\n        ? [ 'Err', error.message ]\n        : [ 'Ok', null ]\n}\n";
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessAttrs = (($attrPath) => {
   return (($e) => {
@@ -14003,6 +14036,11 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessAttrsB
   });
 });
 
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString = (($str) => {
+  const $escaped = ((($core$Text$replace)("\""))("\\\""))(((($core$Text$replace)("\n"))("\\n"))($str));
+  return ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)(("\"" + ($escaped + "\"")));
+});
+
 const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessArrayIndex = (($index) => {
   return ($$home$nw$stuff$unstable$src$Types$JavascriptAst$AccessWithBrackets)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)((text_fromNumber)($index)));
 });
@@ -14017,7 +14055,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$maybeCloneMu
       ? $expr
       : ((($mutability)[0] === "Mutable")
         ? ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$clone)($expr)
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 339:4', (sp_toHuman)($mutability))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 321:4', (sp_toHuman)($mutability))));
   });
 });
 
@@ -14043,17 +14081,17 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateVar
   return (($valueName) => {
     return (($attrPath) => {
       return (($eaArgs) => {
-        const $$try1 = (($core$Dict$get)($valueName))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$overrides)(null));
-        return ((($$try1)[0] === "Just")
+        const $$try1 = (($core$Dict$get)($valueName))($env.overrides);
+        return (((($$try1)[0] === "Just") && ((($$try1)[1])[0] === "Override"))
           ? ((() => {
-            const $override = ($$try1)[1];
+            const $override = (($$try1)[1])[1];
             return (($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath))((($override)($env))($eaArgs));
           }))()
           : ((($$try1)[0] === "Nothing")
             ? ((($core$Set$member)($valueName))($env.mutables)
               ? ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$clone)((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unwrapMutable)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)($valueName))))
               : ((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$wrapCalls)($env))($eaArgs))((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)($valueName))))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 190:4', (sp_toHuman)($$try1))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 172:4', (sp_toHuman)($$try1))));
       });
     });
   });
@@ -14065,7 +14103,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$wrapMutable 
       ? ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Record)(((($core$Dict$insert)("obj"))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Record)((($core$Dict$singleton)("$"))($expr))))(((($core$Dict$insert)("attr"))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString)("$")))($core$Dict$empty)))
       : ((($mutability)[0] === "Immutable")
         ? $expr
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 325:4', (sp_toHuman)($mutability))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 307:4', (sp_toHuman)($mutability))));
   });
 });
 
@@ -14120,7 +14158,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                     }))()
                     : (true
                       ? $env
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 468:16', (sp_toHuman)($$try6))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 450:16', (sp_toHuman)($$try6))));
                 }))();
                 const $inStatements = ((() => {
                   const $$try5 = (($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExpression)($localEnv))($inExpression);
@@ -14134,7 +14172,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                         const $jaExpression = ($$try5)[1];
                         return (($core$Core$Cons)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Return)($jaExpression)))($core$Core$Nil);
                       }))()
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 475:16', (sp_toHuman)($$try5))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 457:16', (sp_toHuman)($$try5))));
                 }))();
                 return ((($maybeName)[0] === "Nothing")
                   ? ((() => {
@@ -14149,7 +14187,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                           const $stats = ($$try4)[1];
                           return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Block)(($core$List$concat)((($core$Core$Cons)($stats))((($core$Core$Cons)($inStatements))($core$Core$Nil))));
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 481:20', (sp_toHuman)($$try4))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 463:20', (sp_toHuman)($$try4))));
                   }))()
                   : ((($maybeName)[0] === "Just")
                     ? ((() => {
@@ -14157,7 +14195,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                       const $letStatement = (($$home$nw$stuff$unstable$src$Types$JavascriptAst$Define)($name))((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$wrapMutable)($mutability))((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$maybeCloneMutable)($mutability))((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env))($letExpression))));
                       return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Block)(((sp_cons)($inStatements))($letStatement));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 479:12', (sp_toHuman)($maybeName))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 461:12', (sp_toHuman)($maybeName))));
               }))()
               : ((($eaExpression)[0] === "Lambda")
                 ? ((() => {
@@ -14171,7 +14209,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                     }))()
                     : ((($maybeName)[0] === "Nothing")
                       ? $core$Core$Nil
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 502:16', (sp_toHuman)($maybeName))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 484:16', (sp_toHuman)($maybeName))));
                   const $localEnv = ((() => {
                     const $$try3 = ({
                       first: $maybeName,
@@ -14186,7 +14224,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                       }))()
                       : (true
                         ? $env
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 508:16', (sp_toHuman)($$try3))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 490:16', (sp_toHuman)($$try3))));
                   }))();
                   const $statements = ((() => {
                     const $$try2 = (($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExpression)($localEnv))($body);
@@ -14200,7 +14238,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                           const $block = ($$try2)[1];
                           return $block;
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 515:16', (sp_toHuman)($$try2))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 497:16', (sp_toHuman)($$try2))));
                   }))();
                   return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Inline)((($$home$nw$stuff$unstable$src$Types$JavascriptAst$BlockLambda)($args))($statements));
                 }))()
@@ -14238,7 +14276,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                                   });
                                 })))($head));
                               }))()
-                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 542:12', (sp_toHuman)($$try1))));
+                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 524:12', (sp_toHuman)($$try1))));
                         }))()
                         : ((($eaExpression)[0] === "ShallowEqual")
                           ? ((() => {
@@ -14279,7 +14317,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                                           ? (($$home$nw$stuff$unstable$src$Types$JavascriptAst$Unop)("!"))($jaValue)
                                           : (true
                                             ? ((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Binop)("==="))((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessArrayIndex)(0))($jaValue)))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString)($name))
-                                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 584:16', (sp_toHuman)($name)))));
+                                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 566:16', (sp_toHuman)($name)))));
                                       return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Inline)($jaExpr);
                                     }))()
                                     : ((($eaExpression)[0] === "LiteralRecord")
@@ -14298,7 +14336,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                                               const $extend = ($maybeExtend)[1];
                                               return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Inline)((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Call)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)("Object.assign")))((($core$Core$Cons)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Record)($core$Dict$empty)))((($core$Core$Cons)((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env))($extend)))((($core$Core$Cons)($obj))($core$Core$Nil)))));
                                             }))()
-                                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 604:12', (sp_toHuman)($maybeExtend))));
+                                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 586:12', (sp_toHuman)($maybeExtend))));
                                       }))()
                                       : ((($eaExpression)[0] === "RecordAccess")
                                         ? ((() => {
@@ -14313,7 +14351,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
                                             const $human = (($$home$nw$stuff$unstable$src$Compiler$Error$posToHuman)($env.errorEnv))($pos);
                                             return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Inline)((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Call)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)("sp_throw")))((($core$Core$Cons)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)("'Missing pattern in try..as'")))((($core$Core$Cons)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)(("'" + ($human.location + "'")))))((($core$Core$Cons)((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Call)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Literal)("sp_toHuman")))((($core$Core$Cons)((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env))($value)))($core$Core$Nil))))($core$Core$Nil)))));
                                           }))()
-                                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 447:4', (sp_toHuman)($eaExpression)))))))))))))))))))));
+                                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 429:4', (sp_toHuman)($eaExpression)))))))))))))))))))));
   });
 });
 
@@ -14330,7 +14368,7 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExp
           const $block = ($$try1)[1];
           return (($$home$nw$stuff$unstable$src$Types$JavascriptAst$Call)((($$home$nw$stuff$unstable$src$Types$JavascriptAst$BlockLambda)($core$Core$Nil))($block)))($core$Core$Nil);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 436:4', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 418:4', (sp_toHuman)($$try1))));
   });
 });
 
@@ -14360,18 +14398,18 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateArg
                         return ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Record)(((($core$Dict$insert)("attr"))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString)($lastAttrName)))(((($core$Dict$insert)("obj"))($wrappedExpr))($core$Dict$empty)));
                       }))(((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$accessAttrsButTheLast)($head))($tail))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unwrapMutable)(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)($name))));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 255:24', (sp_toHuman)($attrPath)))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 237:24', (sp_toHuman)($attrPath)))));
             }))()
             : (true
               ? (sp_todo)("translateArg: this should not happen!")
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 245:12', (sp_toHuman)($eaExpression))))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 240:4', (sp_toHuman)($mutability))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 227:12', (sp_toHuman)($eaExpression))))
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 222:4', (sp_toHuman)($mutability))));
     });
   });
 });
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
-  return (($env) => {
+  return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Override)((($env) => {
     return (($arguments) => {
       return (((($arguments)[0] === "Cons") && (((($arguments)[2])[0] === "Cons") && (((($arguments)[2])[2])[0] === "Nil")))
         ? ((() => {
@@ -14394,28 +14432,28 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$binop = (($j
             ? (($$home$nw$stuff$unstable$src$Types$JavascriptAst$SimpleLambda)((($core$Core$Cons)("b"))($core$Core$Nil)))((($$home$nw$stuff$unstable$src$Types$JavascriptAst$SimpleLambda)((($core$Core$Cons)("a"))($core$Core$Nil)))(((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Binop)($jsOp))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)("a")))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)("b"))))
             : (true
               ? (sp_todo)("compiler bug: wrong number of arguments for binop")
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 150:4', (sp_toHuman)($arguments))))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 132:4', (sp_toHuman)($arguments))))));
     });
-  });
+  }));
 });
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$constructor = (($jsValue) => {
-  return (($env) => {
+  return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Override)((($env) => {
     return (($arguments) => {
       return ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)($jsValue);
     });
-  });
+  }));
 });
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function = (($jaName) => {
-  return (($env) => {
+  return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Override)((($env) => {
     return (($arguments) => {
       return ((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$wrapCalls)($env))($arguments))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)($jaName));
     });
-  });
+  }));
 });
 
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryMinus = (($env) => {
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryMinus = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Override)((($env) => {
   return (($arguments) => {
     return (((($arguments)[0] === "Cons") && ((($arguments)[2])[0] === "Nil"))
       ? ((() => {
@@ -14428,11 +14466,11 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryMinus =
         ? (($$home$nw$stuff$unstable$src$Types$JavascriptAst$SimpleLambda)((($core$Core$Cons)("v"))($core$Core$Nil)))((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Unop)("-"))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)("v")))
         : (true
           ? (sp_todo)("compiler bug: wrong number of arguments for binop")
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 132:4', (sp_toHuman)($arguments)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 114:4', (sp_toHuman)($arguments)))));
   });
-});
+}));
 
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryPlus = (($env) => {
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryPlus = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$Override)((($env) => {
   return (($arguments) => {
     return (((($arguments)[0] === "Cons") && ((($arguments)[2])[0] === "Nil"))
       ? ((() => {
@@ -14445,18 +14483,16 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryPlus = 
         ? (($$home$nw$stuff$unstable$src$Types$JavascriptAst$SimpleLambda)((($core$Core$Cons)("a"))($core$Core$Nil)))(($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var)("a"))
         : (true
           ? (sp_todo)("compiler bug: wrong number of arguments for binop")
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 116:4', (sp_toHuman)($arguments)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 98:4', (sp_toHuman)($arguments)))));
   });
-});
+}));
 
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$overrides = (() => {
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$coreOverrides = ((() => {
   const $corelib = (($m) => {
     return (($n) => {
       return (($$home$nw$stuff$unstable$src$Types$Meta$USR)((($$home$nw$stuff$unstable$src$Types$Meta$UMR)($$home$nw$stuff$unstable$src$Types$Meta$Core))($m)))($n);
     });
   });
-  const $ioModule = ($$home$nw$stuff$unstable$src$Types$Meta$USR)((($$home$nw$stuff$unstable$src$Types$Meta$UMR)($$home$nw$stuff$unstable$src$Types$Meta$Posix))("IO"));
-  const $pathModule = ($$home$nw$stuff$unstable$src$Types$Meta$USR)((($$home$nw$stuff$unstable$src$Types$Meta$UMR)($$home$nw$stuff$unstable$src$Types$Meta$Posix))("Path"));
   return (($core$Dict$mapKeys)($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr))(($core$Dict$fromList)((($core$Core$Cons)(({
     first: $$home$nw$stuff$unstable$src$Prelude$unaryPlus.usr,
     second: $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$unaryPlus,
@@ -14526,6 +14562,9 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$overrides = 
   })))((($core$Core$Cons)(({
     first: (($corelib)("Basics"))("modBy"),
     second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("basics_modBy"),
+  })))((($core$Core$Cons)(({
+    first: (($corelib)("Basics"))("round"),
+    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("Math.round"),
   })))((($core$Core$Cons)(({
     first: $$home$nw$stuff$unstable$src$Prelude$debugLog.usr,
     second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("sp_log"),
@@ -14619,54 +14658,64 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$overrides = 
   })))((($core$Core$Cons)(({
     first: (($corelib)("List"))("sortBy"),
     second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("list_sortBy"),
-  })))((($core$Core$Cons)(({
-    first: ($ioModule)("parallel"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("io_parallel"),
-  })))((($core$Core$Cons)(({
-    first: ($ioModule)("readDir"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("io_readDir"),
-  })))((($core$Core$Cons)(({
-    first: ($ioModule)("readFile"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("io_readFile"),
-  })))((($core$Core$Cons)(({
-    first: ($ioModule)("writeFile"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("io_writeFile"),
-  })))((($core$Core$Cons)(({
-    first: ($ioModule)("writeStdout"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("io_writeStdout"),
-  })))((($core$Core$Cons)(({
-    first: ($pathModule)("dirname"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("path_dirname"),
-  })))((($core$Core$Cons)(({
-    first: ($pathModule)("resolve"),
-    second: ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)("path_resolve"),
-  })))($core$Core$Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+  })))($core$Core$Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+}))();
+
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$constructorArgumentName = (($i) => {
+  return ("$" + (text_fromNumber)($i));
+});
+
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateConstructor = (($$caCons) => {
+  const $usr = $$caCons.first;
+  const $caCons = $$caCons.second;
+  const $$slug = $usr;
+  const $slug = ($$slug)[2];
+  const $umr = ($$slug)[1];
+  const $usrAsText = ($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($usr);
+  const $argNames = (($core$List$indexedMap)((($index) => {
+    return (($name) => {
+      return ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$constructorArgumentName)(($index + 1));
+    });
+  })))($caCons.args);
+  const $arrayHead = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$literalString)($slug);
+  const $arrayTail = (($core$List$map)($$home$nw$stuff$unstable$src$Types$JavascriptAst$Var))($argNames);
+  const $array = ($$home$nw$stuff$unstable$src$Types$JavascriptAst$Array)(((sp_cons)($arrayTail))($arrayHead));
+  return (($$home$nw$stuff$unstable$src$Types$JavascriptAst$Define)($usrAsText))(((($core$List$forReversed)($argNames))((($argName) => {
+    return (($expr) => {
+      return (($$home$nw$stuff$unstable$src$Types$JavascriptAst$SimpleLambda)((($core$Core$Cons)($argName))($core$Core$Nil)))($expr);
+    });
+  })))($array));
 });
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateDef = (($env) => {
   return (($def) => {
-    const $$try1 = (($core$Dict$get)($def.name))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$overrides)(null));
+    const $$try1 = (($core$Dict$get)($def.name))($env.overrides);
     return ((($$try1)[0] === "Just")
       ? $core$Maybe$Nothing
       : ((($$try1)[0] === "Nothing")
         ? ($core$Maybe$Just)((($$home$nw$stuff$unstable$src$Types$JavascriptAst$Define)($def.name))((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env))($def.expr)))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 665:4', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 647:4', (sp_toHuman)($$try1))));
   });
 });
 
-const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll = (($errorEnv) => {
-  return (($caConstructors) => {
-    return (($eaDefs) => {
-      const $jaConstructors = (($core$List$map)($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateConstructor))($caConstructors);
-      const $env = ({
-        errorEnv: $errorEnv,
-        mutables: $core$Set$empty,
-        tryCounter: 0,
-      });
-      const $jaStatements = (($core$List$filterMap)(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateDef)($env)))($eaDefs);
-      return ($core$List$concat)((($core$Core$Cons)($jaConstructors))((($core$Core$Cons)($jaStatements))($core$Core$Nil)));
-    });
+const $$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll = (($pars) => {
+  const $$caConstructors = $pars;
+  const $platformOverrides = $$caConstructors.platformOverrides;
+  const $errorEnv = $$caConstructors.errorEnv;
+  const $eaDefs = $$caConstructors.eaDefs;
+  const $caConstructors = $$caConstructors.caConstructors;
+  const $jaConstructors = (($core$List$map)($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateConstructor))($caConstructors);
+  const $env = ({
+    errorEnv: $errorEnv,
+    mutables: $core$Set$empty,
+    overrides: ((($core$List$for)($platformOverrides))((($$runtimeName) => {
+      const $usr = $$runtimeName.first;
+      const $runtimeName = $$runtimeName.second;
+      return (($core$Dict$insert)(($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($usr)))(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$function)($runtimeName));
+    })))($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$coreOverrides),
   });
+  const $jaStatements = (($core$List$filterMap)(($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateDef)($env)))($eaDefs);
+  return ($core$List$concat)((($core$Core$Cons)($jaConstructors))((($core$Core$Cons)($jaStatements))($core$Core$Nil)));
 });
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$JsToText$id = (($level) => {
@@ -14817,6 +14866,65 @@ const $$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listNil = "Nil";
 
 const $$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$nativeDefinitions = ("const sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a) => (b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i])(b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k])(b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a) => (b) => {\n  return !sp_equal(a)(b);\n}\n\n\nconst sp_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = sp_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = sp_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (right) => (left) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\nconst basics_modBy = (a) => (b) => b % a;\n\nconst basics_compare = (a) => (b) => sp_compare(a, b);\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message) => (thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst sp_toHuman = (a) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a) || sp_toHumanAsUnion(a);\n\n  if (typeof a === 'function') {\n    return '<function>';\n  }\n\n  if (typeof a === 'object') {\n    let x = [];\n    for (let i in a) x.push(i + ' = ' + sp_toHuman(a[i]));\n    return '{' + x.join(', ') + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a) => {\n  return a[0] + ' ' + a.slice(1).map(arg => '(' + sp_toHuman(arg) + ')').join(' ');\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list) => {\n  if (list[0] === '" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listCons + ("') {\n    arrayAccum.push(sp_toHuman(list[1]));\n    return sp_toHumanAsList(arrayAccum, list[2]);\n  }\n\n  if (list[0] === '" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator) => (target) => array_toList(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start) => (end) => (s) => s.slice(start, end);\n\nconst text_startsWith = (sub) => (s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => () => \"\"\n  }\n\n  return (replacer) => (s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => {\n  return s.trimLeft();\n}\n\nconst text_dropLeft = (n) => (s) => {\n  return s.slice(n);\n}\n\nconst text_forEach = (s) => (f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_empty = {};\n\n\nconst hash_insert = (hash) => (key) => (value) => {\n    const h = hash.obj[hash.attr];\n    h[JSON.stringify(key)] = [key, value];\n    return null;\n}\n\n\nconst hash_remove = (hash) => (key) => {\n    const h = hash.obj[hash.attr];\n    delete h[JSON.stringify(key)];\n    return null;\n}\n\n\nconst hash_get = (hash) => (key) => {\n    const r = hash[JSON.stringify(key)];\n    return r === undefined ? maybe_nothing : maybe_just(r[1]);\n}\n\n\nconst hash_for = (hash) => (f) => (acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0])(kv[1])(acc);\n    }\n    return acc;\n}\n\n\nconst hash_each = (hash) => (f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0])(kv[1]);\n    }\n    return null;\n}\n\n\n//\n// Arrays\n//\n\nconst array_push = (array) => (item) => {\n    array.obj[array.attr].push(item);\n    return null;\n}\n\nconst array_pop = (array) => {\n    const a = array.obj[array.attr];\n    return a.length ? maybe_just(a.pop()) : maybe_nothing;\n}\n\nconst array_get = (array) => (index) => {\n    const r = array[index];\n    return r === undefined ? maybe_nothing : maybe_just(r);\n}\n\nconst array_set = (array) => (index) => (item) => {\n    if (index < 0) return false;\n    const a = array.obj[array.attr];\n    if (index >= a.length) return false;\n    a[index] = item;\n    return true;\n}\n\nconst array_sortBy = (array) => (f) => {\n    const arr = array.obj[array.attr];\n    arr.sort((a, b) => sp_compare(f(a), f(b)));\n    return null;\n}\n\nconst array_toList = (array) => {\n  let length = array.length;\n  let list = [ '" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listCons + ("', array[i], list ];\n  }\n  return list;\n}\n\nconst array_fromList = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (list) => (item) => {\n  return [ '" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f) => (list) => array_toList(array_fromList(list).sort((a, b) => sp_compare(f(a), f(b))));\n    "))))))))))));
 
+const $$home$nw$stuff$unstable$src$Platforms$Browser$compile = (($getRidOfMe) => {
+  return (($targetUsr) => {
+    return (($emittableStatements) => {
+      const $$constructors = $getRidOfMe;
+      const $eenv = $$constructors.errorEnv;
+      const $constructors = $$constructors.constructors;
+      const $jaStatements = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll)(({
+        caConstructors: $constructors,
+        eaDefs: $emittableStatements,
+        errorEnv: $eenv,
+        platformOverrides: $$home$nw$stuff$unstable$src$Platforms$Browser$overrides,
+      }));
+      const $statements = (($core$Text$join)("\n\n"))((($core$List$map)(($$home$nw$stuff$unstable$src$Targets$Javascript$JsToText$emitStatement)(0)))($jaStatements));
+      return ($$home$nw$stuff$unstable$src$Platforms$Browser$header + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$nativeDefinitions + ($$home$nw$stuff$unstable$src$Platforms$Browser$runtime + ($statements + ($$home$nw$stuff$unstable$src$Platforms$Browser$footer)($targetUsr)))));
+    });
+  });
+});
+
+const $$home$nw$stuff$unstable$src$Platforms$Browser$modules = "\nlibrary =\n    source = \"core:browser\"\n\n    module =\n        path = Browser";
+
+const $$home$nw$stuff$unstable$src$Platforms$Browser$platform = ({
+  compile: $$home$nw$stuff$unstable$src$Platforms$Browser$compile,
+  defaultModules: ($$home$nw$stuff$unstable$src$DefaultModules$asText + $$home$nw$stuff$unstable$src$Platforms$Browser$modules),
+  defaultOutputPath: "index.js",
+  name: "browser",
+  quickstart: "TODO",
+});
+
+const $$home$nw$stuff$unstable$src$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+
+const $$home$nw$stuff$unstable$src$Platforms$Posix$overrides = ((() => {
+  const $ioModule = ($$home$nw$stuff$unstable$src$Types$Meta$USR)((($$home$nw$stuff$unstable$src$Types$Meta$UMR)($$home$nw$stuff$unstable$src$Types$Meta$Posix))("IO"));
+  const $pathModule = ($$home$nw$stuff$unstable$src$Types$Meta$USR)((($$home$nw$stuff$unstable$src$Types$Meta$UMR)($$home$nw$stuff$unstable$src$Types$Meta$Posix))("Path"));
+  return (($core$Core$Cons)(({
+    first: ($ioModule)("parallel"),
+    second: "io_parallel",
+  })))((($core$Core$Cons)(({
+    first: ($ioModule)("readDir"),
+    second: "io_readDir",
+  })))((($core$Core$Cons)(({
+    first: ($ioModule)("readFile"),
+    second: "io_readFile",
+  })))((($core$Core$Cons)(({
+    first: ($ioModule)("writeFile"),
+    second: "io_writeFile",
+  })))((($core$Core$Cons)(({
+    first: ($ioModule)("writeStdout"),
+    second: "io_writeStdout",
+  })))((($core$Core$Cons)(({
+    first: ($pathModule)("dirname"),
+    second: "path_dirname",
+  })))((($core$Core$Cons)(({
+    first: ($pathModule)("resolve"),
+    second: "path_resolve",
+  })))($core$Core$Nil)))))));
+}))();
+
+const $$home$nw$stuff$unstable$src$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = array_fromList(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(array_toList(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(array_toList(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path) => (content) => io_wrap((never) => {\n    // as Text: Text: IO None\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(null);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO None\n\n    console.info(content);\n    return $core$Result$Ok(null);\n});\n\n\nconst path_resolve = (p) => path.resolve(...array_fromList(p));\n\n\nconst path_dirname = path.dirname;\n";
+
 const $$home$nw$stuff$unstable$src$Platforms$Posix$compile = (($getRidOfMe) => {
   return (($targetUsr) => {
     return (($emittableStatements) => {
@@ -14824,7 +14932,12 @@ const $$home$nw$stuff$unstable$src$Platforms$Posix$compile = (($getRidOfMe) => {
       const $eenv = $$constructors.errorEnv;
       const $constructors = $$constructors.constructors;
       ((sp_log)("Creating JS AST..."))("");
-      const $jaStatements = ((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll)($eenv))($constructors))($emittableStatements);
+      const $jaStatements = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll)(({
+        caConstructors: $constructors,
+        eaDefs: $emittableStatements,
+        errorEnv: $eenv,
+        platformOverrides: $$home$nw$stuff$unstable$src$Platforms$Posix$overrides,
+      }));
       ((sp_log)("Emitting JS..."))("");
       const $callMain = ("\nconst out = " + (($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($targetUsr) + "({})(array_toList(process.argv.slice(1)))[1]('never');\n        if (out[1]) console.error(out[1]);\n        "));
       const $statements = (($core$Text$join)("\n\n"))((($core$List$map)(($$home$nw$stuff$unstable$src$Targets$Javascript$JsToText$emitStatement)(0)))($jaStatements));
@@ -14850,11 +14963,16 @@ const $$home$nw$stuff$unstable$src$Platforms$RawJavaScript$compile = (($getRidOf
       const $eenv = $$constructors.errorEnv;
       const $constructors = $$constructors.constructors;
       ((sp_log)("Creating JS AST..."))("");
-      const $jaStatements = ((($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll)($eenv))($constructors))($emittableStatements);
+      const $jaStatements = ($$home$nw$stuff$unstable$src$Targets$Javascript$EmittableToJs$translateAll)(({
+        caConstructors: $constructors,
+        eaDefs: $emittableStatements,
+        errorEnv: $eenv,
+        platformOverrides: $core$Core$Nil,
+      }));
       ((sp_log)("Emitting JS..."))("");
       const $statements = (($core$Text$join)("\n\n"))((($core$List$map)(($$home$nw$stuff$unstable$src$Targets$Javascript$JsToText$emitStatement)(0)))($jaStatements));
       const $main = ($$home$nw$stuff$unstable$src$Compiler$MakeEmittable$translateUsr)($targetUsr);
-      return ("squarepantsMain = (function() {\n" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$nativeDefinitions + ($statements + ("\n return " + ($main + ";\n })();")))));
+      return ("(function() {\n" + ($$home$nw$stuff$unstable$src$Targets$Javascript$Runtime$nativeDefinitions + ($statements + ("\n return " + ($main + ";\n })();")))));
     });
   });
 });
@@ -14867,7 +14985,7 @@ const $$home$nw$stuff$unstable$src$Platforms$RawJavaScript$platform = ({
   quickstart: "TODO",
 });
 
-const $$home$nw$stuff$unstable$src$Main$availablePlatforms = (($core$Core$Cons)($$home$nw$stuff$unstable$src$Platforms$Posix$platform))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Platforms$RawJavaScript$platform))($core$Core$Nil));
+const $$home$nw$stuff$unstable$src$Main$availablePlatforms = (($core$Core$Cons)($$home$nw$stuff$unstable$src$Platforms$Posix$platform))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Platforms$RawJavaScript$platform))((($core$Core$Cons)($$home$nw$stuff$unstable$src$Platforms$Browser$platform))($core$Core$Nil)));
 
 const $$home$nw$stuff$unstable$src$Main$cliDefaults = ({
   platform: $$home$nw$stuff$unstable$src$Platforms$Posix$platform,
@@ -14894,9 +15012,9 @@ const $$home$nw$stuff$unstable$src$Main$parsePlatformName = (($maybeValue) => {
                   platform: $platform,
                 })));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 155:12', (sp_toHuman)($$try1))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 156:12', (sp_toHuman)($$try1))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 150:4', (sp_toHuman)($maybeValue))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 151:4', (sp_toHuman)($maybeValue))));
   });
 });
 
@@ -15114,9 +15232,9 @@ const $$home$nw$stuff$unstable$src$Main$main = (($env) => {
               }))()
               : (true
                 ? (io_writeStdout)("\nHi! This is the Squarepants compiler!\n\nTo compile something, write:\n\n    squarepants pathToMainModule.sp\n")
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 216:12', (sp_toHuman)($args)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 217:12', (sp_toHuman)($args)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 211:4', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 212:4', (sp_toHuman)($$try1))));
   });
 });
 
@@ -15140,7 +15258,7 @@ const $$home$nw$stuff$unstable$src$Main$parseCli = (($args) => {
       }))()
       : (true
         ? $$home$nw$stuff$unstable$src$Main$Help
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 187:4', (sp_toHuman)($args)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 188:4', (sp_toHuman)($args)))));
 });
 
 const $$home$nw$stuff$unstable$src$SPLib$Buffer$readOne = (($b) => {

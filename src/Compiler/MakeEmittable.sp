@@ -49,6 +49,9 @@ translateSource as Meta.Source: Text =
         Meta.Posix:
             "posix"
 
+        Meta.Browser:
+            "browser"
+
         Meta.SourceDir path:
             if Text.startsWithRegex "[a-zA-Z0-9_./]*$" path == "" then
                 todo << "Invalid chars in source dir name: " .. path
