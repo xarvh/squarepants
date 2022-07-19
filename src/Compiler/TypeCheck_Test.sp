@@ -540,6 +540,18 @@ higherOrderTypes as Test =
             """
             (infer "x")
             (Test.errorContains [ "undefined"])
+        , codeTest
+            """
+            [reg] Named vars can't be refined?
+            """
+            """
+            union Wrap a = W a
+
+            f as a: Wrap a =
+                a: a
+            """
+            (infer "f")
+            (Test.errorContains [ "Wrap"])
         ]
 
 
