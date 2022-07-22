@@ -404,9 +404,12 @@ mu as Test =
             )
         , codeTest
             "Functions can't be mutable 1"
-            "a @= x: x"
-            (infer "a")
-            (Test.errorContains ["utable"])
+            """
+            z =
+                a @= x: x
+            """
+            (infer "z")
+            (Test.errorContains ["unction", "utable"])
         , codeTest
             "Functions can't be mutable 2"
             """
