@@ -186,11 +186,11 @@ lambdas as Test =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
-                    False
+                    LambdaNormal
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             ( FA.PatternAny p False "b" Nothing )
-                            False
+                            LambdaNormal
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -207,11 +207,11 @@ lambdas as Test =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
-                    False
+                    LambdaNormal
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             ( FA.PatternAny p False "b" Nothing )
-                            False
+                            LambdaNormal
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -228,11 +228,11 @@ lambdas as Test =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
-                    False
+                    LambdaNormal
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             (FA.PatternAny p False "b" Nothing)
-                            False
+                            LambdaNormal
                             [ FA.Evaluation p << FA.LiteralNumber p "3"
                             ]
                     ]
@@ -253,7 +253,7 @@ lambdas as Test =
             """
             """
             i =
-              x @= 1
+              @x = 1
               xxx y: y
             """
             firstDefinition
@@ -265,34 +265,34 @@ annotations as Test =
     Test.Group "Annotations"
         [ codeTest "Mutability 1"
             """
-            a as Number @: Int: None =
+            a as Number:- Int: None =
               1
             """
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
                     (typeConstant "Number")
-                    True
+                    LambdaConsuming
                     (FA.TypeFunction p
                         (typeConstant "Int")
-                        False
+                        LambdaNormal
                         (typeConstant "None")
                     )
                 )
             )
         , codeTest "Mutability 2"
             """
-            a as Number: Int @: None =
+            a as Number: Int:- None =
               1
             """
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
                     (typeConstant "Number")
-                    False
+                    LambdaNormal
                     (FA.TypeFunction p
                         (typeConstant "Int")
-                        True
+                        LambdaConsuming
                         (typeConstant "None")
                     )
                 )
@@ -310,7 +310,7 @@ annotations as Test =
                         , typeConstant "Int"
                         ]
                     )
-                    False
+                    LambdaNormal
                     (typeConstant "Bool")
             )
         ]

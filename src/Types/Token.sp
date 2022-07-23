@@ -5,13 +5,7 @@ union Token =
 
 union NameModifier =
     , NameNoModifier
-    , NameMutable
     , NameStartsWithDot
-
-
-union DefModifier =
-    , DefNormal
-    , DefMutable
 
 
 union OpenOrClosed =
@@ -39,10 +33,11 @@ union Kind =
     , Try
     , As
     , Colon
-    , MutableColon
+    , ConsumingColon
     , With
     # Ops
-    , Defop DefModifier
+    , Defop
+    , Mutop
     , Unop Op.Unop
     , Binop Op.Binop
     # Parens

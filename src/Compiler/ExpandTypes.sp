@@ -20,6 +20,10 @@ expandInType as GetType: CA.Type: Res CA.Type =
         CA.TypeVariable pos name:
             Ok ty
 
+        CA.TypeMutable pos t:
+            expandInType ga t >> onOk ety:
+            Ok << CA.TypeMutable pos ety
+
         CA.TypeFunction pos from fromIsMutable to:
             expandInType ga from >> onOk f:
             expandInType ga to >> onOk t:
@@ -86,6 +90,9 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
         CA.TypeConstant _ _ _:
             []
 
+        CA.TypeMutable _ t:
+            findMutableArgsThatContainFunctions nonFunctionPos t
+
         CA.TypeVariable _ name:
             [# TODO
                 if mutable then
@@ -100,14 +107,14 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
         CA.TypeAlias _ path t:
             findMutableArgsThatContainFunctions nonFunctionPos t
 
-        CA.TypeFunction functionPos from fromIsMutable to:
+        CA.TypeFunction functionPos from lambdaModifier to:
             [ try nonFunctionPos as
                 Just constraintPos:
                     [ constraintPos & functionPos ]
 
                 Nothing:
                     []
-            , findMutableArgsThatContainFunctions (if fromIsMutable then Just functionPos else Nothing) from
+            , findMutableArgsThatContainFunctions nonFunctionPos from
             , findMutableArgsThatContainFunctions nonFunctionPos to
             ]
                 >> List.concat

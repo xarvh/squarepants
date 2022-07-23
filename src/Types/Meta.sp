@@ -6,6 +6,11 @@ alias Name =
     Text
 
 
+union LambdaModifier =
+    , LambdaNormal
+    , LambdaConsuming
+
+
 #
 # This tells us where a module comes from.
 #

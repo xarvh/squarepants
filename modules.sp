@@ -50,6 +50,10 @@ sourceDir =
             Meta
             Name
             ByUsr
+            LambdaModifier
+        globalValues =
+            LambdaNormal
+            LambdaConsuming
 
     module =
         path = Types/Op

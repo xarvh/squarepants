@@ -84,16 +84,18 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
         CA.TypeConstant pos usr args:
             ( (if args == [] then 0 else 1) & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " "))
 
+        CA.TypeMutable pos ty:
+            0 & "@" .. typeToText currentUmr meta ty
+
         CA.TypeVariable pos name:
             ( 0 & name)
 
-        CA.TypeFunction pos from fromIsMut to:
+        CA.TypeFunction pos from lambdaModifier to:
             arrow =
-                if fromIsMut then
-                    " @: "
+                try lambdaModifier as
+                    LambdaNormal: ": "
+                    LambdaConsuming: ":- "
 
-                else
-                    ": "
             ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
 
         CA.TypeRecord pos extend attrs:
@@ -257,6 +259,10 @@ normType as Type: NormMonad Type =
             (StateMonad.maybe_map normName ext0) >> andThen ext1:
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
             return << CA.TypeRecord pos ext1 attrs1
+
+        CA.TypeMutable pos t:
+            (normType t) >> andThen t1:
+            return << CA.TypeMutable pos t1
 
         CA.TypeAlias pos path t:
             (normType t) >> andThen t1:
