@@ -9,11 +9,6 @@ union NameModifier =
     , NameStartsWithDot
 
 
-union DefModifier =
-    , DefNormal
-    , DefMutable
-
-
 union OpenOrClosed =
     , Open
     , Closed
@@ -39,10 +34,10 @@ union Kind =
     , Try
     , As
     , Colon
-    , MutableColon
+    , ConsumingColon
     , With
     # Ops
-    , Defop DefModifier
+    , Defop
     , Unop Op.Unop
     , Binop Op.Binop
     # Parens

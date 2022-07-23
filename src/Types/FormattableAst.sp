@@ -17,7 +17,6 @@ alias Module =
 
 alias ValueDef = {
     , pattern as Pattern
-    , modifier as Token.DefModifier
     , nonFn as [Name]
     , body as [Statement]
     }

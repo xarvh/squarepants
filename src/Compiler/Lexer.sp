@@ -177,8 +177,8 @@ absAddToken as Int: Int: Token.Kind: ReadState@: None =
             Token.Else: True
             Token.As: True
             Token.Colon: True
-            Token.MutableColon: True
-            Token.Defop _: True
+            Token.ConsumingColon: True
+            Token.Defop: True
             Token.Comment: state.indentStartsABlock
             _: False
 
@@ -431,9 +431,8 @@ addSquiggleToken as Bool: ReadState@: None =
 
     try chunk as
         ":": add << Token.Colon
-        "@:": add << Token.MutableColon
-        "=": add << Token.Defop Token.DefNormal
-        "@=": add << Token.Defop Token.DefMutable
+        ":!": add << Token.ConsumingColon
+        "=": add << Token.Defop
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:

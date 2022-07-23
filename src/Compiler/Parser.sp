@@ -188,12 +188,12 @@ lowerNameBare as Env: Parser (At Text) =
             Parser.reject
 
 
-defop as Parser Token.DefModifier =
+defop as Parser None =
 
     oneToken >> andThen token:
     try token as
-        Token _ _ (Token.Defop mod):
-            Parser.accept mod
+        Token _ _ Token.Defop:
+            Parser.accept None
 
         _:
             Parser.reject
@@ -351,9 +351,6 @@ rawList as Parser a: Parser [a] =
 #
 # Statements
 #
-errorShouldUseDefNormalHere as Text =
-    "You should use a normal `=` here."
-
 
 typeAlias as Env: Parser FA.Statement =
     env:
@@ -361,12 +358,8 @@ typeAlias as Env: Parser FA.Statement =
     kind (Token.LowerName Token.NameNoModifier Nothing "alias" []) >> andThen _:
     upperNameBare env >> andThen name:
     Parser.zeroOrMore (lowerNameBare env) >> andThen args:
-    defop >> andThen defModifier:
+    defop >> andThen None:
     inlineOrBelowOrIndented (typeExpr env) >> andThen ty:
-    if defModifier /= Token.DefNormal then
-        Parser.abort errorShouldUseDefNormalHere
-
-    else
         { name = name
         , args = args
         , ty = ty
@@ -382,12 +375,8 @@ unionDef as Env: Parser FA.Statement =
     kind (Token.LowerName Token.NameNoModifier Nothing "union" []) >> andThen _:
     upperNameBare env >> andThen (At p name):
     Parser.zeroOrMore (lowerNameBare env) >> andThen args:
-    defop >> andThen defModifier:
+    defop >> andThen None:
     inlineOrBelowOrIndented (rawList (unionConstructor env)) >> andThen cons:
-    if defModifier /= Token.DefNormal then
-        Parser.abort errorShouldUseDefNormalHere
-
-    else
         { name = name
         , args = List.map Pos.drop args
         , constructors = cons
@@ -461,7 +450,7 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
     colon =
         Parser.oneOf
             [ kind Token.Colon >> Parser.map _: False
-            , kind Token.MutableColon >> Parser.map _: True
+            , kind Token.ConsumingColon >> Parser.map _: True
             ]
 
     maybeColon =
@@ -575,7 +564,7 @@ expr as Env: Parser FA.Expression =
         [
 #        , higherOr << parens (Parser.oneOf [ binopInsideParens env, nest ])
         , higherOr << list env FA.List nest
-        , higherOr << record env (Token.Defop Token.DefNormal) FA.Record nest
+        , higherOr << record env Token.Defop FA.Record nest
 #        , higherOr << lambda env
         , unopsOr env
         , functionApplicationOr env
@@ -781,7 +770,7 @@ definition as Env: Parser FA.Statement =
     here >> andThen start:
     pattern env >> andThen p:
     Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> andThen nf:
-    inlineOrBelowOrIndented defop >> andThen defModifier:
+    inlineOrBelowOrIndented defop >> andThen None:
     inlineStatementOrBlock env >> andThen body:
 
 #    end =
@@ -794,7 +783,6 @@ definition as Env: Parser FA.Statement =
 
     here >> andThen end:
     { pattern = p
-    , modifier = defModifier
     , body = body
     , nonFn = Maybe.withDefault [] nf
     }
@@ -901,9 +889,9 @@ typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
     env: higher:
 
     arrowAndHigher as Parser ( Bool & Pos & FA.Type ) =
-        arrow env >> andThen ( mutable & p ):
+        arrow env >> andThen ( consuming & p ):
         higher >> andThen h:
-        Parser.accept ( mutable & p & h )
+        Parser.accept ( consuming & p & h )
 
     fold as ( Bool & Pos & FA.Type ): ( Bool & FA.Type ): ( Bool & FA.Type ) =
 
@@ -948,7 +936,7 @@ arrow as Env: Parser ( Bool & Pos ) =
         Token.Colon:
             Parser.accept ( False & (pos env start end) )
 
-        Token.MutableColon:
+        Token.ConsumingColon:
             Parser.accept ( True & (pos env start end) )
 
         _:
@@ -1036,7 +1024,7 @@ pattern as Env: Parser FA.Pattern =
         # the `Or` stands for `Or higher priority parser`
         [ higherOr << parens nest
         , higherOr << list env FA.PatternList nest
-        , higherOr << record env (Token.Defop Token.DefNormal) FA.PatternRecord nest
+        , higherOr << record env Token.Defop FA.PatternRecord nest
         , patternBinopOr env Op.Cons FA.PatternListCons
         , patternBinopOr env Op.Tuple FA.PatternTuple
         ]
@@ -1049,7 +1037,7 @@ functionParameter as Env: Parser FA.Pattern: Parser FA.Pattern =
         [ patternApplication env Parser.reject
         , parens nest
         , list env FA.PatternList nest
-        , record env (Token.Defop Token.DefNormal) FA.PatternRecord nest
+        , record env Token.Defop FA.PatternRecord nest
         ]
 
 
