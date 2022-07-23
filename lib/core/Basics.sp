@@ -20,6 +20,23 @@ btw as (a: b): a: c: c =
     c
 
 
+
+#mut as a: @a =
+#    a:
+#    todo "mut"
+#
+#destroy as @a:- None =
+#    @a:-
+#    None
+#
+#set as a: @a: None =
+#   new: @m:
+#
+#   destroy m
+#   @m = mut a
+
+
+
 #
 # TODO move these to Number module?
 #

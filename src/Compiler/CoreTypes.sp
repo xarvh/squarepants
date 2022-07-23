@@ -151,7 +151,7 @@ listDef as CA.UnionDef =
     consDef as CA.Constructor = {
         , pos = p
         , args = [ item, list item ]
-        , type = List.forReversed [ item, list item ] (ar: ty: CA.TypeFunction p ar False ty) (list item)
+        , type = List.forReversed [ item, list item ] (ar: ty: CA.TypeFunction p ar LambdaNormal ty) (list item)
         , typeUsr = usr
         }
 
