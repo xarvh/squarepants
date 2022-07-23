@@ -160,6 +160,7 @@ typeDeps as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolRefere
         CA.TypeVariable _ _: acc
         CA.TypeFunction _ from _ to: acc >> typeDeps from >> typeDeps to
         CA.TypeRecord _ _ attrs: Dict.for attrs (k: typeDeps) acc
+        CA.TypeMutable _ t: typeDeps t acc
         CA.TypeAlias _ _ _: todo "typeDeps: Should not happen"
 
 
@@ -179,13 +180,26 @@ deps_init = {
 
 patternDeps as CA.Pattern: Deps: Deps =
     pattern: deps:
+
     try pattern as
-        CA.PatternConstructor _ usr ps: List.for ps patternDeps { deps with cons = Set.insert usr .cons }
-        CA.PatternRecord _ ps: Dict.for ps (k: patternDeps) deps
-        CA.PatternAny _ _ (Just type): { deps with types = typeDeps type .types }
-        CA.PatternAny _ _ Nothing: deps
-        CA.PatternLiteralNumber _ _: deps
-        CA.PatternLiteralText _ _: deps
+
+        CA.PatternConstructor _ usr ps:
+            List.for ps patternDeps { deps with cons = Set.insert usr .cons }
+
+        CA.PatternRecord _ ps:
+            Dict.for ps (k: patternDeps) deps
+
+        CA.PatternAny _ mutability maybeName (Just type):
+            { deps with types = typeDeps type .types }
+
+        CA.PatternAny _ mutability maybeName Nothing:
+            deps
+
+        CA.PatternLiteralNumber _ _:
+           deps
+
+        CA.PatternLiteralText _ _:
+           deps
 
 
 expressionDeps as CA.Expression: Deps: Deps =
@@ -206,13 +220,9 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.Constructor _ usr:
             { deps with cons = Set.insert usr .cons }
 
-        CA.Lambda _ (CA.ParameterPattern pa) body:
+        CA.Lambda _ pa isConsuming body:
             deps
                 >> patternDeps pa
-                >> expressionDeps body
-
-        CA.Lambda _ (CA.ParameterMutable _ _) body:
-            deps
                 >> expressionDeps body
 
         CA.Record _ Nothing exprByName:
@@ -257,16 +267,6 @@ expressionDeps as CA.Expression: Deps: Deps =
 #
 # Definition
 #
-
-
-insertParamNames as CA.Parameter: Dict Text Pos: Dict Text Pos =
-    param:
-    try param as
-        CA.ParameterMutable pos n:
-            Dict.insert n pos
-
-        CA.ParameterPattern pa:
-            CA.patternNames pa >> Dict.join
 
 
 translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
@@ -332,8 +332,6 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
     Ok {
         , pattern
         , native = False
-        # TODO ugly, see above
-        , mutable = fa.modifier == Token.DefMutable
         , parentDefinitions = env.defsPath
         , nonFn
         , body
@@ -353,18 +351,16 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
 translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
     ann: env: fa:
     try fa as
-        FA.PatternAny pos True s _:
-            # TODO this happens (to me) when I use `=` in place of `:=`, so maybe change the message?
-            makeError pos [ "This is the wrong place to use `@`" ]
-
-        FA.PatternAny pos False name maybeFaType:
+        FA.PatternAny pos isMutable name maybeFaType:
             if ann == Nothing and maybeFaType /= Nothing then
                 makeError pos [ "Can't use annotations here" ]
             else
                 Maybe.mapRes (translateType ann env.ro) maybeFaType >> onOk maybeCaType:
 
-                n = if name == "_" then Nothing else Just name
-                Ok << CA.PatternAny pos n maybeCaType
+                maybeName =
+                    if name == "_" then Nothing else (Just name)
+
+                Ok << CA.PatternAny pos isMutable maybeName maybeCaType
 
         FA.PatternLiteralNumber pos l:
             translateNumber CA.PatternLiteralNumber pos l
@@ -389,14 +385,16 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                 makeError pos [ "can't use `with` inside patterns" ]
 
             else
-                fold = ( (At p name) & maybePattern ): dict:
+                fold =
+                    ( (At p name) & maybePattern ): dict:
+
                     if Dict.member name dict then
                         makeError p [ "duplicate attribute name in pattern: " .. name ]
 
                     else
                         try maybePattern as
                             Nothing:
-                                Ok << Dict.insert name (CA.PatternAny p (Just name) Nothing) dict
+                                Ok << Dict.insert name (CA.PatternAny p False (Just name) Nothing) dict
 
                             Just faPattern:
                                 faPattern
@@ -445,21 +443,6 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                     makeError pos [ "tuples can be only of size 2 or 3" ]
 
 
-translateParameter as Env: Bool: FA.Pattern: Res CA.Parameter =
-    env: mutable: faParam:
-    try faParam & mutable as
-        FA.PatternAny pos False name Nothing & True:
-            Ok << CA.ParameterMutable pos name
-
-        FA.PatternAny pos True name _ & _:
-            makeError pos [ "Can't annotate this. =(", "TODO link to rationale for forbidding annotations" ]
-
-        _:
-            translatePattern Nothing env faParam >> onOk caPattern:
-            Ok << CA.ParameterPattern caPattern
-
-
-
 #
 # Statement
 #
@@ -487,7 +470,6 @@ translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
             # TODO Non-return, non-mutable, non-debug evaluations should produce an error.
             valueDef as FA.ValueDef = {
               , pattern = FA.PatternAny Pos.G False "_" Nothing
-              , modifier = Token.DefNormal
               , nonFn = []
               , body = [ FA.Evaluation pos faExpr ]
               }
@@ -537,8 +519,8 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                 >> CA.Constructor pos
                 >> Ok
 
-        FA.Mutable pos name _:
-            makeError pos [ name .. ": mutable values can be used only as arguments for function or mutation operators" ]
+        FA.Mutable pos _:
+            makeError pos [ "can't use mutability here?" ]
 
         FA.RecordShorthand pos attrPath:
             try env.maybeShorthandTarget as
@@ -557,12 +539,23 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                     # Is this a good idea?
                     Ok << CA.Variable pos { shorthandTarget with attrPath = List.concat [ .attrPath, attrPath ] }
 
-        FA.Lambda pos faParam mutable faBody:
-            translateParameter env mutable faParam >> onOk caParam:
+        FA.Lambda pos faParam isConsuming faBody:
+
+            translatePattern Nothing env faParam
+            >> onOk caPattern:
+
             localEnv =
-                { env with nonRootValues = insertParamNames caParam .nonRootValues }
-            translateStatementBlock localEnv faBody >> onOk caBody:
-            Ok << CA.Lambda pos caParam caBody
+                { env with
+                , nonRootValues =
+                    caPattern
+                    >> CA.patternNames
+                    >> Dict.join .nonRootValues
+                }
+
+            translateStatementBlock localEnv faBody
+            >> onOk caBody:
+
+            Ok << CA.Lambda pos caPattern isConsuming caBody
 
         FA.FunctionCall pos reference arguments:
             # ref arg1 arg2 arg3...
@@ -688,8 +681,7 @@ translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text CA.Expres
 translateArgument as Env: FA.Expression: Res CA.Argument =
     env: faExpr:
     try faExpr as
-        FA.Mutable pos name attrPath:
-
+        FA.Mutable pos (FA.Variable _ Nothing name attrPath):
             if Dict.member name env.nonRootValues then
                 {
                 , ref = CA.RefBlock name
@@ -702,6 +694,11 @@ translateArgument as Env: FA.Expression: Res CA.Argument =
                 makeError pos
                     [ "only values declared inside a function scope can be mutated!"
                     ]
+
+        FA.Mutable pos _:
+            makeError pos
+                [ "You can mutate only named variables?"
+                ]
 
         _:
             faExpr
@@ -930,10 +927,10 @@ translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
                 >> CA.TypeConstant pos (resolveToTypeUsr ro maybeModule name)
                 >> Ok
 
-        FA.TypeFunction pos fa_from fromIsMut fa_to:
+        FA.TypeFunction pos fa_from lambdaModifier fa_to:
             translateType mrf ro fa_from >> onOk ca_from:
             translateType mrf ro fa_to >> onOk ca_to:
-            Ok << CA.TypeFunction pos ca_from fromIsMut ca_to
+            Ok << CA.TypeFunction pos ca_from lambdaModifier ca_to
 
         FA.TypeTuple pos types:
             try types as
@@ -959,6 +956,10 @@ translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
 
                 _:
                     makeError pos [ "Tuples can only have size 2 or 3. Use a record." ]
+
+        FA.TypeMutable pos t:
+            translateType mrf ro t >> onOk cat:
+            Ok << CA.TypeMutable pos cat
 
         FA.TypeList pos faItem:
             translateType mrf ro faItem >> onOk caItem:
@@ -990,7 +991,7 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name &
         c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
-            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar False ty) unionType
+            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaNormal ty) unionType
             , args = caArgs
             }
 
@@ -1009,11 +1010,15 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
             makeError (FA.expressionPos expr) [ "Root Evaluations don't really do much =|" ]
 
         FA.Definition pos fa:
-            translateDefinition True (initEnv ro) fa >> onOk def:
-            if def.mutable then
+            translateDefinition True (initEnv ro) fa
+            >> onOk def:
+
+
+            if CA.patternIsMutable def.pattern then
                 makeError (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
 
             else
+
                 # Patterns contain position, so they are unique and don't need to be checked for duplication
                 # Names duplication will be checked when rootValuesAndConstructors is populated
                 Ok { caModule with valueDefs = Dict.insert def.pattern def .valueDefs }

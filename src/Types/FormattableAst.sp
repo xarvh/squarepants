@@ -17,7 +17,6 @@ alias Module =
 
 alias ValueDef = {
     , pattern as Pattern
-    , modifier as Token.DefModifier
     , nonFn as [Name]
     , body as [Statement]
     }
@@ -46,10 +45,11 @@ alias Constructor =
 union Type =
     , TypeVariable Pos Name
     , TypeConstant Pos (Maybe Name) Name [Type]
-    , TypeFunction Pos Type Bool Type
+    , TypeFunction Pos Type LambdaModifier Type
     , TypeTuple Pos [Type]
     , TypeList Pos Type
     , TypeRecord Pos (RecordArgs Type)
+    , TypeMutable Pos Type
 
 
 # expr op expr op expr op...
@@ -67,10 +67,10 @@ union Expression =
     , LiteralNumber Pos Text
     , Variable Pos (Maybe Name) Name [Name]
     , Constructor Pos (Maybe Name) Name
-    , Mutable Pos Name [Name]
+    , Mutable Pos Expression
     , PrefixBinop Pos Text
     , RecordShorthand Pos [Name]
-    , Lambda Pos Pattern Bool [Statement]
+    , Lambda Pos Pattern LambdaModifier [Statement]
     , FunctionCall Pos Expression [Expression]
     , Binop Pos Op.Precedence (SepList Op.Binop Expression)
     , Unop Pos Op.Unop Expression
@@ -89,7 +89,6 @@ union Expression =
     , List Pos [Expression]
 
 union Pattern =
-    # TODO: remove the Bool from the pattern, it can never be mutable
     , PatternAny Pos Bool Name (Maybe Type)
     , PatternLiteralNumber Pos Text
     , PatternLiteralText Pos Text
@@ -129,6 +128,7 @@ typePos as Type: Pos =
         TypeTuple p _: p
         TypeList p _: p
         TypeRecord p _: p
+        TypeMutable p _: p
 
 
 expressionPos as Expression: Pos =
@@ -138,7 +138,7 @@ expressionPos as Expression: Pos =
        LiteralNumber p _: p
        Variable p _ _ _: p
        Constructor p _ _: p
-       Mutable p _ _: p
+       Mutable p _: p
        PrefixBinop p _: p
        Lambda p _ _ _: p
        FunctionCall p _ _: p

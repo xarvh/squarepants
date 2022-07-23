@@ -504,6 +504,23 @@ partition as (key: v: Bool): Dict key v: (Dict key v & Dict key v) =
   for dict add (empty & empty)
 
 
+# QUERY?
+
+
+any as (k: v: Bool): Dict k v: Bool =
+    f: dict:
+
+    try dict as
+        RBNode_elm_builtin color key v left right:
+            if f key v then
+                True
+            else
+                any f left or any f right
+
+        RBEmpty_elm_builtin:
+            False
+
+
 # LISTS
 
 

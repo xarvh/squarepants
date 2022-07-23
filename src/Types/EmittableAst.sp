@@ -13,24 +13,19 @@ alias AttrName =
     Text
 
 
-union Mutability =
-    , Immutable
-    , Mutable
-
-
 union Expression =
     , LiteralText Text
     , LiteralNumber Number
     , Variable Name [Name]
-    , Call Expression (Expression & Mutability)
-    , Lambda (Maybe Name & Mutability) Expression
+    , Call Expression (Expression & Bool)
+    , Lambda (Maybe Name & Bool) Expression
     , Conditional Expression Expression Expression
     , And [Expression]
     , ShallowEqual Expression Expression
     , LetIn {
         , maybeName as Maybe Name
         # type as Type
-        , mutability as Mutability
+        , isMutable as Bool
         , letExpression as Expression
         , inExpression as Expression
         }

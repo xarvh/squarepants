@@ -29,10 +29,10 @@ misc as Test =
         [ codeTest "definitions and mutations return None"
             """
             x =
-              m @= 0
+              @m = 0
 
             y =
-              m @= 0
+              @m = 0
               @m += 1
 
             a =
@@ -61,7 +61,7 @@ mutation as Test =
         [ codeTest "basic sanity"
             """
             a =
-              m @= 0
+              @m = 0
               @m += 1
               x = m
               @m := 10
@@ -79,7 +79,7 @@ mutation as Test =
             record = { x = { y = { z = 4 } } }
 
             result =
-               m @= record
+               @m = record
                @m.x.y :=  { z = 1 }
                @m.x.y.z += 1
                m
@@ -94,7 +94,7 @@ mutation as Test =
               @m += 55
 
             result =
-               m @= 2
+               @m = 2
                fun @m
                m
             """
@@ -110,7 +110,7 @@ mutation as Test =
             record = { x = { y = { z = 4 } } }
 
             result =
-               m @= record
+               @m = record
                fun @m.x.y.z
                m
             """
@@ -121,7 +121,7 @@ mutation as Test =
         , codeTest "[reg] mut args should be dereferenced and cloned"
             """
             result =
-                l @= 3
+                @l = 3
                 f @l
 
             f @a =
@@ -281,7 +281,7 @@ natives as Test =
             f = (+=) 3
 
             result =
-               m @= 1
+               @m = 1
                f @m
                m
             """

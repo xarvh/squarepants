@@ -4,6 +4,7 @@ alias ByName a =
     Dict Name a
 
 
+# TODO rename this to something that makes sense also outside this module?
 alias State = {
     , sourceDirsToId as Hash Text Text
     , sourceDirsCounter as Int
@@ -99,7 +100,8 @@ pickMainName as CA.Pattern: PickedName =
     pattern:
 
     try pattern as
-        CA.PatternAny _ (Just name) _:
+
+        CA.PatternAny pos isMutable (Just name) maybeType:
             TrivialPattern (userSpecifiedName name)
 
         _:
@@ -111,7 +113,7 @@ pickMainName as CA.Pattern: PickedName =
                     NoNamedVariables
 
 
-translatePattern as CA.Pattern: EA.Expression: [ DollarName & EA.Expression ] =
+translatePattern as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ] =
     pattern: accessExpr:
 
     translatePatternRec pattern accessExpr []
@@ -121,14 +123,14 @@ translatePattern as CA.Pattern: EA.Expression: [ DollarName & EA.Expression ] =
 #        _: translatePatternRec pattern accessExpr []
 
 
-translatePatternRec as CA.Pattern: EA.Expression: [ DollarName & EA.Expression ]: [ DollarName & EA.Expression ] =
+translatePatternRec as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ]: [ Bool & DollarName & EA.Expression ] =
     pattern: accessExpr: accum:
     try pattern as
-        CA.PatternAny _ Nothing _:
+        CA.PatternAny _ isMutable Nothing maybeAnnotation:
             accum
 
-        CA.PatternAny _ (Just name) _:
-            (userSpecifiedName name & accessExpr) :: accum
+        CA.PatternAny _ isMutable (Just name) maybeAnnotation:
+            (isMutable & userSpecifiedName name & accessExpr) :: accum
 
         CA.PatternLiteralNumber _ _:
             accum
@@ -166,7 +168,8 @@ translateVariableArgs as State@: CA.VariableArgs: EA.Expression =
 testPattern as CA.Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
     pattern: valueToTest: accum:
     try pattern as
-        CA.PatternAny _ _ _:
+
+        CA.PatternAny _ _ _ _:
             accum
 
         CA.PatternLiteralText _ text:
@@ -201,27 +204,23 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
         CA.Constructor _ usr:
             EA.Constructor (translateUsr @state usr)
 
-        CA.Lambda pos (CA.ParameterMutable _ name) body:
-            DollarName n = userSpecifiedName name
-            EA.Lambda (Just n & EA.Mutable) (translateExpression @state @counter body)
-
-        CA.Lambda pos (CA.ParameterPattern pattern) body:
+        CA.Lambda pos pattern isConsuming body:
             try pickMainName pattern as
                 NoNamedVariables:
-                    EA.Lambda (Nothing & EA.Immutable) (translateExpression @state @counter body)
+                    EA.Lambda (Nothing & CA.patternIsMutable pattern) (translateExpression @state @counter body)
 
                 TrivialPattern (DollarName argName):
-                    EA.Lambda (Just argName & EA.Immutable) (translateExpression @state @counter body)
+                    EA.Lambda (Just argName & CA.patternIsMutable pattern) (translateExpression @state @counter body)
 
                 SafeMainName (DollarName mainName):
                     namesAndExpressions =
                          translatePattern pattern (EA.Variable mainName [])
 
                     wrapWithArgumentLetIn =
-                        (DollarName varName & letExpression): inExpression:
+                        (isMutable & DollarName varName & letExpression): inExpression:
                         EA.LetIn {
                             , maybeName = Just varName
-                            , mutability = EA.Immutable
+                            , isMutable
                             , letExpression
                             , inExpression
                             }
@@ -229,7 +228,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                     body
                     >> translateExpression @state @counter
                     >> List.for namesAndExpressions wrapWithArgumentLetIn
-                    >> EA.Lambda (Just mainName & EA.Immutable)
+                    >> EA.Lambda (Just mainName & CA.patternIsMutable pattern)
 
         CA.Record _ extends attrs:
             attrs
@@ -239,10 +238,10 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
             >> EA.LiteralRecord (Maybe.map (translateVariableArgs @state) extends)
 
         CA.Call _ ref (CA.ArgumentMutable _ var):
-            EA.Call (translateExpression @state @counter ref) (translateVariableArgs @state var & EA.Mutable)
+            EA.Call (translateExpression @state @counter ref) (translateVariableArgs @state var & True)
 
         CA.Call _ ref (CA.ArgumentExpression expr):
-            EA.Call (translateExpression @state @counter ref) (translateExpression @state @counter expr & EA.Immutable)
+            EA.Call (translateExpression @state @counter ref) (translateExpression @state @counter expr & False)
 
         CA.If _ ar:
             EA.Conditional
@@ -265,7 +264,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                             tryExpression:
                             EA.LetIn {
                                 , maybeName = Just tryName
-                                , mutability = EA.Immutable
+                                , isMutable = False
                                 , letExpression = translateExpression @state @counter value
                                 , inExpression = tryExpression
                                 }
@@ -282,13 +281,13 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                     >> List.reverse
                     >> EA.And
 
-                namesAndExpressions as [ DollarName & EA.Expression ] =
+                namesAndExpressions as [ Bool & DollarName & EA.Expression ] =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
                     translateExpression @state @counter block
-                    >> List.for namesAndExpressions (DollarName name & letExpression): inExpression:
-                        EA.LetIn { maybeName = Just name, mutability = EA.Immutable, letExpression, inExpression }
+                    >> List.for namesAndExpressions (isMutable & DollarName name & letExpression): inExpression:
+                        EA.LetIn { maybeName = Just name, isMutable, letExpression, inExpression }
 
                 EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
 
@@ -305,7 +304,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                 NoNamedVariables:
                     EA.LetIn {
                         , maybeName = Nothing
-                        , mutability = EA.Immutable
+                        , isMutable = CA.patternIsMutable valueDef.pattern
                         , letExpression = translateExpression @state @counter valueDef.body
                         , inExpression = translateExpression @state @counter e
                         }
@@ -313,7 +312,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                 TrivialPattern (DollarName defName):
                     EA.LetIn {
                         , maybeName = Just defName
-                        , mutability = if valueDef.mutable then EA.Mutable else EA.Immutable
+                        , isMutable = CA.patternIsMutable valueDef.pattern
                         , letExpression = translateExpression @state @counter valueDef.body
                         , inExpression = translateExpression @state @counter e
                         }
@@ -322,11 +321,11 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                     namesAndExpressions =
                         translatePattern valueDef.pattern (EA.Variable mainName [])
 
-                    wrapWithUnpackedPatternVar as (DollarName & EA.Expression): EA.Expression: EA.Expression =
-                        (DollarName name & letExpression): inExpression:
+                    wrapWithUnpackedPatternVar as (Bool & DollarName & EA.Expression): EA.Expression: EA.Expression =
+                        (isMutable & DollarName name & letExpression): inExpression:
                         EA.LetIn {
                             , maybeName = Just name
-                            , mutability = EA.Immutable
+                            , isMutable
                             , letExpression
                             , inExpression
                             }
@@ -335,7 +334,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                         inExpression:
                         EA.LetIn {
                             , maybeName = Just mainName
-                            , mutability = EA.Immutable
+                            , isMutable = False
                             , letExpression = translateExpression @state @counter valueDef.body
                             , inExpression
                             }
@@ -380,7 +379,7 @@ translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName
 
             accum
             >> Dict.insert mainUsrAsText mainDef
-            >> List.for (translatePattern def.pattern (EA.Variable mainUsrAsText [])) (name & expr):
+            >> List.for (translatePattern def.pattern (EA.Variable mainUsrAsText [])) (isMutable & name & expr):
                 textUsr = makeTextUsr @state umr name
                 Dict.insert textUsr { name = textUsr, expr, deps = Set.singleton mainUsrAsText }
 

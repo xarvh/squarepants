@@ -29,13 +29,14 @@ union Type =
     #, TypeGeneratedVar TyVarId
     #, TypeAnnotatedVar Pos Name
     , TypeVariable Pos Name
-    , TypeFunction Pos Type Bool Type
+    , TypeFunction Pos Type LambdaModifier Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
     , TypeAlias Pos Meta.UniqueSymbolReference Type
+    , TypeMutable Pos Type
 
 
 union Pattern =
-    , PatternAny Pos (Maybe Text) (Maybe Type)
+    , PatternAny Pos Bool (Maybe Text) (Maybe Type)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
@@ -61,11 +62,6 @@ alias VariableArgs = {
     }
 
 
-union Parameter =
-    , ParameterPattern Pattern
-    , ParameterMutable Pos Name
-
-
 union Argument =
     , ArgumentExpression Expression
     # TODO should we distinguish between a locally declared mutable and a mutable parameter?
@@ -77,7 +73,7 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos VariableArgs
     , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos Parameter Expression
+    , Lambda Pos Pattern LambdaModifier Expression
     , Call Pos Expression Argument
     , Record Pos (Maybe VariableArgs) (Dict Name Expression)
     , LetIn ValueDef Expression
@@ -127,7 +123,6 @@ alias Constructor = {
 alias ValueDef = {
     , pattern as Pattern
     , native as Bool
-    , mutable as Bool
     , parentDefinitions as [Pattern]
     , nonFn as Set Name
     , body as Expression
@@ -195,23 +190,35 @@ typePos as Type: Pos =
         TypeFunction p _ _ _: p
         TypeRecord p _ _: p
         TypeAlias p _ _: p
+        TypeMutable p _: p
 
 
 patternPos as Pattern: Pos =
     pa:
     try pa as
-        PatternAny p n _: p
+        PatternAny p _ _ _: p
         PatternLiteralText p _: p
         PatternLiteralNumber p _: p
         PatternConstructor p path ps: p
         PatternRecord p ps: p
 
 
+patternIsMutable as Pattern: Bool =
+    pattern:
+
+    try pattern as
+        PatternAny pos isMutable maybeName maybeType: isMutable
+        PatternLiteralNumber pos _: False
+        PatternLiteralText pos _: False
+        PatternConstructor pos path ps: List.any patternIsMutable ps
+        PatternRecord pos ps: Dict.any (k: patternIsMutable) ps
+
+
 patternNames as Pattern: Dict Name Pos =
     p:
     try p as
-        PatternAny pos Nothing _: Dict.empty
-        PatternAny pos (Just n) _: Dict.singleton n pos
+        PatternAny pos _ Nothing _: Dict.empty
+        PatternAny pos _ (Just n) _: Dict.singleton n pos
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
@@ -221,8 +228,8 @@ patternNames as Pattern: Dict Name Pos =
 patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
     p:
     try p as
-        PatternAny pos Nothing _: Dict.empty
-        PatternAny pos (Just n) maybeType: Dict.singleton n (pos & maybeType)
+        PatternAny pos _ Nothing maybeType: Dict.empty
+        PatternAny pos _ (Just n) maybeType: Dict.singleton n (pos & maybeType)
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
@@ -243,7 +250,7 @@ expressionPos as Expression: Pos =
         LiteralNumber pos _: pos
         Variable pos _: pos
         Constructor pos _: pos
-        Lambda pos _ _: pos
+        Lambda pos _ _ _: pos
         Record pos _ _: pos
         Call pos _ _: pos
         If pos _: pos

@@ -346,6 +346,9 @@ typeTyvars as Type: Dict Name Pos =
         CA.TypeAlias _ path t:
             typeTyvars t
 
+        CA.TypeMutable _ t:
+            typeTyvars t
+
         CA.TypeRecord pos extensible attrs:
             init =
                 try extensible as
@@ -485,7 +488,6 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
         insertPatternVars
             { subs = Dict.empty
             , isParameter = False
-            , isMutable = def.mutable
             , isRoot
             }
             patternOut.vars
@@ -518,7 +520,6 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
         insertPatternVars
             { subs
             , isParameter = False
-            , isMutable = def.mutable
             , isRoot
             }
             patternOut.vars
@@ -631,6 +632,9 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
               None >> dict_for both attrName: (eType & aType): None:
                   isCompatibleWith env eType pos aType
 
+      CA.TypeMutable _ t1 & CA.TypeMutable _ t2:
+          isCompatibleWith env t1 pos t2
+
       CA.TypeAlias _ _ ty & _:
           isCompatibleWith env ty pos actualType
 
@@ -693,6 +697,40 @@ addCheckConstructorError as Pos: Env: [CA.Pattern]: [Text]: Monad Env =
         #]
 
 
+
+checkAndInsertAnnotatedPattern as Env: Type: Pos: Bool: Maybe Text: Maybe Type: Monad Env =
+    env: expectedType: pos: isMutable: maybeName: maybeAnnotation:
+
+    envWith =
+        name: type:
+        { env with instanceVariables =
+            # TODO why keeping `env` implicit gives a shitton of errors?
+            env.instanceVariables
+                >> Dict.insert (CA.RefBlock name) {
+                    , definedAt = pos
+                    , ty = type
+                    , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars Dict.empty type
+                    , isMutable
+                    }
+        }
+
+    try maybeName & maybeAnnotation as
+
+        Just name & Just annotation:
+            isCompatibleWith env expectedType pos annotation >> andThen None:
+            return (envWith name annotation)
+
+        Just name & Nothing:
+            return (envWith name expectedType)
+
+        Nothing & Just annotation:
+            isCompatibleWith env expectedType pos annotation >> andThen None:
+            return env
+
+        Nothing & Nothing:
+            return env
+
+
 checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
     env: expectedType_: pattern:
 
@@ -701,37 +739,8 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
 
     try pattern as
 
-        CA.PatternAny pos maybeName maybeAnnotation:
-
-            envWith =
-                name: type:
-                { env with instanceVariables =
-                    # TODO why keeping `env` implicit gives a shitton of errors?
-                    env.instanceVariables
-                        >> Dict.insert (CA.RefBlock name) {
-                            , definedAt = pos
-                            , ty = type
-                            , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars Dict.empty type
-                            , isMutable = False
-                            }
-                }
-
-            try maybeName & maybeAnnotation as
-
-                Just name & Just annotation:
-                    isCompatibleWith env expectedType pos annotation >> andThen None:
-                    return (envWith name annotation)
-
-                Just name & Nothing:
-                    return (envWith name expectedType)
-
-                Nothing & Just annotation:
-                    isCompatibleWith env expectedType pos annotation >> andThen None:
-                    return env
-
-                Nothing & Nothing:
-                    return env
-
+        CA.PatternAny pos isMutable maybeName maybeAnnotation:
+            checkAndInsertAnnotatedPattern env expectedType pos isMutable maybeName maybeAnnotation
 
         CA.PatternLiteralNumber pos literal:
             todo "TODO needs proper type comparison without `pos`"
@@ -862,32 +871,27 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     #
                     isCompatibleWith env expectedType pos instantiatedType
 
-        CA.Lambda pos param body:
-            try expectedType & param as
-                CA.TypeFunction _ parameterType True returnType & CA.ParameterMutable parameterPos parameterName:
-                    ip =
-                        insertPatternVars
-                            { subs = Dict.empty
-                            , isParameter = True
-                            , isMutable = True
-                            , isRoot = False
-                            }
-                            (Dict.singleton parameterName { pos = parameterPos, type = parameterType, isAnnotated = True })
-                            env
+        CA.Lambda pos param valueLambdaMode body:
+            try expectedType as
+                CA.TypeFunction _ parameterType typeLambdaMode returnType:
+                    xxx =
+                        if valueLambdaMode /= typeLambdaMode then
+                            addCheckError pos [
+                                , "the function and the annotation have different mutability"
+                                ]
+                        else
+                            return None
 
-                    ip >> andThen localEnv:
+                    xxx >> andThen _:
+                    checkAndInsertPattern env parameterType param >> andThen localEnv:
                     checkExpression localEnv returnType body
 
-                CA.TypeFunction _ parameterType False returnType & CA.ParameterPattern pattern:
-                    checkAndInsertPattern env parameterType pattern >> andThen localEnv:
-                    checkExpression localEnv returnType body
-
-                CA.TypeFunction _ _ isMutable _ & _:
+                CA.TypeFunction _ _ typeLambdaMode _:
                     addCheckError pos [
                         , "the function and the annotation have different mutability"
                         ]
 
-                CA.TypeVariable pos name & _:
+                CA.TypeVariable pos name:
                     if isAnnotation name then
                         addCheckError pos [
                             , "This is a function, but the annotation says it should be of type variable `" .. name .. "` which implies that it could be of any type!"
@@ -1007,7 +1011,6 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     insertPatternVars
                         { subs
                         , isParameter = False
-                        , isMutable = False
                         , isRoot = False
                         }
                         patternOut.vars
@@ -1084,12 +1087,13 @@ checkExpression as Env: Type: CA.Expression: Monad None =
             fromDefinition False valueDef env >> andThen env1:
 
             xxx =
-                if valueDef.mutable and typeContainsFunctions expectedType then
+                if CA.patternIsMutable valueDef.pattern and typeContainsFunctions expectedType then
                     addCheckError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ]
                 else
                     return None
 
-            xxx >> andThen _:
+            xxx
+            >> andThen _:
             checkExpression env1 expectedType e
 
 
@@ -1192,39 +1196,44 @@ fromExpression as Env: CA.Expression: Monad Type =
                 Just c:
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
-        CA.Lambda pos param body:
-            (fromParameter env param) >> andThen ( isMutable & patternOut ):
+        CA.Lambda pos param lambdaModifier body:
+
+            fromPattern env param Dict.empty
+            >> andThen patternOut:
 
             ip =
                 insertPatternVars
                     { subs = Dict.empty
                     , isParameter = True
-                    , isMutable
                     , isRoot = False
                     }
                     patternOut.vars
                     env
 
             ip >> andThen bodyEnv:
-            (fromExpression bodyEnv body) >> andThen bodyType:
-            # fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
+            fromExpression bodyEnv body >> andThen bodyType:
+
+            # fromPattern can infer paramType only when destructuring some patterns, it's not reliable in general
             # fromBlock instead infers paramType fully, but will not apply the substitutions it creates
             # So we just pull out the substitutions and apply them to paramType
-            (applySubsToType patternOut.ty) >> andThen refinedPatternOutTy:
-            if isMutable and typeContainsFunctions refinedPatternOutTy then
-                # TODO be a bit more descriptive, maybe name the arguments
-                errorTodo pos << "mutable args cannot be functions"
+            applySubsToType patternOut.ty
+            >> andThen refinedPatternOutTy:
 
-            else
-                CA.TypeFunction pos refinedPatternOutTy isMutable bodyType
-                    >> return
+#            if isMutable and typeContainsFunctions refinedPatternOutTy then
+#                # TODO be a bit more descriptive, maybe name the arguments
+#                errorTodo pos << "mutable args cannot be functions"
+#
+#            else
+
+            CA.TypeFunction pos refinedPatternOutTy lambdaModifier bodyType
+            >> return
 
         CA.Call pos reference argument:
             # first of all, let's get our children types
-            (fromExpression env reference) >> andThen referenceType:
-            (fromArgument env argument) >> andThen ( fromIsMutable & argumentType ):
+            fromExpression env reference >> andThen referenceType:
+            fromArgument env argument >> andThen argumentType:
             # the type of the call itself is the return type of the lamba
-            unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
+            unifyFunctionOnCallAndYieldReturnType env reference referenceType argument argumentType
 
         CA.If pos ar:
             checkExpression env CoreTypes.bool ar.condition >> andThen _:
@@ -1256,7 +1265,7 @@ fromExpression as Env: CA.Expression: Monad Type =
         CA.LetIn valueDef e:
             fromDefinition False valueDef env >> andThen env1:
             fromExpression env1 e >> andThen ty:
-            if valueDef.mutable and typeContainsFunctions ty then
+            if CA.patternIsMutable valueDef.pattern and typeContainsFunctions ty then
                 addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> andThen _:
                 return ty
             else
@@ -1265,37 +1274,40 @@ fromExpression as Env: CA.Expression: Monad Type =
 
 
 
-unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argument: Type: Monad Type =
-    env: reference: referenceType: callIsMutable: argument: callArgumentType:
+unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: Type: Monad Type =
+    env: reference: referenceType: argument: callArgumentType:
+
     try referenceType as
-        CA.TypeFunction _ refArgumentType refIsMutable refReturnType:
-            if callIsMutable /= refIsMutable then
-                addError (CA.expressionPos reference) [ "mutability clash 2" ]
 
-            else
-                pos =
-                    CA.expressionPos reference
+        CA.TypeFunction _ refArgumentType lambdaModifier refReturnType:
+            pos =
+                CA.expressionPos reference
 
-                reason =
-                    UnifyReason_CallArgument
-                        { reference = pos
-                        , argument = CA.argumentPos argument
-                        }
+            reason =
+                UnifyReason_CallArgument
+                    { reference = pos
+                    , argument = CA.argumentPos argument
+                    }
 
-                (unify env pos reason refArgumentType callArgumentType) >> andThen unifiedArgumentType:
-                applySubsToType refReturnType
+            unify env pos reason refArgumentType callArgumentType
+            >> andThen unifiedArgumentType:
+
+            applySubsToType refReturnType
 
         CA.TypeVariable pos name:
-            (newType pos) >> andThen returnType:
+            newType pos
+            >> andThen returnType:
 
             ty =
-                CA.TypeFunction pos callArgumentType callIsMutable returnType
+                CA.TypeFunction pos callArgumentType LambdaNormal returnType
 
-            (unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty) >> andThen _:
+            unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty
+            >> andThen _:
+
             applySubsToType returnType
 
         CA.TypeAlias pos _ ty:
-            unifyFunctionOnCallAndYieldReturnType env reference ty callIsMutable argument callArgumentType
+            unifyFunctionOnCallAndYieldReturnType env reference ty argument callArgumentType
 
         _:
             addError (CA.expressionPos reference)
@@ -1318,7 +1330,6 @@ fromPatternAndBlock as Env: ( CA.Pattern & CA.Expression ): ( Type & Type ): Mon
         insertPatternVars
             { subs
             , isParameter = False
-            , isMutable = False
             , isRoot = False
             }
             patternOut.vars
@@ -1331,52 +1342,43 @@ fromPatternAndBlock as Env: ( CA.Pattern & CA.Expression ): ( Type & Type ): Mon
     return ( unifiedPatternType & unifiedBlockType )
 
 
-fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
+fromArgument as Env: CA.Argument: Monad Type =
     env: argument:
+
     try argument as
+
         CA.ArgumentExpression expr:
-            (fromExpression env expr) >> andThen ty:
-            return ( False & ty )
+            fromExpression env expr
 
         CA.ArgumentMutable pos { ref, attrPath }:
+
             try Dict.get ref env.instanceVariables as
+
                 Nothing:
                     errorUndefinedVariable env pos ref >> andThen ty:
-                    return ( True & ty )
+                    return (CA.TypeMutable Pos.N ty)
 
                 Just var:
                     if not var.isMutable then
-                        ae =
-                            addError pos
-                                [ "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
-                                , ""
-                                , "TODO [link to wiki page that explains how to declare variables]"
-                                ]
-                        ae >> andThen ty:
-                        return ( True & ty )
+
+                        addError pos
+                            [ "You are trying to mutate variable `" .. toHuman ref .. "` but it was declared as not mutable!"
+                            , ""
+                            , "TODO [link to wiki page that explains how to declare variables]"
+                            ]
+                        >> andThen ty:
+
+                        return (CA.TypeMutable Pos.N ty)
 
                     else if typeContainsFunctions var.ty then
                         # TODO what about constrained/unconstrained tyvars?
-                        (addError pos [ "mutable arguments can't allow functions" ]) >> andThen ty:
-                        return ( True & ty )
+                        addError pos [ "mutable arguments can't allow functions" ]
+
+                        >> andThen ty:
+                        return (CA.TypeMutable Pos.N ty)
 
                     else
-                        (applyAttributePath env pos attrPath var.ty) >> andThen ty:
-                        return ( True & ty )
-
-
-fromParameter as Env: CA.Parameter: Monad ( Bool & PatternOut ) =
-    env: param:
-    try param as
-        CA.ParameterPattern pattern:
-            (fromPattern env pattern Dict.empty) >> andThen patternOut:
-            return ( False & patternOut )
-
-        CA.ParameterMutable pos paramName:
-            # TypeNonFunction
-            (newType pos) >> andThen ty:
-            vars = Dict.singleton paramName { pos, type = ty, isAnnotated = False }
-            return ( True & { vars, pos, ty, isFullyAnnotated = False })
+                        applyAttributePath env pos attrPath var.ty
 
 
 [# Patterns are special because they are the one way to **add variables to the env**.
@@ -1447,6 +1449,7 @@ Validation determines if it is ok or not
 #]
 alias PatternVar = {
     , pos as Pos
+    , isMutable as Bool
     , type as Type
     , isAnnotated as Bool
     }
@@ -1463,6 +1466,43 @@ alias PatternOut =
     }
 
 
+
+fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name PatternVar: Monad PatternOut =
+    env: pos: isMutable: maybeName: maybeAnnotation: vars:
+
+    isAnnotated =
+        maybeAnnotation /= Nothing
+
+    makeType =
+        try maybeAnnotation as
+            Nothing:
+                newType pos
+
+            Just type:
+                try Compiler/ExpandTypes.expandAnnotation env.types type as
+                    Err e:
+                        insertError e >> andThen None:
+                        newType pos
+
+                    Ok t:
+                        return t
+
+    makeType >> andThen type:
+
+    newVars =
+        try maybeName as
+            Nothing: vars
+            Just name: Dict.insert name { pos, type, isMutable, isAnnotated } vars
+
+    {
+    , vars = newVars
+    , pos
+    , ty = type
+    , isFullyAnnotated = isAnnotated
+    }
+    >> return
+
+
 fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
     env:
     pattern:
@@ -1473,33 +1513,9 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
         vars_
 
     try pattern as
-        CA.PatternAny pos maybeName maybeAnnotation:
 
-            isAnnotated =
-                maybeAnnotation /= Nothing
-
-            makeType =
-                try maybeAnnotation as
-                    Nothing:
-                        newType pos
-
-                    Just type:
-                        try Compiler/ExpandTypes.expandAnnotation env.types type as
-                            Err e:
-                                insertError e >> andThen None:
-                                newType pos
-
-                            Ok t:
-                                return t
-
-            makeType >> andThen type:
-
-            newVars =
-                try maybeName as
-                    Nothing: vars
-                    Just name: Dict.insert name { pos, type, isAnnotated } vars
-
-            return << { vars = newVars, pos, ty = type, isFullyAnnotated = isAnnotated }
+        CA.PatternAny pos isMutable maybeName maybeAnnotation:
+            fromMaybeAnnotation env pos isMutable maybeName maybeAnnotation vars
 
         CA.PatternLiteralNumber pos literal:
             return << { vars, pos, ty = CoreTypes.number, isFullyAnnotated = True }
@@ -1773,6 +1789,9 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
         ( CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs ):
             unifyRecords env reason pos1 ( a_ext & a_attrs ) ( b_ext & b_attrs )
 
+        CA.TypeMutable _ a & CA.TypeMutable _ b:
+            unify_ env reason pos1 a b
+
         _:
             unifyError pos1 IncompatibleTypes t1 t2
 
@@ -2007,6 +2026,9 @@ typeContainsFunctions as Type: Bool =
         CA.TypeAlias _ path t:
             typeContainsFunctions t
 
+        CA.TypeMutable _ t:
+            typeContainsFunctions t
+
         CA.TypeRecord _ extensible attrs:
             attrs
                 >> Dict.values
@@ -2015,6 +2037,7 @@ typeContainsFunctions as Type: Bool =
 
 typeHasTyvar as Name: Type: Bool =
     n: ty:
+
     try ty as
         CA.TypeVariable pos name:
             n == name
@@ -2028,42 +2051,60 @@ typeHasTyvar as Name: Type: Bool =
         CA.TypeAlias _ path t:
             typeHasTyvar n t
 
+        CA.TypeMutable _ t:
+            typeHasTyvar n t
+
         CA.TypeRecord pos extensible attrs:
             Just n == extensible or List.any (typeHasTyvar n) (Dict.values attrs)
 
 
-applyAttributePath as Env: Pos: List Name: Type: Monad Type =
-    env: pos: attrPath:
 
-    wrap as Name: Type: Monad Type =
-        attributeName: ty:
+attributeAccess as Env: Pos: Name: Type: Monad Type =
+    env: pos: attributeName: recordType:
+
         # Unless this is a function parameter, we should know the full type already!
         maybeAttrType =
-            try ty as
+            try recordType as
                 CA.TypeRecord _ e attrs:
                     Dict.get attributeName attrs
 
+                CA.TypeMutable p (CA.TypeRecord _ e attrs):
+                    Dict.get attributeName attrs
+                    >> Maybe.map (CA.TypeMutable p)
+
                 _:
                     Nothing
+
         try maybeAttrType as
             Just attrType:
                 return attrType
 
             Nothing:
-                (newName identity) >> andThen extName:
-                (newType pos) >> andThen attrType:
+                newName identity >> andThen extName:
+                newType pos >> andThen attrType:
+
+#                try recordType as
+#                    CA.TypeMutable _
+
+
                 re as Type =
                     CA.TypeRecord (Pos.I 2) (Just extName) (Dict.singleton attributeName attrType)
-                (unify env pos (UnifyReason_AttributeAccess attributeName) ty re) >> andThen _:
+
+                unify env pos (UnifyReason_AttributeAccess attributeName) recordType re >> andThen _:
                 return attrType
 
-    list_for attrPath wrap
+
+
+
+applyAttributePath as Env: Pos: List Name: Type: Monad Type =
+    env: pos: attrPath:
+
+    list_for attrPath (attributeAccess env pos)
 
 
 alias InsertPatternVarsPars =
     { subs as Subs
     , isParameter as Bool
-    , isMutable as Bool
     , isRoot as Bool
     }
 
@@ -2109,9 +2150,9 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
         Dict.insert ref
             { definedAt = patternVar.pos
             , ty = refinedTy
-            , isMutable = pars.isMutable
+            , isMutable = patternVar.isMutable
             , freeTypeVariables =
-                if pars.isMutable or pars.isParameter then
+                if patternVar.isMutable or pars.isParameter then
                     [#
                        Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
 
@@ -2238,6 +2279,9 @@ replaceTypeVariables as Subs: Type: Type =
 
         CA.TypeAlias pos path t:
             CA.TypeAlias pos path (replaceTypeVariables subs t)
+
+        CA.TypeMutable pos t:
+            CA.TypeMutable pos (replaceTypeVariables subs t)
 
         CA.TypeRecord pos extensible attrs:
             try extensible >> Maybe.andThen (name: Dict.get name subs) as
