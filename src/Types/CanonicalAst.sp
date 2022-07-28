@@ -32,10 +32,16 @@ union Type =
     , TypeFunction Pos Type Bool Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
     , TypeAlias Pos Meta.UniqueSymbolReference Type
+    , TypeMutable Pos Type
 
+
+union IsMutable =
+    , Mutable
+    , Immutable
 
 union Pattern =
-    , PatternAny Pos (Maybe Text) (Maybe Type)
+    , PatternDiscard Pos (Maybe Type)
+    , PatternNamed Pos IsMutable Text (Maybe Type)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
@@ -127,7 +133,6 @@ alias Constructor = {
 alias ValueDef = {
     , pattern as Pattern
     , native as Bool
-    , mutable as Bool
     , parentDefinitions as [Pattern]
     , nonFn as Set Name
     , body as Expression
@@ -195,12 +200,14 @@ typePos as Type: Pos =
         TypeFunction p _ _ _: p
         TypeRecord p _ _: p
         TypeAlias p _ _: p
+        TypeMutable p _: p
 
 
 patternPos as Pattern: Pos =
     pa:
     try pa as
-        PatternAny p n _: p
+        PatternDiscard p _: p
+        PatternNamed p _ _ _: p
         PatternLiteralText p _: p
         PatternLiteralNumber p _: p
         PatternConstructor p path ps: p
@@ -210,8 +217,8 @@ patternPos as Pattern: Pos =
 patternNames as Pattern: Dict Name Pos =
     p:
     try p as
-        PatternAny pos Nothing _: Dict.empty
-        PatternAny pos (Just n) _: Dict.singleton n pos
+        PatternDiscard pos _: Dict.empty
+        PatternNamed pos _ n _: Dict.singleton n pos
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
@@ -221,8 +228,8 @@ patternNames as Pattern: Dict Name Pos =
 patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
     p:
     try p as
-        PatternAny pos Nothing _: Dict.empty
-        PatternAny pos (Just n) maybeType: Dict.singleton n (pos & maybeType)
+        PatternDiscard pos _: Dict.empty
+        PatternNamed pos _ n maybeType: Dict.singleton n (pos & maybeType)
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty

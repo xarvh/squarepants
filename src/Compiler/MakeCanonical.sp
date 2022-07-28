@@ -179,13 +179,32 @@ deps_init = {
 
 patternDeps as CA.Pattern: Deps: Deps =
     pattern: deps:
+
     try pattern as
-        CA.PatternConstructor _ usr ps: List.for ps patternDeps { deps with cons = Set.insert usr .cons }
-        CA.PatternRecord _ ps: Dict.for ps (k: patternDeps) deps
-        CA.PatternAny _ _ (Just type): { deps with types = typeDeps type .types }
-        CA.PatternAny _ _ Nothing: deps
-        CA.PatternLiteralNumber _ _: deps
-        CA.PatternLiteralText _ _: deps
+
+        CA.PatternConstructor _ usr ps:
+            List.for ps patternDeps { deps with cons = Set.insert usr .cons }
+
+        CA.PatternRecord _ ps:
+            Dict.for ps (k: patternDeps) deps
+
+        CA.PatternNamed _ mutability name (Just type):
+            { deps with types = typeDeps type .types }
+
+        CA.PatternNamed _ mutability name Nothing:
+            deps
+
+        CA.PatternDiscard _ (Just type):
+           { deps with types = typeDeps type .types }
+
+        CA.PatternDiscard _ Nothing:
+           deps
+
+        CA.PatternLiteralNumber _ _:
+           deps
+
+        CA.PatternLiteralText _ _:
+           deps
 
 
 expressionDeps as CA.Expression: Deps: Deps =
@@ -332,7 +351,6 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
     Ok {
         , pattern
         , native = False
-        , mutable = Debug.todo "Remove `mutable`"
         , parentDefinitions = env.defsPath
         , nonFn
         , body
@@ -362,8 +380,10 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
             else
                 Maybe.mapRes (translateType ann env.ro) maybeFaType >> onOk maybeCaType:
 
-                n = if name == "_" then Nothing else Just name
-                Ok << CA.PatternAny pos n maybeCaType
+                if name == "_" then
+                    Ok << CA.PatternDiscard pos maybeCaType
+                else
+                    Ok << CA.PatternNamed pos CA.Immutable name maybeCaType
 
         FA.PatternLiteralNumber pos l:
             translateNumber CA.PatternLiteralNumber pos l
@@ -388,14 +408,16 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                 makeError pos [ "can't use `with` inside patterns" ]
 
             else
-                fold = ( (At p name) & maybePattern ): dict:
+                fold =
+                    ( (At p name) & maybePattern ): dict:
+
                     if Dict.member name dict then
                         makeError p [ "duplicate attribute name in pattern: " .. name ]
 
                     else
                         try maybePattern as
                             Nothing:
-                                Ok << Dict.insert name (CA.PatternAny p (Just name) Nothing) dict
+                                Ok << Dict.insert name (CA.PatternNamed p CA.Immutable name Nothing) dict
 
                             Just faPattern:
                                 faPattern
@@ -1008,10 +1030,14 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
 
         FA.Definition pos fa:
             translateDefinition True (initEnv ro) fa >> onOk def:
-            if def.mutable then
-                makeError (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
 
-            else
+
+            Debug.todo "check that there's no mutables"
+#            if def.mutable then
+#                makeError (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
+#
+#            else
+
                 # Patterns contain position, so they are unique and don't need to be checked for duplication
                 # Names duplication will be checked when rootValuesAndConstructors is populated
                 Ok { caModule with valueDefs = Dict.insert def.pattern def .valueDefs }

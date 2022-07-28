@@ -49,6 +49,7 @@ union Type =
     , TypeTuple Pos [Type]
     , TypeList Pos Type
     , TypeRecord Pos (RecordArgs Type)
+    , TypeMutable Pos Type
 
 
 # expr op expr op expr op...
@@ -88,7 +89,6 @@ union Expression =
     , List Pos [Expression]
 
 union Pattern =
-    # TODO: remove the Bool from the pattern, it can never be mutable
     , PatternAny Pos Bool Name (Maybe Type)
     , PatternLiteralNumber Pos Text
     , PatternLiteralText Pos Text
@@ -128,6 +128,7 @@ typePos as Type: Pos =
         TypeTuple p _: p
         TypeList p _: p
         TypeRecord p _: p
+        TypeMutable p _: p
 
 
 expressionPos as Expression: Pos =

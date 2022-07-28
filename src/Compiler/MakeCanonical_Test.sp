@@ -194,10 +194,8 @@ lists as Test =
             (Test.isOkAndEqualTo
                 { body = CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }
                 , native = False
-                , mutable = False
                 , pattern =
-                    CA.PatternAny p
-                        (Just "l")
+                    CA.PatternNamed p CA.Immutable "l"
                         (TH.boolType
                             >> CoreTypes.list
                             >> Just
@@ -263,8 +261,7 @@ tuples as Test =
             (Test.isOkAndEqualTo
                 { body = CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }
                 , pattern =
-                    CA.PatternAny p
-                        (Just "a")
+                    CA.PatternNamed p CA.Immutable "a"
                         (Dict.empty
                             >> Dict.insert "first" TH.numberType
                             >> Dict.insert "second" TH.numberType
@@ -272,7 +269,6 @@ tuples as Test =
                             >> Just
                         )
                 , native = False
-                , mutable = False
                 , nonFn = Dict.empty
                 , parentDefinitions = []
                 , directConsDeps = Dict.empty
