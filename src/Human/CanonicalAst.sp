@@ -84,6 +84,9 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
         CA.TypeConstant pos usr args:
             ( (if args == [] then 0 else 1) & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " "))
 
+        CA.TypeMutable pos ty:
+            0 & "@" .. typeToText currentUmr meta ty
+
         CA.TypeVariable pos name:
             ( 0 & name)
 

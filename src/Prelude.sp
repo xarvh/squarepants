@@ -361,8 +361,9 @@ alias Function = {
 
 
 functions as [Function] = [
+    # TODO with the new Platforms system, there is no real reasons for these functions to be here.
     , mut
-    , set
+    , reinit
     , compare
     , debugTodo
     , debugLog
@@ -379,8 +380,9 @@ mut as Function = {
     }
 
 
-set as Function = {
-    , usr = coreUsr "set"
+# TODO remove this one, it's used only by the typecheck tests?
+reinit as Function = {
+    , usr = coreUsr "reinit"
     , type = tyFun (CA.TypeMutable Pos.N (tyVar "a")) False (tyFun (tyVar "a") False CoreTypes.none)
     , nonFn = [ "a" ]
     }

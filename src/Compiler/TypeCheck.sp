@@ -1271,13 +1271,13 @@ fromExpression as Env: CA.Expression: Monad Type =
 
 
 unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argument: Type: Monad Type =
-    env: reference: referenceType: callIsMutable: argument: callArgumentType:
+    env: reference: referenceType: fromIsMutable: argument: callArgumentType:
     try referenceType as
-        CA.TypeFunction _ refArgumentType refIsMutable refReturnType:
-            if callIsMutable /= refIsMutable then
-                addError (CA.expressionPos reference) [ "mutability clash 2" ]
-
-            else
+        CA.TypeFunction _ refArgumentType isConsuming refReturnType:
+#            if fromIsMutable /= refIsMutable then
+#                addError (CA.expressionPos reference) [ "mutability clash 2: " .. toHuman {fromIsMutable, refIsMutable} ]
+#
+#            else
                 pos =
                     CA.expressionPos reference
 
@@ -1294,13 +1294,13 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argu
             (newType pos) >> andThen returnType:
 
             ty =
-                CA.TypeFunction pos callArgumentType callIsMutable returnType
+                CA.TypeFunction pos callArgumentType fromIsMutable returnType
 
             (unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty) >> andThen _:
             applySubsToType returnType
 
         CA.TypeAlias pos _ ty:
-            unifyFunctionOnCallAndYieldReturnType env reference ty callIsMutable argument callArgumentType
+            unifyFunctionOnCallAndYieldReturnType env reference ty fromIsMutable argument callArgumentType
 
         _:
             addError (CA.expressionPos reference)
@@ -1349,7 +1349,7 @@ fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
                     return ( True & ty )
 
                 Just var:
-                    if var.isMutable then
+                    if not var.isMutable then
                         ae =
                             addError pos
                                 [ "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
@@ -2025,6 +2025,9 @@ typeContainsFunctions as Type: Bool =
         CA.TypeAlias _ path t:
             typeContainsFunctions t
 
+        CA.TypeMutable _ t:
+            typeContainsFunctions t
+
         CA.TypeRecord _ extensible attrs:
             attrs
                 >> Dict.values
@@ -2044,6 +2047,9 @@ typeHasTyvar as Name: Type: Bool =
             List.any (typeHasTyvar n) args
 
         CA.TypeAlias _ path t:
+            typeHasTyvar n t
+
+        CA.TypeMutable _ t:
             typeHasTyvar n t
 
         CA.TypeRecord pos extensible attrs:
