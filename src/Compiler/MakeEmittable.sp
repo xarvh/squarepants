@@ -90,7 +90,7 @@ pickMainName as CA.Pattern: PickedName =
     pattern:
 
     try pattern as
-        CA.PatternNamed _ mutability name _:
+        CA.PatternNamed pos mutability name maybeType:
             TrivialPattern (userSpecifiedName name)
 
         _:
@@ -307,7 +307,7 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                 TrivialPattern (DollarName defName):
                     EA.LetIn {
                         , maybeName = Just defName
-                        , mutability = if valueDef.mutable then EA.Mutable else EA.Immutable
+                        , mutability = Debug.todo "mutability0"
                         , letExpression = translateExpression @counter valueDef.body
                         , inExpression = translateExpression @counter e
                         }

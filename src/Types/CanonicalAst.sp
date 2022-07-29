@@ -35,13 +35,9 @@ union Type =
     , TypeMutable Pos Type
 
 
-union IsMutable =
-    , Mutable
-    , Immutable
-
 union Pattern =
     , PatternDiscard Pos (Maybe Type)
-    , PatternNamed Pos IsMutable Text (Maybe Type)
+    , PatternNamed Pos Bool Text (Maybe Type)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]

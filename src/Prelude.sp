@@ -427,9 +427,8 @@ insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: Modu
         usr
 
     def as CA.ValueDef = {
-        , pattern = CA.PatternAny Pos.N (Just name) (Just type)
+        , pattern = CA.PatternNamed Pos.N False name (Just type)
         , native = True
-        , mutable = False
         , parentDefinitions = []
         , nonFn = Set.fromList nonFn
         , body = CA.LiteralText Pos.N name

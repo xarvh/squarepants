@@ -485,7 +485,6 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
         insertPatternVars
             { subs = Dict.empty
             , isParameter = False
-            , isMutable = def.mutable
             , isRoot
             }
             patternOut.vars
@@ -518,7 +517,6 @@ fromDefinition as Bool: CA.ValueDef: Env: Monad Env =
         insertPatternVars
             { subs
             , isParameter = False
-            , isMutable = def.mutable
             , isRoot
             }
             patternOut.vars
@@ -693,6 +691,40 @@ addCheckConstructorError as Pos: Env: [CA.Pattern]: [Text]: Monad Env =
         #]
 
 
+
+checkAndInsertAnnotatedPattern as Env: Type: Pos: Bool: Maybe Text: Maybe Type: Monad Env =
+    env: expectedType: pos: isMutable: maybeName: maybeAnnotation:
+
+    envWith =
+        name: type:
+        { env with instanceVariables =
+            # TODO why keeping `env` implicit gives a shitton of errors?
+            env.instanceVariables
+                >> Dict.insert (CA.RefBlock name) {
+                    , definedAt = pos
+                    , ty = type
+                    , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars Dict.empty type
+                    , isMutable
+                    }
+        }
+
+    try maybeName & maybeAnnotation as
+
+        Just name & Just annotation:
+            isCompatibleWith env expectedType pos annotation >> andThen None:
+            return (envWith name annotation)
+
+        Just name & Nothing:
+            return (envWith name expectedType)
+
+        Nothing & Just annotation:
+            isCompatibleWith env expectedType pos annotation >> andThen None:
+            return env
+
+        Nothing & Nothing:
+            return env
+
+
 checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
     env: expectedType_: pattern:
 
@@ -701,37 +733,11 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
 
     try pattern as
 
-        CA.PatternAny pos maybeName maybeAnnotation:
+        CA.PatternDiscard pos maybeAnnotation:
+            checkAndInsertAnnotatedPattern env expectedType pos False Nothing maybeAnnotation
 
-            envWith =
-                name: type:
-                { env with instanceVariables =
-                    # TODO why keeping `env` implicit gives a shitton of errors?
-                    env.instanceVariables
-                        >> Dict.insert (CA.RefBlock name) {
-                            , definedAt = pos
-                            , ty = type
-                            , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars Dict.empty type
-                            , isMutable = False
-                            }
-                }
-
-            try maybeName & maybeAnnotation as
-
-                Just name & Just annotation:
-                    isCompatibleWith env expectedType pos annotation >> andThen None:
-                    return (envWith name annotation)
-
-                Just name & Nothing:
-                    return (envWith name expectedType)
-
-                Nothing & Just annotation:
-                    isCompatibleWith env expectedType pos annotation >> andThen None:
-                    return env
-
-                Nothing & Nothing:
-                    return env
-
+        CA.PatternNamed pos isMutable name maybeAnnotation:
+            checkAndInsertAnnotatedPattern env expectedType pos isMutable (Just name) maybeAnnotation
 
         CA.PatternLiteralNumber pos literal:
             todo "TODO needs proper type comparison without `pos`"
@@ -869,10 +875,9 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         insertPatternVars
                             { subs = Dict.empty
                             , isParameter = True
-                            , isMutable = True
                             , isRoot = False
                             }
-                            (Dict.singleton parameterName { pos = parameterPos, type = parameterType, isAnnotated = True })
+                            (Dict.singleton parameterName { pos = parameterPos, isMutable = True, type = parameterType, isAnnotated = True })
                             env
 
                     ip >> andThen localEnv:
@@ -1007,7 +1012,6 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     insertPatternVars
                         { subs
                         , isParameter = False
-                        , isMutable = False
                         , isRoot = False
                         }
                         patternOut.vars
@@ -1084,12 +1088,13 @@ checkExpression as Env: Type: CA.Expression: Monad None =
             fromDefinition False valueDef env >> andThen env1:
 
             xxx =
-                if valueDef.mutable and typeContainsFunctions expectedType then
+                if Debug.todo "valueDef.mutable" and typeContainsFunctions expectedType then
                     addCheckError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ]
                 else
                     return None
 
-            xxx >> andThen _:
+            xxx
+            >> andThen _:
             checkExpression env1 expectedType e
 
 
@@ -1193,13 +1198,13 @@ fromExpression as Env: CA.Expression: Monad Type =
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
         CA.Lambda pos param body:
-            (fromParameter env param) >> andThen ( isMutable & patternOut ):
+            fromParameter env param
+            >> andThen ( isMutable & patternOut ):
 
             ip =
                 insertPatternVars
                     { subs = Dict.empty
                     , isParameter = True
-                    , isMutable
                     , isRoot = False
                     }
                     patternOut.vars
@@ -1256,7 +1261,7 @@ fromExpression as Env: CA.Expression: Monad Type =
         CA.LetIn valueDef e:
             fromDefinition False valueDef env >> andThen env1:
             fromExpression env1 e >> andThen ty:
-            if valueDef.mutable and typeContainsFunctions ty then
+            if Debug.todo "valueDef.mutable" and typeContainsFunctions ty then
                 addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> andThen _:
                 return ty
             else
@@ -1318,7 +1323,6 @@ fromPatternAndBlock as Env: ( CA.Pattern & CA.Expression ): ( Type & Type ): Mon
         insertPatternVars
             { subs
             , isParameter = False
-            , isMutable = False
             , isRoot = False
             }
             patternOut.vars
@@ -1345,7 +1349,7 @@ fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
                     return ( True & ty )
 
                 Just var:
-                    if not var.isMutable then
+                    if var.isMutable then
                         ae =
                             addError pos
                                 [ "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
@@ -1375,7 +1379,7 @@ fromParameter as Env: CA.Parameter: Monad ( Bool & PatternOut ) =
         CA.ParameterMutable pos paramName:
             # TypeNonFunction
             (newType pos) >> andThen ty:
-            vars = Dict.singleton paramName { pos, type = ty, isAnnotated = False }
+            vars = Dict.singleton paramName { pos, type = ty, isMutable = True, isAnnotated = False }
             return ( True & { vars, pos, ty, isFullyAnnotated = False })
 
 
@@ -1447,6 +1451,7 @@ Validation determines if it is ok or not
 #]
 alias PatternVar = {
     , pos as Pos
+    , isMutable as Bool
     , type as Type
     , isAnnotated as Bool
     }
@@ -1463,6 +1468,43 @@ alias PatternOut =
     }
 
 
+
+fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name PatternVar: Monad PatternOut =
+    env: pos: isMutable: maybeName: maybeAnnotation: vars:
+
+    isAnnotated =
+        maybeAnnotation /= Nothing
+
+    makeType =
+        try maybeAnnotation as
+            Nothing:
+                newType pos
+
+            Just type:
+                try Compiler/ExpandTypes.expandAnnotation env.types type as
+                    Err e:
+                        insertError e >> andThen None:
+                        newType pos
+
+                    Ok t:
+                        return t
+
+    makeType >> andThen type:
+
+    newVars =
+        try maybeName as
+            Nothing: vars
+            Just name: Dict.insert name { pos, type, isMutable, isAnnotated } vars
+
+    {
+    , vars = newVars
+    , pos
+    , ty = type
+    , isFullyAnnotated = isAnnotated
+    }
+    >> return
+
+
 fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
     env:
     pattern:
@@ -1473,33 +1515,11 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
         vars_
 
     try pattern as
-        CA.PatternAny pos maybeName maybeAnnotation:
+        CA.PatternDiscard pos maybeAnnotation:
+            fromMaybeAnnotation env pos False Nothing maybeAnnotation vars
 
-            isAnnotated =
-                maybeAnnotation /= Nothing
-
-            makeType =
-                try maybeAnnotation as
-                    Nothing:
-                        newType pos
-
-                    Just type:
-                        try Compiler/ExpandTypes.expandAnnotation env.types type as
-                            Err e:
-                                insertError e >> andThen None:
-                                newType pos
-
-                            Ok t:
-                                return t
-
-            makeType >> andThen type:
-
-            newVars =
-                try maybeName as
-                    Nothing: vars
-                    Just name: Dict.insert name { pos, type, isAnnotated } vars
-
-            return << { vars = newVars, pos, ty = type, isFullyAnnotated = isAnnotated }
+        CA.PatternNamed pos isMutable name maybeAnnotation:
+            fromMaybeAnnotation env pos isMutable (Just name) maybeAnnotation vars
 
         CA.PatternLiteralNumber pos literal:
             return << { vars, pos, ty = CoreTypes.number, isFullyAnnotated = True }
@@ -2063,7 +2083,6 @@ applyAttributePath as Env: Pos: List Name: Type: Monad Type =
 alias InsertPatternVarsPars =
     { subs as Subs
     , isParameter as Bool
-    , isMutable as Bool
     , isRoot as Bool
     }
 
@@ -2109,9 +2128,9 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
         Dict.insert ref
             { definedAt = patternVar.pos
             , ty = refinedTy
-            , isMutable = pars.isMutable
+            , isMutable = patternVar.isMutable
             , freeTypeVariables =
-                if pars.isMutable or pars.isParameter then
+                if patternVar.isMutable or pars.isParameter then
                     [#
                        Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
 

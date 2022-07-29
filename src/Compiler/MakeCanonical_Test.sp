@@ -195,7 +195,7 @@ lists as Test =
                 { body = CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }
                 , native = False
                 , pattern =
-                    CA.PatternNamed p CA.Immutable "l"
+                    CA.PatternNamed p False "l"
                         (TH.boolType
                             >> CoreTypes.list
                             >> Just
@@ -261,7 +261,7 @@ tuples as Test =
             (Test.isOkAndEqualTo
                 { body = CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }
                 , pattern =
-                    CA.PatternNamed p CA.Immutable "a"
+                    CA.PatternNamed p False "a"
                         (Dict.empty
                             >> Dict.insert "first" TH.numberType
                             >> Dict.insert "second" TH.numberType

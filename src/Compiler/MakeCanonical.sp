@@ -383,7 +383,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                 if name == "_" then
                     Ok << CA.PatternDiscard pos maybeCaType
                 else
-                    Ok << CA.PatternNamed pos CA.Immutable name maybeCaType
+                    Ok << CA.PatternNamed pos False name maybeCaType
 
         FA.PatternLiteralNumber pos l:
             translateNumber CA.PatternLiteralNumber pos l
@@ -417,7 +417,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                     else
                         try maybePattern as
                             Nothing:
-                                Ok << Dict.insert name (CA.PatternNamed p CA.Immutable name Nothing) dict
+                                Ok << Dict.insert name (CA.PatternNamed p False name Nothing) dict
 
                             Just faPattern:
                                 faPattern
