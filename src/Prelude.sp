@@ -94,7 +94,7 @@ binops as [Op.Binop] = [
     , multiply
     , divide
     #
-    , mutableAssign
+#    , mutableAssign
     , mutableAdd
     , mutableSubtract
     #
@@ -224,14 +224,14 @@ divide as Op.Binop = {
 #
 # Mut ops
 #
-mutableAssign as Op.Binop = {
-    , usr = coreUsr "mutableAssign"
-    , symbol = ":="
-    , precedence = Op.Mutop
-    , associativity = Op.Left
-    , type = typeBinop True (tyVar "a") (tyVar "a") CoreTypes.none
-    , nonFn = []
-    }
+#mutableAssign as Op.Binop = {
+#    , usr = coreUsr "mutableAssign"
+#    , symbol = ":="
+#    , precedence = Op.Mutop
+#    , associativity = Op.Left
+#    , type = typeBinop True (tyVar "a") (tyVar "a") CoreTypes.none
+#    , nonFn = []
+#    }
 
 
 mutableAdd as Op.Binop = {
@@ -361,6 +361,8 @@ alias Function = {
 
 
 functions as [Function] = [
+    , mut
+    , set
     , compare
     , debugTodo
     , debugLog
@@ -368,6 +370,20 @@ functions as [Function] = [
     , debugBenchStart
     , debugBenchStop
     ]
+
+
+mut as Function = {
+    , usr = coreUsr "mut"
+    , type = tyFun (tyVar "a") False (CA.TypeMutable Pos.N (tyVar "a"))
+    , nonFn = [ "a" ]
+    }
+
+
+set as Function = {
+    , usr = coreUsr "set"
+    , type = tyFun (CA.TypeMutable Pos.N (tyVar "a")) False (tyFun (tyVar "a") False CoreTypes.none)
+    , nonFn = [ "a" ]
+    }
 
 
 compare as Function = {

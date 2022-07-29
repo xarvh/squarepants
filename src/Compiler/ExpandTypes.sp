@@ -20,6 +20,10 @@ expandInType as GetType: CA.Type: Res CA.Type =
         CA.TypeVariable pos name:
             Ok ty
 
+        CA.TypeMutable pos t:
+            expandInType ga t >> onOk ety:
+            Ok << CA.TypeMutable pos ety
+
         CA.TypeFunction pos from fromIsMutable to:
             expandInType ga from >> onOk f:
             expandInType ga to >> onOk t:
@@ -85,6 +89,9 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
     try ty as
         CA.TypeConstant _ _ _:
             []
+
+        CA.TypeMutable _ t:
+            findMutableArgsThatContainFunctions nonFunctionPos t
 
         CA.TypeVariable _ name:
             [# TODO

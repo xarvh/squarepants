@@ -17,6 +17,8 @@ library =
             None
             True
             False
+            mut
+            set
 
     module =
         path = List

@@ -30,7 +30,7 @@ coreOverrides as Dict EA.Name Override =
     , Prelude.add.usr & binop "+"
     , Prelude.multiply.usr & binop "*"
     , Prelude.subtract.usr & binop "-"
-    , Prelude.mutableAssign.usr & binop "="
+#    , Prelude.mutableAssign.usr & binop "="
     , Prelude.mutableAdd.usr & binop "+="
     , Prelude.mutableSubtract.usr & binop "-="
     , Prelude.textConcat.usr & binop "+"

@@ -377,7 +377,7 @@ mu as Test =
         , codeTest "Immutable variables can't be used as mutable"
             """
             a = x:
-              @x := 1
+              set @x 1
             """
             (infer "a")
             (Test.errorContains [ "mutable"])
@@ -414,7 +414,7 @@ mu as Test =
             "Functions can't be mutable 2"
             """
             a = f@:
-                @f := (x: x)
+                set @f (x: x)
             """
             (infer "a")
             (Test.errorContains [ "mutable args cannot be functions"])
@@ -461,7 +461,7 @@ mu as Test =
             """
             a as None =
                 @x = 1
-                @x := 2
+                set @x 2
             """
             (infer "a")
             Test.isOk

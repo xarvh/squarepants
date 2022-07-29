@@ -346,6 +346,9 @@ typeTyvars as Type: Dict Name Pos =
         CA.TypeAlias _ path t:
             typeTyvars t
 
+        CA.TypeMutable _ t:
+            typeTyvars t
+
         CA.TypeRecord pos extensible attrs:
             init =
                 try extensible as
@@ -2252,6 +2255,9 @@ replaceTypeVariables as Subs: Type: Type =
 
         CA.TypeAlias pos path t:
             CA.TypeAlias pos path (replaceTypeVariables subs t)
+
+        CA.TypeMutable pos t:
+            CA.TypeMutable pos (replaceTypeVariables subs t)
 
         CA.TypeRecord pos extensible attrs:
             try extensible >> Maybe.andThen (name: Dict.get name subs) as
