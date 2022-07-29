@@ -208,6 +208,17 @@ patternPos as Pattern: Pos =
         PatternRecord p ps: p
 
 
+patternIsMutable as Pattern: Bool =
+    pattern:
+
+    try pattern as
+        PatternAny pos isMutable maybeName maybeType: isMutable
+        PatternLiteralNumber pos _: False
+        PatternLiteralText pos _: False
+        PatternConstructor pos path ps: List.any patternIsMutable ps
+        PatternRecord pos ps: Dict.any (k: patternIsMutable) ps
+
+
 patternNames as Pattern: Dict Name Pos =
     p:
     try p as
