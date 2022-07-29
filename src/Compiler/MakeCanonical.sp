@@ -1023,11 +1023,10 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
             >> onOk def:
 
 
-            Debug.todo "check that there's no mutables"
-#            if def.mutable then
-#                makeError (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
-#
-#            else
+            if CA.patternIsMutable def.pattern then
+                makeError (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
+
+            else
 
                 # Patterns contain position, so they are unique and don't need to be checked for duplication
                 # Names duplication will be checked when rootValuesAndConstructors is populated

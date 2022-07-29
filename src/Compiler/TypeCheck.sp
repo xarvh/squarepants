@@ -1085,7 +1085,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
             fromDefinition False valueDef env >> andThen env1:
 
             xxx =
-                if Debug.todo "valueDef.mutable" and typeContainsFunctions expectedType then
+                if CA.patternIsMutable valueDef.pattern and typeContainsFunctions expectedType then
                     addCheckError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ]
                 else
                     return None
@@ -1258,7 +1258,7 @@ fromExpression as Env: CA.Expression: Monad Type =
         CA.LetIn valueDef e:
             fromDefinition False valueDef env >> andThen env1:
             fromExpression env1 e >> andThen ty:
-            if Debug.todo "valueDef.mutable" and typeContainsFunctions ty then
+            if CA.patternIsMutable valueDef.pattern and typeContainsFunctions ty then
                 addError (CA.patternPos valueDef.pattern) [ "blocks that define mutables can't return functions" ] >> andThen _:
                 return ty
             else
