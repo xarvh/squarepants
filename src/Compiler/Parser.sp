@@ -888,17 +888,17 @@ typeList as Env: Parser FA.Type: Parser FA.Type =
 typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
     env: higher:
 
-    arrowAndHigher as Parser ( Bool & Pos & FA.Type ) =
+    arrowAndHigher as Parser ( LambdaModifier & Pos & FA.Type ) =
         arrow env >> andThen ( consuming & p ):
         higher >> andThen h:
         Parser.accept ( consuming & p & h )
 
-    fold as ( Bool & Pos & FA.Type ): ( Bool & FA.Type ): ( Bool & FA.Type ) =
+    fold as ( LambdaModifier & Pos & FA.Type ): ( LambdaModifier & FA.Type ): ( LambdaModifier & FA.Type ) =
 
-        ( nextIsMutable & p & ty ):
-        ( thisIsMutable & accum ):
+        ( nextModifier & p & ty ):
+        ( thisModifier & accum ):
 
-        ( nextIsMutable & FA.TypeFunction p ty thisIsMutable accum)
+        nextModifier & FA.TypeFunction p ty thisModifier accum
 
     here >> andThen fs:
     higher >> andThen e:
@@ -918,26 +918,26 @@ typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
             head :: tail:
                 reverseRec head tail (a :: accum)
 
-    ( ( thisIsMutable & p & return ) & reversedArgs ) =
-        reverseRec ( False & firstPos & e ) es []
+    ( ( lambdaModifier & p & return ) & reversedArgs ) =
+        reverseRec ( LambdaNormal & firstPos & e ) es []
 
-    thisIsMutable & return
+    lambdaModifier & return
         >> List.for reversedArgs fold
         >> x: x.second
         >> Parser.accept
 
 
 # TODO this is not an "arrow" any more
-arrow as Env: Parser ( Bool & Pos ) =
+arrow as Env: Parser ( LambdaModifier & Pos ) =
     env:
 
     oneToken >> andThen (Token start end k):
     try k as
         Token.Colon:
-            Parser.accept ( False & (pos env start end) )
+            Parser.accept ( LambdaNormal & pos env start end )
 
         Token.ConsumingColon:
-            Parser.accept ( True & (pos env start end) )
+            Parser.accept ( LambdaConsuming & pos env start end )
 
         _:
             Parser.reject

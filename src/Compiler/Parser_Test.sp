@@ -265,34 +265,34 @@ annotations as Test =
     Test.Group "Annotations"
         [ codeTest "Mutability 1"
             """
-            a as Number @: Int: None =
+            a as Number:- Int: None =
               1
             """
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
                     (typeConstant "Number")
-                    True
+                    LambdaConsuming
                     (FA.TypeFunction p
                         (typeConstant "Int")
-                        False
+                        LambdaNormal
                         (typeConstant "None")
                     )
                 )
             )
         , codeTest "Mutability 2"
             """
-            a as Number: Int @: None =
+            a as Number: Int:- None =
               1
             """
             firstAnnotation
             (Test.isOkAndEqualTo
                 (FA.TypeFunction p
                     (typeConstant "Number")
-                    False
+                    LambdaNormal
                     (FA.TypeFunction p
                         (typeConstant "Int")
-                        True
+                        LambdaConsuming
                         (typeConstant "None")
                     )
                 )
@@ -310,7 +310,7 @@ annotations as Test =
                         , typeConstant "Int"
                         ]
                     )
-                    False
+                    LambdaNormal
                     (typeConstant "Bool")
             )
         ]

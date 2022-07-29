@@ -883,12 +883,12 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     checkAndInsertPattern env parameterType param >> andThen localEnv:
                     checkExpression localEnv returnType body
 
-                CA.TypeFunction _ _ isMutable _ & _:
+                CA.TypeFunction _ _ typeLambdaMode _:
                     addCheckError pos [
                         , "the function and the annotation have different mutability"
                         ]
 
-                CA.TypeVariable pos name & _:
+                CA.TypeVariable pos name:
                     if isAnnotation name then
                         addCheckError pos [
                             , "This is a function, but the annotation says it should be of type variable `" .. name .. "` which implies that it could be of any type!"
@@ -1193,9 +1193,12 @@ fromExpression as Env: CA.Expression: Monad Type =
                 Just c:
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
-        CA.Lambda pos param modifier body:
+        CA.Lambda pos param lambdaModifier body:
             fromPattern env param
-            >> andThen patternOut:
+            >> andThen patternOut_:
+
+            patternOut as PatternOut =
+                patternOut_
 
             ip =
                 insertPatternVars
@@ -1212,21 +1215,24 @@ fromExpression as Env: CA.Expression: Monad Type =
             # fromPattern can infer paramType only when destructuring some patterns, it's not reliable in general
             # fromBlock instead infers paramType fully, but will not apply the substitutions it creates
             # So we just pull out the substitutions and apply them to paramType
-            applySubsToType patternOut.ty >> andThen refinedPatternOutTy:
+            applySubsToType patternOut.ty
+            >> andThen refinedPatternOutTy:
+
 #            if isMutable and typeContainsFunctions refinedPatternOutTy then
 #                # TODO be a bit more descriptive, maybe name the arguments
 #                errorTodo pos << "mutable args cannot be functions"
 #
 #            else
-                CA.TypeFunction pos refinedPatternOutTy isMutable bodyType
-                    >> return
+
+            CA.TypeFunction pos refinedPatternOutTy lambdaModifier bodyType
+            >> return
 
         CA.Call pos reference argument:
             # first of all, let's get our children types
-            (fromExpression env reference) >> andThen referenceType:
-            (fromArgument env argument) >> andThen ( fromIsMutable & argumentType ):
+            fromExpression env reference >> andThen referenceType:
+            fromArgument env argument >> andThen argumentType:
             # the type of the call itself is the return type of the lamba
-            unifyFunctionOnCallAndYieldReturnType env reference referenceType fromIsMutable argument argumentType
+            unifyFunctionOnCallAndYieldReturnType env reference referenceType argument argumentType
 
         CA.If pos ar:
             checkExpression env CoreTypes.bool ar.condition >> andThen _:
@@ -1267,37 +1273,40 @@ fromExpression as Env: CA.Expression: Monad Type =
 
 
 
-unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: Bool: CA.Argument: Type: Monad Type =
-    env: reference: referenceType: fromIsMutable: argument: callArgumentType:
+unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: Type: Monad Type =
+    env: reference: referenceType: argument: callArgumentType:
+
     try referenceType as
-        CA.TypeFunction _ refArgumentType isConsuming refReturnType:
-#            if fromIsMutable /= refIsMutable then
-#                addError (CA.expressionPos reference) [ "mutability clash 2: " .. toHuman {fromIsMutable, refIsMutable} ]
-#
-#            else
-                pos =
-                    CA.expressionPos reference
 
-                reason =
-                    UnifyReason_CallArgument
-                        { reference = pos
-                        , argument = CA.argumentPos argument
-                        }
+        CA.TypeFunction _ refArgumentType lambdaModifier refReturnType:
+            pos =
+                CA.expressionPos reference
 
-                (unify env pos reason refArgumentType callArgumentType) >> andThen unifiedArgumentType:
-                applySubsToType refReturnType
+            reason =
+                UnifyReason_CallArgument
+                    { reference = pos
+                    , argument = CA.argumentPos argument
+                    }
+
+            unify env pos reason refArgumentType callArgumentType
+            >> andThen unifiedArgumentType:
+
+            applySubsToType refReturnType
 
         CA.TypeVariable pos name:
-            (newType pos) >> andThen returnType:
+            newType pos
+            >> andThen returnType:
 
             ty =
-                CA.TypeFunction pos callArgumentType fromIsMutable returnType
+                CA.TypeFunction pos callArgumentType lambdaModifier returnType
 
-            (unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty) >> andThen _:
+            unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty
+            >> andThen _:
+
             applySubsToType returnType
 
         CA.TypeAlias pos _ ty:
-            unifyFunctionOnCallAndYieldReturnType env reference ty fromIsMutable argument callArgumentType
+            unifyFunctionOnCallAndYieldReturnType env reference ty lambdaModifier argument callArgumentType
 
         _:
             addError (CA.expressionPos reference)
@@ -1332,38 +1341,43 @@ fromPatternAndBlock as Env: ( CA.Pattern & CA.Expression ): ( Type & Type ): Mon
     return ( unifiedPatternType & unifiedBlockType )
 
 
-fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
+fromArgument as Env: CA.Argument: Monad Type =
     env: argument:
+
     try argument as
+
         CA.ArgumentExpression expr:
-            (fromExpression env expr) >> andThen ty:
-            return ( False & ty )
+            fromExpression env expr
 
         CA.ArgumentMutable pos { ref, attrPath }:
+
             try Dict.get ref env.instanceVariables as
+
                 Nothing:
                     errorUndefinedVariable env pos ref >> andThen ty:
-                    return ( True & ty )
+                    return (CA.TypeMutable Pos.N ty)
 
                 Just var:
                     if not var.isMutable then
-                        ae =
-                            addError pos
-                                [ "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
-                                , ""
-                                , "TODO [link to wiki page that explains how to declare variables]"
-                                ]
-                        ae >> andThen ty:
-                        return ( True & ty )
+
+                        addError pos
+                            [ "You are trying to mutate variable `" .. toHuman ref .. "` but it was declared as not mutable!"
+                            , ""
+                            , "TODO [link to wiki page that explains how to declare variables]"
+                            ]
+                        >> andThen ty:
+
+                        return (CA.TypeMutable Pos.N ty)
 
                     else if typeContainsFunctions var.ty then
                         # TODO what about constrained/unconstrained tyvars?
-                        (addError pos [ "mutable arguments can't allow functions" ]) >> andThen ty:
-                        return ( True & ty )
+                        addError pos [ "mutable arguments can't allow functions" ]
+
+                        >> andThen ty:
+                        return (CA.TypeMutable Pos.N ty)
 
                     else
-                        (applyAttributePath env pos attrPath var.ty) >> andThen ty:
-                        return ( True & ty )
+                        applyAttributePath env pos attrPath var.ty
 
 
 [# Patterns are special because they are the one way to **add variables to the env**.

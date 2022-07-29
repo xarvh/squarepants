@@ -922,10 +922,10 @@ translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
                 >> CA.TypeConstant pos (resolveToTypeUsr ro maybeModule name)
                 >> Ok
 
-        FA.TypeFunction pos fa_from fromIsMut fa_to:
+        FA.TypeFunction pos fa_from lambdaModifier fa_to:
             translateType mrf ro fa_from >> onOk ca_from:
             translateType mrf ro fa_to >> onOk ca_to:
-            Ok << CA.TypeFunction pos ca_from fromIsMut ca_to
+            Ok << CA.TypeFunction pos ca_from lambdaModifier ca_to
 
         FA.TypeTuple pos types:
             try types as
@@ -982,7 +982,7 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name &
         c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
-            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar False ty) unionType
+            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaNormal ty) unionType
             , args = caArgs
             }
 

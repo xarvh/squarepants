@@ -45,7 +45,7 @@ alias Constructor =
 union Type =
     , TypeVariable Pos Name
     , TypeConstant Pos (Maybe Name) Name [Type]
-    , TypeFunction Pos Type Bool Type
+    , TypeFunction Pos Type LambdaModifier Type
     , TypeTuple Pos [Type]
     , TypeList Pos Type
     , TypeRecord Pos (RecordArgs Type)
