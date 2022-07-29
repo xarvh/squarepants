@@ -70,7 +70,7 @@ union Expression =
     , Mutable Pos Name [Name]
     , PrefixBinop Pos Text
     , RecordShorthand Pos [Name]
-    , Lambda Pos Pattern Bool [Statement]
+    , Lambda Pos Pattern LambdaModifier [Statement]
     , FunctionCall Pos Expression [Expression]
     , Binop Pos Op.Precedence (SepList Op.Binop Expression)
     , Unop Pos Op.Unop Expression

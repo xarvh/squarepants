@@ -13,7 +13,7 @@ alias Env = {
 #alias Override =
 #    Env: [EA.Expression & EA.Mutability]: JA.Expr
 
-union Override = Override (Env: [EA.Expression & EA.Mutability]: JA.Expr)
+union Override = Override (Env: [EA.Expression & Bool]: JA.Expr)
 
 
 # Adding a None argument to prevent a spurious circular dependency error
@@ -165,7 +165,7 @@ function as Text: Override =
     >> wrapCalls env arguments
 
 
-translateVariable as Env: Name: [Name]: [EA.Expression & EA.Mutability]: JA.Expr =
+translateVariable as Env: Name: [Name]: [EA.Expression & Bool]: JA.Expr =
     env: valueName: attrPath: eaArgs:
 
 
@@ -187,7 +187,7 @@ translateVariable as Env: Name: [Name]: [EA.Expression & EA.Mutability]: JA.Expr
                 >> wrapCalls env eaArgs
 
 
-wrapCalls as Env: [EA.Expression & EA.Mutability]: JA.Expr: JA.Expr =
+wrapCalls as Env: [EA.Expression & Bool]: JA.Expr: JA.Expr =
     env: exprAndMutability: baseExpr:
 
 #    if baseExpr == JA.Var "hash_insert" then
@@ -217,13 +217,13 @@ accessAttrsButTheLast as Text: [Text]: JA.Expr: ( JA.Expr & Text ) =
     List.for attrTail fold ( e & attrHead )
 
 
-translateArg as { nativeBinop as Bool }: Env: (EA.Expression & EA.Mutability): JA.Expr =
-    stuff: env: (eaExpression & mutability):
-    try mutability as
-        EA.Immutable:
+translateArg as { nativeBinop as Bool }: Env: (EA.Expression & Bool): JA.Expr =
+    stuff: env: (eaExpression & isMutable):
+    try isMutable as
+        False:
             translateExpressionToExpression env eaExpression
 
-        EA.Mutable:
+        True:
             try eaExpression as
                 EA.Variable name attrPath:
                     if stuff.nativeBinop then
@@ -301,28 +301,28 @@ translateArg as { nativeBinop as Bool }: Env: (EA.Expression & EA.Mutability): J
 
 
 
-wrapMutable as EA.Mutability: JA.Expr: JA.Expr =
-    mutability: expr:
+wrapMutable as Bool: JA.Expr: JA.Expr =
+    isMutable: expr:
 
-    try mutability as
-        EA.Mutable:
+    try isMutable as
+        True:
             Dict.empty
             >> Dict.insert "attr" (literalString "$")
             >> Dict.insert "obj" (JA.Record << Dict.singleton "$" expr)
             >> JA.Record
 
-        EA.Immutable:
+        False:
             expr
 
 
-maybeCloneMutable as EA.Mutability: JA.Expr: JA.Expr =
-    mutability: expr:
+maybeCloneMutable as Bool: JA.Expr: JA.Expr =
+    isMutable: expr:
 
-    try mutability as
-        EA.Immutable:
+    try isMutable as
+        False:
             expr
 
-        EA.Mutable:
+        True:
             clone expr
 
 
@@ -445,10 +445,10 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                 [ translateArg { nativeBinop = False } env arg ]
             >> Inline
 
-        EA.LetIn { maybeName, mutability, letExpression, inExpression }:
+        EA.LetIn { maybeName, isMutable, letExpression, inExpression }:
             localEnv =
-                try maybeName & mutability as
-                    Just name & EA.Mutable:
+                try maybeName & isMutable as
+                    Just name & True:
                         { env with mutables = Set.insert name .mutables }
                     _:
                         env
@@ -471,14 +471,14 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                     letStatement =
                         letExpression
                         >> translateExpressionToExpression env
-                        >> maybeCloneMutable mutability
-                        >> wrapMutable mutability
+                        #>> maybeCloneMutable mutability
+                        >> wrapMutable isMutable
                         >> JA.Define name
 
                     Block << letStatement :: inStatements
 
 
-        EA.Lambda (maybeName & mutability) body:
+        EA.Lambda (maybeName & isMutable) body:
 
             args =
                 try maybeName as
@@ -487,8 +487,8 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
 
             # TODO these two defs are the same as for the LetIn, would be nice to have them in a function
             localEnv =
-                try maybeName & mutability as
-                    Just name & EA.Mutable:
+                try maybeName & isMutable as
+                    Just name & True:
                         { env with mutables = Set.insert name .mutables }
                     _:
                         env

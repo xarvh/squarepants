@@ -29,7 +29,7 @@ union Type =
     #, TypeGeneratedVar TyVarId
     #, TypeAnnotatedVar Pos Name
     , TypeVariable Pos Name
-    , TypeFunction Pos Type Bool Type
+    , TypeFunction Pos Type LambdaModifier Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
     , TypeAlias Pos Meta.UniqueSymbolReference Type
     , TypeMutable Pos Type
@@ -62,11 +62,6 @@ alias VariableArgs = {
     }
 
 
-union Parameter =
-    , ParameterPattern Pattern
-    , ParameterMutable Pos Name
-
-
 union Argument =
     , ArgumentExpression Expression
     # TODO should we distinguish between a locally declared mutable and a mutable parameter?
@@ -78,7 +73,7 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos VariableArgs
     , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos Parameter Expression
+    , Lambda Pos Pattern LambdaModifier Expression
     , Call Pos Expression Argument
     , Record Pos (Maybe VariableArgs) (Dict Name Expression)
     , LetIn ValueDef Expression

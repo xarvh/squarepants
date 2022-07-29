@@ -107,14 +107,14 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
         CA.TypeAlias _ path t:
             findMutableArgsThatContainFunctions nonFunctionPos t
 
-        CA.TypeFunction functionPos from fromIsMutable to:
+        CA.TypeFunction functionPos from lambdaModifier to:
             [ try nonFunctionPos as
                 Just constraintPos:
                     [ constraintPos & functionPos ]
 
                 Nothing:
                     []
-            , findMutableArgsThatContainFunctions (if fromIsMutable then Just functionPos else Nothing) from
+            , findMutableArgsThatContainFunctions nonFunctionPos from
             , findMutableArgsThatContainFunctions nonFunctionPos to
             ]
                 >> List.concat

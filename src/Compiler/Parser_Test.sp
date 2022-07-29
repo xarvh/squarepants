@@ -186,11 +186,11 @@ lambdas as Test =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
-                    False
+                    LambdaNormal
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             ( FA.PatternAny p False "b" Nothing )
-                            False
+                            LambdaNormal
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -207,11 +207,11 @@ lambdas as Test =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
-                    False
+                    LambdaNormal
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             ( FA.PatternAny p False "b" Nothing )
-                            False
+                            LambdaNormal
                             [ FA.Evaluation p << FA.LiteralNumber p "3" ]
                     ]
             )
@@ -228,11 +228,11 @@ lambdas as Test =
             (Test.isOkAndEqualTo <<
                 FA.Lambda p
                     ( FA.PatternAny p False "a" Nothing )
-                    False
+                    LambdaNormal
                     [ FA.Evaluation p <<
                         FA.Lambda p
                             (FA.PatternAny p False "b" Nothing)
-                            False
+                            LambdaNormal
                             [ FA.Evaluation p << FA.LiteralNumber p "3"
                             ]
                     ]

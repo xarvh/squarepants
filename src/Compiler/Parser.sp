@@ -447,10 +447,10 @@ unionConstructor as Env: Parser FA.Constructor =
 exprWithLeftDelimiter as Env: Parser FA.Expression =
     env:
 
-    colon =
+    colon as Parser LambdaModifier =
         Parser.oneOf
-            [ kind Token.Colon >> Parser.map _: False
-            , kind Token.ConsumingColon >> Parser.map _: True
+            [ kind Token.Colon >> Parser.map _: LambdaNormal
+            , kind Token.ConsumingColon >> Parser.map _: LambdaConsuming
             ]
 
     maybeColon =
@@ -466,14 +466,14 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
                 maybeColon >> andThen mc:
                     try mc as
                         Nothing: Parser.accept << FA.LiteralNumber p s
-                        Just mutable: lambdaParser env mutable (FA.PatternLiteralNumber p s)
+                        Just modifier: lambdaParser env modifier (FA.PatternLiteralNumber p s)
 
 
             Token.TextLiteral s:
                 maybeColon >> andThen mc:
                     try mc as
                         Nothing: Parser.accept << FA.LiteralText p s
-                        Just mutable: lambdaParser env mutable (FA.PatternLiteralText p s)
+                        Just modifier: lambdaParser env modifier (FA.PatternLiteralText p s)
 
             Token.LowerName modifier maybeModule name attrs:
                 try modifier as
@@ -488,13 +488,13 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
                             try mc as
                                 Nothing: Parser.accept << FA.Variable p maybeModule name attrs
                                 # TODO also test that maybeModule == Nothing and attrs == []
-                                Just mutable: lambdaParser env mutable (FA.PatternAny p False name Nothing)
+                                Just modifier: lambdaParser env modifier (FA.PatternAny p False name Nothing)
 
             Token.UpperName maybeModule name:
                 maybeColon >> andThen mc:
                     try mc as
                         Nothing: Parser.accept << FA.Constructor p maybeModule name
-                        Just mutable: lambdaParser env mutable (FA.PatternConstructor p maybeModule name [])
+                        Just modifier: lambdaParser env modifier (FA.PatternConstructor p maybeModule name [])
 
             Token.RoundParen Token.Open:
                 paParser =
@@ -536,11 +536,11 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
 #                expr, as, pasAndBodies
 
 
-lambdaParser as Env: Bool: FA.Pattern: Parser FA.Expression =
-    env: mutable: pa:
+lambdaParser as Env: LambdaModifier: FA.Pattern: Parser FA.Expression =
+    env: modifier: pa:
 
     lambdaBody env >> andThen body:
-    Parser.accept << FA.Lambda (FA.patternPos pa) pa mutable body
+    Parser.accept << FA.Lambda (FA.patternPos pa) pa modifier body
 
 
 

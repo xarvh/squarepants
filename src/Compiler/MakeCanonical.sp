@@ -219,13 +219,9 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.Constructor _ usr:
             { deps with cons = Set.insert usr .cons }
 
-        CA.Lambda _ (CA.ParameterPattern pa) body:
+        CA.Lambda _ pa isConsuming body:
             deps
                 >> patternDeps pa
-                >> expressionDeps body
-
-        CA.Lambda _ (CA.ParameterMutable _ _) body:
-            deps
                 >> expressionDeps body
 
         CA.Record _ Nothing exprByName:
@@ -270,16 +266,6 @@ expressionDeps as CA.Expression: Deps: Deps =
 #
 # Definition
 #
-
-
-insertParamNames as CA.Parameter: Dict Text Pos: Dict Text Pos =
-    param:
-    try param as
-        CA.ParameterMutable pos n:
-            Dict.insert n pos
-
-        CA.ParameterPattern pa:
-            CA.patternNames pa >> Dict.join
 
 
 translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
@@ -456,21 +442,6 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                     makeError pos [ "tuples can be only of size 2 or 3" ]
 
 
-translateParameter as Env: Bool: FA.Pattern: Res CA.Parameter =
-    env: mutable: faParam:
-    try faParam & mutable as
-        FA.PatternAny pos False name Nothing & True:
-            Ok << CA.ParameterMutable pos name
-
-        FA.PatternAny pos True name _ & _:
-            makeError pos [ "Can't annotate this. =(", "TODO link to rationale for forbidding annotations" ]
-
-        _:
-            translatePattern Nothing env faParam >> onOk caPattern:
-            Ok << CA.ParameterPattern caPattern
-
-
-
 #
 # Statement
 #
@@ -567,12 +538,23 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                     # Is this a good idea?
                     Ok << CA.Variable pos { shorthandTarget with attrPath = List.concat [ .attrPath, attrPath ] }
 
-        FA.Lambda pos faParam mutable faBody:
-            translateParameter env mutable faParam >> onOk caParam:
+        FA.Lambda pos faParam isConsuming faBody:
+
+            translatePattern Nothing env faParam
+            >> onOk caPattern:
+
             localEnv =
-                { env with nonRootValues = insertParamNames caParam .nonRootValues }
-            translateStatementBlock localEnv faBody >> onOk caBody:
-            Ok << CA.Lambda pos caParam caBody
+                { env with
+                , nonRootValues =
+                    caPattern
+                    >> CA.patternNames
+                    >> Dict.join .nonRootValues
+                }
+
+            translateStatementBlock localEnv faBody
+            >> onOk caBody:
+
+            Ok << CA.Lambda pos caPattern isConsuming caBody
 
         FA.FunctionCall pos reference arguments:
             # ref arg1 arg2 arg3...

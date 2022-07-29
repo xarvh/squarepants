@@ -868,23 +868,19 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     #
                     isCompatibleWith env expectedType pos instantiatedType
 
-        CA.Lambda pos param body:
-            try expectedType & param as
-                CA.TypeFunction _ parameterType True returnType & CA.ParameterMutable parameterPos parameterName:
-                    ip =
-                        insertPatternVars
-                            { subs = Dict.empty
-                            , isParameter = True
-                            , isRoot = False
-                            }
-                            (Dict.singleton parameterName { pos = parameterPos, isMutable = True, type = parameterType, isAnnotated = True })
-                            env
+        CA.Lambda pos param valueLambdaMode body:
+            try expectedType as
+                CA.TypeFunction _ parameterType typeLambdaMode returnType:
+                    xxx =
+                        if valueLambdaMode /= typeLambdaMode then
+                            addCheckError pos [
+                                , "the function and the annotation have different mutability"
+                                ]
+                        else
+                            return None
 
-                    ip >> andThen localEnv:
-                    checkExpression localEnv returnType body
-
-                CA.TypeFunction _ parameterType False returnType & CA.ParameterPattern pattern:
-                    checkAndInsertPattern env parameterType pattern >> andThen localEnv:
+                    xxx >> andThen _:
+                    checkAndInsertPattern env parameterType param >> andThen localEnv:
                     checkExpression localEnv returnType body
 
                 CA.TypeFunction _ _ isMutable _ & _:
@@ -1197,9 +1193,9 @@ fromExpression as Env: CA.Expression: Monad Type =
                 Just c:
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
-        CA.Lambda pos param body:
-            fromParameter env param
-            >> andThen ( isMutable & patternOut ):
+        CA.Lambda pos param modifier body:
+            fromPattern env param
+            >> andThen patternOut:
 
             ip =
                 insertPatternVars
@@ -1211,16 +1207,17 @@ fromExpression as Env: CA.Expression: Monad Type =
                     env
 
             ip >> andThen bodyEnv:
-            (fromExpression bodyEnv body) >> andThen bodyType:
-            # fromParameter can infer paramType only when destructuring some patterns, it's not reliable in general
+            fromExpression bodyEnv body >> andThen bodyType:
+
+            # fromPattern can infer paramType only when destructuring some patterns, it's not reliable in general
             # fromBlock instead infers paramType fully, but will not apply the substitutions it creates
             # So we just pull out the substitutions and apply them to paramType
-            (applySubsToType patternOut.ty) >> andThen refinedPatternOutTy:
-            if isMutable and typeContainsFunctions refinedPatternOutTy then
-                # TODO be a bit more descriptive, maybe name the arguments
-                errorTodo pos << "mutable args cannot be functions"
-
-            else
+            applySubsToType patternOut.ty >> andThen refinedPatternOutTy:
+#            if isMutable and typeContainsFunctions refinedPatternOutTy then
+#                # TODO be a bit more descriptive, maybe name the arguments
+#                errorTodo pos << "mutable args cannot be functions"
+#
+#            else
                 CA.TypeFunction pos refinedPatternOutTy isMutable bodyType
                     >> return
 
@@ -1367,20 +1364,6 @@ fromArgument as Env: CA.Argument: Monad ( Bool & Type ) =
                     else
                         (applyAttributePath env pos attrPath var.ty) >> andThen ty:
                         return ( True & ty )
-
-
-fromParameter as Env: CA.Parameter: Monad ( Bool & PatternOut ) =
-    env: param:
-    try param as
-        CA.ParameterPattern pattern:
-            (fromPattern env pattern Dict.empty) >> andThen patternOut:
-            return ( False & patternOut )
-
-        CA.ParameterMutable pos paramName:
-            # TypeNonFunction
-            (newType pos) >> andThen ty:
-            vars = Dict.singleton paramName { pos, type = ty, isMutable = True, isAnnotated = False }
-            return ( True & { vars, pos, ty, isFullyAnnotated = False })
 
 
 [# Patterns are special because they are the one way to **add variables to the env**.
@@ -1790,6 +1773,9 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
 
         ( CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs ):
             unifyRecords env reason pos1 ( a_ext & a_attrs ) ( b_ext & b_attrs )
+
+        CA.TypeMutable _ a & CA.TypeMutable _ b:
+            unify_ env reason pos1 a b
 
         _:
             unifyError pos1 IncompatibleTypes t1 t2
