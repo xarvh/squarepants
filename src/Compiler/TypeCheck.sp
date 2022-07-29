@@ -733,11 +733,8 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
 
     try pattern as
 
-        CA.PatternDiscard pos maybeAnnotation:
-            checkAndInsertAnnotatedPattern env expectedType pos False Nothing maybeAnnotation
-
-        CA.PatternNamed pos isMutable name maybeAnnotation:
-            checkAndInsertAnnotatedPattern env expectedType pos isMutable (Just name) maybeAnnotation
+        CA.PatternAny pos isMutable maybeName maybeAnnotation:
+            checkAndInsertAnnotatedPattern env expectedType pos isMutable maybeName maybeAnnotation
 
         CA.PatternLiteralNumber pos literal:
             todo "TODO needs proper type comparison without `pos`"
@@ -1515,11 +1512,9 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
         vars_
 
     try pattern as
-        CA.PatternDiscard pos maybeAnnotation:
-            fromMaybeAnnotation env pos False Nothing maybeAnnotation vars
 
-        CA.PatternNamed pos isMutable name maybeAnnotation:
-            fromMaybeAnnotation env pos isMutable (Just name) maybeAnnotation vars
+        CA.PatternAny pos isMutable maybeName maybeAnnotation:
+            fromMaybeAnnotation env pos isMutable maybeName maybeAnnotation vars
 
         CA.PatternLiteralNumber pos literal:
             return << { vars, pos, ty = CoreTypes.number, isFullyAnnotated = True }

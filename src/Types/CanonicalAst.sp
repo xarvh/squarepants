@@ -36,8 +36,7 @@ union Type =
 
 
 union Pattern =
-    , PatternDiscard Pos (Maybe Type)
-    , PatternNamed Pos Bool Text (Maybe Type)
+    , PatternAny Pos Bool (Maybe Text) (Maybe Type)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
@@ -202,8 +201,7 @@ typePos as Type: Pos =
 patternPos as Pattern: Pos =
     pa:
     try pa as
-        PatternDiscard p _: p
-        PatternNamed p _ _ _: p
+        PatternAny p _ _ _: p
         PatternLiteralText p _: p
         PatternLiteralNumber p _: p
         PatternConstructor p path ps: p
@@ -213,8 +211,8 @@ patternPos as Pattern: Pos =
 patternNames as Pattern: Dict Name Pos =
     p:
     try p as
-        PatternDiscard pos _: Dict.empty
-        PatternNamed pos _ n _: Dict.singleton n pos
+        PatternAny pos _ Nothing _: Dict.empty
+        PatternAny pos _ (Just n) _: Dict.singleton n pos
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
@@ -224,8 +222,8 @@ patternNames as Pattern: Dict Name Pos =
 patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
     p:
     try p as
-        PatternDiscard pos _: Dict.empty
-        PatternNamed pos _ n maybeType: Dict.singleton n (pos & maybeType)
+        PatternAny pos _ Nothing maybeType: Dict.empty
+        PatternAny pos _ (Just n) maybeType: Dict.singleton n (pos & maybeType)
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty

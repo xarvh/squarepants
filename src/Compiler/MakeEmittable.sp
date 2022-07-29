@@ -90,7 +90,8 @@ pickMainName as CA.Pattern: PickedName =
     pattern:
 
     try pattern as
-        CA.PatternNamed pos mutability name maybeType:
+
+        CA.PatternAny pos mutability (Just name) maybeType:
             TrivialPattern (userSpecifiedName name)
 
         _:
@@ -115,10 +116,10 @@ translatePattern as CA.Pattern: EA.Expression: [ DollarName & EA.Expression ] =
 translatePatternRec as CA.Pattern: EA.Expression: [ DollarName & EA.Expression ]: [ DollarName & EA.Expression ] =
     pattern: accessExpr: accum:
     try pattern as
-        CA.PatternDiscard _ _:
+        CA.PatternAny _ mutability Nothing maybeAnnotation:
             accum
 
-        CA.PatternNamed _ mutability name _:
+        CA.PatternAny _ mutability (Just name) maybeAnnotation:
             (userSpecifiedName name & accessExpr) :: accum
 
         CA.PatternLiteralNumber _ _:
@@ -157,10 +158,8 @@ translateVariableArgs as CA.VariableArgs: EA.Expression =
 testPattern as CA.Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
     pattern: valueToTest: accum:
     try pattern as
-        CA.PatternDiscard _ _:
-            accum
 
-        CA.PatternNamed _ _ _ _:
+        CA.PatternAny _ _ _ _:
             accum
 
         CA.PatternLiteralText _ text:

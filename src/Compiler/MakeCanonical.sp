@@ -188,17 +188,11 @@ patternDeps as CA.Pattern: Deps: Deps =
         CA.PatternRecord _ ps:
             Dict.for ps (k: patternDeps) deps
 
-        CA.PatternNamed _ mutability name (Just type):
+        CA.PatternAny _ mutability maybeName (Just type):
             { deps with types = typeDeps type .types }
 
-        CA.PatternNamed _ mutability name Nothing:
+        CA.PatternAny _ mutability maybeName Nothing:
             deps
-
-        CA.PatternDiscard _ (Just type):
-           { deps with types = typeDeps type .types }
-
-        CA.PatternDiscard _ Nothing:
-           deps
 
         CA.PatternLiteralNumber _ _:
            deps
@@ -370,20 +364,16 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
 translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
     ann: env: fa:
     try fa as
-        FA.PatternAny pos True s _:
-            # TODO this happens (to me) when I use `=` in place of `:=`, so maybe change the message?
-            makeError pos [ "This is the wrong place to use `@`" ]
-
-        FA.PatternAny pos False name maybeFaType:
+        FA.PatternAny pos isMutable name maybeFaType:
             if ann == Nothing and maybeFaType /= Nothing then
                 makeError pos [ "Can't use annotations here" ]
             else
                 Maybe.mapRes (translateType ann env.ro) maybeFaType >> onOk maybeCaType:
 
-                if name == "_" then
-                    Ok << CA.PatternDiscard pos maybeCaType
-                else
-                    Ok << CA.PatternNamed pos False name maybeCaType
+                maybeName =
+                    if name == "_" then Nothing else (Just name)
+
+                Ok << CA.PatternAny pos isMutable maybeName maybeCaType
 
         FA.PatternLiteralNumber pos l:
             translateNumber CA.PatternLiteralNumber pos l
@@ -417,7 +407,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                     else
                         try maybePattern as
                             Nothing:
-                                Ok << Dict.insert name (CA.PatternNamed p False name Nothing) dict
+                                Ok << Dict.insert name (CA.PatternAny p False (Just name) Nothing) dict
 
                             Just faPattern:
                                 faPattern
@@ -1029,7 +1019,8 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
             makeError (FA.expressionPos expr) [ "Root Evaluations don't really do much =|" ]
 
         FA.Definition pos fa:
-            translateDefinition True (initEnv ro) fa >> onOk def:
+            translateDefinition True (initEnv ro) fa
+            >> onOk def:
 
 
             Debug.todo "check that there's no mutables"
