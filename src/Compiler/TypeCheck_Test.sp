@@ -360,7 +360,7 @@ mu as Test =
             "Statement blocks that define mutables can't return functions"
             """
             a =
-              x @= 1
+              @x = 1
               y: y
             """
             (infer "a")
@@ -369,7 +369,7 @@ mu as Test =
             "Statement blocks that define mutables can't return functions (with annotation)"
             """
             a as y: y =
-              x @= 1
+              @x = 1
               y: y
             """
             (infer "a")
@@ -406,7 +406,7 @@ mu as Test =
             "Functions can't be mutable 1"
             """
             z =
-                a @= x: x
+                @a = x: x
             """
             (infer "z")
             (Test.errorContains ["unction", "utable"])
@@ -439,7 +439,7 @@ mu as Test =
         , codeTest
             "Functions can't be mutable (annotation)"
             """
-            a as Number: Number @=
+            @a as @(Number: Number) =
               add 1
             """
             (infer "a")
@@ -447,8 +447,8 @@ mu as Test =
         , codeTest
             "Mutables can contain functions via free tyvars"
             """
-            a = x:
-              s @= x
+            a = x:-
+              @s = x
               s
 
             z as x: x =
@@ -460,7 +460,7 @@ mu as Test =
             "[reg] Mutable assignment as last stament yields None"
             """
             a as None =
-                x @= 1
+                @x = 1
                 @x := 2
             """
             (infer "a")
@@ -602,7 +602,7 @@ records as Test =
         , codeTest "Tuple3 direct item mutability"
             """
             x =
-                a @= 3 & False & 2
+                @a = 3 & False & 2
 
                 @a.third += 1
             """
@@ -611,7 +611,7 @@ records as Test =
         , codeTest "Tuple2 direct item mutability, annotated"
             """
             x = y:
-               a as Number & Number @=
+               @a as @(Number & Number) =
                  1 & 2
 
                @a.first += 1

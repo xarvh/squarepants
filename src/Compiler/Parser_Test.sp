@@ -253,7 +253,7 @@ lambdas as Test =
             """
             """
             i =
-              x @= 1
+              @x = 1
               xxx y: y
             """
             firstDefinition

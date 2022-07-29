@@ -431,7 +431,7 @@ addSquiggleToken as Bool: ReadState@: None =
 
     try chunk as
         ":": add << Token.Colon
-        ":!": add << Token.ConsumingColon
+        ":-": add << Token.ConsumingColon
         "=": add << Token.Defop
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)

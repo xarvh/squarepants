@@ -395,7 +395,7 @@ annotations as Test =
         [ codeTest "annotation on mutable value"
             """
             x =
-              a as Number @=
+              @a as Number =
                 3
               a
             """
