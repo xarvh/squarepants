@@ -5,7 +5,6 @@ union Token =
 
 union NameModifier =
     , NameNoModifier
-    , NameMutable
     , NameStartsWithDot
 
 
@@ -40,6 +39,7 @@ union Kind =
     , Defop
     , Unop Op.Unop
     , Binop Op.Binop
+    , Mutation
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed

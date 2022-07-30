@@ -476,13 +476,13 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
 
             Token.LowerName modifier maybeModule name attrs:
                 try modifier as
-                    Token.NameMutable:
-                        maybeColon
-                        >> andThen mc:
-                            try mc as
-                                Nothing: Parser.accept << FA.Mutable p name attrs
-                                # TODO also test that maybeModule == Nothing and attrs == []
-                                Just modifier: lambdaParser env modifier (FA.PatternAny p True name Nothing)
+#                    Token.NameMutable:
+#                        maybeColon
+#                        >> andThen mc:
+#                            try mc as
+#                                Nothing: Parser.accept << FA.Mutable p name attrs
+#                                # TODO also test that maybeModule == Nothing and attrs == []
+#                                Just modifier: lambdaParser env modifier (FA.PatternAny p True name Nothing)
 
                     Token.NameStartsWithDot:
                         Parser.accept << FA.RecordShorthand p (name :: attrs)
@@ -571,6 +571,7 @@ expr as Env: Parser FA.Expression =
         , higherOr << record env Token.Defop FA.Record nest
 #        , higherOr << lambda env
         , unopsOr env
+        , mutableOr env
         , functionApplicationOr env
         , binopsOr env Op.Exponential
         , binopsOr env Op.Multiplicative
@@ -592,6 +593,16 @@ expr as Env: Parser FA.Expression =
         , higherOr << if_ env
         , higherOr << try_ env
         ]
+
+
+
+mutableOr as Env: Parser FA.Expression: Parser FA.Expression =
+    env: higher:
+
+    kind Token.Mutation >> andThen (Token start end k):
+    higher >> andThen n:
+    Parser.accept << FA.Mutable (pos env start end) n
+
 
 
 
@@ -843,11 +854,17 @@ typeExpr as Env: Parser FA.Type =
         # "higher priority parser or"
         Parser.higherOr
 
+    mutable =
+        kind Token.Mutation >> andThen (Token start end k):
+        nest >> andThen n:
+        Parser.accept << FA.TypeMutable (pos env start end) n
+
     Parser.expression
         (typeTerm env)
         [ higherOr << typeParens nest
         , higherOr << typeList env nest
         , higherOr << record env Token.As FA.TypeRecord nest
+        , higherOr << mutable
         , typeConstructorAppOr env
         , typeTupleOr env
         , typeFunctionOr env
@@ -1071,7 +1088,7 @@ patternApplication as Env: Parser FA.Pattern: Parser FA.Pattern =
 
             try modifier as
                 Token.NameNoModifier: thingy False
-                Token.NameMutable: thingy True
+#                Token.NameMutable: thingy True
                 Token.NameStartsWithDot: Parser.reject
 
         Token.UpperName maybeModule name:

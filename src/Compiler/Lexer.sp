@@ -278,8 +278,8 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
             Token.NameStartsWithDot:
                 addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
 
-            Token.NameMutable:
-                absAddToken start end (Token.UpperName maybeModule name) @state
+#            Token.NameMutable:
+#                absAddToken start end (Token.UpperName maybeModule name) @state
 
     lowerName =
         maybeModule: name: attrs:
@@ -417,6 +417,7 @@ isSquiggle as Text: Bool =
        "!": True
        "&": True
        "^": True
+       "@": True
        _: False
 
 
@@ -433,6 +434,7 @@ addSquiggleToken as Bool: ReadState@: None =
         ":": add << Token.Colon
         ":-": add << Token.ConsumingColon
         "=": add << Token.Defop
+        "@": add << Token.Mutation
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:
@@ -506,9 +508,9 @@ lexOne as Text: ReadState@: None =
             ".":
                 setMode Dot @state
 
-            "@":
-                @state.tokenStart := getPos @state
-                setMode Mutable @state
+#            "@":
+#                @state.tokenStart := getPos @state
+#                setMode Mutable @state
 
             "#":
                 setMode LineComment @state
@@ -556,10 +558,10 @@ lexOne as Text: ReadState@: None =
               addError "no idea what this is" @state
 
         Mutable:
-            if isWordStart char then
-                setMode (Word Token.NameMutable) @state
+#            if isWordStart char then
+#                setMode (Word Token.NameMutable) @state
 
-            else if isSquiggle char then
+            if isSquiggle char then
                 setMode Squiggles @state
 
             else
