@@ -72,10 +72,10 @@ forall as List Text: Dict Text { nonFn as Bool } =
 
 function as CA.Type: CA.Type: CA.Type =
     from: to:
-    CA.TypeFunction Pos.T from False to
+    CA.TypeFunction Pos.T from LambdaNormal to
 
 
-typeFunction as CA.Type: Bool: CA.Type: CA.Type =
+typeFunction as CA.Type: LambdaModifier: CA.Type: CA.Type =
     CA.TypeFunction Pos.T
 
 
@@ -137,7 +137,7 @@ infer as Text: Text: Result Text Out =
                     >> Dict.insert
                         (Meta.USR TH.moduleUmr "reset")
                         { definedAt = Pos.T
-                        , ty = typeFunction tyNumber True tyNone
+                        , ty = typeFunction tyNumber LambdaNormal tyNone
                         , freeTypeVariables = Dict.empty
                         , isMutable = False
                         }
@@ -210,7 +210,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 { freeTypeVariables = ftv "1"
                 , isMutable = False
-                , ty = typeFunction (typeVariable "a") False CoreTypes.number
+                , ty = typeFunction (typeVariable "a") LambdaNormal CoreTypes.number
                 }
             )
 
@@ -334,7 +334,7 @@ variableTypes as Test =
             """
             (infer "id")
             (Test.isOkAndEqualTo
-                { ty = typeFunction (typeVariable "0a") False (typeVariable "0a")
+                { ty = typeFunction (typeVariable "0a") LambdaNormal (typeVariable "0a")
                 , freeTypeVariables = ftv "0a"
                 , isMutable = False
                 }
@@ -392,12 +392,12 @@ mu as Test =
         , codeTest
             "Correctly unify annotation's mutability"
             """
-            a as Number @: None =
+            a as Number:- None =
               reset
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                { ty = typeFunction tyNumber True tyNone
+                { ty = typeFunction tyNumber LambdaConsuming tyNone
                 , freeTypeVariables = Dict.empty
                 , isMutable = False
                 }
@@ -489,7 +489,7 @@ higherOrderTypes as Test =
                 { ty =
                     typeFunction
                         (CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable "0a" ])
-                        False
+                        LambdaNormal
                         (CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable "0a" ])
                 , isMutable = False
                 , freeTypeVariables = ftv "0a"
@@ -577,7 +577,7 @@ records as Test =
                 , ty =
                     typeFunction
                         (CA.TypeRecord (Pos.I 2) (Just "a") (Dict.singleton "meh" (CA.TypeRecord (Pos.I 2) (Just "b") (Dict.singleton "blah" (typeVariable "c")))))
-                        False
+                        LambdaNormal
                         (typeVariable "c")
                 }
             )
@@ -586,7 +586,7 @@ records as Test =
             Attribute mutation
             """
             """
-            a = b@: @b.meh.blah += 1
+            a = b:- @b.meh.blah += 1
             """
             (infer "a")
             (Test.isOkAndEqualTo
@@ -595,7 +595,7 @@ records as Test =
                 , ty =
                     typeFunction
                         (CA.TypeRecord (Pos.I 2) (Just "a") (Dict.singleton "meh" (CA.TypeRecord (Pos.I 2) (Just "b") (Dict.singleton "blah" CoreTypes.number))))
-                        True
+                        LambdaConsuming
                         CoreTypes.none
                 }
             )
@@ -626,7 +626,7 @@ records as Test =
                 (CA.TypeRecord Pos.T (Just "a") (Dict.singleton "x" CoreTypes.number) >> re:
                     { freeTypeVariables = forall [ "2" ]
                     , isMutable = False
-                    , ty = typeFunction re False re
+                    , ty = typeFunction re LambdaNormal re
                     }
                 )
             )
@@ -640,7 +640,7 @@ records as Test =
                 (CA.TypeRecord Pos.T (Just "a") (Dict.singleton "x" CoreTypes.number) >> re:
                     { freeTypeVariables = forall [ "a" ]
                     , isMutable = False
-                    , ty = typeFunction re False re
+                    , ty = typeFunction re LambdaNormal re
                     }
                 )
             )
@@ -657,7 +657,7 @@ records as Test =
                 , ty =
                     typeFunction
                         (CA.TypeRecord (Pos.I 2) (Just "a") (Dict.fromList [ ( "first" & typeVariable "b" ) ]))
-                        False
+                        LambdaNormal
                         (typeVariable "b")
                 }
             )
@@ -719,7 +719,7 @@ patterns as Test =
                 , ty =
                     typeFunction
                         (CoreTypes.list ( CA.TypeVariable (Pos.I 11) "a" ))
-                        False
+                        LambdaNormal
                         (CA.TypeVariable (Pos.I 11) "a")
                 }
             )
@@ -737,7 +737,7 @@ patterns as Test =
                 , ty =
                     typeFunction
                         (CA.TypeRecord Pos.T Nothing (Dict.fromList [ ( "first" & typeVariable "a" ) ]))
-                        False
+                        LambdaNormal
                         (typeVariable "a")
                 }
             )
@@ -805,7 +805,7 @@ try_as as Test =
             (Test.isOkAndEqualTo
                 { freeTypeVariables = Dict.empty
                 , isMutable = False
-                , ty = typeFunction CoreTypes.bool False CoreTypes.number
+                , ty = typeFunction CoreTypes.bool LambdaNormal CoreTypes.number
                 }
             )
 
@@ -859,7 +859,7 @@ if_else as Test =
             (Test.isOkAndEqualTo
                 { freeTypeVariables = Dict.empty
                 , isMutable = False
-                , ty = typeFunction CoreTypes.bool False CoreTypes.number
+                , ty = typeFunction CoreTypes.bool LambdaNormal CoreTypes.number
                 }
             )
 

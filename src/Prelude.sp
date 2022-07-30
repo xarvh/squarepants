@@ -35,30 +35,29 @@ tyVar as Name: CA.Type =
     CA.TypeVariable Pos.N
 
 
-tyFun as CA.Type: Bool: CA.Type: CA.Type =
-    CA.TypeFunction Pos.N
+tyFun as CA.Type: CA.Type: CA.Type =
+    from: to:
+    CA.TypeFunction Pos.N from LambdaNormal to
 
 
 typeUnopUniform as CA.Type: CA.Type =
     type:
-    tyFun type False type
+    tyFun type type
 
 
-typeBinop as Bool: CA.Type: CA.Type: CA.Type: CA.Type =
-    mutates: left: right: return:
+typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
+    left: right: return:
     tyFun
         right
-        False
         (tyFun
             left
-            mutates
             return
         )
 
 
 typeBinopUniform as CA.Type: CA.Type =
     ty:
-    typeBinop False ty ty ty
+    typeBinop ty ty ty
 
 
 
@@ -156,7 +155,7 @@ listCons as Op.Binop =
     , symbol = "::"
     , precedence = Op.Cons
     , associativity = Op.Right
-    , type = typeBinop False item (CoreTypes.list item) (CoreTypes.list item)
+    , type = typeBinop item (CoreTypes.list item) (CoreTypes.list item)
     , nonFn = []
     }
 
@@ -172,7 +171,7 @@ tuple as Op.Binop = {
             >> Dict.insert "first" (tyVar "a")
             >> Dict.insert "second" (tyVar "b")
             >> CA.TypeRecord Pos.N Nothing
-            >> typeBinop False (tyVar "a") (tyVar "b")
+            >> typeBinop (tyVar "a") (tyVar "b")
     , nonFn = []
     }
 
@@ -239,7 +238,7 @@ mutableAdd as Op.Binop = {
     , symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop True CoreTypes.number CoreTypes.number CoreTypes.none
+    , type = typeBinop (CA.TypeMutable Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
     , nonFn = []
     }
 
@@ -249,7 +248,7 @@ mutableSubtract as Op.Binop = {
     , symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop True CoreTypes.number CoreTypes.number CoreTypes.none
+    , type = typeBinop (CA.TypeMutable Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
     , nonFn = []
     }
 
@@ -262,7 +261,7 @@ equal as Op.Binop = {
     , symbol = "=="
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
     }
 
@@ -272,7 +271,7 @@ notEqual as Op.Binop = {
     , symbol = "/="
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
     }
 
@@ -282,7 +281,7 @@ lesserThan as Op.Binop = {
     , symbol = "<"
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
     }
 
@@ -292,7 +291,7 @@ greaterThan as Op.Binop = {
     , symbol = ">"
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
     }
 
@@ -302,7 +301,7 @@ lesserOrEqualThan as Op.Binop = {
     , symbol = "<="
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
     }
 
@@ -312,7 +311,7 @@ greaterOrEqualThan as Op.Binop = {
     , symbol = ">="
     , precedence = Op.Comparison
     , associativity = Op.Left
-    , type = typeBinop False (tyVar "a") (tyVar "a") CoreTypes.bool
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
     }
 
@@ -327,9 +326,9 @@ sendRight as Op.Binop = {
     , precedence = Op.Pipe
     , associativity = Op.Left
     , type =
-        typeBinop False
+        typeBinop
             (tyVar "a")
-            (tyFun (tyVar "a") False (tyVar "b"))
+            (tyFun (tyVar "a") (tyVar "b"))
             (tyVar "b")
     , nonFn = []
     }
@@ -341,8 +340,8 @@ sendLeft as Op.Binop = {
     , precedence = Op.Pipe
     , associativity = Op.Right
     , type =
-        typeBinop False
-            (tyFun (tyVar "a") False (tyVar "b"))
+        typeBinop
+            (tyFun (tyVar "a") (tyVar "b"))
             (tyVar "a")
             (tyVar "b")
     , nonFn = []
@@ -375,7 +374,7 @@ functions as [Function] = [
 
 mut as Function = {
     , usr = coreUsr "mut"
-    , type = tyFun (tyVar "a") False (CA.TypeMutable Pos.N (tyVar "a"))
+    , type = tyFun (tyVar "a") (CA.TypeMutable Pos.N (tyVar "a"))
     , nonFn = [ "a" ]
     }
 
@@ -383,49 +382,49 @@ mut as Function = {
 # TODO remove this one, it's used only by the typecheck tests?
 reinit as Function = {
     , usr = coreUsr "reinit"
-    , type = tyFun (CA.TypeMutable Pos.N (tyVar "a")) False (tyFun (tyVar "a") False CoreTypes.none)
+    , type = tyFun (CA.TypeMutable Pos.N (tyVar "a")) (tyFun (tyVar "a") CoreTypes.none)
     , nonFn = [ "a" ]
     }
 
 
 compare as Function = {
     , usr = coreUsr "compare"
-    , type = tyFun (tyVar "a") False (tyFun (tyVar "a") False CoreTypes.number)
+    , type = tyFun (tyVar "a") (tyFun (tyVar "a") CoreTypes.number)
     , nonFn = [ "a" ]
     }
 
 
 debugTodo as Function = {
     , usr = debugUsr "todo"
-    , type = tyFun CoreTypes.text False (tyVar "a")
+    , type = tyFun CoreTypes.text (tyVar "a")
     , nonFn = []
     }
 
 
 debugLog as Function = {
     , usr = debugUsr "log"
-    , type = tyFun CoreTypes.text False (tyFun (tyVar "a") False (tyVar "a"))
+    , type = tyFun CoreTypes.text (tyFun (tyVar "a") (tyVar "a"))
     , nonFn = []
     }
 
 
 debugToHuman as Function = {
     , usr = debugUsr "toHuman"
-    , type = tyFun (tyVar "a") False CoreTypes.text
+    , type = tyFun (tyVar "a") CoreTypes.text
     , nonFn = []
     }
 
 
 debugBenchStart as Function = {
     , usr = debugUsr "benchStart"
-    , type = tyFun  CoreTypes.none False CoreTypes.none
+    , type = tyFun  CoreTypes.none CoreTypes.none
     , nonFn = []
     }
 
 
 debugBenchStop as Function = {
     , usr = debugUsr "benchStop"
-    , type = tyFun CoreTypes.text False CoreTypes.none
+    , type = tyFun CoreTypes.text CoreTypes.none
     , nonFn = []
     }
 

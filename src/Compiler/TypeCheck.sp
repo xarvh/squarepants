@@ -1194,11 +1194,9 @@ fromExpression as Env: CA.Expression: Monad Type =
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
 
         CA.Lambda pos param lambdaModifier body:
-            fromPattern env param
-            >> andThen patternOut_:
 
-            patternOut as PatternOut =
-                patternOut_
+            fromPattern env param Dict.empty
+            >> andThen patternOut:
 
             ip =
                 insertPatternVars
@@ -1298,7 +1296,7 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
             >> andThen returnType:
 
             ty =
-                CA.TypeFunction pos callArgumentType lambdaModifier returnType
+                CA.TypeFunction pos callArgumentType LambdaNormal returnType
 
             unify env pos (UnifyReason_IsBeingCalledAsAFunction pos referenceType) referenceType ty
             >> andThen _:
@@ -1306,7 +1304,7 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
             applySubsToType returnType
 
         CA.TypeAlias pos _ ty:
-            unifyFunctionOnCallAndYieldReturnType env reference ty lambdaModifier argument callArgumentType
+            unifyFunctionOnCallAndYieldReturnType env reference ty argument callArgumentType
 
         _:
             addError (CA.expressionPos reference)

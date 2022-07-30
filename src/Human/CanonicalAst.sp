@@ -90,13 +90,12 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
         CA.TypeVariable pos name:
             ( 0 & name)
 
-        CA.TypeFunction pos from fromIsMut to:
+        CA.TypeFunction pos from lambdaModifier to:
             arrow =
-                if fromIsMut then
-                    " @: "
+                try lambdaModifier as
+                    LambdaNormal: ": "
+                    LambdaConsuming: ":- "
 
-                else
-                    ": "
             ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
 
         CA.TypeRecord pos extend attrs:

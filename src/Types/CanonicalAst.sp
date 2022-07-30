@@ -250,7 +250,7 @@ expressionPos as Expression: Pos =
         LiteralNumber pos _: pos
         Variable pos _: pos
         Constructor pos _: pos
-        Lambda pos _ _: pos
+        Lambda pos _ _ _: pos
         Record pos _ _: pos
         Call pos _ _: pos
         If pos _: pos
