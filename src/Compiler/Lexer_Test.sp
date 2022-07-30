@@ -92,11 +92,11 @@ tests as Test =
 keywords as Test =
     Test.Group "keywords"
         [
-        , codeTest
-            "[reg] can't @ keywords"
-            "@with"
-            lexTokens
-            (Test.errorContains ["keyword"] )
+#        , codeTest
+#            "[reg] can't @ keywords"
+#            "@with"
+#            lexTokens
+#            (Test.errorContains ["keyword"] )
         ]
 
 
@@ -149,7 +149,7 @@ unaryAddittiveOps as Test =
                 ]
             )
         , codeTest "Consuming colon:"
-            ":!"
+            ":-"
             lexTokens
             (Test.isOkAndEqualTo
                 [ Token 0 0 Token.NewSiblingLine
