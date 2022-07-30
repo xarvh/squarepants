@@ -260,6 +260,10 @@ normType as Type: NormMonad Type =
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
             return << CA.TypeRecord pos ext1 attrs1
 
+        CA.TypeMutable pos t:
+            (normType t) >> andThen t1:
+            return << CA.TypeMutable pos t1
+
         CA.TypeAlias pos path t:
             (normType t) >> andThen t1:
             return << CA.TypeAlias pos path t1

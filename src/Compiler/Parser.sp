@@ -468,7 +468,6 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
                         Nothing: Parser.accept << FA.LiteralNumber p s
                         Just modifier: lambdaParser env modifier (FA.PatternLiteralNumber p s)
 
-
             Token.TextLiteral s:
                 maybeColon >> andThen mc:
                     try mc as
@@ -478,7 +477,12 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
             Token.LowerName modifier maybeModule name attrs:
                 try modifier as
                     Token.NameMutable:
-                        Parser.accept << FA.Mutable p name attrs
+                        maybeColon
+                        >> andThen mc:
+                            try mc as
+                                Nothing: Parser.accept << FA.Mutable p name attrs
+                                # TODO also test that maybeModule == Nothing and attrs == []
+                                Just modifier: lambdaParser env modifier (FA.PatternAny p True name Nothing)
 
                     Token.NameStartsWithDot:
                         Parser.accept << FA.RecordShorthand p (name :: attrs)

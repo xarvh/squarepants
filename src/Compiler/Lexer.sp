@@ -279,7 +279,7 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
                 addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
 
             Token.NameMutable:
-                addError ("Types or constructors can't be mutable on their own, only variables can!") @state
+                absAddToken start end (Token.UpperName maybeModule name) @state
 
     lowerName =
         maybeModule: name: attrs:

@@ -356,6 +356,8 @@ variableTypes as Test =
 
 mu as Test =
     Test.Group "mutability"
+        []
+[#
         [ codeTest
             "Statement blocks that define mutables can't return functions"
             """
@@ -381,14 +383,14 @@ mu as Test =
             """
             (infer "a")
             (Test.errorContains [ "mutable"])
-        , codeTest
-            "Detect mismatching annotations"
-            """
-            a as Number: None =
-              reset
-            """
-            (infer "a")
-            (Test.errorContains [ "utability"])
+#        , codeTest
+#            "Detect mismatching annotations"
+#            """
+#            a as Number: None =
+#              reset
+#            """
+#            (infer "a")
+#            (Test.errorContains [ "utability"])
         , codeTest
             "Correctly unify annotation's mutability"
             """
@@ -410,22 +412,22 @@ mu as Test =
 #            """
 #            (infer "z")
 #            (Test.errorContains ["unction", "utable"])
-        , codeTest
-            "Functions can't be mutable 2"
-            """
-            a = @f:
-                Core.reinit @f (x: x)
-            """
-            (infer "a")
-            (Test.errorContains [ "mutable args cannot be functions"])
-        , codeTest
-            "Functions can't be mutable 3"
-            """
-            a = @f:
-              f 1
-            """
-            (infer "a")
-            (Test.errorContains [ "mutable args cannot be functions"])
+#        , codeTest
+#            "Functions can't be mutable 2"
+#            """
+#            a = @f:
+#                Core.reinit @f (x: x)
+#            """
+#            (infer "a")
+#            (Test.errorContains [ "mutable args cannot be functions"])
+#        , codeTest
+#            "Functions can't be mutable 3"
+#            """
+#            a = @f:
+#              f 1
+#            """
+#            (infer "a")
+#            (Test.errorContains [ "mutable args cannot be functions"])
 #        , codeTest
 #            "Lambda argument mutability is correctly inferred"
 #            "a = x: reset @x"
@@ -466,6 +468,7 @@ mu as Test =
             (infer "a")
             Test.isOk
         ]
+#]
 
 
 
