@@ -225,7 +225,7 @@ functions as Test =
         #
         , codeTest "Annotation should be consistent with mutability"
             """
-            f as Number @: Number = a:
+            f as @Number: Number = a:
               a
             """
             (infer "f")
@@ -377,7 +377,7 @@ mu as Test =
         , codeTest "Immutable variables can't be used as mutable"
             """
             a = x:
-              Core.set @x 1
+              Core.reinit @x 1
             """
             (infer "a")
             (Test.errorContains [ "mutable"])
@@ -402,35 +402,35 @@ mu as Test =
                 , isMutable = False
                 }
             )
-        , codeTest
-            "Functions can't be mutable 1"
-            """
-            z =
-                @a = x: x
-            """
-            (infer "z")
-            (Test.errorContains ["unction", "utable"])
+#        , codeTest
+#            "Functions can't be mutable 1"
+#            """
+#            z =
+#                @a = x: x
+#            """
+#            (infer "z")
+#            (Test.errorContains ["unction", "utable"])
         , codeTest
             "Functions can't be mutable 2"
             """
-            a = f@:
-                Core.set @f (x: x)
+            a = @f:
+                Core.reinit @f (x: x)
             """
             (infer "a")
             (Test.errorContains [ "mutable args cannot be functions"])
         , codeTest
             "Functions can't be mutable 3"
             """
-            a = f@:
+            a = @f:
               f 1
             """
             (infer "a")
             (Test.errorContains [ "mutable args cannot be functions"])
-        , codeTest
-            "Lambda argument mutability is correctly inferred"
-            "a = x: reset x"
-            (infer "a")
-            (Test.errorContains [ "mutability clash" ])
+#        , codeTest
+#            "Lambda argument mutability is correctly inferred"
+#            "a = x: reset @x"
+#            (infer "a")
+#            (Test.errorContains [ "mutability clash" ])
         , codeTest
             "*Nested* lambda argument mutability is correctly inferred"
             "a = x: (y: reset y) x"
@@ -460,8 +460,8 @@ mu as Test =
             "[reg] Mutable assignment as last stament yields None"
             """
             a as None =
-                @x = 1
-                Core.set @x 2
+                @x = mut 1
+                Core.reinit @x 2
             """
             (infer "a")
             Test.isOk
@@ -586,7 +586,7 @@ records as Test =
             Attribute mutation
             """
             """
-            a = b:- @b.meh.blah += 1
+            a = @b:- @b.meh.blah += 1
             """
             (infer "a")
             (Test.isOkAndEqualTo

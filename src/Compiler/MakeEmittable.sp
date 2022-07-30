@@ -254,7 +254,7 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                             tryExpression:
                             EA.LetIn {
                                 , maybeName = Just tryName
-                                , isMutable = Debug.todo "MakeEmittable CA.Try"
+                                , isMutable = False
                                 , letExpression = translateExpression @counter value
                                 , inExpression = tryExpression
                                 }
