@@ -427,7 +427,7 @@ compileMain as CompileMainPars: IO None =
 
     log "Emittable AST..." ""
     Compiler/MakeEmittable.translateAll (Dict.values modules)
-    >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
+    >> Result.mapError (e: todo << "MakeEmittable.translateAll returned Err: " .. toHuman e)
     >> onResSuccess eenv emittableStatements:
 
     log "= Platform specific stuff ="
