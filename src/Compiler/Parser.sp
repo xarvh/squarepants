@@ -100,9 +100,6 @@ parse as Bool: Text: [Token]: Res [FA.Statement] =
 runParser as Text: Parser output: [Token]: Res output =
     moduleName: parser: tokens:
 
-    List.each tokens t:
-      log "*" t
-
     (failureStates as [[Token]]) & (outcome as Parser.Outcome Token output) =
         tokens
             >> List.filter ((Token s e k): k /= Token.Comment)
