@@ -78,16 +78,18 @@ non_mut_name as Text: Token.Kind =
 
 tests as Test =
     Test.Group "Lexer"
-        [ keywords
-        , ops
-        , unaryAddittiveOps
-        , indentation
-        , comments
-        , underscores
-        , position
-        , textLiterals
+        [
+#        , keywords
+#        , ops
+#        , unaryAddittiveOps
+#        , indentation
+#        , comments
+#        , underscores
+#        , position
+#        , textLiterals
         ]
 
+[#
 
 keywords as Test =
     Test.Group "keywords"
@@ -496,3 +498,4 @@ textLiterals as Test =
                     ]
             )
         ]
+#]

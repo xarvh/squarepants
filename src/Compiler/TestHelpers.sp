@@ -29,26 +29,27 @@ rootLocal as Name: CA.Ref =
 # Meta
 #
 meta as Meta =
+    Meta.init
 
-    eenv as Error.Env = {
-        , moduleByName =
-            Dict.singleton "DefaultModules" {
-                , fsPath = "<DefaultModules>"
-                , content = DefaultModules.asText
-                }
-        }
-
-    metaResult =
-        DefaultModules.asText
-            >> ModulesFile.textToMeta "DefaultModules"
-            >> Result.mapError (e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
-
-    try metaResult as
-        Err e:
-            log ("Error in DefaultModules.sp: " .. e) None
-            todo "error loading DefaultModules.sp"
-        Ok m:
-            m
+#    eenv as Error.Env = {
+#        , moduleByName =
+#            Dict.singleton "DefaultModules" {
+#                , fsPath = "<DefaultModules>"
+#                , content = DefaultModules.asText
+#                }
+#        }
+#
+#    metaResult =
+#        DefaultModules.asText
+#            >> ModulesFile.textToMeta "DefaultModules"
+#            >> Result.mapError (e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
+#
+#    try metaResult as
+#        Err e:
+#            log ("Error in DefaultModules.sp: " .. e) None
+#            todo "error loading DefaultModules.sp"
+#        Ok m:
+#            m
 
 
 #

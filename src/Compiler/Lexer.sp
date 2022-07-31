@@ -47,7 +47,6 @@ alias ReadState = {
     # indent / block stuff
     , soFarThereAreNoTokensInThisLine as Bool
     , indentStack as [Indent]
-    , indentStartsABlock as Bool
 
     # state machine
     , mode as Mode
@@ -72,7 +71,6 @@ readStateInit as Text: Text: ReadState =
 
     , soFarThereAreNoTokensInThisLine = True
     , indentStack = []
-    , indentStartsABlock = True
 
     , mode = Indent
     , moduleName
@@ -106,59 +104,6 @@ setMode as Mode: ReadState@: None =
     @state.mode := mode
 
 
-addIndentToken as Int: Token.Kind: ReadState@: None =
-    pos: kind: state@:
-    Array.push @state.tokens << Token pos pos kind
-
-
-updateIndent as Int: Int: Token.Kind: ReadState@: None =
-    start: end: kind: state@:
-
-    #log "UPD" state.indentStack
-
-    manageIndent = head:
-        #log "MAN" { li = state.lineIndent, he = head.indent }
-        if state.lineIndent > head.indent then
-
-            newIndent = {
-                , isBlock = state.indentStartsABlock
-                , indent = state.lineIndent
-                }
-
-            #log "NEW" newIndent
-
-            @state.indentStack := newIndent :: state.indentStack
-
-            if state.indentStartsABlock then
-                addIndentToken start Token.BlockStart @state
-            else
-                None
-
-        else
-            # this means that state.lineIndent == head.indent
-            if head.isBlock and kind /= Token.Comment then
-                addIndentToken start Token.NewSiblingLine @state
-            else
-                None
-
-
-    try state.indentStack as
-        head :: tail:
-            if state.lineIndent < head.indent then
-                @state.indentStack := tail
-                if head.isBlock then
-                    addIndentToken start Token.BlockEnd @state
-                else
-                    None
-
-                updateIndent start end kind @state
-            else
-                manageIndent head
-
-        []:
-            manageIndent { indent = 0, isBlock = True }
-
-
 # TODO Rename to addContentToken
 absAddToken as Int: Int: Token.Kind: ReadState@: None =
     start: end: kind: state@:
@@ -166,23 +111,10 @@ absAddToken as Int: Int: Token.Kind: ReadState@: None =
     #log "ADD" { kind, col = state.column, li = state.lineIndent }
     if state.soFarThereAreNoTokensInThisLine then
         @state.soFarThereAreNoTokensInThisLine := False
-        updateIndent start end kind @state
+        Array.push @state.tokens << Token start start (Token.Indent state.lineIndent)
     else
         None
 
-    indentStartsABlock =
-        try kind as
-            # maybe start block after these
-            Token.Then: True
-            Token.Else: True
-            Token.As: True
-            Token.Colon: True
-            Token.ConsumingColon: True
-            Token.Defop: True
-            Token.Comment: state.indentStartsABlock
-            _: False
-
-    @state.indentStartsABlock := indentStartsABlock
     Array.push @state.tokens << Token start end kind
     @state.tokenStart := end
 
@@ -431,10 +363,10 @@ addSquiggleToken as Bool: ReadState@: None =
         absAddToken start end kind @state
 
     try chunk as
-        ":": add << Token.Colon
-        ":-": add << Token.ConsumingColon
+        ":": add << Token.Colon LambdaNormal
+        ":-": add << Token.Colon LambdaConsuming
         "=": add << Token.Defop
-        "@": add << Token.Mutation
+        "@": add << Token.Mutop
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:
@@ -752,15 +684,6 @@ tryIndent as Text: Text: ReadState@: None =
         lexOne char @state
 
 
-closeOpenBlocks as ReadState@: None =
-    state@:
-
-    pos =
-        getPos @state
-
-    List.each state.indentStack _:
-        Array.push @state.tokens << Token pos pos Token.BlockEnd
-
 
 lexer as Text: Text: Res [Token] =
     moduleName: moduleCode:
@@ -784,7 +707,6 @@ lexer as Text: Text: Res [Token] =
     lexOne "" @state
 
     if state.errors == [] then
-        closeOpenBlocks @state
         state.tokens
             >> Array.toList
             >> Ok

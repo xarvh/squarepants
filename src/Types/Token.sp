@@ -14,12 +14,7 @@ union OpenOrClosed =
 
 
 union Kind =
-    # Structure
-    , NewSiblingLine
-    , BlockStart
-    , BlockEnd
-    , BadIndent
-    # Comment
+    , Indent Int
     , Comment
     # Terms
     , TextLiteral Text
@@ -32,14 +27,13 @@ union Kind =
     , Else
     , Try
     , As
-    , Colon
-    , ConsumingColon
+    , Colon LambdaModifier
     , With
     # Ops
     , Defop
+    , Mutop
     , Unop Op.Unop
     , Binop Op.Binop
-    , Mutation
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed
