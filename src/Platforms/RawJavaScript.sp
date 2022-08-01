@@ -9,15 +9,15 @@ platform as Types/Platform.Platform = {
     }
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefinition]: Text =
-    getRidOfMe: targetUsr: emittableStatements:
+compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+    getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
         getRidOfMe
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll {
+        Targets/Javascript/EmittableToJs.translateAll @emState {
             , errorEnv = eenv
             , caConstructors = constructors
             , eaDefs = emittableStatements
@@ -32,7 +32,7 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
             >> Text.join "\n\n"
 
     main =
-        Compiler/MakeEmittable.translateUsr targetUsr
+        Compiler/MakeEmittable.translateUsr @emState targetUsr
 
     # TODO don't want to use a server, so `export default` will have to wait
     "(function() {\n" .. Targets/Javascript/Runtime.nativeDefinitions .. statements .. "\n return " .. main .. ";\n })();"

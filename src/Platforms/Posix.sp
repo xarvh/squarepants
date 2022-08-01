@@ -24,15 +24,15 @@ library =
     """
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefinition]: Text =
-    getRidOfMe: targetUsr: emittableStatements:
+compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+    getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
         getRidOfMe
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll {
+        Targets/Javascript/EmittableToJs.translateAll @emState {
             , errorEnv = eenv
             , caConstructors = constructors
             , eaDefs = emittableStatements
@@ -44,7 +44,7 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
     callMain =
         """
 
-        const out = """ .. Compiler/MakeEmittable.translateUsr targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
+        const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
         if (out[1]) console.error(out[1]);
         """
 

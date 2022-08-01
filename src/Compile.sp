@@ -428,7 +428,10 @@ compileMain as CompileMainPars: IO None =
     log "Emittable AST..." ""
     Compiler/MakeEmittable.translateAll (Dict.values modules)
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
-    >> onResSuccess eenv emittableStatements:
+    >> onResSuccess eenv (meState & emittableStatements):
+
+    emittableState @=
+        meState
 
     log "= Platform specific stuff ="
     js =
@@ -437,6 +440,7 @@ compileMain as CompileMainPars: IO None =
             , constructors = Dict.toList globals.constructors
             }
             entryUsr
+            @emittableState
             emittableStatements
 
     IO.writeFile outputFile js
