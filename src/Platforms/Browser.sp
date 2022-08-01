@@ -24,14 +24,14 @@ virtualDomModule as Text: Meta.UniqueSymbolReference =
     Meta.USR (Meta.UMR Meta.Browser "VirtualDom")
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefinition]: Text =
-    getRidOfMe: targetUsr: emittableStatements:
+compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+    getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
         getRidOfMe
 
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll {
+        Targets/Javascript/EmittableToJs.translateAll @emState {
           , errorEnv = eenv
           , caConstructors = constructors
           , eaDefs = emittableStatements
@@ -43,7 +43,7 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: [EA.GlobalDefi
             >> List.map (Targets/Javascript/JsToText.emitStatement 0)
             >> Text.join "\n\n"
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. statements .. footer targetUsr
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. statements .. footer @emState targetUsr
 
 
 
@@ -69,14 +69,14 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as Meta.UniqueSymbolReference: Text =
-    targetUsr:
+footer as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference: Text =
+    state@: targetUsr:
 
     main =
-        Compiler/MakeEmittable.translateUsr targetUsr
+        Compiler/MakeEmittable.translateUsr @state targetUsr
 
     updateDomNode =
-        Compiler/MakeEmittable.translateUsr (virtualDomModule "updateDomNode")
+        Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
 
     """
 

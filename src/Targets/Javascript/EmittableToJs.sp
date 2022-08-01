@@ -16,8 +16,8 @@ alias Env = {
 union Override = Override (Env: [EA.Expression & EA.Mutability]: JA.Expr)
 
 
-# Adding a None argument to prevent a spurious circular dependency error
-coreOverrides as Dict EA.Name Override =
+coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
+    emState@:
 
     corelib as Text: Text: Meta.UniqueSymbolReference =
         m: n:
@@ -89,7 +89,7 @@ coreOverrides as Dict EA.Name Override =
     , corelib "List" "sortBy" & function  "list_sortBy"
     ]
     >> Dict.fromList
-    >> Dict.mapKeys Compiler/MakeEmittable.translateUsr
+    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState)
 
 
 unaryPlus as Override =
@@ -612,14 +612,14 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
 
-translateConstructor as Meta.UniqueSymbolReference & CA.Constructor: JA.Statement =
-    (usr & caCons):
+translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & CA.Constructor: JA.Statement =
+    emState@: (usr & caCons):
 
     Meta.USR umr slug =
         usr
 
     usrAsText =
-        Compiler/MakeEmittable.translateUsr usr
+        Compiler/MakeEmittable.translateUsr @emState usr
 
 
     argNames as [Text] =
@@ -660,20 +660,20 @@ alias TranslateAllPars = {
     , platformOverrides as [Meta.UniqueSymbolReference & Text]
     }
 
-translateAll as TranslateAllPars : [JA.Statement] =
-    pars:
+translateAll as Compiler/MakeEmittable.State@: TranslateAllPars: [JA.Statement] =
+    emState@: pars:
 
     { errorEnv, caConstructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [JA.Statement]=
-        List.map translateConstructor caConstructors
+        List.map (translateConstructor @emState) caConstructors
 
     env as Env = {
       , mutables = Set.empty
       , errorEnv
-      , overrides = coreOverrides >> List.for platformOverrides (usr & runtimeName):
-          Dict.insert (Compiler/MakeEmittable.translateUsr usr) (function runtimeName)
+      , overrides = coreOverrides @emState >> List.for platformOverrides (usr & runtimeName):
+          Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName)
       }
 
     jaStatements as [JA.Statement] =

@@ -4,6 +4,12 @@ alias ByName a =
     Dict Name a
 
 
+alias State = {
+    , sourceDirsToId as Hash Text Text
+    , sourceDirsCounter as Int
+}
+
+
 #
 # Names
 #
@@ -38,8 +44,8 @@ generateTryName as Int@: DollarName =
     generatedName ("try" .. Text.fromNumber counter)
 
 
-translateSource as Meta.Source: Text =
-    src:
+translateSource as State@: Meta.Source: Text =
+    state@: src:
 
     # TODO just generate an id for each source, to avoid all stupid collisions and invalid characters
     try src as
@@ -53,27 +59,30 @@ translateSource as Meta.Source: Text =
             "browser"
 
         Meta.SourceDir path:
-            if Text.startsWithRegex "[a-zA-Z0-9_./]*$" path == "" then
-                todo << "Invalid chars in source dir name: " .. path
-            else
-                path
-                    >> Text.replace "." "_"
-                    >> Text.replace "/" "$"
+            try Hash.get state.sourceDirsToId path as
+                Nothing:
+                    n = "sd" .. Text.fromNumber state.sourceDirsCounter
+                    @state.sourceDirsCounter += 1
+                    Hash.insert @state.sourceDirsToId path n
+                    n
+
+                Just id:
+                    id
 
 
-makeTextUsr as Meta.UniqueModuleReference: DollarName: Name =
-    umr: (DollarName name):
+makeTextUsr as State@: Meta.UniqueModuleReference: DollarName: Name =
+    state@: umr: (DollarName name):
 
     Meta.UMR source modulePath =
         umr
 
-    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. name
+    "$" .. translateSource @state source .. "$" .. Text.replace "/" "$" modulePath .. name
 
 
-translateUsr as Meta.UniqueSymbolReference: Text =
-    usr:
+translateUsr as State@: Meta.UniqueSymbolReference: Text =
+    state@: usr:
     Meta.USR umr name = usr
-    makeTextUsr umr (userSpecifiedName name)
+    makeTextUsr @state umr (userSpecifiedName name)
 
 
 #
@@ -136,8 +145,8 @@ translatePatternRec as CA.Pattern: EA.Expression: [ DollarName & EA.Expression ]
                 translatePatternRec pa (EA.RecordAccess name accessExpr)
 
 
-translateVariableArgs as CA.VariableArgs: EA.Expression =
-    ({ ref, attrPath }):
+translateVariableArgs as State@: CA.VariableArgs: EA.Expression =
+    state@: ({ ref, attrPath }):
 
     variableName =
         try ref as
@@ -147,7 +156,7 @@ translateVariableArgs as CA.VariableArgs: EA.Expression =
                 n
 
             CA.RefRoot usr:
-                translateUsr usr
+                translateUsr @state usr
 
     EA.Variable variableName attrPath
 #    >> List.for attrPath attributeName: expr:
@@ -176,8 +185,8 @@ testPattern as CA.Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
                 testPattern pa (EA.RecordAccess name valueToTest)
 
 
-translateExpression as Int@: CA.Expression: EA.Expression =
-    counter@: expression:
+translateExpression as State@: Int@: CA.Expression: EA.Expression =
+    state@: counter@: expression:
 
     try expression as
         CA.LiteralNumber _ num:
@@ -187,22 +196,22 @@ translateExpression as Int@: CA.Expression: EA.Expression =
             EA.LiteralText text
 
         CA.Variable _ var:
-            translateVariableArgs var
+            translateVariableArgs @state var
 
         CA.Constructor _ usr:
-            EA.Constructor (translateUsr usr)
+            EA.Constructor (translateUsr @state usr)
 
         CA.Lambda pos (CA.ParameterMutable _ name) body:
             DollarName n = userSpecifiedName name
-            EA.Lambda (Just n & EA.Mutable) (translateExpression @counter body)
+            EA.Lambda (Just n & EA.Mutable) (translateExpression @state @counter body)
 
         CA.Lambda pos (CA.ParameterPattern pattern) body:
             try pickMainName pattern as
                 NoNamedVariables:
-                    EA.Lambda (Nothing & EA.Immutable) (translateExpression @counter body)
+                    EA.Lambda (Nothing & EA.Immutable) (translateExpression @state @counter body)
 
                 TrivialPattern (DollarName argName):
-                    EA.Lambda (Just argName & EA.Immutable) (translateExpression @counter body)
+                    EA.Lambda (Just argName & EA.Immutable) (translateExpression @state @counter body)
 
                 SafeMainName (DollarName mainName):
                     namesAndExpressions =
@@ -218,7 +227,7 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                             }
 
                     body
-                    >> translateExpression @counter
+                    >> translateExpression @state @counter
                     >> List.for namesAndExpressions wrapWithArgumentLetIn
                     >> EA.Lambda (Just mainName & EA.Immutable)
 
@@ -226,20 +235,20 @@ translateExpression as Int@: CA.Expression: EA.Expression =
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first
-            >> List.map (Tuple.mapSecond (translateExpression @counter))
-            >> EA.LiteralRecord (Maybe.map translateVariableArgs extends)
+            >> List.map (Tuple.mapSecond (translateExpression @state @counter))
+            >> EA.LiteralRecord (Maybe.map (translateVariableArgs @state) extends)
 
         CA.Call _ ref (CA.ArgumentMutable _ var):
-            EA.Call (translateExpression @counter ref) (translateVariableArgs var & EA.Mutable)
+            EA.Call (translateExpression @state @counter ref) (translateVariableArgs @state var & EA.Mutable)
 
         CA.Call _ ref (CA.ArgumentExpression expr):
-            EA.Call (translateExpression @counter ref) (translateExpression @counter expr & EA.Immutable)
+            EA.Call (translateExpression @state @counter ref) (translateExpression @state @counter expr & EA.Immutable)
 
         CA.If _ ar:
             EA.Conditional
-                (translateExpression @counter ar.condition)
-                (translateExpression @counter ar.true)
-                (translateExpression @counter ar.false)
+                (translateExpression @state @counter ar.condition)
+                (translateExpression @state @counter ar.true)
+                (translateExpression @state @counter ar.false)
 
         CA.Try pos value tries:
 
@@ -247,7 +256,7 @@ translateExpression as Int@: CA.Expression: EA.Expression =
             valueExpression & wrapWithLetIn =
                 try value as
                     CA.Variable _ { ref, attrPath = [] }:
-                        translateVariableArgs { ref, attrPath = [] } & identity
+                        translateVariableArgs @state { ref, attrPath = [] } & identity
                     _:
                         DollarName tryName =
                             generateTryName @counter
@@ -257,7 +266,7 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                             EA.LetIn {
                                 , maybeName = Just tryName
                                 , mutability = EA.Immutable
-                                , letExpression = translateExpression @counter value
+                                , letExpression = translateExpression @state @counter value
                                 , inExpression = tryExpression
                                 }
 
@@ -277,7 +286,7 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
-                    translateExpression @counter block
+                    translateExpression @state @counter block
                     >> List.for namesAndExpressions (DollarName name & letExpression): inExpression:
                         EA.LetIn { maybeName = Just name, mutability = EA.Immutable, letExpression, inExpression }
 
@@ -297,16 +306,16 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                     EA.LetIn {
                         , maybeName = Nothing
                         , mutability = EA.Immutable
-                        , letExpression = translateExpression @counter valueDef.body
-                        , inExpression = translateExpression @counter e
+                        , letExpression = translateExpression @state @counter valueDef.body
+                        , inExpression = translateExpression @state @counter e
                         }
 
                 TrivialPattern (DollarName defName):
                     EA.LetIn {
                         , maybeName = Just defName
                         , mutability = if valueDef.mutable then EA.Mutable else EA.Immutable
-                        , letExpression = translateExpression @counter valueDef.body
-                        , inExpression = translateExpression @counter e
+                        , letExpression = translateExpression @state @counter valueDef.body
+                        , inExpression = translateExpression @state @counter e
                         }
 
                 SafeMainName (DollarName mainName):
@@ -327,22 +336,22 @@ translateExpression as Int@: CA.Expression: EA.Expression =
                         EA.LetIn {
                             , maybeName = Just mainName
                             , mutability = EA.Immutable
-                            , letExpression = translateExpression @counter valueDef.body
+                            , letExpression = translateExpression @state @counter valueDef.body
                             , inExpression
                             }
 
-                    translateExpression @counter e
+                    translateExpression @state @counter e
                     >> List.forReversed namesAndExpressions wrapWithUnpackedPatternVar
                     >> wrapWithActualLetIn
 
 
-translateRootValueDef as Meta.UniqueModuleReference: CA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
-    umr: def: accum:
+translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
+    state@: umr: def: accum:
 
     counter @= 0
 
     deps =
-        Set.map translateUsr def.directValueDeps
+        Set.map (translateUsr @state) def.directValueDeps
 
     try pickMainName def.pattern as
 
@@ -351,28 +360,28 @@ translateRootValueDef as Meta.UniqueModuleReference: CA.ValueDef: ByName EA.Glob
 
         TrivialPattern name:
             usrAsText =
-                makeTextUsr umr name
+                makeTextUsr @state umr name
 
             accum >> Dict.insert usrAsText {
               , name = usrAsText
-              , expr = translateExpression @counter def.body
+              , expr = translateExpression @state @counter def.body
               , deps
               }
 
         SafeMainName mainName:
             mainUsrAsText =
-                makeTextUsr umr mainName
+                makeTextUsr @state umr mainName
 
             mainDef as EA.GlobalDefinition =
                 { name = mainUsrAsText
-                , expr = translateExpression @counter def.body
+                , expr = translateExpression @state @counter def.body
                 , deps
                 }
 
             accum
             >> Dict.insert mainUsrAsText mainDef
             >> List.for (translatePattern def.pattern (EA.Variable mainUsrAsText [])) (name & expr):
-                textUsr = makeTextUsr umr name
+                textUsr = makeTextUsr @state umr name
                 Dict.insert textUsr { name = textUsr, expr, deps = Set.singleton mainUsrAsText }
 
 
@@ -399,7 +408,7 @@ circularIsError as ByName EA.GlobalDefinition: [Name]: Bool =
 
 
 
-translateAll as [CA.Module]: Result [[Name]] [EA.GlobalDefinition] =
+translateAll as [CA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
     userModules:
 
     Debug.benchStart None
@@ -407,10 +416,15 @@ translateAll as [CA.Module]: Result [[Name]] [EA.GlobalDefinition] =
     modules =
         List.concat [ userModules, Prelude.coreModules ]
 
+    state as State @= {
+        , sourceDirsToId = Hash.empty
+        , sourceDirsCounter = 0
+        }
+
     globalDefsByName as ByName EA.GlobalDefinition =
         Dict.empty >> List.for modules module:
             Dict.for module.valueDefs _: def:
-                translateRootValueDef module.umr def
+                translateRootValueDef @state module.umr def
 
     circulars & reorderedNames =
         RefHierarchy.reorder (globalDef: globalDef.deps) globalDefsByName
@@ -425,5 +439,6 @@ translateAll as [CA.Module]: Result [[Name]] [EA.GlobalDefinition] =
     else
        reorderedNames
        >> List.filterMap (name: Dict.get name globalDefsByName)
+       >> Tuple.pair state
        >> Ok
 
