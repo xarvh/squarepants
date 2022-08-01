@@ -327,6 +327,94 @@ const text_forEach = (s) => (f) => {
 
 
 //
+// Dicts
+//
+
+const dict_empty = {};
+
+
+const dict_insert = (key) => (value) => (dict) => {
+    return Object.assign({ [JSON.stringify(key)]: [key, value] }, dict);
+}
+
+
+const dict_remove = (key) => (dict) => {
+    const d = Object.assign({}, dict);
+    delete d[key];
+    return d;
+}
+
+
+const dict_get = (key) => (dict) => {
+    const r = dict[JSON.stringify(key)];
+    return r === undefined ? maybe_nothing : maybe_just(r[1]);
+}
+
+
+const dict_size = (dict) => {
+    return Object.keys(dict).length;
+}
+
+
+const dict_for = (dict) => (f) => (acc) => {
+    for (let k in dict) {
+        const kv = hash[k];
+        acc = f(kv[0])(kv[1])(acc);
+    }
+    return acc;
+}
+
+
+const dict_forRes = (dict) => (f) => (acc) => {
+    for (let k in dict) {
+        const kv = hash[k];
+        const result = f(kv[0])(kv[1])(acc);
+
+        if (result[0] === 'Ok') {
+          acc = result[1];
+        } else {
+          return result;
+        }
+    }
+    return [ 'Ok', acc ];
+}
+
+
+const dict_forReversed = dict_forRes;
+
+
+const dict_map = (f) => (dict) => {
+    const d = dict_empty;
+
+    for (let k in dict) {
+        d[k] = f(dict[k]);
+    }
+
+    return d;
+}
+
+
+const dict_mapRes = (f) => (dict) => {
+    const d = dict_empty;
+
+    for (let k in dict) {
+        const result = f(dict[k]);
+
+        if (result[0] === 'Ok') {
+          d[k] = result[1];
+        } else {
+          return result;
+        }
+    }
+
+    return [ 'Ok', d ];
+}
+
+
+
+
+
+//
 // Hashes
 //
 

@@ -78,6 +78,18 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , corelib "Hash" "for" & function  "hash_for"
     , corelib "Hash" "each" & function  "hash_each"
     #
+    , corelib "Dict" "empty" & function  "dict_empty"
+    , corelib "Dict" "get" & function  "dict_get"
+    , corelib "Dict" "size" & function  "dict_size"
+    , corelib "Dict" "insert" & function  "dict_insert"
+    , corelib "Dict" "remove" & function  "dict_remove"
+
+    , corelib "Dict" "for" & function  "dict_for"
+    , corelib "Dict" "forRes" & function  "dict_forRes"
+    , corelib "Dict" "forReversed" & function  "dict_forReversed"
+    , corelib "Dict" "map" & function  "dict_map"
+    , corelib "Dict" "mapRes" & function  "dict_mapRes"
+    #
     , corelib "Array" "push" & function  "array_push"
     , corelib "Array" "pop" & function  "array_pop"
     , corelib "Array" "get" & function  "array_get"
