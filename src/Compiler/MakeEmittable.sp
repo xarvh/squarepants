@@ -11,6 +11,10 @@ alias State = {
 }
 
 
+alias Expression = TA.Expression
+alias Pattern = TA.Pattern
+
+
 #
 # Names
 #
@@ -71,18 +75,18 @@ translateSource as State@: Meta.Source: Text =
                     id
 
 
-makeTextUsr as State@: Meta.UniqueModuleReference: DollarName: Name =
+makeTextUsr as State@: UMR: DollarName: Name =
     state@: umr: (DollarName name):
 
-    Meta.UMR source modulePath =
+    UMR source modulePath =
         umr
 
     "$" .. translateSource @state source .. "$" .. Text.replace "/" "$" modulePath .. name
 
 
-translateUsr as State@: Meta.UniqueSymbolReference: Text =
+translateUsr as State@: USR: Text =
     state@: usr:
-    Meta.USR umr name = usr
+    USR umr name = usr
     makeTextUsr @state umr (userSpecifiedName name)
 
 
@@ -91,21 +95,20 @@ translateUsr as State@: Meta.UniqueSymbolReference: Text =
 #
 
 union PickedName =
-    , TrivialPattern DollarName
+    , TrivialPattern DollarName TA.FullType
     , SafeMainName DollarName
     , NoNamedVariables
 
 
-pickMainName as CA.Pattern: PickedName =
+pickMainName as Pattern: PickedName =
     pattern:
-
     try pattern as
 
-        CA.PatternAny pos isMutable (Just name) maybeType:
-            TrivialPattern (userSpecifiedName name)
+        TA.PatternAny pos { maybeName = Just name, maybeAnnotation = _, type }:
+            TrivialPattern (userSpecifiedName name) type
 
         _:
-            try Dict.keys (CA.patternNames pattern) as
+            try Dict.keys (TA.patternNames pattern) as
                 head :: tail:
                     SafeMainName (generatedName head)
 
@@ -113,167 +116,214 @@ pickMainName as CA.Pattern: PickedName =
                     NoNamedVariables
 
 
-translatePattern as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ] =
+translatePattern as Pattern: EA.Expression: [ TA.FullType & DollarName & EA.Expression ] =
     pattern: accessExpr:
 
     translatePatternRec pattern accessExpr []
 # TODO we can do this optimization only once we can replace the pattern variable name with the accessExpr variable in the block that uses it
 #    try pattern as
-#        CA.PatternAny _ _ _: []
+#        TA.PatternAny _ _ _: []
 #        _: translatePatternRec pattern accessExpr []
 
 
-translatePatternRec as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ]: [ Bool & DollarName & EA.Expression ] =
+translatePatternRec as Pattern: EA.Expression: [ TA.FullType & DollarName & EA.Expression ]: [ TA.FullType & DollarName & EA.Expression ] =
     pattern: accessExpr: accum:
     try pattern as
-        CA.PatternAny _ isMutable Nothing maybeAnnotation:
+        TA.PatternAny _ { maybeName = Nothing, maybeAnnotation, type }:
             accum
 
-        CA.PatternAny _ isMutable (Just name) maybeAnnotation:
-            (isMutable & userSpecifiedName name & accessExpr) :: accum
+        TA.PatternAny _ { maybeName = Just name, maybeAnnotation, type }:
+            (type & userSpecifiedName name & accessExpr) :: accum
 
-        CA.PatternLiteralNumber _ _:
+        TA.PatternLiteralNumber _ _:
             accum
 
-        CA.PatternLiteralText _ _:
+        TA.PatternLiteralText _ _:
             accum
 
-        CA.PatternConstructor _ path pas:
+        TA.PatternConstructor _ path pas:
             accum >> List.indexedFor pas index: pa:
                 translatePatternRec pa (EA.ConstructorAccess index accessExpr)
 
-        CA.PatternRecord _ attrs:
-            accum >> Dict.for attrs name: pa:
+        TA.PatternRecord _ attrs:
+            accum >> Dict.for attrs name: (pa & type):
                 translatePatternRec pa (EA.RecordAccess name accessExpr)
 
 
-translateVariableArgs as State@: CA.VariableArgs: EA.Expression =
-    state@: ({ ref, attrPath }):
+translateVariableArgs as State@: Ref: EA.Expression =
+    state@: ref: #({ ref, attrPath }):
 
     variableName =
         try ref as
-            CA.RefBlock name:
+            RefLocal name:
                 DollarName n =
                     userSpecifiedName name
                 n
 
-            CA.RefRoot usr:
+            RefGlobal usr:
                 translateUsr @state usr
 
-    EA.Variable variableName attrPath
+    EA.Variable variableName #attrPath
 #    >> List.for attrPath attributeName: expr:
 #        EA.RecordAccess attributeName expr
 
 
-testPattern as CA.Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
+testPattern as Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
     pattern: valueToTest: accum:
     try pattern as
 
-        CA.PatternAny _ _ _ _:
+        TA.PatternAny _ _:
             accum
 
-        CA.PatternLiteralText _ text:
+        TA.PatternLiteralText _ text:
             EA.ShallowEqual (EA.LiteralText text) valueToTest :: accum
 
-        CA.PatternLiteralNumber _  num:
+        TA.PatternLiteralNumber _  num:
             EA.ShallowEqual (EA.LiteralNumber num) valueToTest :: accum
 
-        CA.PatternConstructor _ (Meta.USR umr name) pas:
+        TA.PatternConstructor _ (USR umr name) pas:
             (EA.IsConstructor name valueToTest :: accum)
             >> List.indexedFor pas index: argPattern:
                 testPattern argPattern (EA.ConstructorAccess index valueToTest)
 
-        CA.PatternRecord _ attrs:
-            accum >> Dict.for attrs name: pa:
+        TA.PatternRecord _ attrs:
+            accum >> Dict.for attrs name: (pa & type):
                 testPattern pa (EA.RecordAccess name valueToTest)
 
 
-translateExpression as State@: Int@: CA.Expression: EA.Expression =
-    state@: counter@: expression:
 
-    try expression as
-        CA.LiteralNumber _ num:
-            EA.LiteralNumber num
+translateParameter as State@: Int@: EA.Expression: TA.Parameter: EA.Expression & (Bool & Maybe Name) =
+    state@: counter@: bodyAcc: param:
 
-        CA.LiteralText _ text:
-            EA.LiteralText text
+    try param as
+        TA.ParameterRecycle pos rawType name:
 
-        CA.Variable _ var:
-            translateVariableArgs @state var
+            DollarName n =
+                userSpecifiedName name
 
-        CA.Constructor _ usr:
-            EA.Constructor (translateUsr @state usr)
+            bodyAcc & (True & Just n)
 
-        CA.Lambda pos pattern isConsuming body:
-            try pickMainName pattern as
+        TA.ParameterPattern fullType pa:
+            try pickMainName pa as
                 NoNamedVariables:
-                    EA.Lambda (Nothing & CA.patternIsMutable pattern) (translateExpression @state @counter body)
+                    bodyAcc & (False & Nothing)
 
-                TrivialPattern (DollarName argName):
-                    EA.Lambda (Just argName & CA.patternIsMutable pattern) (translateExpression @state @counter body)
+                TrivialPattern (DollarName argName) type:
+                    bodyAcc & (False & Just argName)
 
                 SafeMainName (DollarName mainName):
                     namesAndExpressions =
-                         translatePattern pattern (EA.Variable mainName [])
+                         translatePattern pa (EA.Variable mainName)
 
                     wrapWithArgumentLetIn =
-                        (isMutable & DollarName varName & letExpression): inExpression:
-                        EA.LetIn {
+                        (type & DollarName varName & letExpression): inExpression:
+                        EA.LetIn
+                            {
                             , maybeName = Just varName
-                            , isMutable
                             , letExpression
                             , inExpression
+                            , type
                             }
 
-                    body
-                    >> translateExpression @state @counter
-                    >> List.for namesAndExpressions wrapWithArgumentLetIn
-                    >> EA.Lambda (Just mainName & CA.patternIsMutable pattern)
+                    List.for namesAndExpressions wrapWithArgumentLetIn bodyAcc & (False & Just mainName)
 
-        CA.Record _ extends attrs:
+
+translateArgAndType as State@: Int@: TA.Argument: EA.Argument =
+    state@: counter@: taArg:
+
+    try taArg as
+        TA.ArgumentExpression fullType exp:
+            EA.ArgumentSpend << translateExpression @state @counter exp
+
+        TA.ArgumentRecycle pos rawType attrPath name:
+
+            DollarName n =
+                userSpecifiedName name
+
+            EA.ArgumentRecycle attrPath n
+
+
+translateExpression as State@: Int@: Expression: EA.Expression =
+    state@: counter@: expression:
+
+    try expression as
+        TA.LiteralNumber _ num:
+            EA.LiteralNumber num
+
+        TA.LiteralText _ text:
+            EA.LiteralText text
+
+        TA.Variable _ ref:
+            translateVariableArgs @state ref
+
+        TA.Constructor _ usr:
+            EA.Constructor (translateUsr @state usr)
+
+        TA.RecordAccess _ attrName exp:
+            EA.RecordAccess attrName (translateExpression @state @counter exp)
+
+        TA.Fn pos taPars body:
+
+            eaBody =
+                translateExpression @state @counter body
+
+            wrappedBody & eaPars =
+                eaBody & []
+                >> List.forReversed taPars taPar: (bodyAcc & eaParsAcc):
+                    bodyX & eaPar =
+                        translateParameter @state @counter bodyAcc taPar
+                    bodyX & (eaPar :: eaParsAcc)
+
+            EA.Fn eaPars wrappedBody
+
+        TA.Record _ extends attrs:
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first
             >> List.map (Tuple.mapSecond (translateExpression @state @counter))
-            >> EA.LiteralRecord (Maybe.map (translateVariableArgs @state) extends)
+            >> EA.LiteralRecord (Maybe.map (translateExpression @state @counter) extends)
 
-        CA.Call _ ref (CA.ArgumentMutable _ var):
-            EA.Call (translateExpression @state @counter ref) (translateVariableArgs @state var & True)
+        TA.Call _ ref argsAndTypes:
+            EA.Call
+                (translateExpression @state @counter ref)
+                (List.map (translateArgAndType @state @counter) argsAndTypes)
 
-        CA.Call _ ref (CA.ArgumentExpression expr):
-            EA.Call (translateExpression @state @counter ref) (translateExpression @state @counter expr & False)
-
-        CA.If _ ar:
+        TA.If _ ar:
             EA.Conditional
                 (translateExpression @state @counter ar.condition)
                 (translateExpression @state @counter ar.true)
                 (translateExpression @state @counter ar.false)
 
-        CA.Try pos value tries:
+        TA.Try pos { value, valueType, patternsAndExpressions }:
 
             # 1. create a name for the value (unless it's already a variable)
             valueExpression & wrapWithLetIn =
-                try value as
-                    CA.Variable _ { ref, attrPath = [] }:
-                        translateVariableArgs @state { ref, attrPath = [] } & identity
+                try value & valueType.uni as
+                    TA.Variable _ ref & Imm:
+                        translateVariableArgs @state ref & identity
+
                     _:
+                        eaValue =
+                            translateExpression @state @counter value
+
                         DollarName tryName =
                             generateTryName @counter
 
                         wrap =
                             tryExpression:
-                            EA.LetIn {
+                            EA.LetIn
+                                {
                                 , maybeName = Just tryName
-                                , isMutable = False
-                                , letExpression = translateExpression @state @counter value
+                                , letExpression = eaValue
                                 , inExpression = tryExpression
+                                , type = valueType
                                 }
 
-                        EA.Variable tryName [] & wrap
+                        EA.Variable tryName & wrap
 
 
             # 2. if-elses
-            addTryPatternAndBlock as (CA.Pattern & CA.Expression): EA.Expression: EA.Expression =
+            addTryPatternAndBlock as (Pattern & Expression): EA.Expression: EA.Expression =
                 ( pattern & block ): nextTryExpression:
 
                 testIfPatternMatches as EA.Expression =
@@ -281,13 +331,13 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                     >> List.reverse
                     >> EA.And
 
-                namesAndExpressions as [ Bool & DollarName & EA.Expression ] =
+                namesAndExpressions as [ TA.FullType & DollarName & EA.Expression ] =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
                     translateExpression @state @counter block
-                    >> List.for namesAndExpressions (isMutable & DollarName name & letExpression): inExpression:
-                        EA.LetIn { maybeName = Just name, isMutable, letExpression, inExpression }
+                    >> List.for namesAndExpressions (type & DollarName name & letExpression): inExpression:
+                        EA.LetIn { maybeName = Just name, type, letExpression, inExpression }
 
                 EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
 
@@ -295,46 +345,50 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                 EA.MissingPattern pos valueExpression
 
             default
-            >> List.forReversed tries addTryPatternAndBlock
+            >> List.forReversed patternsAndExpressions addTryPatternAndBlock
             >> wrapWithLetIn
 
 
-        CA.LetIn valueDef e:
+        TA.LetIn valueDef e:
             try pickMainName valueDef.pattern as
                 NoNamedVariables:
-                    EA.LetIn {
+                    EA.LetIn
+                        {
                         , maybeName = Nothing
-                        , isMutable = CA.patternIsMutable valueDef.pattern
+                        , type = valueDef.type
                         , letExpression = translateExpression @state @counter valueDef.body
                         , inExpression = translateExpression @state @counter e
                         }
 
-                TrivialPattern (DollarName defName):
-                    EA.LetIn {
+                TrivialPattern (DollarName defName) type:
+                    EA.LetIn
+                        {
                         , maybeName = Just defName
-                        , isMutable = CA.patternIsMutable valueDef.pattern
+                        , type
                         , letExpression = translateExpression @state @counter valueDef.body
                         , inExpression = translateExpression @state @counter e
                         }
 
                 SafeMainName (DollarName mainName):
                     namesAndExpressions =
-                        translatePattern valueDef.pattern (EA.Variable mainName [])
+                        translatePattern valueDef.pattern (EA.Variable mainName)
 
-                    wrapWithUnpackedPatternVar as (Bool & DollarName & EA.Expression): EA.Expression: EA.Expression =
-                        (isMutable & DollarName name & letExpression): inExpression:
-                        EA.LetIn {
+                    wrapWithUnpackedPatternVar as (TA.FullType & DollarName & EA.Expression): EA.Expression: EA.Expression =
+                        (type & DollarName name & letExpression): inExpression:
+                        EA.LetIn
+                            {
                             , maybeName = Just name
-                            , isMutable
+                            , type
                             , letExpression
                             , inExpression
                             }
 
                     wrapWithActualLetIn as EA.Expression: EA.Expression =
                         inExpression:
-                        EA.LetIn {
+                        EA.LetIn
+                            {
                             , maybeName = Just mainName
-                            , isMutable = False
+                            , type = valueDef.type
                             , letExpression = translateExpression @state @counter valueDef.body
                             , inExpression
                             }
@@ -343,8 +397,12 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                     >> List.forReversed namesAndExpressions wrapWithUnpackedPatternVar
                     >> wrapWithActualLetIn
 
+        TA.DestroyIn name e:
+            translateExpression @state @counter e
 
-translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
+
+
+translateRootValueDef as State@: UMR: TA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
     state@: umr: def: accum:
 
     counter @= 0
@@ -357,7 +415,7 @@ translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName
         NoNamedVariables:
             accum
 
-        TrivialPattern name:
+        TrivialPattern name type:
             usrAsText =
                 makeTextUsr @state umr name
 
@@ -379,7 +437,7 @@ translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName
 
             accum
             >> Dict.insert mainUsrAsText mainDef
-            >> List.for (translatePattern def.pattern (EA.Variable mainUsrAsText [])) (isMutable & name & expr):
+            >> List.for (translatePattern def.pattern (EA.Variable mainUsrAsText)) (type & name & expr):
                 textUsr = makeTextUsr @state umr name
                 Dict.insert textUsr { name = textUsr, expr, deps = Set.singleton mainUsrAsText }
 
@@ -400,20 +458,17 @@ circularIsError as ByName EA.GlobalDefinition: [Name]: Bool =
 
           Just globalDef:
               try globalDef.expr as
-                  EA.Lambda _ _:
+                  EA.Fn _ _:
                       False
                   _:
                       True
 
 
 
-translateAll as [CA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
-    userModules:
+translateAll as [TA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
+    modules:
 
     Debug.benchStart None
-
-    modules =
-        List.concat [ userModules, Prelude.coreModules ]
 
     state as State @= {
         , sourceDirsToId = Hash.empty

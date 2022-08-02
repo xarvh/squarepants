@@ -184,6 +184,18 @@ indexedMap as (Int: a: b): [a]: [b] =
     rec [] 0
 
 
+indexedMap2 as (Int: a: b: c): [a]: [b]: [c] =
+    f:
+
+    rec  as [b]: Int: [a]: [b]: [c] =
+        accum: n: aa: bb:
+        try aa & bb as
+            (a :: at) & (b :: bt): rec (f n a b :: accum) (n + 1) at bt
+            _: reverse accum
+
+    rec [] 0
+
+
 append as [a]: [a]: [a] =
   xs: ys:
   try ys as

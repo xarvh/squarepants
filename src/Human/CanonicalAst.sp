@@ -12,10 +12,6 @@ return as a: StateMonad.M state a =
     StateMonad.return
 
 
-alias Type =
-    CA.Type
-
-
 parensIf as Bool: Text: Text =
    test: s:
     if test then
@@ -29,10 +25,10 @@ parensIf as Bool: Text: Text =
 # Ref
 #
 
-usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text =
+usrToText as UMR: Meta: USR: Text =
     currentUmr: meta: usr:
 
-    Meta.USR moduleUmr name =
+    USR moduleUmr name =
         usr
 
     if currentUmr == moduleUmr then
@@ -54,7 +50,7 @@ usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text 
                         moduleAlias .. "." .. name
 
                     Nothing:
-                        Meta.UMR souece modulePath =
+                        UMR souece modulePath =
                             moduleUmr
 
                         # INFORMATION LOSS: source
@@ -64,15 +60,15 @@ usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text 
 #
 # Type
 #
-typeToText as Meta.UniqueModuleReference: Meta: Type: Text =
+typeToText as UMR: Meta: CA.RawType: Text =
     currentUmr: meta: t:
     t >> typeToPriorityAndText currentUmr meta >> Tuple.second
 
 
-typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
+typeToPriorityAndText as UMR: Meta: CA.RawType: Int & Text =
     currentUmr: meta: type:
 
-    parensIfGreaterThan as Int: Type: Text =
+    parensIfGreaterThan as Int: CA.RawType: Text =
         threshold: ty:
 
         pri & str =
@@ -81,47 +77,11 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
         parensIf (pri > threshold) str
 
     try type as
-        CA.TypeConstant pos usr args:
+        CA.TypeNamed p usr args:
             ( (if args == [] then 0 else 1) & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " "))
 
-        CA.TypeMutable pos ty:
-            0 & "@" .. typeToText currentUmr meta ty
-
-        CA.TypeVariable pos name:
-            ( 0 & name)
-
-        CA.TypeFunction pos from lambdaModifier to:
-            arrow =
-                try lambdaModifier as
-                    LambdaNormal: ": "
-                    LambdaConsuming: ":- "
-
-            ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
-
-        CA.TypeRecord pos extend attrs:
-
-            attrsString =
-                attrs
-                    >> Dict.toList
-                    >> List.sortBy Tuple.first
-                    >> List.map (( name & ty ): name .. " as " .. typeToText currentUmr meta ty)
-                    >> Text.join ", "
-            l = [
-              , "{"
-              , try extend as
-                    Nothing:
-                        ""
-
-                    Just n:
-                        n .. " with"
-              , attrsString
-              , "}"
-              ]
-
-            ( 0 & Text.join " " l)
-
-        CA.TypeAlias pos usr ty2:
-            ( 0 & usrToText currentUmr meta usr )
+#        CA.TypeNamed pos usr args:
+#            0 & usrToText currentUmr meta usr
 #            typeToPriorityAndText currentUmr meta ty2
             # TODO: once we can display a type on multiple lines, we should expand the alias?
               [#
@@ -134,6 +94,53 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
                    ]
                      >> Text.join " "
               #]
+
+        CA.TypeAnnotationVariable p name:
+            ( 0 & name)
+
+        CA.TypeFn _ pars to:
+            todo "CA.TypeFn"
+#            arrow =
+#                try lambdaModifier as
+#                    LambdaNormal: ": "
+#                    LambdaConsuming: ":- "
+#
+#            ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
+
+        CA.TypeRecord p attrs:
+
+            attrsString =
+                attrs
+                >> Dict.toList
+                >> List.sortBy Tuple.first
+                >> List.map (( name & ty ): name .. " as " .. typeToText currentUmr meta ty)
+                >> Text.join ", "
+
+            l = [
+              , "{"
+              , attrsString
+              , "}"
+              ]
+
+            ( 0 & Text.join " " l)
+
+#        CA.TypeRecordExt pos name flags attrs:
+#
+#            attrsString =
+#                attrs
+#                    >> Dict.toList
+#                    >> List.sortBy Tuple.first
+#                    >> List.map (( name & ty ): name .. " as " .. typeToText currentUmr meta ty)
+#                    >> Text.join ", "
+#            l = [
+#              , "{"
+#              , name .. " with"
+#              , attrsString
+#              , "}"
+#              ]
+#
+#            ( 0 & Text.join " " l)
+
 
 
 #
@@ -215,58 +222,60 @@ newName as NormMonad Text =
     ( intToName state.next [] & { state with next = state.next + 1 })
 
 
-normalizeType as Type: Type =
-    t:
-    t >> normType >> StateMonad.run initNstate >> Tuple.first
+#normalizeType as CA.RawType: CA.RawType =
+#    t:
+#    t >> normType >> StateMonad.run initNstate >> Tuple.first
 
 
-normalizeTypeAndTyvars as Type: Dict Text a: ( Type & Dict Text a ) =
-    tyOld: tyvarsOld:
+#normalizeTypeAndTyvars as CA.Type: Dict Text a: ( CA.Type & Dict Text a ) =
+#    tyOld: tyvarsOld:
+#
+#    ( tyNew & state ) =
+#        tyOld
+#            >> normType
+#            >> StateMonad.run initNstate
+#
+#    replace = name:
+#        Dict.get name state.replacements
+#            >> Maybe.withDefault name
+#            >> Dict.insert
+#
+#    tyvarsNew =
+#        Dict.for tyvarsOld replace Dict.empty
+#
+#    ( tyNew & tyvarsNew )
 
-    ( tyNew & state ) =
-        tyOld
-            >> normType
-            >> StateMonad.run initNstate
 
-    replace = name:
-        Dict.get name state.replacements
-            >> Maybe.withDefault name
-            >> Dict.insert
+#normType as CA.Type: NormMonad CA.Type =
+#    (CA.Type pos ty_):
+#    try ty_ as
+#        CA.TypeNamed uni name args:
+#            StateMonad.list_map normType args >> andThen args_n:
+#            return << CA.Type pos << CA.TypeNamed uni name args_n
 
-    tyvarsNew =
-        Dict.for tyvarsOld replace Dict.empty
+#        CA.TypeAlias pos usr args:
+#            StateMonad.list_map normType args >> andThen args_n:
+#            return << CA.TypeAlias pos usr args_n
 
-    ( tyNew & tyvarsNew )
+#        CA.TypeAnnotationVariable uni name:
+#            normName name >> andThen n:
+#            return << CA.Type pos << CA.TypeAnnotationVariable uni n
+#
+#        CA.TypeFn _ pars to0:
+#            todo "CA.TypeFn"
+#            (normType from0) >> andThen from1:
+#            (normType to0) >> andThen to1:
+#            return << CA.TypeFn pos from1 fromIsMut to1
 
+#        CA.TypeRecord uni attrs0:
+#            (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
+#            return << CA.Type pos << CA.TypeRecord uni attrs1
 
-normType as Type: NormMonad Type =
-    ty:
-    try ty as
-        CA.TypeConstant pos name args:
-            (StateMonad.list_map normType args) >> andThen args_n:
-            return << CA.TypeConstant pos name args_n
+#        CA.TypeRecordExt pos name0 flags attrs0:
+#            normName name0 >> andThen name1:
+#            StateMonad.dict_map (k: normType) attrs0 >> andThen attrs1:
+#            return << CA.TypeRecordExt pos name1 flags attrs1
 
-        CA.TypeVariable pos name:
-            (normName name) >> andThen n:
-            return << CA.TypeVariable pos n
-
-        CA.TypeFunction pos from0 fromIsMut to0:
-            (normType from0) >> andThen from1:
-            (normType to0) >> andThen to1:
-            return << CA.TypeFunction pos from1 fromIsMut to1
-
-        CA.TypeRecord pos ext0 attrs0:
-            (StateMonad.maybe_map normName ext0) >> andThen ext1:
-            (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
-            return << CA.TypeRecord pos ext1 attrs1
-
-        CA.TypeMutable pos t:
-            (normType t) >> andThen t1:
-            return << CA.TypeMutable pos t1
-
-        CA.TypeAlias pos path t:
-            (normType t) >> andThen t1:
-            return << CA.TypeAlias pos path t1
 
 
 normName as Text: NormMonad Text =

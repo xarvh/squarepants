@@ -10,6 +10,7 @@ allTests as [ Test ] = [
     , List_Test.tests
     , Dict_Test.tests
     , RefHierarchy_Test.tests
+    , Uniqueness.specs
     ]
 
 
@@ -92,7 +93,7 @@ order as Test.TestOutcome: Int =
 selftestMain as None: IO Int =
     None:
     allTests
-    >> Test.flatten
+    >> Test.flattenAndRun
     >> List.sortBy (x: order x.outcome & x.name)
     >> List.map (x: testOutcomeToText x.name x.code x.outcome)
     >> Text.join "\n"

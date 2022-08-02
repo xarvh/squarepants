@@ -18,8 +18,9 @@ emitStatement as Int: JA.Statement: Text =
         JA.Return e:
             std "return " e
 
-        JA.Define name e:
-            std ("const " .. name .. " = ") e
+        JA.Define isReassignable name e:
+            modifier = if isReassignable then "let" else "const"
+            std (modifier .. " " .. name .. " = ") e
 
         JA.If condition block:
             id l .. "if (" .. emitExpr l condition .. ") " .. emitBlock l block
@@ -95,4 +96,7 @@ emitExpr as Int: JA.Expr: Text =
                 items
                     >> List.map (i: id (l + 1) .. emitExpr (l + 1) i .. ",")
                     >> (a: "([\n" .. Text.join "\n" a .. "\n" .. id l .. "])")
+
+        JA.Comma expr:
+            "(" .. Text.join ", " (List.map (emitExpr l) expr) .. ")"
 

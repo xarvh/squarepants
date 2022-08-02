@@ -1,4 +1,33 @@
+#
+# Tests
+#
 
+
+tests as Test =
+    Test.Group
+        """
+        MakeCanonical
+        """
+        [
+        , unionTypes
+        , binops
+        , tuples
+        , lists
+        , moduleAndAttributePaths
+        , records
+        , patterns
+        , annotations
+        , pipes
+        , functions
+        , nonFunction
+        , argumentPlaceholders
+        , polymorphicUniques
+        ]
+
+
+#
+# Helpers
+#
 
 params as Compiler/MakeCanonical.Params = {
     , meta = TH.meta
@@ -65,38 +94,30 @@ shouldHaveSameAB as (ab: c): Test.CodeExpectation ( ab & ab ) =
         , toHuman (getter a)
         , toHuman (getter b)
         ]
-            >> Text.join "\n"
-            >> Just
+        >> Text.join "\n"
+        >> Just
 
 
 p as Pos =
     Pos.T
 
 
+valueDef as Name: CA.Expression: CA.ValueDef =
+    name: body:
 
-#
-# Tests
-#
+    {
+    , uni = Imm
+    , pattern = CA.PatternAny Pos.G { maybeName = Just name, maybeAnnotation = Nothing }
+    , native = False
+    , body
 
+    , tyvars = Dict.empty
+    , univars = Dict.empty
 
-tests as Test =
-    Test.Group
-        """
-        MakeCanonical
-        """
-        [
-        , unionTypes
-        , binops
-        , tuples
-        , lists
-        , moduleAndAttributePaths
-        , records
-        , patterns
-        , annotations
-        , pipes
-        , functions
-        ]
-
+    , directTypeDeps = Dict.empty
+    , directConsDeps = Dict.empty
+    , directValueDeps = Dict.empty
+    }
 
 
 
@@ -112,10 +133,10 @@ unionTypes as Test =
         """
         [
         , codeTest
-            "SKIP tuples op precedence"
+            "tuples op precedence"
             "union A = X Bool & Bool"
             textToModule
-            (Test.errorContains ["operators"])
+            (Test.errorContains ["expecting a constructor"])
         , codeTest
             """
             Tuples op precedence works with parens
@@ -127,13 +148,13 @@ unionTypes as Test =
             Test.isOk
         , codeTest
             """
-            SKIP [reg] Should reject uppercase arg name
+            [reg] Should reject uppercase arg name
             """
             """
             union Outcome Token output = A
             """
             textToModule
-            (Test.errorContains ["Token"])
+            (Test.errorContains ["must start with a lowercase"])
         ]
 
 
@@ -163,14 +184,6 @@ binops as Test =
             """
             transformAB
             (shouldHaveSameAB x: x.body)
-        , codeTest "SKIP functional notation"
-            """
-            a = (-)
-            """
-            (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.Variable p { ref = CA.RefRoot (CoreTypes.makeUsr "-"), attrPath = [] }
-            )
         ]
 
 
@@ -192,16 +205,13 @@ lists as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }
+                {
+                , uni = Imm
+                , body = CA.Variable p (TH.rootLocal "l")
                 , native = False
-                , pattern =
-                    CA.PatternAny p False (Just "l")
-                        (TH.boolType
-                            >> CoreTypes.list
-                            >> Just
-                        )
-                , nonFn = Dict.empty
-                , parentDefinitions = []
+                , pattern = CA.PatternAny p { maybeName = Just "l", maybeAnnotation = (TH.caBool >> CoreTypes.list >> Just) }
+                , tyvars = Dict.empty
+                , univars = Dict.empty
 
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
@@ -259,18 +269,22 @@ tuples as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }
+                { body = CA.Variable p (TH.rootLocal "a")
+                , uni = Imm
                 , pattern =
-                    CA.PatternAny p False (Just "a")
-                        (Dict.empty
-                            >> Dict.insert "first" TH.numberType
-                            >> Dict.insert "second" TH.numberType
-                            >> CA.TypeRecord p Nothing
+                    CA.PatternAny p
+                      {
+                      , maybeName = Just "a"
+                      , maybeAnnotation =
+                         Dict.empty
+                            >> Dict.insert "first" TH.caNumber
+                            >> Dict.insert "second" TH.caNumber
+                            >> CA.TypeRecord p
                             >> Just
-                        )
+                      }
                 , native = False
-                , nonFn = Dict.empty
-                , parentDefinitions = []
+                , tyvars = Dict.empty
+                , univars = Dict.empty
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
@@ -283,7 +297,7 @@ tuples as Test =
               a
             """
             firstDefinition
-            (Test.errorContains ["Use a record"])
+            (Test.errorContains ["use a record"])
         ]
 
 
@@ -338,17 +352,33 @@ records as Test =
         , codeTest "functional update"
             "a = { m with b, c = 1 }"
             (firstEvaluation "a")
-            ([ ( "c" & CA.LiteralNumber p 1 ) , ( "b" & CA.Variable p { attrPath = [], ref = TH.rootLocal "b" } ) ]
-                >> Dict.fromList
-                >> CA.Record p (Just { attrPath = [], ref = TH.rootLocal "m" })
-                >> Test.isOkAndEqualTo
+            (Test.isOkAndEqualTo <<
+                CA.LetIn
+                    (valueDef "0" (CA.Variable p (TH.rootLocal "m" )))
+                    (CA.Record p
+                        (Just (CA.Variable Pos.G (RefLocal "0" )))
+                        (Dict.fromList
+                            [
+                            , "c" & CA.LiteralNumber p 1
+                            , "b" & CA.Variable p (TH.rootLocal "b")
+                            ]
+                        )
+                    )
             )
         , codeTest "update shorthand"
-            "b = { a.k with y = .x }"
+            "b = { a with y = .x }"
             (firstEvaluation "b")
-            (Dict.singleton "y" (CA.Variable p { attrPath = [ "k", "x" ], ref = TH.rootLocal "a" })
-                >> CA.Record p (Just { attrPath = [ "k" ], ref = TH.rootLocal "a" })
-                >> Test.isOkAndEqualTo
+            (Test.isOkAndEqualTo <<
+                CA.LetIn
+                    (valueDef "0" (CA.Variable p (TH.rootLocal "a" )))
+                    (CA.Record p
+                        (Just (CA.Variable Pos.G (RefLocal "0" )))
+                        (Dict.fromList
+                            [
+                            , "y" & (CA.RecordAccess p "x" (CA.Variable Pos.G (RefLocal "0" )))
+                            ]
+                        )
+                    )
             )
         , codeTest "annotation, extensible"
             """
@@ -371,13 +401,21 @@ patterns as Test =
         """
         Patterns
         """
-        [ codeTest "[reg] record patterns are NOT extensible"
+        [
+        , codeTest "Record patterns can be partial"
+            """
+            a =
+              { with c } = d
+            """
+            (firstEvaluation "a")
+            Test.isOk
+        , codeTest "[reg] record patterns are NOT extensible"
             """
             a =
               { b with c } = d
             """
             (firstEvaluation "a")
-            (Test.errorContains ["with"])
+            (Test.errorContains ["extend pattern"])
         ]
 
 
@@ -392,10 +430,11 @@ annotations as Test =
         """
         Annotations
         """
-        [ codeTest "annotation on mutable value"
+        [
+        , codeTest "annotation on unique value"
             """
             x =
-              @a as Number =
+              !a as Number =
                 3
               a
             """
@@ -405,6 +444,13 @@ annotations as Test =
         , codeTest "annotation on immutable value"
             """
             b as Number =
+              3
+            """
+            (firstEvaluation "b")
+            Test.isOk
+        , codeTest "annotation of recycling function"
+            """
+            b as fn @Result e a: !Result e a =
               3
             """
             (firstEvaluation "b")
@@ -430,8 +476,8 @@ pipes as Test =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
                 CA.Call p
-                    (CA.Variable p { ref = TH.rootLocal "function", attrPath = [] })
-                    (CA.ArgumentExpression << CA.Variable p { ref = TH.rootLocal "thing", attrPath = [] })
+                    (CA.Variable p (TH.rootLocal "function"))
+                    [CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing"))]
             )
         , codeTest "sendRight is inlined"
             """
@@ -440,8 +486,8 @@ pipes as Test =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
                 CA.Call p
-                    (CA.Variable p { ref = TH.rootLocal "function", attrPath = [] })
-                    (CA.ArgumentExpression << CA.Variable p { ref = TH.rootLocal "thing", attrPath = [] })
+                    (CA.Variable p (TH.rootLocal "function"))
+                    [CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing"))]
             )
         ]
 
@@ -457,31 +503,161 @@ functions as Test =
         """
         Functions
         """
-        [ codeTest "[rec] lambda with two arguments"
+        [
+        , codeTest "[rec] function with call"
             """
-            f =
-              a: b: 1
+            a =
+                fn x:
+                    add x 1
             """
             (firstEvaluation "f")
-            Test.isOk
-#        , codeTest "short function notation"
-#            """
-#            a = x: y: z: x + y + z
-#            b = x: y: z: x + y + z
-#            c = x: y: z: x + y + z
-#            """
-#            transformABC
-#            (Test.freeform << ( a & b & c ):
-#            if a.body == b.body and b.body == c.body then
-#                Nothing
-#
-#            else
-#                [ "The three don't match:"
-#                , toHuman a
-#                , toHuman b
-#                , toHuman c
-#                ]
-#                    >> Text.join "\n"
-#                    >> Just
-#            )
+            (Test.isOkAndEqualTo
+                (CA.Fn p
+                    [CA.ParameterPattern Imm (CA.PatternAny p { maybeAnnotation = Nothing, maybeName = Just "x"})]
+                    (CA.Call p
+                        (CA.Variable p (TH.rootLocal "add"))
+                        [
+                        , CA.ArgumentExpression (CA.Variable p (RefLocal "x"))
+                        , CA.ArgumentExpression (CA.LiteralNumber p 1)
+                        ]
+                    )
+                )
+            )
+        , codeTest "[rec] function with two arguments"
+            """
+            f =
+              fn a, b: 1
+            """
+            (firstEvaluation "f")
+            (Test.isOkAndEqualTo
+                (CA.Fn p
+                    [
+                    , CA.ParameterPattern Imm (CA.PatternAny p { maybeAnnotation = Nothing, maybeName = Just "a"})
+                    , CA.ParameterPattern Imm (CA.PatternAny p { maybeAnnotation = Nothing, maybeName = Just "b"})
+                    ]
+                    (CA.LiteralNumber p 1)
+                )
+            )
         ]
+
+
+nonFunction as Test =
+    Test.Group
+        """
+        NonFunction
+        """
+        [
+        , codeTest "one"
+            """
+            funz as a with a NonFunction =
+                1
+            """
+            firstDefinitionStripDeps
+            (Test.isOkAndEqualTo
+                { body = CA.LiteralNumber p 1
+                , uni = Imm
+                , native = False
+                , pattern = CA.PatternAny p { maybeName = Just "funz", maybeAnnotation = CA.TypeAnnotationVariable p "a" >> Just }
+                , tyvars = Dict.singleton "a" { allowFunctions = False }
+                , univars = Dict.empty
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                }
+            )
+        ]
+
+
+argumentPlaceholders as Test =
+    Test.Group
+        """
+        Argument placeholders
+        """
+        [
+        , codeTest
+            """
+            Base
+            """
+            """
+            f = f __ __
+            """
+            firstDefinitionStripDeps
+            (Test.isOkAndEqualTo
+                {
+                , native = False
+                , uni = Imm
+                , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Nothing }
+                , tyvars = Dict.empty
+                , univars = Dict.empty
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                , body =
+                    CA.Fn p
+                        [
+                        , CA.ParameterPlaceholder "0" 0
+                        , CA.ParameterPlaceholder "1" 1
+                        ]
+                        ( CA.Call p
+                            (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDir "<Test>") "(test)") "f")))
+                            [
+                            , CA.ArgumentExpression (CA.Variable p (RefLocal "0"))
+                            , CA.ArgumentExpression (CA.Variable p (RefLocal "1"))
+                            ]
+                        )
+                }
+            )
+        ]
+
+polymorphicUniques as Test =
+    Test.Group
+        """
+        Polymorphic Uniques
+        """
+        [
+        , codeTest
+            """
+            In pattern
+            """
+            """
+            scope =
+                1?f as a = meh
+            """
+            firstDefinitionStripDeps
+            (Test.isOkAndEqualTo
+                {
+                , native = False
+                , uni = Imm
+                , pattern = CA.PatternAny p { maybeName = Just "scope", maybeAnnotation = Nothing }
+                , tyvars = Dict.empty
+                , univars = Dict.empty
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                , body =
+                    CA.LetIn
+                        {
+                        , native = False
+                        , uni = Depends 1
+                        , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Just (CA.TypeAnnotationVariable p "a") }
+                        , tyvars = Dict.singleton "a" { allowFunctions = True }
+                        , univars = Dict.singleton 1 None
+                        , directConsDeps = Dict.empty
+                        , directTypeDeps = Dict.empty
+                        , directValueDeps = Dict.empty
+                        , body = CA.Variable p (TH.rootLocal "meh")
+                        }
+                        (CA.Constructor Pos.G CoreTypes.noneValue)
+                }
+            )
+        , codeTest
+            """
+            In annotation
+            """
+            """
+            isOk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = meh
+            """
+            (t: firstDefinitionStripDeps t >> Result.map (x: x.univars))
+            (Test.isOkAndEqualTo << Dict.fromList [1 & None, 2 & None])
+        ]
+

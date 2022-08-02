@@ -1,16 +1,3 @@
-
-#
-# The name of a variable, type, attribute or "visibleAs" module name
-#
-alias Name =
-    Text
-
-
-union LambdaModifier =
-    , LambdaNormal
-    , LambdaConsuming
-
-
 #
 # This tells us where a module comes from.
 #
@@ -38,31 +25,31 @@ alias ModulePath =
     Text
 
 
-union UniqueModuleReference =
+union UMR =
     UMR Source ModulePath
 
 
 # TODO: have one for types, one for constructors and one for values?
-union UniqueSymbolReference =
-    USR UniqueModuleReference Name
+union USR =
+    USR UMR Name
 
 
 alias ByUsr a =
-    Dict Meta.UniqueSymbolReference a
+    Dict USR a
 
 
 alias Meta = {
 
     # These resolve global symbol names
-    , globalValues as Dict Name UniqueSymbolReference
-    , globalTypes as Dict Name UniqueSymbolReference
+    , globalValues as Dict Name USR
+    , globalTypes as Dict Name USR
 
     # These resolve module names
-    , moduleVisibleAsToUmr as Dict Name UniqueModuleReference
+    , moduleVisibleAsToUmr as Dict Name UMR
 
     # This is used by toHuman, to show symbols the same way the user would expect to read and write them
     # (only the main meta is used for this)
-    , umrToModuleVisibleAs as Dict UniqueModuleReference Name
+    , umrToModuleVisibleAs as Dict UMR Name
     }
 
 
@@ -78,10 +65,10 @@ spCorePath as Text =
     "Core"
 
 
-spCoreUmr as UniqueModuleReference =
+spCoreUmr as UMR =
     UMR Core spCorePath
 
 
-spCoreUSR as Name: UniqueSymbolReference =
+spCoreUSR as Name: USR =
     USR spCoreUmr
 

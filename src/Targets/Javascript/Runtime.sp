@@ -13,6 +13,9 @@ listNil as Text =
 
 nativeDefinitions as Text =
     """
+let __re__;
+
+
 const sp_clone = (src) => {
  if (Array.isArray(src))
    return src.map(sp_clone);
@@ -38,13 +41,12 @@ const maybe_nothing = [ "Nothing" ];
 const maybe_just = (a) => [ "Just", a ];
 
 
-
 //
 // Basic ops
 //
 
 
-const sp_equal = (a) => (b) => {
+const sp_equal = (a, b) => {
   if (a === b)
     return true
 
@@ -56,7 +58,7 @@ const sp_equal = (a) => (b) => {
 
     let i = 0;
     while (i < l) {
-      if (!sp_equal(a[i])(b[i])) return false;
+      if (!sp_equal(a[i], b[i])) return false;
       ++i;
     }
 
@@ -73,7 +75,7 @@ const sp_equal = (a) => (b) => {
     let i = 0;
     while (i < l) {
       let k = keys[i];
-      if (!sp_equal(a[k])(b[k])) return false;
+      if (!sp_equal(a[k], b[k])) return false;
       ++i;
     }
 
@@ -84,12 +86,12 @@ const sp_equal = (a) => (b) => {
 }
 
 
-const sp_not_equal = (a) => (b) => {
-  return !sp_equal(a)(b);
+const sp_not_equal = (a, b) => {
+  return !sp_equal(a, b);
 }
 
 
-const sp_compare = (a, b) => {
+const basics_compare = (a, b) => {
 
   // union type
   if (Array.isArray(a)) {
@@ -97,7 +99,7 @@ const sp_compare = (a, b) => {
     if (a[0] > b[0]) return 1;
     if (b[0] > a[0]) return -1;
     for (let i = 1; i < a.length; i++) {
-        const cmp = sp_compare(a[i], b[i]);
+        const cmp = basics_compare(a[i], b[i]);
         if (cmp) return cmp;
     }
     return 0;
@@ -110,7 +112,7 @@ const sp_compare = (a, b) => {
   if (typeof a === 'object') {
     const keys = Object.keys(a).sort();
     for (let k of keys) {
-        const cmp = sp_compare(a[k], b[k]);
+        const cmp = basics_compare(a[k], b[k]);
         if (cmp) return cmp;
     }
     return 0;
@@ -121,15 +123,21 @@ const sp_compare = (a, b) => {
   return 0;
 }
 
-const sp_divide = (right) => (left) => {
+const sp_divide = (right, left) => {
   if (right === 0) return 0;
   return left / right;
 }
 
 
-const basics_modBy = (a) => (b) => b % a;
+// TODO remove this and handle it like any other op?
+const basics_modBy = (a, b) => b % a;
 
-const basics_compare = (a) => (b) => sp_compare(a, b);
+
+const basics_cloneImm = sp_clone;
+
+
+const basics_cloneUni = (uni) =>
+    [ sp_clone(uni), uni ];
 
 
 //
@@ -142,7 +150,7 @@ const sp_todo = (message) => {
 }
 
 
-const sp_log = (message) => (thing) => {
+const sp_log = (message, thing) => {
   console.log(message, sp_toHuman(thing));
   return thing;
 }
@@ -229,34 +237,56 @@ const sp_benchStop = (name) => {
 //
 
 
-const sp_toHuman = (a) => {
+const id = (n) => '    '.repeat(n);
+
+
+const sp_toHuman = (a, l = 0) => {
 
   if (Array.isArray(a))
-    return sp_toHumanAsList([], a) || sp_toHumanAsUnion(a);
+    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);
 
   if (typeof a === 'function') {
-    return '<function>';
+    return '<fn ' + a.length + '>';
   }
 
   if (typeof a === 'object') {
-    let x = [];
-    for (let i in a) x.push(i + ' = ' + sp_toHuman(a[i]));
-    return '{' + x.join(', ') + '}';
+    let acc = '{\\n';
+    for (let key in a)
+        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';
+
+    return acc + id(l) + '}';
   }
 
   return JSON.stringify(a, null, 0);
 }
 
 
-const sp_toHumanAsUnion = (a) => {
-  return a[0] + ' ' + a.slice(1).map(arg => '(' + sp_toHuman(arg) + ')').join(' ');
+const sp_toHumanAsUnion = (a, l) => {
+
+  if (a.length === 1) {
+      return a[0];
+  }
+
+  let acc = a[0] + '\\n';
+
+  a.slice(1).forEach(arg => {
+
+      const sub = sp_toHuman(arg, l + 1);
+      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)
+          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';
+      else
+          acc += id(l + 1) + sub + '\\n';
+
+  })
+
+  return acc;
 }
 
 
-const sp_toHumanAsList = (arrayAccum, list) => {
-  if (list[0] === '""" .. listCons .. """') {
-    arrayAccum.push(sp_toHuman(list[1]));
-    return sp_toHumanAsList(arrayAccum, list[2]);
+const sp_toHumanAsList = (arrayAccum, list, l) => {
+  if (list[0] === '""" .. listCons .. """' && list.length === 3) {
+    arrayAccum.push(sp_toHuman(list[1], l));
+    return sp_toHumanAsList(arrayAccum, list[2], l);
   }
 
   if (list[0] === '""" .. listNil .. """')
@@ -279,13 +309,13 @@ const text_toNumber = (t) => {
     return isNaN(n) ? maybe_nothing : maybe_just(n);
 }
 
-const text_split = (separator) => (target) => array_toList(target.split(separator));
+const text_split = (separator, target) => arrayToListLow(target.split(separator));
 
 const text_length = (s) => s.length;
 
-const text_slice = (start) => (end) => (s) => s.slice(start, end);
+const text_slice = (start, end, s) => s.slice(start, end);
 
-const text_startsWith = (sub) => (s) => s.startsWith(sub);
+const text_startsWith = (sub, s) => s.startsWith(sub);
 
 const text_startsWithRegex = (regex) => {
   let re;
@@ -306,21 +336,17 @@ const text_replaceRegex = (regex) => {
   try {
     re = new RegExp(regex, 'g');
   } catch (e) {
-    return () => () => ""
+    return () => ""
   }
 
-  return (replacer) => (s) => s.replace(re, replacer);
+  return (replacer, s) => s.replace(re, replacer);
 }
 
-const text_trimLeft = (s) => {
-  return s.trimLeft();
-}
+const text_trimLeft = (s) => s.trimLeft();
 
-const text_dropLeft = (n) => (s) => {
-  return s.slice(n);
-}
+const text_dropLeft = (n, s) => s.slice(n);
 
-const text_forEach = (s) => (f) => {
+const text_forEach = (s, f) => {
   for (let i of s) f(i);
   return null;
 }
@@ -330,44 +356,58 @@ const text_forEach = (s) => (f) => {
 // Hashes
 //
 
-const hash_empty = {};
+const hash_fromList = (list) => {
+  const hash = {};
 
+  // TODO iteration instead of recursion
+  const rec = (ls) => {
+    if (ls[0] === '""" .. listNil .. """')
+      return hash;
 
-const hash_insert = (hash) => (key) => (value) => {
-    const h = hash.obj[hash.attr];
-    h[JSON.stringify(key)] = [key, value];
-    return null;
+    const { first, second } = ls[1];
+
+    hash[JSON.stringify(first)] = [first, second];
+
+    return rec(ls[2]);
+  };
+
+  return rec(list);
 }
 
 
-const hash_remove = (hash) => (key) => {
-    const h = hash.obj[hash.attr];
-    delete h[JSON.stringify(key)];
-    return null;
+const hash_insert = (hash, key, value) => {
+    hash[JSON.stringify(key)] = [key, value];
+    return [null, hash];
 }
 
 
-const hash_get = (hash) => (key) => {
+const hash_remove = (hash, key) => {
+    delete hash[JSON.stringify(key)];
+    return [null, hash];
+}
+
+
+const hash_get = (hash, key) => {
     const r = hash[JSON.stringify(key)];
-    return r === undefined ? maybe_nothing : maybe_just(r[1]);
+    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];
 }
 
 
-const hash_for = (hash) => (f) => (acc) => {
+const hash_for = (hash, f, acc) => {
     for (let k in hash) {
         const kv = hash[k];
-        acc = f(kv[0])(kv[1])(acc);
+        acc = f(kv[0], kv[1], acc);
     }
-    return acc;
+    return [acc, hash];
 }
 
 
-const hash_each = (hash) => (f) => {
+const hash_each = (hash, f) => {
     for (let k in hash) {
         const kv = hash[k];
-        f(kv[0])(kv[1]);
+        f(kv[0], kv[1]);
     }
-    return null;
+    return [null, hash];
 }
 
 
@@ -375,45 +415,45 @@ const hash_each = (hash) => (f) => {
 // Arrays
 //
 
-const array_push = (array) => (item) => {
-    array.obj[array.attr].push(item);
-    return null;
+const array_push = (array, item) => {
+    array.push(item);
+    return [null, array];
 }
 
-const array_pop = (array) => {
-    const a = array.obj[array.attr];
-    return a.length ? maybe_just(a.pop()) : maybe_nothing;
+const array_pop = (a) => {
+    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];
 }
 
-const array_get = (array) => (index) => {
+const array_get = (array, index) => {
     const r = array[index];
-    return r === undefined ? maybe_nothing : maybe_just(r);
+    return [r === undefined ? maybe_nothing : maybe_just(r), array];
 }
 
-const array_set = (array) => (index) => (item) => {
+const array_set = (a, index, item) => {
     if (index < 0) return false;
-    const a = array.obj[array.attr];
-    if (index >= a.length) return false;
+    if (index >= a.length) return [false, a];
     a[index] = item;
-    return true;
+    return [true, a];
 }
 
-const array_sortBy = (array) => (f) => {
-    const arr = array.obj[array.attr];
-    arr.sort((a, b) => sp_compare(f(a), f(b)));
-    return null;
+const array_sortBy = (arr, f) => {
+    arr.sort((a, b) => basics_compare(f(a), f(b)));
+    return [null, arr];
 }
 
-const array_toList = (array) => {
-  let length = array.length;
+const arrayToListLow = (arr) => {
+  const length = arr.length;
   let list = [ '""" .. listNil .. """' ];
   for (let i = length - 1; i >= 0; i--) {
-      list = [ '""" .. listCons .. """', array[i], list ];
+      list = [ '""" .. listCons .. """', arr[i], list ];
   }
   return list;
 }
 
-const array_fromList = (list) => {
+const array_toList = (arr) => [arrayToListLow(arr), arr];
+
+
+const arrayFromListLow = (list) => {
   const array = [];
   const rec = (ls) => {
     if (ls[0] === '""" .. listNil .. """')
@@ -426,6 +466,7 @@ const array_fromList = (list) => {
   return rec(list);
 }
 
+const array_fromList = arrayFromListLow;
 
 
 //
@@ -433,9 +474,9 @@ const array_fromList = (list) => {
 //
 
 
-const sp_cons = (list) => (item) => {
+const sp_cons = (item, list) => {
   return [ '""" .. listCons .. """', item, list];
 }
 
-const list_sortBy = (f) => (list) => array_toList(array_fromList(list).sort((a, b) => sp_compare(f(a), f(b))));
+const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));
     """
