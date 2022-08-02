@@ -7,29 +7,28 @@ p as Pos =
     Pos.N
 
 
-umr as Meta.UniqueModuleReference =
-    Meta.UMR Meta.Core "Core"
+umr as UMR =
+    UMR Meta.Core "Core"
 
 
-makeUsr as Name: Meta.UniqueSymbolReference =
-    Meta.USR umr
+makeUsr as Name: USR =
+    USR umr
 
 
-nameToType as Text: [CA.Type]: CA.Type =
-    name:
-    name
-        >> makeUsr
-        >> CA.TypeConstant p
+nameToType as Text: [CA.RawType]: CA.RawType =
+    name: args:
+
+    CA.TypeNamed p (makeUsr name) args
 
 
-defToType as CA.UnionDef: [CA.Type]: CA.Type =
-    def:
-    CA.TypeConstant p def.usr
+defToType as CA.UnionDef: [CA.RawType]: CA.RawType =
+    def: pars:
+    CA.TypeNamed p def.usr pars
 
 
-usrToVariable as Meta.UniqueSymbolReference: CA.Expression =
+usrToVariable as USR: CA.Expression =
     u:
-    CA.Variable p { attrPath = [], ref = CA.RefRoot u }
+    CA.Variable p (RefGlobal u)
 
 
 #
@@ -37,15 +36,16 @@ usrToVariable as Meta.UniqueSymbolReference: CA.Expression =
 #
 
 
-textDef as CA.UnionDef = {
+textDef as CA.UnionDef =
+    {
     , usr = makeUsr "Text"
-    , args = []
+    , pars = []
     , constructors = Dict.empty
     , directTypeDeps = Set.empty
     }
 
 
-text as CA.Type =
+text as CA.RawType =
     defToType textDef []
 
 
@@ -54,15 +54,16 @@ text as CA.Type =
 #
 
 
-numberDef as CA.UnionDef = {
+numberDef as CA.UnionDef =
+    {
     , usr = makeUsr "Number"
-    , args = []
+    , pars = []
     , constructors = Dict.empty
     , directTypeDeps = Set.empty
     }
 
 
-number as CA.Type =
+number as CA.RawType =
     defToType numberDef []
 
 
@@ -75,10 +76,10 @@ noneName =
     "None"
 
 
-none as CA.Type =
+none as CA.RawType =
     nameToType noneName []
 
-noneValue as Meta.UniqueSymbolReference =
+noneValue as USR =
     makeUsr noneName
 
 
@@ -86,8 +87,8 @@ noneDef as CA.UnionDef =
     usr = makeUsr noneName
     {
     , usr
-    , args = []
-    , constructors = Dict.singleton noneName { pos = p, args = [], type = none, typeUsr = usr }
+    , pars = []
+    , constructors = Dict.singleton noneName { pos = p, ins = [], out = none, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -97,15 +98,15 @@ noneDef as CA.UnionDef =
 #
 
 
-true as Meta.UniqueSymbolReference =
+true as USR =
     makeUsr "True"
 
 
-false as Meta.UniqueSymbolReference =
+false as USR =
     makeUsr "False"
 
 
-bool as CA.Type =
+bool as CA.RawType =
     nameToType "Bool" []
 
 
@@ -113,11 +114,11 @@ boolDef as CA.UnionDef =
     usr = makeUsr "Bool"
     {
     , usr
-    , args = []
+    , pars = []
     , constructors =
         Dict.empty
-            >> Dict.insert "True" { pos = p, args = [], type = bool, typeUsr = usr }
-            >> Dict.insert "False" { pos = p, args = [], type = bool, typeUsr = usr }
+        >> Dict.insert "True" { pos = p, ins = [], out = bool, typeUsr = usr }
+        >> Dict.insert "False" { pos = p, ins = [], out = bool, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -127,15 +128,15 @@ boolDef as CA.UnionDef =
 #
 
 
-nil as Meta.UniqueSymbolReference =
+nil as USR =
     makeUsr "Nil"
 
 
-cons as Meta.UniqueSymbolReference =
+cons as USR =
     makeUsr "Cons"
 
 
-list as CA.Type: CA.Type =
+list as CA.RawType: CA.RawType =
     item:
     nameToType "List" [ item ]
 
@@ -144,22 +145,31 @@ listDef as CA.UnionDef =
     usr =
         makeUsr "List"
 
-    item =
-        #CA.TypeAnnotatedVar p "item"
-        CA.TypeVariable p "item"
+    item as CA.RawType =
+        CA.TypeAnnotationVariable p "item"
 
-    consDef as CA.Constructor = {
+    nilDef as CA.Constructor =
+       {
+       , pos = p
+       , ins = []
+       , out = list item
+       , typeUsr = usr
+       }
+
+    consDef as CA.Constructor =
+        {
         , pos = p
-        , args = [ item, list item ]
-        , type = List.forReversed [ item, list item ] (ar: ty: CA.TypeFunction p ar LambdaNormal ty) (list item)
+        , ins = [ item, list item ]
+        , out = list item
         , typeUsr = usr
         }
 
-    { usr
-    , args = [ "item" ]
+    {
+    , usr
+    , pars = [ At Pos.G "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" { pos = p, args = [], type = list item, typeUsr = usr }
+            >> Dict.insert "Nil" nilDef
             >> Dict.insert "Cons" consDef
     , directTypeDeps = Set.empty
     }
@@ -170,7 +180,8 @@ listDef as CA.UnionDef =
 #
 
 
-allDefs as [CA.UnionDef] = [
+allDefs as [CA.UnionDef] =
+    [
     , noneDef
     , boolDef
     , listDef

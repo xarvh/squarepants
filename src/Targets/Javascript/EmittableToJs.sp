@@ -3,25 +3,30 @@
 # TODO remove references to Compiler/MakeEmittable
 #
 
-alias Env = {
-    , mutables as Set JA.Name
+alias Env =
+    {
     , errorEnv as Error.Env
     , overrides as Dict EA.Name Override
     }
 
 
-#alias Override =
-#    Env: [EA.Expression & EA.Mutability]: JA.Expr
+recycleTempVariable =
+    JA.Var "__re__"
 
-union Override = Override (Env: [EA.Expression & Bool]: JA.Expr)
+
+union Override = Override
+    {
+    , call as Env: [EA.Argument]: JA.Expr
+    , value as Env: JA.Expr
+    }
 
 
 coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     emState@:
 
-    corelib as Text: Text: Meta.UniqueSymbolReference =
+    corelib as Text: Text: USR =
         m: n:
-        Meta.USR (Meta.UMR Meta.Core m) n
+        USR (UMR Meta.Core m) n
 
     [
     , Prelude.unaryPlus.usr & unaryPlus
@@ -30,7 +35,7 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , Prelude.add.usr & binop "+"
     , Prelude.multiply.usr & binop "*"
     , Prelude.subtract.usr & binop "-"
-#    , Prelude.mutableAssign.usr & binop "="
+    , Prelude.mutableAssign.usr & binop "="
     , Prelude.mutableAdd.usr & binop "+="
     , Prelude.mutableSubtract.usr & binop "-="
     , Prelude.textConcat.usr & binop "+"
@@ -51,6 +56,8 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , Prelude.notEqual.usr & function  "sp_not_equal"
     , corelib "Basics" "modBy" & function "basics_modBy"
     , corelib "Basics" "round" & function "Math.round"
+    , corelib "Basics" "cloneImm" & function "basics_cloneImm"
+    , corelib "Basics" "cloneUni" & function "basics_cloneUni"
     #
     , Prelude.debugLog.usr & function "sp_log"
     , Prelude.debugTodo.usr & function "sp_todo"
@@ -71,7 +78,7 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , corelib "Text" "dropLeft" & function  "text_dropLeft"
     , corelib "Text" "forEach" & function  "text_forEach"
     #
-    , corelib "Hash" "empty" & function  "hash_empty"
+    , corelib "Hash" "fromList" & function  "hash_fromList"
     , corelib "Hash" "insert" & function  "hash_insert"
     , corelib "Hash" "remove" & function  "hash_remove"
     , corelib "Hash" "get" & function  "hash_get"
@@ -93,113 +100,84 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
 
 
 unaryPlus as Override =
-    Override env: arguments:
+    {
+    , value = env: todo "unaryPlus has no raw value"
+    , call =
+        env: arguments:
+        try arguments as
+            [ EA.ArgumentSpend arg ]:
+                # Num.unaryPlus n == n
+                translateExpressionToExpression env arg
 
-    try arguments as
-        [ arg ]:
-            # Num.unaryPlus n == n
-            translateArg {nativeBinop = False } env arg
-
-        []:
-            # Num.unaryPlus == a: a
-            JA.SimpleLambda ["a"] (JA.Var "a")
-
-        _:
-            todo "compiler bug: wrong number of arguments for binop"
+            _:
+                todo "compiler bug: wrong number of arguments for unop"
+    }
+    >> Override
 
 
 unaryMinus as Override =
-    Override env: arguments:
+    {
+    , value = env: todo "unaryMinus has no raw value"
+    , call =
+        env: arguments:
+        try arguments as
+            [ EA.ArgumentSpend arg ]:
+                # Num.unaryMinus n == -n
+                JA.Unop "-" (translateExpressionToExpression env arg)
 
-    try arguments as
-        [ arg ]:
-            # Num.unaryMinus n == -n
-            JA.Unop "-" (translateArg { nativeBinop = False } env arg)
-
-        []:
-            # Num.unaryMinus == n: -n
-            JA.SimpleLambda ["v"] (JA.Unop "-" (JA.Var "v"))
-
-        _:
-            todo "compiler bug: wrong number of arguments for binop"
+            _:
+                todo "compiler bug: wrong number of arguments for unop"
+    }
+    >> Override
 
 
 binop as Text: Override =
     jsOp:
+    {
+    , value = env: todo << "binop " .. jsOp .. " has no raw value"
+    , call =
+        env: arguments:
+        try arguments as
+            [ right, left ]:
+                JA.Binop jsOp
+                    (translateArg { nativeBinop = True } env right)
+                    (translateArg { nativeBinop = True } env left)
 
-    Override env: arguments:
-
-    try arguments as
-        [ right, left ]:
-            # Num.subtract b a == a - b
-            JA.Binop jsOp
-                (translateArg { nativeBinop = True} env left)
-                (translateArg { nativeBinop = True} env right)
-
-        [ right ]:
-            # Num.subtract b == a: a - b
-            JA.SimpleLambda ["a"] (JA.Binop jsOp (JA.Var "a") (translateArg { nativeBinop = True } env right))
-
-        []:
-            # Num.subtract == b: a: a - b
-            JA.SimpleLambda ["b"] (JA.SimpleLambda ["a"] (JA.Binop jsOp (JA.Var "a") (JA.Var "b")))
-
-        _:
-            todo "compiler bug: wrong number of arguments for binop"
+            _:
+                todo << "compiler bug: wrong number of arguments for binop" .. toHuman { jsOp, arguments }
+    }
+    >> Override
 
 
 constructor as Text: Override =
     jsValue:
+    {
+    , value = env: JA.Var jsValue
+    , call = env: args: makeCall env (JA.Var jsValue) args
+    }
+    >> Override
 
-    Override env: arguments:
-
-    JA.Var jsValue
 
 
 function as Text: Override =
     jaName:
-
-    Override env: arguments:
-
-    JA.Var jaName
-    >> wrapCalls env arguments
-
-
-translateVariable as Env: Name: [Name]: [EA.Expression & Bool]: JA.Expr =
-    env: valueName: attrPath: eaArgs:
+    {
+    , value = env: JA.Var jaName
+    , call = env: args: makeCall env (JA.Var jaName) args
+    }
+    >> Override
 
 
-    try Dict.get valueName env.overrides as
-        Just (Override override):
-            override env eaArgs
-            >> accessAttrs attrPath
+
+translateVariable as Env: Name: JA.Expr =
+    env: variableName:
+
+    try Dict.get variableName env.overrides as
+        Just (Override { call, value }):
+            value env
 
         Nothing:
-            if Set.member valueName env.mutables then
-                JA.Var valueName
-                >> unwrapMutable
-                >> accessAttrs attrPath
-                >> clone
-
-            else
-                JA.Var valueName
-                >> accessAttrs attrPath
-                >> wrapCalls env eaArgs
-
-
-wrapCalls as Env: [EA.Expression & Bool]: JA.Expr: JA.Expr =
-    env: exprAndMutability: baseExpr:
-
-#    if baseExpr == JA.Var "hash_insert" then
-#        log "---->" baseExpr
-#        None
-#    else
-#        None
-
-    baseExpr >> List.for exprAndMutability arg: accum:
-#        JA.Call accum [translateExpressionToExpression env (Tuple.first arg)]
-        JA.Call accum [translateArg { nativeBinop = False } env arg]
-
+            JA.Var variableName
 
 
 accessAttrs as [Text]: JA.Expr: JA.Expr =
@@ -207,137 +185,15 @@ accessAttrs as [Text]: JA.Expr: JA.Expr =
     List.for attrPath JA.AccessWithDot e
 
 
-accessAttrsButTheLast as Text: [Text]: JA.Expr: ( JA.Expr & Text ) =
-    attrHead: attrTail: e:
+translateArg as { nativeBinop as Bool }: Env: EA.Argument: JA.Expr =
+    stuff: env: eaExpression:
 
-    fold =
-        attr: ( expr & last ):
-        ( JA.AccessWithDot last expr & attr)
+    try eaExpression as
+        EA.ArgumentSpend e:
+            translateExpressionToExpression env e
 
-    List.for attrTail fold ( e & attrHead )
-
-
-translateArg as { nativeBinop as Bool }: Env: (EA.Expression & Bool): JA.Expr =
-    stuff: env: (eaExpression & isMutable):
-    try isMutable as
-        False:
-            translateExpressionToExpression env eaExpression
-
-        True:
-            try eaExpression as
-                EA.Variable name attrPath:
-                    if stuff.nativeBinop then
-                        #SP: @x.a.b += blah
-                        #JS: x.obj[x.attr].a.b += blah
-                        JA.Var name
-                        >> unwrapMutable
-                        >> accessAttrs attrPath
-
-                    else
-                        try attrPath as
-                            []:
-                                #SP: doStuff @x
-                                #JS: doStuff(x)
-                                JA.Var name
-
-                            head :: tail:
-                                #SP: doStuff @x.a.b.c
-                                #JS: doStuff({ obj: x.obj[x.attr].a.b, attr: 'c' })
-                                JA.Var name
-                                >> unwrapMutable
-                                >> accessAttrsButTheLast head tail
-                                >>
-                                   (( wrappedExpr & lastAttrName ):
-                                        Dict.empty
-                                            >> Dict.insert "obj" wrappedExpr
-                                            >> Dict.insert "attr" (literalString lastAttrName)
-                                            >> JA.Record
-                                   )
-
-                _:
-                    todo "translateArg: this should not happen!"
-
-
-
-[#
-# Mutation
-#
-
-  CA.Definition: `x @= 0`
-
-     => `const x = { obj : { m : 0 }, attr : 'm' };`
-
-
-
-  CA.Variable: `x`
-
-     => `$clone$(x.obj[x.attr])`
-
-     (when we have a non-variable type we can optimize this)
-
-
-
-  CA.Call (mutation primitive): `@x += 1`
-
-      CA.ArgumentMutable, fn is primitive: `@x := 0`
-
-        => `x.obj[x.attr] := 0`
-
-
-      CA.ArgumentMutable, fn is NOT primitive
-        if attrPath == [] then `doStuff @x`
-
-          => `doStuff(x)`
-
-
-        else: `doStuff @x.a.b.c`
-
-          => `doStuff({ obj: x.obj[x.attr].a.b, attr: 'c' })
-
-
-
-#]
-
-
-
-
-wrapMutable as Bool: JA.Expr: JA.Expr =
-    isMutable: expr:
-
-    try isMutable as
-        True:
-            Dict.empty
-            >> Dict.insert "attr" (literalString "$")
-            >> Dict.insert "obj" (JA.Record << Dict.singleton "$" expr)
-            >> JA.Record
-
-        False:
-            expr
-
-
-maybeCloneMutable as Bool: JA.Expr: JA.Expr =
-    isMutable: expr:
-
-    try isMutable as
-        False:
-            expr
-
-        True:
-            clone expr
-
-
-unwrapMutable as JA.Expr: JA.Expr =
-    ja_x:
-#    ja_x =
-#        JA.Var x
-    # $x.obj[$x.attr]
-    JA.AccessWithBrackets (JA.AccessWithDot "attr" ja_x) (JA.AccessWithDot "obj" ja_x)
-
-
-clone as JA.Expr: JA.Expr =
-    expr:
-    JA.Call (JA.Var "sp_clone") [ expr ]
-
+        EA.ArgumentRecycle attrPath name:
+            accessAttrs attrPath (JA.Var name)
 
 
 [#
@@ -423,38 +279,119 @@ translateExpressionToExpression as Env: EA.Expression: JA.Expr =
             JA.Call (JA.BlockLambda [] block) []
 
 
+makeCall as Env: JA.Expr: [EA.Argument]: JA.Expr =
+    env: jaRef: args:
+
+    call =
+        args
+        >> List.map (translateArg { nativeBinop = False } env)
+        >> JA.Call jaRef
+
+    asRecycled as EA.Argument: Maybe JA.Expr =
+        arg:
+        try arg as
+            EA.ArgumentSpend _: Nothing
+            EA.ArgumentRecycle attrPath name:
+                translateVariable env name
+                >> accessAttrs attrPath
+                >> Just
+
+    recycledArgs =
+        List.filterMap asRecycled args
+
+    if recycledArgs == [] then
+        #
+        # ref(arg1, arg2, ...)
+        #
+        call
+    else
+        #
+        # (t = ref(arg1, re1, arg3, re2, ....), re1 = t[1], re2 = t[2], t[0]);
+        #
+        [
+        # t = ref(arg1, re0, arg3, re1, ....)
+        , [ JA.Binop "=" recycleTempVariable call ]
+
+        # re1 = t[1], re2 = t[2]
+        , recycledArgs >> List.indexedMap index: arg:
+            bracketIndex =
+                index + 1
+                >> Text.fromNumber
+                >> JA.Literal
+            JA.Binop "=" arg (JA.AccessWithBrackets bracketIndex recycleTempVariable)
+
+        # t[2]
+        , [ JA.AccessWithBrackets (JA.Literal "0") recycleTempVariable ]
+        ]
+        >> List.concat
+        >> JA.Comma
+
+
+
 translateExpression as Env: EA.Expression: TranslatedExpression =
     env: eaExpression:
 
     try eaExpression as
-        EA.Call (EA.Call (EA.Variable name attrPath) argAndMut1) argAndMut2:
-            translateVariable env name attrPath [argAndMut1, argAndMut2]
+        EA.Variable name:
+            translateVariable env name
             >> Inline
 
-        EA.Call (EA.Variable name attrPath) argAndMut:
-            translateVariable env name attrPath [argAndMut]
-            >> Inline
+        EA.Call ref args:
+            maybeNativeOverride =
+                try ref as
+                    EA.Variable name: Dict.get name env.overrides
+                    _: Nothing
 
-        EA.Variable name attrPath:
-            translateVariable env name attrPath []
-            >> Inline
+            try maybeNativeOverride as
+                Just (Override { call, value = _ }):
+                    call env args
+                    >> Inline
 
-        EA.Call ref arg:
-            JA.Call
-                (translateExpressionToExpression env ref)
-                [ translateArg { nativeBinop = False } env arg ]
-            >> Inline
+                Nothing:
+                    makeCall env (translateExpressionToExpression env ref) args
+                    >> Inline
 
-        EA.LetIn { maybeName, isMutable, letExpression, inExpression }:
-            localEnv =
-                try maybeName & isMutable as
-                    Just name & True:
-                        { env with mutables = Set.insert name .mutables }
-                    _:
-                        env
+        EA.Fn eaArgs body:
+
+            argsWithNames as [Bool & Name] =
+                eaArgs >> List.indexedMap index: (re & maybeName):
+                    try maybeName as
+                        Just name: re & name
+                        Nothing: re & "_" .. Text.fromNumber index
+
+            recycledPars as [JA.Expr] =
+                argsWithNames
+                >> List.filter Tuple.first
+                >> List.map ((_ & name): JA.Var name)
+
+            statementsRaw as [JA.Statement] =
+                try translateExpression env body as
+                    Inline expr: [JA.Return expr]
+                    Block block: block
+
+            #
+            # Per EA.Call above, recycling functions must return also the new values for the recycled variables
+            #
+            statementsFinal =
+                if recycledPars == [] then
+                    statementsRaw
+                else
+                    # Replace all `return x` statements with `return [x, ...recycledPars]`
+                    addRecycled =
+                        stat:
+                        try stat as
+                            JA.Return e: JA.Return (JA.Array (e :: recycledPars))
+                            _: stat
+
+                    List.map addRecycled statementsRaw
+
+            Inline << JA.BlockLambda (List.map Tuple.second argsWithNames) statementsFinal
+
+
+        EA.LetIn { maybeName, letExpression, inExpression, type }:
 
             inStatements =
-                try translateExpression localEnv inExpression as
+                try translateExpression env inExpression as
                     Block stats: stats
                     Inline jaExpression: [JA.Return jaExpression]
 
@@ -471,34 +408,9 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                     letStatement =
                         letExpression
                         >> translateExpressionToExpression env
-                        #>> maybeCloneMutable mutability
-                        >> wrapMutable isMutable
-                        >> JA.Define name
+                        >> JA.Define (type.uni == Uni) name
 
                     Block << letStatement :: inStatements
-
-
-        EA.Lambda (maybeName & isMutable) body:
-
-            args =
-                try maybeName as
-                    Just name: [ name ]
-                    Nothing: []
-
-            # TODO these two defs are the same as for the LetIn, would be nice to have them in a function
-            localEnv =
-                try maybeName & isMutable as
-                    Just name & True:
-                        { env with mutables = Set.insert name .mutables }
-                    _:
-                        env
-
-            statements as [JA.Statement] =
-                try translateExpression localEnv body as
-                    Inline expr: [JA.Return expr]
-                    Block block: block
-
-            Inline << JA.BlockLambda args statements
 
 
         EA.LiteralText string:
@@ -550,7 +462,7 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
         EA.Constructor name:
-            translateVariable env name [] []
+            translateVariable env name
             >> Inline
 
         EA.ConstructorAccess argIndex value:
@@ -612,33 +524,38 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
 
-translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & CA.Constructor: JA.Statement =
-    emState@: (usr & caCons):
 
-    Meta.USR umr slug =
+translateConstructor as Compiler/MakeEmittable.State@: USR & TA.FullType: JA.Statement =
+    emState@: (usr & full):
+
+    taType =
+        full.raw
+
+    USR _ slug =
         usr
+
+    # `(($1, $2, $3) => [ "theConstructorName", $1, $2, $3, ... ])`
+    arrayHead =
+        literalString slug
+
+    definitionBody =
+        try taType as
+            TA.TypeFn pars out:
+
+                argNames as [Text] =
+                    pars >> List.indexedMap index: name: constructorArgumentName (index + 1)
+
+                arrayHead :: List.map JA.Var argNames
+                >> JA.Array
+                >> JA.SimpleLambda argNames
+
+            _:
+                JA.Array [ arrayHead ]
 
     usrAsText =
         Compiler/MakeEmittable.translateUsr @emState usr
 
-
-    argNames as [Text] =
-        caCons.args
-        >> List.indexedMap index: name: constructorArgumentName (index + 1)
-
-    # `(($1) => ($2) => ($3) => [ "theConstructorName", $1, $2, $3, ... ])`
-    arrayHead =
-        literalString slug
-
-    arrayTail =
-        List.map JA.Var argNames
-
-    array =
-        JA.Array (arrayHead :: arrayTail)
-
-    array
-    >> List.forReversed argNames (argName: expr: (JA.SimpleLambda [ argName ] expr))
-    >> JA.Define usrAsText
+    JA.Define False usrAsText definitionBody
 
 
 translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
@@ -649,28 +566,29 @@ translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
             Nothing
 
         Nothing:
-            JA.Define def.name (translateExpressionToExpression env def.expr)
+            JA.Define False def.name (translateExpressionToExpression env def.expr)
             >> Just
 
 
-alias TranslateAllPars = {
+alias TranslateAllPars =
+    {
     , errorEnv as Error.Env
-    , caConstructors as [Meta.UniqueSymbolReference & CA.Constructor]
+    , constructors as [USR & TA.FullType]
     , eaDefs as [EA.GlobalDefinition]
-    , platformOverrides as [Meta.UniqueSymbolReference & Text]
+    , platformOverrides as [USR & Text]
     }
 
 translateAll as Compiler/MakeEmittable.State@: TranslateAllPars: [JA.Statement] =
     emState@: pars:
 
-    { errorEnv, caConstructors, eaDefs, platformOverrides } =
+    { errorEnv, constructors, eaDefs, platformOverrides } =
         pars
 
-    jaConstructors as [JA.Statement]=
-        List.map (translateConstructor @emState) caConstructors
+    jaConstructors as [JA.Statement] =
+        List.map (translateConstructor @emState) constructors
 
-    env as Env = {
-      , mutables = Set.empty
+    env as Env =
+      {
       , errorEnv
       , overrides = coreOverrides @emState >> List.for platformOverrides (usr & runtimeName):
           Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName)

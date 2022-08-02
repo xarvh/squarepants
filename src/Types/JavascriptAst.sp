@@ -14,7 +14,7 @@ alias Name =
 union Statement =
     , Eval Expr
     , Return Expr
-    , Define Name Expr
+    , Define Bool Name Expr
     , If Expr [Statement]
 
 
@@ -57,4 +57,7 @@ union Expr =
       #
       # (expr)[2]
     , AccessWithBrackets Expr Expr
+      #
+      # (a, b, c)
+    , Comma [Expr]
 

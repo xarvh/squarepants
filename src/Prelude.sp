@@ -3,62 +3,54 @@ alias Int =
     Number
 
 
-coreUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Core")
+coreUsr as Text: USR =
+    USR (UMR Meta.Core "Core")
 
 
-listUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "List")
+listUsr as Text: USR =
+    USR (UMR Meta.Core "List")
 
 
-textUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Text")
+textUsr as Text: USR =
+    USR (UMR Meta.Core "Text")
 
 
-numberUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Number")
+numberUsr as Text: USR =
+    USR (UMR Meta.Core "Number")
 
 
-debugUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Debug")
+debugUsr as Text: USR =
+    USR (UMR Meta.Core "Debug")
 
 
-tupleUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Tuple")
+tupleUsr as Text: USR =
+    USR (UMR Meta.Core "Tuple")
 
 
 #
 # Helpers
 #
 
-tyVar as Name: CA.Type =
-    CA.TypeVariable Pos.N
+tyVar as Name: CA.RawType =
+    name:
+    CA.TypeAnnotationVariable Pos.N name
 
 
-tyFun as CA.Type: CA.Type: CA.Type =
-    from: to:
-    CA.TypeFunction Pos.N from LambdaNormal to
+tyFn as [CA.RawType]: CA.RawType: CA.RawType =
+    pars: to:
+    CA.TypeFn Pos.N
+        (List.map (p: CA.ParSp (toImm p)) pars)
+        (toImm to)
 
 
-typeUnopUniform as CA.Type: CA.Type =
-    type:
-    tyFun type type
-
-
-typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
+typeBinop as CA.RawType: CA.RawType: CA.RawType: CA.RawType =
     left: right: return:
-    tyFun
-        right
-        (tyFun
-            left
-            return
-        )
+    tyFn [left, right] return
 
 
-typeBinopUniform as CA.Type: CA.Type =
+typeBinopUnique as CA.RawType: CA.RawType =
     ty:
-    typeBinop ty ty ty
-
+    CA.TypeFn Pos.N [ CA.ParSp (toImm ty), CA.ParSp (toImm ty)] (toUni ty)
 
 
 #
@@ -67,14 +59,14 @@ typeBinopUniform as CA.Type: CA.Type =
 unaryPlus as Op.Unop = {
     , usr = numberUsr "unaryPlus"
     , symbol = "0 +"
-    , type = typeUnopUniform CoreTypes.number
+    , type = tyFn [CoreTypes.number] CoreTypes.number
     }
 
 
 unaryMinus as Op.Unop = {
     , usr = numberUsr "unaryMinus"
     , symbol = "0 -"
-    , type = typeUnopUniform CoreTypes.number
+    , type = tyFn [CoreTypes.number] CoreTypes.number
     }
 
 
@@ -93,7 +85,7 @@ binops as [Op.Binop] = [
     , multiply
     , divide
     #
-#    , mutableAssign
+    , mutableAssign
     , mutableAdd
     , mutableSubtract
     #
@@ -121,7 +113,7 @@ and_ as Op.Binop = {
     , symbol = "and"
     , precedence = Op.Logical
     , associativity = Op.Right
-    , type = typeBinopUniform CoreTypes.bool
+    , type = typeBinopUnique CoreTypes.bool
     , nonFn = []
     }
 
@@ -131,7 +123,7 @@ or_ as Op.Binop = {
     , symbol = "or"
     , precedence = Op.Logical
     , associativity = Op.Right
-    , type = typeBinopUniform CoreTypes.bool
+    , type = typeBinopUnique CoreTypes.bool
     , nonFn = []
     }
 
@@ -141,7 +133,7 @@ textConcat as Op.Binop = {
     , symbol = ".."
     , precedence = Op.Addittive
     , associativity = Op.Right
-    , type = typeBinopUniform CoreTypes.text
+    , type = typeBinopUnique CoreTypes.text
     , nonFn = []
     }
 
@@ -162,7 +154,7 @@ listCons as Op.Binop =
 
 tuple as Op.Binop = {
     # TODO Add a flag to ensure that these syntactic sugar ops are never added to the module
-    , usr = tupleUsr "pair_$$$$"
+    , usr = tupleUsr ""
     , symbol = "&"
     , precedence = Op.Tuple
     , associativity = Op.NonAssociative
@@ -170,7 +162,7 @@ tuple as Op.Binop = {
         Dict.empty
             >> Dict.insert "first" (tyVar "a")
             >> Dict.insert "second" (tyVar "b")
-            >> CA.TypeRecord Pos.N Nothing
+            >> CA.TypeRecord Pos.N
             >> typeBinop (tyVar "a") (tyVar "b")
     , nonFn = []
     }
@@ -185,7 +177,7 @@ add as Op.Binop = {
     , symbol = "+"
     , precedence = Op.Addittive
     , associativity = Op.Left
-    , type = typeBinopUniform CoreTypes.number
+    , type = typeBinopUnique CoreTypes.number
     , nonFn = []
     }
 
@@ -195,7 +187,7 @@ subtract as Op.Binop = {
     , symbol = "-"
     , precedence = Op.Addittive
     , associativity = Op.Left
-    , type = typeBinopUniform CoreTypes.number
+    , type = typeBinopUnique CoreTypes.number
     , nonFn = []
     }
 
@@ -205,7 +197,7 @@ multiply as Op.Binop = {
     , symbol = "*"
     , precedence = Op.Multiplicative
     , associativity = Op.Left
-    , type = typeBinopUniform CoreTypes.number
+    , type = typeBinopUnique CoreTypes.number
     , nonFn = []
     }
 
@@ -215,7 +207,7 @@ divide as Op.Binop = {
     , symbol = "/"
     , precedence = Op.Multiplicative
     , associativity = Op.Left
-    , type = typeBinopUniform CoreTypes.number
+    , type = typeBinopUnique CoreTypes.number
     , nonFn = []
     }
 
@@ -223,32 +215,35 @@ divide as Op.Binop = {
 #
 # Mut ops
 #
-#mutableAssign as Op.Binop = {
-#    , usr = coreUsr "mutableAssign"
-#    , symbol = ":="
-#    , precedence = Op.Mutop
-#    , associativity = Op.Left
-#    , type = typeBinop True (tyVar "a") (tyVar "a") CoreTypes.none
-#    , nonFn = []
-#    }
-
-
-mutableAdd as Op.Binop = {
-    , usr = numberUsr "mutableAdd"
-    , symbol = "+="
+mutableAssign as Op.Binop =
+    {
+    , usr = coreUsr "mutableAssign"
+    , symbol = ":="
     , precedence = Op.Mutop
-    , associativity = Op.NonAssociative
-    , type = typeBinop (CA.TypeMutable Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
+    , associativity = Op.Left
+    , type = CA.TypeFn Pos.N [ CA.ParRe (tyVar "a"), CA.ParSp { uni = Uni, raw = (tyVar "a") }] { uni = Imm, raw = CoreTypes.none }
     , nonFn = []
     }
 
 
-mutableSubtract as Op.Binop = {
+mutableAdd as Op.Binop =
+    {
+    , usr = numberUsr "mutableAdd"
+    , symbol = "+="
+    , precedence = Op.Mutop
+    , associativity = Op.NonAssociative
+    , type = CA.TypeFn Pos.N [ CA.ParRe CoreTypes.number, CA.ParSp { uni = Imm, raw = CoreTypes.number }] { uni = Imm, raw = CoreTypes.none }
+    , nonFn = []
+    }
+
+
+mutableSubtract as Op.Binop =
+    {
     , usr = numberUsr "mutableSubtract"
     , symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop (CA.TypeMutable Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
+    , type = CA.TypeFn Pos.N [ CA.ParRe CoreTypes.number, CA.ParSp { uni = Imm, raw = CoreTypes.number }] { uni = Imm, raw = CoreTypes.none }
     , nonFn = []
     }
 
@@ -328,7 +323,7 @@ sendRight as Op.Binop = {
     , type =
         typeBinop
             (tyVar "a")
-            (tyFun (tyVar "a") (tyVar "b"))
+            (tyFn [tyVar "a"] (tyVar "b"))
             (tyVar "b")
     , nonFn = []
     }
@@ -341,7 +336,7 @@ sendLeft as Op.Binop = {
     , associativity = Op.Right
     , type =
         typeBinop
-            (tyFun (tyVar "a") (tyVar "b"))
+            (tyFn [tyVar "a"] (tyVar "b"))
             (tyVar "a")
             (tyVar "b")
     , nonFn = []
@@ -353,16 +348,14 @@ sendLeft as Op.Binop = {
 #
 
 alias Function = {
-    , usr as Meta.UniqueSymbolReference
-    , type as CA.Type
+    , usr as USR
+    , type as CA.RawType
     , nonFn as [Text]
     }
 
 
 functions as [Function] = [
     # TODO with the new Platforms system, there is no real reasons for these functions to be here.
-    , mut
-    , reinit
     , compare
     , debugTodo
     , debugLog
@@ -372,59 +365,44 @@ functions as [Function] = [
     ]
 
 
-mut as Function = {
-    , usr = coreUsr "mut"
-    , type = tyFun (tyVar "a") (CA.TypeMutable Pos.N (tyVar "a"))
-    , nonFn = [ "a" ]
-    }
-
-
-# TODO remove this one, it's used only by the typecheck tests?
-reinit as Function = {
-    , usr = coreUsr "reinit"
-    , type = tyFun (CA.TypeMutable Pos.N (tyVar "a")) (tyFun (tyVar "a") CoreTypes.none)
-    , nonFn = [ "a" ]
-    }
-
-
 compare as Function = {
     , usr = coreUsr "compare"
-    , type = tyFun (tyVar "a") (tyFun (tyVar "a") CoreTypes.number)
+    , type = tyFn [tyVar "a", (tyVar "a")] CoreTypes.number
     , nonFn = [ "a" ]
     }
 
 
 debugTodo as Function = {
     , usr = debugUsr "todo"
-    , type = tyFun CoreTypes.text (tyVar "a")
+    , type = CA.TypeFn Pos.N [CA.ParSp { uni = Imm, raw = CoreTypes.text }] { uni = Uni, raw = CA.TypeAnnotationVariable Pos.N "a" }
     , nonFn = []
     }
 
 
 debugLog as Function = {
     , usr = debugUsr "log"
-    , type = tyFun CoreTypes.text (tyFun (tyVar "a") (tyVar "a"))
+    , type = tyFn [CoreTypes.text, (tyVar "a")] (tyVar "a")
     , nonFn = []
     }
 
 
 debugToHuman as Function = {
     , usr = debugUsr "toHuman"
-    , type = tyFun (tyVar "a") CoreTypes.text
+    , type = tyFn [tyVar "a"] CoreTypes.text
     , nonFn = []
     }
 
 
 debugBenchStart as Function = {
     , usr = debugUsr "benchStart"
-    , type = tyFun  CoreTypes.none CoreTypes.none
+    , type = tyFn [CoreTypes.none] CoreTypes.none
     , nonFn = []
     }
 
 
 debugBenchStop as Function = {
     , usr = debugUsr "benchStop"
-    , type = tyFun CoreTypes.text CoreTypes.none
+    , type = tyFn [CoreTypes.text] CoreTypes.none
     , nonFn = []
     }
 
@@ -434,21 +412,37 @@ debugBenchStop as Function = {
 #
 
 alias ModuleByUmr =
-    Dict Meta.UniqueModuleReference CA.Module
+    Dict UMR (CA.Module)
 
 
-insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
-    usr: type: nonFn:
+insertInModule as USR: CA.RawType: [Name]: ModuleByUmr: ModuleByUmr =
+  usr: type: nonFn: mo:
 
-    Meta.USR umr name =
-        usr
+  USR umr name =
+      usr
 
-    def as CA.ValueDef = {
-        , pattern = CA.PatternAny Pos.N False (Just name) (Just type)
+  if name == "" then
+    mo
+  else
+
+    tyvars =
+        type
+        >> CA.typeTyvars
+        >> Dict.map tyvarName: pos:
+            {
+            #, annotatedAt = Pos.N
+            , allowFunctions = not (List.member tyvarName nonFn)
+            }
+
+    def as CA.ValueDef =
+        {
+        , uni = Imm
+        , pattern = CA.PatternAny Pos.N { maybeName = Just name, maybeAnnotation = Just type }
         , native = True
-        , parentDefinitions = []
-        , nonFn = Set.fromList nonFn
         , body = CA.LiteralText Pos.N name
+
+        , tyvars
+        , univars = Dict.empty
         #
         , directTypeDeps = Dict.empty
         , directConsDeps = Dict.empty
@@ -468,7 +462,7 @@ insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: Modu
         >> module: { module with valueDefs = Dict.insert def.pattern def .valueDefs }
         >> Just
 
-    Dict.update umr update
+    Dict.update umr update mo
 
 
 insertUnop as Op.Unop: ModuleByUmr: ModuleByUmr =
@@ -486,7 +480,7 @@ insertFunction as Function: ModuleByUmr: ModuleByUmr =
     insertInModule function.usr function.type function.nonFn
 
 
-coreModulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
+coreModulesByUmr as Dict UMR CA.Module =
     Dict.empty
     >> insertUnop unaryPlus
     >> insertUnop unaryMinus

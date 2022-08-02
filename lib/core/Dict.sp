@@ -449,6 +449,19 @@ mapKeys as (k: j): Dict k a: Dict j a =
     for dict (k: Dict.insert (func k)) Dict.empty
 
 
+each as Dict k v: (k: v: None): None =
+  dict: func:
+
+  try dict as
+      RBEmpty_elm_builtin:
+          None
+
+      RBNode_elm_builtin _ key value left right:
+          func key value
+          each left func
+          each right func
+
+
 for as Dict k v: (k: v: b: b): b: b =
   dict: func: acc:
   try dict as

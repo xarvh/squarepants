@@ -20,20 +20,21 @@ library =
     """
 
 
-virtualDomModule as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Browser "VirtualDom")
+virtualDomModule as Text: USR =
+    USR (UMR Meta.Browser "VirtualDom")
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
     getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
         getRidOfMe
 
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState {
+        Targets/Javascript/EmittableToJs.translateAll @emState
+          {
           , errorEnv = eenv
-          , caConstructors = constructors
+          , constructors
           , eaDefs = emittableStatements
           , platformOverrides = overrides
           }
@@ -47,7 +48,7 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeE
 
 
 
-overrides as [Meta.UniqueSymbolReference & Text] =
+overrides as [USR & Text] =
     [
     , virtualDomModule "jsCreateTextNode" & "virtualDom_jsCreateTextNode"
     , virtualDomModule "jsCreateElement" & "virtualDom_jsCreateElement"
@@ -69,7 +70,7 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference: Text =
+footer as Compiler/MakeEmittable.State@: USR: Text =
     state@: targetUsr:
 
     main =

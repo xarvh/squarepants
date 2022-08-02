@@ -1,11 +1,32 @@
 
+union Comment =
+    # No comment
+    , N
+    # Before, start, end
+    , Be Int Int
+    # After, start, end
+    , Af Int Int
+    # The idea is to determine whether to attach a comment to the previous token or to the next by deciding which one is closer
+    # in terms of col or row distance
+
+
 union Token =
-    Token Int Int Kind
+    Token Comment Int Int Kind
 
 
 union NameModifier =
     , NameNoModifier
     , NameStartsWithDot
+
+
+alias Word =
+    {
+    , modifier as NameModifier
+    , isUpper as Bool
+    , maybeModule as Maybe Name
+    , name as Name
+    , attrPath as [Name]
+    }
 
 
 union OpenOrClosed =
@@ -19,34 +40,30 @@ union Kind =
     , BlockStart
     , BlockEnd
     , BadIndent
-    # Comment
-    , Comment
     # Terms
     , TextLiteral Text
     , NumberLiteral Text
-    , UpperName (Maybe Name) Name
-    , LowerName NameModifier (Maybe Name) Name [Name]
+    , Word Word
+    , ArgumentPlaceholder
+    , UniquenessPolymorphismBinop
     # Keywords
+    , Fn
     , If
     , Then
     , Else
     , Try
     , As
-    , Colon
-    , ConsumingColon
     , With
+    # Separators
+    , Comma
+    , Colon
+    , ThreeDots
     # Ops
     , Defop
-    , Mutop
-    , Unop Op.Unop
+    , Unop Op.UnopId
     , Binop Op.Binop
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed
     , CurlyBrace OpenOrClosed
-    , Comma
-    #
-    , ErrorUnknownOp Text
-    , ErrorBlock Text
-    , ErrorUnterminated Text # TODO check that everywhere it as used start position as set
 

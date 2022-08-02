@@ -6,7 +6,9 @@
 union Pos =
     # actual position: module reference, start, end
     , P Text Int Int
-    # parsing reched the end of file
+    # module-wide error
+    , M Text
+    # parsing reached the end of file
     , End Text
     # stripped
     , S

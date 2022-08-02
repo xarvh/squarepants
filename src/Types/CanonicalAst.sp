@@ -1,90 +1,106 @@
 
-#
-# All and TypeDef are not (yet) used for the AST, but just as intermediate types
-# Probably will be used in the AST once we properly track dependencies
-#
-alias All a =
-    Dict Meta.UniqueSymbolReference a
+union RawType =
+    # alias, opaque or union
+    , TypeNamed Pos USR [RawType]
+    , TypeFn Pos [ParType] FullType
+    , TypeRecord Pos (Dict Name RawType)
+    , TypeAnnotationVariable Pos Name
+    # This is used as a placeholder when there is an error and a type can't be determined
+    # It's useful to avoid piling up errors (I think)
+    , TypeError Pos
 
 
-union TypeDef =
-    , TypeDefAlias AliasDef
-    , TypeDefUnion UnionDef
+union ParType =
+    , ParRe RawType
+    , ParSp FullType
 
 
-#
-# AST
-#
-
-
-union Type =
-    , TypeConstant Pos Meta.UniqueSymbolReference [Type]
-    #
-    # TODO before I can use this, I probably need to find out how to model the TypeRecord extension
-    #
-    # Maybe the way to go is to have a
-    #
-    #   type TyVarRef = Generated TyVarId, Annotated Pos Name
-    #
-    #, TypeGeneratedVar TyVarId
-    #, TypeAnnotatedVar Pos Name
-    , TypeVariable Pos Name
-    , TypeFunction Pos Type LambdaModifier Type
-    , TypeRecord Pos (Maybe Name) (Dict Name Type)
-    , TypeAlias Pos Meta.UniqueSymbolReference Type
-    , TypeMutable Pos Type
-
-
-union Pattern =
-    , PatternAny Pos Bool (Maybe Text) (Maybe Type)
-    , PatternLiteralText Pos Text
-    , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
-    , PatternRecord Pos (Dict Name Pattern)
-
-
-#
-# Expression
-#
-
-
-# A reference to a defined variable
-union Ref =
-    # This is for stuff defined inside the current function/block
-    , RefBlock Name
-    # This is for stuff defined at root level
-    , RefRoot Meta.UniqueSymbolReference
-
-
-alias VariableArgs = {
-    , ref as Ref
-    , attrPath as [Name]
+alias FullType =
+    {
+    , uni as Uniqueness
+    , raw as RawType
     }
-
-
-union Argument =
-    , ArgumentExpression Expression
-    # TODO should we distinguish between a locally declared mutable and a mutable parameter?
-    , ArgumentMutable Pos VariableArgs
 
 
 union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
-    , Variable Pos VariableArgs
-    , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos Pattern LambdaModifier Expression
-    , Call Pos Expression Argument
-    , Record Pos (Maybe VariableArgs) (Dict Name Expression)
+    , Variable Pos Ref
+    , Constructor Pos USR
+    , Fn Pos [Parameter] Expression
+    , Call Pos Expression [Argument]
+      # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
+      # to nested RecordAccess? Maybe function calls too?
+    , Record Pos (Maybe Expression) (Dict Name Expression)
+    , RecordAccess Pos Name Expression
     , LetIn ValueDef Expression
-    , If Pos {
-        # we use the if also to get lazy ops and compacted compops, so even if the syntax does
-        # not support statement blocks inside if condition, it's useful that the AST can model it.
+    , If Pos
+        {
         , condition as Expression
         , true as Expression
         , false as Expression
         }
-    , Try Pos Expression [Pattern & Expression]
+    , Try Pos
+        {
+        , value as Expression
+        , patternsAndExpressions as [Uniqueness & Pattern & Expression]
+        }
+    , DestroyIn Name Expression
+
+
+union Argument =
+    , ArgumentExpression Expression
+    , ArgumentRecycle Pos Name [Name]
+
+
+union Parameter =
+    , ParameterPattern Uniqueness Pattern
+    , ParameterRecycle Pos Name
+    , ParameterPlaceholder Name Int
+
+
+union Pattern =
+    , PatternAny Pos
+        {
+        , maybeName as Maybe Text
+        , maybeAnnotation as Maybe RawType
+        }
+    , PatternLiteralText Pos Text
+    , PatternLiteralNumber Pos Number
+    , PatternConstructor Pos USR [Pattern]
+    , PatternRecord Pos PatternCompleteness (Dict Name Pattern)
+
+
+union PatternCompleteness =
+    , Partial
+    , Complete
+
+
+alias Tyvar =
+    {
+    #, annotatedAt as Pos
+    , allowFunctions as Bool
+    }
+
+
+alias ValueDef =
+    {
+    , uni as Uniqueness
+    , pattern as Pattern
+
+    # TODO: have maybeBody instead of native?
+    , native as Bool
+    , body as Expression
+
+    , tyvars as Dict Name Tyvar
+    , univars as Dict UnivarId None
+
+    # Do we need these here?
+    , directTypeDeps as TypeDeps
+    , directConsDeps as Set USR
+    , directValueDeps as Set USR
+    }
+
 
 
 #
@@ -92,55 +108,39 @@ union Expression =
 #
 
 alias TypeDeps =
-    Set Meta.UniqueSymbolReference
+    Set USR
 
-alias AliasDef = {
-    , usr as Meta.UniqueSymbolReference
-    , args as [At Name]
-    , type as Type
+
+alias AliasDef =
+    {
+    , usr as USR
+    , pars as [At Name]
+    , type as RawType
     , directTypeDeps as TypeDeps
     }
 
 
-alias UnionDef = {
-    , usr as Meta.UniqueSymbolReference
-    , args as [Name]
+alias UnionDef =
+    {
+    , usr as USR
+    , pars as [At Name]
     , constructors as Dict Name Constructor
     , directTypeDeps as TypeDeps
     }
 
 
-alias Constructor = {
+alias Constructor =
+    {
     , pos as Pos
-
-    # type and args are redundant
-    , typeUsr as Meta.UniqueSymbolReference
-    , type as Type
-    , args as [Type]
+    , typeUsr as USR
+    , ins as [RawType]
+    , out as RawType
     }
 
 
-alias ValueDef = {
-    , pattern as Pattern
-    , native as Bool
-    , parentDefinitions as [Pattern]
-    , nonFn as Set Name
-    , body as Expression
-    #
-    , directTypeDeps as TypeDeps
-    , directConsDeps as Set Meta.UniqueSymbolReference
-    , directValueDeps as Set Meta.UniqueSymbolReference
-    }
-
-
-alias Annotation = {
-    , type as Type
-    , nonFn as Dict Name None
-    }
-
-
-alias Module = {
-    , umr as Meta.UniqueModuleReference
+alias Module =
+    {
+    , umr as UMR
     , asText as Text
 
     , aliasDefs as Dict Name AliasDef
@@ -149,7 +149,7 @@ alias Module = {
     }
 
 
-initModule as Text: Meta.UniqueModuleReference: Module =
+initModule as Text: UMR: Module =
     asText: umr:
     {
     , umr
@@ -162,118 +162,77 @@ initModule as Text: Meta.UniqueModuleReference: Module =
 
 
 #
-#
-#
-
-skipLetIns as Expression: Expression =
-    expr:
-    try expr as
-        LetIn def e: skipLetIns e
-        _: expr
-
-
-
-
-
-#
-# Pos helpers
+# helpers
 #
 
 
-typePos as Type: Pos =
-    ty:
-    try ty as
-        TypeConstant p _ _: p
-        #TypeGeneratedVar _: Pos.I 3
-        #TypeAnnotatedVar p _: p
-        TypeVariable p _: p
-        TypeFunction p _ _ _: p
-        TypeRecord p _ _: p
-        TypeAlias p _ _: p
-        TypeMutable p _: p
+parTypeToRaw as ParType: RawType =
+    p:
+    try p as
+        ParRe raw: raw
+        ParSp full: full.raw
+
+
+typeTyvars as RawType: Dict Name Pos =
+    raw:
+
+    fromList as [RawType]: Dict Name Pos =
+        list:
+        List.for list (item: acc: Dict.join acc (typeTyvars item)) Dict.empty
+
+    try raw as
+        TypeNamed _ _ args: fromList args
+        TypeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
+        TypeRecord _ attrs: fromList (Dict.values attrs)
+        TypeAnnotationVariable pos name: Dict.singleton name pos
+        TypeError _: Dict.empty
 
 
 patternPos as Pattern: Pos =
     pa:
     try pa as
-        PatternAny p _ _ _: p
+        PatternAny p _: p
         PatternLiteralText p _: p
         PatternLiteralNumber p _: p
-        PatternConstructor p path ps: p
-        PatternRecord p ps: p
+        PatternConstructor p _ _: p
+        PatternRecord p _ _: p
 
 
-patternIsMutable as Pattern: Bool =
-    pattern:
+patternTyvars as Pattern: Dict Name Pos =
+    pa:
+    try pa as
+        PatternAny _ { maybeName = _, maybeAnnotation = Just t }: typeTyvars t
+        PatternAny _ { maybeName = _, maybeAnnotation = Nothing }: Dict.empty
+        PatternLiteralText _ _: Dict.empty
+        PatternLiteralNumber _ _: Dict.empty
+        PatternConstructor _ _ args: List.for args (arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
+        PatternRecord _ _ attrs: Dict.for attrs (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
 
-    try pattern as
-        PatternAny pos isMutable maybeName maybeType: isMutable
-        PatternLiteralNumber pos _: False
-        PatternLiteralText pos _: False
-        PatternConstructor pos path ps: List.any patternIsMutable ps
-        PatternRecord pos ps: Dict.any (k: patternIsMutable) ps
 
-
-patternNames as Pattern: Dict Name Pos =
+patternNames as Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe RawType } =
     p:
     try p as
-        PatternAny pos _ Nothing _: Dict.empty
-        PatternAny pos _ (Just n) _: Dict.singleton n pos
+        PatternAny pos { maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
+        PatternAny pos { maybeName = Just n, maybeAnnotation }: Dict.singleton n { pos, maybeAnnotation }
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
-
-
-patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
-    p:
-    try p as
-        PatternAny pos _ Nothing maybeType: Dict.empty
-        PatternAny pos _ (Just n) maybeType: Dict.singleton n (pos & maybeType)
-        PatternLiteralNumber pos _: Dict.empty
-        PatternLiteralText pos _: Dict.empty
-        PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
-        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNamedTypes >> Dict.join) Dict.empty
-
-
-argumentPos as Argument: Pos =
-    arg:
-    try arg as
-        ArgumentExpression e: expressionPos e
-        ArgumentMutable pos _: pos
+        PatternRecord pos _ ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 
 
 expressionPos as Expression: Pos =
-    e:
-    try e as
-        LiteralText pos _: pos
-        LiteralNumber pos _: pos
-        Variable pos _: pos
-        Constructor pos _: pos
-        Lambda pos _ _ _: pos
-        Record pos _ _: pos
-        Call pos _ _: pos
-        If pos _: pos
-        Try pos _ _: pos
-        LetIn valueDef _: patternPos valueDef.pattern
-
-
-#
-# Stuff that should live... somewhere else?
-#
-
-alias InstanceVariable =
-    { definedAt as Pos
-    # TODO: ty -> type
-    , ty as Type
-    , freeTypeVariables as Dict Name { nonFn as Bool }
-    , isMutable as Bool
-    }
-
-
-alias Globals = {
-    , types as CA.All CA.TypeDef
-    , constructors as CA.All CA.Constructor
-    , instanceVariables as ByUsr InstanceVariable
-    }
+    exp:
+    try exp as
+        LiteralNumber p _: p
+        LiteralText p _: p
+        Variable p _: p
+        Constructor p _: p
+        Fn p _ _: p
+        Call p _ _: p
+        Record p _ _: p
+        RecordAccess p _ _: p
+        LetIn def exp: patternPos def.pattern
+        If p _: p
+        Try p _: p
+        DestroyIn _ _: Pos.G
 

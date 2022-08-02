@@ -24,7 +24,7 @@ library =
     """
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
     getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
@@ -32,9 +32,10 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeE
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState {
+        Targets/Javascript/EmittableToJs.translateAll @emState
+            {
             , errorEnv = eenv
-            , caConstructors = constructors
+            , constructors
             , eaDefs = emittableStatements
             , platformOverrides = overrides
             }
@@ -43,8 +44,8 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeE
 
     callMain =
         """
-
-        const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
+        const args = arrayToListLow(process.argv.slice(1));
+        const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({}, args)[1]('never');
         if (out[0] === 'Ok') {
             process.exitCode = out[1];
         } else {
@@ -73,13 +74,13 @@ const { performance } = require('perf_hooks');
 
 
 
-overrides as [Meta.UniqueSymbolReference & Text] =
+overrides as [USR & Text] =
 
     ioModule =
-        Meta.USR (Meta.UMR Meta.Posix "IO")
+        USR (UMR Meta.Posix "IO")
 
     pathModule =
-        Meta.USR (Meta.UMR Meta.Posix "Path")
+        USR (UMR Meta.Posix "Path")
 
     [
     , ioModule "parallel" & "io_parallel"
@@ -107,7 +108,7 @@ const io_wrap = (f) => [ "IO.IO", f ];
 const io_parallel = (iosAsList) => io_wrap((never) => {
     // as [IO a]: IO [a]
 
-    const ios = array_fromList(iosAsList);
+    const ios = arrayFromListLow(iosAsList);
 
     // TODO actually run them in parallel!
 
@@ -120,7 +121,7 @@ const io_parallel = (iosAsList) => io_wrap((never) => {
             return $core$Result$Err(r[1]);
     }
 
-    return $core$Result$Ok(array_toList(arr));
+    return $core$Result$Ok(arrayToListLow(arr));
 });
 
 
@@ -134,7 +135,7 @@ const io_readDir = (dirPath) => io_wrap((never) => {
         return $core$Result$Err(e.message);
     }
 
-    return $core$Result$Ok(array_toList(entries.map((dirent) => ({
+    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({
         first: dirent.isDirectory(),
         second: dirent.name,
     }))));
@@ -184,7 +185,7 @@ const io_writeStderr = (content) => io_wrap((never) => {
 });
 
 
-const path_resolve = (p) => path.resolve(...array_fromList(p));
+const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
 
 
 const path_dirname = path.dirname;

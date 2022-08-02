@@ -167,7 +167,7 @@ fmtBlock as Int: [Highlight]: [Text]: Text =
                 "\n"
                     .. Text.repeat pad " "
                     .. "   "
-                    .. Text.repeat (s - 1) " "
+                    .. Text.repeat s " "
                     .. warn (Text.repeat (max 1 << e - s) "^")
 
     lineDem =

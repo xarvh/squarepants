@@ -1,4 +1,78 @@
 
+
+allowModule as Text: Bool =
+    filename:
+
+    not << List.any (n: Text.contains n filename) [
+        , "src/Types/TypedAst.sp"
+#        , "src/Types/Token.sp"
+#        , "src/Types/Pos.sp"
+        , "src/Types/Platform.sp"
+#        , "src/Types/Op.sp"
+#        , "src/Types/Meta.sp"
+        , "src/Types/JavascriptAst.sp"
+        , "src/Types/FormattableAst.sp"
+        , "src/Types/EmittableAst.sp"
+#        , "src/Types/CanonicalAst.sp"
+#        , "src/Types/Ast.sp"
+#        , "/src/Test.sp"
+#        , "src/Term.sp"
+        , "src/Targets/Javascript/Runtime.sp"
+        , "src/Targets/Javascript/JsToText.sp"
+        , "src/Targets/Javascript/EmittableToJs.sp"
+        , "src/Targets/Javascript/CanonicalToJs_Test.sp"
+        , "src/StateMonad.sp"
+        , "src/SPON.sp"
+        , "src/SPLib/Parser.sp"
+#        , "src/SPLib/Buffer.sp"
+        , "src/RefHierarchy_Test.sp"
+        , "src/RefHierarchy.sp"
+#        , "src/Prelude.sp"
+        , "src/Platforms/RawJavaScript.sp"
+        , "src/Platforms/Posix.sp"
+        , "src/Platforms/Browser.sp"
+        , "src/ModulesFile.sp"
+        , "src/Main.sp"
+        , "src/Human/CanonicalAst.sp"
+        , "src/Human/Type.sp"
+        , "src/DefaultModules.sp"
+        , "src/Compiler/UniquenessCheck.sp"
+        , "src/Compiler/TypeCheck_Test.sp"
+        , "src/Compiler/TypeCheck.sp"
+#        , "src/Compiler/TestHelpers.sp"
+        , "src/Compiler/Parser_Test.sp"
+        , "src/Compiler/Parser.sp"
+        , "src/Compiler/MakeEmittable.sp"
+        , "src/Compiler/MakeCanonical_Test.sp"
+        , "src/Compiler/MakeCanonical.sp"
+#        , "src/Compiler/Lexer_Test.sp"
+#        , "src/Compiler/Lexer.sp"
+#        , "src/Compiler/Error.sp"
+#        , "src/Compiler/CoreTypes.sp"
+        , "src/Compile.sp"
+        , "specs/Uniqueness.sp"
+        , "lib/posix/Path.sp"
+#        , "lib/posix/IO.sp"
+#        , "lib/core/Tuple.sp"
+#        , "lib/core/Text.sp"
+#        , "lib/core/Set.sp"
+#        , "lib/core/Result.sp"
+#        , "lib/core/Maybe.sp"
+#        , "lib/core/List_Test.sp"
+#        , "lib/core/List.sp"
+#        , "lib/core/Hash_Test.sp"
+#        , "lib/core/Hash.sp"
+#        , "lib/core/Dict_Test.sp"
+#        , "lib/core/Dict.sp"
+#        , "lib/core/Debug.sp"
+#        , "lib/core/Core.sp"
+#        , "lib/core/Basics.sp"
+#        , "lib/core/Array_Test.sp"
+#        , "lib/core/Array.sp"
+      ]
+
+
+
 modulesFileName as Text =
     "modules.sp"
 
@@ -133,10 +207,10 @@ listSourceDir as Text: Text: IO [Text] =
 
 
 # TODO move this to Meta?
-umrToFileName as Text: Meta.UniqueModuleReference: Text =
+umrToFileName as Text: UMR: Text =
     corePath: umr:
 
-    Meta.UMR source name =
+    UMR source name =
         umr
 
     try source as
@@ -153,11 +227,11 @@ umrToFileName as Text: Meta.UniqueModuleReference: Text =
             Path.resolve (corePath :: "browser" :: (Text.split "/" << name .. ".sp"))
 
 
-loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
+loadModule as Meta: UMR: Text: IO CA.Module =
     meta: umr: fileName:
 
     # TODO get rid of eenv so this is not needed
-    Meta.UMR source moduleName =
+    UMR source moduleName =
         umr
 
     IO.readFile fileName  >> IO.onSuccess moduleAsText:
@@ -185,11 +259,11 @@ alias ModuleAndPath = {
     }
 
 
-sdItemToUMR as Meta.Source: Text: Meta.UniqueModuleReference =
+sdItemToUMR as Meta.Source: Text: UMR =
     source: fileName:
     fileName
     >> Text.replace ".sp" ""
-    >> Meta.UMR source
+    >> UMR source
 
 
 updateSourceDir as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
@@ -244,23 +318,6 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 #
 # Compile
 #
-
-typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
-    meta: globals: module:
-
-    env as Compiler/TypeCheck.Env = {
-        , currentModule = module.umr
-        , meta
-        , instanceVariables = Dict.mapKeys CA.RefRoot globals.instanceVariables
-        , constructors = globals.constructors
-        , types = globals.types
-        , nonFreeTyvars = Dict.empty
-        , nonAnnotatedRecursives = Dict.empty
-        }
-
-    Compiler/TypeCheck.fromModule env module
-
-
 searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
     isWantedFile: searchDir:
 
@@ -291,7 +348,7 @@ mergeWithCore as CA.Module: CA.Module: CA.Module =
 
 #    xxx = Dict.join coreModule.valueDefs userModule.valueDefs
 #
-#    if userModule.umr == Meta.UMR Meta.Core "Tuple" then
+#    if userModule.umr == UMR Meta.Core "Tuple" then
 #      List.each (Dict.keys xxx) k:
 #        log "*" k
 #      None
@@ -324,6 +381,21 @@ compileMain as CompileMainPars: IO Int =
     entryModulePath =
         Path.resolve [ pars.entryModulePath ]
 
+
+
+#    IO.readFile entryModulePath
+#    >> IO.onSuccess moduleAsText:
+#
+#    moduleAsText
+#    >> Compiler/Parser.textToFormattableModule { moduleName = entryModulePath, stripLocations = False }
+#    >> resToIo { moduleByName = Dict.singleton entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
+#    >> IO.onSuccess out:
+#
+#    log "==" out
+#
+#    IO.writeStdout "done"
+
+
     entryModuleDir =
         Path.dirname entryModulePath
 
@@ -355,7 +427,7 @@ compileMain as CompileMainPars: IO Int =
                 todo << "Error: you are asking me to compile module " .. entryModulePath .. " but I can't find it anywhere."
 
             Just umr:
-                Meta.USR umr "main"
+                USR umr "main"
 
     #
     # Figure out corelib's root
@@ -387,12 +459,13 @@ compileMain as CompileMainPars: IO Int =
     loadAllModules as IO [CA.Module] =
         meta.moduleVisibleAsToUmr
         >> Dict.values
+        >> List.filter (umr: allowModule (umrToFileName corePath umr))
         >> List.map (umr: loadModule meta umr (umrToFileName corePath umr))
         >> IO.parallel
 
     loadAllModules >> IO.onSuccess userModules:
 
-    modules as Dict Meta.UniqueModuleReference CA.Module =
+    modules as Dict UMR CA.Module =
         Prelude.coreModulesByUmr >> List.for userModules module:
             Dict.update module.umr maybeCore:
                 try maybeCore as
@@ -411,22 +484,32 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    x as Res CA.Globals =
-        Compiler/Pipeline.globalExpandedTypes modules
-
-    x >> onResSuccess eenv globals:
+    modules
+    >> Dict.values
+    >> Compiler/TypeCheck.initStateAndGlobalEnv
+    >> onResSuccess eenv (lastUnificationVarId & typeCheckGlobalEnv):
 
     log "Type checking..." ""
 
-    typeCheckModules =
-        (Dict.values modules)
-        >> List.map (m: typeCheckModule meta globals m >> resToIo eenv)
-        >> IO.parallel
+    modules
+    >> Dict.values
+    >> List.map (m: Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv)
+    >> IO.parallel
+    >> IO.onSuccess typedModules:
 
-    typeCheckModules >> IO.onSuccess typeCheckEnvs:
+
+    log "Uniqueness check..." ""
+
+    typedModules
+    >> List.map (m: Compiler/UniquenessCheck.doModule m >> resToIo eenv)
+    >> IO.parallel
+    >> IO.onSuccess modulesWithDestruction:
+
 
     log "Emittable AST..." ""
-    Compiler/MakeEmittable.translateAll (Dict.values modules)
+
+    modulesWithDestruction
+    >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
     >> onResSuccess eenv (meState & emittableStatements):
 
@@ -435,9 +518,10 @@ compileMain as CompileMainPars: IO Int =
 
     log "= Platform specific stuff ="
     js =
-        pars.platform.compile {
+        pars.platform.compile
+            {
             , errorEnv = eenv
-            , constructors = Dict.toList globals.constructors
+            , constructors = Dict.toList (Dict.map (k: v: v.type) typeCheckGlobalEnv.constructors)
             }
             entryUsr
             @emittableState

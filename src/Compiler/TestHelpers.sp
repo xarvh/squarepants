@@ -11,18 +11,18 @@ source as Meta.Source =
     Meta.SourceDir "<Test>"
 
 
-moduleUmr as Meta.UniqueModuleReference =
-    Meta.UMR source moduleName
+moduleUmr as UMR =
+    UMR source moduleName
 
 
-localType as Name: Meta.UniqueSymbolReference =
+localType as Name: USR =
     name:
-    Meta.USR moduleUmr name
+    USR moduleUmr name
 
 
-rootLocal as Name: CA.Ref =
+rootLocal as Name: Ref =
     name:
-    CA.RefRoot << Meta.USR moduleUmr name
+    RefGlobal << USR moduleUmr name
 
 
 #
@@ -87,52 +87,56 @@ resErrorToStrippedText as Text: Res a: Result Text a =
 
 
 #
-# Pipelines
-#
-#textToFormattableModule as Text: Res [FA.Statement] =
-#    code:
-#    tokensResult =
-#        as Res [Token]
-#        Compiler/Lexer.lexer moduleName code
-#
-#    tokensToStatsResult as [Token]: Res [FA.Statement] =
-#        tokens:
-#        Compiler/Parser.parse stripLocations moduleName tokens
-#
-#    onOk tokensToStatsResult tokensResult
-
-
-#textToCanonicalModule as Text: Res CA.Module =
-#    code:
-#
-#    env =
-#        as Compiler/MakeCanonical.ReadOnly
-#        {
-#        , currentModule = moduleUmr
-#        , meta = defaultMeta
-#        }
-#
-#    code
-#        >> textToFormattableModule
-#        >> onOk (Compiler/MakeCanonical.translateModule env code moduleUmr)
-
-
-#
 # Same as core types, but have Pos.T rather than Pos.N
 #
-boolType as CA.Type =
-    CA.TypeConstant Pos.T ("Bool" >> Meta.spCoreUSR) []
+caBool as CA.RawType =
+    CA.TypeNamed Pos.T (Meta.spCoreUSR "Bool") []
 
 
-numberType as CA.Type =
-    CA.TypeConstant Pos.T ("Number" >> Meta.spCoreUSR) []
+caNumber as CA.RawType =
+    CA.TypeNamed Pos.T (Meta.spCoreUSR "Number") []
 
 
-noneType as CA.Type =
-    CA.TypeConstant Pos.T ("None" >> Meta.spCoreUSR) []
+caNone as CA.RawType =
+    CA.TypeNamed Pos.T (Meta.spCoreUSR "None") []
 
 
-listType as CA.Type: CA.Type =
+caList as CA.RawType: CA.RawType =
     itemType:
-    CA.TypeConstant Pos.T ("List" >> Meta.spCoreUSR) [ itemType ]
+    CA.TypeNamed Pos.T (Meta.spCoreUSR "List") [ itemType ]
+
+
+#
+# TA Types
+#
+taTyvar as Int: TA.RawType =
+    id:
+    TA.TypeVar id
+
+
+taTyvarImm as Int: TA.RawType =
+    id:
+    TA.TypeVar id
+
+
+taNumber as TA.RawType =
+    TA.TypeExact ("Number" >> Meta.spCoreUSR) []
+
+
+taNone as TA.RawType =
+    TA.TypeExact ("None" >> Meta.spCoreUSR) []
+
+
+taBool as TA.RawType =
+    TA.TypeExact ("Bool" >> Meta.spCoreUSR) []
+
+
+taList as TA.RawType: TA.RawType =
+    item:
+    TA.TypeExact ("List" >> Meta.spCoreUSR) [item]
+
+
+taFunction as [TA.RawType]: TA.RawType: TA.RawType =
+    from: to:
+    TA.TypeFn (List.map (t: TA.ParSp (toImm t)) from) (toImm to)
 
