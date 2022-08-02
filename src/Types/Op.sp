@@ -1,9 +1,16 @@
 
+union UnopId =
+    , UnopPlus
+    , UnopMinus
+    , UnopUnique
+    , UnopRecycle
 
-alias Unop = {
+
+alias Unop =
+    {
     , symbol as Text
-    , type as CA.Type
-    , usr as Meta.UniqueSymbolReference
+    , type as CA.RawType
+    , usr as USR
     }
 
 
@@ -25,11 +32,12 @@ union Precedence =
     , Mutop
 
 
-alias Binop = {
+alias Binop =
+    {
     , precedence as Op.Precedence
     , associativity as Op.Associativity
     , symbol as Text
-    , type as CA.Type
-    , usr as Meta.UniqueSymbolReference
+    , type as CA.RawType
+    , usr as USR
     , nonFn as [Text]
     }

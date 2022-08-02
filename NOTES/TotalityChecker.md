@@ -1,0 +1,7 @@
+- Warnings for pattern matching - Luc Maranget - http://moscova.inria.fr/~maranget/papers/warn/warn.pdf
+- Compiling Pattern Matching to Good Decision Trees - Luc Maranget - http://pauillac.inria.fr/~maranget/papers/ml05e-maranget.pdf
+- Repo with a couple of impls and good links: https://gitlab.com/yorickpeterse/pattern-matching-in-rust/
+    - Already read this, it is quite approachable but lots of cloning, may be inefficient
+- Jules Jacobs - https://julesjacobs.com/notes/patternmatching/patternmatching.pdf
+    - Short paper, looks like the Luc warn approach in a way, links to the rust impl above
+- Implementation in Ante: https://github.com/jfecher/ante/blob/master/src/types/pattern.rs

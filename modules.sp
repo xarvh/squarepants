@@ -1,5 +1,10 @@
 [# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
 
+
+sourceDir =
+    path = "specs"
+
+
 sourceDir =
     path = "src"
 
@@ -18,6 +23,27 @@ sourceDir =
     module =
        path = Compiler/CoreTypes
        importAs = CoreTypes
+
+    module =
+       path = Types/Ast
+       importAs = Ast
+       globalTypes =
+          Name
+          Ref
+          UnivarId
+          Uniqueness
+       globalValues =
+          RefLocal
+          RefGlobal
+          Uni
+          Imm
+          toImm
+          toUni
+          Depends
+
+    module =
+       path = Types/TypedAst
+       importAs = TA
 
     module =
        path = Types/CanonicalAst
@@ -48,12 +74,12 @@ sourceDir =
         importAs = Meta
         globalTypes =
             Meta
-            Name
             ByUsr
-            LambdaModifier
+            USR
+            UMR
         globalValues =
-            LambdaNormal
-            LambdaConsuming
+            USR
+            UMR
 
     module =
         path = Types/Op

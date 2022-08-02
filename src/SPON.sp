@@ -8,7 +8,9 @@ union Outcome a =
 alias Reader a =
     [FA.Statement]: Outcome a
 
-
+#
+# Composition
+#
 onAcc as (a: Reader b): Reader a: Reader b =
     chainedReaderB: readerA: statements:
     try readerA statements as
@@ -26,6 +28,22 @@ return as a: Reader a =
     a: statements:
     Accepted statements a
 
+
+getPos as [FA.Statement]: Pos =
+    statements:
+    try statements as
+        head :: tail: FA.statementPos head
+        []: posEnd
+
+
+reject as Text: Reader any =
+    message: statements:
+    Rejected << At (getPos statements) message
+
+
+#
+# Main
+#
 
 # HACK: I don't want to inject and Env in every function just to get the module name, at least for now
 posEnd as Pos =
@@ -56,11 +74,11 @@ run as Reader a: Text: [FA.Statement]: Res a =
 
 
 read as Reader a: Text: Text: Res a =
-    reader: sponName: sponContent:
+    reader: moduleName: sponContent:
     sponContent
-        >> Compiler/Lexer.lexer sponName
-        >> onOk (Compiler/Parser.parse False sponName)
-        >> onOk (run reader sponName)
+        >> Compiler/Lexer.lexer moduleName
+        >> onOk (Compiler/Parser.parse { moduleName, stripLocations = False })
+        >> onOk (run reader moduleName)
 
 
 logHead as Reader None =
@@ -83,7 +101,7 @@ logHead as Reader None =
 text as Reader Text =
     statements:
     try statements as
-        [ FA.Evaluation _ (FA.LiteralText pos t) ]:
+        [ FA.Evaluation (FA.Expression _ (FA.LiteralText t)) ]:
             Accepted [] t
 
         [ s ]:
@@ -93,11 +111,11 @@ text as Reader Text =
             Failed << At posEnd "expecting a single statement"
 
 
-upperName as Reader Text =
+word as Reader Token.Word =
     statements:
     try statements as
-        FA.Evaluation _ (FA.Constructor pos Nothing name) :: tail:
-            Accepted tail name
+        FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word })) :: tail:
+            Accepted tail word
 
         [ s ]:
             Rejected << At (FA.statementPos s) "expecting an Uppercase name"
@@ -106,25 +124,29 @@ upperName as Reader Text =
             Failed << At posEnd "expecting a statement"
 
 
-lowerOrUpperName as Reader Text =
-    statements:
-    try statements as
-        (FA.Evaluation _ (FA.Variable pos Nothing name [])) :: tail:
-            Accepted tail name
+upperName as Reader Text =
+    word >> onAcc w:
 
-        (FA.Evaluation _ (FA.Constructor pos Nothing name)) :: tail:
-            Accepted tail name
-
-        [ s ]:
-            Rejected << At (FA.statementPos s) "expecting an Uppercase or lowercase name"
-
+    try w as
+        { modifier = Token.NameNoModifier , isUpper = True , maybeModule = Nothing , name , attrPath = [] }:
+            return name
         _:
-            Failed << At posEnd "expecting a single statement"
+            reject "expecting an upper case name"
+
+
+lowerOrUpperName as Reader Text =
+    word >> onAcc w:
+
+    try w as
+        { modifier = Token.NameNoModifier , isUpper = _ , maybeModule = Nothing , name , attrPath = [] }:
+            return name
+        _:
+            reject "expecting an upper or lower case name"
 
 
 
 #
-# Higher level
+# Higher rank
 #
 
 
@@ -191,26 +213,54 @@ maybe as Reader a: Reader (Maybe a) =
             Failed r
 
 
+# HACK
+expressionToStatements as FA.Expression: [FA.Statement] =
+    e:
+    try e as
+      FA.Expression _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
+      FA.Expression _ (FA.Statements stats): stats
+      _: [FA.Evaluation e]
+
+
 field as Text: Reader a: Reader a =
     fieldName: fieldReader: statements:
 
     try statements as
-        FA.Definition pos { body, pattern = FA.PatternAny _ False name Nothing, nonFn } :: tail:
-            if name == fieldName then
-                try fieldReader body as
-                    Accepted unreadStatements a:
-                        try unreadStatements as
-                            []:
-                                Accepted tail a
+        FA.ValueDef
+            {
+            , body
+            , nonFn
+            , pattern =
+                FA.Expression pos
+                    (FA.Variable
+                        {
+                        , maybeType = Nothing
+                        , word =
+                            {
+                            , modifier = Token.NameNoModifier
+                            , isUpper = _
+                            , maybeModule = Nothing
+                            , name
+                            , attrPath = []
+                            }
+                        }
+                    )
+            } :: tail:
+                if name == fieldName then
+                    try fieldReader (expressionToStatements body) as
+                        Accepted unreadStatements a:
+                            try unreadStatements as
+                                []:
+                                    Accepted tail a
 
-                            head :: _:
-                                Failed << At (FA.statementPos head) << "Could not make sense of all the statements in field `" .. fieldName .. "`."
+                                head :: _:
+                                    Failed << At (FA.statementPos head) << "Could not make sense of all the statements in field `" .. fieldName .. "`."
 
-                    otherwise:
-                        otherwise
+                        otherwise:
+                            otherwise
 
-            else
-                Rejected << At pos << "expecting `" .. fieldName .. " =`"
+                else
+                    Rejected << At pos << "expecting `" .. fieldName .. " =`"
 
         head :: tail:
             Rejected << At (FA.statementPos head) "missing a simple assignment (ie `something = `)"

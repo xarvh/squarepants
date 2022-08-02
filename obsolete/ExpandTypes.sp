@@ -1,4 +1,5 @@
 
+[# TODO remove the module entirely
 
 error as Pos: List Text: Res a =
     pos: description:
@@ -14,31 +15,45 @@ alias GetType =
 #
 
 
-expandInType as GetType: CA.Type: Res CA.Type =
+wrapUnique = bool: t:
+  if bool then
+      CA.TypeUnique pos t
+  else
+      t
+
+
+expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
     ga: ty:
     try ty as
-        CA.TypeVariable pos name:
+        CA.TypeAnnotationVariable pos name:
             Ok ty
 
-        CA.TypeMutable pos t:
+        CA.TypeUnique pos t:
             expandInType ga t >> onOk ety:
-            Ok << CA.TypeMutable pos ety
+            Ok << CA.TypeUnique pos ety
 
         CA.TypeFunction pos from fromIsMutable to:
             expandInType ga from >> onOk f:
             expandInType ga to >> onOk t:
             Ok << CA.TypeFunction pos f fromIsMutable t
 
-        CA.TypeRecord pos extensible attrs:
+        CA.TypeRecord pos attrs:
             attrs
-                >> Dict.mapRes (k: expandInType ga)
-                >> Result.map (CA.TypeRecord pos extensible)
+            >> Dict.mapRes (k: expandInType ga)
+            >> Result.map (CA.TypeRecord pos)
+            >> Result.map (wrapUnique CA.typeContainsUniques)
 
-        CA.TypeAlias pos path t:
+#        CA.TypeRecordExt pos name flags attrs:
+#            attrs
+#            >> Dict.mapRes (k: expandInType ga)
+#            >> Result.map (CA.TypeRecordExt pos name flags)
+
+        CA.TypeAlias pos path:
             # it's easy to deal with, but it shouldn't happen O_O
             error pos [ "Did we apply aliases twice?" ]
 
-        CA.TypeConstant pos usr args:
+        CA.TypeOpaque pos usr args:
+
             List.mapRes (expandInType ga) args >> onOk replacedArgs:
             try ga pos usr as
                 Err e:
@@ -51,8 +66,12 @@ expandInType as GetType: CA.Type: Res CA.Type =
                             , "but was used with " .. Text.fromNumber (List.length replacedArgs) ]
 
                     else
+                        isUnique =
+                            List.any CA.typeContainsUniques replacedArgs
+
                         replacedArgs
-                            >> CA.TypeConstant pos usr
+                            >> CA.TypeOpaque pos usr
+                            >> wrapUnique isUnique #t: if isUnique then TypeUnique pos t else t #Compiler/TypeCheck.maybeWrapMutable isUnique pos
                             >> Ok
 
                 Ok (CA.TypeDefAlias al):
@@ -65,64 +84,54 @@ expandInType as GetType: CA.Type: Res CA.Type =
 
                         al.type
                             >> expandAliasVariables typeByArgName
-                            >> CA.TypeAlias pos usr
+                            #TODO? >> CA.TypeAlias pos usr
                             >> Ok
 
 
-expandAndValidateType as GetType: CA.Type: Res CA.Type =
-    ga: rawTy:
-    expandInType ga rawTy >> onOk expandedTy:
-    try findMutableArgsThatContainFunctions Nothing expandedTy as
-        []:
-            Ok expandedTy
-
-        errors:
-            # TODO show the actual positions
-            error (Pos.I 567)
-                [ "Mutable arguments can't be or contain functions!"
-                , errors >> List.map toHuman >> Text.join "\n"
-                ]
-
-
-findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
-    nonFunctionPos: ty:
-    try ty as
-        CA.TypeConstant _ _ _:
-            []
-
-        CA.TypeMutable _ t:
-            findMutableArgsThatContainFunctions nonFunctionPos t
-
-        CA.TypeVariable _ name:
-            [# TODO
-                if mutable then
-                    Just "variable types can't be mutable"
-
-               # except they can, they must be if we want to have functions
-               capable of manipulating mutable containers
-
-            #]
-            []
-
-        CA.TypeAlias _ path t:
-            findMutableArgsThatContainFunctions nonFunctionPos t
-
-        CA.TypeFunction functionPos from lambdaModifier to:
-            [ try nonFunctionPos as
-                Just constraintPos:
-                    [ constraintPos & functionPos ]
-
-                Nothing:
-                    []
-            , findMutableArgsThatContainFunctions nonFunctionPos from
-            , findMutableArgsThatContainFunctions nonFunctionPos to
-            ]
-                >> List.concat
-
-        CA.TypeRecord _ ext attrs:
-            attrs
-                >> Dict.values
-                >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+#findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
+#    nonFunctionPos: ty:
+#    try ty as
+#        CA.TypeConstant _ _ _:
+#            []
+#
+#        CA.TypeMutable _ t:
+#            findMutableArgsThatContainFunctions nonFunctionPos t
+#
+#        CA.TypeVariable _ name flags:
+#            [# TODO
+#                if mutable then
+#                    Just "variable types can't be mutable"
+#
+#               # except they can, they must be if we want to have functions
+#               capable of manipulating mutable containers
+#
+#            #]
+#            []
+#
+#        CA.TypeAlias _ path t:
+#            findMutableArgsThatContainFunctions nonFunctionPos t
+#
+#        CA.TypeFunction functionPos from lambdaModifier to:
+#            [ try nonFunctionPos as
+#                Just constraintPos:
+#                    [ constraintPos & functionPos ]
+#
+#                Nothing:
+#                    []
+#            , findMutableArgsThatContainFunctions nonFunctionPos from
+#            , findMutableArgsThatContainFunctions nonFunctionPos to
+#            ]
+#                >> List.concat
+#
+#        CA.TypeRecord _ attrs:
+#            attrs
+#            >> Dict.values
+#            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+#
+#        CA.TypeRecordExt _ name flags attrs:
+#            attrs
+#            >> Dict.values
+#            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
 
 
 #
@@ -133,10 +142,10 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
 #
 # TODO: have MakeCanonical calculate this as part of the alias' Deps
 #
-referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference =
+referencedAliases as CA.All CA.AliasDef: CA.CanonicalType: Set Meta.UniqueSymbolReference =
     allAliases: ty:
     try ty as
-        CA.TypeConstant pos usr args:
+        CA.TypeOpaque pos usr args:
             init =
                 if Dict.member usr allAliases then
                     Set.singleton usr
@@ -145,21 +154,28 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
 
             List.for args (ar: Dict.join (referencedAliases allAliases ar)) (Set.singleton usr)
 
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
             Dict.empty
 
         CA.TypeFunction pos from maybeMut to:
             Dict.join (referencedAliases allAliases from) (referencedAliases allAliases to)
 
-        CA.TypeRecord pos extensible attrs:
+        CA.TypeRecord pos attrs:
             Dict.for attrs (name: t: Dict.join (referencedAliases allAliases t)) Dict.empty
+
+        CA.TypeRecordExt pos name flags attrs:
+            Dict.for attrs (n: t: Dict.join (referencedAliases allAliases t)) Dict.empty
 
         CA.TypeAlias pos path t:
             referencedAliases allAliases t
 
+        CA.TypeMutable pos t:
+            referencedAliases allAliases t
 
 
-expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
+
+
+expandAndInsertAlias as CA.All (CA.TypeDef): CA.AliasDef: CA.All (CA.TypeDef): Res (CA.All (CA.TypeDef)) =
     allTypes: al: expandedTypes:
 
     getAlias as GetType =
@@ -181,20 +197,28 @@ expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (
                         Ok << CA.TypeDefUnion u
 
 
-    expandAndValidateType getAlias al.type >> onOk type:
+    expandInType getAlias al.type >> onOk type:
     Ok << Dict.insert al.usr (CA.TypeDefAlias { al with type }) expandedTypes
 
 
-expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
+expandAliasVariables as Dict Name CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
     typeByArgName: ty:
+
     try ty as
-        CA.TypeVariable pos name:
+
+        CA.TypeVariable pos name flags:
             try Dict.get name typeByArgName as
                 Nothing:
                     ty
 
                 Just t:
-                    t
+                    if not flags.allowFunctions and Compiler/TypeCheck.typeContainsFunctions t then
+                        Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a functions"
+                    else
+                      if not flags.allowUniques and CA.typeContainsUniques t then
+                          Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a mutable"
+                      else
+                        t
 
         CA.TypeFunction pos from fromIsMutable to:
             CA.TypeFunction pos
@@ -202,15 +226,18 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
                 fromIsMutable
                 (expandAliasVariables typeByArgName to)
 
-        CA.TypeRecord pos extensible attrs:
+        CA.TypeRecord pos attrs:
             CA.TypeRecord pos
-                extensible
                 (Dict.map (k: expandAliasVariables typeByArgName) attrs)
 
-        CA.TypeConstant pos usr args:
+        CA.TypeRecordExt pos name flags attrs:
+            CA.TypeRecordExt pos name flags
+                (Dict.map (k: expandAliasVariables typeByArgName) attrs)
+
+        CA.TypeOpaque pos usr args:
             args
                 >> List.map (expandAliasVariables typeByArgName)
-                >> CA.TypeConstant pos usr
+                >> CA.TypeOpaque pos usr
 
         CA.TypeAlias pos usr t:
             CA.TypeAlias pos usr (expandAliasVariables typeByArgName t)
@@ -221,7 +248,7 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
 #
 
 
-getTypeForUnion as CA.All CA.TypeDef: CA.All CA.TypeDef: GetType =
+getTypeForUnion as CA.All (CA.TypeDef): CA.All (CA.TypeDef): GetType =
     allTypes: expandedTypes: pos: usr:
 
     # Try to find the type here first
@@ -243,7 +270,7 @@ getTypeForUnion as CA.All CA.TypeDef: CA.All CA.TypeDef: GetType =
 
 
 
-expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDef: CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
+expandAndInsertUnion as CA.All (CA.TypeDef): Meta.UniqueSymbolReference: (CA.TypeDef): CA.All (CA.TypeDef): Res (CA.All (CA.TypeDef)) =
     allTypes: usr: typeDef: expandedTypes:
 
     try typeDef as
@@ -257,8 +284,8 @@ expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDe
             mapConstructor as Name: CA.Constructor: Res CA.Constructor =
                 name: c:
                 # TODO these are redundant, do we need both?
-                expandAndValidateType gt c.type >> onOk type:
-                List.mapRes (expandAndValidateType gt) c.args >> onOk args:
+                expandInType gt c.type >> onOk type:
+                List.mapRes (expandInType gt) c.args >> onOk args:
                 Ok << { c with type, args }
 
             Dict.mapRes mapConstructor u.constructors >> onOk cs:
@@ -270,14 +297,14 @@ expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDe
 #
 
 
-insertModuleTypes as CA.Module: CA.All CA.TypeDef: CA.All CA.TypeDef =
+insertModuleTypes as CA.Module: CA.All (CA.TypeDef): CA.All (CA.TypeDef) =
     module: allTypes:
     allTypes
         >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
         >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
-expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
+expandAllTypes as CA.All (CA.TypeDef): Res (CA.All (CA.TypeDef)) =
     allTypes:
 
     allAliases as CA.All CA.AliasDef =
@@ -323,7 +350,7 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
 #
 # Apply aliases to annotations
 #
-expandAnnotation as CA.All CA.TypeDef: CA.Type: Res CA.Type =
+expandAnnotation as CA.All (CA.TypeDef): CA.CanonicalType: Res CA.CanonicalType =
     allExpandedTypes: type:
 
     gt as GetType =
@@ -332,5 +359,7 @@ expandAnnotation as CA.All CA.TypeDef: CA.Type: Res CA.Type =
             Just t: Ok t
             Nothing: error pos [ "Undefined type usr: `" .. toHuman usr .. "`" ]
 
-    expandAndValidateType gt type
+    expandInType gt type
 
+
+#]

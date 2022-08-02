@@ -16,16 +16,16 @@ alias AttrName =
 union Expression =
     , LiteralText Text
     , LiteralNumber Number
-    , Variable Name [Name]
-    , Call Expression (Expression & Bool)
-    , Lambda (Maybe Name & Bool) Expression
+    , Variable Name
+    , Call Expression [Argument]
+    , Fn [Bool & Maybe Name] Expression
     , Conditional Expression Expression Expression
     , And [Expression]
     , ShallowEqual Expression Expression
-    , LetIn {
+    , LetIn
+        {
         , maybeName as Maybe Name
-        # type as Type
-        , isMutable as Bool
+        , type as TA.FullType
         , letExpression as Expression
         , inExpression as Expression
         }
@@ -36,12 +36,22 @@ union Expression =
     , IsConstructor Name Expression
     , LiteralRecord (Maybe Expression) [AttrName & Expression]
     , RecordAccess AttrName Expression
+
+    # TODO Replace `pos` with the directly calculated location, so that errorEnv is not necessary any more?
     , MissingPattern Pos Expression
 
 
-alias GlobalDefinition = {
+union Argument =
+    , ArgumentRecycle [Name] Name
+    , ArgumentSpend Expression
+
+
+alias GlobalDefinition =
+    {
     , name as Name
     , expr as Expression
+
+    # We need these to be able to put defs in the right order
     , deps as Set Name
     }
 

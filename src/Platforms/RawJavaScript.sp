@@ -9,7 +9,7 @@ platform as Types/Platform.Platform = {
     }
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
     getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
@@ -17,9 +17,10 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeE
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState {
+        Targets/Javascript/EmittableToJs.translateAll @emState
+            {
             , errorEnv = eenv
-            , caConstructors = constructors
+            , constructors
             , eaDefs = emittableStatements
             , platformOverrides = []
             }
