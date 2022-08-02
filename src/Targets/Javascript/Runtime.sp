@@ -334,7 +334,7 @@ const dict_empty = {};
 
 
 const dict_insert = (key) => (value) => (dict) => {
-    return Object.assign({ [JSON.stringify(key)]: [key, value] }, dict);
+    return Object.assign({}, dict, { [JSON.stringify(key)]: [key, value] });
 }
 
 
@@ -358,7 +358,7 @@ const dict_size = (dict) => {
 
 const dict_for = (dict) => (f) => (acc) => {
     for (let k in dict) {
-        const kv = hash[k];
+        const kv = dict[k];
         acc = f(kv[0])(kv[1])(acc);
     }
     return acc;
@@ -367,7 +367,7 @@ const dict_for = (dict) => (f) => (acc) => {
 
 const dict_forRes = (dict) => (f) => (acc) => {
     for (let k in dict) {
-        const kv = hash[k];
+        const kv = dict[k];
         const result = f(kv[0])(kv[1])(acc);
 
         if (result[0] === 'Ok') {
@@ -380,14 +380,16 @@ const dict_forRes = (dict) => (f) => (acc) => {
 }
 
 
-const dict_forReversed = dict_forRes;
+const dict_forReversed = dict_for;
 
 
 const dict_map = (f) => (dict) => {
-    const d = dict_empty;
+    const d = {};
 
     for (let k in dict) {
-        d[k] = f(dict[k]);
+        const kv = dict[k];
+
+        d[k] = [ kv[0], f(kv[0])(kv[1]) ];
     }
 
     return d;
@@ -395,13 +397,15 @@ const dict_map = (f) => (dict) => {
 
 
 const dict_mapRes = (f) => (dict) => {
-    const d = dict_empty;
+    const d = {};
 
     for (let k in dict) {
-        const result = f(dict[k]);
+        const kv = dict[k];
+
+        const result = f(kv[0])(kv[1]);
 
         if (result[0] === 'Ok') {
-          d[k] = result[1];
+          d[k] = [ kv[0], result[1] ];
         } else {
           return result;
         }
@@ -409,8 +413,6 @@ const dict_mapRes = (f) => (dict) => {
 
     return [ 'Ok', d ];
 }
-
-
 
 
 
