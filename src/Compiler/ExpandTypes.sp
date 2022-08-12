@@ -157,6 +157,10 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
         CA.TypeAlias pos path t:
             referencedAliases allAliases t
 
+        CA.TypeMutable pos t:
+            referencedAliases allAliases t
+
+
 
 
 expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =

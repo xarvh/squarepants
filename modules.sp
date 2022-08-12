@@ -1,5 +1,10 @@
 [# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
 
+
+sourceDir =
+    path = "specs"
+
+
 sourceDir =
     path = "src"
 
