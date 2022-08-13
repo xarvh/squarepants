@@ -416,6 +416,13 @@ compileMain as CompileMainPars: IO Int =
 
     x >> onResSuccess eenv globals:
 
+
+
+    log "Uniqueness check..." ""
+    ....
+
+
+
     log "Type checking..." ""
 
     typeCheckModules =
