@@ -78,7 +78,10 @@ howDoesItLookLike as Test =
 
 uniquenessTyping as Test =
     Test.Group "Uniqueness Typing" [
-        , codeTest "Types can be flagged as mutable"
+        , codeTest
+            """
+            Types can be flagged as mutable
+            """
             """
             alias A = @Number
 
@@ -88,6 +91,43 @@ uniquenessTyping as Test =
             """
             check
             Test.isOk
+        , codeTest
+            """
+            Mutable types are not interchangeable with their non-mutable counterpart 1
+            """
+            """
+            a as @Number = 1
+            """
+            check
+            (Test.errorContains ["The two types are not compatible"])
+        , codeTest
+            """
+            Mutable types are not interchangeable with their non-mutable counterpart 2
+            """
+            """
+            a as Number = mut 1
+            """
+            check
+            (Test.errorContains ["The two types are not compatible"])
+        , codeTest
+            """
+            A variable with mutable type must be explicitly declared as mutable with `@` 1
+            """
+            """
+            z =
+                @a as @Number = mut 1
+            """
+            check
+            Test.isOk
+        , codeTest
+            """
+            A variable with mutable type must be explicitly declared as mutable with `@` 2
+            """
+            """
+            a as @Number = mut 1
+            """
+            check
+            (Test.errorContains ["annotation and variable declaration have different mutability"])
         ]
 
 

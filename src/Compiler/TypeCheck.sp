@@ -1473,21 +1473,40 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
     isAnnotated =
         maybeAnnotation /= Nothing
 
+    makeNew as Monad Type =
+        newType pos >> andThen ty:
+        if isMutable then
+            return << CA.TypeMutable pos ty
+        else
+            return ty
+
     makeType =
         try maybeAnnotation as
             Nothing:
-                newType pos
+                makeNew
 
             Just type:
                 try Compiler/ExpandTypes.expandAnnotation env.types type as
                     Err e:
                         insertError e >> andThen None:
-                        newType pos
+                        makeNew
 
                     Ok t:
                         return t
 
     makeType >> andThen type:
+
+    checkMutability =
+        if isMutable /= CA.typeIsMutable type then
+            addCheckError pos [
+                # TODO this error sucks
+                , "type annotation and variable declaration have different mutability"
+                ]
+        else
+            return None
+
+    checkMutability
+    >> andThen None:
 
     newVars =
         try maybeName as

@@ -176,7 +176,7 @@ skipLetIns as Expression: Expression =
 
 
 #
-# Pos helpers
+# helpers
 #
 
 
@@ -191,6 +191,17 @@ typePos as Type: Pos =
         TypeRecord p _ _: p
         TypeAlias p _ _: p
         TypeMutable p _: p
+
+
+typeIsMutable as Type: Bool =
+    ty:
+    try ty as
+        TypeConstant _ _ _: False
+        TypeVariable _ _: False
+        TypeFunction _ _ _ _: False
+        TypeRecord _ _ attrs: Dict.any (k: typeIsMutable) attrs
+        TypeAlias _ _ ty: typeIsMutable ty
+        TypeMutable _ _: True
 
 
 patternPos as Pattern: Pos =
