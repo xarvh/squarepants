@@ -91,43 +91,53 @@ uniquenessTyping as Test =
             """
             check
             Test.isOk
-        , codeTest
-            """
-            Mutable types are not interchangeable with their non-mutable counterpart 1
-            """
-            """
-            a as @Number = 1
-            """
-            check
-            (Test.errorContains ["The two types are not compatible"])
-        , codeTest
-            """
-            Mutable types are not interchangeable with their non-mutable counterpart 2
-            """
-            """
-            a as Number = mut 1
-            """
-            check
-            (Test.errorContains ["The two types are not compatible"])
-        , codeTest
-            """
-            A variable with mutable type must be explicitly declared as mutable with `@` 1
-            """
-            """
-            z =
-                @a as @Number = mut 1
-            """
-            check
-            Test.isOk
-        , codeTest
-            """
-            A variable with mutable type must be explicitly declared as mutable with `@` 2
-            """
-            """
-            a as @Number = mut 1
-            """
-            check
-            (Test.errorContains ["annotation and variable declaration have different mutability"])
+        , Test.Group "Mutable types are not interchangeable with their non-mutable counterpart" [
+            , codeTest "1"
+                """
+                a as @Number = 1
+                """
+                check
+                (Test.errorContains ["The two types are not compatible"])
+            , codeTest "2"
+                """
+                a as Number = mut 1
+                """
+                check
+                (Test.errorContains ["The two types are not compatible"])
+            ]
+        , Test.Group "A variable with mutable type must be explicitly declared as mutable with `@`" [
+            , codeTest "1"
+                """
+                z =
+                    @a as @Number = mut 1
+                """
+                check
+                Test.isOk
+            , codeTest "2"
+                """
+                a as @Number = mut 1
+                """
+                check
+                (Test.errorContains ["annotation and variable declaration have different mutability"])
+            ]
+        , Test.Group """Referencing a mutable variable "consumes" it""" [
+            , codeTest "xxxxx"
+                """
+                scope =
+                    @x =
+                        mut 1
+
+                    @y =
+                        # The first time we do it it works!
+                        x
+
+                    @z =
+                        # But here `x` is now consumed, so we get a compiler error!
+                        x
+                """
+                check
+                (Test.errorContains ["annotation and variable declaration have different mutability"])
+            ]
         ]
 
 
