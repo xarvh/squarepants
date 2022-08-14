@@ -1,6 +1,5 @@
 
 
-
 union MutableAvailability =
     , Available
     , ConsumedAt Pos
@@ -18,11 +17,9 @@ alias Variable = {
     }
 
 
-
 alias Env = {
     , variables as Dict Name Variable
     }
-
 
 
 alias State = {
@@ -30,11 +27,40 @@ alias State = {
     }
 
 
+consumeInEnv as Dict Name Pos: Env: Env =
+    consumed: env:
+
+    { env with variables =
+        .variables >> Dict.for consumedByValue name: pos:
+            Dict.insert name (Mutable << ConsumedAt pos)
+    }
 
 
+addPatternToEnv as CA.Pattern: Env: Set Name & Env =
+    pattern: env:
+
+    mutabilityByName =
+        CA.patternMutabilityByName pattern
+
+    localEnv =
+        { env with variables =
+            .variables
+            >> Dict.for mutabilityByName name: (isMutable & pos):
+
+                mode =
+                    if isMutable then Mutable Available else Immutable
+
+                Dict.insert name { definedAt = pos, name, mode }
+        }
+
+    names =
+        Set.empty >> Dict.for mutabilityByName name: (isMutable & pos): set:
+            if isMutable then Set.insert name set else set
+
+    names & localEnv
 
 
-doExpression as Env: State: CA.Expression: Set Name & CA.Expression =
+doExpression as Env: State: CA.Expression: Dict Name Pos & CA.Expression =
     env: state@: expression:
 
     re =
@@ -74,31 +100,41 @@ doExpression as Env: State: CA.Expression: Set Name & CA.Expression =
 
         CA.Lambda pos param valueLambdaMode body:
 
-            "mutable:- body"
-                mutables & localEnv =
-                    addPatternToEnv param env
+            mutables & localEnv =
+                addPatternToEnv param env
 
-                consumed & bodyExpression =
-                    doExpression localEnv @state body
+            consumed & bodyExpression =
+                doExpression localEnv @state body
 
-                for each mutables not in consumed:
-                    flag them for destruction
+            if mutables == Set.empty then
+                consumed & bodyExpression
+            else
+                try valueLambdaMode as
+                    LambdaConsuming:
+                        wrappedBody =
+                            bodyExpression >> Set.for mutables name: exp:
+                                if Dict.member name consumed then
+                                    exp
+                                else
+                                    CA.DestroyIn name exp
 
-            "mutable: body"
-                mutables & localEnv =
-                    addPatternToEnv param env
+                        consumed & wrappedBody
 
-                consumed & bodyExpression =
-                    doExpression localEnv @state body
+                    LambdaNormal:
+                        Set.for mutables name: tbd:
+                            if Set.member name consumed then
+                                addError (errorConsumingAMutableArgument name pos) @state
+                            else
+                                None
 
-                for each mutable:
-                    ensure mutable not in consumed
-
-            "immutable: body"
-                add all variables to the env
+                        consumed & bodyExpression
 
 
         CA.Call pos reference argument:
+
+#            consumedByRef & refExpression =
+#                doExpression env @state reference
+
             do reference
 
             look ahead call chain???
@@ -107,15 +143,85 @@ doExpression as Env: State: CA.Expression: Set Name & CA.Expression =
 
 
         CA.If pos { condition, true, false }:
-            do condition
 
-            consumed = do true + do false
-            to be destroyed in true = false - true
-            to be destroyed in false = true - false
+            consumedByCondition & conditionExpression =
+                doExpression env @state condition
+
+            newEnv =
+                consumeInEnv consumedByCondition env
+
+            consumedByTrue & trueExpression =
+                doExpression newEnv @state true
+
+            consumedByFalse & falseExpression =
+                doExpression newEnv @state false
+
+            allConsumed =
+                consumedByCondition
+                >> Dict.join consumedByTrue
+                >> Dict.join consumedByFalse
+
+            finalTrueExpression =
+                # true should destroy all muts consumed by false
+                trueExpression >> Dict.for consumedByFalse name: pos: exp:
+                    if Dict.member name consumedByTrue then
+                        exp
+                    else
+                        CA.DestroyIn name exp
+
+            finalFalseExpression =
+                # false should destroy all muts consumed by true
+                falseExpression >> Dict.for consumedByTrue name: pos: exp:
+                    if Dict.member name consumedByFalse then
+                        exp
+                    else
+                        CA.DestroyIn name exp
+
+            finalExpression =
+                CA.If pos {
+                    , condition = conditionExpression
+                    , true = finalTrueExpression
+                    , false = finalFalseExpression
+                    }
+
+            allConsumed & finalExpression
 
 
         CA.Try pos value patternsAndBlocks:
-            ...
+
+            consumedByValue & valueExpression =
+                doExpression env @state value
+
+            newEnv =
+                consumeInEnv consumedByValue env
+
+            # Pass 1: collect all consumed
+            consumedAndPatternsAndBlocks =
+                patternsAndBlocks >> List.map (pattern & block):
+
+                    mutables_should_be_empty & localEnv =
+                        addPatternToEnv pattern newEnv
+
+                    consumedByBlock & blockExpression =
+                        doExpression localEnv @state block
+
+                    consumedByBlock & pattern & blockExpression
+
+            allConsumed =
+                Dict.empty >> List.for consumedAndPatternsAndBlocks (consumed & _ & _):
+                    Dict.join consumed
+
+            # Pass 2:
+            newPatternsAndBlocks =
+                consumedAndPatternsAndBlocks >> List.map (consumed & pattern & blockExpression):
+                    finalBlock =
+                        blockExpression >> Dict.for allConsumed name: pos: exp:
+                            if Dict.member name consumed then
+                                exp
+                            else
+                                CA.DestroyIn name exp
+
+            allConsumed & CA.Try pos valueExpression newPatternsAndBlocks
 
 
         CA.Record pos maybeExtending attrValueByName:

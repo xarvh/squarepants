@@ -86,6 +86,9 @@ union Expression =
         }
     , Try Pos Expression [Pattern & Expression]
 
+    # Does it make sense that this is part of the Canonical AST?
+    , DestroyIn Name Expression
+
 
 #
 # Module
@@ -234,6 +237,20 @@ patternNames as Pattern: Dict Name Pos =
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
         PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+
+
+patternMutabilityByName as Pattern: Dict Name (Bool & Pos) =
+    p:
+    try p as
+        PatternAny pos _ Nothing _: Dict.empty
+        PatternAny pos isMutable (Just n) _: Dict.singleton n (isMutable & pos)
+        PatternLiteralNumber pos _: Dict.empty
+        PatternLiteralText pos _: Dict.empty
+        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+
+
+
 
 
 patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
