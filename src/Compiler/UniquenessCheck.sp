@@ -60,6 +60,58 @@ addPatternToEnv as CA.Pattern: Env: Set Name & Env =
     names & localEnv
 
 
+
+
+
+doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as CA.Expression } =
+    env: state@: pos: reference: argument:
+
+    ref =
+        try reference as
+            CA.Call p ref arg:
+                doCall env p ref arg
+
+            _:
+              consumed & expression =
+                  doExpression env @state reference
+
+              { mutables = Dict.empty, consumed, expression }
+
+
+
+    try argument as
+        CA.ArgumentExpression expr:
+            consumed & expression =
+                doExpression env @state expr
+
+            TODO check consumed vs ref.consumed
+
+            {
+            , mutables = ref.mutables
+            , consumed = Dict.join consumed ref.consumed
+            , expression = CA.Call pos ref.expression (CA.ArgumentExpression expression)
+            }
+
+
+        CA.ArgumentMutable p { ref = CA.RefBlock name, attrPath = _ }:
+
+            TODO: check that name is
+                1) actually mutable
+                2) not consumed
+                3) not in ref.mutables
+
+
+            {
+            , mutables = Dict.insert name p ref.mutables
+            , consumed = Dict.empty
+            , expression = CA.Call pos ref.expression argument
+            }
+
+        CA.ArgumentMutable _ _:
+            Debug.todo "TODO: Mutable args should not be able to reference globals!?"
+
+
+
 doExpression as Env: State: CA.Expression: Dict Name Pos & CA.Expression =
     env: state@: expression:
 
@@ -132,14 +184,11 @@ doExpression as Env: State: CA.Expression: Dict Name Pos & CA.Expression =
 
         CA.Call pos reference argument:
 
-#            consumedByRef & refExpression =
-#                doExpression env @state reference
+            { mutables, consumed, expression } =
+                doCall env @state pos reference argument
 
-            do reference
+            consumed & expression
 
-            look ahead call chain???
-
-            ensure mutable argument is both mutable and not consumed
 
 
         CA.If pos { condition, true, false }:
@@ -225,10 +274,14 @@ doExpression as Env: State: CA.Expression: Dict Name Pos & CA.Expression =
 
 
         CA.Record pos maybeExtending attrValueByName:
-            try maybeExtending as
-                Nothing:
 
-                Just extending:
+            consumedByExt =
+                try maybeExtending as
+                    Just { ref = CA.RefBlock extName, attrPath = _ }:
+                        sameAsCA.Variable @state
+
+                    _:
+                        Dict.empty
 
 
         CA.LetIn valueDef e:
