@@ -121,7 +121,7 @@ uniquenessTyping as Test =
                 (Test.errorContains ["annotation and variable declaration have different mutability"])
             ]
         , Test.Group """Referencing a mutable variable "consumes" it""" [
-            , codeTest "xxxxx"
+            , codeTest "base"
                 """
                 scope =
                     @x =
@@ -136,7 +136,7 @@ uniquenessTyping as Test =
                         x
                 """
                 check
-                (Test.errorContains ["annotation and variable declaration have different mutability"])
+                (Test.errorContains ["used already here"])
             ]
         ]
 

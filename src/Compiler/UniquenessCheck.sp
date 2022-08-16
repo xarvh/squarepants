@@ -254,7 +254,7 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
                         Immutable:
                             re
 
-                        Mutable availability:
+                        Mutable Available:
                             Dict.singleton name pos & expression
 
                         Mutable (ConsumedAt consumedPos):
@@ -299,10 +299,10 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
 
         CA.Call pos reference argument:
 
-            { mutables, consumed, expression } =
+            { mutables, consumed, expression = expr } =
                 doCall env @state pos reference argument
 
-            consumed & expression
+            consumed & expr
 
 
 
@@ -405,20 +405,27 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
 
         CA.LetIn valueDef e:
 
-            mutables & localEnv =
+            mutables & env1 =
                 addPatternToEnv valueDef.pattern env
 
-            consumed & eExpression =
+            consumedByBody & bodyExpression =
+                doExpression env @state valueDef.body
+
+            localEnv =
+                consumeInEnv consumedByBody env1
+
+            consumedByE & eExpression =
                 doExpression localEnv @state e
 
             finalExpression =
-                eExpression >> Dict.for mutables name: pos: exp:
-                    try Dict.get name consumed as
+                CA.LetIn { valueDef with body = bodyExpression } eExpression
+                >> Dict.for mutables name: pos: exp:
+                    try Dict.get name consumedByE as
                         Just _: exp
                         Nothing:
                             CA.DestroyIn name exp
 
-            consumed & finalExpression
+            Dict.join consumedByBody consumedByE & finalExpression
 
 
 doModule as CA.Module: Res CA.Module =
