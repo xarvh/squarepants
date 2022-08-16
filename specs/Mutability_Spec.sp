@@ -181,23 +181,7 @@ check as Text: Result Text CA.Module =
             , meta = TH.meta
             , nonFreeTyvars = Dict.empty
             , nonAnnotatedRecursives = Dict.empty
-            , instanceVariables =
-                instanceVariables
-#                    >> Dict.insert
-#                        (Meta.USR TH.moduleUmr "add")
-#                        { definedAt = Pos.T
-#                        , ty = function tyNumber (function tyNumber tyNumber)
-#                        , freeTypeVariables = Dict.empty
-#                        , isMutable = False
-#                        }
-#                    >> Dict.insert
-#                        (Meta.USR TH.moduleUmr "reset")
-#                        { definedAt = Pos.T
-#                        , ty = typeFunction tyNumber LambdaNormal tyNone
-#                        , freeTypeVariables = Dict.empty
-#                        , isMutable = False
-#                        }
-                    >> Dict.mapKeys CA.RefRoot
+            , instanceVariables = Dict.mapKeys CA.RefRoot instanceVariables
             }
 
         Compiler/TypeCheck.fromModule env module
