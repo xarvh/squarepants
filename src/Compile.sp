@@ -245,6 +245,20 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 # Compile
 #
 
+uniquenessCheckModule as CA.Module: Res CA.Module =
+    module:
+
+    errors = Debug.todo "uniquenessCheckModule"
+
+# TODO
+#    newModule =
+#      List.map for each def in module
+#      Compiler/UniquenessCheck.doExpression def.body
+
+    Ok module
+
+
+
 typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
     meta: globals: module:
 
@@ -417,23 +431,25 @@ compileMain as CompileMainPars: IO Int =
     x >> onResSuccess eenv globals:
 
 
-
     log "Uniqueness check..." ""
-    ....
 
+    modules
+    >> Dict.values
+    >> List.map (m: uniquenessCheckModule m >> resToIo eenv)
+    >> IO.parallel
+    >> IO.onSuccess modulesWithDestruction:
 
 
     log "Type checking..." ""
 
-    typeCheckModules =
-        (Dict.values modules)
-        >> List.map (m: typeCheckModule meta globals m >> resToIo eenv)
-        >> IO.parallel
-
-    typeCheckModules >> IO.onSuccess typeCheckEnvs:
+    Dict.values modules
+    >> List.map (m: typeCheckModule meta globals m >> resToIo eenv)
+    >> IO.parallel
+    >> IO.onSuccess typeCheckEnvs:
 
     log "Emittable AST..." ""
-    Compiler/MakeEmittable.translateAll (Dict.values modules)
+    modulesWithDestruction
+    >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
     >> onResSuccess eenv (meState & emittableStatements):
 

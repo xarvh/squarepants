@@ -246,8 +246,8 @@ patternMutabilityByName as Pattern: Dict Name (Bool & Pos) =
         PatternAny pos isMutable (Just n) _: Dict.singleton n (isMutable & pos)
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
-        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+        PatternConstructor pos path ps: List.for ps (x: x >> patternMutabilityByName >> Dict.join) Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: v: v >> patternMutabilityByName >> Dict.join) Dict.empty
 
 
 
