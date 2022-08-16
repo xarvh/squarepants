@@ -165,6 +165,46 @@ check as Text: Result Text CA.Module =
         >> onOk module:
 
         Compiler/UniquenessCheck.doModule module
+        >> onOk moduleWithDestroyIn:
+
+        modules =
+            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
+
+        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
+
+        { types, constructors, instanceVariables } = expandedTypes
+
+        env as Compiler/TypeCheck.Env = {
+            , types
+            , constructors
+            , currentModule = TH.moduleUmr
+            , meta = TH.meta
+            , nonFreeTyvars = Dict.empty
+            , nonAnnotatedRecursives = Dict.empty
+            , instanceVariables =
+                instanceVariables
+#                    >> Dict.insert
+#                        (Meta.USR TH.moduleUmr "add")
+#                        { definedAt = Pos.T
+#                        , ty = function tyNumber (function tyNumber tyNumber)
+#                        , freeTypeVariables = Dict.empty
+#                        , isMutable = False
+#                        }
+#                    >> Dict.insert
+#                        (Meta.USR TH.moduleUmr "reset")
+#                        { definedAt = Pos.T
+#                        , ty = typeFunction tyNumber LambdaNormal tyNone
+#                        , freeTypeVariables = Dict.empty
+#                        , isMutable = False
+#                        }
+                    >> Dict.mapKeys CA.RefRoot
+            }
+
+        Compiler/TypeCheck.fromModule env module
+        >> onOk typeCheckEnv:
+
+        Ok moduleWithDestroyIn
+
 
     TH.resErrorToStrippedText code blah
 
