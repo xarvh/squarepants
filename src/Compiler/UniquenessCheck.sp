@@ -420,3 +420,35 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
 
             consumed & finalExpression
 
+
+doModule as CA.Module: Res CA.Module =
+    module:
+
+    state as State @= {
+        , errors = Array.fromList []
+        }
+
+    env as Env = {
+        , variables = Dict.empty
+        }
+
+    addDestruction as pa: CA.ValueDef: CA.ValueDef =
+        _: def:
+
+        consumed & body =
+            Compiler/UniquenessCheck.doExpression env @state def.body
+
+        { def with body }
+
+    newModule =
+        { module with
+        , valueDefs = Dict.map addDestruction .valueDefs
+        }
+
+    errors =
+        Array.toList state.errors
+
+    if errors == [] then
+        Ok newModule
+    else
+        Err (Error.Nested errors)

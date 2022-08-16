@@ -245,18 +245,6 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 # Compile
 #
 
-uniquenessCheckModule as CA.Module: Res CA.Module =
-    module:
-
-    errors = Debug.todo "uniquenessCheckModule"
-
-# TODO
-#    newModule =
-#      List.map for each def in module
-#      Compiler/UniquenessCheck.doExpression def.body
-
-    Ok module
-
 
 
 typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
@@ -435,7 +423,7 @@ compileMain as CompileMainPars: IO Int =
 
     modules
     >> Dict.values
-    >> List.map (m: uniquenessCheckModule m >> resToIo eenv)
+    >> List.map (m: Compiler/UniquenessCheck.doModule m >> resToIo eenv)
     >> IO.parallel
     >> IO.onSuccess modulesWithDestruction:
 

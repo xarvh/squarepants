@@ -150,10 +150,10 @@ uniquenessTyping as Test =
 codeTest =
     Test.codeTest Debug.toHuman
 
-check as Text: Result Text Compiler/TypeCheck.Env =
+check as Text: Result Text CA.Module =
     code:
 
-    tcEnvResult as Res Compiler/TypeCheck.Env =
+    blah as Res CA.Module =
         params as Compiler/MakeCanonical.Params = {
             , meta = TH.meta
             , stripLocations = True
@@ -161,27 +161,10 @@ check as Text: Result Text Compiler/TypeCheck.Env =
             , name = TH.moduleName
             }
 
-        Compiler/MakeCanonical.textToCanonicalModule params code >> onOk module:
+        Compiler/MakeCanonical.textToCanonicalModule params code
+        >> onOk module:
 
-        modules =
-            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
+        Compiler/UniquenessCheck.doModule module
 
-        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
-
-        { types, constructors, instanceVariables } =
-            expandedTypes
-
-        env as Compiler/TypeCheck.Env = {
-            , types
-            , constructors
-            , currentModule = TH.moduleUmr
-            , meta = TH.meta
-            , nonFreeTyvars = Dict.empty
-            , nonAnnotatedRecursives = Dict.empty
-            , instanceVariables = Dict.mapKeys CA.RefRoot instanceVariables
-            }
-
-        Compiler/TypeCheck.fromModule env module
-
-    TH.resErrorToStrippedText code tcEnvResult
+    TH.resErrorToStrippedText code blah
 
