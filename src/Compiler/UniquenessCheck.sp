@@ -82,20 +82,6 @@ errorConsumingAMutableArgument as Text: Pos: State@: None =
         ]
 
 
-errorConsumedTwice as Text: Pos: Pos: State@: None =
-    name: p1: p2: state@:
-
-    addError p1 @state eenv:
-
-        { location, block } =
-            Error.posToHuman eenv p2
-
-        [
-        , "You can't consume the variable `" .. name .. "` beause it was consumed already here:"
-        , block
-        ]
-
-
 errorMutatingAConsumed as Text: Pos: Pos: State@: None =
     name: p1: p2: state@:
 
@@ -194,7 +180,7 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
             Dict.each consumed name: p1:
                 try Dict.get name ref.consumed as
                     Nothing: None
-                    Just p2: errorConsumedTwice name p1 p2 @state
+                    Just p2: errorReferencingConsumedVariable name p1 p2 @state
 
             {
             , mutables = ref.mutables
@@ -394,13 +380,28 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
 
             consumedByExt =
                 try maybeExtending as
-                    Just { ref = CA.RefBlock extName, attrPath = _ }:
-                        todo "sameAsCA.Variable @state"
+                    Just var:
+                        doExpression env @state (CA.Variable pos var)
+                        >> Tuple.first
 
-                    _:
+                    Nothing:
                         Dict.empty
 
-            todo "CA.Record UniquenesCheck"
+            consumedFinal & attrsFinal =
+                consumedByExt & Dict.empty
+                >> Dict.for attrValueByName name: value: (consumedSoFar & attrs):
+                    consumed & expr =
+                        doExpression env @state value
+
+                    consumedTwice =
+                        Dict.merge (k: v: d: d) (k: a: b: Dict.insert k (a & b)) (k: v: d: d) consumed consumedSoFar Dict.empty
+
+                    Dict.each consumedTwice name: (p1 & p2):
+                        errorReferencingConsumedVariable name p1 p2 @state
+
+                    Dict.join consumed consumedSoFar & Dict.insert name expr attrs
+
+            consumedFinal & CA.Record pos maybeExtending attrsFinal
 
 
         CA.LetIn valueDef e:
@@ -409,7 +410,7 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
                 addPatternToEnv valueDef.pattern env
 
             consumedByBody & bodyExpression =
-                doExpression env @state valueDef.body
+                doExpression env1 @state valueDef.body
 
             localEnv =
                 consumeInEnv consumedByBody env1

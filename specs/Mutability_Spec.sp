@@ -137,6 +137,98 @@ uniquenessTyping as Test =
                 """
                 check
                 (Test.errorContains ["used already here"])
+
+            , codeTest "tuple"
+                """
+                scope =
+                    @x =
+                        mut 1
+
+                    @y =
+                        x & x
+                """
+                check
+                (Test.errorContains ["used already here"])
+            ]
+        , Test.Group
+            """
+            Functions can consume mutables by using `:-` instead of `:`
+            """ [
+            , codeTest
+                """
+                Consume a unique
+                """
+                """
+                consumer as @Number:- None =
+                    x:-
+                    None
+
+                scope =
+                    @x =
+                        mut 1
+
+                    consumer x
+
+                    x
+                """
+              check
+              (Test.errorContains [ "x", "used already here"])
+            , codeTest
+                """
+                Refuse an immutable
+                """
+                """
+                consumer as @Number:- None =
+                    x:-
+                    None
+
+                scope =
+                    x =
+                        1
+
+                    consumer x
+                """
+                check
+                (Test.errorContains ["incompatible"])
+            , codeTest
+                """
+                Refuse to mutate
+                """
+                """
+                consumer as @Number:- None =
+                    x:-
+                    None
+
+                scope as None =
+                    @x as @Number =
+                        mut 1
+
+                    consumer @x
+                """
+                check
+                (Test.errorContains ["blaaaaah"])
+            , codeTest
+                """
+                Annotation should match implementation 1
+                """
+                """
+                consumer as @Number:- None =
+                    @x:
+                    None
+                """
+                check
+                (Test.errorContains ["different mutability"])
+            , codeTest
+                """
+                Annotation should match implementation 2
+                """
+                """
+                consumer as @Number: None =
+                    @x:-
+                    None
+                """
+                check
+                (Test.errorContains ["different mutability"])
             ]
         ]
 

@@ -203,7 +203,7 @@ typeIsMutable as Type: Bool =
         TypeVariable _ _: False
         TypeFunction _ _ _ _: False
         TypeRecord _ _ attrs: Dict.any (k: typeIsMutable) attrs
-        TypeAlias _ _ ty: typeIsMutable ty
+        TypeAlias _ _ t: typeIsMutable t
         TypeMutable _ _: True
 
 

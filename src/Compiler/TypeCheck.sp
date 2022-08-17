@@ -916,7 +916,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
             try referenceType as
 
-                CA.TypeFunction _ parameterType isMutable returnType:
+                CA.TypeFunction _ parameterType lambdaModifier returnType:
                     try argument as
 
                         CA.ArgumentExpression argumentExpression:
@@ -947,6 +947,18 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                             isCompatibleWith env expectedType pos actualReturnType
 
                         CA.ArgumentMutable pos { ref, attrPath }:
+                            xxx =
+                                try lambdaModifier as
+                                    LambdaNormal:
+                                        return None
+                                    LambdaConsuming:
+                                        addCheckError pos [
+                                            , "This variable is passed for mutation, but the function needs to consume it."
+                                            , "TODO: wiki link to explain difference between consuming and mutating"
+                                            ]
+
+                            xxx >> andThen _:
+
                             try Dict.get ref env.instanceVariables as
                                 Nothing:
                                     errorUndefinedVariable env pos ref >> andThen ty:
@@ -1277,11 +1289,26 @@ fromExpression as Env: CA.Expression: Monad Type =
 unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: Type: Monad Type =
     env: reference: referenceType: argument: callArgumentType:
 
+    isMutation =
+        try argument as
+            CA.ArgumentMutable _ _: True
+            CA.ArgumentExpression _: False
+
     try referenceType as
 
         CA.TypeFunction _ refArgumentType lambdaModifier refReturnType:
             pos =
                 CA.expressionPos reference
+
+            xxx =
+                if isMutation and lambdaModifier == LambdaConsuming then
+                    addCheckError pos [
+                        , "You are passing this variable for mutation, but the function needs to consume it!"
+                        ]
+                else
+                    return None
+
+            xxx >> andThen _:
 
             reason =
                 UnifyReason_CallArgument
@@ -1297,6 +1324,12 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
         CA.TypeVariable pos name:
             newType pos
             >> andThen returnType:
+
+            modifier =
+                if not isMutation and CA.typeIsMutable callArgumentType then
+                    LambdaConsuming
+                else
+                    LambdaNormal
 
             ty =
                 CA.TypeFunction pos callArgumentType LambdaNormal returnType
