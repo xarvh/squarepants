@@ -192,7 +192,7 @@ uniquenessTyping as Test =
                 (Test.errorContains ["incompatible"])
             , codeTest
                 """
-                Refuse to mutate
+                Refuse to mutate 1
                 """
                 """
                 consumer as @Number:- None =
@@ -206,7 +206,25 @@ uniquenessTyping as Test =
                     consumer @x
                 """
                 check
-                (Test.errorContains ["blaaaaah"])
+                (Test.errorContains ["but the function needs to consume it"])
+            , codeTest
+                """
+                Refuse to mutate 2
+                """
+                """
+                scope =
+
+                    consumer =
+                        x:-
+                        None
+
+                    @x =
+                        mut 1
+
+                    consumer @x
+                """
+                check
+                (Test.errorContains ["but the function needs to consume it"])
             , codeTest
                 """
                 Annotation should match implementation 1
@@ -229,6 +247,30 @@ uniquenessTyping as Test =
                 """
                 check
                 (Test.errorContains ["different mutability"])
+            , codeTest
+                """
+                SKIP When consumed the `@` is optional in annotation, definition and call, and will be removed by the formatter.
+                """
+                """
+                """
+                check
+                (Test.errorContains [""])
+            ]
+        , Test.Group
+            """
+            "When we construct a function with mutable elements in its closure that function itself must be mutable."
+            """ [
+            , codeTest
+                """
+                SKIP base
+                """
+                """
+                scope =
+                    @x = mut 1
+                    z: x
+                """
+              check
+              (Test.errorContains [ "xxxxxxxx" ])
             ]
         ]
 

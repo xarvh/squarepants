@@ -13,6 +13,10 @@ textToFormattableModule as Params: Text: Res [FA.Statement] =
 
     tokensToStatsResult as [Token]: Res [FA.Statement] =
         tokens:
+
+#        List.each tokens t:
+#              log "*" t
+
         Debug.benchStart None
         parse pars.stripLocations pars.name tokens
             >> btw Debug.benchStop "parse"
@@ -493,10 +497,17 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
                     Token start end (Token.LowerName Token.NameNoModifier maybeModule name attrs):
                         # TODO this duplicates the entry for Token.LowerName, maybe merge them in a function?
 
-                        maybeColon >> andThen mc:
+
+                        if maybeModule /= Nothing then
+                            log "can't mutate a global: " { maybeModule, name }
+                            Parser.abort "TODO fatal parser error, please fix me"
+                        else
+                            maybeColon
+                            >> andThen mc:
+
                             try mc as
-                                Nothing: Parser.accept << FA.Variable p maybeModule name attrs
-                                # TODO also test that maybeModule == Nothing and attrs == []
+                                Nothing: Parser.accept << FA.Mutable p name attrs
+                                # TODO also test that attrs == []
                                 Just mutable: lambdaParser env mutable (FA.PatternAny p True name Nothing)
 
                     _:
@@ -611,7 +622,7 @@ expr as Env: Parser FA.Expression =
 
         # TODO pipes can't actually be mixed
         , binopsOr env Op.Pipe
-        , binopsOr env Op.Mutop
+#        , binopsOr env Op.Mutop
         , higherOr << if_ env
         , higherOr << try_ env
         ]

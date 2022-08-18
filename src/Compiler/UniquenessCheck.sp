@@ -190,7 +190,9 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
 
         CA.ArgumentMutable p1 { ref = CA.RefBlock name, attrPath = _ }:
 
-            try Dict.get name env.variables as
+            # TODO https://github.com/xarvh/squarepants/projects/1#card-85087726
+            x =
+              try Dict.get name env.variables as
                 Nothing: errorUndefinedVariable p1 name @state
                 Just variable:
                     try variable.mode as
@@ -198,7 +200,8 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
                         Immutable: errorMutatingAnImmutable name p1 @state
                         Mutable (ConsumedAt p2): errorMutatingAConsumed name p1 p2 @state
 
-            try Dict.get name ref.mutables as
+            y =
+              try Dict.get name ref.mutables as
                 Nothing: None
                 Just p2: errorMutatingTwice name p1 p2 @state
 

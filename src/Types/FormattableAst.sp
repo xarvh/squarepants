@@ -66,8 +66,8 @@ union Expression =
     , LiteralText Pos Text
     , LiteralNumber Pos Text
     , Variable Pos (Maybe Name) Name [Name]
+    , Mutable Pos Name [Name]
     , Constructor Pos (Maybe Name) Name
-    , Mutable Pos Expression
     , PrefixBinop Pos Text
     , RecordShorthand Pos [Name]
     , Lambda Pos Pattern LambdaModifier [Statement]
@@ -138,7 +138,7 @@ expressionPos as Expression: Pos =
        LiteralNumber p _: p
        Variable p _ _ _: p
        Constructor p _ _: p
-       Mutable p _: p
+       Mutable p _ _: p
        PrefixBinop p _: p
        Lambda p _ _ _: p
        FunctionCall p _ _: p

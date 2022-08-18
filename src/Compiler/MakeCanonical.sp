@@ -519,7 +519,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                 >> CA.Constructor pos
                 >> Ok
 
-        FA.Mutable pos _:
+        FA.Mutable pos _ _:
             makeError pos [ "can't use mutability here?" ]
 
         FA.RecordShorthand pos attrPath:
@@ -681,7 +681,7 @@ translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text CA.Expres
 translateArgument as Env: FA.Expression: Res CA.Argument =
     env: faExpr:
     try faExpr as
-        FA.Mutable pos (FA.Variable _ Nothing name attrPath):
+        FA.Mutable pos name attrPath:
             if Dict.member name env.nonRootValues then
                 {
                 , ref = CA.RefBlock name
@@ -694,11 +694,6 @@ translateArgument as Env: FA.Expression: Res CA.Argument =
                 makeError pos
                     [ "only values declared inside a function scope can be mutated!"
                     ]
-
-        FA.Mutable pos _:
-            makeError pos
-                [ "You can mutate only named variables?"
-                ]
 
         _:
             faExpr
