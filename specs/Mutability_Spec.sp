@@ -332,7 +332,7 @@ uniquenessTyping as Test =
 
 mutation as Test =
     Test.Group "Mutation" [
-        Test.Group "Mutables can be mutated in place" [
+        , Test.Group "Mutables can be mutated in place" [
             [# TODO enable once the new parser self-compiles
             , valueTest
                 """
@@ -371,6 +371,37 @@ mutation as Test =
                 """
                 check
                 (Test.errorContains ["being consumed here"])
+            ]
+        , Test.Group "A function can be defined to mutate its arguments" [
+            , codeTest
+                """
+                base
+                """
+                """
+                funz as @Number: None =
+                    @a:
+                    @a += 3
+
+                scope =
+                    @x = mut 0
+                    funz @x
+                    funz @x
+                """
+                check
+                Test.isOk
+            ]
+        , Test.Group "Calling a function that mutates a unique variable temporarily consumes the variable." [
+            , codeTest
+                """
+                base
+                """
+                """
+                scope =
+                    @x = mut 0
+                    funz @x @x
+                """
+                check
+                (Test.errorContains [ "twice" ])
             ]
         ]
 
