@@ -403,7 +403,7 @@ mutation as Test =
                 check
                 (Test.errorContains [ "twice" ])
             ]
-        , Test.Group "Functions that mutate their arguments cannot be auto-curried; partial calls will result in a compiler error."
+        , Test.Group "Functions that mutate their arguments cannot be auto-curried; partial calls will result in a compiler error." [
             , codeTest
                 """
                 SKIP No point in checking this since auto-curry will be removed.
