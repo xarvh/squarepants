@@ -622,7 +622,7 @@ expr as Env: Parser FA.Expression =
 
         # TODO pipes can't actually be mixed
         , binopsOr env Op.Pipe
-#        , binopsOr env Op.Mutop
+        , binopsOr env Op.Mutop
         , higherOr << if_ env
         , higherOr << try_ env
         ]

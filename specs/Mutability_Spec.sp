@@ -16,7 +16,62 @@ specs as Test =
     Test.Group "Mutability spec" [
       , howDoesItLookLike
       , uniquenessTyping
+      , mutation
       ]
+
+
+#
+# Boilerplate code, not really needed to understand the system
+#
+
+valueTest as Text: (None: a): Test.CodeExpectation a: Test =
+    Test.valueTest toHuman
+
+codeTest =
+    Test.codeTest Debug.toHuman
+
+check as Text: Result Text CA.Module =
+    code:
+
+    blah as Res CA.Module =
+        params as Compiler/MakeCanonical.Params = {
+            , meta = TH.meta
+            , stripLocations = True
+            , source = TH.source
+            , name = TH.moduleName
+            }
+
+        Compiler/MakeCanonical.textToCanonicalModule params code
+        >> onOk module:
+
+        Compiler/UniquenessCheck.doModule module
+        >> onOk moduleWithDestroyIn:
+
+        modules =
+            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
+
+        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
+
+        { types, constructors, instanceVariables } = expandedTypes
+
+        env as Compiler/TypeCheck.Env = {
+            , types
+            , constructors
+            , currentModule = TH.moduleUmr
+            , meta = TH.meta
+            , nonFreeTyvars = Dict.empty
+            , nonAnnotatedRecursives = Dict.empty
+            , instanceVariables = Dict.mapKeys CA.RefRoot instanceVariables
+            }
+
+        Compiler/TypeCheck.fromModule env module
+        >> onOk typeCheckEnv:
+
+        Ok moduleWithDestroyIn
+
+
+    TH.resErrorToStrippedText code blah
+
 
 
 howDoesItLookLike as Test =
@@ -270,59 +325,53 @@ uniquenessTyping as Test =
                     z: x
                 """
               check
-              (Test.errorContains [ "xxxxxxxx" ])
+              (Test.errorContains [ "?" ])
             ]
         ]
 
 
+mutation as Test =
+    Test.Group "Mutation" [
+        Test.Group "Mutables can be mutated in place" [
+            [# TODO enable once the new parser self-compiles
+            , valueTest
+                """
+                Base
+                """
+                _:
+                    @x =
+                        mut 1
 
+                    @x += 2
 
-#
-# Boilerplate code, not really needed to understand the system
-#
+                    @x == 3
+                (Test.isOkAndEqualTo True)
+            #]
+            , codeTest
+                """
+                Mutation does NOT consume the unique
+                """
+                """
+                scope =
+                    @x = mut 1
+                    @x += 1
+                    @x += 1
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                Mutation requires the unique not to be consumed
+                """
+                """
+                scope =
+                    @x = mut 1
+                    consume x
+                    @x += 1
+                """
+                check
+                (Test.errorContains ["being consumed here"])
+            ]
+        ]
 
-codeTest =
-    Test.codeTest Debug.toHuman
-
-check as Text: Result Text CA.Module =
-    code:
-
-    blah as Res CA.Module =
-        params as Compiler/MakeCanonical.Params = {
-            , meta = TH.meta
-            , stripLocations = True
-            , source = TH.source
-            , name = TH.moduleName
-            }
-
-        Compiler/MakeCanonical.textToCanonicalModule params code
-        >> onOk module:
-
-        Compiler/UniquenessCheck.doModule module
-        >> onOk moduleWithDestroyIn:
-
-        modules =
-            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
-
-        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
-
-        { types, constructors, instanceVariables } = expandedTypes
-
-        env as Compiler/TypeCheck.Env = {
-            , types
-            , constructors
-            , currentModule = TH.moduleUmr
-            , meta = TH.meta
-            , nonFreeTyvars = Dict.empty
-            , nonAnnotatedRecursives = Dict.empty
-            , instanceVariables = Dict.mapKeys CA.RefRoot instanceVariables
-            }
-
-        Compiler/TypeCheck.fromModule env module
-        >> onOk typeCheckEnv:
-
-        Ok moduleWithDestroyIn
-
-
-    TH.resErrorToStrippedText code blah
 
