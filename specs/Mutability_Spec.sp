@@ -17,6 +17,7 @@ specs as Test =
       , howDoesItLookLike
       , uniquenessTyping
       , mutation
+      , parentScope
       ]
 
 
@@ -414,5 +415,112 @@ mutation as Test =
                 (Test.errorContains [])
             ]
         ]
+
+
+parentScope as Test =
+    Test.Group
+        """
+        Mutating a variable in the parent scope
+        """
+        [
+        , Test.Group
+            """
+            A function that mutates any mutable belonging to an ancestor scope is "tainted" by that mutableGeneral
+            """
+            [
+            , codeTest
+                """
+                SKIP also wait for removing auto-curry
+                """
+                """
+                """
+                check
+                (Test.errorContains [])
+            ]
+        ]
+
+
+
+parentScope as Test =
+    Test.Group
+        """
+        Records
+        """
+        [
+        , Test.Group
+            """
+            A record that has at least one mutable attribute is itself mutable
+            """
+            [
+            , codeTest
+                """
+                Annotation, valid
+                """
+                """
+                scope =
+                    @r as { x as Int, y as @Int } =
+                        { x = 0, y = mut 0 }
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                Annotation, invalid 1
+                """
+                """
+                scope =
+                    @r as { x as Int, y as Int } =
+                        { x = 0, y = 0 }
+                """
+                check
+                (Test.errorContains [ "....." ])
+            , codeTest
+                """
+                Annotation, invalid 2
+                """
+                """
+                scope =
+                    r as { x as Int, y as @Int } =
+                        { x = 0, y = mut 0 }
+                """
+                check
+                (Test.errorContains [ "....." ])
+
+            , codeTest
+                """
+                No annotation, valid
+                """
+                """
+                scope =
+                    @r =
+                        { x = 0, y = mut 0 }
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                No annotation, invalid 1
+                """
+                """
+                scope =
+                    @r =
+                        { x = 0, y = 0 }
+                """
+                check
+                (Test.errorContains [ "....." ])
+            , codeTest
+                """
+                No annotation, invalid 2
+                """
+                """
+                scope =
+                    r =
+                        { x = 0, y = mut 0 }
+                """
+                check
+                (Test.errorContains [ "....." ])
+            ]
+        ]
+
 
 
