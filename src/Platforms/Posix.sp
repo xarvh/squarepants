@@ -45,7 +45,12 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeE
         """
 
         const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
-        if (out[1]) console.error(out[1]);
+        if (out[0] === 'Ok') {
+            process.exit(out[1]);
+        } else {
+            console.error(out[1]);
+            process.exit(-1);
+        }
         """
 
     statements =
@@ -82,6 +87,7 @@ overrides as [Meta.UniqueSymbolReference & Text] =
     , ioModule "readFile" & "io_readFile"
     , ioModule "writeFile" & "io_writeFile"
     , ioModule "writeStdout" & "io_writeStdout"
+    , ioModule "writeStderr" & "io_writeStderr"
     , pathModule "dirname" & "path_dirname"
     , pathModule "resolve" & "path_resolve"
     ]
@@ -150,7 +156,7 @@ const io_readFile = (path) => io_wrap((never) => {
 
 
 const io_writeFile = (path) => (content) => io_wrap((never) => {
-    // as Text: Text: IO None
+    // as Text: Text: IO Int
 
     try {
         fs.writeFileSync(path, content);
@@ -158,15 +164,23 @@ const io_writeFile = (path) => (content) => io_wrap((never) => {
         return $core$Result$Err(e.message);
     }
 
-    return $core$Result$Ok(null);
+    return $core$Result$Ok(0);
 });
 
 
 const io_writeStdout = (content) => io_wrap((never) => {
-    // as Text: IO None
+    // as Text: IO Int
 
     console.info(content);
-    return $core$Result$Ok(null);
+    return $core$Result$Ok(0);
+});
+
+
+const io_writeStderr = (content) => io_wrap((never) => {
+    // as Text: IO Int
+
+    console.error(content);
+    return $core$Result$Ok(-1);
 });
 
 

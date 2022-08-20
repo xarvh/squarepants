@@ -89,7 +89,7 @@ order as Test.TestOutcome: Int =
         Test.Error _: 2
 
 
-selftestMain as None: IO None =
+selftestMain as None: IO Int =
     None:
     allTests
     >> Test.flatten
@@ -167,7 +167,6 @@ parsePlatformName as Maybe Text: CliState: Result Text CliState =
 
                 Just platform:
                     Ok { cliState with platform }
-          
 
 
 
@@ -211,7 +210,7 @@ main as IO.Program =
 
     try parseArguments cliOptions args cliDefaults as
         Err message:
-            IO.writeStdout message
+            IO.fail message
 
         Ok (args & cliState):
             try args as

@@ -494,7 +494,7 @@ const io_readFile = (path) => io_wrap((never) => {
 
 
 const io_writeFile = (path) => (content) => io_wrap((never) => {
-    // as Text: Text: IO None
+    // as Text: Text: IO Int
 
     try {
         fs.writeFileSync(path, content);
@@ -502,15 +502,23 @@ const io_writeFile = (path) => (content) => io_wrap((never) => {
         return $core$Result$Err(e.message);
     }
 
-    return $core$Result$Ok(null);
+    return $core$Result$Ok(0);
 });
 
 
 const io_writeStdout = (content) => io_wrap((never) => {
-    // as Text: IO None
+    // as Text: IO Int
 
     console.info(content);
-    return $core$Result$Ok(null);
+    return $core$Result$Ok(0);
+});
+
+
+const io_writeStderr = (content) => io_wrap((never) => {
+    // as Text: IO Int
+
+    console.error(content);
+    return $core$Result$Ok(-1);
 });
 
 
@@ -3889,7 +3897,7 @@ const $posix$IO$onSuccess = (($f) => {
             const $e = ($$try1)[1];
             return ($core$Result$Err)($e);
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/posix/IO.sp 40:8', (sp_toHuman)($$try1))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/posix/IO.sp 39:8', (sp_toHuman)($$try1))));
     }));
   });
 });
@@ -15163,15 +15171,18 @@ const $sd0$Platforms$Posix$overrides = ((() => {
     first: ($ioModule)("writeStdout"),
     second: "io_writeStdout",
   })))((($core$Core$Cons)(({
+    first: ($ioModule)("writeStderr"),
+    second: "io_writeStderr",
+  })))((($core$Core$Cons)(({
     first: ($pathModule)("dirname"),
     second: "path_dirname",
   })))((($core$Core$Cons)(({
     first: ($pathModule)("resolve"),
     second: "path_resolve",
-  })))($core$Core$Nil)))))));
+  })))($core$Core$Nil))))))));
 }))();
 
-const $sd0$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = array_fromList(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(array_toList(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(array_toList(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path) => (content) => io_wrap((never) => {\n    // as Text: Text: IO None\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(null);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO None\n\n    console.info(content);\n    return $core$Result$Ok(null);\n});\n\n\nconst path_resolve = (p) => path.resolve(...array_fromList(p));\n\n\nconst path_dirname = path.dirname;\n";
+const $sd0$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = array_fromList(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(array_toList(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(array_toList(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path) => (content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.info(content);\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...array_fromList(p));\n\n\nconst path_dirname = path.dirname;\n";
 
 const $sd0$Platforms$Posix$compile = (($getRidOfMe) => {
   return (($targetUsr) => {
@@ -15188,7 +15199,7 @@ const $sd0$Platforms$Posix$compile = (($getRidOfMe) => {
           platformOverrides: $sd0$Platforms$Posix$overrides,
         }));
         ((sp_log)("Emitting JS..."))("");
-        const $callMain = ("\nconst out = " + ((($sd0$Compiler$MakeEmittable$translateUsr)($emState))($targetUsr) + "({})(array_toList(process.argv.slice(1)))[1]('never');\n        if (out[1]) console.error(out[1]);\n        "));
+        const $callMain = ("\nconst out = " + ((($sd0$Compiler$MakeEmittable$translateUsr)($emState))($targetUsr) + "({})(array_toList(process.argv.slice(1)))[1]('never');\n        if (out[0] === 'Ok') {\n            process.exit(out[1]);\n        } else {\n            console.error(out[1]);\n            process.exit(-1);\n        }\n        "));
         const $statements = (($core$Text$join)("\n\n"))((($core$List$map)(($sd0$Targets$Javascript$JsToText$emitStatement)(0)))($jaStatements));
         return ($sd0$Platforms$Posix$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Posix$posixRuntime + ($statements + $callMain))));
       });
@@ -15432,7 +15443,7 @@ const $sd0$Main$main = (($env) => {
     return ((($$try1)[0] === "Err")
       ? ((() => {
         const $message = ($$try1)[1];
-        return (io_writeStdout)($message);
+        return ($posix$IO$fail)($message);
       }))()
       : ((($$try1)[0] === "Ok")
         ? ((() => {
@@ -15461,9 +15472,9 @@ const $sd0$Main$main = (($env) => {
               }))()
               : (true
                 ? (io_writeStdout)("\nHi! This is the Squarepants compiler!\n\nTo compile something, write:\n\n    squarepants pathToMainModule.sp\n")
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 217:12', (sp_toHuman)($args)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 216:12', (sp_toHuman)($args)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 212:4', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 211:4', (sp_toHuman)($$try1))));
   });
 });
 
@@ -15487,7 +15498,7 @@ const $sd0$Main$parseCli = (($args) => {
       }))()
       : (true
         ? $sd0$Main$Help
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 188:4', (sp_toHuman)($args)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 187:4', (sp_toHuman)($args)))));
 });
 
 const $sd0$SPLib$Buffer$readOne = (($b) => {
@@ -15750,5 +15761,10 @@ const $sd0$Types$Pos$range = (($a) => {
   });
 });
 const out = $sd0$Main$main({})(array_toList(process.argv.slice(1)))[1]('never');
-        if (out[1]) console.error(out[1]);
+        if (out[0] === 'Ok') {
+            process.exit(out[1]);
+        } else {
+            console.error(out[1]);
+            process.exit(-1);
+        }
         

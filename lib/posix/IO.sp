@@ -6,8 +6,7 @@ alias Env = {
 
 
 alias Program =
-    # TODO should return `IO Int` instead
-    Env: [Text]: IO None
+    Env: [Text]: IO Int
 
 
 union Never =
@@ -72,12 +71,17 @@ readFile as Text: IO Text =
     todo "io.readFile"
 
 
-writeFile as Text: Text: IO None =
+writeFile as Text: Text: IO Int =
     _:
     todo "io.writeFile"
 
 
-writeStdout as Text: IO None =
+writeStdout as Text: IO Int =
     _:
     todo "io.writeStdout"
+
+
+writeStderr as Text: IO Int =
+    _:
+    todo "io.writeStderr"
 

@@ -315,7 +315,7 @@ alias CompileMainPars = {
     }
 
 
-compileMain as CompileMainPars: IO None =
+compileMain as CompileMainPars: IO Int =
     pars:
 
     #
@@ -444,7 +444,7 @@ compileMain as CompileMainPars: IO None =
             emittableStatements
 
     IO.writeFile outputFile js
-    >> IO.onSuccess None:
+    >> IO.onSuccess _:
 
     IO.writeStdout << "---> " .. outputFile .. " written. =)"
 
