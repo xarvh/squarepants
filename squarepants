@@ -15199,7 +15199,7 @@ const $sd0$Platforms$Posix$compile = (($getRidOfMe) => {
           platformOverrides: $sd0$Platforms$Posix$overrides,
         }));
         ((sp_log)("Emitting JS..."))("");
-        const $callMain = ("\nconst out = " + ((($sd0$Compiler$MakeEmittable$translateUsr)($emState))($targetUsr) + "({})(array_toList(process.argv.slice(1)))[1]('never');\n        if (out[0] === 'Ok') {\n            process.exit(out[1]);\n        } else {\n            console.error(out[1]);\n            process.exit(-1);\n        }\n        "));
+        const $callMain = ("\nconst out = " + ((($sd0$Compiler$MakeEmittable$translateUsr)($emState))($targetUsr) + "({})(array_toList(process.argv.slice(1)))[1]('never');\n        if (out[0] === 'Ok') {\n            process.exitCode = out[1];\n        } else {\n            console.error(out[1]);\n            process.exitCode = 1;\n        }\n        "));
         const $statements = (($core$Text$join)("\n\n"))((($core$List$map)(($sd0$Targets$Javascript$JsToText$emitStatement)(0)))($jaStatements));
         return ($sd0$Platforms$Posix$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Posix$posixRuntime + ($statements + $callMain))));
       });
@@ -15762,9 +15762,9 @@ const $sd0$Types$Pos$range = (($a) => {
 });
 const out = $sd0$Main$main({})(array_toList(process.argv.slice(1)))[1]('never');
         if (out[0] === 'Ok') {
-            process.exit(out[1]);
+            process.exitCode = out[1];
         } else {
             console.error(out[1]);
-            process.exit(-1);
+            process.exitCode = 1;
         }
         

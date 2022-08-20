@@ -46,10 +46,10 @@ compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeE
 
         const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({})(array_toList(process.argv.slice(1)))[1]('never');
         if (out[0] === 'Ok') {
-            process.exit(out[1]);
+            process.exitCode = out[1];
         } else {
             console.error(out[1]);
-            process.exit(-1);
+            process.exitCode = 1;
         }
         """
 
