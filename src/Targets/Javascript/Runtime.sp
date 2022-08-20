@@ -438,4 +438,44 @@ const sp_cons = (list) => (item) => {
 }
 
 const list_sortBy = (f) => (list) => array_toList(array_fromList(list).sort((a, b) => sp_compare(f(a), f(b))));
+
+const list_for = (list) => (f) => (state) => {
+
+    for (let l = list; l[0] === '""" .. listCons .. """'; l = l[2]) {
+      state = f(l[1])(state);
+    }
+
+    return state;
+}
+
+const list_map = (f) => (list) => {
+
+    const start = [];
+    let previous = start;
+
+    for (let l = list; l[0] === '""" .. listCons .. """'; l = l[2]) {
+      const next = [];
+      previous[0] = '""" .. listCons .. """';
+      previous[1] = f(l[1]);
+      previous[2] = next;
+      previous = next;
+    }
+
+    previous[0] = '""" .. listNil .. """';
+
+    return start;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
     """

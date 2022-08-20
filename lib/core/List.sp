@@ -62,12 +62,13 @@ indexBy as (a: key): [a]: Dict key a =
 
 for as [item]: (item: state: state): state: state =
     aList: function: init:
-    try aList as
-      []:
-          init
-
-      h :: tail:
-          for tail function (function h init)
+    todo "native"
+#    try aList as
+#      []:
+#          init
+#
+#      h :: tail:
+#          for tail function (function h init)
 
 
 indexedFor as [item]: (Int: item: state: state): state: state =
@@ -118,7 +119,8 @@ length as [a]: Int =
 
 map as (a: b): [a]: [b] =
     f: list:
-    forReversed list (x: acc: (f x) :: acc) []
+#    forReversed list (x: acc: (f x) :: acc) []
+    todo "native"
 
 
 map2 as (a: b: c): [a]: [b]: [c] =

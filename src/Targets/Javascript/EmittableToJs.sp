@@ -87,6 +87,8 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , corelib "Array" "toList" & function  "array_toList"
     #
     , corelib "List" "sortBy" & function  "list_sortBy"
+    , corelib "List" "for" & function  "list_for"
+    , corelib "List" "map" & function  "list_map"
     ]
     >> Dict.fromList
     >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState)
