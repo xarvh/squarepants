@@ -3,7 +3,7 @@ allTests as [ Test ] = [
 #    , Compiler/Lexer_Test.tests
 #    , Compiler/Parser_Test.tests
 #    , Compiler/MakeCanonical_Test.tests
-#    , Compiler/TypeCheck_Test.tests
+    , Compiler/TypeCheck_Test.tests
     #, Compiler/CanonicalToJs_Test.tests
 #    , Hash_Test.tests
 #    , Array_Test.tests

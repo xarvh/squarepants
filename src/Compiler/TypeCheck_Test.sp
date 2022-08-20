@@ -1,16 +1,16 @@
 
 
 tests as Test =
-    Test.Group "TypeCheck"
-        [ functions
-        , statements
-        , variableTypes
-        , mu
-        , higherOrderTypes
-        , records
-        , patterns
-        , try_as
-        , if_else
+    Test.Group "TypeCheck" [
+#        , functions
+#        , statements
+#        , variableTypes
+#        , mu
+#        , higherOrderTypes
+#        , records
+#        , patterns
+#        , try_as
+#        , if_else
         , nonFunction
         ]
 
@@ -907,12 +907,12 @@ if_else as Test =
 #
 
 
-nonFunction as Test = 
+nonFunction as Test =
     Test.Group "NonFunction"
         [
         codeTest
             """
-            SKIP Basic functionality
+            Basic functionality
             """
             """
             blah as List a: List a =

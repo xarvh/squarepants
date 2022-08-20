@@ -17,6 +17,20 @@ union TypeDef =
 #
 
 
+union TyvarMutability =
+    , Mutable
+    , Immutable
+    , CanBeMutable
+
+
+
+alias TyvarFlags = {
+    , nonFn as Bool
+    , mutability as TyvarMutability
+    }
+
+
+
 union Type =
     , TypeConstant Pos Meta.UniqueSymbolReference [Type]
     #
@@ -26,9 +40,9 @@ union Type =
     #
     #   type TyVarRef = Generated TyVarId, Annotated Pos Name
     #
-    #, TypeGeneratedVar TyVarId
-    #, TypeAnnotatedVar Pos Name
-    , TypeVariable Pos Name
+    #, TypeGeneratedVar TyVarId Flags
+    #, TypeAnnotatedVar Pos Flags Name
+    , TypeVariable TyvarFlags Pos Name
     , TypeFunction Pos Type LambdaModifier Type
     , TypeRecord Pos (Maybe Name) (Dict Name Type)
     , TypeAlias Pos Meta.UniqueSymbolReference Type

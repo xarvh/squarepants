@@ -1844,6 +1844,9 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
         CA.TypeMutable _ a & CA.TypeMutable _ b:
             unify_ env reason pos1 a b
 
+#        CA.TypeMutable _ (CA.TypeVariable _ name) & CA.TypeRecord _ ext attrs:
+
+
         _:
             unifyError pos1 IncompatibleTypes t1 t2
 
