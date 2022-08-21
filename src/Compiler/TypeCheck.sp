@@ -1265,7 +1265,14 @@ fromExpression as Env: CA.Expression: Monad Type =
 
         CA.Try pos value patternsAndBlocks:
             (fromExpression env value) >> andThen tryType:
-            (newType pos) >> andThen newBlockType:
+
+            flags as CA.TyvarFlags = {
+                , nonFn = False
+                , mutability = CA.CanBeMutable
+                , kind = CA.CanBeAnything
+                }
+
+            newType pos flags >> andThen newBlockType:
             (list_for patternsAndBlocks (fromPatternAndBlock env) ( tryType & newBlockType )) >> andThen ( patternType & inferredBlockType ):
             return inferredBlockType
 
@@ -1338,7 +1345,7 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
 
             todo ",mnas,kjasdf"
 
-            newType pos
+            newType pos flags
             >> andThen returnType:
 
             modifier =
@@ -1523,7 +1530,15 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
         maybeAnnotation /= Nothing
 
     makeNew as Monad Type =
-        newType pos >> andThen ty:
+
+        flags as CA.TyvarFlags = {
+            , nonFn = todo "fromMaybeAnnotation"
+            , mutability = if isMutable then CA.Mutable else CA.Immutable
+            , kind = CA.CanBeAnything
+            }
+
+
+        newType pos flags >> andThen ty:
         if isMutable then
             return << CA.TypeMutable pos ty
         else
@@ -1854,7 +1869,7 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
                     >> return
 
-        ( CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs ):
+        CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs:
             unifyRecords env reason pos1 ( a_ext & a_attrs ) ( b_ext & b_attrs )
 
         CA.TypeMutable _ a & CA.TypeMutable _ b:
@@ -1874,7 +1889,7 @@ alias UnifyRecordsFold =
     }
 
 
-unifyRecords as Env: UnifyReason: Pos: ( Maybe Text & Dict Text Type ): ( Maybe Text & Dict Text Type ): Monad Type =
+unifyRecords as Env: UnifyReason: Pos: ( Maybe (Text & CA.TyvarFlags) & Dict Text Type ): ( Maybe (Text & CA.TyvarFlags) & Dict Text Type ): Monad Type =
     env: reason: pos: ( a_ext & a_attrs ): ( b_ext & b_attrs ):
 
     init as UnifyRecordsFold =
@@ -1900,13 +1915,13 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe Text & Dict Text Type ): ( Maybe 
 
     (dict_map (k: ( a & b ): unify_ env reason pos a b) both) >> andThen bothUnified:
     try ( a_ext & b_ext ) as
-        ( Just aName & Nothing ):
+        Just (aName & aFlags) & Nothing :
             unifyToNonExtensibleRecord env pos reason aName aOnly bOnly bothUnified
 
-        ( Nothing & Just bName ):
+        Nothing & Just (bName & bFlags) :
             unifyToNonExtensibleRecord env pos reason bName bOnly aOnly bothUnified
 
-        ( Nothing & Nothing ):
+        Nothing & Nothing :
             if bOnly == Dict.empty and aOnly == Dict.empty then
                 # the two are the same
                 return (CA.TypeRecord (Pos.I 4) Nothing bothUnified)
@@ -1922,15 +1937,17 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe Text & Dict Text Type ): ( Maybe 
 
                 unifyError pos e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
 
-        ( Just aName & Just bName ):
+        Just (aName & aFlags) & Just (bName & bFlags):
             if aName == bName and aOnly == Dict.empty and bOnly == Dict.empty then
                 return << CA.TypeRecord pos (Just aName) bothUnified
 
             else
-                (newName identity) >> andThen new:
+                newName identity >> andThen new:
+
+                todo "merge flags!"
 
                 sub =
-                    CA.TypeRecord pos (Just new) (Dict.join bOnly a_attrs)
+                    CA.TypeRecord pos (Just (new & aFlags)) (Dict.join bOnly a_attrs)
 
                 (addSubstitution env "jj1" pos reason aName sub) >> andThen _:
                 (addSubstitution env "jj2" pos reason bName sub) >> andThen _:
@@ -1948,8 +1965,8 @@ unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict 
 
     else
         # the `a` tyvar should contain the missing attributes, ie `bOnly`
-        (newName Just) >> andThen ext:
-        (addSubstitution env "ne" pos reason aName (CA.TypeRecord (Pos.I 5) ext bOnly)) >> andThen _:
+        newName Just >> andThen ext:
+        addSubstitution env "ne" pos reason aName (CA.TypeRecord (Pos.I 5) ext bOnly) >> andThen _:
         Dict.join bothUnified bOnly
             >> CA.TypeRecord pos Nothing
             >> return
@@ -2155,7 +2172,14 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
 
             Nothing:
                 newName identity >> andThen extName:
-                newType pos >> andThen attrType:
+
+                flags as CA.TyvarFlags = {
+                    , nonFn = todo "attributeAccess"
+                    , mutability = False
+                    , kind = CA.CanBeAnything
+                    }
+
+                newType pos flags >> andThen attrType:
 
 #                try recordType as
 #                    CA.TypeMutable _
@@ -2389,7 +2413,14 @@ addError as Pos: List Text: Monad Type =
 addErrorWithEEnv as Pos: (Error.Env: List Text): Monad Type =
     pos: messageConstructor:
     (insertError (Error.Simple pos messageConstructor)) >> andThen None:
-    newType pos
+
+    flags as CA.TyvarFlags = {
+        , nonFn = False
+        , mutability = CA.CanBeMutable
+        , kind = CA.CanBeAnything
+        }
+
+    newType pos flags
 
 
 
