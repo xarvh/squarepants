@@ -357,15 +357,33 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
     ann: env: fa:
     try fa as
         FA.PatternAny pos isMutable name maybeFaType:
-            if ann == Nothing and maybeFaType /= Nothing then
-                makeError pos [ "Can't use annotations here" ]
-            else
-                Maybe.mapRes (translateType ann env isMutable) maybeFaType >> onOk maybeCaType:
 
-                maybeName =
-                    if name == "_" then Nothing else (Just name)
+            getMaybeCaType as Res (Maybe CA.Type)=
+                try ann & maybeFaType as
+                    Nothing & Just faType:
+                        makeError pos [ "Can't use annotations here" ]
 
-                Ok << CA.PatternAny pos isMutable maybeName maybeCaType
+                    Just ensureUniqueName & Just faType:
+                        mode as TranslateMode =
+                            ModeAnnotation {
+                                , ensureUniqueName
+                                , nonFunctionByName = env.nonFn
+                                }
+
+                        faType
+                        >> translateType CA.Mutable mode env.ro
+                        >> Result.map Just
+
+                    _:
+                        Ok Nothing
+
+            getMaybeCaType
+            >> onOk maybeCaType:
+
+            maybeName =
+                if name == "_" then Nothing else (Just name)
+
+            Ok << CA.PatternAny pos isMutable maybeName maybeCaType
 
         FA.PatternLiteralNumber pos l:
             translateNumber CA.PatternLiteralNumber pos l
@@ -887,10 +905,18 @@ translateSimpleBinop as Env: Pos: FA.Expression: Op.Binop: FA.Expression: Res CA
 #
 # Type
 #
+union TranslateMode =
+    , ModeAlias
+    , ModeUnion
+    , ModeAnnotation {
+        # ensureUniqueName is used to ensure tyvar names are unique within the module
+        , ensureUniqueName as Pos: Name: Name
+        , nonFunctionByName as Dict Name None
+        }
 
 
-addAttributes as ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type =
-    ro: pos: faAttrs: caAttrsAccum:
+addAttributes as CA.TyvarMutability: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type =
+    mutability: mode: ro: pos: faAttrs: caAttrsAccum:
     try faAttrs as
         []:
             CA.TypeRecord pos Nothing caAttrsAccum
@@ -902,18 +928,8 @@ addAttributes as ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type
                     makeError p [ "Attribute `" .. name .. "` must have a type" ]
 
                 Just faType:
-                    translateType Nothing ro faType >> onOk caType:
-                    addAttributes ro p faTail (Dict.insert name caType caAttrsAccum)
-
-
-union TranslateMode =
-    , ModeAlias
-    , ModeUnion
-    , ModeAnnotation {
-        # ensureUniqueName is used to ensure tyvar names are unique within the module
-        , ensureUniqueName as Pos: Name: Name
-        , nonFunctionByName as Dict Name Pos
-        }
+                    translateType mutability mode ro faType >> onOk caType:
+                    addAttributes mutability mode ro p faTail (Dict.insert name caType caAttrsAccum)
 
 
 translateType as CA.TyvarMutability: TranslateMode: ReadOnly: FA.Type: Res CA.Type =
@@ -939,7 +955,7 @@ translateType as CA.TyvarMutability: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
                     # We are not allowing extensible records in annotations
                     , kind = CA.CanBeAnything
                     }
-                    >> CA.TypeVariable pos name flags
+                    >> CA.TypeVariable pos name
                     >> Ok
 
 
@@ -980,7 +996,7 @@ translateType as CA.TyvarMutability: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
                     makeError pos [ "Tuples can only have size 2 or 3. Use a record." ]
 
         FA.TypeMutable pos t:
-            translateType True mode ro t >> onOk cat:
+            translateType mutability mode ro t >> onOk cat:
             Ok << CA.TypeMutable pos cat
 
         FA.TypeList pos faItem:
@@ -992,7 +1008,7 @@ translateType as CA.TyvarMutability: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
                 makeError p ["For now extensible types are disabled, I want to see if it's good to do without them" ]
 
             else
-                addAttributes ro p recordArgs.attrs Dict.empty
+                addAttributes mutability mode ro p recordArgs.attrs Dict.empty
 
 
 #
@@ -1008,7 +1024,7 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name &
         makeError pos [ "constructor " .. name .. " is duplicate" ]
 
     else
-        List.mapRes (translateType Nothing ro) faArgs >> onOk caArgs:
+        List.mapRes (translateType CA.CanBeMutable ModeUnion ro) faArgs >> onOk caArgs:
 
         c as CA.Constructor = {
             , pos
@@ -1054,7 +1070,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
 
             else
                 # TODO check args!
-                translateType Nothing ro fa.ty >> onOk type:
+                translateType CA.CanBeMutable ModeAlias ro fa.ty >> onOk type:
 
                 aliasDef as CA.AliasDef = {
                     , usr = Meta.USR ro.currentModule (Pos.drop fa.name)
@@ -1073,9 +1089,15 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                 usr =
                     Meta.USR ro.currentModule fa.name
 
+                flags as CA.TyvarFlags = {
+                    , nonFn = False
+                    , mutability = CA.CanBeMutable
+                    , kind = CA.CanBeAnything
+                    }
+
                 type =
                     fa.args
-                        >> List.map (CA.TypeVariable pos)
+                        >> List.map (name: CA.TypeVariable pos name flags)
                         >> CA.TypeConstant pos usr
 
                 Dict.empty

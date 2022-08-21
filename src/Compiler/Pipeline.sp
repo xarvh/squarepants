@@ -54,7 +54,8 @@ coreConstructors as CA.All CA.Constructor =
 expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.InstanceVariable: Res (ByUsr CA.InstanceVariable) =
     types: module:
 
-    insertName = def: name: (pos & maybeType): d:
+    insertName as CA.ValueDef: Name: (Pos & Maybe CA.Type): Dict Meta.UniqueSymbolReference CA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference CA.InstanceVariable) =
+        def: name: (pos & maybeType): d:
         try maybeType as
             Nothing:
                 Ok d
@@ -69,14 +70,15 @@ expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.Insta
                 iv as CA.InstanceVariable = {
                     , definedAt = pos
                     , ty = type
-                    , freeTypeVariables = getFreeTypeVars Dict.empty def.nonFn type
+                    , freeTypeVariables = todo "expandAndInsertModuleAnnotations" #getFreeTypeVars Dict.empty def.nonFn type
                     , isMutable = False
                     }
 
                 Ok << Dict.insert usr iv d
 
 
-    insertValueDef = def:
+    insertValueDef =
+        def:
         Dict.forRes (CA.patternNamedTypes def.pattern) (insertName def)
 
     Dict.forRes module.valueDefs (_: insertValueDef)

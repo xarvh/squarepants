@@ -269,9 +269,9 @@ newName as (Name: a): Monad a =
     f (Text.fromNumber state.nextName) & { state with nextName = state.nextName + 1 }
 
 
-newType as Pos: Monad Type =
-    pos:
-    newName (CA.TypeVariable pos)
+newType as Pos: CA.TyvarFlags: Monad Type =
+    pos: flags:
+    newName (n: CA.TypeVariable pos n flags)
 
 
 insertError as Error: Monad None =
@@ -333,7 +333,7 @@ getFreeTypeVars as Dict Name Pos: Dict Name a: Type: Dict Name { nonFn as Bool }
 typeTyvars as Type: Dict Name Pos =
     ty:
     try ty as
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
             # TODO is pos equivalent to definedAt?
             Dict.singleton name pos
 
@@ -355,7 +355,7 @@ typeTyvars as Type: Dict Name Pos =
                     Nothing:
                         Dict.empty
 
-                    Just name:
+                    Just (name & flags):
                         Dict.singleton name pos
 
             Dict.for attrs (n: t: Dict.join (typeTyvars t)) init
@@ -641,8 +641,13 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
       _ & CA.TypeAlias _ _ ty:
           isCompatibleWith env expectedType pos ty
 
-      _ & CA.TypeVariable _ actualName:
+      _ & CA.TypeVariable _ actualName flags:
           unify env pos UnifyReason_AnnotationSimple expectedType actualType >> andThen unifiedArgumentType:
+
+
+          todo "lasjdhlkjashflkash"
+
+
           return None
 #          try Dict.get actualName env.nonFreeTyvars as
 #              Nothing:
@@ -891,7 +896,11 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         , "the function and the annotation have different mutability"
                         ]
 
-                CA.TypeVariable pos name:
+                CA.TypeVariable pos name flags:
+
+
+                    todo "2309478y3qp"
+
                     if isAnnotation name then
                         addCheckError pos [
                             , "This is a function, but the annotation says it should be of type variable `" .. name .. "` which implies that it could be of any type!"
@@ -1267,11 +1276,14 @@ fromExpression as Env: CA.Expression: Monad Type =
                     return << CA.TypeRecord pos Nothing attrTypes
 
                 Just variableArgs:
+
+                    flags = todo "hgfjgkyhulij;oip'"
+
                     # TODO here it would be easier to support an entire expression
                     (fromExpression env (CA.Variable pos variableArgs)) >> andThen ty_:
                     (applySubsToType ty_) >> andThen ty:
-                    (newName identity) >> andThen name:
-                    (unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just name) attrTypes)) >> andThen unifiedType:
+                    newName identity >> andThen name:
+                    (unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just (name & flags)) attrTypes)) >> andThen unifiedType:
                     return unifiedType
 
         CA.LetIn valueDef e:
@@ -1321,7 +1333,11 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
 
             applySubsToType refReturnType
 
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
+
+
+            todo ",mnas,kjasdf"
+
             newType pos
             >> andThen returnType:
 
@@ -1793,7 +1809,7 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                     >> CA.TypeConstant pos ref1
                     >> return
 
-        ( CA.TypeVariable pos v1_name & CA.TypeVariable _ v2_name ):
+        CA.TypeVariable pos v1_name flags1 & CA.TypeVariable _ v2_name flags2:
             if v1_name == v2_name then
                 return t1
 
@@ -1813,10 +1829,10 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                     _:
                         addSubstitution env "vv4" pos reason v2_name t1
 
-        ( CA.TypeVariable pos name1 & _ ):
+        CA.TypeVariable pos name1 flags1 & _ :
             addSubstitution env "vl" pos reason name1 t2
 
-        ( _ & CA.TypeVariable pos name2 ):
+        _ & CA.TypeVariable pos name2 flags2 :
             addSubstitution env "vr" pos reason name2 t1
 
         ( CA.TypeFunction pos a_from a_fromIsMutable a_to & CA.TypeFunction _ b_from b_fromIsMutable b_to ):
@@ -1945,7 +1961,7 @@ unifyError as Pos: UnifyError: Type: Type: Monad Type =
     pos: error: t1: t2:
     (newName identity) >> andThen name:
     (insertTypeClash name t1 t2 error) >> andThen None:
-    return << CA.TypeVariable pos name
+    return << CA.TypeVariable pos name { nonFn = False, mutability = CA.CanBeMutable, kind = CA.CanBeAnything }
 
 
 
@@ -1964,20 +1980,23 @@ addSubstitution as Env: Text: Pos: UnifyReason: Name: Type: Monad Type =
     (applySubsToType rawTy) >> andThen ty:
     if isAnnotation name then
         try ty as
-            CA.TypeVariable _ subName:
+            CA.TypeVariable _ subName flags:
+
+                todo "lasjflkasflkajf"
+
                 # HACK
                 # if the two variables are the same, we probably shouldn't even get here
                 if subName == name then
                     return ty
 
                 else if isAnnotation subName then
-                    unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name) ty
+                    unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name flags) ty
 
                 else
-                    addSubstitution env (debugCode .. " SWITCH") pos reason subName (CA.TypeVariable pos name)
+                    addSubstitution env (debugCode .. " SWITCH") pos reason subName (CA.TypeVariable pos name flags)
 
             _:
-                unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name) ty
+                unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name (todo "lkjasflkjjahfljashf")) ty
 
     else if typeHasTyvar name ty then
         # TODO This feels a bit like a hacky work around.
@@ -1988,7 +2007,7 @@ addSubstitution as Env: Text: Pos: UnifyReason: Name: Type: Monad Type =
             return ty
 
         else
-            unifyError pos (Cycle name) (CA.TypeVariable pos name) ty
+            unifyError pos (Cycle name) (CA.TypeVariable pos name (todo "nzknas,mccnasdf")) ty
 
     else
         (checkNonFunction env name ty) >> andThen nonFunction:
@@ -2018,7 +2037,7 @@ addSubstitution as Env: Text: Pos: UnifyReason: Name: Type: Monad Type =
 typeIsTyvar as Name: Type: Bool =
     name: ty:
     try ty as
-        CA.TypeVariable _ n:
+        CA.TypeVariable _ n _:
             n == name
 
         _:
@@ -2072,7 +2091,7 @@ typeContainsFunctions as Type: Bool =
         CA.TypeConstant _ _ args:
             List.any typeContainsFunctions args
 
-        CA.TypeVariable _ _:
+        CA.TypeVariable _ _ _:
             False
 
         CA.TypeFunction _ from fromIsMutable to:
@@ -2094,7 +2113,7 @@ typeHasTyvar as Name: Type: Bool =
     n: ty:
 
     try ty as
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name _:
             n == name
 
         CA.TypeFunction _ from fromIsMutable to:
@@ -2302,7 +2321,7 @@ generateNewTypeVariables as Dict Name { nonFn as Bool }: Monad Subs =
         { nonFn } = arg
         (newName identity) >> andThen name1:
         (if nonFn then setNonFn name1 else return None) >> andThen None:
-        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1) subs
+        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 (todo "generateNewTypeVariables")) subs
 
     dict_for tyvarByName apply Dict.empty
 
@@ -2316,7 +2335,7 @@ replaceTypeVariables as Subs: Type: Type =
         CA.TypeConstant pos ref args:
             CA.TypeConstant pos ref (List.map (replaceTypeVariables subs) args)
 
-        CA.TypeVariable _ name:
+        CA.TypeVariable _ name flags:
             try Dict.get name subs as
                 Just substitutionType:
                     # addSubstitution always applies all subs to each sub's type, so we don't need to apply them here
@@ -2343,7 +2362,7 @@ replaceTypeVariables as Subs: Type: Type =
                 Nothing:
                     CA.TypeRecord pos extensible (Dict.map (name: replaceTypeVariables subs) attrs)
 
-                Just (CA.TypeVariable p n):
+                Just (CA.TypeVariable p n f):
                     CA.TypeRecord pos (Just n) (Dict.map (name: replaceTypeVariables subs) attrs)
 
                 Just (CA.TypeRecord _ ext2 attrs2):
@@ -2584,7 +2603,7 @@ alias ClashToTextsParams =
 clashToTexts as Env: ClashToTextsParams: Text =
     env: params:
     try params.unifiedType as
-        CA.TypeVariable p unifiedTypeName:
+        CA.TypeVariable p unifiedTypeName f:
             params.clashes
                 >> Dict.toList
                 >> List.concatMap
