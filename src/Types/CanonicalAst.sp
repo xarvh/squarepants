@@ -23,28 +23,26 @@ union TyvarMutability =
     , CanBeMutable
 
 
+union TyvarKind =
+    , CanBeAnything
+    , MustBeRecord
+    , MustBeUnion
+
 
 alias TyvarFlags = {
     , nonFn as Bool
     , mutability as TyvarMutability
+    , kind as TyvarKind
     }
-
 
 
 union Type =
     , TypeConstant Pos Meta.UniqueSymbolReference [Type]
-    #
-    # TODO before I can use this, I probably need to find out how to model the TypeRecord extension
-    #
-    # Maybe the way to go is to have a
-    #
-    #   type TyVarRef = Generated TyVarId, Annotated Pos Name
-    #
-    #, TypeGeneratedVar TyVarId Flags
-    #, TypeAnnotatedVar Pos Flags Name
-    , TypeVariable TyvarFlags Pos Name
+    # Tyvars with the same name must have the same Flags
+    # Duplicating them in the constructor is not ideal, but for now seems handy
+    , TypeVariable Pos Name TyvarFlags
     , TypeFunction Pos Type LambdaModifier Type
-    , TypeRecord Pos (Maybe Name) (Dict Name Type)
+    , TypeRecord Pos (Maybe (Name & TyvarFlags)) (Dict Name Type)
     , TypeAlias Pos Meta.UniqueSymbolReference Type
     , TypeMutable Pos Type
 
@@ -141,7 +139,6 @@ alias ValueDef = {
     , pattern as Pattern
     , native as Bool
     , parentDefinitions as [Pattern]
-    , nonFn as Set Name
     , body as Expression
     #
     , directTypeDeps as TypeDeps

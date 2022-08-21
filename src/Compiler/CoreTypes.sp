@@ -145,8 +145,11 @@ listDef as CA.UnionDef =
         makeUsr "List"
 
     item =
-        #CA.TypeAnnotatedVar p "item"
-        CA.TypeVariable p "item"
+        CA.TypeVariable p "item" {
+            , nonFn = False
+            , mutability = CA.Immutable
+            , kind = CA.CanBeAnything
+            }
 
     consDef as CA.Constructor = {
         , pos = p

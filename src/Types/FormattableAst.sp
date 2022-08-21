@@ -17,6 +17,7 @@ alias Module =
 
 alias ValueDef = {
     , pattern as Pattern
+    # TODO Should be At Name?
     , nonFn as [Name]
     , body as [Statement]
     }

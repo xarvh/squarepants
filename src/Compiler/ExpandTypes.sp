@@ -17,7 +17,7 @@ alias GetType =
 expandInType as GetType: CA.Type: Res CA.Type =
     ga: ty:
     try ty as
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
             Ok ty
 
         CA.TypeMutable pos t:
@@ -93,7 +93,7 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
         CA.TypeMutable _ t:
             findMutableArgsThatContainFunctions nonFunctionPos t
 
-        CA.TypeVariable _ name:
+        CA.TypeVariable _ name flags:
             [# TODO
                 if mutable then
                     Just "variable types can't be mutable"
@@ -145,7 +145,7 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
 
             List.for args (ar: Dict.join (referencedAliases allAliases ar)) (Set.singleton usr)
 
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
             Dict.empty
 
         CA.TypeFunction pos from maybeMut to:
@@ -191,14 +191,22 @@ expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (
 
 expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
     typeByArgName: ty:
+
     try ty as
-        CA.TypeVariable pos name:
+
+        CA.TypeVariable pos name flags:
             try Dict.get name typeByArgName as
                 Nothing:
                     ty
 
                 Just t:
-                    t
+                    if flags.nonFn and Compiler/TypeCheck.typeContainsFunctions t then
+                        Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a functions"
+                    else
+                      if flags.mutability == CA.Immutable and CA.typeIsMutable t then
+                          Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a mutable"
+                      else
+                        t
 
         CA.TypeFunction pos from fromIsMutable to:
             CA.TypeFunction pos

@@ -62,6 +62,8 @@ alias Env = {
         We need to remember this renaming from the definition where the tyvar is first used to all the children scopes of the definition.
     #]
     , tyvarRenames as Dict Text Text
+
+    , nonFn as Dict Text None
     }
 
 
@@ -157,7 +159,7 @@ typeDeps as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolRefere
     type: acc:
     try type as
         CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.for args typeDeps
-        CA.TypeVariable _ _: acc
+        CA.TypeVariable _ _ _: acc
         CA.TypeFunction _ from _ to: acc >> typeDeps from >> typeDeps to
         CA.TypeRecord _ _ attrs: Dict.for attrs (k: typeDeps) acc
         CA.TypeMutable _ t: typeDeps t acc
@@ -291,7 +293,11 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
                 @dict := Dict.insert faName n dict
                 n
 
-    translatePattern (Just renameTyvar) env fa.pattern >> onOk pattern:
+    translatePattern (Just renameTyvar) env fa.pattern
+    >> onOk pattern:
+
+    tyvarRenames =
+        dict
 
     nonRootValues1 =
         if isRoot then
@@ -300,25 +306,25 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
         else
             Dict.join (CA.patternNames pattern) env.nonRootValues
 
+    xxxx =
+        tyvarName: partialNonFn:
+            try Dict.get tyvarName tyvarRenames as
+                Nothing:
+                    # TODO should use the nonFn pos
+                    makeError (CA.patternPos pattern) [ "non fn on variable that's not in the annotation" ]
+
+                Just tr:
+                    Ok << Dict.insert tr None partialNonFn
+
+    Dict.empty >> List.forRes fa.nonFn xxxx >> onOk nonFn:
+
     localEnv0 =
         { env with
         , nonRootValues = nonRootValues1
         , defsPath = pattern :: .defsPath
-        , tyvarRenames = dict
+        , tyvarRenames
+        , nonFn
         }
-
-    updNonFn = tyvarName: nonFn:
-        try Dict.get tyvarName localEnv0.tyvarRenames as
-            Nothing:
-                # TODO should use the nonFn pos
-                makeError (CA.patternPos pattern) [ "non fn on variable that's not in the annotation" ]
-
-            Just tr:
-                Ok << Dict.insert tr None nonFn
-
-    Dict.empty
-    >> List.forRes fa.nonFn updNonFn
-    >> onOk nonFn:
 
     translateStatementBlock localEnv0 fa.body
     >> onOk body:
@@ -333,7 +339,6 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
         , pattern
         , native = False
         , parentDefinitions = env.defsPath
-        , nonFn
         , body
         #
         , directTypeDeps = deps.types
@@ -355,7 +360,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
             if ann == Nothing and maybeFaType /= Nothing then
                 makeError pos [ "Can't use annotations here" ]
             else
-                Maybe.mapRes (translateType ann env.ro) maybeFaType >> onOk maybeCaType:
+                Maybe.mapRes (translateType ann env isMutable) maybeFaType >> onOk maybeCaType:
 
                 maybeName =
                     if name == "_" then Nothing else (Just name)
@@ -901,37 +906,59 @@ addAttributes as ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type
                     addAttributes ro p faTail (Dict.insert name caType caAttrsAccum)
 
 
-#
-# `mrf`: maybe rename function, used by translatePatterns to ensure annotated tyvar names are unique within the module
-#
-translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
-    mrf: ro: faType:
+union TranslateMode =
+    , ModeAlias
+    , ModeUnion
+    , ModeAnnotation {
+        # ensureUniqueName is used to ensure tyvar names are unique within the module
+        , ensureUniqueName as Pos: Name: Name
+        , nonFunctionByName as Dict Name Pos
+        }
+
+
+translateType as CA.TyvarMutability: TranslateMode: ReadOnly: FA.Type: Res CA.Type =
+    mutability: mode: ro: faType:
 
     try faType as
         FA.TypeVariable pos name:
-            try mrf as
-                Nothing:
-                    Ok << CA.TypeVariable pos name
+            try mode as
+                ModeAnnotation pars:
+                    {
+                    , nonFn = Dict.member name pars.nonFunctionByName
+                    , mutability
+                    # We are not allowing extensible records in annotations
+                    , kind = CA.CanBeAnything
+                    }
+                    >> CA.TypeVariable pos (pars.ensureUniqueName pos name)
+                    >> Ok
 
-                Just renameFunction:
-                    Ok << CA.TypeVariable pos (renameFunction pos name)
+                _:
+                    {
+                    , nonFn = False
+                    , mutability
+                    # We are not allowing extensible records in annotations
+                    , kind = CA.CanBeAnything
+                    }
+                    >> CA.TypeVariable pos name flags
+                    >> Ok
+
 
         FA.TypeConstant pos maybeModule name args:
-            List.mapRes (translateType mrf ro) args >> onOk caArgs:
+            List.mapRes (translateType mutability mode ro) args >> onOk caArgs:
             caArgs
                 >> CA.TypeConstant pos (resolveToTypeUsr ro maybeModule name)
                 >> Ok
 
         FA.TypeFunction pos fa_from lambdaModifier fa_to:
-            translateType mrf ro fa_from >> onOk ca_from:
-            translateType mrf ro fa_to >> onOk ca_to:
+            translateType mutability mode ro fa_from >> onOk ca_from:
+            translateType mutability mode ro fa_to >> onOk ca_to:
             Ok << CA.TypeFunction pos ca_from lambdaModifier ca_to
 
         FA.TypeTuple pos types:
             try types as
                 [ faFirst, faSecond ]:
-                    translateType mrf ro faFirst >> onOk caFirst:
-                    translateType mrf ro faSecond >> onOk caSecond:
+                    translateType mutability mode ro faFirst >> onOk caFirst:
+                    translateType mutability mode ro faSecond >> onOk caSecond:
                     Dict.empty
                         >> Dict.insert "first" caFirst
                         >> Dict.insert "second" caSecond
@@ -939,9 +966,9 @@ translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
                         >> Ok
 
                 [ faFirst, faSecond, faThird ]:
-                    translateType mrf ro faFirst >> onOk caFirst:
-                    translateType mrf ro faSecond >> onOk caSecond:
-                    translateType mrf ro faThird >> onOk caThird:
+                    translateType mutability mode ro faFirst >> onOk caFirst:
+                    translateType mutability mode ro faSecond >> onOk caSecond:
+                    translateType mutability mode ro faThird >> onOk caThird:
                     Dict.empty
                         >> Dict.insert "first" caFirst
                         >> Dict.insert "second" caSecond
@@ -953,11 +980,11 @@ translateType as Maybe (Pos: Text: Text): ReadOnly: FA.Type: Res CA.Type =
                     makeError pos [ "Tuples can only have size 2 or 3. Use a record." ]
 
         FA.TypeMutable pos t:
-            translateType mrf ro t >> onOk cat:
+            translateType True mode ro t >> onOk cat:
             Ok << CA.TypeMutable pos cat
 
         FA.TypeList pos faItem:
-            translateType mrf ro faItem >> onOk caItem:
+            translateType mutability mode ro faItem >> onOk caItem:
             Ok << CoreTypes.list caItem
 
         FA.TypeRecord p recordArgs:
