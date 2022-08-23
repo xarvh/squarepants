@@ -551,26 +551,6 @@ checkFreeVariables as Env: Pos: Type: Type: Monad None =
 ########
 
 
-onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key b =
-    da: db:
-
-    onAOnly =
-        key: a: (aOnly & both & bOnly):
-        Dict.insert key a aOnly & both & bOnly
-
-    onBOnly =
-        key: b: (aOnly & both & bOnly):
-        aOnly & both & Dict.insert key b bOnly
-
-    onBoth =
-        key: a: b: (aOnly & both & bOnly):
-        aOnly & Dict.insert key (a & b) both & bOnly
-
-    Dict.merge onAOnly onBoth onBOnly da db (Dict.empty & Dict.empty & Dict.empty)
-
-
-
-
 isCompatibleWith as Env: Type: Pos: Type: Monad None =
     env: expectedType: pos: actualType:
 
@@ -599,43 +579,11 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
               isCompatibleWith env eFrom pos aFrom >> andThen _:
               isCompatibleWith env eTo pos aTo
 
+      CA.TypeRecord _ eAttrs & _:
+          recordIsCompatibleWith env pos eAttrs actualType
+
       CA.TypeRecordExt _ e flags eAttrs & _:
-          addCheckError pos [
-              , "Extensible record annotation is experimentally disabled [TODO link to why]"
-              , ""
-              , "extension: " .. toHuman e
-              , ""
-              , "attrs: " .. (eAttrs >> Dict.keys >> Text.join ", ")
-              ]
-
-      CA.TypeRecord _ eAttrs & CA.TypeRecord _ aAttrs:
-          eOnly & both & aOnly =
-              onlyBothOnly eAttrs aAttrs
-
-          if eOnly /= Dict.empty then
-              addCheckError pos [
-                  , "missing attributes: " .. toHuman (Dict.keys eOnly)
-                  ]
-          else if aOnly /= Dict.empty then
-              addCheckError pos [
-                  , "extra attributes: " .. toHuman (Dict.keys aOnly)
-                  ]
-          else
-              None >> dict_for both attrName: (eType & aType): None:
-                  isCompatibleWith env eType pos aType
-
-      CA.TypeRecord _ eAttrs & CA.TypeRecordExt _ name flags aAttrs:
-          eOnly & both & aOnly =
-              onlyBothOnly eAttrs aAttrs
-
-          if aOnly /= Dict.empty then
-              addCheckError pos [
-                  , "extra attributes: " .. toHuman (Dict.keys aOnly)
-                  ]
-          else
-              None >> dict_for both attrName: (eType & aType): None:
-                  isCompatibleWith env eType pos aType
-
+          todo "Extensible record annotation is experimentally disabled"
 
       CA.TypeMutable _ t1 & CA.TypeMutable _ t2:
           isCompatibleWith env t1 pos t2
@@ -1277,8 +1225,8 @@ fromExpression as Env: CA.Expression: Monad Type =
             (fromExpression env value) >> andThen tryType:
 
             flags as CA.TyvarFlags = {
-                , nonFn = False
-                , uniqueness = CA.TyvarImmutable
+                , allowFunctions = True
+                , allowUniques = False
                 }
 
             newType pos flags >> andThen newBlockType:
@@ -1294,7 +1242,7 @@ fromExpression as Env: CA.Expression: Monad Type =
 
                 Just variableArgs:
 
-                    flags = { nonFn = False, uniqueness = CA.TyvarImmutable }
+                    flags = { allowFunctions = True, allowUniques = False }
 
                     # TODO here it would be easier to support an entire expression
                     fromExpression env (CA.Variable pos variableArgs) >> andThen ty_:
@@ -1542,8 +1490,8 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
     makeNew as Monad Type =
 
         flags as CA.TyvarFlags = {
-            , nonFn = False
-            , uniqueness = CA.TyvarImmutable
+            , allowFunctions = True
+            , allowUniques = False
             }
 
 
@@ -1992,7 +1940,7 @@ unifyError as Pos: UnifyError: Type: Type: Monad Type =
     pos: error: t1: t2:
     newName identity >> andThen name:
     insertTypeClash name t1 t2 error >> andThen None:
-    return << CA.TypeVariable pos name { nonFn = False, uniqueness = CA.TyvarImmutable }
+    return << CA.TypeVariable pos name { allowFunctions = True, allowUniques = False }
 
 
 
@@ -2204,8 +2152,8 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
                 newName identity >> andThen extName:
 
                 flags as CA.TyvarFlags = {
-                    , nonFn = False
-                    , uniqueness = CA.TyvarImmutable
+                    , allowFunctions = True
+                    , allowUniques = False
                     }
 
                 newType pos flags >> andThen attrType:
@@ -2372,7 +2320,7 @@ generateNewTypeVariables as Dict Name CA.TyvarFlags: Monad Subs =
     apply as Name: CA.TyvarFlags: Subs: Monad Subs =
         name0: arg: subs:
         newName identity >> andThen name1:
-        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 { nonFn = False, uniqueness = CA.TyvarImmutable }) subs
+        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 { allowFunctions = True, allowUniques = False }) subs
 
     dict_for tyvarByName apply Dict.empty
 
@@ -2445,8 +2393,8 @@ addErrorWithEEnv as Pos: (Error.Env: List Text): Monad Type =
     (insertError (Error.Simple pos messageConstructor)) >> andThen None:
 
     flags as CA.TyvarFlags = {
-        , nonFn = False
-        , uniqueness = CA.TyvarEither
+        , allowFunctions = True
+        , allowUniques = True
         }
 
     newType pos flags
@@ -2719,4 +2667,72 @@ clashToTexts as Env: ClashToTextsParams: Text =
 errorTodo as Pos: Text: Monad Type =
     pos: message:
     addError pos [ message ]
+
+
+
+
+
+#
+#
+# Records
+#
+#
+onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key b =
+    da: db:
+
+    onAOnly =
+        key: a: (aOnly & both & bOnly):
+        Dict.insert key a aOnly & both & bOnly
+
+    onBOnly =
+        key: b: (aOnly & both & bOnly):
+        aOnly & both & Dict.insert key b bOnly
+
+    onBoth =
+        key: a: b: (aOnly & both & bOnly):
+        aOnly & Dict.insert key (a & b) both & bOnly
+
+    Dict.merge onAOnly onBoth onBOnly da db (Dict.empty & Dict.empty & Dict.empty)
+
+
+recordIsCompatibleWith as Env: Pos: Dict Name Type: Type: Monad None =
+    env: pos: expectedAttrs: actualType:
+
+    try actualType as
+        CA.TypeRecord _ aAttrs:
+            eOnly & both & aOnly =
+                onlyBothOnly expectedAttrs aAttrs
+
+            if eOnly /= Dict.empty then
+                addCheckError pos [
+                    , "missing attributes: " .. toHuman (Dict.keys eOnly)
+                    ]
+            else if aOnly /= Dict.empty then
+                addCheckError pos [
+                    , "extra attributes: " .. toHuman (Dict.keys aOnly)
+                    ]
+            else
+                None >> dict_for both attrName: (eType & aType): None:
+                    isCompatibleWith env eType pos aType
+
+        CA.TypeRecordExt _ name flags aAttrs:
+            eOnly & both & aOnly =
+                onlyBothOnly expectedAttrs aAttrs
+
+            if aOnly == Dict.empty then
+                return None
+            else
+                addCheckError pos [
+                    , "extra attributes: " .. toHuman (Dict.keys aOnly)
+                    ]
+
+            if flags.allowFunctions then
+                return None
+            else
+                todo "ensure that there are no functions in expectedAttrs"
+
+
+
+            None >> dict_for both attrName: (eType & aType): None:
+                isCompatibleWith env eType pos aType
 

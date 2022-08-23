@@ -213,10 +213,10 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
                     ty
 
                 Just t:
-                    if flags.nonFn and Compiler/TypeCheck.typeContainsFunctions t then
+                    if not flags.allowFunctions and Compiler/TypeCheck.typeContainsFunctions t then
                         Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a functions"
                     else
-                      if flags.uniqueness == CA.TyvarImmutable and CA.typeIsMutable t then
+                      if not flags.allowUniques and CA.typeIsMutable t then
                           Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a mutable"
                       else
                         t

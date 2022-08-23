@@ -32,15 +32,15 @@ outToHuman as Out: Text =
         # TODO humanize these too
         out.freeTypeVariables
 
-    nf =
-        freeVars
-            >> Dict.filter (k: v: v.nonFn)
-            >> Dict.keys
-            >> Text.join ", "
+#    nf =
+#        freeVars
+#            >> Dict.filter (k: v: v.nonFn)
+#            >> Dict.keys
+#            >> Text.join ", "
 
     [
     , "  freeTypeVariables = [ " .. Text.join ", " (Dict.keys freeVars) .. " ]"
-    , "  (NonFunction = [" .. nf .. "])"
+#    , "  (NonFunction = [" .. nf .. "])"
     , "  isMutable = " .. toHuman out.isMutable
     , "  ty = " .. HCA.typeToText TH.moduleUmr TH.meta out.ty
     , "  pos = " .. toHuman out.ty
@@ -59,12 +59,12 @@ tyNone as CA.Type =
 
 ftv as Text: Dict Text CA.TyvarFlags =
     n:
-    Dict.singleton n { nonFn = False, uniqueness = CA.TyvarImmutable }
+    Dict.singleton n { allowFunctions = True, allowUniques = False }
 
 
 forall as List Text: Dict Text CA.TyvarFlags =
     vars:
-    List.for vars (n: Dict.insert n { nonFn = False, uniqueness = CA.TyvarImmutable }) Dict.empty
+    List.for vars (n: Dict.insert n { allowFunctions = True, allowUniques = False }) Dict.empty
 
 
 
@@ -82,8 +82,8 @@ typeFunction as CA.Type: LambdaModifier: CA.Type: CA.Type =
 typeVariable as Name: CA.Type =
     name:
     flags as CA.TyvarFlags = {
-        , nonFn = False
-        , uniqueness = CA.TyvarImmutable
+        , allowFunctions = True
+        , allowUniques = False
         }
     CA.TypeVariable Pos.T name flags
 
@@ -519,7 +519,7 @@ higherOrderTypes as Test =
                 , ty =
                     CA.TypeConstant Pos.T
                         (TH.localType "X")
-                        [ CA.TypeVariable (Pos.I 11) "a" { nonFn = False, uniqueness = CA.TyvarImmutable }]
+                        [ CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = False }]
                 }
             )
         , codeTest
@@ -590,8 +590,8 @@ records as Test =
                     typeFunction
                         (CA.TypeRecordExt (Pos.I 2)
                             "a"
-                            { nonFn = False, uniqueness = CA.TyvarImmutable }
-                            (Dict.singleton "meh" (CA.TypeRecordExt (Pos.I 2) "b" { nonFn = False, uniqueness = CA.TyvarImmutable } (Dict.singleton "blah" (typeVariable "c"))))
+                            { allowFunctions = True, allowUniques = False }
+                            (Dict.singleton "meh" (CA.TypeRecordExt (Pos.I 2) "b" { allowFunctions = True, allowUniques = False } (Dict.singleton "blah" (typeVariable "c"))))
                         )
                         LambdaNormal
                         (typeVariable "c")
@@ -614,11 +614,11 @@ records as Test =
                     typeFunction
                         (CA.TypeRecordExt (Pos.I 2)
                             "a"
-                            { nonFn = False, uniqueness = CA.TyvarImmutable }
+                            { allowFunctions = True, allowUniques = False }
                             (Dict.singleton "meh"
                                 (CA.TypeRecordExt (Pos.I 2)
                                     "b"
-                                    { nonFn = False, uniqueness = CA.TyvarImmutable }
+                                    { allowFunctions = True, allowUniques = False }
                                     (Dict.singleton
                                         "blah"
                                         (CA.TypeMutable Pos.N CoreTypes.number)
@@ -654,7 +654,7 @@ records as Test =
             "a = b: { b with x = 1 }"
             (infer "a")
             (Test.isOkAndEqualTo
-                (CA.TypeRecordExt Pos.T "a" { nonFn = False, uniqueness = CA.TyvarImmutable } (Dict.singleton "x" CoreTypes.number) >> re:
+                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
                     { freeTypeVariables = forall [ "2" ]
                     , isMutable = False
                     , ty = typeFunction re LambdaNormal re
@@ -668,7 +668,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                (CA.TypeRecordExt Pos.T "a" { nonFn = False, uniqueness = CA.TyvarImmutable } (Dict.singleton "x" CoreTypes.number) >> re:
+                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
                     {
                     , freeTypeVariables = forall [ "a" ]
                     , isMutable = False
@@ -691,7 +691,7 @@ records as Test =
                         (CA.TypeRecordExt
                             (Pos.I 2)
                             "a"
-                            { nonFn = False, uniqueness = CA.TyvarImmutable }
+                            { allowFunctions = True, allowUniques = False }
                             (Dict.fromList [ "first" & typeVariable "b" ])
                         )
                         LambdaNormal
@@ -755,9 +755,9 @@ patterns as Test =
                 , isMutable = False
                 , ty =
                     typeFunction
-                        (CoreTypes.list ( CA.TypeVariable (Pos.I 11) "a" { nonFn = False, uniqueness = CA.TyvarImmutable }))
+                        (CoreTypes.list ( CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = False }))
                         LambdaNormal
-                        (CA.TypeVariable (Pos.I 11) "a" {nonFn = False, uniqueness = CA.TyvarImmutable })
+                        (CA.TypeVariable (Pos.I 11) "a" {allowFunctions = True, allowUniques = False })
                 }
             )
         , codeTest "Records are correctly unpacked"

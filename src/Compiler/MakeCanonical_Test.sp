@@ -501,7 +501,7 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 { body = CA.LiteralNumber p 1
                 , native = False
-                , pattern = CA.PatternAny p False (Just "funz") (Just << CA.TypeVariable p "0a" { nonFn = True, uniqueness = CA.TyvarImmutable })
+                , pattern = CA.PatternAny p False (Just "funz") (Just << CA.TypeVariable p "0a" { allowFunctions = False, allowUniques = False })
                 , parentDefinitions = []
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty

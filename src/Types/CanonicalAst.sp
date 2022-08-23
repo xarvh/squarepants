@@ -17,16 +17,9 @@ union TypeDef =
 #
 
 
-union TyvarUniqueness =
-    # an unique tyvar is expressed as (TypeMutable TypeVariable)
-    # TODO: just turn it into a canBeMutable Bool in TyvarFlags?
-    , TyvarImmutable
-    , TyvarEither
-
-
 alias TyvarFlags = {
-    , nonFn as Bool
-    , uniqueness as TyvarUniqueness
+    , allowFunctions as Bool
+    , allowUniques as Bool
     }
 
 

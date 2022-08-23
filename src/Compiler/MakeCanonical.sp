@@ -376,7 +376,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                                 }
 
                         faType
-                        >> translateType CA.TyvarImmutable mode env.ro
+                        >> translateType False mode env.ro
                         >> Result.map Just
 
                     _:
@@ -920,8 +920,8 @@ union TranslateMode =
         }
 
 
-addAttributes as CA.TyvarUniqueness: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type =
-    uniqueness: mode: ro: pos: faAttrs: caAttrsAccum:
+addAttributes as Bool: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type =
+    allowUniques: mode: ro: pos: faAttrs: caAttrsAccum:
     try faAttrs as
         []:
             CA.TypeRecord pos caAttrsAccum
@@ -933,49 +933,49 @@ addAttributes as CA.TyvarUniqueness: TranslateMode: ReadOnly: Pos: [ (At Text) &
                     makeError p [ "Attribute `" .. name .. "` must have a type" ]
 
                 Just faType:
-                    translateType uniqueness mode ro faType >> onOk caType:
-                    addAttributes uniqueness mode ro p faTail (Dict.insert name caType caAttrsAccum)
+                    translateType allowUniques mode ro faType >> onOk caType:
+                    addAttributes allowUniques mode ro p faTail (Dict.insert name caType caAttrsAccum)
 
 
-translateType as CA.TyvarUniqueness: TranslateMode: ReadOnly: FA.Type: Res CA.Type =
-    uniqueness: mode: ro: faType:
+translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.Type =
+    allowUniques: mode: ro: faType:
 
     try faType as
         FA.TypeVariable pos name:
             try mode as
                 ModeAnnotation pars:
                     {
-                    , nonFn = Set.member name pars.nonFunctionByName
-                    , uniqueness
+                    , allowFunctions = not << Set.member name pars.nonFunctionByName
+                    , allowUniques
                     }
                     >> CA.TypeVariable pos (pars.ensureUniqueName pos name)
                     >> Ok
 
                 _:
                     {
-                    , nonFn = False
-                    , uniqueness
+                    , allowFunctions = True
+                    , allowUniques
                     }
                     >> CA.TypeVariable pos name
                     >> Ok
 
 
         FA.TypeConstant pos maybeModule name args:
-            List.mapRes (translateType uniqueness mode ro) args >> onOk caArgs:
+            List.mapRes (translateType allowUniques mode ro) args >> onOk caArgs:
             caArgs
                 >> CA.TypeConstant pos (resolveToTypeUsr ro maybeModule name)
                 >> Ok
 
         FA.TypeFunction pos fa_from lambdaModifier fa_to:
-            translateType uniqueness mode ro fa_from >> onOk ca_from:
-            translateType uniqueness mode ro fa_to >> onOk ca_to:
+            translateType allowUniques mode ro fa_from >> onOk ca_from:
+            translateType allowUniques mode ro fa_to >> onOk ca_to:
             Ok << CA.TypeFunction pos ca_from lambdaModifier ca_to
 
         FA.TypeTuple pos types:
             try types as
                 [ faFirst, faSecond ]:
-                    translateType uniqueness mode ro faFirst >> onOk caFirst:
-                    translateType uniqueness mode ro faSecond >> onOk caSecond:
+                    translateType allowUniques mode ro faFirst >> onOk caFirst:
+                    translateType allowUniques mode ro faSecond >> onOk caSecond:
                     Dict.empty
                         >> Dict.insert "first" caFirst
                         >> Dict.insert "second" caSecond
@@ -983,9 +983,9 @@ translateType as CA.TyvarUniqueness: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
                         >> Ok
 
                 [ faFirst, faSecond, faThird ]:
-                    translateType uniqueness mode ro faFirst >> onOk caFirst:
-                    translateType uniqueness mode ro faSecond >> onOk caSecond:
-                    translateType uniqueness mode ro faThird >> onOk caThird:
+                    translateType allowUniques mode ro faFirst >> onOk caFirst:
+                    translateType allowUniques mode ro faSecond >> onOk caSecond:
+                    translateType allowUniques mode ro faThird >> onOk caThird:
                     Dict.empty
                         >> Dict.insert "first" caFirst
                         >> Dict.insert "second" caSecond
@@ -997,11 +997,11 @@ translateType as CA.TyvarUniqueness: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
                     makeError pos [ "Tuples can only have size 2 or 3. Use a record." ]
 
         FA.TypeMutable pos t:
-            translateType uniqueness mode ro t >> onOk cat:
+            translateType allowUniques mode ro t >> onOk cat:
             Ok << CA.TypeMutable pos cat
 
         FA.TypeList pos faItem:
-            translateType uniqueness mode ro faItem >> onOk caItem:
+            translateType allowUniques mode ro faItem >> onOk caItem:
             Ok << CoreTypes.list caItem
 
         FA.TypeRecord p recordArgs:
@@ -1009,7 +1009,7 @@ translateType as CA.TyvarUniqueness: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
                 makeError p ["For now extensible types are disabled, I want to see if it's good to do without them" ]
 
             else
-                addAttributes uniqueness mode ro p recordArgs.attrs Dict.empty
+                addAttributes allowUniques mode ro p recordArgs.attrs Dict.empty
 
 
 #
@@ -1025,7 +1025,7 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name &
         makeError pos [ "constructor " .. name .. " is duplicate" ]
 
     else
-        List.mapRes (translateType CA.TyvarEither ModeUnion ro) faArgs >> onOk caArgs:
+        List.mapRes (translateType True ModeUnion ro) faArgs >> onOk caArgs:
 
         c as CA.Constructor = {
             , pos
@@ -1071,7 +1071,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
 
             else
                 # TODO check args!
-                translateType CA.TyvarImmutable ModeAlias ro fa.ty >> onOk type:
+                translateType False ModeAlias ro fa.ty >> onOk type:
 
                 aliasDef as CA.AliasDef = {
                     , usr = Meta.USR ro.currentModule (Pos.drop fa.name)
@@ -1091,8 +1091,8 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                     Meta.USR ro.currentModule fa.name
 
                 flags as CA.TyvarFlags = {
-                    , nonFn = False
-                    , uniqueness = CA.TyvarEither
+                    , allowFunctions = True
+                    , allowUniques = True
                     }
 
                 type =

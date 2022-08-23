@@ -33,7 +33,7 @@ tupleUsr as Text: Meta.UniqueSymbolReference =
 
 tyVar as Name: CA.Type =
     name:
-    CA.TypeVariable Pos.N name { nonFn = False, uniqueness = CA.TyvarEither }
+    CA.TypeVariable Pos.N name { allowFunctions = True, allowUniques = False }
 
 
 tyFun as CA.Type: CA.Type: CA.Type =
