@@ -556,6 +556,12 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
 
     try expectedType & actualType as
 
+      CA.TypeAlias _ _ ty & _:
+          isCompatibleWith env ty pos actualType
+
+      _ & CA.TypeAlias _ _ ty:
+          isCompatibleWith env expectedType pos ty
+
       CA.TypeConstant _ expectedUsr expectedArgs & CA.TypeConstant _ actualUsr actualArgs:
           if expectedUsr /= actualUsr then
               addCheckError pos [
@@ -587,12 +593,6 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
 
       CA.TypeMutable _ t1 & CA.TypeMutable _ t2:
           isCompatibleWith env t1 pos t2
-
-      CA.TypeAlias _ _ ty & _:
-          isCompatibleWith env ty pos actualType
-
-      _ & CA.TypeAlias _ _ ty:
-          isCompatibleWith env expectedType pos ty
 
       _ & CA.TypeVariable _ actualName flags:
           unify env pos UnifyReason_AnnotationSimple expectedType actualType >> andThen unifiedArgumentType:
@@ -1756,14 +1756,14 @@ Are substitutions interesting only against a specific environment instance?
 #]
 unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
     env: reason: pos1: t1: t2:
-    try ( t1 & t2 ) as
-        ( CA.TypeAlias pos _ aliased & _ ):
+    try t1 & t2 as
+        CA.TypeAlias pos _ aliased & _:
             unify_ env reason pos aliased t2
 
-        ( _ & CA.TypeAlias _ _ aliased ):
+        _ & CA.TypeAlias _ _ aliased:
             unify_ env reason pos1 t1 aliased
 
-        ( CA.TypeConstant pos ref1 args1 & CA.TypeConstant _ ref2 args2 ):
+        CA.TypeConstant pos ref1 args1 & CA.TypeConstant _ ref2 args2:
             if ref1 /= ref2 then
                 unifyError pos1 IncompatibleTypes t1 t2
 
@@ -1826,8 +1826,11 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
                     >> return
 
-#        CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs:
-#            unifyRecords env reason pos1 ( a_ext & a_attrs ) ( b_ext & b_attrs )
+        CA.TypeRecord _ a_attrs & _:
+            unifyRecords env reason pos1 a_attrs t2
+
+        CA.TypeRecordExt _ a_ext a_flags a_attrs & _:
+            unifyRecordsExt env reason pos1 a_ext a_flags a_attrs t2
 
         CA.TypeMutable _ a & CA.TypeMutable _ b:
             unify_ env reason pos1 a b
@@ -1837,101 +1840,6 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
 
         _:
             unifyError pos1 IncompatibleTypes t1 t2
-
-
-alias UnifyRecordsFold =
-    { aOnly as Dict Name Type
-    , bOnly as Dict Name Type
-    , both as Dict Name ( Type & Type )
-    }
-
-
-unifyRecords as Env: UnifyReason: Pos: ( Maybe (Text & CA.TyvarFlags) & Dict Text Type ): ( Maybe (Text & CA.TyvarFlags) & Dict Text Type ): Monad Type =
-    env: reason: pos: ( a_ext & a_attrs ): ( b_ext & b_attrs ):
-
-    todo "UnifyRecords"
-    [#
-    init as UnifyRecordsFold =
-        { aOnly = Dict.empty
-        , bOnly = Dict.empty
-        , both = Dict.empty
-        }
-
-    onA as Name: Type: UnifyRecordsFold: UnifyRecordsFold =
-        name: type_: state:
-        { state with aOnly = Dict.insert name type_ state.aOnly }
-
-    onB as Name: Type: UnifyRecordsFold: UnifyRecordsFold =
-        name: type_: state:
-        { state with bOnly = Dict.insert name type_ state.bOnly }
-
-    onBoth as Name: Type: Type: UnifyRecordsFold: UnifyRecordsFold =
-        name: aType: bType: state:
-        { state with both = Dict.insert name ( aType & bType ) state.both }
-
-    { aOnly, bOnly, both } =
-        Dict.merge onA onBoth onB a_attrs b_attrs init
-
-    dict_map (k: ( a & b ): unify_ env reason pos a b) both >> andThen bothUnified:
-    try a_ext & b_ext as
-        Just (aName & aFlags) & Nothing :
-            unifyToNonExtensibleRecord env pos reason aName aOnly bOnly bothUnified
-
-        Nothing & Just (bName & bFlags) :
-            unifyToNonExtensibleRecord env pos reason bName bOnly aOnly bothUnified
-
-        Nothing & Nothing :
-            if bOnly == Dict.empty and aOnly == Dict.empty then
-                # the two are the same
-                return (CA.TypeRecord (Pos.I 4) Nothing bothUnified)
-
-            else
-
-                e =
-                    IncompatibleRecords
-                        { bOnly = Dict.keys bOnly
-                        , aOnly = Dict.keys aOnly
-                        , bothUnified = Dict.keys bothUnified
-                        }
-
-                unifyError pos e (CA.TypeRecord pos a_ext a_attrs) (CA.TypeRecord pos b_ext b_attrs)
-
-        Just (aName & aFlags) & Just (bName & bFlags):
-            if aName == bName and aOnly == Dict.empty and bOnly == Dict.empty then
-                flags = todo "njlwerjhi78yohl"
-                return << CA.TypeRecordExt pos aName flags bothUnified
-
-            else
-                newName identity >> andThen new:
-
-                todo "merge flags!"
-
-                sub =
-                    CA.TypeRecordExt pos new aFlags (Dict.join bOnly a_attrs)
-
-                (addSubstitution env "jj1" pos reason aName sub) >> andThen _:
-                (addSubstitution env "jj2" pos reason bName sub) >> andThen _:
-                return sub
-#]
-
-
-unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict Name Type: Dict Name Type: Monad Type =
-    env: pos: reason: aName: aOnly: bOnly: bothUnified:
-    if aOnly /= Dict.empty then
-        # b is missing attributes but is not extensible
-        addError pos
-            [ "record is missing attrs: " .. (aOnly >> Dict.keys >> Text.join ", ")
-            , toHuman reason
-            ]
-
-    else
-        # the `a` tyvar should contain the missing attributes, ie `bOnly`
-        newName identity >> andThen ext:
-        flags = todo "lnasdpuigsdflkj"
-        addSubstitution env "ne" pos reason aName (CA.TypeRecordExt (Pos.I 5) ext flags bOnly) >> andThen _:
-        Dict.join bothUnified bOnly
-            >> CA.TypeRecord pos
-            >> return
 
 
 [# TODO Rename to type clash?
@@ -2698,6 +2606,8 @@ onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key
 recordIsCompatibleWith as Env: Pos: Dict Name Type: Type: Monad None =
     env: pos: expectedAttrs: actualType:
 
+    log "EXP" { exp = typeToText env (CA.TypeRecord Pos.G expectedAttrs), act = typeToText env actualType }
+
     try actualType as
         CA.TypeRecord _ aAttrs:
             eOnly & both & aOnly =
@@ -2735,4 +2645,126 @@ recordIsCompatibleWith as Env: Pos: Dict Name Type: Type: Monad None =
 
             None >> dict_for both attrName: (eType & aType): None:
                 isCompatibleWith env eType pos aType
+
+        _:
+            addCheckError pos [
+                , "I was expecting a record like:"
+                , typeToText env (CA.TypeRecord Pos.G expectedAttrs)
+                , "but the actual type is: "
+                , typeToText env actualType
+                , "The two types are not compatible!"
+                ]
+
+
+
+
+
+
+onlyBothUnifiedOnly as Env: UnifyReason: Pos: Dict Text Type: Dict Text Type: Monad (Dict Text Type & Dict Text Type & Dict Text Type) =
+    env: reason: pos: a_attrs: b_attrs:
+
+    aOnly & both & bOnly =
+        onlyBothOnly a_attrs b_attrs
+
+    dict_map (k: ( a & b ): unify_ env reason pos a b) both >> andThen bothUnified:
+
+    return << aOnly & bothUnified & bOnly
+
+
+
+
+
+unifyRecords as Env: UnifyReason: Pos: Dict Text Type: Type: Monad Type =
+    env: reason: pos: a_attrs: t2:
+
+    try t2 as
+        CA.TypeRecord _ b_attrs:
+
+            onlyBothUnifiedOnly env reason pos a_attrs b_attrs >> andThen (aOnly & bothUnified & bOnly):
+
+            if bOnly == Dict.empty and aOnly == Dict.empty then
+                # the two are the same
+                return (CA.TypeRecord (Pos.I 4) bothUnified)
+
+            else
+                e =
+                    IncompatibleRecords {
+                        , bOnly = Dict.keys bOnly
+                        , aOnly = Dict.keys aOnly
+                        , bothUnified = Dict.keys bothUnified
+                        }
+
+                unifyError pos e (CA.TypeRecord pos a_attrs) (CA.TypeRecord pos b_attrs)
+
+        CA.TypeRecordExt _ bName flags b_attrs:
+            onlyBothUnifiedOnly env reason pos a_attrs b_attrs >> andThen (aOnly & bothUnified & bOnly):
+            unifyToNonExtensibleRecord env pos reason bName bOnly aOnly bothUnified
+
+        _:
+            addError pos [
+                , "A type is a record like:"
+                , typeToText env (CA.TypeRecord Pos.G a_attrs)
+                , "but the actual type is: "
+                , typeToText env t2
+                , "The two types are not compatible!"
+                ]
+
+
+unifyRecordsExt as Env: UnifyReason: Pos: Text: CA.TyvarFlags: Dict Text Type: Type: Monad Type =
+    env: reason: pos: aName: aFlags: aAttrs: b:
+
+    try b as
+        CA.TypeRecord _ bAttrs:
+            onlyBothUnifiedOnly env reason pos aAttrs bAttrs >> andThen (aOnly & bothUnified & bOnly):
+            unifyToNonExtensibleRecord env pos reason aName aOnly bOnly bothUnified
+
+        CA.TypeRecordExt _ bName bFlags bAttrs:
+            onlyBothUnifiedOnly env reason pos aAttrs bAttrs >> andThen (aOnly & bothUnified & bOnly):
+
+            if aName == bName and aOnly == Dict.empty and bOnly == Dict.empty then
+
+                todo "check flags!!!"
+
+                return << CA.TypeRecordExt pos aName aFlags bothUnified
+
+            else
+                newName identity >> andThen new:
+
+                todo "merge flags!"
+
+                sub =
+                    CA.TypeRecordExt pos new aFlags (Dict.join bOnly bAttrs)
+
+                addSubstitution env "jj1" pos reason aName sub >> andThen _:
+                addSubstitution env "jj2" pos reason bName sub >> andThen _:
+                return sub
+
+        _:
+            addError pos [
+                , "I was expecting a record like:"
+                , typeToText env (CA.TypeRecordExt Pos.G aName aFlags aAttrs)
+                , "but the actual type is: "
+                , typeToText env b
+                , "The two types are not compatible!"
+                ]
+
+
+unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict Name Type: Dict Name Type: Monad Type =
+    env: pos: reason: aName: aOnly: bOnly: bothUnified:
+    if aOnly /= Dict.empty then
+        # b is missing attributes but is not extensible
+        addError pos
+            [ "record is missing attrs: " .. (aOnly >> Dict.keys >> Text.join ", ")
+            , toHuman reason
+            ]
+
+    else
+        # the `a` tyvar should contain the missing attributes, ie `bOnly`
+        newName identity >> andThen ext:
+        flags = todo "lnasdpuigsdflkj"
+        addSubstitution env "ne" pos reason aName (CA.TypeRecordExt (Pos.I 5) ext flags bOnly) >> andThen _:
+        Dict.join bothUnified bOnly
+            >> CA.TypeRecord pos
+            >> return
+
 
