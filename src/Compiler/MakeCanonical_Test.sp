@@ -95,6 +95,7 @@ tests as Test =
         , annotations
         , pipes
         , functions
+        , nonFunction
         ]
 
 
@@ -482,4 +483,28 @@ functions as Test =
 #                    >> Text.join "\n"
 #                    >> Just
 #            )
+        ]
+
+
+nonFunction as Test =
+    Test.Group
+        """
+        NonFunction
+        """
+        [ codeTest "NonFunction is applied to tyvar"
+            """
+            funz as a with a NonFunction =
+              1
+            """
+            firstDefinitionStripDeps
+            (Test.isOkAndEqualTo
+                { body = CA.LiteralNumber p 1
+                , native = False
+                , pattern = CA.PatternAny p False (Just "funz") (Just << CA.TypeVariable p "0a" { nonFn = True, uniqueness = CA.TyvarImmutable })
+                , parentDefinitions = []
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                }
+            )
         ]

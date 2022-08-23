@@ -650,9 +650,6 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
           unify env pos UnifyReason_AnnotationSimple expectedType actualType >> andThen unifiedArgumentType:
 
 
-          todo "lasjdhlkjashflkash"
-
-
           return None
 #          try Dict.get actualName env.nonFreeTyvars as
 #              Nothing:
@@ -1297,7 +1294,7 @@ fromExpression as Env: CA.Expression: Monad Type =
 
                 Just variableArgs:
 
-                    flags = todo "hgfjgkyhulij;oip'"
+                    flags = { nonFn = False, uniqueness = CA.TyvarEither }
 
                     # TODO here it would be easier to support an entire expression
                     fromExpression env (CA.Variable pos variableArgs) >> andThen ty_:
@@ -1545,7 +1542,7 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
     makeNew as Monad Type =
 
         flags as CA.TyvarFlags = {
-            , nonFn = todo "fromMaybeAnnotation"
+            , nonFn = False
             , uniqueness = if isMutable then CA.TyvarUnique else CA.TyvarImmutable
             }
 
@@ -2207,7 +2204,7 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
                 newName identity >> andThen extName:
 
                 flags as CA.TyvarFlags = {
-                    , nonFn = todo "attributeAccess"
+                    , nonFn = False
                     , uniqueness = CA.TyvarEither
                     }
 
@@ -2375,7 +2372,7 @@ generateNewTypeVariables as Dict Name CA.TyvarFlags: Monad Subs =
     apply as Name: CA.TyvarFlags: Subs: Monad Subs =
         name0: arg: subs:
         newName identity >> andThen name1:
-        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 (todo "generateNewTypeVariables")) subs
+        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 { nonFn = False, uniqueness = CA.TyvarEither }) subs
 
     dict_for tyvarByName apply Dict.empty
 

@@ -63,7 +63,7 @@ alias Env = {
     #]
     , tyvarRenames as Dict Text Text
 
-    , nonFn as Dict Text None
+    , nonFn as Set Text
     }
 
 
@@ -81,6 +81,7 @@ initEnv as ReadOnly: Env =
     , ro = ro
     , defsPath = []
     , tyvarRenames = Dict.empty
+    , nonFn = Dict.empty
     }
 
 
@@ -273,7 +274,7 @@ expressionDeps as CA.Expression: Deps: Deps =
 
 
 translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
-    isRoot: env: fa:
+    isRoot: parentEnv: fa:
 
     # This pattern is probably horrible, but I still want to experiment with it
     # How much can it actually be abused?
@@ -283,7 +284,7 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
     # I could remove it by having translateType also return an env
     #
     # TODO this should transform the Dict into a mutation-friendly type, Dict is terrible with mutation
-    dict @= env.tyvarRenames
+    dict @= parentEnv.tyvarRenames
 
     renameTyvar as Pos: Text: Text =
         pos: faName:
@@ -293,6 +294,10 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
                 n = Text.fromNumber (Pos.start pos) .. faName
                 @dict := Dict.insert faName n dict
                 n
+
+    env as Env =
+        { parentEnv with nonFn = .nonFn >> List.for fa.nonFn Set.insert
+        }
 
     translatePattern (Just renameTyvar) env fa.pattern
     >> onOk pattern:
@@ -324,7 +329,6 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
         , nonRootValues = nonRootValues1
         , defsPath = pattern :: .defsPath
         , tyvarRenames
-        , nonFn
         }
 
     translateStatementBlock localEnv0 fa.body
@@ -372,7 +376,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
                                 }
 
                         faType
-                        >> translateType CA.TyvarUnique mode env.ro
+                        >> translateType CA.TyvarImmutable mode env.ro
                         >> Result.map Just
 
                     _:
@@ -912,7 +916,7 @@ union TranslateMode =
     , ModeAnnotation {
         # ensureUniqueName is used to ensure tyvar names are unique within the module
         , ensureUniqueName as Pos: Name: Name
-        , nonFunctionByName as Dict Name None
+        , nonFunctionByName as Set Name
         }
 
 
@@ -941,7 +945,7 @@ translateType as CA.TyvarUniqueness: TranslateMode: ReadOnly: FA.Type: Res CA.Ty
             try mode as
                 ModeAnnotation pars:
                     {
-                    , nonFn = Dict.member name pars.nonFunctionByName
+                    , nonFn = Set.member name pars.nonFunctionByName
                     , uniqueness
                     }
                     >> CA.TypeVariable pos (pars.ensureUniqueName pos name)
@@ -1067,7 +1071,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
 
             else
                 # TODO check args!
-                translateType CA.TyvarEither ModeAlias ro fa.ty >> onOk type:
+                translateType CA.TyvarImmutable ModeAlias ro fa.ty >> onOk type:
 
                 aliasDef as CA.AliasDef = {
                     , usr = Meta.USR ro.currentModule (Pos.drop fa.name)

@@ -57,14 +57,14 @@ tyNone as CA.Type =
     TH.noneType
 
 
-ftv as Text: Dict Text { nonFn as Bool } =
+ftv as Text: Dict Text CA.TyvarFlags =
     n:
-    Dict.singleton n { nonFn = False }
+    Dict.singleton n { nonFn = False, uniqueness = CA.TyvarEither }
 
 
-forall as List Text: Dict Text { nonFn as Bool } =
+forall as List Text: Dict Text CA.TyvarFlags =
     vars:
-    List.for vars (n: Dict.insert n { nonFn = False }) Dict.empty
+    List.for vars (n: Dict.insert n { nonFn = False, uniqueness = CA.TyvarEither }) Dict.empty
 
 
 
@@ -97,7 +97,7 @@ alias Type =
 
 
 alias Out = {
-    , freeTypeVariables as Dict Text { nonFn as Bool }
+    , freeTypeVariables as Dict Text CA.TyvarFlags
     , ty as Type
     , isMutable as Bool
     }
@@ -163,7 +163,7 @@ infer as Text: Text: Result Text Out =
 
             Ok
                 { ty
-                , freeTypeVariables = todo "infer" #var.freeTypeVariables
+                , freeTypeVariables = var.freeTypeVariables
                 , isMutable = var.isMutable
                 }
 
