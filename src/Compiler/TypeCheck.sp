@@ -253,15 +253,18 @@ m_update as (state: state): StateMonad.M state state =
 #
 #
 #
-
-
-
 expandAlias as Type: Type =
     type:
     try type as
         CA.TypeAlias _ _ t: expandAlias t
         _: type
 
+
+# These are meant to be used on errors, to reduce as much as possible error cascades
+flagsPermissive as CA.TyvarFlags = {
+    , allowFunctions = True
+    , allowUniques = True
+    }
 
 
 newName as (Name: a): Monad a =
@@ -1883,7 +1886,7 @@ addSubstitution as Env: Text: Pos: UnifyReason: Name: Type: Monad Type =
                     addSubstitution env (debugCode .. " SWITCH") pos reason subName (CA.TypeVariable pos name flags)
 
             _:
-                unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name (todo "lkjasflkjjahfljashf")) ty
+                unifyError pos (SubstitutingAnnotation name) (CA.TypeVariable pos name flagsPermissive) ty
 
     else if typeHasTyvar name ty then
         # TODO This feels a bit like a hacky work around.
