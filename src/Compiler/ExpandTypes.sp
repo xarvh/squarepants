@@ -29,10 +29,15 @@ expandInType as GetType: CA.Type: Res CA.Type =
             expandInType ga to >> onOk t:
             Ok << CA.TypeFunction pos f fromIsMutable t
 
-        CA.TypeRecord pos extensible attrs:
+        CA.TypeRecord pos attrs:
             attrs
-                >> Dict.mapRes (k: expandInType ga)
-                >> Result.map (CA.TypeRecord pos extensible)
+            >> Dict.mapRes (k: expandInType ga)
+            >> Result.map (CA.TypeRecord pos)
+
+        CA.TypeRecordExt pos name flags attrs:
+            attrs
+            >> Dict.mapRes (k: expandInType ga)
+            >> Result.map (CA.TypeRecordExt pos name flags)
 
         CA.TypeAlias pos path t:
             # it's easy to deal with, but it shouldn't happen O_O
@@ -119,10 +124,15 @@ findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
             ]
                 >> List.concat
 
-        CA.TypeRecord _ ext attrs:
+        CA.TypeRecord _ attrs:
             attrs
-                >> Dict.values
-                >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+            >> Dict.values
+            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+
+        CA.TypeRecordExt _ name flags attrs:
+            attrs
+            >> Dict.values
+            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
 
 
 #
@@ -151,8 +161,11 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
         CA.TypeFunction pos from maybeMut to:
             Dict.join (referencedAliases allAliases from) (referencedAliases allAliases to)
 
-        CA.TypeRecord pos extensible attrs:
+        CA.TypeRecord pos attrs:
             Dict.for attrs (name: t: Dict.join (referencedAliases allAliases t)) Dict.empty
+
+        CA.TypeRecordExt pos name flags attrs:
+            Dict.for attrs (n: t: Dict.join (referencedAliases allAliases t)) Dict.empty
 
         CA.TypeAlias pos path t:
             referencedAliases allAliases t
@@ -203,7 +216,7 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
                     if flags.nonFn and Compiler/TypeCheck.typeContainsFunctions t then
                         Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a functions"
                     else
-                      if flags.mutability == CA.Immutable and CA.typeIsMutable t then
+                      if flags.uniqueness == CA.TyvarImmutable and CA.typeIsMutable t then
                           Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a mutable"
                       else
                         t
@@ -214,9 +227,12 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
                 fromIsMutable
                 (expandAliasVariables typeByArgName to)
 
-        CA.TypeRecord pos extensible attrs:
+        CA.TypeRecord pos attrs:
             CA.TypeRecord pos
-                extensible
+                (Dict.map (k: expandAliasVariables typeByArgName) attrs)
+
+        CA.TypeRecordExt pos name flags attrs:
+            CA.TypeRecordExt pos name flags
                 (Dict.map (k: expandAliasVariables typeByArgName) attrs)
 
         CA.TypeConstant pos usr args:

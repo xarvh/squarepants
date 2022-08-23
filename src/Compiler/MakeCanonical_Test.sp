@@ -200,7 +200,6 @@ lists as Test =
                             >> CoreTypes.list
                             >> Just
                         )
-                , nonFn = Dict.empty
                 , parentDefinitions = []
 
                 , directConsDeps = Dict.empty
@@ -265,11 +264,10 @@ tuples as Test =
                         (Dict.empty
                             >> Dict.insert "first" TH.numberType
                             >> Dict.insert "second" TH.numberType
-                            >> CA.TypeRecord p Nothing
+                            >> CA.TypeRecord p
                             >> Just
                         )
                 , native = False
-                , nonFn = Dict.empty
                 , parentDefinitions = []
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty

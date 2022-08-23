@@ -147,8 +147,7 @@ listDef as CA.UnionDef =
     item =
         CA.TypeVariable p "item" {
             , nonFn = False
-            , mutability = CA.Immutable
-            , kind = CA.CanBeAnything
+            , uniqueness = CA.TyvarImmutable
             }
 
     consDef as CA.Constructor = {

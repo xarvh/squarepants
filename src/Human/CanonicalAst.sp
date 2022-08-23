@@ -87,7 +87,7 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
         CA.TypeMutable pos ty:
             0 & "@" .. typeToText currentUmr meta ty
 
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
             ( 0 & name)
 
         CA.TypeFunction pos from lambdaModifier to:
@@ -98,7 +98,7 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
 
             ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
 
-        CA.TypeRecord pos extend attrs:
+        CA.TypeRecord pos attrs:
 
             attrsString =
                 attrs
@@ -108,12 +108,23 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
                     >> Text.join ", "
             l = [
               , "{"
-              , try extend as
-                    Nothing:
-                        ""
+              , attrsString
+              , "}"
+              ]
 
-                    Just n:
-                        n .. " with"
+            ( 0 & Text.join " " l)
+
+        CA.TypeRecordExt pos name flags attrs:
+
+            attrsString =
+                attrs
+                    >> Dict.toList
+                    >> List.sortBy Tuple.first
+                    >> List.map (( name & ty ): name .. " as " .. typeToText currentUmr meta ty)
+                    >> Text.join ", "
+            l = [
+              , "{"
+              , name .. " with"
               , attrsString
               , "}"
               ]
@@ -246,19 +257,23 @@ normType as Type: NormMonad Type =
             (StateMonad.list_map normType args) >> andThen args_n:
             return << CA.TypeConstant pos name args_n
 
-        CA.TypeVariable pos name:
+        CA.TypeVariable pos name flags:
             (normName name) >> andThen n:
-            return << CA.TypeVariable pos n
+            return << CA.TypeVariable pos n flags
 
         CA.TypeFunction pos from0 fromIsMut to0:
             (normType from0) >> andThen from1:
             (normType to0) >> andThen to1:
             return << CA.TypeFunction pos from1 fromIsMut to1
 
-        CA.TypeRecord pos ext0 attrs0:
-            (StateMonad.maybe_map normName ext0) >> andThen ext1:
+        CA.TypeRecord pos attrs0:
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
-            return << CA.TypeRecord pos ext1 attrs1
+            return << CA.TypeRecord pos attrs1
+
+        CA.TypeRecordExt pos name0 flags attrs0:
+            normName name0 >> andThen name1:
+            StateMonad.dict_map (k: normType) attrs0 >> andThen attrs1:
+            return << CA.TypeRecordExt pos name1 flags attrs1
 
         CA.TypeMutable pos t:
             (normType t) >> andThen t1:

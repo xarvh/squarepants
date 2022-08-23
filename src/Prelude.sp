@@ -32,7 +32,8 @@ tupleUsr as Text: Meta.UniqueSymbolReference =
 #
 
 tyVar as Name: CA.Type =
-    CA.TypeVariable Pos.N
+    name:
+    CA.TypeVariable Pos.N name { nonFn = False, uniqueness = CA.TyvarEither }
 
 
 tyFun as CA.Type: CA.Type: CA.Type =
@@ -170,7 +171,7 @@ tuple as Op.Binop = {
         Dict.empty
             >> Dict.insert "first" (tyVar "a")
             >> Dict.insert "second" (tyVar "b")
-            >> CA.TypeRecord Pos.N Nothing
+            >> CA.TypeRecord Pos.N
             >> typeBinop (tyVar "a") (tyVar "b")
     , nonFn = []
     }
@@ -447,7 +448,6 @@ insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: Modu
         , pattern = CA.PatternAny Pos.N False (Just name) (Just type)
         , native = True
         , parentDefinitions = []
-        , nonFn = Set.fromList nonFn
         , body = CA.LiteralText Pos.N name
         #
         , directTypeDeps = Dict.empty

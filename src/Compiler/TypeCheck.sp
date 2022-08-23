@@ -349,16 +349,13 @@ typeTyvars as Type: Dict Name Pos =
         CA.TypeMutable _ t:
             typeTyvars t
 
-        CA.TypeRecord pos extensible attrs:
-            init =
-                try extensible as
-                    Nothing:
-                        Dict.empty
+        CA.TypeRecord pos attrs:
+            Dict.empty
+            >> Dict.for attrs (n: t: Dict.join (typeTyvars t))
 
-                    Just (name & flags):
-                        Dict.singleton name pos
-
-            Dict.for attrs (n: t: Dict.join (typeTyvars t)) init
+        CA.TypeRecordExt pos name flags attrs:
+            Dict.singleton name pos
+            >> Dict.for attrs (n: t: Dict.join (typeTyvars t))
 
 #
 # Inference
@@ -607,7 +604,7 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
               isCompatibleWith env eFrom pos aFrom >> andThen _:
               isCompatibleWith env eTo pos aTo
 
-      CA.TypeRecord _ (Just e) eAttrs & _:
+      CA.TypeRecordExt _ e flags eAttrs & _:
           addCheckError pos [
               , "Extensible record annotation is experimentally disabled [TODO link to why]"
               , ""
@@ -616,11 +613,11 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
               , "attrs: " .. (eAttrs >> Dict.keys >> Text.join ", ")
               ]
 
-      CA.TypeRecord _ Nothing eAttrs & CA.TypeRecord _ aExtension aAttrs:
+      CA.TypeRecord _ eAttrs & CA.TypeRecord _ aAttrs:
           eOnly & both & aOnly =
               onlyBothOnly eAttrs aAttrs
 
-          if eOnly /= Dict.empty and aExtension == Nothing then
+          if eOnly /= Dict.empty then
               addCheckError pos [
                   , "missing attributes: " .. toHuman (Dict.keys eOnly)
                   ]
@@ -631,6 +628,19 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
           else
               None >> dict_for both attrName: (eType & aType): None:
                   isCompatibleWith env eType pos aType
+
+      CA.TypeRecord _ eAttrs & CA.TypeRecordExt _ name flags aAttrs:
+          eOnly & both & aOnly =
+              onlyBothOnly eAttrs aAttrs
+
+          if aOnly /= Dict.empty then
+              addCheckError pos [
+                  , "extra attributes: " .. toHuman (Dict.keys aOnly)
+                  ]
+          else
+              None >> dict_for both attrName: (eType & aType): None:
+                  isCompatibleWith env eType pos aType
+
 
       CA.TypeMutable _ t1 & CA.TypeMutable _ t2:
           isCompatibleWith env t1 pos t2
@@ -787,15 +797,23 @@ checkAndInsertPattern as Env: Type: CA.Pattern: Monad Env =
                             ]
 
         CA.PatternRecord pos patternAttrs:
+            zzzz =
+                expectedTypeAttrs:
+                env >> dict_for patternAttrs attrName: attrPattern: envX:
+                    try Dict.get attrName expectedTypeAttrs as
+                        Nothing:
+                            addCheckError pos [ "This record pattern has an attribute `" .. attrName .. "` but it is not avaiable in the annotation" ] >> andThen None:
+                            return envX
+                        Just expectedAttrType:
+                            checkAndInsertPattern envX expectedAttrType attrPattern
+
             try expectedType as
-                CA.TypeRecord _ _ expectedTypeAttrs:
-                    env >> dict_for patternAttrs attrName: attrPattern: envX:
-                        try Dict.get attrName expectedTypeAttrs as
-                            Nothing:
-                                addCheckError pos [ "This record pattern has an attribute `" .. attrName .. "` but it is not avaiable in the annotation" ] >> andThen None:
-                                return envX
-                            Just expectedAttrType:
-                                checkAndInsertPattern envX expectedAttrType attrPattern
+
+                CA.TypeRecord _ expectedTypeAttrs:
+                    zzzz expectedTypeAttrs
+
+                CA.TypeRecordExt _ _ _ expectedTypeAttrs:
+                    zzzz expectedTypeAttrs
 
                 _:
                     addCheckError pos [ "This pattern is a record, but the annotation says it should be " .. typeToText env expectedType ] >> andThen None:
@@ -1050,12 +1068,12 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
         CA.Record pos maybeExtending attrValueByName:
             try expectedType as
-                CA.TypeRecord _ (Just _) attrTypeByName:
+                CA.TypeRecordExt _ _ _ attrTypeByName:
                     addCheckError pos [
                         , "Extensible record annotation is experimentally disabled [TODO link to why]"
                         ]
 
-                CA.TypeRecord _ Nothing attrTypeByName:
+                CA.TypeRecord _ attrTypeByName:
                     try maybeExtending as
                         Nothing:
                             xxx =
@@ -1268,29 +1286,29 @@ fromExpression as Env: CA.Expression: Monad Type =
 
             flags as CA.TyvarFlags = {
                 , nonFn = False
-                , mutability = CA.CanBeMutable
-                , kind = CA.CanBeAnything
+                , uniqueness = CA.TyvarEither
                 }
 
             newType pos flags >> andThen newBlockType:
-            (list_for patternsAndBlocks (fromPatternAndBlock env) ( tryType & newBlockType )) >> andThen ( patternType & inferredBlockType ):
+            list_for patternsAndBlocks (fromPatternAndBlock env) ( tryType & newBlockType )
+            >> andThen ( patternType & inferredBlockType ):
             return inferredBlockType
 
         CA.Record pos maybeExt attrValues:
-            (dict_map (k: fromExpression env) attrValues) >> andThen attrTypes:
+            dict_map (k: fromExpression env) attrValues >> andThen attrTypes:
             try maybeExt as
                 Nothing:
-                    return << CA.TypeRecord pos Nothing attrTypes
+                    return << CA.TypeRecord pos attrTypes
 
                 Just variableArgs:
 
                     flags = todo "hgfjgkyhulij;oip'"
 
                     # TODO here it would be easier to support an entire expression
-                    (fromExpression env (CA.Variable pos variableArgs)) >> andThen ty_:
-                    (applySubsToType ty_) >> andThen ty:
+                    fromExpression env (CA.Variable pos variableArgs) >> andThen ty_:
+                    applySubsToType ty_ >> andThen ty:
                     newName identity >> andThen name:
-                    (unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecord pos (Just (name & flags)) attrTypes)) >> andThen unifiedType:
+                    unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecordExt pos name flags attrTypes) >> andThen unifiedType:
                     return unifiedType
 
         CA.LetIn valueDef e:
@@ -1533,8 +1551,7 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
 
         flags as CA.TyvarFlags = {
             , nonFn = todo "fromMaybeAnnotation"
-            , mutability = if isMutable then CA.Mutable else CA.Immutable
-            , kind = CA.CanBeAnything
+            , uniqueness = if isMutable then CA.TyvarUnique else CA.TyvarImmutable
             }
 
 
@@ -1649,7 +1666,7 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
             # This is IMHO better for readability, but only one way to find out...
             #
             #newName identity >> andThen extName:
-            return << { vars = vars1, pos, ty = CA.TypeRecord pos Nothing attrTypes, isFullyAnnotated }
+            return << { vars = vars1, pos, ty = CA.TypeRecord pos attrTypes, isFullyAnnotated }
 
 
 alias UnifyConstructorWithItsArgsParams =
@@ -1850,7 +1867,7 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
         _ & CA.TypeVariable pos name2 flags2 :
             addSubstitution env "vr" pos reason name2 t1
 
-        ( CA.TypeFunction pos a_from a_fromIsMutable a_to & CA.TypeFunction _ b_from b_fromIsMutable b_to ):
+        CA.TypeFunction pos a_from a_fromIsMutable a_to & CA.TypeFunction _ b_from b_fromIsMutable b_to :
             if a_fromIsMutable /= b_fromIsMutable then
                 unifyError pos IncompatibleMutability t1 t2
 
@@ -1869,8 +1886,8 @@ unify_ as Env: UnifyReason: Pos: Type: Type: Monad Type =
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
                     >> return
 
-        CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs:
-            unifyRecords env reason pos1 ( a_ext & a_attrs ) ( b_ext & b_attrs )
+#        CA.TypeRecord _ a_ext a_attrs & CA.TypeRecord _ b_ext b_attrs:
+#            unifyRecords env reason pos1 ( a_ext & a_attrs ) ( b_ext & b_attrs )
 
         CA.TypeMutable _ a & CA.TypeMutable _ b:
             unify_ env reason pos1 a b
@@ -1892,6 +1909,8 @@ alias UnifyRecordsFold =
 unifyRecords as Env: UnifyReason: Pos: ( Maybe (Text & CA.TyvarFlags) & Dict Text Type ): ( Maybe (Text & CA.TyvarFlags) & Dict Text Type ): Monad Type =
     env: reason: pos: ( a_ext & a_attrs ): ( b_ext & b_attrs ):
 
+    todo "UnifyRecords"
+    [#
     init as UnifyRecordsFold =
         { aOnly = Dict.empty
         , bOnly = Dict.empty
@@ -1913,8 +1932,8 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe (Text & CA.TyvarFlags) & Dict Tex
     { aOnly, bOnly, both } =
         Dict.merge onA onBoth onB a_attrs b_attrs init
 
-    (dict_map (k: ( a & b ): unify_ env reason pos a b) both) >> andThen bothUnified:
-    try ( a_ext & b_ext ) as
+    dict_map (k: ( a & b ): unify_ env reason pos a b) both >> andThen bothUnified:
+    try a_ext & b_ext as
         Just (aName & aFlags) & Nothing :
             unifyToNonExtensibleRecord env pos reason aName aOnly bOnly bothUnified
 
@@ -1939,7 +1958,8 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe (Text & CA.TyvarFlags) & Dict Tex
 
         Just (aName & aFlags) & Just (bName & bFlags):
             if aName == bName and aOnly == Dict.empty and bOnly == Dict.empty then
-                return << CA.TypeRecord pos (Just aName) bothUnified
+                flags = todo "njlwerjhi78yohl"
+                return << CA.TypeRecordExt pos aName flags bothUnified
 
             else
                 newName identity >> andThen new:
@@ -1947,11 +1967,12 @@ unifyRecords as Env: UnifyReason: Pos: ( Maybe (Text & CA.TyvarFlags) & Dict Tex
                 todo "merge flags!"
 
                 sub =
-                    CA.TypeRecord pos (Just (new & aFlags)) (Dict.join bOnly a_attrs)
+                    CA.TypeRecordExt pos new aFlags (Dict.join bOnly a_attrs)
 
                 (addSubstitution env "jj1" pos reason aName sub) >> andThen _:
                 (addSubstitution env "jj2" pos reason bName sub) >> andThen _:
                 return sub
+#]
 
 
 unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict Name Type: Dict Name Type: Monad Type =
@@ -1965,10 +1986,11 @@ unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict 
 
     else
         # the `a` tyvar should contain the missing attributes, ie `bOnly`
-        newName Just >> andThen ext:
-        addSubstitution env "ne" pos reason aName (CA.TypeRecord (Pos.I 5) ext bOnly) >> andThen _:
+        newName identity >> andThen ext:
+        flags = todo "lnasdpuigsdflkj"
+        addSubstitution env "ne" pos reason aName (CA.TypeRecordExt (Pos.I 5) ext flags bOnly) >> andThen _:
         Dict.join bothUnified bOnly
-            >> CA.TypeRecord pos Nothing
+            >> CA.TypeRecord pos
             >> return
 
 
@@ -1976,9 +1998,9 @@ unifyToNonExtensibleRecord as Env: Pos: UnifyReason: Name: Dict Name Type: Dict 
 #]
 unifyError as Pos: UnifyError: Type: Type: Monad Type =
     pos: error: t1: t2:
-    (newName identity) >> andThen name:
-    (insertTypeClash name t1 t2 error) >> andThen None:
-    return << CA.TypeVariable pos name { nonFn = False, mutability = CA.CanBeMutable, kind = CA.CanBeAnything }
+    newName identity >> andThen name:
+    insertTypeClash name t1 t2 error >> andThen None:
+    return << CA.TypeVariable pos name { nonFn = False, uniqueness = CA.TyvarEither }
 
 
 
@@ -2120,10 +2142,16 @@ typeContainsFunctions as Type: Bool =
         CA.TypeMutable _ t:
             typeContainsFunctions t
 
-        CA.TypeRecord _ extensible attrs:
+        CA.TypeRecord _ attrs:
             attrs
-                >> Dict.values
-                >> List.any typeContainsFunctions
+            >> Dict.values
+            >> List.any typeContainsFunctions
+
+        CA.TypeRecordExt _ _ _ attrs:
+            attrs
+            >> Dict.values
+            >> List.any typeContainsFunctions
+
 
 
 typeHasTyvar as Name: Type: Bool =
@@ -2145,8 +2173,11 @@ typeHasTyvar as Name: Type: Bool =
         CA.TypeMutable _ t:
             typeHasTyvar n t
 
-        CA.TypeRecord pos extensible attrs:
-            Just n == extensible or List.any (typeHasTyvar n) (Dict.values attrs)
+        CA.TypeRecord pos attrs:
+            List.any (typeHasTyvar n) (Dict.values attrs)
+
+        CA.TypeRecordExt pos name flags attrs:
+            n == name or List.any (typeHasTyvar n) (Dict.values attrs)
 
 
 
@@ -2156,10 +2187,17 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
         # Unless this is a function parameter, we should know the full type already!
         maybeAttrType =
             try recordType as
-                CA.TypeRecord _ e attrs:
+                CA.TypeRecord _ attrs:
                     Dict.get attributeName attrs
 
-                CA.TypeMutable p (CA.TypeRecord _ e attrs):
+                CA.TypeRecordExt _ _ _ attrs:
+                    Dict.get attributeName attrs
+
+                CA.TypeMutable p (CA.TypeRecord _ attrs):
+                    Dict.get attributeName attrs
+                    >> Maybe.map (CA.TypeMutable p)
+
+                CA.TypeMutable p (CA.TypeRecordExt _ _ _ attrs):
                     Dict.get attributeName attrs
                     >> Maybe.map (CA.TypeMutable p)
 
@@ -2175,8 +2213,7 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
 
                 flags as CA.TyvarFlags = {
                     , nonFn = todo "attributeAccess"
-                    , mutability = False
-                    , kind = CA.CanBeAnything
+                    , uniqueness = CA.TyvarEither
                     }
 
                 newType pos flags >> andThen attrType:
@@ -2186,7 +2223,7 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
 
 
                 re as Type =
-                    CA.TypeRecord (Pos.I 2) (Just extName) (Dict.singleton attributeName attrType)
+                    CA.TypeRecordExt (Pos.I 2) extName flags (Dict.singleton attributeName attrType)
 
                 unify env pos (UnifyReason_AttributeAccess attributeName) recordType re >> andThen _:
                 return attrType
@@ -2381,19 +2418,22 @@ replaceTypeVariables as Subs: Type: Type =
         CA.TypeMutable pos t:
             CA.TypeMutable pos (replaceTypeVariables subs t)
 
-        CA.TypeRecord pos extensible attrs:
-            try extensible >> Maybe.andThen (name: Dict.get name subs) as
+        CA.TypeRecord pos attrs:
+            CA.TypeRecord pos (Dict.map (name: replaceTypeVariables subs) attrs)
+
+        CA.TypeRecordExt pos name flags attrs:
+            try Dict.get name subs as
                 Nothing:
-                    CA.TypeRecord pos extensible (Dict.map (name: replaceTypeVariables subs) attrs)
+                    CA.TypeRecordExt pos name flags (Dict.map (name: replaceTypeVariables subs) attrs)
 
                 Just (CA.TypeVariable p n f):
-                    CA.TypeRecord pos (Just n) (Dict.map (name: replaceTypeVariables subs) attrs)
+                    CA.TypeRecordExt pos n f (Dict.map (name: replaceTypeVariables subs) attrs)
 
-                Just (CA.TypeRecord _ ext2 attrs2):
+                Just (CA.TypeRecordExt _ name flags attrs2):
                     # attrs2 is the sub, so we give precedence to it
                     Dict.join attrs2 attrs
-                        >> Dict.map (name: replaceTypeVariables subs)
-                        >> CA.TypeRecord pos ext2
+                    >> Dict.map (name: replaceTypeVariables subs)
+                    >> CA.TypeRecordExt pos name flags
 
                 Just what:
                     log "what" (toHuman what)
@@ -2416,8 +2456,7 @@ addErrorWithEEnv as Pos: (Error.Env: List Text): Monad Type =
 
     flags as CA.TyvarFlags = {
         , nonFn = False
-        , mutability = CA.CanBeMutable
-        , kind = CA.CanBeAnything
+        , uniqueness = CA.TyvarEither
         }
 
     newType pos flags

@@ -17,22 +17,15 @@ union TypeDef =
 #
 
 
-union TyvarMutability =
-    , Mutable
-    , Immutable
-    , CanBeMutable
-
-
-union TyvarKind =
-    , CanBeAnything
-    , MustBeRecord
-    , MustBeUnion
+union TyvarUniqueness =
+    , TyvarUnique
+    , TyvarImmutable
+    , TyvarEither
 
 
 alias TyvarFlags = {
     , nonFn as Bool
-    , mutability as TyvarMutability
-    , kind as TyvarKind
+    , uniqueness as TyvarUniqueness
     }
 
 
@@ -42,7 +35,8 @@ union Type =
     # Duplicating them in the constructor is not ideal, but for now seems handy
     , TypeVariable Pos Name TyvarFlags
     , TypeFunction Pos Type LambdaModifier Type
-    , TypeRecord Pos (Maybe (Name & TyvarFlags)) (Dict Name Type)
+    , TypeRecord Pos (Dict Name Type)
+    , TypeRecordExt Pos Name TyvarFlags (Dict Name Type)
     , TypeAlias Pos Meta.UniqueSymbolReference Type
     , TypeMutable Pos Type
 
@@ -200,9 +194,10 @@ typePos as Type: Pos =
         TypeConstant p _ _: p
         #TypeGeneratedVar _: Pos.I 3
         #TypeAnnotatedVar p _: p
-        TypeVariable p _: p
+        TypeVariable p _ _: p
         TypeFunction p _ _ _: p
-        TypeRecord p _ _: p
+        TypeRecord p _: p
+        TypeRecordExt p _ _ _: p
         TypeAlias p _ _: p
         TypeMutable p _: p
 
@@ -211,9 +206,10 @@ typeIsMutable as Type: Bool =
     ty:
     try ty as
         TypeConstant _ _ _: False
-        TypeVariable _ _: False
+        TypeVariable _ _ _: False
         TypeFunction _ _ _ _: False
-        TypeRecord _ _ attrs: Dict.any (k: typeIsMutable) attrs
+        TypeRecord _ attrs: Dict.any (k: typeIsMutable) attrs
+        TypeRecordExt _ _ _ attrs: Dict.any (k: typeIsMutable) attrs
         TypeAlias _ _ t: typeIsMutable t
         TypeMutable _ _: True
 
