@@ -1278,7 +1278,7 @@ fromExpression as Env: CA.Expression: Monad Type =
 
             flags as CA.TyvarFlags = {
                 , nonFn = False
-                , uniqueness = CA.TyvarEither
+                , uniqueness = CA.TyvarImmutable
                 }
 
             newType pos flags >> andThen newBlockType:
@@ -1294,7 +1294,7 @@ fromExpression as Env: CA.Expression: Monad Type =
 
                 Just variableArgs:
 
-                    flags = { nonFn = False, uniqueness = CA.TyvarEither }
+                    flags = { nonFn = False, uniqueness = CA.TyvarImmutable }
 
                     # TODO here it would be easier to support an entire expression
                     fromExpression env (CA.Variable pos variableArgs) >> andThen ty_:
@@ -1992,7 +1992,7 @@ unifyError as Pos: UnifyError: Type: Type: Monad Type =
     pos: error: t1: t2:
     newName identity >> andThen name:
     insertTypeClash name t1 t2 error >> andThen None:
-    return << CA.TypeVariable pos name { nonFn = False, uniqueness = CA.TyvarEither }
+    return << CA.TypeVariable pos name { nonFn = False, uniqueness = CA.TyvarImmutable }
 
 
 
@@ -2205,7 +2205,7 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
 
                 flags as CA.TyvarFlags = {
                     , nonFn = False
-                    , uniqueness = CA.TyvarEither
+                    , uniqueness = CA.TyvarImmutable
                     }
 
                 newType pos flags >> andThen attrType:
@@ -2372,7 +2372,7 @@ generateNewTypeVariables as Dict Name CA.TyvarFlags: Monad Subs =
     apply as Name: CA.TyvarFlags: Subs: Monad Subs =
         name0: arg: subs:
         newName identity >> andThen name1:
-        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 { nonFn = False, uniqueness = CA.TyvarEither }) subs
+        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 { nonFn = False, uniqueness = CA.TyvarImmutable }) subs
 
     dict_for tyvarByName apply Dict.empty
 

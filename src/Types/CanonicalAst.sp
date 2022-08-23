@@ -19,6 +19,7 @@ union TypeDef =
 
 union TyvarUniqueness =
     # an unique tyvar is expressed as (TypeMutable TypeVariable)
+    # TODO: just turn it into a canBeMutable Bool in TyvarFlags?
     , TyvarImmutable
     , TyvarEither
 
