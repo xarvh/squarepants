@@ -11,7 +11,7 @@ with-unstable:
 
 # https://nodejs.org/en/docs/guides/simple-profiling/
 profile:
-	rm isolate-0x*-v8.log
-	node --prof --stack-size=65500 squarepants sp/Main.sp build/unstable
+	rm -f isolate-0x*-v8.log
+	node --prof --stack-size=65500 squarepants src/Main.sp build/unstable
 	node --prof-process isolate-0x*-v8.log > profile.log
 
