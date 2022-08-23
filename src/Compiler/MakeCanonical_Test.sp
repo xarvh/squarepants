@@ -491,10 +491,11 @@ nonFunction as Test =
         """
         NonFunction
         """
-        [ codeTest "NonFunction is applied to tyvar"
+        [
+        , codeTest "one"
             """
             funz as a with a NonFunction =
-              1
+                1
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo

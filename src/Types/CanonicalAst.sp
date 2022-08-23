@@ -18,7 +18,7 @@ union TypeDef =
 
 
 union TyvarUniqueness =
-    , TyvarUnique
+    # an unique tyvar is expressed as (TypeMutable TypeVariable)
     , TyvarImmutable
     , TyvarEither
 

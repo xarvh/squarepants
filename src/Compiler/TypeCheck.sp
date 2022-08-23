@@ -1543,7 +1543,7 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
 
         flags as CA.TyvarFlags = {
             , nonFn = False
-            , uniqueness = if isMutable then CA.TyvarUnique else CA.TyvarImmutable
+            , uniqueness = CA.TyvarImmutable
             }
 
 
