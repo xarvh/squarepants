@@ -70,7 +70,7 @@ expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.Insta
                 iv as CA.InstanceVariable = {
                     , definedAt = pos
                     , ty = type
-                    , freeTypeVariables = todo "expandAndInsertModuleAnnotations" #getFreeTypeVars Dict.empty def.nonFn type
+                    , freeTypeVariables = getFreeTypeVars Dict.empty type
                     , isMutable = False
                     }
 
@@ -110,7 +110,7 @@ coreVariables as ByUsr CA.InstanceVariable =
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
             , ty = binop.type
-            , freeTypeVariables = getFreeTypeVars Dict.empty (Set.fromList binop.nonFn) binop.type
+            , freeTypeVariables = getFreeTypeVars Dict.empty binop.type
             , isMutable = False
             }
 
@@ -122,7 +122,7 @@ coreVariables as ByUsr CA.InstanceVariable =
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
             , ty = coreFn.type
-            , freeTypeVariables = getFreeTypeVars Dict.empty (Set.fromList coreFn.nonFn) coreFn.type
+            , freeTypeVariables = getFreeTypeVars Dict.empty coreFn.type
             , isMutable = False
             }
 

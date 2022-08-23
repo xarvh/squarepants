@@ -163,7 +163,7 @@ infer as Text: Text: Result Text Out =
 
             Ok
                 { ty
-                , freeTypeVariables = var.freeTypeVariables
+                , freeTypeVariables = todo "infer" #var.freeTypeVariables
                 , isMutable = var.isMutable
                 }
 

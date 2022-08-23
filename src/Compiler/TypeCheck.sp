@@ -126,7 +126,7 @@ alias Env = {
 
        By keeping track of which tyvars should NOT be considered free, we can figure out the correct `freeTypeVariables` field for each child definition.
     #]
-    , nonFreeTyvars as Dict Name Pos
+    , nonFreeTyvars as Dict Name CA.TyvarFlags
 
     # This is used to produce nicer errors for when a recursive function is not annotated
     , nonAnnotatedRecursives as Dict Name Pos
@@ -318,24 +318,19 @@ popClashingtypes as Monad (Dict Name TypeClash) =
             dict & { state with typeClashesByPlaceholderId = Nothing }
 
 
-getFreeTypeVars as Dict Name Pos: Dict Name a: Type: Dict Name { nonFn as Bool } =
-    nonFreeTyvars: nonFn: ty:
+getFreeTypeVars as Dict Name a: Type: Dict Name CA.TyvarFlags =
+    nonFreeTyvars: ty:
 
-    posToTyvar =
-        name: pos:
-        # as Name: Pos: TypeVariable
-        { nonFn = Dict.member name nonFn }
-
-    Dict.diff (typeTyvars ty) nonFreeTyvars
-        >> Dict.map posToTyvar
+    typeTyvars ty
+    >> Dict.filter (name: flags: not << Dict.member name nonFreeTyvars)
 
 
-typeTyvars as Type: Dict Name Pos =
+typeTyvars as Type: Dict Name CA.TyvarFlags =
     ty:
     try ty as
         CA.TypeVariable pos name flags:
             # TODO is pos equivalent to definedAt?
-            Dict.singleton name pos
+            Dict.singleton name flags
 
         CA.TypeFunction _ from fromIsMutable to:
             Dict.join (typeTyvars from) (typeTyvars to)
@@ -354,7 +349,7 @@ typeTyvars as Type: Dict Name Pos =
             >> Dict.for attrs (n: t: Dict.join (typeTyvars t))
 
         CA.TypeRecordExt pos name flags attrs:
-            Dict.singleton name pos
+            Dict.singleton name flags
             >> Dict.for attrs (n: t: Dict.join (typeTyvars t))
 
 #
@@ -724,7 +719,7 @@ checkAndInsertAnnotatedPattern as Env: Type: Pos: Bool: Maybe Text: Maybe Type: 
                 >> Dict.insert (CA.RefBlock name) {
                     , definedAt = pos
                     , ty = type
-                    , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars Dict.empty type
+                    , freeTypeVariables = getFreeTypeVars env.nonFreeTyvars type
                     , isMutable
                     }
         }
@@ -887,7 +882,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     return None
 
                 Just c:
-                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type >> andThen instantiatedType:
+                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type >> andThen instantiatedType:
                     #
                     # x as Maybe Text =
                     #     Nothing
@@ -1233,7 +1228,7 @@ fromExpression as Env: CA.Expression: Monad Type =
                     errorUndefinedVariable env pos (CA.RefRoot usr)
 
                 Just c:
-                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
+                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type
 
         CA.Lambda pos param lambdaModifier body:
 
@@ -1633,7 +1628,7 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                         errorUndefinedVariable env pos (CA.RefRoot usr)
 
                     Just c:
-                        replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty Dict.empty c.type) c.type
+                        replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type
 
             constructorTyM >> andThen constructorTy:
 
@@ -2306,7 +2301,7 @@ insertPatternVar as InsertPatternVarsPars: Name: PatternVar: Env: Monad Env =
                     Dict.empty
 
                 else
-                    getFreeTypeVars env.nonFreeTyvars Dict.empty refinedTy
+                    getFreeTypeVars env.nonFreeTyvars refinedTy
             }
             # TODO use shorthand
             env.instanceVariables
@@ -2350,7 +2345,7 @@ applySubsToNonFreeTyvars as Env: Monad Env =
 
     #]
 
-    meh as Name: Dict Name Pos: Dict Name Pos =
+    meh as Name: Dict Name CA.TyvarFlags: Dict Name CA.TyvarFlags =
         typeVarName: constrainedVars:
         try Dict.get typeVarName subs as
             Nothing:
@@ -2363,25 +2358,23 @@ applySubsToNonFreeTyvars as Env: Monad Env =
 
 
 
-replaceTypeVariablesWithNew as Dict Name { nonFn as Bool }: Type: Monad Type =
+replaceTypeVariablesWithNew as Dict Name CA.TyvarFlags: Type: Monad Type =
     freeTypeVariables: type:
 
     if freeTypeVariables == Dict.empty then
         return type
 
     else
-        (generateNewTypeVariables freeTypeVariables) >> andThen newTypeByOldType:
+        generateNewTypeVariables freeTypeVariables >> andThen newTypeByOldType:
         return << replaceTypeVariables newTypeByOldType type
 
 
-generateNewTypeVariables as Dict Name { nonFn as Bool }: Monad Subs =
+generateNewTypeVariables as Dict Name CA.TyvarFlags: Monad Subs =
     tyvarByName:
 
-    apply as Name: { nonFn as Bool }: Subs: Monad Subs =
+    apply as Name: CA.TyvarFlags: Subs: Monad Subs =
         name0: arg: subs:
-        { nonFn } = arg
-        (newName identity) >> andThen name1:
-        (if nonFn then setNonFn name1 else return None) >> andThen None:
+        newName identity >> andThen name1:
         return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 (todo "generateNewTypeVariables")) subs
 
     dict_for tyvarByName apply Dict.empty

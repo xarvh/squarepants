@@ -301,7 +301,7 @@ alias InstanceVariable =
     { definedAt as Pos
     # TODO: ty -> type
     , ty as Type
-    , freeTypeVariables as Dict Name { nonFn as Bool }
+    , freeTypeVariables as Dict Name CA.TyvarFlags
     , isMutable as Bool
     }
 
