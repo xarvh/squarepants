@@ -937,8 +937,7 @@ nonFunction as Test =
             Basic functionality
             """
             """
-            blah as List a: List a =
-              with a NonFunction
+            blah as [a]: [a] with a NonFunction =
               a:
               a
 
@@ -946,5 +945,5 @@ nonFunction as Test =
               blah [x: x]
             """
             (infer "meh")
-            (Test.errorContains [ "should not contain functions"])
+            (Test.errorContains [ "can't contain functions"])
         ]
