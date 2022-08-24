@@ -2,16 +2,16 @@
 
 tests as Test =
     Test.Group "TypeCheck" [
-#        , functions
-#        , statements
-#        , variableTypes
-#        , mu
-#        , higherOrderTypes
+        , functions
+        , statements
+        , variableTypes
+        , mu
+        , higherOrderTypes
         , records
-#        , patterns
-#        , try_as
-#        , if_else
-#        , nonFunction
+        , patterns
+        , try_as
+        , if_else
+        , nonFunction
         ]
 
 
@@ -579,7 +579,6 @@ higherOrderTypes as Test =
 records as Test =
     Test.Group "Records"
         [
-        [#
         , codeTest "Attribute access"
             """
             a = b: b.meh.blah
@@ -720,7 +719,6 @@ records as Test =
             """
             (infer "readOne")
             Test.isOk
-        #]
         , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
             """
             alias R = { x as Number, y as Number }

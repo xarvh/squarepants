@@ -1875,9 +1875,61 @@ unifyError as Pos: UnifyError: Type: Type: Monad Type =
 #
 # Check Flags
 #
-checkFlagsVsType as UnifyContext: Name: CA.TyvarFlags: Type: Monad None =
-    todo "checkFlagsVsType"
 
+
+typeAllowsFunctions as Type: Bool =
+    type:
+    try type as
+       CA.TypeConstant pos usr args: List.any typeAllowsFunctions args
+       CA.TypeVariable pos name flags: flags.allowFunctions
+       CA.TypeFunction pos _ lambdaModifier _: True
+       CA.TypeRecord pos attrs: Dict.any (name: typeAllowsFunctions) attrs
+       CA.TypeRecordExt pos name flags attrs: flags.allowFunctions or Dict.any (name: typeAllowsFunctions) attrs
+       CA.TypeAlias pos usr t: typeAllowsFunctions t
+       CA.TypeMutable pos t: typeAllowsFunctions t
+
+
+typeAllowsUniques as Type: Bool =
+    type:
+    try type as
+       CA.TypeConstant pos usr args: List.any typeAllowsUniques args
+       CA.TypeVariable pos name flags: flags.allowUniques
+       CA.TypeFunction pos _ lambdaModifier _: False
+       CA.TypeRecord pos attrs: Dict.any (name: typeAllowsUniques) attrs
+       CA.TypeRecordExt pos name flags attrs: flags.allowUniques or Dict.any (name: typeAllowsUniques) attrs
+       CA.TypeAlias pos usr t: typeAllowsUniques t
+       CA.TypeMutable pos t: True
+
+
+
+checkFlagsVsType as UnifyContext: Name: CA.TyvarFlags: Type: Monad None =
+    context: name: flags: type:
+
+    checkNonFn as Monad None =
+        if not flags.allowFunctions and typeAllowsFunctions type then
+            addCheckError context.pos [
+                , "Cannot unify tyvar " .. name .. " with type"
+                , typeToText context.env type
+                , "because the latter allows or contains FUNCTIONS and " .. name .. " does not."
+                , "Also I'm very sorry for these useless error messages, I need to improve them."
+                ]
+        else
+            return None
+
+    checkNonFn >> andThen _:
+
+    checkUniqueness as Monad None =
+        if not flags.allowUniques and typeAllowsUniques type then
+            addCheckError context.pos [
+                , "Cannot unify tyvar " .. name .. " with type"
+                , typeToText context.env type
+                , "because the latter allows or contains UNIQUES and " .. name .. " does not."
+                , "Also I'm very sorry for these useless error messages, I need to improve them."
+                ]
+        else
+            return None
+
+    checkUniqueness
 
 
 #
@@ -2319,7 +2371,7 @@ addCheckError as Pos: [Text]: Monad None =
     insertError (Error.Simple pos _: message)
 
 
-addError as Pos: List Text: Monad Type =
+addError as Pos: [Text]: Monad Type =
     pos: message:
     addErrorWithEEnv pos (_: message)
 
@@ -2634,7 +2686,7 @@ onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key
 recordIsCompatibleWith as Env: Pos: Dict Name Type: Type: Monad None =
     env: pos: expectedAttrs: actualType:
 
-    log "EXP" { exp = typeToText env (CA.TypeRecord Pos.G expectedAttrs), act = typeToText env actualType }
+#    log "EXP" { exp = typeToText env (CA.TypeRecord Pos.G expectedAttrs), act = typeToText env actualType }
 
     try actualType as
         CA.TypeRecord _ aAttrs:
