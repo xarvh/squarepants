@@ -1216,12 +1216,12 @@ fromExpression as Env: CA.Expression: Monad Type =
         CA.If pos ar:
             checkExpression env CoreTypes.bool ar.condition >> andThen _:
             get (x: x.substitutions) >> andThen s:
-            (fromExpression env ar.true) >> andThen trueType:
-            (fromExpression env ar.false) >> andThen falseType:
+            fromExpression env ar.true >> andThen trueType:
+            fromExpression env ar.false >> andThen falseType:
             unify env pos UnifyReason_IfBranches trueType falseType
 
         CA.Try pos value patternsAndBlocks:
-            (fromExpression env value) >> andThen tryType:
+            fromExpression env value >> andThen tryType:
 
             flags as CA.TyvarFlags = {
                 , allowFunctions = True
@@ -1493,7 +1493,6 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
             , allowUniques = False
             }
 
-
         newType pos flags >> andThen ty:
         if isMutable then
             return << CA.TypeMutable pos ty
@@ -1608,8 +1607,8 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
             return << { vars = vars1, pos, ty = CA.TypeRecord pos attrTypes, isFullyAnnotated }
 
 
-alias UnifyConstructorWithItsArgsParams =
-    { env as Env
+alias UnifyConstructorWithItsArgsParams = {
+    , env as Env
     , usr as Meta.UniqueSymbolReference
     , pos as Pos
     , ty as Type
@@ -1624,8 +1623,8 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
     p:
     try p.ty & p.args as
         # Argument needed, argument given
-        ( CA.TypeFunction _ from _ to & head :: tail ):
-            (fromPattern p.env head p.vars) >> andThen pa:
+        CA.TypeFunction _ from _ to & head :: tail:
+            fromPattern p.env head p.vars >> andThen pa:
             { vars, pos, ty, isFullyAnnotated } = pa
             unify p.env pos (UnifyReason_ConstructorArgument p) from ty >> andThen unifiedFrom:
             unifyConstructorWithItsArgs
@@ -1638,19 +1637,19 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
                 }
 
         # Error: Argument needed but not given!
-        ( CA.TypeFunction _ from _ to & [] ):
+        CA.TypeFunction _ from _ to & [] :
             # TODO tell how many are needed and how many are actually given
             addError p.pos [ "Type constructor " .. toHuman p.usr .. " is missing argument #" .. Text.fromNumber p.argIndex ] >> andThen ety:
             return ( p.vars & ety & p.isFullyAnnotated )
 
         # No arguments needed, no arguments given
-        ( _ & [] ):
+        _ & [] :
             get (x: x.substitutions) >> andThen subs:
             # TODO should I apply subs here?
             return ( p.vars & p.ty & p.isFullyAnnotated )
 
         # Error: no argument needed, but argument given!
-        ( _ & head :: tail ):
+        _ & head :: tail :
             # TODO tell how many are needed and how many are actually given
             addError p.pos [ "Type constructor " .. toHuman p.usr .. " has too many args" ] >> andThen ety:
             return ( p.vars & ety & p.isFullyAnnotated )
@@ -1685,7 +1684,8 @@ union UnifyError =
     , IncompatibleRecords { aOnly as List Name, bOnly as List Name, bothUnified as List Name }
     , Cycle Name
     # TODO should be List RejectFunction but am not sure we actually need it
-    , NonFunctionContainsFunction (List None)
+    , NonFunctionContainsFunction
+    , AllowMutabilityClash
     , OkThisIsActuallyPossible
     , NI Text
     , SubstitutingAnnotation Name
@@ -1706,8 +1706,11 @@ unifyErrorToText as UnifyError: Text =
         Cycle name:
             "There is a cyclic dependency on " .. name
 
-        NonFunctionContainsFunction rejectFunctions:
-            "NonFunction can't contain functions: " .. toHuman rejectFunctions
+        NonFunctionContainsFunction:
+            "NonFunction can't contain functions"
+
+        AllowMutabilityClash:
+            "tyvars allow different mutability"
 
         OkThisIsActuallyPossible:
             "OkThisIsActuallyPossible?"
@@ -1757,6 +1760,7 @@ alias UnifyContext = {
     , env as Env
     , pos as Pos
     , reason as UnifyReason
+#    , flags as CA.TyvarFlags
     }
 
 
@@ -1781,7 +1785,7 @@ unify_ as UnifyContext: Type: Type: Monad Type =
                     unify_ context arg1 arg2
 
                 # TODO is this the correct place where to check arity?
-                (list_map2 (unify_ context) args1 args2) >> andThen argTypes:
+                list_map2 (unify_ context) args1 args2 >> andThen argTypes:
                 get (x: x.substitutions) >> andThen subs:
                 argTypes
                     >> List.map (replaceTypeVariables subs)
@@ -1789,29 +1793,36 @@ unify_ as UnifyContext: Type: Type: Monad Type =
                     >> return
 
         CA.TypeVariable pos v1_name flags1 & CA.TypeVariable _ v2_name flags2:
-            if v1_name == v2_name then
+            if flags1.allowFunctions /= flags2.allowFunctions then
+                unifyError pos NonFunctionContainsFunction t1 t2
+            else if flags1.allowUniques /= flags2.allowUniques then
+                unifyError pos AllowMutabilityClash t1 t2
+            else if v1_name == v2_name then
                 return t1
-
             else
                 get (x: x.substitutions) >> andThen subs:
-                try ( Dict.get v1_name subs & Dict.get v2_name subs ) as
-                    ( Just sub1 & Just sub2 ):
-                        (unify_ context sub1 sub2) >> andThen v:
+                try Dict.get v1_name subs & Dict.get v2_name subs as
+                    Just sub1 & Just sub2 :
+                        unify_ context sub1 sub2 >> andThen v:
                         # I think override here is False because it was used to propagate NonFunction in one of the attempted implementations
-                        (addSubstitution "vv1" context v1_name v) >> andThen _:
-                        (addSubstitution "vv2" context v2_name v) >> andThen subbedTy:
+                        addSubstitution "vv1" context v1_name v >> andThen _:
+                        addSubstitution "vv2" context v2_name v >> andThen subbedTy:
                         return subbedTy
 
-                    ( Nothing & Just sub2 ):
+                    Nothing & Just sub2:
                         addSubstitution "vv3" context v1_name t2
 
                     _:
                         addSubstitution "vv4" context v2_name t1
 
         CA.TypeVariable pos name1 flags1 & _ :
+            checkFlagsVsType context name1 flags1 t2
+            >> andThen _:
             addSubstitution "vl" context name1 t2
 
         _ & CA.TypeVariable pos name2 flags2 :
+            checkFlagsVsType context name2 flags2 t1
+            >> andThen _:
             addSubstitution "vr" context name2 t1
 
         CA.TypeFunction pos a_from a_fromIsMutable a_to & CA.TypeFunction _ b_from b_fromIsMutable b_to :
@@ -1819,7 +1830,7 @@ unify_ as UnifyContext: Type: Type: Monad Type =
                 unifyError pos IncompatibleMutability t1 t2
 
             else
-                (unify_ context a_from b_from) >> andThen unified_from:
+                unify_ context a_from b_from >> andThen unified_from:
                 get (x: x.substitutions) >> andThen subs_:
                 [# Without the replacement here, a function annotation will produce circular substitutions
 
@@ -1828,10 +1839,12 @@ unify_ as UnifyContext: Type: Type: Monad Type =
                        a
 
                 #]
-                (unify_ context (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)) >> andThen unified_to:
-                get (x: x.substitutions) >> andThen subs:
+                unify_ context (replaceTypeVariables subs_ a_to) (replaceTypeVariables subs_ b_to)
+                >> andThen unified_to:
+                get (x: x.substitutions)
+                >> andThen subs:
                 CA.TypeFunction pos (replaceTypeVariables subs unified_from) a_fromIsMutable (replaceTypeVariables subs unified_to)
-                    >> return
+                >> return
 
         CA.TypeRecord _ a_attrs & _:
             unifyRecords context a_attrs t2
@@ -1856,6 +1869,14 @@ unifyError as Pos: UnifyError: Type: Type: Monad Type =
     newName identity >> andThen name:
     insertTypeClash name t1 t2 error >> andThen None:
     return << CA.TypeVariable pos name { allowFunctions = True, allowUniques = False }
+
+
+
+#
+# Check Flags
+#
+checkFlagsVsType as UnifyContext: Name: CA.TyvarFlags: Type: Monad None =
+    todo "checkFlagsVsType"
 
 
 
@@ -2704,7 +2725,7 @@ unifyRecords as UnifyContext: Dict Text Type: Type: Monad Type =
                 unifyError context.pos e (CA.TypeRecord context.pos a_attrs) (CA.TypeRecord context.pos b_attrs)
 
         CA.TypeRecordExt _ bName flags b_attrs:
-            unifyToNonExtensibleRecord context bName b_attrs a_attrs
+            unifyToNonExtensibleRecord context bName flags b_attrs a_attrs
 
         _:
             addError context.pos [
@@ -2721,7 +2742,7 @@ unifyRecordsExt as UnifyContext: Text: CA.TyvarFlags: Dict Text Type: Type: Mona
 
     try b as
         CA.TypeRecord _ bAttrs:
-            unifyToNonExtensibleRecord context aName aAttrs bAttrs
+            unifyToNonExtensibleRecord context aName aFlags aAttrs bAttrs
 
         CA.TypeRecordExt _ bName bFlags bAttrs:
             onlyBothUnifiedOnly context aAttrs bAttrs >> andThen (aOnly & bothUnified & bOnly):
@@ -2756,8 +2777,8 @@ unifyRecordsExt as UnifyContext: Text: CA.TyvarFlags: Dict Text Type: Type: Mona
 
 
 
-unifyToNonExtensibleRecord as UnifyContext: Name: Dict Name Type: Dict Name Type: Monad Type =
-    context: aName: aAttrs: bAttrs:
+unifyToNonExtensibleRecord as UnifyContext: Name: CA.TyvarFlags: Dict Name Type: Dict Name Type: Monad Type =
+    context: aName: aFlags: aAttrs: bAttrs:
 
     onlyBothUnifiedOnly context aAttrs bAttrs
     >> andThen (aOnly & bothUnified & bOnly):
@@ -2774,9 +2795,10 @@ unifyToNonExtensibleRecord as UnifyContext: Name: Dict Name Type: Dict Name Type
         newName identity
         >> andThen ext:
 
-        flags as CA.TyvarFlags = todo "lnasdpuigsdflkj"
+        None >> dict_for bAttrs (name: type: None: checkFlagsVsType context aName aFlags type)
+        >> andThen _:
 
-        CA.TypeRecordExt context.pos ext flags bOnly
+        CA.TypeRecordExt context.pos ext aFlags bOnly
         >> addSubstitution "ne" context aName
         >> andThen _:
 
