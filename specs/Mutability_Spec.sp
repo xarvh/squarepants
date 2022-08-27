@@ -473,7 +473,7 @@ parentScope as Test =
                         { x = 0, y = 0 }
                 """
                 check
-                (Test.errorContains [ "....." ])
+                (Test.errorContains [ "different mutability" ])
             , codeTest
                 """
                 Annotation, invalid 2
@@ -484,7 +484,7 @@ parentScope as Test =
                         { x = 0, y = mut 0 }
                 """
                 check
-                (Test.errorContains [ "....." ])
+                (Test.errorContains [ "different mutability" ])
 
             , codeTest
                 """
@@ -507,7 +507,7 @@ parentScope as Test =
                         { x = 0, y = 0 }
                 """
                 check
-                (Test.errorContains [ "....." ])
+                (Test.errorContains [ "not compatible" ])
             , codeTest
                 """
                 No annotation, invalid 2
@@ -518,7 +518,7 @@ parentScope as Test =
                         { x = 0, y = mut 0 }
                 """
                 check
-                (Test.errorContains [ "....." ])
+                (Test.errorContains [ "UNIQUE" ])
             ]
         ]
 
