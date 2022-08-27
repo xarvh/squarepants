@@ -31,6 +31,8 @@ outToHuman as Out: Text =
     freeVars =
         # TODO humanize these too
         out.freeTypeVariables
+        >> Dict.toList
+        >> List.map (name & flags): name .. " " .. toHuman flags
 
 #    nf =
 #        freeVars
@@ -39,7 +41,7 @@ outToHuman as Out: Text =
 #            >> Text.join ", "
 
     [
-    , "  freeTypeVariables = [ " .. Text.join ", " (Dict.keys freeVars) .. " ]"
+    , "  freeTypeVariables = [ " .. Text.join ", " freeVars .. " ]"
 #    , "  (NonFunction = [" .. nf .. "])"
     , "  isMutable = " .. toHuman out.isMutable
     , "  ty = " .. HCA.typeToText TH.moduleUmr TH.meta out.ty
@@ -608,18 +610,22 @@ records as Test =
                 @b.meh.blah += 1
             """
             (infer "a")
-            (Test.isOkAndEqualTo
-                { freeTypeVariables = forall [ "2", "4" ]
-                , isMutable = False
+            (Test.isOkAndEqualTo {
+                , freeTypeVariables =
+                    [ "2", "4" ]
+                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
+                    >> Dict.fromList
+                , isMutable =
+                    False
                 , ty =
                     typeFunction
-                        (CA.TypeRecordExt (Pos.I 2)
+                        (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
                             "a"
-                            { allowFunctions = True, allowUniques = False }
+                            { allowFunctions = True, allowUniques = True }
                             (Dict.singleton "meh"
-                                (CA.TypeRecordExt (Pos.I 2)
+                                (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
                                     "b"
-                                    { allowFunctions = True, allowUniques = False }
+                                    { allowFunctions = True, allowUniques = True }
                                     (Dict.singleton
                                         "blah"
                                         (CA.TypeMutable Pos.N CoreTypes.number)

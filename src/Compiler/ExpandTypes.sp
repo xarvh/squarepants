@@ -33,6 +33,7 @@ expandInType as GetType: CA.Type: Res CA.Type =
             attrs
             >> Dict.mapRes (k: expandInType ga)
             >> Result.map (CA.TypeRecord pos)
+            >> Result.map t: if CA.typeContainsUniques t then CA.TypeMutable pos t else t
 
         CA.TypeRecordExt pos name flags attrs:
             attrs
@@ -74,65 +75,50 @@ expandInType as GetType: CA.Type: Res CA.Type =
                             >> Ok
 
 
-expandAndValidateType as GetType: CA.Type: Res CA.Type =
-    ga: rawTy:
-    expandInType ga rawTy >> onOk expandedTy:
-    try findMutableArgsThatContainFunctions Nothing expandedTy as
-        []:
-            Ok expandedTy
-
-        errors:
-            # TODO show the actual positions
-            error (Pos.I 567)
-                [ "Mutable arguments can't be or contain functions!"
-                , errors >> List.map toHuman >> Text.join "\n"
-                ]
-
-
-findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
-    nonFunctionPos: ty:
-    try ty as
-        CA.TypeConstant _ _ _:
-            []
-
-        CA.TypeMutable _ t:
-            findMutableArgsThatContainFunctions nonFunctionPos t
-
-        CA.TypeVariable _ name flags:
-            [# TODO
-                if mutable then
-                    Just "variable types can't be mutable"
-
-               # except they can, they must be if we want to have functions
-               capable of manipulating mutable containers
-
-            #]
-            []
-
-        CA.TypeAlias _ path t:
-            findMutableArgsThatContainFunctions nonFunctionPos t
-
-        CA.TypeFunction functionPos from lambdaModifier to:
-            [ try nonFunctionPos as
-                Just constraintPos:
-                    [ constraintPos & functionPos ]
-
-                Nothing:
-                    []
-            , findMutableArgsThatContainFunctions nonFunctionPos from
-            , findMutableArgsThatContainFunctions nonFunctionPos to
-            ]
-                >> List.concat
-
-        CA.TypeRecord _ attrs:
-            attrs
-            >> Dict.values
-            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
-
-        CA.TypeRecordExt _ name flags attrs:
-            attrs
-            >> Dict.values
-            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+#findMutableArgsThatContainFunctions as Maybe Pos: CA.Type: [ Pos & Pos ] =
+#    nonFunctionPos: ty:
+#    try ty as
+#        CA.TypeConstant _ _ _:
+#            []
+#
+#        CA.TypeMutable _ t:
+#            findMutableArgsThatContainFunctions nonFunctionPos t
+#
+#        CA.TypeVariable _ name flags:
+#            [# TODO
+#                if mutable then
+#                    Just "variable types can't be mutable"
+#
+#               # except they can, they must be if we want to have functions
+#               capable of manipulating mutable containers
+#
+#            #]
+#            []
+#
+#        CA.TypeAlias _ path t:
+#            findMutableArgsThatContainFunctions nonFunctionPos t
+#
+#        CA.TypeFunction functionPos from lambdaModifier to:
+#            [ try nonFunctionPos as
+#                Just constraintPos:
+#                    [ constraintPos & functionPos ]
+#
+#                Nothing:
+#                    []
+#            , findMutableArgsThatContainFunctions nonFunctionPos from
+#            , findMutableArgsThatContainFunctions nonFunctionPos to
+#            ]
+#                >> List.concat
+#
+#        CA.TypeRecord _ attrs:
+#            attrs
+#            >> Dict.values
+#            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
+#
+#        CA.TypeRecordExt _ name flags attrs:
+#            attrs
+#            >> Dict.values
+#            >> List.concatMap (findMutableArgsThatContainFunctions nonFunctionPos)
 
 
 #
@@ -198,7 +184,7 @@ expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (
                         Ok << CA.TypeDefUnion u
 
 
-    expandAndValidateType getAlias al.type >> onOk type:
+    expandInType getAlias al.type >> onOk type:
     Ok << Dict.insert al.usr (CA.TypeDefAlias { al with type }) expandedTypes
 
 
@@ -216,7 +202,7 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
                     if not flags.allowFunctions and Compiler/TypeCheck.typeContainsFunctions t then
                         Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a functions"
                     else
-                      if not flags.allowUniques and CA.typeIsMutable t then
+                      if not flags.allowUniques and CA.typeContainsUniques t then
                           Debug.todo << "can't expand type \n\n" .. toHuman ty .. "\n\n with type \n\n" .. toHuman t .. "\n\nbecause the latter contains a mutable"
                       else
                         t
@@ -285,8 +271,8 @@ expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDe
             mapConstructor as Name: CA.Constructor: Res CA.Constructor =
                 name: c:
                 # TODO these are redundant, do we need both?
-                expandAndValidateType gt c.type >> onOk type:
-                List.mapRes (expandAndValidateType gt) c.args >> onOk args:
+                expandInType gt c.type >> onOk type:
+                List.mapRes (expandInType gt) c.args >> onOk args:
                 Ok << { c with type, args }
 
             Dict.mapRes mapConstructor u.constructors >> onOk cs:
@@ -360,5 +346,5 @@ expandAnnotation as CA.All CA.TypeDef: CA.Type: Res CA.Type =
             Just t: Ok t
             Nothing: error pos [ "Undefined type usr: `" .. toHuman usr .. "`" ]
 
-    expandAndValidateType gt type
+    expandInType gt type
 

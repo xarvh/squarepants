@@ -820,7 +820,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                     # TODO: create an `instantiateVariable` function?
                     # TODO: what if we instantiate /after/ we applyAttributePath? Would it be faster?
                     replaceTypeVariablesWithNew var.freeTypeVariables var.ty >> andThen instantiatedType:
-                    applyAttributePath env pos attrPath instantiatedType >> andThen ty:
+                    # We set "False" as isUnique rather than checking var.isMutable because a unque record could contain an immutable attr
+                    applyAttributePath env pos False attrPath instantiatedType >> andThen ty:
                     isCompatibleWith env expectedType pos ty
 
         CA.Constructor pos usr:
@@ -947,7 +948,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                         addCheckError pos [ "mutable arguments can't allow functions" ]
 
                                     else
-                                        applyAttributePath env pos attrPath var.ty >> andThen ty:
+                                        applyAttributePath env pos True attrPath var.ty >> andThen ty:
 
                                         # TODO: this is pretty much copied from CA.ArgumentExpression above, would be nice to merge the two
                                         reason =
@@ -1164,7 +1165,10 @@ fromExpression as Env: CA.Expression: Monad Type =
                        @someRecord.someOtherAttribute.someNestedAttribute := "Squidward"
 
                     #]
-                    applyAttributePath env pos attrPath varType
+                    [#
+                        We pass False instead of var.isUnique because a unique record can have immutable attrs
+                    #]
+                    applyAttributePath env pos False attrPath varType
 
         CA.Constructor pos usr:
             try Dict.get usr env.constructors as
@@ -1235,20 +1239,30 @@ fromExpression as Env: CA.Expression: Monad Type =
 
         CA.Record pos maybeExt attrValues:
             dict_map (k: fromExpression env) attrValues >> andThen attrTypes:
-            try maybeExt as
-                Nothing:
-                    return << CA.TypeRecord pos attrTypes
 
-                Just variableArgs:
+            xxxx =
+                try maybeExt as
+                    Nothing:
+                        return << CA.TypeRecord pos attrTypes
 
-                    flags = { allowFunctions = True, allowUniques = False }
+                    Just variableArgs:
 
-                    # TODO here it would be easier to support an entire expression
-                    fromExpression env (CA.Variable pos variableArgs) >> andThen ty_:
-                    applySubsToType ty_ >> andThen ty:
-                    newName identity >> andThen name:
-                    unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecordExt pos name flags attrTypes) >> andThen unifiedType:
-                    return unifiedType
+                        flags = { allowFunctions = True, allowUniques = False }
+
+                        # TODO here it would be easier to support an entire expression
+                        fromExpression env (CA.Variable pos variableArgs) >> andThen ty_:
+                        applySubsToType ty_ >> andThen ty:
+                        newName identity >> andThen name:
+                        unify env pos (UnifyReason_AttributeUpdate (Dict.keys attrTypes)) ty (CA.TypeRecordExt pos name flags attrTypes) >> andThen unifiedType:
+                        return unifiedType
+
+            xxxx
+            >> andThen t:
+
+            if CA.typeContainsUniques t then
+                return << CA.TypeMutable pos t
+            else
+                return << t
 
         CA.LetIn valueDef e:
             fromDefinition False valueDef env >> andThen env1:
@@ -1306,7 +1320,7 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
             >> andThen returnType:
 
             modifier =
-                if not isMutation and CA.typeIsMutable callArgumentType then
+                if not isMutation and CA.typeContainsUniques callArgumentType then
                     LambdaConsuming
                 else
                     LambdaNormal
@@ -1373,25 +1387,23 @@ fromArgument as Env: CA.Argument: Monad Type =
 
                 Just var:
                     if not var.isMutable then
-
                         addError pos
                             [ "You are trying to mutate variable `" .. toHuman ref .. "` but it was declared as not mutable!"
                             , ""
                             , "TODO [link to wiki page that explains how to declare variables]"
                             ]
-                        >> andThen ty:
 
-                        return (CA.TypeMutable Pos.N ty)
-
+                    [#
                     else if typeContainsFunctions var.ty then
                         # TODO what about constrained/unconstrained tyvars?
                         addError pos [ "mutable arguments can't allow functions" ]
 
                         >> andThen ty:
-                        return (CA.TypeMutable Pos.N ty)
+                        return ty
+                    #]
 
                     else
-                        applyAttributePath env pos attrPath var.ty
+                        applyAttributePath env pos True attrPath var.ty
 
 
 [# Patterns are special because they are the one way to **add variables to the env**.
@@ -1516,7 +1528,7 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
     makeType >> andThen type:
 
     checkMutability =
-        if isMutable /= CA.typeIsMutable type then
+        if isMutable /= CA.typeContainsUniques type then
             addCheckError pos [
                 # TODO this error sucks
                 , "type annotation and variable declaration have different mutability"
@@ -1855,6 +1867,24 @@ unify_ as UnifyContext: Type: Type: Monad Type =
         CA.TypeMutable _ a & CA.TypeMutable _ b:
             unify_ context a b
 
+#        CA.TypeRecordExt _ name flags attrs & CA.TypeMutable _ a:
+#            if flags.allowUniques then
+#                unifyRecordsExt context name flags attrs a
+#            else
+#                todo "unifyError record is immutable?"
+#
+#        CA.TypeMutable _ a & CA.TypeRecordExt _ name flags attrs:
+#            if flags.allowUniques then
+#                unifyRecordsExt context name flags attrs a
+#            else
+#                todo "unifyError record is immutable?"
+
+
+#            checkFlagsVsType context name flags a
+#            >> andThen _:
+#            unify_ context a t2
+            #addSubstitution "mut" context name a
+
 #        CA.TypeMutable _ (CA.TypeVariable _ name) & CA.TypeRecord _ ext attrs:
 
 
@@ -1919,14 +1949,14 @@ checkFlagsVsType as UnifyContext: Name: CA.TyvarFlags: Type: Monad None =
     checkNonFn >> andThen _:
 
     checkUniqueness as Monad None =
-        if not flags.allowUniques and typeAllowsUniques type then
-            addCheckError context.pos [
-                , "Cannot unify tyvar " .. name .. " with type"
-                , typeToText context.env type
-                , "because the latter allows or contains UNIQUES and " .. name .. " does not."
-                , "Also I'm very sorry for these useless error messages, I need to improve them."
-                ]
-        else
+#        if not flags.allowUniques and typeAllowsUniques type then
+#            addCheckError context.pos [
+#                , "Cannot unify tyvar " .. name .. " with type"
+#                , typeToText context.env type
+#                , "because the latter allows or contains UNIQUES and " .. name .. " does not."
+#                , "Also I'm very sorry for these useless error messages, I need to improve them."
+#                ]
+#        else
             return None
 
     checkUniqueness
@@ -2109,8 +2139,8 @@ typeHasTyvar as Name: Type: Bool =
 
 
 
-attributeAccess as Env: Pos: Name: Type: Monad Type =
-    env: pos: attributeName: recordType:
+attributeAccess as Env: Pos: Bool: Name: Type: Monad Type =
+    env: pos: isUnique: attributeName: recordType:
 
         # Unless this is a function parameter, we should know the full type already!
         maybeAttrType =
@@ -2121,15 +2151,16 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
                 CA.TypeRecordExt _ _ _ attrs:
                     Dict.get attributeName attrs
 
+                CA.TypeVariable p name flags:
+                    Nothing
+
                 CA.TypeMutable p (CA.TypeRecord _ attrs):
-                    Dict.get attributeName attrs
-                    >> Maybe.map (CA.TypeMutable p)
+                    Dict.get attributeName attrs >> Maybe.map (CA.TypeMutable p)
 
                 CA.TypeMutable p (CA.TypeRecordExt _ _ _ attrs):
-                    Dict.get attributeName attrs
-                    >> Maybe.map (CA.TypeMutable p)
+                    Dict.get attributeName attrs >> Maybe.map (CA.TypeMutable p)
 
-                _:
+                CA.TypeMutable p (CA.TypeVariable _ _ _):
                     Nothing
 
         try maybeAttrType as
@@ -2137,32 +2168,41 @@ attributeAccess as Env: Pos: Name: Type: Monad Type =
                 return attrType
 
             Nothing:
-                newName identity >> andThen extName:
-
                 flags as CA.TyvarFlags = {
                     , allowFunctions = True
-                    , allowUniques = False
+                    , allowUniques = isUnique
                     }
 
-                newType pos flags >> andThen attrType:
+                newName identity
+                >> andThen extName:
 
-#                try recordType as
-#                    CA.TypeMutable _
-
+                newType pos flags
+                >> andThen attrType:
 
                 re as Type =
                     CA.TypeRecordExt (Pos.I 2) extName flags (Dict.singleton attributeName attrType)
 
-                unify env pos (UnifyReason_AttributeAccess attributeName) recordType re >> andThen _:
+                unify env pos (UnifyReason_AttributeAccess attributeName) recordType (maybeWrapMutable isUnique pos re)
+                >> andThen _:
+
                 return attrType
 
 
 
+maybeWrapMutable as Bool: Pos: Type: Type =
+    doIt: pos: type:
 
-applyAttributePath as Env: Pos: List Name: Type: Monad Type =
-    env: pos: attrPath:
+    if doIt then
+        CA.TypeMutable pos type
+    else
+        type
 
-    list_for attrPath (attributeAccess env pos)
+
+
+applyAttributePath as Env: Pos: Bool: [Name]: Type: Monad Type =
+    env: pos: isUnique: attrPath:
+
+    list_for attrPath (attributeAccess env pos isUnique)
 
 
 alias InsertPatternVarsPars =

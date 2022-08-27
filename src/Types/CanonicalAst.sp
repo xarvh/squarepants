@@ -196,15 +196,15 @@ typePos as Type: Pos =
         TypeMutable p _: p
 
 
-typeIsMutable as Type: Bool =
+typeContainsUniques as Type: Bool =
     ty:
     try ty as
         TypeConstant _ _ _: False
         TypeVariable _ _ _: False
         TypeFunction _ _ _ _: False
-        TypeRecord _ attrs: Dict.any (k: typeIsMutable) attrs
-        TypeRecordExt _ _ _ attrs: Dict.any (k: typeIsMutable) attrs
-        TypeAlias _ _ t: typeIsMutable t
+        TypeRecord _ attrs: Dict.any (k: typeContainsUniques) attrs
+        TypeRecordExt _ _ _ attrs: Dict.any (k: typeContainsUniques) attrs
+        TypeAlias _ _ t: typeContainsUniques t
         TypeMutable _ _: True
 
 
@@ -296,6 +296,7 @@ alias InstanceVariable =
     # TODO: ty -> type
     , ty as Type
     , freeTypeVariables as Dict Name CA.TyvarFlags
+    # TODO: isMutable -> isUnique
     , isMutable as Bool
     }
 
