@@ -458,7 +458,7 @@ parentScope as Test =
                 """
                 """
                 scope =
-                    @r as { x as Int, y as @Int } =
+                    @r as { x as Number, y as @Number } =
                         { x = 0, y = mut 0 }
                 """
                 check
@@ -469,7 +469,7 @@ parentScope as Test =
                 """
                 """
                 scope =
-                    @r as { x as Int, y as Int } =
+                    @r as { x as Number, y as Number } =
                         { x = 0, y = 0 }
                 """
                 check
@@ -480,7 +480,7 @@ parentScope as Test =
                 """
                 """
                 scope =
-                    r as { x as Int, y as @Int } =
+                    r as { x as Number, y as @Number } =
                         { x = 0, y = mut 0 }
                 """
                 check

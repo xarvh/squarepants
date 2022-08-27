@@ -1502,7 +1502,7 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
 
         flags as CA.TyvarFlags = {
             , allowFunctions = True
-            , allowUniques = False
+            , allowUniques = isMutable
             }
 
         newType pos flags >> andThen ty:
@@ -1949,14 +1949,14 @@ checkFlagsVsType as UnifyContext: Name: CA.TyvarFlags: Type: Monad None =
     checkNonFn >> andThen _:
 
     checkUniqueness as Monad None =
-#        if not flags.allowUniques and typeAllowsUniques type then
-#            addCheckError context.pos [
-#                , "Cannot unify tyvar " .. name .. " with type"
-#                , typeToText context.env type
-#                , "because the latter allows or contains UNIQUES and " .. name .. " does not."
-#                , "Also I'm very sorry for these useless error messages, I need to improve them."
-#                ]
-#        else
+        if not flags.allowUniques and typeAllowsUniques type then
+            addCheckError context.pos [
+                , "Cannot unify tyvar " .. name .. " with type"
+                , typeToText context.env type
+                , "because the latter allows or contains UNIQUES and " .. name .. " does not."
+                , "Also I'm very sorry for these useless error messages, I need to improve them."
+                ]
+        else
             return None
 
     checkUniqueness
