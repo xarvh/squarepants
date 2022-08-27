@@ -1008,53 +1008,17 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
         CA.Record pos maybeExtending attrValueByName:
             try expectedType as
-                CA.TypeRecordExt _ _ _ attrTypeByName:
+
+                CA.TypeRecordExt _ _ _ expectedAttrTypeByName:
                     addCheckError pos [
                         , "Extensible record annotation is experimentally disabled [TODO link to why]"
                         ]
 
-                CA.TypeRecord _ attrTypeByName:
-                    try maybeExtending as
-                        Nothing:
-                            xxx =
-                                None >> dict_for attrValueByName attrName: attrValue: None:
-                                    try Dict.get attrName attrTypeByName as
-                                        Nothing:
-                                            addCheckError pos [
-                                                , "This record has an attribute `" .. attrName .. "` which is not in the annotation."
-                                                ]
+                CA.TypeRecord _ expectedAttrTypeByName:
+                    checkRecord env { pos, maybeExtending, attrValueByName } expectedType False expectedAttrTypeByName
 
-                                        Just expectedAttrType:
-                                            checkExpression env expectedAttrType attrValue
-
-                            # The type must have all attributes that exist in the value
-                            xxx >> andThen None:
-                                None >> dict_for attrTypeByName attrName: attrType: None:
-                                    try Dict.get attrName attrTypeByName as
-                                        Nothing:
-                                            addCheckError pos [
-                                                , "This record is missing the attribute `" .. attrName .. "`"
-                                                ]
-
-                                        Just _:
-                                            return None
-
-                        Just extending:
-
-                            # extending needs to be of expectedType
-                            checkExpression env expectedType (CA.Variable pos extending) >> andThen None:
-
-                            # the rest of the attributes, we need to ensure that they belong in expectedType with the correct type
-                            None >> dict_for attrValueByName attrName: attrValue: None:
-                                try Dict.get attrName attrTypeByName as
-                                    Nothing:
-                                        addCheckError pos [
-                                            , "This record has an attribute `" .. attrName .. "` which is not in the annotation"
-                                            ]
-
-                                    Just expectedAttrType:
-                                        checkExpression env expectedAttrType attrValue
-
+                CA.TypeMutable _ (CA.TypeRecord _ expectedAttrTypeByName):
+                    checkRecord env { pos, maybeExtending, attrValueByName } expectedType True expectedAttrTypeByName
 
                 _:
                     addCheckError pos [
@@ -2777,7 +2741,60 @@ recordIsCompatibleWith as Env: Pos: Dict Name Type: Type: Monad None =
 
 
 
+checkRecord as Env: { pos as Pos, maybeExtending as Maybe CA.VariableArgs, attrValueByName as Dict Name CA.Expression }: Type: Bool: Dict Name Type: Monad None =
+    env: stuff: expectedType: expectedToBeUnique: expectedAttrTypeByName:
 
+    { pos, maybeExtending, attrValueByName } =
+        stuff
+
+    try maybeExtending as
+        Nothing:
+            xxx =
+                None >> dict_for attrValueByName attrName: attrValue: None:
+                    try Dict.get attrName expectedAttrTypeByName as
+                        Nothing:
+                            addCheckError pos [
+                                , "This record has an attribute `" .. attrName .. "` which is not in the annotation."
+                                ]
+
+                        Just expectedAttrType:
+                            checkExpression env expectedAttrType attrValue
+                            >> andThen None:
+
+                            if not expectedToBeUnique and CA.typeContainsUniques expectedAttrType then
+                                addCheckError pos [
+                                    , "This record contains an attribute flagged as unique, `" .. attrName .. "`, but its annotation says it is immutable."
+                                    ]
+                            else
+                                return None
+
+            # The type must have all attributes that exist in the value
+            xxx >> andThen None:
+                None >> dict_for expectedAttrTypeByName attrName: attrType: None:
+                    try Dict.get attrName expectedAttrTypeByName as
+                        Nothing:
+                            addCheckError pos [
+                                , "This record is missing the attribute `" .. attrName .. "`"
+                                ]
+
+                        Just _:
+                            return None
+
+        Just extending:
+
+            # extending needs to be of expectedType
+            checkExpression env expectedType (CA.Variable pos extending) >> andThen None:
+
+            # the rest of the attributes, we need to ensure that they belong in expectedType with the correct type
+            None >> dict_for attrValueByName attrName: attrValue: None:
+                try Dict.get attrName expectedAttrTypeByName as
+                    Nothing:
+                        addCheckError pos [
+                            , "This record has an attribute `" .. attrName .. "` which is not in the annotation"
+                            ]
+
+                    Just expectedAttrType:
+                        checkExpression env expectedAttrType attrValue
 
 
 onlyBothUnifiedOnly as UnifyContext: Dict Text Type: Dict Text Type: Monad (Dict Text Type & Dict Text Type & Dict Text Type) =
