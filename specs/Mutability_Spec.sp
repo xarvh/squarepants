@@ -554,7 +554,7 @@ parentScope as Test =
             [
             , codeTest
                 """
-                Annotation, valid
+                1
                 """
                 """
                 scope =
@@ -568,6 +568,25 @@ parentScope as Test =
 
                     @yy as @Number =
                         mutableY
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                SKIP 2
+                """
+                """
+                scope =
+                    @r = { x = 0, y = mut 1 }
+
+                    { x, @y } =
+                        r
+
+                    xx as Number =
+                        x
+
+                    @yy as @Number =
+                        y
                 """
                 check
                 Test.isOk
