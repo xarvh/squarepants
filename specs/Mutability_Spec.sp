@@ -31,10 +31,10 @@ valueTest as Text: (None: a): Test.CodeExpectation a: Test =
 codeTest =
     Test.codeTest Debug.toHuman
 
-check as Text: Result Text CA.Module =
+check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module) =
     code:
 
-    blah as Res CA.Module =
+    blah as Res (Compiler/TypeCheck.Env & CA.Module) =
         params as Compiler/MakeCanonical.Params = {
             , meta = TH.meta
             , stripLocations = True
@@ -68,10 +68,27 @@ check as Text: Result Text CA.Module =
         Compiler/TypeCheck.fromModule env module
         >> onOk typeCheckEnv:
 
-        Ok moduleWithDestroyIn
+        Ok << typeCheckEnv & moduleWithDestroyIn
 
 
     TH.resErrorToStrippedText code blah
+
+
+infer as Text: Text: Result Text { type as CA.Type, freeTypeVariables as Dict Name CA.TyvarFlags } =
+    varName: code:
+
+    check code
+    >> onOk (typeCheckEnv & moduleWithDestroyIn):
+
+    usr =
+        Meta.USR typeCheckEnv.currentModule varName
+
+    try Dict.get (CA.RefRoot usr) typeCheckEnv.instanceVariables as
+        Nothing:
+            Err "Dict fail"
+
+        Just { definedAt, ty, freeTypeVariables, isMutable }:
+            Ok { type = ty, freeTypeVariables }
 
 
 
@@ -174,7 +191,7 @@ uniquenessTyping as Test =
                 a as @Number = mut 1
                 """
                 check
-                (Test.errorContains ["annotation and variable declaration have different mutability"])
+                (Test.errorContains ["UNIQUENESS"])
             ]
         , Test.Group """Referencing a mutable variable "consumes" it""" [
             , codeTest "base"
@@ -473,7 +490,7 @@ parentScope as Test =
                         { x = 0, y = 0 }
                 """
                 check
-                (Test.errorContains [ "different mutability" ])
+                (Test.errorContains [ "UNIQUENESS" ])
             , codeTest
                 """
                 Annotation, invalid 2
@@ -484,7 +501,7 @@ parentScope as Test =
                         { x = 0, y = mut 0 }
                 """
                 check
-                (Test.errorContains [ "different mutability" ])
+                (Test.errorContains [ "UNIQUENESS" ])
 
             , codeTest
                 """
@@ -519,8 +536,41 @@ parentScope as Test =
                 """
                 check
                 (Test.errorContains [ "UNIQUE" ])
+            , codeTest
+                """
+                Reject global unique
+                """
+                """
+                scope =
+                    { x = 0, y = mut 0 }
+                """
+                check
+                (Test.errorContains [ "UNIQUE" ])
+            ]
+        , Test.Group
+            """
+            An immutable attribute of a mutable record can be unpacked to an immutable
+            """
+            [
+            , codeTest
+                """
+                Annotation, valid
+                """
+                """
+                scope =
+                    @r = { x = 0, y = mut 1 }
+
+                    { x = immutableX, y = @mutableY } =
+                        r
+
+                    xx as Number =
+                        immutableX
+
+                    @yy as @Number =
+                        mutableY
+                """
+                check
+                Test.isOk
             ]
         ]
-
-
 

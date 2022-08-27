@@ -291,8 +291,8 @@ expressionPos as Expression: Pos =
 # Stuff that should live... somewhere else?
 #
 
-alias InstanceVariable =
-    { definedAt as Pos
+alias InstanceVariable = {
+    , definedAt as Pos
     # TODO: ty -> type
     , ty as Type
     , freeTypeVariables as Dict Name CA.TyvarFlags

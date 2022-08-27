@@ -1447,17 +1447,18 @@ alias PatternVars =
     Dict Name PatternVar
 
 
-alias PatternOut =
-    { vars as PatternVars
+alias PatternOut = {
+    , vars as PatternVars
     , pos as Pos
     , ty as Type
     , isFullyAnnotated as Bool
+    , isUnique as Bool
     }
 
 
 
 fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name PatternVar: Monad PatternOut =
-    env: pos: isMutable: maybeName: maybeAnnotation: vars:
+    env: pos: isUnique: maybeName: maybeAnnotation: vars:
 
     isAnnotated =
         maybeAnnotation /= Nothing
@@ -1466,11 +1467,13 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
 
         flags as CA.TyvarFlags = {
             , allowFunctions = True
-            , allowUniques = isMutable
+            , allowUniques = isUnique
             }
 
-        newType pos flags >> andThen ty:
-        if isMutable then
+        newType pos flags
+        >> andThen ty:
+
+        if isUnique then
             return << CA.TypeMutable pos ty
         else
             return ty
@@ -1489,13 +1492,25 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
                     Ok t:
                         return t
 
-    makeType >> andThen type:
+    makeType
+    >> andThen type:
 
     checkMutability =
-        if isMutable /= CA.typeContainsUniques type then
+        if isUnique /= CA.typeContainsUniques type then
+
+            maybeNot =
+                bool:
+                if bool then "" else "NOT "
+
             addCheckError pos [
-                # TODO this error sucks
-                , "type annotation and variable declaration have different mutability"
+                , "According to the definition, `" .. Maybe.withDefault "_" maybeName .. "` should be " .. maybeNot isUnique .. "unique."
+                , "However, the annotation says that the type is:"
+                , ""
+                , typeToText env type
+                , ""
+                , "which is " .. maybeNot (not isUnique) .. "unique!"
+                , ""
+                , "The UNIQUENESS of the annotation and definition do not match!"
                 ]
         else
             return None
@@ -1506,13 +1521,14 @@ fromMaybeAnnotation as Env: Pos: Bool: Maybe Name: Maybe Type: Dict Name Pattern
     newVars =
         try maybeName as
             Nothing: vars
-            Just name: Dict.insert name { pos, type, isMutable, isAnnotated } vars
+            Just name: Dict.insert name { pos, type, isMutable = isUnique, isAnnotated } vars
 
     {
     , vars = newVars
     , pos
     , ty = type
     , isFullyAnnotated = isAnnotated
+    , isUnique
     }
     >> return
 
@@ -1532,10 +1548,10 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
             fromMaybeAnnotation env pos isMutable maybeName maybeAnnotation vars
 
         CA.PatternLiteralNumber pos literal:
-            return << { vars, pos, ty = CoreTypes.number, isFullyAnnotated = True }
+            return << { vars, pos, ty = CoreTypes.number, isFullyAnnotated = True, isUnique = False }
 
         CA.PatternLiteralText pos literal:
-            return << { vars,  pos, ty = CoreTypes.text, isFullyAnnotated = True }
+            return << { vars,  pos, ty = CoreTypes.text, isFullyAnnotated = True, isUnique = False }
 
         CA.PatternConstructor pos usr args:
             constructorTyM =
@@ -1563,24 +1579,17 @@ fromPattern as Env: CA.Pattern: PatternVars: Monad PatternOut =
                 }
 
             unifyConstructorWithItsArgs p >> andThen ( patternVars & patternTy & isFullyAnnotated ):
-            return << { vars = patternVars, pos, ty = patternTy, isFullyAnnotated }
+            return {
+              , vars = patternVars
+              , pos
+              , ty = patternTy
+              , isFullyAnnotated
+              , isUnique = False
+              }
 
         CA.PatternRecord pos attrs:
+            fromPatternRecord env pos vars attrs
 
-            # Ok, I want local aliases so I can annotate the horror below
-
-            blah as Name: CA.Pattern: (PatternVars & Dict Name Type & Bool): Monad (PatternVars & Dict Name Type & Bool) =
-                name: pa: ( varsX & attrTypes & annotatedSoFar):
-                fromPattern env pa varsX >> andThen paOut:
-                return ( paOut.vars & Dict.insert name paOut.ty attrTypes & paOut.isFullyAnnotated and annotatedSoFar )
-
-            dict_for attrs blah ( vars & Dict.empty & True) >> andThen ( vars1 & attrTypes & isFullyAnnotated ):
-            #
-            # For the time being, if you unpack a record, you must unpack ALL of it
-            # This is IMHO better for readability, but only one way to find out...
-            #
-            #newName identity >> andThen extName:
-            return << { vars = vars1, pos, ty = CA.TypeRecord pos attrTypes, isFullyAnnotated }
 
 
 alias UnifyConstructorWithItsArgsParams = {
@@ -1601,15 +1610,15 @@ unifyConstructorWithItsArgs as UnifyConstructorWithItsArgsParams: Monad ( Patter
         # Argument needed, argument given
         CA.TypeFunction _ from _ to & head :: tail:
             fromPattern p.env head p.vars >> andThen pa:
-            { vars, pos, ty, isFullyAnnotated } = pa
+            { vars, pos, ty, isFullyAnnotated, isUnique } = pa
             unify p.env pos (UnifyReason_ConstructorArgument p) from ty >> andThen unifiedFrom:
             unifyConstructorWithItsArgs
                 { p with
-                    , argIndex = p.argIndex + 1
-                    , ty = to
-                    , args = tail
-                    , vars = vars
-                    , isFullyAnnotated = isFullyAnnotated and p.isFullyAnnotated
+                , argIndex = p.argIndex + 1
+                , ty = to
+                , args = tail
+                , vars = vars
+                , isFullyAnnotated = isFullyAnnotated and p.isFullyAnnotated
                 }
 
         # Error: Argument needed but not given!
@@ -2366,8 +2375,7 @@ replaceTypeVariables as Subs: Type: Type =
                     >> CA.TypeRecordExt pos name flags
 
                 Just what:
-                    log "what" (toHuman what)
-                    todo "replacing record extension with non-var"
+                    todo << "replacing record extension with non-var: " .. toHuman what
 
 
 addCheckError as Pos: [Text]: Monad None =
@@ -2914,4 +2922,58 @@ unifyToNonExtensibleRecord as UnifyContext: Name: CA.TyvarFlags: Dict Name Type:
         Dict.join bothUnified bOnly
         >> CA.TypeRecord context.pos
         >> return
+
+
+
+alias PatternRecordInternal = {
+    , varsX as PatternVars
+    , attrTypes as Dict Name Type
+    , annotatedSoFar as Bool
+    , hasUniques as Bool
+    }
+
+fromPatternRecord as Env: Pos: PatternVars: Dict Name CA.Pattern: Monad PatternOut =
+    env: pos: vars: attrs:
+
+    fromAttribute as Name: CA.Pattern: PatternRecordInternal: Monad PatternRecordInternal =
+        name: pa: pri:
+
+        { varsX, attrTypes, annotatedSoFar, hasUniques } =
+            pri
+
+        fromPattern env pa varsX >> andThen paOut:
+        return {
+            , varsX = paOut.vars
+            , attrTypes = Dict.insert name paOut.ty attrTypes
+            , annotatedSoFar = paOut.isFullyAnnotated and annotatedSoFar
+            , hasUniques = paOut.isUnique or hasUniques
+            }
+
+    init as PatternRecordInternal = {
+        , varsX = vars
+        , attrTypes = Dict.empty
+        , annotatedSoFar = True
+        , hasUniques = False
+        }
+
+    dict_for attrs fromAttribute init
+    >> andThen out:
+
+    { varsX = vars1, attrTypes, annotatedSoFar, hasUniques } =
+        out
+
+    #
+    # For the time being, if you unpack a record, you must unpack ALL of it
+    # This is IMHO better for readability, but only one way to find out...
+    #
+    #newName identity >> andThen extName:
+    return << {
+      , vars = vars1
+      , pos
+      , ty = maybeWrapMutable hasUniques pos (CA.TypeRecord pos attrTypes)
+      , isFullyAnnotated = annotatedSoFar
+      , isUnique = hasUniques
+      }
+
+
 
