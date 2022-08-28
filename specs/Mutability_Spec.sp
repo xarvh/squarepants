@@ -18,6 +18,7 @@ specs as Test =
       , uniquenessTyping
       , mutation
       , parentScope
+      , records
       ]
 
 
@@ -458,7 +459,7 @@ parentScope as Test =
 
 
 
-parentScope as Test =
+records as Test =
     Test.Group
         """
         Records
