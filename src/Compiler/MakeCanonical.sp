@@ -241,14 +241,15 @@ expressionDeps as CA.Expression: Deps: Deps =
             deps
                 >> Dict.for exprByName (name: expressionDeps)
 
-        CA.Call _ e0 (CA.ArgumentExpression e1):
+        CA.Call _ e0 a:
             deps
                 >> expressionDeps e0
-                >> expressionDeps e1
+                >> argumentDeps a
 
-        CA.Call _ e0 (CA.ArgumentMutable _ _):
+        CA.CallCo _ e0 args:
             deps
                 >> expressionDeps e0
+                >> List.for args argumentDeps
 
         CA.If _ args:
             deps
@@ -266,6 +267,15 @@ expressionDeps as CA.Expression: Deps: Deps =
                 >> patternDeps valueDef.pattern
                 >> expressionDeps valueDef.body
                 >> expressionDeps e
+
+
+argumentDeps as CA.Argument: Deps: Deps =
+    arg: deps:
+
+    try arg as
+        CA.ArgumentExpression e: expressionDeps e deps
+        CA.ArgumentMutable _ _: deps
+
 
 
 #
@@ -584,6 +594,21 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             >> onOk caBody:
 
             Ok << CA.Lambda pos caPattern isConsuming caBody
+
+
+        # TODO: this is temporary, can be removed once we remove auto-currying
+        FA.FunctionCall callPos (FA.Constructor consPos maybeModule name) arguments:
+
+            caReference =
+                resolveToConstructorUsr env.ro maybeModule name
+                >> CA.Constructor consPos
+
+            List.mapRes (translateArgument env) arguments
+            >> onOk args:
+
+            CA.CallCo callPos caReference args
+            >> Ok
+
 
         FA.FunctionCall pos reference arguments:
             # ref arg1 arg2 arg3...

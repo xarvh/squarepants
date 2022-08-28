@@ -75,6 +75,7 @@ union Expression =
     , Constructor Pos Meta.UniqueSymbolReference
     , Lambda Pos Pattern LambdaModifier Expression
     , Call Pos Expression Argument
+    , CallCo Pos Expression [Argument]
     , Record Pos (Maybe VariableArgs) (Dict Name Expression)
     , LetIn ValueDef Expression
     , If Pos {
@@ -282,6 +283,7 @@ expressionPos as Expression: Pos =
         Lambda pos _ _ _: pos
         Record pos _ _: pos
         Call pos _ _: pos
+        CallCo pos _ _: pos
         If pos _: pos
         Try pos _ _: pos
         LetIn valueDef _: patternPos valueDef.pattern

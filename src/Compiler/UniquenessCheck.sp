@@ -158,7 +158,7 @@ addPatternToEnv as CA.Pattern: Env: Set Name & Env =
 doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as CA.Expression } =
     env: state@: pos: reference: argument:
 
-    ref =
+    doneReference =
         try reference as
             CA.Call p ref arg:
                 doCall env @state p ref arg
@@ -170,7 +170,56 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
               { mutables = Dict.empty, consumed, expression }
 
 
-    try argument as
+    doneArg =
+        doArgument env @state pos {
+            , mutables = doneReference.mutables
+            , consumed = doneReference.consumed
+            , argument
+            }
+
+    {
+    , mutables = doneArg.mutables
+    , consumed = doneArg.consumed
+    , expression = CA.Call pos doneReference.expression doneArg.argument
+    }
+
+
+doCallCo as Env: State@: Pos: CA.Expression: [CA.Argument]: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as CA.Expression } =
+    env: state@: pos: reference: arguments:
+
+    doneReference =
+        consumed & expression =
+            doExpression env @state reference
+
+        { mutables = Dict.empty, consumed, expression }
+
+
+    doneArgs =
+        {
+        , mutables = doneReference.mutables
+        , consumed = doneReference.consumed
+        , arguments = []
+        }
+        >> List.forReversed arguments arg: s:
+            { mutables, consumed, arguments } = s
+            da = doArgument env @state pos { mutables, consumed, argument = arg }
+            { mutables = da.mutables, consumed = da.consumed, arguments = da.argument :: arguments }
+
+    {
+    , mutables = doneArgs.mutables
+    , consumed = doneArgs.consumed
+    , expression = CA.CallCo pos doneReference.expression doneArgs.arguments
+    }
+
+
+
+
+alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as CA.Argument }
+
+doArgument as Env: State@: Pos: MCA: MCA =
+    env: state@: pos: mca:
+
+    try mca.argument as
 
         CA.ArgumentExpression expr:
 
@@ -178,14 +227,14 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
                 doExpression env @state expr
 
             Dict.each consumed name: p1:
-                try Dict.get name ref.consumed as
+                try Dict.get name mca.consumed as
                     Nothing: None
                     Just p2: errorReferencingConsumedVariable name p1 p2 @state
 
             {
-            , mutables = ref.mutables
-            , consumed = Dict.join consumed ref.consumed
-            , expression = CA.Call pos ref.expression (CA.ArgumentExpression expression)
+            , mutables = mca.mutables
+            , consumed = Dict.join consumed mca.consumed
+            , argument = CA.ArgumentExpression expression
             }
 
         CA.ArgumentMutable p1 { ref = CA.RefBlock name, attrPath = _ }:
@@ -201,14 +250,13 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
                         Mutable (ConsumedAt p2): errorMutatingAConsumed name p1 p2 @state
 
             y =
-              try Dict.get name ref.mutables as
+              try Dict.get name mca.mutables as
                 Nothing: None
                 Just p2: errorMutatingTwice name p1 p2 @state
 
-            {
-            , mutables = Dict.insert name p1 ref.mutables
+            { mca with
+            , mutables = Dict.insert name p1 mca.mutables
             , consumed = Dict.empty
-            , expression = CA.Call pos ref.expression argument
             }
 
         CA.ArgumentMutable _ _:
@@ -293,6 +341,13 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
 
             consumed & expr
 
+
+        CA.CallCo pos reference arguments:
+
+            { mutables, consumed, expression = expr } =
+                doCallCo env @state pos reference arguments
+
+            consumed & expr
 
 
         CA.If pos { condition, true, false }:
