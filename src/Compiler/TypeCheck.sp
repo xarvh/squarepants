@@ -827,11 +827,15 @@ checkExpression as Env: Type: CA.Expression: Monad None =
         CA.Constructor pos usr:
             try Dict.get usr env.constructors as
                 Nothing:
-                    errorUndefinedVariable env pos (CA.RefRoot usr) >> andThen _:
+                    errorUndefinedVariable env pos (CA.RefRoot usr)
+                    >> andThen _:
+
                     return None
 
                 Just c:
-                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type >> andThen instantiatedType:
+                    replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type
+                    >> andThen instantiatedType:
+
                     #
                     # x as Maybe Text =
                     #     Nothing
@@ -1140,6 +1144,7 @@ fromExpression as Env: CA.Expression: Monad Type =
                     errorUndefinedVariable env pos (CA.RefRoot usr)
 
                 Just c:
+                    log "*" c.type
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type
 
         CA.Lambda pos param lambdaModifier body:
@@ -2321,7 +2326,7 @@ generateNewTypeVariables as Dict Name CA.TyvarFlags: Monad Subs =
     apply as Name: CA.TyvarFlags: Subs: Monad Subs =
         name0: arg: subs:
         newName identity >> andThen name1:
-        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 { allowFunctions = True, allowUniques = False }) subs
+        return << Dict.insert name0 (CA.TypeVariable (Pos.I 11) name1 flagsPermissive) subs
 
     dict_for tyvarByName apply Dict.empty
 

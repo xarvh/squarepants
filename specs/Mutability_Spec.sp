@@ -14,11 +14,11 @@ All the crunching is done at compile time, which means that, for unique values, 
 
 specs as Test =
     Test.Group "Mutability spec" [
-      , howDoesItLookLike
-      , uniquenessTyping
-      , mutation
-      , parentScope
-      , records
+#      , howDoesItLookLike
+#      , uniquenessTyping
+#      , mutation
+#      , parentScope
+#      , records
       , unions
       ]
 
@@ -688,6 +688,23 @@ unions as Test =
 
                     ii as Something =
                         i
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                Free
+                """
+                """
+                union Blah a =
+                    , Blah a
+
+                scope =
+                    @m =
+                        Blah (mut 0)
+
+                    @mm as Blah @Number =
+                        m
                 """
                 check
                 Test.isOk

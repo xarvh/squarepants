@@ -59,6 +59,7 @@ expandInType as GetType: CA.Type: Res CA.Type =
                     else
                         replacedArgs
                             >> CA.TypeConstant pos usr
+                            >> (t: if CA.typeContainsUniques t then CA.TypeMutable pos t else t)
                             >> Ok
 
                 Ok (CA.TypeDefAlias al):

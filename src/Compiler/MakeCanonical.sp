@@ -1025,12 +1025,17 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name &
         makeError pos [ "constructor " .. name .. " is duplicate" ]
 
     else
-        List.mapRes (translateType True ModeUnion ro) faArgs >> onOk caArgs:
+        List.mapRes (translateType True ModeUnion ro) faArgs
+        >> onOk caArgs:
+
+
+        returnsUnique =
+            List.any CA.typeContainsUniques caArgs
 
         c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
-            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaNormal ty) unionType
+            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaConsuming ty) (Compiler/TypeCheck.maybeWrapMutable returnsUnique pos unionType)
             , args = caArgs
             }
 
