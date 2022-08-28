@@ -19,6 +19,7 @@ specs as Test =
       , mutation
       , parentScope
       , records
+      , unions
       ]
 
 
@@ -636,3 +637,59 @@ records as Test =
             ]
         ]
 
+
+unions as Test =
+    Test.Group
+        """
+        Unions
+        """
+        [
+        , Test.Group
+            """
+            Constructors that take at least one mutable argument will produce a mutable version of their type
+            """
+            [
+            , codeTest
+                """
+                Annotated
+                """
+                """
+                union Something =
+                    , Mutable @Number
+                    , Immutable Number
+
+                scope =
+                    @m as @Something =
+                        Mutable (mut 0)
+
+                    i as Something =
+                        Immutable 1
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                Inferred
+                """
+                """
+                union Something =
+                    , Mutable @Number
+                    , Immutable Number
+
+                scope =
+                    @m =
+                        Mutable (mut 0)
+
+                    i =
+                        Immutable 1
+
+                    @mm as @Something =
+                        m
+
+                    ii as Something =
+                        i
+                """
+                check
+                Test.isOk
+            ]
+        ]
