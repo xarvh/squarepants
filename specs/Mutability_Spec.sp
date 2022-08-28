@@ -591,5 +591,47 @@ parentScope as Test =
                 check
                 Test.isOk
             ]
+        , Test.Group
+            """
+            The attribute of a mutable record can be accessed as a mutable:
+            """
+            [
+            , codeTest
+                """
+                Simple case
+                """
+                """
+                scope =
+                    @record = { x = 0, y = mut 0 }
+                    @record.x += 3
+                """
+                check
+                Test.isOk
+            , codeTest
+                """
+                Reject double reference
+                """
+                """
+                scope =
+                    @record = { x = 0, y = mut 0 }
+                    doStuff @record.x @record.y
+                """
+                check
+                (Test.errorContains [ "same mutable twice in the same function call" ])
+            , codeTest
+                """
+                SKIP Unpacking an immutable does not consume the unique
+                """
+                """
+                scope =
+                    @record = { x = 0, y = mut 0 }
+
+                    a = record.x
+
+                    @record.x += 1
+                """
+                check
+                Test.isOk
+            ]
         ]
 
