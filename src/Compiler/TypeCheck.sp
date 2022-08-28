@@ -884,7 +884,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
         CA.Call pos reference argument:
 
-            fromExpression env reference >> andThen referenceType_:
+            fromExpression env reference
+            >> andThen referenceType_:
 
             referenceType =
                 expandAlias referenceType_
@@ -892,6 +893,7 @@ checkExpression as Env: Type: CA.Expression: Monad None =
             try referenceType as
 
                 CA.TypeFunction _ parameterType lambdaModifier returnType:
+
                     try argument as
 
                         CA.ArgumentExpression argumentExpression:
@@ -909,16 +911,21 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                             This is super important when the reference type contains type variables.
 
                             #]
-                            fromExpression env argumentExpression >> andThen argumentType:
+                            fromExpression env argumentExpression
+                            >> andThen argumentType:
 
                             reason =
-                                UnifyReason_CallArgument
-                                    { reference = pos
+                                UnifyReason_CallArgument {
+                                    , reference = pos
                                     , argument = CA.argumentPos argument
                                     }
 
-                            unify env pos reason argumentType parameterType >> andThen unifiedArgumentType:
-                            applySubsToType returnType >> andThen actualReturnType:
+                            unify env pos reason argumentType parameterType
+                            >> andThen unifiedArgumentType:
+
+                            applySubsToType returnType
+                            >> andThen actualReturnType:
+
                             isCompatibleWith env expectedType pos actualReturnType
 
                         CA.ArgumentMutable pos { ref, attrPath }:
@@ -932,7 +939,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                             , "TODO: wiki link to explain difference between consuming and mutating"
                                             ]
 
-                            xxx >> andThen _:
+                            xxx
+                            >> andThen _:
 
                             try Dict.get ref env.instanceVariables as
                                 Nothing:
@@ -941,8 +949,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
 
                                 Just var:
                                     if not var.isMutable then
-                                        addCheckError pos
-                                            [ "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
+                                        addCheckError pos [
+                                            , "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
                                             , ""
                                             , "TODO [link to wiki page that explains how to declare variables]"
                                             ]
@@ -952,12 +960,13 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                                         addCheckError pos [ "mutable arguments can't allow functions" ]
 
                                     else
-                                        applyAttributePath env pos True attrPath var.ty >> andThen ty:
+                                        applyAttributePath env pos True attrPath var.ty
+                                        >> andThen ty:
 
                                         # TODO: this is pretty much copied from CA.ArgumentExpression above, would be nice to merge the two
                                         reason =
-                                            UnifyReason_CallArgument
-                                                { reference = pos
+                                            UnifyReason_CallArgument {
+                                                , reference = pos
                                                 , argument = CA.argumentPos argument
                                                 }
 
@@ -1144,7 +1153,6 @@ fromExpression as Env: CA.Expression: Monad Type =
                     errorUndefinedVariable env pos (CA.RefRoot usr)
 
                 Just c:
-                    log "*" c.type
                     replaceTypeVariablesWithNew (getFreeTypeVars Dict.empty c.type) c.type
 
         CA.Lambda pos param lambdaModifier body:
