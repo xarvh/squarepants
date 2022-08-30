@@ -45,6 +45,7 @@ expandInType as GetType: CA.Type: Res CA.Type =
             error pos [ "Did we apply aliases twice?" ]
 
         CA.TypeConstant pos usr args:
+
             List.mapRes (expandInType ga) args >> onOk replacedArgs:
             try ga pos usr as
                 Err e:
@@ -57,9 +58,12 @@ expandInType as GetType: CA.Type: Res CA.Type =
                             , "but was used with " .. Text.fromNumber (List.length replacedArgs) ]
 
                     else
+                        isUnique =
+                            List.any CA.typeContainsUniques replacedArgs
+
                         replacedArgs
                             >> CA.TypeConstant pos usr
-                            >> (t: if CA.typeContainsUniques t then CA.TypeMutable pos t else t)
+                            >> Compiler/TypeCheck.maybeWrapMutable isUnique pos
                             >> Ok
 
                 Ok (CA.TypeDefAlias al):

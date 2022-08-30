@@ -578,6 +578,13 @@ isCompatibleWith as Env: Type: Pos: Type: Monad None =
             None >> list_for (List.map2 Tuple.pair expectedArgs actualArgs) (e & a): None:
                 isCompatibleWith env e pos a
 
+      CA.TypeConstant _ _ expectedArgs & CA.TypeMutable _ t:
+          if List.any CA.typeContainsUniques expectedArgs then
+              isCompatibleWith env expectedType pos t
+          else
+              addCheckError pos [
+                  , "Annotation says unique but actual type is not unique"
+                  ]
 
       CA.TypeFunction _ eFrom eIsMut eTo & CA.TypeFunction _ aFrom aIsMut aTo:
           if eIsMut /= aIsMut then
@@ -883,102 +890,10 @@ checkExpression as Env: Type: CA.Expression: Monad None =
                         ]
 
         CA.Call pos reference argument:
+            checkCall env expectedType { pos, reference, argument }
 
-            fromExpression env reference
-            >> andThen referenceType_:
-
-            referenceType =
-                expandAlias referenceType_
-
-            try referenceType as
-
-                CA.TypeFunction _ parameterType lambdaModifier returnType:
-
-                    try argument as
-
-                        CA.ArgumentExpression argumentExpression:
-                            [#
-
-                                reference as List a -> Maybe a
-
-                                argumentExpression as List Text
-
-                                => returnType as Maybe Text
-
-                            `parameterType` does not come from an annotation, but from inference
-                            Because of this we can't use it to check*, but instead we need to infer and unify it with the argument
-
-                            This is super important when the reference type contains type variables.
-
-                            #]
-                            fromExpression env argumentExpression
-                            >> andThen argumentType:
-
-                            reason =
-                                UnifyReason_CallArgument {
-                                    , reference = pos
-                                    , argument = CA.argumentPos argument
-                                    }
-
-                            unify env pos reason argumentType parameterType
-                            >> andThen unifiedArgumentType:
-
-                            applySubsToType returnType
-                            >> andThen actualReturnType:
-
-                            isCompatibleWith env expectedType pos actualReturnType
-
-                        CA.ArgumentMutable pos { ref, attrPath }:
-                            xxx =
-                                try lambdaModifier as
-                                    LambdaNormal:
-                                        return None
-                                    LambdaConsuming:
-                                        addCheckError pos [
-                                            , "This variable is passed for mutation, but the function needs to consume it."
-                                            , "TODO: wiki link to explain difference between consuming and mutating"
-                                            ]
-
-                            xxx
-                            >> andThen _:
-
-                            try Dict.get ref env.instanceVariables as
-                                Nothing:
-                                    errorUndefinedVariable env pos ref >> andThen ty:
-                                    return None
-
-                                Just var:
-                                    if not var.isMutable then
-                                        addCheckError pos [
-                                            , "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
-                                            , ""
-                                            , "TODO [link to wiki page that explains how to declare variables]"
-                                            ]
-
-                                    else if typeContainsFunctions var.ty then
-                                        # TODO what about constrained/unconstrained tyvars?
-                                        addCheckError pos [ "mutable arguments can't allow functions" ]
-
-                                    else
-                                        applyAttributePath env pos True attrPath var.ty
-                                        >> andThen ty:
-
-                                        # TODO: this is pretty much copied from CA.ArgumentExpression above, would be nice to merge the two
-                                        reason =
-                                            UnifyReason_CallArgument {
-                                                , reference = pos
-                                                , argument = CA.argumentPos argument
-                                                }
-
-                                        unify env pos reason ty parameterType >> andThen unifiedArgumentType:
-                                        applySubsToType returnType >> andThen actualReturnType:
-                                        isCompatibleWith env expectedType pos actualReturnType
-
-                _:
-                    addCheckError pos [
-                        , "The code is trying to call this as if it was a function, but its type is: "
-                        , typeToText env referenceType
-                        ]
+        CA.CallCo pos reference arguments:
+            checkCallCo env expectedType { pos, reference, arguments }
 
         CA.If pos { condition, true, false }:
             checkExpression env CoreTypes.bool condition >> andThen _:
@@ -1051,6 +966,8 @@ checkExpression as Env: Type: CA.Expression: Monad None =
             xxx
             >> andThen _:
             checkExpression env1 expectedType e
+
+
 
 
 
@@ -1191,8 +1108,40 @@ fromExpression as Env: CA.Expression: Monad Type =
             # first of all, let's get our children types
             fromExpression env reference >> andThen referenceType:
             fromArgument env argument >> andThen argumentType:
-            # the type of the call itself is the return type of the lamba
+            # the type of the call itself is the return type of the lambda
             unifyFunctionOnCallAndYieldReturnType env reference referenceType argument argumentType
+
+        CA.CallCo pos reference arguments:
+            fromExpression env reference
+            >> andThen referenceType:
+
+            list_map2 (_: fromArgument env) arguments arguments
+            >> andThen argumentTypes:
+
+            parameterTypes & returnType =
+                linearizeCurriedParameters referenceType []
+
+            unifyArg =
+                (mod & pa): arg:
+                unify env pos (UnifyReason_CallArgument { argument = Pos.S, reference = pos }) pa arg
+
+            list_map2 unifyArg parameterTypes argumentTypes
+            >> andThen unifiedArgumentTypes:
+
+            hasUniques =
+                List.any CA.typeContainsUniques unifiedArgumentTypes
+
+            applySubsToType returnType
+            >> andThen actualReturnType:
+
+            try reference & hasUniques as
+                CA.Constructor _ _ & True:
+                    CA.TypeMutable pos actualReturnType
+                    >> return
+
+                _:
+                    return actualReturnType
+
 
         CA.If pos ar:
             checkExpression env CoreTypes.bool ar.condition >> andThen _:
@@ -1905,16 +1854,30 @@ typeAllowsFunctions as Type: Bool =
        CA.TypeMutable pos t: typeAllowsFunctions t
 
 
-typeAllowsUniques as Type: Bool =
+typeContainsTypeUnique as Type: Bool =
     type:
     try type as
-       CA.TypeConstant pos usr args: List.any typeAllowsUniques args
-       CA.TypeVariable pos name flags: flags.allowUniques
+       CA.TypeConstant pos usr args: List.any typeContainsTypeUnique args
+       CA.TypeVariable pos name flags: False
        CA.TypeFunction pos _ lambdaModifier _: False
-       CA.TypeRecord pos attrs: Dict.any (name: typeAllowsUniques) attrs
-       CA.TypeRecordExt pos name flags attrs: flags.allowUniques or Dict.any (name: typeAllowsUniques) attrs
-       CA.TypeAlias pos usr t: typeAllowsUniques t
+       CA.TypeRecord pos attrs: Dict.any (name: typeContainsTypeUnique) attrs
+       CA.TypeRecordExt pos name flags attrs: flags.allowUniques or Dict.any (name: typeContainsTypeUnique) attrs
+       CA.TypeAlias pos usr t: typeContainsTypeUnique t
        CA.TypeMutable pos t: True
+
+
+typeTyvarsThatAllowUniques as Type: Set Text: Set Text =
+    type: acc:
+    try type as
+       CA.TypeConstant pos usr args: List.for args typeTyvarsThatAllowUniques acc
+       CA.TypeVariable pos name flags: if flags.allowUniques then Set.insert name acc else acc
+       CA.TypeFunction pos _ lambdaModifier _: Set.empty
+       CA.TypeRecord pos attrs: Dict.for attrs (name: typeTyvarsThatAllowUniques) acc
+       CA.TypeAlias pos usr t: typeTyvarsThatAllowUniques t acc
+       CA.TypeMutable pos t: Set.empty
+       CA.TypeRecordExt pos name flags attrs:
+          if flags.allowUniques then Set.insert name acc else acc
+          >> Dict.for attrs (name: typeTyvarsThatAllowUniques)
 
 
 
@@ -1935,15 +1898,39 @@ checkFlagsVsType as UnifyContext: Name: CA.TyvarFlags: Type: Monad None =
     checkNonFn >> andThen _:
 
     checkUniqueness as Monad None =
-        if not flags.allowUniques and typeAllowsUniques type then
+
+        if flags.allowUniques then
+            return None
+
+        else if typeContainsTypeUnique type then
             addCheckError context.pos [
                 , "Cannot unify tyvar " .. name .. " with type"
                 , typeToText context.env type
-                , "because the latter allows or contains UNIQUES and " .. name .. " does not."
+                , "because the type contains UNIQUES and tyvar " .. name .. " does not allow them."
                 , "Also I'm very sorry for these useless error messages, I need to improve them."
                 ]
+
         else
-            return None
+            annotatedTyvars & generatedTyvars =
+                Set.empty
+                >> typeTyvarsThatAllowUniques type
+                >> Set.toList
+                >> List.partition isAnnotation
+
+            if annotatedTyvars /= [] then
+                addCheckError context.pos [
+                    , "Tyvar " .. name .. " does not allow uniques, but these tyvars in the annotation:"
+                    , ""
+                    , Text.join ", " annotatedTyvars
+                    , ""
+                    , "do not allow uniques, so I can't unify them."
+                    , ""
+                    , "If you want these tyvar to allow uniques, add `with " .. Text.join ", " annotatedTyvars .. " to the annotation."
+                    ]
+
+            else
+                # TODO should I unify the tyvars to remove the allowUniques flag?
+                return None
 
     checkUniqueness
 
@@ -2989,4 +2976,215 @@ fromPatternRecord as Env: Pos: PatternVars: Dict Name CA.Pattern: Monad PatternO
       }
 
 
+
+#
+#
+# Function calls
+#
+#
+checkCall as Env: Type: { pos as Pos, reference as CA.Expression, argument as CA.Argument }: Monad None =
+    env: expectedType: stuff:
+
+    { pos, reference, argument } =
+        stuff
+
+    fromExpression env reference
+    >> andThen referenceType_:
+
+    referenceType =
+        expandAlias referenceType_
+
+    try referenceType as
+
+        CA.TypeFunction _ parameterType lambdaModifier returnType:
+
+            try argument as
+
+                CA.ArgumentExpression argumentExpression:
+                    [#
+
+                        reference as List a -> Maybe a
+
+                        argumentExpression as List Text
+
+                        => returnType as Maybe Text
+
+                    `parameterType` does not come from an annotation, but from inference
+                    Because of this we can't use it to check*, but instead we need to infer and unify it with the argument
+
+                    This is super important when the reference type contains type variables.
+
+                    #]
+                    fromExpression env argumentExpression
+                    >> andThen argumentType:
+
+                    reason =
+                        UnifyReason_CallArgument {
+                            , reference = pos
+                            , argument = CA.argumentPos argument
+                            }
+
+                    unify env pos reason argumentType parameterType
+                    >> andThen unifiedArgumentType:
+
+                    applySubsToType returnType
+                    >> andThen actualReturnType:
+
+                    isCompatibleWith env expectedType pos actualReturnType
+
+                CA.ArgumentMutable pos { ref, attrPath }:
+                    xxx =
+                        try lambdaModifier as
+                            LambdaNormal:
+                                return None
+                            LambdaConsuming:
+                                addCheckError pos [
+                                    , "This variable is passed for mutation, but the function needs to consume it."
+                                    , "TODO: wiki link to explain difference between consuming and mutating"
+                                    ]
+
+                    xxx
+                    >> andThen _:
+
+                    try Dict.get ref env.instanceVariables as
+                        Nothing:
+                            errorUndefinedVariable env pos ref >> andThen ty:
+                            return None
+
+                        Just var:
+                            if not var.isMutable then
+                                addCheckError pos [
+                                    , "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
+                                    , ""
+                                    , "TODO [link to wiki page that explains how to declare variables]"
+                                    ]
+
+                            else if typeContainsFunctions var.ty then
+                                # TODO what about constrained/unconstrained tyvars?
+                                addCheckError pos [ "mutable arguments can't allow functions" ]
+
+                            else
+                                applyAttributePath env pos True attrPath var.ty
+                                >> andThen ty:
+
+                                # TODO: this is pretty much copied from CA.ArgumentExpression above, would be nice to merge the two
+                                reason =
+                                    UnifyReason_CallArgument {
+                                        , reference = pos
+                                        , argument = CA.argumentPos argument
+                                        }
+
+                                unify env pos reason ty parameterType >> andThen unifiedArgumentType:
+                                applySubsToType returnType >> andThen actualReturnType:
+                                isCompatibleWith env expectedType pos actualReturnType
+
+        _:
+            addCheckError pos [
+                , "The code is trying to call this as if it was a function, but its type is: "
+                , typeToText env referenceType
+                ]
+
+
+
+
+linearizeCurriedParameters as Type: [LambdaModifier & Type]: [LambdaModifier & Type] & Type =
+    type: accum:
+
+    try type as
+        CA.TypeFunction pos from modifier to:
+            linearizeCurriedParameters to << (modifier & from) :: accum
+
+        _:
+            List.reverse accum & type
+
+
+
+
+unifyArgument as Env: Pos: CA.Argument: (LambdaModifier & CA.Type): Monad Type =
+    env: pos: argument: (lambdaModifier & expectedParameterType):
+
+    getArgumentType as Monad Type =
+          try argument as
+
+              CA.ArgumentExpression argumentExpression:
+                  fromExpression env argumentExpression
+
+              CA.ArgumentMutable _ { ref, attrPath }:
+                  xxx as Monad None =
+                      try lambdaModifier as
+                          LambdaNormal:
+                              return None
+                          LambdaConsuming:
+                              addCheckError pos [
+                                  , "This variable is passed for mutation, but the function needs to consume it."
+                                  , "TODO: wiki link to explain difference between consuming and mutating"
+                                  ]
+
+                  xxx
+                  >> andThen _:
+
+                  try Dict.get ref env.instanceVariables as
+                      Nothing:
+                          errorUndefinedVariable env pos ref
+
+                      Just var:
+                          if not var.isMutable then
+                              addError pos [
+                                  , "You are trying to mutate variable `" .. (toHuman ref) .. "` but it was declared as not mutable!"
+                                  , ""
+                                  , "TODO [link to wiki page that explains how to declare variables]"
+                                  ]
+
+                          else
+                              applyAttributePath env pos True attrPath var.ty
+
+    getArgumentType
+    >> andThen argumentType:
+
+    reason =
+        UnifyReason_CallArgument {
+            , reference = pos
+            , argument = CA.argumentPos argument
+            }
+
+    unify env pos reason argumentType expectedParameterType
+
+
+
+checkCallCo as Env: Type: { pos as Pos, reference as CA.Expression, arguments as [CA.Argument] }: Monad None =
+    env: expectedType: stuff:
+
+    { pos, reference, arguments } =
+        stuff
+
+    fromExpression env reference
+    >> andThen referenceType:
+
+    modifiersAndType & returnType =
+        linearizeCurriedParameters referenceType []
+
+    eLength = List.length modifiersAndType
+    aLength = List.length arguments
+
+    if eLength /= aLength then
+        addCheckError pos [
+            , "The annotation says that function " .. toHuman reference .. " takes " .. Text.fromNumber eLength
+            , "but the function is being given " .. Text.fromNumber aLength
+        ]
+    else
+        list_map2 (unifyArgument env pos) arguments modifiersAndType
+        >> andThen unifiedArgumentTypes:
+
+        applySubsToType returnType
+        >> andThen unifiedReturnType:
+
+        anyConsumed =
+            List.any CA.typeContainsUniques unifiedArgumentTypes
+
+        actualReturnType =
+            try reference & anyConsumed as
+                CA.Constructor _ _ & True: CA.TypeMutable pos unifiedReturnType
+                _: unifiedReturnType
+
+        isCompatibleWith env expectedType pos actualReturnType
 

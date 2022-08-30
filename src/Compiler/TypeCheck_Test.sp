@@ -517,11 +517,11 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 {
                 , isMutable = False
-                , freeTypeVariables = ftv "1"
+                , freeTypeVariables = Dict.singleton "1" { allowFunctions = True, allowUniques = True }
                 , ty =
                     CA.TypeConstant Pos.T
                         (TH.localType "X")
-                        [ CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = False }]
+                        [ CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = True }]
                 }
             )
         , codeTest

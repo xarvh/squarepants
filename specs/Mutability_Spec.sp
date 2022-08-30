@@ -14,11 +14,11 @@ All the crunching is done at compile time, which means that, for unique values, 
 
 specs as Test =
     Test.Group "Mutability spec" [
-#      , howDoesItLookLike
-#      , uniquenessTyping
-#      , mutation
-#      , parentScope
-#      , records
+      , howDoesItLookLike
+      , uniquenessTyping
+      , mutation
+      , parentScope
+      , records
       , unions
       ]
 
@@ -178,7 +178,7 @@ uniquenessTyping as Test =
                 a as Number = mut 1
                 """
                 check
-                (Test.errorContains ["The two types are not compatible"])
+                (Test.errorContains ["Annotation says unique but actual type is not unique"])
             ]
         , Test.Group "A variable with mutable type must be explicitly declared as mutable with `@`" [
             , codeTest "1"
