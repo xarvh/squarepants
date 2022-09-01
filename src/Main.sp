@@ -4,7 +4,7 @@ allTests as [ Test ] = [
 #    , Compiler/Parser_Test.tests
 #    , Compiler/MakeCanonical_Test.tests
     , Compiler/TypeCheck_Test.tests
-    #, Compiler/CanonicalToJs_Test.tests
+#    #, Compiler/CanonicalToJs_Test.tests
 #    , Hash_Test.tests
 #    , Array_Test.tests
 #    , List_Test.tests
@@ -93,7 +93,7 @@ order as Test.TestOutcome: Int =
 selftestMain as None: IO Int =
     None:
     allTests
-    >> Test.flatten
+    >> Test.flattenAndRun
     >> List.sortBy (x: order x.outcome & x.name)
     >> List.map (x: testOutcomeToText x.name x.code x.outcome)
     >> Text.join "\n"

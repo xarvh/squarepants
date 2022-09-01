@@ -120,20 +120,22 @@ errorContains as [Text]: CodeExpectation ok =
 #
 
 
-outcomesRec as Text: Test: [{ name as Text, code as Text, outcome as TestOutcome }]: [{ name as Text, code as Text, outcome as TestOutcome }] =
+alias T = {
+    , name as Text
+    , code as Text
+    , getOutcome as None: TestOutcome
+    }
+
+
+outcomesRec as Text: Test: [T]: [T] =
     path: test: accum:
 
     try test as
         Single name code f:
-            # HACK?
-            if Text.startsWith "SKIP" name then
-              { name = path .. name, code = "", outcome = Skipped } :: accum
-
-            else
-              { name = path .. name, code, outcome = f None } :: accum
+              { name = path .. name, code, getOutcome = f } :: accum
 
         NotNow t:
-            { name = path .. getName t, code = "", outcome = Skipped } :: accum
+            { name = path .. getName t, code = "", getOutcome = None: Skipped } :: accum
 
         Group pathSegment ts:
             List.for ts (outcomesRec (path .. pathSegment .. " / ")) accum
@@ -153,10 +155,31 @@ getName as Test: Text =
             getName t
 
 
-flatten as [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome }] =
+flattenAndRun as [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome }] =
     tests:
 
-    List.for tests (outcomesRec "") []
+    flattened =
+        outcomesRec "" (Group "" tests) []
+        >> List.map r: if Text.contains "SKIP" r.name then { r with getOutcome = None: Skipped } else r
+
+    onlies =
+        flattened
+        >> List.filter r: Text.contains "ONLY" r.name
+
+    runnable =
+        if onlies /= [] then onlies else flattened
+
+
+    runTest =
+        r:
+        { name, code, getOutcome } = r
+        { name, code, outcome = getOutcome None }
+
+
+    List.map runTest runnable
+
+
+
 
 
 errorsFirst as TestOutcome: Number =

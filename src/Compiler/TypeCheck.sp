@@ -1239,7 +1239,6 @@ unifyFunctionOnCallAndYieldReturnType as Env: CA.Expression: Type: CA.Argument: 
 
         CA.TypeVariable pos name flags:
 
-
             todo ",mnas,kjasdf"
 
             newType pos flags
@@ -1743,6 +1742,11 @@ unify_ as UnifyContext: Type: Type: Monad Type =
             if flags1.allowFunctions /= flags2.allowFunctions then
                 unifyError pos NonFunctionContainsFunction t1 t2
             else if flags1.allowUniques /= flags2.allowUniques then
+
+
+                log "*" { v1_name, flags1, v2_name, flags2 }
+
+
                 unifyError pos AllowMutabilityClash t1 t2
             else if v1_name == v2_name then
                 return t1
