@@ -25,8 +25,6 @@ alias TyvarFlags = {
 
 union Type =
     , TypeConstant Pos Meta.UniqueSymbolReference [Type]
-    # Tyvars with the same name must have the same Flags
-    # Duplicating them in the constructor is not ideal, but for now seems handy
     , TypeVariable Pos Name TyvarFlags
     , TypeFunction Pos Type LambdaModifier Type
     , TypeRecord Pos (Dict Name Type)
@@ -127,6 +125,8 @@ alias Constructor = {
 alias ValueDef = {
     , pattern as Pattern
     , native as Bool
+
+    # TODO remove this, it is not used
     , parentDefinitions as [Pattern]
     , body as Expression
     #

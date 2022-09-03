@@ -1,4 +1,6 @@
 [#
+
+    Takeaways from:
     https://www.youtube.com/watch?v=x3evzO8O9e8
     https://drive.google.com/file/d/1NRkP0hz-0Yo49Rto70b2nUwxjPiGD9Ci/view
 
@@ -22,6 +24,15 @@
 
 
     typeclasses pass a record of the type-appropriate functions
+
+
+    Other stuff in my to-read list:
+      https://okmij.org/ftp/Computation/typeclass.html
+      https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.127.8206&rep=rep1&type=pdf
+      https://jeremymikkola.com/posts/2019_01_01_type_inference_intro.html
+      https://gist.github.com/chrisdone/0075a16b32bfd4f62b7b
+      https://smunix.github.io/dev.stephendiehl.com/fun/006_hindley_milner.html
+
 #]
 
 
@@ -36,7 +47,8 @@ alias CanonicalType =
 
 
 union UnificationType_ =
-    , TypeUnificationVariable Int
+    , TypeUnificationVariable UnificationVariableId
+    , TypeRecordExt Pos UnificationVariableId (Dict Name (Type extra))
 
 alias UnificationType =
     Type UnificationType_
@@ -70,6 +82,13 @@ union Constraint =
 
 
 
+#blah as { someAttr as b }: b =
+#    x:
+#    x.someAttr
+
+
+
+
 
 
 
@@ -86,7 +105,6 @@ union Type extra =
     , TypeVariable Pos Name
     , TypeFunction Pos (Type extra) LambdaModifier (Type extra)
     , TypeRecord Pos (Dict Name (Type extra))
-    , TypeRecordExt Pos Name (Dict Name (Type extra))
     , TypeMutable Pos (Type extra)
     , TypeExtra extra
 
@@ -98,12 +116,15 @@ union Type extra =
 union Expression type =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
-    , Variable Pos VariableArgs
+    , Variable Pos Ref
     , Constructor Pos Meta.UniqueSymbolReference
     , Lambda Pos (Pattern type) LambdaModifier Expression
     , Call Pos Expression Argument type
     , CallCo Pos Expression [Argument & type]
-    , Record Pos (Maybe VariableArgs) (Dict Name Expression)
+      # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
+      # to nested RecordAccess? Maybe function calls too?
+    , Record Pos (Maybe (Expression type)) (Dict Name Expression)
+    , RecordAccess Pos Name (Expression type)
     , LetIn ValueDef Expression
     , If Pos {
         # we use the if also to get lazy ops and compacted compops, so even if the syntax does
@@ -138,11 +159,199 @@ alias ValueDef type = {
 
 
 
+alias State = {
+    , equalities as [Equalities]
+    , errors as [Error]
+    , nextUnificationVarId as Int
+    }
+
+
+#
+#
+# Expressions
+#
+# TODO I *could* use a monad for State, but I don't want to because I hope to have good mutability sooner than later.
+# (I'm not using the current mutation impl because it's super slow).
+#
+inferExpression as Env: Expression CanonicalType: State: Expression UnificationType & State & UnificationType =
+    env: caExpression: state:
+
+    try caExpression as
+
+        # TODO would be nice to be able to say that from here on, `caExpression as Expression any`
+        LiteralNumber pos n:
+            LiteralNumber pos n & state & CoreTypes.numberType
+
+
+        LiteralText pos text:
+            LiteralText pos text & state & CoreTypes.textType
+
+
+        Variable pos ref:
+            try getVariableByRef ref env as
+                Nothing:
+                    inferenceError env (ErrorVariableNotFound ref pos) state
+
+                Just var:
+                    ty & state1 = generalize var.type state
+                    Variable pos ref & state1 & ty
+
+
+        Constructor pos usr:
+            try getConstructorByUsr usr env as
+                Nothing:
+                    inferenceError env (ErrorConstructorNotFound usr pos) state
+
+                Just cons:
+                    ty & state1 = generalize cons.type state
+                    Constructor pos usr & state1 & ty
+
+
+        Lambda pos pattern modifier body:
+
+            inferredPattern =
+                inferPattern { env with context = LambdaArgs pos .context }
+
+            state1 =
+                patternOut.state
+
+            newEnv = { env with
+                , context = LambdaBody pos .context
+                , variables = insertVariables inferredPattern.variables variables .variables state
+                }
+
+            unificationBody & state2 & bodyType =
+                inferExpression newEnv body state1
+
+            type =
+                TypeFunction Pos.G
+                    inferredPattern.type
+                    modifier
+                    expressionType
+
+            exp =
+                Lambda pos inferredPattern.unificationPattern modifier unificationBody
+
+            exp & state2 & type
+
+
+        Call pos reference argument __unused__:
+
+            uniRef & state1 & refType =
+                inferExpression env reference state
+
+            uniArg & state2 & argType =
+                inferArgument env argument state1
+
+            callType & state3 =
+                newType state2
+
+            state4 =
+                try refType as
+                    TypeFunction _ in modifier out:
+                        state3
+                        >> addEquality env CallArgument in argType
+                        >> addEquality env CallReturns out callType
+
+                    TypeUnificationVariable id:
+                        modifier = ???
+                        state3
+                        >> addEquality env CalledAsFunction refType (TypeFunction argType modifier callType)
+
+          Call pos uniRef uniArg callType & state4 & callType
+
+
+        CallCo pos reference argsAndUnusedTypes:
+            as above
+
+
+        Record pos Nothing attrs:
+
+            unificationAttrs & state1 & inferredAttrTypes =
+                inferAttrs ...
+
+            unificationExpression =
+                Record pos Nothing unificationAttrs
+
+            inferredType =
+                TypeRecord Pos.G inferredAttrTypes
+
+            unificationExpression & state1 & inferredType
+
+
+        Record pos (Just ext) attrExpressions:
+
+            unificationAttrs & state1 & inferredAttrTypes =
+                inferAttrs ...
+
+            unificationExtension & state1 & inferredExtensionType =
+                inferExpression env ext state
+
+            type & state2 =
+                try inferredExtensionType as
+                    TypeRecord _ attrTypes:
+                        check that inferredAttrTypes are a subset of attrs and unify their types
+
+                        type is inferredExtensionType
+
+                    TypeRecordExt _ tyvarId extensionAttrTypes:
+                        expressionOnly & both & extensionOnly =
+                            onlyA_both_onlyB inferredAttrTypes extensionAttrTypes
+
+                        unify `both`
+
+                        # TODO: is it faster if I avoid creating a new tyvar when expressionOnly is empty?
+                        newTyvarId = newTyvarId state
+
+                        TypeRecordExt _ newTyvarId (Dict.join both expressionOnly extensionOnly)
+
+                    TypeUnificationVariable id:
+                        ...
+
+            Record pos (Just unificationExtension) unificationAttrs & state2 & type
 
 
 
-inferExpression as Env: Expression CanonicalType: Expression UnificationType & Constraint =
-    ...
+        RecordAccess pos attrName recordExpression:
+
+            unificationExpr & state1 & inferredType =
+                inferExpression env recordExpression state
+
+            try inferredType as
+                TypeRecord _ attrTypes:
+                    check that attrName exists in attrTypes, return relevant type
+
+                TypeRecordExt _ tyvarId extensionAttrTypes:
+                    check that attrName exists in attrTypes, return relevant type
+
+                    otherwise
+                        create newExtTyvar
+                        create newAttrType
+
+                        type = TypeRecordExt newExtTyvar (Dict.insert attrName newAttrType extensionAttrTypes)
+                        replaceUnificationVariable tyvarId type
+
+                TypeUnificationVariable id:
+                    create newExtTyvar
+                    create newAttrType
+
+                    type = TypeRecordExt newExtTyvar (Dict.singleton attrName newAttrType extensionAttrTypes)
+                    replaceUnificationVariable tyvarId type
+
+                _:
+                    addError "not a record!"
+
+
+        LetIn ValueDef Expression
+        If Pos {
+        # we use the if also to get lazy ops and compacted compops, so even if the syntax does
+        # not support statement blocks inside if condition, it's useful that the AST can model it.
+        , condition as Expression
+        , true as Expression
+        , false as Expression
+        }
+        Try Pos Expression [Pattern & Expression]
+        DestroyIn Name Expression
 
 
 checkExpression as Env: Expression CanonicalType: Expression UnificationType =
@@ -246,11 +455,10 @@ solveRecordExt as Why: ...: Dict Name UnificationType: UnificationType: [Equalit
             addError why "should be a record" state
 
 
-
 replaceUnificationVariable as Why: UnificationVariableId: UnificationType: [Equality]: State: State =
     why: uniVarId: replacingType: remainingEqualities: state:
 
-    check that replacingType does not contain uniVarId
+    #TODO: check that replacingType does not contain uniVarId
 
     equalities =
         # TODO we don't care about map preserving order
@@ -265,4 +473,36 @@ replaceUnificationVariable as Why: UnificationVariableId: UnificationType: [Equa
         >> Dict.insert uniVarId replacingType
 
     solveEqualities newEqualities { state with substitutions }
+
+
+applySubstitutionToType as UnificationVariableId: UnificationType: UnificationType: UnificationType =
+    uniVarId: replacingType: targetType:
+
+    rec = applySubstitutionToType uniVarId replacingType
+
+    try targetType as
+        TypeOpaque pos usr args:
+            TypeOpaque pos usr (List.map rec args)
+
+        TypeVariable Pos name:
+            targetType
+
+        TypeFunction pos in mod out:
+            TypeFunction pos (rec in) mod (rec out)
+
+        TypeRecord pos attrs:
+            TypeFunction pos (Dict.map (k: rec) attrs)
+
+        TypeRecordExt pos name attrs
+            ??? name?
+            TypeFunction pos (Dict.map (k: rec) attrs)
+
+        TypeMutable pos t:
+            TypeMutable pos (rec t)
+
+        TypeExtra (TypeUnificationVariable id):
+            if id == univarId then
+                replacingType
+            else
+                targetType
 
