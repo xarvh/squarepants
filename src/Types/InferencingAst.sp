@@ -42,7 +42,7 @@ union Type extra =
     , TypeVariable Pos Name
     , TypeFunction Pos (Type extra) LambdaModifier (Type extra)
     , TypeRecord Pos (Dict Name (Type extra))
-    , TypeMutable Pos (Type extra)
+    , TypeUnique Pos (Type extra)
     , TypeExtra extra
 
 
@@ -93,12 +93,21 @@ union Expression type =
 
 
 union Pattern type =
-    , PatternAny Pos Bool (Maybe Text) type
+    , PatternAny Pos {
+        , isUnique as Bool
+        , maybeName as Maybe Text
+        , maybeAnnotation as Maybe CanonicalType
+        , type as type
+        }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern type]
     , PatternRecord Pos (Dict Name (Pattern & type))
 
+
+union Argument type =
+    , ArgumentExpression (Expression type)
+    , ArgumentRecycle Pos Ref
 
 alias ValueDef type = {
     , pattern as (Pattern type)
@@ -120,6 +129,12 @@ alias State = {
     , nextUnificationVarId as Int
     }
 
+
+alias Env = {
+    , variables as Dict Name UnificationType
+    , annotatedTyvars as Dict Name Type
+    , context as ???
+    }
 
 
 
@@ -321,7 +336,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                     TypeUnificationVariable id:
                         ty = TypeExtra (TypeRecordExt _ id valueTypeByName)
 
-                        addEquality extType ty
+                        addEquality env Why_RecordExt extType ty @state
 
                         ty
 
@@ -531,7 +546,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             requiredType =
                 TypeExtra << TypeRecordExt pos newId (Dict.singleton attrName expectedType)
 
-            addEquality env AttributeAccess expressionType requiredType @state
+            addEquality env Why_AttributeAccess expressionType requiredType @state
 
             RecordAccess pos attrName typedExpression
 
@@ -585,7 +600,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                         , variables = insertVariables inferredPattern.variables variables .variables state
                         }
 
-                    addEquality inferredPattern.type valueType @state
+                    addEquality env Why_TryPattern inferredPattern.type valueType @state
 
                     typedExpression =
                         checkExpression patternEnv expectedType exp @state
@@ -611,12 +626,12 @@ checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: Sta
 
     typedArgumentsAndArgumentTypes =
         givenArgs >> List.map (arg & unusedType):
-                inferArgument env argument @state
+            inferArgument env argument @state
 
     referenceArgs & referenceReturn =
         linearizeCurriedParameters referenceType []
 
-    addEquality env ReturnType referenceReturn expectedType @state
+    addEquality env Why_ReturnType referenceReturn expectedType @state
 
     if referenceArgs /= [] then
 
@@ -636,7 +651,7 @@ checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: Sta
             typedArgs =
                 List.map2 Tuple.pair referenceArgs typedArgumentsAndArgumentTypes
                 >> List.indexedMap stuff index: ((refMod & refType) & (tyArg & argTy)):
-                      addEquality env (Argument index) refType argTy @state
+                      addEquality env (Why_Argument index) refType argTy @state
 
                       refMod & tyArg
 
@@ -650,7 +665,7 @@ checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: Sta
                     expectedType >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
                         TypeFunction argTy modifier type
 
-                addEquality env CalledAsFunction referenceType referenceTypeFromArguments @state
+                addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
 
                 typedArgs =
                     List.map Tuple.first typedArgumentsAndArgumentTypes
@@ -662,42 +677,88 @@ checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: Sta
 
 
 
+inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType & UnificationType =
+    env: arg: @state:
+
+    try arg as
+        ArgumentExpression exp:
+            typedExp & expType =
+                inferExpression env exp @state
+
+            ArgumentExpression typedExt & expType
+
+        ArgumentRecycle pos ref:
+            try getVariableByRef ref env as
+
+                Nothing:
+                    inferenceError env (ErrorVariableNotFound ref pos) @state
+
+                Just var:
+                    ArgumentRecycle pos ref & var.type
 
 
-#    state3 =
-#        try referenceType & typedArgumentsAndArgumentTypes as
-#            TypeFunction _ in modifier out & ((typedArgument & argumentType) :: tail):
-#                state2
-#                >> addEquality env CallArgument in argumentType
-#                >> addEquality env CallReturns out expectedType
-#
-#            TypeUnificationVariable id & _:
-#                modifier = ???
-#                state2
-#                >> addEquality env CalledAsFunction referenceType (TypeFunction argType modifier expectedType)
-#
-#            _:
-#                addError why "types don't match" state
 
-#            typedReference & state1 & referenceType =
-#                inferExpression env expression state
 #
-#            typedArgument & state2 & argumentType =
-#                inferArgument env argument state1
 #
-#            state3 =
-#                try referenceType as
-#                    TypeFunction _ in modifier out:
-#                        state2
-#                        >> addEquality env CallArgument in argumentType
-#                        >> addEquality env CallReturns out expectedType
+# Patterns
 #
-#                    TypeUnificationVariable id:
-#                        modifier = ???
-#                        state2
-#                        >> addEquality env CalledAsFunction referenceType (TypeFunction argType modifier expectedType)
 #
-#            Call pos typedReference typedArgument expectedType & state3 & expectedType
+alias PatternOut = {
+    , patternType as UnificationType
+    , typedPatern as Pattern UnificationType
+    , env as Env
+    }
+
+
+inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
+    env: pattern: @state:
+
+    try pattern as
+        PatternAny pos { isUnique, maybeName, maybeAnnotation, type = __unused__ }:
+
+            patternType =
+                try maybeAnnotation as
+                    Nothing:
+                        if isUnique then
+                            TypeUnique << newType @state
+                        else
+                            newType @state
+
+                    Just annotation:
+                        ensure annotation matches isUnique
+                        canonicalToUnificationType annotation
+
+
+            newEnv =
+                try maybeName as
+
+                    Nothing:
+                        env
+
+                    Just name:
+
+                        if Dict.member name env.variables then
+                            addError (Why_Duplicate name) "shadowing!" @state
+                            None
+                        else
+                            None
+
+                        { env with variables = Dict.insert name type .variables }
+
+            typedPattern =
+                PatternAny pos { isUnique, maybeName, maybeAnnotation, type }
+
+            { typedPattern, patternType, env = newEnv }
+
+
+        PatternLiteralText Pos Text
+        PatternLiteralNumber Pos Number
+        PatternConstructor Pos Meta.UniqueSymbolReference [Pattern type]
+        PatternRecord Pos (Dict Name (Pattern & type))
+
+
+
+
 
 
 
@@ -758,7 +819,7 @@ solveEqualities as [Equality]: State: State =
                 t1 & TypeRecordExt _ name2 attrs2:
                     solveRecordExt why name2 attrs2 t1 tail state
 
-                TypeMutable _ m1 & TypeMutable _ m2:
+                TypeUnique _ m1 & TypeUnique _ m2:
                     solveEqualities (Equality why m1 m2 :: tail) state
 
                 TypeVariable _ name1 & TypeVariable _ name2:
@@ -841,8 +902,8 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
             else
                 TypeRecordExt pos id (Dict.map (k: rec) attrs)
 
-        TypeMutable pos t:
-            TypeMutable pos (rec t)
+        TypeUnique pos t:
+            TypeUnique pos (rec t)
 
         TypeExtra (TypeUnificationVariable id):
             if id == univarId then
