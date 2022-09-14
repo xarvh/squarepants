@@ -37,54 +37,6 @@
 
 
 
-
-union CanonicalType_ =
-    , TypeAlias Pos Meta.UniqueSymbolReference Type
-
-alias CanonicalType =
-    Type CanonicalType_
-
-
-
-union UnificationType_ =
-    , TypeUnificationVariable UnificationVariableId
-    , TypeRecordExt Pos UnificationVariableId (Dict Name (Type extra))
-
-alias UnificationType =
-    Type UnificationType_
-
-
-
-alias ResolvedType =
-    Type Never
-
-
-
-
-
-union Why =
-  ???
-
-
-union Equality =
-    , Equality Why UnificationType UnificationType
-
-
-union Constraint =
-    , C_Nest [Constraint]
-    , C_Class Why UnificationType TypeClasses
-    , C_Equality Why UnificationType UnificationType
-    # TODO I don't know how to use this one
-    #, C_Implication Name Constraint Constraint
-
-
-alias TypeClasses = {
-    , allowFunctions as Maybe Bool
-    , allowUniques as Maybe Bool
-    }
-
-
-
 union Type extra =
     , TypeOpaque Pos Meta.UniqueSymbolReference [Type extra]
     , TypeVariable Pos Name
@@ -92,6 +44,22 @@ union Type extra =
     , TypeRecord Pos (Dict Name (Type extra))
     , TypeMutable Pos (Type extra)
     , TypeExtra extra
+
+
+union CanonicalTypeExtra =
+    Never CanonicalTypeExtra
+
+alias CanonicalType =
+    Type CanonicalTypeExtra
+
+
+union UnificationTypeExtra =
+    , TypeUnificationVariable UnificationVariableId
+    , TypeRecordExt Pos UnificationVariableId (Dict Name (Type extra))
+
+alias UnificationType =
+    Type UnificationTypeExtra
+
 
 
 
@@ -151,6 +119,46 @@ alias State = {
     , errors as [Error]
     , nextUnificationVarId as Int
     }
+
+
+
+
+union Why =
+  ???
+
+
+union Equality =
+    , Equality Why UnificationType UnificationType
+
+
+#union Constraint =
+#    , C_Nest [Constraint]
+#    , C_Class Why UnificationType TypeClasses
+#    , C_Equality Why UnificationType UnificationType
+    # TODO I don't know how to use this one
+    #, C_Implication Name Constraint Constraint
+
+
+alias TypeClasses = {
+    , allowFunctions as Maybe Bool
+    , allowUniques as Maybe Bool
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -247,49 +255,80 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
 
         Record pos Nothing attrs:
 
-            unificationAttrs & inferredAttrTypes =
-                inferAttrs ...
+            typedValueAndValueTypeByName =
+                attrs >> Dict.map name: value:
+                    inferExpression { env with context = Context_Argument name .context } value @state
 
-            unificationExpression =
-                Record pos Nothing unificationAttrs
+            typedValueByName =
+                Dict.map Tuple.first typedValueAndValueTypeByName
 
-            inferredType =
-                TypeRecord Pos.G inferredAttrTypes
+            valueTypeByName =
+                Dict.map Tuple.second typedValueAndValueTypeByName
 
-            unificationExpression & inferredType
+
+            Record pos Nothing typedValueByName & TypeRecord pos valueTypeByName
 
 
         Record pos (Just ext) attrExpressions:
 
-            unificationAttrs & inferredAttrTypes =
-                inferAttrs ...
+            typedValueAndValueTypeByName =
+                attrs >> Dict.map name: value:
+                    inferExpression { env with context = Context_Argument name .context } value @state
 
-            unificationExtension & inferredExtensionType =
+            typedValueByName =
+                Dict.map Tuple.first typedValueAndValueTypeByName
+
+            valueTypeByName =
+                Dict.map Tuple.second typedValueAndValueTypeByName
+
+
+            typedExt & extType =
                 inferExpression env ext @state
 
-            type =
-                try inferredExtensionType as
+
+            finalType =
+                try extType as
                     TypeRecord _ attrTypes:
-                        check that inferredAttrTypes are a subset of attrs and unify their types
 
-                        type is inferredExtensionType
+                        Dict.each valueTypeByName name: valueType:
+                            try Dict.get name attrTypes as
 
-                    TypeRecordExt _ tyvarId extensionAttrTypes:
+                                Nothing:
+                                    checkError "missing attribute" name @state
+
+                                Just ty:
+                                    addEquality env Why_Record ty valueType @state
+
+                        extType
+
+
+                    TypeExtra (TypeRecordExt _ tyvarId extensionAttrTypes):
+
                         expressionOnly & both & extensionOnly =
                             onlyA_both_onlyB inferredAttrTypes extensionAttrTypes
 
-                        unify `both`
+                        Dict.each both name: (inAttr & extAttr):
+                            addEquality env Why_Record inAttr extAttr @state
+
 
                         # TODO: is it faster if I avoid creating a new tyvar when expressionOnly is empty?
-                        newTyvarId = newTyvarId state
+                        newTyvarId =
+                            newTyvarId @state
 
-                        TypeRecordExt _ newTyvarId (Dict.join both expressionOnly extensionOnly)
+                        TypeRecordExt _ newTyvarId (Dict.join inferredAttrTypes extensionOnly)
+
 
                     TypeUnificationVariable id:
-                        ...
+                        ty = TypeExtra (TypeRecordExt _ id valueTypeByName)
 
-            Record pos (Just unificationExtension) unificationAttrs & type
+                        addEquality extType ty
 
+                        ty
+
+                    _:
+                        not compatible with record
+
+            Record pos (Just typedExt) typedValueByName & finalType
 
 
         RecordAccess pos attrName recordExpression:
@@ -511,31 +550,20 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
 
-checkCallCo as Env: CanonicalType: Expression: [Argument & unusedType]: State: Expression UnificationType & State =
-    env: expectedType: reference: givenArgs: state0:
+checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: State@: Expression UnificationType =
+    env: expectedType: pos: reference: givenArgs: @state:
 
-    typedReference & state1 & referenceType =
-        inferExpression env reference state
+    typedReference & referenceType =
+        inferExpression env reference @state
 
-    typedArgumentsAndArgumentTypes & state2 =
-        [] & state1 >> List.forReversed givenArgs (arg & unusedType): (list & stateX):
-
-            typedArgument & stateX1 & argumentType =
-                inferArgument env argument stateX
-
-            ((typedArgument & argumentType) :: list) & stateX1
-
+    typedArgumentsAndArgumentTypes =
+        givenArgs >> List.map (arg & unusedType):
+                inferArgument env argument @state
 
     referenceArgs & referenceReturn =
         linearizeCurriedParameters referenceType []
 
-
-    state3 =
-        addEquality env ReturnType referenceReturn expectedType state2
-
-
-    finalExpression =
-        CallCo pos typedReference typedArgs
+    addEquality env ReturnType referenceReturn expectedType @state
 
     if referenceArgs /= [] then
 
@@ -552,28 +580,29 @@ checkCallCo as Env: CanonicalType: Expression: [Argument & unusedType]: State: E
             checkError "too many arguments"
 
         else
-            stuff =
+            typedArgs =
                 List.map2 Tuple.pair referenceArgs typedArgumentsAndArgumentTypes
+                >> List.indexedMap stuff index: ((refMod & refType) & (tyArg & argTy)):
+                      addEquality env (Argument index) refType argTy @state
 
-            state4 & typedArgs =
-                # TODO: I want the argument index!
-                state3 & [] >> List.forReversed stuff ((refMod & refType) & (tyArg & argTy)): (stateX & args):
-                      addEquality env Argument refType argTy stateX & ((refMod & tyArg) :: args)
+                      refMod & tyArg
 
-            finalExpression & state4
-
+            CallCo pos typedReference typedArgs
 
     else
         try referenceType as
             TypeUnificationVariable id:
-                type =
+
+                referenceTypeFromArguments =
                     expectedType >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
                         TypeFunction argTy modifier type
 
-                state4 =
-                    addEquality env CalledAsFunction referenceType state3
+                addEquality env CalledAsFunction referenceType referenceTypeFromArguments @state
 
-                finalExpression & state4
+                typedArgs =
+                    List.map Tuple.first typedArgumentsAndArgumentTypes
+
+                CallCo pos typedReference typedArgs
 
             _:
                 checkError "Trying to call as a function"
