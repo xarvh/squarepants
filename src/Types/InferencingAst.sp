@@ -376,13 +376,66 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                 inferExpression newEnv body @state
 
 
-        If Pos {
-          , condition as Expression
-          , true as Expression
-          , false as Expression
-          }
-        Try Pos Expression [Pattern & Expression]
-        DestroyIn Name Expression
+        If pos { condition, true, false }:
+
+            typedCondition =
+                checkExpression { env with context = IfCondition pos } CoreTypes.bool condition @state
+
+            typedTrue & trueType =
+                inferExpression { env with context = IfTrue } true @state
+
+            typedFalse & falseType =
+                inferExpression { env with context = IfFalse } false @state
+
+            addEquality env Why_IfBranches trueType falseType @state
+
+            expression =
+                If pos {
+                    , condition = typedCondition
+                    , true = typedTrue
+                    , false = typedFalse
+                    }
+
+            expression & trueType
+
+
+        Try pos { value, type = __unused __, patternsAndExpressions }:
+
+            typedValue & valueType =
+                inferExpression env value @state
+
+            finalType =
+                newType @state
+
+            typedPatternsAndExpressions =
+                patternsAndExpressions >> List.map (pa & exp):
+
+                    inferredPattern =
+                        inferPattern env pa @state
+
+                    addEquality env Why_TryPattern inferredPattern.type valueType @state
+
+                    newEnv =
+                        { env with
+                        , context = TryBranch (CA.patternPos pa)
+                        , variables = insertVariables inferredPattern.variables variables .variables state
+                        }
+
+                    typedExpression & expressionType =
+                        inferExpression patternEnv exp @state
+
+                    addEquality newEnv Why_TryExpression finalType expressionType @state
+
+                    typedPattern & typedExpression
+
+            Try pos { value = typedValue, type = valueType, patternsAndExpressions = typedPatternsAndExpressions } & finalType
+
+
+        DestroyIn name expression:
+            typedExpression & expressionType =
+                inferExpression env expression @state
+
+            DestroyIn name typedExpression & expressionType
 
 
 checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Expression UnificationType =
