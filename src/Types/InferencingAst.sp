@@ -782,9 +782,24 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                         argModAndTypes & returnType =
                             linearizeCurriedParameters (generalize cons.type @state) []
 
-                        check that arguments number matches
+                        rl =
+                            List.length referenceArgs
 
-                        add equalities for each argument
+                        gl =
+                            List.length givenArgs
+
+                        if rl > gl then
+                            addError "not enough arguments" @state
+
+                        if rl < gl then
+                            addError "too many arguments" @state
+
+                        list_indexedEach2 argModAndTypes argumentTypes index: (mod & paramType): argType:
+                            addEquality env (Why_Argument index) paramType argType @state
+
+                        ##    { x } = blah
+                        ##
+                        ## `blah` /could/ be unique, but in this case we'll just assume it is NOT
 
                         if there is any unique then
                             TypeUnique returnType
