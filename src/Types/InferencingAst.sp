@@ -39,7 +39,7 @@
 
 union Type extra =
     , TypeOpaque Pos Meta.UniqueSymbolReference [Type extra]
-    , TypeVariable Pos Name
+    , TypeAnnotationVariable Pos Name
     , TypeFunction Pos (Type extra) LambdaModifier (Type extra)
     , TypeRecord Pos (Dict Name (Type extra))
     , TypeUnique Pos (Type extra)
@@ -229,12 +229,11 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
         Lambda pos pattern modifier body:
 
             inferredPattern =
-                inferPattern { env with context = LambdaArgs pos .context } pattern @state
+                inferPattern env pattern @state
 
             newEnv =
-                { env with
+                { inferredPattern.env with
                 , context = LambdaBody pos .context
-                , variables = insertVariables inferredPattern.variables variables .variables @state
                 }
 
             unificationBody & bodyType =
@@ -379,12 +378,11 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
         LetIn { pattern, body } rest:
 
             inferredPattern =
-                inferPattern { env with context = LetInPattern pos .context } @state
+                inferPattern env @state
 
             newEnv =
-                { env with
+                { inferredPattern.env with
                 , context = LetInBody pos .context
-                , variables = insertVariables inferredPattern.variables variables .variables state
                 }
 
             unificationBody & bodyType =
@@ -431,9 +429,8 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                     addEquality env Why_TryPattern inferredPattern.type valueType @state
 
                     newEnv =
-                        { env with
+                        { inferredPattern.env with
                         , context = TryBranch (CA.patternPos pa)
-                        , variables = insertVariables inferredPattern.variables variables .variables state
                         }
 
                     typedExpression & expressionType =
@@ -554,12 +551,11 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
         LetIn { pattern, body } rest & _:
 
             inferredPattern =
-                inferPattern { env with context = LetInPattern pos .context } @state
+                inferPattern env @state
 
             newEnv =
-                { env with
+                { inferredPattern.env with
                 , context = LetInBody pos .context
-                , variables = insertVariables inferredPattern.variables variables .variables state
                 }
 
             checkExpression newEnv expectedType rest @state
@@ -595,9 +591,8 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                         inferPattern env pa @state
 
                     newEnv =
-                        { env with
+                        { inferredPattern.env with
                         , context = TryBranch (CA.patternPos pa)
-                        , variables = insertVariables inferredPattern.variables variables .variables state
                         }
 
                     addEquality env Why_TryPattern inferredPattern.type valueType @state
@@ -751,14 +746,72 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
             { typedPattern, patternType, env = newEnv }
 
 
-        PatternLiteralText Pos Text
-        PatternLiteralNumber Pos Number
-        PatternConstructor Pos Meta.UniqueSymbolReference [Pattern type]
-        PatternRecord Pos (Dict Name (Pattern & type))
+        PatternLiteralText pos text:
+            {
+            , typedPattern = PatternLiteralText pos text
+            , patternType = CoreTypes.textType
+            , env
+            }
 
 
+        PatternLiteralNumber pos n:
+            {
+            , typedPattern = PatternLiteralNumber pos n
+            , patternType = CoreTypes.numberType
+            , env
+            }
 
 
+        PatternConstructor pos usr arguments:
+
+            typedArguments & argumentTypes & newEnv =
+                [] & [] & env >> List.forReversed arguments arg: (typedPas & paTypes & envX):
+
+                    out =
+                        inferPattern envX arg @state
+
+                    (out.typedPattern :: typedPas) & (out.patternType :: paTypes) & out.env
+
+            finalType =
+                try getConstructor usr env as
+
+                    Nothing:
+                        inferenceError env (ErrorVariableNotFound usr pos) @state
+
+                    Just cons:
+                        argModAndTypes & returnType =
+                            linearizeCurriedParameters (generalize cons.type @state) []
+
+                        check that arguments number matches
+
+                        add equalities for each argument
+
+                        if there is any unique then
+                            TypeUnique returnType
+                        else
+                            returnType
+
+            {
+            , typedPattern = PatternConstructor pos usr typedArguments
+            , patternType = finalType
+            , env = newEnv
+            }
+
+
+        PatternRecord pos pasAndUnusedTypesByName:
+
+            typedPatternsAndPatternTypesByName & newEnv =
+                Dict.empty & env >> Dict.for pasAndUnusedTypesByName name: (pa & __unused__): (dict & envX):
+
+                    out =
+                        inferPattern envX arg @state
+
+                    Dict.insert name (out.typedPattern & out.patternType) dict & out.env
+
+            patternTypeByName =
+                typedPatternsAndPatternTypesByName >> Dict.map name: Tuple.second
+
+            PatternRecord pos typedPatternsAndPatternTypesByName & TypeExtra (TypeRecordExt pos (newId @state) patternTypeByName)
 
 
 
@@ -822,7 +875,7 @@ solveEqualities as [Equality]: State: State =
                 TypeUnique _ m1 & TypeUnique _ m2:
                     solveEqualities (Equality why m1 m2 :: tail) state
 
-                TypeVariable _ name1 & TypeVariable _ name2:
+                TypeAnnotationVariable _ name1 & TypeAnnotationVariable _ name2:
                     if name1 == name2 then
                         solveEqualities tail state
                     else
@@ -887,7 +940,7 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
         TypeOpaque pos usr args:
             TypeOpaque pos usr (List.map rec args)
 
-        TypeVariable pos name:
+        TypeAnnotationVariable pos name:
             originalType
 
         TypeFunction pos in mod out:
