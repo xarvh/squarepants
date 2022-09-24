@@ -36,6 +36,16 @@
 #]
 
 
+union Ref =
+    # TODO use the same one as CanonicalAst
+    Ref
+
+
+
+
+alias UnificationVariableId =
+    Int
+
 
 union Type extra =
     , TypeOpaque Pos Meta.UniqueSymbolReference [Type extra]
@@ -62,34 +72,30 @@ alias UnificationType =
 
 
 
-
-
-
-
 union Expression type =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos (Pattern type) LambdaModifier Expression
-    , Call Pos Expression Argument type
-    , CallCo Pos Expression [Argument & type]
+    , Lambda Pos (Pattern type) LambdaModifier (Expression type)
+    , Call Pos (Expression type) (Argument type)
+    , CallCo Pos (Expression type) [Argument type & type]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
-    , Record Pos (Maybe (Expression type)) (Dict Name Expression)
+    , Record Pos (Maybe (Expression type)) (Dict Name (Expression type))
     , RecordAccess Pos Name (Expression type)
-    , LetIn ValueDef Expression
+    , LetIn (ValueDef type) (Expression type)
     , If Pos {
-        , condition as Expression
-        , true as Expression
-        , false as Expression
+        , condition as (Expression type)
+        , true as (Expression type)
+        , false as (Expression type)
         }
     , Try Pos {
-        , value as Expression
+        , value as (Expression type)
         , type as type
         , patternsAndExpressions as [Pattern type & Expression type]
         }
-    , DestroyIn Name Expression
+    , DestroyIn Name (Expression type)
 
 
 union Pattern type =
@@ -102,7 +108,7 @@ union Pattern type =
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern type]
-    , PatternRecord Pos (Dict Name (Pattern & type))
+    , PatternRecord Pos (Dict Name (Pattern type & type))
 
 
 union Argument type =
@@ -110,48 +116,72 @@ union Argument type =
     , ArgumentRecycle Pos Ref
 
 alias ValueDef type = {
-    , pattern as (Pattern type)
+    , pattern as Pattern type
     , native as Bool
     , body as Expression type
 
     # Do we need these here?
-    , directTypeDeps as TypeDeps
-    , directConsDeps as Set Meta.UniqueSymbolReference
-    , directValueDeps as Set Meta.UniqueSymbolReference
+#    , directTypeDeps as TypeDeps
+#    , directConsDeps as Set Meta.UniqueSymbolReference
+#    , directValueDeps as Set Meta.UniqueSymbolReference
     }
 
 
 
 
 alias State = {
-    , equalities as [Equalities]
-    , errors as [Error]
-    , nextUnificationVarId as Int
+    , equalities as Array Equality
+    , errors as Array (Pos & Context & Error)
+    , lastUnificationVarId as Int
     }
 
 
 alias Env = {
     , variables as Dict Name UnificationType
-    , annotatedTyvars as Dict Name Type
-    , context as ???
+    , annotatedTyvars as Dict Name CanonicalType
+    , context as Context
     }
 
 
 
+union Error =
+    , ErrorVariableNotFound Ref
+    , ErrorConstructorNotFound
+    , ErrorNotCompatibleWithRecord
+    , ErrorRecordDoesNotHaveAttribute
+    , ErrorTryingToAccessAttributeOfNonRecord Name UnificationType
+    , ErrorIncompatibleTypes
+    , ErrorVariableTypeIncompatible
+    , ErrorConstructorTypeIncompatible
+
+
+
+
+union Context =
+    , Context_Argument
+    , Context_LetInBody
+    , Context_TryBranch
+    , Context_IfCondition
+    , Context_IfFalse
+    , Context_IfTrue
+
+
 union Why =
-  ???
+    , Why_Record
+    , Why_RecordExt
+    , Why_IfBranches
+    , Why_TryPattern
+    , Why_TryExpression
+    , Why_AttributeAccess
+    , Why_ReturnType
+    , Why_Argument
+    , Why_CalledAsFunction
+    , Why_Duplicate
+    , Why_Todo
 
 
 union Equality =
-    , Equality Why UnificationType UnificationType
-
-
-#union Constraint =
-#    , C_Nest [Constraint]
-#    , C_Class Why UnificationType TypeClasses
-#    , C_Equality Why UnificationType UnificationType
-    # TODO I don't know how to use this one
-    #, C_Implication Name Constraint Constraint
+    , Equality Context Why UnificationType UnificationType
 
 
 alias TypeClasses = {
@@ -163,6 +193,42 @@ alias TypeClasses = {
 
 
 
+newTyvarId as State@: UnificationVariableId =
+    state@:
+    @state.lastUnificationVarId += 1
+    state.lastUnificationVarId
+
+
+
+newType as State@: UnificationType =
+    state@:
+    TypeExtra (TypeUnificationVariable (newTyvarId @state))
+
+
+addEquality as Env: Why: UnificationType: UnificationType: State@: None =
+    # TODO: should t1 be "expected" and t2 "actual" or something like that?
+    env: why: t1: t2: state@:
+
+    Array.push @state.equalities << Equality env.context why t1 t2
+
+
+
+#
+# Adds an error and, as a convenience, return a generated type
+#
+inferenceError as Pos: Env: Error: State@: UnificationType =
+    pos: env: error: state@:
+
+    Array.push @state.errors (pos & env.context & error)
+
+    newType @state
+
+
+
+checkError as Pos: Env: Error: State@: None =
+    pos: env: error: state@:
+
+    Array.push @state.errors (pos & env.context & error)
 
 
 
@@ -171,18 +237,11 @@ alias TypeClasses = {
 
 
 
-
-
-
-
-
-
-
-linearizeCurriedParameters as Type: [LambdaModifier & Type]: [LambdaModifier & Type] & Type =
+linearizeCurriedParameters as Type t: [LambdaModifier & Type t]: [LambdaModifier & Type t] & Type t =
     type: accum:
 
     try type as
-        CA.TypeFunction pos from modifier to:
+        TypeFunction pos from modifier to:
             linearizeCurriedParameters to << (modifier & from) :: accum
 
         _:
@@ -195,7 +254,7 @@ linearizeCurriedParameters as Type: [LambdaModifier & Type]: [LambdaModifier & T
 #
 #
 inferExpression as Env: Expression CanonicalType: State@: Expression UnificationType & UnificationType =
-    env: caExpression: @state:
+    env: caExpression: state@:
 
     try caExpression as
 
@@ -211,7 +270,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
         Variable pos ref:
             try getVariableByRef ref env as
                 Nothing:
-                    inferenceError env (ErrorVariableNotFound ref pos) @state
+                    inferenceError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
                     Variable pos ref & generalize var.type @state
@@ -308,7 +367,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                             try Dict.get name attrTypes as
 
                                 Nothing:
-                                    checkError "missing attribute" name @state
+                                    checkError env pos (ErrorRecordDoesNotHaveAttribute name) @state
 
                                 Just ty:
                                     addEquality env Why_Record ty valueType @state
@@ -326,10 +385,10 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
 
 
                         # TODO: is it faster if I avoid creating a new tyvar when expressionOnly is empty?
-                        newTyvarId =
+                        newExtId =
                             newTyvarId @state
 
-                        TypeRecordExt _ newTyvarId (Dict.join inferredAttrTypes extensionOnly)
+                        TypeExtra (TypeRecordExt _ newExtId (Dict.join inferredAttrTypes extensionOnly))
 
 
                     TypeUnificationVariable id:
@@ -340,49 +399,66 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                         ty
 
                     _:
-                        not compatible with record
+                        inferenceError env (ErrorNotCompatibleWithRecord ref pos) @state
+
 
             Record pos (Just typedExt) typedValueByName & finalType
 
 
         RecordAccess pos attrName recordExpression:
 
-            unificationExpr & inferredType =
+            typedExpr & inferredType =
                 inferExpression env recordExpression @state
 
             try inferredType as
                 TypeRecord _ attrTypes:
-                    check that attrName exists in attrTypes, return relevant type
+                    try Dict.get attrName attrTypes as
+                        Just type:
+                            RecordAccess pos attrName typedExpr & type
+
+                        Nothing:
+                            inferenceError env (ErrorRecordDoesNotHaveAttribute attrName sttrTypes) @state
 
                 TypeRecordExt _ tyvarId extensionAttrTypes:
-                    check that attrName exists in attrTypes, return relevant type
+                    try Dict.get attrName attrTypes as
+                        Just type:
+                            RecordAccess pos attrName typedExpr & type
 
-                    otherwise
-                        create newExtTyvar
-                        create newAttrType
+                        Nothing:
+                            newExtId = newTyvarId @state
+                            newAttrType = newType @state
 
-                        type = TypeRecordExt newExtTyvar (Dict.insert attrName newAttrType extensionAttrTypes)
-                        replaceUnificationVariable tyvarId type
+                            type = TypeExtra << TypeRecordExt newExtTyvar (Dict.insert attrName newAttrType extensionAttrTypes)
+
+                            addEquality env Why_RecordAccess (TypeUnificationVariable tyvarId) type @state
+
+                            RecordAccess pos attrName typedExpr & newAttrType
+
 
                 TypeUnificationVariable id:
-                    create newExtTyvar
-                    create newAttrType
+                    newExtId = newTyvarId @state
+                    newAttrType = newType @state
 
-                    type = TypeRecordExt newExtTyvar (Dict.singleton attrName newAttrType extensionAttrTypes)
+                    type = TypeExtra << TypeRecordExt newExtId (Dict.singleton attrName newAttrType extensionAttrTypes)
+
                     replaceUnificationVariable tyvarId type
 
+                    addEquality env Why_RecordAccess (TypeUnificationVariable id) type @state
+
+                    RecordAccess pos attrName typedExpr & newAttrType
+
                 _:
-                    addError "not a record!" @state
+                    inferenceError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
 
 
-        LetIn { pattern, body } rest:
+        LetIn { pattern, native = _, body } rest:
 
             inferredPattern =
-                inferPattern env @state
+                inferPattern env pattern @state
 
             newEnv =
                 { inferredPattern.env with
-                , context = LetInBody pos .context
+                , context = Context_LetInBody #pos .context
                 }
 
             unificationBody & bodyType =
@@ -392,13 +468,13 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
         If pos { condition, true, false }:
 
             typedCondition =
-                checkExpression { env with context = IfCondition pos } CoreTypes.bool condition @state
+                checkExpression { env with context = Context_IfCondition } (todo "CoreTypes.bool") condition @state
 
             typedTrue & trueType =
-                inferExpression { env with context = IfTrue } true @state
+                inferExpression { env with context = Context_IfTrue } true @state
 
             typedFalse & falseType =
-                inferExpression { env with context = IfFalse } false @state
+                inferExpression { env with context = Context_IfFalse } false @state
 
             addEquality env Why_IfBranches trueType falseType @state
 
@@ -412,7 +488,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             expression & trueType
 
 
-        Try pos { value, type = __unused __, patternsAndExpressions }:
+        Try pos { value, type = _, patternsAndExpressions }:
 
             typedValue & valueType =
                 inferExpression env value @state
@@ -423,22 +499,22 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             typedPatternsAndExpressions =
                 patternsAndExpressions >> List.map (pa & exp):
 
-                    inferredPattern =
+                    patternOut as PatternOut =
                         inferPattern env pa @state
 
-                    addEquality env Why_TryPattern inferredPattern.type valueType @state
+                    addEquality env Why_TryPattern patternOut.patternType valueType @state
 
                     newEnv =
-                        { inferredPattern.env with
-                        , context = TryBranch (CA.patternPos pa)
+                        { patternOut.env with
+                        , context = Context_TryBranch
                         }
 
                     typedExpression & expressionType =
-                        inferExpression patternEnv exp @state
+                        inferExpression newEnv exp @state
 
                     addEquality newEnv Why_TryExpression finalType expressionType @state
 
-                    typedPattern & typedExpression
+                    patternOut.typedPattern & typedExpression
 
             Try pos { value = typedValue, type = valueType, patternsAndExpressions = typedPatternsAndExpressions } & finalType
 
@@ -451,16 +527,22 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
 
 
 checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Expression UnificationType =
-    env: expectedType: caExpression: @state:
+    env: expectedType: caExpression: state@:
 
     try caExpression & expectedType as
 
-        LiteralNumber pos n & TypeOpaque _ CoreTypes.numberUsr:
-            LiteralNumber pos n
+        LiteralNumber pos n & TypeOpaque _ typeUsr:
+            if typeUsr /= CoreTypes.numberUsr then
+                checkError env pos ErrorIncompatibleTypes @state
+            else
+                LiteralNumber pos n
 
 
-        LiteralText pos text & TypeOpaque _ CoreTypes.textUsr:
-            LiteralText pos text
+        LiteralText pos text & TypeOpaque _ typeUsr:
+            if typeUsr /= CoreTypes.textUsr then
+                checkError env pos ErrorIncompatibleTypes @state
+            else
+                LiteralText pos text
 
 
         Variable pos ref & _:
@@ -518,10 +600,10 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 onlyBothOnly valueByName typeByName
 
             if aOnly /= Dict.empty then
-                checkError pos "record has extra attributes that are not in annotation"
+                checkError env pos "record has extra attributes that are not in annotation"
 
             else if bOnly /= Dict.empty then
-                checkError pos "record is missing attributes that are in the annotation"
+                checkError env pos "record is missing attributes that are in the annotation"
 
             else
                 typedAttrs =
@@ -561,7 +643,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             checkExpression newEnv expectedType rest @state
 
 
-        If pos { condition, true, false }:
+        If pos { condition, true, false } & _:
 
             typedCondition =
                 checkExpression { env with context = IfCondition pos } CoreTypes.bool condition @state
@@ -579,7 +661,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 }
 
 
-        Try pos { value, type = __unused __, patternsAndExpressions }:
+        Try pos { value, [# type = __unused __,#] patternsAndExpressions } & _:
 
             typedValue & valueType =
                 inferExpression env value @state
@@ -603,18 +685,18 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                     typedPattern & typedExpression
 
 
-        DestroyIn name exp:
+        DestroyIn name exp & _:
             DestroyIn name << checkExpression env expectedType exp @state
 
 
-    _:
-        checkError "Not compatible" @state
+        _:
+            checkError env (CA.expressionPos caExpression) ErrorIncompatibleTypes @state
 
 
 
 
-checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: State@: Expression UnificationType =
-    env: expectedType: pos: reference: givenArgs: @state:
+checkCallCo as Env: CanonicalType: Pos: Expression CanonicalType: [Argument CanonicalType & unusedType]: State@: Expression UnificationType =
+    env: expectedType: pos: reference: givenArgs: state@:
 
     typedReference & referenceType =
         inferExpression env reference @state
@@ -637,10 +719,10 @@ checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: Sta
             List.length givenArgs
 
         if rl > gl then
-            checkError "not enough arguments"
+            checkError env pos ErrorNotEnoughArguments @state
 
         else if rl < gl then
-            checkError "too many arguments"
+            checkError env pos ErrorTooManyArguments @state
 
         else
             typedArgs =
@@ -668,12 +750,12 @@ checkCallCo as Env: CanonicalType: Pos: Expression: [Argument & unusedType]: Sta
                 CallCo pos typedReference typedArgs
 
             _:
-                checkError "Trying to call as a function"
+                checkError env pos ErrorCallingANonFunction @state
 
 
 
 inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType & UnificationType =
-    env: arg: @state:
+    env: arg: state@:
 
     try arg as
         ArgumentExpression exp:
@@ -686,7 +768,7 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
             try getVariableByRef ref env as
 
                 Nothing:
-                    inferenceError env (ErrorVariableNotFound ref pos) @state
+                    inferenceError env pos (ErrorVariableNotFound ref pos) @state
 
                 Just var:
                     ArgumentRecycle pos ref & var.type
@@ -700,13 +782,13 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
 #
 alias PatternOut = {
     , patternType as UnificationType
-    , typedPatern as Pattern UnificationType
+    , typedPattern as Pattern UnificationType
     , env as Env
     }
 
 
 inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
-    env: pattern: @state:
+    env: pattern: state@:
 
     try pattern as
         PatternAny pos { isUnique, maybeName, maybeAnnotation, type = __unused__ }:
@@ -734,7 +816,6 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
                         if Dict.member name env.variables then
                             addError (Why_Duplicate name) "shadowing!" @state
-                            None
                         else
                             None
 
@@ -776,7 +857,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                 try getConstructor usr env as
 
                     Nothing:
-                        inferenceError env (ErrorVariableNotFound usr pos) @state
+                        inferenceError env pos (ErrorVariableNotFound usr) @state
 
                     Just cons:
                         argModAndTypes & returnType =
@@ -790,9 +871,13 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
                         if rl > gl then
                             addError "not enough arguments" @state
+                        else
+                            None
 
                         if rl < gl then
                             addError "too many arguments" @state
+                        else
+                            None
 
                         list_indexedEach2 argModAndTypes argumentTypes index: (mod & paramType): argType:
                             addEquality env (Why_Argument index) paramType argType @state
@@ -829,7 +914,19 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
             PatternRecord pos typedPatternsAndPatternTypesByName & TypeExtra (TypeRecordExt pos (newId @state) patternTypeByName)
 
 
+checkPattern as Env: UnificationType: Pattern CanonicalType: State@: Pattern UnificationType & Env =
+    env: expectedType: pattern: state@:
 
+    # TODO
+    out = inferPattern env pattern @state
+
+    addEquality env Why_Todo out.patternType expectedType @state
+
+    out.typedPattern & out.env
+
+
+
+[#
 #
 #
 # Equalities resolution
@@ -979,3 +1076,4 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
             else
                 originalType
 
+#]
