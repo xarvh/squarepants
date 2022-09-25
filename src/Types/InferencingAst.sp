@@ -158,7 +158,7 @@ union Error =
 
 
 union Context =
-    , Context_Argument
+    , Context_Argument Name Context
     , Context_LetInBody
     , Context_TryBranch
     , Context_IfCondition
@@ -315,7 +315,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             callType =
                 newType @state
 
-            checkCallCo env callType pos reference [argument & __unused__] @state
+            checkCallCo env callType pos reference [argument & __unused__] @state & callType
 
 
         CallCo pos reference argsAndUnusedTypes:
@@ -323,7 +323,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             callType =
                 newType @state
 
-            checkCallCo env callType pos reference argsAndUnusedTypes @state
+            checkCallCo env callType pos reference argsAndUnusedTypes @state & callType
 
 
         Record pos Nothing attrs:
@@ -332,77 +332,31 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                 attrs >> Dict.map name: value:
                     inferExpression { env with context = Context_Argument name .context } value @state
 
-            typedValueByName =
-                Dict.map Tuple.first typedValueAndValueTypeByName
+            typedValueByName as Dict Name (Expression UnificationType) =
+                Dict.map (k: Tuple.first) typedValueAndValueTypeByName
 
-            valueTypeByName =
-                Dict.map Tuple.second typedValueAndValueTypeByName
-
+            valueTypeByName as Dict Name UnificationType =
+                Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
             Record pos Nothing typedValueByName & TypeRecord pos valueTypeByName
 
 
         Record pos (Just ext) attrExpressions:
 
-            typedValueAndValueTypeByName =
-                attrs >> Dict.map name: value:
+            typedValueAndValueTypeByName as Dict Name (Expression UnificationType & UnificationType) =
+                attrExpressions >> Dict.map name: value:
                     inferExpression { env with context = Context_Argument name .context } value @state
 
-            typedValueByName =
-                Dict.map Tuple.first typedValueAndValueTypeByName
+            typedValueByName as Dict Name (Expression UnificationType) =
+                Dict.map (k: Tuple.first) typedValueAndValueTypeByName
 
-            valueTypeByName =
-                Dict.map Tuple.second typedValueAndValueTypeByName
-
+            valueTypeByName as Dict Name UnificationType =
+                Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
             typedExt & extType =
                 inferExpression env ext @state
 
-
-            finalType =
-                try extType as
-                    TypeRecord _ attrTypes:
-
-                        Dict.each valueTypeByName name: valueType:
-                            try Dict.get name attrTypes as
-
-                                Nothing:
-                                    checkError env pos (ErrorRecordDoesNotHaveAttribute name) @state
-
-                                Just ty:
-                                    addEquality env Why_Record ty valueType @state
-
-                        extType
-
-
-                    TypeExtra (TypeRecordExt _ tyvarId extensionAttrTypes):
-
-                        expressionOnly & both & extensionOnly =
-                            onlyA_both_onlyB inferredAttrTypes extensionAttrTypes
-
-                        Dict.each both name: (inAttr & extAttr):
-                            addEquality env Why_Record inAttr extAttr @state
-
-
-                        # TODO: is it faster if I avoid creating a new tyvar when expressionOnly is empty?
-                        newExtId =
-                            newTyvarId @state
-
-                        TypeExtra (TypeRecordExt _ newExtId (Dict.join inferredAttrTypes extensionOnly))
-
-
-                    TypeUnificationVariable id:
-                        ty = TypeExtra (TypeRecordExt _ id valueTypeByName)
-
-                        addEquality env Why_RecordExt extType ty @state
-
-                        ty
-
-                    _:
-                        inferenceError env (ErrorNotCompatibleWithRecord ref pos) @state
-
-
-            Record pos (Just typedExt) typedValueByName & finalType
+            Record pos (Just typedExt) typedValueByName & inferRecordExtended env pos extType @state
 
 
         RecordAccess pos attrName recordExpression:
@@ -410,45 +364,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             typedExpr & inferredType =
                 inferExpression env recordExpression @state
 
-            try inferredType as
-                TypeRecord _ attrTypes:
-                    try Dict.get attrName attrTypes as
-                        Just type:
-                            RecordAccess pos attrName typedExpr & type
-
-                        Nothing:
-                            inferenceError env (ErrorRecordDoesNotHaveAttribute attrName sttrTypes) @state
-
-                TypeRecordExt _ tyvarId extensionAttrTypes:
-                    try Dict.get attrName attrTypes as
-                        Just type:
-                            RecordAccess pos attrName typedExpr & type
-
-                        Nothing:
-                            newExtId = newTyvarId @state
-                            newAttrType = newType @state
-
-                            type = TypeExtra << TypeRecordExt newExtTyvar (Dict.insert attrName newAttrType extensionAttrTypes)
-
-                            addEquality env Why_RecordAccess (TypeUnificationVariable tyvarId) type @state
-
-                            RecordAccess pos attrName typedExpr & newAttrType
-
-
-                TypeUnificationVariable id:
-                    newExtId = newTyvarId @state
-                    newAttrType = newType @state
-
-                    type = TypeExtra << TypeRecordExt newExtId (Dict.singleton attrName newAttrType extensionAttrTypes)
-
-                    replaceUnificationVariable tyvarId type
-
-                    addEquality env Why_RecordAccess (TypeUnificationVariable id) type @state
-
-                    RecordAccess pos attrName typedExpr & newAttrType
-
-                _:
-                    inferenceError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
+            RecordAccess pos attrName typedExpr & inferRecordAccess env pos inferredType @state
 
 
         LetIn { pattern, native = _, body } rest:
@@ -524,6 +440,96 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                 inferExpression env expression @state
 
             DestroyIn name typedExpression & expressionType
+
+
+inferRecordAccess as Env: Pos: UnificationType: State@: UnificationType =
+    env: pos: inferredType: state@:
+
+    try inferredType as
+        TypeRecord _ attrTypes:
+            try Dict.get attrName attrTypes as
+                Just type:
+                    type
+
+                Nothing:
+                    inferenceError env (ErrorRecordDoesNotHaveAttribute attrName sttrTypes) @state
+
+        TypeRecordExt _ tyvarId extensionAttrTypes:
+            try Dict.get attrName attrTypes as
+                Just type:
+                    type
+
+                Nothing:
+                    newExtId = newTyvarId @state
+                    newAttrType = newType @state
+
+                    type = TypeExtra << TypeRecordExt newExtTyvar (Dict.insert attrName newAttrType extensionAttrTypes)
+
+                    addEquality env Why_RecordAccess (TypeUnificationVariable tyvarId) type @state
+
+                    newAttrType
+
+
+        TypeUnificationVariable id:
+            newExtId = newTyvarId @state
+            newAttrType = newType @state
+
+            type = TypeExtra << TypeRecordExt newExtId (Dict.singleton attrName newAttrType extensionAttrTypes)
+
+            replaceUnificationVariable tyvarId type
+
+            addEquality env Why_RecordAccess (TypeExtra << TypeUnificationVariable id) type @state
+
+            newAttrType
+
+        _:
+            inferenceError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
+
+
+
+inferRecordExtended as Env: Pos: UnificationType: State@: UnificationType =
+    env: pos: extType: state@:
+
+    try extType as
+        TypeRecord _ attrTypes:
+
+            Dict.each valueTypeByName name: valueType:
+                try Dict.get name attrTypes as
+
+                    Nothing:
+                        checkError env pos (ErrorRecordDoesNotHaveAttribute name) @state
+
+                    Just ty:
+                        addEquality env Why_Record ty valueType @state
+
+            extType
+
+
+        TypeExtra (TypeRecordExt _ tyvarId extensionAttrTypes):
+
+            expressionOnly & both & extensionOnly =
+                onlyA_both_onlyB inferredAttrTypes extensionAttrTypes
+
+            Dict.each both name: (inAttr & extAttr):
+                addEquality env Why_Record inAttr extAttr @state
+
+            # TODO: is it faster if I avoid creating a new tyvar when expressionOnly is empty?
+            newExtId =
+                newTyvarId @state
+
+            TypeExtra (TypeRecordExt _ newExtId (Dict.join inferredAttrTypes extensionOnly))
+
+
+        TypeUnificationVariable id:
+            ty = TypeExtra (TypeRecordExt _ id valueTypeByName)
+
+            addEquality env Why_RecordExt extType ty @state
+
+            ty
+
+        _:
+            inferenceError env (ErrorNotCompatibleWithRecord ref pos) @state
+
 
 
 checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Expression UnificationType =
