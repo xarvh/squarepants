@@ -72,13 +72,23 @@ alias UnificationType =
 
 
 
+
+canonicalToUnificationType as CanonicalType: UnificationType =
+    ca:
+    todo "canonicalToUnificationType"
+
+
+
+
+
+
 union Expression type =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos Meta.UniqueSymbolReference
     , Lambda Pos (Pattern type) LambdaModifier (Expression type)
-    , Call Pos (Expression type) (Argument type)
+    , Call Pos (Expression type) (Argument type) type
     , CallCo Pos (Expression type) [Argument type & type]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
@@ -146,7 +156,7 @@ alias Env = {
 
 union Error =
     , ErrorVariableNotFound Ref
-    , ErrorConstructorNotFound
+    , ErrorConstructorNotFound Meta.UniqueSymbolReference Pos
     , ErrorNotCompatibleWithRecord
     , ErrorRecordDoesNotHaveAttribute
     , ErrorTryingToAccessAttributeOfNonRecord Name UnificationType
@@ -160,6 +170,7 @@ union Error =
 union Context =
     , Context_Argument Name Context
     , Context_LetInBody
+    , Context_LambdaBody
     , Context_TryBranch
     , Context_IfCondition
     , Context_IfFalse
@@ -279,7 +290,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
         Constructor pos usr:
             try getConstructorByUsr usr env as
                 Nothing:
-                    inferenceError env (ErrorConstructorNotFound usr pos) @state
+                    inferenceError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
                     Constructor pos usr & generalize cons.type @state
@@ -287,12 +298,12 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
 
         Lambda pos pattern modifier body:
 
-            inferredPattern =
+            patternOut =
                 inferPattern env pattern @state
 
             newEnv =
-                { inferredPattern.env with
-                , context = LambdaBody pos .context
+                { patternOut.env with
+                , context = Context_LambdaBody pos .context
                 }
 
             unificationBody & bodyType =
@@ -300,22 +311,22 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
 
             type =
                 TypeFunction Pos.G
-                    inferredPattern.type
+                    patternOut.type
                     modifier
                     expressionType
 
             exp =
-                Lambda pos inferredPattern.unificationPattern modifier unificationBody
+                Lambda pos patternOut.typedPattern modifier unificationBody
 
             exp & type
 
 
-        Call pos reference argument __unused__:
+        Call pos reference argument unusedType:
 
             callType =
                 newType @state
 
-            checkCallCo env callType pos reference [argument & __unused__] @state & callType
+            checkCallCo env callType pos reference [argument & unusedType] @state & callType
 
 
         CallCo pos reference argsAndUnusedTypes:
@@ -588,11 +599,11 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
         Call pos reference argument unusedType & _:
-            checkCallCo env expectedType pos reference [argument & unusedType] @state
+            checkCallCo env (canonicalToUnificationType expectedType) pos reference [argument & unusedType] @state
 
 
         CallCo pos reference argsAndUnusedTypes & _:
-            checkCallCo env expectedType pos reference argsAndUnusedTypes @state
+            checkCallCo env (canonicalToUnificationType expectedType) pos reference argsAndUnusedTypes @state
 
 
         Record pos (Just ext) valueByName & TypeRecord _ typeByName:
@@ -701,7 +712,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
 
-checkCallCo as Env: CanonicalType: Pos: Expression CanonicalType: [Argument CanonicalType & unusedType]: State@: Expression UnificationType =
+checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument CanonicalType & unusedType]: State@: Expression UnificationType =
     env: expectedType: pos: reference: givenArgs: state@:
 
     typedReference & referenceType =
