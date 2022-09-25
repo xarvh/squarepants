@@ -180,12 +180,15 @@ main as Text: Result Text Text =
 
     Compiler/MakeEmittable.translateAll (Dict.values modules)
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
-    >> onResSuccess eenv emittableStatements:
+    >> onResSuccess eenv (emState & emittableStatements):
+
+    emittableState as Compiler/MakeEmittable.State @= emState
 
     platform.compile {
         , errorEnv = eenv
         , constructors = Dict.toList globals.constructors
         }
         entryUsr
+        @emittableState
         emittableStatements
-        >> Ok
+    >> Ok
