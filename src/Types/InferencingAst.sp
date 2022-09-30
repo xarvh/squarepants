@@ -36,6 +36,28 @@
 #]
 
 
+onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key b =
+    da: db:
+
+    onAOnly =
+        key: a: (aOnly & both & bOnly):
+        Dict.insert key a aOnly & both & bOnly
+
+    onBOnly =
+        key: b: (aOnly & both & bOnly):
+        aOnly & both & Dict.insert key b bOnly
+
+    onBoth =
+        key: a: b: (aOnly & both & bOnly):
+        aOnly & Dict.insert key (a & b) both & bOnly
+
+    Dict.merge onAOnly onBoth onBOnly da db (Dict.empty & Dict.empty & Dict.empty)
+
+
+
+
+
+
 union Ref =
     # TODO use the same one as CanonicalAst
     Ref
@@ -238,8 +260,8 @@ inferenceError as Env: Pos: Error_: State@: UnificationType =
 
 
 
-checkError as Pos: Env: Error_: State@: None =
-    pos: env: error: state@:
+checkError as Env: Pos: Error_: State@: None =
+    env: pos: error: state@:
 
     Array.push @state.errors (pos & env.context & error)
 
@@ -417,7 +439,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             RecordAccess pos attrName typedExpr & inferRecordAccess env pos attrName inferredType @state
 
 
-        LetIn { pattern, native = _, body } rest:
+        LetIn { pattern, native, body } rest:
 
             inferredPattern =
                 inferPattern env pattern @state
@@ -429,6 +451,8 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
 
             unificationBody & bodyType =
                 inferExpression newEnv body @state
+
+            LetIn { pattern = inferredPattern.typedPattern, native, body = typedBody } & restType
 
 
         If pos { condition, true, false }:
@@ -557,7 +581,7 @@ inferRecordExtended as Env: Pos: UnificationType: Dict Name UnificationType: Sta
         TypeExtra (TypeRecordExt tyvarId extensionAttrTypes):
 
             expressionOnly & both & extensionOnly =
-                onlyA_both_onlyB valueTypeByName extensionAttrTypes
+                onlyBothOnly valueTypeByName extensionAttrTypes
 
             Dict.each both name: (inAttr & extAttr):
                 addEquality env Why_Record inAttr extAttr @state
@@ -685,14 +709,17 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             RecordAccess pos attrName typedExpression
 
 
-        LetIn { pattern, body } rest & _:
+        LetIn valueDef rest & _:
 
             inferredPattern =
-                inferPattern env @state
+                inferPattern env valueDef.pattern @state
+
+            typedBody =
+                checkExpression env inferredPattern.patternType valueDef.body @state
 
             newEnv =
                 { inferredPattern.env with
-                , context = LetInBody pos .context
+                , context = Context_LetInBody
                 }
 
             checkExpression newEnv expectedType rest @state
@@ -701,13 +728,13 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
         If pos { condition, true, false } & _:
 
             typedCondition =
-                checkExpression { env with context = IfCondition pos } CoreTypes.bool condition @state
+                checkExpression { env with context = Context_IfCondition } (todo "CoreTypes.bool") condition @state
 
             typedTrue =
-                checkExpression { env with context = IfTrue } expectedType true @state
+                checkExpression { env with context = Context_IfTrue } expectedType true @state
 
             typedFalse =
-                checkExpression { env with context = IfFalse } expectedType false @state
+                checkExpression { env with context = Context_IfFalse } expectedType false @state
 
             If pos {
                 , condition = typedCondition
@@ -716,7 +743,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 }
 
 
-        Try pos { value, [# type = __unused __,#] patternsAndExpressions } & _:
+        Try pos { value, type = __unused__, patternsAndExpressions } & _:
 
             typedValue & valueType =
                 inferExpression env value @state
@@ -729,15 +756,21 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
                     newEnv =
                         { inferredPattern.env with
-                        , context = TryBranch (CA.patternPos pa)
+                        , context = Context_TryBranch
                         }
 
-                    addEquality env Why_TryPattern inferredPattern.type valueType @state
+                    addEquality env Why_TryPattern inferredPattern.patternType valueType @state
 
                     typedExpression =
-                        checkExpression patternEnv expectedType exp @state
+                        checkExpression newEnv expectedType exp @state
 
-                    typedPattern & typedExpression
+                    inferredPattern.typedPattern & typedExpression
+
+            Try pos {
+                , value = typedValue
+                , type = valueType
+                , patternsAndExpressions = typedPatternsAndExpressions
+                }
 
 
         DestroyIn name exp & _:
@@ -745,7 +778,8 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
         _:
-            checkError env (CA.expressionPos caExpression) ErrorIncompatibleTypes @state
+            checkError env (todo "CA.expressionPos caExpression") ErrorIncompatibleTypes @state
+            LiteralText Pos.G "todo?"
 
 
 
