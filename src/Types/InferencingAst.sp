@@ -95,13 +95,6 @@ alias UnificationType =
 
 
 
-canonicalToUnificationType as CanonicalType: UnificationType =
-    ca:
-    todo "canonicalToUnificationType"
-
-
-
-
 
 
 union Expression type =
@@ -170,7 +163,7 @@ alias State = {
 
 alias Env = {
     , variables as Dict Ref { type as UnificationType }
-    , constructors as Dict Meta.UniqueSymbolReference { type as CanonicalType }
+    , constructors as Dict Meta.UniqueSymbolReference { type as UnificationType }
     , annotatedTyvars as Dict Name CanonicalType
     , context as Context
     }
@@ -187,7 +180,8 @@ union Error_ =
     , ErrorTryingToAccessAttributeOfNonRecord Name UnificationType
     , ErrorIncompatibleTypes
     , ErrorVariableTypeIncompatible
-    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference CanonicalType UnificationType
+    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference UnificationType CanonicalType
+    , ErrorCallingANonFunction
 
 
 
@@ -287,7 +281,7 @@ linearizeCurriedParameters as Type t: [LambdaModifier & Type t]: [LambdaModifier
 
 
 
-getConstructorByUsr as Meta.UniqueSymbolReference: Env: Maybe { type as CanonicalType } =
+getConstructorByUsr as Meta.UniqueSymbolReference: Env: Maybe { type as UnificationType } =
     usr: env:
 
     Dict.get usr env.constructors
@@ -311,6 +305,26 @@ generalize as UnificationType: State@: UnificationType =
     # When I generalize, I need to add the typeclass constraints
 
     todo "generalize"
+
+
+#
+#
+# Types
+#
+#
+typeIsCompatibleWith as CanonicalType: UnificationType: Bool =
+    expected: actual:
+
+    todo "typeIsCompatibleWith"
+
+
+canonicalToUnificationType as CanonicalType: UnificationType =
+    ca:
+    todo "canonicalToUnificationType"
+
+
+
+
 
 
 
@@ -393,7 +407,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                         inferenceError env pos (ErrorConstructorNotFound usr) @state
 
                     Just cons:
-                        generalize (canonicalToUnificationType cons.type) @state
+                        generalize cons.type @state
 
             Constructor pos usr & ty
 
@@ -646,14 +660,14 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
     try caExpression & expectedType as
 
-        LiteralNumber pos n & TypeOpaque _ typeUsr:
+        LiteralNumber pos n & TypeOpaque _ typeUsr []:
             if typeUsr /= CoreTypes.numberUsr then
                 checkError env pos ErrorIncompatibleTypes @state
             else
                 LiteralNumber pos n
 
 
-        LiteralText pos text & TypeOpaque _ typeUsr:
+        LiteralText pos text & TypeOpaque _ typeUsr []:
             if typeUsr /= CoreTypes.textUsr then
                 checkError env pos ErrorIncompatibleTypes @state
             else
@@ -667,9 +681,11 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
                 Just var:
                     if typeIsCompatibleWith expectedType var.type then
-                        Variable pos ref
+                        None
                     else
                         checkError env pos (ErrorVariableTypeIncompatible ref var expectedType) @state
+
+            Variable pos ref
 
 
         Constructor pos usr & _:
@@ -679,9 +695,11 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
                 Just cons:
                     if typeIsCompatibleWith expectedType cons.type then
-                        Constructor pos usr
+                        None
                     else
                         checkError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
+
+                    Constructor pos usr
 
 
         Lambda pos pattern lambdaModifier body & TypeFunction _ in mod out:
@@ -691,7 +709,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             typedBody =
                 checkExpression localEnv out body @state
 
-            checkModifiers lambdaModifier mod @state
+            todo "checkModifiers lambdaModifier mod @state"
 
             Lambda pos typedPattern mod typedBody
 
@@ -705,9 +723,10 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
         Record pos (Just ext) valueByName & TypeRecord _ typeByName:
+#            all values must exist in typeByName
+#            ext must have type expected type
+            todo "Record"
 
-            all values must exist in typeByName
-            ext must have type expected type
 
 
         Record pos Nothing valueByName & TypeRecord _ typeByName:
@@ -721,12 +740,14 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 checkError env pos ErrorRecordIsMissingAttibutesInAnnotation @state
 
             else
-                typedAttrs =
-                    Dict.map both name: (value & type):
-                        # TODO add attribute name to env!?
-                        checkExpression env type value @state
+                None
 
-                Record pos Nothing typedAttrs
+            typedAttrs =
+                both >> Dict.map name: (value & type):
+                    # TODO add attribute name to env!?
+                    checkExpression env type value @state
+
+            Record pos Nothing typedAttrs
 
 
         RecordAccess pos attrName exp & _:
@@ -859,7 +880,9 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
             TypeUnificationVariable id:
 
                 referenceTypeFromArguments =
-                    expectedType >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
+                    expectedType
+                    >> canonicalToUnificationType
+                    >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
                         TypeFunction argTy modifier type
 
                 addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
@@ -1049,13 +1072,13 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
 
 
-checkPattern as Env: UnificationType: Pattern CanonicalType: State@: Pattern UnificationType & Env =
+checkPattern as Env: CanonicalType: Pattern CanonicalType: State@: Pattern UnificationType & Env =
     env: expectedType: pattern: state@:
 
     # TODO
     out = inferPattern env pattern @state
 
-    addEquality env Why_Todo out.patternType expectedType @state
+    addEquality env Why_Todo out.patternType (canonicalToUnificationType expectedType) @state
 
     out.typedPattern & out.env
 
