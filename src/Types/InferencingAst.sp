@@ -182,6 +182,8 @@ union Error_ =
     , ErrorConstructorNotFound Meta.UniqueSymbolReference
     , ErrorNotCompatibleWithRecord
     , ErrorRecordDoesNotHaveAttribute Name [# TODO other attrs to give context? #]
+    , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
+    , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name UnificationType
     , ErrorIncompatibleTypes
     , ErrorVariableTypeIncompatible
@@ -201,6 +203,7 @@ union Context =
 
 
 union Why =
+    , Why_LetIn
     , Why_Record
     , Why_RecordExt
     , Why_RecordAccess
@@ -311,6 +314,44 @@ generalize as UnificationType: State@: UnificationType =
 
 
 
+#
+#
+# Definitions
+#
+#
+doDefinition as Env: ValueDef CanonicalType: State@: ValueDef UnificationType & Env =
+    env: def: state@:
+
+    patternOut =
+        inferPattern env def.pattern @state
+
+    newEnv =
+        { patternOut.env with
+        , context = Context_LetInBody
+        }
+
+    # TODO do not check body if native!
+
+    typedBody & bodyType =
+        try patternOut.maybeFullAnnotation as
+            Just annotationType:
+                # TODO Should I use patternOut.type or (canonicalToUnificationType annotationType)?
+                checkExpression newEnv annotationType def.body @state & patternOut.patternType
+            Nothing:
+                inferExpression newEnv def.body @state
+
+    if patternOut.maybeFullAnnotation == Nothing then
+        addEquality newEnv Why_LetIn patternOut.patternType bodyType @state
+    else
+        None
+
+    {
+    , pattern = patternOut.typedPattern
+    , native = def.native
+    , body = typedBody
+    }
+    &
+    patternOut.env
 
 
 
@@ -439,20 +480,15 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             RecordAccess pos attrName typedExpr & inferRecordAccess env pos attrName inferredType @state
 
 
-        LetIn { pattern, native, body } rest:
+        LetIn def rest:
 
-            inferredPattern =
-                inferPattern env pattern @state
+            typedDef & defEnv =
+                doDefinition env def @state
 
-            newEnv =
-                { inferredPattern.env with
-                , context = Context_LetInBody #pos .context
-                }
+            typedRest & restType =
+                inferExpression defEnv rest @state
 
-            unificationBody & bodyType =
-                inferExpression newEnv body @state
-
-            LetIn { pattern = inferredPattern.typedPattern, native, body = typedBody } & restType
+            LetIn typedDef typedRest & restType
 
 
         If pos { condition, true, false }:
@@ -679,10 +715,10 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 onlyBothOnly valueByName typeByName
 
             if aOnly /= Dict.empty then
-                checkError env pos "record has extra attributes that are not in annotation"
+                checkError env pos ErrorRecordHasAttributesNotInAnnotation @state
 
             else if bOnly /= Dict.empty then
-                checkError env pos "record is missing attributes that are in the annotation"
+                checkError env pos ErrorRecordIsMissingAttibutesInAnnotation @state
 
             else
                 typedAttrs =
@@ -690,7 +726,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                         # TODO add attribute name to env!?
                         checkExpression env type value @state
 
-            Record pos Nothing typedAttrs
+                Record pos Nothing typedAttrs
 
 
         RecordAccess pos attrName exp & _:
@@ -699,7 +735,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 inferExpression env exp @state
 
             newId =
-                getNewId @state
+                newTyvarId @state
 
             requiredType =
                 TypeExtra << TypeRecordExt newId (Dict.singleton attrName expectedType)
@@ -709,20 +745,15 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             RecordAccess pos attrName typedExpression
 
 
-        LetIn valueDef rest & _:
+        LetIn def rest & _:
 
-            inferredPattern =
-                inferPattern env valueDef.pattern @state
+            typedDef & defEnv =
+                doDefinition env def @state
 
-            typedBody =
-                checkExpression env inferredPattern.patternType valueDef.body @state
+            typedRest =
+                checkExpression defEnv expectedType rest @state
 
-            newEnv =
-                { inferredPattern.env with
-                , context = Context_LetInBody
-                }
-
-            checkExpression newEnv expectedType rest @state
+            LetIn typedDef typedRest
 
 
         If pos { condition, true, false } & _:
@@ -872,6 +903,7 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
 alias PatternOut = {
     , patternType as UnificationType
     , typedPattern as Pattern UnificationType
+    , maybeFullAnnotation as Maybe CanonicalType
     , env as Env
     }
 
@@ -913,22 +945,29 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
             typedPattern =
                 PatternAny pos { isUnique, maybeName, maybeAnnotation, type }
 
-            { typedPattern, patternType, env = newEnv }
+            {
+            , typedPattern
+            , patternType
+            , env = newEnv
+            , maybeFullAnnotation = maybeAnnotation
+            }
 
 
         PatternLiteralText pos text:
             {
             , typedPattern = PatternLiteralText pos text
-            , patternType = CoreTypes.textType
+            , patternType = todo "CoreTypes.text"
             , env
+            , maybeFullAnnotation = todo "CoreTypes.text"
             }
 
 
         PatternLiteralNumber pos n:
             {
             , typedPattern = PatternLiteralNumber pos n
-            , patternType = CoreTypes.numberType
+            , patternType = todo "CoreTypes.number"
             , env
+            , maybeFullAnnotation = todo "CoreTypes.number"
             }
 
 
@@ -984,6 +1023,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
             , typedPattern = PatternConstructor pos usr typedArguments
             , patternType = finalType
             , env = newEnv
+            , maybeFullAnnotation = Nothing # TODO
             }
 
 
@@ -1000,7 +1040,13 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
             patternTypeByName =
                 typedPatternsAndPatternTypesByName >> Dict.map name: Tuple.second
 
-            PatternRecord pos typedPatternsAndPatternTypesByName & TypeExtra (TypeRecordExt (newId @state) patternTypeByName)
+            {
+            , typedPattern = PatternRecord pos typedPatternsAndPatternTypesByName
+            , patternType = TypeExtra (TypeRecordExt (newId @state) patternTypeByName)
+            , env = newEnv
+            , maybeFullAnnotation = Nothing # TODO
+            }
+
 
 
 checkPattern as Env: UnificationType: Pattern CanonicalType: State@: Pattern UnificationType & Env =
