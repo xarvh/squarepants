@@ -179,7 +179,7 @@ union Error_ =
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name UnificationType
     , ErrorIncompatibleTypes
-    , ErrorVariableTypeIncompatible
+    , ErrorVariableTypeIncompatible Ref { type as UnificationType } CanonicalType
     , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference UnificationType CanonicalType
     , ErrorCallingANonFunction
 
@@ -661,17 +661,21 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
     try caExpression & expectedType as
 
         LiteralNumber pos n & TypeOpaque _ typeUsr []:
-            if typeUsr /= CoreTypes.numberUsr then
+            if typeUsr /= CoreTypes.numberDef.usr then
                 checkError env pos ErrorIncompatibleTypes @state
             else
-                LiteralNumber pos n
+                None
+
+            LiteralNumber pos n
 
 
         LiteralText pos text & TypeOpaque _ typeUsr []:
-            if typeUsr /= CoreTypes.textUsr then
+            if typeUsr /= CoreTypes.textDef.usr then
                 checkError env pos ErrorIncompatibleTypes @state
             else
-                LiteralText pos text
+                None
+
+            LiteralText pos text
 
 
         Variable pos ref & _:
@@ -699,7 +703,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                     else
                         checkError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
 
-                    Constructor pos usr
+            Constructor pos usr
 
 
         Lambda pos pattern lambdaModifier body & TypeFunction _ in mod out:
@@ -866,34 +870,36 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
             checkError env pos ErrorTooManyArguments @state
 
         else
-            typedArgs =
-                List.map2 Tuple.pair referenceArgs typedArgumentsAndArgumentTypes
-                >> List.indexedMap stuff index: ((refMod & refType) & (tyArg & argTy)):
-                      addEquality env (Why_Argument index) refType argTy @state
+            None
 
-                      refMod & tyArg
+        typedArgs =
+            List.map2 Tuple.pair referenceArgs typedArgumentsAndArgumentTypes
+            >> List.indexedMap index: ((refMod & refType) & (tyArg & argTy)):
+                  addEquality env (Why_Argument index) refType argTy @state
 
-            CallCo pos typedReference typedArgs
+                  refMod & tyArg
+
+        CallCo pos typedReference typedArgs
 
     else
         try referenceType as
-            TypeUnificationVariable id:
-
-                referenceTypeFromArguments =
-                    expectedType
-                    >> canonicalToUnificationType
-                    >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
-                        TypeFunction argTy modifier type
-
-                addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
-
-                typedArgs =
-                    List.map Tuple.first typedArgumentsAndArgumentTypes
-
-                CallCo pos typedReference typedArgs
-
+            TypeExtra (TypeUnificationVariable id):
+                None
             _:
                 checkError env pos ErrorCallingANonFunction @state
+
+        referenceTypeFromArguments =
+            expectedType
+            >> canonicalToUnificationType
+            >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
+                TypeFunction Pos.G argTy modifier type
+
+        addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
+
+        typedArgs as [UnificationType] =
+            List.map Tuple.first typedArgumentsAndArgumentTypes
+
+        CallCo pos typedReference typedArgs
 
 
 
