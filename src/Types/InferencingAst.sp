@@ -67,9 +67,12 @@ list_eachWithIndex2 as Int: [a]: [b]: (Int: a: b: None): None =
 
 
 
+# A reference to a defined variable
 union Ref =
-    # TODO use the same one as CanonicalAst
-    Ref
+    # This is for stuff defined inside the current function/block
+    , RefLocal Name
+    # This is for stuff defined at root level
+    , RefGlobal Meta.UniqueSymbolReference
 
 
 
@@ -193,6 +196,7 @@ union Error_ =
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
+    , ErrorDuplicate Name
 
 
 
@@ -219,7 +223,6 @@ union Why =
     , Why_ReturnType
     , Why_Argument Int
     , Why_CalledAsFunction
-    , Why_Duplicate
     , Why_Todo
 
 
@@ -956,13 +959,13 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                 try maybeAnnotation as
                     Nothing:
                         if isUnique then
-                            TypeUnique << newType @state
+                            TypeUnique pos << newType @state
                         else
                             newType @state
 
                     Just annotation:
-                        ensure annotation matches isUnique
-                        canonicalToUnificationType annotation
+                        todo "ensure annotation matches isUnique"
+                        todo "canonicalToUnificationType annotation"
 
 
             newEnv =
@@ -973,15 +976,16 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
                     Just name:
 
-                        if Dict.member name env.variables then
-                            addError (Why_Duplicate name) "shadowing!" @state
+                        # TODO: what about globals!?
+                        if Dict.member (RefLocal name) env.variables then
+                            checkError env pos (ErrorDuplicate name) @state
                         else
                             None
 
-                        { env with variables = Dict.insert name type .variables }
+                        { env with variables = Dict.insert (RefLocal name) { type = patternType } .variables }
 
             typedPattern =
-                PatternAny pos { isUnique, maybeName, maybeAnnotation, type }
+                PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
 
             {
             , typedPattern
@@ -1023,29 +1027,29 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                 try getConstructorByUsr usr env as
 
                     Nothing:
-                        inferenceError env pos (ErrorVariableNotFound usr) @state
+                        inferenceError env pos (ErrorConstructorNotFound usr) @state
 
                     Just cons:
                         argModAndTypes & returnType =
                             linearizeCurriedParameters (generalize cons.type @state) []
 
                         rl =
-                            List.length referenceArgs
+                            List.length argModAndTypes
 
                         gl =
-                            List.length givenArgs
+                            List.length arguments
 
                         if rl > gl then
-                            addError "not enough arguments" @state
+                            checkError env pos ErrorNotEnoughArguments @state
                         else
                             None
 
                         if rl < gl then
-                            addError "too many arguments" @state
+                            checkError env pos ErrorNotEnoughArguments @state
                         else
                             None
 
-                        list_eachWithIndex2 argModAndTypes argumentTypes index: (mod & paramType): argType:
+                        list_eachWithIndex2 0 argModAndTypes argumentTypes index: (mod & paramType): argType:
                             addEquality env (Why_Argument index) paramType argType @state
 
                         ##    { x } = blah
