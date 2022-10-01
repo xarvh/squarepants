@@ -55,6 +55,15 @@ onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key
 
 
 
+list_eachWithIndex2 as Int: [a]: [b]: (Int: a: b: None): None =
+    index: aa: bb: f:
+
+    try aa & bb as
+        (a :: at) & (b :: bt):
+            f index a b
+            list_eachWithIndex2 (index + 1) at bt f
+        _:
+            None
 
 
 
@@ -182,6 +191,8 @@ union Error_ =
     , ErrorVariableTypeIncompatible Ref { type as UnificationType } CanonicalType
     , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference UnificationType CanonicalType
     , ErrorCallingANonFunction
+    , ErrorTooManyArguments
+    , ErrorNotEnoughArguments
 
 
 
@@ -206,7 +217,7 @@ union Why =
     , Why_TryExpression
     , Why_AttributeAccess
     , Why_ReturnType
-    , Why_Argument
+    , Why_Argument Int
     , Why_CalledAsFunction
     , Why_Duplicate
     , Why_Todo
@@ -846,9 +857,9 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
     typedReference & referenceType =
         inferExpression env reference @state
 
-    typedArgumentsAndArgumentTypes =
+    typedArgumentsAndArgumentTypes as [Argument UnificationType & UnificationType] =
         givenArgs >> List.map (arg & unusedType):
-            inferArgument env argument @state
+            inferArgument env arg @state
 
     referenceArgs & referenceReturn =
         linearizeCurriedParameters referenceType []
@@ -872,14 +883,10 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
         else
             None
 
-        typedArgs =
-            List.map2 Tuple.pair referenceArgs typedArgumentsAndArgumentTypes
-            >> List.indexedMap index: ((refMod & refType) & (tyArg & argTy)):
-                  addEquality env (Why_Argument index) refType argTy @state
+        list_eachWithIndex2 0 referenceArgs typedArgumentsAndArgumentTypes index: (refMod & refType): (tyArg & argTy):
+            addEquality env (Why_Argument index) refType argTy @state
 
-                  refMod & tyArg
-
-        CallCo pos typedReference typedArgs
+        CallCo pos typedReference typedArgumentsAndArgumentTypes
 
     else
         try referenceType as
@@ -890,16 +897,16 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
 
         referenceTypeFromArguments =
             expectedType
-            >> canonicalToUnificationType
+            #>> canonicalToUnificationType
             >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
-                TypeFunction Pos.G argTy modifier type
+                TypeFunction Pos.G argTy (todo "modifier") type
 
         addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
 
-        typedArgs as [UnificationType] =
-            List.map Tuple.first typedArgumentsAndArgumentTypes
+#        typedArgs as [Argument UnificationType & UnificationType] =
+#            List.map Tuple.first typedArgumentsAndArgumentTypes
 
-        CallCo pos typedReference typedArgs
+        CallCo pos typedReference typedArgumentsAndArgumentTypes
 
 
 
@@ -911,17 +918,19 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
             typedExp & expType =
                 inferExpression env exp @state
 
-            ArgumentExpression typedExt & expType
+            ArgumentExpression typedExp & expType
 
         ArgumentRecycle pos ref:
-            try getVariableByRef ref env as
+            type =
+                try getVariableByRef ref env as
 
-                Nothing:
-                    inferenceError env pos (ErrorVariableNotFound ref) @state
+                    Nothing:
+                        inferenceError env pos (ErrorVariableNotFound ref) @state
 
-                Just var:
-                    ArgumentRecycle pos ref & var.type
+                    Just var:
+                        var.type
 
+            ArgumentRecycle pos ref & type
 
 
 #
@@ -1036,15 +1045,15 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                         else
                             None
 
-                        list_indexedEach2 argModAndTypes argumentTypes index: (mod & paramType): argType:
+                        list_eachWithIndex2 argModAndTypes argumentTypes index: (mod & paramType): argType:
                             addEquality env (Why_Argument index) paramType argType @state
 
                         ##    { x } = blah
                         ##
                         ## `blah` /could/ be unique, but in this case we'll just assume it is NOT
 
-                        if there is any unique then
-                            TypeUnique returnType
+                        if todo "there is any unique" then
+                            TypeUnique pos returnType
                         else
                             returnType
 
@@ -1062,7 +1071,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                 Dict.empty & env >> Dict.for pasAndUnusedTypesByName name: (pa & __unused__): (dict & envX):
 
                     out =
-                        inferPattern envX arg @state
+                        inferPattern envX pa @state
 
                     Dict.insert name (out.typedPattern & out.patternType) dict & out.env
 
@@ -1071,7 +1080,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
             {
             , typedPattern = PatternRecord pos typedPatternsAndPatternTypesByName
-            , patternType = TypeExtra (TypeRecordExt (newId @state) patternTypeByName)
+            , patternType = TypeExtra (TypeRecordExt (newTyvarId @state) patternTypeByName)
             , env = newEnv
             , maybeFullAnnotation = Nothing # TODO
             }
