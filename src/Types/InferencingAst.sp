@@ -152,10 +152,13 @@ union Argument type =
     , ArgumentExpression (Expression type)
     , ArgumentRecycle Pos Ref
 
+
 alias ValueDef type = {
     , pattern as Pattern type
     , native as Bool
     , body as Expression type
+
+    , tyvars as Dict Name TypeClasses
 
     # Do we need these here?
 #    , directTypeDeps as TypeDeps
@@ -173,11 +176,18 @@ alias State = {
     }
 
 
+alias TypeWithClasses = {
+    # We can't use CanonicalType here, because we could have an inferred variable?
+    , type as UnificationType
+    , tyvars as Dict Name TypeClasses
+    }
+
+
 alias Env = {
-    , variables as Dict Ref { type as UnificationType }
-    , constructors as Dict Meta.UniqueSymbolReference { type as UnificationType }
-    , annotatedTyvars as Dict Name CanonicalType
     , context as Context
+    , constructors as Dict Meta.UniqueSymbolReference TypeWithClasses
+    , variables as Dict Ref TypeWithClasses
+    , tyvarsInParentAnnotations as Dict Name UnificationType
     }
 
 
@@ -196,7 +206,6 @@ union Error_ =
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
-    , ErrorDuplicate Name
 
 
 
@@ -313,12 +322,39 @@ getVariableByRef as Ref: Env: Maybe { type as UnificationType } =
 # Generalize
 #
 #
-generalize as UnificationType: State@: UnificationType =
-    caType: state@:
 
-    # When I generalize, I need to add the typeclass constraints
 
-    todo "generalize"
+#    , variables as Dict Ref { type as UnificationType, tyvars as Dict Name TypeClasses }
+#    , tyvarsInParentAnnotations as Dict Name CanonicalType
+
+
+generalize as Env: TypeWithClasses: State@: UnificationType =
+    env: twc: state@:
+
+    { type, tyvars } =
+        twc
+
+    ---> am I substituting annotated tyvar names or generated tyvar ids?
+
+    translationDict =
+        for each tyvar
+            try Dict.get name env.tyvarsInParentAnnotations as
+                use old translation
+                also check that typeclasses are compatible?
+
+            else
+                generate new translation
+
+                # When I generalize, I need to add the typeclass constraints
+                add typeclass constraints to equalities?
+
+
+    substitute translationDict type
+
+
+
+
+
 
 
 #
@@ -409,7 +445,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                         inferenceError env pos (ErrorVariableNotFound ref) @state
 
                     Just var:
-                        generalize var.type @state
+                        generalize var @state
 
             Variable pos ref & ty
 
@@ -421,7 +457,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                         inferenceError env pos (ErrorConstructorNotFound usr) @state
 
                     Just cons:
-                        generalize cons.type @state
+                        generalize cons @state
 
             Constructor pos usr & ty
 
@@ -975,13 +1011,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                         env
 
                     Just name:
-
-                        # TODO: what about globals!?
-                        if Dict.member (RefLocal name) env.variables then
-                            checkError env pos (ErrorDuplicate name) @state
-                        else
-                            None
-
+                        # We don't check for duplicate var names / shadowig here, it's MakeCanonical's responsibility
                         { env with variables = Dict.insert (RefLocal name) { type = patternType } .variables }
 
             typedPattern =
@@ -1031,7 +1061,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
                     Just cons:
                         argModAndTypes & returnType =
-                            linearizeCurriedParameters (generalize cons.type @state) []
+                            linearizeCurriedParameters (generalize cons @state) []
 
                         rl =
                             List.length argModAndTypes
