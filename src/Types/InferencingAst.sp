@@ -83,7 +83,7 @@ alias UnificationVariableId =
 
 union Type extra =
     , TypeOpaque Pos Meta.UniqueSymbolReference [Type extra]
-    , TypeAnnotationVariable Pos Name
+    #, TypeAnnotationVariable Pos Name
     , TypeFunction Pos (Type extra) LambdaModifier (Type extra)
     , TypeRecord Pos (Dict Name (Type extra))
     , TypeUnique Pos (Type extra)
@@ -91,7 +91,7 @@ union Type extra =
 
 
 union CanonicalTypeExtra =
-    Never CanonicalTypeExtra
+    , TypeAnnotationVariable Pos Name
 
 alias CanonicalType =
     Type CanonicalTypeExtra
@@ -175,11 +175,14 @@ alias State = {
     , lastUnificationVarId as Int
     }
 
+alias TypeClasses = {
+    , allowFunctions as Maybe Bool
+    , allowUniques as Maybe Bool
+    }
 
 alias TypeWithClasses = {
-    # We can't use CanonicalType here, because we could have an inferred variable?
     , type as UnificationType
-    , tyvars as Dict Name TypeClasses
+    , tyvars as Dict UnificationVariableId TypeClasses
     }
 
 
@@ -187,7 +190,10 @@ alias Env = {
     , context as Context
     , constructors as Dict Meta.UniqueSymbolReference TypeWithClasses
     , variables as Dict Ref TypeWithClasses
-    , tyvarsInParentAnnotations as Dict Name UnificationType
+    , tyvarsInParentAnnotations as Dict UnificationVariableId UnificationType
+
+    # This is used to give meaningfule errors?
+    , annotatedTyvarToGeneratedTyvar as Dict Name UnificationVariableId
     }
 
 
@@ -201,7 +207,7 @@ union Error_ =
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name UnificationType
     , ErrorIncompatibleTypes
-    , ErrorVariableTypeIncompatible Ref { type as UnificationType } CanonicalType
+    , ErrorVariableTypeIncompatible Ref TypeWithClasses CanonicalType
     , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference UnificationType CanonicalType
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
@@ -239,11 +245,6 @@ union Equality =
     , Equality Context Why UnificationType UnificationType
 
 
-alias TypeClasses = {
-    , allowFunctions as Maybe Bool
-    , allowUniques as Maybe Bool
-    }
-
 
 
 
@@ -265,6 +266,13 @@ addEquality as Env: Why: UnificationType: UnificationType: State@: None =
     env: why: t1: t2: state@:
 
     Array.push @state.equalities << Equality env.context why t1 t2
+
+
+addTypeClasses as UnificationVariableId: TypeClasses: State@: None =
+    tyvarId: typeClasses: state@:
+
+    todo "addTypeClasses"
+
 
 
 
@@ -304,17 +312,16 @@ linearizeCurriedParameters as Type t: [LambdaModifier & Type t]: [LambdaModifier
 
 
 
-getConstructorByUsr as Meta.UniqueSymbolReference: Env: Maybe { type as UnificationType } =
+getConstructorByUsr as Meta.UniqueSymbolReference: Env: Maybe TypeWithClasses =
     usr: env:
 
     Dict.get usr env.constructors
 
 
-getVariableByRef as Ref: Env: Maybe { type as UnificationType } =
+getVariableByRef as Ref: Env: Maybe TypeWithClasses =
     ref: env:
 
     Dict.get ref env.variables
-
 
 
 #
@@ -322,39 +329,27 @@ getVariableByRef as Ref: Env: Maybe { type as UnificationType } =
 # Generalize
 #
 #
-
-
-#    , variables as Dict Ref { type as UnificationType, tyvars as Dict Name TypeClasses }
-#    , tyvarsInParentAnnotations as Dict Name CanonicalType
-
-
 generalize as Env: TypeWithClasses: State@: UnificationType =
-    env: twc: state@:
+    env: typeWithClasses: state@:
 
-    { type, tyvars } =
-        twc
+    typeWithClasses.type >> Dict.for typeWithClasses.tyvars tyvarId: typeClasses:
 
-    ---> am I substituting annotated tyvar names or generated tyvar ids?
+        replacementType =
+            try Dict.get tyvarId env.tyvarsInParentAnnotations as
+                Just type:
+                    # TODO also check that typeclasses are compatible? Should MakeCanonical do it?
+                    type
 
-    translationDict =
-        for each tyvar
-            try Dict.get name env.tyvarsInParentAnnotations as
-                use old translation
-                also check that typeclasses are compatible?
+                Nothing:
+                    tyvarId =
+                        newTyvarId @state
 
-            else
-                generate new translation
+                    # We need to remember that this new tyvar has typeclass contraints
+                    addTypeClasses tyvarId typeClasses @state
 
-                # When I generalize, I need to add the typeclass constraints
-                add typeclass constraints to equalities?
+                    TypeExtra (TypeUnificationVariable tyvarId)
 
-
-    substitute translationDict type
-
-
-
-
-
+        applySubstitutionToType tyvarId replacementType
 
 
 #
@@ -445,7 +440,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                         inferenceError env pos (ErrorVariableNotFound ref) @state
 
                     Just var:
-                        generalize var @state
+                        generalize env var @state
 
             Variable pos ref & ty
 
@@ -457,7 +452,7 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
                         inferenceError env pos (ErrorConstructorNotFound usr) @state
 
                     Just cons:
-                        generalize cons @state
+                        generalize env cons @state
 
             Constructor pos usr & ty
 
@@ -1012,7 +1007,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
                     Just name:
                         # We don't check for duplicate var names / shadowig here, it's MakeCanonical's responsibility
-                        { env with variables = Dict.insert (RefLocal name) { type = patternType } .variables }
+                        { env with variables = Dict.insert (RefLocal name) { type = patternType, tyvars = todo "???" } .variables }
 
             typedPattern =
                 PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
@@ -1061,7 +1056,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
 
                     Just cons:
                         argModAndTypes & returnType =
-                            linearizeCurriedParameters (generalize cons @state) []
+                            linearizeCurriedParameters (generalize env cons @state) []
 
                         rl =
                             List.length argModAndTypes
@@ -1194,11 +1189,13 @@ solveEqualities as [Equality]: State: State =
                 TypeUnique _ m1 & TypeUnique _ m2:
                     solveEqualities (Equality why m1 m2 :: tail) state
 
+                [#
                 TypeAnnotationVariable _ name1 & TypeAnnotationVariable _ name2:
                     if name1 == name2 then
                         solveEqualities tail state
                     else
                         addError why "these tyvars should be the same!!" state
+                #]
 
 
 solveRecord as Why: Dict Name UnificationType: UnificationType: [Equality]: State: State =
@@ -1230,37 +1227,40 @@ solveRecordExt as Why: ...: Dict Name UnificationType: UnificationType: [Equalit
 
 
 replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]: State: State =
-    uniVarId: replacingType: remainingEqualities: state:
+    tyvarId: replacingType: remainingEqualities: state:
 
-    #TODO: check that replacingType does not contain uniVarId
+    #TODO: check that replacingType does not contain tyvarId
 
     equalities =
         # TODO we don't care about map preserving order
         remainingEqualities >> List.map (Equality why t1 t2):
             Equality why
-                (applySubstitutionToType uniVarId replacingType t1)
-                (applySubstitutionToType uniVarId replacingType t2)
+                (applySubstitutionToType tyvarId replacingType t1)
+                (applySubstitutionToType tyvarId replacingType t2)
 
     substitutions =
         state.substitutions
-        >> Dict.map (tyvarId: type: applySubstitutionToType univarId replacingType type)
-        >> Dict.insert uniVarId replacingType
+        >> Dict.map (tyvarId: type: applySubstitutionToType tyvarId replacingType type)
+        >> Dict.insert tyvarId replacingType
 
     solveEqualities newEqualities { state with substitutions }
 
 
+#]
 applySubstitutionToType as UnificationVariableId: UnificationType: UnificationType: UnificationType =
-    uniVarId: replacingType: originalType:
+    tyvarId: replacingType: originalType:
 
     rec =
-        applySubstitutionToType uniVarId replacingType
+        applySubstitutionToType tyvarId replacingType
 
     try originalType as
         TypeOpaque pos usr args:
             TypeOpaque pos usr (List.map rec args)
 
+        [#
         TypeAnnotationVariable pos name:
             originalType
+        #]
 
         TypeFunction pos in mod out:
             TypeFunction pos (rec in) mod (rec out)
@@ -1269,7 +1269,7 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
             TypeRecord pos (Dict.map (k: rec) attrs)
 
         TypeRecordExt pos id attrs:
-            if id == univarId then
+            if id == tyvarId then
                 replacingType
             else
                 TypeRecordExt pos id (Dict.map (k: rec) attrs)
@@ -1278,9 +1278,7 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
             TypeUnique pos (rec t)
 
         TypeExtra (TypeUnificationVariable id):
-            if id == univarId then
+            if id == tyvarId then
                 replacingType
             else
                 originalType
-
-#]
