@@ -1250,7 +1250,7 @@ replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]
 applySubstitutionToType as UnificationVariableId: UnificationType: UnificationType: UnificationType =
     tyvarId: replacingType: originalType:
 
-    rec =
+    rec as UnificationType: UnificationType =
         applySubstitutionToType tyvarId replacingType
 
     try originalType as
@@ -1268,12 +1268,6 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
         TypeRecord pos attrs:
             TypeRecord pos (Dict.map (k: rec) attrs)
 
-        TypeRecordExt pos id attrs:
-            if id == tyvarId then
-                replacingType
-            else
-                TypeRecordExt pos id (Dict.map (k: rec) attrs)
-
         TypeUnique pos t:
             TypeUnique pos (rec t)
 
@@ -1282,3 +1276,10 @@ applySubstitutionToType as UnificationVariableId: UnificationType: UnificationTy
                 replacingType
             else
                 originalType
+
+        TypeExtra (TypeRecordExt id attrs):
+            if id == tyvarId then
+                replacingType
+            else
+                TypeExtra (TypeRecordExt id (Dict.map (k: rec) attrs))
+
