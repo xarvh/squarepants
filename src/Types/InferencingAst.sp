@@ -173,6 +173,7 @@ alias State = {
     , equalities as Array Equality
     , errors as Array (Pos & Context & Error_)
     , lastUnificationVarId as Int
+    , classesByTyvarId as Hash UnificationVariableId TypeClasses
     }
 
 alias TypeClasses = {
@@ -268,13 +269,6 @@ addEquality as Env: Why: UnificationType: UnificationType: State@: None =
     Array.push @state.equalities << Equality env.context why t1 t2
 
 
-addTypeClasses as UnificationVariableId: TypeClasses: State@: None =
-    tyvarId: typeClasses: state@:
-
-    todo "addTypeClasses"
-
-
-
 
 #
 # Adds an error and, as a convenience, return a generated type
@@ -345,7 +339,7 @@ generalize as Env: TypeWithClasses: State@: UnificationType =
                         newTyvarId @state
 
                     # We need to remember that this new tyvar has typeclass contraints
-                    addTypeClasses tyvarId typeClasses @state
+                    Hash.insert @state.classesByTyvarId tyvarId typeClasses
 
                     TypeExtra (TypeUnificationVariable tyvarId)
 
@@ -357,15 +351,69 @@ generalize as Env: TypeWithClasses: State@: UnificationType =
 # Types
 #
 #
-typeIsCompatibleWith as CanonicalType: UnificationType: Bool =
-    expected: actual:
+typeIsCompatibleWith as Env: CanonicalType: UnificationType: Bool =
+    env: expected: actual:
 
-    todo "typeIsCompatibleWith"
+    try expected & actual as
+        TypeOpaque _ usrC argsC & TypeOpaque _ usrU argsU:
+            if usrC /= usrU then
+                False
+            else
+                # TODO this is not efficient, we should stop at the first
+                List.map2 (typeIsCompatibleWith env) argsC argsU
+                >> List.all identity
+
+        TypeFunction _ inC modC outC & TypeFunction _ inU modU outU:
+            modC /= modU and typeIsCompatibleWith env inC inU and typeIsCompatibleWith env outC outU
+
+        TypeRecord _ attrC & TypeRecord _ attrU:
+            onlyC & both & onlyU =
+                onlyBothOnly attrC attrU
+
+            if onlyC /= Dict.empty or onlyU /= Dict.empty then
+                False
+            else
+                both
+                >> Dict.values
+                >> List.all (c & u): typeIsCompatibleWith env c u
+
+        TypeUnique _ c & TypeUnique _ u:
+            typeIsCompatibleWith env c u
+
+        TypeExtra (TypeAnnotationVariable _ nameC) & TypeExtra (TypeUnificationVariable idU):
+            Dict.get nameC env.annotatedTyvarToGeneratedTyvar == Just idU
+
+        TypeRecord _ attrsC & TypeExtra (TypeRecordExt idU attrsU):
+            todo "typeIsCompatibleWith"
+
+        # TODO Probably needs to manage more TypeUnificationVariable?
+
+        _:
+            False
 
 
 canonicalToUnificationType as CanonicalType: UnificationType =
     ca:
-    todo "canonicalToUnificationType"
+
+    try ca as
+       TypeOpaque p usr ty:
+          TypeOpaque p usr ty
+
+       TypeFunction p in mod out:
+         TypeFunction p in mod out
+
+       TypeRecord p attrs:
+         TypeRecord p attrs
+
+       TypeUnique p ty:
+         TypeUnique p ty
+
+       TypeExtra (TypeAnnotationVariable _ name):
+          try Dict.get name env.blah as
+              Nothing: todo "canonicalToUnificationType: name not found"
+              Just tyvarId:
+                  TypeExtra (TypeUnificationVariable tyvarId)
+
 
 
 
@@ -729,7 +777,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                     checkError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    if typeIsCompatibleWith expectedType var.type then
+                    if typeIsCompatibleWith env expectedType var.type then
                         None
                     else
                         checkError env pos (ErrorVariableTypeIncompatible ref var expectedType) @state
@@ -743,7 +791,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                     checkError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
-                    if typeIsCompatibleWith expectedType cons.type then
+                    if typeIsCompatibleWith env expectedType cons.type then
                         None
                     else
                         checkError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
@@ -758,7 +806,10 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             typedBody =
                 checkExpression localEnv out body @state
 
-            todo "checkModifiers lambdaModifier mod @state"
+            if lambdaModifier == mod then
+                None
+            else
+                checkError env pos ErrorIncompatibleLambdaModifier @state
 
             Lambda pos typedPattern mod typedBody
 
@@ -772,10 +823,25 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
         Record pos (Just ext) valueByName & TypeRecord _ typeByName:
-#            all values must exist in typeByName
-#            ext must have type expected type
-            todo "Record"
 
+            # ext must have type expectedType
+            # TODO: add context
+            typedExt =
+                checkExpression env expectedType ext @state
+
+            # all valueByName attrs must be in typeByName
+            typedValueByName =
+                valueByName >> Dict.map attrName: attrExpr:
+                    try Dict.get name typeByName as
+                        Nothing:
+                            checkError env pos ErrorRecordHasAttributesNotInAnnotation @state
+                            # TODO: is there a smarter way?
+                            Tuple.first (inferExpression env attrValue @state)
+                        Just attrType:
+                            # TODO: add context
+                            checkExpression env attrType attrValue @state
+
+            Record pos (Just typedExt) typedValueByName
 
 
         Record pos Nothing valueByName & TypeRecord _ typeByName:
