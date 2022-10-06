@@ -351,20 +351,22 @@ generalize as Env: TypeWithClasses: State@: UnificationType =
 # Types
 #
 #
-typeIsCompatibleWith as Env: CanonicalType: UnificationType: Bool =
-    env: expected: actual:
+variableIsCompatibleWith as Env: CanonicalType: UnificationType: Bool =
+    # This function is used to ensure that when a variable (or a constructor)
+    # from env can be used with the annotated/expected type
+    env: expected: variableType:
 
-    try expected & actual as
+    try expected & variableType as
         TypeOpaque _ usrC argsC & TypeOpaque _ usrU argsU:
             if usrC /= usrU then
                 False
             else
                 # TODO this is not efficient, we should stop at the first
-                List.map2 (typeIsCompatibleWith env) argsC argsU
+                List.map2 (variableIsCompatibleWith env) argsC argsU
                 >> List.all identity
 
         TypeFunction _ inC modC outC & TypeFunction _ inU modU outU:
-            modC /= modU and typeIsCompatibleWith env inC inU and typeIsCompatibleWith env outC outU
+            modC /= modU and variableIsCompatibleWith env inC inU and variableIsCompatibleWith env outC outU
 
         TypeRecord _ attrC & TypeRecord _ attrU:
             onlyC & both & onlyU =
@@ -375,16 +377,16 @@ typeIsCompatibleWith as Env: CanonicalType: UnificationType: Bool =
             else
                 both
                 >> Dict.values
-                >> List.all (c & u): typeIsCompatibleWith env c u
+                >> List.all (c & u): variableIsCompatibleWith env c u
 
         TypeUnique _ c & TypeUnique _ u:
-            typeIsCompatibleWith env c u
+            variableIsCompatibleWith env c u
 
         TypeExtra (TypeAnnotationVariable _ nameC) & TypeExtra (TypeUnificationVariable idU):
             Dict.get nameC env.annotatedTyvarToGeneratedTyvar == Just idU
 
-        TypeRecord _ attrsC & TypeExtra (TypeRecordExt idU attrsU):
-            todo "typeIsCompatibleWith"
+        #TypeRecord _ attrsC & TypeExtra (TypeRecordExt idU attrsU):
+        #    ????
 
         # TODO Probably needs to manage more TypeUnificationVariable?
 
@@ -392,8 +394,8 @@ typeIsCompatibleWith as Env: CanonicalType: UnificationType: Bool =
             False
 
 
-canonicalToUnificationType as CanonicalType: UnificationType =
-    ca:
+canonicalToUnificationType as Env: CanonicalType: UnificationType =
+    env: ca:
 
     try ca as
        TypeOpaque p usr ty:
@@ -409,8 +411,9 @@ canonicalToUnificationType as CanonicalType: UnificationType =
          TypeUnique p ty
 
        TypeExtra (TypeAnnotationVariable _ name):
-          try Dict.get name env.blah as
-              Nothing: todo "canonicalToUnificationType: name not found"
+          try Dict.get name env.annotatedTyvarToGeneratedTyvar as
+              Nothing:
+                  todo "compiler error: canonicalToUnificationType: name not found"
               Just tyvarId:
                   TypeExtra (TypeUnificationVariable tyvarId)
 
@@ -777,7 +780,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                     checkError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    if typeIsCompatibleWith env expectedType var.type then
+                    if variableIsCompatibleWith env expectedType var.type then
                         None
                     else
                         checkError env pos (ErrorVariableTypeIncompatible ref var expectedType) @state
@@ -791,7 +794,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                     checkError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
-                    if typeIsCompatibleWith env expectedType cons.type then
+                    if variableIsCompatibleWith env expectedType cons.type then
                         None
                     else
                         checkError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
@@ -815,11 +818,11 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
         Call pos reference argument unusedType & _:
-            checkCallCo env (canonicalToUnificationType expectedType) pos reference [argument & unusedType] @state
+            checkCallCo env (canonicalToUnificationType env expectedType) pos reference [argument & unusedType] @state
 
 
         CallCo pos reference argsAndUnusedTypes & _:
-            checkCallCo env (canonicalToUnificationType expectedType) pos reference argsAndUnusedTypes @state
+            checkCallCo env (canonicalToUnificationType env expectedType) pos reference argsAndUnusedTypes @state
 
 
         Record pos (Just ext) valueByName & TypeRecord _ typeByName:
@@ -997,9 +1000,9 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
 
         referenceTypeFromArguments =
             expectedType
-            #>> canonicalToUnificationType
             >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
-                TypeFunction Pos.G argTy (todo "modifier") type
+                # TODO if expected type says this should be LambdaConsuming, then use LambdaConsuming
+                TypeFunction Pos.G argTy LambdaNormal type
 
         addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
 
@@ -1188,7 +1191,7 @@ checkPattern as Env: CanonicalType: Pattern CanonicalType: State@: Pattern Unifi
     # TODO
     out = inferPattern env pattern @state
 
-    addEquality env Why_Todo out.patternType (canonicalToUnificationType expectedType) @state
+    addEquality env Why_Todo out.patternType (canonicalToUnificationType env expectedType) @state
 
     out.typedPattern & out.env
 
