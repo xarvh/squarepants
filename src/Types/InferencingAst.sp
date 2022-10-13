@@ -76,6 +76,10 @@ union Ref =
 
 
 
+union LambdaModifier = LambdaNormal, LambdaRecycle
+
+
+
 
 alias UnificationVariableId =
     Int
@@ -103,9 +107,6 @@ union UnificationTypeExtra =
 
 alias UnificationType =
     Type UnificationTypeExtra
-
-
-
 
 
 
@@ -150,7 +151,7 @@ union Pattern type =
 
 union Argument type =
     , ArgumentExpression (Expression type)
-    , ArgumentRecycle Pos Ref
+    , ArgumentRecycle Pos [Name] Ref
 
 
 alias ValueDef type = {
@@ -213,6 +214,8 @@ union Error_ =
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
+    , ErrorIncompatibleLambdaModifier
+    , ErrorUniquenessDoesNotMatch
 
 
 
@@ -286,10 +289,6 @@ checkError as Env: Pos: Error_: State@: None =
     env: pos: error: state@:
 
     Array.push @state.errors (pos & env.context & error)
-
-
-
-
 
 
 
@@ -397,18 +396,20 @@ variableIsCompatibleWith as Env: CanonicalType: UnificationType: Bool =
 canonicalToUnificationType as Env: CanonicalType: UnificationType =
     env: ca:
 
+    ctu = canonicalToUnificationType env
+
     try ca as
-       TypeOpaque p usr ty:
-          TypeOpaque p usr ty
+       TypeOpaque p usr args:
+          TypeOpaque p usr (List.map ctu args)
 
        TypeFunction p in mod out:
-         TypeFunction p in mod out
+         TypeFunction p (ctu in) mod (ctu out)
 
        TypeRecord p attrs:
-         TypeRecord p attrs
+         TypeRecord p (Dict.map (k: ctu) attrs)
 
        TypeUnique p ty:
-         TypeUnique p ty
+         TypeUnique p (ctu ty)
 
        TypeExtra (TypeAnnotationVariable _ name):
           try Dict.get name env.annotatedTyvarToGeneratedTyvar as
@@ -418,6 +419,29 @@ canonicalToUnificationType as Env: CanonicalType: UnificationType =
                   TypeExtra (TypeUnificationVariable tyvarId)
 
 
+variableOfThisTypeMustBeFlaggedUnique as UnificationType: Bool =
+    ca:
+
+    try ca as
+       TypeUnique p ty:
+         True
+
+       TypeOpaque p usr args:
+          # TODO: How do we deal with an Opaque that *must* be unique?
+          List.any variableOfThisTypeMustBeFlaggedUnique args
+
+       TypeFunction p in mod out:
+          False
+
+       TypeRecord p attrs:
+          Dict.any (k: variableOfThisTypeMustBeFlaggedUnique) attrs
+
+       TypeExtra (TypeRecordExt tyvarId attrs):
+          Dict.any (k: variableOfThisTypeMustBeFlaggedUnique) attrs
+
+       TypeExtra (TypeUnificationVariable _):
+          # At worst a tyvar can be ImmutableOrUnique, in which case it still doesn't need to be flagged
+          False
 
 
 
@@ -835,14 +859,14 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             # all valueByName attrs must be in typeByName
             typedValueByName =
                 valueByName >> Dict.map attrName: attrExpr:
-                    try Dict.get name typeByName as
+                    try Dict.get attrName typeByName as
                         Nothing:
                             checkError env pos ErrorRecordHasAttributesNotInAnnotation @state
                             # TODO: is there a smarter way?
-                            Tuple.first (inferExpression env attrValue @state)
+                            Tuple.first (inferExpression env attrExpr @state)
                         Just attrType:
                             # TODO: add context
-                            checkExpression env attrType attrValue @state
+                            checkExpression env attrType attrExpr @state
 
             Record pos (Just typedExt) typedValueByName
 
@@ -1023,7 +1047,7 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
 
             ArgumentExpression typedExp & expType
 
-        ArgumentRecycle pos ref:
+        ArgumentRecycle pos attrPath ref:
             type =
                 try getVariableByRef ref env as
 
@@ -1031,9 +1055,10 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
                         inferenceError env pos (ErrorVariableNotFound ref) @state
 
                     Just var:
+                        todo "apply attrPath"
                         var.type
 
-            ArgumentRecycle pos ref & type
+            ArgumentRecycle pos attrPath ref & type
 
 
 #
@@ -1064,8 +1089,16 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                             newType @state
 
                     Just annotation:
-                        todo "ensure annotation matches isUnique"
-                        todo "canonicalToUnificationType annotation"
+                        t =
+                            canonicalToUnificationType env annotation
+
+                        if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
+                            checkError env pos ErrorUniquenessDoesNotMatch @state
+                        else
+                            None
+
+                        t
+
 
 
             newEnv =
@@ -1150,7 +1183,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                         ##
                         ## `blah` /could/ be unique, but in this case we'll just assume it is NOT
 
-                        if todo "there is any unique" then
+                        if List.any variableOfThisTypeMustBeFlaggedUnique argumentTypes then
                             TypeUnique pos returnType
                         else
                             returnType
@@ -1197,19 +1230,19 @@ checkPattern as Env: CanonicalType: Pattern CanonicalType: State@: Pattern Unifi
 
 
 
-[#
+#
 #
 #
 # Equalities resolution
 #
 #
-alias State = {
+alias ERState = {
     , substitutions as Dict UnificationVariableId UnificationType
     , errors as [Why & Text]
     }
 
 
-solveEqualities as [Equality]: State: State =
+solveEqualities as [Equality]: ERState: ERState =
     remainingEqualities: state:
 
     try remainingEqualities as
@@ -1267,7 +1300,36 @@ solveEqualities as [Equality]: State: State =
                 #]
 
 
-solveRecord as Why: Dict Name UnificationType: UnificationType: [Equality]: State: State =
+solveRecord as Why: Dict Name UnificationType: UnificationType: [Equality]: ERState: ERState =
+    why: attrs1: type2: remainingEqualities:
+
+    try type2 as
+        TypeRecord _ attrs2:
+            only1 & both & only2 =
+                onlyBothOnly attrs1 attrs2
+
+            only1 must be empty
+            only2 must be empty
+
+            push equalities for every attr in both
+
+
+        TypeRecordExt _ name2 attrs2:
+            # { attrs1 } == { name2 with attrs2 }
+            only1 & both & only2 =
+                onlyBothOnly attrs1 attrs2
+
+            only2 must be empty
+
+            name2 must == attrs1
+
+            all `both` must match
+
+        _:
+            addError why "should be a record" state
+
+
+solveRecordExt as Why: ...: Dict Name UnificationType: UnificationType: [Equality]: ERState: ERState =
     why: attrs1: type2: remainingEqualities:
 
     try type2 as
@@ -1281,21 +1343,7 @@ solveRecord as Why: Dict Name UnificationType: UnificationType: [Equality]: Stat
             addError why "should be a record" state
 
 
-solveRecordExt as Why: ...: Dict Name UnificationType: UnificationType: [Equality]: State: State =
-    why: attrs1: type2: remainingEqualities:
-
-    try type2 as
-        TypeRecord _ attrs2:
-            ...
-
-        TypeRecordExt _ name2 attrs2:
-            ...
-
-        _:
-            addError why "should be a record" state
-
-
-replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]: State: State =
+replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]: ERState: ERState =
     tyvarId: replacingType: remainingEqualities: state:
 
     #TODO: check that replacingType does not contain tyvarId
@@ -1315,7 +1363,7 @@ replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]
     solveEqualities newEqualities { state with substitutions }
 
 
-#]
+
 applySubstitutionToType as UnificationVariableId: UnificationType: UnificationType: UnificationType =
     tyvarId: replacingType: originalType:
 
