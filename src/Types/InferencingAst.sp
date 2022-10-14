@@ -243,6 +243,10 @@ union Why =
     , Why_Argument Int
     , Why_CalledAsFunction
     , Why_Todo
+    , Why_Attribute Why
+    , Why_FunctionInput Why
+    , Why_FunctionOutput Why
+    , Why_TypeArgument Meta.UniqueSymbolReference Int Why
 
 
 union Equality =
@@ -273,19 +277,7 @@ addEquality as Env: Why: UnificationType: UnificationType: State@: None =
 
 
 
-#
-# Adds an error and, as a convenience, return a generated type
-#
-inferenceError as Env: Pos: Error_: State@: UnificationType =
-    env: pos: error: state@:
-
-    Array.push @state.errors (pos & env.context & error)
-
-    newType @state
-
-
-
-checkError as Env: Pos: Error_: State@: None =
+addError as Env: Pos: Error_: State@: None =
     env: pos: error: state@:
 
     Array.push @state.errors (pos & env.context & error)
@@ -512,7 +504,8 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             ty =
                 try getVariableByRef ref env as
                     Nothing:
-                        inferenceError env pos (ErrorVariableNotFound ref) @state
+                        addError env pos (ErrorVariableNotFound ref) @state
+                        newType @state
 
                     Just var:
                         generalize env var @state
@@ -524,7 +517,8 @@ inferExpression as Env: Expression CanonicalType: State@: Expression Unification
             ty =
                 try getConstructorByUsr usr env as
                     Nothing:
-                        inferenceError env pos (ErrorConstructorNotFound usr) @state
+                        addError env pos (ErrorConstructorNotFound usr) @state
+                        newType @state
 
                     Just cons:
                         generalize env cons @state
@@ -696,7 +690,8 @@ inferRecordAccess as Env: Pos: Name: UnificationType: State@: UnificationType =
                     type
 
                 Nothing:
-                    inferenceError env pos (ErrorRecordDoesNotHaveAttribute attrName) @state
+                    addError env pos (ErrorRecordDoesNotHaveAttribute attrName) @state
+                    newType @state
 
         TypeExtra (TypeRecordExt tyvarId extensionAttrTypes):
             try Dict.get attrName extensionAttrTypes as
@@ -726,7 +721,8 @@ inferRecordAccess as Env: Pos: Name: UnificationType: State@: UnificationType =
             newAttrType
 
         _:
-            inferenceError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
+            addError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
+            newType @state
 
 
 
@@ -740,7 +736,7 @@ inferRecordExtended as Env: Pos: UnificationType: Dict Name UnificationType: Sta
                 try Dict.get name attrTypes as
 
                     Nothing:
-                        checkError env pos (ErrorRecordDoesNotHaveAttribute name) @state
+                        addError env pos (ErrorRecordDoesNotHaveAttribute name) @state
 
                     Just ty:
                         addEquality env Why_Record ty valueType @state
@@ -771,7 +767,8 @@ inferRecordExtended as Env: Pos: UnificationType: Dict Name UnificationType: Sta
             ty
 
         _:
-            inferenceError env pos ErrorNotCompatibleWithRecord @state
+            addError env pos ErrorNotCompatibleWithRecord @state
+            newType @state
 
 
 
@@ -782,7 +779,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
         LiteralNumber pos n & TypeOpaque _ typeUsr []:
             if typeUsr /= CoreTypes.numberDef.usr then
-                checkError env pos ErrorIncompatibleTypes @state
+                addError env pos ErrorIncompatibleTypes @state
             else
                 None
 
@@ -791,7 +788,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
         LiteralText pos text & TypeOpaque _ typeUsr []:
             if typeUsr /= CoreTypes.textDef.usr then
-                checkError env pos ErrorIncompatibleTypes @state
+                addError env pos ErrorIncompatibleTypes @state
             else
                 None
 
@@ -801,13 +798,13 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
         Variable pos ref & _:
             try getVariableByRef ref env as
                 Nothing:
-                    checkError env pos (ErrorVariableNotFound ref) @state
+                    addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
                     if variableIsCompatibleWith env expectedType var.type then
                         None
                     else
-                        checkError env pos (ErrorVariableTypeIncompatible ref var expectedType) @state
+                        addError env pos (ErrorVariableTypeIncompatible ref var expectedType) @state
 
             Variable pos ref
 
@@ -815,13 +812,13 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
         Constructor pos usr & _:
             try getConstructorByUsr usr env as
                 Nothing:
-                    checkError env pos (ErrorConstructorNotFound usr) @state
+                    addError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
                     if variableIsCompatibleWith env expectedType cons.type then
                         None
                     else
-                        checkError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
+                        addError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
 
             Constructor pos usr
 
@@ -836,7 +833,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
             if lambdaModifier == mod then
                 None
             else
-                checkError env pos ErrorIncompatibleLambdaModifier @state
+                addError env pos ErrorIncompatibleLambdaModifier @state
 
             Lambda pos typedPattern mod typedBody
 
@@ -861,7 +858,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 valueByName >> Dict.map attrName: attrExpr:
                     try Dict.get attrName typeByName as
                         Nothing:
-                            checkError env pos ErrorRecordHasAttributesNotInAnnotation @state
+                            addError env pos ErrorRecordHasAttributesNotInAnnotation @state
                             # TODO: is there a smarter way?
                             Tuple.first (inferExpression env attrExpr @state)
                         Just attrType:
@@ -876,10 +873,10 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
                 onlyBothOnly valueByName typeByName
 
             if aOnly /= Dict.empty then
-                checkError env pos ErrorRecordHasAttributesNotInAnnotation @state
+                addError env pos ErrorRecordHasAttributesNotInAnnotation @state
 
             else if bOnly /= Dict.empty then
-                checkError env pos ErrorRecordIsMissingAttibutesInAnnotation @state
+                addError env pos ErrorRecordIsMissingAttibutesInAnnotation @state
 
             else
                 None
@@ -972,7 +969,7 @@ checkExpression as Env: CanonicalType: Expression CanonicalType: State@: Express
 
 
         _:
-            checkError env (todo "CA.expressionPos caExpression") ErrorIncompatibleTypes @state
+            addError env (todo "CA.expressionPos caExpression") ErrorIncompatibleTypes @state
             LiteralText Pos.G "todo?"
 
 
@@ -1002,10 +999,10 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
             List.length givenArgs
 
         if rl > gl then
-            checkError env pos ErrorNotEnoughArguments @state
+            addError env pos ErrorNotEnoughArguments @state
 
         else if rl < gl then
-            checkError env pos ErrorTooManyArguments @state
+            addError env pos ErrorTooManyArguments @state
 
         else
             None
@@ -1020,7 +1017,7 @@ checkCallCo as Env: UnificationType: Pos: Expression CanonicalType: [Argument Ca
             TypeExtra (TypeUnificationVariable id):
                 None
             _:
-                checkError env pos ErrorCallingANonFunction @state
+                addError env pos ErrorCallingANonFunction @state
 
         referenceTypeFromArguments =
             expectedType
@@ -1052,7 +1049,8 @@ inferArgument as Env: Argument CanonicalType: State@: Argument UnificationType &
                 try getVariableByRef ref env as
 
                     Nothing:
-                        inferenceError env pos (ErrorVariableNotFound ref) @state
+                        addError env pos (ErrorVariableNotFound ref) @state
+                        newType @state
 
                     Just var:
                         todo "apply attrPath"
@@ -1093,7 +1091,7 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                             canonicalToUnificationType env annotation
 
                         if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
-                            checkError env pos ErrorUniquenessDoesNotMatch @state
+                            addError env pos ErrorUniquenessDoesNotMatch @state
                         else
                             None
 
@@ -1154,7 +1152,8 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                 try getConstructorByUsr usr env as
 
                     Nothing:
-                        inferenceError env pos (ErrorConstructorNotFound usr) @state
+                        addError env pos (ErrorConstructorNotFound usr) @state
+                        newType @state
 
                     Just cons:
                         argModAndTypes & returnType =
@@ -1167,12 +1166,12 @@ inferPattern as Env: Pattern CanonicalType: State@: PatternOut =
                             List.length arguments
 
                         if rl > gl then
-                            checkError env pos ErrorNotEnoughArguments @state
+                            addError env pos ErrorNotEnoughArguments @state
                         else
                             None
 
                         if rl < gl then
-                            checkError env pos ErrorNotEnoughArguments @state
+                            addError env pos ErrorNotEnoughArguments @state
                         else
                             None
 
@@ -1232,7 +1231,6 @@ checkPattern as Env: CanonicalType: Pattern CanonicalType: State@: Pattern Unifi
 
 #
 #
-#
 # Equalities resolution
 #
 #
@@ -1242,6 +1240,15 @@ alias ERState = {
     }
 
 
+addErrorIf as Bool: Why: Text: ERState: ERState =
+    test: why: message: state:
+
+    if test then
+        { state with errors = (why & message) :: .errors }
+    else
+        state
+
+
 solveEqualities as [Equality]: ERState: ERState =
     remainingEqualities: state:
 
@@ -1249,47 +1256,62 @@ solveEqualities as [Equality]: ERState: ERState =
         []:
             state
 
-        Equality why type1 type2 :: tail:
+        Equality context why type1 type2 :: tail:
             try type1 & type2 as
 
                 TypeExtra (TypeUnificationVariable tyvarId) & t2:
                     replaceUnificationVariable tyvarId t2 tail state
 
+
                 t1 & TypeExtra (TypeUnificationVariable tyvarId):
                     replaceUnificationVariable tyvarId t1 tail state
 
-                TypeOpaque _ usr1 args1 & TypeOpaque _ usr2 args2:
-                    if usr1 /= usr2 then
-                        addError why "types don't match" state
-                    else
-                        newEqualities =
-                            List.indexMap2 (index: a1: a2: Equality (WhyTypeArgument usr1 index why)) args1 args2
 
-                        solveEqualities (List.append tail newEqualities) state
+                TypeOpaque _ usr1 args1 & TypeOpaque _ usr2 args2:
+                    newEqualities as [Equality] =
+                        List.indexMap2 (index: a1: a2: Equality context (Why_TypeArgument usr1 index why)) args1 args2
+
+                    state
+                    >> addErrorIf (usr1 /= usr2) why "types don't match"
+                    >> solveEqualities (List.append tail newEqualities)
+
 
                 TypeFunction _ in1 modifier1 out1 & TypeFunction _ in2 modifier2 out2:
-                    if modifier1 /= modifier2 then
-                        state >> addError why "lambda modifiers don't match"
-                    else
-                        newEqualities =
-                            Equality (WhyFunctionInput why) in1 in2 :: Equality (WhyFunctionOutput why) out1 out2 :: tail
+                    newEqualities as [Equality] =
+                        Equality context (Why_FunctionInput why) in1 in2 :: Equality context (Why_FunctionOutput why) out1 out2 :: tail
 
-                        solveEqualities newEqualities state
+                    state
+                    >> addErrorIf (modifier1 /= modifier2) why "lambda modifiers don't match"
+                    >> solveEqualities newEqualities
 
-                TypeRecord _ attrs1 & t2:
-                    solveRecord why attrs1 t2 tail state
 
-                t1 & TypeRecord _ attrs2:
-                    solveRecord why attrs2 t1 tail state
+                TypeRecord _ attrs1 & TypeRecord _ attrs2:
+                    only1 & both & only2 =
+                        onlyBothOnly attrs1 attrs2
 
-                TypeRecordExt _ name1 attrs1 & t2:
-                    solveRecordExt why name1 attrs1 t2 tail state
+                    newEqualities as [Equality] =
+                        tail >> Dict.for both attrName: (attrType1 & attrType2): eqs:
+                              Equality context (Why_Attribute why) attrType1 attrType2 :: eqs
 
-                t1 & TypeRecordExt _ name2 attrs2:
-                    solveRecordExt why name2 attrs2 t1 tail state
+                    state
+                    >> addErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) why "record attrs don't match"
+                    >> solveEqualities newEqualities
+
+
+                TypeExtra (TypeRecordExt tyvar1 attrs1) & TypeRecord _ attrs2:
+                    solveRecordExt why tyvar1 attrs1 attrs2 tail state
+
+
+                TypeRecord _ attrs1 & TypeExtra (TypeRecordExt tyvar2 attrs2):
+                    solveRecordExt why tyvar2 attrs2 attrs1 tail state
+
+
+                TypeExtra (TypeRecordExt tyvar1 attrs1) & TypeExtra (TypeRecordExt tyvar2 attr2):
+                    todo "will this actually happen?"
+
 
                 TypeUnique _ m1 & TypeUnique _ m2:
-                    solveEqualities (Equality why m1 m2 :: tail) state
+                    solveEqualities (Equality context why m1 m2 :: tail) state
 
                 [#
                 TypeAnnotationVariable _ name1 & TypeAnnotationVariable _ name2:
@@ -1300,47 +1322,28 @@ solveEqualities as [Equality]: ERState: ERState =
                 #]
 
 
-solveRecord as Why: Dict Name UnificationType: UnificationType: [Equality]: ERState: ERState =
-    why: attrs1: type2: remainingEqualities:
-
-    try type2 as
-        TypeRecord _ attrs2:
-            only1 & both & only2 =
-                onlyBothOnly attrs1 attrs2
-
-            only1 must be empty
-            only2 must be empty
-
-            push equalities for every attr in both
 
 
-        TypeRecordExt _ name2 attrs2:
-            # { attrs1 } == { name2 with attrs2 }
-            only1 & both & only2 =
-                onlyBothOnly attrs1 attrs2
+solveRecordExt as Why: UnificationVariableId: Dict Name UnificationType: Dict Name UnificationType: [Equality]: ERState: ERState =
+    why: tyvar1: attrs1: type2: remainingEqualities:
 
-            only2 must be empty
+    todo "solveRecordExt"
+#            # { attrs1 } == { tyvar2 with attrs2 }
+#            only1 & both & only2 =
+#                onlyBothOnly attrs1 attrs2
+#
+#            only2 must be empty
+#
+#            tyvar2 must == attrs1
+#
+#            all `both` must match
 
-            name2 must == attrs1
-
-            all `both` must match
-
-        _:
-            addError why "should be a record" state
 
 
-solveRecordExt as Why: ...: Dict Name UnificationType: UnificationType: [Equality]: ERState: ERState =
-    why: attrs1: type2: remainingEqualities:
 
-    try type2 as
-        TypeRecord _ attrs2:
-            ...
 
-        TypeRecordExt _ name2 attrs2:
-            ...
 
-        _:
-            addError why "should be a record" state
+
 
 
 replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]: ERState: ERState =
@@ -1348,10 +1351,10 @@ replaceUnificationVariable as UnificationVariableId: UnificationType: [Equality]
 
     #TODO: check that replacingType does not contain tyvarId
 
-    equalities =
+    newEqualities =
         # TODO we don't care about map preserving order
-        remainingEqualities >> List.map (Equality why t1 t2):
-            Equality why
+        remainingEqualities >> List.map (Equality context why t1 t2):
+            Equality context why
                 (applySubstitutionToType tyvarId replacingType t1)
                 (applySubstitutionToType tyvarId replacingType t2)
 
