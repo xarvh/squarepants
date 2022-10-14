@@ -1269,7 +1269,7 @@ solveEqualities as [Equality]: ERState: ERState =
 
                 TypeOpaque _ usr1 args1 & TypeOpaque _ usr2 args2:
                     newEqualities as [Equality] =
-                        List.indexMap2 (index: a1: a2: Equality context (Why_TypeArgument usr1 index why)) args1 args2
+                        List.indexedMap2 (index: Equality context (Why_TypeArgument usr1 index why)) args1 args2
 
                     state
                     >> addErrorIf (usr1 /= usr2) why "types don't match"
