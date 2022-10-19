@@ -355,7 +355,7 @@ sendLeft as Op.Binop = {
 
 alias Function = {
     , usr as Meta.UniqueSymbolReference
-    , type as CA.Type
+    , type as CA.CanonicalType
     , nonFn as [Text]
     }
 
@@ -435,7 +435,7 @@ debugBenchStop as Function = {
 #
 
 alias ModuleByUmr =
-    Dict Meta.UniqueModuleReference CA.Module
+    Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType)
 
 
 insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =

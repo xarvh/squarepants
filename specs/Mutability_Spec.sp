@@ -33,7 +33,7 @@ valueTest as Text: (None: a): Test.CodeExpectation a: Test =
 codeTest =
     Test.codeTest Debug.toHuman
 
-check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module) =
+check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module CA.CanonicalType) =
     code:
 
     blah as Res (Compiler/TypeCheck.Env & CA.Module) =

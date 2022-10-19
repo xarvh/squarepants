@@ -655,7 +655,7 @@ translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
 
 alias TranslateAllPars = {
     , errorEnv as Error.Env
-    , caConstructors as [Meta.UniqueSymbolReference & CA.Constructor]
+    , caConstructors as [Meta.UniqueSymbolReference & CA.Constructor CA.UnificationType]
     , eaDefs as [EA.GlobalDefinition]
     , platformOverrides as [Meta.UniqueSymbolReference & Text]
     }

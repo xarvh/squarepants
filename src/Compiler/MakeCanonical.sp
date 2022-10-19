@@ -41,7 +41,7 @@ alias Env = {
     #
     #     new = { old with x = .x + 1 }
     #
-    , maybeShorthandTarget as Maybe CA.VariableArgs
+    , maybeShorthandTarget as Maybe { ref as CA.Ref, path as [Name] }
     #
     # This keeps track of values that are declared within the
     # scope of a function, so they don't need to be expanded with the module name.
@@ -52,7 +52,7 @@ alias Env = {
     #
     #, futureNonRootValues as Dict Text Pos
     #
-    , defsPath as [CA.Pattern]
+    , defsPath as [CA.Pattern CA.CanonicalType ]
     #
     , ro as ReadOnly
     [#

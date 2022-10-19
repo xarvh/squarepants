@@ -214,7 +214,7 @@ doCallCo as Env: State@: Pos: CA.Expression: [CA.Argument]: { mutables as Dict N
 
 
 
-alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as CA.Argument }
+alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as CA.Argument CA.CanonicalType }
 
 doArgument as Env: State@: Pos: MCA: MCA =
     env: state@: pos: mca:

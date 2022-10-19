@@ -1,4 +1,5 @@
 
+[#
 
 tests as Test =
     Test.Group "TypeCheck" [
@@ -953,3 +954,5 @@ nonFunction as Test =
             (infer "meh")
             (Test.errorContains [ "can't contain functions"])
         ]
+
+#]

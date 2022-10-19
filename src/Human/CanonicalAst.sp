@@ -13,7 +13,7 @@ return as a: StateMonad.M state a =
 
 
 alias Type =
-    CA.Type
+    CA.CanonicalType
 
 
 parensIf as Bool: Text: Text =

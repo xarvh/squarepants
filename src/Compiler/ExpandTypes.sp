@@ -6,7 +6,7 @@ error as Pos: List Text: Res a =
 
 
 alias GetType =
-    Pos: Meta.UniqueSymbolReference: Res CA.TypeDef
+    Pos: Meta.UniqueSymbolReference: Res (CA.TypeDef CA.CanonicalType)
 
 
 #
