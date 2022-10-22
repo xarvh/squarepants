@@ -1,6 +1,6 @@
 
 alias GetRidOfMe = {
-    , constructors as [Meta.UniqueSymbolReference & CA.Constructor CA.UnificationType ]
+    , constructors as [Meta.UniqueSymbolReference & TA.Constructor ]
     , errorEnv as Error.Env
     }
 

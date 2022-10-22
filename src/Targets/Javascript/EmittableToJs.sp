@@ -612,7 +612,7 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
 
-translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & CA.Constructor CA.UnificationType: JA.Statement =
+translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & TA.Constructor: JA.Statement =
     emState@: (usr & caCons):
 
     Meta.USR umr slug =
@@ -655,7 +655,7 @@ translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
 
 alias TranslateAllPars = {
     , errorEnv as Error.Env
-    , caConstructors as [Meta.UniqueSymbolReference & CA.Constructor CA.UnificationType]
+    , caConstructors as [Meta.UniqueSymbolReference & TA.Constructor]
     , eaDefs as [EA.GlobalDefinition]
     , platformOverrides as [Meta.UniqueSymbolReference & Text]
     }

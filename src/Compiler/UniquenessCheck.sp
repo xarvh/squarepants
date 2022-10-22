@@ -1,6 +1,6 @@
 
-alias Argument = CA.Argument CA.CanonicalType
-alias Expression = CA.Expression CA.CanonicalType
+alias Argument = CA.Argument
+alias Expression = CA.Expression
 
 
 
@@ -132,7 +132,7 @@ consumeInEnv as Dict Name Pos: Env: Env =
     { env with variables = Dict.map translate .variables }
 
 
-addPatternToEnv as CA.Pattern type: Env: Set Name & Env =
+addPatternToEnv as CA.Pattern: Env: Set Name & Env =
     pattern: env:
 
     mutabilityByName =
@@ -492,7 +492,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
             Dict.join consumedByBody consumedByE & finalExpression
 
 
-doModule as CA.Module CA.CanonicalType: Res (CA.Module CA.CanonicalType) =
+doModule as CA.Module: Res CA.Module =
     module:
 
     state as State @= {

@@ -30,7 +30,7 @@ getFreeTypeVars =
 #
 
 
-insertUnionConstructors as CA.TypeDef CA.CanonicalType: CA.All (CA.Constructor CA.CanonicalType): CA.All (CA.Constructor CA.CanonicalType) =
+insertUnionConstructors as CA.TypeDef: CA.All CA.Constructor: CA.All CA.Constructor =
     typeDef: constructors:
     try typeDef as
         CA.TypeDefAlias _:
@@ -43,15 +43,15 @@ insertUnionConstructors as CA.TypeDef CA.CanonicalType: CA.All (CA.Constructor C
             Dict.for def.constructors (name: Dict.insert (Meta.USR umr name)) constructors
 
 
-coreTypes as CA.All (CA.TypeDef CA.CanonicalType) =
+coreTypes as CA.All CA.TypeDef =
     List.for CoreTypes.allDefs (def: Dict.insert def.usr << CA.TypeDefUnion def) Dict.empty
 
 
-coreConstructors as CA.All (CA.Constructor CA.CanonicalType) =
+coreConstructors as CA.All CA.Constructor =
     List.for CoreTypes.allDefs (u: insertUnionConstructors (CA.TypeDefUnion u)) Dict.empty
 
 
-expandAndInsertModuleAnnotations as CA.All (CA.TypeDef CA.CanonicalType): (CA.Module CA.CanonicalType): ByUsr (CA.InstanceVariable CA.CanonicalType): Res (ByUsr (CA.InstanceVariable CA.CanonicalType)) =
+expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.InstanceVariable: Res (ByUsr CA.InstanceVariable) =
     types: module:
 
     insertName as CA.ValueDef: Name: (Pos & Maybe CA.Type): Dict Meta.UniqueSymbolReference CA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference CA.InstanceVariable) =
@@ -84,7 +84,7 @@ expandAndInsertModuleAnnotations as CA.All (CA.TypeDef CA.CanonicalType): (CA.Mo
     Dict.forRes module.valueDefs (_: insertValueDef)
 
 
-coreVariables as ByUsr (CA.InstanceVariable CA.CanonicalType) =
+coreVariables as ByUsr CA.InstanceVariable =
 
     insertUnop as Op.Unop: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
         unop:
@@ -138,7 +138,7 @@ coreVariables as ByUsr (CA.InstanceVariable CA.CanonicalType) =
 #
 # Alias expansion and basic type validation
 #
-globalExpandedTypes as Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType): Res (CA.Globals CA.CanonicalType) =
+globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals =
     allModules:
 
     coreTypes

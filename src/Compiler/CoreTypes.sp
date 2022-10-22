@@ -22,12 +22,12 @@ nameToType as Text: [CA.CanonicalType]: CA.CanonicalType =
         >> CA.TypeOpaque p
 
 
-defToType as CA.UnionDef type: [CA.CanonicalType]: CA.CanonicalType =
+defToType as CA.UnionDef: [CA.CanonicalType]: CA.CanonicalType =
     def:
     CA.TypeOpaque p def.usr
 
 
-usrToVariable as Meta.UniqueSymbolReference: CA.Expression type =
+usrToVariable as Meta.UniqueSymbolReference: CA.Expression =
     u:
     CA.Variable p (CA.RefGlobal u)
 
@@ -37,7 +37,7 @@ usrToVariable as Meta.UniqueSymbolReference: CA.Expression type =
 #
 
 
-textDef as CA.UnionDef type = {
+textDef as CA.UnionDef = {
     , usr = makeUsr "Text"
     , args = []
     , constructors = Dict.empty
@@ -54,7 +54,7 @@ text as CA.CanonicalType =
 #
 
 
-numberDef as CA.UnionDef type = {
+numberDef as CA.UnionDef = {
     , usr = makeUsr "Number"
     , args = []
     , constructors = Dict.empty
@@ -82,7 +82,7 @@ noneValue as Meta.UniqueSymbolReference =
     makeUsr noneName
 
 
-noneDef as CA.UnionDef type =
+noneDef as CA.UnionDef =
     usr = makeUsr noneName
     {
     , usr
@@ -109,7 +109,7 @@ bool as CA.CanonicalType =
     nameToType "Bool" []
 
 
-boolDef as CA.UnionDef type =
+boolDef as CA.UnionDef =
     usr = makeUsr "Bool"
     {
     , usr
@@ -140,16 +140,12 @@ list as CA.CanonicalType: CA.CanonicalType =
     nameToType "List" [ item ]
 
 
-listDef as CA.UnionDef type =
+listDef as CA.UnionDef =
     usr =
         makeUsr "List"
 
     item as CA.CanonicalType =
-        CA.TypeExtra (CA.TypeAnnotationVariable p "item")
-#    {
-#            , allowFunctions = True
-#            , allowUniques = False
-#            }
+        CA.TypeAnnotationVariable p "item"
 
     args as [CA.CanonicalType] =
         [ item, list item ]
@@ -157,7 +153,7 @@ listDef as CA.UnionDef type =
     type as CA.CanonicalType =
         List.forReversed args (ar: ty: CA.TypeFunction p ar LambdaNormal ty) (list item)
 
-    consDef as CA.Constructor CA.CanonicalType = {
+    consDef as CA.Constructor = {
         , pos = p
         , args
         , type
@@ -179,7 +175,7 @@ listDef as CA.UnionDef type =
 #
 
 
-allDefs as [CA.UnionDef type] = [
+allDefs as [CA.UnionDef] = [
     , noneDef
     , boolDef
     , listDef

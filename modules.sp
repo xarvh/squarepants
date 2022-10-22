@@ -25,6 +25,10 @@ sourceDir =
        importAs = CoreTypes
 
     module =
+       path = Types/TypedAst
+       importAs = TA
+
+    module =
        path = Types/CanonicalAst
        importAs = CA
 

@@ -153,7 +153,7 @@ umrToFileName as Text: Meta.UniqueModuleReference: Text =
             Path.resolve (corePath :: "browser" :: (Text.split "/" << name .. ".sp"))
 
 
-loadModule as Meta: Meta.UniqueModuleReference: Text: IO (CA.Module CA.CanonicalType) =
+loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
     meta: umr: fileName:
 
     # TODO get rid of eenv so this is not needed
@@ -247,7 +247,7 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 
 
 
-typeCheckModule as Meta: CA.Globals CA.CanonicalType: CA.Module CA.CanonicalType: Res (CA.Module CA.UnificationType) =
+typeCheckModule as Meta: CA.Globals: CA.Module: Res TA.Module =
     meta: globals: module:
 
     # TODO move in Compiler/TypeCheck
@@ -295,7 +295,7 @@ searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
                 else
                     parent >> searchAncestorDirectories isWantedFile
 
-mergeWithCore as CA.Module type: CA.Module type: CA.Module type =
+mergeWithCore as CA.Module: CA.Module: CA.Module =
     coreModule: userModule:
 
 #    need to strip positions before merging >_<
@@ -395,7 +395,7 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Loading modules..." ""
-    loadAllModules as IO [CA.Module CA.CanonicalType] =
+    loadAllModules as IO [CA.Module] =
         meta.moduleVisibleAsToUmr
         >> Dict.values
         >> List.map (umr: loadModule meta umr (umrToFileName corePath umr))
@@ -403,7 +403,7 @@ compileMain as CompileMainPars: IO Int =
 
     loadAllModules >> IO.onSuccess userModules:
 
-    modules as Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType) =
+    modules as Dict Meta.UniqueModuleReference CA.Module =
         Prelude.coreModulesByUmr >> List.for userModules module:
             Dict.update module.umr maybeCore:
                 try maybeCore as
@@ -422,7 +422,7 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    x as Res (CA.Globals CA.CanonicalType) =
+    x as Res CA.Globals =
         Compiler/Pipeline.globalExpandedTypes modules
 
     x >> onResSuccess eenv globals:
@@ -439,7 +439,7 @@ compileMain as CompileMainPars: IO Int =
 
     log "Type checking..." ""
 
-    g as CA.Globals CA.CanonicalType = globals
+    g as CA.Globals = globals
 
     modulesWithDestruction
     >> List.map (m: typeCheckModule meta g m >> resToIo eenv)

@@ -1,33 +1,14 @@
 
-#
-# All and TypeDef are not (yet) used for the AST, but just as intermediate types
-# Probably will be used in the AST once we properly track dependencies
-#
-alias All a =
-    Dict Meta.UniqueSymbolReference a
-
-
-union TypeDef =
-    , TypeDefAlias AliasDef
-    , TypeDefUnion UnionDef
-
-
-#
-# AST
-#
-
-
 # A reference to a defined variable
-union Ref =
-    # This is for stuff defined inside the current function/block
-    , RefLocal Name
-    # This is for stuff defined at root level
-    , RefGlobal Meta.UniqueSymbolReference
+alias Ref = CA.Ref
 
 
-union LambdaModifier =
-    , LambdaNormal
-    , LambdaRecycle
+alias LambdaModifier =
+    CA.LambdaModifier
+
+
+alias UnificationVariableId =
+    Int
 
 
 union Type =
@@ -36,11 +17,8 @@ union Type =
     , TypeFunction Pos Type LambdaModifier Type
     , TypeRecord Pos (Dict Name Type)
     , TypeUnique Pos Type
-    , TypeAnnotationVariable Pos Name
-
-
-alias CanonicalType =
-    Type
+    , TypeUnificationVariable UnificationVariableId
+    , TypeRecordExt UnificationVariableId (Dict Name Type)
 
 
 union Expression =
@@ -48,40 +26,42 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos Pattern LambdaModifier Expression
-    , Call Pos Expression Argument
-    , CallCo Pos Expression [Argument]
+    , Lambda Pos (Pattern) LambdaModifier (Expression)
+    , Call Pos (Expression) (Argument) Type
+    , CallCo Pos (Expression) [Argument & Type]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
-    , Record Pos (Maybe Expression) (Dict Name Expression)
-    , RecordAccess Pos Name Expression
-    , LetIn ValueDef Expression
+    , Record Pos (Maybe (Expression)) (Dict Name (Expression))
+    , RecordAccess Pos Name (Expression)
+    , LetIn (ValueDef) (Expression)
     , If Pos {
-        , condition as Expression
-        , true as Expression
-        , false as Expression
+        , condition as (Expression)
+        , true as (Expression)
+        , false as (Expression)
         }
     , Try Pos {
-        , value as Expression
+        , value as (Expression)
+        , type as Type
         , patternsAndExpressions as [Pattern & Expression]
         }
-    , DestroyIn Name Expression
+    , DestroyIn Name (Expression)
 
 
 union Pattern =
     , PatternAny Pos {
         , isUnique as Bool
         , maybeName as Maybe Text
-        , maybeAnnotation as Maybe CanonicalType
+        , maybeAnnotation as Maybe CA.Type
+        , type as Type
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
-    , PatternRecord Pos (Dict Name (Pattern & Type))
+    , PatternRecord Pos (Dict Name (Pattern & type))
 
 
 union Argument =
-    , ArgumentExpression Expression
+    , ArgumentExpression (Expression)
     , ArgumentRecycle Pos [Name] Ref
 
 
@@ -95,13 +75,7 @@ alias ValueDef = {
     , pattern as Pattern
     , native as Bool
     , body as Expression
-
     , tyvars as Dict Name TypeClasses
-
-    # Do we need these here?
-    , directTypeDeps as TypeDeps
-    , directConsDeps as Set Meta.UniqueSymbolReference
-    , directValueDeps as Set Meta.UniqueSymbolReference
     }
 
 
@@ -125,7 +99,7 @@ alias AliasDef = {
 alias UnionDef = {
     , usr as Meta.UniqueSymbolReference
     , args as [Name]
-    , constructors as Dict Name Constructor
+    , constructors as Dict Name (Constructor)
     , directTypeDeps as TypeDeps
     }
 
@@ -144,9 +118,9 @@ alias Module = {
     , umr as Meta.UniqueModuleReference
     , asText as Text
 
-    , aliasDefs as Dict Name AliasDef
-    , unionDefs as Dict Name UnionDef
-    , valueDefs as Dict Pattern ValueDef
+#    , aliasDefs as Dict Name AliasDef
+#    , unionDefs as Dict Name (UnionDef)
+#    , valueDefs as Dict (Pattern) (ValueDef)
     }
 
 
@@ -195,16 +169,16 @@ skipLetIns as CA.Expression: CA.Expression =
 #        TypeMutable p _: p
 #
 #
-typeContainsUniques as Type: Bool =
-    ty:
-    try ty as
-        TypeOpaque _ _ _: False
-        TypeFunction _ _ _: False
-        TypeUnique _ _: True
-        TypeAnnotationVariable _ _: False
-        TypeAlias _ _: todo "typeContainsUniques TypeAlias"
-        TypeRecord _ attrs: Dict.any (k: typeContainsUniques) attrs
-
+#typeContainsUniques as Type: Bool =
+#    ty:
+#    try ty as
+#        TypeConstant _ _ _: False
+#        TypeVariable _ _ _: False
+#        TypeFunction _ _ _ _: False
+#        TypeRecord _ attrs: Dict.any (k: typeContainsUniques) attrs
+#        TypeRecordExt _ _ _ attrs: Dict.any (k: typeContainsUniques) attrs
+#        TypeAlias _ _ t: typeContainsUniques t
+#        TypeMutable _ _: True
 
 
 #patternPos as Pattern: Pos =
@@ -299,8 +273,8 @@ alias InstanceVariable = {
 
 
 alias Globals = {
-    , types as CA.All (CA.TypeDef)
+    , types as CA.All CA.TypeDef
     , constructors as CA.All (CA.Constructor)
-    , instanceVariables as ByUsr InstanceVariable
+    , instanceVariables as ByUsr (InstanceVariable)
     }
 

@@ -435,7 +435,7 @@ debugBenchStop as Function = {
 #
 
 alias ModuleByUmr =
-    Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType)
+    Dict Meta.UniqueModuleReference (CA.Module)
 
 
 insertInModule as Meta.UniqueSymbolReference: CA.CanonicalType: [Name]: ModuleByUmr: ModuleByUmr =
@@ -486,7 +486,7 @@ insertFunction as Function: ModuleByUmr: ModuleByUmr =
     insertInModule function.usr function.type function.nonFn
 
 
-coreModulesByUmr as Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType) =
+coreModulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
     Dict.empty
     >> insertUnop unaryPlus
     >> insertUnop unaryMinus
@@ -494,6 +494,6 @@ coreModulesByUmr as Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType)
     >> List.for functions insertFunction
 
 
-coreModules as [CA.Module CA.CanonicalType ] =
+coreModules as [CA.Module] =
     Dict.values coreModulesByUmr
 

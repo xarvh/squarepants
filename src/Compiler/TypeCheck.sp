@@ -71,13 +71,13 @@ alias State = {
     , equalities as Array Equality
     , errors as Array (Pos & Context & Error_)
     , lastUnificationVarId as Int
-    , classesByTyvarId as Hash CA.UnificationVariableId CA.TypeClasses
+    , classesByTyvarId as Hash TA.UnificationVariableId CA.TypeClasses
     }
 
 
 alias TypeWithClasses = {
-    , type as CA.UnificationType
-    , tyvars as Dict CA.UnificationVariableId CA.TypeClasses
+    , type as TA.Type
+    , tyvars as Dict TA.UnificationVariableId TA.TypeClasses
     }
 
 
@@ -85,10 +85,10 @@ alias Env = {
     , context as Context
     , constructors as Dict Meta.UniqueSymbolReference TypeWithClasses
     , variables as Dict CA.Ref TypeWithClasses
-    , tyvarsInParentAnnotations as Dict CA.UnificationVariableId CA.UnificationType
+    , tyvarsInParentAnnotations as Dict TA.UnificationVariableId TA.Type
 
     # This is used to give meaningfule errors?
-    , annotatedTyvarToGeneratedTyvar as Dict Name CA.UnificationVariableId
+    , annotatedTyvarToGeneratedTyvar as Dict Name TA.UnificationVariableId
     }
 
 
@@ -100,10 +100,10 @@ union Error_ =
     , ErrorRecordDoesNotHaveAttribute Name [# TODO other attrs to give context? #]
     , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
-    , ErrorTryingToAccessAttributeOfNonRecord Name CA.UnificationType
+    , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
     , ErrorIncompatibleTypes
     , ErrorVariableTypeIncompatible CA.Ref TypeWithClasses CA.CanonicalType
-    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference CA.UnificationType CA.CanonicalType
+    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference TA.Type CA.CanonicalType
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
@@ -144,26 +144,26 @@ union Why =
 
 
 union Equality =
-    , Equality Context Why CA.UnificationType CA.UnificationType
+    , Equality Context Why TA.Type TA.Type
 
 
 
 
 
 
-newTyvarId as State@: CA.UnificationVariableId =
+newTyvarId as State@: TA.UnificationVariableId =
     state@:
     @state.lastUnificationVarId += 1
     state.lastUnificationVarId
 
 
 
-newType as State@: CA.UnificationType =
+newType as State@: TA.Type =
     state@:
     TypeExtra (TypeUnificationVariable (newTyvarId @state))
 
 
-addEquality as Env: Why: CA.UnificationType: CA.UnificationType: State@: None =
+addEquality as Env: Why: TA.Type: TA.Type: State@: None =
     # TODO: should t1 be "expected" and t2 "actual" or something like that?
     env: why: t1: t2: state@:
 
@@ -179,7 +179,7 @@ addError as Env: Pos: Error_: State@: None =
 
 
 
-linearizeCurriedParameters as CA.Type t: [LambdaModifier & CA.Type t]: [LambdaModifier & CA.Type t] & CA.Type t =
+linearizeCurriedParameters as CA.Type: [LambdaModifier & CA.Type]: [LambdaModifier & CA.Type] & CA.Type =
     type: accum:
 
     try type as
@@ -208,7 +208,7 @@ getVariableByRef as CA.Ref: Env: Maybe TypeWithClasses =
 # Generalize
 #
 #
-generalize as Env: TypeWithClasses: State@: CA.UnificationType =
+generalize as Env: TypeWithClasses: State@: TA.Type =
     env: typeWithClasses: state@:
 
     typeWithClasses.type >> Dict.for typeWithClasses.tyvars tyvarId: typeClasses:
@@ -236,7 +236,7 @@ generalize as Env: TypeWithClasses: State@: CA.UnificationType =
 # Types
 #
 #
-variableIsCompatibleWith as Env: CA.CanonicalType: CA.UnificationType: Bool =
+variableIsCompatibleWith as Env: CA.CanonicalType: TA.Type: Bool =
     # This function is used to ensure that when a variable (or a constructor)
     # from env can be used with the annotated/expected type
     env: expected: variableType:
@@ -279,7 +279,7 @@ variableIsCompatibleWith as Env: CA.CanonicalType: CA.UnificationType: Bool =
             False
 
 
-canonicalToUnificationType as Env: CA.CanonicalType: CA.UnificationType =
+canonicalToUnificationType as Env: CA.CanonicalType: TA.Type =
     env: ca:
 
     ctu = canonicalToUnificationType env
@@ -305,7 +305,7 @@ canonicalToUnificationType as Env: CA.CanonicalType: CA.UnificationType =
                   TypeExtra (TypeUnificationVariable tyvarId)
 
 
-variableOfThisTypeMustBeFlaggedUnique as CA.UnificationType: Bool =
+variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
     ca:
 
     try ca as
@@ -339,7 +339,7 @@ variableOfThisTypeMustBeFlaggedUnique as CA.UnificationType: Bool =
 # Definitions
 #
 #
-doDefinition as Env: CA.ValueDef CA.CanonicalType: State@: CA.ValueDef CA.UnificationType & Env =
+doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     env: def: state@:
 
     patternOut =
@@ -380,7 +380,7 @@ doDefinition as Env: CA.ValueDef CA.CanonicalType: State@: CA.ValueDef CA.Unific
 # Expressions
 #
 #
-inferExpression as Env: CA.Expression CA.CanonicalType: State@: CA.Expression CA.UnificationType & CA.UnificationType =
+inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
     env: caExpression: state@:
 
     try caExpression as
@@ -467,10 +467,10 @@ inferExpression as Env: CA.Expression CA.CanonicalType: State@: CA.Expression CA
                 attrs >> Dict.map name: value:
                     inferExpression { env with context = Context_Argument name .context } value @state
 
-            typedValueByName as Dict Name (Expression CA.UnificationType) =
+            typedValueByName as Dict Name (Expression) =
                 Dict.map (k: Tuple.first) typedValueAndValueTypeByName
 
-            valueTypeByName as Dict Name CA.UnificationType =
+            valueTypeByName as Dict Name TA.Type =
                 Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
             Record pos Nothing typedValueByName & TypeRecord pos valueTypeByName
@@ -478,14 +478,14 @@ inferExpression as Env: CA.Expression CA.CanonicalType: State@: CA.Expression CA
 
         Record pos (Just ext) attrExpressions:
 
-            typedValueAndValueTypeByName as Dict Name (Expression CA.UnificationType & CA.UnificationType) =
+            typedValueAndValueTypeByName as Dict Name (Expression & TA.Type) =
                 attrExpressions >> Dict.map name: value:
                     inferExpression { env with context = Context_Argument name .context } value @state
 
-            typedValueByName as Dict Name (Expression CA.UnificationType) =
+            typedValueByName as Dict Name (Expression) =
                 Dict.map (k: Tuple.first) typedValueAndValueTypeByName
 
-            valueTypeByName as Dict Name CA.UnificationType =
+            valueTypeByName as Dict Name TA.Type =
                 Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
             typedExt & extType =
@@ -574,7 +574,7 @@ inferExpression as Env: CA.Expression CA.CanonicalType: State@: CA.Expression CA
             DestroyIn name typedExpression & expressionType
 
 
-inferRecordAccess as Env: Pos: Name: CA.UnificationType: State@: CA.UnificationType =
+inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
     env: pos: attrName: inferredType: state@:
 
     try inferredType as
@@ -607,7 +607,7 @@ inferRecordAccess as Env: Pos: Name: CA.UnificationType: State@: CA.UnificationT
             newExtId = newTyvarId @state
             newAttrType = newType @state
 
-            type as CA.UnificationType =
+            type as TA.Type =
                 TypeExtra << TypeRecordExt newExtId (Dict.singleton attrName newAttrType)
 
             addEquality env Why_RecordAccess (TypeExtra << TypeUnificationVariable id) type @state
@@ -620,7 +620,7 @@ inferRecordAccess as Env: Pos: Name: CA.UnificationType: State@: CA.UnificationT
 
 
 
-inferRecordExtended as Env: Pos: CA.UnificationType: Dict Name CA.UnificationType: State@: CA.UnificationType =
+inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
     env: pos: extType: valueTypeByName: state@:
 
     try extType as
@@ -666,7 +666,7 @@ inferRecordExtended as Env: Pos: CA.UnificationType: Dict Name CA.UnificationTyp
 
 
 
-checkExpression as Env: CA.CanonicalType: CA.Expression CA.CanonicalType: State@: CA.Expression CA.UnificationType =
+checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
     env: expectedType: caExpression: state@:
 
     try caExpression & expectedType as
@@ -869,13 +869,13 @@ checkExpression as Env: CA.CanonicalType: CA.Expression CA.CanonicalType: State@
 
 
 
-checkCallCo as Env: CA.UnificationType: Pos: CA.Expression CA.CanonicalType: [CA.Argument CA.CanonicalType & unusedType]: State@: CA.Expression CA.UnificationType =
+checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument & unusedType]: State@: TA.Expression =
     env: expectedType: pos: reference: givenArgs: state@:
 
     typedReference & referenceType =
         inferExpression env reference @state
 
-    typedArgumentsAndArgumentTypes as [CA.Argument CA.UnificationType & CA.UnificationType] =
+    typedArgumentsAndArgumentTypes as [CA.Argument TA.Type & TA.Type] =
         givenArgs >> List.map (arg & unusedType):
             inferArgument env arg @state
 
@@ -921,14 +921,14 @@ checkCallCo as Env: CA.UnificationType: Pos: CA.Expression CA.CanonicalType: [CA
 
         addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
 
-#        typedArgs as [Argument CA.UnificationType & CA.UnificationType] =
+#        typedArgs as [Argument TA.Type & TA.Type] =
 #            List.map Tuple.first typedArgumentsAndArgumentTypes
 
         CallCo pos typedReference typedArgumentsAndArgumentTypes
 
 
 
-inferArgument as Env: CA.Argument CA.CanonicalType: State@: CA.Argument CA.UnificationType & CA.UnificationType =
+inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
     env: arg: state@:
 
     try arg as
@@ -959,14 +959,14 @@ inferArgument as Env: CA.Argument CA.CanonicalType: State@: CA.Argument CA.Unifi
 #
 #
 alias PatternOut = {
-    , patternType as CA.UnificationType
-    , typedPattern as CA.Pattern CA.UnificationType
+    , patternType as TA.Type
+    , typedPattern as TA.Pattern
     , maybeFullAnnotation as Maybe CA.CanonicalType
     , env as Env
     }
 
 
-inferPattern as Env: CA.Pattern CA.CanonicalType: State@: PatternOut =
+inferPattern as Env: CA.Pattern: State@: PatternOut =
     env: pattern: state@:
 
     try pattern as
@@ -1111,7 +1111,7 @@ inferPattern as Env: CA.Pattern CA.CanonicalType: State@: PatternOut =
 
 
 
-checkPattern as Env: CA.CanonicalType: CA.Pattern CA.CanonicalType: State@: CA.Pattern CA.UnificationType & Env =
+checkPattern as Env: CA.CanonicalType: CA.Pattern: State@: TA.Pattern & Env =
     env: expectedType: pattern: state@:
 
     # TODO
@@ -1129,7 +1129,7 @@ checkPattern as Env: CA.CanonicalType: CA.Pattern CA.CanonicalType: State@: CA.P
 #
 #
 alias ERState = {
-    , substitutions as Dict CA.UnificationVariableId CA.UnificationType
+    , substitutions as Dict TA.UnificationVariableId TA.Type
     , errors as [Why & Text]
     }
 
@@ -1221,7 +1221,7 @@ solveEqualities as [Equality]: ERState: ERState =
 
 
 
-solveRecordExt as Why: CA.UnificationVariableId: Dict Name CA.UnificationType: Dict Name CA.UnificationType: [Equality]: ERState: ERState =
+solveRecordExt as Why: TA.UnificationVariableId: Dict Name TA.Type: Dict Name TA.Type: [Equality]: ERState: ERState =
     why: tyvar1: attrs1: type2: remainingEqualities:
 
     todo "solveRecordExt"
@@ -1243,7 +1243,7 @@ solveRecordExt as Why: CA.UnificationVariableId: Dict Name CA.UnificationType: D
 
 
 
-replaceUnificationVariable as CA.UnificationVariableId: CA.UnificationType: [Equality]: ERState: ERState =
+replaceUnificationVariable as TA.UnificationVariableId: TA.Type: [Equality]: ERState: ERState =
     tyvarId: replacingType: remainingEqualities: state:
 
     #TODO: check that replacingType does not contain tyvarId
@@ -1264,10 +1264,10 @@ replaceUnificationVariable as CA.UnificationVariableId: CA.UnificationType: [Equ
 
 
 
-applySubstitutionToType as CA.UnificationVariableId: CA.UnificationType: CA.UnificationType: CA.UnificationType =
+applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
     tyvarId: replacingType: originalType:
 
-    rec as CA.UnificationType: CA.UnificationType =
+    rec as TA.Type: TA.Type =
         applySubstitutionToType tyvarId replacingType
 
     try originalType as

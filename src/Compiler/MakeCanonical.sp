@@ -7,7 +7,7 @@ alias Params = {
     }
 
 
-textToCanonicalModule as Params: Text: Res (CA.Module CA.CanonicalType) =
+textToCanonicalModule as Params: Text: Res CA.Module =
     pars: code:
 
     ro as Compiler/MakeCanonical.ReadOnly = {
@@ -26,9 +26,9 @@ textToCanonicalModule as Params: Text: Res (CA.Module CA.CanonicalType) =
         >> Result.onOk (translateModule ro code umr)
 
 
-alias Constructor = CA.Constructor CA.CanonicalType
-alias Expression = CA.Expression CA.CanonicalType
-alias Pattern = CA.Pattern CA.CanonicalType
+alias Constructor = CA.Constructor
+alias Expression = CA.Expression
+alias Pattern = CA.Pattern
 
 [#
     `Env` is immutable and depends only on the parent scopes.
@@ -114,7 +114,7 @@ maybeForeignUsr as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe
                 Nothing:
                     # TODO should this produce an error instead?
                     # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
-                    #CA.RefRoot (Meta.USR Meta.SourcePlaceholder moduleName name)
+                    #CA.RefGlobal (Meta.USR Meta.SourcePlaceholder moduleName name)
 #                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
 #                        log "*" x
                     todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
@@ -135,14 +135,14 @@ resolveToValueRef as ReadOnly: Bool: Maybe Name: Name: CA.Ref =
 
     try maybeForeignUsr (m: m.globalValues) ro maybeModule name as
         Just usr:
-            CA.RefRoot usr
+            CA.RefGlobal usr
 
         Nothing:
             if declaredInsideFunction then
-                CA.RefBlock name
+                CA.RefLocal name
 
             else
-                CA.RefRoot << Meta.USR ro.currentModule name
+                CA.RefGlobal << Meta.USR ro.currentModule name
 
 
 resolveToTypeUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference =
@@ -161,12 +161,12 @@ resolveToConstructorUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReferenc
 typeDeps as CA.CanonicalType: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolReference =
     type: acc:
     try type as
-        CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.for args typeDeps
-        CA.TypeVariable _ _ _: acc
+        CA.TypeOpaque _ usr args: acc >> Set.insert usr >> List.for args typeDeps
+        CA.TypeAnnotationVariable _ _: acc
         CA.TypeFunction _ from _ to: acc >> typeDeps from >> typeDeps to
         CA.TypeRecord _ attrs: Dict.for attrs (k: typeDeps) acc
-        CA.TypeRecordExt _ _ _ attrs: Dict.for attrs (k: typeDeps) acc
-        CA.TypeMutable _ t: typeDeps t acc
+        #CA.TypeRecordExt _ attrs: Dict.for attrs (k: typeDeps) acc
+        CA.TypeUnique _ t: typeDeps t acc
         CA.TypeAlias _ _ _: todo "typeDeps: Should not happen"
 
 
@@ -195,10 +195,10 @@ patternDeps as Pattern: Deps: Deps =
         CA.PatternRecord _ ps:
             Dict.for ps (k: patternDeps) deps
 
-        CA.PatternAny _ mutability maybeName (Just type):
+        CA.PatternAny _ { isUnique = _, maybeName = _, maybeAnnotation = Just type }:
             { deps with types = typeDeps type .types }
 
-        CA.PatternAny _ mutability maybeName Nothing:
+        CA.PatternAny _ { isUnique = _, maybeName = _, maybeAnnotation = Nothing }:
             deps
 
         CA.PatternLiteralNumber _ _:
@@ -217,7 +217,7 @@ expressionDeps as Expression: Deps: Deps =
         CA.LiteralText _ _:
             deps
 
-        CA.Variable _ { ref = CA.RefRoot usr, attrPath }:
+        CA.Variable _ { ref = CA.RefGlobal usr, attrPath }:
             { deps with values = Set.insert usr .values }
 
         CA.Variable _ _:
@@ -235,7 +235,7 @@ expressionDeps as Expression: Deps: Deps =
             deps
                 >> Dict.for exprByName (name: expressionDeps)
 
-        CA.Record _ (Just { ref = CA.RefRoot usr, attrPath }) exprByName:
+        CA.Record _ (Just { ref = CA.RefGlobal usr, attrPath }) exprByName:
             { deps with values = Set.insert usr .values }
                 >> Dict.for exprByName (name: expressionDeps)
 
@@ -271,7 +271,7 @@ expressionDeps as Expression: Deps: Deps =
                 >> expressionDeps e
 
 
-argumentDeps as CA.Argument CA.CanonicalType: Deps: Deps =
+argumentDeps as CA.Argument: Deps: Deps =
     arg: deps:
 
     try arg as
@@ -285,7 +285,7 @@ argumentDeps as CA.Argument CA.CanonicalType: Deps: Deps =
 #
 
 
-translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef CA.CanonicalType) =
+translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
     isRoot: parentEnv: fa:
 
     # This pattern is probably horrible, but I still want to experiment with it
@@ -375,7 +375,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
     try fa as
         FA.PatternAny pos isMutable name maybeFaType:
 
-            getMaybeCaType as Res (Maybe CA.CanonicalType)=
+            getMaybeCaType as Res (Maybe CA.CanonicalType) =
                 try ann & maybeFaType as
                     Nothing & Just faType:
                         makeError pos [ "Can't use annotations here" ]
@@ -538,7 +538,7 @@ translateExpression as Env: FA.Expression: Res Expression =
             Ok << CA.LiteralText pos v
 
         FA.PrefixBinop pos symbol:
-            { ref = CA.RefRoot << CoreTypes.makeUsr symbol
+            { ref = CA.RefGlobal << CoreTypes.makeUsr symbol
             , attrPath = []
             }
                 >> CA.Variable pos
@@ -636,7 +636,7 @@ translateExpression as Env: FA.Expression: Res Expression =
         FA.Unop pos op faOperand:
             translateExpression env faOperand >> onOk caOperand:
             CA.Call pos
-                (CA.Variable pos { ref = CA.RefRoot << op.usr, attrPath = [] })
+                (CA.Variable pos { ref = CA.RefGlobal << op.usr, attrPath = [] })
                 (CA.ArgumentExpression caOperand)
             >> Ok
 
@@ -733,13 +733,13 @@ translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text Expressio
             translateAttrsRec env faTail (Dict.insert attrName expr caAttrsAccum)
 
 
-translateArgument as Env: FA.Expression: Res (CA.Argument CA.CanonicalType) =
+translateArgument as Env: FA.Expression: Res (CA.Argument) =
     env: faExpr:
     try faExpr as
         FA.Mutable pos name attrPath:
             if Dict.member name env.nonRootValues then
                 {
-                , ref = CA.RefBlock name
+                , ref = CA.RefLocal name
                 , attrPath
                 }
                     >> CA.ArgumentMutable pos
@@ -902,7 +902,7 @@ translateBinopSepListRec as Env: Pos: Expression: [ Op.Binop & FA.Expression ]: 
 `a + b` == `((+) b) a`
 
 #]
-makeBinop as Pos: (CA.Argument CA.CanonicalType): Op.Binop: (CA.Argument CA.CanonicalType): Expression =
+makeBinop as Pos: (CA.Argument): Op.Binop: (CA.Argument): Expression =
     pos: left: op: right:
     try left & op.symbol & right as
 
@@ -917,7 +917,7 @@ makeBinop as Pos: (CA.Argument CA.CanonicalType): Op.Binop: (CA.Argument CA.Cano
             CA.Call pos
                 (CA.Call pos
                     (CA.Variable pos {
-                        , ref = CA.RefRoot op.usr
+                        , ref = CA.RefGlobal op.usr
                         , attrPath = []
                         }
                     )
@@ -1074,7 +1074,7 @@ translateConstructor as ReadOnly: CA.CanonicalType: Meta.UniqueSymbolReference: 
 #
 
 
-insertRootStatement as ReadOnly: FA.Statement: CA.Module CA.CanonicalType: Res (CA.Module CA.CanonicalType) =
+insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
     ro: faStatement: caModule:
     try faStatement as
         FA.Evaluation pos expr:
@@ -1147,7 +1147,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module CA.CanonicalType: Res (
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
 
 
-translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res (CA.Module CA.CanonicalType) =
+translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res (CA.Module) =
     ro: asText: umr: faModule:
 
     Debug.benchStart None

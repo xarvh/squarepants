@@ -11,8 +11,8 @@ alias State = {
 }
 
 
-alias Expression = CA.Expression CA.UnificationType
-alias Pattern = CA.Pattern CA.UnificationType
+alias Expression = TA.Expression
+alias Pattern = TA.Pattern
 
 
 #
@@ -348,7 +348,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                     >> wrapWithActualLetIn
 
 
-translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef CA.UnificationType: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
+translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
     state@: umr: def: accum:
 
     counter @= 0
@@ -411,7 +411,7 @@ circularIsError as ByName EA.GlobalDefinition: [Name]: Bool =
 
 
 
-translateAll as [CA.Module CA.UnificationType]: Result [[Name]] (State & [EA.GlobalDefinition]) =
+translateAll as [TA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
     userModules:
 
     Debug.benchStart None

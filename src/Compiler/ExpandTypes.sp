@@ -1,4 +1,5 @@
 
+[# TODO remove the module entirely
 
 error as Pos: List Text: Res a =
     pos: description:
@@ -6,7 +7,7 @@ error as Pos: List Text: Res a =
 
 
 alias GetType =
-    Pos: Meta.UniqueSymbolReference: Res (CA.TypeDef CA.CanonicalType)
+    Pos: Meta.UniqueSymbolReference: Res CA.TypeDef
 
 
 #
@@ -14,15 +15,22 @@ alias GetType =
 #
 
 
+wrapUnique = bool: t:
+  if bool then
+      CA.TypeUnique pos t
+  else
+      t
+
+
 expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
     ga: ty:
     try ty as
-        CA.TypeVariable pos name flags:
+        CA.TypeAnnotationVariable pos name:
             Ok ty
 
-        CA.TypeMutable pos t:
+        CA.TypeUnique pos t:
             expandInType ga t >> onOk ety:
-            Ok << CA.TypeMutable pos ety
+            Ok << CA.TypeUnique pos ety
 
         CA.TypeFunction pos from fromIsMutable to:
             expandInType ga from >> onOk f:
@@ -33,18 +41,18 @@ expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
             attrs
             >> Dict.mapRes (k: expandInType ga)
             >> Result.map (CA.TypeRecord pos)
-            >> Result.map t: if CA.typeContainsUniques t then CA.TypeMutable pos t else t
+            >> Result.map (wrapUnique CA.typeContainsUniques)
 
-        CA.TypeRecordExt pos name flags attrs:
-            attrs
-            >> Dict.mapRes (k: expandInType ga)
-            >> Result.map (CA.TypeRecordExt pos name flags)
+#        CA.TypeRecordExt pos name flags attrs:
+#            attrs
+#            >> Dict.mapRes (k: expandInType ga)
+#            >> Result.map (CA.TypeRecordExt pos name flags)
 
-        CA.TypeAlias pos path t:
+        CA.TypeAlias pos path:
             # it's easy to deal with, but it shouldn't happen O_O
             error pos [ "Did we apply aliases twice?" ]
 
-        CA.TypeConstant pos usr args:
+        CA.TypeOpaque pos usr args:
 
             List.mapRes (expandInType ga) args >> onOk replacedArgs:
             try ga pos usr as
@@ -62,8 +70,8 @@ expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
                             List.any CA.typeContainsUniques replacedArgs
 
                         replacedArgs
-                            >> CA.TypeConstant pos usr
-                            >> Compiler/TypeCheck.maybeWrapMutable isUnique pos
+                            >> CA.TypeOpaque pos usr
+                            >> wrapUnique isUnique #t: if isUnique then TypeUnique pos t else t #Compiler/TypeCheck.maybeWrapMutable isUnique pos
                             >> Ok
 
                 Ok (CA.TypeDefAlias al):
@@ -76,7 +84,7 @@ expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
 
                         al.type
                             >> expandAliasVariables typeByArgName
-                            >> CA.TypeAlias pos usr
+                            #TODO? >> CA.TypeAlias pos usr
                             >> Ok
 
 
@@ -137,7 +145,7 @@ expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
 referencedAliases as CA.All CA.AliasDef: CA.CanonicalType: Set Meta.UniqueSymbolReference =
     allAliases: ty:
     try ty as
-        CA.TypeConstant pos usr args:
+        CA.TypeOpaque pos usr args:
             init =
                 if Dict.member usr allAliases then
                     Set.singleton usr
@@ -167,7 +175,7 @@ referencedAliases as CA.All CA.AliasDef: CA.CanonicalType: Set Meta.UniqueSymbol
 
 
 
-expandAndInsertAlias as CA.All (CA.TypeDef CA.CanonicalType): CA.AliasDef: CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef CA.CanonicalType)) =
+expandAndInsertAlias as CA.All (CA.TypeDef): CA.AliasDef: CA.All (CA.TypeDef): Res (CA.All (CA.TypeDef)) =
     allTypes: al: expandedTypes:
 
     getAlias as GetType =
@@ -226,10 +234,10 @@ expandAliasVariables as Dict Name CA.CanonicalType: CA.CanonicalType: CA.Canonic
             CA.TypeRecordExt pos name flags
                 (Dict.map (k: expandAliasVariables typeByArgName) attrs)
 
-        CA.TypeConstant pos usr args:
+        CA.TypeOpaque pos usr args:
             args
                 >> List.map (expandAliasVariables typeByArgName)
-                >> CA.TypeConstant pos usr
+                >> CA.TypeOpaque pos usr
 
         CA.TypeAlias pos usr t:
             CA.TypeAlias pos usr (expandAliasVariables typeByArgName t)
@@ -240,7 +248,7 @@ expandAliasVariables as Dict Name CA.CanonicalType: CA.CanonicalType: CA.Canonic
 #
 
 
-getTypeForUnion as CA.All (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.CanonicalType): GetType =
+getTypeForUnion as CA.All (CA.TypeDef): CA.All (CA.TypeDef): GetType =
     allTypes: expandedTypes: pos: usr:
 
     # Try to find the type here first
@@ -262,7 +270,7 @@ getTypeForUnion as CA.All (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.C
 
 
 
-expandAndInsertUnion as CA.All (CA.TypeDef CA.CanonicalType): Meta.UniqueSymbolReference: (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef CA.CanonicalType)) =
+expandAndInsertUnion as CA.All (CA.TypeDef): Meta.UniqueSymbolReference: (CA.TypeDef): CA.All (CA.TypeDef): Res (CA.All (CA.TypeDef)) =
     allTypes: usr: typeDef: expandedTypes:
 
     try typeDef as
@@ -289,14 +297,14 @@ expandAndInsertUnion as CA.All (CA.TypeDef CA.CanonicalType): Meta.UniqueSymbolR
 #
 
 
-insertModuleTypes as CA.Module CA.CanonicalType: CA.All (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.CanonicalType) =
+insertModuleTypes as CA.Module: CA.All (CA.TypeDef): CA.All (CA.TypeDef) =
     module: allTypes:
     allTypes
         >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
         >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
-expandAllTypes as CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef CA.CanonicalType)) =
+expandAllTypes as CA.All (CA.TypeDef): Res (CA.All (CA.TypeDef)) =
     allTypes:
 
     allAliases as CA.All CA.AliasDef =
@@ -342,7 +350,7 @@ expandAllTypes as CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef 
 #
 # Apply aliases to annotations
 #
-expandAnnotation as CA.All (CA.TypeDef CA.CanonicalType): CA.CanonicalType: Res CA.CanonicalType =
+expandAnnotation as CA.All (CA.TypeDef): CA.CanonicalType: Res CA.CanonicalType =
     allExpandedTypes: type:
 
     gt as GetType =
@@ -353,3 +361,5 @@ expandAnnotation as CA.All (CA.TypeDef CA.CanonicalType): CA.CanonicalType: Res 
 
     expandInType gt type
 
+
+#]
