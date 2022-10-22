@@ -15,21 +15,21 @@ makeUsr as Name: Meta.UniqueSymbolReference =
     Meta.USR umr
 
 
-nameToType as Text: [CA.Type]: CA.Type =
+nameToType as Text: [CA.CanonicalType]: CA.CanonicalType =
     name:
     name
         >> makeUsr
-        >> CA.TypeConstant p
+        >> CA.TypeOpaque p
 
 
-defToType as CA.UnionDef: [CA.Type]: CA.Type =
+defToType as CA.UnionDef type: [CA.CanonicalType]: CA.CanonicalType =
     def:
-    CA.TypeConstant p def.usr
+    CA.TypeOpaque p def.usr
 
 
-usrToVariable as Meta.UniqueSymbolReference: CA.Expression =
+usrToVariable as Meta.UniqueSymbolReference: CA.Expression type =
     u:
-    CA.Variable p { attrPath = [], ref = CA.RefRoot u }
+    CA.Variable p (CA.RefGlobal u)
 
 
 #
@@ -37,7 +37,7 @@ usrToVariable as Meta.UniqueSymbolReference: CA.Expression =
 #
 
 
-textDef as CA.UnionDef = {
+textDef as CA.UnionDef type = {
     , usr = makeUsr "Text"
     , args = []
     , constructors = Dict.empty
@@ -45,7 +45,7 @@ textDef as CA.UnionDef = {
     }
 
 
-text as CA.Type =
+text as CA.CanonicalType =
     defToType textDef []
 
 
@@ -54,7 +54,7 @@ text as CA.Type =
 #
 
 
-numberDef as CA.UnionDef = {
+numberDef as CA.UnionDef type = {
     , usr = makeUsr "Number"
     , args = []
     , constructors = Dict.empty
@@ -62,7 +62,7 @@ numberDef as CA.UnionDef = {
     }
 
 
-number as CA.Type =
+number as CA.CanonicalType =
     defToType numberDef []
 
 
@@ -75,14 +75,14 @@ noneName =
     "None"
 
 
-none as CA.Type =
+none as CA.CanonicalType =
     nameToType noneName []
 
 noneValue as Meta.UniqueSymbolReference =
     makeUsr noneName
 
 
-noneDef as CA.UnionDef =
+noneDef as CA.UnionDef type =
     usr = makeUsr noneName
     {
     , usr
@@ -105,11 +105,11 @@ false as Meta.UniqueSymbolReference =
     makeUsr "False"
 
 
-bool as CA.Type =
+bool as CA.CanonicalType =
     nameToType "Bool" []
 
 
-boolDef as CA.UnionDef =
+boolDef as CA.UnionDef type =
     usr = makeUsr "Bool"
     {
     , usr
@@ -135,25 +135,32 @@ cons as Meta.UniqueSymbolReference =
     makeUsr "Cons"
 
 
-list as CA.Type: CA.Type =
+list as CA.CanonicalType: CA.CanonicalType =
     item:
     nameToType "List" [ item ]
 
 
-listDef as CA.UnionDef =
+listDef as CA.UnionDef type =
     usr =
         makeUsr "List"
 
-    item =
-        CA.TypeVariable p "item" {
-            , allowFunctions = True
-            , allowUniques = False
-            }
+    item as CA.CanonicalType =
+        CA.TypeExtra (CA.TypeAnnotationVariable p "item")
+#    {
+#            , allowFunctions = True
+#            , allowUniques = False
+#            }
 
-    consDef as CA.Constructor = {
+    args as [CA.CanonicalType] =
+        [ item, list item ]
+
+    type as CA.CanonicalType =
+        List.forReversed args (ar: ty: CA.TypeFunction p ar LambdaNormal ty) (list item)
+
+    consDef as CA.Constructor CA.CanonicalType = {
         , pos = p
-        , args = [ item, list item ]
-        , type = List.forReversed [ item, list item ] (ar: ty: CA.TypeFunction p ar LambdaNormal ty) (list item)
+        , args
+        , type
         , typeUsr = usr
         }
 
@@ -172,7 +179,7 @@ listDef as CA.UnionDef =
 #
 
 
-allDefs as [CA.UnionDef] = [
+allDefs as [CA.UnionDef type] = [
     , noneDef
     , boolDef
     , listDef

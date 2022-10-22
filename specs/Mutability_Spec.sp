@@ -10,6 +10,7 @@ Uniqueness typing allows Squarepants to ensure that, at any given time, there is
 All the crunching is done at compile time, which means that, for unique values, the run-time does not need to keep track of allocation/destruction: no garbage collection, no reference counting needed.
 
 #]
+[#
 
 
 specs as Test =
@@ -76,7 +77,7 @@ check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module CA.CanonicalType)
     TH.resErrorToStrippedText code blah
 
 
-infer as Text: Text: Result Text { type as CA.Type, freeTypeVariables as Dict Name CA.TyvarFlags } =
+infer as Text: Text: Result Text { type as CA.UnificationType, freeTypeVariables as Dict Name CA.TypeClasses } =
     varName: code:
 
     check code
@@ -710,3 +711,5 @@ unions as Test =
                 Test.isOk
             ]
         ]
+
+#]

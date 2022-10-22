@@ -1,4 +1,9 @@
 
+alias Argument = CA.Argument CA.CanonicalType
+alias Expression = CA.Expression CA.CanonicalType
+
+
+
 
 union MutableAvailability =
     , Available
@@ -127,7 +132,7 @@ consumeInEnv as Dict Name Pos: Env: Env =
     { env with variables = Dict.map translate .variables }
 
 
-addPatternToEnv as CA.Pattern: Env: Set Name & Env =
+addPatternToEnv as CA.Pattern type: Env: Set Name & Env =
     pattern: env:
 
     mutabilityByName =
@@ -155,7 +160,7 @@ addPatternToEnv as CA.Pattern: Env: Set Name & Env =
 
 
 
-doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as CA.Expression } =
+doCall as Env: State@: Pos: Expression: Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
     env: state@: pos: reference: argument:
 
     doneReference =
@@ -184,7 +189,7 @@ doCall as Env: State@: Pos: CA.Expression: CA.Argument: { mutables as Dict Name 
     }
 
 
-doCallCo as Env: State@: Pos: CA.Expression: [CA.Argument]: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as CA.Expression } =
+doCallCo as Env: State@: Pos: Expression: [Argument]: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
     env: state@: pos: reference: arguments:
 
     doneReference =
@@ -214,7 +219,7 @@ doCallCo as Env: State@: Pos: CA.Expression: [CA.Argument]: { mutables as Dict N
 
 
 
-alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as CA.Argument CA.CanonicalType }
+alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as Argument }
 
 doArgument as Env: State@: Pos: MCA: MCA =
     env: state@: pos: mca:
@@ -264,7 +269,7 @@ doArgument as Env: State@: Pos: MCA: MCA =
 
 
 
-doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
+doExpression as Env: State@: Expression: Dict Name Pos & Expression =
     env: state@: expression:
 
     re =
@@ -420,7 +425,7 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
                     Dict.join consumed
 
             # Pass 2:
-            newPatternsAndBlocks as [CA.Pattern & CA.Expression]=
+            newPatternsAndBlocks as [CA.Pattern & Expression]=
                 consumedAndPatternsAndBlocks >> List.map (consumed & pattern & blockExpression):
                     finalBlock =
                         blockExpression >> Dict.for allConsumed name: pos: exp:
@@ -487,7 +492,7 @@ doExpression as Env: State@: CA.Expression: Dict Name Pos & CA.Expression =
             Dict.join consumedByBody consumedByE & finalExpression
 
 
-doModule as CA.Module: Res CA.Module =
+doModule as CA.Module CA.CanonicalType: Res (CA.Module CA.CanonicalType) =
     module:
 
     state as State @= {

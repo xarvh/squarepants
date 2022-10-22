@@ -120,19 +120,19 @@ resErrorToStrippedText as Text: Res a: Result Text a =
 #
 # Same as core types, but have Pos.T rather than Pos.N
 #
-boolType as CA.Type =
+boolType as CA.CanonicalType =
     CA.TypeConstant Pos.T ("Bool" >> Meta.spCoreUSR) []
 
 
-numberType as CA.Type =
+numberType as CA.CanonicalType =
     CA.TypeConstant Pos.T ("Number" >> Meta.spCoreUSR) []
 
 
-noneType as CA.Type =
+noneType as CA.CanonicalType =
     CA.TypeConstant Pos.T ("None" >> Meta.spCoreUSR) []
 
 
-listType as CA.Type: CA.Type =
+listType as CA.CanonicalType: CA.CanonicalType =
     itemType:
     CA.TypeConstant Pos.T ("List" >> Meta.spCoreUSR) [ itemType ]
 

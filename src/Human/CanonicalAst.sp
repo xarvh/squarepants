@@ -69,7 +69,7 @@ typeToText as Meta.UniqueModuleReference: Meta: Type: Text =
     t >> typeToPriorityAndText currentUmr meta >> Tuple.second
 
 
-typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
+typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.CanonicalType: Int & Text =
     currentUmr: meta: type:
 
     parensIfGreaterThan as Int: Type: Text =

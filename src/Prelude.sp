@@ -31,22 +31,22 @@ tupleUsr as Text: Meta.UniqueSymbolReference =
 # Helpers
 #
 
-tyVar as Name: CA.Type =
+tyVar as Name: CA.CanonicalType =
     name:
     CA.TypeVariable Pos.N name { allowFunctions = True, allowUniques = False }
 
 
-tyFun as CA.Type: CA.Type: CA.Type =
+tyFun as CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
     from: to:
     CA.TypeFunction Pos.N from LambdaNormal to
 
 
-typeUnopUniform as CA.Type: CA.Type =
+typeUnopUniform as CA.CanonicalType: CA.CanonicalType =
     type:
     tyFun type type
 
 
-typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
+typeBinop as CA.CanonicalType: CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
     left: right: return:
     tyFun
         right
@@ -56,7 +56,7 @@ typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
         )
 
 
-typeBinopUniform as CA.Type: CA.Type =
+typeBinopUniform as CA.CanonicalType: CA.CanonicalType =
     ty:
     typeBinop ty ty ty
 
@@ -438,7 +438,7 @@ alias ModuleByUmr =
     Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType)
 
 
-insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
+insertInModule as Meta.UniqueSymbolReference: CA.CanonicalType: [Name]: ModuleByUmr: ModuleByUmr =
     usr: type: nonFn:
 
     Meta.USR umr name =
@@ -486,7 +486,7 @@ insertFunction as Function: ModuleByUmr: ModuleByUmr =
     insertInModule function.usr function.type function.nonFn
 
 
-coreModulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
+coreModulesByUmr as Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType) =
     Dict.empty
     >> insertUnop unaryPlus
     >> insertUnop unaryMinus
@@ -494,6 +494,6 @@ coreModulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
     >> List.for functions insertFunction
 
 
-coreModules as [CA.Module] =
+coreModules as [CA.Module CA.CanonicalType ] =
     Dict.values coreModulesByUmr
 

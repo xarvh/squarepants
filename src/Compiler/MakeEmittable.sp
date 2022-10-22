@@ -11,6 +11,10 @@ alias State = {
 }
 
 
+alias Expression = CA.Expression CA.UnificationType
+alias Pattern = CA.Pattern CA.UnificationType
+
+
 #
 # Names
 #
@@ -96,7 +100,7 @@ union PickedName =
     , NoNamedVariables
 
 
-pickMainName as CA.Pattern: PickedName =
+pickMainName as Pattern: PickedName =
     pattern:
 
     try pattern as
@@ -113,7 +117,7 @@ pickMainName as CA.Pattern: PickedName =
                     NoNamedVariables
 
 
-translatePattern as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ] =
+translatePattern as Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ] =
     pattern: accessExpr:
 
     translatePatternRec pattern accessExpr []
@@ -123,7 +127,7 @@ translatePattern as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expressi
 #        _: translatePatternRec pattern accessExpr []
 
 
-translatePatternRec as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ]: [ Bool & DollarName & EA.Expression ] =
+translatePatternRec as Pattern: EA.Expression: [ Bool & DollarName & EA.Expression ]: [ Bool & DollarName & EA.Expression ] =
     pattern: accessExpr: accum:
     try pattern as
         CA.PatternAny _ isMutable Nothing maybeAnnotation:
@@ -147,8 +151,8 @@ translatePatternRec as CA.Pattern: EA.Expression: [ Bool & DollarName & EA.Expre
                 translatePatternRec pa (EA.RecordAccess name accessExpr)
 
 
-translateVariableArgs as State@: CA.VariableArgs: EA.Expression =
-    state@: ({ ref, attrPath }):
+translateVariableArgs as State@: CA.Ref: EA.Expression =
+    state@: ref: #({ ref, attrPath }):
 
     variableName =
         try ref as
@@ -160,12 +164,12 @@ translateVariableArgs as State@: CA.VariableArgs: EA.Expression =
             CA.RefRoot usr:
                 translateUsr @state usr
 
-    EA.Variable variableName attrPath
+    EA.Variable variableName [] #attrPath
 #    >> List.for attrPath attributeName: expr:
 #        EA.RecordAccess attributeName expr
 
 
-testPattern as CA.Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
+testPattern as Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
     pattern: valueToTest: accum:
     try pattern as
 
@@ -188,7 +192,7 @@ testPattern as CA.Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
                 testPattern pa (EA.RecordAccess name valueToTest)
 
 
-translateExpression as State@: Int@: CA.Expression: EA.Expression =
+translateExpression as State@: Int@: Expression: EA.Expression =
     state@: counter@: expression:
 
     try expression as
@@ -273,7 +277,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
 
 
             # 2. if-elses
-            addTryPatternAndBlock as (CA.Pattern & CA.Expression): EA.Expression: EA.Expression =
+            addTryPatternAndBlock as (Pattern & Expression): EA.Expression: EA.Expression =
                 ( pattern & block ): nextTryExpression:
 
                 testIfPatternMatches as EA.Expression =
@@ -344,7 +348,7 @@ translateExpression as State@: Int@: CA.Expression: EA.Expression =
                     >> wrapWithActualLetIn
 
 
-translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
+translateRootValueDef as State@: Meta.UniqueModuleReference: CA.ValueDef CA.UnificationType: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
     state@: umr: def: accum:
 
     counter @= 0
@@ -407,7 +411,7 @@ circularIsError as ByName EA.GlobalDefinition: [Name]: Bool =
 
 
 
-translateAll as [CA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
+translateAll as [CA.Module CA.UnificationType]: Result [[Name]] (State & [EA.GlobalDefinition]) =
     userModules:
 
     Debug.benchStart None

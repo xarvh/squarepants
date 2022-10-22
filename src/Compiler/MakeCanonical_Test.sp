@@ -1,4 +1,5 @@
 
+[#
 
 params as Compiler/MakeCanonical.Params = {
     , meta = TH.meta
@@ -509,3 +510,5 @@ nonFunction as Test =
                 }
             )
         ]
+
+#]

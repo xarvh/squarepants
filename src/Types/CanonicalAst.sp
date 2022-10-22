@@ -186,7 +186,7 @@ initModule as Text: Meta.UniqueModuleReference: Module type =
 #
 #
 
-skipLetIns as Expression: Expression =
+skipLetIns as CA.Expression t: CA.Expression t =
     expr:
     try expr as
         LetIn def e: skipLetIns e

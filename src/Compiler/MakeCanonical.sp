@@ -7,7 +7,7 @@ alias Params = {
     }
 
 
-textToCanonicalModule as Params: Text: Res CA.Module =
+textToCanonicalModule as Params: Text: Res (CA.Module CA.CanonicalType) =
     pars: code:
 
     ro as Compiler/MakeCanonical.ReadOnly = {
@@ -26,7 +26,9 @@ textToCanonicalModule as Params: Text: Res CA.Module =
         >> Result.onOk (translateModule ro code umr)
 
 
-
+alias Constructor = CA.Constructor CA.CanonicalType
+alias Expression = CA.Expression CA.CanonicalType
+alias Pattern = CA.Pattern CA.CanonicalType
 
 [#
     `Env` is immutable and depends only on the parent scopes.
@@ -52,7 +54,7 @@ alias Env = {
     #
     #, futureNonRootValues as Dict Text Pos
     #
-    , defsPath as [CA.Pattern CA.CanonicalType ]
+    , defsPath as [Pattern]
     #
     , ro as ReadOnly
     [#
@@ -156,7 +158,7 @@ resolveToConstructorUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReferenc
 #
 
 
-typeDeps as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolReference =
+typeDeps as CA.CanonicalType: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolReference =
     type: acc:
     try type as
         CA.TypeConstant _ usr args: acc >> Set.insert usr >> List.for args typeDeps
@@ -182,7 +184,7 @@ deps_init = {
     }
 
 
-patternDeps as CA.Pattern: Deps: Deps =
+patternDeps as Pattern: Deps: Deps =
     pattern: deps:
 
     try pattern as
@@ -206,7 +208,7 @@ patternDeps as CA.Pattern: Deps: Deps =
            deps
 
 
-expressionDeps as CA.Expression: Deps: Deps =
+expressionDeps as Expression: Deps: Deps =
     expr: deps:
     try expr as
         CA.LiteralNumber _ _:
@@ -269,7 +271,7 @@ expressionDeps as CA.Expression: Deps: Deps =
                 >> expressionDeps e
 
 
-argumentDeps as CA.Argument: Deps: Deps =
+argumentDeps as CA.Argument CA.CanonicalType: Deps: Deps =
     arg: deps:
 
     try arg as
@@ -283,7 +285,7 @@ argumentDeps as CA.Argument: Deps: Deps =
 #
 
 
-translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
+translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef CA.CanonicalType) =
     isRoot: parentEnv: fa:
 
     # This pattern is probably horrible, but I still want to experiment with it
@@ -368,12 +370,12 @@ translateDefinition as Bool: Env: FA.ValueDef: Res CA.ValueDef =
 #
 
 
-translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
+translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
     ann: env: fa:
     try fa as
         FA.PatternAny pos isMutable name maybeFaType:
 
-            getMaybeCaType as Res (Maybe CA.Type)=
+            getMaybeCaType as Res (Maybe CA.CanonicalType)=
                 try ann & maybeFaType as
                     Nothing & Just faType:
                         makeError pos [ "Can't use annotations here" ]
@@ -484,7 +486,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res CA.Pattern =
 #
 # Statement
 #
-translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
+translateStatementBlock as Env: [FA.Statement]: Res Expression =
     env: stats:
 
     try stats as
@@ -526,7 +528,7 @@ translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
 ##
 #- Expression
 #
-translateExpression as Env: FA.Expression: Res CA.Expression =
+translateExpression as Env: FA.Expression: Res Expression =
     env: faExpr:
     try faExpr as
         FA.LiteralNumber pos str:
@@ -612,7 +614,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
 
         FA.FunctionCall pos reference arguments:
             # ref arg1 arg2 arg3...
-            fold as CA.Argument: CA.Expression: CA.Expression =
+            fold as CA.Argument: Expression: Expression =
                 argument: refAccum:
                 CA.Call pos refAccum argument
 
@@ -687,7 +689,7 @@ translateNumber as (Pos: Number: a): Pos: Text: Res a =
             Ok << constructor pos n
 
 
-makeUpdateTarget as Pos: Env: Maybe FA.Expression: Res { maybeName as Maybe CA.VariableArgs, wrapper as CA.Expression: CA.Expression } =
+makeUpdateTarget as Pos: Env: Maybe FA.Expression: Res { maybeName as Maybe Name, wrapper as Expression: Expression } =
     pos: env: maybeShorthandTarget:
     try Maybe.map (translateExpression { env with maybeShorthandTarget = Nothing }) maybeShorthandTarget as
         Nothing:
@@ -705,7 +707,7 @@ makeUpdateTarget as Pos: Env: Maybe FA.Expression: Res { maybeName as Maybe CA.V
             makeError pos [ "NI { (expr) with ...} not yet implemented =(" ]
 
 
-translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text CA.Expression: Res (Dict Text CA.Expression) =
+translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text Expression: Res (Dict Text Expression) =
     env: faAttrs: caAttrsAccum:
     try faAttrs as
         []:
@@ -731,7 +733,7 @@ translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text CA.Expres
             translateAttrsRec env faTail (Dict.insert attrName expr caAttrsAccum)
 
 
-translateArgument as Env: FA.Expression: Res CA.Argument =
+translateArgument as Env: FA.Expression: Res (CA.Argument CA.CanonicalType) =
     env: faExpr:
     try faExpr as
         FA.Mutable pos name attrPath:
@@ -754,7 +756,7 @@ translateArgument as Env: FA.Expression: Res CA.Argument =
                 >> Result.map CA.ArgumentExpression
 
 
-translateBinops as Env: Pos: Op.Precedence: FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+translateBinops as Env: Pos: Op.Precedence: FA.SepList Op.Binop FA.Expression: Res Expression =
     env: pos: group: ( firstItem & firstTail ):
     try firstTail as
         []:
@@ -865,7 +867,7 @@ sameDirectionAs as Op.Binop: Op.Binop: Bool =
                 False
 
 
-translateBinopSepList_rightAssociative as Env: Pos: FA.Expression: [ Op.Binop & FA.Expression ]: Res CA.Expression =
+translateBinopSepList_rightAssociative as Env: Pos: FA.Expression: [ Op.Binop & FA.Expression ]: Res Expression =
     env: pos: left: opsAndRight:
     translateExpression env left >> onOk caLeft:
     try opsAndRight as
@@ -877,14 +879,14 @@ translateBinopSepList_rightAssociative as Env: Pos: FA.Expression: [ Op.Binop & 
             Ok << makeBinop pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
 
 
-translateBinopSepList_leftAssociative as Env: Pos: FA.Expression: [ Op.Binop & FA.Expression ]: Res CA.Expression =
+translateBinopSepList_leftAssociative as Env: Pos: FA.Expression: [ Op.Binop & FA.Expression ]: Res Expression =
     env: pos: leftAccum: opsAndRight:
 
     translateExpression env leftAccum >> onOk caLeftAccum:
     translateBinopSepListRec env pos caLeftAccum opsAndRight
 
 
-translateBinopSepListRec as Env: Pos: CA.Expression: [ Op.Binop & FA.Expression ]: Res CA.Expression =
+translateBinopSepListRec as Env: Pos: Expression: [ Op.Binop & FA.Expression ]: Res Expression =
     env: pos: leftAccum: opsAndRight:
     try opsAndRight as
         []:
@@ -900,7 +902,7 @@ translateBinopSepListRec as Env: Pos: CA.Expression: [ Op.Binop & FA.Expression 
 `a + b` == `((+) b) a`
 
 #]
-makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: CA.Expression =
+makeBinop as Pos: (CA.Argument CA.CanonicalType): Op.Binop: (CA.Argument CA.CanonicalType): Expression =
     pos: left: op: right:
     try left & op.symbol & right as
 
@@ -924,7 +926,7 @@ makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: CA.Expression =
                 left
 
 
-translateSimpleBinop as Env: Pos: FA.Expression: Op.Binop: FA.Expression: Res CA.Expression =
+translateSimpleBinop as Env: Pos: FA.Expression: Op.Binop: FA.Expression: Res Expression =
     env: pos: left: op: right:
     translateArgument env left >> onOk l:
     translateArgument env right >> onOk r:
@@ -945,7 +947,7 @@ union TranslateMode =
         }
 
 
-addAttributes as Bool: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.Type: Res CA.Type =
+addAttributes as Bool: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.CanonicalType: Res CA.CanonicalType =
     allowUniques: mode: ro: pos: faAttrs: caAttrsAccum:
     try faAttrs as
         []:
@@ -962,7 +964,7 @@ addAttributes as Bool: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type
                     addAttributes allowUniques mode ro p faTail (Dict.insert name caType caAttrsAccum)
 
 
-translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.Type =
+translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.CanonicalType =
     allowUniques: mode: ro: faType:
 
     try faType as
@@ -1042,7 +1044,7 @@ translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.Type =
 #
 
 
-translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name & [FA.Type]: Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
+translateConstructor as ReadOnly: CA.CanonicalType: Meta.UniqueSymbolReference: At Name & [FA.Type]: Dict Name Constructor: Res (Dict Name Constructor) =
     ro: unionType: unionUsr: (At pos name & faArgs): constructors:
 
     if Dict.member name constructors then
@@ -1072,7 +1074,7 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: At Name &
 #
 
 
-insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
+insertRootStatement as ReadOnly: FA.Statement: CA.Module CA.CanonicalType: Res (CA.Module CA.CanonicalType) =
     ro: faStatement: caModule:
     try faStatement as
         FA.Evaluation pos expr:
@@ -1145,7 +1147,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res CA.Module =
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
 
 
-translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res CA.Module =
+translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res (CA.Module CA.CanonicalType) =
     ro: asText: umr: faModule:
 
     Debug.benchStart None

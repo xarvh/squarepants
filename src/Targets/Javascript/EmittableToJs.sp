@@ -612,7 +612,7 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
 
-translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & CA.Constructor: JA.Statement =
+translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & CA.Constructor CA.UnificationType: JA.Statement =
     emState@: (usr & caCons):
 
     Meta.USR umr slug =

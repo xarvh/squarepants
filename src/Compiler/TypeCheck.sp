@@ -95,7 +95,7 @@ alias Env = {
 
 union Error_ =
     , ErrorVariableNotFound CA.Ref
-    , ErrorConstructorNotFound Meta.UniqueSymbolReference
+    , ErrorConstructorNotFound Meta.UniqueModuleReference
     , ErrorNotCompatibleWithRecord
     , ErrorRecordDoesNotHaveAttribute Name [# TODO other attrs to give context? #]
     , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
@@ -114,6 +114,7 @@ union Error_ =
 
 
 union Context =
+    , Context_Module Meta.UniqueModuleReference
     , Context_Argument Name Context
     , Context_LetInBody
     , Context_LambdaBody Pos Context
@@ -178,7 +179,7 @@ addError as Env: Pos: Error_: State@: None =
 
 
 
-linearizeCurriedParameters as Type t: [LambdaModifier & Type t]: [LambdaModifier & Type t] & Type t =
+linearizeCurriedParameters as CA.Type t: [LambdaModifier & CA.Type t]: [LambdaModifier & CA.Type t] & CA.Type t =
     type: accum:
 
     try type as
@@ -338,7 +339,7 @@ variableOfThisTypeMustBeFlaggedUnique as CA.UnificationType: Bool =
 # Definitions
 #
 #
-doDefinition as Env: ValueDef CA.CanonicalType: State@: ValueDef CA.UnificationType & Env =
+doDefinition as Env: CA.ValueDef CA.CanonicalType: State@: CA.ValueDef CA.UnificationType & Env =
     env: def: state@:
 
     patternOut =
@@ -379,7 +380,7 @@ doDefinition as Env: ValueDef CA.CanonicalType: State@: ValueDef CA.UnificationT
 # Expressions
 #
 #
-inferExpression as Env: Expression CA.CanonicalType: State@: Expression CA.UnificationType & CA.UnificationType =
+inferExpression as Env: CA.Expression CA.CanonicalType: State@: CA.Expression CA.UnificationType & CA.UnificationType =
     env: caExpression: state@:
 
     try caExpression as
@@ -665,7 +666,7 @@ inferRecordExtended as Env: Pos: CA.UnificationType: Dict Name CA.UnificationTyp
 
 
 
-checkExpression as Env: CA.CanonicalType: Expression CA.CanonicalType: State@: Expression CA.UnificationType =
+checkExpression as Env: CA.CanonicalType: CA.Expression CA.CanonicalType: State@: CA.Expression CA.UnificationType =
     env: expectedType: caExpression: state@:
 
     try caExpression & expectedType as
@@ -868,13 +869,13 @@ checkExpression as Env: CA.CanonicalType: Expression CA.CanonicalType: State@: E
 
 
 
-checkCallCo as Env: CA.UnificationType: Pos: Expression CA.CanonicalType: [Argument CA.CanonicalType & unusedType]: State@: Expression CA.UnificationType =
+checkCallCo as Env: CA.UnificationType: Pos: CA.Expression CA.CanonicalType: [CA.Argument CA.CanonicalType & unusedType]: State@: CA.Expression CA.UnificationType =
     env: expectedType: pos: reference: givenArgs: state@:
 
     typedReference & referenceType =
         inferExpression env reference @state
 
-    typedArgumentsAndArgumentTypes as [Argument CA.UnificationType & CA.UnificationType] =
+    typedArgumentsAndArgumentTypes as [CA.Argument CA.UnificationType & CA.UnificationType] =
         givenArgs >> List.map (arg & unusedType):
             inferArgument env arg @state
 
@@ -927,7 +928,7 @@ checkCallCo as Env: CA.UnificationType: Pos: Expression CA.CanonicalType: [Argum
 
 
 
-inferArgument as Env: Argument CA.CanonicalType: State@: Argument CA.UnificationType & CA.UnificationType =
+inferArgument as Env: CA.Argument CA.CanonicalType: State@: CA.Argument CA.UnificationType & CA.UnificationType =
     env: arg: state@:
 
     try arg as

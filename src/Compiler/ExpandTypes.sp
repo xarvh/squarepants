@@ -14,7 +14,7 @@ alias GetType =
 #
 
 
-expandInType as GetType: CA.Type: Res CA.Type =
+expandInType as GetType: CA.CanonicalType: Res CA.CanonicalType =
     ga: ty:
     try ty as
         CA.TypeVariable pos name flags:
@@ -134,7 +134,7 @@ expandInType as GetType: CA.Type: Res CA.Type =
 #
 # TODO: have MakeCanonical calculate this as part of the alias' Deps
 #
-referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference =
+referencedAliases as CA.All CA.AliasDef: CA.CanonicalType: Set Meta.UniqueSymbolReference =
     allAliases: ty:
     try ty as
         CA.TypeConstant pos usr args:
@@ -167,7 +167,7 @@ referencedAliases as CA.All CA.AliasDef: CA.Type: Set Meta.UniqueSymbolReference
 
 
 
-expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
+expandAndInsertAlias as CA.All (CA.TypeDef CA.CanonicalType): CA.AliasDef: CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef CA.CanonicalType)) =
     allTypes: al: expandedTypes:
 
     getAlias as GetType =
@@ -193,7 +193,7 @@ expandAndInsertAlias as CA.All CA.TypeDef: CA.AliasDef: CA.All CA.TypeDef: Res (
     Ok << Dict.insert al.usr (CA.TypeDefAlias { al with type }) expandedTypes
 
 
-expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
+expandAliasVariables as Dict Name CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
     typeByArgName: ty:
 
     try ty as
@@ -240,7 +240,7 @@ expandAliasVariables as Dict Name CA.Type: CA.Type: CA.Type =
 #
 
 
-getTypeForUnion as CA.All CA.TypeDef: CA.All CA.TypeDef: GetType =
+getTypeForUnion as CA.All (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.CanonicalType): GetType =
     allTypes: expandedTypes: pos: usr:
 
     # Try to find the type here first
@@ -262,7 +262,7 @@ getTypeForUnion as CA.All CA.TypeDef: CA.All CA.TypeDef: GetType =
 
 
 
-expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDef: CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
+expandAndInsertUnion as CA.All (CA.TypeDef CA.CanonicalType): Meta.UniqueSymbolReference: (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef CA.CanonicalType)) =
     allTypes: usr: typeDef: expandedTypes:
 
     try typeDef as
@@ -289,14 +289,14 @@ expandAndInsertUnion as CA.All CA.TypeDef: Meta.UniqueSymbolReference: CA.TypeDe
 #
 
 
-insertModuleTypes as CA.Module: CA.All CA.TypeDef: CA.All CA.TypeDef =
+insertModuleTypes as CA.Module CA.CanonicalType: CA.All (CA.TypeDef CA.CanonicalType): CA.All (CA.TypeDef CA.CanonicalType) =
     module: allTypes:
     allTypes
         >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
         >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
-expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
+expandAllTypes as CA.All (CA.TypeDef CA.CanonicalType): Res (CA.All (CA.TypeDef CA.CanonicalType)) =
     allTypes:
 
     allAliases as CA.All CA.AliasDef =
@@ -342,7 +342,7 @@ expandAllTypes as CA.All CA.TypeDef: Res (CA.All CA.TypeDef) =
 #
 # Apply aliases to annotations
 #
-expandAnnotation as CA.All CA.TypeDef: CA.Type: Res CA.Type =
+expandAnnotation as CA.All (CA.TypeDef CA.CanonicalType): CA.CanonicalType: Res CA.CanonicalType =
     allExpandedTypes: type:
 
     gt as GetType =

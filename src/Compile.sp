@@ -153,7 +153,7 @@ umrToFileName as Text: Meta.UniqueModuleReference: Text =
             Path.resolve (corePath :: "browser" :: (Text.split "/" << name .. ".sp"))
 
 
-loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
+loadModule as Meta: Meta.UniqueModuleReference: Text: IO (CA.Module CA.CanonicalType) =
     meta: umr: fileName:
 
     # TODO get rid of eenv so this is not needed
@@ -247,20 +247,29 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 
 
 
-typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
+typeCheckModule as Meta: CA.Globals CA.CanonicalType: CA.Module CA.CanonicalType: Res (CA.Module CA.UnificationType) =
     meta: globals: module:
 
+    # TODO move in Compiler/TypeCheck
     env as Compiler/TypeCheck.Env = {
-        , currentModule = module.umr
-        , meta
-        , instanceVariables = Dict.mapKeys CA.RefRoot globals.instanceVariables
-        , constructors = globals.constructors
-        , types = globals.types
-        , nonFreeTyvars = Dict.empty
-        , nonAnnotatedRecursives = Dict.empty
+          , context = Compiler/TypeCheck.Context_Module module.umr
+          , constructors = todo "globals.constructors"
+          , variables = todo "variables" #Dict.mapKeys CA.RefGlobal globals.instanceVariables
+          , tyvarsInParentAnnotations = Dict.empty
+
+          # This is used to give meaningfule errors?
+          , annotatedTyvarToGeneratedTyvar = Dict.empty
+
+#        , currentModule = module.umr
+#        , meta
+#        , instanceVariables = Dict.mapKeys CA.RefRoot globals.instanceVariables
+#        , constructors = globals.constructors
+#        , types = globals.types
+#        , nonFreeTyvars = Dict.empty
+#        , nonAnnotatedRecursives = Dict.empty
         }
 
-    Compiler/TypeCheck.fromModule env module
+    todo "Compiler/TypeCheck.fromModule env module"
 
 
 searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
@@ -286,7 +295,7 @@ searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
                 else
                     parent >> searchAncestorDirectories isWantedFile
 
-mergeWithCore as CA.Module: CA.Module: CA.Module =
+mergeWithCore as CA.Module type: CA.Module type: CA.Module type =
     coreModule: userModule:
 
 #    need to strip positions before merging >_<
@@ -386,7 +395,7 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Loading modules..." ""
-    loadAllModules as IO [CA.Module] =
+    loadAllModules as IO [CA.Module CA.CanonicalType] =
         meta.moduleVisibleAsToUmr
         >> Dict.values
         >> List.map (umr: loadModule meta umr (umrToFileName corePath umr))
@@ -394,7 +403,7 @@ compileMain as CompileMainPars: IO Int =
 
     loadAllModules >> IO.onSuccess userModules:
 
-    modules as Dict Meta.UniqueModuleReference CA.Module =
+    modules as Dict Meta.UniqueModuleReference (CA.Module CA.CanonicalType) =
         Prelude.coreModulesByUmr >> List.for userModules module:
             Dict.update module.umr maybeCore:
                 try maybeCore as
@@ -413,7 +422,7 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    x as Res CA.Globals =
+    x as Res (CA.Globals CA.CanonicalType) =
         Compiler/Pipeline.globalExpandedTypes modules
 
     x >> onResSuccess eenv globals:
@@ -430,13 +439,15 @@ compileMain as CompileMainPars: IO Int =
 
     log "Type checking..." ""
 
-    Dict.values modules
-    >> List.map (m: typeCheckModule meta globals m >> resToIo eenv)
+    g as CA.Globals CA.CanonicalType = globals
+
+    modulesWithDestruction
+    >> List.map (m: typeCheckModule meta g m >> resToIo eenv)
     >> IO.parallel
-    >> IO.onSuccess typeCheckEnvs:
+    >> IO.onSuccess typeCheckedModules:
 
     log "Emittable AST..." ""
-    modulesWithDestruction
+    typeCheckedModules
     >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
     >> onResSuccess eenv (meState & emittableStatements):
@@ -448,7 +459,7 @@ compileMain as CompileMainPars: IO Int =
     js =
         pars.platform.compile {
             , errorEnv = eenv
-            , constructors = Dict.toList globals.constructors
+            , constructors = todo "Dict.toList globals.constructors"
             }
             entryUsr
             @emittableState
