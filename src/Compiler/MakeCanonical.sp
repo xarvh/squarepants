@@ -43,7 +43,7 @@ alias Env = {
     #
     #     new = { old with x = .x + 1 }
     #
-    , maybeShorthandTarget as Maybe { ref as CA.Ref, path as [Name] }
+    , maybeShorthandTarget as Maybe Expression
     #
     # This keeps track of values that are declared within the
     # scope of a function, so they don't need to be expanded with the module name.
@@ -54,16 +54,8 @@ alias Env = {
     #
     #, futureNonRootValues as Dict Text Pos
     #
-    , defsPath as [Pattern]
     #
     , ro as ReadOnly
-    [#
-        Unlike instance variables, type variables will be used (for typecheking) across scopes.
-        To avoid mixing up different tyvars with the same name, we need to rename them in a way that makes them unique, at least within the module.
-
-        We need to remember this renaming from the definition where the tyvar is first used to all the children scopes of the definition.
-    #]
-    , tyvarRenames as Dict Text Text
 
     , nonFn as Set Text
     }
@@ -81,8 +73,6 @@ initEnv as ReadOnly: Env =
     , nonRootValues = Dict.empty
     #, futureNonRootValues = Dict.empty
     , ro = ro
-    , defsPath = []
-    , tyvarRenames = Dict.empty
     , nonFn = Dict.empty
     }
 
@@ -217,7 +207,7 @@ expressionDeps as Expression: Deps: Deps =
         CA.LiteralText _ _:
             deps
 
-        CA.Variable _ { ref = CA.RefGlobal usr, attrPath }:
+        CA.Variable _ (CA.RefGlobal usr):
             { deps with values = Set.insert usr .values }
 
         CA.Variable _ _:
@@ -235,9 +225,10 @@ expressionDeps as Expression: Deps: Deps =
             deps
                 >> Dict.for exprByName (name: expressionDeps)
 
-        CA.Record _ (Just { ref = CA.RefGlobal usr, attrPath }) exprByName:
-            { deps with values = Set.insert usr .values }
-                >> Dict.for exprByName (name: expressionDeps)
+        CA.Record _ (Just expr) exprByName:
+            deps
+            >> expressionDeps expr
+            >> Dict.for exprByName (name: expressionDeps)
 
         CA.Record _ _ exprByName:
             deps
@@ -259,10 +250,10 @@ expressionDeps as Expression: Deps: Deps =
                 >> expressionDeps args.true
                 >> expressionDeps args.false
 
-        CA.Try _ e patternsAndBodies:
+        CA.Try _ { value, patternsAndExpressions }:
             deps
-                >> expressionDeps e
-                >> List.for patternsAndBodies ((p & b): d: d >> patternDeps p >> expressionDeps b)
+            >> expressionDeps value
+            >> List.for patternsAndExpressions ((p & b): d: d >> patternDeps p >> expressionDeps b)
 
         CA.LetIn valueDef e:
             deps
@@ -276,7 +267,7 @@ argumentDeps as CA.Argument: Deps: Deps =
 
     try arg as
         CA.ArgumentExpression e: expressionDeps e deps
-        CA.ArgumentMutable _ _: deps
+        CA.ArgumentRecycle _ _ _: deps
 
 
 
@@ -286,36 +277,23 @@ argumentDeps as CA.Argument: Deps: Deps =
 
 
 translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
-    isRoot: parentEnv: fa:
+    isRoot: env: fa:
 
-    # This pattern is probably horrible, but I still want to experiment with it
-    # How much can it actually be abused?
-    # How much of a slippery slope is it?
-    # How much will people use this rather than learn functional patterns?
-    #
-    # I could remove it by having translateType also return an env
-    #
-    # TODO this should transform the Dict into a mutation-friendly type, Dict is terrible with mutation
-    dict @= parentEnv.tyvarRenames
-
-    renameTyvar as Pos: Text: Text =
-        pos: faName:
-        try Dict.get faName dict as
-            Just n: n
-            Nothing:
-                n = Text.fromNumber (Pos.start pos) .. faName
-                @dict := Dict.insert faName n dict
-                n
-
-    env as Env =
-        { parentEnv with nonFn = .nonFn >> List.for fa.nonFn Set.insert
-        }
-
-    translatePattern (Just renameTyvar) env fa.pattern
+    translatePattern env fa.pattern
     >> onOk pattern:
 
-    tyvarRenames =
-        dict
+    tyvars as Dict Name CA.TypeClasses =
+        pattern
+        >> CA.patternTyvars
+        >> Dict.map tyvarName: pos:
+            {
+            , allowFunctions = Just << not << List.member tyvarName fa.nonFn
+            , allowUniques = Just False
+            }
+
+    # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv
+
+    # TODO: check that nonFn contains only names actually used in the annotation?
 
     nonRootValues1 =
         if isRoot then
@@ -324,23 +302,9 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
         else
             Dict.join (CA.patternNames pattern) env.nonRootValues
 
-    xxxx =
-        tyvarName: partialNonFn:
-            try Dict.get tyvarName tyvarRenames as
-                Nothing:
-                    # TODO should use the nonFn pos
-                    makeError (CA.patternPos pattern) [ "non fn on variable that's not in the annotation" ]
-
-                Just tr:
-                    Ok << Dict.insert tr None partialNonFn
-
-    Dict.empty >> List.forRes fa.nonFn xxxx >> onOk nonFn:
-
     localEnv0 =
         { env with
         , nonRootValues = nonRootValues1
-        , defsPath = pattern :: .defsPath
-        , tyvarRenames
         }
 
     translateStatementBlock localEnv0 fa.body
@@ -354,8 +318,8 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
 
     Ok {
         , pattern
+        , tyvars
         , native = False
-        , parentDefinitions = env.defsPath
         , body
         #
         , directTypeDeps = deps.types
@@ -370,25 +334,16 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
 #
 
 
-translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
-    ann: env: fa:
+translatePattern as Env: FA.Pattern: Res Pattern =
+    env: fa:
     try fa as
         FA.PatternAny pos isMutable name maybeFaType:
 
             getMaybeCaType as Res (Maybe CA.CanonicalType) =
-                try ann & maybeFaType as
-                    Nothing & Just faType:
-                        makeError pos [ "Can't use annotations here" ]
-
-                    Just ensureUniqueName & Just faType:
-                        mode as TranslateMode =
-                            ModeAnnotation {
-                                , ensureUniqueName
-                                , nonFunctionByName = env.nonFn
-                                }
-
+                try maybeFaType as
+                    Just faType:
                         faType
-                        >> translateType False mode env.ro
+                        >> translateType False env.ro
                         >> Result.map Just
 
                     _:
@@ -400,7 +355,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
             maybeName =
                 if name == "_" then Nothing else (Just name)
 
-            Ok << CA.PatternAny pos isMutable maybeName maybeCaType
+            Ok << CA.PatternAny pos { isUnique = isMutable, maybeName, maybeAnnotation = maybeCaType }
 
         FA.PatternLiteralNumber pos l:
             translateNumber CA.PatternLiteralNumber pos l
@@ -409,7 +364,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
             Ok << CA.PatternLiteralText pos l
 
         FA.PatternConstructor pos maybeModule name faArgs:
-            List.mapRes (translatePattern ann env) faArgs >> onOk caArgs:
+            List.mapRes (translatePattern env) faArgs >> onOk caArgs:
             Ok << CA.PatternConstructor pos (resolveToConstructorUsr env.ro maybeModule name) caArgs
 
         FA.PatternList pos fas:
@@ -417,7 +372,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
                 # TODO pos is probably inaccurate
                 CA.PatternConstructor pos CoreTypes.cons [ pattern, last ]
 
-            List.mapRes (translatePattern ann env) fas >> onOk cas:
+            List.mapRes (translatePattern env) fas >> onOk cas:
             Ok << List.forReversed cas fold (CA.PatternConstructor pos CoreTypes.nil [])
 
         FA.PatternRecord pos recordArgs:
@@ -434,11 +389,11 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
                     else
                         try maybePattern as
                             Nothing:
-                                Ok << Dict.insert name (CA.PatternAny p False (Just name) Nothing) dict
+                                Ok << Dict.insert name (CA.PatternAny p { isUnique = False, maybeName = Just name, maybeAnnotation = Nothing }) dict
 
                             Just faPattern:
                                 faPattern
-                                    >> translatePattern ann env
+                                    >> translatePattern env
                                     >> Result.map (caPattern: Dict.insert name caPattern dict)
 
                 Dict.empty
@@ -446,7 +401,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
                 >> Result.map (x: x >> CA.PatternRecord pos)
 
         FA.PatternListCons pos pas:
-            List.mapRes (translatePattern ann env) pas >> onOk caPas:
+            List.mapRes (translatePattern env) pas >> onOk caPas:
             try List.reverse caPas as
                 last :: rest:
                      last
@@ -466,7 +421,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
                         ]
                     }
                         >> FA.PatternRecord pos
-                        >> translatePattern ann env
+                        >> translatePattern env
 
                 [ fa1, fa2, fa3 ]:
                     { extends = Nothing
@@ -477,7 +432,7 @@ translatePattern as Maybe (Pos: Text: Text): Env: FA.Pattern: Res Pattern =
                         ]
                     }
                         >> FA.PatternRecord pos
-                        >> translatePattern ann env
+                        >> translatePattern env
 
                 _:
                     makeError pos [ "tuples can be only of size 2 or 3" ]
@@ -538,21 +493,19 @@ translateExpression as Env: FA.Expression: Res Expression =
             Ok << CA.LiteralText pos v
 
         FA.PrefixBinop pos symbol:
-            { ref = CA.RefGlobal << CoreTypes.makeUsr symbol
-            , attrPath = []
-            }
-                >> CA.Variable pos
-                >> Ok
+            CoreTypes.makeUsr symbol
+            >> CA.RefGlobal
+            >> CA.Variable pos
+            >> Ok
 
         FA.Variable pos maybeModule name attrs:
             declaredInsideFunction =
                 Dict.member name env.nonRootValues
 
-            { ref = resolveToValueRef env.ro declaredInsideFunction maybeModule name
-            , attrPath = attrs
-            }
-                >> CA.Variable pos
-                >> Ok
+            resolveToValueRef env.ro declaredInsideFunction maybeModule name
+            >> CA.Variable pos
+            >> List.for attrs (CA.RecordAccess pos)
+            >> Ok
 
         FA.Constructor pos maybeModule name:
             resolveToConstructorUsr env.ro maybeModule name
@@ -572,16 +525,13 @@ translateExpression as Env: FA.Expression: Res Expression =
                         ]
 
                 Just shorthandTarget:
-                    # Yes, you can write
-                    #
-                    #   { blah.x.y with z0 = .z1.w.x }
-                    #
-                    # Is this a good idea?
-                    Ok << CA.Variable pos { shorthandTarget with attrPath = List.concat [ .attrPath, attrPath ] }
+                    shorthandTarget
+                    >> List.for attrPath (attrName: expr: CA.RecordAccess pos attrName expr)
+                    >> Ok
 
         FA.Lambda pos faParam isConsuming faBody:
 
-            translatePattern Nothing env faParam
+            translatePattern env faParam
             >> onOk caPattern:
 
             localEnv =
@@ -636,7 +586,7 @@ translateExpression as Env: FA.Expression: Res Expression =
         FA.Unop pos op faOperand:
             translateExpression env faOperand >> onOk caOperand:
             CA.Call pos
-                (CA.Variable pos { ref = CA.RefGlobal << op.usr, attrPath = [] })
+                (CA.Variable pos (CA.RefGlobal op.usr))
                 (CA.ArgumentExpression caOperand)
             >> Ok
 
@@ -644,11 +594,13 @@ translateExpression as Env: FA.Expression: Res Expression =
             translateBinops env pos group sepList
 
         FA.Record pos faArgs:
-            makeUpdateTarget pos env faArgs.extends >> onOk caUpdateTarget:
+            makeUpdateTarget pos env faArgs.extends
+            >> onOk caUpdateTarget:
+
             # TODO use a Result.list_fold?
-            translateAttrsRec { env with maybeShorthandTarget = caUpdateTarget.maybeName } faArgs.attrs Dict.empty >> onOk caAttrs:
+            translateAttrsRec { env with maybeShorthandTarget = caUpdateTarget.maybeExpr } faArgs.attrs Dict.empty >> onOk caAttrs:
             caAttrs
-                >> CA.Record pos caUpdateTarget.maybeName
+                >> CA.Record pos caUpdateTarget.maybeExpr
                 >> caUpdateTarget.wrapper
                 >> Ok
 
@@ -666,13 +618,13 @@ translateExpression as Env: FA.Expression: Res Expression =
 
         FA.Try pos fa:
             translatePatternAndStatements = ( faPattern & faStatements ):
-                translatePattern Nothing env faPattern >> onOk caPattern:
+                translatePattern env faPattern >> onOk caPattern:
                 translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames caPattern) env.nonRootValues } faStatements >> onOk block:
                 Ok ( caPattern & block )
 
             translateExpression env fa.value >> onOk caValue:
             List.mapRes translatePatternAndStatements fa.patterns >> onOk caPatternsAndStatements:
-            Ok << CA.Try pos caValue caPatternsAndStatements
+            Ok << CA.Try pos { value = caValue, patternsAndExpressions = caPatternsAndStatements }
 
 
 translateNumber as (Pos: Number: a): Pos: Text: Res a =
@@ -689,22 +641,21 @@ translateNumber as (Pos: Number: a): Pos: Text: Res a =
             Ok << constructor pos n
 
 
-makeUpdateTarget as Pos: Env: Maybe FA.Expression: Res { maybeName as Maybe Name, wrapper as Expression: Expression } =
+makeUpdateTarget as Pos: Env: Maybe FA.Expression: Res { maybeExpr as Maybe Expression, wrapper as Expression: Expression } =
     pos: env: maybeShorthandTarget:
-    try Maybe.map (translateExpression { env with maybeShorthandTarget = Nothing }) maybeShorthandTarget as
+
+    try maybeShorthandTarget as
         Nothing:
-            Ok { maybeName = Nothing, wrapper = identity }
+            Ok { maybeExpr = Nothing, wrapper = identity }
 
-        Just (Err e):
-            Err e
+        Just shorthand:
+            translateExpression { env with maybeShorthandTarget = Nothing } shorthand
+            >> onOk expression:
 
-        Just (Ok (CA.Variable _ args)):
-            # TODO test for lowercase name?
-            Ok { maybeName = Just args, wrapper = identity }
+            try expression as
+                CA.Variable _ ref: Ok { maybeExpr = Just expression, wrapper = identity }
+                _: makeError pos [ "NI { (expr) with ...} not yet implemented =(" ]
 
-        Just (Ok expr):
-            # TODO: can I use the start position as unique name?
-            makeError pos [ "NI { (expr) with ...} not yet implemented =(" ]
 
 
 translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text Expression: Res (Dict Text Expression) =
@@ -723,11 +674,10 @@ translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text Expressio
                         declaredInsideFunction =
                             Dict.member attrName env.nonRootValues
 
-                        { ref = resolveToValueRef env.ro declaredInsideFunction Nothing attrName
-                        , attrPath = []
-                        }
-                            >> CA.Variable pos
-                            >> Ok
+                        attrName
+                        >> resolveToValueRef env.ro declaredInsideFunction Nothing
+                        >> CA.Variable pos
+                        >> Ok
 
             exprRes >> onOk expr:
             translateAttrsRec env faTail (Dict.insert attrName expr caAttrsAccum)
@@ -738,12 +688,9 @@ translateArgument as Env: FA.Expression: Res (CA.Argument) =
     try faExpr as
         FA.Mutable pos name attrPath:
             if Dict.member name env.nonRootValues then
-                {
-                , ref = CA.RefLocal name
-                , attrPath
-                }
-                    >> CA.ArgumentMutable pos
-                    >> Ok
+                CA.RefLocal name
+                >> CA.ArgumentRecycle pos attrPath
+                >> Ok
 
             else
                 makeError pos
@@ -916,10 +863,8 @@ makeBinop as Pos: (CA.Argument): Op.Binop: (CA.Argument): Expression =
         _:
             CA.Call pos
                 (CA.Call pos
-                    (CA.Variable pos {
-                        , ref = CA.RefGlobal op.usr
-                        , attrPath = []
-                        }
+                    (CA.Variable pos
+                        (CA.RefGlobal op.usr)
                     )
                     right
                 )
@@ -937,18 +882,18 @@ translateSimpleBinop as Env: Pos: FA.Expression: Op.Binop: FA.Expression: Res Ex
 #
 # Type
 #
-union TranslateMode =
-    , ModeAlias
-    , ModeUnion
-    , ModeAnnotation {
-        # ensureUniqueName is used to ensure tyvar names are unique within the module
-        , ensureUniqueName as Pos: Name: Name
-        , nonFunctionByName as Set Name
-        }
+#union TranslateMode =
+#    , ModeAlias
+#    , ModeUnion
+#    , ModeAnnotation {
+#        # ensureUniqueName is used to ensure tyvar names are unique within the module
+#        , ensureUniqueName as Pos: Name: Name
+#        , nonFunctionByName as Set Name
+#        }
 
 
-addAttributes as Bool: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.CanonicalType: Res CA.CanonicalType =
-    allowUniques: mode: ro: pos: faAttrs: caAttrsAccum:
+addAttributes as Bool: ReadOnly: Pos: [ (At Text) & Maybe FA.Type ]: Dict Text CA.CanonicalType: Res CA.CanonicalType =
+    allowUniques: ro: pos: faAttrs: caAttrsAccum:
     try faAttrs as
         []:
             CA.TypeRecord pos caAttrsAccum
@@ -960,49 +905,35 @@ addAttributes as Bool: TranslateMode: ReadOnly: Pos: [ (At Text) & Maybe FA.Type
                     makeError p [ "Attribute `" .. name .. "` must have a type" ]
 
                 Just faType:
-                    translateType allowUniques mode ro faType >> onOk caType:
-                    addAttributes allowUniques mode ro p faTail (Dict.insert name caType caAttrsAccum)
+                    translateType allowUniques ro faType >> onOk caType:
+                    addAttributes allowUniques ro p faTail (Dict.insert name caType caAttrsAccum)
 
 
-translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.CanonicalType =
-    allowUniques: mode: ro: faType:
+translateType as Bool: ReadOnly: FA.Type: Res CA.CanonicalType =
+    allowUniques: ro: faType:
 
     try faType as
         FA.TypeVariable pos name:
-            try mode as
-                ModeAnnotation pars:
-                    {
-                    , allowFunctions = not << Set.member name pars.nonFunctionByName
-                    , allowUniques
-                    }
-                    >> CA.TypeVariable pos (pars.ensureUniqueName pos name)
-                    >> Ok
-
-                _:
-                    {
-                    , allowFunctions = True
-                    , allowUniques
-                    }
-                    >> CA.TypeVariable pos name
-                    >> Ok
+            CA.TypeAnnotationVariable pos name
+            >> Ok
 
 
         FA.TypeConstant pos maybeModule name args:
-            List.mapRes (translateType allowUniques mode ro) args >> onOk caArgs:
+            List.mapRes (translateType allowUniques ro) args >> onOk caArgs:
             caArgs
-                >> CA.TypeConstant pos (resolveToTypeUsr ro maybeModule name)
+                >> CA.TypeOpaque pos (resolveToTypeUsr ro maybeModule name)
                 >> Ok
 
         FA.TypeFunction pos fa_from lambdaModifier fa_to:
-            translateType allowUniques mode ro fa_from >> onOk ca_from:
-            translateType allowUniques mode ro fa_to >> onOk ca_to:
+            translateType allowUniques ro fa_from >> onOk ca_from:
+            translateType allowUniques ro fa_to >> onOk ca_to:
             Ok << CA.TypeFunction pos ca_from lambdaModifier ca_to
 
         FA.TypeTuple pos types:
             try types as
                 [ faFirst, faSecond ]:
-                    translateType allowUniques mode ro faFirst >> onOk caFirst:
-                    translateType allowUniques mode ro faSecond >> onOk caSecond:
+                    translateType allowUniques ro faFirst >> onOk caFirst:
+                    translateType allowUniques ro faSecond >> onOk caSecond:
                     Dict.empty
                         >> Dict.insert "first" caFirst
                         >> Dict.insert "second" caSecond
@@ -1010,9 +941,9 @@ translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.CanonicalType =
                         >> Ok
 
                 [ faFirst, faSecond, faThird ]:
-                    translateType allowUniques mode ro faFirst >> onOk caFirst:
-                    translateType allowUniques mode ro faSecond >> onOk caSecond:
-                    translateType allowUniques mode ro faThird >> onOk caThird:
+                    translateType allowUniques ro faFirst >> onOk caFirst:
+                    translateType allowUniques ro faSecond >> onOk caSecond:
+                    translateType allowUniques ro faThird >> onOk caThird:
                     Dict.empty
                         >> Dict.insert "first" caFirst
                         >> Dict.insert "second" caSecond
@@ -1024,11 +955,11 @@ translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.CanonicalType =
                     makeError pos [ "Tuples can only have size 2 or 3. Use a record." ]
 
         FA.TypeMutable pos t:
-            translateType allowUniques mode ro t >> onOk cat:
-            Ok << CA.TypeMutable pos cat
+            translateType allowUniques ro t >> onOk cat:
+            Ok << CA.TypeUnique pos cat
 
         FA.TypeList pos faItem:
-            translateType allowUniques mode ro faItem >> onOk caItem:
+            translateType allowUniques ro faItem >> onOk caItem:
             Ok << CoreTypes.list caItem
 
         FA.TypeRecord p recordArgs:
@@ -1036,7 +967,7 @@ translateType as Bool: TranslateMode: ReadOnly: FA.Type: Res CA.CanonicalType =
                 makeError p ["For now extensible types are disabled, I want to see if it's good to do without them" ]
 
             else
-                addAttributes allowUniques mode ro p recordArgs.attrs Dict.empty
+                addAttributes allowUniques ro p recordArgs.attrs Dict.empty
 
 
 #
@@ -1052,7 +983,7 @@ translateConstructor as ReadOnly: CA.CanonicalType: Meta.UniqueSymbolReference: 
         makeError pos [ "constructor " .. name .. " is duplicate" ]
 
     else
-        List.mapRes (translateType True ModeUnion ro) faArgs
+        List.mapRes (translateType True ro) faArgs
         >> onOk caArgs:
 
 
@@ -1103,7 +1034,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 
             else
                 # TODO check args!
-                translateType False ModeAlias ro fa.ty >> onOk type:
+                translateType False ro fa.ty >> onOk type:
 
                 aliasDef as CA.AliasDef = {
                     , usr = Meta.USR ro.currentModule (Pos.drop fa.name)
@@ -1129,8 +1060,8 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 
                 type =
                     fa.args
-                        >> List.map (name: CA.TypeVariable pos name flags)
-                        >> CA.TypeConstant pos usr
+                    >> List.map (name: CA.TypeAnnotationVariable pos name)
+                    >> CA.TypeOpaque pos usr
 
                 Dict.empty
                 >> List.forRes fa.constructors (translateConstructor ro type usr)

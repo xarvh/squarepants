@@ -77,7 +77,7 @@ union Pattern =
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
-    , PatternRecord Pos (Dict Name (Pattern & Type))
+    , PatternRecord Pos (Dict Name Pattern)
 
 
 union Argument =
@@ -195,6 +195,23 @@ skipLetIns as CA.Expression: CA.Expression =
 #        TypeMutable p _: p
 #
 #
+typeTyvars as Type: Dict Name Pos =
+    ty:
+
+    fromList as [Type]: Dict Name Pos =
+        list:
+        List.for list (item: acc: Dict.join acc (typeTyvars arg)) Dict.empty
+
+    try ty as
+        TypeOpaque _ _ args: fromList args
+        TypeAlias _ _ args: fromList args
+        TypeFunction _ from _ to: fromList [from, to]
+        TypeRecord _ attrs: fromList (Dict.values attrs)
+        TypeUnique _ t: typeTyvars t
+        TypeAnnotationVariable pos name: Dict.singleton name pos
+
+
+
 typeContainsUniques as Type: Bool =
     ty:
     try ty as
@@ -228,15 +245,29 @@ typeContainsUniques as Type: Bool =
 #        PatternRecord pos ps: Dict.any (k: patternIsMutable) ps
 #
 #
-#patternNames as Pattern: Dict Name Pos =
-#    p:
-#    try p as
-#        PatternAny pos _ Nothing _: Dict.empty
-#        PatternAny pos _ (Just n) _: Dict.singleton n pos
-#        PatternLiteralNumber pos _: Dict.empty
-#        PatternLiteralText pos _: Dict.empty
-#        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-#        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+
+
+patternTyvars as Pattern: Dict Name Pos =
+    pa:
+    try pa as
+        PatternAny _ { isUnique = _, maybeName = _, maybeAnnotation = Just t }: typeTyvars t
+        PatternAny _ { isUnique = _, maybeName = _, maybeAnnotation = Nothing }: Dict.empty
+        PatternLiteralText _ _: Dict.empty
+        PatternLiteralNumber _ _: Dict.empty
+        PatternConstructor _ _ args: List.for args (arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
+        PatternRecord _ attrs: Dict.for args (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
+
+
+
+patternNames as Pattern: Dict Name Pos =
+    p:
+    try p as
+        PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
+        PatternAny pos { isUnique = _, maybeName = Just n, maybeAnnotation = _ }: Dict.singleton n pos
+        PatternLiteralNumber pos _: Dict.empty
+        PatternLiteralText pos _: Dict.empty
+        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 #
 #
 #patternMutabilityByName as Pattern: Dict Name (Bool & Pos) =
