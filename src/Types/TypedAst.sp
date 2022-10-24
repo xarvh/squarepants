@@ -57,7 +57,7 @@ union Pattern =
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
-    , PatternRecord Pos (Dict Name (Pattern & type))
+    , PatternRecord Pos (Dict Name (Pattern & Type))
 
 
 union Argument =
@@ -155,107 +155,16 @@ skipLetIns as CA.Expression: CA.Expression =
 #
 
 
-#typePos as Type: Pos =
-#    ty:
-#    try ty as
-#        TypeConstant p _ _: p
-#        #TypeGeneratedVar _: Pos.I 3
-#        #TypeAnnotatedVar p _: p
-#        TypeVariable p _ _: p
-#        TypeFunction p _ _ _: p
-#        TypeRecord p _: p
-#        TypeRecordExt p _ _ _: p
-#        TypeAlias p _ _: p
-#        TypeMutable p _: p
-#
-#
-#typeContainsUniques as Type: Bool =
-#    ty:
-#    try ty as
-#        TypeConstant _ _ _: False
-#        TypeVariable _ _ _: False
-#        TypeFunction _ _ _ _: False
-#        TypeRecord _ attrs: Dict.any (k: typeContainsUniques) attrs
-#        TypeRecordExt _ _ _ attrs: Dict.any (k: typeContainsUniques) attrs
-#        TypeAlias _ _ t: typeContainsUniques t
-#        TypeMutable _ _: True
+patternNames as Pattern: Dict Name Pos =
+    p:
+    try p as
+        PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
+        PatternAny pos { isUnique = _, maybeName = Just n, maybeAnnotation = _ }: Dict.singleton n pos
+        PatternLiteralNumber pos _: Dict.empty
+        PatternLiteralText pos _: Dict.empty
+        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 
-
-#patternPos as Pattern: Pos =
-#    pa:
-#    try pa as
-#        PatternAny p _ _ _: p
-#        PatternLiteralText p _: p
-#        PatternLiteralNumber p _: p
-#        PatternConstructor p path ps: p
-#        PatternRecord p ps: p
-#
-#
-#patternIsMutable as Pattern: Bool =
-#    pattern:
-#
-#    try pattern as
-#        PatternAny pos isMutable maybeName maybeType: isMutable
-#        PatternLiteralNumber pos _: False
-#        PatternLiteralText pos _: False
-#        PatternConstructor pos path ps: List.any patternIsMutable ps
-#        PatternRecord pos ps: Dict.any (k: patternIsMutable) ps
-#
-#
-#patternNames as Pattern: Dict Name Pos =
-#    p:
-#    try p as
-#        PatternAny pos _ Nothing _: Dict.empty
-#        PatternAny pos _ (Just n) _: Dict.singleton n pos
-#        PatternLiteralNumber pos _: Dict.empty
-#        PatternLiteralText pos _: Dict.empty
-#        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-#        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
-#
-#
-#patternMutabilityByName as Pattern: Dict Name (Bool & Pos) =
-#    p:
-#    try p as
-#        PatternAny pos _ Nothing _: Dict.empty
-#        PatternAny pos isMutable (Just n) _: Dict.singleton n (isMutable & pos)
-#        PatternLiteralNumber pos _: Dict.empty
-#        PatternLiteralText pos _: Dict.empty
-#        PatternConstructor pos path ps: List.for ps (x: x >> patternMutabilityByName >> Dict.join) Dict.empty
-#        PatternRecord pos ps: Dict.for ps (k: v: v >> patternMutabilityByName >> Dict.join) Dict.empty
-#
-#
-#patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
-#    p:
-#    try p as
-#        PatternAny pos _ Nothing maybeType: Dict.empty
-#        PatternAny pos _ (Just n) maybeType: Dict.singleton n (pos & maybeType)
-#        PatternLiteralNumber pos _: Dict.empty
-#        PatternLiteralText pos _: Dict.empty
-#        PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
-#        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNamedTypes >> Dict.join) Dict.empty
-
-
-#argumentPos as Argument: Pos =
-#    arg:
-#    try arg as
-#        ArgumentExpression e: expressionPos e
-#        ArgumentMutable pos _: pos
-
-
-#expressionPos as Expression: Pos =
-#    e:
-#    try e as
-#        LiteralText pos _: pos
-#        LiteralNumber pos _: pos
-#        Variable pos _: pos
-#        Constructor pos _: pos
-#        Lambda pos _ _ _: pos
-#        Record pos _ _: pos
-#        Call pos _ _: pos
-#        CallCo pos _ _: pos
-#        If pos _: pos
-#        Try pos _ _: pos
-#        LetIn valueDef _: patternPos valueDef.pattern
 
 
 #

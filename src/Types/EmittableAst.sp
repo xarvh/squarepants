@@ -24,8 +24,8 @@ union Expression =
     , ShallowEqual Expression Expression
     , LetIn {
         , maybeName as Maybe Name
-        # type as Type
-        , isMutable as Bool
+        #, type as TA.Type
+        , isUnique as Bool
         , letExpression as Expression
         , inExpression as Expression
         }

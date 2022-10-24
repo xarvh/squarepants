@@ -983,17 +983,23 @@ translateConstructor as ReadOnly: CA.CanonicalType: Meta.UniqueSymbolReference: 
         makeError pos [ "constructor " .. name .. " is duplicate" ]
 
     else
-        List.mapRes (translateType True ro) faArgs
+        faArgs
+        >> List.mapRes (translateType True ro)
         >> onOk caArgs:
-
 
         returnsUnique =
             List.any CA.typeContainsUniques caArgs
 
+        t as CA.Type =
+            if returnsUnique then
+                CA.TypeUnique pos unionType
+            else
+                unionType
+
         c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
-            , type = List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaConsuming ty) (Compiler/TypeCheck.maybeWrapMutable returnsUnique pos unionType)
+            , type = t >> List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaConsuming ty)
             , args = caArgs
             }
 
@@ -1016,7 +1022,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
             >> onOk def:
 
 
-            if CA.patternIsMutable def.pattern then
+            if CA.patternContainsUnique def.pattern then
                 makeError (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
 
             else
@@ -1052,11 +1058,6 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
             else
                 usr =
                     Meta.USR ro.currentModule fa.name
-
-                flags as CA.TyvarFlags = {
-                    , allowFunctions = True
-                    , allowUniques = True
-                    }
 
                 type =
                     fa.args

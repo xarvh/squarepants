@@ -193,8 +193,8 @@ skipLetIns as CA.Expression: CA.Expression =
 #        TypeRecordExt p _ _ _: p
 #        TypeAlias p _ _: p
 #        TypeMutable p _: p
-#
-#
+
+
 typeTyvars as Type: Dict Name Pos =
     ty:
 
@@ -211,40 +211,24 @@ typeTyvars as Type: Dict Name Pos =
         TypeAnnotationVariable pos name: Dict.singleton name pos
 
 
-
-typeContainsUniques as Type: Bool =
-    ty:
-    try ty as
-        TypeOpaque _ _ _: False
-        TypeFunction _ _ _: False
-        TypeUnique _ _: True
-        TypeAnnotationVariable _ _: False
-        TypeAlias _ _: todo "typeContainsUniques TypeAlias"
-        TypeRecord _ attrs: Dict.any (k: typeContainsUniques) attrs
+patternPos as Pattern: Pos =
+    pa:
+    try pa as
+        PatternAny p _: p
+        PatternLiteralText p _: p
+        PatternLiteralNumber p _: p
+        PatternConstructor p _ _: p
+        PatternRecord p _: p
 
 
-
-#patternPos as Pattern: Pos =
-#    pa:
-#    try pa as
-#        PatternAny p _ _ _: p
-#        PatternLiteralText p _: p
-#        PatternLiteralNumber p _: p
-#        PatternConstructor p path ps: p
-#        PatternRecord p ps: p
-#
-#
-#patternIsMutable as Pattern: Bool =
-#    pattern:
-#
-#    try pattern as
-#        PatternAny pos isMutable maybeName maybeType: isMutable
-#        PatternLiteralNumber pos _: False
-#        PatternLiteralText pos _: False
-#        PatternConstructor pos path ps: List.any patternIsMutable ps
-#        PatternRecord pos ps: Dict.any (k: patternIsMutable) ps
-#
-#
+patternContainsUnique as Pattern: Bool =
+    pattern:
+    try pattern as
+        PatternAny _ { isUnique, maybeName = _, maybeAnnotation = _ }: isUnique
+        PatternLiteralText _ _: False
+        PatternLiteralNumber _ _: False
+        PatternConstructor _ _ args: List.any patternContainsUnique args
+        PatternRecord _ attrs: Dict.any (k: patternContainsUnique) attrs
 
 
 patternTyvars as Pattern: Dict Name Pos =
@@ -268,8 +252,8 @@ patternNames as Pattern: Dict Name Pos =
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
         PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
-#
-#
+
+
 #patternMutabilityByName as Pattern: Dict Name (Bool & Pos) =
 #    p:
 #    try p as
