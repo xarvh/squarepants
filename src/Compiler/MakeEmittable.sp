@@ -201,8 +201,8 @@ translateExpression as State@: Int@: Expression: EA.Expression =
         TA.LiteralText _ text:
             EA.LiteralText text
 
-        TA.Variable _ var:
-            translateVariableArgs @state var
+        TA.Variable _ ref:
+            translateVariableArgs @state ref
 
         TA.Constructor _ usr:
             EA.Constructor (translateUsr @state usr)
@@ -210,10 +210,10 @@ translateExpression as State@: Int@: Expression: EA.Expression =
         TA.Lambda pos pattern isConsuming body:
             try pickMainName pattern as
                 NoNamedVariables:
-                    EA.Lambda (Nothing & TA.patternContainsUnique pattern) (translateExpression @state @counter body)
+                    EA.Lambda Nothing (translateExpression @state @counter body)
 
                 TrivialPattern (DollarName argName):
-                    EA.Lambda (Just argName & TA.patternContainsUnique pattern) (translateExpression @state @counter body)
+                    EA.Lambda (Just argName) (translateExpression @state @counter body)
 
                 SafeMainName (DollarName mainName):
                     namesAndExpressions =
@@ -223,7 +223,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                         (isUnique & DollarName varName & letExpression): inExpression:
                         EA.LetIn {
                             , maybeName = Just varName
-                            , isUnique
+                            #, isUnique
                             , letExpression
                             , inExpression
                             }
@@ -231,19 +231,26 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                     body
                     >> translateExpression @state @counter
                     >> List.for namesAndExpressions wrapWithArgumentLetIn
-                    >> EA.Lambda (Just mainName & TA.patternContainsUnique pattern)
+                    >> EA.Lambda (Just mainName)
 
         TA.Record _ extends attrs:
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first
             >> List.map (Tuple.mapSecond (translateExpression @state @counter))
-            >> EA.LiteralRecord (Maybe.map (translateVariableArgs @state) extends)
+            >> EA.LiteralRecord (Maybe.map (translateExpression @state @counter) extends)
 
-        TA.Call _ ref (TA.ArgumentRecycle _ var):
-            EA.Call (translateExpression @state @counter ref) (translateVariableArgs @state var & True)
+        TA.Call _ ref (TA.ArgumentRecycle _ attrPath var) type:
 
-        TA.Call _ ref (TA.ArgumentExpression expr):
+            arg =
+                translateVariableArgs @state var
+                >> List.for attrPath attributeName: expr:
+                    EA.RecordAccess attributeName expr
+
+            EA.Call (translateExpression @state @counter ref) (arg & True)
+
+
+        TA.Call _ ref (TA.ArgumentExpression expr) type:
             EA.Call (translateExpression @state @counter ref) (translateExpression @state @counter expr & False)
 
         TA.If _ ar:
@@ -257,8 +264,8 @@ translateExpression as State@: Int@: Expression: EA.Expression =
             # 1. create a name for the value (unless it's already a variable)
             valueExpression & wrapWithLetIn =
                 try value as
-                    TA.Variable _ { ref, attrPath = [] }:
-                        translateVariableArgs @state { ref, attrPath = [] } & identity
+                    TA.Variable _ ref:
+                        translateVariableArgs @state ref & identity
                     _:
                         DollarName tryName =
                             generateTryName @counter
@@ -267,7 +274,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                             tryExpression:
                             EA.LetIn {
                                 , maybeName = Just tryName
-                                , isUnique = False
+                                #, isUnique = False
                                 , letExpression = translateExpression @state @counter value
                                 , inExpression = tryExpression
                                 }
@@ -290,7 +297,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                 whenConditionMatches as EA.Expression =
                     translateExpression @state @counter block
                     >> List.for namesAndExpressions (isUnique & DollarName name & letExpression): inExpression:
-                        EA.LetIn { maybeName = Just name, isUnique, letExpression, inExpression }
+                        EA.LetIn { maybeName = Just name, [#isUnique,#] letExpression, inExpression }
 
                 EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
 
@@ -307,7 +314,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                 NoNamedVariables:
                     EA.LetIn {
                         , maybeName = Nothing
-                        , isUnique = TA.patternContainsUnique valueDef.pattern
+                        #, isUnique = TA.patternContainsUnique valueDef.pattern
                         , letExpression = translateExpression @state @counter valueDef.body
                         , inExpression = translateExpression @state @counter e
                         }
@@ -315,7 +322,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                 TrivialPattern (DollarName defName):
                     EA.LetIn {
                         , maybeName = Just defName
-                        , isUnique = TA.patternContainsUnique valueDef.pattern
+                        #, isUnique = TA.patternContainsUnique valueDef.pattern
                         , letExpression = translateExpression @state @counter valueDef.body
                         , inExpression = translateExpression @state @counter e
                         }
@@ -328,7 +335,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                         (isUnique & DollarName name & letExpression): inExpression:
                         EA.LetIn {
                             , maybeName = Just name
-                            , isUnique
+                            #, isUnique
                             , letExpression
                             , inExpression
                             }
@@ -337,7 +344,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                         inExpression:
                         EA.LetIn {
                             , maybeName = Just mainName
-                            , isUnique = False
+                            #, isUnique = False
                             , letExpression = translateExpression @state @counter valueDef.body
                             , inExpression
                             }
@@ -411,12 +418,9 @@ circularIsError as ByName EA.GlobalDefinition: [Name]: Bool =
 
 
 translateAll as [TA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
-    userModules:
+    modules:
 
     Debug.benchStart None
-
-    modules =
-        List.concat [ userModules, Prelude.coreModules ]
 
     state as State @= {
         , sourceDirsToId = Hash.empty

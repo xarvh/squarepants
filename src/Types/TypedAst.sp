@@ -33,7 +33,7 @@ union Expression =
       # to nested RecordAccess? Maybe function calls too?
     , Record Pos (Maybe (Expression)) (Dict Name (Expression))
     , RecordAccess Pos Name (Expression)
-    , LetIn (ValueDef) (Expression)
+    , LetIn ValueDef (Expression)
     , If Pos {
         , condition as (Expression)
         , true as (Expression)
@@ -76,6 +76,7 @@ alias ValueDef = {
     , native as Bool
     , body as Expression
     , tyvars as Dict Name TypeClasses
+    , directValueDeps as Set Meta.UniqueSymbolReference
     }
 
 
@@ -85,23 +86,23 @@ alias ValueDef = {
 # Module
 #
 
-alias TypeDeps =
-    Set Meta.UniqueSymbolReference
-
-alias AliasDef = {
-    , usr as Meta.UniqueSymbolReference
-    , args as [At Name]
-    , type as Type
-    , directTypeDeps as TypeDeps
-    }
-
-
-alias UnionDef = {
-    , usr as Meta.UniqueSymbolReference
-    , args as [Name]
-    , constructors as Dict Name (Constructor)
-    , directTypeDeps as TypeDeps
-    }
+#alias TypeDeps =
+#    Set Meta.UniqueSymbolReference
+#
+#alias AliasDef = {
+#    , usr as Meta.UniqueSymbolReference
+#    , args as [At Name]
+#    , type as Type
+#    #, directTypeDeps as TypeDeps
+#    }
+#
+#
+#alias UnionDef = {
+#    , usr as Meta.UniqueSymbolReference
+#    , args as [Name]
+#    , constructors as Dict Name (Constructor)
+#    #, directTypeDeps as TypeDeps
+#    }
 
 
 alias Constructor = {
@@ -117,10 +118,9 @@ alias Constructor = {
 alias Module = {
     , umr as Meta.UniqueModuleReference
     , asText as Text
-
 #    , aliasDefs as Dict Name AliasDef
 #    , unionDefs as Dict Name (UnionDef)
-#    , valueDefs as Dict (Pattern) (ValueDef)
+    , valueDefs as Dict Pattern ValueDef
     }
 
 

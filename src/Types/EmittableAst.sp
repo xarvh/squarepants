@@ -18,14 +18,14 @@ union Expression =
     , LiteralNumber Number
     , Variable Name [Name]
     , Call Expression (Expression & Bool)
-    , Lambda (Maybe Name & Bool) Expression
+    , Lambda (Maybe Name) Expression
     , Conditional Expression Expression Expression
     , And [Expression]
     , ShallowEqual Expression Expression
     , LetIn {
         , maybeName as Maybe Name
         #, type as TA.Type
-        , isUnique as Bool
+        #, isUnique as Bool
         , letExpression as Expression
         , inExpression as Expression
         }
@@ -42,6 +42,8 @@ union Expression =
 alias GlobalDefinition = {
     , name as Name
     , expr as Expression
+
+    # We need these to be able to put defs in the right order
     , deps as Set Name
     }
 

@@ -987,19 +987,10 @@ translateConstructor as ReadOnly: CA.CanonicalType: Meta.UniqueSymbolReference: 
         >> List.mapRes (translateType True ro)
         >> onOk caArgs:
 
-        returnsUnique =
-            List.any CA.typeContainsUniques caArgs
-
-        t as CA.Type =
-            if returnsUnique then
-                CA.TypeUnique pos unionType
-            else
-                unionType
-
         c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
-            , type = t >> List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaConsuming ty)
+            , type = unionType >> List.forReversed caArgs (ar: ty: CA.TypeFunction pos ar LambdaConsuming ty)
             , args = caArgs
             }
 
