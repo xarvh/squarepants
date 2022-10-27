@@ -22,7 +22,7 @@ localType as Name: Meta.UniqueSymbolReference =
 
 rootLocal as Name: CA.Ref =
     name:
-    CA.RefRoot << Meta.USR moduleUmr name
+    CA.RefGlobal << Meta.USR moduleUmr name
 
 
 #
@@ -121,18 +121,18 @@ resErrorToStrippedText as Text: Res a: Result Text a =
 # Same as core types, but have Pos.T rather than Pos.N
 #
 boolType as CA.CanonicalType =
-    CA.TypeConstant Pos.T ("Bool" >> Meta.spCoreUSR) []
+    CA.TypeOpaque Pos.T ("Bool" >> Meta.spCoreUSR) []
 
 
 numberType as CA.CanonicalType =
-    CA.TypeConstant Pos.T ("Number" >> Meta.spCoreUSR) []
+    CA.TypeOpaque Pos.T ("Number" >> Meta.spCoreUSR) []
 
 
 noneType as CA.CanonicalType =
-    CA.TypeConstant Pos.T ("None" >> Meta.spCoreUSR) []
+    CA.TypeOpaque Pos.T ("None" >> Meta.spCoreUSR) []
 
 
 listType as CA.CanonicalType: CA.CanonicalType =
     itemType:
-    CA.TypeConstant Pos.T ("List" >> Meta.spCoreUSR) [ itemType ]
+    CA.TypeOpaque Pos.T ("List" >> Meta.spCoreUSR) [ itemType ]
 

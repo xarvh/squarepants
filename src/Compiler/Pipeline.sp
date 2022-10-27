@@ -19,9 +19,6 @@
 #]
 
 
-getFreeTypeVars =
-    Compiler/TypeCheck.getFreeTypeVars
-
 
 # ============================================================================
 # First Global Pass
@@ -51,6 +48,7 @@ coreConstructors as CA.All CA.Constructor =
     List.for CoreTypes.allDefs (u: insertUnionConstructors (CA.TypeDefUnion u)) Dict.empty
 
 
+# TODO we are not expanding the types any more
 expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.InstanceVariable: Res (ByUsr CA.InstanceVariable) =
     types: module:
 
@@ -60,28 +58,24 @@ expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.Insta
             Nothing:
                 Ok d
 
-            Just rawType:
+            Just type:
 
-                Compiler/ExpandTypes.expandAnnotation types rawType >> onOk type:
+#                Compiler/ExpandTypes.expandAnnotation types rawType
+#                >> onOk type:
 
                 usr =
                     name >> Meta.USR module.umr
 
                 iv as CA.InstanceVariable = {
                     , definedAt = pos
-                    , ty = type
-                    , freeTypeVariables = getFreeTypeVars Dict.empty type
-                    , isMutable = False
+                    , type = type
+                    , isUnique = False
                     }
 
                 Ok << Dict.insert usr iv d
 
-
-    insertValueDef =
-        def:
+    Dict.forRes module.valueDefs _: def:
         Dict.forRes (CA.patternNamedTypes def.pattern) (insertName def)
-
-    Dict.forRes module.valueDefs (_: insertValueDef)
 
 
 coreVariables as ByUsr CA.InstanceVariable =
@@ -94,9 +88,8 @@ coreVariables as ByUsr CA.InstanceVariable =
 
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
-            , ty = unop.type
-            , freeTypeVariables = Dict.empty
-            , isMutable = False
+            , type = unop.type
+            , isUnique = False
             }
 
         Dict.insert usr iv
@@ -109,9 +102,8 @@ coreVariables as ByUsr CA.InstanceVariable =
 
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
-            , ty = binop.type
-            , freeTypeVariables = getFreeTypeVars Dict.empty binop.type
-            , isMutable = False
+            , type = binop.type
+            , isUnique = False
             }
 
         Dict.insert usr iv
@@ -121,9 +113,8 @@ coreVariables as ByUsr CA.InstanceVariable =
 
         iv as CA.InstanceVariable = {
             , definedAt = Pos.N
-            , ty = coreFn.type
-            , freeTypeVariables = getFreeTypeVars Dict.empty coreFn.type
-            , isMutable = False
+            , type = coreFn.type
+            , isUnique = False
             }
 
         Dict.insert coreFn.usr iv
@@ -135,26 +126,36 @@ coreVariables as ByUsr CA.InstanceVariable =
         >> List.for Prelude.functions insertCoreFunction
 
 
+
+
 #
-# Alias expansion and basic type validation
+# Was "Alias expansion and basic type validation"
+# Not sure what's the point now, but the whole Pipeline module will be rewritten so whatever
 #
+insertModuleTypes as CA.Module: CA.All CA.TypeDef: CA.All CA.TypeDef =
+    module: allTypes:
+    allTypes
+        >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
+        >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
+
+
 globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals =
     allModules:
 
-    coreTypes
+    types as CA.All CA.TypeDef =
+        coreTypes
         # Collect types from all modules
-        >> Dict.for allModules (_: Compiler/ExpandTypes.insertModuleTypes)
+        >> Dict.for allModules (_: insertModuleTypes)
 
-        # resolve aliases and apply them to unions
-        >> Compiler/ExpandTypes.expandAllTypes
-        >> onOk types:
+    # populate constructors dict
+    # (constructors in types are already expanded)
+    constructors =
+        Dict.for types (_: insertUnionConstructors) coreConstructors
 
-            # populate constructors dict
-            # (constructors in types are already expanded)
-            constructors =
-                Dict.for types (_: insertUnionConstructors) coreConstructors
+    # populate root variable types
+    coreVariables
+    >> Dict.forRes allModules (_: [# we're not really expanding anything #] expandAndInsertModuleAnnotations types)
+    >> onOk instanceVariables:
 
-            # populate root variable types
-            Dict.forRes allModules (_: expandAndInsertModuleAnnotations types) coreVariables >> onOk instanceVariables:
-            Ok { types, constructors, instanceVariables }
+    Ok { types, constructors, instanceVariables }
 

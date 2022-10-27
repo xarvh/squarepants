@@ -263,17 +263,23 @@ patternNames as Pattern: Dict Name Pos =
 #        PatternLiteralText pos _: Dict.empty
 #        PatternConstructor pos path ps: List.for ps (x: x >> patternMutabilityByName >> Dict.join) Dict.empty
 #        PatternRecord pos ps: Dict.for ps (k: v: v >> patternMutabilityByName >> Dict.join) Dict.empty
-#
-#
-#patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
-#    p:
-#    try p as
-#        PatternAny pos _ Nothing maybeType: Dict.empty
-#        PatternAny pos _ (Just n) maybeType: Dict.singleton n (pos & maybeType)
-#        PatternLiteralNumber pos _: Dict.empty
-#        PatternLiteralText pos _: Dict.empty
-#        PatternConstructor pos path ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
-#        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNamedTypes >> Dict.join) Dict.empty
+
+
+patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
+    p:
+    try p as
+        PatternAny _ { isUnique, maybeName = Nothing, maybeAnnotation }: Dict.empty
+        PatternAny pos { isUnique, maybeName = Just n, maybeAnnotation }: Dict.singleton n (pos & maybeType)
+        PatternLiteralText _ _: Dict.empty
+        PatternLiteralNumber _ _: Dict.empty
+        PatternConstructor _ _ ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
+        PatternRecord _ attrs: Dict.for attrs (n: p: p >> patternNamedTypes >> Dict.join) Dict.empty
+
+
+
+
+
+
 
 
 #argumentPos as Argument: Pos =
@@ -305,11 +311,8 @@ patternNames as Pattern: Dict Name Pos =
 
 alias InstanceVariable = {
     , definedAt as Pos
-    # TODO: ty -> type
-    , ty as Type
-    , freeTypeVariables as Dict Name TypeClasses
-    # TODO: isMutable -> isUnique
-    , isMutable as Bool
+    , type as Type
+    , isUnique as Bool
     }
 
 
