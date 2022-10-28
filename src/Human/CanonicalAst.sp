@@ -81,13 +81,13 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.CanonicalType: Int
         parensIf (pri > threshold) str
 
     try type as
-        CA.TypeConstant pos usr args:
+        CA.TypeOpaque pos usr args:
             ( (if args == [] then 0 else 1) & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " "))
 
-        CA.TypeMutable pos ty:
+        CA.TypeUnique pos ty:
             0 & "@" .. typeToText currentUmr meta ty
 
-        CA.TypeVariable pos name flags:
+        CA.TypeAnnotationVariable pos name:
             ( 0 & name)
 
         CA.TypeFunction pos from lambdaModifier to:
@@ -114,22 +114,22 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.CanonicalType: Int
 
             ( 0 & Text.join " " l)
 
-        CA.TypeRecordExt pos name flags attrs:
-
-            attrsString =
-                attrs
-                    >> Dict.toList
-                    >> List.sortBy Tuple.first
-                    >> List.map (( name & ty ): name .. " as " .. typeToText currentUmr meta ty)
-                    >> Text.join ", "
-            l = [
-              , "{"
-              , name .. " with"
-              , attrsString
-              , "}"
-              ]
-
-            ( 0 & Text.join " " l)
+#        CA.TypeRecordExt pos name flags attrs:
+#
+#            attrsString =
+#                attrs
+#                    >> Dict.toList
+#                    >> List.sortBy Tuple.first
+#                    >> List.map (( name & ty ): name .. " as " .. typeToText currentUmr meta ty)
+#                    >> Text.join ", "
+#            l = [
+#              , "{"
+#              , name .. " with"
+#              , attrsString
+#              , "}"
+#              ]
+#
+#            ( 0 & Text.join " " l)
 
         CA.TypeAlias pos usr ty2:
             ( 0 & usrToText currentUmr meta usr )
@@ -253,13 +253,17 @@ normalizeTypeAndTyvars as Type: Dict Text a: ( Type & Dict Text a ) =
 normType as Type: NormMonad Type =
     ty:
     try ty as
-        CA.TypeConstant pos name args:
-            (StateMonad.list_map normType args) >> andThen args_n:
-            return << CA.TypeConstant pos name args_n
+        CA.TypeOpaque pos name args:
+            StateMonad.list_map normType args >> andThen args_n:
+            return << CA.TypeOpaque pos name args_n
 
-        CA.TypeVariable pos name flags:
-            (normName name) >> andThen n:
-            return << CA.TypeVariable pos n flags
+        CA.TypeAlias pos usr args:
+            StateMonad.list_map normType args >> andThen args_n:
+            return << CA.TypeAlias pos usr args_n
+
+        CA.TypeAnnotationVariable pos name:
+            normName name >> andThen n:
+            return << CA.TypeAnnotationVariable pos n
 
         CA.TypeFunction pos from0 fromIsMut to0:
             (normType from0) >> andThen from1:
@@ -270,18 +274,15 @@ normType as Type: NormMonad Type =
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
             return << CA.TypeRecord pos attrs1
 
-        CA.TypeRecordExt pos name0 flags attrs0:
-            normName name0 >> andThen name1:
-            StateMonad.dict_map (k: normType) attrs0 >> andThen attrs1:
-            return << CA.TypeRecordExt pos name1 flags attrs1
+#        CA.TypeRecordExt pos name0 flags attrs0:
+#            normName name0 >> andThen name1:
+#            StateMonad.dict_map (k: normType) attrs0 >> andThen attrs1:
+#            return << CA.TypeRecordExt pos name1 flags attrs1
 
-        CA.TypeMutable pos t:
+        CA.TypeUnique pos t:
             (normType t) >> andThen t1:
-            return << CA.TypeMutable pos t1
+            return << CA.TypeUnique pos t1
 
-        CA.TypeAlias pos path t:
-            (normType t) >> andThen t1:
-            return << CA.TypeAlias pos path t1
 
 
 normName as Text: NormMonad Text =
