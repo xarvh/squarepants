@@ -84,7 +84,7 @@ alias TypeWithClasses = {
 alias Env = {
     , context as Context
     , constructors as Dict Meta.UniqueSymbolReference TypeWithClasses
-    , variables as Dict CA.Ref TypeWithClasses
+    , variables as Dict TA.Ref TypeWithClasses
     , tyvarsInParentAnnotations as Dict TA.UnificationVariableId TA.Type
 
     # This is used to give meaningfule errors?
@@ -183,7 +183,7 @@ linearizeCurriedParameters as TA.Type: [LambdaModifier & TA.Type]: [LambdaModifi
     type: accum:
 
     try type as
-        CA.TypeFunction pos from modifier to:
+        TA.TypeFunction pos from modifier to:
             linearizeCurriedParameters to << (modifier & from) :: accum
 
         _:
@@ -878,7 +878,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
     typedReference & referenceType =
         inferExpression env reference @state
 
-    typedArgumentsAndArgumentTypes as [TA.Argument TA.Type & TA.Type] =
+    typedArgumentsAndArgumentTypes as [TA.Argument & TA.Type] =
         givenArgs >> List.map arg:
             inferArgument env arg @state
 
@@ -905,7 +905,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
             None
 
         list_eachWithIndex2 0 referenceArgs typedArgumentsAndArgumentTypes index: (refMod & refType): (tyArg & argTy):
-            addEquality env (Why_Argument index) (canonicalToUnificationType env refType) argTy @state
+            addEquality env (Why_Argument index) refType argTy @state
 
         TA.CallCo pos typedReference typedArgumentsAndArgumentTypes
 
@@ -935,13 +935,13 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
     env: arg: state@:
 
     try arg as
-        ArgumentExpression exp:
+        CA.ArgumentExpression exp:
             typedExp & expType =
                 inferExpression env exp @state
 
-            ArgumentExpression typedExp & expType
+            TA.ArgumentExpression typedExp & expType
 
-        ArgumentRecycle pos attrPath ref:
+        CA.ArgumentRecycle pos attrPath ref:
             type =
                 try getVariableByRef ref env as
 
@@ -953,7 +953,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
                         todo "apply attrPath"
                         var.type
 
-            ArgumentRecycle pos attrPath ref & type
+            TA.ArgumentRecycle pos attrPath ref & type
 
 
 #
@@ -1004,7 +1004,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
 
                     Just name:
                         # We don't check for duplicate var names / shadowig here, it's MakeCanonical's responsibility
-                        { env with variables = Dict.insert (RefLocal name) { type = patternType, tyvars = todo "???" } .variables }
+                        { env with variables = Dict.insert (CA.RefLocal name) { type = patternType, tyvars = todo "???" } .variables }
 
             typedPattern =
                 TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
