@@ -200,7 +200,7 @@ typeTyvars as Type: Dict Name Pos =
 
     fromList as [Type]: Dict Name Pos =
         list:
-        List.for list (item: acc: Dict.join acc (typeTyvars arg)) Dict.empty
+        List.for list (item: acc: Dict.join acc (typeTyvars item)) Dict.empty
 
     try ty as
         TypeOpaque _ _ args: fromList args
@@ -239,7 +239,7 @@ patternTyvars as Pattern: Dict Name Pos =
         PatternLiteralText _ _: Dict.empty
         PatternLiteralNumber _ _: Dict.empty
         PatternConstructor _ _ args: List.for args (arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
-        PatternRecord _ attrs: Dict.for args (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
+        PatternRecord _ attrs: Dict.for attrs (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
 
 
 patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotation as Maybe Type } =

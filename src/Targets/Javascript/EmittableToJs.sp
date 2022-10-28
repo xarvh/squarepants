@@ -4,7 +4,6 @@
 #
 
 alias Env = {
-    , mutables as Set JA.Name
     , errorEnv as Error.Env
     , overrides as Dict EA.Name Override
     }
@@ -175,13 +174,6 @@ translateVariable as Env: Name: [Name]: [EA.Expression & Bool]: JA.Expr =
             >> accessAttrs attrPath
 
         Nothing:
-            if Set.member valueName env.mutables then
-                JA.Var valueName
-                >> unwrapMutable
-                >> accessAttrs attrPath
-                >> clone
-
-            else
                 JA.Var valueName
                 >> accessAttrs attrPath
                 >> wrapCalls env eaArgs
@@ -445,16 +437,9 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                 [ translateArg { nativeBinop = False } env arg ]
             >> Inline
 
-        EA.LetIn { maybeName, isMutable, letExpression, inExpression }:
-            localEnv =
-                try maybeName & isMutable as
-                    Just name & True:
-                        { env with mutables = Set.insert name .mutables }
-                    _:
-                        env
-
+        EA.LetIn { maybeName, letExpression, inExpression }:
             inStatements =
-                try translateExpression localEnv inExpression as
+                try translateExpression env inExpression as
                     Block stats: stats
                     Inline jaExpression: [JA.Return jaExpression]
 
@@ -471,30 +456,20 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                     letStatement =
                         letExpression
                         >> translateExpressionToExpression env
-                        #>> maybeCloneMutable mutability
-                        >> wrapMutable isMutable
                         >> JA.Define name
 
                     Block << letStatement :: inStatements
 
 
-        EA.Lambda (maybeName & isMutable) body:
+        EA.Lambda maybeName body:
 
             args =
                 try maybeName as
                     Just name: [ name ]
                     Nothing: []
 
-            # TODO these two defs are the same as for the LetIn, would be nice to have them in a function
-            localEnv =
-                try maybeName & isMutable as
-                    Just name & True:
-                        { env with mutables = Set.insert name .mutables }
-                    _:
-                        env
-
             statements as [JA.Statement] =
-                try translateExpression localEnv body as
+                try translateExpression env body as
                     Inline expr: [JA.Return expr]
                     Block block: block
 
@@ -670,7 +645,6 @@ translateAll as Compiler/MakeEmittable.State@: TranslateAllPars: [JA.Statement] 
         List.map (translateConstructor @emState) caConstructors
 
     env as Env = {
-      , mutables = Set.empty
       , errorEnv
       , overrides = coreOverrides @emState >> List.for platformOverrides (usr & runtimeName):
           Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName)

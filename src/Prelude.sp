@@ -33,7 +33,7 @@ tupleUsr as Text: Meta.UniqueSymbolReference =
 
 tyVar as Name: CA.CanonicalType =
     name:
-    CA.TypeVariable Pos.N name { allowFunctions = True, allowUniques = False }
+    CA.TypeAnnotationVariable Pos.N name
 
 
 tyFun as CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
@@ -239,7 +239,7 @@ mutableAdd as Op.Binop = {
     , symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop (CA.TypeMutable Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
+    , type = typeBinop (CA.TypeUnique Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
     , nonFn = []
     }
 
@@ -249,7 +249,7 @@ mutableSubtract as Op.Binop = {
     , symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop (CA.TypeMutable Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
+    , type = typeBinop (CA.TypeUnique Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
     , nonFn = []
     }
 
@@ -375,7 +375,7 @@ functions as [Function] = [
 
 mut as Function = {
     , usr = coreUsr "mut"
-    , type = tyFun (tyVar "a") (CA.TypeMutable Pos.N (tyVar "a"))
+    , type = tyFun (tyVar "a") (CA.TypeUnique Pos.N (tyVar "a"))
     , nonFn = [ "a" ]
     }
 
@@ -383,7 +383,7 @@ mut as Function = {
 # TODO remove this one, it's used only by the typecheck tests?
 reinit as Function = {
     , usr = coreUsr "reinit"
-    , type = tyFun (CA.TypeMutable Pos.N (tyVar "a")) (tyFun (tyVar "a") CoreTypes.none)
+    , type = tyFun (CA.TypeUnique Pos.N (tyVar "a")) (tyFun (tyVar "a") CoreTypes.none)
     , nonFn = [ "a" ]
     }
 
@@ -445,9 +445,8 @@ insertInModule as Meta.UniqueSymbolReference: CA.CanonicalType: [Name]: ModuleBy
         usr
 
     def as CA.ValueDef = {
-        , pattern = CA.PatternAny Pos.N False (Just name) (Just type)
+        , pattern = CA.PatternAny Pos.N { isUnique = False, maybeName = Just name, maybeAnnotation = Just type }
         , native = True
-        , parentDefinitions = []
         , body = CA.LiteralText Pos.N name
         #
         , directTypeDeps = Dict.empty
