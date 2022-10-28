@@ -135,26 +135,25 @@ consumeInEnv as Dict Name Pos: Env: Env =
 addPatternToEnv as CA.Pattern: Env: Set Name & Env =
     pattern: env:
 
-    mutabilityByName =
-        CA.patternMutabilityByName pattern
-
-
+    uniqueNames =
+        CA.patternNames pattern
+        >> Dict.filter name: stuff: stuff.isUnique
 
     blah =
-       name: (isMutable & pos):
+       name: stuff:
 
        mode =
-           if isMutable then Mutable Available else Immutable
+           if stuff.isUnique then Mutable Available else Immutable
 
-       Dict.insert name { definedAt = pos, name, mode }
+       Dict.insert name { definedAt = stuff.pos, name, mode }
 
 
     localEnv =
-        { env with variables = Dict.for mutabilityByName blah .variables }
+        { env with variables = Dict.for uniqueNames blah .variables }
 
     names =
-        Set.empty >> Dict.for mutabilityByName name: (isMutable & pos): set:
-            if isMutable then Set.insert name set else set
+        Set.empty >> Dict.for uniqueNames name: stuff: set:
+            if stuff.isUnique then Set.insert name set else set
 
     names & localEnv
 
@@ -242,7 +241,7 @@ doArgument as Env: State@: Pos: MCA: MCA =
             , argument = CA.ArgumentExpression expression
             }
 
-        CA.ArgumentMutable p1 { ref = CA.RefBlock name, attrPath = _ }:
+        CA.ArgumentRecycle p1 attrPath (CA.RefLocal name):
 
             # TODO https://github.com/xarvh/squarepants/projects/1#card-85087726
             x =
@@ -264,7 +263,7 @@ doArgument as Env: State@: Pos: MCA: MCA =
             , consumed = Dict.empty
             }
 
-        CA.ArgumentMutable _ _:
+        CA.ArgumentRecycle _ _ _:
             Debug.todo "TODO: Mutable args should not be able to reference globals!?"
 
 
@@ -282,10 +281,10 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
         CA.LiteralNumber pos l:
             re
 
-        CA.Variable pos { ref = CA.RefRoot _, attrPath }:
+        CA.Variable pos (CA.RefGlobal _):
             re
 
-        CA.Variable pos { ref = CA.RefBlock name, attrPath }:
+        CA.Variable pos (CA.RefLocal name):
             try Dict.get name env.variables as
                 Nothing:
                     errorUndefinedVariable pos name @state
@@ -400,7 +399,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
             allConsumed & finalExpression
 
 
-        CA.Try pos value patternsAndBlocks:
+        CA.Try pos { value, patternsAndExpressions }:
 
             consumedByValue & valueExpression =
                 doExpression env @state value
@@ -410,7 +409,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
             # Pass 1: collect all consumed
             consumedAndPatternsAndBlocks =
-                patternsAndBlocks >> List.map (pattern & block):
+                patternsAndExpressions >> List.map (pattern & block):
 
                     mutables_should_be_empty & localEnv =
                         addPatternToEnv pattern newEnv
@@ -436,15 +435,15 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
                     pattern & finalBlock
 
-            allConsumed & CA.Try pos valueExpression newPatternsAndBlocks
+            allConsumed & CA.Try pos { value = valueExpression, patternsAndExpressions = newPatternsAndBlocks }
 
 
         CA.Record pos maybeExtending attrValueByName:
 
             consumedByExt =
                 try maybeExtending as
-                    Just var:
-                        doExpression env @state (CA.Variable pos var)
+                    Just expr:
+                        doExpression env @state expr
                         >> Tuple.first
 
                     Nothing:

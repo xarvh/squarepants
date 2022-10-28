@@ -52,30 +52,28 @@ coreConstructors as CA.All CA.Constructor =
 expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.InstanceVariable: Res (ByUsr CA.InstanceVariable) =
     types: module:
 
-    insertName as CA.ValueDef: Name: (Pos & Maybe CA.Type): Dict Meta.UniqueSymbolReference CA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference CA.InstanceVariable) =
-        def: name: (pos & maybeType): d:
-        try maybeType as
+    insertName = #as CA.ValueDef: Name: (Pos & Maybe CA.Type): Dict Meta.UniqueSymbolReference CA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference CA.InstanceVariable) =
+        def: name: stuff: d:
+        { pos, isUnique, maybeAnnotation } = stuff
+        try maybeAnnotation as
             Nothing:
                 Ok d
 
             Just type:
 
-#                Compiler/ExpandTypes.expandAnnotation types rawType
-#                >> onOk type:
-
                 usr =
-                    name >> Meta.USR module.umr
+                    Meta.USR module.umr name
 
                 iv as CA.InstanceVariable = {
                     , definedAt = pos
                     , type = type
-                    , isUnique = False
+                    , isUnique
                     }
 
                 Ok << Dict.insert usr iv d
 
     Dict.forRes module.valueDefs _: def:
-        Dict.forRes (CA.patternNamedTypes def.pattern) (insertName def)
+        Dict.forRes (CA.patternNames def.pattern) (insertName def)
 
 
 coreVariables as ByUsr CA.InstanceVariable =

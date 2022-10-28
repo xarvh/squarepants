@@ -48,7 +48,7 @@ alias Env = {
     # This keeps track of values that are declared within the
     # scope of a function, so they don't need to be expanded with the module name.
     #
-    , nonRootValues as Dict Text Pos
+    , nonRootValues as Dict Text { pos as Pos, isUnique as Bool, maybeAnnotation as Maybe CA.Type }
     #
     # TODO This is used to tell the user that definitions must be in order
     #

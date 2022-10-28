@@ -242,43 +242,15 @@ patternTyvars as Pattern: Dict Name Pos =
         PatternRecord _ attrs: Dict.for args (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
 
 
-
-patternNames as Pattern: Dict Name Pos =
+patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotation as Maybe Type } =
     p:
     try p as
         PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
-        PatternAny pos { isUnique = _, maybeName = Just n, maybeAnnotation = _ }: Dict.singleton n pos
+        PatternAny pos { isUnique, maybeName = Just n, maybeAnnotation }: Dict.singleton n { pos, isUnique, maybeAnnotation }
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
         PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
-
-
-#patternMutabilityByName as Pattern: Dict Name (Bool & Pos) =
-#    p:
-#    try p as
-#        PatternAny pos _ Nothing _: Dict.empty
-#        PatternAny pos isMutable (Just n) _: Dict.singleton n (isMutable & pos)
-#        PatternLiteralNumber pos _: Dict.empty
-#        PatternLiteralText pos _: Dict.empty
-#        PatternConstructor pos path ps: List.for ps (x: x >> patternMutabilityByName >> Dict.join) Dict.empty
-#        PatternRecord pos ps: Dict.for ps (k: v: v >> patternMutabilityByName >> Dict.join) Dict.empty
-
-
-patternNamedTypes as Pattern: Dict Name (Pos & Maybe Type) =
-    p:
-    try p as
-        PatternAny _ { isUnique, maybeName = Nothing, maybeAnnotation }: Dict.empty
-        PatternAny pos { isUnique, maybeName = Just n, maybeAnnotation }: Dict.singleton n (pos & maybeType)
-        PatternLiteralText _ _: Dict.empty
-        PatternLiteralNumber _ _: Dict.empty
-        PatternConstructor _ _ ps: List.for ps (x: x >> patternNamedTypes >> Dict.join) Dict.empty
-        PatternRecord _ attrs: Dict.for attrs (n: p: p >> patternNamedTypes >> Dict.join) Dict.empty
-
-
-
-
-
 
 
 

@@ -279,10 +279,10 @@ variableIsCompatibleWith as Env: CA.CanonicalType: TA.Type: Bool =
             False
 
 
-canonicalToUnificationType as Env: CA.CanonicalType: TA.Type =
+typeCa2Ta as Env: CA.Type: TA.Type =
     env: ca:
 
-    ctu = canonicalToUnificationType env
+    ctu = typeCa2Ta env
 
     try ca as
        CA.TypeOpaque p usr args:
@@ -300,7 +300,7 @@ canonicalToUnificationType as Env: CA.CanonicalType: TA.Type =
        CA.TypeAnnotationVariable _ name:
           try Dict.get name env.annotatedTyvarToGeneratedTyvar as
               Nothing:
-                  todo "compiler error: canonicalToUnificationType: name not found"
+                  todo "compiler error: typeCa2Ta: name not found"
               Just tyvarId:
                   TA.TypeUnificationVariable tyvarId
 
@@ -355,7 +355,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     typedBody & bodyType =
         try patternOut.maybeFullAnnotation as
             Just annotationType:
-                # TODO Should I use patternOut.type or (canonicalToUnificationType annotationType)?
+                # TODO Should I use patternOut.type or (typeCa2Ta annotationType)?
                 checkExpression newEnv annotationType def.body @state & patternOut.patternType
             Nothing:
                 inferExpression newEnv def.body @state
@@ -387,11 +387,11 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
         # TODO would be nice to be able to say that from here on, `caExpression as Expression any`
         CA.LiteralNumber pos n:
-            TA.LiteralNumber pos n & CoreTypes.number
+            TA.LiteralNumber pos n & (typeCa2Ta env CoreTypes.number)
 
 
         CA.LiteralText pos text:
-            TA.LiteralText pos text & CoreTypes.text
+            TA.LiteralText pos text & (typeCa2Ta env CoreTypes.text)
 
 
         CA.Variable pos ref:
@@ -516,7 +516,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
         CA.If pos { condition, true, false }:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } (todo "CoreTypes.bool") condition @state
+                checkExpression { env with context = Context_IfCondition } CoreTypes.bool condition @state
 
             typedTrue & trueType =
                 inferExpression { env with context = Context_IfTrue } true @state
@@ -733,11 +733,11 @@ checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
 
 
         CA.Call pos reference argument & _:
-            checkCallCo env (canonicalToUnificationType env expectedType) pos reference [argument] @state
+            checkCallCo env (typeCa2Ta env expectedType) pos reference [argument] @state
 
 
         CA.CallCo pos reference args & _:
-            checkCallCo env (canonicalToUnificationType env expectedType) pos reference args @state
+            checkCallCo env (typeCa2Ta env expectedType) pos reference args @state
 
 
         CA.Record pos (Just ext) valueByName & CA.TypeRecord _ typeByName:
@@ -793,7 +793,7 @@ checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
 
             requiredType =
                 expectedType
-                >> canonicalToUnificationType env
+                >> typeCa2Ta env
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
 
@@ -816,7 +816,7 @@ checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
         CA.If pos { condition, true, false } & _:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } (todo "CoreTypes.bool") condition @state
+                checkExpression { env with context = Context_IfCondition } CoreTypes.bool condition @state
 
             typedTrue =
                 checkExpression { env with context = Context_IfTrue } expectedType true @state
@@ -985,7 +985,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
 
                     Just annotation:
                         t =
-                            canonicalToUnificationType env annotation
+                            typeCa2Ta env annotation
 
                         if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
                             addError env pos ErrorUniquenessDoesNotMatch @state
@@ -1020,18 +1020,18 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
         CA.PatternLiteralText pos text:
             {
             , typedPattern = TA.PatternLiteralText pos text
-            , patternType = todo "CoreTypes.text"
+            , patternType = typeCa2Ta env CoreTypes.text
             , env
-            , maybeFullAnnotation = todo "CoreTypes.text"
+            , maybeFullAnnotation = Just CoreTypes.text
             }
 
 
         CA.PatternLiteralNumber pos n:
             {
             , typedPattern = TA.PatternLiteralNumber pos n
-            , patternType = todo "CoreTypes.number"
+            , patternType = typeCa2Ta env CoreTypes.number
             , env
-            , maybeFullAnnotation = todo "CoreTypes.number"
+            , maybeFullAnnotation = Just CoreTypes.number
             }
 
 
@@ -1120,7 +1120,7 @@ checkPattern as Env: CA.CanonicalType: CA.Pattern: State@: TA.Pattern & Env =
     # TODO
     out = inferPattern env pattern @state
 
-    addEquality env Why_Todo out.patternType (canonicalToUnificationType env expectedType) @state
+    addEquality env Why_Todo out.patternType (typeCa2Ta env expectedType) @state
 
     out.typedPattern & out.env
 
