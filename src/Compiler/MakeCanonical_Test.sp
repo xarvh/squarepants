@@ -341,16 +341,14 @@ records as Test =
                 >> Test.isOkAndEqualTo
             )
         , codeTest "update shorthand"
-            "b = { a.k with y = .x }"
+            "b = { a with y = .x }"
             (firstEvaluation "b")
             (Dict.singleton "y"
                     (CA.RecordAccess p "x"
-                        (CA.RecordAccess p "k"
-                            (CA.Variable p (TH.rootLocal "a" ))
-                        )
+                        (CA.Variable p (TH.rootLocal "a" ))
                     )
                 >> CA.Record p
-                       (Just (CA.RecordAccess p "k" (CA.Variable p (TH.rootLocal "a"))))
+                       (Just (CA.Variable p (TH.rootLocal "a")))
                 >> Test.isOkAndEqualTo
             )
         , codeTest "annotation, extensible"
