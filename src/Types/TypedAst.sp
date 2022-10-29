@@ -129,8 +129,8 @@ initModule as Text: Meta.UniqueModuleReference: Module =
     {
     , umr
     , asText
-    , aliasDefs = Dict.empty
-    , unionDefs = Dict.empty
+#    , aliasDefs = Dict.empty
+#    , unionDefs = Dict.empty
     , valueDefs = Dict.empty
     }
 
@@ -140,11 +140,11 @@ initModule as Text: Meta.UniqueModuleReference: Module =
 #
 #
 
-skipLetIns as CA.Expression: CA.Expression =
-    expr:
-    try expr as
-        LetIn def e: skipLetIns e
-        _: expr
+#skipLetIns as Expression: Expression =
+#    expr:
+#    try expr as
+#        LetIn def e: skipLetIns e
+#        _: expr
 
 
 
@@ -158,12 +158,12 @@ skipLetIns as CA.Expression: CA.Expression =
 patternNames as Pattern: Dict Name Pos =
     p:
     try p as
-        PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
-        PatternAny pos { isUnique = _, maybeName = Just n, maybeAnnotation = _ }: Dict.singleton n pos
+        PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _, type = _ }: Dict.empty
+        PatternAny pos { isUnique = _, maybeName = Just n, maybeAnnotation = _, type = _ }: Dict.singleton n pos
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+        PatternRecord pos ps: Dict.for ps (k: (pa & ty): pa >> patternNames >> Dict.join) Dict.empty
 
 
 
@@ -182,8 +182,8 @@ alias InstanceVariable = {
 
 
 alias Globals = {
-    , types as CA.All CA.TypeDef
-    , constructors as CA.All (CA.Constructor)
-    , instanceVariables as ByUsr (InstanceVariable)
+#    , types as CA.All TypeDef
+    , constructors as CA.All Constructor
+    , instanceVariables as ByUsr InstanceVariable
     }
 
