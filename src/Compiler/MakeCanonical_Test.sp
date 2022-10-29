@@ -1,5 +1,4 @@
 
-[#
 
 params as Compiler/MakeCanonical.Params = {
     , meta = TH.meta
@@ -171,7 +170,7 @@ binops as Test =
             """
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
-                CA.Variable p { ref = CA.RefRoot (CoreTypes.makeUsr "-"), attrPath = [] }
+                CA.Variable p (CA.RefGlobal (CoreTypes.makeUsr "-"))
             )
         ]
 
@@ -194,15 +193,10 @@ lists as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = CA.Variable p { ref = TH.rootLocal "l", attrPath = [] }
+                { body = CA.Variable p (TH.rootLocal "l")
                 , native = False
-                , pattern =
-                    CA.PatternAny p False (Just "l")
-                        (TH.boolType
-                            >> CoreTypes.list
-                            >> Just
-                        )
-                , parentDefinitions = []
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "l", maybeAnnotation = (TH.boolType >> CoreTypes.list >> Just) }
+                , tyvars = Dict.empty
 
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
@@ -260,17 +254,20 @@ tuples as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = CA.Variable p { ref = TH.rootLocal "a", attrPath = [] }
+                { body = CA.Variable p (TH.rootLocal "a")
                 , pattern =
-                    CA.PatternAny p False (Just "a")
-                        (Dict.empty
+                    CA.PatternAny p {
+                      , isUnique = False
+                      , maybeName = Just "a"
+                      , maybeAnnotation =
+                         Dict.empty
                             >> Dict.insert "first" TH.numberType
                             >> Dict.insert "second" TH.numberType
                             >> CA.TypeRecord p
                             >> Just
-                        )
+                      }
                 , native = False
-                , parentDefinitions = []
+                , tyvars = Dict.empty
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
@@ -338,16 +335,22 @@ records as Test =
         , codeTest "functional update"
             "a = { m with b, c = 1 }"
             (firstEvaluation "a")
-            ([ ( "c" & CA.LiteralNumber p 1 ) , ( "b" & CA.Variable p { attrPath = [], ref = TH.rootLocal "b" } ) ]
+            ([ ( "c" & CA.LiteralNumber p 1 ) , ( "b" & CA.Variable p (TH.rootLocal "b") ) ]
                 >> Dict.fromList
-                >> CA.Record p (Just { attrPath = [], ref = TH.rootLocal "m" })
+                >> CA.Record p (Just (CA.Variable p (TH.rootLocal "m" )))
                 >> Test.isOkAndEqualTo
             )
         , codeTest "update shorthand"
             "b = { a.k with y = .x }"
             (firstEvaluation "b")
-            (Dict.singleton "y" (CA.Variable p { attrPath = [ "k", "x" ], ref = TH.rootLocal "a" })
-                >> CA.Record p (Just { attrPath = [ "k" ], ref = TH.rootLocal "a" })
+            (Dict.singleton "y"
+                    (CA.RecordAccess p "x"
+                        (CA.RecordAccess p "k"
+                            (CA.Variable p (TH.rootLocal "a" ))
+                        )
+                    )
+                >> CA.Record p
+                       (Just (CA.RecordAccess p "k" (CA.Variable p (TH.rootLocal "a"))))
                 >> Test.isOkAndEqualTo
             )
         , codeTest "annotation, extensible"
@@ -430,8 +433,8 @@ pipes as Test =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
                 CA.Call p
-                    (CA.Variable p { ref = TH.rootLocal "function", attrPath = [] })
-                    (CA.ArgumentExpression << CA.Variable p { ref = TH.rootLocal "thing", attrPath = [] })
+                    (CA.Variable p (TH.rootLocal "function"))
+                    (CA.ArgumentExpression << CA.Variable p (TH.rootLocal "thing"))
             )
         , codeTest "sendRight is inlined"
             """
@@ -440,8 +443,8 @@ pipes as Test =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo <<
                 CA.Call p
-                    (CA.Variable p { ref = TH.rootLocal "function", attrPath = [] })
-                    (CA.ArgumentExpression << CA.Variable p { ref = TH.rootLocal "thing", attrPath = [] })
+                    (CA.Variable p (TH.rootLocal "function"))
+                    (CA.ArgumentExpression << CA.Variable p (TH.rootLocal "thing"))
             )
         ]
 
@@ -502,8 +505,8 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 { body = CA.LiteralNumber p 1
                 , native = False
-                , pattern = CA.PatternAny p False (Just "funz") (Just << CA.TypeVariable p "0a" { allowFunctions = False, allowUniques = False })
-                , parentDefinitions = []
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.TypeAnnotationVariable p "0a" }
+                , tyvars = Dict.empty
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
@@ -511,4 +514,3 @@ nonFunction as Test =
             )
         ]
 
-#]
