@@ -505,8 +505,8 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 { body = CA.LiteralNumber p 1
                 , native = False
-                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.TypeAnnotationVariable p "0a" }
-                , tyvars = Dict.empty
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.TypeAnnotationVariable p "a" }
+                , tyvars = Dict.singleton "a" { allowFunctions = Just False, allowUniques = Just False }
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty

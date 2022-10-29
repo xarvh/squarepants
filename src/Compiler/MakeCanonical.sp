@@ -199,8 +199,8 @@ patternDeps as Pattern: Deps: Deps =
 
 
 expressionDeps as Expression: Deps: Deps =
-    expr: deps:
-    try expr as
+    expression: deps:
+    try expression as
         CA.LiteralNumber _ _:
             deps
 
