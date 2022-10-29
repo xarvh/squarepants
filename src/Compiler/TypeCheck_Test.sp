@@ -1,5 +1,4 @@
 
-[#
 
 tests as Test =
     Test.Group "TypeCheck" [
@@ -60,14 +59,14 @@ tyNone as CA.Type =
     TH.noneType
 
 
-ftv as Text: Dict Text CA.TyvarFlags =
+ftv as Text: Dict Text CA.TypeClasses =
     n:
-    Dict.singleton n { allowFunctions = True, allowUniques = False }
+    Dict.singleton n { allowFunctions = Just True, allowUniques = Just False }
 
 
-forall as List Text: Dict Text CA.TyvarFlags =
+forall as List Text: Dict Text CA.TypeClasses =
     vars:
-    List.for vars (n: Dict.insert n { allowFunctions = True, allowUniques = False }) Dict.empty
+    List.for vars (n: Dict.insert n { allowFunctions = Just True, allowUniques = Just False }) Dict.empty
 
 
 
@@ -84,11 +83,7 @@ typeFunction as CA.Type: LambdaModifier: CA.Type: CA.Type =
 
 typeVariable as Name: CA.Type =
     name:
-    flags as CA.TyvarFlags = {
-        , allowFunctions = True
-        , allowUniques = False
-        }
-    CA.TypeVariable Pos.T name flags
+    CA.TypeAnnotationVariable Pos.T name
 
 
 #
@@ -100,7 +95,7 @@ alias Type =
 
 
 alias Out = {
-    , freeTypeVariables as Dict Text CA.TyvarFlags
+    , freeTypeVariables as Dict Text CA.TypeClasses
     , ty as Type
     , isMutable as Bool
     }
@@ -955,4 +950,3 @@ nonFunction as Test =
             (Test.errorContains [ "can't contain functions"])
         ]
 
-#]

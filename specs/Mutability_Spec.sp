@@ -34,7 +34,7 @@ valueTest as Text: (None: a): Test.CodeExpectation a: Test =
 codeTest =
     Test.codeTest Debug.toHuman
 
-check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module CA.CanonicalType) =
+check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module) =
     code:
 
     blah as Res (Compiler/TypeCheck.Env & CA.Module) =
@@ -58,26 +58,31 @@ check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module CA.CanonicalType)
 
         { types, constructors, instanceVariables } = expandedTypes
 
-        env as Compiler/TypeCheck.Env = {
-            , types
-            , constructors
-            , currentModule = TH.moduleUmr
-            , meta = TH.meta
-            , nonFreeTyvars = Dict.empty
-            , nonAnnotatedRecursives = Dict.empty
-            , instanceVariables = Dict.mapKeys CA.RefRoot instanceVariables
-            }
+#        env as Compiler/TypeCheck.Env = {
+#            , context as Context
+#            , constructors
+#            , variables as Dict TA.Ref TypeWithClasses
+#            , tyvarsInParentAnnotations = Dict.empty
+#
+#            # This is used to give meaningfule errors?
+#            , annotatedTyvarToGeneratedTyvar = Dict.empty
+#
+            #??????????????????/
+#            , types
+#            , constructors
+#            , currentModule = TH.moduleUmr
+#            , meta = TH.meta
+#            , nonFreeTyvars = Dict.empty
+#            , nonAnnotatedRecursives = Dict.empty
+#            , instanceVariables = Dict.mapKeys CA.RefGlobal instanceVariables
+#            }
 
-        Compiler/TypeCheck.fromModule env module
-        >> onOk typeCheckEnv:
-
-        Ok << typeCheckEnv & moduleWithDestroyIn
-
+        todo "Compiler/TypeCheck.fromModule env moduleWithDestroyIn"
 
     TH.resErrorToStrippedText code blah
 
 
-infer as Text: Text: Result Text { type as CA.UnificationType, freeTypeVariables as Dict Name CA.TypeClasses } =
+infer as Text: Text: Result Text { type as TA.Type, freeTypeVariables as Dict Name CA.TypeClasses } =
     varName: code:
 
     check code
@@ -86,7 +91,7 @@ infer as Text: Text: Result Text { type as CA.UnificationType, freeTypeVariables
     usr =
         Meta.USR typeCheckEnv.currentModule varName
 
-    try Dict.get (CA.RefRoot usr) typeCheckEnv.instanceVariables as
+    try Dict.get (CA.RefGlobal usr) typeCheckEnv.instanceVariables as
         Nothing:
             Err "Dict fail"
 
