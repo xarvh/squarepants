@@ -234,6 +234,9 @@ expressionDeps as Expression: Deps: Deps =
             deps
                 >> Dict.for exprByName (name: expressionDeps)
 
+        CA.RecordAccess _ _ e:
+            expressionDeps e deps
+
         CA.Call _ e0 a:
             deps
                 >> expressionDeps e0
