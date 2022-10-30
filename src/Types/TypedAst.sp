@@ -86,25 +86,6 @@ alias ValueDef = {
 # Module
 #
 
-#alias TypeDeps =
-#    Set Meta.UniqueSymbolReference
-#
-#alias AliasDef = {
-#    , usr as Meta.UniqueSymbolReference
-#    , args as [At Name]
-#    , type as Type
-#    #, directTypeDeps as TypeDeps
-#    }
-#
-#
-#alias UnionDef = {
-#    , usr as Meta.UniqueSymbolReference
-#    , args as [Name]
-#    , constructors as Dict Name (Constructor)
-#    #, directTypeDeps as TypeDeps
-#    }
-
-
 alias Constructor = {
     , pos as Pos
 
@@ -118,9 +99,7 @@ alias Constructor = {
 alias Module = {
     , umr as Meta.UniqueModuleReference
     , asText as Text
-#    , aliasDefs as Dict Name AliasDef
-#    , unionDefs as Dict Name (UnionDef)
-    , valueDefs as Dict Pattern ValueDef
+    , valueDefs as Dict CA.Pattern ValueDef
     }
 
 
@@ -129,24 +108,8 @@ initModule as Text: Meta.UniqueModuleReference: Module =
     {
     , umr
     , asText
-#    , aliasDefs = Dict.empty
-#    , unionDefs = Dict.empty
     , valueDefs = Dict.empty
     }
-
-
-
-#
-#
-#
-
-#skipLetIns as Expression: Expression =
-#    expr:
-#    try expr as
-#        LetIn def e: skipLetIns e
-#        _: expr
-
-
 
 
 

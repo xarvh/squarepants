@@ -1126,6 +1126,85 @@ checkPattern as Env: CA.CanonicalType: CA.Pattern: State@: TA.Pattern & Env =
 
 
 
+
+
+#
+#
+# Module
+#
+#
+insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.ValueDef]: [CA.ValueDef] & [CA.ValueDef] =
+    pa: def: (ann & nonAnn):
+
+    isFullyAnnotated =
+        pa
+        >> CA.patternNamedTypes
+        >> Dict.values
+        >> List.all (pos & maybeType): maybeType /= Nothing
+
+    if isFullyAnnotated then
+        (def :: ann) & nonAnn
+    else
+        ann & (def :: nonAnn)
+
+
+
+doModule as Env: CA.Module: State@: TA.Module =
+    env: caModule: state@:
+
+    Debug.benchStart None
+
+    annotated & nonAnnotated =
+        Dict.for module.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
+
+    try RefHierarchy.reorder (x: x.name) getValueRefs nonAnnotated as
+        Err circulars:
+            Debug.benchStop "type check"
+
+            # TODO test this error. Is it "circular" or "recursive"?
+            "These definitions call each other but don't have a type annotation: " .. Text.join ", " (circulars >> Set.fromList >> Set.toList)
+                >> Error.errorTodo
+
+        Ok orderedNonAnnotated:
+
+            allOrdered =
+                List.concat [ orderedNonAnnotated, annotated ]
+
+            state as State @=
+                initState
+
+            envF & typedValueDefs =
+                env & Dict.empty
+                >> List.for allOrdered def: (env0 & accum):
+                      env1 & typedDef =
+                          doDefinition env0 def @state
+
+                      env1 & Dict.insert def.pattern typedDef accum
+
+            Debug.benchStop "type check"
+
+            typedModule as TA.Module =
+                {
+                , umr = caModule.umr
+                , asText = caModule.asText
+                , valueDefs = typedValueDefs
+                }
+
+            if stateF.errors == [] then
+                Ok typedModule
+
+            else
+                stateF.errors
+                    >> Error.Nested
+                    >> Err
+
+
+
+
+
+
+
+
 #
 #
 # Equalities resolution

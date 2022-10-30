@@ -117,9 +117,9 @@ infer as Text: Text: Result Text Out =
         modules =
             Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
 
-        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
+        Compiler/Pipeline.globalExpandedTypes modules >> onOk globals:
 
-        { types, constructors, instanceVariables } = expandedTypes
+        { types, constructors, instanceVariables } = globals
 
         env as Compiler/TypeCheck.Env = {
             , types
