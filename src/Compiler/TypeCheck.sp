@@ -74,6 +74,13 @@ alias State = {
     , classesByTyvarId as Hash TA.UnificationVariableId CA.TypeClasses
     }
 
+initState as State = {
+    , equalities = Array.fromList []
+    , errors = Array.fromList []
+    , lastUnificationVarId = 0
+    , classesByTyvarId = Hash.empty
+    }
+
 
 alias TypeWithClasses = {
     , type as TA.Type
@@ -1138,9 +1145,9 @@ insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.V
 
     isFullyAnnotated =
         pa
-        >> CA.patternNamedTypes
+        >> CA.patternNames
         >> Dict.values
-        >> List.all (pos & maybeType): maybeType /= Nothing
+        >> List.all stuff: stuff.maybeAnnotation /= Nothing
 
     if isFullyAnnotated then
         (def :: ann) & nonAnn
@@ -1149,7 +1156,7 @@ insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.V
 
 
 
-doModule as Env: CA.Module: State@: TA.Module =
+doModule as Env: CA.Module: State@: Res TA.Module =
     env: caModule: state@:
 
     Debug.benchStart None
@@ -1162,8 +1169,8 @@ doModule as Env: CA.Module: State@: TA.Module =
             Debug.benchStop "type check"
 
             # TODO test this error. Is it "circular" or "recursive"?
-            "These definitions call each other but don't have a type annotation: " .. Text.join ", " (circulars >> Set.fromList >> Set.toList)
-                >> Error.errorTodo
+            Error.res (Pos.M "TODO get module path") errorEnv:
+                [ "These definitions call each other but don't have a type annotation: " .. Text.join ", " circulars ]
 
         Ok orderedNonAnnotated:
 
@@ -1173,13 +1180,13 @@ doModule as Env: CA.Module: State@: TA.Module =
             state as State @=
                 initState
 
-            envF & typedValueDefs =
-                env & Dict.empty
-                >> List.for allOrdered def: (env0 & accum):
-                      env1 & typedDef =
+            (typedValueDefs as Dict CA.Pattern TA.ValueDef) & (envF as Env) =
+                Dict.empty & env
+                >> List.for allOrdered def: (accum & env0):
+                      typedDef & env1 =
                           doDefinition env0 def @state
 
-                      env1 & Dict.insert def.pattern typedDef accum
+                      Dict.insert def.pattern typedDef accum & env1
 
             Debug.benchStop "type check"
 
@@ -1190,18 +1197,22 @@ doModule as Env: CA.Module: State@: TA.Module =
                 , valueDefs = typedValueDefs
                 }
 
-            if stateF.errors == [] then
+            errors =
+                Array.toList state.errors
+
+            if errors == [] then
                 Ok typedModule
 
             else
-                stateF.errors
-                    >> Error.Nested
-                    >> Err
+                errors
+                >> List.map (makeError env caModule)
+                >> Error.Nested
+                >> Err
 
 
-
-
-
+makeError as Env: CA.Module: (Pos & Context & Error_): Error =
+    env: caModule: (pos & context & error):
+    todo "makeError"
 
 
 
