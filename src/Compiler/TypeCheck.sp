@@ -101,6 +101,7 @@ alias Env = {
 
 
 union Error_ =
+    , ErrorCircular [CA.Pattern]
     , ErrorVariableNotFound CA.Ref
     , ErrorConstructorNotFound Meta.UniqueSymbolReference
     , ErrorNotCompatibleWithRecord
@@ -1156,58 +1157,70 @@ insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.V
 
 
 
-doModule as Env: CA.Module: State@: Res TA.Module =
-    env: caModule: state@:
+doModule as Env: CA.Module: Res TA.Module =
+    env: caModule:
 
     Debug.benchStart None
 
+    # state is per module
+    state as State @=
+        initState
+
     annotated & nonAnnotated =
-        Dict.for module.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
+        Dict.for caModule.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
 
-    try RefHierarchy.reorder (x: x.name) getValueRefs nonAnnotated as
-        Err circulars:
-            Debug.benchStop "type check"
+    if List.length nonAnnotated > 1 then
+      todo "Right now the compiler supports only one root-level non-annotated value per module. =("
+    else
+      None
 
-            # TODO test this error. Is it "circular" or "recursive"?
-            Error.res (Pos.M "TODO get module path") errorEnv:
-                [ "These definitions call each other but don't have a type annotation: " .. Text.join ", " circulars ]
+    [# TODO I can restore this once I remove the patterns from CanonicalAST
 
-        Ok orderedNonAnnotated:
+    nonAnnotatedBy??? as Dict CA.Pattern CA.ValueDef =
+        Dict.empty >> List.for nonAnnotated caDef: Dict.insert caDef.pattern caDef
 
-            allOrdered =
-                List.concat [ orderedNonAnnotated, annotated ]
+    circulars & orderedNonAnnotated =
+        RefHierarchy.reorder (d: d.directValueDeps) nonAnnotatedById
 
-            state as State @=
-                initState
+    List.each circulars c:
+        # TODO test this error. Is it "circular" or "recursive"?
+        addError env (Pos.M "TODO get module path") (ErrorCircular c) @state
 
-            (typedValueDefs as Dict CA.Pattern TA.ValueDef) & (envF as Env) =
-                Dict.empty & env
-                >> List.for allOrdered def: (accum & env0):
-                      typedDef & env1 =
-                          doDefinition env0 def @state
+    allOrdered =
+        List.concat [ orderedNonAnnotated, annotated ]
+    #]
 
-                      Dict.insert def.pattern typedDef accum & env1
+    allOrdered =
+        List.concat [ nonAnnotated, annotated ]
 
-            Debug.benchStop "type check"
+    (typedValueDefs as Dict CA.Pattern TA.ValueDef) & (envF as Env) =
+        Dict.empty & env
+        >> List.for allOrdered def: (accum & env0):
+              typedDef & env1 =
+                  doDefinition env0 def @state
 
-            typedModule as TA.Module =
-                {
-                , umr = caModule.umr
-                , asText = caModule.asText
-                , valueDefs = typedValueDefs
-                }
+              Dict.insert def.pattern typedDef accum & env1
 
-            errors =
-                Array.toList state.errors
+    typedModule as TA.Module =
+        {
+        , umr = caModule.umr
+        , asText = caModule.asText
+        , valueDefs = typedValueDefs
+        }
 
-            if errors == [] then
-                Ok typedModule
+    errors =
+        Array.toList state.errors
 
-            else
-                errors
-                >> List.map (makeError env caModule)
-                >> Error.Nested
-                >> Err
+    Debug.benchStop "type check"
+
+    if errors == [] then
+        Ok typedModule
+
+    else
+        errors
+        >> List.map (makeError env caModule)
+        >> Error.Nested
+        >> Err
 
 
 makeError as Env: CA.Module: (Pos & Context & Error_): Error =
