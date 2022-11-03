@@ -100,6 +100,7 @@ alias Module = {
     , umr as Meta.UniqueModuleReference
     , asText as Text
     , valueDefs as Dict CA.Pattern ValueDef
+    , resolvedTypes as Dict UnificationVariableId Type
     }
 
 

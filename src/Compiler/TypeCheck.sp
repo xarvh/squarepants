@@ -1193,6 +1193,9 @@ doModule as Env: CA.Module: Res TA.Module =
     allOrdered =
         List.concat [ nonAnnotated, annotated ]
 
+    #
+    # inference and check
+    #
     (typedValueDefs as Dict CA.Pattern TA.ValueDef) & (envF as Env) =
         Dict.empty & env
         >> List.for allOrdered def: (accum & env0):
@@ -1201,15 +1204,39 @@ doModule as Env: CA.Module: Res TA.Module =
 
               Dict.insert def.pattern typedDef accum & env1
 
+    #
+    # constraint resolution
+    #
+    erState0 =
+        {
+        , substitutions = Dict.empty
+        , errors = []
+        }
+
+    erStateF =
+        solveEqualities (Array.toList state.equalities) erState0
+
+
+    #
+    # packaging & closing
+    #
     typedModule as TA.Module =
         {
         , umr = caModule.umr
         , asText = caModule.asText
         , valueDefs = typedValueDefs
+        , resolvedTypes = erStateF.substitutions
         }
 
-    errors =
-        Array.toList state.errors
+    errors as [Error] =
+        [
+        , state.errors
+          >> Array.toList
+          >> List.map (makeInferenceAndCheckError env caModule)
+        , erStateF.errors
+          >> List.map (makeResolutionError env caModule)
+        ]
+        >> List.concat
 
     Debug.benchStop "type check"
 
@@ -1218,14 +1245,18 @@ doModule as Env: CA.Module: Res TA.Module =
 
     else
         errors
-        >> List.map (makeError env caModule)
         >> Error.Nested
         >> Err
 
 
-makeError as Env: CA.Module: (Pos & Context & Error_): Error =
+makeInferenceAndCheckError as Env: CA.Module: (Pos & Context & Error_): Error =
     env: caModule: (pos & context & error):
-    todo "makeError"
+    todo "makeInferenceAndCheckError"
+
+
+makeResolutionError as Env: CA.Module: (Why & Text): Error =
+    env: caModule: (why & message):
+    todo "makeReoslutionError"
 
 
 

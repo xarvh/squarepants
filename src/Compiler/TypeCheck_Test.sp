@@ -104,54 +104,58 @@ alias Out = {
 infer as Text: Text: Result Text Out =
     name: code:
 
-    tcEnvResult as Res Compiler/TypeCheck.Env =
-        params as Compiler/MakeCanonical.Params = {
-            , meta = TH.meta
-            , stripLocations = True
-            , source = TH.source
-            , name = TH.moduleName
-            }
+    params as Compiler/MakeCanonical.Params = {
+        , meta = TH.meta
+        , stripLocations = True
+        , source = TH.source
+        , name = TH.moduleName
+        }
 
-        Compiler/MakeCanonical.textToCanonicalModule params code >> onOk module:
+    Compiler/MakeCanonical.textToCanonicalModule params code
+    >> onOk caModule:
 
-        modules =
-            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
+    modules =
+        Dict.insert TH.moduleUmr caModule Prelude.coreModulesByUmr
 
-        Compiler/Pipeline.globalExpandedTypes modules >> onOk globals:
+    Compiler/Pipeline.globalExpandedTypes modules
+    >> onOk globals:
 
-        { types, constructors, instanceVariables } = globals
+    { types, constructors, instanceVariables } = globals
 
-        env as Compiler/TypeCheck.Env = {
-            , types
-            , constructors
-            , currentModule = TH.moduleUmr
-            , meta = TH.meta
-            , nonFreeTyvars = Dict.empty
-            , nonAnnotatedRecursives = Dict.empty
-            , instanceVariables =
-                instanceVariables
-                    >> Dict.insert
-                        (Meta.USR TH.moduleUmr "add")
-                        { definedAt = Pos.T
-                        , ty = function tyNumber (function tyNumber tyNumber)
-                        , freeTypeVariables = Dict.empty
-                        , isMutable = False
-                        }
-                    >> Dict.insert
-                        (Meta.USR TH.moduleUmr "reset")
-                        { definedAt = Pos.T
-                        , ty = typeFunction tyNumber LambdaNormal tyNone
-                        , freeTypeVariables = Dict.empty
-                        , isMutable = False
-                        }
-                    >> Dict.mapKeys CA.RefRoot
-            }
+    env as Compiler/TypeCheck.Env = {
+        , types
+        , constructors
+        , currentModule = TH.moduleUmr
+        , meta = TH.meta
+        , nonFreeTyvars = Dict.empty
+        , nonAnnotatedRecursives = Dict.empty
+        , instanceVariables =
+            instanceVariables
+                >> Dict.insert
+                    (Meta.USR TH.moduleUmr "add")
+                    { definedAt = Pos.T
+                    , ty = function tyNumber (function tyNumber tyNumber)
+                    , freeTypeVariables = Dict.empty
+                    , isMutable = False
+                    }
+                >> Dict.insert
+                    (Meta.USR TH.moduleUmr "reset")
+                    { definedAt = Pos.T
+                    , ty = typeFunction tyNumber LambdaNormal tyNone
+                    , freeTypeVariables = Dict.empty
+                    , isMutable = False
+                    }
+                >> Dict.mapKeys CA.RefRoot
+        }
 
-        Compiler/TypeCheck.fromModule env module
+    Compiler/TypeCheck.doModule env caModule
+    >> TH.resErrorToStrippedText code tcEnvResult
+    >> onOk taModule:
 
-    TH.resErrorToStrippedText code tcEnvResult >> onOk tcEnv:
+    #tcEnvResult as Res Compiler/TypeCheck.Env =
+    #>> onOk tcEnv:
 
-    try Dict.get (TH.rootLocal name) tcEnv.instanceVariables as
+    try Dict.get (TH.rootLocal name) taModule.valueDefs as
         Nothing:
             Err "dict fail"
 
