@@ -27,32 +27,32 @@
 #
 
 
-insertUnionConstructors as CA.TypeDef: CA.All CA.Constructor: CA.All CA.Constructor =
+insertUnionConstructors as CA.TypeDef: CA.All TA.Constructor: CA.All TA.Constructor =
     typeDef: constructors:
     try typeDef as
         CA.TypeDefAlias _:
             constructors
 
-        CA.TypeDefUnion def:
-            Meta.USR umr _ =
-                def.usr
-
-            Dict.for def.constructors (name: Dict.insert (Meta.USR umr name)) constructors
+#        CA.TypeDefUnion def:
+#            Meta.USR umr _ =
+#                def.usr
+#
+#            Dict.for def.constructors (name: Dict.insert (Meta.USR umr name)) constructors
 
 
 coreTypes as CA.All CA.TypeDef =
     List.for CoreTypes.allDefs (def: Dict.insert def.usr << CA.TypeDefUnion def) Dict.empty
 
 
-coreConstructors as CA.All CA.Constructor =
+coreConstructors as CA.All TA.Constructor =
     List.for CoreTypes.allDefs (u: insertUnionConstructors (CA.TypeDefUnion u)) Dict.empty
 
 
 # TODO we are not expanding the types any more
-expandAndInsertModuleAnnotations as CA.All CA.TypeDef: CA.Module: ByUsr CA.InstanceVariable: Res (ByUsr CA.InstanceVariable) =
-    types: module:
+insertModuleAnnotations as CA.Module: ByUsr TA.InstanceVariable: Res (ByUsr TA.InstanceVariable) =
+    module:
 
-    insertName = #as CA.ValueDef: Name: (Pos & Maybe CA.Type): Dict Meta.UniqueSymbolReference CA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference CA.InstanceVariable) =
+    insertName as CA.ValueDef: Name: (Pos & Maybe TA.Type): Dict Meta.UniqueSymbolReference TA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference TA.InstanceVariable) =
         def: name: stuff: d:
         { pos, isUnique, maybeAnnotation } = stuff
         try maybeAnnotation as
@@ -137,7 +137,7 @@ insertModuleTypes as CA.Module: CA.All CA.TypeDef: CA.All CA.TypeDef =
         >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
-globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals =
+globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res TA.Globals =
     allModules:
 
     types as CA.All CA.TypeDef =
@@ -152,7 +152,7 @@ globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res CA.Globals
 
     # populate root variable types
     coreVariables
-    >> Dict.forRes allModules (_: [# we're not really expanding anything #] expandAndInsertModuleAnnotations types)
+    >> Dict.forRes allModules (_: insertModuleAnnotations)
     >> onOk instanceVariables:
 
     Ok { types, constructors, instanceVariables }

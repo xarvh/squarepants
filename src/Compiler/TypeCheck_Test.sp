@@ -27,12 +27,13 @@ codeTest =
 
 outToHuman as Out: Text =
     out:
+    todo "outToHuman"
 
-    freeVars =
-        # TODO humanize these too
-        out.freeTypeVariables
-        >> Dict.toList
-        >> List.map (name & flags): name .. " " .. toHuman flags
+#    freeVars =
+#        # TODO humanize these too
+#        out.freeTypeVariables
+#        >> Dict.toList
+#        >> List.map (name & flags): name .. " " .. toHuman flags
 
 #    nf =
 #        freeVars
@@ -40,31 +41,31 @@ outToHuman as Out: Text =
 #            >> Dict.keys
 #            >> Text.join ", "
 
-    [
-    , "  freeTypeVariables = [ " .. Text.join ", " freeVars .. " ]"
+#    [
+#    , "  freeTypeVariables = [ " .. Text.join ", " freeVars .. " ]"
 #    , "  (NonFunction = [" .. nf .. "])"
-    , "  isMutable = " .. toHuman out.isMutable
-    , "  ty = " .. HCA.typeToText TH.moduleUmr TH.meta out.ty
-    , "  pos = " .. toHuman out.ty
-    ]
-        >> Text.join "\n"
+#    , "  isMutable = " .. toHuman out.isMutable
+#    , "  ty = " .. HCA.typeToText TH.moduleUmr TH.meta out.ty
+#    , "  pos = " .. toHuman out.ty
+#    ]
+#        >> Text.join "\n"
 
 
 
-tyNumber as CA.Type =
-    TH.numberType
+tyNumber as TA.Type =
+    TA.TypeOpaque Pos.T ("Number" >> Meta.spCoreUSR) []
 
 
-tyNone as CA.Type =
-    TH.noneType
+tyNone as TA.Type =
+    TA.TypeOpaque Pos.T ("None" >> Meta.spCoreUSR) []
 
 
-ftv as Text: Dict Text CA.TypeClasses =
+ftv as Text: Dict Text TA.TypeClasses =
     n:
     Dict.singleton n { allowFunctions = Just True, allowUniques = Just False }
 
 
-forall as List Text: Dict Text CA.TypeClasses =
+forall as List Text: Dict Text TA.TypeClasses =
     vars:
     List.for vars (n: Dict.insert n { allowFunctions = Just True, allowUniques = Just False }) Dict.empty
 
@@ -72,32 +73,28 @@ forall as List Text: Dict Text CA.TypeClasses =
 
 #TODO merge these two
 
-function as CA.Type: CA.Type: CA.Type =
+function as TA.Type: TA.Type: TA.Type =
     from: to:
-    CA.TypeFunction Pos.T from LambdaNormal to
+    TA.TypeFunction Pos.T from LambdaNormal to
 
 
-typeFunction as CA.Type: LambdaModifier: CA.Type: CA.Type =
-    CA.TypeFunction Pos.T
+typeFunction as TA.Type: LambdaModifier: TA.Type: TA.Type =
+    TA.TypeFunction Pos.T
 
 
-typeVariable as Name: CA.Type =
-    name:
-    CA.TypeAnnotationVariable Pos.T name
+#typeVariable as Name: TA.Type =
+#    name:
+#    TA.TypeAnnotationVariable Pos.T name
 
 
 #
 #
 #
-
-alias Type =
-    CA.Type
 
 
 alias Out = {
-    , freeTypeVariables as Dict Text CA.TypeClasses
-    , ty as Type
-    , isMutable as Bool
+    , tyvars as Dict Text TA.TypeClasses
+    , type as TA.Type
     }
 
 
@@ -112,62 +109,86 @@ infer as Text: Text: Result Text Out =
         }
 
     Compiler/MakeCanonical.textToCanonicalModule params code
+    >> TH.resErrorToStrippedText code
     >> onOk caModule:
 
-    modules =
+    modulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
         Dict.insert TH.moduleUmr caModule Prelude.coreModulesByUmr
 
-    Compiler/Pipeline.globalExpandedTypes modules
-    >> onOk globals:
+    Compiler/Pipeline.globalExpandedTypes modulesByUmr
+    >> TH.resErrorToStrippedText code
+    >> onOk globals_:
 
-    { types, constructors, instanceVariables } = globals
+    globals as TA.Globals =
+        globals_
+
+    { [#types,#] constructors, instanceVariables } = globals
 
     env as Compiler/TypeCheck.Env = {
-        , types
-        , constructors
-        , currentModule = TH.moduleUmr
-        , meta = TH.meta
-        , nonFreeTyvars = Dict.empty
-        , nonAnnotatedRecursives = Dict.empty
-        , instanceVariables =
-            instanceVariables
-                >> Dict.insert
-                    (Meta.USR TH.moduleUmr "add")
-                    { definedAt = Pos.T
-                    , ty = function tyNumber (function tyNumber tyNumber)
-                    , freeTypeVariables = Dict.empty
-                    , isMutable = False
-                    }
-                >> Dict.insert
-                    (Meta.USR TH.moduleUmr "reset")
-                    { definedAt = Pos.T
-                    , ty = typeFunction tyNumber LambdaNormal tyNone
-                    , freeTypeVariables = Dict.empty
-                    , isMutable = False
-                    }
-                >> Dict.mapKeys CA.RefRoot
+        , context = Compiler/TypeCheck.Context_Module TH.moduleUmr
+        #, types
+        , constructors = todo "constructors"
+#        , currentModule =
+#        , meta = TH.meta
+#        , nonFreeTyvars = Dict.empty
+#        , nonAnnotatedRecursives = Dict.empty
+        , variables =
+            todo "instanceVariables"
+#                >> Dict.insert
+#                    (Meta.USR TH.moduleUmr "add")
+#                    { definedAt = Pos.T
+#                    , type = function tyNumber (function tyNumber tyNumber)
+#                    , tyvars = Dict.empty
+#                    , isUnique = False
+#                    }
+#                >> Dict.insert
+#                    (Meta.USR TH.moduleUmr "reset")
+#                    { definedAt = Pos.T
+#                    , type = typeFunction tyNumber LambdaNormal tyNone
+#                    , tyvars = Dict.empty
+#                    , isUnique = False
+#                    }
+#                >> Dict.mapKeys CA.RefGlobal
+        , tyvarsInParentAnnotations = Dict.empty
+        , annotatedTyvarToGeneratedTyvar = Dict.empty
         }
 
     Compiler/TypeCheck.doModule env caModule
-    >> TH.resErrorToStrippedText code tcEnvResult
+    >> TH.resErrorToStrippedText code
     >> onOk taModule:
 
-    #tcEnvResult as Res Compiler/TypeCheck.Env =
-    #>> onOk tcEnv:
+    toMatch =
+        (pattern & def):
+        try pattern as
+            CA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName = Just name }:
+                Just { isUnique, maybeAnnotation, def }
+            _:
+                Nothing
 
-    try Dict.get (TH.rootLocal name) taModule.valueDefs as
-        Nothing:
+    matches =
+        taModule.valueDefs
+        >> Dict.toList
+        >> List.filterMap toMatch
+
+    try matches as
+        []:
             Err "dict fail"
 
-        Just var:
-            ty & tyvars =
-                HCA.normalizeTypeAndTyvars var.ty var.freeTypeVariables
+        { isUnique, maybeAnnotation, def } :: tail:
+            try def.pattern as
 
-            Ok
-                { ty
-                , freeTypeVariables = var.freeTypeVariables
-                , isMutable = var.isMutable
-                }
+#                ty & tyvars =
+#                    HCA.normalizeTypeAndTyvars var.ty var.freeTypeVariables
+
+                TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
+                    {
+                    , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
+                    , tyvars = def.tyvars
+                    }
+                    >> Ok
+
+                _:
+                    Err "pattern fail"
 
 
 #
@@ -177,15 +198,17 @@ infer as Text: Text: Result Text Out =
 
 functions as Test =
     Test.Group "functions"
-        [ codeTest "Known function with correct params"
+        [
+        , codeTest "Known function with correct params"
             "a = add 3 1"
             (infer "a")
             (Test.isOkAndEqualTo
-                { ty = tyNumber
-                , freeTypeVariables = Dict.empty
-                , isMutable = False
+                { type = tyNumber
+                , tyvars = Dict.empty
                 }
             )
+        ]
+        [#
         , codeTest "Known function with wrong params"
             "a = add False"
             (infer "a")
@@ -237,7 +260,7 @@ functions as Test =
             """
             (infer "f")
             (Test.errorContains [])
-        ]
+        #]
 
 
 
@@ -248,6 +271,8 @@ functions as Test =
 
 statements as Test =
     Test.Group "statements"
+        []
+        [#
         [ codeTest
             """
             Statement blocks should return the last statement's type
@@ -323,6 +348,7 @@ statements as Test =
             (infer "x")
             (Test.errorContains [])
         ]
+        #]
 
 
 
@@ -333,6 +359,8 @@ statements as Test =
 
 variableTypes as Test =
     Test.Group "Variable types"
+        []
+        [#
         [ codeTest
             "Identity"
             """
@@ -358,7 +386,7 @@ variableTypes as Test =
             """
             (infer "r")
             Test.isOk
-        ]
+        #]
 
 
 mu as Test =
@@ -485,7 +513,9 @@ mu as Test =
 
 
 higherOrderTypes as Test =
-    Test.Group "higher order types" [
+    Test.Group "higher order types"
+        []
+        [#
         , codeTest
             "ONLY Parse precedence"
             """
@@ -569,7 +599,7 @@ higherOrderTypes as Test =
             """
             (infer "f")
             (Test.errorContains [ "Wrap"])
-        ]
+        #]
 
 
 
@@ -580,7 +610,8 @@ higherOrderTypes as Test =
 
 records as Test =
     Test.Group "Records"
-        [
+        []
+        [#
         , codeTest "Attribute access"
             """
             a = b: b.meh.blah
@@ -738,7 +769,7 @@ records as Test =
             """
             (infer "rec")
             Test.isOk
-        ]
+        #]
 
 
 
@@ -749,6 +780,8 @@ records as Test =
 
 patterns as Test =
     Test.Group "Patterns"
+        []
+        [#
         [ codeTest "List unpacking"
             """
             x = q:
@@ -828,6 +861,7 @@ patterns as Test =
             #
             Test.isOk
         ]
+        #]
 
 
 
@@ -838,7 +872,8 @@ patterns as Test =
 
 try_as as Test =
     Test.Group "try..as"
-        [ codeTest "basic functionality"
+        []
+        [# codeTest "basic functionality"
             """
             x = q:
                 try q as
@@ -882,7 +917,7 @@ try_as as Test =
             """
             (infer "x")
             (Test.errorContains [ "y" ])
-        ]
+        #]
 
 
 
@@ -893,7 +928,8 @@ try_as as Test =
 
 if_else as Test = 
     Test.Group "if..else"
-        [ codeTest "basic functionality"
+        []
+        [# codeTest "basic functionality"
             """
             x = q:
               if q then 1
@@ -926,7 +962,7 @@ if_else as Test =
             """
             (infer "x")
             (Test.errorContains [ "Number"])
-        ]
+        #]
 
 
 
@@ -937,7 +973,8 @@ if_else as Test =
 
 nonFunction as Test =
     Test.Group "NonFunction"
-        [
+        []
+        [#
         codeTest
             """
             Basic functionality
@@ -952,5 +989,5 @@ nonFunction as Test =
             """
             (infer "meh")
             (Test.errorContains [ "can't contain functions"])
-        ]
+        #]
 

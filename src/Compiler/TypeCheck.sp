@@ -1225,7 +1225,7 @@ doModule as Env: CA.Module: Res TA.Module =
         , umr = caModule.umr
         , asText = caModule.asText
         , valueDefs = typedValueDefs
-        , resolvedTypes = erStateF.substitutions
+        , substitutions = erStateF.substitutions
         }
 
     errors as [Error] =
@@ -1247,6 +1247,11 @@ doModule as Env: CA.Module: Res TA.Module =
         errors
         >> Error.Nested
         >> Err
+
+
+applyAllSubstitutions as Dict TA.UnificationVariableId TA.Type: TA.Type: TA.Type =
+    subs:
+    Dict.for subs applySubstitutionToType
 
 
 makeInferenceAndCheckError as Env: CA.Module: (Pos & Context & Error_): Error =

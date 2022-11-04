@@ -247,7 +247,7 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 
 
 
-typeCheckModule as Meta: CA.Globals: CA.Module: Res TA.Module =
+typeCheckModule as Meta: TA.Globals: CA.Module: Res TA.Module =
     meta: globals: module:
 
     # TODO move in Compiler/TypeCheck
@@ -422,7 +422,7 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    x as Res CA.Globals =
+    x as Res TA.Globals =
         Compiler/Pipeline.globalExpandedTypes modules
 
     x >> onResSuccess eenv globals:
@@ -439,7 +439,7 @@ compileMain as CompileMainPars: IO Int =
 
     log "Type checking..." ""
 
-    g as CA.Globals = globals
+    g as TA.Globals = globals
 
     modulesWithDestruction
     >> List.map (m: typeCheckModule meta g m >> resToIo eenv)
