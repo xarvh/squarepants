@@ -122,7 +122,7 @@ infer as Text: Text: Result Text Out =
     globals as TA.Globals =
         globals_
 
-    { [#types,#] constructors, instanceVariables } = globals
+    { types, constructors, instanceVariables } = globals
 
     env as Compiler/TypeCheck.Env = {
         , context = Compiler/TypeCheck.Context_Module TH.moduleUmr

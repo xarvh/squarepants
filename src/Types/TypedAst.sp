@@ -71,7 +71,8 @@ alias TypeClasses = {
     }
 
 
-alias ValueDef = {
+alias ValueDef =
+    {
     , pattern as Pattern
     , native as Bool
     , body as Expression
@@ -86,7 +87,8 @@ alias ValueDef = {
 # Module
 #
 
-alias Constructor = {
+alias Constructor =
+    {
     , pos as Pos
 
     # type and args are redundant
@@ -96,7 +98,8 @@ alias Constructor = {
     }
 
 
-alias Module = {
+alias Module =
+    {
     , umr as Meta.UniqueModuleReference
     , asText as Text
     , valueDefs as Dict CA.Pattern ValueDef
@@ -137,17 +140,40 @@ patternNames as Pattern: Dict Name Pos =
 
 alias InstanceVariable = {
     , definedAt as Pos
-    # TODO: ty -> type
-    , ty as Type
-    , freeTypeVariables as Dict Name TypeClasses
-    # TODO: isMutable -> isUnique
-    , isMutable as Bool
+    , type as Type
+    , tyvars as Dict Name TypeClasses
+    , isUnique as Bool
     }
 
 
 alias Globals = {
-#    , types as CA.All TypeDef
+    , types as CA.All TypeDef
     , constructors as CA.All Constructor
     , instanceVariables as ByUsr InstanceVariable
+    }
+
+
+
+#
+# ....?
+#
+union TypeDef =
+    , TypeDefAlias AliasDef
+    , TypeDefUnion UnionDef
+
+
+alias AliasDef = {
+    , usr as Meta.UniqueSymbolReference
+    , args as [At Name]
+    , type as Type
+    #, directTypeDeps as TypeDeps
+    }
+
+
+alias UnionDef = {
+    , usr as Meta.UniqueSymbolReference
+    , args as [Name]
+    , constructors as Dict Name Constructor
+    #, directTypeDeps as TypeDeps
     }
 

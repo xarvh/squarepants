@@ -27,10 +27,10 @@
 #
 
 
-insertUnionConstructors as CA.TypeDef: CA.All TA.Constructor: CA.All TA.Constructor =
+insertUnionConstructors as TA.TypeDef: CA.All TA.Constructor: CA.All TA.Constructor =
     typeDef: constructors:
     try typeDef as
-        CA.TypeDefAlias _:
+        TA.TypeDefAlias _:
             constructors
 
 #        CA.TypeDefUnion def:
@@ -40,19 +40,19 @@ insertUnionConstructors as CA.TypeDef: CA.All TA.Constructor: CA.All TA.Construc
 #            Dict.for def.constructors (name: Dict.insert (Meta.USR umr name)) constructors
 
 
-coreTypes as CA.All CA.TypeDef =
-    List.for CoreTypes.allDefs (def: Dict.insert def.usr << CA.TypeDefUnion def) Dict.empty
+coreTypes as CA.All TA.TypeDef =
+    List.for CoreTypes.allDefs (def: todo "Dict.insert def.usr << CA.TypeDefUnion def") Dict.empty
 
 
 coreConstructors as CA.All TA.Constructor =
-    List.for CoreTypes.allDefs (u: insertUnionConstructors (CA.TypeDefUnion u)) Dict.empty
+    List.for CoreTypes.allDefs (u: todo "insertUnionConstructors (CA.TypeDefUnion u)") Dict.empty
 
 
 # TODO we are not expanding the types any more
 insertModuleAnnotations as CA.Module: ByUsr TA.InstanceVariable: Res (ByUsr TA.InstanceVariable) =
-    module:
+    caModule:
 
-    insertName as CA.ValueDef: Name: (Pos & Maybe TA.Type): Dict Meta.UniqueSymbolReference TA.InstanceVariable: Res (Dict Meta.UniqueSymbolReference TA.InstanceVariable) =
+    insertName as CA.ValueDef: Name: { isUnique as Bool, maybeAnnotation as Maybe CA.Type, pos as Pos }: CA.All TA.InstanceVariable: Res (CA.All TA.InstanceVariable) =
         def: name: stuff: d:
         { pos, isUnique, maybeAnnotation } = stuff
         try maybeAnnotation as
@@ -62,64 +62,68 @@ insertModuleAnnotations as CA.Module: ByUsr TA.InstanceVariable: Res (ByUsr TA.I
             Just type:
 
                 usr =
-                    Meta.USR module.umr name
+                    Meta.USR caModule.umr name
 
-                iv as CA.InstanceVariable = {
+                iv as TA.InstanceVariable = {
                     , definedAt = pos
-                    , type = type
+                    , type = todo "type"
+                    , tyvars = Dict.empty
                     , isUnique
                     }
 
                 Ok << Dict.insert usr iv d
 
-    Dict.forRes module.valueDefs _: def:
-        Dict.forRes (CA.patternNames def.pattern) (insertName def)
+    Dict.forRes caModule.valueDefs _: caDef:
+        Dict.forRes (CA.patternNames caDef.pattern) (insertName caDef)
 
 
-coreVariables as ByUsr CA.InstanceVariable =
+coreVariables as ByUsr TA.InstanceVariable =
 
-    insertUnop as Op.Unop: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
+    insertUnop as Op.Unop: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
         unop:
 
         usr =
             Meta.spCoreUSR unop.symbol
 
-        iv as CA.InstanceVariable = {
+        iv as TA.InstanceVariable = {
             , definedAt = Pos.N
-            , type = unop.type
+            , type = todo "unop.type"
             , isUnique = False
+                    , tyvars = Dict.empty
             }
 
         Dict.insert usr iv
 
-    insertBinop as Text: Op.Binop: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
+    insertBinop as Text: Op.Binop: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
         symbol: binop:
 
         usr =
             Meta.spCoreUSR symbol
 
-        iv as CA.InstanceVariable = {
+        iv as TA.InstanceVariable = {
             , definedAt = Pos.N
-            , type = binop.type
+            , type = todo "binop.type"
             , isUnique = False
+                    , tyvars = Dict.empty
             }
 
         Dict.insert usr iv
 
-    insertCoreFunction as Prelude.Function: ByUsr CA.InstanceVariable: ByUsr CA.InstanceVariable =
+    insertCoreFunction as Prelude.Function: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
         coreFn:
 
-        iv as CA.InstanceVariable = {
+        iv as TA.InstanceVariable = {
             , definedAt = Pos.N
-            , type = coreFn.type
+            , type = todo "coreFn.type"
             , isUnique = False
+                    , tyvars = Dict.empty
             }
 
         Dict.insert coreFn.usr iv
 
     Dict.empty
-        >> insertUnop Prelude.unaryPlus
-        >> insertUnop Prelude.unaryMinus
+#        >> insertUnop Prelude.unaryPlus
+#        >> insertUnop Prelude.unaryMinus
         >> Dict.for Prelude.binopsBySymbol insertBinop
         >> List.for Prelude.functions insertCoreFunction
 
@@ -130,24 +134,25 @@ coreVariables as ByUsr CA.InstanceVariable =
 # Was "Alias expansion and basic type validation"
 # Not sure what's the point now, but the whole Pipeline module will be rewritten so whatever
 #
-insertModuleTypes as CA.Module: CA.All CA.TypeDef: CA.All CA.TypeDef =
+insertModuleTypes as CA.Module: CA.All TA.TypeDef: CA.All TA.TypeDef =
     module: allTypes:
-    allTypes
-        >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
-        >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
+    todo "!!!!!!!!"
+#    allTypes
+#        >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
+#        >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
 globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res TA.Globals =
     allModules:
 
-    types as CA.All CA.TypeDef =
+    types as CA.All TA.TypeDef =
         coreTypes
         # Collect types from all modules
         >> Dict.for allModules (_: insertModuleTypes)
 
     # populate constructors dict
     # (constructors in types are already expanded)
-    constructors =
+    constructors as CA.All TA.Constructor =
         Dict.for types (_: insertUnionConstructors) coreConstructors
 
     # populate root variable types
