@@ -27,32 +27,51 @@
 #
 
 
-insertUnionConstructors as TA.TypeDef: CA.All TA.Constructor: CA.All TA.Constructor =
-    typeDef: constructors:
-    try typeDef as
-        TA.TypeDefAlias _:
-            constructors
-
-#        CA.TypeDefUnion def:
-#            Meta.USR umr _ =
-#                def.usr
-#
-#            Dict.for def.constructors (name: Dict.insert (Meta.USR umr name)) constructors
+constructorCaToTa as CA.Constructor: TA.Constructor =
+  todo ""
 
 
-coreTypes as CA.All TA.TypeDef =
-    List.for CoreTypes.allDefs (def: todo "Dict.insert def.usr << CA.TypeDefUnion def") Dict.empty
+# TODO break this function in two?
+insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor): (ByUsr TA.TypeDef & ByUsr TA.Constructor) =
+    caDef: (typesDict & consDict):
+
+    taConstructors as ByUsr TA.Constructor =
+        consDict
+        >> Dict.for caDef.constructors name: caCons:
+            Meta.USR umr _ =
+                caCons.typeUsr
+
+            {
+            , pos = caCons.pos
+            , typeUsr = caCons.usr
+            , type = todo "caCons.type"
+            }
+            >> Dict.insert (Meta.USR umr name)
+
+    taDef as TA.TypeDef =
+        {
+        , usr = caDef.usr
+        , args = caDef.args
+        #, constructors = taConstructors
+        }
+        >> TA.TypeDefUnion
+
+    Dict.insert caDef.usr taDef typesDict & Dict.join taConstructors consDict
 
 
-coreConstructors as CA.All TA.Constructor =
-    List.for CoreTypes.allDefs (u: todo "insertUnionConstructors (CA.TypeDefUnion u)") Dict.empty
+
+(coreTypes as ByUsr TA.TypeDef) & (coreConstructors as ByUsr TA.Constructor) =
+    Dict.empty & Dict.empty
+    >> List.for CoreTypes.allDefs insertCaUnionType
+
+
 
 
 # TODO we are not expanding the types any more
 insertModuleAnnotations as CA.Module: ByUsr TA.InstanceVariable: Res (ByUsr TA.InstanceVariable) =
     caModule:
 
-    insertName as CA.ValueDef: Name: { isUnique as Bool, maybeAnnotation as Maybe CA.Type, pos as Pos }: CA.All TA.InstanceVariable: Res (CA.All TA.InstanceVariable) =
+    insertName as CA.ValueDef: Name: { isUnique as Bool, maybeAnnotation as Maybe CA.Type, pos as Pos }: ByUsr TA.InstanceVariable: Res (ByUsr TA.InstanceVariable) =
         def: name: stuff: d:
         { pos, isUnique, maybeAnnotation } = stuff
         try maybeAnnotation as
@@ -134,9 +153,9 @@ coreVariables as ByUsr TA.InstanceVariable =
 # Was "Alias expansion and basic type validation"
 # Not sure what's the point now, but the whole Pipeline module will be rewritten so whatever
 #
-insertModuleTypes as CA.Module: CA.All TA.TypeDef: CA.All TA.TypeDef =
-    module: allTypes:
-    todo "!!!!!!!!"
+#insertModuleTypes as CA.Module: ByUsr TA.TypeDef: ByUsr TA.TypeDef =
+#    module: allTypes:
+#    todo "!!!!!!!!"
 #    allTypes
 #        >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
 #        >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
@@ -145,15 +164,18 @@ insertModuleTypes as CA.Module: CA.All TA.TypeDef: CA.All TA.TypeDef =
 globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res TA.Globals =
     allModules:
 
-    types as CA.All TA.TypeDef =
-        coreTypes
-        # Collect types from all modules
-        >> Dict.for allModules (_: insertModuleTypes)
+    (types as ByUsr TA.TypeDef) & (constructors as ByUsr TA.Constructor) =
+        coreTypes & coreConstructors
+        >> Dict.for allModules usr: caModule: typesAndCons:
+            typesAndCons
+            >> Dict.for caModule.unionDefs (_: insertCaUnionType)
+            #>> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
+
 
     # populate constructors dict
     # (constructors in types are already expanded)
-    constructors as CA.All TA.Constructor =
-        Dict.for types (_: insertUnionConstructors) coreConstructors
+#    constructors as ByUsr TA.Constructor =
+#        Dict.for types (_: insertUnionConstructors) coreConstructors
 
     # populate root variable types
     coreVariables

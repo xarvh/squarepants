@@ -90,11 +90,9 @@ alias ValueDef =
 alias Constructor =
     {
     , pos as Pos
-
-    # type and args are redundant
     , typeUsr as Meta.UniqueSymbolReference
     , type as Type
-    , args as [Type]
+#    , args as [Type]
     }
 
 
@@ -147,8 +145,8 @@ alias InstanceVariable = {
 
 
 alias Globals = {
-    , types as CA.All TypeDef
-    , constructors as CA.All Constructor
+    , types as ByUsr TypeDef
+    , constructors as ByUsr Constructor
     , instanceVariables as ByUsr InstanceVariable
     }
 
@@ -173,7 +171,7 @@ alias AliasDef = {
 alias UnionDef = {
     , usr as Meta.UniqueSymbolReference
     , args as [Name]
-    , constructors as Dict Name Constructor
+    #, constructors as Dict Name Constructor
     #, directTypeDeps as TypeDeps
     }
 
