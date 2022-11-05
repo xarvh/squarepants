@@ -598,7 +598,7 @@ translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReferenc
 
 
     argNames as [Text] =
-        caCons.args
+        todo "caCons.args"
         >> List.indexedMap index: name: constructorArgumentName (index + 1)
 
     # `(($1) => ($2) => ($3) => [ "theConstructorName", $1, $2, $3, ... ])`

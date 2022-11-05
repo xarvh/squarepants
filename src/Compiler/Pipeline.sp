@@ -43,7 +43,7 @@ insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor): (By
 
             {
             , pos = caCons.pos
-            , typeUsr = caCons.usr
+            , typeUsr = todo "caCons.usr"
             , type = todo "caCons.type"
             }
             >> Dict.insert (Meta.USR umr name)
