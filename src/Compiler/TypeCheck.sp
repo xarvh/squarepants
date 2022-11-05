@@ -290,20 +290,19 @@ variableIsCompatibleWith as Env: CA.CanonicalType: TA.Type: Bool =
 typeCa2Ta as Env: CA.Type: TA.Type =
     env: ca:
 
-    f as Name: UnificationVariableId =
-      try Dict.get name env.annotatedTyvarToGeneratedTyvar as
-          Nothing:
-              todo << "compiler error: typeCa2Ta: name `" .. name .. "` not found"
-          Just tyvarId:
-              tyvarId
+    f as Name: TA.UnificationVariableId =
+        name:
+        try Dict.get name env.annotatedTyvarToGeneratedTyvar as
+            Just tyvarId: tyvarId
+            Nothing: todo << "compiler error: typeCa2Ta: name `" .. name .. "` not found"
 
     typeCa2Ta_ f ca
 
 
-typeCa2Ta_ as (Name: UnificationVariableId): CA.Type: TA.Type =
+typeCa2Ta_ as (Name: TA.UnificationVariableId): CA.Type: TA.Type =
     f: ca:
 
-    ctu = typeCa2Ta f
+    ctu = typeCa2Ta_ f
 
     try ca as
        CA.TypeOpaque p usr args:

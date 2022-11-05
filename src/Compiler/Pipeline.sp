@@ -38,6 +38,17 @@ constructorCaToTa as CA.Constructor: TA.Constructor =
 insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor): (ByUsr TA.TypeDef & ByUsr TA.Constructor) =
     caDef: (typesDict & consDict):
 
+    nameToId as Dict Name TA.UnificationVariableId =
+        caDef.args
+        >> List.indexedMap (index: arg: arg & -index)
+        >> Dict.fromList
+
+    nameToTyvarId as Name: TA.UnificationVariableId =
+        name:
+        try Dict.get name nameToId as
+            Just id: id
+            Nothing: todo "insertCaUnionType TSNH"
+
     taConstructors as ByUsr TA.Constructor =
         consDict
         >> Dict.for caDef.constructors name: caCons:
