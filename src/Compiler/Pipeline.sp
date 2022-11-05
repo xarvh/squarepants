@@ -31,6 +31,9 @@ constructorCaToTa as CA.Constructor: TA.Constructor =
   todo ""
 
 
+
+
+
 # TODO break this function in two?
 insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor): (ByUsr TA.TypeDef & ByUsr TA.Constructor) =
     caDef: (typesDict & consDict):
@@ -39,12 +42,12 @@ insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor): (By
         consDict
         >> Dict.for caDef.constructors name: caCons:
             Meta.USR umr _ =
-                caCons.typeUsr
+                caDef.usr
 
             {
             , pos = caCons.pos
-            , typeUsr = todo "caCons.usr"
-            , type = todo "caCons.type"
+            , typeUsr = caDef.usr
+            , type = Compiler/TypeCheck.typeCa2Ta_ nameToTyvarId caCons.type
             }
             >> Dict.insert (Meta.USR umr name)
 
