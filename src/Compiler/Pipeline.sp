@@ -108,70 +108,91 @@ insertModuleAnnotations as CA.Module: ByUsr TA.InstanceVariable: Res (ByUsr TA.I
 coreVariables as Int: ByUsr TA.InstanceVariable =
     tyvarIdCounter:
 
-    insertUnop as Op.Unop: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
-        unop:
-
-        usr =
-            Meta.spCoreUSR unop.symbol
-
-        iv as TA.InstanceVariable = {
-            , definedAt = Pos.N
-            , type = unop.type
-            , isUnique = False
-            , tyvars = Dict.empty
-            }
-
-        Dict.insert usr iv
-
-    insertBinop as Text: Op.Binop: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
-        symbol: binop:
-
-        usr =
-            Meta.spCoreUSR symbol
-
-        iv as TA.InstanceVariable = {
-            , definedAt = Pos.N
-            , type = todo "binop.type"
-            , isUnique = False
-            , tyvars = Dict.empty
-            }
-
-        Dict.insert usr iv
-
-    insertCoreFunction as Prelude.Function: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
-        coreFn:
-
-        iv as TA.InstanceVariable = {
-            , definedAt = Pos.N
-            , type = todo "coreFn.type"
-            , isUnique = False
-            , tyvars = Dict.empty
-            }
-
-        Dict.insert coreFn.usr iv
 
     Dict.empty
-        >> insertUnop Prelude.unaryPlus
-        >> insertUnop Prelude.unaryMinus
-        >> Dict.for Prelude.binopsBySymbol insertBinop
-        >> List.for Prelude.functions insertCoreFunction
 
 
-globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res TA.Globals =
+
+
+insertUnop as State@: Op.Unop: Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
+    state@: unop: env:
+
+    usr =
+        Meta.spCoreUSR unop.symbol
+
+    iv as TA.InstanceVariable =
+        {
+        , definedAt = Pos.N
+        , type = unop.type
+        , isUnique = False
+        , tyvars = Dict.empty
+        }
+
+    { env with variables = Dict.insert (CA.RefGlobal usr) iv
+
+
+    Compiler/TypeCheck.addValueToGlobalEnv @state usr unop.type
+
+
+
+#    insertBinop as Text: Op.Binop: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
+#        symbol: binop:
+#
+#        usr =
+#            Meta.spCoreUSR symbol
+#
+#        iv as TA.InstanceVariable = {
+#            , definedAt = Pos.N
+#            , type = todo "binop.type"
+#            , isUnique = False
+#            , tyvars = Dict.empty
+#            }
+#
+#        Dict.insert usr iv
+#
+#    insertCoreFunction as Prelude.Function: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
+#        coreFn:
+#
+#        iv as TA.InstanceVariable = {
+#            , definedAt = Pos.N
+#            , type = todo "coreFn.type"
+#            , isUnique = False
+#            , tyvars = Dict.empty
+#            }
+#
+#        Dict.insert coreFn.usr iv
+
+
+
+
+
+
+
+globalEnv as Dict Meta.UniqueModuleReference CA.Module: Int & Compiler/TypeCheck.Env =
     allModules:
 
-    state @= Compiler/TypeCheck.initState
+    state @=
+        Compiler/TypeCheck.initState 0
 
-    coreEnv
+    Compiler/TypeCheck.initGlobalEnv
+    # Core
+    >> List.for CoreTypes.allDefs (Compiler/TypeCheck.addUnionTypeAndConstructorsToGlobalEnv @state)
+    >> insertUnop Prelude.unaryPlus
+    >> insertUnop Prelude.unaryMinus
+    >> Dict.for Prelude.binopsBySymbol insertBinop
+    >> List.for Prelude.functions insertCoreFunction
+    # User
     >> Dict.for allModules umr: caModule: env:
         env
         >> Dict.for caModule.unionDefs (Compiler/TypeCheck.addUnionTypeAndConstructorsToGlobalEnv @state)
         >> Dict.for caModule.aliasDefs (Compiler/TypeCheck.addAliasToGlobalEnv @state)
-    >> Ok
+        >> Dict.for caModule.valueDefs (Compiler/TypeCheck.addValueToGlobalEnv @state)
+
+    >> Tuple.pair state.lastUnificationVarId
 
 
 
-#  Compiler/TypeCheck.initGlobalEnv
+#  
 #
 #
 #    (types as ByUsr TA.TypeDef) & (constructors as ByUsr TA.Constructor) & (tyvarIdCounter as Int) =
