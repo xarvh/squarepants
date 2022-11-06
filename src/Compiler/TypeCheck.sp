@@ -74,10 +74,13 @@ alias State = {
     , classesByTyvarId as Hash TA.UnificationVariableId CA.TypeClasses
     }
 
-initState as State = {
+
+initState as Int: State =
+    lastUnificationVarId:
+    {
     , equalities = Array.fromList []
     , errors = Array.fromList []
-    , lastUnificationVarId = 0
+    , lastUnificationVarId
     , classesByTyvarId = Hash.empty
     }
 
@@ -97,7 +100,6 @@ alias Env = {
     # This is used to give meaningfule errors?
     , annotatedTyvarToGeneratedTyvar as Dict Name TA.UnificationVariableId
     }
-
 
 
 union Error_ =
@@ -122,6 +124,7 @@ union Error_ =
 
 
 union Context =
+    , Context_Global # this is never actually used =|
     , Context_Module Meta.UniqueModuleReference
     , Context_Argument Name Context
     , Context_LetInBody
@@ -1141,9 +1144,6 @@ checkPattern as Env: CA.CanonicalType: CA.Pattern: State@: TA.Pattern & Env =
     out.typedPattern & out.env
 
 
-
-
-
 #
 #
 # Module
@@ -1164,15 +1164,14 @@ insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.V
         ann & (def :: nonAnn)
 
 
-
-doModule as Env: CA.Module: Res TA.Module =
-    env: caModule:
+doModule as Int: Env: CA.Module: Res TA.Module =
+    lastUnificationVarId: env: caModule:
 
     Debug.benchStart None
 
     # state is per module
     state as State @=
-        initState
+        initState lastUnificationVarId
 
     annotated & nonAnnotated =
         Dict.for caModule.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
@@ -1271,6 +1270,62 @@ makeResolutionError as Env: CA.Module: (Why & Text): Error =
     env: caModule: (why & message):
     todo "makeReoslutionError"
 
+
+#
+#
+# Populate global Env
+#
+#
+
+initGlobalEnv as Env =
+    {
+    , context = Context_Global
+    , constructors = Dict.empty
+    , variables = Dict.empty
+    , tyvarsInParentAnnotations = Dict.empty
+    , annotatedTyvarToGeneratedTyvar = Dict.empty
+    }
+
+
+addConstructorToGlobalEnv as State@: Name: CA.Constructor: Env: Env =
+    state@: name: caConstructor: env:
+
+    Meta.USR umr _ =
+        caConstructor.typeUsr
+
+    hash @= Hash.empty
+
+    nameToTyvarId as Name: TA.UnificationVariableId =
+        name:
+        try Hash.get name hash as
+            Just tyvarId: tyvarId
+            Nothing:
+                tyvarId = newTyvarId @state
+                Hash.insert name tyvarId @hash
+                tyvarId
+
+    taConstructor as TA.Constructor =
+        {
+        , pos = caCons.pos
+        , typeUsr = caDef.usr
+        , type = typeCa2Ta_ nameToTyvarId caCons.type
+        }
+
+    { env with constructors = Dict.insert (Meta.USR umr name) taConstructor }
+
+
+addUnionTypeAndConstructorsToGlobalEnv as State@: CA.UnionDef: Env: Env =
+    state@: { usr, args, constructors }: env:
+
+    taDef as TA.TypeDef =
+        {
+        , usr
+        , args
+        #, constructors = taConstructors
+        }
+
+    { env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
+    >> Dict.for constructors (addConstructorToGlobalEnv @state)
 
 
 #

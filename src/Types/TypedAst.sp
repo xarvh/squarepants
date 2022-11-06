@@ -148,6 +148,7 @@ alias Globals = {
     , types as ByUsr TypeDef
     , constructors as ByUsr Constructor
     , instanceVariables as ByUsr InstanceVariable
+    , tyvarIdCounter as Int
     }
 
 

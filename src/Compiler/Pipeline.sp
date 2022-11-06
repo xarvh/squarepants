@@ -22,61 +22,56 @@
 
 # ============================================================================
 # First Global Pass
-#   * Expand and validate types
 #   * Collect all exposed root symbols
 #
 
-
-constructorCaToTa as CA.Constructor: TA.Constructor =
-  todo ""
 
 
 
 
 
 # TODO break this function in two?
-insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor): (ByUsr TA.TypeDef & ByUsr TA.Constructor) =
-    caDef: (typesDict & consDict):
-
-    nameToId as Dict Name TA.UnificationVariableId =
-        caDef.args
-        >> List.indexedMap (index: arg: arg & -index)
-        >> Dict.fromList
-
-    nameToTyvarId as Name: TA.UnificationVariableId =
-        name:
-        try Dict.get name nameToId as
-            Just id: id
-            Nothing: todo "insertCaUnionType TSNH"
-
-    taConstructors as ByUsr TA.Constructor =
-        consDict
-        >> Dict.for caDef.constructors name: caCons:
-            Meta.USR umr _ =
-                caDef.usr
-
-            {
-            , pos = caCons.pos
-            , typeUsr = caDef.usr
-            , type = Compiler/TypeCheck.typeCa2Ta_ nameToTyvarId caCons.type
-            }
-            >> Dict.insert (Meta.USR umr name)
-
-    taDef as TA.TypeDef =
-        {
-        , usr = caDef.usr
-        , args = caDef.args
-        #, constructors = taConstructors
-        }
-        >> TA.TypeDefUnion
-
-    Dict.insert caDef.usr taDef typesDict & Dict.join taConstructors consDict
-
-
-
-(coreTypes as ByUsr TA.TypeDef) & (coreConstructors as ByUsr TA.Constructor) =
-    Dict.empty & Dict.empty
-    >> List.for CoreTypes.allDefs insertCaUnionType
+#insertCaUnionType as CA.UnionDef: (ByUsr TA.TypeDef & ByUsr TA.Constructor & Int): (ByUsr TA.TypeDef & ByUsr TA.Constructor & Int) =
+#    caDef: (typesDict & consDict & tyvarCounter0):
+#
+#    nameToId as Dict Name TA.UnificationVariableId =
+#        caDef.args
+#        >> List.indexedMap (index: arg: (arg & tyvarCounter0 + index))
+#        >> Dict.fromList
+#
+#    nameToTyvarId as Name: TA.UnificationVariableId =
+#        name:
+#        try Dict.get name nameToId as
+#            Just id: id
+#            Nothing: todo "insertCaUnionType TSNH"
+#
+#    taConstructors as ByUsr TA.Constructor =
+#        consDict
+#        >> Dict.for caDef.constructors name: caCons:
+#            Meta.USR umr _ =
+#                caDef.usr
+#
+#            {
+#            , pos = caCons.pos
+#            , typeUsr = caDef.usr
+#            , type = Compiler/TypeCheck.typeCa2Ta_ nameToTyvarId caCons.type
+#            }
+#            >> Dict.insert (Meta.USR umr name)
+#
+#    taDef as TA.TypeDef =
+#        {
+#        , usr = caDef.usr
+#        , args = caDef.args
+#        #, constructors = taConstructors
+#        }
+#        >> TA.TypeDefUnion
+#
+#    Dict.insert caDef.usr taDef typesDict & Dict.join taConstructors consDict & tyvarCounter0 + List.length caDef.args
+#
+#
+#(coreTypes as ByUsr TA.TypeDef) & (coreConstructors as ByUsr TA.Constructor) & (initialTyvarIdCounter as Int) =
+#    Dict.empty & Dict.empty & 0
+#    >> List.for CoreTypes.allDefs insertCaUnionType
 
 
 
@@ -110,7 +105,8 @@ insertModuleAnnotations as CA.Module: ByUsr TA.InstanceVariable: Res (ByUsr TA.I
         Dict.forRes (CA.patternNames caDef.pattern) (insertName caDef)
 
 
-coreVariables as ByUsr TA.InstanceVariable =
+coreVariables as Int: ByUsr TA.InstanceVariable =
+    tyvarIdCounter:
 
     insertUnop as Op.Unop: ByUsr TA.InstanceVariable: ByUsr TA.InstanceVariable =
         unop:
@@ -120,9 +116,9 @@ coreVariables as ByUsr TA.InstanceVariable =
 
         iv as TA.InstanceVariable = {
             , definedAt = Pos.N
-            , type = todo "unop.type"
+            , type = unop.type
             , isUnique = False
-                    , tyvars = Dict.empty
+            , tyvars = Dict.empty
             }
 
         Dict.insert usr iv
@@ -137,7 +133,7 @@ coreVariables as ByUsr TA.InstanceVariable =
             , definedAt = Pos.N
             , type = todo "binop.type"
             , isUnique = False
-                    , tyvars = Dict.empty
+            , tyvars = Dict.empty
             }
 
         Dict.insert usr iv
@@ -149,52 +145,45 @@ coreVariables as ByUsr TA.InstanceVariable =
             , definedAt = Pos.N
             , type = todo "coreFn.type"
             , isUnique = False
-                    , tyvars = Dict.empty
+            , tyvars = Dict.empty
             }
 
         Dict.insert coreFn.usr iv
 
     Dict.empty
-#        >> insertUnop Prelude.unaryPlus
-#        >> insertUnop Prelude.unaryMinus
+        >> insertUnop Prelude.unaryPlus
+        >> insertUnop Prelude.unaryMinus
         >> Dict.for Prelude.binopsBySymbol insertBinop
         >> List.for Prelude.functions insertCoreFunction
-
-
-
-
-#
-# Was "Alias expansion and basic type validation"
-# Not sure what's the point now, but the whole Pipeline module will be rewritten so whatever
-#
-#insertModuleTypes as CA.Module: ByUsr TA.TypeDef: ByUsr TA.TypeDef =
-#    module: allTypes:
-#    todo "!!!!!!!!"
-#    allTypes
-#        >> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
-#        >> Dict.for module.unionDefs (name: def: Dict.insert def.usr << CA.TypeDefUnion def)
 
 
 globalExpandedTypes as Dict Meta.UniqueModuleReference CA.Module: Res TA.Globals =
     allModules:
 
-    (types as ByUsr TA.TypeDef) & (constructors as ByUsr TA.Constructor) =
-        coreTypes & coreConstructors
-        >> Dict.for allModules usr: caModule: typesAndCons:
-            typesAndCons
-            >> Dict.for caModule.unionDefs (_: insertCaUnionType)
-            #>> Dict.for module.aliasDefs (name: def: Dict.insert def.usr << CA.TypeDefAlias def)
+    state @= Compiler/TypeCheck.initState
+
+    coreEnv
+    >> Dict.for allModules umr: caModule: env:
+        env
+        >> Dict.for caModule.unionDefs (Compiler/TypeCheck.addUnionTypeAndConstructorsToGlobalEnv @state)
+        >> Dict.for caModule.aliasDefs (Compiler/TypeCheck.addAliasToGlobalEnv @state)
+    >> Ok
 
 
-    # populate constructors dict
-    # (constructors in types are already expanded)
-#    constructors as ByUsr TA.Constructor =
-#        Dict.for types (_: insertUnionConstructors) coreConstructors
 
-    # populate root variable types
-    coreVariables
-    >> Dict.forRes allModules (_: insertModuleAnnotations)
-    >> onOk instanceVariables:
-
-    Ok { types, constructors, instanceVariables }
+#  Compiler/TypeCheck.initGlobalEnv
+#
+#
+#    (types as ByUsr TA.TypeDef) & (constructors as ByUsr TA.Constructor) & (tyvarIdCounter as Int) =
+#        coreTypes & coreConstructors & initialTyvarIdCounter
+#            typesAndConsAndCounter
+#            >> Dict.for caModule.unionDefs (_: insertCaUnionType)
+#            >> Dict.for caModule.aliasDefs (_: insertCaAliasType)
+#
+#    # populate root variable types
+#    coreVariables tyvarIdCounter
+#    >> Dict.forRes allModules (_: insertModuleAnnotations)
+#    >> onOk instanceVariables:
+#
+#    Ok env
 
