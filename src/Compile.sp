@@ -244,34 +244,6 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 #
 # Compile
 #
-
-
-
-typeCheckModule as Meta: TA.Globals: CA.Module: Res TA.Module =
-    meta: globals: module:
-
-    # TODO move in Compiler/TypeCheck
-    env as Compiler/TypeCheck.Env = {
-          , context = Compiler/TypeCheck.Context_Module module.umr
-          , constructors = todo "globals.constructors"
-          , variables = todo "variables" #Dict.mapKeys CA.RefGlobal globals.instanceVariables
-          , tyvarsInParentAnnotations = Dict.empty
-
-          # This is used to give meaningfule errors?
-          , annotatedTyvarToGeneratedTyvar = Dict.empty
-
-#        , currentModule = module.umr
-#        , meta
-#        , instanceVariables = Dict.mapKeys CA.RefRoot globals.instanceVariables
-#        , constructors = globals.constructors
-#        , types = globals.types
-#        , nonFreeTyvars = Dict.empty
-#        , nonAnnotatedRecursives = Dict.empty
-        }
-
-    todo "Compiler/TypeCheck.fromModule env module"
-
-
 searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
     isWantedFile: searchDir:
 
@@ -422,10 +394,11 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    x as Res TA.Globals =
-        Compiler/Pipeline.globalExpandedTypes modules
+    allModules as [CA.Module] =
+        List.append (Dict.values Prelude.coreModulesByUmr) (Dict.values userModules)
 
-    x >> onResSuccess eenv globals:
+    (typeCheckState as Compiler/TypeCheck.State) & (typeCheckGlobalEnv as Compiler/TypeCheck.Env) =
+        Compiler/TypeCheck.initStateAndGlobalEnv allModules
 
 
     log "Uniqueness check..." ""
@@ -439,14 +412,14 @@ compileMain as CompileMainPars: IO Int =
 
     log "Type checking..." ""
 
-    g as TA.Globals = globals
-
     modulesWithDestruction
-    >> List.map (m: typeCheckModule meta g m >> resToIo eenv)
+    >> List.map (m: Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv m >> resToIo eenv)
     >> IO.parallel
     >> IO.onSuccess typeCheckedModules:
 
+
     log "Emittable AST..." ""
+
     typeCheckedModules
     >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")

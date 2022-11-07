@@ -102,6 +102,16 @@ alias Env = {
     }
 
 
+initEnv as Env =
+    {
+    , context = Context_Global
+    , constructors = Dict.empty
+    , variables = Dict.empty
+    , tyvarsInParentAnnotations = Dict.empty
+    , annotatedTyvarToGeneratedTyvar = Dict.empty
+    }
+
+
 union Error_ =
     , ErrorCircular [CA.Pattern]
     , ErrorVariableNotFound CA.Ref
@@ -1164,14 +1174,14 @@ insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.V
         ann & (def :: nonAnn)
 
 
-doModule as Int: Env: CA.Module: Res TA.Module =
-    lastUnificationVarId: env: caModule:
+doModule as State: Env: CA.Module: Res TA.Module =
+    state0: env: caModule:
 
     Debug.benchStart None
 
     # state is per module
     state as State @=
-        initState lastUnificationVarId
+        state0
 
     annotated & nonAnnotated =
         Dict.for caModule.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
@@ -1277,16 +1287,6 @@ makeResolutionError as Env: CA.Module: (Why & Text): Error =
 #
 #
 
-initGlobalEnv as Env =
-    {
-    , context = Context_Global
-    , constructors = Dict.empty
-    , variables = Dict.empty
-    , tyvarsInParentAnnotations = Dict.empty
-    , annotatedTyvarToGeneratedTyvar = Dict.empty
-    }
-
-
 addConstructorToGlobalEnv as State@: Name: CA.Constructor: Env: Env =
     state@: name: caConstructor: env:
 
@@ -1315,7 +1315,10 @@ addConstructorToGlobalEnv as State@: Name: CA.Constructor: Env: Env =
 
 
 addUnionTypeAndConstructorsToGlobalEnv as State@: CA.UnionDef: Env: Env =
-    state@: { usr, args, constructors }: env:
+    state@: stuff: env:
+
+    { usr, args, constructors } =
+        stuff
 
     taDef as TA.TypeDef =
         {
@@ -1326,6 +1329,24 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: CA.UnionDef: Env: Env =
 
     { env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
     >> Dict.for constructors (addConstructorToGlobalEnv @state)
+
+
+initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
+    allModules:
+
+    state @=
+        initState 0
+
+    doStuff as CA.Module: Env: Env =
+        caModule: env:
+        env
+        >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
+        >> Dict.for caModule.aliasDefs (addAliasToGlobalEnv @state)
+        >> Dict.for caModule.valueDefs (addValueToGlobalEnv @state)
+
+    initEnv
+    >> List.for allModules doStuff
+    >> Tuple.pair state
 
 
 #
