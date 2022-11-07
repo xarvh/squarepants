@@ -113,7 +113,7 @@ infer as Text: Text: Result Text Out =
     >> onOk caModule:
 
     modules as [CA.Module] =
-        List.append Prelude.coreModules caModule
+        List.append Prelude.coreModules [caModule]
 
     typeCheckState & typeCheckGlobalEnv =
         Compiler/TypeCheck.initStateAndGlobalEnv modules
@@ -133,7 +133,8 @@ infer as Text: Text: Result Text Out =
 #                    , isUnique = False
 #                    }
 
-    Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv caModule
+    caModule
+    >> Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv
     >> TH.resErrorToStrippedText code
     >> onOk taModule:
 

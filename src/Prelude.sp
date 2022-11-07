@@ -444,10 +444,21 @@ insertInModule as Meta.UniqueSymbolReference: CA.CanonicalType: [Name]: ModuleBy
     Meta.USR umr name =
         usr
 
+    tyvars =
+        type
+        >> CA.typeTyvars
+        >> Dict.map tyvarName: pos:
+            {
+            , allowFunctions = not (List.member tyvarName nonFn) >> Just
+            , allowUniques = Just False
+            }
+
     def as CA.ValueDef = {
         , pattern = CA.PatternAny Pos.N { isUnique = False, maybeName = Just name, maybeAnnotation = Just type }
         , native = True
         , body = CA.LiteralText Pos.N name
+
+        , tyvars
         #
         , directTypeDeps = Dict.empty
         , directConsDeps = Dict.empty

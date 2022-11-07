@@ -1032,8 +1032,14 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                         env
 
                     Just name:
+                        xxxx = {
+                          , type = patternType
+                          , tyvars = todo "???"
+                          }
+
+
                         # We don't check for duplicate var names / shadowig here, it's MakeCanonical's responsibility
-                        { env with variables = Dict.insert (CA.RefLocal name) { type = patternType, tyvars = todo "???" } .variables }
+                        { env with variables = Dict.insert (CA.RefLocal name) xxxx .variables }
 
             typedPattern =
                 TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
@@ -1286,28 +1292,71 @@ makeResolutionError as Env: CA.Module: (Why & Text): Error =
 # Populate global Env
 #
 #
+nameToTyvarId as State@: (Hash Name TA.UnificationVariableId)@: Name: TA.UnificationVariableId =
+    state@: hash@: varname:
+    try Hash.get hash varname as
+        Just tyvarId: tyvarId
+        Nothing:
+            tyvarId = newTyvarId @state
+            Hash.insert @hash varname tyvarId
+            tyvarId
 
-addConstructorToGlobalEnv as State@: Name: CA.Constructor: Env: Env =
-    state@: name: caConstructor: env:
+
+translateTyvars as State@: (Hash Name TA.UnificationVariableId)@: Dict Name CA.TypeClasses: Dict TA.UnificationVariableId TA.TypeClasses =
+    state@: hash@: classesByName:
+
+    zot =
+       name: classes:
+        Dict.insert (nameToTyvarId @state @hash name) classes
+
+    Dict.empty >> Dict.for classesByName zot
+
+
+addValueToGlobalEnv as State@: Meta.UniqueModuleReference: CA.ValueDef: Env: Env =
+    state@: umr: def: env:
+
+    hash @=
+        Hash.empty
+
+    env >> Dict.for (CA.patternNames def.pattern) valueName: valueStuff: envX:
+        try valueStuff.maybeAnnotation as
+            Nothing:
+                envX
+
+            Just annotation:
+
+                ref as TA.Ref =
+                    valueName
+                    >> Meta.USR umr
+                    >> CA.RefGlobal
+
+                typeWithClasses as TypeWithClasses =
+                    {
+                    , type = typeCa2Ta_ (nameToTyvarId @state @hash) annotation
+                    , tyvars = translateTyvars @state @hash def.tyvars
+                    }
+
+                { envX with variables = Dict.insert ref typeWithClasses .variables }
+
+
+addConstructorToGlobalEnv as State@: [Name]: Name: CA.Constructor: Env: Env =
+    state@: args: name: caConstructor: env:
 
     Meta.USR umr _ =
         caConstructor.typeUsr
 
-    hash @= Hash.empty
+    hash @=
+        Hash.empty
 
-    nameToTyvarId as Name: TA.UnificationVariableId =
-        name:
-        try Hash.get hash name as
-            Just tyvarId: tyvarId
-            Nothing:
-                tyvarId = newTyvarId @state
-                Hash.insert @hash name tyvarId
-                tyvarId
+    caTyvars as Dict Name CA.TypeClasses =
+        args
+        >> List.map (n: (n & { allowFunctions = Just True, allowUniques = Just True }))
+        >> Dict.fromList
 
     taConstructor as TypeWithClasses =
         {
-        , type = typeCa2Ta_ nameToTyvarId caConstructor.type
-        , tyvars = todo "Dict.empty"
+        , type = typeCa2Ta_ (nameToTyvarId @state @hash) caConstructor.type
+        , tyvars = translateTyvars @state @hash caTyvars
         }
 
     { env with constructors = Dict.insert (Meta.USR umr name) taConstructor .constructors }
@@ -1328,7 +1377,7 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
 
     #TODO{ env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
     env
-    >> Dict.for constructors (addConstructorToGlobalEnv @state)
+    >> Dict.for constructors (addConstructorToGlobalEnv @state args)
 
 
 initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
@@ -1341,8 +1390,8 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
         caModule: env:
         env
         >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
-        >> Dict.for caModule.aliasDefs (addAliasToGlobalEnv @state)
-        >> Dict.for caModule.valueDefs (addValueToGlobalEnv @state)
+        #TODO >> Dict.for caModule.aliasDefs (addAliasToGlobalEnv @state)
+        >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)
 
     initEnv
     >> List.for allModules doStuff

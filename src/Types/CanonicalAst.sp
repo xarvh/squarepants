@@ -281,16 +281,16 @@ patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotati
 # Stuff that should live... somewhere else?
 #
 
-alias InstanceVariable = {
-    , definedAt as Pos
-    , type as Type
-    , isUnique as Bool
-    }
-
-
-alias Globals = {
-    , types as CA.All (CA.TypeDef)
-    , constructors as CA.All (CA.Constructor)
-    , instanceVariables as ByUsr InstanceVariable
-    }
+#alias InstanceVariable = {
+#    , definedAt as Pos
+#    , type as Type
+#    , isUnique as Bool
+#    }
+#
+#
+#alias Globals = {
+#    , types as CA.All (CA.TypeDef)
+#    , constructors as CA.All (CA.Constructor)
+#    , instanceVariables as ByUsr InstanceVariable
+#    }
 
