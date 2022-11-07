@@ -393,14 +393,6 @@ compileMain as CompileMainPars: IO Int =
         }
 
 
-    log "Solving globals..." ""
-    allModules as [CA.Module] =
-        List.append (Dict.values Prelude.coreModulesByUmr) (Dict.values userModules)
-
-    (typeCheckState as Compiler/TypeCheck.State) & (typeCheckGlobalEnv as Compiler/TypeCheck.Env) =
-        Compiler/TypeCheck.initStateAndGlobalEnv allModules
-
-
     log "Uniqueness check..." ""
 
     modules
@@ -408,6 +400,11 @@ compileMain as CompileMainPars: IO Int =
     >> List.map (m: Compiler/UniquenessCheck.doModule m >> resToIo eenv)
     >> IO.parallel
     >> IO.onSuccess modulesWithDestruction:
+
+
+    log "Solving globals..." ""
+    (typeCheckState as Compiler/TypeCheck.State) & (typeCheckGlobalEnv as Compiler/TypeCheck.Env) =
+        Compiler/TypeCheck.initStateAndGlobalEnv modulesWithDestruction
 
 
     log "Type checking..." ""

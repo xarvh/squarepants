@@ -1297,37 +1297,37 @@ addConstructorToGlobalEnv as State@: Name: CA.Constructor: Env: Env =
 
     nameToTyvarId as Name: TA.UnificationVariableId =
         name:
-        try Hash.get name hash as
+        try Hash.get hash name as
             Just tyvarId: tyvarId
             Nothing:
                 tyvarId = newTyvarId @state
-                Hash.insert name tyvarId @hash
+                Hash.insert @hash name tyvarId
                 tyvarId
 
-    taConstructor as TA.Constructor =
+    taConstructor as TypeWithClasses =
         {
-        , pos = caCons.pos
-        , typeUsr = caDef.usr
-        , type = typeCa2Ta_ nameToTyvarId caCons.type
+        , type = typeCa2Ta_ nameToTyvarId caConstructor.type
+        , tyvars = todo "Dict.empty"
         }
 
-    { env with constructors = Dict.insert (Meta.USR umr name) taConstructor }
+    { env with constructors = Dict.insert (Meta.USR umr name) taConstructor .constructors }
 
 
-addUnionTypeAndConstructorsToGlobalEnv as State@: CA.UnionDef: Env: Env =
-    state@: stuff: env:
+addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
+    state@: _: stuff: env:
 
-    { usr, args, constructors } =
+    { usr, args, constructors, directTypeDeps } =
         stuff
 
-    taDef as TA.TypeDef =
+    taDef as TA.UnionDef =
         {
         , usr
         , args
         #, constructors = taConstructors
         }
 
-    { env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
+    #TODO{ env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
+    env
     >> Dict.for constructors (addConstructorToGlobalEnv @state)
 
 

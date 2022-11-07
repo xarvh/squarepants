@@ -112,28 +112,12 @@ infer as Text: Text: Result Text Out =
     >> TH.resErrorToStrippedText code
     >> onOk caModule:
 
-    modulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
-        Dict.insert TH.moduleUmr caModule Prelude.coreModulesByUmr
+    modules as [CA.Module] =
+        List.append Prelude.coreModules caModule
 
-    Compiler/Pipeline.globalExpandedTypes modulesByUmr
-    >> TH.resErrorToStrippedText code
-    >> onOk globals_:
+    typeCheckState & typeCheckGlobalEnv =
+        Compiler/TypeCheck.initStateAndGlobalEnv modules
 
-    globals as TA.Globals =
-        globals_
-
-    { types, constructors, instanceVariables, tyvarIdCounter } = globals
-
-    env as Compiler/TypeCheck.Env = {
-        , context = Compiler/TypeCheck.Context_Module TH.moduleUmr
-        #, types
-        , constructors = todo "constructors"
-#        , currentModule =
-#        , meta = TH.meta
-#        , nonFreeTyvars = Dict.empty
-#        , nonAnnotatedRecursives = Dict.empty
-        , variables =
-            todo "instanceVariables"
 #                >> Dict.insert
 #                    (Meta.USR TH.moduleUmr "add")
 #                    { definedAt = Pos.T
@@ -148,12 +132,8 @@ infer as Text: Text: Result Text Out =
 #                    , tyvars = Dict.empty
 #                    , isUnique = False
 #                    }
-#                >> Dict.mapKeys CA.RefGlobal
-        , tyvarsInParentAnnotations = Dict.empty
-        , annotatedTyvarToGeneratedTyvar = Dict.empty
-        }
 
-    Compiler/TypeCheck.doModule env caModule
+    Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv caModule
     >> TH.resErrorToStrippedText code
     >> onOk taModule:
 
