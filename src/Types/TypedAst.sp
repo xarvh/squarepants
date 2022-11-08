@@ -131,6 +131,18 @@ patternNames as Pattern: Dict Name Pos =
         PatternRecord pos ps: Dict.for ps (k: (pa & ty): pa >> patternNames >> Dict.join) Dict.empty
 
 
+typeTyvars as Type: Dict UnificationVariableId None =
+    type:
+    try type as
+        TypeOpaque pos usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
+        TypeAlias pos usr args:  Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
+        TypeFunction pos in mod out: Dict.join (typeTyvars in) (typeTyvars out)
+        TypeRecord pos attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
+        #TODO Should we say here that the var must allow uniqueness?
+        TypeUnique pos ty: typeTyvars ty
+        TypeUnificationVariable id: Dict.singleton id None
+        TypeRecordExt id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
+
 
 #
 # Stuff that should live... somewhere else?

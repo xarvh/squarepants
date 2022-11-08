@@ -90,8 +90,6 @@ typeFunction as TA.Type: LambdaModifier: TA.Type: TA.Type =
 #
 #
 #
-
-
 alias Out = {
     , tyvars as Dict Text TA.TypeClasses
     , type as TA.Type
@@ -115,23 +113,25 @@ infer as Text: Text: Result Text Out =
     modules as [CA.Module] =
         List.append Prelude.coreModules [caModule]
 
-    typeCheckState & typeCheckGlobalEnv =
+    typeCheckState & typeCheckGlobalEnv_ =
         Compiler/TypeCheck.initStateAndGlobalEnv modules
 
-#                >> Dict.insert
-#                    (Meta.USR TH.moduleUmr "add")
-#                    { definedAt = Pos.T
-#                    , type = function tyNumber (function tyNumber tyNumber)
-#                    , tyvars = Dict.empty
-#                    , isUnique = False
-#                    }
-#                >> Dict.insert
-#                    (Meta.USR TH.moduleUmr "reset")
-#                    { definedAt = Pos.T
-#                    , type = typeFunction tyNumber LambdaNormal tyNone
-#                    , tyvars = Dict.empty
-#                    , isUnique = False
-#                    }
+    typeCheckGlobalEnv as Compiler/TypeCheck.Env =
+        { typeCheckGlobalEnv_ with
+        , variables = .variables
+            >> Dict.insert
+                (CA.RefGlobal << Meta.USR TH.moduleUmr "add")
+                {
+                , type = function tyNumber (function tyNumber tyNumber)
+                , tyvars = Dict.empty
+                }
+            >> Dict.insert
+                (CA.RefGlobal << Meta.USR TH.moduleUmr "reset")
+                {
+                , type = typeFunction tyNumber LambdaNormal tyNone
+                , tyvars = Dict.empty
+                }
+        }
 
     caModule
     >> Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv

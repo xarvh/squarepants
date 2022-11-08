@@ -165,7 +165,7 @@ union Why =
 
 
 union Equality =
-    , Equality Context Why TA.Type TA.Type
+    , Equality Context Pos Why TA.Type TA.Type
 
 
 
@@ -184,11 +184,11 @@ newType as State@: TA.Type =
     TA.TypeUnificationVariable (newTyvarId @state)
 
 
-addEquality as Env: Why: TA.Type: TA.Type: State@: None =
+addEquality as Env: Pos: Why: TA.Type: TA.Type: State@: None =
     # TODO: should t1 be "expected" and t2 "actual" or something like that?
-    env: why: t1: t2: state@:
+    env: pos: why: t1: t2: state@:
 
-    Array.push @state.equalities << Equality env.context why t1 t2
+    Array.push @state.equalities << Equality env.context pos why t1 t2
 
 
 
@@ -390,7 +390,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                 inferExpression newEnv def.body @state
 
     if patternOut.maybeFullAnnotation == Nothing then
-        addEquality newEnv Why_LetIn patternOut.patternType bodyType @state
+        addEquality newEnv (CA.patternPos def.pattern) Why_LetIn patternOut.patternType bodyType @state
     else
         None
 
@@ -553,7 +553,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             typedFalse & falseType =
                 inferExpression { env with context = Context_IfFalse } false @state
 
-            addEquality env Why_IfBranches trueType falseType @state
+            addEquality env pos Why_IfBranches trueType falseType @state
 
             expression =
                 TA.If pos {
@@ -579,7 +579,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                     patternOut as PatternOut =
                         inferPattern env pa @state
 
-                    addEquality env Why_TryPattern patternOut.patternType valueType @state
+                    addEquality env pos Why_TryPattern patternOut.patternType valueType @state
 
                     newEnv =
                         { patternOut.env with
@@ -589,7 +589,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                     typedExpression & expressionType =
                         inferExpression newEnv exp @state
 
-                    addEquality newEnv Why_TryExpression finalType expressionType @state
+                    addEquality newEnv (CA.patternPos pa) Why_TryExpression finalType expressionType @state
 
                     patternOut.typedPattern & typedExpression
 
@@ -627,7 +627,7 @@ inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
 
                     type = TA.TypeRecordExt newExtId (Dict.insert attrName newAttrType extensionAttrTypes)
 
-                    addEquality env Why_RecordAccess (TA.TypeUnificationVariable tyvarId) type @state
+                    addEquality env pos Why_RecordAccess (TA.TypeUnificationVariable tyvarId) type @state
 
                     newAttrType
 
@@ -639,7 +639,7 @@ inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
             type as TA.Type =
                 TA.TypeRecordExt newExtId (Dict.singleton attrName newAttrType)
 
-            addEquality env Why_RecordAccess (TA.TypeUnificationVariable id) type @state
+            addEquality env pos Why_RecordAccess (TA.TypeUnificationVariable id) type @state
 
             newAttrType
 
@@ -662,7 +662,7 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
                         addError env pos (ErrorRecordDoesNotHaveAttribute name) @state
 
                     Just ty:
-                        addEquality env Why_Record ty valueType @state
+                        addEquality env pos Why_Record ty valueType @state
 
             extType
 
@@ -673,7 +673,7 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
                 onlyBothOnly valueTypeByName extensionAttrTypes
 
             Dict.each both name: (inAttr & extAttr):
-                addEquality env Why_Record inAttr extAttr @state
+                addEquality env pos Why_Record inAttr extAttr @state
 
             # TODO: is it faster if I avoid creating a new tyvar when expressionOnly is empty?
             newExtId =
@@ -685,7 +685,7 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
         TA.TypeUnificationVariable id:
             ty = TA.TypeRecordExt id valueTypeByName
 
-            addEquality env Why_RecordExt extType ty @state
+            addEquality env pos Why_RecordExt extType ty @state
 
             ty
 
@@ -826,7 +826,7 @@ checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
 
-            addEquality env Why_AttributeAccess expressionType requiredType @state
+            addEquality env pos Why_AttributeAccess expressionType requiredType @state
 
             TA.RecordAccess pos attrName typedExpression
 
@@ -876,7 +876,7 @@ checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
                         , context = Context_TryBranch
                         }
 
-                    addEquality env Why_TryPattern inferredPattern.patternType valueType @state
+                    addEquality env pos Why_TryPattern inferredPattern.patternType valueType @state
 
                     typedExpression =
                         checkExpression newEnv expectedType exp @state
@@ -914,7 +914,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
     referenceArgs & referenceReturn =
         linearizeCurriedParameters referenceType []
 
-    addEquality env Why_ReturnType referenceReturn expectedType @state
+    addEquality env pos Why_ReturnType referenceReturn expectedType @state
 
     if referenceArgs /= [] then
 
@@ -934,7 +934,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
             None
 
         list_eachWithIndex2 0 referenceArgs typedArgumentsAndArgumentTypes index: (refMod & refType): (tyArg & argTy):
-            addEquality env (Why_Argument index) refType argTy @state
+            addEquality env pos (Why_Argument index) refType argTy @state
 
         TA.CallCo pos typedReference typedArgumentsAndArgumentTypes
 
@@ -951,7 +951,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
                 # TODO if expected type says this should be LambdaConsuming, then use LambdaConsuming
                 TA.TypeFunction Pos.G argTy LambdaNormal type
 
-        addEquality env Why_CalledAsFunction referenceType referenceTypeFromArguments @state
+        addEquality env pos Why_CalledAsFunction referenceType referenceTypeFromArguments @state
 
 #        typedArgs as [Argument TA.Type & TA.Type] =
 #            List.map Tuple.first typedArgumentsAndArgumentTypes
@@ -1004,7 +1004,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
     try pattern as
         CA.PatternAny pos { isUnique, maybeName, maybeAnnotation }:
 
-            patternType =
+            patternType as TA.Type =
                 try maybeAnnotation as
                     Nothing:
                         if isUnique then
@@ -1024,7 +1024,6 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                         t
 
 
-
             newEnv =
                 try maybeName as
 
@@ -1032,14 +1031,19 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                         env
 
                     Just name:
-                        xxxx = {
-                          , type = patternType
-                          , tyvars = todo "???"
-                          }
+                        tyvars =
+                             patternType
+                             >> TA.typeTyvars
+                             >> Dict.map k: v: { allowFunctions = Nothing, allowUniques = Nothing }
 
+                        variable =
+                            {
+                            , type = patternType
+                            , tyvars
+                            }
 
                         # We don't check for duplicate var names / shadowig here, it's MakeCanonical's responsibility
-                        { env with variables = Dict.insert (CA.RefLocal name) xxxx .variables }
+                        { env with variables = Dict.insert (CA.RefLocal name) variable .variables }
 
             typedPattern =
                 TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
@@ -1108,7 +1112,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                             None
 
                         list_eachWithIndex2 0 argModAndTypes argumentTypes index: (mod & paramType): argType:
-                            addEquality env (Why_Argument index) paramType argType @state
+                            addEquality env pos (Why_Argument index) paramType argType @state
 
                         ##    { x } = blah
                         ##
@@ -1155,7 +1159,7 @@ checkPattern as Env: CA.CanonicalType: CA.Pattern: State@: TA.Pattern & Env =
     # TODO
     out = inferPattern env pattern @state
 
-    addEquality env Why_Todo out.patternType (typeCa2Ta env expectedType) @state
+    addEquality env (CA.patternPos pattern) Why_Todo out.patternType (typeCa2Ta env expectedType) @state
 
     out.typedPattern & out.env
 
@@ -1279,12 +1283,25 @@ applyAllSubstitutions as Dict TA.UnificationVariableId TA.Type: TA.Type: TA.Type
 
 makeInferenceAndCheckError as Env: CA.Module: (Pos & Context & Error_): Error =
     env: caModule: (pos & context & error):
-    todo "makeInferenceAndCheckError"
+
+    Error.Simple pos eenv:
+        [
+        , Debug.toHuman error
+        , Debug.toHuman context
+        ]
 
 
-makeResolutionError as Env: CA.Module: (Why & Text): Error =
-    env: caModule: (why & message):
-    todo "makeReoslutionError"
+makeResolutionError as Env: CA.Module: (Equality & Text): Error =
+    env: caModule: (Equality context pos why t1 t2 & message):
+
+    Error.Simple pos eenv:
+        [
+        , message
+        , Debug.toHuman context
+        , Debug.toHuman why
+        , Debug.toHuman t1
+        , Debug.toHuman t2
+        ]
 
 
 #
@@ -1405,15 +1422,15 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
 #
 alias ERState = {
     , substitutions as Dict TA.UnificationVariableId TA.Type
-    , errors as [Why & Text]
+    , errors as [Equality & Text]
     }
 
 
-addErrorIf as Bool: Why: Text: ERState: ERState =
-    test: why: message: state:
+addErrorIf as Bool: Equality: Text: ERState: ERState =
+    test: equality: message: state:
 
     if test then
-        { state with errors = (why & message) :: .errors }
+        { state with errors = (equality & message) :: .errors }
     else
         state
 
@@ -1425,7 +1442,11 @@ solveEqualities as [Equality]: ERState: ERState =
         []:
             state
 
-        Equality context why type1 type2 :: tail:
+        head :: tail:
+
+            Equality context pos why type1 type2 =
+                head
+
             try type1 & type2 as
 
                 TA.TypeUnificationVariable tyvarId & t2:
@@ -1438,19 +1459,19 @@ solveEqualities as [Equality]: ERState: ERState =
 
                 TA.TypeOpaque _ usr1 args1 & TA.TypeOpaque _ usr2 args2:
                     newEqualities as [Equality] =
-                        List.indexedMap2 (index: Equality context (Why_TypeArgument usr1 index why)) args1 args2
+                        List.indexedMap2 (index: Equality context pos (Why_TypeArgument usr1 index why)) args1 args2
 
                     state
-                    >> addErrorIf (usr1 /= usr2) why "types don't match"
+                    >> addErrorIf (usr1 /= usr2) head "different opaque types"
                     >> solveEqualities (List.append tail newEqualities)
 
 
                 TA.TypeFunction _ in1 modifier1 out1 & TA.TypeFunction _ in2 modifier2 out2:
                     newEqualities as [Equality] =
-                        Equality context (Why_FunctionInput why) in1 in2 :: Equality context (Why_FunctionOutput why) out1 out2 :: tail
+                        Equality context pos (Why_FunctionInput why) in1 in2 :: Equality context pos (Why_FunctionOutput why) out1 out2 :: tail
 
                     state
-                    >> addErrorIf (modifier1 /= modifier2) why "lambda modifiers don't match"
+                    >> addErrorIf (modifier1 /= modifier2) head "lambda modifiers don't match"
                     >> solveEqualities newEqualities
 
 
@@ -1460,10 +1481,10 @@ solveEqualities as [Equality]: ERState: ERState =
 
                     newEqualities as [Equality] =
                         tail >> Dict.for both attrName: (attrType1 & attrType2): eqs:
-                              Equality context (Why_Attribute why) attrType1 attrType2 :: eqs
+                              Equality context pos (Why_Attribute why) attrType1 attrType2 :: eqs
 
                     state
-                    >> addErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) why "record attrs don't match"
+                    >> addErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match"
                     >> solveEqualities newEqualities
 
 
@@ -1480,18 +1501,12 @@ solveEqualities as [Equality]: ERState: ERState =
 
 
                 TA.TypeUnique _ m1 & TA.TypeUnique _ m2:
-                    solveEqualities (Equality context why m1 m2 :: tail) state
+                    solveEqualities (Equality context pos why m1 m2 :: tail) state
 
-                [#
-                TypeAnnotationVariable _ name1 & TypeAnnotationVariable _ name2:
-                    if name1 == name2 then
-                        solveEqualities tail state
-                    else
-                        addError why "these tyvars should be the same!!" state
-                #]
 
                 _:
-                    todo "I have no clue what to do here"
+                    { state with errors = (head & "types are incompatible") :: .errors }
+                    >> solveEqualities tail
 
 
 
@@ -1525,8 +1540,8 @@ replaceUnificationVariable as TA.UnificationVariableId: TA.Type: [Equality]: ERS
 
     newEqualities =
         # TODO we don't care about map preserving order
-        remainingEqualities >> List.map (Equality context why t1 t2):
-            Equality context why
+        remainingEqualities >> List.map (Equality context pos why t1 t2):
+            Equality context pos why
                 (applySubstitutionToType tyvarId replacingType t1)
                 (applySubstitutionToType tyvarId replacingType t2)
 
