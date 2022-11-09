@@ -49,19 +49,8 @@ pos as Env: Int: Int: Pos =
         Pos.P env.moduleName start end
 
 
-makeError as Text: [Token]: Text: Res a =
-    moduleName: readState: message:
-
-    p =
-        try readState as
-            []: Pos.P moduleName 0 1
-            Token start end k :: rest: Pos.P moduleName start end
-
-    Error.res p (eenv: [ message ])
-
-
 #
-# Terms
+# Utility
 #
 oneToken as Parser Token =
     Parser.consumeOne
@@ -78,21 +67,6 @@ kind as Token.Kind: Parser Token =
         Parser.reject
 
 
-defop as Parser None =
-
-    oneToken >> on token:
-    try token as
-        Token _ _ Token.Defop:
-            ok None
-
-        _:
-            Parser.reject
-
-
-
-#
-# Combinators
-#
 discardFirst as Parser a: Parser b: Parser b =
     a: b:
     a >> on _: b
@@ -241,29 +215,21 @@ rawList as Parser a: Parser [a] =
 #
 # Statements
 #
-#errorShouldUseDefNormalHere as Text =
-#    "You should use a normal `=` here."
-
-
 aliasDef as Env: Parser FA.Statement =
     env:
 
     kind (Token.LowerName Token.NameNoModifier Nothing "alias" []) >> on _:
     upperNameBare env >> on name:
     Parser.zeroOrMore (lowerNameBare env) >> on args:
-    defop >> on None:
+    kind Token.Defop >> on None:
     inlineOrBelowOrIndented (typeExpr env) >> on ty:
-#    if defModifier /= Token.DefNormal then
-#        Parser.abort errorShouldUseDefNormalHere
-#
-#    else
-        { name = name
-        , args = args
-        , ty = ty
-        }
-            # TODO use ty end instead
-            >> FA.AliasDef
-            >> ok
+    { name = name
+    , args = args
+    , ty = ty
+    }
+    # TODO use ty end instead
+    >> FA.AliasDef
+    >> ok
 
 
 unionConstructor as Env: Parser (At Name & [Type]) =
@@ -272,7 +238,7 @@ unionConstructor as Env: Parser (At Name & [Type]) =
     typeExpr env >> on type:
     try type as
         FA.TypeConstant p Nothing name args:
-            ok << (At p name) & args
+            (At p name) & args >> ok
 
         _:
             Parser.reject
@@ -284,18 +250,14 @@ unionDef as Env: Parser FA.Statement =
     kind (Token.LowerName Token.NameNoModifier Nothing "union" []) >> on _:
     upperNameBare env >> on (At p name):
     Parser.zeroOrMore (lowerNameBare env) >> on args:
-    defop >> on None:
+    kind Token.Defop >> on None:
     inlineOrBelowOrIndented (rawList (unionConstructor env)) >> on cons:
-#    if defModifier /= Token.DefNormal then
-#        Parser.abort errorShouldUseDefNormalHere
-#
-#    else
-        { name = name
-        , args = List.map Pos.drop args
-        , constructors = cons
-        }
-            >> FA.UnionDef p
-            >> ok
+    { name = name
+    , args = List.map Pos.drop args
+    , constructors = cons
+    }
+    >> FA.UnionDef p
+    >> ok
 
 
 #
@@ -492,7 +454,7 @@ definition as Env: Parser FA.Statement =
     here >> on start:
     pattern env >> on p:
     Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> on nf:
-    inlineOrBelowOrIndented defop >> on defModifier:
+    inlineOrBelowOrIndented (kind Token.Defop) >> on defModifier:
     inlineStatementOrBlock env >> on body:
 
 #    end =
@@ -745,6 +707,17 @@ module_ as Env: Parser FA.Module =
 #
 # Main
 #
+makeError as Text: [Token]: Text: Res a =
+    moduleName: readState: message:
+
+    p =
+        try readState as
+            []: Pos.P moduleName 0 1
+            Token start end k :: rest: Pos.P moduleName start end
+
+    Error.res p (eenv: [ message ])
+
+
 parse as Env: [Token]: Res FA.Module =
     env: tokens:
 
