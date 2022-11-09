@@ -498,138 +498,6 @@ nonFunction as Env: Parser [Text] =
         Parser.abort << "Only NonFunction is supported for now"
 
 
-typeTerm as Env: Parser FA.Type =
-    env:
-
-    oneToken >> on (Token start end k):
-    try k as
-        Token.UpperName maybeModule name:
-            ok << FA.TypeConstant (pos env start end) maybeModule name []
-
-        Token.LowerName Token.NameNoModifier Nothing name []:
-            ok << FA.TypeVariable (pos env start end) name
-
-        _:
-            Parser.reject
-
-
-typeExpr as Env: Parser FA.Type =
-    env:
-
-    nest =
-        Parser.breakCircularDefinition _: typeExpr env
-
-    higherOr =
-        # "higher priority parser or"
-        Parser.higherOr
-
-    Parser.expression
-        (typeTerm env)
-        [ higherOr << typeParens nest
-        , higherOr << typeList env nest
-        , higherOr << record env Token.As FA.TypeRecord nest
-        , mutopOr env
-        , typeConstructorAppOr env
-        , typeTupleOr env
-        , typeFunctionOr env
-        ]
-
-
-typeTupleOr as Env: Parser FA.Type: Parser FA.Type =
-    env: higher:
-
-    binopAndPrev as Parser FA.Type =
-        discardFirst (binaryOperators Op.Tuple) higher
-
-    here >> on start:
-    higher >> on head:
-    Parser.zeroOrMore binopAndPrev >> on tail:
-    here >> on end:
-    if tail == [] then
-        ok head
-
-    else
-        (head :: tail)
-            >> FA.TypeTuple (pos env start end)
-            >> ok
-
-
-typeParens as Parser FA.Type: Parser FA.Type =
-    main:
-    surroundStrict
-        (Token.RoundParen Token.Open)
-        (Token.RoundParen Token.Closed)
-        main
-
-
-typeList as Env: Parser FA.Type: Parser FA.Type =
-    env: main:
-    here >> on start:
-    surroundStrict (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) main >> on t:
-    here >> on end:
-    ok << FA.TypeList (pos env start end) t
-
-
-typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
-    env: higher:
-
-    arrowAndHigher as Parser ( LambdaModifier & Pos & FA.Type ) =
-        arrow env >> on ( lambdaModifier & p ):
-        higher >> on h:
-        ok ( lambdaModifier & p & h )
-
-    fold as ( LambdaModifier & Pos & FA.Type ): ( LambdaModifier & FA.Type ): ( LambdaModifier & FA.Type ) =
-
-        ( nextIsMutable & p & ty ):
-        ( lambdaModifier & accum ):
-
-        ( nextIsMutable & FA.TypeFunction p ty lambdaModifier accum)
-
-    here >> on fs:
-    higher >> on e:
-    here >> on fe:
-    Parser.zeroOrMore arrowAndHigher >> on es:
-
-    firstPos =
-        pos env fs fe
-
-    # This used to be OneOrMore.reverse, maybe there is a better way to rewrite this?
-    reverseRec as a: [a]: [a]: a & [a] =
-        a: ls: accum:
-        try ls as
-            []:
-                a & accum
-
-            head :: tail:
-                reverseRec head tail (a :: accum)
-
-    ( ( thisIsMutable & p & return ) & reversedArgs ) =
-        reverseRec ( LambdaNormal & firstPos & e ) es []
-
-    thisIsMutable & return
-        >> List.for reversedArgs fold
-        >> x: x.second
-        >> ok
-
-
-typeConstructorAppOr as Env: Parser FA.Type: Parser FA.Type =
-    env: higher:
-
-    higher >> on ty:
-    try ty as
-        FA.TypeConstant p1 maybeModule name []:
-            (Parser.zeroOrMore higher) >> on args:
-            here >> on end2:
-            if args == [] then
-                ok ty
-
-            else
-                ok << FA.TypeConstant p1 maybeModule name args
-
-        _:
-            ok ty
-
-
 typeAnnotation as Env: Parser FA.Type =
     env:
 
@@ -641,6 +509,8 @@ typeAnnotation as Env: Parser FA.Type =
 #
 # Binops
 #
+
+
 binopsOr as Env: Op.Precedence: Parser FA.Expression: Parser FA.Expression =
     env: group: higher:
     here >> on start:
@@ -699,9 +569,6 @@ module_ as Env: Parser FA.Module =
         [ Parser.map (_: []) Parser.end
         , Parser.surroundWith start zzz statements
         ]
-
-
-
 
 
 #
