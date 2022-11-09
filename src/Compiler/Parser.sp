@@ -1,27 +1,8 @@
 
-alias Params = {
+alias Env =
+    { moduleName as Text
     , stripLocations as Bool
-    , name as Name
     }
-
-
-textToFormattableModule as Params: Text: Res [FA.Statement] =
-    pars: code:
-
-    tokensResult as Res [Token] =
-        Compiler/Lexer.lexer pars.name code
-
-    tokensToStatsResult as [Token]: Res [FA.Statement] =
-        tokens:
-
-#        List.each tokens t:
-#              log "*" t
-
-        Debug.benchStart None
-        parse pars.stripLocations pars.name tokens
-            >> btw Debug.benchStop "parse"
-
-    Result.onOk tokensToStatsResult tokensResult
 
 
 #
@@ -32,22 +13,24 @@ alias Parser a =
     Parser.Parser Token a
 
 
-alias Env =
-    { moduleName as Text
-    , stripLocations as Bool
-    }
-
-
 #
 # Helpers
 #
-andThen =
+on =
     Parser.andThen
 
 
-here as Parser Int =
-    Parser.here >> andThen tokens:
+ok as a: Parser a =
     Parser.accept
+
+
+maybe as Parser a: Parser (Maybe a) =
+    Parser.maybe
+
+
+here as Parser Int =
+    Parser.here >> on tokens:
+    ok
         (try tokens as
             Token mod start end :: rest:
                 start
@@ -77,83 +60,6 @@ makeError as Text: [Token]: Text: Res a =
     Error.res p (eenv: [ message ])
 
 
-# This is just a pr attempt at getting some sort of parser debugging
-#palog as Text: Parser Text =
-#    m:
-#    Parser.accept None >> andThen _:
-#    Parser.accept (Debug.log "->" m)
-
-
-#
-# Main
-#
-parse as Bool: Text: [Token]: Res [FA.Statement] =
-    stripLocations: moduleName: tokens:
-
-    parser =
-        module_ { moduleName, stripLocations }
-
-    runParser moduleName parser tokens
-
-
-runParser as Text: Parser output: [Token]: Res output =
-    moduleName: parser: tokens:
-
-    (failureStates as [[Token]]) & (outcome as Parser.Outcome Token output) =
-        tokens
-            >> List.filter ((Token s e k): k /= Token.Comment)
-            >> Parser.runParser parser
-
-    try outcome as
-        Parser.Accepted readState output:
-            Ok output
-
-        Parser.Aborted readState message:
-            makeError moduleName readState message
-
-        Parser.Rejected:
-            findMin = readState: best:
-                if List.length readState < List.length best then readState else best
-
-            readState as [Token] =
-                List.for failureStates findMin tokens
-
-            message =
-                try readState as
-                    []: "I got to the end of file and I can't make sense of it. =("
-                    _: "I got stuck parsing here. =("
-
-            makeError moduleName readState message
-
-
-module_ as Env: Parser [FA.Statement] =
-    env:
-
-    start =
-        Parser.maybe (kind Token.NewSiblingLine)
-
-
-    e =
-        Parser.oneOf
-            [ kind Token.BlockEnd
-            , kind Token.NewSiblingLine
-            ]
-
-    # This is called `zzz` rather than `end` because apparently there is some really
-    # bad problems with sorting that result in this (?) being declared before Parser.end?
-    zzz =
-        Parser.zeroOrMore e >> andThen _:
-        Parser.end
-
-    statements =
-        oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
-
-    Parser.oneOf
-        [ Parser.map (_: []) Parser.end
-        , Parser.surroundWith start zzz statements
-        ]
-
-
 #
 # Terms
 #
@@ -163,41 +69,21 @@ oneToken as Parser Token =
 
 kind as Token.Kind: Parser Token =
     targetKind:
-    oneToken >> andThen token:
+    oneToken >> on token:
     (Token _ _ k) = token
     if targetKind == k then
-        Parser.accept token
+        ok token
 
     else
         Parser.reject
 
 
-upperNameBare as Env: Parser (At Text) =
-    env:
-    oneToken >> andThen token:
-    try token as
-        Token start end (Token.UpperName Nothing name):
-            Parser.accept << At (pos env start end) name
-        _:
-            Parser.reject
-
-
-lowerNameBare as Env: Parser (At Text) =
-    env:
-    oneToken >> andThen token:
-    try token as
-        Token start end (Token.LowerName Token.NameNoModifier Nothing name []):
-            Parser.accept << At (pos env start end) name
-        _:
-            Parser.reject
-
-
 defop as Parser None =
 
-    oneToken >> andThen token:
+    oneToken >> on token:
     try token as
         Token _ _ Token.Defop:
-            Parser.accept None
+            ok None
 
         _:
             Parser.reject
@@ -209,14 +95,14 @@ defop as Parser None =
 #
 discardFirst as Parser a: Parser b: Parser b =
     a: b:
-    a >> andThen _: b
+    a >> on _: b
 
 
 discardSecond as Parser a: Parser b: Parser a =
     a: b:
-    a >> andThen aa:
-    b >> andThen _:
-    Parser.accept aa
+    a >> on aa:
+    b >> on _:
+    ok aa
 
 
 inlineOrIndented as Parser a: Parser a =
@@ -238,7 +124,7 @@ inlineOrBelowOrIndented as Parser a: Parser a =
 
 maybeWithDefault as a: Parser a: Parser a =
     a: p:
-    Parser.oneOf [ p, Parser.accept a ]
+    Parser.oneOf [ p, ok a ]
 
 
 surroundStrict as Token.Kind: Token.Kind: Parser a: Parser a =
@@ -260,9 +146,9 @@ surroundMultiline as Token.Kind: Token.Kind: Parser a: Parser a =
 
 oomSeparatedBy as Parser a: Parser b: Parser [b] =
     sep: pa:
-    pa >> andThen head:
-    Parser.zeroOrMore (discardFirst sep pa) >> andThen tail:
-    Parser.accept <<  head :: tail
+    pa >> on head:
+    Parser.zeroOrMore (discardFirst sep pa) >> on tail:
+    ok <<  head :: tail
 
 
 [#|
@@ -292,30 +178,30 @@ sib as Parser a: Parser a =
 
 sepListAtSep as Parser sep: Parser item: Parser [sep & item] =
     sep: item:
-    sep >> andThen sep0:
+    sep >> on sep0:
     theParserStillSucks =
         Parser.oneOf
             [ block (sepListAtItem sep item)
             , sib (sepListAtItem sep item)
             , sepListAtItem sep item
             ]
-    theParserStillSucks >> andThen ( item0 & tail ):
-    Parser.accept << sep0 & item0 :: tail
+    theParserStillSucks >> on ( item0 & tail ):
+    ok << sep0 & item0 :: tail
 
 
 
 sepListAtItem as Parser sep: Parser item: Parser (FA.SepList sep item) =
     sep: item:
-    item >> andThen item0:
+    item >> on item0:
     theParserStillSucks =
         Parser.oneOf
             [ block (sepListAtSep sep item)
             , sib (sepListAtSep sep item)
             , sepListAtSep sep item
-            , Parser.accept []
+            , ok []
             ]
-    theParserStillSucks >> andThen sepsAndItems:
-    Parser.accept ( item0 & sepsAndItems )
+    theParserStillSucks >> on sepsAndItems:
+    ok ( item0 & sepsAndItems )
 
 
 sepList as Parser sep: Parser item: Parser (FA.SepList sep item) =
@@ -343,7 +229,7 @@ rawList as Parser a: Parser [a] =
 
     sibsep =
         # TODO was:
-        #             (Parser.maybe << kind Token.NewSiblingLine) >> andThen _:
+        #             (Parser.maybe << kind Token.NewSiblingLine) >> on _:
         #             kind Token.Comma
         # but I didn't test it properly
         inlineOrBelowOrIndented << kind Token.Comma
@@ -359,14 +245,14 @@ rawList as Parser a: Parser [a] =
 #    "You should use a normal `=` here."
 
 
-typeAlias as Env: Parser FA.Statement =
+aliasDef as Env: Parser FA.Statement =
     env:
 
-    kind (Token.LowerName Token.NameNoModifier Nothing "alias" []) >> andThen _:
-    upperNameBare env >> andThen name:
-    Parser.zeroOrMore (lowerNameBare env) >> andThen args:
-    defop >> andThen None:
-    inlineOrBelowOrIndented (typeExpr env) >> andThen ty:
+    kind (Token.LowerName Token.NameNoModifier Nothing "alias" []) >> on _:
+    upperNameBare env >> on name:
+    Parser.zeroOrMore (lowerNameBare env) >> on args:
+    defop >> on None:
+    inlineOrBelowOrIndented (typeExpr env) >> on ty:
 #    if defModifier /= Token.DefNormal then
 #        Parser.abort errorShouldUseDefNormalHere
 #
@@ -376,18 +262,30 @@ typeAlias as Env: Parser FA.Statement =
         , ty = ty
         }
             # TODO use ty end instead
-            >> FA.TypeAlias
-            >> Parser.accept
+            >> FA.AliasDef
+            >> ok
+
+
+unionConstructor as Env: Parser (At Name & [Type]) =
+    env:
+
+    typeExpr env >> on type:
+    try type as
+        FA.TypeConstant p Nothing name args:
+            ok << (At p name) & args
+
+        _:
+            Parser.reject
 
 
 unionDef as Env: Parser FA.Statement =
     env:
 
-    kind (Token.LowerName Token.NameNoModifier Nothing "union" []) >> andThen _:
-    upperNameBare env >> andThen (At p name):
-    Parser.zeroOrMore (lowerNameBare env) >> andThen args:
-    defop >> andThen None:
-    inlineOrBelowOrIndented (rawList (unionConstructor env)) >> andThen cons:
+    kind (Token.LowerName Token.NameNoModifier Nothing "union" []) >> on _:
+    upperNameBare env >> on (At p name):
+    Parser.zeroOrMore (lowerNameBare env) >> on args:
+    defop >> on None:
+    inlineOrBelowOrIndented (rawList (unionConstructor env)) >> on cons:
 #    if defModifier /= Token.DefNormal then
 #        Parser.abort errorShouldUseDefNormalHere
 #
@@ -397,19 +295,7 @@ unionDef as Env: Parser FA.Statement =
         , constructors = cons
         }
             >> FA.UnionDef p
-            >> Parser.accept
-
-
-unionConstructor as Env: Parser FA.Constructor =
-    env:
-
-    typeExpr env >> andThen type:
-    try type as
-        FA.TypeConstant p Nothing name args:
-            Parser.accept << (At p name) & args
-
-        _:
-            Parser.reject
+            >> ok
 
 
 #
@@ -419,40 +305,40 @@ unionConstructor as Env: Parser FA.Constructor =
 #term env =
 #    as Env: Parser FA.Expression
 #
-#    oneToken >> andThen (Token start end k):
+#    oneToken >> on (Token start end k):
 #
 #    p =
 #        pos env start end
 #
 #    try k as
 #        Token.NumberLiteral s:
-#            Parser.accept << FA.LiteralNumber p s
+#            ok << FA.LiteralNumber p s
 #
 #        Token.TextLiteral s:
-#            Parser.accept << FA.LiteralText p s
+#            ok << FA.LiteralText p s
 #
 #        Token.UpperName maybeModule name:
-#            Parser.accept << FA.Constructor p maybeModule name
+#            ok << FA.Constructor p maybeModule name
 #
 #        Token.LowerName modifier maybeModule name attrs:
 #            try modifier as
 #                Token.NameNoModifier:
 #                    # This is a HACK and probably the world would be a better place if I cleaned this up
 #                    # TODO clean this up once I have a better way to debug the parser
-#                    Parser.maybe lambdaColon >> andThen maybeColon:
+#                    Parser.maybe lambdaColon >> on maybeColon:
 #                        try maybeColon as
 #                            Nothing:
-#                                Parser.accept << FA.Variable p maybeModule name attrs
+#                                ok << FA.Variable p maybeModule name attrs
 #
 #                            Just mutable:
-#                                lambdaBody env >> andThen b:
-#                                Parser.accept << FA.Lambda p (FA.PatternAny p False name Nothing) mutable b
+#                                lambdaBody env >> on b:
+#                                ok << FA.Lambda p (FA.PatternAny p False name Nothing) mutable b
 #
 #                Token.NameMutable:
-#                    Parser.accept << FA.Mutable p name attrs
+#                    ok << FA.Mutable p name attrs
 #
 #                Token.NameStartsWithDot:
-#                    Parser.accept << FA.RecordShorthand p (name :: attrs)
+#                    ok << FA.RecordShorthand p (name :: attrs)
 #
 #        _:
 #            Parser.reject
@@ -462,124 +348,101 @@ unionConstructor as Env: Parser FA.Constructor =
 exprWithLeftDelimiter as Env: Parser FA.Expression =
     env:
 
-    colon =
-        Parser.oneOf
-            [ kind Token.Colon >> Parser.map _: False
-            , kind Token.ConsumingColon >> Parser.map _: True
-            ]
-
-    maybeColon =
-        Parser.maybe colon
-
-    oneToken >> andThen (Token start end k):
+    oneToken >> on (Token start end k):
 
         p =
             pos env start end
 
         try k as
-            Token.NumberLiteral s:
-                maybeColon >> andThen mc:
-                    try mc as
-                        Nothing: Parser.accept << FA.LiteralNumber p s
-                        Just mutable: lambdaParser env mutable (FA.PatternLiteralNumber p s)
+            Token.Name name:
+                FA.Name p name >> ok
 
+            Token.NumberLiteral s:
+                FA.LiteralNumber p s >> ok
 
             Token.TextLiteral s:
-                maybeColon >> andThen mc:
-                    try mc as
-                        Nothing: Parser.accept << FA.LiteralText p s
-                        Just mutable: lambdaParser env mutable (FA.PatternLiteralText p s)
-
-            Token.Mutop:
-                oneToken >> andThen token:
-
-                try token as
-                    Token start end (Token.LowerName Token.NameNoModifier maybeModule name attrs):
-                        # TODO this duplicates the entry for Token.LowerName, maybe merge them in a function?
-
-
-                        if maybeModule /= Nothing then
-                            log "can't mutate a global: " { maybeModule, name }
-                            Parser.abort "TODO fatal parser error, please fix me"
-                        else
-                            maybeColon
-                            >> andThen mc:
-
-                            try mc as
-                                Nothing: Parser.accept << FA.Mutable p name attrs
-                                # TODO also test that attrs == []
-                                Just mutable: lambdaParser env mutable (FA.PatternAny p True name Nothing)
-
-                    _:
-                        Parser.abort "TODO: I need a name here"
-
-
-            Token.LowerName modifier maybeModule name attrs:
-
-                try modifier as
-
-                    Token.NameStartsWithDot:
-                        Parser.accept << FA.RecordShorthand p (name :: attrs)
-
-                    Token.NameNoModifier:
-                        maybeColon >> andThen mc:
-                            try mc as
-                                Nothing: Parser.accept << FA.Variable p maybeModule name attrs
-                                # TODO also test that maybeModule == Nothing and attrs == []
-                                Just mutable: lambdaParser env mutable (FA.PatternAny p False name Nothing)
-
-            Token.UpperName maybeModule name:
-                maybeColon >> andThen mc:
-                    try mc as
-                        Nothing: Parser.accept << FA.Constructor p maybeModule name
-                        Just mutable: lambdaParser env mutable (FA.PatternConstructor p maybeModule name [])
+                FA.LiteralText p s >> ok
 
             Token.RoundParen Token.Open:
-                paParser =
-                    pattern env >> andThen pa:
-                    kind (Token.RoundParen Token.Closed) >> andThen _:
-                    colon >> andThen isConsuming:
-                    lambdaParser env isConsuming pa
-
-                exprParser =
+                exprParser as Parser Expression =
                     discardSecond
                         (expr env)
                         (kind (Token.RoundParen Token.Closed))
 
-                inlineOrBelowOrIndented << Parser.oneOf [ paParser, exprParser ]
+                inlineOrBelowOrIndented exprParser
 
-#            Token.SquareBracket Token.Open:
-#                paParser =
-#                    rawList (pattern env) >> andThen pas:
-#                    kind (Token.SquareBracket Token.Closed) >> andThen _:
-#                    colon >> andThen mutable:
-#                    lambdaParser env mutable (FA.PatternList p pas)
-#
-#                exprParser =
-#                    rawList (expr env) >> andThen exps:
-#                    kind (Token.SquareBracket Token.Closed) >> andThen _:
-#                    Parser.accept << FA.List p exps
-#
-#                Parser.oneOf [ paParser, exprParser ]
+            Token.SquareBracket Token.Open:
+                item as Parser (Bool & Expression) =
+                    maybe (kind Token.ThreeDots) >> on maybeDots:
+                    exp env >> on exp:
+                    ok (maybeDots /= Nothing & exp)
 
-#            Token.CurlyBrace Token.Open
-#                attrs, close brace, lambdaOrAppl
+                rawList item >> on exps:
+                kind (Token.SquareBracket Token.Closed) >> on _:
+                ok << FA.List p exps
+
+
+            Token.CurlyBrace Token.Open:
+                extension as Parser (Maybe Expression) =
+                    discardSecond
+                        (maybe (expr env))
+                        (kind Token.With)
+
+                attribute as Parser { name as Name, maybeAnnotation as Maybe Type, maybeExpr as Maybe Expression } =
+                    word >> on name:
+                    maybe asAnnotation >> on maybeAnnotation:
+                    maybe (discardFirst defop (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
+                    ok { name, maybeAnnotation, maybeExpr }
+
+                inlineOrBelowOrIndented (maybe extension) >> on maybeExtension:
+                rawList attribute >> on attrs:
+                FA.Record p { maybeExtension, attrs } >> ok
+
+            Token.Unop unop:
+                expr env >> on e:
+                FA.Unop p unop e >> ok
+
+            Token.Fn:
+                rawList expression >> on args:
+                kind Token.Colon >> on _:
+                expr env >> on body:
+                FA.Fn p args body >> ok
+
+            Token.If:
+                expr env >> on condition:
+                kind Token.Then >> on _:
+                inlineOrBelowOrIndented (expr env) >> on true:
+                kind Token.Else >> on _:
+                inlineOrBelowOrIndented (expr env) >> on false:
+                FA.If p { condition, true, false } >> ok
+
+            Token.Try:
+                maybeNewLine as Parser a: Parser a =
+                    discardFirst (Parser.maybe (kind Token.NewSiblingLine))
+
+                maybeNewLineKind as Token.Kind: Parser Token =
+                    k:
+                    maybeNewLine (kind k)
+
+                patternAndValue as Parser (FA.Expression & FA.Expression) =
+                    pattern env >> on p:
+                    maybeNewLineKind Token.Colon >> on _:
+                    inlineStatementOrBlock env >> on value:
+                    ok ( p & value )
+
+                expr env >> on value:
+                kind Token.As >> on _:
+                block (Parser.zeroOrMore (maybeNewLine patternAndValue)) >> on patterns:
+                here >> on end:
+                {
+                , value = value
+                , patterns = patterns
+                }
+                >> FA.Try (pos env start end)
+                >> ok
 
             _:
                 Parser.reject
-
-#            Token.If
-#                expr, then, body, else, body
-#            Token.Try
-#                expr, as, pasAndBodies
-
-
-lambdaParser as Env: Bool: FA.Pattern: Parser FA.Expression =
-    env: isConsuming: pa:
-
-    lambdaBody env >> andThen body:
-    Parser.accept << FA.Lambda (FA.patternPos pa) pa (if isConsuming then LambdaConsuming else LambdaNormal) body
-
 
 
 #
@@ -590,7 +453,7 @@ lambdaParser as Env: Bool: FA.Pattern: Parser FA.Expression =
 expr as Env: Parser FA.Expression =
     env:
 
-    higherOr =
+    ho =
         Parser.higherOr
 
     nest =
@@ -600,11 +463,11 @@ expr as Env: Parser FA.Expression =
         (exprWithLeftDelimiter env)
         # the `Or` stands for `Or higher priority parser`
         [
-#        , higherOr << parens (Parser.oneOf [ binopInsideParens env, nest ])
-        , higherOr << list env FA.List nest
-        , higherOr << record env Token.Defop FA.Record nest
-#        , higherOr << lambda env
-        , unopsOr env
+#        , ho << parens (Parser.oneOf [ binopInsideParens env, nest ])
+#        , ho << list env FA.List nest
+#        , ho << record env Token.Defop FA.Record nest
+#        , ho << lambda env
+#        , unopsOr env
         , functionApplicationOr env
         , binopsOr env Op.Exponential
         , binopsOr env Op.Multiplicative
@@ -623,8 +486,8 @@ expr as Env: Parser FA.Expression =
         # TODO pipes can't actually be mixed
         , binopsOr env Op.Pipe
         , binopsOr env Op.Mutop
-        , higherOr << if_ env
-        , higherOr << try_ env
+#        , ho << if_ env
+#        , ho << try_ env
         ]
 
 
@@ -649,9 +512,9 @@ parens as Parser a: Parser a =
 
 list as Env: (Pos: List a: a): Parser a: Parser a =
     env: constructor: main:
-    here >> andThen start:
-    surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (Parser.maybe (rawList main)) >> andThen maybeLs:
-    here >> andThen end:
+    here >> on start:
+    surroundMultiline (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) (Parser.maybe (rawList main)) >> on maybeLs:
+    here >> on end:
     theParserStillSucks =
         try maybeLs as
             Just ls:
@@ -661,7 +524,7 @@ list as Env: (Pos: List a: a): Parser a: Parser a =
                 []
     theParserStillSucks
         >> constructor (pos env start end)
-        >> Parser.accept
+        >> ok
 
 
 
@@ -677,39 +540,39 @@ record as Env: Token.Kind: (Pos: FA.RecordArgs a: a): Parser a: Parser a =
         discardFirst (kind assign) (inlineOrBelowOrIndented main)
 
     attr =
-        lowerNameBare env >> andThen name:
-        Parser.maybe attrAssignment >> andThen maybeAssignment:
-        Parser.accept ( name & maybeAssignment )
+        lowerNameBare env >> on name:
+        Parser.maybe attrAssignment >> on maybeAssignment:
+        ok ( name & maybeAssignment )
 
     updateTarget =
-        main >> andThen h:
-        kind Token.With >> andThen _:
-        Parser.accept h
+        main >> on h:
+        kind Token.With >> on _:
+        ok h
 
     content =
         start:
-        Parser.maybe updateTarget >> andThen maybeUpdateTarget:
-        (inlineOrBelowOrIndented << rawList attr) >> andThen attrs:
-        here >> andThen end:
+        Parser.maybe updateTarget >> on maybeUpdateTarget:
+        (inlineOrBelowOrIndented << rawList attr) >> on attrs:
+        here >> on end:
         { extends = maybeUpdateTarget
         , attrs = attrs
         }
             >> constructor (pos env start end)
-            >> Parser.accept
+            >> ok
 
-    here >> andThen s:
-    surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (Parser.maybe << content s) >> andThen maybeRecord:
-    here >> andThen e:
+    here >> on s:
+    surroundMultiline (Token.CurlyBrace Token.Open) (Token.CurlyBrace Token.Closed) (Parser.maybe << content s) >> on maybeRecord:
+    here >> on e:
     try maybeRecord as
         Just re:
-            Parser.accept re
+            ok re
 
         Nothing:
             { extends = Nothing
             , attrs = []
             }
                 >> constructor (pos env s e)
-                >> Parser.accept
+                >> ok
 
 
 
@@ -726,25 +589,25 @@ if_ as Env: Parser FA.Expression =
             (Parser.maybe (kind Token.NewSiblingLine))
             (kind k)
 
-    kind Token.If >> andThen (Token start _ _):
-    expr env >> andThen condition:
-    Parser.maybe (maybeNewLine Token.Then) >> andThen maybeThen:
+    kind Token.If >> on (Token start _ _):
+    expr env >> on condition:
+    Parser.maybe (maybeNewLine Token.Then) >> on maybeThen:
     if maybeThen == Nothing then
         Parser.abort "`if` should be followed by a `then` but I can't find it"
 
     else
-        inlineStatementOrBlock env >> andThen true:
-        maybeNewLine Token.Else >> andThen _:
-        Parser.maybe (kind Token.Colon) >> andThen _:
-        inlineStatementOrBlock env >> andThen false:
-        here >> andThen end:
+        inlineStatementOrBlock env >> on true:
+        maybeNewLine Token.Else >> on _:
+        Parser.maybe (kind Token.Colon) >> on _:
+        inlineStatementOrBlock env >> on false:
+        here >> on end:
         { isCompact = False
         , condition = condition
         , true = true
         , false = false
         }
             >> FA.If (pos env start end)
-            >> Parser.accept
+            >> ok
 
 
 
@@ -764,22 +627,22 @@ try_ as Env: Parser FA.Expression =
         maybeNewLine (kind k)
 
     patternAndAccept =
-        pattern env >> andThen p:
-        maybeNewLineKind Token.Colon >> andThen _:
-        inlineStatementOrBlock env >> andThen accept:
-        Parser.accept ( p & accept )
+        pattern env >> on p:
+        maybeNewLineKind Token.Colon >> on _:
+        inlineStatementOrBlock env >> on accept:
+        ok ( p & accept )
 
-    kind Token.Try >> andThen (Token start _ _):
-    expr env >> andThen value:
-    maybeNewLineKind Token.As >> andThen _:
-    block (Parser.zeroOrMore (maybeNewLine patternAndAccept)) >> andThen patterns:
-    here >> andThen end:
+    kind Token.Try >> on (Token start _ _):
+    expr env >> on value:
+    maybeNewLineKind Token.As >> on _:
+    block (Parser.zeroOrMore (maybeNewLine patternAndAccept)) >> on patterns:
+    here >> on end:
     { isCompact = False
     , value = value
     , patterns = patterns
     }
         >> FA.Try (pos env start end)
-        >> Parser.accept
+        >> ok
 
 
 
@@ -793,23 +656,23 @@ statement as Env: Parser FA.Statement =
     Parser.breakCircularDefinition _:
     # This is here because inline comments might be followed by NewSiblingLine
     # and I am not sure it's a responsibility of the lexer to deal with it.
-    Parser.maybe (kind Token.NewSiblingLine) >> andThen _:
+    Parser.maybe (kind Token.NewSiblingLine) >> on _:
     Parser.oneOf
-        [ typeAlias env
+        [ aliasDef env
         , unionDef env
         , definition env
-        , expr env >> andThen e:
-          e >> FA.Evaluation (FA.expressionPos e) >> Parser.accept
+        , expr env >> on e:
+          e >> FA.Evaluation (FA.expressionPos e) >> ok
         ]
 
 
 definition as Env: Parser FA.Statement =
     env:
-    here >> andThen start:
-    pattern env >> andThen p:
-    Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> andThen nf:
-    inlineOrBelowOrIndented defop >> andThen defModifier:
-    inlineStatementOrBlock env >> andThen body:
+    here >> on start:
+    pattern env >> on p:
+    Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> on nf:
+    inlineOrBelowOrIndented defop >> on defModifier:
+    inlineStatementOrBlock env >> on body:
 
 #    end =
 #        body
@@ -819,19 +682,19 @@ definition as Env: Parser FA.Statement =
 #            >> Maybe.withDefault Pos.T
 #            >> Pos.end
 
-    here >> andThen end:
+    here >> on end:
     { pattern = p
     , body = body
     , nonFn = Maybe.withDefault [] nf
     }
         >> FA.Definition (pos env start end)
-        >> Parser.accept
+        >> ok
 
 
 inlineStatementOrBlock as Env: Parser [FA.Statement] =
     env:
     Parser.oneOf
-        [ Parser.breakCircularDefinition (_: expr env) >> andThen e: Parser.accept [FA.Evaluation (FA.expressionPos e) e]
+        [ Parser.breakCircularDefinition (_: expr env) >> on e: ok [FA.Evaluation (FA.expressionPos e) e]
         , block (oomSeparatedBy (kind Token.NewSiblingLine) (statement env))
         ]
 
@@ -843,11 +706,11 @@ inlineStatementOrBlock as Env: Parser [FA.Statement] =
 
 nonFunction as Env: Parser [Text] =
     env:
-    kind Token.With >> andThen _:
-    rawList (lowerNameBare env) >> andThen nf:
-    upperNameBare env >> andThen (At _ n):
+    kind Token.With >> on _:
+    rawList (lowerNameBare env) >> on nf:
+    upperNameBare env >> on (At _ n):
     if n == "NonFunction" then
-        Parser.accept << List.map Pos.drop nf
+        ok << List.map Pos.drop nf
     else
         Parser.abort << "Only NonFunction is supported for now"
 
@@ -855,13 +718,13 @@ nonFunction as Env: Parser [Text] =
 typeTerm as Env: Parser FA.Type =
     env:
 
-    oneToken >> andThen (Token start end k):
+    oneToken >> on (Token start end k):
     try k as
         Token.UpperName maybeModule name:
-            Parser.accept << FA.TypeConstant (pos env start end) maybeModule name []
+            ok << FA.TypeConstant (pos env start end) maybeModule name []
 
         Token.LowerName Token.NameNoModifier Nothing name []:
-            Parser.accept << FA.TypeVariable (pos env start end) name
+            ok << FA.TypeVariable (pos env start end) name
 
         _:
             Parser.reject
@@ -893,15 +756,15 @@ typeExpr as Env: Parser FA.Type =
 mutopOr as Env: Parser FA.Type: Parser FA.Type =
     env: higher:
 
-    Parser.maybe (kind Token.Mutop) >> andThen maybeUnary:
-    higher >> andThen right:
-    here >> andThen end:
+    Parser.maybe (kind Token.Mutop) >> on maybeUnary:
+    higher >> on right:
+    here >> on end:
     try maybeUnary as
         Just (Token start _ _ ):
-            Parser.accept << FA.TypeMutable (pos env start end) right
+            ok << FA.TypeMutable (pos env start end) right
 
         Nothing:
-            Parser.accept right
+            ok right
 
 
 
@@ -913,17 +776,17 @@ typeTupleOr as Env: Parser FA.Type: Parser FA.Type =
     binopAndPrev as Parser FA.Type =
         discardFirst (binaryOperators Op.Tuple) higher
 
-    here >> andThen start:
-    higher >> andThen head:
-    Parser.zeroOrMore binopAndPrev >> andThen tail:
-    here >> andThen end:
+    here >> on start:
+    higher >> on head:
+    Parser.zeroOrMore binopAndPrev >> on tail:
+    here >> on end:
     if tail == [] then
-        Parser.accept head
+        ok head
 
     else
         (head :: tail)
             >> FA.TypeTuple (pos env start end)
-            >> Parser.accept
+            >> ok
 
 
 typeParens as Parser FA.Type: Parser FA.Type =
@@ -936,19 +799,19 @@ typeParens as Parser FA.Type: Parser FA.Type =
 
 typeList as Env: Parser FA.Type: Parser FA.Type =
     env: main:
-    here >> andThen start:
-    surroundStrict (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) main >> andThen t:
-    here >> andThen end:
-    Parser.accept << FA.TypeList (pos env start end) t
+    here >> on start:
+    surroundStrict (Token.SquareBracket Token.Open) (Token.SquareBracket Token.Closed) main >> on t:
+    here >> on end:
+    ok << FA.TypeList (pos env start end) t
 
 
 typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
     env: higher:
 
     arrowAndHigher as Parser ( LambdaModifier & Pos & FA.Type ) =
-        arrow env >> andThen ( lambdaModifier & p ):
-        higher >> andThen h:
-        Parser.accept ( lambdaModifier & p & h )
+        arrow env >> on ( lambdaModifier & p ):
+        higher >> on h:
+        ok ( lambdaModifier & p & h )
 
     fold as ( LambdaModifier & Pos & FA.Type ): ( LambdaModifier & FA.Type ): ( LambdaModifier & FA.Type ) =
 
@@ -957,10 +820,10 @@ typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
 
         ( nextIsMutable & FA.TypeFunction p ty lambdaModifier accum)
 
-    here >> andThen fs:
-    higher >> andThen e:
-    here >> andThen fe:
-    Parser.zeroOrMore arrowAndHigher >> andThen es:
+    here >> on fs:
+    higher >> on e:
+    here >> on fe:
+    Parser.zeroOrMore arrowAndHigher >> on es:
 
     firstPos =
         pos env fs fe
@@ -981,20 +844,20 @@ typeFunctionOr as Env: Parser FA.Type: Parser FA.Type =
     thisIsMutable & return
         >> List.for reversedArgs fold
         >> x: x.second
-        >> Parser.accept
+        >> ok
 
 
 # TODO this is not an "arrow" any more
 arrow as Env: Parser ( LambdaModifier & Pos ) =
     env:
 
-    oneToken >> andThen (Token start end k):
+    oneToken >> on (Token start end k):
     try k as
         Token.Colon:
-            Parser.accept ( LambdaNormal & (pos env start end) )
+            ok ( LambdaNormal & (pos env start end) )
 
         Token.ConsumingColon:
-            Parser.accept ( LambdaConsuming & (pos env start end) )
+            ok ( LambdaConsuming & (pos env start end) )
 
         _:
             Parser.reject
@@ -1003,19 +866,19 @@ arrow as Env: Parser ( LambdaModifier & Pos ) =
 typeConstructorAppOr as Env: Parser FA.Type: Parser FA.Type =
     env: higher:
 
-    higher >> andThen ty:
+    higher >> on ty:
     try ty as
         FA.TypeConstant p1 maybeModule name []:
-            (Parser.zeroOrMore higher) >> andThen args:
-            here >> andThen end2:
+            (Parser.zeroOrMore higher) >> on args:
+            here >> on end2:
             if args == [] then
-                Parser.accept ty
+                ok ty
 
             else
-                Parser.accept << FA.TypeConstant p1 maybeModule name args
+                ok << FA.TypeConstant p1 maybeModule name args
 
         _:
-            Parser.accept ty
+            ok ty
 
 
 #
@@ -1026,8 +889,8 @@ typeConstructorAppOr as Env: Parser FA.Type: Parser FA.Type =
 #    as Parser Bool
 #
 #    Parser.oneOf
-#        [ kind Token.Colon >> andThen _: Parser.accept False
-#        , kind Token.MutableColon >> andThen _: Parser.accept True
+#        [ kind Token.Colon >> on _: ok False
+#        , kind Token.MutableColon >> on _: ok True
 #        ]
 
 
@@ -1042,8 +905,8 @@ lambdaBody as Env: Parser [FA.Statement] =
              b
              c
           #]
-        , Parser.oneOrMore (sib (statement env)) >> andThen (h & t):
-          Parser.accept << h :: t
+        , Parser.oneOrMore (sib (statement env)) >> on (h & t):
+          ok << h :: t
           [#
              x: a
 
@@ -1058,10 +921,10 @@ lambdaBody as Env: Parser [FA.Statement] =
 #lambda env =
 #    as Env: Parser FA.Expression
 #
-#    pattern env >> andThen param:
-#    lambdaColon >> andThen mutable:
-#    lambdaBody env >> andThen b:
-#    Parser.accept << FA.Lambda (FA.patternPos param) param mutable b
+#    pattern env >> on param:
+#    lambdaColon >> on mutable:
+#    lambdaBody env >> on b:
+#    ok << FA.Lambda (FA.patternPos param) param mutable b
 
 
 #
@@ -1101,7 +964,7 @@ functionParameter as Env: Parser FA.Pattern: Parser FA.Pattern =
 patternApplication as Env: Parser FA.Pattern: Parser FA.Pattern =
     env: param:
 
-    oneToken >> andThen (Token start end k):
+    oneToken >> on (Token start end k):
 
     p = pos env start end
 
@@ -1109,27 +972,27 @@ patternApplication as Env: Parser FA.Pattern: Parser FA.Pattern =
         Token.NumberLiteral s:
             s
                 >> FA.PatternLiteralNumber p
-                >> Parser.accept
+                >> ok
 
         Token.TextLiteral s:
             s
                 >> FA.PatternLiteralText p
-                >> Parser.accept
+                >> ok
 
         Token.Mutop:
-            lowerNameBare env >> andThen (At pp name):
-            Parser.maybe (inlineOrBelowOrIndented << typeAnnotation env) >> andThen maybeTy:
-            Parser.accept << FA.PatternAny pp True name maybeTy
+            lowerNameBare env >> on (At pp name):
+            Parser.maybe (inlineOrBelowOrIndented << typeAnnotation env) >> on maybeTy:
+            ok << FA.PatternAny pp True name maybeTy
 
         Token.LowerName Token.NameNoModifier Nothing name []:
-            Parser.maybe (inlineOrBelowOrIndented << typeAnnotation env) >> andThen maybeTy:
-            Parser.accept << FA.PatternAny p False name maybeTy
+            Parser.maybe (inlineOrBelowOrIndented << typeAnnotation env) >> on maybeTy:
+            ok << FA.PatternAny p False name maybeTy
 
 
         Token.UpperName maybeModule name:
-            Parser.zeroOrMore param >> andThen params:
-            here >> andThen end1:
-            Parser.accept << FA.PatternConstructor (pos env start end1) maybeModule name params
+            Parser.zeroOrMore param >> on params:
+            here >> on end1:
+            ok << FA.PatternConstructor (pos env start end1) maybeModule name params
 
         _:
             Parser.reject
@@ -1146,16 +1009,16 @@ typeAnnotation as Env: Parser FA.Type =
 patternBinopOr as Env: Op.Precedence: (Pos: [FA.Pattern]: FA.Pattern): Parser FA.Pattern: Parser FA.Pattern =
     env: precedenceGroup: constructor: higher:
 
-    here >> andThen start:
-    sepList (binaryOperators precedenceGroup) higher >> andThen ( head & sepTail ):
-    here >> andThen end:
+    here >> on start:
+    sepList (binaryOperators precedenceGroup) higher >> on ( head & sepTail ):
+    here >> on end:
     if sepTail == [] then
-        Parser.accept head
+        ok head
 
     else
         (head :: List.map (x: x.second) sepTail)
             >> constructor (pos env start end)
-            >> Parser.accept
+            >> ok
 
 
 #
@@ -1164,7 +1027,7 @@ patternBinopOr as Env: Op.Precedence: (Pos: [FA.Pattern]: FA.Pattern): Parser FA
 
 recInlineOrIndentedOrBelow as Parser FA.Expression: [FA.Expression]: Parser [FA.Expression] =
     higher: accum:
-    higher >> andThen h:
+    higher >> on h:
 
     r =
         h :: accum
@@ -1178,7 +1041,7 @@ functionApplicationOr as Env: Parser FA.Expression: Parser FA.Expression =
     recInlineOrIndented as [FA.Expression]: Parser [FA.Expression] =
         accum:
 
-        higher >> andThen h:
+        higher >> on h:
 
         r =
             h :: accum
@@ -1187,21 +1050,21 @@ functionApplicationOr as Env: Parser FA.Expression: Parser FA.Expression =
             # after at least one indented block, allow arguments to appear also as siblings (ie, right below)
             [ block (recInlineOrIndentedOrBelow higher r)
             , recInlineOrIndented r
-            , Parser.accept r
+            , ok r
             ]
 
-    here >> andThen start:
-    recInlineOrIndented [] >> andThen reversedArgs:
-    here >> andThen end:
+    here >> on start:
+    recInlineOrIndented [] >> on reversedArgs:
+    here >> on end:
     try List.reverse reversedArgs as
         []:
             Parser.reject
 
         [ fnExpression ]:
-            Parser.accept fnExpression
+            ok fnExpression
 
         fnExpression :: args:
-            Parser.accept << FA.FunctionCall (pos env start end) fnExpression args
+            ok << FA.FunctionCall (pos env start end) fnExpression args
 
 
 
@@ -1213,23 +1076,23 @@ functionApplicationOr as Env: Parser FA.Expression: Parser FA.Expression =
 unopsOr as Env: Parser FA.Expression: Parser FA.Expression =
     env: higher:
 
-    Parser.maybe unaryOperator >> andThen maybeUnary:
-    higher >> andThen right:
-    here >> andThen end:
+    Parser.maybe unaryOperator >> on maybeUnary:
+    higher >> on right:
+    here >> on end:
     try maybeUnary as
         Just ( op & Token start _ _ ):
-            Parser.accept << FA.Unop (pos env start end) op right
+            ok << FA.Unop (pos env start end) op right
 
         Nothing:
-            Parser.accept right
+            ok right
 
 
 unaryOperator as Parser ( Op.Unop & Token ) =
 
-    oneToken >> andThen token:
+    oneToken >> on token:
     try token as
         Token s e (Token.Unop op):
-            Parser.accept ( op & token )
+            ok ( op & token )
 
         _:
             Parser.reject
@@ -1244,10 +1107,10 @@ unaryOperator as Parser ( Op.Unop & Token ) =
 binopInsideParens as Env: Parser FA.Expression =
     env:
 
-    oneToken >> andThen (Token start end k):
+    oneToken >> on (Token start end k):
     try k as
         Token.Binop binop:
-            Parser.accept << FA.PrefixBinop (pos env start end) binop.symbol
+            ok << FA.PrefixBinop (pos env start end) binop.symbol
 
         _:
             Parser.reject
@@ -1255,28 +1118,115 @@ binopInsideParens as Env: Parser FA.Expression =
 
 binopsOr as Env: Op.Precedence: Parser FA.Expression: Parser FA.Expression =
     env: group: higher:
-    here >> andThen start:
-    sepList (binaryOperators group) higher >> andThen ( head & sepTail ):
-    here >> andThen end:
+    here >> on start:
+    sepList (binaryOperators group) higher >> on ( head & sepTail ):
+    here >> on end:
     if sepTail == [] then
-        Parser.accept head
+        ok head
 
     else
         FA.Binop (pos env start end) group ( head & sepTail )
-            >> Parser.accept
+            >> ok
 
 
 binaryOperators as Op.Precedence: Parser Op.Binop =
     group:
-    oneToken >> andThen (Token s e k):
+    oneToken >> on (Token s e k):
     try k as
         Token.Binop op:
             if op.precedence == group then
-                Parser.accept op
+                ok op
 
             else
                 Parser.reject
 
         _:
             Parser.reject
+
+
+
+#
+# Module
+#
+module_ as Env: Parser FA.Module =
+    env:
+
+    start =
+        Parser.maybe (kind Token.NewSiblingLine)
+
+
+    e =
+        Parser.oneOf
+            [ kind Token.BlockEnd
+            , kind Token.NewSiblingLine
+            ]
+
+    # This is called `zzz` rather than `end` because apparently there is some really
+    # bad problems with sorting that result in this (?) being declared before Parser.end?
+    zzz =
+        Parser.zeroOrMore e >> on _:
+        Parser.end
+
+    statements =
+        oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
+
+    Parser.oneOf
+        [ Parser.map (_: []) Parser.end
+        , Parser.surroundWith start zzz statements
+        ]
+
+
+
+
+
+#
+# Main
+#
+parse as Env: [Token]: Res FA.Module =
+    env: tokens:
+
+    (failureStates as [[Token]]) & (outcome as Parser.Outcome Token output) =
+        tokens
+            >> List.filter ((Token s e k): k /= Token.Comment)
+            >> Parser.runParser (module_ env)
+
+    try outcome as
+        Parser.Accepted readState output:
+            Ok output
+
+        Parser.Aborted readState message:
+            makeError env.moduleName readState message
+
+        Parser.Rejected:
+            findMin = readState: best:
+                if List.length readState < List.length best then readState else best
+
+            readState as [Token] =
+                List.for failureStates findMin tokens
+
+            message =
+                try readState as
+                    []: "I got to the end of file and I can't make sense of it. =("
+                    _: "I got stuck parsing here. =("
+
+            makeError env.moduleName readState message
+
+
+textToFormattableModule as Env: Text: Res FA.Module =
+    env: code:
+
+    tokensResult as Res [Token] =
+        Compiler/Lexer.lexer env.moduleName code
+
+    tokensToStatsResult as [Token]: Res [FA.Statement] =
+        tokens:
+
+#        List.each tokens t:
+#              log "*" t
+
+        Debug.benchStart None
+        parse env tokens
+        >> btw Debug.benchStop "parse"
+
+    Result.onOk tokensToStatsResult tokensResult
 

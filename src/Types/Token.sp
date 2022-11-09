@@ -24,17 +24,24 @@ union Kind =
     # Terms
     , TextLiteral Text
     , NumberLiteral Text
-    , UpperName (Maybe Name) Name
-    , LowerName NameModifier (Maybe Name) Name [Name]
+    , Name
+        {
+        , modifier as NameModifier
+        , isUpper as Bool
+        , maybeModule as Maybe Name
+        , name as Name
+        , attrPath as [Name]
+        }
     # Keywords
     , If
     , Then
     , Else
     , Try
     , As
+    , With
     , Colon
     , ConsumingColon
-    , With
+    , ThreeDots
     # Ops
     , Defop
     , Mutop
