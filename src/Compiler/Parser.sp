@@ -301,119 +301,115 @@ unionDef as Env: Parser FA.Statement =
 #
 # Expression
 #
-exprWithLeftDelimiter as Env: Parser FA.Expression =
-    env:
+exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
+    env: k:
 
-    oneToken >> on (Token start end k):
+    try k as
+        Token.Name name:
+            FA.Name name >> ok
 
-        p =
-            pos env start end
+        Token.NumberLiteral s:
+            FA.LiteralNumber s >> ok
 
-        try k as
-            Token.Name name:
-                FA.Name p name >> ok
+        Token.TextLiteral s:
+            FA.LiteralText s >> ok
 
-            Token.NumberLiteral s:
-                FA.LiteralNumber p s >> ok
+        Token.RoundParen Token.Open:
+            exprParser as Parser Expression =
+                discardSecond
+                    (expr env)
+                    (kind (Token.RoundParen Token.Closed))
 
-            Token.TextLiteral s:
-                FA.LiteralText p s >> ok
+            inlineOrBelowOrIndented exprParser
+            >> on (Expression pos expr_): ok expr_
 
-            Token.RoundParen Token.Open:
-                exprParser as Parser Expression =
-                    discardSecond
-                        (expr env)
-                        (kind (Token.RoundParen Token.Closed))
+        Token.SquareBracket Token.Open:
+            item as Parser (Bool & Expression) =
+                maybe (kind Token.ThreeDots) >> on maybeDots:
+                exp env >> on exp:
+                ok (maybeDots /= Nothing & exp)
 
-                inlineOrBelowOrIndented exprParser
+            rawList item >> on exps:
+            kind (Token.SquareBracket Token.Closed) >> on _:
+            FA.List p exps >> ok
 
-            Token.SquareBracket Token.Open:
-                item as Parser (Bool & Expression) =
-                    maybe (kind Token.ThreeDots) >> on maybeDots:
-                    exp env >> on exp:
-                    ok (maybeDots /= Nothing & exp)
+        Token.CurlyBrace Token.Open:
+            extension as Parser (Maybe Expression) =
+                discardSecond
+                    (maybe (expr env))
+                    (kind Token.With)
 
-                rawList item >> on exps:
-                kind (Token.SquareBracket Token.Closed) >> on _:
-                ok << FA.List p exps
+            separator as Parser None =
+                oneOf [ kind Token.Defop, kind Token.As ]
 
+            attribute as Parser { name as Name, maybeAnnotation as Maybe Type, maybeExpr as Maybe Expression } =
+                word >> on name:
+                maybe asAnnotation >> on maybeAnnotation:
+                maybe (discardFirst separator (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
+                ok { name, maybeAnnotation, maybeExpr }
 
-            Token.CurlyBrace Token.Open:
-                extension as Parser (Maybe Expression) =
-                    discardSecond
-                        (maybe (expr env))
-                        (kind Token.With)
+            inlineOrBelowOrIndented (maybe extension) >> on maybeExtension:
+            rawList attribute >> on attrs:
+            FA.Record p { maybeExtension, attrs } >> ok
 
-                separator as Parser None =
-                    oneOf [ kind Token.Defop, kind Token.As ]
+        Token.Unop unop:
+            expr env >> on e:
+            FA.Unop p unop e >> ok
 
-                attribute as Parser { name as Name, maybeAnnotation as Maybe Type, maybeExpr as Maybe Expression } =
-                    word >> on name:
-                    maybe asAnnotation >> on maybeAnnotation:
-                    maybe (discardFirst separator (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
-                    ok { name, maybeAnnotation, maybeExpr }
+        Token.Fn:
+            rawList expression >> on args:
+            kind Token.Colon >> on _:
+            expr env >> on body:
+            FA.Fn p args body >> ok
 
-                inlineOrBelowOrIndented (maybe extension) >> on maybeExtension:
-                rawList attribute >> on attrs:
-                FA.Record p { maybeExtension, attrs } >> ok
+        Token.If:
+            expr env >> on condition:
+            kind Token.Then >> on _:
+            inlineOrBelowOrIndented (expr env) >> on true:
+            kind Token.Else >> on _:
+            inlineOrBelowOrIndented (expr env) >> on false:
+            FA.If p { condition, true, false } >> ok
 
-            Token.Unop unop:
-                expr env >> on e:
-                FA.Unop p unop e >> ok
+        Token.Try:
+            maybeNewLine as Parser a: Parser a =
+                discardFirst (Parser.maybe (kind Token.NewSiblingLine))
 
-            Token.Fn:
-                rawList expression >> on args:
-                kind Token.Colon >> on _:
-                expr env >> on body:
-                FA.Fn p args body >> ok
+            maybeNewLineKind as Token.Kind: Parser Token =
+                k:
+                maybeNewLine (kind k)
 
-            Token.If:
-                expr env >> on condition:
-                kind Token.Then >> on _:
-                inlineOrBelowOrIndented (expr env) >> on true:
-                kind Token.Else >> on _:
-                inlineOrBelowOrIndented (expr env) >> on false:
-                FA.If p { condition, true, false } >> ok
+            patternAndValue as Parser (FA.Expression & FA.Expression) =
+                pattern env >> on p:
+                maybeNewLineKind Token.Colon >> on _:
+                inlineStatementOrBlock env >> on value:
+                ok ( p & value )
 
-            Token.Try:
-                maybeNewLine as Parser a: Parser a =
-                    discardFirst (Parser.maybe (kind Token.NewSiblingLine))
+            expr env >> on value:
+            kind Token.As >> on _:
+            block (Parser.zeroOrMore (maybeNewLine patternAndValue)) >> on patterns:
+            here >> on end:
+            {
+            , value = value
+            , patterns = patterns
+            }
+            >> FA.Try p
+            >> ok
 
-                maybeNewLineKind as Token.Kind: Parser Token =
-                    k:
-                    maybeNewLine (kind k)
+        _:
+            Parser.reject
 
-                patternAndValue as Parser (FA.Expression & FA.Expression) =
-                    pattern env >> on p:
-                    maybeNewLineKind Token.Colon >> on _:
-                    inlineStatementOrBlock env >> on value:
-                    ok ( p & value )
-
-                expr env >> on value:
-                kind Token.As >> on _:
-                block (Parser.zeroOrMore (maybeNewLine patternAndValue)) >> on patterns:
-                here >> on end:
-                {
-                , value = value
-                , patterns = patterns
-                }
-                >> FA.Try (pos env start end)
-                >> ok
-
-            _:
-                Parser.reject
-
-
-#
-# Expr (with precedence rules)
-#
 
 
 expr as Env: Parser FA.Expression =
     env:
 
+    expressionWithLeftDelimiter as Parser FA.Expression =
+        oneToken >> on (Token start end k):
+        exprWithLeftDelimiter env k >> on expr_:
+        Expression (pos env start end) expr_ >> ok
+
     Parser.expression
-        (exprWithLeftDelimiter env)
+        expressionWithLeftDelimiter
         # the `Or` stands for `Or higher priority parser`
         [
         , functionApplicationOr env
@@ -438,7 +434,36 @@ expr as Env: Parser FA.Expression =
 
 
 
+functionApplicationOr as Env: Parser FA.Expression: Parser FA.Expression =
+    env: higher:
 
+    recInlineOrIndented as [FA.Expression]: Parser [FA.Expression] =
+        accum:
+
+        higher >> on h:
+
+        r =
+            h :: accum
+
+        Parser.oneOf
+            # after at least one indented block, allow arguments to appear also as siblings (ie, right below)
+            [ block (recInlineOrIndentedOrBelow higher r)
+            , recInlineOrIndented r
+            , ok r
+            ]
+
+    here >> on start:
+    recInlineOrIndented [] >> on reversedArgs:
+    here >> on end:
+    try List.reverse reversedArgs as
+        []:
+            Parser.reject
+
+        [ fnExpression ]:
+            ok fnExpression
+
+        fnExpression :: args:
+            FA.call (pos env start end) fnExpression args >> ok
 
 
 
