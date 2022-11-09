@@ -344,10 +344,13 @@ exprWithLeftDelimiter as Env: Parser FA.Expression =
                         (maybe (expr env))
                         (kind Token.With)
 
+                separator as Parser None =
+                    oneOf [ kind Token.Defop, kind Token.As ]
+
                 attribute as Parser { name as Name, maybeAnnotation as Maybe Type, maybeExpr as Maybe Expression } =
                     word >> on name:
                     maybe asAnnotation >> on maybeAnnotation:
-                    maybe (discardFirst defop (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
+                    maybe (discardFirst separator (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
                     ok { name, maybeAnnotation, maybeExpr }
 
                 inlineOrBelowOrIndented (maybe extension) >> on maybeExtension:

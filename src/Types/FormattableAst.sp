@@ -20,32 +20,21 @@ union Statement =
     , ValueDef
         {
         , pattern as Expression
-        # TODO Should be At Name?
-        , nonFn as [Name]
-        , body as [Statement]
+        , nonFn as [Token.Word]
+        , body as Expression
         }
     , AliasDef
         {
-        , name as At Name
-        , args as [At Name]
-        , type as Type
+        , name as At Word
+        , args as [At Word]
+        , type as Expression
         }
     , UnionDef Pos
         {
-        , name as Name
-        , args as [Name]
-        , constructors as [At Name & [Type]]
+        , name as Word
+        , args as [Word]
+        , constructors as [At Word & [Expression]]
         }
-
-
-union Type =
-    , TypeVariable Pos Name
-    , TypeConstant Pos { maybeModule as Maybe Name, name as Name, args as [Type] }
-    , TypeFunction Pos [LambdaModifier & Type] Type
-    , TypeTuple Pos [Type]
-    , TypeList Pos Type
-    , TypeRecord Pos (Dict Name { pos as Pos, type as Type })
-    , TypeUnique Pos Type
 
 
 # expr op expr op expr op...
@@ -57,7 +46,7 @@ union Expression =
     , LiteralText Pos Text
     , LiteralNumber Pos Text
 
-    , Statements [Statement]
+    , Statements Pos [Statement]
 
     # The Bool is for whether there's a trailing `...`
     , List Pos [Bool & Expression]

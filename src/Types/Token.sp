@@ -5,6 +5,7 @@ union Comment =
     # start, end
     , C Int Int
 
+
 union Token =
     Token Comment Int Int Kind
 
@@ -14,15 +15,14 @@ union NameModifier =
     , NameStartsWithDot
 
 
-alias Name =
-        {
-        , modifier as NameModifier
-        , isUpper as Bool
-        , maybeModule as Maybe Name
-        , name as Name
-        , attrPath as [Name]
-        }
-
+alias Word =
+    {
+    , modifier as NameModifier
+    , isUpper as Bool
+    , maybeModule as Maybe Name
+    , name as Name
+    , attrPath as [Name]
+    }
 
 
 union OpenOrClosed =
@@ -39,29 +39,24 @@ union Kind =
     # Terms
     , TextLiteral Text
     , NumberLiteral Text
-    , Name Namr
+    , Word Word
     # Keywords
+    , Fn
     , If
     , Then
     , Else
     , Try
     , As
     , With
+    # Separators
+    , Comma
     , Colon
-    , ConsumingColon
     , ThreeDots
     # Ops
     , Defop
-    , Mutop
     , Unop Op.Unop
     , Binop Op.Binop
     # Parens
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed
     , CurlyBrace OpenOrClosed
-    , Comma
-    #
-    , ErrorUnknownOp Text
-    , ErrorBlock Text
-    , ErrorUnterminated Text # TODO check that everywhere it as used start position as set
-
