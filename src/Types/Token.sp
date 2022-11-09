@@ -1,11 +1,28 @@
 
+union Comment =
+    # No comment
+    , N
+    # start, end
+    , C Int Int
+
 union Token =
-    Token Int Int Kind
+    Token Comment Int Int Kind
 
 
 union NameModifier =
     , NameNoModifier
     , NameStartsWithDot
+
+
+alias Name =
+        {
+        , modifier as NameModifier
+        , isUpper as Bool
+        , maybeModule as Maybe Name
+        , name as Name
+        , attrPath as [Name]
+        }
+
 
 
 union OpenOrClosed =
@@ -19,19 +36,10 @@ union Kind =
     , BlockStart
     , BlockEnd
     , BadIndent
-    # Comment
-    , Comment
     # Terms
     , TextLiteral Text
     , NumberLiteral Text
-    , Name
-        {
-        , modifier as NameModifier
-        , isUpper as Bool
-        , maybeModule as Maybe Name
-        , name as Name
-        , attrPath as [Name]
-        }
+    , Name Namr
     # Keywords
     , If
     , Then

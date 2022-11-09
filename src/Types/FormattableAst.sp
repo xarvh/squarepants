@@ -88,8 +88,6 @@ union Expression =
 
     , Binop Pos Op.Precedence (SepList Op.Binop Expression)
 
-    , Constructor Pos (Maybe Name) Name
-
     , Unop Pos Op.Unop Expression
 
     , If Pos {
