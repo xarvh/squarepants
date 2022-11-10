@@ -108,7 +108,7 @@ setMode as Mode: ReadState@: None =
 
 addIndentToken as Int: Token.Kind: ReadState@: None =
     pos: kind: state@:
-    Array.push @state.tokens << Token pos pos kind
+    Array.push @state.tokens << Token Token.N pos pos kind
 
 
 updateIndent as Int: Int: Token.Kind: ReadState@: None =
@@ -136,9 +136,9 @@ updateIndent as Int: Int: Token.Kind: ReadState@: None =
 
         else
             # this means that state.lineIndent == head.indent
-            if head.isBlock and kind /= Token.Comment then
-                addIndentToken start Token.NewSiblingLine @state
-            else
+#            if head.isBlock and kind /= Token.Comment then
+#                addIndentToken start Token.NewSiblingLine @state
+#            else
                 None
 
 
@@ -177,13 +177,13 @@ absAddToken as Int: Int: Token.Kind: ReadState@: None =
             Token.Else: True
             Token.As: True
             Token.Colon: True
-            Token.ConsumingColon: True
+#            Token.ConsumingColon: True
             Token.Defop: True
-            Token.Comment: state.indentStartsABlock
+#            Token.Comment: state.indentStartsABlock
             _: False
 
     @state.indentStartsABlock := indentStartsABlock
-    Array.push @state.tokens << Token start end kind
+    Array.push @state.tokens << Token Token.N start end kind
     @state.tokenStart := end
 
 
@@ -196,7 +196,7 @@ relAddToken as Int: Int: Token.Kind: ReadState@: None =
 addOneIndentToken as Token.Kind: ReadState@: None =
     kind: state@:
     pos = getPos @state
-    Array.push @state.tokens << Token pos pos kind
+    Array.push @state.tokens << Token Token.N pos pos kind
 
 
 getChunk as ReadState@: Int & Int & Text =
@@ -273,7 +273,16 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
         maybeModule: name:
         try modifier as
             Token.NameNoModifier:
-                absAddToken start end (Token.UpperName maybeModule name) @state
+                word as Token.Word =
+                    {
+                    , modifier
+                    , isUpper = True
+                    , maybeModule
+                    , name
+                    , attrPath = []
+                    }
+
+                absAddToken start end (Token.Word word) @state
 
             Token.NameStartsWithDot:
                 addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
@@ -289,7 +298,15 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
             if maybeModule /= Nothing and modifier /= Token.NameNoModifier then
                 addError "can't use . or @ modifier on an imported value" @state
             else
-                absAddToken start end (Token.LowerName modifier maybeModule name attrs) @state
+                word as Token.Word =
+                    {
+                    , modifier
+                    , isUpper = False
+                    , maybeModule
+                    , name
+                    , attrPath = attrs
+                    }
+                absAddToken start end (Token.Word word) @state
 
     snips =
         Text.split "." chunk
@@ -354,6 +371,7 @@ addWordToken as Token.NameModifier: ReadState@: None =
 
     maybeKeywordKind =
         try chunk as
+            "fn": Just << Token.Fn
             "if": Just << Token.If
             "then": Just << Token.Then
             "else": Just << Token.Else
@@ -432,9 +450,9 @@ addSquiggleToken as Bool: ReadState@: None =
 
     try chunk as
         ":": add << Token.Colon
-        ":-": add << Token.ConsumingColon
+#        ":-": add << Token.ConsumingColon
         "=": add << Token.Defop
-        "@": add << Token.Mutop
+#        "@": add << Token.Mutop
         "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
         "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
         op:
@@ -692,7 +710,7 @@ lexOne as Text: ReadState@: None =
 
         LineComment:
           if char == "\n" or char == "" then
-                  absAddToken state.tokenStart (getPos @state) Token.Comment @state
+#                  absAddToken state.tokenStart (getPos @state) Token.Comment @state
                   setMode Default @state
                   lexOne char @state
           else
@@ -719,7 +737,7 @@ lexOne as Text: ReadState@: None =
                 if nesting > 1 then
                   continueWithDeltaNesting (0 - 1)
                 else
-                      absAddToken state.tokenStart (getPos @state) Token.Comment @state
+#                      absAddToken state.tokenStart (getPos @state) Token.Comment @state
                       setMode Default @state
 
             _ & "":
@@ -759,7 +777,7 @@ closeOpenBlocks as ReadState@: None =
         getPos @state
 
     List.each state.indentStack _:
-        Array.push @state.tokens << Token pos pos Token.BlockEnd
+        Array.push @state.tokens << Token Token.N pos pos Token.BlockEnd
 
 
 lexer as Text: Text: Res [Token] =

@@ -8,6 +8,7 @@ union Outcome a =
 alias Reader a =
     [FA.Statement]: Outcome a
 
+[#
 
 onAcc as (a: Reader b): Reader a: Reader b =
     chainedReaderB: readerA: statements:
@@ -217,3 +218,4 @@ field as Text: Reader a: Reader a =
 
         []:
             Rejected << At posEnd "unexpected end of file"
+#]

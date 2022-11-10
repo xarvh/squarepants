@@ -10,20 +10,22 @@ alias Params = {
 textToCanonicalModule as Params: Text: Res CA.Module =
     pars: code:
 
-    ro as Compiler/MakeCanonical.ReadOnly = {
-        , currentModule = Meta.UMR pars.source pars.name
-        , meta = pars.meta
-        }
+    todo "textToCanonicalModule"
 
-    umr =
-        Meta.UMR pars.source pars.name
-
-    code
-        >> Compiler/Parser.textToFormattableModule {
-            , stripLocations = pars.stripLocations
-            , name = pars.name
-            }
-        >> Result.onOk (translateModule ro code umr)
+#    ro as Compiler/MakeCanonical.ReadOnly = {
+#        , currentModule = Meta.UMR pars.source pars.name
+#        , meta = pars.meta
+#        }
+#
+#    umr =
+#        Meta.UMR pars.source pars.name
+#
+#    code
+#        >> Compiler/Parser.textToFormattableModule {
+#            , stripLocations = pars.stripLocations
+#            , name = pars.name
+#            }
+#        >> Result.onOk (translateModule ro code umr)
 
 
 alias Constructor = CA.Constructor
@@ -67,6 +69,7 @@ alias ReadOnly = {
     }
 
 
+[#
 initEnv as ReadOnly: Env =
     ro: {
     , maybeShorthandTarget = Nothing
@@ -1072,17 +1075,20 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
 
+#]
+
 
 translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res (CA.Module) =
     ro: asText: umr: faModule:
 
-    Debug.benchStart None
-
-    module =
-        CA.initModule asText umr
-
-    # Add all definitions
-    module
-    >> List.forRes faModule (insertRootStatement ro)
-    >> btw Debug.benchStop "translateModule"
+    todo "translateModule"
+#    Debug.benchStart None
+#
+#    module =
+#        CA.initModule asText umr
+#
+#    # Add all definitions
+#    module
+#    >> List.forRes faModule (insertRootStatement ro)
+#    >> btw Debug.benchStop "translateModule"
 

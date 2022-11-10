@@ -20,20 +20,20 @@ union Statement =
     , ValueDef
         {
         , pattern as Expression
-        , nonFn as [Token.Word]
+        , nonFn as [At Token.Word]
         , body as Expression
         }
     , AliasDef
         {
-        , name as At Word
-        , args as [At Word]
+        , name as At Token.Word
+        , args as [At Token.Word]
         , type as Expression
         }
-    , UnionDef Pos
+    , UnionDef
         {
-        , name as Word
-        , args as [Word]
-        , constructors as [At Word & [Expression]]
+        , name as At Token.Word
+        , args as [At Token.Word]
+        , constructors as [Expression]
         }
 
 
@@ -61,12 +61,10 @@ union Expr_ =
         # pattern extension: { with attr1, ... }
         # expression extension: { expt with attr1, ... }
         , maybeExtension as Maybe (Maybe Expression)
-        , attrs as Dict Name { pos as Pos, maybeType as Maybe Expression, maybeExpr as Maybe Expression }
+        , attrs as [{ name as At Token.Word, maybeType as Maybe Expression, maybeExpr as Maybe Expression }]
         }
 
     , Variable { maybeType as Maybe Expression, word as Token.Word }
-
-    , RecordShorthand [Name]
 
     , Fn [Expression] Expression
 

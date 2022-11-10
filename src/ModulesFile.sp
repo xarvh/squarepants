@@ -34,6 +34,7 @@ alias Module = {
     }
 
 
+[#
 textToMeta as Text: Text: Res Meta =
     sponName: sponContent:
     sponContent >> textToModulesFile sponName >> Result.map toMeta
@@ -162,3 +163,4 @@ textToModulesFile as Text: Text: Res ModulesFile =
         >> SPON.read modulesFileReader sponName
         >> Result.map rootEntries: List.for rootEntries insert initModulesFile
 
+#]

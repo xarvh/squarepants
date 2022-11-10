@@ -2,17 +2,17 @@
 tests as Test =
     Test.Group "Parser"
         [
-        , values
-        , parens
-        , lambdas
-        , annotations
-        , unionDefs
-        , lists
-        , records
-        , ifs
-        , tries
-        , patterns
-        , binops
+#        , values
+#        , parens
+        , functions
+#        , annotations
+#        , unionDefs
+#        , lists
+#        , records
+#        , ifs
+#        , tries
+#        , patterns
+#        , binops
         ]
 
 
@@ -24,10 +24,10 @@ codeTest =
     Test.codeTest toHuman
 
 
-asDefinition as FA.Statement: Result Text FA.ValueDef =
+asDefinition as FA.Statement: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
     s:
     try s as
-        FA.Definition _ a:
+        FA.ValueDef a:
             Ok a
 
         _:
@@ -37,7 +37,7 @@ asDefinition as FA.Statement: Result Text FA.ValueDef =
 asEvaluation as FA.Statement: Result Text FA.Expression =
     s:
     try s as
-        FA.Evaluation _ a:
+        FA.Evaluation a:
             Ok a
 
         _:
@@ -56,7 +56,7 @@ firstStatement as Text: Result Text FA.Statement =
     code
         >> Compiler/Parser.textToFormattableModule {
             , stripLocations = True
-            , name = "Test"
+            , moduleName = "Test"
             }
         >> TH.resErrorToStrippedText code
         >> onOk grabFirst
@@ -67,46 +67,46 @@ firstEvaluation as Text: Result Text FA.Expression =
     code >> firstStatement >> onOk asEvaluation
 
 
-firstDefinition as Text: Result Text FA.ValueDef =
+firstDefinition as Text: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
     code:
     code >> firstStatement >> onOk asDefinition
 
 
-firstEvaluationOfDefinition as Text: Result Text FA.Expression =
-    code:
-
-    grabFirst = def:
-        try def.body as
-           []: Err "Test says: empty def body"
-           head :: tail: Ok head
-
-    code
-        >> firstDefinition
-        >> onOk grabFirst
-        >> onOk asEvaluation
-
-
-firstAnnotation as Text: Result Text FA.Type =
-    code:
-
-    grabAnnotation as FA.ValueDef: Result Text FA.Type =
-        def:
-        try def.pattern as
-            FA.PatternAny pos name mutable (Just ty): Ok ty
-            _: Err "no annotation"
-
-    code
-        >> firstStatement
-        >> onOk asDefinition
-        # TODO test also the nonFn field!!!
-        >> onOk grabAnnotation
-
-
-typeConstant as Text: FA.Type =
-    name:
-    FA.TypeConstant p Nothing name []
-
-
+#firstEvaluationOfDefinition as Text: Result Text FA.Expression =
+#    code:
+#
+#    grabFirst = def:
+#        try def.body as
+#           []: Err "Test says: empty def body"
+#           head :: tail: Ok head
+#
+#    code
+#        >> firstDefinition
+#        >> onOk grabFirst
+#        >> onOk asEvaluation
+#
+#
+#firstAnnotation as Text: Result Text FA.Expression =
+#    code:
+#
+#    grabAnnotation = #as FA.ValueDef: Result Text FA.Type =
+#        def:
+#        try def.pattern as
+#            #FA.PatternAny pos name mutable (Just ty): Ok ty
+#            _: Err "no annotation"
+#
+#    code
+#        >> firstStatement
+#        >> onOk asDefinition
+#        # TODO test also the nonFn field!!!
+#        >> onOk grabAnnotation
+#
+#
+#typeConstant as Text: FA.Expression =
+#    name:
+#    FA.TypeConstant p Nothing name []
+#
+#
 #
 #
 #
@@ -143,7 +143,7 @@ parens as Test =
         [
         , codeTest
             """
-            SKIP Can exist on multiple lines even when useless
+            Can exist on multiple lines even when useless
             """
             """
             tests =
@@ -172,94 +172,110 @@ parens as Test =
 #
 #
 
+e as FA.Expr_: FA.Expression =
+    FA.Expression p
 
-lambdas as Test =
-    Test.Group "lambdas"
-        [ codeTest
-            """
-            Inline nesting
-            """
-            """
-            a: b: 3
-            """
-            firstEvaluation
-            (Test.isOkAndEqualTo <<
-                FA.Lambda p
-                    ( FA.PatternAny p False "a" Nothing )
-                    LambdaNormal
-                    [ FA.Evaluation p <<
-                        FA.Lambda p
-                            ( FA.PatternAny p False "b" Nothing )
-                            LambdaNormal
-                            [ FA.Evaluation p << FA.LiteralNumber p "3" ]
-                    ]
-            )
+
+variable as Name: FA.Expression =
+    name:
+
+    {
+    , maybeType = Nothing
+    , word =
+        {
+        , modifier = Token.NameNoModifier
+        , isUpper = False
+        , maybeModule = Nothing
+        , name
+        , attrPath = []
+        }
+    }
+    >> FA.Variable
+    >> e
+
+
+functions as Test =
+    Test.Group "functions"
+        [
+#        , codeTest
+#            """
+#            Two arguments
+#            """
+#            """
+#            fn a, b: 3
+#            """
+#            firstEvaluation
+#            (Test.isOkAndEqualTo <<
+#                e << FA.Fn
+#                    [
+#                    , variable "a"
+#                    , variable "b"
+#                    ]
+#                    ( e << FA.LiteralNumber "3" )
+#            )
         , codeTest
             """
             Block nesting
             """
             """
-            a:
-              b:
+            fn a, b:
                 3
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                FA.Lambda p
-                    ( FA.PatternAny p False "a" Nothing )
-                    LambdaNormal
-                    [ FA.Evaluation p <<
-                        FA.Lambda p
-                            ( FA.PatternAny p False "b" Nothing )
-                            LambdaNormal
-                            [ FA.Evaluation p << FA.LiteralNumber p "3" ]
+                e << FA.Fn
+                    [
+                    , variable "a"
+                    , variable "b"
                     ]
+                    ( e << FA.LiteralNumber "3" )
             )
-        , codeTest
-            """
-            Sibling nesting
-            """
-            """
-            a:
-            b:
-            3
-            """
-            firstEvaluation
-            (Test.isOkAndEqualTo <<
-                FA.Lambda p
-                    ( FA.PatternAny p False "a" Nothing )
-                    LambdaNormal
-                    [ FA.Evaluation p <<
-                        FA.Lambda p
-                            (FA.PatternAny p False "b" Nothing)
-                            LambdaNormal
-                            [ FA.Evaluation p << FA.LiteralNumber p "3"
-                            ]
-                    ]
-            )
-        , codeTest
-            """
-            SKIP Tuple has precedence over lambda
-            """
-            """
-            x =
-              a & b: a
-            """
-            firstDefinition
-            Test.isOk
-        , codeTest
-            """
-            [reg] pass to function without parens
-            """
-            """
-            i =
-              @x = 1
-              xxx y: y
-            """
-            firstDefinition
-            Test.isOk
+#        , codeTest
+#            """
+#            Sibling nesting
+#            """
+#            """
+#            a:
+#            b:
+#            3
+#            """
+#            firstEvaluation
+#            (Test.isOkAndEqualTo <<
+#                FA.Lambda p
+#                    ( FA.PatternAny p False "a" Nothing )
+#                    LambdaNormal
+#                    [ FA.Evaluation p <<
+#                        FA.Lambda p
+#                            (FA.PatternAny p False "b" Nothing)
+#                            LambdaNormal
+#                            [ FA.Evaluation p << FA.LiteralNumber p "3"
+#                            ]
+#                    ]
+#            )
+#        , codeTest
+#            """
+#            SKIP Tuple has precedence over lambda
+#            """
+#            """
+#            x =
+#              a & b: a
+#            """
+#            firstDefinition
+#            Test.isOk
+#        , codeTest
+#            """
+#            [reg] pass to function without parens
+#            """
+#            """
+#            i =
+#              @x = 1
+#              xxx y: y
+#            """
+#            firstDefinition
+#            Test.isOk
         ]
 
+[#
 
 annotations as Test =
     Test.Group "Annotations"
@@ -683,3 +699,4 @@ binops as Test =
             (Test.isOkAndEqualTo << sendBtoCtoD 9 20 33)
         ]
 
+#]

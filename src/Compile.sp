@@ -75,7 +75,7 @@ loadModulesFile as Types/Platform.Platform: Text: IO ModulesFile.ModulesFile =
             }
         }
 
-    resToIo eenv << ModulesFile.textToModulesFile modulesFileName modulesAsText
+    resToIo eenv << todo "ModulesFile.textToModulesFile modulesFileName modulesAsText"
 
 
 
@@ -237,7 +237,7 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
         List.map2 updateSourceDir allSourceDirLists modulesFile.sourceDirs
 
     { modulesFile with sourceDirs = updatedSourceDirs }
-    >> ModulesFile.toMeta
+    >> todo "ModulesFile.toMeta"
     >> IO.succeed
 
 

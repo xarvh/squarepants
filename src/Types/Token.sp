@@ -2,8 +2,12 @@
 union Comment =
     # No comment
     , N
-    # start, end
-    , C Int Int
+    # Before, start, end
+    , Be Int Int
+    # After, start, end
+    , Af Int Int
+    # The idea is to determine whether to attach a comment to the previous token or to the next by deciding which one is closer
+    # in terms of col or row distance
 
 
 union Token =
@@ -60,3 +64,4 @@ union Kind =
     , RoundParen OpenOrClosed
     , SquareBracket OpenOrClosed
     , CurlyBrace OpenOrClosed
+

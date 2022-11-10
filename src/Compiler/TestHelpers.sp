@@ -30,6 +30,8 @@ rootLocal as Name: CA.Ref =
 #
 meta as Meta =
 
+    Meta.init
+    [#
     eenv as Error.Env = {
         , moduleByName =
             Dict.singleton "DefaultModules" {
@@ -49,6 +51,7 @@ meta as Meta =
             todo "error loading DefaultModules.sp"
         Ok m:
             m
+    #]
 
 
 #
