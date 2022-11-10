@@ -176,6 +176,12 @@ e as FA.Expr_: FA.Expression =
     FA.Expression p
 
 
+tuple as FA.Expression: FA.Expression: FA.Expression =
+    a: b:
+
+    e << FA.Binop Op.Tuple (a & [Prelude.tuple & b])
+
+
 variable as Name: FA.Expression =
     name:
 
@@ -192,6 +198,7 @@ variable as Name: FA.Expression =
     }
     >> FA.Variable
     >> e
+
 
 
 functions as Test =
@@ -245,27 +252,46 @@ functions as Test =
                         ( e << FA.LiteralNumber "3" )
                     )
             )
-#        , codeTest
-#            """
-#            SKIP Tuple has precedence over lambda
-#            """
-#            """
-#            x =
-#              a & b: a
-#            """
-#            firstDefinition
-#            Test.isOk
-#        , codeTest
-#            """
-#            [reg] pass to function without parens
-#            """
-#            """
-#            i =
-#              @x = 1
-#              xxx y: y
-#            """
-#            firstDefinition
-#            Test.isOk
+        , codeTest
+            """
+            Tuple vs lambda precedence
+            """
+            """
+            fn a & b: a
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Fn
+                    [ tuple (variable "a") (variable "b") ]
+                    ( variable "a" )
+            )
+        , codeTest
+            """
+            [reg] Pass to function without parens
+            """
+            """
+            xxx fn y: y
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Call
+                    ( variable "xxx" )
+                    [ e << FA.Fn [ variable "y" ] (variable "y") ]
+            )
+        , codeTest
+            """
+            Pass to function without parens, below
+            """
+            """
+            xxx fn y:
+            y
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Call
+                    ( variable "xxx" )
+                    [ e << FA.Fn [ variable "y" ] (variable "y") ]
+            )
         ]
 
 [#
