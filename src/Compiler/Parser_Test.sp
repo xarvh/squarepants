@@ -197,29 +197,12 @@ variable as Name: FA.Expression =
 functions as Test =
     Test.Group "functions"
         [
-#        , codeTest
-#            """
-#            Two arguments
-#            """
-#            """
-#            fn a, b: 3
-#            """
-#            firstEvaluation
-#            (Test.isOkAndEqualTo <<
-#                e << FA.Fn
-#                    [
-#                    , variable "a"
-#                    , variable "b"
-#                    ]
-#                    ( e << FA.LiteralNumber "3" )
-#            )
         , codeTest
             """
-            Block nesting
+            Inline body
             """
             """
-            fn a, b:
-                3
+            fn a, b: 3
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
@@ -230,28 +213,38 @@ functions as Test =
                     ]
                     ( e << FA.LiteralNumber "3" )
             )
-#        , codeTest
-#            """
-#            Sibling nesting
-#            """
-#            """
-#            a:
-#            b:
-#            3
-#            """
-#            firstEvaluation
-#            (Test.isOkAndEqualTo <<
-#                FA.Lambda p
-#                    ( FA.PatternAny p False "a" Nothing )
-#                    LambdaNormal
-#                    [ FA.Evaluation p <<
-#                        FA.Lambda p
-#                            (FA.PatternAny p False "b" Nothing)
-#                            LambdaNormal
-#                            [ FA.Evaluation p << FA.LiteralNumber p "3"
-#                            ]
-#                    ]
-#            )
+        , codeTest
+            """
+            Indented body
+            """
+            """
+            fn a:
+                3
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Fn
+                    [ variable "a" ]
+                    ( e << FA.LiteralNumber "3" )
+            )
+        , codeTest
+            """
+            Sibling nesting
+            """
+            """
+            fn a:
+            fn b:
+            3
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Fn
+                    [ variable "a" ]
+                    (e << FA.Fn
+                        [ variable "b" ]
+                        ( e << FA.LiteralNumber "3" )
+                    )
+            )
 #        , codeTest
 #            """
 #            SKIP Tuple has precedence over lambda
