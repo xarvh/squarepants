@@ -2,15 +2,15 @@
 tests as Test =
     Test.Group "Parser"
         [
-#        , values
-#        , parens
-#        , functions
-#        , annotations
-#        , unionDefs
-#        , lists
+        , values
+        , parens
+        , functions
+        , annotations
+        , unionDefs
+        , lists
         , records
-#        , ifs
-#        , tries
+        , ifs
+        , tries
 #        , patterns
 #        , binops
         ]
@@ -203,6 +203,15 @@ variable as Name: FA.Expression =
     >> e
 
 
+annotatedVariable as Name: FA.Expression: FA.Expression =
+    name: type:
+    {
+    , maybeType = Just type
+    , word = word name
+    }
+    >> FA.Variable
+    >> e
+
 
 functions as Test =
     Test.Group "functions"
@@ -309,13 +318,7 @@ annotations as Test =
             firstDefinition
             (Test.isOkAndEqualTo
                 {
-                , pattern =
-                    {
-                    , maybeType = Just << variable "b"
-                    , word = word "a"
-                    }
-                    >> FA.Variable
-                    >> e
+                , pattern = annotatedVariable "a" (variable "b")
                 , nonFn = []
                 , body = variable "z"
                 }
@@ -329,18 +332,11 @@ annotations as Test =
             (Test.isOkAndEqualTo
                 {
                 , pattern =
-                    {
-                    , maybeType =
-                        FA.Fn
+                    annotatedVariable "a"
+                        (e << FA.Fn
                             [tuple (variable "int") (variable "int")]
                             (variable "bool")
-                        >> e
-                        >> Just
-                    , word =
-                        word "a"
-                    }
-                    >> FA.Variable
-                    >> e
+                        )
                 , nonFn = []
                 , body = variable "b"
                 }
@@ -563,140 +559,155 @@ records as Test =
               (e << FA.Record
                   {
                   , maybeExtension = Nothing
-                  , attrs = [ { name = variable "x", maybeExpr = Nothing } ]
+                  , attrs = [ { name = annotatedVariable "x" (variable "bool"), maybeExpr = Nothing } ]
                   }
               )
             )
-
-
-
-#        , codeTest
-#            """
-#            SKIP Annotation, own line
-#            """
-#            """
-#            a as
-#               { x as Bool }
-#               =
-#               1
-#            """
-#            firstAnnotation
-#            ({ extends = Nothing , attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
-#        , codeTest
-#            """
-#            SKIP Annotation, multiline
-#            """
-#            """
-#            a as {
-#               , x as Bool
-#               }
-#                  =
-#                  a
-#            """
-#            firstAnnotation
-#            ({ extends = Nothing, attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
-#        , codeTest
-#            """
-#            [reg] simple assignment, inline
-#            """
-#            """
-#            a = { b with c }
-#            """
-#            firstDefinition
-#            Test.isOk
-#        , codeTest
-#            """
-#            [reg] simple assignment, as block
-#            """
-#            """
-#            a =
-#              { b with c }
-#            """
-#            firstDefinition
-#            Test.isOk
-#        , codeTest "[reg] simple assignment, as block"
-#            """
-#            a =
-#              { b with c = 1 }
-#            """
-#            firstDefinition
-#            Test.isOk
-#        , codeTest "[reg] real-world use"
-#            """
-#            a =
-#              { state with
-#                  , pos = endPos
-#                  , code = rest
-#                  , accum =
-#                      { kind = Token.Comment
-#                      , start = startPos
-#                      , end = endPos
-#                      }
-#                          :: state.accum
-#              }
-#            """
-#            firstDefinition
-#            Test.isOk
+        , codeTest
+            """
+            Type or annotated explicit value
+            """
+            """
+            { x as bool = y }
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record
+                  {
+                  , maybeExtension = Nothing
+                  , attrs = [ { name = annotatedVariable "x" (variable "bool"), maybeExpr = Just << variable "y" } ]
+                  }
+              )
+            )
+        , codeTest "[reg] real-world use"
+            """
+            a =
+              { state with
+                  , pos = endPos
+                  , code = rest
+                  , accum =
+                      [
+                      , { kind = Token.Comment
+                        , start = startPos
+                        , end = endPos
+                        }
+                      , ...state.accum
+                      ]
+              }
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 
-[#
 ifs as Test =
     Test.Group "Ifs"
-        [ codeTest "inline"
-            "a = if a then b else c"
-            firstEvaluationOfDefinition
-            Test.isOk
+        [ codeTest
+            """
+            Inline
+            """
+            """
+            if a then b else c
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.If
+                    {
+                    , condition = variable "a"
+                    , true = variable "b"
+                    , false = variable "c"
+                    }
+            )
         , codeTest
             """
-            SKIP multiline, formatted
+            Multiline, formatted
             """
             """
-            x =
-                if a then
-                    b
-                else
-                    c
+            if a then
+                b
+            else
+                c
             """
-            firstEvaluationOfDefinition
-            Test.isOk
-        , codeTest "multiline, compact"
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.If
+                    {
+                    , condition = variable "a"
+                    , true = variable "b"
+                    , false = variable "c"
+                    }
+            )
+        , codeTest
             """
-            x =
-              if a then b
-              else c
+            Multiline, compact
             """
-            firstEvaluationOfDefinition
-            Test.isOk
+            """
+            if a then b
+            else c
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.If
+                    {
+                    , condition = variable "a"
+                    , true = variable "b"
+                    , false = variable "c"
+                    }
+            )
         ]
 
 
 tries as Test =
     Test.Group "Try"
         [
-        , codeTest "multiline, formatted"
+        , codeTest
             """
-            x =
-              try a as
-                b:
-                  c
-                d:
-                  e
+            Multiline, formatted
             """
-            firstEvaluationOfDefinition
-            Test.isOk
-        , codeTest "multiline, compact"
             """
-            x =
-              try a as
-                b: c
-                d: e
+            try a as
+              b:
+                c
+              d:
+                e
             """
-            firstEvaluationOfDefinition
-            Test.isOk
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.Try
+                    {
+                    , value = variable "a"
+                    , patterns =
+                        [
+                        , variable "b" & variable "c"
+                        , variable "d" & variable "e"
+                        ]
+                    }
+            )
+        , codeTest
+            """
+            Multiline, compact
+            """
+            """
+            try a as
+              b: c
+              d: e
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.Try
+                    {
+                    , value = variable "a"
+                    , patterns =
+                        [
+                        , variable "b" & variable "c"
+                        , variable "d" & variable "e"
+                        ]
+                    }
+            )
         ]
 
 
+[#
 patterns as Test =
     Test.Group "Patterns"
         [ codeTest "list unpacking"
