@@ -7,7 +7,8 @@ union Mode =
     , ContentOpeningQuotes_One
     , ContentOpeningQuotes_Two
     , ContentOpeningBlockComment
-    , Dot
+    , Dot_One
+    , Dot_Two
     , Mutable
     , Word Token.NameModifier
     , NumberLiteral
@@ -524,7 +525,7 @@ lexOne as Text: ReadState@: None =
                 None
 
             ".":
-                setMode Dot @state
+                setMode Dot_One @state
 
 #            "@":
 #                @state.tokenStart := getPos @state
@@ -561,19 +562,26 @@ lexOne as Text: ReadState@: None =
                 else:
                     addParenOrCommaToken char @state
 
-        Dot:
+        Dot_One:
           if char == "." then
-              relAddToken (0 - 1) 1 (Token.Binop Prelude.textConcat) @state
-              setMode Default @state
-
+              setMode Dot_Two @state
           else if isWordStart char then
               setMode (Word Token.NameStartsWithDot) @state
 
           else if isNumber char then
               setMode NumberLiteral @state
-
           else
               addError "no idea what this is" @state
+
+        Dot_Two:
+          if char == "." then
+              relAddToken (0 - 1) 1 Token.ThreeDots @state
+              setMode Default @state
+
+          else
+              relAddToken (0 - 1) 1 (Token.Binop Prelude.textConcat) @state
+              setMode Default @state
+              lexOne char @state
 
         Mutable:
 #            if isWordStart char then

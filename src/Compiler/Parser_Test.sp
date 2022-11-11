@@ -4,11 +4,11 @@ tests as Test =
         [
 #        , values
 #        , parens
-        , functions
+#        , functions
 #        , annotations
 #        , unionDefs
 #        , lists
-#        , records
+        , records
 #        , ifs
 #        , tries
 #        , patterns
@@ -182,19 +182,22 @@ tuple as FA.Expression: FA.Expression: FA.Expression =
     e << FA.Binop Op.Tuple (a & [Prelude.tuple & b])
 
 
+word as Name: Token.Word =
+    name:
+    {
+    , modifier = Token.NameNoModifier
+    , isUpper = False
+    , maybeModule = Nothing
+    , name
+    , attrPath = []
+    }
+
+
 variable as Name: FA.Expression =
     name:
-
     {
     , maybeType = Nothing
-    , word =
-        {
-        , modifier = Token.NameNoModifier
-        , isUpper = False
-        , maybeModule = Nothing
-        , name
-        , attrPath = []
-        }
+    , word = word name
     }
     >> FA.Variable
     >> e
@@ -294,59 +297,53 @@ functions as Test =
             )
         ]
 
-[#
 
 annotations as Test =
     Test.Group "Annotations"
-        [ codeTest "Mutability 1"
+        [
+        , codeTest "Trivial case"
             """
-            a as Number:- Int: None =
-              1
+            a as b =
+                z
             """
-            firstAnnotation
+            firstDefinition
             (Test.isOkAndEqualTo
-                (FA.TypeFunction p
-                    (typeConstant "Number")
-                    LambdaConsuming
-                    (FA.TypeFunction p
-                        (typeConstant "Int")
-                        LambdaNormal
-                        (typeConstant "None")
-                    )
-                )
-            )
-        , codeTest "Mutability 2"
-            """
-            a as Number: Int:- None =
-              1
-            """
-            firstAnnotation
-            (Test.isOkAndEqualTo
-                (FA.TypeFunction p
-                    (typeConstant "Number")
-                    LambdaNormal
-                    (FA.TypeFunction p
-                        (typeConstant "Int")
-                        LambdaConsuming
-                        (typeConstant "None")
-                    )
-                )
+                {
+                , pattern =
+                    {
+                    , maybeType = Just << variable "b"
+                    , word = word "a"
+                    }
+                    >> FA.Variable
+                    >> e
+                , nonFn = []
+                , body = variable "z"
+                }
             )
         , codeTest "Tuple precedence"
             """
-            a as Int & Int: Bool =
-              1
+            a as fn int & int: bool =
+                b
             """
-            firstAnnotation
-            (Test.isOkAndEqualTo <<
-                FA.TypeFunction p
-                    (FA.TypeTuple p
-                        [ typeConstant "Int"
-                        , typeConstant "Int"
-                        ]
-                    )
-                    LambdaNormal
-                    (typeConstant "Bool")
+            firstDefinition
+            (Test.isOkAndEqualTo
+                {
+                , pattern =
+                    {
+                    , maybeType =
+                        FA.Fn
+                            [tuple (variable "int") (variable "int")]
+                            (variable "bool")
+                        >> e
+                        >> Just
+                    , word =
+                        word "a"
+                    }
+                    >> FA.Variable
+                    >> e
+                , nonFn = []
+                , body = variable "b"
+                }
             )
         ]
 
@@ -355,7 +352,7 @@ unionDefs as Test =
 
     asTypeDef = s:
         try s as
-            FA.UnionDef _ a:
+            FA.UnionDef a:
                 Ok a
 
             _:
@@ -368,23 +365,26 @@ unionDefs as Test =
         """
         Type Definitions
         """
-        [ codeTest
+        [
+        , codeTest
             """
             Parse inline def
             """
             """
-            union A b c = V1 b, V2 c, V3, V4 b c
+            union a b c = v1 b, v2 c, v3, v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
-                { args = [ "b", "c" ]
+                {
+                , name = At p (word "a")
+                , args = [ At p (word "b"), At p (word "c") ]
                 , constructors =
-                    [ At p "V1" & [ FA.TypeVariable p "b" ]
-                    , At p "V2" & [ FA.TypeVariable p "c" ]
-                    , At p "V3" & []
-                    , At p "V4" & [ FA.TypeVariable p "b", FA.TypeVariable p "c" ]
+                    [
+                    , e << FA.Call (variable "v1") [ variable "b" ]
+                    , e << FA.Call (variable "v2") [ variable "c" ]
+                    , variable "v3"
+                    , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
                     ]
-                , name = "A"
                 }
             )
         , codeTest
@@ -392,29 +392,34 @@ unionDefs as Test =
             Parse multiline def
             """
             """
-            union A =
-               , V1
-               , V2
+            union a b c =
+                , v1 b
+                , v2 c
+                , v3
+                , v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
-                { name = "A"
-                , args = []
+                {
+                , name = At p (word "a")
+                , args = [ At p (word "b"), At p (word "c") ]
                 , constructors =
-                    [ At p "V1" & []
-                    , At p "V2" & []
+                    [
+                    , e << FA.Call (variable "v1") [ variable "b" ]
+                    , e << FA.Call (variable "v2") [ variable "c" ]
+                    , variable "v3"
+                    , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
                     ]
                 }
             )
         , codeTest "list argument"
-            "union A = A [Int]"
+            "union a = a [int]"
             firstTypeDef
             (Test.isOkAndEqualTo
-                { args = []
-                , name = "A"
-                , constructors =
-                    [ At p "A" & [ FA.TypeList p ( typeConstant "Int") ]
-                    ]
+                {
+                , name = At p (word "a")
+                , args = []
+                , constructors = [ e << FA.Call (variable "a") [ e << FA.List [ False & variable "int" ] ]]
                 }
             )
         ]
@@ -422,162 +427,220 @@ unionDefs as Test =
 
 lists as Test =
     Test.Group "Lists"
-        [ codeTest
+        [
+        , codeTest
             """
             Inline
             """
-            "[1, 2]"
+            "[a, b]"
             firstEvaluation
-            ([ FA.LiteralNumber p "1", FA.LiteralNumber p "2" ] >> FA.List p >> Test.isOkAndEqualTo)
+            (Test.isOkAndEqualTo
+              (e << FA.List [ False & variable "a", False & variable "b" ])
+            )
         , codeTest
             """
-            Multiline canonical
+            Multiline
             """
             """
-                 a =
-                   [
-                   , 1
-                   , 2
-                   ]
-                 """
-            firstEvaluationOfDefinition
-            ([ FA.LiteralNumber p "1", FA.LiteralNumber p "2" ] >> FA.List p >> Test.isOkAndEqualTo)
+            [
+            , a
+            , b
+            ]
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.List [ False & variable "a", False & variable "b" ])
+            )
         , codeTest
             """
-            Multiline compact
+            Ancient egyptian
             """
             """
-                 a = [
-                   , 1
-                   , 2
-                   ]
-                 """
-            firstEvaluationOfDefinition
-            ([ FA.LiteralNumber p "1", FA.LiteralNumber p "2" ] >> FA.List p >> Test.isOkAndEqualTo)
+            blah [
+            , a
+            , b
+            ]
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Call (variable "blah") [e << FA.List [ False & variable "a", False & variable "b" ]])
+            )
+        , codeTest
+            """
+            Dots
+            """
+            "[...a, b, ...c]"
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.List [ True & variable "a", False & variable "b", True & variable "c" ])
+            )
         ]
 
 
 records as Test =
     Test.Group "Records"
-        [ codeTest "inline"
-            "a = { x = 1 }"
-            firstEvaluationOfDefinition
-            ({ attrs = [ At p "x" & (Just (FA.LiteralNumber p "1") ) ] , extends = Nothing } >> FA.Record p >> Test.isOkAndEqualTo)
-        , codeTest "multiline"
-            """
-            a =
-              {
-              , x = 1
-              , y = 2
-              }
-            """
-            firstEvaluationOfDefinition
-            ({ attrs =
-                [ ( At p "x") & Just (FA.LiteralNumber p "1")
-                , ( At p "y") & Just (FA.LiteralNumber p "2")
-                ]
-            , extends = Nothing
-            }
-                >> FA.Record p
-                >> Test.isOkAndEqualTo
+        [
+        , codeTest "Inline"
+            "{ x = b }"
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record
+                  {
+                  , maybeExtension = Nothing
+                  , attrs =
+                      [{
+                      , name = variable "x"
+                      , maybeExpr = Just << variable "b"
+                      }]
+                  }
+              )
             )
-        , codeTest "multiline compact"
+        , codeTest "Multiline"
             """
-            a = {
-              , x = 1
-              , y = 2
-              }
-            """
-            firstEvaluationOfDefinition
-            ({ attrs =
-                [ (At p "x") & Just (FA.LiteralNumber p "1")
-                , (At p "y") & Just (FA.LiteralNumber p "2")
-                ]
-            , extends = Nothing
+            {
+            , x = a
+            , y = b
             }
-                >> FA.Record p
-                >> Test.isOkAndEqualTo
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record
+                  {
+                  , maybeExtension = Nothing
+                  , attrs =
+                      [
+                      , {
+                        , name = variable "x"
+                        , maybeExpr = Just << variable "a"
+                        }
+                      , {
+                        , name = variable "y"
+                        , maybeExpr = Just << variable "b"
+                        }
+                      ]
+                  }
+              )
+            )
+        , codeTest "Pattern extension"
+            """
+            { with
+            , x = a
+            }
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record
+                  {
+                  , maybeExtension = Just Nothing
+                  , attrs = [ { name = variable "x", maybeExpr = Just << variable "a" } ]
+                  }
+              )
+            )
+        , codeTest "Expression extension"
+            """
+            { z with
+            , x = a
+            }
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record
+                  {
+                  , maybeExtension = Just (Just (variable "z"))
+                  , attrs = [ { name = variable "x", maybeExpr = Just << variable "a" } ]
+                  }
+              )
             )
         , codeTest
             """
-            Annotation, inline
+            Type or annotated implicit value
             """
             """
-            a as { x as Bool } =
-              a
+            { x as bool }
             """
-            firstAnnotation
-            ({ extends = Nothing , attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
-        , codeTest
-            """
-            SKIP Annotation, own line
-            """
-            """
-            a as
-               { x as Bool }
-               =
-               1
-            """
-            firstAnnotation
-            ({ extends = Nothing , attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
-        , codeTest
-            """
-            SKIP Annotation, multiline
-            """
-            """
-            a as {
-               , x as Bool
-               }
-                  =
-                  a
-            """
-            firstAnnotation
-            ({ extends = Nothing, attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
-        , codeTest
-            """
-            [reg] simple assignment, inline
-            """
-            """
-            a = { b with c }
-            """
-            firstDefinition
-            Test.isOk
-        , codeTest
-            """
-            [reg] simple assignment, as block
-            """
-            """
-            a =
-              { b with c }
-            """
-            firstDefinition
-            Test.isOk
-        , codeTest "[reg] simple assignment, as block"
-            """
-            a =
-              { b with c = 1 }
-            """
-            firstDefinition
-            Test.isOk
-        , codeTest "[reg] real-world use"
-            """
-            a =
-              { state with
-                  , pos = endPos
-                  , code = rest
-                  , accum =
-                      { kind = Token.Comment
-                      , start = startPos
-                      , end = endPos
-                      }
-                          :: state.accum
-              }
-            """
-            firstDefinition
-            Test.isOk
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record
+                  {
+                  , maybeExtension = Nothing
+                  , attrs = [ { name = variable "x", maybeExpr = Nothing } ]
+                  }
+              )
+            )
+
+
+
+#        , codeTest
+#            """
+#            SKIP Annotation, own line
+#            """
+#            """
+#            a as
+#               { x as Bool }
+#               =
+#               1
+#            """
+#            firstAnnotation
+#            ({ extends = Nothing , attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
+#        , codeTest
+#            """
+#            SKIP Annotation, multiline
+#            """
+#            """
+#            a as {
+#               , x as Bool
+#               }
+#                  =
+#                  a
+#            """
+#            firstAnnotation
+#            ({ extends = Nothing, attrs = [ (At p "x") & (Just << typeConstant "Bool") ] } >> FA.TypeRecord p >> Test.isOkAndEqualTo)
+#        , codeTest
+#            """
+#            [reg] simple assignment, inline
+#            """
+#            """
+#            a = { b with c }
+#            """
+#            firstDefinition
+#            Test.isOk
+#        , codeTest
+#            """
+#            [reg] simple assignment, as block
+#            """
+#            """
+#            a =
+#              { b with c }
+#            """
+#            firstDefinition
+#            Test.isOk
+#        , codeTest "[reg] simple assignment, as block"
+#            """
+#            a =
+#              { b with c = 1 }
+#            """
+#            firstDefinition
+#            Test.isOk
+#        , codeTest "[reg] real-world use"
+#            """
+#            a =
+#              { state with
+#                  , pos = endPos
+#                  , code = rest
+#                  , accum =
+#                      { kind = Token.Comment
+#                      , start = startPos
+#                      , end = endPos
+#                      }
+#                          :: state.accum
+#              }
+#            """
+#            firstDefinition
+#            Test.isOk
         ]
 
 
+[#
 ifs as Test =
     Test.Group "Ifs"
         [ codeTest "inline"

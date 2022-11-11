@@ -61,7 +61,7 @@ union Expr_ =
         # pattern extension: { with attr1, ... }
         # expression extension: { expt with attr1, ... }
         , maybeExtension as Maybe (Maybe Expression)
-        , attrs as [{ name as At Token.Word, maybeType as Maybe Expression, maybeExpr as Maybe Expression }]
+        , attrs as [{ name as Expression, maybeExpr as Maybe Expression }]
         }
 
     , Variable { maybeType as Maybe Expression, word as Token.Word }

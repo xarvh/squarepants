@@ -57,6 +57,7 @@ oneToken as Parser Token =
     Parser.consumeOne
 
 
+# TODO rename to "exact"?
 kind as Token.Kind: Parser Token =
     targetKind:
     oneToken >> on token:
@@ -288,7 +289,8 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
 
     try k as
         Token.Word w:
-            FA.Variable { maybeType = Nothing, word = w } >> ok
+            maybe (discardFirst (kind Token.As) (expr env)) >> on maybeType:
+            FA.Variable { maybeType, word = w } >> ok
 
         Token.NumberLiteral s:
             FA.LiteralNumber s >> ok
@@ -321,17 +323,14 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
                     (maybe (expr env))
                     (kind Token.With)
 
-            separator as Parser Token =
-                Parser.oneOf [ kind Token.Defop, kind Token.As ]
-
-            attribute as Parser { name as At Token.Word, maybeType as Maybe FA.Expression, maybeExpr as Maybe FA.Expression } =
-                word env >> on name:
-                maybe (expr env) >> on maybeType:
-                maybe (discardFirst separator (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
-                ok { name, maybeType, maybeExpr }
+            attribute as Parser { name as FA.Expression, maybeExpr as Maybe FA.Expression } =
+                expr env >> on name:
+                maybe (discardFirst (kind Token.Defop) (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
+                ok { name, maybeExpr }
 
             inlineOrBelowOrIndented (maybe extension) >> on maybeExtension:
             rawList attribute >> on attrs:
+            kind (Token.CurlyBrace Token.Closed) >> on _:
             FA.Record { maybeExtension, attrs } >> ok
 
         Token.Unop unop:
@@ -509,7 +508,10 @@ inlineStatementOrBlock as Env: Parser FA.Expression =
         here >> on start:
         block (oomSeparatedBy (kind Token.NewSiblingLine) (statement env)) >> on stats:
         here >> on end:
-        FA.Expression (pos env start end) (FA.Statements stats) >> ok
+        # Is this optimization really necessary?
+        try stats as
+            [ FA.Evaluation expr ]: ok expr
+            many: FA.Expression (pos env start end) (FA.Statements stats) >> ok
 
     Parser.oneOf
         [ Parser.breakCircularDefinition (_: expr env)
