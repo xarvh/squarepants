@@ -361,13 +361,13 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
 
             patternAndValue as Parser (FA.Expression & FA.Expression) =
                 expr env >> on p:
-                maybeNewLineKind Token.Colon >> on _:
+                kind Token.Colon >> on _:
                 inlineStatementOrBlock env >> on value:
                 ok ( p & value )
 
             expr env >> on value:
             kind Token.As >> on _:
-            block (Parser.zeroOrMore (maybeNewLine patternAndValue)) >> on patterns:
+            inlineOrBelowOrIndented (rawList patternAndValue) >> on patterns:
             here >> on end:
             {
             , value = value
@@ -585,7 +585,6 @@ module_ as Env: Parser FA.Module =
     start =
         Parser.maybe (kind Token.NewSiblingLine)
 
-
     e =
         Parser.oneOf
             [ kind Token.BlockEnd
@@ -658,8 +657,8 @@ textToFormattableModule as Env: Text: Res FA.Module =
     tokensToStatsResult as [Token]: Res [FA.Statement] =
         tokens:
 
-        List.each tokens t:
-              log "*" t
+#        List.each tokens t:
+#              log "*" t
 
         Debug.benchStart None
         parse env tokens

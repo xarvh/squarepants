@@ -2,17 +2,17 @@
 tests as Test =
     Test.Group "Parser"
         [
-#        , values
-#        , parens
-#        , functions
-#        , annotations
-#        , unionDefs
-#        , lists
-#        , records
-#        , ifs
+        , values
+        , parens
+        , functions
+        , annotations
+        , unionDefs
+        , lists
+        , records
+        , ifs
         , tries
-#        , patterns
-#        , binops
+        , patterns
+        , binops
         ]
 
 
@@ -304,6 +304,29 @@ functions as Test =
                     ( variable "xxx" )
                     [ e << FA.Fn [ variable "y" ] (variable "y") ]
             )
+
+        , codeTest
+            """
+            SKIP Function should not swallow pipeline
+            """
+            """
+            value
+            >> map fn x: blah
+            >> sblorp
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Binop Op.Pipe <<
+                    variable "value" &
+                        [
+                        , Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn [variable "x"] (variable "blah")])
+                        , Prelude.sendRight & variable "sblorp"
+                        ]
+            )
+
+
+
+
         ]
 
 
@@ -666,9 +689,9 @@ tries as Test =
             """
             """
             try a as
-              b:
+              , b:
                 c
-              d:
+              , d:
                 e
             """
             firstEvaluation
@@ -689,8 +712,8 @@ tries as Test =
             """
             """
             try a as
-              b: c
-              d: e
+              , b: c
+              , d: e
             """
             firstEvaluation
             (Test.isOkAndEqualTo << e <<
@@ -710,11 +733,11 @@ tries as Test =
             """
             """
             try a as
-              b:
+              , b:
                 try c as
-                    q:
+                    , q:
                         q
-              d:
+              , d:
                 e
             """
             firstEvaluation
@@ -784,60 +807,55 @@ patterns as Test =
         ]
 
 
-[#
-
 binops as Test =
 
-    sendBtoC = b: c:
-        FA.Binop p
-            Op.Pipe
-            ( FA.Variable p Nothing "b" [] & [ ( Prelude.sendRight & FA.Variable p Nothing "c" []) ])
+    sendBtoC =
+        e << FA.Binop Op.Pipe <<
+            variable "b" & [ Prelude.sendRight & variable "c" ]
 
-    sendBtoCtoD = b: c: d:
-        FA.Binop p
-            Op.Pipe
-            ( FA.Variable p Nothing "b" [] & [ ( Prelude.sendRight & FA.Variable p Nothing "c" []) , ( Prelude.sendRight & FA.Variable p Nothing "d" []) ])
+    sendBtoCtoD =
+        e << FA.Binop Op.Pipe <<
+            variable "b" & [ Prelude.sendRight & variable "c", Prelude.sendRight & variable "d" ]
 
     Test.Group "Binops"
-        [ codeTest "no indent"
+        [
+        , codeTest "no indent"
             """
-            a = b >> c
+            b >> c
             """
-            firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << sendBtoC 5 10)
-        , codeTest "assignment indent"
+            firstEvaluation
+            (Test.isOkAndEqualTo sendBtoC)
+        , codeTest
             """
-            a =
-                b >> c
+            pipe indent 1
             """
-            firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << sendBtoC 9 14)
-        , codeTest "pipe indent"
             """
-            a =
-                b
-                  >> c
+            b
+              >> c
             """
-            firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << sendBtoC 9 20)
-        , codeTest "pipe indent"
+            firstEvaluation
+            (Test.isOkAndEqualTo sendBtoC)
+        , codeTest
             """
-            a =
-                b
-                  >> c
-                  >> d
+            pipe indent 2
             """
-            firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << sendBtoCtoD 9 20 31)
-        , codeTest "pyramid indent"
             """
-            a =
-                b
-                  >> c
-                    >> d
+            b
+              >> c
+              >> d
             """
-            firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << sendBtoCtoD 9 20 33)
+            firstEvaluation
+            (Test.isOkAndEqualTo sendBtoCtoD)
+        , codeTest
+            """
+            pyramid indent
+            """
+            """
+            b
+              >> c
+                >> d
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo sendBtoCtoD)
         ]
 
-#]
