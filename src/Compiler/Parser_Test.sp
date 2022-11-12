@@ -2,16 +2,16 @@
 tests as Test =
     Test.Group "Parser"
         [
-        , values
-        , parens
-        , functions
-        , annotations
-        , unionDefs
-        , lists
-        , records
-        , ifs
-        , tries
-#        , patterns
+#        , values
+#        , parens
+#        , functions
+#        , annotations
+#        , unionDefs
+#        , lists
+#        , records
+#        , ifs
+#        , tries
+        , patterns
 #        , binops
         ]
 
@@ -707,36 +707,53 @@ tries as Test =
         ]
 
 
-[#
 patterns as Test =
     Test.Group "Patterns"
-        [ codeTest "list unpacking"
-            "[a, b] = x"
-            (x: x >> firstDefinition >> Result.map y: y.pattern)
-            ([ FA.PatternAny p False "a" Nothing, FA.PatternAny p False "b" Nothing ]
-                >> FA.PatternList p
-                >> Test.isOkAndEqualTo
+        [
+        , codeTest
+            """
+            List unpacking
+            """
+            "[a as int, b] = x"
+            firstDefinition
+            (Test.isOkAndEqualTo
+                { pattern = e <<
+                    FA.List
+                        [
+                        , False & annotatedVariable "a" (variable "int")
+                        , False & variable "b"
+                        ]
+                , nonFn = []
+                , body = variable "x"
+                }
             )
-        , codeTest "list unpacking, inner block"
+        , codeTest
             """
-x =
-   [ a, b ] = c
-                    """
-            (x: x >> firstDefinition >> Result.map y: y.pattern)
-            Test.isOk
-        , codeTest "record unpacking"
-            "{ a, b } = x"
-            (x: x >> firstDefinition >> Result.map y: y.pattern)
-            ({ extends = Nothing , attrs = [ At p "a" & Nothing, At p "b" & Nothing  ] } >> FA.PatternRecord p >> Test.isOkAndEqualTo)
-        , codeTest "record unpacking, inner block"
+            Record argument unpacking
             """
-x =
-  { a, b } = c
-                    """
-            (x: x >> firstDefinition >> Result.map y: y.pattern)
-            Test.isOk
+            """
+            fn { with a, b }:
+              x
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.Fn
+                    [ e << FA.Record
+                        {
+                        , maybeExtension = Just Nothing
+                        , attrs =
+                            [
+                            , { name = variable "a", maybeExpr = Nothing }
+                            , { name = variable "b", maybeExpr = Nothing }
+                            ]
+                        }
+                    ]
+                    (variable "x")
+            )
         ]
 
+
+[#
 
 binops as Test =
 
