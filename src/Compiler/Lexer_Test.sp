@@ -1,3 +1,16 @@
+tests as Test =
+    Test.Group "Lexer"
+        [
+        , keywords
+        , ops
+        , unaryAddittiveOps
+        , indentation
+        , comments
+        , underscores
+        , position
+        , textLiterals
+        ]
+
 # TODO some tests that should be added:
 [# TESTS for single quote text
 
@@ -74,7 +87,7 @@ lexTokensAndDrop as Int: Text: Result Text (List Token) =
         >> Result.map (List.drop name)
 
 
-non_mut_name as Text: Token.Kind =
+lowerName as Text: Token.Kind =
     name:
     {
     , modifier = Token.NameNoModifier
@@ -86,19 +99,24 @@ non_mut_name as Text: Token.Kind =
     >> Token.Word
 
 
-tests as Test =
-    Test.Group "Lexer"
-        []
-[#
-        [ keywords
-        , ops
-        , unaryAddittiveOps
-        , indentation
-        , comments
-        , underscores
-        , position
-        , textLiterals
-        ]
+
+upperName as Text: Token.Kind =
+    name:
+    {
+    , modifier = Token.NameNoModifier
+    , isUpper = True
+    , maybeModule = Nothing
+    , name
+    , attrPath = []
+    }
+    >> Token.Word
+
+
+#
+#
+# Tests
+#
+#
 
 
 keywords as Test =
@@ -119,7 +137,8 @@ ops as Test =
             ".. []"
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token n 0 0 << Token.NewSiblingLine
+                [
+#                , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 2 << Token.Binop Prelude.textConcat
                 , Token n 3 4 << Token.SquareBracket Token.Open
                 , Token n 4 5 << Token.SquareBracket Token.Closed
@@ -134,30 +153,32 @@ unaryAddittiveOps as Test =
             "-a"
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token n 0 0 << Token.NewSiblingLine
+                [
+#                , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << Token.Unop Prelude.unaryMinus
-                , Token n 1 2 << non_mut_name "a"
+                , Token n 1 2 << lowerName "a"
                 ]
             )
         , codeTest "a - -a"
             "a - -a"
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << non_mut_name "a"
+                [
+#                , Token n 0 0 << Token.NewSiblingLine
+                , Token n 0 1 << lowerName "a"
                 , Token n 2 3 << Token.Binop Prelude.subtract
                 , Token n 4 5 << Token.Unop Prelude.unaryMinus
-                , Token n 5 6 << non_mut_name "a"
+                , Token n 5 6 << lowerName "a"
                 ]
             )
         , codeTest "a-a"
             "a-a"
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << non_mut_name "a"
+                [ #Token n 0 0 << Token.NewSiblingLine
+                , Token n 0 1 << lowerName "a"
                 , Token n 1 2 << Token.Unop Prelude.unaryMinus
-                , Token n 2 3 << non_mut_name "a"
+                , Token n 2 3 << lowerName "a"
                 ]
             )
 #        , codeTest "Consuming colon:"
@@ -172,7 +193,7 @@ unaryAddittiveOps as Test =
             "-="
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token n 0 0 Token.NewSiblingLine
+                [ #Token n 0 0 Token.NewSiblingLine
                 , Token n 0 2 << Token.Binop Prelude.mutableSubtract
                 ]
             )
@@ -185,14 +206,14 @@ indentation as Test =
             "\na =\n 1\nb = 1"
             lexTokens
             (Test.isOkAndEqualTo
-                [ Token n 1 1 << Token.NewSiblingLine
-                , Token n 1 2 << non_mut_name "a"
+                [ #Token n 1 1 << Token.NewSiblingLine
+                , Token n 1 2 << lowerName "a"
                 , Token n 3 4 << Token.Defop
                 , Token n 6 6 << Token.BlockStart
                 , Token n 6 7 << Token.NumberLiteral "1"
                 , Token n 8 8 << Token.BlockEnd
-                , Token n 8 8 << Token.NewSiblingLine
-                , Token n 8 9 << non_mut_name "b"
+#                , Token n 8 8 << Token.NewSiblingLine
+                , Token n 8 9 << lowerName "b"
                 , Token n 10 11 << Token.Defop
                 , Token n 12 13 << Token.NumberLiteral "1"
                 ]
@@ -211,20 +232,20 @@ indentation as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 0  0  << Token.NewSiblingLine
-                , Token n 0  6  << Token.LowerName Token.NameNoModifier Nothing "module" []
+#                , Token n 0  0  << Token.NewSiblingLine
+                , Token n 0  6  << lowerName "module"
                 , Token n 7  8  << Token.Defop
                 , Token n 12 12 << Token.BlockStart
-                , Token n 12 20 << Token.LowerName Token.NameNoModifier Nothing "importAs" []
+                , Token n 12 20 << lowerName "importAs"
                 , Token n 21 22 << Token.Defop
                 , Token n 29 29 << Token.BlockStart
-                , Token n 29 35 << Token.UpperName Nothing "SPCore"
+                , Token n 29 35 << upperName "SPCore"
                 , Token n 39 39 << Token.BlockEnd
-                , Token n 39 39 << Token.NewSiblingLine
-                , Token n 39 50 << Token.LowerName Token.NameNoModifier Nothing "globalTypes" []
+#                , Token n 39 39 << Token.NewSiblingLine
+                , Token n 39 50 << lowerName "globalTypes"
                 , Token n 51 52 << Token.Defop
                 , Token n 59 59 << Token.BlockStart
-                , Token n 59 63 << Token.UpperName Nothing "None"
+                , Token n 59 63 << upperName "None"
                 , Token n 63 63 << Token.BlockEnd
                 , Token n 63 63 << Token.BlockEnd
                 ]
@@ -261,52 +282,52 @@ indentation as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n (0) (0)  Token.NewSiblingLine
-                , Token n (0) (6) (Token.LowerName Token.NameNoModifier Nothing "module" [])
+#                , Token n (0) (0)  Token.NewSiblingLine
+                , Token n (0) (6) (lowerName "module")
                 , Token n (7) (8) Token.Defop
                 , Token n (12) (12) (Token.BlockStart )
-                , Token n (12) (13) (Token.LowerName Token.NameNoModifier (Nothing ) ("i") ([]))
+                , Token n (12) (13) (lowerName "i")
                 , Token n (14) (15) (Token.Defop)
                 , Token n (24) (24) (Token.BlockStart )
-                , Token n (24) (25) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("j") ([]))
+                , Token n (24) (25) (lowerName "j")
                 , Token n (38) (40) (Token.Binop Prelude.sendRight)
-                , Token n (41) (42) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("k") ([]))
+                , Token n (41) (42) (lowerName "k")
                 , Token n (55) (57) (Token.Binop Prelude.sendRight)
-                , Token n (58) (59) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("s") ([]))
+                , Token n (58) (59) (lowerName "s")
                 , Token n (64) (64) (Token.BlockEnd )
-                , Token n (64) (64) (Token.NewSiblingLine )
-                , Token n (64) (72) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("importAs") ([]))
+#                , Token n (64) (64) (Token.NewSiblingLine )
+                , Token n (64) (72) (lowerName "importAs")
                 , Token n (73) (74) (Token.Defop)
                 , Token n (81) (81) (Token.BlockStart )
-                , Token n (81) (87) (Token.UpperName (Nothing ) ("SPCore"))
+                , Token n (81) (87) (upperName "SPCore")
                 , Token n (92) (92) (Token.BlockEnd )
-                , Token n (92) (92) (Token.NewSiblingLine )
-                , Token n (92) (103) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("globalTypes") ([]))
+#                , Token n (92) (92) (Token.NewSiblingLine )
+                , Token n (92) (103) (lowerName "globalTypes")
                 , Token n (104) (105) (Token.Defop )
                 , Token n (112) (112) (Token.BlockStart )
-                , Token n (112) (116) (Token.UpperName (Nothing ) ("None"))
+                , Token n (112) (116) (upperName ("None"))
                 , Token n (121) (121) (Token.BlockEnd )
-                , Token n (121) (121) (Token.NewSiblingLine )
-                , Token n (121) (122) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("a") ([]))
+#                , Token n (121) (121) (Token.NewSiblingLine )
+                , Token n (121) (122) (lowerName "a")
                 , Token n (123) (124) (Token.Binop Prelude.add)
 #                , Token n (129) (146) (Token.Comment )
-                , Token n (155) (156) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("b") ([]))
+                , Token n (155) (156) (lowerName "b")
 #                , Token n (159) (171) (Token.Comment )
-                , Token n (180) (181) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("c") ([]))
-                , Token n (186) (186) (Token.NewSiblingLine )
-                , Token n (186) (187) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("d") ([]))
+                , Token n (180) (181) (lowerName "c")
+#                , Token n (186) (186) (Token.NewSiblingLine )
+                , Token n (186) (187) (lowerName "d")
                 , Token n (188) (189) (Token.Defop )
 #                , Token n (194) (207) (Token.Comment )
                 , Token n (216) (216) (Token.BlockStart )
-                , Token n (216) (217) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("e") ([]))
+                , Token n (216) (217) (lowerName "e")
 #                , Token n (220) (230) (Token.Comment )
-                , Token n (239) (239) (Token.NewSiblingLine )
-                , Token n (239) (240) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("f") ([]))
+#                , Token n (239) (239) (Token.NewSiblingLine )
+                , Token n (239) (240) (lowerName "f")
                 , Token n (245) (245) (Token.BlockEnd )
-                , Token n (245) (245) (Token.NewSiblingLine )
-                , Token n (245) (246) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("g") ([]))
+#                , Token n (245) (245) (Token.NewSiblingLine )
+                , Token n (245) (246) (lowerName "g")
                 , Token n (247) (248) (Token.Defop )
-                , Token n (249) (250) (Token.LowerName (Token.NameNoModifier ) (Nothing ) ("h") ([]))
+                , Token n (249) (250) (lowerName "h")
                 , Token n (250) (250) (Token.BlockEnd )
                 ]
             )
@@ -326,7 +347,7 @@ comments as Test =
                 [
                 , Token n 1 2 << Token.Comment
                 , Token n 3 3 << Token.NewSiblingLine
-                , Token n 3 4 << non_mut_name "a"
+                , Token n 3 4 << lowerName "a"
                 , Token n 5 6 << Token.Defop
                 , Token n 7 8 << Token.NumberLiteral "1"
                 ]
@@ -338,7 +359,7 @@ comments as Test =
                 [
                 , Token n 1 8 << Token.Comment
                 , Token n 10 10 << Token.NewSiblingLine
-                , Token n 10 11 << non_mut_name "a"
+                , Token n 10 11 << lowerName "a"
                 , Token n 12 13 << Token.Defop
                 , Token n 14 15 << Token.NumberLiteral "1"
                 ]
@@ -368,7 +389,7 @@ a [# inline #] = 1
                 [
                 , Token n 0 16 << Token.Comment
                 , Token n 19 19 << Token.NewSiblingLine
-                , Token n 19 20 << non_mut_name "a"
+                , Token n 19 20 << lowerName "a"
                 , Token n 21 32 << Token.Comment
                 , Token n 34 35 << Token.Defop
                 , Token n 36 37 << Token.NumberLiteral "1"
@@ -420,15 +441,15 @@ underscores as Test =
         [ codeTest "'_' as a Name"
             "_"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token 0 1 << Token.LowerName Token.NameNoModifier Nothing "_" []])
+            (Test.isOkAndEqualTo [ Token n 0 1 << lowerName "_"])
         , codeTest "'_10_20' as a Name"
             "_10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token 0 6 << Token.LowerName Token.NameNoModifier Nothing "_10_20" []])
+            (Test.isOkAndEqualTo [ Token n 0 6 << lowerName "_10_20" ])
         , codeTest "'10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token 0 5 << Token.NumberLiteral "10_20" ])
+            (Test.isOkAndEqualTo [ Token n 0 5 << Token.NumberLiteral "10_20" ])
         ]
 
 
@@ -456,7 +477,7 @@ textLiterals as Test =
             "\"\""
             lexTokens
             (Test.isOkAndEqualTo [
-                , Token n 0 0 << Token.NewSiblingLine
+#                , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 2 << Token.TextLiteral ""
                 ]
             )
@@ -465,7 +486,7 @@ textLiterals as Test =
             "\"n\":\n"
             lexTokens
             (Test.isOkAndEqualTo [
-                , Token n 0 0 << Token.NewSiblingLine
+#                , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 3 << Token.TextLiteral "n"
                 , Token n 3 4 << Token.Colon
                 ]

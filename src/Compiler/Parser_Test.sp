@@ -10,8 +10,8 @@ tests as Test =
 #        , lists
 #        , records
 #        , ifs
-#        , tries
-        , patterns
+        , tries
+#        , patterns
 #        , binops
         ]
 
@@ -700,6 +700,37 @@ tries as Test =
                     , patterns =
                         [
                         , variable "b" & variable "c"
+                        , variable "d" & variable "e"
+                        ]
+                    }
+            )
+        , codeTest
+            """
+            Nested
+            """
+            """
+            try a as
+              b:
+                try c as
+                    q:
+                        q
+              d:
+                e
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.Try
+                    {
+                    , value = variable "a"
+                    , patterns =
+                        [
+                        , variable "b" &
+                            (e << FA.Try
+                                {
+                                , value = variable "c"
+                                , patterns = [ variable "q" & variable "q" ]
+                                }
+                            )
                         , variable "d" & variable "e"
                         ]
                     }
