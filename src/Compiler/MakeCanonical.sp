@@ -67,7 +67,6 @@ alias ReadOnly = {
     }
 
 
-[#
 initEnv as ReadOnly: Env =
     ro: {
     , maybeShorthandTarget = Nothing
@@ -333,114 +332,249 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
 
 
 
+
+translateAttributeName as Env: FA.Expression: Res (Pos & Name & Maybe CA.Type) =
+    env: (FA.Expression pos expr_):
+
+    try expr as
+        FA.Variable { maybeType, word }:
+
+            if word.modifier /= Token.NameNoModifier then
+                makeError pos [ "attribute names can't start with a dot" ]
+            else if word.isUpper then
+                makeError pos [ "attribute names must be lower case" ]
+            else if word.maybeModule /= Nothing then
+                makeError pos [ "attribute names must be single words" ]
+            else if word.attrPath then
+                makeError pos [ "attribute names can't contain dots" ]
+            else
+                pos & word.name & maybeType >> Ok
+
+        _:
+            makeError pos [ "Expecting an attribute name here" ]
+
+
+
 #
 # Pattern
 #
+translatePatternConstructor as Env: [CA.Pattern]: At Word: Res CA.Pattern =
+    env: args: (At pos word):
+
+    if word.modifier /= Token.NameNoModifier then
+        error "Constructor names cannot have modifiers"
+    else if word.attrPath /= [] then
+        error "Constructors don't have attributes"
+    else
+        CA.PatternConstructor pos (resolveToConstructorUsr env.ro word.maybeModule word.name) args
+        >> Ok
 
 
-translatePattern as Env: FA.Pattern: Res Pattern =
-    env: fa:
-    try fa as
-        FA.PatternAny pos isMutable name maybeFaType:
+translatePatternAny as Env: Maybe FA.Expression: At Word: Res CA.Pattern =
+    env: maybeFaType: (At pos word):
 
-            getMaybeCaType as Res (Maybe CA.CanonicalType) =
-                try maybeFaType as
-                    Just faType:
-                        faType
-                        >> translateType False env.ro
-                        >> Result.map Just
+    if word.modifier /= Token.NameNoModifier then
+        error "Record access shorthands"
+    else if word.attrPath /= [] then
+        error "To access attributes in pattern matching use { with theAttributeName = theVariableName }"
+    else if word.maybeModule /= Nothing then
+        error "You can't access modules here..."
+    else
+        getMaybeCaType as Res (Maybe CA.CanonicalType) =
+            try maybeFaType as
+                Just faType:
+                    faType
+                    >> translateType False env.ro
+                    >> Result.map Just
 
-                    _:
-                        Ok Nothing
+                Nothing:
+                    Ok Nothing
 
-            getMaybeCaType
-            >> onOk maybeCaType:
+        getMaybeCaType
+        >> onOk maybeCaType:
 
-            maybeName =
-                if name == "_" then Nothing else (Just name)
+        maybeName =
+            if name == "_" then Nothing else Just name
 
-            Ok << CA.PatternAny pos { isUnique = isMutable, maybeName, maybeAnnotation = maybeCaType }
+        # TODO isUnique
+        Ok << CA.PatternAny pos { isUnique = False, maybeName, maybeAnnotation = maybeCaType }
 
-        FA.PatternLiteralNumber pos l:
-            translateNumber CA.PatternLiteralNumber pos l
 
-        FA.PatternLiteralText pos l:
-            Ok << CA.PatternLiteralText pos l
+translatePatternRecord as Env: Maybe (Maybe FA.Expression): [{ name as FA.Expression, maybeExpr as Maybe FA.Expression }]: Res CA.Pattern =
+    env: maybeMaybeExt: attrs:
 
-        FA.PatternConstructor pos maybeModule name faArgs:
-            List.mapRes (translatePattern env) faArgs >> onOk caArgs:
-            Ok << CA.PatternConstructor pos (resolveToConstructorUsr env.ro maybeModule name) caArgs
+    (try maybeMaybeExt as
+        Just (Just (FA.Expression pos expr_)):
+            makeError pos "Can't extend patterns"
 
-        FA.PatternList pos fas:
-            fold = pattern: last:
+        Just Nothing:
+            # { with attr1 = ... }
+            Ok CA.Partial
+
+        Nothing:
+            # { attr1 = ... }
+            Ok CA.Complete
+    )
+    >> onOk completeness:
+
+    insertAttribute as FA.RecordAttribute: Dict Name CA.PatternRecord: Res (Dict Name CA.Pattern) =
+        attr: caAttrs:
+
+        # { x }
+        # { x = pattern }
+        # { x as Type }
+
+        translateAttributeName env attr.name
+        >> onOk (pos & caName & maybeFaType):
+
+        if Dict.member caName caAttrs then
+            makeError pos [ "duplicate attribute name in pattern: " .. name ]
+
+        else
+            try attr.maybeExpr & maybeFaType as
+                Just _ & Just (FA.Expression typePos _):
+                    makeError typePos [ "if you want to annotate the attribute, use { x = y as TheType }" ]
+
+                Nothing & Just faType:
+                    translateType env faType
+                    >> onOk caType:
+
+                    caAttrs
+                    >> Dict.insert caName (CA.PatternAny pos { isUnique = False, maybeName = Just caName, maybeAnnotation = Just caType })
+                    >> Ok
+
+                Just faPattern & Nothing:
+                    faPattern
+                    >> translatePattern env
+                    >> onOk caPattern:
+
+                    caAttrs
+                    >> Dict.insert caName caPattern
+                    >> Ok
+
+                 Nothing & Nothing:
+                    caAttrs
+                    >> Dict.insert caName (CA.PatternAny pos { isUnique = False, maybeName = Just caName, maybeAnnotation = Nothing })
+                    >> Ok
+
+     Dict.empty
+     >> List.forRes attrs insertAttribute
+     >> Result.map (x: x >> CA.PatternRecord pos)
+
+
+translatePatternTuple as Env: FA.SepList Op.Binop FA.Expression: Res CA.Pattern =
+    env: (head & tail):
+
+    head :: List.map Tuple.second tail
+    >> List.mapRes (translatePattern env)
+    >> onOk items:
+
+    try items as
+        [ ca1, ca2 ]:
+            pos = Pos.range (CA.patternPos ca1) (CA.patternPos ca2)
+            Dict.empty
+            >> Dict.insert "first" ca1
+            >> Dict.insert "second" ca2
+            >> CA.PatternRecord pos CA.Complete
+            >> Ok
+
+        [ ca1, ca2, ca3 ]:
+            pos = Pos.range (CA.patternPos ca1) (CA.patternPos ca3)
+            Dict.empty
+            >> Dict.insert "first" ca1
+            >> Dict.insert "second" ca2
+            >> Dict.insert "third" ca3
+            >> CA.PatternRecord pos CA.Complete
+            >> Ok
+
+        _:
+            pos = List.for items (i: p: Pos.range (CA.patternPos i) p) Pos.G
+            makeError pos [ "tuples can be only of size 2 or 3" ]
+
+
+
+translatePattern as Env: FA.Expression: Res Pattern =
+    env: (FA.Expression pos expr_):
+
+    try expr_ as
+
+        Variable { maybeType, word }:
+
+            if isUpper then
+                if maybeType /= Nothing then
+                    error "Pattern constructors can't have type annotations"
+                else
+                    translatePatternConstructor env [] word
+            else
+                translatePatternAny env maybeType word
+
+        Call (FA.Expression pos ref) faArgs:
+            try ref as
+                FA.Variable { maybeType, word }:
+                    if not word.isUpper then
+                        makeError pos [ "I need an uppercase constructor name here" ]
+                    else if maybeType /= Nothing then
+                        makeError pos [ "Constructors can't be annotated (yet? would it make sense?)" ]
+                    else
+                        faArgs
+                        >> List.mapRes (translatePattern env)
+                        >> onOk caArgs:
+                        translatePatternConstructor env caArgs word
+
+                _:
+                    makeError pos [ "I was expecting a constructor name here" ]
+
+        List faItems:
+            ---> what about dots!!?
+            fold =
+                pattern: last:
                 # TODO pos is probably inaccurate
                 CA.PatternConstructor pos CoreTypes.cons [ pattern, last ]
 
-            List.mapRes (translatePattern env) fas >> onOk cas:
+            List.mapRes (translatePattern env) faItems >> onOk cas:
             Ok << List.forReversed cas fold (CA.PatternConstructor pos CoreTypes.nil [])
 
-        FA.PatternRecord pos recordArgs:
-            if recordArgs.extends /= Nothing then
-                makeError pos [ "can't use `with` inside patterns" ]
 
-            else
-                fold =
-                    ( (At p name) & maybePattern ): dict:
+        Record { maybeExtension, attrs }:
+            translatePatternRecord env maybeExpr attrs
 
-                    if Dict.member name dict then
-                        makeError p [ "duplicate attribute name in pattern: " .. name ]
+        Binop Op.Tuple sepList:
+            translatePatternTuple env sepList
 
-                    else
-                        try maybePattern as
-                            Nothing:
-                                Ok << Dict.insert name (CA.PatternAny p { isUnique = False, maybeName = Just name, maybeAnnotation = Nothing }) dict
+        Binop Op.Cons sepList:
+            FA.PatternListCons pos pas:
+                List.mapRes (translatePattern env) pas >> onOk caPas:
+                try List.reverse caPas as
+                    last :: rest:
+                         last
+                            >> List.for rest (item: list: CA.PatternConstructor pos CoreTypes.cons [ item, list ])
+                            >> Ok
 
-                            Just faPattern:
-                                faPattern
-                                    >> translatePattern env
-                                    >> Result.map (caPattern: Dict.insert name caPattern dict)
+                    []:
+                        makeError pos [ "should not happen: empty cons pattern" ]
 
-                Dict.empty
-                >> List.forRes recordArgs.attrs fold
-                >> Result.map (x: x >> CA.PatternRecord pos)
+        LiteralText l:
+            Ok << CA.PatternLiteralText pos l
 
-        FA.PatternListCons pos pas:
-            List.mapRes (translatePattern env) pas >> onOk caPas:
-            try List.reverse caPas as
-                last :: rest:
-                     last
-                        >> List.for rest (item: list: CA.PatternConstructor pos CoreTypes.cons [ item, list ])
-                        >> Ok
+        LiteralNumber l:
+            translateNumber CA.PatternLiteralNumber pos l
 
-                []:
-                    makeError pos [ "should not happen: empty cons pattern" ]
+        # Stuff that's not valid for patterns
 
-        FA.PatternTuple pos fas:
-            try fas as
-                [ fa1, fa2 ]:
-                    { extends = Nothing
-                    , attrs =
-                        [ (At (FA.patternPos fa1) "first") & Just fa1
-                        , (At (FA.patternPos fa2) "second") & Just fa2
-                        ]
-                    }
-                        >> FA.PatternRecord pos
-                        >> translatePattern env
+        Statements stats:
+            nope
 
-                [ fa1, fa2, fa3 ]:
-                    { extends = Nothing
-                    , attrs =
-                        [ (At (FA.patternPos fa1) "first") & Just fa1
-                        , (At (FA.patternPos fa2) "second") & Just fa2
-                        , (At (FA.patternPos fa3) "third") & Just fa3
-                        ]
-                    }
-                        >> FA.PatternRecord pos
-                        >> translatePattern env
+        Fn args body:
+            nope
 
-                _:
-                    makeError pos [ "tuples can be only of size 2 or 3" ]
+        Unop unop expr:
+            nope
 
+        If _:
+            nope
+
+        Try _:
+            nope
 
 #
 # Statement
@@ -1012,7 +1146,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
         FA.Evaluation pos expr:
             makeError (FA.expressionPos expr) [ "Root Evaluations don't really do much =|" ]
 
-        FA.Definition pos fa:
+        FA.ValueDef pos fa:
             translateDefinition True (initEnv ro) fa
             >> onOk def:
 
@@ -1073,20 +1207,19 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 
                 Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
 
-#]
 
 
 translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res (CA.Module) =
     ro: asText: umr: faModule:
 
-    todo "translateModule"
-#    Debug.benchStart None
-#
-#    module =
-#        CA.initModule asText umr
-#
-#    # Add all definitions
-#    module
-#    >> List.forRes faModule (insertRootStatement ro)
-#    >> btw Debug.benchStop "translateModule"
+#    todo "translateModule"
+    Debug.benchStart None
+
+    module =
+        CA.initModule asText umr
+
+    # Add all definitions
+    module
+    >> List.forRes faModule (insertRootStatement ro)
+    >> btw Debug.benchStop "translateModule"
 

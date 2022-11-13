@@ -15,26 +15,35 @@ alias Module =
     [Statement]
 
 
+alias ValueDef =
+    {
+    , pattern as Expression
+    , nonFn as [At Token.Word]
+    , body as Expression
+    }
+
+
+alias AliasDef =
+    {
+    , name as At Token.Word
+    , args as [At Token.Word]
+    , type as Expression
+    }
+
+
+alias UnionDef =
+    {
+    , name as At Token.Word
+    , args as [At Token.Word]
+    , constructors as [Expression]
+    }
+
+
 union Statement =
     , Evaluation Expression
-    , ValueDef
-        {
-        , pattern as Expression
-        , nonFn as [At Token.Word]
-        , body as Expression
-        }
-    , AliasDef
-        {
-        , name as At Token.Word
-        , args as [At Token.Word]
-        , type as Expression
-        }
-    , UnionDef
-        {
-        , name as At Token.Word
-        , args as [At Token.Word]
-        , constructors as [Expression]
-        }
+    , ValueDef ValueDef
+    , AliasDef AliasDef
+    , UnionDef UnionDef
 
 
 # expr op expr op expr op...
@@ -42,6 +51,11 @@ alias SepList sep item =
     item & [ sep & item ]
 
 
+# TODO
+#
+# alias Expression = At Expr_ ?
+# alias AtExpression = At Expression ?
+#
 union Expression =
     Expression Pos Expr_
 
@@ -61,10 +75,15 @@ union Expr_ =
         # pattern extension: { with attr1, ... }
         # expression extension: { expt with attr1, ... }
         , maybeExtension as Maybe (Maybe Expression)
-        , attrs as [{ name as Expression, maybeExpr as Maybe Expression }]
+        , attrs as [RecordAttribute]
         }
 
-    , Variable { maybeType as Maybe Expression, word as Token.Word }
+    , Variable
+        {
+        , maybeType as Maybe Expression
+        # TODO rename to atWord
+        , word as Token.Word
+        }
 
     , Fn [Expression] Expression
 
@@ -86,6 +105,14 @@ union Expr_ =
         , value as Expression
         , patterns as [ Expression & Expression ]
         }
+
+alias RecordAttribute =
+    {
+    , name as Expression
+    , maybeExpr as Maybe Expression
+    }
+
+
 
 
 statementPos as Statement: Pos =

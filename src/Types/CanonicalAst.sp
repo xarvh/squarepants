@@ -68,6 +68,8 @@ union Expression =
     , DestroyIn Name Expression
 
 
+union Completeness = Complete, Partial
+
 union Pattern =
     , PatternAny Pos {
         , isUnique as Bool
@@ -77,7 +79,7 @@ union Pattern =
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
-    , PatternRecord Pos (Dict Name Pattern)
+    , PatternRecord Pos Completeness (Dict Name Pattern)
 
 
 union Argument =
