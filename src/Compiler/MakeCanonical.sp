@@ -10,22 +10,20 @@ alias Params = {
 textToCanonicalModule as Params: Text: Res CA.Module =
     pars: code:
 
-    todo "textToCanonicalModule"
+    ro as Compiler/MakeCanonical.ReadOnly = {
+        , currentModule = Meta.UMR pars.source pars.name
+        , meta = pars.meta
+        }
 
-#    ro as Compiler/MakeCanonical.ReadOnly = {
-#        , currentModule = Meta.UMR pars.source pars.name
-#        , meta = pars.meta
-#        }
-#
-#    umr =
-#        Meta.UMR pars.source pars.name
-#
-#    code
-#        >> Compiler/Parser.textToFormattableModule {
-#            , stripLocations = pars.stripLocations
-#            , name = pars.name
-#            }
-#        >> Result.onOk (translateModule ro code umr)
+    umr =
+        Meta.UMR pars.source pars.name
+
+    code
+        >> Compiler/Parser.textToFormattableModule {
+            , stripLocations = pars.stripLocations
+            , moduleName = pars.name
+            }
+        >> Result.onOk (x: todo "translateModule ro code umr")
 
 
 alias Constructor = CA.Constructor

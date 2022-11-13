@@ -130,6 +130,22 @@ values as Test =
             """
             firstDefinition
             Test.isOk
+
+
+        , codeTest
+            """
+            [reg] SPON
+            """
+            """
+            library =
+                source = "core:prelude"
+
+                module =
+                    path = Core
+                    importAs = Core
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 
@@ -449,6 +465,15 @@ lists as Test =
         [
         , codeTest
             """
+            Empty
+            """
+            "[]"
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.List [])
+            )
+        , codeTest
+            """
             Inline
             """
             "[a, b]"
@@ -499,6 +524,15 @@ lists as Test =
 records as Test =
     Test.Group "Records"
         [
+        , codeTest
+            """
+            Empty
+            """
+            "{}"
+            firstEvaluation
+            (Test.isOkAndEqualTo
+              (e << FA.Record { maybeExtension = Nothing, attrs = [] })
+            )
         , codeTest "Inline"
             "{ x = b }"
             firstEvaluation

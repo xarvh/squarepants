@@ -137,9 +137,9 @@ updateIndent as Int: Int: Token.Kind: ReadState@: None =
 
         else
             # this means that state.lineIndent == head.indent
-#            if head.isBlock then #and kind /= Token.Comment then
-#                addIndentToken start Token.NewSiblingLine @state
-#            else
+            if head.isBlock then #and kind /= Token.Comment then
+                addIndentToken start Token.NewSiblingLine @state
+            else
                 None
 
 

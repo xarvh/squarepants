@@ -153,6 +153,10 @@ sib as Parser a: Parser a =
     discardFirst (kind Token.NewSiblingLine)
 
 
+maybeNewLine as Parser a: Parser a =
+    discardFirst (Parser.maybe (kind Token.NewSiblingLine))
+
+
 sepListAtSep as Parser sep: Parser item: Parser [sep & item] =
     sep: item:
     sep >> on sep0:
@@ -299,13 +303,9 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
             FA.LiteralText s >> ok
 
         Token.RoundParen Token.Open:
-            exprParser as Parser FA.Expression =
-                discardSecond
-                    (expr env)
-                    (kind (Token.RoundParen Token.Closed))
-
-            inlineOrBelowOrIndented exprParser
-            >> on (FA.Expression pos expr_): ok expr_
+            inlineOrBelowOrIndented (expr env) >> on (FA.Expression pos expr_):
+            inlineOrBelowOrIndented (kind (Token.RoundParen Token.Closed)) >> on _:
+            ok expr_
 
         Token.SquareBracket Token.Open:
             item as Parser (Bool & FA.Expression) =
@@ -313,9 +313,9 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
                 expr env >> on exp:
                 ok (maybeDots /= Nothing & exp)
 
-            rawList item >> on exps:
-            kind (Token.SquareBracket Token.Closed) >> on _:
-            FA.List exps >> ok
+            inlineOrBelowOrIndented (maybe << rawList item) >> on exps:
+            inlineOrBelowOrIndented (kind (Token.SquareBracket Token.Closed)) >> on _:
+            FA.List (Maybe.withDefault [] exps) >> ok
 
         Token.CurlyBrace Token.Open:
             extension as Parser (Maybe FA.Expression) =
@@ -324,14 +324,15 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
                     (kind Token.With)
 
             attribute as Parser { name as FA.Expression, maybeExpr as Maybe FA.Expression } =
+                maybe (kind Token.NewSiblingLine) >> on _:
                 expr env >> on name:
                 maybe (discardFirst (kind Token.Defop) (inlineOrBelowOrIndented (expr env))) >> on maybeExpr:
                 ok { name, maybeExpr }
 
             inlineOrBelowOrIndented (maybe extension) >> on maybeExtension:
-            rawList attribute >> on attrs:
-            kind (Token.CurlyBrace Token.Closed) >> on _:
-            FA.Record { maybeExtension, attrs } >> ok
+            inlineOrBelowOrIndented (maybe (rawList attribute)) >> on attrs:
+            inlineOrBelowOrIndented (kind (Token.CurlyBrace Token.Closed)) >> on _:
+            FA.Record { maybeExtension, attrs = Maybe.withDefault [] attrs } >> ok
 
         Token.Unop unop:
             expr env >> on e:
@@ -345,16 +346,13 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
 
         Token.If:
             expr env >> on condition:
-            kind Token.Then >> on _:
+            inlineOrBelowOrIndented (kind Token.Then) >> on _:
             inlineOrBelowOrIndented (expr env) >> on true:
-            kind Token.Else >> on _:
+            inlineOrBelowOrIndented (kind Token.Else) >> on _:
             inlineOrBelowOrIndented (expr env) >> on false:
             FA.If { condition, true, false } >> ok
 
         Token.Try:
-            maybeNewLine as Parser a: Parser a =
-                discardFirst (Parser.maybe (kind Token.NewSiblingLine))
-
             maybeNewLineKind as Token.Kind: Parser Token =
                 k:
                 maybeNewLine (kind k)
@@ -365,8 +363,8 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
                 inlineStatementOrBlock env >> on value:
                 ok ( p & value )
 
-            expr env >> on value:
-            kind Token.As >> on _:
+            inlineOrBelowOrIndented (expr env) >> on value:
+            inlineOrBelowOrIndented (kind Token.As) >> on _:
             inlineOrBelowOrIndented (rawList patternAndValue) >> on patterns:
             here >> on end:
             {

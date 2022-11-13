@@ -87,3 +87,13 @@ union Expr_ =
         , patterns as [ Expression & Expression ]
         }
 
+
+statementPos as Statement: Pos =
+    statement:
+    try statement as
+        Evaluation (Expression pos expr_): pos
+        # TODO: the position should encompass the WHOLE definition, not just its start
+        ValueDef { pattern = Expression pos expr_, nonFn, body }: pos
+        AliasDef { name = At pos _, args, type }: pos
+        UnionDef { name = At pos _, args, constructors }: pos
+
