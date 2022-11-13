@@ -437,17 +437,17 @@ a [# inline #] = 1
 
 underscores as Test =
     Test.Group "Underscores"
-        [ codeTest "SKIP '_' as a Name"
+        [ codeTest "'_' as a Name"
             "_"
-            (lexTokensAndDrop 1)
+            lexTokens
             (Test.isOkAndEqualTo [ Token n 0 1 << lowerName "_"])
-        , codeTest "SKIP '_10_20' as a Name"
+        , codeTest "'_10_20' as a Name"
             "_10_20"
-            (lexTokensAndDrop 1)
+            lexTokens
             (Test.isOkAndEqualTo [ Token n 0 6 << lowerName "_10_20" ])
-        , codeTest "SKIP '10_20' as a Number"
+        , codeTest "'10_20' as a Number"
             "10_20"
-            (lexTokensAndDrop 1)
+            lexTokens
             (Test.isOkAndEqualTo [ Token n 0 5 << Token.NumberLiteral "10_20" ])
         ]
 
