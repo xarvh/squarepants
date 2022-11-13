@@ -133,17 +133,17 @@ keywords as Test =
 ops as Test =
     Test.Group "Operators"
         [
-        , codeTest "[reg] .. set Default"
-            ".. []"
-            lexTokens
-            (Test.isOkAndEqualTo
-                [
+#        , codeTest "[reg] .. set Default"
+#            ".. []"
+#            lexTokens
+#            (Test.isOkAndEqualTo
+#                [
 #                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 2 << Token.Binop Prelude.textConcat
-                , Token n 3 4 << Token.SquareBracket Token.Open
-                , Token n 4 5 << Token.SquareBracket Token.Closed
-                ]
-            )
+#                , Token n 0 2 << Token.Binop Prelude.textConcat
+#                , Token n 3 4 << Token.SquareBracket Token.Open
+#                , Token n 4 5 << Token.SquareBracket Token.Closed
+#                ]
+#            )
         ]
 
 
@@ -338,15 +338,14 @@ indentation as Test =
 
 comments as Test =
     Test.Group "Comments"
-        []
-        [#
-        [ codeTest "[reg] statement after comment"
+        [
+        , codeTest "[reg] statement after comment"
             "\n#\na = 1\n"
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 1 2 << Token.Comment
-                , Token n 3 3 << Token.NewSiblingLine
+#                , Token n 1 2 << Token.Comment
+#                , Token n 3 3 << Token.NewSiblingLine
                 , Token n 3 4 << lowerName "a"
                 , Token n 5 6 << Token.Defop
                 , Token n 7 8 << Token.NumberLiteral "1"
@@ -357,8 +356,8 @@ comments as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 1 8 << Token.Comment
-                , Token n 10 10 << Token.NewSiblingLine
+#                , Token n 1 8 << Token.Comment
+#                , Token n 10 10 << Token.NewSiblingLine
                 , Token n 10 11 << lowerName "a"
                 , Token n 12 13 << Token.Defop
                 , Token n 14 15 << Token.NumberLiteral "1"
@@ -369,7 +368,7 @@ comments as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 0 7 <<  Token.Comment
+#                , Token n 0 7 <<  Token.Comment
                 ]
             )
         , codeTest "Multi line"
@@ -387,14 +386,14 @@ a [# inline #] = 1
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 0 16 << Token.Comment
-                , Token n 19 19 << Token.NewSiblingLine
+#                , Token n 0 16 << Token.Comment
+#                , Token n 19 19 << Token.NewSiblingLine
                 , Token n 19 20 << lowerName "a"
-                , Token n 21 32 << Token.Comment
+#                , Token n 21 32 << Token.Comment
                 , Token n 34 35 << Token.Defop
                 , Token n 36 37 << Token.NumberLiteral "1"
-                , Token n 39 58 << Token.Comment
-                , Token n 61 78 << Token.Comment
+#                , Token n 39 58 << Token.Comment
+#                , Token n 61 78 << Token.Comment
                 ]
             )
         , codeTest
@@ -403,7 +402,7 @@ a [# inline #] = 1
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 0 0 << Token.NewSiblingLine
+#                , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << Token.SquareBracket Token.Open
                 , Token n 1 2 << Token.SquareBracket Token.Closed
                 ]
@@ -422,31 +421,31 @@ a [# inline #] = 1
             lexTokens
             (Test.isOkAndEqualTo
                 [
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 8 << Token.LowerName Token.NameNoModifier Nothing "allTests" []
+#                , Token n 0 0 << Token.NewSiblingLine
+                , Token n 0 8 << lowerName "allTests"
                 , Token n 9 10 << Token.Defop
                 , Token n 11 12 << Token.SquareBracket Token.Open
                 , Token n 17 18 << Token.Comma
-                , Token n 19 20 << Token.LowerName Token.NameNoModifier Nothing "a" []
-                , Token n 21 22 << Token.Comment
+                , Token n 19 20 << lowerName "a"
+#                , Token n 21 22 << Token.Comment
                 , Token n 27 28 << Token.SquareBracket Token.Closed
                 , Token n 28 28 << Token.BlockEnd
                 ]
             )
-        #]
+        ]
 
 
 underscores as Test =
     Test.Group "Underscores"
-        [ codeTest "'_' as a Name"
+        [ codeTest "SKIP '_' as a Name"
             "_"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ Token n 0 1 << lowerName "_"])
-        , codeTest "'_10_20' as a Name"
+        , codeTest "SKIP '_10_20' as a Name"
             "_10_20"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ Token n 0 6 << lowerName "_10_20" ])
-        , codeTest "'10_20' as a Number"
+        , codeTest "SKIP '10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)
             (Test.isOkAndEqualTo [ Token n 0 5 << Token.NumberLiteral "10_20" ])
@@ -491,21 +490,21 @@ textLiterals as Test =
                 , Token n 3 4 << Token.Colon
                 ]
             )
-        , codeTest
-            "[reg] should not add the indent!"
-            """
-            try char as
-                "":
-                    None
-
-                "@"
-            """
-            (lexTokensAndDrop 11)
-            (Test.isOkAndEqualTo [
-                , Token n 38 41 << Token.TextLiteral "@"
-                , Token n 41 41 << Token.BlockEnd
-                ]
-            )
+#        , codeTest
+#            "[reg] should not add the indent!"
+#            """
+#            try char as
+#                , "":
+#                    None
+#
+#                , "@"
+#            """
+#            (lexTokensAndDrop 11)
+#            (Test.isOkAndEqualTo [
+#                , Token n 38 41 << Token.TextLiteral "@"
+#                , Token n 41 41 << Token.BlockEnd
+#                ]
+#            )
         , valueTest
             """
             Unindent function
@@ -532,4 +531,3 @@ textLiterals as Test =
             )
         ]
 
-#]
