@@ -333,6 +333,9 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
 
 
 
+#
+# Pattern
+#
 translateAttributeName as Env: FA.Expression: Res (Pos & Name & Maybe CA.Type) =
     env: (FA.Expression pos expr_):
 
@@ -354,17 +357,13 @@ translateAttributeName as Env: FA.Expression: Res (Pos & Name & Maybe CA.Type) =
             makeError pos [ "Expecting an attribute name here" ]
 
 
-
-#
-# Pattern
-#
 translatePatternConstructor as Env: [CA.Pattern]: At Word: Res CA.Pattern =
     env: args: (At pos word):
 
     if word.modifier /= Token.NameNoModifier then
-        error "Constructor names cannot have modifiers"
+        makeError pos [ "Constructor names cannot have modifiers" ]
     else if word.attrPath /= [] then
-        error "Constructors don't have attributes"
+        makeError pos [ "Constructors don't have attributes" ]
     else
         CA.PatternConstructor pos (resolveToConstructorUsr env.ro word.maybeModule word.name) args
         >> Ok
@@ -374,11 +373,11 @@ translatePatternAny as Env: Maybe FA.Expression: At Word: Res CA.Pattern =
     env: maybeFaType: (At pos word):
 
     if word.modifier /= Token.NameNoModifier then
-        error "Record access shorthands"
+        makeError pos [ "Record access shorthands" ]
     else if word.attrPath /= [] then
-        error "To access attributes in pattern matching use { with theAttributeName = theVariableName }"
+        makeError pos [ "To access attributes in pattern matching use { with theAttributeName = theVariableName }" ]
     else if word.maybeModule /= Nothing then
-        error "You can't access modules here..."
+        makeError pos [ "You can't access modules here..." ]
     else
         getMaybeCaType as Res (Maybe CA.CanonicalType) =
             try maybeFaType as
@@ -502,7 +501,7 @@ translatePattern as Env: FA.Expression: Res Pattern =
 
             if isUpper then
                 if maybeType /= Nothing then
-                    error "Pattern constructors can't have type annotations"
+                    makeError pos [ "Pattern constructors can't have type annotations" ]
                 else
                     translatePatternConstructor env [] word
             else
@@ -525,15 +524,47 @@ translatePattern as Env: FA.Expression: Res Pattern =
                     makeError pos [ "I was expecting a constructor name here" ]
 
         List faItems:
-            ---> what about dots!!?
-            fold =
+
+            reversedFaItems =
+                List.reverse faItems
+
+            pushItem as CA.Pattern: CA.Pattern: CA.Pattern =
                 pattern: last:
-                # TODO pos is probably inaccurate
-                CA.PatternConstructor pos CoreTypes.cons [ pattern, last ]
+                CA.PatternConstructor (CA.patternPos pattern) CoreTypes.cons [ pattern, last ]
 
-            List.mapRes (translatePattern env) faItems >> onOk cas:
-            Ok << List.forReversed cas fold (CA.PatternConstructor pos CoreTypes.nil [])
+            try reversedFaItems as
+                []:
+                    CA.PatternConstructor pos CoreTypes.nil []
+                    >> Ok
 
+                (lastHasDots & lastFaExpr) :: reversedFaRest:
+                    if List.any Tuple.first reversedFaRest then
+                        makeError pos [ "only the last item in a list can have ... triple dots" ]
+
+                    else if not lastHasDots then
+                        reversedFaItems
+                        >> List.mapRes ((hasDots & expr): translatePattern env expr)
+                        >> onOk reversedCaItems:
+
+                        List.for reversedCaItems pushItem (CA.PatternConstructor pos CoreTypes.nil [])
+                        >> Ok
+
+                    else
+                        reversedFaRest
+                        >> List.mapRes ((hasDots & expr): translatePattern env expr)
+                        >> onOk reversedFaRest:
+
+                        try lastFaExpr as
+                            FA.Expression _ (FA.Variable { maybeType, word }):
+
+                                translatePatternAny env maybeType word
+                                >> onOk caInit:
+
+                                List.for reversedCaItems pushItem caInit
+                                >> Ok
+
+                            _:
+                                makeError pos [ "sorry, I don't understand the dots here..." ]
 
         Record { maybeExtension, attrs }:
             translatePatternRecord env maybeExpr attrs
@@ -553,6 +584,9 @@ translatePattern as Env: FA.Expression: Res Pattern =
                     []:
                         makeError pos [ "should not happen: empty cons pattern" ]
 
+        Binop opPrecedence sepList:
+            makeError pos [ "This binop can't be used in pattern matching" ]
+
         LiteralText l:
             Ok << CA.PatternLiteralText pos l
 
@@ -562,19 +596,20 @@ translatePattern as Env: FA.Expression: Res Pattern =
         # Stuff that's not valid for patterns
 
         Statements stats:
-            nope
+            makeError pos [ "WAT" ]
 
         Fn args body:
-            nope
+            makeError pos [ "Can't pattern match on functions. =(" ]
 
         Unop unop expr:
-            nope
+            makeError pos [ "This op can't be used in pattern matching" ]
 
         If _:
-            nope
+            makeError pos [ "if..then can't be used in pattern matching" ]
 
         Try _:
-            nope
+            makeError pos [ "try..as can't be used in pattern matching" ]
+
 
 #
 # Statement
@@ -582,6 +617,8 @@ translatePattern as Env: FA.Expression: Res Pattern =
 translateStatementBlock as Env: [FA.Statement]: Res Expression =
     env: stats:
 
+    todo "translateStatementBlock"
+    [#
     try stats as
         FA.TypeAlias fa :: _:
             At pos _ = fa.name
@@ -615,6 +652,7 @@ translateStatementBlock as Env: [FA.Statement]: Res Expression =
             translateDefinition False env fa >> onOk d:
             translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames d.pattern) .nonRootValues } tail >> onOk tailBlockExpression:
             Ok << CA.LetIn d tailBlockExpression
+    #]
 
 
 
@@ -623,6 +661,9 @@ translateStatementBlock as Env: [FA.Statement]: Res Expression =
 #
 translateExpression as Env: FA.Expression: Res Expression =
     env: faExpr:
+
+    todo "translateExpression"
+    [#
     try faExpr as
         FA.LiteralNumber pos str:
             translateNumber CA.LiteralNumber pos str
@@ -763,6 +804,8 @@ translateExpression as Env: FA.Expression: Res Expression =
             translateExpression env fa.value >> onOk caValue:
             List.mapRes translatePatternAndStatements fa.patterns >> onOk caPatternsAndStatements:
             Ok << CA.Try pos { value = caValue, patternsAndExpressions = caPatternsAndStatements }
+
+      #]
 
 
 translateNumber as (Pos: Number: a): Pos: Text: Res a =
