@@ -138,6 +138,7 @@ union Context =
     , Context_Module UMR
     , Context_Argument Name Context
     , Context_LetInBody
+    , Context_FnPar Int Context
     , Context_FnBody Pos Context
     , Context_TryBranch
     , Context_IfCondition
@@ -159,7 +160,7 @@ union Why =
     , Why_CalledAsFunction
     , Why_Todo
     , Why_Attribute Why
-    , Why_FunctionInput Why
+    , Why_FunctionInput Int Why
     , Why_FunctionOutput Why
     , Why_TypeArgument USR Int Why
 
@@ -451,41 +452,11 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             TA.Constructor pos usr & ty
 
 
-        CA.Fn pos pattern modifier body:
-            todo "CA.Fn"
-
-#            patternOut =
-#                inferPattern env pattern @state
-#
-#            newEnv =
-#                { patternOut.env with
-#                , context = Context_FnBody pos .context
-#                }
-#
-#            unificationBody & bodyType =
-#                inferExpression newEnv body @state
-#
-#            type =
-#                TA.TypeFn Pos.G
-#                    patternOut.patternType
-#                    modifier
-#                    bodyType
-#
-#            exp =
-#                TA.Fn pos patternOut.typedPattern modifier unificationBody
-#
-#            exp & type
+        CA.Fn pos caPars body:
+            inferFn env pos caPars body @state
 
 
-        CA.Call pos reference argument:
-
-            callType =
-                newType @state
-
-            checkCallCo env callType pos reference [argument] @state & callType
-
-
-        CA.CallCo pos reference args:
+        CA.Call pos reference args:
 
             callType =
                 newType @state
@@ -604,6 +575,50 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 inferExpression env expression @state
 
             TA.DestroyIn name typedExpression & expressionType
+
+
+
+
+inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.Type =
+    env: pos: caPars: body: state@:
+
+
+    inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
+        todo "inferParam"
+#            try par as
+#                CA.ParameterRecycle _ name:
+#                    todo "CA.ParameterRecycle"
+#                CA.ParameterPattern pa:
+#                    patternOut =
+#                        inferPattern envX pattern @state
+
+    typedPars @= Array.fromList []
+    parTypes @= Array.fromList []
+    parIndex @= 0
+
+    newEnv as Env =
+        env >> List.for caPars par: envX:
+            typedPar & parType & envX1 =
+                inferParam { envX with context = Context_FnPar parIndex .context } par @state
+
+            Array.push @typedPars (typedPar & parType)
+            Array.push @parTypes (todo "recyclingOrNot" & parType)
+            @parIndex += 1
+            envX1
+
+    typedBody & bodyType =
+        inferExpression { newEnv with context = Context_FnBody pos env.context } body @state
+
+    type as TA.Type =
+        TA.TypeFn Pos.G (Array.toList parTypes) bodyType
+
+    exp =
+        TA.Fn pos (Array.toList typedPars) typedBody
+
+    exp & type
+
+
+
 
 
 inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
@@ -765,7 +780,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 #            TA.Lambda pos typedPattern mod typedBody
 
 
-        CA.CallCo pos reference args & _:
+        CA.Call pos reference args & _:
             checkCallCo env (typeCa2Ta env expectedType) pos reference args @state
 
 
@@ -936,7 +951,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
         list_eachWithIndex2 0 referenceArgs typedArgumentsAndArgumentTypes index: (refMod & refType): (tyArg & argTy):
             addEquality env pos (Why_Argument index) refType argTy @state
 
-        TA.CallCo pos typedReference typedArgumentsAndArgumentTypes
+        TA.Call pos typedReference typedArgumentsAndArgumentTypes
 
     else
         try referenceType as
@@ -956,7 +971,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
 #        typedArgs as [Argument TA.Type & TA.Type] =
 #            List.map Tuple.first typedArgumentsAndArgumentTypes
 
-        TA.CallCo pos typedReference typedArgumentsAndArgumentTypes
+        TA.Call pos typedReference typedArgumentsAndArgumentTypes
 
 
 
@@ -1131,7 +1146,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
             }
 
 
-        CA.PatternRecord pos pas:
+        CA.PatternRecord pos completeness pas:
 
             typedPatternsAndPatternTypesByName & newEnv =
                 Dict.empty & env >> Dict.for pas name: pa: (dict & envX):
@@ -1144,9 +1159,14 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
             patternTypeByName =
                 typedPatternsAndPatternTypesByName >> Dict.map name: Tuple.second
 
+            patternType as TA.Type =
+                try completeness as
+                    CA.Complete: TA.TypeRecord pos patternTypeByName
+                    CA.Partial: TA.TypeRecordExt (newTyvarId @state) patternTypeByName
+
             {
             , typedPattern = TA.PatternRecord pos typedPatternsAndPatternTypesByName
-            , patternType = TA.TypeRecordExt (newTyvarId @state) patternTypeByName
+            , patternType
             , env = newEnv
             , maybeFullAnnotation = Nothing # TODO
             }
@@ -1466,13 +1486,25 @@ solveEqualities as [Equality]: ERState: ERState =
                     >> solveEqualities (List.append tail newEqualities)
 
 
-                TA.TypeFn _ in1 modifier1 out1 & TA.TypeFn _ in2 modifier2 out2:
-                    newEqualities as [Equality] =
-                        Equality context pos (Why_FunctionInput why) in1 in2 :: Equality context pos (Why_FunctionOutput why) out1 out2 :: tail
+                TA.TypeFn _ pars1 out1 & TA.TypeFn _ pars2 out2:
+                    if List.length pars1 /= List.length pars2 then
+                        state
+                        >> addErrorIf True head "functions expect a different number of arguments"
 
-                    state
-                    >> addErrorIf (modifier1 /= modifier2) head "lambda modifiers don't match"
-                    >> solveEqualities newEqualities
+                    else
+                        both =
+                            List.map2 Tuple.pair pars1 pars2
+
+                        inEqualities as [Equality] =
+                            both >> List.indexedMap index: ((m1 & in1) & (m2 & in2)):
+                                Equality context pos (Why_FunctionInput index why) in1 in2
+
+                        outEquality as Equality =
+                            Equality context pos (Why_FunctionOutput why) out1 out2
+
+                        state
+                        >> List.for both (((m1 & _) & (m2 & _)): addErrorIf (m1 /= m2) head "argument modifiers don't match")
+                        >> solveEqualities (List.concat [inEqualities, [outEquality], tail])
 
 
                 TA.TypeRecord _ attrs1 & TA.TypeRecord _ attrs2:
@@ -1569,8 +1601,8 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
             originalType
         #]
 
-        TA.TypeFn pos in mod out:
-            TA.TypeFn pos (rec in) mod (rec out)
+        TA.TypeFn pos pars out:
+            TA.TypeFn pos (CA.mapmod rec pars) (rec out)
 
         TA.TypeRecord pos attrs:
             TA.TypeRecord pos (Dict.map (k: rec) attrs)

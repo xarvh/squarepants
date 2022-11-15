@@ -159,33 +159,33 @@ addPatternToEnv as CA.Pattern: Env: Set Name & Env =
 
 
 
-doCall as Env: State@: Pos: Expression: Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
-    env: state@: pos: reference: argument:
-
-    doneReference =
-        try reference as
-            CA.Call p ref arg:
-                doCall env @state p ref arg
-
-            _:
-              consumed & expression =
-                  doExpression env @state reference
-
-              { mutables = Dict.empty, consumed, expression }
-
-
-    doneArg =
-        doArgument env @state pos {
-            , mutables = doneReference.mutables
-            , consumed = doneReference.consumed
-            , argument
-            }
-
-    {
-    , mutables = doneArg.mutables
-    , consumed = doneArg.consumed
-    , expression = CA.Call pos doneReference.expression doneArg.argument
-    }
+#doCall as Env: State@: Pos: Expression: Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
+#    env: state@: pos: reference: argument:
+#
+#    doneReference =
+#        try reference as
+#            CA.Call p ref arg:
+#                doCall env @state p ref arg
+#
+#            _:
+#              consumed & expression =
+#                  doExpression env @state reference
+#
+#              { mutables = Dict.empty, consumed, expression }
+#
+#
+#    doneArg =
+#        doArgument env @state pos {
+#            , mutables = doneReference.mutables
+#            , consumed = doneReference.consumed
+#            , argument
+#            }
+#
+#    {
+#    , mutables = doneArg.mutables
+#    , consumed = doneArg.consumed
+#    , expression = CA.Call pos doneReference.expression doneArg.argument
+#    }
 
 
 doCallCo as Env: State@: Pos: Expression: [Argument]: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
@@ -212,7 +212,7 @@ doCallCo as Env: State@: Pos: Expression: [Argument]: { mutables as Dict Name Po
     {
     , mutables = doneArgs.mutables
     , consumed = doneArgs.consumed
-    , expression = CA.CallCo pos doneReference.expression doneArgs.arguments
+    , expression = CA.Call pos doneReference.expression doneArgs.arguments
     }
 
 
@@ -339,15 +339,15 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 #                        consumed & bodyExpression
 
 
-        CA.Call pos reference argument:
+#        CA.Call pos reference argument:
+#
+#            { mutables, consumed, expression = expr } =
+#                doCall env @state pos reference argument
+#
+#            consumed & expr
 
-            { mutables, consumed, expression = expr } =
-                doCall env @state pos reference argument
 
-            consumed & expr
-
-
-        CA.CallCo pos reference arguments:
+        CA.Call pos reference arguments:
 
             { mutables, consumed, expression = expr } =
                 doCallCo env @state pos reference arguments

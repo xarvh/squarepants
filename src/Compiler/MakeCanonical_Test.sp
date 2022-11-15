@@ -432,7 +432,7 @@ pipes as Test =
             (Test.isOkAndEqualTo <<
                 CA.Call p
                     (CA.Variable p (TH.rootLocal "function"))
-                    (CA.ArgumentExpression << CA.Variable p (TH.rootLocal "thing"))
+                    [CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing"))]
             )
         , codeTest "sendRight is inlined"
             """
@@ -442,7 +442,7 @@ pipes as Test =
             (Test.isOkAndEqualTo <<
                 CA.Call p
                     (CA.Variable p (TH.rootLocal "function"))
-                    (CA.ArgumentExpression << CA.Variable p (TH.rootLocal "thing"))
+                    [CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing"))]
             )
         ]
 

@@ -77,8 +77,23 @@ typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
         parensIf (pri > threshold) str
 
     try type as
-        CA.TypeOpaque pos usr args:
+        CA.TypeNamed pos usr args:
             ( (if args == [] then 0 else 1) & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " "))
+
+#        CA.TypeNamed pos usr args:
+#            0 & usrToText currentUmr meta usr
+#            typeToPriorityAndText currentUmr meta ty2
+            # TODO: once we can display a type on multiple lines, we should expand the alias?
+              [#
+
+                 , [ "<"
+                   , name
+                   , "="
+                   , typeToString ty2
+                   , ">"
+                   ]
+                     >> Text.join " "
+              #]
 
         CA.TypeUnique pos ty:
             0 & "@" .. typeToText currentUmr meta ty
@@ -128,20 +143,6 @@ typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
 #
 #            ( 0 & Text.join " " l)
 
-        CA.TypeAlias pos usr ty2:
-            ( 0 & usrToText currentUmr meta usr )
-#            typeToPriorityAndText currentUmr meta ty2
-            # TODO: once we can display a type on multiple lines, we should expand the alias?
-              [#
-
-                 , [ "<"
-                   , name
-                   , "="
-                   , typeToString ty2
-                   , ">"
-                   ]
-                     >> Text.join " "
-              #]
 
 
 #
@@ -250,22 +251,23 @@ normalizeTypeAndTyvars as CA.Type: Dict Text a: ( CA.Type & Dict Text a ) =
 normType as CA.Type: NormMonad CA.Type =
     ty:
     try ty as
-        CA.TypeOpaque pos name args:
+        CA.TypeNamed pos name args:
             StateMonad.list_map normType args >> andThen args_n:
-            return << CA.TypeOpaque pos name args_n
+            return << CA.TypeNamed pos name args_n
 
-        CA.TypeAlias pos usr args:
-            StateMonad.list_map normType args >> andThen args_n:
-            return << CA.TypeAlias pos usr args_n
+#        CA.TypeAlias pos usr args:
+#            StateMonad.list_map normType args >> andThen args_n:
+#            return << CA.TypeAlias pos usr args_n
 
         CA.TypeAnnotationVariable pos name:
             normName name >> andThen n:
             return << CA.TypeAnnotationVariable pos n
 
-        CA.TypeFn pos from0 fromIsMut to0:
-            (normType from0) >> andThen from1:
-            (normType to0) >> andThen to1:
-            return << CA.TypeFn pos from1 fromIsMut to1
+        CA.TypeFn pos pars to0:
+            todo "CA.TypeFn"
+#            (normType from0) >> andThen from1:
+#            (normType to0) >> andThen to1:
+#            return << CA.TypeFn pos from1 fromIsMut to1
 
         CA.TypeRecord pos attrs0:
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:

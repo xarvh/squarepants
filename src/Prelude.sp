@@ -413,14 +413,14 @@ debugToHuman as Function = {
 
 debugBenchStart as Function = {
     , usr = debugUsr "benchStart"
-    , type = tyFn CoreTypes.none CoreTypes.none
+    , type = tyFn [CoreTypes.none] CoreTypes.none
     , nonFn = []
     }
 
 
 debugBenchStop as Function = {
     , usr = debugUsr "benchStop"
-    , type = tyFn CoreTypes.text CoreTypes.none
+    , type = tyFn [CoreTypes.text] CoreTypes.none
     , nonFn = []
     }
 

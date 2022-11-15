@@ -241,18 +241,16 @@ translateExpression as State@: Int@: Expression: EA.Expression =
             >> List.map (Tuple.mapSecond (translateExpression @state @counter))
             >> EA.LiteralRecord (Maybe.map (translateExpression @state @counter) extends)
 
-        TA.Call _ ref (TA.ArgumentRecycle _ attrPath var) type:
+        TA.Call _ ref args:
+            todo "TA.Call"
 
-            arg =
-                translateVariableArgs @state var
-                >> List.for attrPath attributeName: expr:
-                    EA.RecordAccess attributeName expr
+#            arg =
+#                translateVariableArgs @state var
+#                >> List.for attrPath attributeName: expr:
+#                    EA.RecordAccess attributeName expr
+#
+#            EA.Call (translateExpression @state @counter ref) [args & True]
 
-            EA.Call (translateExpression @state @counter ref) (arg & True)
-
-
-        TA.Call _ ref (TA.ArgumentExpression expr) type:
-            EA.Call (translateExpression @state @counter ref) (translateExpression @state @counter expr & False)
 
         TA.If _ ar:
             EA.Conditional

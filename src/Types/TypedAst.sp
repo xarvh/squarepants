@@ -22,9 +22,8 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos USR
-    , Fn Pos [Bool & Pattern] Expression
-    , Call Pos Expression Argument Type
-    , CallCo Pos Expression [Argument & Type]
+    , Fn Pos [Parameter & Type] Expression
+    , Call Pos Expression [Argument & Type]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
     , Record Pos (Maybe Expression) (Dict Name Expression)
@@ -60,6 +59,11 @@ union Pattern =
 union Argument =
     , ArgumentExpression Expression
     , ArgumentRecycle Pos [Name] Ref
+
+
+union Parameter =
+    , ParameterPattern Pattern
+    , ParameterRecycle Pos Name
 
 
 alias TypeClasses = {
@@ -133,7 +137,7 @@ typeTyvars as Type: Dict UnificationVariableId None =
     try type as
         TypeOpaque pos usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
         TypeAlias pos usr args:  Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeFn pos in mod out: Dict.join (typeTyvars in) (typeTyvars out)
+        TypeFn pos ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord pos attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         #TODO Should we say here that the var must allow uniqueness?
         TypeUnique pos ty: typeTyvars ty

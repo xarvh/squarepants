@@ -1,4 +1,18 @@
 
+
+maybe_mapRes as (a: Result e b): Maybe a: Result e (Maybe b) =
+    f: maybeA:
+
+    try maybeA as
+        Nothing:
+            Ok Nothing
+
+        Just a:
+            Result.map Just (f a)
+
+
+
+
 alias Params = {
     , meta as Meta
     , stripLocations as Bool
@@ -41,6 +55,7 @@ alias Env = {
     #     new = { old with x = .x + 1 }
     #
     , maybeShorthandTarget as Maybe CA.Expression
+    , nextGeneratedVariableName as Int
     #
     # This keeps track of values that are declared within the
     # scope of a function, so they don't need to be expanded with the module name.
@@ -67,6 +82,7 @@ alias ReadOnly = {
 initEnv as ReadOnly: Env =
     ro: {
     , maybeShorthandTarget = Nothing
+    , nextGeneratedVariableName = 0
     , nonRootValues = Dict.empty
     #, futureNonRootValues = Dict.empty
     , ro = ro
@@ -233,12 +249,7 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.RecordAccess _ _ e:
             expressionDeps e deps
 
-        CA.Call _ e0 a:
-            deps
-                >> expressionDeps e0
-                >> argumentDeps a
-
-        CA.CallCo _ e0 args:
+        CA.Call _ e0 args:
             deps
                 >> expressionDeps e0
                 >> List.for args argumentDeps
@@ -669,24 +680,22 @@ translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
 #- Expression
 #
 translateExpression as Env: FA.Expression: Res CA.Expression =
-    env: faExpr:
+    env: (At pos expr_):
 
-    todo "translateExpression"
-    [#
-    try faExpr as
-        FA.LiteralNumber pos str:
+    try expr_ as
+        FA.LiteralNumber str:
             translateNumber CA.LiteralNumber pos str
 
-        FA.LiteralText pos v:
+        FA.LiteralText v:
             Ok << CA.LiteralText pos v
 
-        FA.PrefixBinop pos symbol:
+        FA.PrefixBinop symbol:
             CoreTypes.makeUsr symbol
             >> CA.RefGlobal
             >> CA.Variable pos
             >> Ok
 
-        FA.Variable pos maybeModule name attrs:
+        FA.Variable maybeModule name attrs:
             declaredInsideFunction =
                 Dict.member name env.nonRootValues
 
@@ -695,15 +704,12 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             >> List.for attrs (CA.RecordAccess pos)
             >> Ok
 
-        FA.Constructor pos maybeModule name:
+        FA.Constructor maybeModule name:
             resolveToConstructorUsr env.ro maybeModule name
                 >> CA.Constructor pos
                 >> Ok
 
-        FA.Mutable pos _ _:
-            error pos [ "can't use mutability here?" ]
-
-        FA.RecordShorthand pos attrPath:
+        FA.RecordShorthand attrPath:
             try env.maybeShorthandTarget as
                 Nothing:
                     error pos [
@@ -717,104 +723,164 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                     >> List.for attrPath (attrName: expr: CA.RecordAccess pos attrName expr)
                     >> Ok
 
-        FA.Lambda pos faParam isConsuming faBody:
+        FA.Fn faParams faBody:
+            faParams
+            >> List.mapRes (translateParameter env)
+            >> onOk caParams:
 
-            translatePattern env faParam
-            >> onOk caPattern:
+            localEnv as Env =
+                List.forRes caParams par: envX:
+                    names =
+                        try par as
+                            CA.ParameterPattern pa: CA.patternNames caPattern
+                            CA.ParameterRecycle _ name: Dict.singleton name { pos, isUnique = True, maybeAnnotation = Nothing }
 
-            localEnv =
-                { env with
-                , nonRootValues =
-                    caPattern
-                    >> CA.patternNames
-                    >> Dict.join .nonRootValues
-                }
+                    duplicates =
+                        Dict.intersect names envX.nonRootValues >> Dict.keys
 
-            translateStatementBlock localEnv faBody
+                    if duplicates /= [] then
+                        error pos [ "parameters shadows these values: " .. Text.join "," duplicates ]
+                    else
+                        Ok { envX with nonRootValues = Dict.join names .nonRootValues }
+
+            faBody
+            >> translateExpression localEnv
             >> onOk caBody:
 
-            Ok << CA.Lambda pos caPattern isConsuming caBody
-
-
-        # TODO: this is temporary, can be removed once we remove auto-currying
-        FA.FunctionCall callPos (FA.Constructor consPos maybeModule name) arguments:
-
-            caReference =
-                resolveToConstructorUsr env.ro maybeModule name
-                >> CA.Constructor consPos
-
-            List.mapRes (translateArgument env) arguments
-            >> onOk args:
-
-            CA.CallCo callPos caReference args
+            CA.Fn pos caParams caBody
             >> Ok
 
+        FA.Call faRef faArgs:
+            faRef
+            >> translateExpression env
+            >> onOk caRef:
 
-        FA.FunctionCall pos reference arguments:
-            # ref arg1 arg2 arg3...
-            fold as CA.Argument: CA.Expression: CA.Expression =
-                argument: refAccum:
-                CA.Call pos refAccum argument
+            faArgs
+            >> List.mapRes (translateArgument env)
+            >> onOk caArgs:
 
-            translateExpression env reference >> onOk ref:
-            List.mapRes (translateArgument env) arguments >> onOk args:
-            Ok << List.for args fold ref
+            CA.Call pos caRef caArgs
+            >> Ok
 
-        FA.If pos { condition, true, false, isCompact }:
+        FA.If { condition, true, false }:
             translateExpression env condition >> onOk c:
-            translateStatementBlock env true >> onOk t:
-            translateStatementBlock env false >> onOk f:
+            translateExpression env true >> onOk t:
+            translateExpression env false >> onOk f:
             { condition = c
             , true = t
             , false = f
             }
-                >> CA.If pos
-                >> Ok
-
-        FA.Unop pos op faOperand:
-            translateExpression env faOperand >> onOk caOperand:
-            CA.Call pos
-                (CA.Variable pos (CA.RefGlobal op.usr))
-                (CA.ArgumentExpression caOperand)
+            >> CA.If pos
             >> Ok
 
-        FA.Binop pos group sepList:
+        FA.Unop op faOperand:
+            translateExpression env faOperand
+            >> onOk caOperand:
+
+            CA.Call pos
+                (CA.Variable pos (CA.RefGlobal op.usr))
+                [CA.ArgumentExpression caOperand]
+            >> Ok
+
+        FA.Binop group sepList:
             translateBinops env pos group sepList
 
-        FA.Record pos faArgs:
-            makeUpdateTarget pos env faArgs.extends
-            >> onOk caUpdateTarget:
+        FA.Record { maybeExtension, attrs }:
+            translateRecord env maybeExtension attrs
 
-            # TODO use a Result.list_fold?
-            translateAttrsRec { env with maybeShorthandTarget = caUpdateTarget.maybeExpr } faArgs.attrs Dict.empty >> onOk caAttrs:
-            caAttrs
-                >> CA.Record pos caUpdateTarget.maybeExpr
-                >> caUpdateTarget.wrapper
+        FA.List faDotsAndItems:
+
+            rev =
+                List.reverse faDotsAndItems
+
+            try rev as
+                []:
+                    CA.Constructor pos CoreTypes.nil
+                    >> Ok
+
+                (hasDots & head) :: rest:
+                    if List.any Tuple.first rest then
+                        error pos [ "can use dots only on the last element (for now?)" ]
+
+                    else
+                        init & revItems =
+                            if hasDots then
+                                head & rest
+                            else
+                                FA.Expression pos (FA.List []) & rev
+
+                        translateExpression env init
+                        >> onOk caInit:
+
+                        caInit >> List.forRes revItems (_ & faItem): acc:
+                            translateExpression env faItem
+                            >> onOk caItem:
+
+                            CA.Call pos (CA.Constructor pos CoreTypes.cons) [CA.ArgumentExpression caItem, CA.ArgumentExpression acc]
+                            >> Ok
+
+        FA.Try { value, patterns }:
+
+            translatePatternAndStatements as (FA.Expression & FA.Expression): Res (CA.Pattern & CA.Expression) =
+                ( faPattern & faExpression ):
+
+                faPattern
+                >> translatePattern env
+                >> onOk caPattern:
+
+                faExpression
+                >> translateExpression { env with nonRootValues = Dict.join (CA.patternNames caPattern) env.nonRootValues }
+                >> onOk block:
+
+                caPattern & block
                 >> Ok
 
-        FA.List pos faItems:
-            cons = item: list:
-                CA.Call pos
-                    (CA.Call pos
-                        (CA.Constructor pos CoreTypes.cons)
-                        (CA.ArgumentExpression item)
-                    )
-                    (CA.ArgumentExpression list)
+            translateExpression env value
+            >> onOk caValue:
 
-            List.mapRes (translateExpression env) faItems >> onOk es:
-            Ok << List.forReversed es cons (CA.Constructor pos CoreTypes.nil)
+            patterns
+            >> List.mapRes translatePatternAndStatements
+            >> onOk patternsAndExpressions:
 
-        FA.Try pos fa:
-            translatePatternAndStatements = ( faPattern & faStatements ):
-                translatePattern env faPattern >> onOk caPattern:
-                translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames caPattern) env.nonRootValues } faStatements >> onOk block:
-                Ok ( caPattern & block )
+            CA.Try pos { value = caValue, patternsAndExpressions }
+            >> Ok
 
-            translateExpression env fa.value >> onOk caValue:
-            List.mapRes translatePatternAndStatements fa.patterns >> onOk caPatternsAndStatements:
-            Ok << CA.Try pos { value = caValue, patternsAndExpressions = caPatternsAndStatements }
 
-      #]
+translateParameter as Env: FA.Expression: Res CA.Parameter =
+    env: fa:
+
+    FA.Expression pos faExpr = fa
+
+    maybeRecycle =
+        try faExpr as
+            FA.Unop { symbol = "@", type, usr } faOperand:
+                try faOperand as
+                    FA.Variable { maybeType = Nothing, word }:
+                        Ok (Just word)
+                    _:
+                        error pos [ "@ should be followed by a variable name to recycle!" ]
+
+            _:
+                Ok Nothing
+
+    maybeRecycle
+    >> onOk maybeWord:
+
+    try maybeWord as
+        Just word:
+            isValid = word.modifier /= Token.NameNoModifier and not word.isUpper and word.maybeModule == Nothing and word.attrPath == []
+            if not isValid then
+                error pos [ "I was expecting a local variable name here... =|" ]
+            else
+                CA.ParameterRecycle pos word.name
+                >> Ok
+
+        Nothing:
+            translatePattern env fa
+            >> onOk ca:
+
+            CA.ParameterPattern ca
+            >> Ok
 
 
 translateNumber as (Pos: Number: a): Pos: Text: Res a =
@@ -831,46 +897,77 @@ translateNumber as (Pos: Number: a): Pos: Text: Res a =
             Ok << constructor pos n
 
 
-makeUpdateTarget as Pos: Env: Maybe FA.Expression: Res { maybeExpr as Maybe CA.Expression, wrapper as CA.Expression: CA.Expression } =
-    pos: env: maybeShorthandTarget:
+translateRecord as Env: Maybe (Maybe FA.Expression): [FA.RecordAttribute]: Res CA.Expression =
+    zzz =
+        try maybeExtension as
+            Just (Just ext): Ok translateExpression env ext
+            Just Nothing: error pos [ "I need to know what record you are updating" ]
+            Nothing: Ok Nothing
 
-    try maybeShorthandTarget as
+    zzz
+    >> onOk maybeCaExt:
+
+    try maybeCaExt as
         Nothing:
-            Ok { maybeExpr = Nothing, wrapper = identity }
+            Dict.empty
+            >> List.for attrs (translateAndInsertRecordAttribute { env with maybeShorthandTarget = Nothing })
+            >> onOk caAttrs:
 
-        Just shorthand:
-            translateExpression { env with maybeShorthandTarget = Nothing } shorthand
-            >> onOk expression:
+            CA.Record pos Nothing caAttrs
+            >> Ok
 
-            try expression as
-                CA.Variable _ ref: Ok { maybeExpr = Just expression, wrapper = identity }
-                _: error pos [ "NI { (expr) with ...} not yet implemented =(" ]
+        Just caExt:
+            varName =
+                Text.fromNumber env.nextGeneratedVariableName
+
+            var =
+                CA.Variable Pos.G (CA.RefLocal varName)
+
+            newEnv =
+                { env with
+                , maybeShorthandTarget = Just var
+                , nextGeneratedVariableName = .nextGeneratedVariableName + 1
+                }
+
+            Dict.empty
+            >> List.for attrs (translateAndInsertRecordAttribute newEnv)
+            >> onOk caAttrs:
+
+            def as CA.ValueDef =
+                {
+                , pattern = CA.PatternAny Pos.G { isUnique = False, maybeName = Just varName, maybeType = Nothing }
+                , native = False
+                , body = caExt
+                , tyvars = Dict.empty
+                # TODO populate deps?
+                , directTypeDeps = Dict.empty
+                , directConsDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                }
+
+            caAttrs
+            >> CA.Record pos (Just var)
+            >> CA.LetIn def
+            >> Ok
 
 
+translateAndInsertRecordAttribute as Env: FA.RecordAttribute: Dict Text CA.Expression: Res (Dict Text CA.Expression) =
+    env: attr: caAttrsAccum:
 
-translateAttrsRec as Env: [(At Text) & Maybe FA.Expression]: Dict Text CA.Expression: Res (Dict Text CA.Expression) =
-    env: faAttrs: caAttrsAccum:
-    try faAttrs as
-        []:
-            Ok caAttrsAccum
+    translateAttributeName attr.name
+    >> onOk (pos & caName & maybeFaType):
 
-        ((At pos attrName) & maybeAttrExpression) :: faTail:
-            exprRes =
-                try maybeAttrExpression as
-                    Just faExpr:
-                        translateExpression env faExpr
+    if Dict.member caName caAttrsAccum then
+        error pos [ "duplicate attribute: " .. caName ]
+    else
+        attr.maybeExpr
+        >> Maybe.withDefault attr.name
+        >> translateExpression env
+        >> onOk caExpr:
 
-                    Nothing:
-                        declaredInsideFunction =
-                            Dict.member attrName env.nonRootValues
-
-                        attrName
-                        >> resolveToValueRef env.ro declaredInsideFunction Nothing
-                        >> CA.Variable pos
-                        >> Ok
-
-            exprRes >> onOk expr:
-            translateAttrsRec env faTail (Dict.insert attrName expr caAttrsAccum)
+        caAttrsAccum
+        >> Dict.insert caName expr
+        >> Ok
 
 
 translateArgument as Env: FA.Expression: Res (CA.Argument) =
@@ -1014,8 +1111,10 @@ translateBinopSepList_rightAssociative as Env: Pos: FA.Expression: [ Op.Binop & 
             Ok caLeft
 
         (op & right) :: tail:
-            translateBinopSepList_rightAssociative env pos right tail >> onOk caRight:
-            Ok << makeBinop pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
+            translateBinopSepList_rightAssociative env pos right tail
+            >> onOk caRight:
+
+            makeBinop pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
 
 
 translateBinopSepList_leftAssociative as Env: Pos: FA.Expression: [ Op.Binop & FA.Expression ]: Res CA.Expression =
@@ -1033,7 +1132,9 @@ translateBinopSepListRec as Env: Pos: CA.Expression: [ Op.Binop & FA.Expression 
 
         (op & faRight) :: tail:
             translateArgument env faRight >> onOk caRight:
-            translateBinopSepListRec env pos (makeBinop pos (CA.ArgumentExpression leftAccum) op caRight) tail
+            makeBinop pos (CA.ArgumentExpression leftAccum) op caRight
+            >> onOk binop:
+            translateBinopSepListRec env pos binop tail
 
 
 [# Unlike other ML languages, the left operand is the _second_ argument
@@ -1041,33 +1142,47 @@ translateBinopSepListRec as Env: Pos: CA.Expression: [ Op.Binop & FA.Expression 
 `a + b` == `((+) b) a`
 
 #]
-makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: CA.Expression =
+makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: Res CA.Expression =
     pos: left: op: right:
-    try left & op.symbol & right as
 
-        # TODO don't hardcode the strings, use instead those defined in Prelude
-        _ & ">>" & CA.ArgumentExpression rightExpr :
-            CA.Call pos rightExpr left
+    if op.symbol == Prelude.sendRight.symbol then
+        # arg3 >> fun arg1 arg2
+        try right as
+            CA.ArgumentExpression (CA.Call p ref args):
+                CA.Call p ref (List.concat [args, [left]])
+                >> Ok
 
-        CA.ArgumentExpression leftExpr & "<<" & _:
-            CA.Call pos leftExpr right
+            CA.ArgumentExpression ref:
+                CA.Call pos ref [left]
+                >> Ok
 
-        _:
-            CA.Call pos
-                (CA.Call pos
-                    (CA.Variable pos
-                        (CA.RefGlobal op.usr)
-                    )
-                    right
-                )
-                left
+            CA.ArgumentRecycle _ _ _:
+                error pos [ "Can't >> to a recyclable" ]
+
+    else if op.symbol == Prelude.sendLeft.symbol then
+        # arg3 >> fun arg1 arg2
+        try left as
+            CA.ArgumentExpression (CA.Call p ref args):
+                CA.Call p ref (List.concat [args, [right]])
+                >> Ok
+
+            CA.ArgumentExpression ref:
+                CA.Call pos ref [right]
+                >> Ok
+
+            CA.ArgumentRecycle _ _ _:
+                error pos [ "Can't << to a recyclable" ]
+
+    else
+        CA.Call pos (CA.Variable pos (CA.RefGlobal op.usr)) [left, right]
+        >> Ok
 
 
 translateSimpleBinop as Env: Pos: FA.Expression: Op.Binop: FA.Expression: Res CA.Expression =
     env: pos: left: op: right:
     translateArgument env left >> onOk l:
     translateArgument env right >> onOk r:
-    Ok << makeBinop pos l op r
+    makeBinop pos l op r
 
 
 #

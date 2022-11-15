@@ -30,9 +30,8 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos USR
-    , Fn Pos [Bool & Pattern] Expression
-    , Call Pos Expression Argument
-    , CallCo Pos Expression [Argument]
+    , Fn Pos [Parameter] Expression
+    , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
     , Record Pos (Maybe Expression) (Dict Name Expression)
@@ -67,6 +66,11 @@ union Pattern =
 union Argument =
     , ArgumentExpression Expression
     , ArgumentRecycle Pos [Name] Ref
+
+
+union Parameter =
+    , ParameterPattern Pattern
+    , ParameterRecycle Pos Name
 
 
 alias TypeClasses = {
@@ -184,6 +188,10 @@ skipLetIns as CA.Expression: CA.Expression =
 unmod as [Bool & param]: [param] =
     List.map Tuple.second
 
+mapmod as (a: b): [Bool & a]: [Bool & b] =
+    f:
+    List.map (Tuple.mapSecond f)
+
 
 
 typeTyvars as Type: Dict Name Pos =
@@ -194,8 +202,8 @@ typeTyvars as Type: Dict Name Pos =
         List.for list (item: acc: Dict.join acc (typeTyvars item)) Dict.empty
 
     try ty as
-        TypeOpaque _ _ args: fromList args
-        TypeAlias _ _ args: fromList args
+        TypeNamed _ _ args: fromList args
+#        TypeAlias _ _ args: fromList args
         TypeFn _ pars to: fromList << to :: unmod pars
         TypeRecord _ attrs: fromList (Dict.values attrs)
         TypeUnique _ t: typeTyvars t
@@ -209,7 +217,7 @@ patternPos as Pattern: Pos =
         PatternLiteralText p _: p
         PatternLiteralNumber p _: p
         PatternConstructor p _ _: p
-        PatternRecord p _: p
+        PatternRecord p _ _: p
 
 
 patternContainsUnique as Pattern: Bool =
@@ -219,7 +227,7 @@ patternContainsUnique as Pattern: Bool =
         PatternLiteralText _ _: False
         PatternLiteralNumber _ _: False
         PatternConstructor _ _ args: List.any patternContainsUnique args
-        PatternRecord _ attrs: Dict.any (k: patternContainsUnique) attrs
+        PatternRecord _ _ attrs: Dict.any (k: patternContainsUnique) attrs
 
 
 patternTyvars as Pattern: Dict Name Pos =
@@ -230,7 +238,7 @@ patternTyvars as Pattern: Dict Name Pos =
         PatternLiteralText _ _: Dict.empty
         PatternLiteralNumber _ _: Dict.empty
         PatternConstructor _ _ args: List.for args (arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
-        PatternRecord _ attrs: Dict.for attrs (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
+        PatternRecord _ _ attrs: Dict.for attrs (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
 
 
 patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotation as Maybe Type } =
@@ -241,7 +249,7 @@ patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotati
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-        PatternRecord pos ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+        PatternRecord pos _ ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 
 
 
