@@ -3,28 +3,28 @@ alias Int =
     Number
 
 
-coreUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Core")
+coreUsr as Text: USR =
+    USR (UMR Meta.Core "Core")
 
 
-listUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "List")
+listUsr as Text: USR =
+    USR (UMR Meta.Core "List")
 
 
-textUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Text")
+textUsr as Text: USR =
+    USR (UMR Meta.Core "Text")
 
 
-numberUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Number")
+numberUsr as Text: USR =
+    USR (UMR Meta.Core "Number")
 
 
-debugUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Debug")
+debugUsr as Text: USR =
+    USR (UMR Meta.Core "Debug")
 
 
-tupleUsr as Text: Meta.UniqueSymbolReference =
-    Meta.USR (Meta.UMR Meta.Core "Tuple")
+tupleUsr as Text: USR =
+    USR (UMR Meta.Core "Tuple")
 
 
 #
@@ -36,24 +36,19 @@ tyVar as Name: CA.Type =
     CA.TypeAnnotationVariable Pos.N name
 
 
-tyFun as CA.Type: CA.Type: CA.Type =
-    from: to:
-    CA.TypeFunction Pos.N from LambdaNormal to
+tyFn as [CA.Type]: CA.Type: CA.Type =
+    pars: to:
+    CA.TypeFn Pos.N (List.map (p: False & p) pars) to
 
 
 typeUnopUniform as CA.Type: CA.Type =
     type:
-    tyFun type type
+    tyFn [type] type
 
 
 typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
     left: right: return:
-    tyFun
-        right
-        (tyFun
-            left
-            return
-        )
+    tyFn [left, right] return
 
 
 typeBinopUniform as CA.Type: CA.Type =
@@ -329,7 +324,7 @@ sendRight as Op.Binop = {
     , type =
         typeBinop
             (tyVar "a")
-            (tyFun (tyVar "a") (tyVar "b"))
+            (tyFn [tyVar "a"] (tyVar "b"))
             (tyVar "b")
     , nonFn = []
     }
@@ -342,7 +337,7 @@ sendLeft as Op.Binop = {
     , associativity = Op.Right
     , type =
         typeBinop
-            (tyFun (tyVar "a") (tyVar "b"))
+            (tyFn [tyVar "a"] (tyVar "b"))
             (tyVar "a")
             (tyVar "b")
     , nonFn = []
@@ -354,7 +349,7 @@ sendLeft as Op.Binop = {
 #
 
 alias Function = {
-    , usr as Meta.UniqueSymbolReference
+    , usr as USR
     , type as CA.Type
     , nonFn as [Text]
     }
@@ -375,7 +370,7 @@ functions as [Function] = [
 
 mut as Function = {
     , usr = coreUsr "mut"
-    , type = tyFun (tyVar "a") (CA.TypeUnique Pos.N (tyVar "a"))
+    , type = tyFn [tyVar "a"] (CA.TypeUnique Pos.N (tyVar "a"))
     , nonFn = [ "a" ]
     }
 
@@ -383,49 +378,49 @@ mut as Function = {
 # TODO remove this one, it's used only by the typecheck tests?
 reinit as Function = {
     , usr = coreUsr "reinit"
-    , type = tyFun (CA.TypeUnique Pos.N (tyVar "a")) (tyFun (tyVar "a") CoreTypes.none)
+    , type = tyFn [CA.TypeUnique Pos.N (tyVar "a"), (tyVar "a")] CoreTypes.none
     , nonFn = [ "a" ]
     }
 
 
 compare as Function = {
     , usr = coreUsr "compare"
-    , type = tyFun (tyVar "a") (tyFun (tyVar "a") CoreTypes.number)
+    , type = tyFn [tyVar "a", (tyVar "a")] CoreTypes.number
     , nonFn = [ "a" ]
     }
 
 
 debugTodo as Function = {
     , usr = debugUsr "todo"
-    , type = tyFun CoreTypes.text (tyVar "a")
+    , type = tyFn [CoreTypes.text] (tyVar "a")
     , nonFn = []
     }
 
 
 debugLog as Function = {
     , usr = debugUsr "log"
-    , type = tyFun CoreTypes.text (tyFun (tyVar "a") (tyVar "a"))
+    , type = tyFn [CoreTypes.text, (tyVar "a")] (tyVar "a")
     , nonFn = []
     }
 
 
 debugToHuman as Function = {
     , usr = debugUsr "toHuman"
-    , type = tyFun (tyVar "a") CoreTypes.text
+    , type = tyFn [tyVar "a"] CoreTypes.text
     , nonFn = []
     }
 
 
 debugBenchStart as Function = {
     , usr = debugUsr "benchStart"
-    , type = tyFun  CoreTypes.none CoreTypes.none
+    , type = tyFn CoreTypes.none CoreTypes.none
     , nonFn = []
     }
 
 
 debugBenchStop as Function = {
     , usr = debugUsr "benchStop"
-    , type = tyFun CoreTypes.text CoreTypes.none
+    , type = tyFn CoreTypes.text CoreTypes.none
     , nonFn = []
     }
 
@@ -435,13 +430,13 @@ debugBenchStop as Function = {
 #
 
 alias ModuleByUmr =
-    Dict Meta.UniqueModuleReference (CA.Module)
+    Dict UMR (CA.Module)
 
 
-insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
+insertInModule as USR: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
     usr: type: nonFn:
 
-    Meta.USR umr name =
+    USR umr name =
         usr
 
     tyvars =
@@ -496,7 +491,7 @@ insertFunction as Function: ModuleByUmr: ModuleByUmr =
     insertInModule function.usr function.type function.nonFn
 
 
-coreModulesByUmr as Dict Meta.UniqueModuleReference CA.Module =
+coreModulesByUmr as Dict UMR CA.Module =
     Dict.empty
     >> insertUnop unaryPlus
     >> insertUnop unaryMinus

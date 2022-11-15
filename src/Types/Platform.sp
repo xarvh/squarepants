@@ -1,6 +1,6 @@
 
 alias GetRidOfMe = {
-    , constructors as [Meta.UniqueSymbolReference & TA.Constructor ]
+    , constructors as [USR & TA.Constructor ]
     , errorEnv as Error.Env
     }
 
@@ -9,7 +9,7 @@ alias GetRidOfMe = {
 # TODO: this should be moved to something like Core/Platform
 alias Platform = {
     , name as Text
-    , compile as GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text
+    , compile as GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text
     , defaultModules as Text
     , quickstart as Text
     , defaultOutputPath as Text

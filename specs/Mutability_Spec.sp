@@ -89,7 +89,7 @@ infer as Text: Text: Result Text { type as TA.Type, freeTypeVariables as Dict Na
     >> onOk (typeCheckEnv & moduleWithDestroyIn):
 
     usr =
-        Meta.USR typeCheckEnv.currentModule varName
+        USR typeCheckEnv.currentModule varName
 
     try Dict.get (CA.RefGlobal usr) typeCheckEnv.instanceVariables as
         Nothing:

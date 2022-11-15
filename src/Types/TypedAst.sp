@@ -3,18 +3,14 @@
 alias Ref = CA.Ref
 
 
-alias LambdaModifier =
-    CA.LambdaModifier
-
-
 alias UnificationVariableId =
     Int
 
 
 union Type =
-    , TypeOpaque Pos Meta.UniqueSymbolReference [Type]
-    , TypeAlias Pos Meta.UniqueSymbolReference [Type]
-    , TypeFunction Pos Type LambdaModifier Type
+    , TypeOpaque Pos USR [Type]
+    , TypeAlias Pos USR [Type]
+    , TypeFn Pos [Bool & Type] Type
     , TypeRecord Pos (Dict Name Type)
     , TypeUnique Pos Type
     , TypeUnificationVariable UnificationVariableId
@@ -25,30 +21,31 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
-    , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos (Pattern) LambdaModifier (Expression)
-    , Call Pos (Expression) (Argument) Type
-    , CallCo Pos (Expression) [Argument & Type]
+    , Constructor Pos USR
+    , Fn Pos [Bool & Pattern] Expression
+    , Call Pos Expression Argument Type
+    , CallCo Pos Expression [Argument & Type]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
-    , Record Pos (Maybe (Expression)) (Dict Name (Expression))
-    , RecordAccess Pos Name (Expression)
-    , LetIn ValueDef (Expression)
+    , Record Pos (Maybe Expression) (Dict Name Expression)
+    , RecordAccess Pos Name Expression
+    , LetIn ValueDef Expression
     , If Pos {
-        , condition as (Expression)
-        , true as (Expression)
-        , false as (Expression)
+        , condition as Expression
+        , true as Expression
+        , false as Expression
         }
     , Try Pos {
-        , value as (Expression)
+        , value as Expression
         , type as Type
         , patternsAndExpressions as [Pattern & Expression]
         }
-    , DestroyIn Name (Expression)
+    , DestroyIn Name Expression
 
 
 union Pattern =
-    , PatternAny Pos {
+    , PatternAny Pos
+        {
         , isUnique as Bool
         , maybeName as Maybe Text
         , maybeAnnotation as Maybe CA.Type
@@ -56,12 +53,12 @@ union Pattern =
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
+    , PatternConstructor Pos USR [Pattern]
     , PatternRecord Pos (Dict Name (Pattern & Type))
 
 
 union Argument =
-    , ArgumentExpression (Expression)
+    , ArgumentExpression Expression
     , ArgumentRecycle Pos [Name] Ref
 
 
@@ -77,7 +74,7 @@ alias ValueDef =
     , native as Bool
     , body as Expression
     , tyvars as Dict Name TypeClasses
-    , directValueDeps as Set Meta.UniqueSymbolReference
+    , directValueDeps as Set USR
     }
 
 
@@ -90,7 +87,7 @@ alias ValueDef =
 alias Constructor =
     {
     , pos as Pos
-    , typeUsr as Meta.UniqueSymbolReference
+    , typeUsr as USR
     , type as Type
 #    , args as [Type]
     }
@@ -98,14 +95,14 @@ alias Constructor =
 
 alias Module =
     {
-    , umr as Meta.UniqueModuleReference
+    , umr as UMR
     , asText as Text
     , valueDefs as Dict CA.Pattern ValueDef
     , substitutions as Dict UnificationVariableId Type
     }
 
 
-initModule as Text: Meta.UniqueModuleReference: Module =
+initModule as Text: UMR: Module =
     asText: umr:
     {
     , umr
@@ -136,7 +133,7 @@ typeTyvars as Type: Dict UnificationVariableId None =
     try type as
         TypeOpaque pos usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
         TypeAlias pos usr args:  Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeFunction pos in mod out: Dict.join (typeTyvars in) (typeTyvars out)
+        TypeFn pos in mod out: Dict.join (typeTyvars in) (typeTyvars out)
         TypeRecord pos attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         #TODO Should we say here that the var must allow uniqueness?
         TypeUnique pos ty: typeTyvars ty
@@ -174,7 +171,7 @@ union TypeDef =
 
 
 alias AliasDef = {
-    , usr as Meta.UniqueSymbolReference
+    , usr as USR
     , args as [At Name]
     , type as Type
     #, directTypeDeps as TypeDeps
@@ -182,7 +179,7 @@ alias AliasDef = {
 
 
 alias UnionDef = {
-    , usr as Meta.UniqueSymbolReference
+    , usr as USR
     , args as [Name]
     #, constructors as Dict Name Constructor
     #, directTypeDeps as TypeDeps

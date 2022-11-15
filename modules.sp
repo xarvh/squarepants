@@ -59,10 +59,11 @@ sourceDir =
             Meta
             Name
             ByUsr
-            LambdaModifier
+            USR
+            UMR
         globalValues =
-            LambdaNormal
-            LambdaConsuming
+            USR
+            UMR
 
     module =
         path = Types/Op

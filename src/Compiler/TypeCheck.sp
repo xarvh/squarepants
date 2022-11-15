@@ -93,7 +93,7 @@ alias TypeWithClasses = {
 
 alias Env = {
     , context as Context
-    , constructors as Dict Meta.UniqueSymbolReference TypeWithClasses
+    , constructors as ByUsr TypeWithClasses
     , variables as Dict TA.Ref TypeWithClasses
     , tyvarsInParentAnnotations as Dict TA.UnificationVariableId TA.Type
 
@@ -115,7 +115,7 @@ initEnv as Env =
 union Error_ =
     , ErrorCircular [CA.Pattern]
     , ErrorVariableNotFound CA.Ref
-    , ErrorConstructorNotFound Meta.UniqueSymbolReference
+    , ErrorConstructorNotFound USR
     , ErrorNotCompatibleWithRecord
     , ErrorRecordDoesNotHaveAttribute Name [# TODO other attrs to give context? #]
     , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
@@ -123,11 +123,11 @@ union Error_ =
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
     , ErrorIncompatibleTypes
     , ErrorVariableTypeIncompatible CA.Ref TypeWithClasses CA.Type
-    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference TA.Type CA.Type
+    , ErrorConstructorTypeIncompatible USR TA.Type CA.Type
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
-    , ErrorIncompatibleLambdaModifier
+    , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch
 
 
@@ -135,10 +135,10 @@ union Error_ =
 
 union Context =
     , Context_Global # this is never actually used =|
-    , Context_Module Meta.UniqueModuleReference
+    , Context_Module UMR
     , Context_Argument Name Context
     , Context_LetInBody
-    , Context_LambdaBody Pos Context
+    , Context_FnBody Pos Context
     , Context_TryBranch
     , Context_IfCondition
     , Context_IfFalse
@@ -161,7 +161,7 @@ union Why =
     , Why_Attribute Why
     , Why_FunctionInput Why
     , Why_FunctionOutput Why
-    , Why_TypeArgument Meta.UniqueSymbolReference Int Why
+    , Why_TypeArgument USR Int Why
 
 
 union Equality =
@@ -178,7 +178,6 @@ newTyvarId as State@: TA.UnificationVariableId =
     state.lastUnificationVarId
 
 
-
 newType as State@: TA.Type =
     state@:
     TA.TypeUnificationVariable (newTyvarId @state)
@@ -191,28 +190,24 @@ addEquality as Env: Pos: Why: TA.Type: TA.Type: State@: None =
     Array.push @state.equalities << Equality env.context pos why t1 t2
 
 
-
 addError as Env: Pos: Error_: State@: None =
     env: pos: error: state@:
 
     Array.push @state.errors (pos & env.context & error)
 
 
+#linearizeCurriedParameters as TA.Type: [LambdaModifier & TA.Type]: [LambdaModifier & TA.Type] & TA.Type =
+#    type: accum:
+#
+#    try type as
+#        TA.TypeFn pos from modifier to:
+#            linearizeCurriedParameters to << (modifier & from) :: accum
+#
+#        _:
+#            List.reverse accum & type
 
 
-linearizeCurriedParameters as TA.Type: [LambdaModifier & TA.Type]: [LambdaModifier & TA.Type] & TA.Type =
-    type: accum:
-
-    try type as
-        TA.TypeFunction pos from modifier to:
-            linearizeCurriedParameters to << (modifier & from) :: accum
-
-        _:
-            List.reverse accum & type
-
-
-
-getConstructorByUsr as Meta.UniqueSymbolReference: Env: Maybe TypeWithClasses =
+getConstructorByUsr as USR: Env: Maybe TypeWithClasses =
     usr: env:
 
     Dict.get usr env.constructors
@@ -263,7 +258,7 @@ variableIsCompatibleWith as Env: CA.Type: TA.Type: Bool =
     env: expected: variableType:
 
     try expected & variableType as
-        CA.TypeOpaque _ usrC argsC & TA.TypeOpaque _ usrU argsU:
+        CA.TypeNamed _ usrC argsC & TA.TypeOpaque _ usrU argsU:
             if usrC /= usrU then
                 False
             else
@@ -271,8 +266,14 @@ variableIsCompatibleWith as Env: CA.Type: TA.Type: Bool =
                 List.map2 (variableIsCompatibleWith env) argsC argsU
                 >> List.all identity
 
-        CA.TypeFunction _ inC modC outC & TA.TypeFunction _ inU modU outU:
-            modC /= modU and variableIsCompatibleWith env inC inU and variableIsCompatibleWith env outC outU
+        CA.TypeFn _ modsAndArgsC outC & TA.TypeFn _ modsAndArgsU outU:
+            # TODO clean this up
+            x =
+                List.map2 Tuple.pair modsAndArgsC modsAndArgsU
+                >> List.all ((modC & inC) & (modU & inU)):
+                    modC /= modU and variableIsCompatibleWith env inC inU
+
+            x and variableIsCompatibleWith env outC outU
 
         CA.TypeRecord _ attrC & TA.TypeRecord _ attrU:
             onlyC & both & onlyU =
@@ -318,20 +319,21 @@ typeCa2Ta_ as (Name: TA.UnificationVariableId): CA.Type: TA.Type =
     ctu = typeCa2Ta_ f
 
     try ca as
-       CA.TypeOpaque p usr args:
-          TA.TypeOpaque p usr (List.map ctu args)
+       CA.TypeNamed p usr args:
+           TA.TypeOpaque p usr (List.map ctu args)
 
-       CA.TypeFunction p in mod out:
-         TA.TypeFunction p (ctu in) mod (ctu out)
+       CA.TypeFn p modsAndArgs out:
+           xxx = List.map (Tuple.mapSecond ctu) modsAndArgs
+           TA.TypeFn p xxx (ctu out)
 
        CA.TypeRecord p attrs:
-         TA.TypeRecord p (Dict.map (k: ctu) attrs)
+           TA.TypeRecord p (Dict.map (k: ctu) attrs)
 
        CA.TypeUnique p ty:
-         TA.TypeUnique p (ctu ty)
+           TA.TypeUnique p (ctu ty)
 
        CA.TypeAnnotationVariable _ name:
-          TA.TypeUnificationVariable (f name)
+            TA.TypeUnificationVariable (f name)
 
 
 variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
@@ -342,10 +344,10 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
          True
 
        TA.TypeOpaque p usr args:
-          # TODO: How do we deal with an Opaque that *must* be unique?
+          # Opaques cannot contain uniques?
           List.any variableOfThisTypeMustBeFlaggedUnique args
 
-       TA.TypeFunction p in mod out:
+       TA.TypeFn p args out:
           False
 
        TA.TypeRecord p attrs:
@@ -449,29 +451,30 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             TA.Constructor pos usr & ty
 
 
-        CA.Lambda pos pattern modifier body:
+        CA.Fn pos pattern modifier body:
+            todo "CA.Fn"
 
-            patternOut =
-                inferPattern env pattern @state
-
-            newEnv =
-                { patternOut.env with
-                , context = Context_LambdaBody pos .context
-                }
-
-            unificationBody & bodyType =
-                inferExpression newEnv body @state
-
-            type =
-                TA.TypeFunction Pos.G
-                    patternOut.patternType
-                    modifier
-                    bodyType
-
-            exp =
-                TA.Lambda pos patternOut.typedPattern modifier unificationBody
-
-            exp & type
+#            patternOut =
+#                inferPattern env pattern @state
+#
+#            newEnv =
+#                { patternOut.env with
+#                , context = Context_FnBody pos .context
+#                }
+#
+#            unificationBody & bodyType =
+#                inferExpression newEnv body @state
+#
+#            type =
+#                TA.TypeFn Pos.G
+#                    patternOut.patternType
+#                    modifier
+#                    bodyType
+#
+#            exp =
+#                TA.Fn pos patternOut.typedPattern modifier unificationBody
+#
+#            exp & type
 
 
         CA.Call pos reference argument:
@@ -700,7 +703,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
     try caExpression & expectedType as
 
-        CA.LiteralNumber pos n & CA.TypeOpaque _ typeUsr []:
+        CA.LiteralNumber pos n & CA.TypeNamed _ typeUsr []:
             if typeUsr /= CoreTypes.numberDef.usr then
                 addError env pos ErrorIncompatibleTypes @state
             else
@@ -709,7 +712,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
             TA.LiteralNumber pos n
 
 
-        CA.LiteralText pos text & CA.TypeOpaque _ typeUsr []:
+        CA.LiteralText pos text & CA.TypeNamed _ typeUsr []:
             if typeUsr /= CoreTypes.textDef.usr then
                 addError env pos ErrorIncompatibleTypes @state
             else
@@ -746,23 +749,20 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
             TA.Constructor pos usr
 
 
-        CA.Lambda pos pattern lambdaModifier body & CA.TypeFunction _ in mod out:
-            typedPattern & localEnv =
-                checkPattern env in pattern @state
-
-            typedBody =
-                checkExpression localEnv out body @state
-
-            if lambdaModifier == mod then
-                None
-            else
-                addError env pos ErrorIncompatibleLambdaModifier @state
-
-            TA.Lambda pos typedPattern mod typedBody
-
-
-        CA.Call pos reference argument & _:
-            checkCallCo env (typeCa2Ta env expectedType) pos reference [argument] @state
+        CA.Fn pos pars body & CA.TypeFn _ parsT out:
+            todo "CA.Fn CA.TypeFn"
+#            typedPattern & localEnv =
+#                checkPattern env in pattern @state
+#
+#            typedBody =
+#                checkExpression localEnv out body @state
+#
+#            if lambdaModifier == mod then
+#                None
+#            else
+#                addError env pos ErrorIncompatibleLambdaModifier @state
+#
+#            TA.Lambda pos typedPattern mod typedBody
 
 
         CA.CallCo pos reference args & _:
@@ -912,7 +912,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
             inferArgument env arg @state
 
     referenceArgs & referenceReturn =
-        linearizeCurriedParameters referenceType []
+        todo "linearizeCurriedParameters referenceType []"
 
     addEquality env pos Why_ReturnType referenceReturn expectedType @state
 
@@ -949,7 +949,7 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
             expectedType
             >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
                 # TODO if expected type says this should be LambdaConsuming, then use LambdaConsuming
-                TA.TypeFunction Pos.G argTy LambdaNormal type
+                TA.TypeFn Pos.G [False & argTy] type
 
         addEquality env pos Why_CalledAsFunction referenceType referenceTypeFromArguments @state
 
@@ -1093,7 +1093,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
 
                     Just cons:
                         argModAndTypes & returnType =
-                            linearizeCurriedParameters (generalize env cons @state) []
+                            todo "linearizeCurriedParameters (generalize env cons @state) []"
 
                         rl =
                             List.length argModAndTypes
@@ -1329,7 +1329,7 @@ translateTyvars as State@: (Hash Name TA.UnificationVariableId)@: Dict Name CA.T
     Dict.empty >> Dict.for classesByName zot
 
 
-addValueToGlobalEnv as State@: Meta.UniqueModuleReference: CA.ValueDef: Env: Env =
+addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
     state@: umr: def: env:
 
     hash @=
@@ -1344,7 +1344,7 @@ addValueToGlobalEnv as State@: Meta.UniqueModuleReference: CA.ValueDef: Env: Env
 
                 ref as TA.Ref =
                     valueName
-                    >> Meta.USR umr
+                    >> USR umr
                     >> CA.RefGlobal
 
                 typeWithClasses as TypeWithClasses =
@@ -1359,7 +1359,7 @@ addValueToGlobalEnv as State@: Meta.UniqueModuleReference: CA.ValueDef: Env: Env
 addConstructorToGlobalEnv as State@: [Name]: Name: CA.Constructor: Env: Env =
     state@: args: name: caConstructor: env:
 
-    Meta.USR umr _ =
+    USR umr _ =
         caConstructor.typeUsr
 
     hash @=
@@ -1376,7 +1376,7 @@ addConstructorToGlobalEnv as State@: [Name]: Name: CA.Constructor: Env: Env =
         , tyvars = translateTyvars @state @hash caTyvars
         }
 
-    { env with constructors = Dict.insert (Meta.USR umr name) taConstructor .constructors }
+    { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }
 
 
 addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
@@ -1466,7 +1466,7 @@ solveEqualities as [Equality]: ERState: ERState =
                     >> solveEqualities (List.append tail newEqualities)
 
 
-                TA.TypeFunction _ in1 modifier1 out1 & TA.TypeFunction _ in2 modifier2 out2:
+                TA.TypeFn _ in1 modifier1 out1 & TA.TypeFn _ in2 modifier2 out2:
                     newEqualities as [Equality] =
                         Equality context pos (Why_FunctionInput why) in1 in2 :: Equality context pos (Why_FunctionOutput why) out1 out2 :: tail
 
@@ -1569,8 +1569,8 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
             originalType
         #]
 
-        TA.TypeFunction pos in mod out:
-            TA.TypeFunction pos (rec in) mod (rec out)
+        TA.TypeFn pos in mod out:
+            TA.TypeFn pos (rec in) mod (rec out)
 
         TA.TypeRecord pos attrs:
             TA.TypeRecord pos (Dict.map (k: rec) attrs)

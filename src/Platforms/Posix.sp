@@ -24,7 +24,7 @@ library =
     """
 
 
-compile as Types/Platform.GetRidOfMe: Meta.UniqueSymbolReference: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
+compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
     getRidOfMe: targetUsr: emState@: emittableStatements:
 
     { errorEnv = eenv, constructors } =
@@ -73,13 +73,13 @@ const { performance } = require('perf_hooks');
 
 
 
-overrides as [Meta.UniqueSymbolReference & Text] =
+overrides as [USR & Text] =
 
     ioModule =
-        Meta.USR (Meta.UMR Meta.Posix "IO")
+        USR (UMR Meta.Posix "IO")
 
     pathModule =
-        Meta.USR (Meta.UMR Meta.Posix "Path")
+        USR (UMR Meta.Posix "Path")
 
     [
     , ioModule "parallel" & "io_parallel"

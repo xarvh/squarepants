@@ -306,36 +306,37 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
         CA.Constructor pos usr:
             re
 
-        CA.Lambda pos param valueLambdaMode body:
+        CA.Fn pos pars body:
+            todo "CA.Fn UniquenessCheck"
 
-            mutables & localEnv =
-                addPatternToEnv param env
-
-            consumed & bodyExpression =
-                doExpression localEnv @state body
-
-            if mutables == Set.empty then
-                consumed & bodyExpression
-            else
-                try valueLambdaMode as
-                    LambdaConsuming:
-                        wrappedBody =
-                            bodyExpression >> Dict.for mutables name: _: exp:
-                                if Dict.member name consumed then
-                                    exp
-                                else
-                                    CA.DestroyIn name exp
-
-                        consumed & wrappedBody
-
-                    LambdaNormal:
-                        Dict.each mutables name: _:
-                            if Dict.member name consumed then
-                                errorConsumingAMutableArgument name pos @state
-                            else
-                                None
-
-                        consumed & bodyExpression
+#            mutables & localEnv =
+#                addPatternToEnv param env
+#
+#            consumed & bodyExpression =
+#                doExpression localEnv @state body
+#
+#            if mutables == Set.empty then
+#                consumed & bodyExpression
+#            else
+#                try valueLambdaMode as
+#                    LambdaConsuming:
+#                        wrappedBody =
+#                            bodyExpression >> Dict.for mutables name: _: exp:
+#                                if Dict.member name consumed then
+#                                    exp
+#                                else
+#                                    CA.DestroyIn name exp
+#
+#                        consumed & wrappedBody
+#
+#                    LambdaNormal:
+#                        Dict.each mutables name: _:
+#                            if Dict.member name consumed then
+#                                errorConsumingAMutableArgument name pos @state
+#                            else
+#                                None
+#
+#                        consumed & bodyExpression
 
 
         CA.Call pos reference argument:

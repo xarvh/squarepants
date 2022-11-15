@@ -11,18 +11,18 @@ source as Meta.Source =
     Meta.SourceDir "<Test>"
 
 
-moduleUmr as Meta.UniqueModuleReference =
-    Meta.UMR source moduleName
+moduleUmr as UMR =
+    UMR source moduleName
 
 
-localType as Name: Meta.UniqueSymbolReference =
+localType as Name: USR =
     name:
-    Meta.USR moduleUmr name
+    USR moduleUmr name
 
 
 rootLocal as Name: CA.Ref =
     name:
-    CA.RefGlobal << Meta.USR moduleUmr name
+    CA.RefGlobal << USR moduleUmr name
 
 
 #

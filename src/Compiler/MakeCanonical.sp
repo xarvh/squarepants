@@ -11,12 +11,12 @@ textToCanonicalModule as Params: Text: Res CA.Module =
     pars: code:
 
     ro as Compiler/MakeCanonical.ReadOnly = {
-        , currentModule = Meta.UMR pars.source pars.name
+        , currentModule = UMR pars.source pars.name
         , meta = pars.meta
         }
 
     umr =
-        Meta.UMR pars.source pars.name
+        UMR pars.source pars.name
 
     code
         >> Compiler/Parser.textToFormattableModule {
@@ -59,7 +59,7 @@ alias Env = {
 
 
 alias ReadOnly = {
-    , currentModule as Meta.UniqueModuleReference
+    , currentModule as UMR
     , meta as Meta
     }
 
@@ -89,19 +89,19 @@ error as Pos: [Text]: Res a =
 # Names resolution
 #
 
-maybeForeignUsr as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe Name: Name: Maybe Meta.UniqueSymbolReference =
+maybeForeignUsr as (Meta: Dict Text USR): ReadOnly: Maybe Name: Name: Maybe USR =
     getter: ro: maybeModule: name:
 
     try maybeModule as
         Just moduleName:
             try Dict.get moduleName ro.meta.moduleVisibleAsToUmr as
                 Just umr:
-                    Just << Meta.USR umr name
+                    Just << USR umr name
 
                 Nothing:
                     # TODO should this produce an error instead?
                     # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
-                    #CA.RefGlobal (Meta.USR Meta.SourcePlaceholder moduleName name)
+                    #CA.RefGlobal (USR Meta.SourcePlaceholder moduleName name)
 #                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
 #                        log "*" x
                     todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
@@ -110,11 +110,11 @@ maybeForeignUsr as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe
             Dict.get name (getter ro.meta)
 
 
-resolveToUsr as (Meta: Dict Text Meta.UniqueSymbolReference): ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference =
+resolveToUsr as (Meta: Dict Text USR): ReadOnly: Maybe Name: Name: USR =
     getter: ro: maybeModule: name:
 
     maybeForeignUsr getter ro maybeModule name
-        >> Maybe.withDefault (Meta.USR ro.currentModule name)
+        >> Maybe.withDefault (USR ro.currentModule name)
 
 
 resolveToValueRef as ReadOnly: Bool: Maybe Name: Name: CA.Ref =
@@ -129,14 +129,14 @@ resolveToValueRef as ReadOnly: Bool: Maybe Name: Name: CA.Ref =
                 CA.RefLocal name
 
             else
-                CA.RefGlobal << Meta.USR ro.currentModule name
+                CA.RefGlobal << USR ro.currentModule name
 
 
-resolveToTypeUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference =
+resolveToTypeUsr as ReadOnly: Maybe Name: Name: USR =
     resolveToUsr (m: m.globalTypes)
 
 
-resolveToConstructorUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReference =
+resolveToConstructorUsr as ReadOnly: Maybe Name: Name: USR =
     resolveToUsr (m: m.globalValues)
 
 
@@ -145,20 +145,20 @@ resolveToConstructorUsr as ReadOnly: Maybe Name: Name: Meta.UniqueSymbolReferenc
 #
 
 
-typeDeps as CA.Type: Set Meta.UniqueSymbolReference: Set Meta.UniqueSymbolReference =
+typeDeps as CA.Type: Set USR: Set USR =
     type: acc:
     try type as
         CA.TypeNamed _ usr args: acc >> Set.insert usr >> List.for args typeDeps
         CA.TypeAnnotationVariable _ _: acc
-        CA.TypeFunction _ params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
+        CA.TypeFn _ params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
         CA.TypeRecord _ attrs: Dict.for attrs (k: typeDeps) acc
         CA.TypeUnique _ t: typeDeps t acc
 
 
 alias Deps = {
-    , types as Set Meta.UniqueSymbolReference
-    , cons as Set Meta.UniqueSymbolReference
-    , values as Set Meta.UniqueSymbolReference
+    , types as Set USR
+    , cons as Set USR
+    , values as Set USR
     }
 
 
@@ -211,10 +211,11 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.Constructor _ usr:
             { deps with cons = Set.insert usr .cons }
 
-        CA.Lambda _ pa isConsuming body:
-            deps
-                >> patternDeps pa
-                >> expressionDeps body
+        CA.Fn _ pars body:
+            todo "CA.Function"
+#            deps
+#                >> patternDeps pa
+#                >> expressionDeps body
 
         CA.Record _ Nothing exprByName:
             deps
@@ -1180,7 +1181,7 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             >> translateType ro
             >> onOk caReturn:
 
-            CA.TypeFunction pos (List.map (t: LambdaNormal & t) caParams) caReturn
+            CA.TypeFn pos (List.map (t: False & t) caParams) caReturn
             >> Ok
 
         FA.Call (FA.Expression refPos ref) faArgs:
@@ -1213,7 +1214,7 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
 #
 
 
-translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: FA.Expression: Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
+translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
     ro: unionType: unionUsr: (FA.Expression pos expr_): constructors:
 
     zzz =
@@ -1254,7 +1255,7 @@ translateConstructor as ReadOnly: CA.Type: Meta.UniqueSymbolReference: FA.Expres
         c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
-            , type = CA.TypeFunction pos (List.map (a: LambdaConsuming & a) caPars) unionType
+            , type = CA.TypeFn pos (List.map (a: True & a) caPars) unionType
             , args = caPars
             }
 
@@ -1302,7 +1303,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 #                translateType ro fa.ty >> onOk type:
 #
 #                aliasDef as CA.AliasDef = {
-#                    , usr = Meta.USR ro.currentModule (Pos.drop fa.name)
+#                    , usr = USR ro.currentModule (Pos.drop fa.name)
 #                    , args = fa.args
 #                    , type
 #                    , directTypeDeps = typeDeps type Set.empty
@@ -1317,7 +1318,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 #
 #            else
 #                usr =
-#                    Meta.USR ro.currentModule fa.name
+#                    USR ro.currentModule fa.name
 #
 #                type =
 #                    fa.args
@@ -1340,7 +1341,7 @@ insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
 
 
 
-translateModule as ReadOnly: Text: Meta.UniqueModuleReference: FA.Module: Res (CA.Module) =
+translateModule as ReadOnly: Text: UMR: FA.Module: Res (CA.Module) =
     ro: asText: umr: faModule:
 
 #    todo "translateModule"

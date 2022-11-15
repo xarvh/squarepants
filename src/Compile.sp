@@ -75,7 +75,7 @@ loadModulesFile as Types/Platform.Platform: Text: IO ModulesFile.ModulesFile =
             }
         }
 
-    resToIo eenv << todo "ModulesFile.textToModulesFile modulesFileName modulesAsText"
+    resToIo eenv << ModulesFile.textToModulesFile modulesFileName modulesAsText
 
 
 
@@ -133,10 +133,10 @@ listSourceDir as Text: Text: IO [Text] =
 
 
 # TODO move this to Meta?
-umrToFileName as Text: Meta.UniqueModuleReference: Text =
+umrToFileName as Text: UMR: Text =
     corePath: umr:
 
-    Meta.UMR source name =
+    UMR source name =
         umr
 
     try source as
@@ -153,11 +153,11 @@ umrToFileName as Text: Meta.UniqueModuleReference: Text =
             Path.resolve (corePath :: "browser" :: (Text.split "/" << name .. ".sp"))
 
 
-loadModule as Meta: Meta.UniqueModuleReference: Text: IO CA.Module =
+loadModule as Meta: UMR: Text: IO CA.Module =
     meta: umr: fileName:
 
     # TODO get rid of eenv so this is not needed
-    Meta.UMR source moduleName =
+    UMR source moduleName =
         umr
 
     IO.readFile fileName  >> IO.onSuccess moduleAsText:
@@ -185,11 +185,11 @@ alias ModuleAndPath = {
     }
 
 
-sdItemToUMR as Meta.Source: Text: Meta.UniqueModuleReference =
+sdItemToUMR as Meta.Source: Text: UMR =
     source: fileName:
     fileName
     >> Text.replace ".sp" ""
-    >> Meta.UMR source
+    >> UMR source
 
 
 updateSourceDir as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
@@ -237,7 +237,7 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
         List.map2 updateSourceDir allSourceDirLists modulesFile.sourceDirs
 
     { modulesFile with sourceDirs = updatedSourceDirs }
-    >> todo "ModulesFile.toMeta"
+    >> ModulesFile.toMeta
     >> IO.succeed
 
 
@@ -274,7 +274,7 @@ mergeWithCore as CA.Module: CA.Module: CA.Module =
 
 #    xxx = Dict.join coreModule.valueDefs userModule.valueDefs
 #
-#    if userModule.umr == Meta.UMR Meta.Core "Tuple" then
+#    if userModule.umr == UMR Meta.Core "Tuple" then
 #      List.each (Dict.keys xxx) k:
 #        log "*" k
 #      None
@@ -307,6 +307,28 @@ compileMain as CompileMainPars: IO Int =
     entryModulePath =
         Path.resolve [ pars.entryModulePath ]
 
+
+
+    IO.readFile entryModulePath
+    >> IO.onSuccess moduleAsText:
+
+    moduleAsText
+    >> Compiler/Parser.textToFormattableModule { moduleName = entryModulePath, stripLocations = False }
+    >> resToIo { moduleByName = Dict.singleton entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
+    >> IO.onSuccess out:
+
+    log "==" out
+
+    IO.writeStdout "done"
+
+
+
+
+
+
+
+
+    [#
     entryModuleDir =
         Path.dirname entryModulePath
 
@@ -338,7 +360,7 @@ compileMain as CompileMainPars: IO Int =
                 todo << "Error: you are asking me to compile module " .. entryModulePath .. " but I can't find it anywhere."
 
             Just umr:
-                Meta.USR umr "main"
+                USR umr "main"
 
     #
     # Figure out corelib's root
@@ -375,7 +397,7 @@ compileMain as CompileMainPars: IO Int =
 
     loadAllModules >> IO.onSuccess userModules:
 
-    modules as Dict Meta.UniqueModuleReference CA.Module =
+    modules as Dict UMR CA.Module =
         Prelude.coreModulesByUmr >> List.for userModules module:
             Dict.update module.umr maybeCore:
                 try maybeCore as
@@ -440,3 +462,4 @@ compileMain as CompileMainPars: IO Int =
 
     IO.writeStdout << "---> " .. outputFile .. " written. =)"
 
+    #]

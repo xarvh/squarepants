@@ -75,11 +75,11 @@ forall as List Text: Dict Text TA.TypeClasses =
 
 function as TA.Type: TA.Type: TA.Type =
     from: to:
-    TA.TypeFunction Pos.T from LambdaNormal to
+    TA.TypeFn Pos.T [False & from] to
 
 
-typeFunction as TA.Type: LambdaModifier: TA.Type: TA.Type =
-    TA.TypeFunction Pos.T
+#typeFunction as TA.Type: LambdaModifier: TA.Type: TA.Type =
+#    TA.TypeFn Pos.T
 
 
 #typeVariable as Name: TA.Type =
@@ -120,15 +120,15 @@ infer as Text: Text: Result Text Out =
         { typeCheckGlobalEnv_ with
         , variables = .variables
             >> Dict.insert
-                (CA.RefGlobal << Meta.USR TH.moduleUmr "add")
+                (CA.RefGlobal << USR TH.moduleUmr "add")
                 {
                 , type = function tyNumber (function tyNumber tyNumber)
                 , tyvars = Dict.empty
                 }
             >> Dict.insert
-                (CA.RefGlobal << Meta.USR TH.moduleUmr "reset")
+                (CA.RefGlobal << USR TH.moduleUmr "reset")
                 {
-                , type = typeFunction tyNumber LambdaNormal tyNone
+                , type = todo "typeFunction tyNumber LambdaNormal tyNone"
                 , tyvars = Dict.empty
                 }
         }

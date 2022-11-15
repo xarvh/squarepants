@@ -79,14 +79,14 @@ insertModule as Meta.Source: Module: Meta: Meta =
         mod.visibleAs
 
     umr =
-        Meta.UMR source mod.path
+        UMR source mod.path
 
     insertGlobal =
        varName:
        # TODO fail if varName is used already
        varName
            # TODO should probably split on module load instead
-           >> Meta.USR umr
+           >> USR umr
            >> Dict.insert varName
 
     {

@@ -7,12 +7,12 @@ p as Pos =
     Pos.N
 
 
-umr as Meta.UniqueModuleReference =
-    Meta.UMR Meta.Core "Core"
+umr as UMR =
+    UMR Meta.Core "Core"
 
 
-makeUsr as Name: Meta.UniqueSymbolReference =
-    Meta.USR umr
+makeUsr as Name: USR =
+    USR umr
 
 
 nameToType as Text: [CA.Type]: CA.Type =
@@ -27,7 +27,7 @@ defToType as CA.UnionDef: [CA.Type]: CA.Type =
     CA.TypeNamed p def.usr
 
 
-usrToVariable as Meta.UniqueSymbolReference: CA.Expression =
+usrToVariable as USR: CA.Expression =
     u:
     CA.Variable p (CA.RefGlobal u)
 
@@ -78,7 +78,7 @@ noneName =
 none as CA.Type =
     nameToType noneName []
 
-noneValue as Meta.UniqueSymbolReference =
+noneValue as USR =
     makeUsr noneName
 
 
@@ -97,11 +97,11 @@ noneDef as CA.UnionDef =
 #
 
 
-true as Meta.UniqueSymbolReference =
+true as USR =
     makeUsr "True"
 
 
-false as Meta.UniqueSymbolReference =
+false as USR =
     makeUsr "False"
 
 
@@ -127,11 +127,11 @@ boolDef as CA.UnionDef =
 #
 
 
-nil as Meta.UniqueSymbolReference =
+nil as USR =
     makeUsr "Nil"
 
 
-cons as Meta.UniqueSymbolReference =
+cons as USR =
     makeUsr "Cons"
 
 
@@ -151,7 +151,7 @@ listDef as CA.UnionDef =
         [ item, list item ]
 
     type as CA.Type =
-        List.forReversed args (ar: ty: CA.TypeFunction p [LambdaNormal & ar] ty) (list item)
+        List.forReversed args (ar: ty: CA.TypeFn p [False & ar] ty) (list item)
 
     consDef as CA.Constructor = {
         , pos = p

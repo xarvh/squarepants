@@ -75,18 +75,18 @@ translateSource as State@: Meta.Source: Text =
                     id
 
 
-makeTextUsr as State@: Meta.UniqueModuleReference: DollarName: Name =
+makeTextUsr as State@: UMR: DollarName: Name =
     state@: umr: (DollarName name):
 
-    Meta.UMR source modulePath =
+    UMR source modulePath =
         umr
 
     "$" .. translateSource @state source .. "$" .. Text.replace "/" "$" modulePath .. name
 
 
-translateUsr as State@: Meta.UniqueSymbolReference: Text =
+translateUsr as State@: USR: Text =
     state@: usr:
-    Meta.USR umr name = usr
+    USR umr name = usr
     makeTextUsr @state umr (userSpecifiedName name)
 
 
@@ -181,7 +181,7 @@ testPattern as Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
         TA.PatternLiteralNumber _  num:
             EA.ShallowEqual (EA.LiteralNumber num) valueToTest :: accum
 
-        TA.PatternConstructor _ (Meta.USR umr name) pas:
+        TA.PatternConstructor _ (USR umr name) pas:
             (EA.IsConstructor name valueToTest :: accum)
             >> List.indexedFor pas index: argPattern:
                 testPattern argPattern (EA.ConstructorAccess index valueToTest)
@@ -207,31 +207,32 @@ translateExpression as State@: Int@: Expression: EA.Expression =
         TA.Constructor _ usr:
             EA.Constructor (translateUsr @state usr)
 
-        TA.Lambda pos pattern isConsuming body:
-            try pickMainName pattern as
-                NoNamedVariables:
-                    EA.Lambda Nothing (translateExpression @state @counter body)
-
-                TrivialPattern (DollarName argName):
-                    EA.Lambda (Just argName) (translateExpression @state @counter body)
-
-                SafeMainName (DollarName mainName):
-                    namesAndExpressions =
-                         translatePattern pattern (EA.Variable mainName [])
-
-                    wrapWithArgumentLetIn =
-                        (isUnique & DollarName varName & letExpression): inExpression:
-                        EA.LetIn {
-                            , maybeName = Just varName
-                            #, isUnique
-                            , letExpression
-                            , inExpression
-                            }
-
-                    body
-                    >> translateExpression @state @counter
-                    >> List.for namesAndExpressions wrapWithArgumentLetIn
-                    >> EA.Lambda (Just mainName)
+        TA.Fn pos args body:
+            todo "TA.Fn"
+#            try pickMainName pattern as
+#                NoNamedVariables:
+#                    EA.Lambda Nothing (translateExpression @state @counter body)
+#
+#                TrivialPattern (DollarName argName):
+#                    EA.Lambda (Just argName) (translateExpression @state @counter body)
+#
+#                SafeMainName (DollarName mainName):
+#                    namesAndExpressions =
+#                         translatePattern pattern (EA.Variable mainName [])
+#
+#                    wrapWithArgumentLetIn =
+#                        (isUnique & DollarName varName & letExpression): inExpression:
+#                        EA.LetIn {
+#                            , maybeName = Just varName
+#                            #, isUnique
+#                            , letExpression
+#                            , inExpression
+#                            }
+#
+#                    body
+#                    >> translateExpression @state @counter
+#                    >> List.for namesAndExpressions wrapWithArgumentLetIn
+#                    >> EA.Lambda (Just mainName)
 
         TA.Record _ extends attrs:
             attrs
@@ -320,7 +321,8 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                         }
 
                 TrivialPattern (DollarName defName):
-                    EA.LetIn {
+                    EA.LetIn
+                        {
                         , maybeName = Just defName
                         #, isUnique = TA.patternContainsUnique valueDef.pattern
                         , letExpression = translateExpression @state @counter valueDef.body
@@ -354,7 +356,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                     >> wrapWithActualLetIn
 
 
-translateRootValueDef as State@: Meta.UniqueModuleReference: TA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
+translateRootValueDef as State@: UMR: TA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
     state@: umr: def: accum:
 
     counter @= 0

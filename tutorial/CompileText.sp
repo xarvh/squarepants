@@ -48,11 +48,11 @@ onResSuccess as Error.Env: (a: Result Text b): Res a: Result Text b =
 # Module loading
 #
 
-loadModule as Meta: Meta.UniqueModuleReference: Text: Res CA.Module =
+loadModule as Meta: UMR: Text: Res CA.Module =
     meta: umr: moduleAsText:
 
     # TODO get rid of eenv so this is not needed
-    Meta.UMR source moduleName =
+    UMR source moduleName =
         umr
 
     params as Compiler/MakeCanonical.Params = {
@@ -139,11 +139,11 @@ main as Text: Result Text Text =
               Debug.todo "This is a compiler bug, not your fault."
 
     umr =
-        Meta.UMR (Meta.SourceDir inputFileName) inputFileName
+        UMR (Meta.SourceDir inputFileName) inputFileName
 
 
     entryUsr =
-      Meta.USR umr "pixelColor"
+      USR umr "pixelColor"
 
 
     code:

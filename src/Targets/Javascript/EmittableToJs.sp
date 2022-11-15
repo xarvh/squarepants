@@ -18,9 +18,9 @@ union Override = Override (Env: [EA.Expression & Bool]: JA.Expr)
 coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     emState@:
 
-    corelib as Text: Text: Meta.UniqueSymbolReference =
+    corelib as Text: Text: USR =
         m: n:
-        Meta.USR (Meta.UMR Meta.Core m) n
+        USR (UMR Meta.Core m) n
 
     [
     , Prelude.unaryPlus.usr & unaryPlus
@@ -587,10 +587,10 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
 
-translateConstructor as Compiler/MakeEmittable.State@: Meta.UniqueSymbolReference & TA.Constructor: JA.Statement =
+translateConstructor as Compiler/MakeEmittable.State@: USR & TA.Constructor: JA.Statement =
     emState@: (usr & caCons):
 
-    Meta.USR umr slug =
+    USR umr slug =
         usr
 
     usrAsText =
@@ -630,9 +630,9 @@ translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
 
 alias TranslateAllPars = {
     , errorEnv as Error.Env
-    , caConstructors as [Meta.UniqueSymbolReference & TA.Constructor]
+    , caConstructors as [USR & TA.Constructor]
     , eaDefs as [EA.GlobalDefinition]
-    , platformOverrides as [Meta.UniqueSymbolReference & Text]
+    , platformOverrides as [USR & Text]
     }
 
 translateAll as Compiler/MakeEmittable.State@: TranslateAllPars: [JA.Statement] =

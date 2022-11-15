@@ -25,10 +25,10 @@ parensIf as Bool: Text: Text =
 # Ref
 #
 
-usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text =
+usrToText as UMR: Meta: USR: Text =
     currentUmr: meta: usr:
 
-    Meta.USR moduleUmr name =
+    USR moduleUmr name =
         usr
 
     if currentUmr == moduleUmr then
@@ -50,7 +50,7 @@ usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text 
                         moduleAlias .. "." .. name
 
                     Nothing:
-                        Meta.UMR souece modulePath =
+                        UMR souece modulePath =
                             moduleUmr
 
                         # INFORMATION LOSS: source
@@ -60,12 +60,12 @@ usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text 
 #
 # Type
 #
-typeToText as Meta.UniqueModuleReference: Meta: CA.Type: Text =
+typeToText as UMR: Meta: CA.Type: Text =
     currentUmr: meta: t:
     t >> typeToPriorityAndText currentUmr meta >> Tuple.second
 
 
-typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
+typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
     currentUmr: meta: type:
 
     parensIfGreaterThan as Int: CA.Type: Text =
@@ -86,13 +86,14 @@ typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
         CA.TypeAnnotationVariable pos name:
             ( 0 & name)
 
-        CA.TypeFunction pos from lambdaModifier to:
-            arrow =
-                try lambdaModifier as
-                    LambdaNormal: ": "
-                    LambdaConsuming: ":- "
-
-            ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
+        CA.TypeFn pos pars to:
+            todo "CA.TypeFn"
+#            arrow =
+#                try lambdaModifier as
+#                    LambdaNormal: ": "
+#                    LambdaConsuming: ":- "
+#
+#            ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
 
         CA.TypeRecord pos attrs:
 
@@ -261,10 +262,10 @@ normType as CA.Type: NormMonad CA.Type =
             normName name >> andThen n:
             return << CA.TypeAnnotationVariable pos n
 
-        CA.TypeFunction pos from0 fromIsMut to0:
+        CA.TypeFn pos from0 fromIsMut to0:
             (normType from0) >> andThen from1:
             (normType to0) >> andThen to1:
-            return << CA.TypeFunction pos from1 fromIsMut to1
+            return << CA.TypeFn pos from1 fromIsMut to1
 
         CA.TypeRecord pos attrs0:
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:

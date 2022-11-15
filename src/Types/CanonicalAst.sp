@@ -1,12 +1,4 @@
 
-#
-# All and TypeDef are not (yet) used for the AST, but just as intermediate types
-# Probably will be used in the AST once we properly track dependencies
-#
-alias All a =
-    Dict Meta.UniqueSymbolReference a
-
-
 union TypeDef =
     , TypeDefAlias AliasDef
     , TypeDefUnion UnionDef
@@ -22,17 +14,12 @@ union Ref =
     # This is for stuff defined inside the current function/block
     , RefLocal Name
     # This is for stuff defined at root level
-    , RefGlobal Meta.UniqueSymbolReference
-
-
-union LambdaModifier =
-    , LambdaNormal
-    , LambdaRecycle
+    , RefGlobal USR
 
 
 union Type =
-    , TypeNamed Pos Meta.UniqueSymbolReference [Type]
-    , TypeFunction Pos [LambdaModifier & Type] Type
+    , TypeNamed Pos USR [Type]
+    , TypeFn Pos [Bool & Type] Type
     , TypeRecord Pos (Dict Name Type)
     , TypeUnique Pos Type
     , TypeAnnotationVariable Pos Name
@@ -42,8 +29,8 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
-    , Constructor Pos Meta.UniqueSymbolReference
-    , Lambda Pos Pattern LambdaModifier Expression
+    , Constructor Pos USR
+    , Fn Pos [Bool & Pattern] Expression
     , Call Pos Expression Argument
     , CallCo Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -73,7 +60,7 @@ union Pattern =
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos Meta.UniqueSymbolReference [Pattern]
+    , PatternConstructor Pos USR [Pattern]
     , PatternRecord Pos Completeness (Dict Name Pattern)
 
 
@@ -97,8 +84,8 @@ alias ValueDef = {
 
     # Do we need these here?
     , directTypeDeps as TypeDeps
-    , directConsDeps as Set Meta.UniqueSymbolReference
-    , directValueDeps as Set Meta.UniqueSymbolReference
+    , directConsDeps as Set USR
+    , directValueDeps as Set USR
     }
 
 
@@ -109,10 +96,10 @@ alias ValueDef = {
 #
 
 alias TypeDeps =
-    Set Meta.UniqueSymbolReference
+    Set USR
 
 alias AliasDef = {
-    , usr as Meta.UniqueSymbolReference
+    , usr as USR
     , args as [At Name]
     , type as Type
     , directTypeDeps as TypeDeps
@@ -120,7 +107,7 @@ alias AliasDef = {
 
 
 alias UnionDef = {
-    , usr as Meta.UniqueSymbolReference
+    , usr as USR
     , args as [Name]
     , constructors as Dict Name Constructor
     , directTypeDeps as TypeDeps
@@ -131,7 +118,7 @@ alias Constructor = {
     , pos as Pos
 
     # type and args are redundant
-    , typeUsr as Meta.UniqueSymbolReference
+    , typeUsr as USR
     , type as Type
 
     # TODO these are pars, not args
@@ -140,7 +127,7 @@ alias Constructor = {
 
 
 alias Module = {
-    , umr as Meta.UniqueModuleReference
+    , umr as UMR
     , asText as Text
 
     , aliasDefs as Dict Name AliasDef
@@ -149,7 +136,7 @@ alias Module = {
     }
 
 
-initModule as Text: Meta.UniqueModuleReference: Module =
+initModule as Text: UMR: Module =
     asText: umr:
     {
     , umr
@@ -187,11 +174,16 @@ skipLetIns as CA.Expression: CA.Expression =
 #        #TypeGeneratedVar _: Pos.I 3
 #        #TypeAnnotatedVar p _: p
 #        TypeVariable p _ _: p
-#        TypeFunction p _ _ _: p
+#        TypeFn p _ _ _: p
 #        TypeRecord p _: p
 #        TypeRecordExt p _ _ _: p
 #        TypeAlias p _ _: p
 #        TypeMutable p _: p
+
+
+unmod as [Bool & param]: [param] =
+    List.map Tuple.second
+
 
 
 typeTyvars as Type: Dict Name Pos =
@@ -204,7 +196,7 @@ typeTyvars as Type: Dict Name Pos =
     try ty as
         TypeOpaque _ _ args: fromList args
         TypeAlias _ _ args: fromList args
-        TypeFunction _ from _ to: fromList [from, to]
+        TypeFn _ pars to: fromList << to :: unmod pars
         TypeRecord _ attrs: fromList (Dict.values attrs)
         TypeUnique _ t: typeTyvars t
         TypeAnnotationVariable pos name: Dict.singleton name pos
@@ -274,22 +266,4 @@ patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotati
 #        If pos _: pos
 #        Try pos _ _: pos
 #        LetIn valueDef _: patternPos valueDef.pattern
-
-
-#
-# Stuff that should live... somewhere else?
-#
-
-#alias InstanceVariable = {
-#    , definedAt as Pos
-#    , type as Type
-#    , isUnique as Bool
-#    }
-#
-#
-#alias Globals = {
-#    , types as CA.All (CA.TypeDef)
-#    , constructors as CA.All (CA.Constructor)
-#    , instanceVariables as ByUsr InstanceVariable
-#    }
 
