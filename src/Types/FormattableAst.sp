@@ -113,6 +113,9 @@ alias RecordAttribute =
     }
 
 
+sepToList as SepList sep item: [item] =
+    (head & tuples):
+    head :: List.map Tuple.second tuples
 
 
 statementPos as Statement: Pos =

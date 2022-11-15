@@ -122,8 +122,8 @@ union Error_ =
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
     , ErrorIncompatibleTypes
-    , ErrorVariableTypeIncompatible CA.Ref TypeWithClasses CA.CanonicalType
-    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference TA.Type CA.CanonicalType
+    , ErrorVariableTypeIncompatible CA.Ref TypeWithClasses CA.Type
+    , ErrorConstructorTypeIncompatible Meta.UniqueSymbolReference TA.Type CA.Type
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
@@ -257,7 +257,7 @@ generalize as Env: TypeWithClasses: State@: TA.Type =
 # Types
 #
 #
-variableIsCompatibleWith as Env: CA.CanonicalType: TA.Type: Bool =
+variableIsCompatibleWith as Env: CA.Type: TA.Type: Bool =
     # This function is used to ensure that when a variable (or a constructor)
     # from env can be used with the annotated/expected type
     env: expected: variableType:
@@ -695,7 +695,7 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
 
 
 
-checkExpression as Env: CA.CanonicalType: CA.Expression: State@: TA.Expression =
+checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
     env: expectedType: caExpression: state@:
 
     try caExpression & expectedType as
@@ -993,7 +993,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
 alias PatternOut = {
     , patternType as TA.Type
     , typedPattern as TA.Pattern
-    , maybeFullAnnotation as Maybe CA.CanonicalType
+    , maybeFullAnnotation as Maybe CA.Type
     , env as Env
     }
 
@@ -1153,7 +1153,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
 
 
 
-checkPattern as Env: CA.CanonicalType: CA.Pattern: State@: TA.Pattern & Env =
+checkPattern as Env: CA.Type: CA.Pattern: State@: TA.Pattern & Env =
     env: expectedType: pattern: state@:
 
     # TODO

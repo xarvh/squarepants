@@ -31,22 +31,22 @@ tupleUsr as Text: Meta.UniqueSymbolReference =
 # Helpers
 #
 
-tyVar as Name: CA.CanonicalType =
+tyVar as Name: CA.Type =
     name:
     CA.TypeAnnotationVariable Pos.N name
 
 
-tyFun as CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
+tyFun as CA.Type: CA.Type: CA.Type =
     from: to:
     CA.TypeFunction Pos.N from LambdaNormal to
 
 
-typeUnopUniform as CA.CanonicalType: CA.CanonicalType =
+typeUnopUniform as CA.Type: CA.Type =
     type:
     tyFun type type
 
 
-typeBinop as CA.CanonicalType: CA.CanonicalType: CA.CanonicalType: CA.CanonicalType =
+typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
     left: right: return:
     tyFun
         right
@@ -56,7 +56,7 @@ typeBinop as CA.CanonicalType: CA.CanonicalType: CA.CanonicalType: CA.CanonicalT
         )
 
 
-typeBinopUniform as CA.CanonicalType: CA.CanonicalType =
+typeBinopUniform as CA.Type: CA.Type =
     ty:
     typeBinop ty ty ty
 
@@ -355,7 +355,7 @@ sendLeft as Op.Binop = {
 
 alias Function = {
     , usr as Meta.UniqueSymbolReference
-    , type as CA.CanonicalType
+    , type as CA.Type
     , nonFn as [Text]
     }
 
@@ -438,7 +438,7 @@ alias ModuleByUmr =
     Dict Meta.UniqueModuleReference (CA.Module)
 
 
-insertInModule as Meta.UniqueSymbolReference: CA.CanonicalType: [Name]: ModuleByUmr: ModuleByUmr =
+insertInModule as Meta.UniqueSymbolReference: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
     usr: type: nonFn:
 
     Meta.USR umr name =

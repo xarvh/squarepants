@@ -12,10 +12,6 @@ return as a: StateMonad.M state a =
     StateMonad.return
 
 
-alias Type =
-    CA.CanonicalType
-
-
 parensIf as Bool: Text: Text =
    test: s:
     if test then
@@ -64,15 +60,15 @@ usrToText as Meta.UniqueModuleReference: Meta: Meta.UniqueSymbolReference: Text 
 #
 # Type
 #
-typeToText as Meta.UniqueModuleReference: Meta: Type: Text =
+typeToText as Meta.UniqueModuleReference: Meta: CA.Type: Text =
     currentUmr: meta: t:
     t >> typeToPriorityAndText currentUmr meta >> Tuple.second
 
 
-typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.CanonicalType: Int & Text =
+typeToPriorityAndText as Meta.UniqueModuleReference: Meta: CA.Type: Int & Text =
     currentUmr: meta: type:
 
-    parensIfGreaterThan as Int: Type: Text =
+    parensIfGreaterThan as Int: CA.Type: Text =
         threshold: ty:
 
         pri & str =
@@ -226,12 +222,12 @@ newName as NormMonad Text =
     ( intToName state.next [] & { state with next = state.next + 1 })
 
 
-normalizeType as Type: Type =
+normalizeType as CA.Type: CA.Type =
     t:
     t >> normType >> StateMonad.run initNstate >> Tuple.first
 
 
-normalizeTypeAndTyvars as Type: Dict Text a: ( Type & Dict Text a ) =
+normalizeTypeAndTyvars as CA.Type: Dict Text a: ( CA.Type & Dict Text a ) =
     tyOld: tyvarsOld:
 
     ( tyNew & state ) =
@@ -250,7 +246,7 @@ normalizeTypeAndTyvars as Type: Dict Text a: ( Type & Dict Text a ) =
     ( tyNew & tyvarsNew )
 
 
-normType as Type: NormMonad Type =
+normType as CA.Type: NormMonad CA.Type =
     ty:
     try ty as
         CA.TypeOpaque pos name args:

@@ -31,16 +31,11 @@ union LambdaModifier =
 
 
 union Type =
-    , TypeOpaque Pos Meta.UniqueSymbolReference [Type]
-    , TypeAlias Pos Meta.UniqueSymbolReference [Type]
-    , TypeFunction Pos Type LambdaModifier Type
+    , TypeNamed Pos Meta.UniqueSymbolReference [Type]
+    , TypeFunction Pos [LambdaModifier & Type] Type
     , TypeRecord Pos (Dict Name Type)
     , TypeUnique Pos Type
     , TypeAnnotationVariable Pos Name
-
-
-alias CanonicalType =
-    Type
 
 
 union Expression =
@@ -74,7 +69,7 @@ union Pattern =
     , PatternAny Pos {
         , isUnique as Bool
         , maybeName as Maybe Text
-        , maybeAnnotation as Maybe CanonicalType
+        , maybeAnnotation as Maybe Type
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
@@ -138,6 +133,8 @@ alias Constructor = {
     # type and args are redundant
     , typeUsr as Meta.UniqueSymbolReference
     , type as Type
+
+    # TODO these are pars, not args
     , args as [Type]
     }
 
