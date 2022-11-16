@@ -58,7 +58,7 @@ union Kind =
     , ThreeDots
     # Ops
     , Defop
-    , Unop Op.Unop
+    , Unop Op.UnopId
     , Binop Op.Binop
     # Parens
     , RoundParen OpenOrClosed

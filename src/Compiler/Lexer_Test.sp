@@ -155,7 +155,7 @@ unaryAddittiveOps as Test =
             (Test.isOkAndEqualTo
                 [
                 , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << Token.Unop Prelude.unaryMinus
+                , Token n 0 1 << Token.Unop Op.UnopMinus
                 , Token n 1 2 << lowerName "a"
                 ]
             )
@@ -167,7 +167,7 @@ unaryAddittiveOps as Test =
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << lowerName "a"
                 , Token n 2 3 << Token.Binop Prelude.subtract
-                , Token n 4 5 << Token.Unop Prelude.unaryMinus
+                , Token n 4 5 << Token.Unop Op.UnopMinus
                 , Token n 5 6 << lowerName "a"
                 ]
             )
@@ -178,7 +178,7 @@ unaryAddittiveOps as Test =
                 [
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << lowerName "a"
-                , Token n 1 2 << Token.Unop Prelude.unaryMinus
+                , Token n 1 2 << Token.Unop Op.UnopMinus
                 , Token n 2 3 << lowerName "a"
                 ]
             )

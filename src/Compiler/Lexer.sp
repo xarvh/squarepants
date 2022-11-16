@@ -451,11 +451,11 @@ addSquiggleToken as Bool: ReadState@: None =
 
     try chunk as
         ":": add << Token.Colon
-#        ":-": add << Token.ConsumingColon
         "=": add << Token.Defop
-#        "@": add << Token.Mutop
-        "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Prelude.unaryMinus)
-        "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Prelude.unaryPlus)
+        "!": add << Token.Unop Op.UnopUnique
+        "@": add << Token.Unop Op.UnopRecycle
+        "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Op.UnopMinus)
+        "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Op.UnopPlus)
         op:
             try Dict.get chunk Prelude.binopsBySymbol as
                 Just binop:

@@ -130,10 +130,10 @@ unionTypes as Test =
         """
         [
         , codeTest
-            "SKIP tuples op precedence"
+            "tuples op precedence"
             "union A = X Bool & Bool"
             textToModule
-            (Test.errorContains ["operators"])
+            (Test.errorContains ["expecting a constructor"])
         , codeTest
             """
             Tuples op precedence works with parens
@@ -145,13 +145,13 @@ unionTypes as Test =
             Test.isOk
         , codeTest
             """
-            SKIP [reg] Should reject uppercase arg name
+            [reg] Should reject uppercase arg name
             """
             """
             union Outcome Token output = A
             """
             textToModule
-            (Test.errorContains ["Token"])
+            (Test.errorContains ["must start with a lowercase"])
         ]
 
 
@@ -181,14 +181,6 @@ binops as Test =
             """
             transformAB
             (shouldHaveSameAB x: x.body)
-        , codeTest "SKIP functional notation"
-            """
-            a = (-)
-            """
-            (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.Variable p (CA.RefGlobal (CoreTypes.makeUsr "-"))
-            )
         ]
 
 

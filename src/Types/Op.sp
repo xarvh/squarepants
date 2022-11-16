@@ -1,4 +1,10 @@
 
+union UnopId =
+    , UnopPlus
+    , UnopMinus
+    , UnopUnique
+    , UnopRecycle
+
 
 alias Unop = {
     , symbol as Text

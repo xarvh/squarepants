@@ -370,8 +370,8 @@ translatePatternConstructor as Env: Pos: Token.Word: [CA.Pattern]: Res CA.Patter
         >> Ok
 
 
-translatePatternAny as Env: Pos: Maybe FA.Expression: Token.Word: Res CA.Pattern =
-    env: pos: maybeFaType: word:
+translatePatternAny as Env: Pos: Bool: Maybe FA.Expression: Token.Word: Res CA.Pattern =
+    env: pos: isUnique: maybeFaType: word:
 
     if word.modifier /= Token.NameNoModifier then
         error pos [ "Record access shorthands" ]
@@ -396,8 +396,7 @@ translatePatternAny as Env: Pos: Maybe FA.Expression: Token.Word: Res CA.Pattern
         maybeName =
             if word.name == "_" then Nothing else Just word.name
 
-        # TODO isUnique
-        Ok << CA.PatternAny pos { isUnique = False, maybeName, maybeAnnotation = maybeCaType }
+        Ok << CA.PatternAny pos { isUnique, maybeName, maybeAnnotation = maybeCaType }
 
 
 insertAttribute as Env: FA.RecordAttribute: Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
@@ -502,6 +501,12 @@ translatePattern as Env: FA.Expression: Res CA.Pattern =
 
     try expr_ as
 
+        FA.Unop Op.UnopUnique (FA.Expression pos (FA.Variable { maybeType, word })):
+            if word.isUpper then
+                error pos [ "Constructor functions can't be unique" ]
+            else
+                translatePatternAny env pos True maybeType word
+
         FA.Variable { maybeType, word }:
 
             if word.isUpper then
@@ -510,7 +515,7 @@ translatePattern as Env: FA.Expression: Res CA.Pattern =
                 else
                     translatePatternConstructor env pos word []
             else
-                translatePatternAny env pos maybeType word
+                translatePatternAny env pos False maybeType word
 
         FA.Call (FA.Expression pos ref) faArgs:
             try ref as
@@ -562,7 +567,8 @@ translatePattern as Env: FA.Expression: Res CA.Pattern =
                         try lastFaExpr as
                             FA.Variable { maybeType, word }:
 
-                                translatePatternAny env pos maybeType word
+                                # TODO there is no reason why this couldn't be unique
+                                translatePatternAny env pos False maybeType word
                                 >> onOk caInit:
 
                                 List.for reversedCaRest pushItem caInit
@@ -759,14 +765,18 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             >> CA.If pos
             >> Ok
 
-        FA.Unop op faOperand:
-            translateExpression env faOperand
-            >> onOk caOperand:
+        FA.Unop opId faOperand:
+            try opId as
+                Op.UnopUnique: error pos [ "can't use ! here because REASONS" ]
+                Op.UnopRecycle: error pos [ "can recycle only in function calls!" ]
+                Op.UnopPlus: translateExpression env faOperand
+                Op.UnopMinus:
+                    faOperand
+                    >> translateExpression env
+                    >> onOk caOperand:
 
-            CA.Call pos
-                (CA.Variable pos (CA.RefGlobal op.usr))
-                [CA.ArgumentExpression caOperand]
-            >> Ok
+                    CA.Call pos (CA.Variable pos (CA.RefGlobal Prelude.unaryMinus.usr)) [CA.ArgumentExpression caOperand]
+                    >> Ok
 
         FA.Binop group sepList:
             translateBinops env pos group sepList
@@ -881,7 +891,7 @@ translateParameter as Env: FA.Expression: Res CA.Parameter =
 
     maybeRecycle =
         try faExpr as
-            FA.Unop { symbol = "@", type, usr } (FA.Expression p faOperand):
+            FA.Unop Op.UnopRecycle (FA.Expression p faOperand):
                 try faOperand as
                     FA.Variable { maybeType = Nothing, word }:
                         Ok (Just word)
@@ -1004,7 +1014,7 @@ translateArgument as Env: FA.Expression: Res (CA.Argument) =
     env: faExpr:
 
     try faExpr as
-        FA.Expression _ (FA.Unop { symbol = "@", type, usr } (FA.Expression pos faOperand)):
+        FA.Expression _ (FA.Unop Op.UnopRecycle (FA.Expression pos faOperand)):
             try faOperand as
                 FA.Variable { maybeType, word }:
                     if maybeType /= Nothing then
@@ -1287,6 +1297,26 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
     ro: (FA.Expression pos expr_):
 
     try expr_ as
+        FA.Variable { maybeType, word }:
+            if maybeType /= Nothing then
+                error pos [ "Can't really specify the type of a type." ]
+            else if word.isUpper then
+                translateNamedType ro pos word []
+            else
+                translateTypeVariable pos word
+
+        FA.Call (FA.Expression refPos ref) faArgs:
+            try ref as
+                FA.Variable { maybeType = Nothing, word }:
+                    faArgs
+                    >> List.mapRes (translateType ro)
+                    >> onOk caArgs:
+
+                    translateNamedType ro refPos word caArgs
+
+                _:
+                    error refPos [ "I was expecting a named type here" ]
+
         FA.List dotsAndItems:
             try dotsAndItems as
                 []:
@@ -1318,14 +1348,6 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
                 >> CA.TypeRecord pos
                 >> Ok
 
-        FA.Variable { maybeType, word }:
-            if maybeType /= Nothing then
-                error pos [ "Can't really specify the type of a type." ]
-            else if word.isUpper then
-                translateNamedType ro pos word []
-            else
-                translateTypeVariable pos word
-
         FA.Fn faParams faReturn:
             faParams
             >> List.mapRes (translateType ro)
@@ -1338,18 +1360,6 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             CA.TypeFn pos (List.map (t: False & t) caParams) caReturn
             >> Ok
 
-        FA.Call (FA.Expression refPos ref) faArgs:
-            try ref as
-                FA.Variable { maybeType = Nothing, word }:
-                    faArgs
-                    >> List.mapRes (translateType ro)
-                    >> onOk caArgs:
-
-                    translateNamedType ro refPos word caArgs
-
-                _:
-                    error refPos [ "I was expecting a named type here" ]
-
         FA.Binop Op.Tuple sepList:
             sepList
             >> translateTuple (translateType ro)
@@ -1358,8 +1368,16 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             CA.TypeRecord pos recordAttrs
             >> Ok
 
+        FA.Unop Op.UnopUnique faOperand:
+            faOperand
+            >> translateType ro
+            >> onOk caOperand:
+
+            CA.TypeUnique pos caOperand
+            >> Ok
+
         _:
-            # TODO: do all other constructors
+            # TODO: do all other constructors explicitly
             error pos [ "Not sure what's up with this type =|" ]
 
 
