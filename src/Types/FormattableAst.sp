@@ -26,6 +26,7 @@ alias ValueDef =
 alias AliasDef =
     {
     , name as At Token.Word
+    # TODO rename to pars
     , args as [At Token.Word]
     , type as Expression
     }

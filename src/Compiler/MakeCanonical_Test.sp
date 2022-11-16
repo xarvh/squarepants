@@ -65,12 +65,29 @@ shouldHaveSameAB as (ab: c): Test.CodeExpectation ( ab & ab ) =
         , toHuman (getter a)
         , toHuman (getter b)
         ]
-            >> Text.join "\n"
-            >> Just
+        >> Text.join "\n"
+        >> Just
 
 
 p as Pos =
     Pos.T
+
+
+valueDef as Name: CA.Expression: CA.ValueDef =
+    name: body:
+
+    {
+    , pattern = CA.PatternAny Pos.G { isUnique = False, maybeName = Just name, maybeAnnotation = Nothing }
+    , native = False
+    , body
+
+    , tyvars = Dict.empty
+
+    , directTypeDeps = Dict.empty
+    , directConsDeps = Dict.empty
+    , directValueDeps = Dict.empty
+    }
+
 
 
 
@@ -280,7 +297,7 @@ tuples as Test =
               a
             """
             firstDefinition
-            (Test.errorContains ["Use a record"])
+            (Test.errorContains ["use a record"])
         ]
 
 
@@ -335,21 +352,33 @@ records as Test =
         , codeTest "functional update"
             "a = { m with b, c = 1 }"
             (firstEvaluation "a")
-            ([ ( "c" & CA.LiteralNumber p 1 ) , ( "b" & CA.Variable p (TH.rootLocal "b") ) ]
-                >> Dict.fromList
-                >> CA.Record p (Just (CA.Variable p (TH.rootLocal "m" )))
-                >> Test.isOkAndEqualTo
+            (Test.isOkAndEqualTo <<
+                CA.LetIn
+                    (valueDef "0" (CA.Variable p (TH.rootLocal "m" )))
+                    (CA.Record p
+                        (Just (CA.Variable Pos.G (CA.RefLocal "0" )))
+                        (Dict.fromList
+                            [
+                            , "c" & CA.LiteralNumber p 1
+                            , "b" & CA.Variable p (TH.rootLocal "b")
+                            ]
+                        )
+                    )
             )
         , codeTest "update shorthand"
             "b = { a with y = .x }"
             (firstEvaluation "b")
-            (Dict.singleton "y"
-                    (CA.RecordAccess p "x"
-                        (CA.Variable p (TH.rootLocal "a" ))
+            (Test.isOkAndEqualTo <<
+                CA.LetIn
+                    (valueDef "0" (CA.Variable p (TH.rootLocal "a" )))
+                    (CA.Record p
+                        (Just (CA.Variable Pos.G (CA.RefLocal "0" )))
+                        (Dict.fromList
+                            [
+                            , "y" & (CA.RecordAccess p "x" (CA.Variable Pos.G (CA.RefLocal "0" )))
+                            ]
+                        )
                     )
-                >> CA.Record p
-                       (Just (CA.Variable p (TH.rootLocal "a")))
-                >> Test.isOkAndEqualTo
             )
         , codeTest "annotation, extensible"
             """
@@ -372,13 +401,21 @@ patterns as Test =
         """
         Patterns
         """
-        [ codeTest "[reg] record patterns are NOT extensible"
+        [
+        , codeTest "Record patterns can be partial"
+            """
+            a =
+              { with c } = d
+            """
+            (firstEvaluation "a")
+            Test.isOk
+        , codeTest "[reg] record patterns are NOT extensible"
             """
             a =
               { b with c } = d
             """
             (firstEvaluation "a")
-            (Test.errorContains ["with"])
+            (Test.errorContains ["extend pattern"])
         ]
 
 
@@ -393,10 +430,11 @@ annotations as Test =
         """
         Annotations
         """
-        [ codeTest "annotation on mutable value"
+        [
+        , codeTest "annotation on unique value"
             """
             x =
-              @a as Number =
+              !a as !Number =
                 3
               a
             """
@@ -461,7 +499,7 @@ functions as Test =
         [ codeTest "[rec] lambda with two arguments"
             """
             f =
-              a: b: 1
+              fn a, b: 1
             """
             (firstEvaluation "f")
             Test.isOk

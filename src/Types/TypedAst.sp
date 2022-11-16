@@ -184,7 +184,7 @@ alias AliasDef = {
 
 alias UnionDef = {
     , usr as USR
-    , args as [Name]
+    , args as [At Name]
     #, constructors as Dict Name Constructor
     #, directTypeDeps as TypeDeps
     }

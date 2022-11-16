@@ -1,14 +1,14 @@
 
 
-maybe_mapRes as (a: Result e b): Maybe a: Result e (Maybe b) =
-    f: maybeA:
-
-    try maybeA as
-        Nothing:
-            Ok Nothing
-
-        Just a:
-            Result.map Just (f a)
+#maybe_mapRes as (a: Result e b): Maybe a: Result e (Maybe b) =
+#    f: maybeA:
+#
+#    try maybeA as
+#        Nothing:
+#            Ok Nothing
+#
+#        Just a:
+#            Result.map Just (f a)
 
 
 
@@ -19,26 +19,6 @@ alias Params = {
     , source as Meta.Source
     , name as Name
     }
-
-
-textToCanonicalModule as Params: Text: Res CA.Module =
-    pars: code:
-
-    ro as Compiler/MakeCanonical.ReadOnly = {
-        , currentModule = UMR pars.source pars.name
-        , meta = pars.meta
-        }
-
-    umr =
-        UMR pars.source pars.name
-
-    code
-        >> Compiler/Parser.textToFormattableModule {
-            , stripLocations = pars.stripLocations
-            , moduleName = pars.name
-            }
-        >> Result.onOk (x: todo "translateModule ro code umr")
-
 
 
 [#
@@ -228,10 +208,9 @@ expressionDeps as CA.Expression: Deps: Deps =
             { deps with cons = Set.insert usr .cons }
 
         CA.Fn _ pars body:
-            todo "CA.Function"
-#            deps
-#                >> patternDeps pa
-#                >> expressionDeps body
+            deps
+            >> List.for pars parameterDeps
+            >> expressionDeps body
 
         CA.Record _ Nothing exprByName:
             deps
@@ -280,6 +259,14 @@ argumentDeps as CA.Argument: Deps: Deps =
         CA.ArgumentRecycle _ _ _: deps
 
 
+parameterDeps as CA.Parameter: Deps: Deps =
+    par: deps:
+
+    try par as
+        CA.ParameterPattern pa: patternDeps pa deps
+        CA.ParameterRecycle _ _: deps
+
+
 #
 # Definition
 #
@@ -288,18 +275,22 @@ argumentDeps as CA.Argument: Deps: Deps =
 translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
     isRoot: env: fa:
 
-    translatePattern env fa.pattern
+    fa.pattern
+    >> translatePattern env
     >> onOk pattern:
 
+    fa.nonFn
+    >> List.mapRes translateTypeParameter
+    >> onOk nonFn:
+
     tyvars as Dict Name CA.TypeClasses =
-        todo "xxxx"
-#        pattern
-#        >> CA.patternTyvars
-#        >> Dict.map tyvarName: pos:
-#            {
-#            , allowFunctions = Just << not << List.member tyvarName fa.nonFn
-#            , allowUniques = Just False
-#            }
+        pattern
+        >> CA.patternTyvars
+        >> Dict.map tyvarName: pos:
+            {
+            , allowFunctions = Just << List.all ((At pos name): name /= tyvarName) nonFn
+            , allowUniques = Just False
+            }
 
     # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv
 
@@ -327,16 +318,17 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
         else
             deps_init
 
-    Ok {
-        , pattern
-        , tyvars
-        , native = False
-        , body
-        #
-        , directTypeDeps = deps.types
-        , directConsDeps = deps.cons
-        , directValueDeps = deps.values
-        }
+    {
+    , pattern
+    , tyvars
+    , native = False
+    , body
+    #
+    , directTypeDeps = deps.types
+    , directConsDeps = deps.cons
+    , directValueDeps = deps.values
+    }
+    >> Ok
 
 
 
@@ -501,7 +493,7 @@ translateTuple as (FA.Expression: Res ca): FA.SepList Op.Binop FA.Expression: Re
             >> Ok
 
         _:
-            error pos [ "tuples can be only of size 2 or 3" ]
+            error pos [ "tuples can be only of size 2 or 3, use a record instead" ]
 
 
 
@@ -634,46 +626,65 @@ translatePattern as Env: FA.Expression: Res CA.Pattern =
 #
 # Statement
 #
-    [#
-translateStatementBlock as Env: [FA.Statement]: Res CA.Expression =
+translateStatements as Env: [FA.Statement]: Res CA.Expression =
     env: stats:
 
-    todo "translateStatementBlock"
     try stats as
-        FA.TypeAlias fa :: _:
+        []:
+            CoreTypes.noneValue
+            >> CA.Constructor Pos.G
+            >> Ok
+
+        [ FA.Evaluation faExpression ]:
+            translateExpression env faExpression
+
+        FA.Evaluation faExpr :: tail:
+            faExpr
+            >> translateExpression env
+            >> onOk caExpr:
+
+            caDef as CA.ValueDef =
+                {
+                , pattern = CA.PatternAny Pos.G { isUnique = False, maybeName = Nothing, maybeAnnotation = Nothing }
+                , native = False
+                , body = caExpr
+                , tyvars = Dict.empty
+
+                # TODO Do we need these here?
+                , directTypeDeps = Dict.empty
+                , directConsDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                }
+
+            tail
+            >> translateStatements env
+            >> onOk acc:
+
+            CA.LetIn caDef acc
+            >> Ok
+
+        FA.ValueDef fa :: tail:
+            fa
+            >> translateDefinition False env
+            >> onOk caDef:
+
+            newEnv as Env =
+                { env with nonRootValues = Dict.join (CA.patternNames caDef.pattern) .nonRootValues }
+
+            tail
+            >> translateStatements newEnv
+            >> onOk acc:
+
+            CA.LetIn caDef acc
+            >> Ok
+
+        FA.AliasDef fa :: tail:
             At pos _ = fa.name
             error pos [ "Aliases can be declared only in the root scope" ]
 
-        FA.UnionDef pos fa :: _:
+        FA.UnionDef fa :: tail:
+            At pos _ = fa.name
             error pos [ "Types can be declared only in the root scope" ]
-
-        []:
-            Ok << CA.Constructor Pos.G CoreTypes.noneValue
-
-        # Last evaluation in a block is the return statement
-        FA.Evaluation pos faExpr :: []:
-            translateExpression env faExpr >> onOk e:
-            Ok << e
-
-        # Non-last evaluation gets converted into a definition and then into a LetIn
-        FA.Evaluation pos faExpr :: tail:
-            # TODO Non-return, non-mutable, non-debug evaluations should produce an error.
-            valueDef as FA.ValueDef = {
-              , pattern = FA.PatternAny Pos.G False "_" Nothing
-              , nonFn = []
-              , body = [ FA.Evaluation pos faExpr ]
-              }
-
-            translateDefinition False env valueDef >> onOk d:
-            translateStatementBlock env tail >> onOk tailBlockExpression:
-            Ok << CA.LetIn d tailBlockExpression
-
-        FA.Definition pos fa :: tail:
-            translateDefinition False env fa >> onOk d:
-            translateStatementBlock { env with nonRootValues = Dict.join (CA.patternNames d.pattern) .nonRootValues } tail >> onOk tailBlockExpression:
-            Ok << CA.LetIn d tailBlockExpression
-    #]
-
 
 
 ##
@@ -689,50 +700,22 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
         FA.LiteralText v:
             Ok << CA.LiteralText pos v
 
-        FA.PrefixBinop symbol:
-            CoreTypes.makeUsr symbol
-            >> CA.RefGlobal
-            >> CA.Variable pos
-            >> Ok
+        FA.Statements stats:
+            translateStatements env stats
 
-        FA.Variable maybeModule name attrs:
-            declaredInsideFunction =
-                Dict.member name env.nonRootValues
-
-            resolveToValueRef env.ro declaredInsideFunction maybeModule name
-            >> CA.Variable pos
-            >> List.for attrs (CA.RecordAccess pos)
-            >> Ok
-
-        FA.Constructor maybeModule name:
-            resolveToConstructorUsr env.ro maybeModule name
-                >> CA.Constructor pos
-                >> Ok
-
-        FA.RecordShorthand attrPath:
-            try env.maybeShorthandTarget as
-                Nothing:
-                    error pos [
-                        , "Record update shorthands must be used inside a record update such as"
-                        , "    { aRecord with anAttribute = doSomethingWith ." .. Text.join "." attrPath .. " }"
-                        , "but we are not inside a record update!"
-                        ]
-
-                Just shorthandTarget:
-                    shorthandTarget
-                    >> List.for attrPath (attrName: expr: CA.RecordAccess pos attrName expr)
-                    >> Ok
+        FA.Variable { maybeType, word }:
+            translateVariable env pos maybeType word
 
         FA.Fn faParams faBody:
             faParams
             >> List.mapRes (translateParameter env)
             >> onOk caParams:
 
-            localEnv as Env =
-                List.forRes caParams par: envX:
+            zzz as Res Env =
+                env >> List.forRes caParams par: envX:
                     names =
                         try par as
-                            CA.ParameterPattern pa: CA.patternNames caPattern
+                            CA.ParameterPattern pa: CA.patternNames pa
                             CA.ParameterRecycle _ name: Dict.singleton name { pos, isUnique = True, maybeAnnotation = Nothing }
 
                     duplicates =
@@ -742,6 +725,9 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                         error pos [ "parameters shadows these values: " .. Text.join "," duplicates ]
                     else
                         Ok { envX with nonRootValues = Dict.join names .nonRootValues }
+
+            zzz
+            >> onOk localEnv:
 
             faBody
             >> translateExpression localEnv
@@ -786,7 +772,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             translateBinops env pos group sepList
 
         FA.Record { maybeExtension, attrs }:
-            translateRecord env maybeExtension attrs
+            translateRecord env pos maybeExtension attrs
 
         FA.List faDotsAndItems:
 
@@ -846,6 +832,48 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             >> Ok
 
 
+
+
+translateVariable as Env: Pos: Maybe FA.Expression: Token.Word: Res CA.Expression =
+    env: pos: maybeType: word:
+
+    try word.modifier as
+        Token.NameStartsWithDot:
+            if word.isUpper or word.maybeModule /= Nothing then
+                error pos [ "record attribute names must start with a lowercase letter" ]
+            else
+                try env.maybeShorthandTarget as
+                    Nothing:
+                        error pos [
+                            , "Record update shorthands must be used inside a record update such as"
+                            , "    { aRecord with anAttribute = doSomethingWith ." .. Text.join "." word.attrPath .. " }"
+                            , "but we are not inside a record update!"
+                            ]
+
+                    Just shorthandTarget:
+                        shorthandTarget
+                        >> List.for (word.name :: word.attrPath) (attrName: expr: CA.RecordAccess pos attrName expr)
+                        >> Ok
+
+        Token.NameNoModifier:
+            if word.isUpper then
+                if word.attrPath /= [] then
+                    error pos [ "something's wrong with the lexer?" ]
+                else
+                    resolveToConstructorUsr env.ro word.maybeModule word.name
+                        >> CA.Constructor pos
+                        >> Ok
+
+            else
+                declaredInsideFunction =
+                    Dict.member word.name env.nonRootValues
+
+                resolveToValueRef env.ro declaredInsideFunction word.maybeModule word.name
+                >> CA.Variable pos
+                >> List.for word.attrPath (CA.RecordAccess pos)
+                >> Ok
+
+
 translateParameter as Env: FA.Expression: Res CA.Parameter =
     env: fa:
 
@@ -853,12 +881,12 @@ translateParameter as Env: FA.Expression: Res CA.Parameter =
 
     maybeRecycle =
         try faExpr as
-            FA.Unop { symbol = "@", type, usr } faOperand:
+            FA.Unop { symbol = "@", type, usr } (FA.Expression p faOperand):
                 try faOperand as
                     FA.Variable { maybeType = Nothing, word }:
                         Ok (Just word)
                     _:
-                        error pos [ "@ should be followed by a variable name to recycle!" ]
+                        error p [ "@ should be followed by a variable name to recycle!" ]
 
             _:
                 Ok Nothing
@@ -897,10 +925,12 @@ translateNumber as (Pos: Number: a): Pos: Text: Res a =
             Ok << constructor pos n
 
 
-translateRecord as Env: Maybe (Maybe FA.Expression): [FA.RecordAttribute]: Res CA.Expression =
-    zzz =
-        try maybeExtension as
-            Just (Just ext): Ok translateExpression env ext
+translateRecord as Env: Pos: Maybe (Maybe FA.Expression): [FA.RecordAttribute]: Res CA.Expression =
+    env: pos: maybeMaybeExtension: attrs:
+
+    zzz as Res (Maybe CA.Expression) =
+        try maybeMaybeExtension as
+            Just (Just ext): translateExpression env ext >> Result.map Just
             Just Nothing: error pos [ "I need to know what record you are updating" ]
             Nothing: Ok Nothing
 
@@ -910,7 +940,7 @@ translateRecord as Env: Maybe (Maybe FA.Expression): [FA.RecordAttribute]: Res C
     try maybeCaExt as
         Nothing:
             Dict.empty
-            >> List.for attrs (translateAndInsertRecordAttribute { env with maybeShorthandTarget = Nothing })
+            >> List.forRes attrs (translateAndInsertRecordAttribute { env with maybeShorthandTarget = Nothing })
             >> onOk caAttrs:
 
             CA.Record pos Nothing caAttrs
@@ -930,12 +960,12 @@ translateRecord as Env: Maybe (Maybe FA.Expression): [FA.RecordAttribute]: Res C
                 }
 
             Dict.empty
-            >> List.for attrs (translateAndInsertRecordAttribute newEnv)
+            >> List.forRes attrs (translateAndInsertRecordAttribute newEnv)
             >> onOk caAttrs:
 
             def as CA.ValueDef =
                 {
-                , pattern = CA.PatternAny Pos.G { isUnique = False, maybeName = Just varName, maybeType = Nothing }
+                , pattern = CA.PatternAny Pos.G { isUnique = False, maybeName = Just varName, maybeAnnotation = Nothing }
                 , native = False
                 , body = caExt
                 , tyvars = Dict.empty
@@ -966,30 +996,39 @@ translateAndInsertRecordAttribute as Env: FA.RecordAttribute: Dict Text CA.Expre
         >> onOk caExpr:
 
         caAttrsAccum
-        >> Dict.insert caName expr
+        >> Dict.insert caName caExpr
         >> Ok
 
 
 translateArgument as Env: FA.Expression: Res (CA.Argument) =
     env: faExpr:
 
-    todo "translateArgument"
-#    try faExpr as
-#        FA.Mutable pos name attrPath:
-#            if Dict.member name env.nonRootValues then
-#                CA.RefLocal name
-#                >> CA.ArgumentRecycle pos attrPath
-#                >> Ok
-#
-#            else
-#                error pos
-#                    [ "only values declared inside a function scope can be mutated!"
-#                    ]
-#
-#        _:
-#            faExpr
-#                >> translateExpression env
-#                >> Result.map CA.ArgumentExpression
+    try faExpr as
+        FA.Expression _ (FA.Unop { symbol = "@", type, usr } (FA.Expression pos faOperand)):
+            try faOperand as
+                FA.Variable { maybeType, word }:
+                    if maybeType /= Nothing then
+                        error pos [ "Sorry, at least for now annotations are not supported here" ]
+                    else if word.maybeModule /= Nothing then
+                        error pos [ "Only values declared inside a function scope can be mutated!" ]
+                    else if word.modifier /= Token.NameNoModifier then
+                        error pos [ "This can't start with ." ]
+                    else if word.isUpper then
+                        error pos [ "Can't recycle constructors" ]
+                    else
+                        CA.ArgumentRecycle pos word.name word.attrPath
+                        >> Ok
+
+                _:
+                    error pos [ "I can recycle only variables!" ]
+
+        _:
+            faExpr
+            >> translateExpression env
+            >> onOk caExpr:
+
+            CA.ArgumentExpression caExpr
+            >> Ok
 
 
 translateBinops as Env: Pos: Op.Precedence: FA.SepList Op.Binop FA.Expression: Res CA.Expression =
@@ -1379,87 +1418,133 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
         >> Ok
 
 
+translateTypeParameter as At Token.Word: Res (At Name) =
+    (At pos word):
+
+    if word.modifier /= Token.NameNoModifier then
+        error pos [ "Can't start with ." ]
+    else if word.isUpper then
+        error pos [ "type params must start with a lowercase letter" ]
+    else if word.maybeModule /= Nothing then
+        error pos [ "why modules here?" ]
+    else if word.attrPath /= [] then
+        error pos [ "why attrs here?" ]
+    else
+        Ok (At pos word.name)
+
+
+translateTypeName as At Token.Word: Res Name =
+    (At pos word):
+
+    if word.modifier /= Token.NameNoModifier then
+        error pos [ "Can't start with ." ]
+    else if not word.isUpper then
+        error pos [ "type names must start with Uppercase letter" ]
+    else if word.maybeModule /= Nothing then
+        error pos [ "why modules here?" ]
+    else if word.attrPath /= [] then
+        error pos [ "why attrs here?" ]
+    else
+        Ok word.name
+
+
 #
 # Module
 #
 
 
-insertRootStatement as ReadOnly: FA.Statement: CA.Module: Res (CA.Module) =
+insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
     ro: faStatement: caModule:
 
     try faStatement as
         FA.Evaluation (FA.Expression pos _):
             error pos [ "Root Evaluations don't really do much =|" ]
 
-        FA.ValueDef fa:
-            translateDefinition True (initEnv ro) fa
+        FA.ValueDef def:
+            def
+            >> translateDefinition True (initEnv ro)
             >> onOk def:
-
 
             if CA.patternContainsUnique def.pattern then
                 error (CA.patternPos def.pattern) [ "Mutable values can be declared only inside functions." ]
 
-            else
 
+            # TODO check duplicates!!!!
+
+            else
                 # Patterns contain position, so they are unique and don't need to be checked for duplication
                 # Names duplication will be checked when rootValuesAndConstructors is populated
                 Ok { caModule with valueDefs = Dict.insert def.pattern def .valueDefs }
 
         FA.AliasDef fa:
-            todo "AliasDef"
-#            At pos name =
-#                fa.name
-#
-#            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-#                error pos [ name .. " declared twice!" ]
-#
-#            else
-#                # TODO check args!
-#                translateType ro fa.ty >> onOk type:
-#
-#                aliasDef as CA.AliasDef = {
-#                    , usr = USR ro.currentModule (Pos.drop fa.name)
-#                    , args = fa.args
-#                    , type
-#                    , directTypeDeps = typeDeps type Set.empty
-#                    }
-#
-#                Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
+            translateTypeName fa.name
+            >> onOk name:
+
+            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
+                At pos _ = fa.name
+                error pos [ name .. " declared twice!" ]
+
+            else
+                fa.args
+                >> List.mapRes translateTypeParameter
+                >> onOk caArgs:
+
+                # TODO check that args are not duplicate
+
+                fa.type
+                >> translateType ro
+                >> onOk type:
+
+                aliasDef as CA.AliasDef = {
+                    , usr = USR ro.currentModule name
+                    , args = caArgs
+                    , type
+                    , directTypeDeps = typeDeps type Set.empty
+                    }
+
+                Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
 
         FA.UnionDef fa:
-            todo "UnionDef"
-#            if Dict.member fa.name caModule.aliasDefs or Dict.member fa.name caModule.unionDefs then
-#                error pos [ fa.name .. " declared twice!" ]
-#
-#            else
-#                usr =
-#                    USR ro.currentModule fa.name
-#
-#                type =
-#                    fa.args
-#                    >> List.map (name: CA.TypeAnnotationVariable pos name)
-#                    >> CA.TypeNamed pos usr
-#
-#                Dict.empty
-#                >> List.forRes fa.constructors (translateConstructor ro type usr)
-#                >> onOk constructors:
-#
-#                unionDef as CA.UnionDef = {
-#                    , usr
-#                    , args = fa.args
-#                    , constructors
-#                    # I could probably break the deps by constructor, but would it be much useful in practice?
-#                    , directTypeDeps = Dict.for constructors (k: c: List.for c.args typeDeps) Set.empty
-#                    }
-#
-#                Ok { caModule with unionDefs = Dict.insert fa.name unionDef .unionDefs }
+            translateTypeName fa.name
+            >> onOk name:
 
+            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
+                At pos _ = fa.name
+                error pos [ name .. " declared twice!" ]
+
+            else
+                fa.args
+                >> List.mapRes translateTypeParameter
+                >> onOk caArgs:
+
+                # TODO check that args are not duplicate
+
+                usr =
+                    USR ro.currentModule name
+
+                type =
+                    caArgs
+                    >> List.map ((At pos name): CA.TypeAnnotationVariable pos name)
+                    >> CA.TypeNamed Pos.G usr
+
+                Dict.empty
+                >> List.forRes fa.constructors (translateConstructor ro type usr)
+                >> onOk constructors:
+
+                unionDef as CA.UnionDef = {
+                    , usr
+                    , args = caArgs
+                    , constructors
+                    # I could probably break the deps by constructor, but would it be much useful in practice?
+                    , directTypeDeps = Dict.for constructors (k: c: List.for c.args typeDeps) Set.empty
+                    }
+
+                Ok { caModule with unionDefs = Dict.insert name unionDef .unionDefs }
 
 
 translateModule as ReadOnly: Text: UMR: FA.Module: Res (CA.Module) =
     ro: asText: umr: faModule:
 
-#    todo "translateModule"
     Debug.benchStart None
 
     module =
@@ -1469,4 +1554,26 @@ translateModule as ReadOnly: Text: UMR: FA.Module: Res (CA.Module) =
     module
     >> List.forRes faModule (insertRootStatement ro)
     >> btw Debug.benchStop "translateModule"
+
+
+textToCanonicalModule as Params: Text: Res CA.Module =
+    pars: code:
+
+    ro as Compiler/MakeCanonical.ReadOnly =
+        {
+        , currentModule = UMR pars.source pars.name
+        , meta = pars.meta
+        }
+
+    umr as UMR =
+        UMR pars.source pars.name
+
+    code
+    >> Compiler/Parser.textToFormattableModule
+        {
+        , stripLocations = pars.stripLocations
+        , moduleName = pars.name
+        }
+    >> Result.onOk faModule:
+    translateModule ro code umr faModule
 

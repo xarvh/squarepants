@@ -161,7 +161,7 @@ listDef as CA.UnionDef =
         }
 
     { usr
-    , args = [ "item" ]
+    , args = [ At Pos.G "item" ]
     , constructors =
         Dict.empty
             >> Dict.insert "Nil" { pos = p, args = [], type = list item, typeUsr = usr }

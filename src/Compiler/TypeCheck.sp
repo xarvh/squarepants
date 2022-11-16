@@ -985,7 +985,10 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
 
             TA.ArgumentExpression typedExp & expType
 
-        CA.ArgumentRecycle pos attrPath ref:
+        CA.ArgumentRecycle pos name attrPath:
+            ref =
+                CA.RefLocal name
+
             type =
                 try getVariableByRef ref env as
 
@@ -1376,7 +1379,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                 { envX with variables = Dict.insert ref typeWithClasses .variables }
 
 
-addConstructorToGlobalEnv as State@: [Name]: Name: CA.Constructor: Env: Env =
+addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
     state@: args: name: caConstructor: env:
 
     USR umr _ =
@@ -1387,7 +1390,7 @@ addConstructorToGlobalEnv as State@: [Name]: Name: CA.Constructor: Env: Env =
 
     caTyvars as Dict Name CA.TypeClasses =
         args
-        >> List.map (n: (n & { allowFunctions = Just True, allowUniques = Just True }))
+        >> List.map ((At p n): (n & { allowFunctions = Just True, allowUniques = Just True }))
         >> Dict.fromList
 
     taConstructor as TypeWithClasses =

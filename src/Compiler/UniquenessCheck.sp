@@ -241,7 +241,7 @@ doArgument as Env: State@: Pos: MCA: MCA =
             , argument = CA.ArgumentExpression expression
             }
 
-        CA.ArgumentRecycle p1 attrPath (CA.RefLocal name):
+        CA.ArgumentRecycle p1 name attrPath:
 
             # TODO https://github.com/xarvh/squarepants/projects/1#card-85087726
             x =
