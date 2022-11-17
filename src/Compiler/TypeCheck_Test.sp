@@ -78,8 +78,9 @@ function as TA.Type: TA.Type: TA.Type =
     TA.TypeFn Pos.T [False & from] to
 
 
-#typeFunction as TA.Type: LambdaModifier: TA.Type: TA.Type =
-#    TA.TypeFn Pos.T
+typeFunction as TA.Type: TA.Type: TA.Type =
+    arg: ret:
+    TA.TypeFn Pos.T [False & arg] ret
 
 
 #typeVariable as Name: TA.Type =
@@ -128,7 +129,7 @@ infer as Text: Text: Result Text Out =
             >> Dict.insert
                 (CA.RefGlobal << USR TH.moduleUmr "reset")
                 {
-                , type = todo "typeFunction tyNumber LambdaNormal tyNone"
+                , type = typeFunction tyNumber tyNone
                 , tyvars = Dict.empty
                 }
         }
@@ -188,8 +189,6 @@ functions as Test =
                 , tyvars = Dict.empty
                 }
             )
-        ]
-        [#
         , codeTest "Known function with wrong params"
             "a = add False"
             (infer "a")
@@ -199,9 +198,8 @@ functions as Test =
             "a = x: add x 1"
             (infer "a")
             (Test.isOkAndEqualTo
-                { ty = function tyNumber tyNumber
-                , freeTypeVariables = Dict.empty
-                , isMutable = False
+                { type = function tyNumber tyNumber
+                , tyvars = Dict.empty
                 }
             )
         , codeTest
@@ -209,21 +207,19 @@ functions as Test =
             "a = x: add 1 x"
             (infer "a")
             (Test.isOkAndEqualTo
-                { ty = function tyNumber tyNumber
-                , freeTypeVariables = Dict.empty
-                , isMutable = False
+                { type = function tyNumber tyNumber
+                , tyvars = Dict.empty
                 }
             )
-        , codeTest
-            "[reg] fn has type None"
-            "a = x: 1"
-            (infer "a")
-            (Test.isOkAndEqualTo
-                { freeTypeVariables = ftv "1"
-                , isMutable = False
-                , ty = typeFunction (typeVariable "a") LambdaNormal CoreTypes.number
-                }
-            )
+#        , codeTest
+#            "[reg] fn has type None"
+#            "a = x: 1"
+#            (infer "a")
+#            (Test.isOkAndEqualTo
+#                { tyvars = ftv "1"
+#                , type = typeFunction (typeVariable "a") tyNumber
+#                }
+#            )
 
         #
         , codeTest "[reg] Multiple arguments are correctly inferred"
@@ -241,7 +237,7 @@ functions as Test =
             """
             (infer "f")
             (Test.errorContains [])
-        #]
+        ]
 
 
 
@@ -350,7 +346,7 @@ variableTypes as Test =
             """
             (infer "id")
             (Test.isOkAndEqualTo
-                { ty = typeFunction (typeVariable "0a") LambdaNormal (typeVariable "0a")
+                { ty = typeFunction (typeVariable "0a") (typeVariable "0a")
                 , freeTypeVariables = ftv "0a"
                 , isMutable = False
                 }
@@ -510,7 +506,6 @@ higherOrderTypes as Test =
                 { ty =
                     typeFunction
                         (CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable "0a" ])
-                        LambdaNormal
                         (CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable "0a" ])
                 , isMutable = False
                 , freeTypeVariables = ftv "0a"
@@ -608,7 +603,6 @@ records as Test =
                             { allowFunctions = True, allowUniques = False }
                             (Dict.singleton "meh" (CA.TypeRecordExt (Pos.I 2) "b" { allowFunctions = True, allowUniques = False } (Dict.singleton "blah" (typeVariable "c"))))
                         )
-                        LambdaNormal
                         (typeVariable "c")
                 }
             )
@@ -676,7 +670,7 @@ records as Test =
                 (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
                     { freeTypeVariables = forall [ "2" ]
                     , isMutable = False
-                    , ty = typeFunction re LambdaNormal re
+                    , ty = typeFunction re re
                     }
                 )
             )
@@ -691,7 +685,7 @@ records as Test =
                     {
                     , freeTypeVariables = forall [ "a" ]
                     , isMutable = False
-                    , ty = typeFunction re LambdaNormal re
+                    , ty = typeFunction re re
                     }
                 )
             )
@@ -713,7 +707,6 @@ records as Test =
                             { allowFunctions = True, allowUniques = False }
                             (Dict.fromList [ "first" & typeVariable "b" ])
                         )
-                        LambdaNormal
                         (typeVariable "b")
                 }
             )
@@ -777,7 +770,6 @@ patterns as Test =
                 , ty =
                     typeFunction
                         (CoreTypes.list ( CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = False }))
-                        LambdaNormal
                         (CA.TypeVariable (Pos.I 11) "a" {allowFunctions = True, allowUniques = False })
                 }
             )
@@ -795,7 +787,6 @@ patterns as Test =
                 , ty =
                     typeFunction
                         (CA.TypeRecord Pos.T (Dict.fromList [ ( "first" & typeVariable "a" ) ]))
-                        LambdaNormal
                         (typeVariable "a")
                 }
             )
@@ -865,7 +856,7 @@ try_as as Test =
             (Test.isOkAndEqualTo
                 { freeTypeVariables = Dict.empty
                 , isMutable = False
-                , ty = typeFunction CoreTypes.bool LambdaNormal CoreTypes.number
+                , ty = typeFunction CoreTypes.bool CoreTypes.number
                 }
             )
 
@@ -920,7 +911,7 @@ if_else as Test =
             (Test.isOkAndEqualTo
                 { freeTypeVariables = Dict.empty
                 , isMutable = False
-                , ty = typeFunction CoreTypes.bool LambdaNormal CoreTypes.number
+                , ty = typeFunction CoreTypes.bool CoreTypes.number
                 }
             )
 

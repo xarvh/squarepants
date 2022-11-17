@@ -91,10 +91,18 @@ alias TypeWithClasses = {
     }
 
 
+union NamedType =
+    , OpaqueType Int
+    , UnionType CA.UnionDef
+    , AliasType CA.AliasDef
+
+
 alias Env = {
     , context as Context
     , constructors as ByUsr TypeWithClasses
     , variables as Dict TA.Ref TypeWithClasses
+    , namedTypes as ByUsr NamedType
+
     , tyvarsInParentAnnotations as Dict TA.UnificationVariableId TA.Type
 
     # This is used to give meaningfule errors?
@@ -107,6 +115,7 @@ initEnv as Env =
     , context = Context_Global
     , constructors = Dict.empty
     , variables = Dict.empty
+    , namedTypes = ByUsr NamedType
     , tyvarsInParentAnnotations = Dict.empty
     , annotatedTyvarToGeneratedTyvar = Dict.empty
     }
@@ -716,6 +725,16 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
 checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
     env: expectedType: caExpression: state@:
 
+
+    expandAlias ...
+
+    expandType:
+        what about TypeNamed which is a (non-opaque) alias?
+          I need to know it's not opaque
+            then I need to know it's not an union but an alias (until I remove unions, unless I do it now)
+
+
+
     try caExpression & expectedType as
 
         CA.LiteralNumber pos n & CA.TypeNamed _ typeUsr []:
@@ -925,6 +944,9 @@ checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expre
     typedArgumentsAndArgumentTypes as [TA.Argument & TA.Type] =
         givenArgs >> List.map arg:
             inferArgument env arg @state
+
+
+
 
     referenceArgs & referenceReturn =
         todo "linearizeCurriedParameters referenceType []"

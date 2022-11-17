@@ -1,8 +1,4 @@
 
-union TypeDef =
-    , TypeDefAlias AliasDef
-    , TypeDefUnion UnionDef
-
 
 #
 # AST

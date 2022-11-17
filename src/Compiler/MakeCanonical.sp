@@ -191,6 +191,7 @@ patternDeps as CA.Pattern: Deps: Deps =
 
 expressionDeps as CA.Expression: Deps: Deps =
     expression: deps:
+
     try expression as
         CA.LiteralNumber _ _:
             deps
@@ -214,7 +215,7 @@ expressionDeps as CA.Expression: Deps: Deps =
 
         CA.Record _ Nothing exprByName:
             deps
-                >> Dict.for exprByName (name: expressionDeps)
+            >> Dict.for exprByName (name: expressionDeps)
 
         CA.Record _ (Just expr) exprByName:
             deps
@@ -223,21 +224,21 @@ expressionDeps as CA.Expression: Deps: Deps =
 
         CA.Record _ _ exprByName:
             deps
-                >> Dict.for exprByName (name: expressionDeps)
+            >> Dict.for exprByName (name: expressionDeps)
 
         CA.RecordAccess _ _ e:
             expressionDeps e deps
 
         CA.Call _ e0 args:
             deps
-                >> expressionDeps e0
-                >> List.for args argumentDeps
+            >> expressionDeps e0
+            >> List.for args argumentDeps
 
         CA.If _ args:
             deps
-                >> expressionDeps args.condition
-                >> expressionDeps args.true
-                >> expressionDeps args.false
+            >> expressionDeps args.condition
+            >> expressionDeps args.true
+            >> expressionDeps args.false
 
         CA.Try _ { value, patternsAndExpressions }:
             deps
@@ -246,9 +247,9 @@ expressionDeps as CA.Expression: Deps: Deps =
 
         CA.LetIn valueDef e:
             deps
-                >> patternDeps valueDef.pattern
-                >> expressionDeps valueDef.body
-                >> expressionDeps e
+            >> patternDeps valueDef.pattern
+            >> expressionDeps valueDef.body
+            >> expressionDeps e
 
 
 argumentDeps as CA.Argument: Deps: Deps =
