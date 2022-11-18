@@ -201,7 +201,7 @@ functions as Test =
             (Test.errorContains [ "Bool"])
         , codeTest
             "Function inference 1"
-            "a = x: add x 1"
+            "a = fn x: add x 1"
             (infer "a")
             (Test.isOkAndEqualTo
                 { type = function tyNumber tyNumber
@@ -210,7 +210,7 @@ functions as Test =
             )
         , codeTest
             "Function inference 2: same as 1, but with swapped args"
-            "a = x: add 1 x"
+            "a = fn x: add 1 x"
             (infer "a")
             (Test.isOkAndEqualTo
                 { type = function tyNumber tyNumber
@@ -230,7 +230,7 @@ functions as Test =
         #
         , codeTest "[reg] Multiple arguments are correctly inferred"
             """
-            a = x: y: z: x + y + z
+            a = fn x, y, z: x + y + z
             """
             (infer "a")
             Test.isOk

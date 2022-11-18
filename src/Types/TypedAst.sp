@@ -15,6 +15,7 @@ union Type =
     , TypeUnique Pos Type
     , TypeUnificationVariable UnificationVariableId
     , TypeRecordExt UnificationVariableId (Dict Name Type)
+    , TypeError Pos
 
 
 union Expression =

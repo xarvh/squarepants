@@ -662,20 +662,38 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             TA.DestroyIn name typedExpression & expressionType
 
 
+inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
+    env: par: state@:
+
+    try par as
+        CA.ParameterPattern pa:
+            patternOut =
+                inferPattern env pa @state
+
+            TA.ParameterPattern patternOut.typedPattern & patternOut.patternType & patternOut.env
+
+        CA.ParameterRecycle pos name:
+
+            # TODO check name already in env?
+
+            type = TA.TypeUnique pos (newType @state)
+
+            typeWithClasses as TypeWithClasses =
+                {
+                , type
+                , tyvars = Dict.empty
+                }
+
+            newEnv as Env =
+                { env with variables = Dict.insert (CA.RefLocal name) typeWithClasses .variables }
+
+            TA.ParameterRecycle pos name & type & newEnv
+
+
 
 
 inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.Type =
     env: pos: caPars: body: state@:
-
-
-    inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
-        todo "inferParam"
-#            try par as
-#                CA.ParameterRecycle _ name:
-#                    todo "CA.ParameterRecycle"
-#                CA.ParameterPattern pa:
-#                    patternOut =
-#                        inferPattern envX pattern @state
 
     typedPars @= Array.fromList []
     parTypes @= Array.fromList []
