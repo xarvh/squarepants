@@ -19,6 +19,9 @@ union Type =
     , TypeRecord Pos (Dict Name Type)
     , TypeUnique Pos Type
     , TypeAnnotationVariable Pos Name
+    # This is used as a placeholder when there is an error and a type can't be determined
+    # It's useful to avoid piling up errors (I think)
+    , TypeError Pos
 
 
 union Expression =
@@ -100,7 +103,7 @@ alias TypeDeps =
 
 alias AliasDef = {
     , usr as USR
-    , args as [At Name]
+    , pars as [At Name]
     , type as Type
     , directTypeDeps as TypeDeps
     }
@@ -108,7 +111,7 @@ alias AliasDef = {
 
 alias UnionDef = {
     , usr as USR
-    , args as [At Name]
+    , pars as [At Name]
     , constructors as Dict Name Constructor
     , directTypeDeps as TypeDeps
     }
@@ -121,8 +124,7 @@ alias Constructor = {
     , typeUsr as USR
     , type as Type
 
-    # TODO these are pars, not args
-    , args as [Type]
+    , pars as [Type]
     }
 
 

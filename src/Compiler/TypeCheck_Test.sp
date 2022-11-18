@@ -16,6 +16,12 @@ tests as Test =
 
 
 
+# TODO test rejection of circular aliases
+# TODO test rejection of arguments with the same name
+
+
+
+
 #
 #
 #

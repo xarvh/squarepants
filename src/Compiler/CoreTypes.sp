@@ -37,9 +37,10 @@ usrToVariable as USR: CA.Expression =
 #
 
 
-textDef as CA.UnionDef = {
+textDef as CA.UnionDef =
+    {
     , usr = makeUsr "Text"
-    , args = []
+    , pars = []
     , constructors = Dict.empty
     , directTypeDeps = Set.empty
     }
@@ -54,9 +55,10 @@ text as CA.Type =
 #
 
 
-numberDef as CA.UnionDef = {
+numberDef as CA.UnionDef =
+    {
     , usr = makeUsr "Number"
-    , args = []
+    , pars = []
     , constructors = Dict.empty
     , directTypeDeps = Set.empty
     }
@@ -86,8 +88,8 @@ noneDef as CA.UnionDef =
     usr = makeUsr noneName
     {
     , usr
-    , args = []
-    , constructors = Dict.singleton noneName { pos = p, args = [], type = none, typeUsr = usr }
+    , pars = []
+    , constructors = Dict.singleton noneName { pos = p, pars = [], type = none, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -113,11 +115,11 @@ boolDef as CA.UnionDef =
     usr = makeUsr "Bool"
     {
     , usr
-    , args = []
+    , pars = []
     , constructors =
         Dict.empty
-            >> Dict.insert "True" { pos = p, args = [], type = bool, typeUsr = usr }
-            >> Dict.insert "False" { pos = p, args = [], type = bool, typeUsr = usr }
+            >> Dict.insert "True" { pos = p, pars = [], type = bool, typeUsr = usr }
+            >> Dict.insert "False" { pos = p, pars = [], type = bool, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -147,24 +149,26 @@ listDef as CA.UnionDef =
     item as CA.Type =
         CA.TypeAnnotationVariable p "item"
 
-    args as [CA.Type] =
+    pars as [CA.Type] =
         [ item, list item ]
 
     type as CA.Type =
-        List.forReversed args (ar: ty: CA.TypeFn p [False & ar] ty) (list item)
+        List.forReversed pars (ar: ty: CA.TypeFn p [False & ar] ty) (list item)
 
-    consDef as CA.Constructor = {
+    consDef as CA.Constructor =
+        {
         , pos = p
-        , args
+        , pars
         , type
         , typeUsr = usr
         }
 
-    { usr
-    , args = [ At Pos.G "item" ]
+    {
+    , usr
+    , pars = [ At Pos.G "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" { pos = p, args = [], type = list item, typeUsr = usr }
+            >> Dict.insert "Nil" { pos = p, pars = [], type = list item, typeUsr = usr }
             >> Dict.insert "Cons" consDef
     , directTypeDeps = Set.empty
     }
@@ -175,7 +179,8 @@ listDef as CA.UnionDef =
 #
 
 
-allDefs as [CA.UnionDef] = [
+allDefs as [CA.UnionDef] =
+    [
     , noneDef
     , boolDef
     , listDef

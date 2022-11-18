@@ -92,7 +92,7 @@ alias TypeWithClasses = {
 
 
 union NamedType =
-    , OpaqueType Int
+    , OpaqueType [At Name]
     , UnionType CA.UnionDef
     , AliasType CA.AliasDef
 
@@ -115,14 +115,14 @@ initEnv as Env =
     , context = Context_Global
     , constructors = Dict.empty
     , variables = Dict.empty
-    , namedTypes = ByUsr NamedType
+    , namedTypes = Dict.empty
     , tyvarsInParentAnnotations = Dict.empty
     , annotatedTyvarToGeneratedTyvar = Dict.empty
     }
 
 
 union Error_ =
-    , ErrorCircular [CA.Pattern]
+    , ErrorCircularValue [CA.Pattern]
     , ErrorVariableNotFound CA.Ref
     , ErrorConstructorNotFound USR
     , ErrorNotCompatibleWithRecord
@@ -138,8 +138,10 @@ union Error_ =
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch
-
-
+    , ErrorUndefinedTypeVariable Name
+    , ErrorWrongNumberOfTypeArguments USR [At Name] [CA.Type]
+    , ErrorNamedTypeNotFound USR
+    , ErrorCircularAlias USR
 
 
 union Context =
@@ -329,8 +331,8 @@ typeCa2Ta_ as (Name: TA.UnificationVariableId): CA.Type: TA.Type =
     ctu = typeCa2Ta_ f
 
     try ca as
-       CA.TypeNamed p usr args:
-           TA.TypeOpaque p usr (List.map ctu args)
+       CA.TypeNamed p usr pars:
+           TA.TypeOpaque p usr (List.map ctu pars)
 
        CA.TypeFn p modsAndArgs out:
            xxx = List.map (Tuple.mapSecond ctu) modsAndArgs
@@ -353,9 +355,9 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
        TA.TypeUnique p ty:
          True
 
-       TA.TypeOpaque p usr args:
+       TA.TypeOpaque p usr pars:
           # Opaques cannot contain uniques?
-          List.any variableOfThisTypeMustBeFlaggedUnique args
+          List.any variableOfThisTypeMustBeFlaggedUnique pars
 
        TA.TypeFn p args out:
           False
@@ -372,6 +374,80 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
 
 
 
+expandType as Env: State@: CA.Type: CA.Type =
+    env: state@: type:
+
+    try type as
+        CA.TypeNamed pos usr args:
+
+            checkArgsLengthThen as [At Name]: (a: CA.Type): CA.Type =
+                pars: continue:
+
+                if List.length args /= List.length pars then
+                    addError env pos (ErrorWrongNumberOfTypeArguments usr pars args) @state
+                    CA.TypeError pos
+                else
+                    continue None
+
+            try Dict.get usr env.namedTypes as
+                Nothing:
+                    addError env pos (ErrorNamedTypeNotFound usr) @state
+                    CA.TypeError pos
+
+                Just (OpaqueType pars):
+                    checkArgsLengthThen pars _:
+                    type
+
+                Just (UnionType unionDef):
+                    checkArgsLengthThen unionDef.pars _:
+                    type
+
+                Just (AliasType aliasDef):
+                    checkArgsLengthThen aliasDef.pars _:
+
+                    typeByParName as Dict Name CA.Type =
+                        List.map2 ((At pos name): p: name & p) aliasDef.pars args
+                        >> Dict.fromList
+
+                    replaceTyvarsInCaType env typeByParName @state aliasDef.usr aliasDef.type
+
+        _:
+            type
+
+
+replaceTyvarsInCaType as Env: Dict Name CA.Type: State@: USR: CA.Type: CA.Type =
+    env: dict: state@: aliasUsr: ty:
+
+    rec as CA.Type: CA.Type =
+        replaceTyvarsInCaType env dict @state aliasUsr
+
+    try ty as
+
+        CA.TypeNamed pos usr pars:
+            if usr == aliasUsr then
+                addError env pos (ErrorCircularAlias usr) @state
+                CA.TypeError pos
+            else
+                CA.TypeNamed pos usr (List.map rec pars)
+
+        CA.TypeFn pos fnPars fnOut:
+            CA.TypeFn pos (List.map (Tuple.mapSecond rec) fnPars) (rec fnOut)
+
+        CA.TypeRecord pos attrs:
+            CA.TypeRecord pos (Dict.map (k: rec) attrs)
+
+        CA.TypeUnique pos type:
+            # To remove this, we can "just" not replace all the constructors args?
+            CA.TypeUnique pos (rec type)
+
+        CA.TypeAnnotationVariable pos name:
+            try Dict.get name dict as
+                Nothing:
+                    addError env pos (ErrorUndefinedTypeVariable name) @state
+                    CA.TypeError pos
+
+                Just expanded:
+                    expanded
 
 
 
@@ -721,19 +797,11 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
             newType @state
 
 
-
 checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
-    env: expectedType: caExpression: state@:
+    env: rawExpectedType: caExpression: state@:
 
-
-    expandAlias ...
-
-    expandType:
-        what about TypeNamed which is a (non-opaque) alias?
-          I need to know it's not opaque
-            then I need to know it's not an union but an alias (until I remove unions, unless I do it now)
-
-
+    expectedType as CA.Type =
+        expandType env @state rawExpectedType
 
     try caExpression & expectedType as
 
@@ -938,62 +1006,27 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression =
     env: expectedType: pos: reference: givenArgs: state@:
 
-    typedReference & referenceType =
+    # `reference givenArg1 givenArg2 ...` must be of `expectedType`
+
+    typedReference & inferredReferenceType =
         inferExpression env reference @state
 
     typedArgumentsAndArgumentTypes as [TA.Argument & TA.Type] =
         givenArgs >> List.map arg:
             inferArgument env arg @state
 
+    toTypeArg as (TA.Argument & TA.Type): Bool & TA.Type =
+        (arg & type):
+        try arg as
+            TA.ArgumentExpression _: False & type
+            TA.ArgumentRecycle _ _ _: True & type
 
+    expectedReferenceType as TA.Type =
+        TA.TypeFn pos (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
 
+    addEquality env pos Why_CalledAsFunction inferredReferenceType expectedReferenceType @state
 
-    referenceArgs & referenceReturn =
-        todo "linearizeCurriedParameters referenceType []"
-
-    addEquality env pos Why_ReturnType referenceReturn expectedType @state
-
-    if referenceArgs /= [] then
-
-        rl =
-            List.length referenceArgs
-
-        gl =
-            List.length givenArgs
-
-        if rl > gl then
-            addError env pos ErrorNotEnoughArguments @state
-
-        else if rl < gl then
-            addError env pos ErrorTooManyArguments @state
-
-        else
-            None
-
-        list_eachWithIndex2 0 referenceArgs typedArgumentsAndArgumentTypes index: (refMod & refType): (tyArg & argTy):
-            addEquality env pos (Why_Argument index) refType argTy @state
-
-        TA.Call pos typedReference typedArgumentsAndArgumentTypes
-
-    else
-        try referenceType as
-            TA.TypeUnificationVariable id:
-                None
-            _:
-                addError env pos ErrorCallingANonFunction @state
-
-        referenceTypeFromArguments =
-            expectedType
-            >> List.forReversed typedArgumentsAndArgumentTypes (tyArg & argTy): type:
-                # TODO if expected type says this should be LambdaConsuming, then use LambdaConsuming
-                TA.TypeFn Pos.G [False & argTy] type
-
-        addEquality env pos Why_CalledAsFunction referenceType referenceTypeFromArguments @state
-
-#        typedArgs as [Argument TA.Type & TA.Type] =
-#            List.map Tuple.first typedArgumentsAndArgumentTypes
-
-        TA.Call pos typedReference typedArgumentsAndArgumentTypes
+    TA.Call pos typedReference typedArgumentsAndArgumentTypes
 
 
 
@@ -1256,7 +1289,7 @@ doModule as State: Env: CA.Module: Res TA.Module =
 
     List.each circulars c:
         # TODO test this error. Is it "circular" or "recursive"?
-        addError env (Pos.M "TODO get module path") (ErrorCircular c) @state
+        addError env (Pos.M "TODO get module path") (ErrorCircularValue c) @state
 
     allOrdered =
         List.concat [ orderedNonAnnotated, annotated ]
@@ -1427,19 +1460,19 @@ addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
 addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
     state@: _: stuff: env:
 
-    { usr, args, constructors, directTypeDeps } =
+    { usr, pars, constructors, directTypeDeps } =
         stuff
 
     taDef as TA.UnionDef =
         {
         , usr
-        , args
+        , pars
         #, constructors = taConstructors
         }
 
     #TODO{ env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
     env
-    >> Dict.for constructors (addConstructorToGlobalEnv @state args)
+    >> Dict.for constructors (addConstructorToGlobalEnv @state pars)
 
 
 initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
@@ -1618,8 +1651,8 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
         applySubstitutionToType tyvarId replacingType
 
     try originalType as
-        TA.TypeOpaque pos usr args:
-            TA.TypeOpaque pos usr (List.map rec args)
+        TA.TypeOpaque pos usr pars:
+            TA.TypeOpaque pos usr (List.map rec pars)
 
         [#
         TypeAnnotationVariable pos name:

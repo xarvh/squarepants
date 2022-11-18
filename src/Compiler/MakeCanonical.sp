@@ -528,8 +528,8 @@ translatePattern as Env: FA.Expression: Res CA.Pattern =
                     else
                         faArgs
                         >> List.mapRes (translatePattern env)
-                        >> onOk caArgs:
-                        translatePatternConstructor env pos word caArgs
+                        >> onOk caPars:
+                        translatePatternConstructor env pos word caPars
 
                 _:
                     error pos [ "I was expecting a constructor name here" ]
@@ -759,7 +759,8 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             translateExpression env condition >> onOk c:
             translateExpression env true >> onOk t:
             translateExpression env false >> onOk f:
-            { condition = c
+            {
+            , condition = c
             , true = t
             , false = f
             }
@@ -1425,11 +1426,12 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
         >> List.mapRes (translateType ro)
         >> onOk caPars:
 
-        c as CA.Constructor = {
+        c as CA.Constructor =
+            {
             , pos
             , typeUsr = unionUsr
             , type = CA.TypeFn pos (List.map (a: True & a) caPars) unionType
-            , args = caPars
+            , pars = caPars
             }
 
         constructors
@@ -1506,7 +1508,7 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
             else
                 fa.args
                 >> List.mapRes translateTypeParameter
-                >> onOk caArgs:
+                >> onOk caPars:
 
                 # TODO check that args are not duplicate
 
@@ -1514,9 +1516,10 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
                 >> translateType ro
                 >> onOk type:
 
-                aliasDef as CA.AliasDef = {
+                aliasDef as CA.AliasDef =
+                    {
                     , usr = USR ro.currentModule name
-                    , args = caArgs
+                    , pars = caPars
                     , type
                     , directTypeDeps = typeDeps type Set.empty
                     }
@@ -1534,7 +1537,7 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
             else
                 fa.args
                 >> List.mapRes translateTypeParameter
-                >> onOk caArgs:
+                >> onOk caPars:
 
                 # TODO check that args are not duplicate
 
@@ -1542,7 +1545,7 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
                     USR ro.currentModule name
 
                 type =
-                    caArgs
+                    caPars
                     >> List.map ((At pos name): CA.TypeAnnotationVariable pos name)
                     >> CA.TypeNamed Pos.G usr
 
@@ -1550,12 +1553,13 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
                 >> List.forRes fa.constructors (translateConstructor ro type usr)
                 >> onOk constructors:
 
-                unionDef as CA.UnionDef = {
+                unionDef as CA.UnionDef =
+                    {
                     , usr
-                    , args = caArgs
+                    , pars = caPars
                     , constructors
                     # I could probably break the deps by constructor, but would it be much useful in practice?
-                    , directTypeDeps = Dict.for constructors (k: c: List.for c.args typeDeps) Set.empty
+                    , directTypeDeps = Dict.for constructors (k: c: List.for c.pars typeDeps) Set.empty
                     }
 
                 Ok { caModule with unionDefs = Dict.insert name unionDef .unionDefs }
