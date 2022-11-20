@@ -33,28 +33,12 @@ codeTest =
 
 outToHuman as Out: Text =
     out:
-    todo "outToHuman"
 
-#    freeVars =
-#        # TODO humanize these too
-#        out.freeTypeVariables
-#        >> Dict.toList
-#        >> List.map (name & flags): name .. " " .. toHuman flags
-
-#    nf =
-#        freeVars
-#            >> Dict.filter (k: v: v.nonFn)
-#            >> Dict.keys
-#            >> Text.join ", "
-
-#    [
-#    , "  freeTypeVariables = [ " .. Text.join ", " freeVars .. " ]"
-#    , "  (NonFunction = [" .. nf .. "])"
-#    , "  isMutable = " .. toHuman out.isMutable
-#    , "  ty = " .. HCA.typeToText TH.moduleUmr TH.meta out.ty
-#    , "  pos = " .. toHuman out.ty
-#    ]
-#        >> Text.join "\n"
+    [
+    , "  tyvars = " .. Debug.toHuman (Dict.toList out.tyvars)
+    , "  type = " .. Debug.toHuman out.type
+    ]
+        >> Text.join "\n"
 
 
 
