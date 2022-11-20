@@ -41,6 +41,7 @@ union Expression =
         , patternsAndExpressions as [Pattern & Expression]
         }
     , DestroyIn Name Expression
+    , Error Pos
 
 
 union Pattern =

@@ -130,7 +130,7 @@ union Error_ =
     , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
-    , ErrorIncompatibleTypes
+    , ErrorIncompatibleTypes CA.Expression CA.Type
     , ErrorVariableTypeIncompatible CA.Ref TypeWithClasses CA.Type
     , ErrorConstructorTypeIncompatible USR TA.Type CA.Type
     , ErrorCallingANonFunction
@@ -138,6 +138,7 @@ union Error_ =
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch
+    , ErrorRecyclingDoesNotMatch
     , ErrorUndefinedTypeVariable Name
     , ErrorWrongNumberOfTypeArguments USR [At Name] [CA.Type]
     , ErrorNamedTypeNotFound USR
@@ -392,7 +393,7 @@ expandType as Env: State@: CA.Type: CA.Type =
             try Dict.get usr env.namedTypes as
                 Nothing:
                     addError env pos (ErrorNamedTypeNotFound usr) @state
-                    CA.TypeError pos
+                    type
 
                 Just (OpaqueType pars):
                     checkArgsLengthThen pars _:
@@ -697,6 +698,7 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
 
     typedPars @= Array.fromList []
     parTypes @= Array.fromList []
+    # TODO use typedPars length instead?
     parIndex @= 0
 
     newEnv as Env =
@@ -820,6 +822,52 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
             newType @state
 
 
+#
+# Check
+#
+
+
+checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
+    env: isRecycling: expectedType: par: state@:
+
+    try par as
+        CA.ParameterPattern pa:
+
+            if isRecycling then
+                addError env (CA.patternPos pa) ErrorRecyclingDoesNotMatch @state
+            else
+                None
+
+            typedPa & env1 =
+                checkPattern env expectedType pa @state
+
+            TA.ParameterPattern typedPa & env1
+
+        CA.ParameterRecycle pos name:
+
+            if not isRecycling then
+                addError env pos ErrorRecyclingDoesNotMatch @state
+            else
+                None
+
+            # TODO: expectedType must be unique!!!
+
+            variable as TypeWithClasses =
+                {
+                , type = typeCa2Ta env expectedType
+                # TODO not sure about this here???
+                , tyvars = Dict.empty
+                }
+
+            localEnv as Env =
+                # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
+                { env with variables = Dict.insert (CA.RefLocal name) variable .variables }
+
+            TA.ParameterRecycle pos name & localEnv
+
+
+
+
 checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
     env: rawExpectedType: caExpression: state@:
 
@@ -830,7 +878,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
         CA.LiteralNumber pos n & CA.TypeNamed _ typeUsr []:
             if typeUsr /= CoreTypes.numberDef.usr then
-                addError env pos ErrorIncompatibleTypes @state
+                addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
             else
                 None
 
@@ -839,7 +887,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
         CA.LiteralText pos text & CA.TypeNamed _ typeUsr []:
             if typeUsr /= CoreTypes.textDef.usr then
-                addError env pos ErrorIncompatibleTypes @state
+                addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
             else
                 None
 
@@ -875,19 +923,31 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Fn pos pars body & CA.TypeFn _ parsT out:
-            todo "CA.Fn CA.TypeFn"
-#            typedPattern & localEnv =
-#                checkPattern env in pattern @state
-#
-#            typedBody =
-#                checkExpression localEnv out body @state
-#
-#            if lambdaModifier == mod then
-#                None
-#            else
-#                addError env pos ErrorIncompatibleLambdaModifier @state
-#
-#            TA.Lambda pos typedPattern mod typedBody
+
+            if List.length pars > List.length parsT then
+                addError env pos ErrorTooManyArguments @state
+                TA.Error pos
+            else if List.length pars < List.length parsT then
+                addError env pos ErrorNotEnoughArguments @state
+                TA.Error pos
+            else
+                typedPars @= Array.fromList []
+                parIndex @= 0
+
+                localEnv as Env =
+                    env >> List.for (List.map2 Tuple.pair pars parsT) (par & (isRecyclingT & parT)): envX:
+                        typedPar & envX1 =
+                            checkParameter { envX with context = Context_FnPar parIndex .context } isRecyclingT parT par @state
+
+                        Array.push @typedPars (typedPar & typeCa2Ta env parT)
+                        @parIndex += 1
+
+                        envX1
+
+                typedBody =
+                    checkExpression localEnv out body @state
+
+                TA.Fn pos (Array.toList typedPars) typedBody
 
 
         CA.Call pos reference args & _:
@@ -1019,8 +1079,13 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
             TA.DestroyIn name << checkExpression env expectedType exp @state
 
 
+        _ & CA.TypeError pos:
+            TA.Error pos
+
+
         _:
-            addError env (todo "CA.expressionPos caExpression") ErrorIncompatibleTypes @state
+            # TODO (todo "CA.expressionPos caExpression")
+            addError env Pos.G (ErrorIncompatibleTypes caExpression expectedType) @state
             TA.LiteralText Pos.G "todo?"
 
 
@@ -1138,7 +1203,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                             , tyvars
                             }
 
-                        # We don't check for duplicate var names / shadowig here, it's MakeCanonical's responsibility
+                        # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
                         { env with variables = Dict.insert (CA.RefLocal name) variable .variables }
 
             typedPattern =

@@ -79,14 +79,9 @@ forall as List Text: Dict Text TA.TypeClasses =
 
 #TODO merge these two
 
-function as TA.Type: TA.Type: TA.Type =
+function as [TA.Type]: TA.Type: TA.Type =
     from: to:
-    TA.TypeFn Pos.T [False & from] to
-
-
-typeFunction as TA.Type: TA.Type: TA.Type =
-    arg: ret:
-    TA.TypeFn Pos.T [False & arg] ret
+    TA.TypeFn Pos.T (List.map (t: False & t) from) to
 
 
 #typeVariable as Name: TA.Type =
@@ -129,13 +124,13 @@ infer as Text: Text: Result Text Out =
             >> Dict.insert
                 (CA.RefGlobal << USR TH.moduleUmr "add")
                 {
-                , type = function tyNumber (function tyNumber tyNumber)
+                , type = function [tyNumber, tyNumber] tyNumber
                 , tyvars = Dict.empty
                 }
             >> Dict.insert
                 (CA.RefGlobal << USR TH.moduleUmr "reset")
                 {
-                , type = typeFunction tyNumber tyNone
+                , type = function [tyNumber] tyNone
                 , tyvars = Dict.empty
                 }
         }
@@ -204,7 +199,7 @@ functions as Test =
             "a = fn x: add x 1"
             (infer "a")
             (Test.isOkAndEqualTo
-                { type = function tyNumber tyNumber
+                { type = function [tyNumber] tyNumber
                 , tyvars = Dict.empty
                 }
             )
@@ -213,7 +208,7 @@ functions as Test =
             "a = fn x: add 1 x"
             (infer "a")
             (Test.isOkAndEqualTo
-                { type = function tyNumber tyNumber
+                { type = function [tyNumber] tyNumber
                 , tyvars = Dict.empty
                 }
             )
@@ -223,19 +218,19 @@ functions as Test =
 #            (infer "a")
 #            (Test.isOkAndEqualTo
 #                { tyvars = ftv "1"
-#                , type = typeFunction (typeVariable "a") tyNumber
+#                , type = function [typeVariable "a"] tyNumber
 #                }
 #            )
-
-        #
+#
+#        #
         , codeTest "[reg] Multiple arguments are correctly inferred"
             """
             a = fn x, y, z: x + y + z
             """
             (infer "a")
             Test.isOk
-
-        #
+#
+#        #
         , codeTest "Annotation should be consistent with mutability"
             """
             f as @Number: Number = a:
