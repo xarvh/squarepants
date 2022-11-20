@@ -368,7 +368,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                 else
                     None
 
-            spentFromParent & exprWithDestruction
+            spentFromParent & CA.Fn pos pars exprWithDestruction
 
 
 #        CA.Call pos reference argument:
