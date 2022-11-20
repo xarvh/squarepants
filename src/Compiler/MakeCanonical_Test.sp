@@ -488,33 +488,41 @@ functions as Test =
         """
         Functions
         """
-        [ codeTest "[rec] lambda with two arguments"
+        [
+        , codeTest "[rec] function with call"
+            """
+            a =
+                fn x:
+                    add x 1
+            """
+            (firstEvaluation "f")
+            (Test.isOkAndEqualTo
+                (CA.Fn p
+                    [CA.ParameterPattern (CA.PatternAny p { isUnique = False, maybeAnnotation = Nothing, maybeName = Just "x"})]
+                    (CA.Call p
+                        (CA.Variable p (TH.rootLocal "add"))
+                        [
+                        , CA.ArgumentExpression (CA.Variable p (CA.RefLocal "x"))
+                        , CA.ArgumentExpression (CA.LiteralNumber p 1)
+                        ]
+                    )
+                )
+            )
+        , codeTest "[rec] function with two arguments"
             """
             f =
               fn a, b: 1
             """
             (firstEvaluation "f")
-            Test.isOk
-#        , codeTest "short function notation"
-#            """
-#            a = x: y: z: x + y + z
-#            b = x: y: z: x + y + z
-#            c = x: y: z: x + y + z
-#            """
-#            transformABC
-#            (Test.freeform << ( a & b & c ):
-#            if a.body == b.body and b.body == c.body then
-#                Nothing
-#
-#            else
-#                [ "The three don't match:"
-#                , toHuman a
-#                , toHuman b
-#                , toHuman c
-#                ]
-#                    >> Text.join "\n"
-#                    >> Just
-#            )
+            (Test.isOkAndEqualTo
+                (CA.Fn p
+                    [
+                    , CA.ParameterPattern (CA.PatternAny p { isUnique = False, maybeAnnotation = Nothing, maybeName = Just "a"})
+                    , CA.ParameterPattern (CA.PatternAny p { isUnique = False, maybeAnnotation = Nothing, maybeName = Just "b"})
+                    ]
+                    (CA.LiteralNumber p 1)
+                )
+            )
         ]
 
 
