@@ -704,8 +704,13 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
             typedPar & parType & envX1 =
                 inferParam { envX with context = Context_FnPar parIndex .context } par @state
 
+            isRecycling =
+                try par as
+                    CA.ParameterPattern _: False
+                    CA.ParameterRecycle _ _: True
+
             Array.push @typedPars (typedPar & parType)
-            Array.push @parTypes (todo "recyclingOrNot" & parType)
+            Array.push @parTypes (isRecycling & parType)
             @parIndex += 1
             envX1
 

@@ -79,11 +79,11 @@ errorMutatingAnImmutable as Text: Pos: State@: None =
         ]
 
 
-errorConsumingAMutableArgument as Text: Pos: State@: None =
+errorConsumingRecycledParameter as Text: Pos: State@: None =
     name: pos: state@:
 
     addError pos @state eenv: [
-        , name .. " is passed as mutable, but the function wants to consume it"
+        , name .. " is passed as recycled, but the function wants to spend it"
         ]
 
 
@@ -132,14 +132,13 @@ consumeInEnv as Dict Name Pos: Env: Env =
     { env with variables = Dict.map translate .variables }
 
 
-addPatternToEnv as CA.Pattern: Env: Set Name & Env =
+addPatternToEnv as CA.Pattern: Env: Dict Name Pos & Env =
     pattern: env:
 
-    uniqueNames =
+    names =
         CA.patternNames pattern
-        >> Dict.filter name: stuff: stuff.isUnique
 
-    blah =
+    insertVariable =
        name: stuff:
 
        mode =
@@ -147,15 +146,15 @@ addPatternToEnv as CA.Pattern: Env: Set Name & Env =
 
        Dict.insert name { definedAt = stuff.pos, name, mode }
 
-
     localEnv =
-        { env with variables = Dict.for uniqueNames blah .variables }
+        { env with variables = Dict.for names insertVariable .variables }
 
-    names =
-        Set.empty >> Dict.for uniqueNames name: stuff: set:
-            if stuff.isUnique then Set.insert name set else set
+    uniques =
+        names
+        >> Dict.filter (n: s: s.isUnique)
+        >> Dict.map (n: s: s.pos)
 
-    names & localEnv
+    uniques & localEnv
 
 
 
@@ -267,6 +266,41 @@ doArgument as Env: State@: Pos: MCA: MCA =
             Debug.todo "TODO: Mutable args should not be able to reference globals!?"
 
 
+alias ParsAcc =
+    {
+    , parsToBeSpent as Dict Name Pos
+    , parsToBeRecycled as Dict Name Pos
+    , localEnv as Env
+    }
+
+
+doParameter as CA.Parameter: ParsAcc: ParsAcc =
+    par: acc:
+
+    try par as
+        CA.ParameterPattern pa:
+            uniques & localEnv =
+                addPatternToEnv pa acc.localEnv
+
+            { acc with
+            , parsToBeSpent = Dict.join uniques .parsToBeSpent
+            , localEnv
+            }
+
+        CA.ParameterRecycle pos name:
+
+            var as Variable =
+                {
+                , definedAt = pos
+                , name
+                , mode = Mutable Available
+                }
+
+            { acc with
+            , parsToBeRecycled = Dict.insert name pos .parsToBeRecycled
+            , localEnv = { acc.localEnv with variables = Dict.insert name var .variables }
+            }
+
 
 doExpression as Env: State@: Expression: Dict Name Pos & Expression =
     env: state@: expression:
@@ -307,36 +341,34 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
             re
 
         CA.Fn pos pars body:
-            todo "CA.Fn UniquenessCheck"
 
-#            mutables & localEnv =
-#                addPatternToEnv param env
-#
-#            consumed & bodyExpression =
-#                doExpression localEnv @state body
-#
-#            if mutables == Set.empty then
-#                consumed & bodyExpression
-#            else
-#                try valueLambdaMode as
-#                    LambdaConsuming:
-#                        wrappedBody =
-#                            bodyExpression >> Dict.for mutables name: _: exp:
-#                                if Dict.member name consumed then
-#                                    exp
-#                                else
-#                                    CA.DestroyIn name exp
-#
-#                        consumed & wrappedBody
-#
-#                    LambdaNormal:
-#                        Dict.each mutables name: _:
-#                            if Dict.member name consumed then
-#                                errorConsumingAMutableArgument name pos @state
-#                            else
-#                                None
-#
-#                        consumed & bodyExpression
+            { parsToBeSpent, parsToBeRecycled, localEnv } =
+                { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
+                >> List.for pars doParameter
+
+            spentByBody & bodyExpression =
+                doExpression localEnv @state body
+
+            # variables that are not spent by the body need to be explicitly destroyed
+            exprWithDestruction =
+                bodyExpression >> Dict.for parsToBeSpent name: pos: exp:
+                    if Dict.member name spentByBody then
+                        exp
+                    else
+                        CA.DestroyIn name exp
+
+            # TODO: if spentFromParent /= Dict.empty, this fn should be flagged as unique!!!!
+            spentFromParent =
+                Dict.diff spentByBody parsToBeSpent
+
+            # check recycled
+            Dict.each parsToBeRecycled name: pos:
+                if Dict.member name spentByBody then
+                    errorConsumingRecycledParameter name pos @state
+                else
+                    None
+
+            spentFromParent & exprWithDestruction
 
 
 #        CA.Call pos reference argument:
@@ -469,7 +501,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
         CA.LetIn valueDef e:
 
-            mutables & env1 =
+            uniques & env1 =
                 addPatternToEnv valueDef.pattern env
 
             consumedByBody & bodyExpression =
@@ -483,7 +515,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
             finalExpression =
                 CA.LetIn { valueDef with body = bodyExpression } eExpression
-                >> Dict.for mutables name: pos: exp:
+                >> Dict.for uniques name: pos: exp:
                     try Dict.get name consumedByE as
                         Just _: exp
                         Nothing:

@@ -48,7 +48,15 @@ union Expression =
     , DestroyIn Name Expression
 
 
-union Completeness = Complete, Partial
+union Argument =
+    , ArgumentExpression Expression
+    , ArgumentRecycle Pos Name [Name]
+
+
+union Parameter =
+    , ParameterPattern Pattern
+    , ParameterRecycle Pos Name
+
 
 union Pattern =
     , PatternAny Pos {
@@ -59,17 +67,12 @@ union Pattern =
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos USR [Pattern]
-    , PatternRecord Pos Completeness (Dict Name Pattern)
+    , PatternRecord Pos PatternCompleteness (Dict Name Pattern)
 
 
-union Argument =
-    , ArgumentExpression Expression
-    , ArgumentRecycle Pos Name [Name]
-
-
-union Parameter =
-    , ParameterPattern Pattern
-    , ParameterRecycle Pos Name
+union PatternCompleteness =
+    , Partial
+    , Complete
 
 
 alias TypeClasses = {
@@ -169,20 +172,6 @@ skipLetIns as CA.Expression: CA.Expression =
 #
 
 
-#typePos as Type: Pos =
-#    ty:
-#    try ty as
-#        TypeConstant p _ _: p
-#        #TypeGeneratedVar _: Pos.I 3
-#        #TypeAnnotatedVar p _: p
-#        TypeVariable p _ _: p
-#        TypeFn p _ _ _: p
-#        TypeRecord p _: p
-#        TypeRecordExt p _ _ _: p
-#        TypeAlias p _ _: p
-#        TypeMutable p _: p
-
-
 unmod as [Bool & param]: [param] =
     List.map Tuple.second
 
@@ -248,28 +237,4 @@ patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotati
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
         PatternRecord pos _ ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
-
-
-
-#argumentPos as Argument: Pos =
-#    arg:
-#    try arg as
-#        ArgumentExpression e: expressionPos e
-#        ArgumentMutable pos _: pos
-
-
-#expressionPos as Expression: Pos =
-#    e:
-#    try e as
-#        LiteralText pos _: pos
-#        LiteralNumber pos _: pos
-#        Variable pos _: pos
-#        Constructor pos _: pos
-#        Lambda pos _ _ _: pos
-#        Record pos _ _: pos
-#        Call pos _ _: pos
-#        CallCo pos _ _: pos
-#        If pos _: pos
-#        Try pos _ _: pos
-#        LetIn valueDef _: patternPos valueDef.pattern
 
