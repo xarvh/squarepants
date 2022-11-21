@@ -309,26 +309,19 @@ compileMain as CompileMainPars: IO Int =
 
 
 
-    IO.readFile entryModulePath
-    >> IO.onSuccess moduleAsText:
-
-    moduleAsText
-    >> Compiler/Parser.textToFormattableModule { moduleName = entryModulePath, stripLocations = False }
-    >> resToIo { moduleByName = Dict.singleton entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
-    >> IO.onSuccess out:
-
-    log "==" out
-
-    IO.writeStdout "done"
-
-
+#    IO.readFile entryModulePath
+#    >> IO.onSuccess moduleAsText:
+#
+#    moduleAsText
+#    >> Compiler/Parser.textToFormattableModule { moduleName = entryModulePath, stripLocations = False }
+#    >> resToIo { moduleByName = Dict.singleton entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
+#    >> IO.onSuccess out:
+#
+#    log "==" out
+#
+#    IO.writeStdout "done"
 
 
-
-
-
-
-    [#
     entryModuleDir =
         Path.dirname entryModulePath
 
@@ -451,7 +444,7 @@ compileMain as CompileMainPars: IO Int =
     js =
         pars.platform.compile {
             , errorEnv = eenv
-            , constructors = todo "Dict.toList globals.constructors"
+            , constructors = Dict.toList (Dict.map (k: v: v.type) typeCheckGlobalEnv.constructors)
             }
             entryUsr
             @emittableState
@@ -462,4 +455,3 @@ compileMain as CompileMainPars: IO Int =
 
     IO.writeStdout << "---> " .. outputFile .. " written. =)"
 
-    #]
