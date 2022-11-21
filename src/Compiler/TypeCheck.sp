@@ -1145,7 +1145,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
                         todo "apply attrPath"
                         var.type
 
-            TA.ArgumentRecycle pos attrPath ref & type
+            TA.ArgumentRecycle pos attrPath name & type
 
 
 #
@@ -1553,12 +1553,12 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
     { usr, pars, constructors, directTypeDeps } =
         stuff
 
-    taDef as TA.UnionDef =
-        {
-        , usr
-        , pars
-        #, constructors = taConstructors
-        }
+#    taDef as TA.UnionDef =
+#        {
+#        , usr
+#        , pars
+#        #, constructors = taConstructors
+#        }
 
     #TODO{ env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
     env

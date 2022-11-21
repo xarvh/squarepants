@@ -60,7 +60,7 @@ union Pattern =
 
 union Argument =
     , ArgumentExpression Expression
-    , ArgumentRecycle Pos [Name] Ref
+    , ArgumentRecycle Pos [Name] Name
 
 
 union Parameter =
@@ -90,13 +90,13 @@ alias ValueDef =
 # Module
 #
 
-alias Constructor =
-    {
-    , pos as Pos
-    , typeUsr as USR
-    , type as Type
+#alias Constructor =
+#    {
+#    , pos as Pos
+#    , typeUsr as USR
+#    , type as Type
 #    , args as [Type]
-    }
+#    }
 
 
 alias Module =
@@ -151,43 +151,43 @@ typeTyvars as Type: Dict UnificationVariableId None =
 # Stuff that should live... somewhere else?
 #
 
-alias InstanceVariable = {
-    , definedAt as Pos
-    , type as Type
-    , tyvars as Dict Name TypeClasses
-    , isUnique as Bool
-    }
+#alias InstanceVariable = {
+#    , definedAt as Pos
+#    , type as Type
+#    , tyvars as Dict Name TypeClasses
+#    , isUnique as Bool
+#    }
 
 
-alias Globals = {
-    , types as ByUsr TypeDef
-    , constructors as ByUsr Constructor
-    , instanceVariables as ByUsr InstanceVariable
-    , tyvarIdCounter as Int
-    }
+#alias Globals = {
+#    , types as ByUsr TypeDef
+#    , constructors as ByUsr Constructor
+#    , instanceVariables as ByUsr InstanceVariable
+#    , tyvarIdCounter as Int
+#    }
 
 
 
 #
 # ....?
 #
-union TypeDef =
-    , TypeDefAlias AliasDef
-    , TypeDefUnion UnionDef
-
-
-alias AliasDef = {
-    , usr as USR
-    , pars as [At Name]
-    , type as Type
-    #, directTypeDeps as TypeDeps
-    }
-
-
-alias UnionDef = {
-    , usr as USR
-    , pars as [At Name]
-    #, constructors as Dict Name Constructor
-    #, directTypeDeps as TypeDeps
-    }
+#union TypeDef =
+#    , TypeDefAlias AliasDef
+#    , TypeDefUnion UnionDef
+#
+#
+#alias AliasDef = {
+#    , usr as USR
+#    , pars as [At Name]
+#    , type as Type
+#    #, directTypeDeps as TypeDeps
+#    }
+#
+#
+#alias UnionDef = {
+#    , usr as USR
+#    , pars as [At Name]
+#    #, constructors as Dict Name Constructor
+#    #, directTypeDeps as TypeDeps
+#    }
 

@@ -419,22 +419,22 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
     env: eaExpression:
 
     try eaExpression as
-        EA.Call (EA.Call (EA.Variable name attrPath) argAndMut1) argAndMut2:
-            translateVariable env name attrPath [argAndMut1, argAndMut2]
-            >> Inline
-
-        EA.Call (EA.Variable name attrPath) argAndMut:
-            translateVariable env name attrPath [argAndMut]
-            >> Inline
+#        EA.Call (EA.Call (EA.Variable name attrPath) argAndMut1) argAndMut2:
+#            translateVariable env name attrPath [argAndMut1, argAndMut2]
+#            >> Inline
+#
+#        EA.Call (EA.Variable name attrPath) argAndMut:
+#            translateVariable env name attrPath [argAndMut]
+#            >> Inline
 
         EA.Variable name attrPath:
             translateVariable env name attrPath []
             >> Inline
 
-        EA.Call ref arg:
+        EA.Call ref args:
             JA.Call
                 (translateExpressionToExpression env ref)
-                [ translateArg { nativeBinop = False } env arg ]
+                (List.map (translateArg { nativeBinop = False } env) args)
             >> Inline
 
         EA.LetIn { maybeName, letExpression, inExpression }:
@@ -588,33 +588,34 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             >> Inline
 
 
-translateConstructor as Compiler/MakeEmittable.State@: USR & TA.Constructor: JA.Statement =
-    emState@: (usr & caCons):
+translateConstructor as Compiler/MakeEmittable.State@: USR & TA.Type: JA.Statement =
+    emState@: (usr & taType):
 
-    USR umr slug =
+    USR _ slug =
         usr
-
-    usrAsText =
-        Compiler/MakeEmittable.translateUsr @emState usr
-
-
-    argNames as [Text] =
-        todo "caCons.args"
-        >> List.indexedMap index: name: constructorArgumentName (index + 1)
 
     # `(($1) => ($2) => ($3) => [ "theConstructorName", $1, $2, $3, ... ])`
     arrayHead =
         literalString slug
 
-    arrayTail =
-        List.map JA.Var argNames
+    definitionBody =
+        try taType as
+            TA.TypeFn pos pars out:
 
-    array =
-        JA.Array (arrayHead :: arrayTail)
+                argNames as [Text] =
+                    pars >> List.indexedMap index: name: constructorArgumentName (index + 1)
 
-    array
-    >> List.forReversed argNames (argName: expr: (JA.SimpleLambda [ argName ] expr))
-    >> JA.Define usrAsText
+                arrayHead :: List.map JA.Var argNames
+                >> JA.Array
+                >> JA.SimpleLambda argNames
+
+            _:
+                JA.Array [ arrayHead ]
+
+    usrAsText =
+        Compiler/MakeEmittable.translateUsr @emState usr
+
+    JA.Define usrAsText definitionBody
 
 
 translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
@@ -631,7 +632,7 @@ translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
 
 alias TranslateAllPars = {
     , errorEnv as Error.Env
-    , caConstructors as [USR & TA.Constructor]
+    , caConstructors as [USR & TA.Type]
     , eaDefs as [EA.GlobalDefinition]
     , platformOverrides as [USR & Text]
     }

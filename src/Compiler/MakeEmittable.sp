@@ -192,7 +192,7 @@ testPattern as Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
 
 
 
-translateArgument as State@: Int@: EA.Expression: (TA.Parameter & TA.Type): EA.Expression & Maybe Name =
+translateParameter as State@: Int@: EA.Expression: (TA.Parameter & TA.Type): EA.Expression & Maybe Name =
     state@: counter@: bodyAcc: (param & type):
 
     try param as
@@ -223,6 +223,16 @@ translateArgument as State@: Int@: EA.Expression: (TA.Parameter & TA.Type): EA.E
                     List.for namesAndExpressions wrapWithArgumentLetIn bodyAcc & Just mainName
 
 
+translateArgAndType as State@: Int@: (TA.Argument & TA.Type): EA.Expression & Bool =
+    state@: counter@: (taArg & type):
+
+    try taArg as
+        TA.ArgumentExpression exp:
+            translateExpression @state @counter exp & False
+
+        TA.ArgumentRecycle pos attrPath name:
+            todo "translateArgAndType"
+
 
 translateExpression as State@: Int@: Expression: EA.Expression =
     state@: counter@: expression:
@@ -240,19 +250,19 @@ translateExpression as State@: Int@: Expression: EA.Expression =
         TA.Constructor _ usr:
             EA.Constructor (translateUsr @state usr)
 
-        TA.Fn pos args body:
+        TA.Fn pos taPars body:
 
             eaBody =
                 translateExpression @state @counter body
 
-            wrappedBody & eaArgs =
+            wrappedBody & eaPars =
                 eaBody & []
-                >> List.forReversed args arg: (bodyAcc & argsAcc):
-                    bodyX & eaArg =
-                        translateArgument @state @counter bodyAcc arg
-                    bodyX & (eaArg :: argsAcc)
+                >> List.forReversed taPars taPar: (bodyAcc & eaParsAcc):
+                    bodyX & eaPar =
+                        translateParameter @state @counter bodyAcc taPar
+                    bodyX & (eaPar :: eaParsAcc)
 
-            EA.Fn eaArgs wrappedBody
+            EA.Fn eaPars wrappedBody
 
         TA.Record _ extends attrs:
             attrs
@@ -261,16 +271,10 @@ translateExpression as State@: Int@: Expression: EA.Expression =
             >> List.map (Tuple.mapSecond (translateExpression @state @counter))
             >> EA.LiteralRecord (Maybe.map (translateExpression @state @counter) extends)
 
-        TA.Call _ ref args:
-            todo "TA.Call"
-
-#            arg =
-#                translateVariableArgs @state var
-#                >> List.for attrPath attributeName: expr:
-#                    EA.RecordAccess attributeName expr
-#
-#            EA.Call (translateExpression @state @counter ref) [args & True]
-
+        TA.Call _ ref argsAndTypes:
+            EA.Call
+                (translateExpression @state @counter ref)
+                (List.map (translateArgAndType @state @counter) argsAndTypes)
 
         TA.If _ ar:
             EA.Conditional

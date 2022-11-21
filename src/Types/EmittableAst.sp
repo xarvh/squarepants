@@ -17,7 +17,7 @@ union Expression =
     , LiteralText Text
     , LiteralNumber Number
     , Variable Name [Name]
-    , Call Expression (Expression & Bool)
+    , Call Expression [Expression & Bool]
     , Fn [Maybe Name] Expression
     , Conditional Expression Expression Expression
     , And [Expression]
