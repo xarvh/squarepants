@@ -191,6 +191,39 @@ testPattern as Pattern: EA.Expression: [EA.Expression]: [EA.Expression] =
                 testPattern pa (EA.RecordAccess name valueToTest)
 
 
+
+translateArgument as State@: Int@: EA.Expression: (TA.Parameter & TA.Type): EA.Expression & Maybe Name =
+    state@: counter@: bodyAcc: (param & type):
+
+    try param as
+        TA.ParameterRecycle pos name:
+            bodyAcc & Just name
+
+        TA.ParameterPattern pa:
+            try pickMainName pa as
+                NoNamedVariables:
+                    bodyAcc & Nothing
+
+                TrivialPattern (DollarName argName):
+                    bodyAcc & Just argName
+
+                SafeMainName (DollarName mainName):
+                    namesAndExpressions =
+                         translatePattern pa (EA.Variable mainName [])
+
+                    wrapWithArgumentLetIn =
+                        (isUnique & DollarName varName & letExpression): inExpression:
+                        EA.LetIn {
+                            , maybeName = Just varName
+                            #, isUnique
+                            , letExpression
+                            , inExpression
+                            }
+
+                    List.for namesAndExpressions wrapWithArgumentLetIn bodyAcc & Just mainName
+
+
+
 translateExpression as State@: Int@: Expression: EA.Expression =
     state@: counter@: expression:
 
@@ -208,31 +241,18 @@ translateExpression as State@: Int@: Expression: EA.Expression =
             EA.Constructor (translateUsr @state usr)
 
         TA.Fn pos args body:
-            todo "TA.Fn"
-#            try pickMainName pattern as
-#                NoNamedVariables:
-#                    EA.Lambda Nothing (translateExpression @state @counter body)
-#
-#                TrivialPattern (DollarName argName):
-#                    EA.Lambda (Just argName) (translateExpression @state @counter body)
-#
-#                SafeMainName (DollarName mainName):
-#                    namesAndExpressions =
-#                         translatePattern pattern (EA.Variable mainName [])
-#
-#                    wrapWithArgumentLetIn =
-#                        (isUnique & DollarName varName & letExpression): inExpression:
-#                        EA.LetIn {
-#                            , maybeName = Just varName
-#                            #, isUnique
-#                            , letExpression
-#                            , inExpression
-#                            }
-#
-#                    body
-#                    >> translateExpression @state @counter
-#                    >> List.for namesAndExpressions wrapWithArgumentLetIn
-#                    >> EA.Lambda (Just mainName)
+
+            eaBody =
+                translateExpression @state @counter body
+
+            wrappedBody & eaArgs =
+                eaBody & []
+                >> List.forReversed args arg: (bodyAcc & argsAcc):
+                    bodyX & eaArg =
+                        translateArgument @state @counter bodyAcc arg
+                    bodyX & (eaArg :: argsAcc)
+
+            EA.Fn eaArgs wrappedBody
 
         TA.Record _ extends attrs:
             attrs
@@ -410,7 +430,7 @@ circularIsError as ByName EA.GlobalDefinition: [Name]: Bool =
 
           Just globalDef:
               try globalDef.expr as
-                  EA.Lambda _ _:
+                  EA.Fn _ _:
                       False
                   _:
                       True

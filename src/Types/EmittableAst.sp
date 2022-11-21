@@ -18,7 +18,7 @@ union Expression =
     , LiteralNumber Number
     , Variable Name [Name]
     , Call Expression (Expression & Bool)
-    , Lambda (Maybe Name) Expression
+    , Fn [Maybe Name] Expression
     , Conditional Expression Expression Expression
     , And [Expression]
     , ShallowEqual Expression Expression

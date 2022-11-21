@@ -461,12 +461,13 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                     Block << letStatement :: inStatements
 
 
-        EA.Lambda maybeName body:
+        EA.Fn eaArgs body:
 
             args =
-                try maybeName as
-                    Just name: [ name ]
-                    Nothing: []
+                eaArgs >> List.indexedMap index: maybeName:
+                    try maybeName as
+                        Just name: name
+                        Nothing: "_" .. Text.fromNumber index
 
             statements as [JA.Statement] =
                 try translateExpression env body as

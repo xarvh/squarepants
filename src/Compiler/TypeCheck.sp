@@ -487,6 +487,8 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     , pattern = patternOut.typedPattern
     , native = def.native
     , body = typedBody
+    , directValueDeps = def.directValueDeps
+    , tyvars = def.tyvars
     }
     &
     patternOut.env

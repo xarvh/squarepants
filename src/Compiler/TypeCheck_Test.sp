@@ -124,7 +124,7 @@ infer as Text: Text: Result Text Out =
     >> TH.resErrorToStrippedText code
     >> onOk taModule:
 
-    toMatch =
+    toMatch as (CA.Pattern & TA.ValueDef): Maybe { isUnique as Bool, maybeAnnotation as Maybe CA.Type, def as TA.ValueDef }=
         (pattern & def):
         try pattern as
             CA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName = Just name }:
