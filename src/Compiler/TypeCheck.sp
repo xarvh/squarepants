@@ -1597,11 +1597,11 @@ addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
 
 
 addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
-    state@: _: stuff: env:
+    state@: _: caUnionDef: env:
 
-    { usr, pars, constructors, directTypeDeps } =
-        stuff
-
+#    { usr, pars, constructors, directTypeDeps } =
+#        stuff
+#
 #    taDef as TA.UnionDef =
 #        {
 #        , usr
@@ -1609,9 +1609,8 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
 #        #, constructors = taConstructors
 #        }
 
-    #TODO{ env with types = Dict.insert usr (TA.TypeDefUnion taDef) .types }
-    env
-    >> Dict.for constructors (addConstructorToGlobalEnv @state pars)
+    { env with namedTypes = Dict.insert caUnionDef.usr (UnionType caUnionDef) .namedTypes }
+    >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state caUnionDef.pars)
 
 
 initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
