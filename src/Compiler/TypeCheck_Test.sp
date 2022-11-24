@@ -31,11 +31,11 @@ codeTest =
     Test.codeTest outToHuman
 
 
-outToHuman as Out: Text =
+outToHuman as Compiler/TypeCheck.Instance: Text =
     out:
 
     [
-    , "  tyvars = " .. Debug.toHuman (Dict.toList out.tyvars)
+    , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
     , "  type = " .. Debug.toHuman out.type
     ]
         >> Text.join "\n"
@@ -76,13 +76,7 @@ function as [TA.Type]: TA.Type: TA.Type =
 #
 #
 #
-alias Out = {
-    , tyvars as Dict Text TA.TypeClasses
-    , type as TA.Type
-    }
-
-
-infer as Text: Text: Result Text Out =
+infer as Text: Text: Result Text Compiler/TypeCheck.Instance =
     name: code:
 
     params as Compiler/MakeCanonical.Params = {
@@ -108,14 +102,16 @@ infer as Text: Text: Result Text Out =
             >> Dict.insert
                 (CA.RefGlobal << USR TH.moduleUmr "add")
                 {
+                , definedAt = Pos.T
                 , type = function [tyNumber, tyNumber] tyNumber
-                , tyvars = Dict.empty
+                , freeTyvars = Dict.empty
                 }
             >> Dict.insert
                 (CA.RefGlobal << USR TH.moduleUmr "reset")
                 {
+                , definedAt = Pos.T
                 , type = function [tyNumber] tyNone
-                , tyvars = Dict.empty
+                , freeTyvars = Dict.empty
                 }
         }
 
@@ -124,7 +120,7 @@ infer as Text: Text: Result Text Out =
     >> TH.resErrorToStrippedText code
     >> onOk taModule:
 
-    toMatch as (CA.Pattern & TA.ValueDef): Maybe { isUnique as Bool, maybeAnnotation as Maybe CA.Type, def as TA.ValueDef }=
+    toMatch as (CA.Pattern & TA.ValueDef): Maybe { isUnique as Bool, maybeAnnotation as Maybe CA.Type, def as TA.ValueDef } =
         (pattern & def):
         try pattern as
             CA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName = Just name }:
@@ -149,13 +145,15 @@ infer as Text: Text: Result Text Out =
 
                 TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
                     {
+                    , definedAt = Pos.T
                     , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
-                    , tyvars = def.tyvars
+                    , freeTyvars = Dict.empty #todo "" #def.tyvars
                     }
                     >> Ok
 
                 _:
                     Err "pattern fail"
+
 
 
 #
@@ -170,8 +168,10 @@ functions as Test =
             "a = add 3 1"
             (infer "a")
             (Test.isOkAndEqualTo
-                { type = tyNumber
-                , tyvars = Dict.empty
+                {
+                , definedAt = Pos.T
+                , type = tyNumber
+                , freeTyvars = Dict.empty
                 }
             )
         , codeTest "Known function with wrong params"
@@ -183,8 +183,10 @@ functions as Test =
             "a = fn x: add x 1"
             (infer "a")
             (Test.isOkAndEqualTo
-                { type = function [tyNumber] tyNumber
-                , tyvars = Dict.empty
+                {
+                , definedAt = Pos.T
+                , type = function [tyNumber] tyNumber
+                , freeTyvars = Dict.empty
                 }
             )
         , codeTest
@@ -192,8 +194,10 @@ functions as Test =
             "a = fn x: add 1 x"
             (infer "a")
             (Test.isOkAndEqualTo
-                { type = function [tyNumber] tyNumber
-                , tyvars = Dict.empty
+                {
+                , definedAt = Pos.T
+                , type = function [tyNumber] tyNumber
+                , freeTyvars = Dict.empty
                 }
             )
 #        , codeTest

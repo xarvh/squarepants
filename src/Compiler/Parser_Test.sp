@@ -339,10 +339,51 @@ functions as Test =
                         , Prelude.sendRight & variable "sblorp"
                         ]
             )
-
-
-
-
+        , codeTest
+            """
+            SKIP [reg] Fn with multiple indented statements
+            """
+            """
+            fn x:
+              x
+              x
+            """
+            firstEvaluation
+            (Test.isOkAndEqualTo <<
+                e << FA.Fn
+                    [ variable "x" ]
+                    ( e << FA.Statements
+                        [
+                        , FA.Evaluation << variable "x"
+                        , FA.Evaluation << variable "x"
+                        ]
+                    )
+            )
+        , codeTest
+            """
+            SKIP [reg] Fn with definition
+            """
+            """
+            fn x:
+            y = 1
+            x
+            """
+            firstDefinition
+            (Test.isOkAndEqualTo <<
+                {
+                , pattern = variable "z"
+                , nonFn = []
+                , body =
+                    e << FA.Fn
+                        [ variable "x" ]
+                        ( e << FA.Statements
+                            [
+                            , FA.Evaluation << variable "x"
+                            , FA.Evaluation << variable "x"
+                            ]
+                        )
+                }
+            )
         ]
 
 

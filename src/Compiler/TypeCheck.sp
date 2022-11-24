@@ -36,6 +36,7 @@
 #]
 
 
+# TODO move this to Dict
 onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key b =
     da: db:
 
@@ -85,9 +86,10 @@ initState as Int: State =
     }
 
 
-alias TypeWithClasses = {
+alias Instance = {
+    , definedAt as Pos
     , type as TA.Type
-    , tyvars as Dict TA.UnificationVariableId TA.TypeClasses
+    , freeTyvars as Dict TA.UnificationVariableId TA.TypeClasses
     }
 
 
@@ -99,11 +101,37 @@ union NamedType =
 
 alias Env = {
     , context as Context
-    , constructors as ByUsr TypeWithClasses
-    , variables as Dict TA.Ref TypeWithClasses
+    , constructors as ByUsr Instance
+    , variables as Dict TA.Ref Instance
     , namedTypes as ByUsr NamedType
 
-    , tyvarsInParentAnnotations as Dict TA.UnificationVariableId TA.Type
+    [#
+       Every time we use a value in an expression, we must re-instantiate its free variables, because each time they can be used in a different way.
+
+       Because of this each Definition has a `freeTypeVariables` field.
+
+       To figure out `freeTypeVariables` we can't simply take all tyvars we find in the definition's type, because:
+
+       1) a tyvar that is free in a parent definition should not be considered free in children definitions:
+
+         parent =
+           as List a
+
+           child =
+             as a: a
+             ...
+
+           ...
+
+       2) the placeholder tyvar of an argument should not be considered free while we infer the type of a function, otherwise we keep reinstantitiating it and we never figure out anything.
+
+         f x =
+           { first } = x
+           first
+
+       By keeping track of which tyvars should NOT be considered free, we can figure out the correct `freeTypeVariables` field for each child definition.
+    #]
+    , nonFreeTyvars as Dict TA.UnificationVariableId None
 
     # This is used to give meaningfule errors?
     , annotatedTyvarToGeneratedTyvar as Dict Name TA.UnificationVariableId
@@ -116,7 +144,7 @@ initEnv as Env =
     , constructors = Dict.empty
     , variables = Dict.empty
     , namedTypes = Dict.empty
-    , tyvarsInParentAnnotations = Dict.empty
+    , nonFreeTyvars = Dict.empty
     , annotatedTyvarToGeneratedTyvar = Dict.empty
     }
 
@@ -131,7 +159,7 @@ union Error_ =
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
     , ErrorIncompatibleTypes CA.Expression CA.Type
-    , ErrorVariableTypeIncompatible CA.Ref TypeWithClasses CA.Type
+    , ErrorVariableTypeIncompatible CA.Ref Instance CA.Type
     , ErrorConstructorTypeIncompatible USR TA.Type CA.Type
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
@@ -220,13 +248,13 @@ addError as Env: Pos: Error_: State@: None =
 #            List.reverse accum & type
 
 
-getConstructorByUsr as USR: Env: Maybe TypeWithClasses =
+getConstructorByUsr as USR: Env: Maybe Instance =
     usr: env:
 
     Dict.get usr env.constructors
 
 
-getVariableByRef as CA.Ref: Env: Maybe TypeWithClasses =
+getVariableByRef as CA.Ref: Env: Maybe Instance =
     ref: env:
 
     Dict.get ref env.variables
@@ -237,16 +265,16 @@ getVariableByRef as CA.Ref: Env: Maybe TypeWithClasses =
 # Generalize
 #
 #
-generalize as Env: TypeWithClasses: State@: TA.Type =
+generalize as Env: Instance: State@: TA.Type =
     env: typeWithClasses: state@:
 
-    typeWithClasses.type >> Dict.for typeWithClasses.tyvars tyvarId: typeClasses:
+    typeWithClasses.type >> Dict.for typeWithClasses.freeTyvars tyvarId: typeClasses:
 
         replacementType =
-            try Dict.get tyvarId env.tyvarsInParentAnnotations as
-                Just type:
+            try Dict.get tyvarId env.nonFreeTyvars as
+                Just _:
                     # TODO also check that typeclasses are compatible? Should MakeCanonical do it?
-                    type
+                    TA.TypeUnificationVariable tyvarId
 
                 Nothing:
                     tyvarId =
@@ -665,6 +693,15 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             TA.DestroyIn name typedExpression & expressionType
 
 
+
+insertNonFreeTyvars as TA.Type: Env: Env =
+      type: env:
+
+      { env with
+      , nonFreeTyvars = .nonFreeTyvars >> Dict.for (TA.typeTyvars type) id: _: Dict.insert id None
+      }
+
+
 inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
     env: par: state@:
 
@@ -673,7 +710,7 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
             patternOut =
                 inferPattern env pa @state
 
-            TA.ParameterPattern patternOut.typedPattern & patternOut.patternType & patternOut.env
+            TA.ParameterPattern patternOut.typedPattern & patternOut.patternType & insertNonFreeTyvars patternOut.patternType patternOut.env
 
         CA.ParameterRecycle pos name:
 
@@ -681,14 +718,16 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
 
             type = TA.TypeUnique pos (newType @state)
 
-            typeWithClasses as TypeWithClasses =
+            typeWithClasses as Instance =
                 {
+                , definedAt = pos
                 , type
-                , tyvars = Dict.empty
+                , freeTyvars = Dict.empty
                 }
 
             newEnv as Env =
                 { env with variables = Dict.insert (CA.RefLocal name) typeWithClasses .variables }
+                >> insertNonFreeTyvars type
 
             TA.ParameterRecycle pos name & type & newEnv
 
@@ -722,7 +761,7 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
         inferExpression { newEnv with context = Context_FnBody pos env.context } body @state
 
     type as TA.Type =
-        TA.TypeFn Pos.G (Array.toList parTypes) bodyType
+        TA.TypeFn pos (Array.toList parTypes) bodyType
 
     exp =
         TA.Fn pos (Array.toList typedPars) typedBody
@@ -854,11 +893,12 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
 
             # TODO: expectedType must be unique!!!
 
-            variable as TypeWithClasses =
+            variable as Instance =
                 {
+                , definedAt = pos
                 , type = typeCa2Ta env expectedType
                 # TODO not sure about this here???
-                , tyvars = Dict.empty
+                , freeTyvars = Dict.empty
                 }
 
             localEnv as Env =
@@ -1199,10 +1239,11 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                              >> TA.typeTyvars
                              >> Dict.map k: v: { allowFunctions = Nothing, allowUniques = Nothing }
 
-                        variable =
+                        variable as Instance =
                             {
+                            , definedAt = pos
                             , type = patternType
-                            , tyvars
+                            , freeTyvars = tyvars
                             }
 
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
@@ -1408,6 +1449,9 @@ doModule as State: Env: CA.Module: Res TA.Module =
         , errors = []
         }
 
+    List.each (Array.toList state.equalities) eq:
+        log "EQ" eq
+
     erStateF =
         solveEqualities (Array.toList state.equalities) erState0
 
@@ -1422,6 +1466,9 @@ doModule as State: Env: CA.Module: Res TA.Module =
         , valueDefs = typedValueDefs
         , substitutions = erStateF.substitutions
         }
+
+    List.each (Dict.toList erStateF.substitutions) (id & t):
+        log (Text.fromNumber id) t
 
     errors as [Error] =
         [
@@ -1515,10 +1562,11 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     >> USR umr
                     >> CA.RefGlobal
 
-                typeWithClasses as TypeWithClasses =
+                typeWithClasses as Instance =
                     {
+                    , definedAt = valueStuff.pos
                     , type = typeCa2Ta_ (nameToTyvarId @state @hash) annotation
-                    , tyvars = translateTyvars @state @hash def.tyvars
+                    , freeTyvars = translateTyvars @state @hash def.tyvars
                     }
 
                 { envX with variables = Dict.insert ref typeWithClasses .variables }
@@ -1538,10 +1586,11 @@ addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
         >> List.map ((At p n): (n & { allowFunctions = Just True, allowUniques = Just True }))
         >> Dict.fromList
 
-    taConstructor as TypeWithClasses =
+    taConstructor as Instance =
         {
+        , definedAt = Pos.G
         , type = typeCa2Ta_ (nameToTyvarId @state @hash) caConstructor.type
-        , tyvars = translateTyvars @state @hash caTyvars
+        , freeTyvars = translateTyvars @state @hash caTyvars
         }
 
     { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }
