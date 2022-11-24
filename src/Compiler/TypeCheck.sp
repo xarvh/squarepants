@@ -1623,6 +1623,7 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
     doStuff as CA.Module: Env: Env =
         caModule: env:
         env
+        >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
         >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
         #TODO >> Dict.for caModule.aliasDefs (addAliasToGlobalEnv @state)
         >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)

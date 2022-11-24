@@ -174,8 +174,12 @@ functions as Test =
                 , freeTyvars = Dict.empty
                 }
             )
-        , codeTest "Known function with wrong params"
+        , codeTest "Known function with wrong *number* of args"
             "a = add False"
+            (infer "a")
+            (Test.errorContains [ "different number of arguments"])
+        , codeTest "Known function with wrong params"
+            "a = add False 1"
             (infer "a")
             (Test.errorContains [ "Bool"])
         , codeTest
