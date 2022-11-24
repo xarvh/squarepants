@@ -31,7 +31,14 @@ codeTest =
     Test.codeTest outToHuman
 
 
-outToHuman as Compiler/TypeCheck.Instance: Text =
+alias Out =
+    {
+    , type as TA.Type
+    , freeTyvars as Dict TA.UnificationVariableId None
+    }
+
+
+outToHuman as Out: Text =
     out:
 
     [
@@ -42,12 +49,20 @@ outToHuman as Compiler/TypeCheck.Instance: Text =
 
 
 
+tyvar as Int: TA.Type =
+    TA.TypeUnificationVariable
+
+
 tyNumber as TA.Type =
-    TA.TypeOpaque Pos.T ("Number" >> Meta.spCoreUSR) []
+    TA.TypeOpaque Pos.N ("Number" >> Meta.spCoreUSR) []
 
 
 tyNone as TA.Type =
-    TA.TypeOpaque Pos.T ("None" >> Meta.spCoreUSR) []
+    TA.TypeOpaque Pos.N ("None" >> Meta.spCoreUSR) []
+
+
+tyBool as TA.Type =
+    TA.TypeOpaque Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
 ftv as Text: Dict Text TA.TypeClasses =
@@ -73,10 +88,14 @@ function as [TA.Type]: TA.Type: TA.Type =
 #    TA.TypeAnnotationVariable Pos.T name
 
 
+
+
+
+
 #
 #
 #
-infer as Text: Text: Result Text Compiler/TypeCheck.Instance =
+infer as Text: Text: Result Text Out =
     name: code:
 
     params as Compiler/MakeCanonical.Params = {
@@ -145,7 +164,6 @@ infer as Text: Text: Result Text Compiler/TypeCheck.Instance =
 
                 TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
                     {
-                    , definedAt = Pos.T
                     , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
                     , freeTyvars = Dict.empty #todo "" #def.tyvars
                     }
@@ -169,7 +187,6 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , definedAt = Pos.T
                 , type = tyNumber
                 , freeTyvars = Dict.empty
                 }
@@ -188,7 +205,6 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , definedAt = Pos.T
                 , type = function [tyNumber] tyNumber
                 , freeTyvars = Dict.empty
                 }
@@ -199,30 +215,26 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , definedAt = Pos.T
                 , type = function [tyNumber] tyNumber
                 , freeTyvars = Dict.empty
                 }
             )
-#        , codeTest
-#            "[reg] fn has type None"
-#            "a = x: 1"
-#            (infer "a")
-#            (Test.isOkAndEqualTo
-#                { tyvars = ftv "1"
-#                , type = function [typeVariable "a"] tyNumber
-#                }
-#            )
-#
-#        #
+        , codeTest
+            "[reg] fn has type None"
+            "a = fn x: 1"
+            (infer "a")
+            (Test.isOkAndEqualTo
+                {
+                , type = function [tyvar 2] tyNumber
+                , freeTyvars = Dict.empty
+                }
+            )
         , codeTest "[reg] Multiple arguments are correctly inferred"
             """
             a = fn x, y, z: x + y + z
             """
             (infer "a")
             Test.isOk
-#
-#        #
         , codeTest "Annotation should be consistent with mutability"
             """
             f as @Number: Number = a:
@@ -241,9 +253,8 @@ functions as Test =
 
 statements as Test =
     Test.Group "statements"
-        []
-        [#
-        [ codeTest
+        [
+        , codeTest
             """
             Statement blocks should return the last statement's type
             """
@@ -253,17 +264,17 @@ statements as Test =
               False
             """
             (infer "a")
-            (Test.isOkAndEqualTo { ty = CoreTypes.bool, freeTypeVariables = Dict.empty, isMutable = False })
+            (Test.isOkAndEqualTo { type = tyBool, freeTyvars = Dict.empty })
         , codeTest
             """
             Definition statement return type None
             """
             """
             a =
-              f = x: 3
+              f = fn x: 3
             """
             (infer "a")
-            (Test.isOkAndEqualTo { ty = CoreTypes.none, freeTypeVariables = Dict.empty, isMutable = False })
+            (Test.isOkAndEqualTo { type = tyNone, freeTyvars = Dict.empty })
         , codeTest
             """
             [reg] Definition statement with annotation return type None
@@ -274,9 +285,10 @@ statements as Test =
             """
             (infer "a")
             Test.isOk
+        [# TODO move to MakeCanonical?
         , codeTest
             """
-            SKIP Local values can't shadow root values
+            Local values can't shadow root values
             """
             """
             a = 1
@@ -288,7 +300,7 @@ statements as Test =
             (Test.errorContains [ "already"])
         , codeTest
             """
-            SKIP Prevent local redeclarations
+            Prevent local redeclarations
             """
             """
             b =
@@ -299,7 +311,7 @@ statements as Test =
             (Test.errorContains [ "declar"])
         , codeTest
             """
-            SKIP Prevent root redeclarations
+            Prevent root redeclarations
             """
             """
             a = 1
@@ -307,6 +319,7 @@ statements as Test =
             """
             (infer "b")
             (Test.errorContains [ "declar"])
+        #]
         , codeTest
             """
             [reg] Annotated declarations are actually typechecked
@@ -318,7 +331,6 @@ statements as Test =
             (infer "x")
             (Test.errorContains [])
         ]
-        #]
 
 
 

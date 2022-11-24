@@ -1449,8 +1449,8 @@ doModule as State: Env: CA.Module: Res TA.Module =
         , errors = []
         }
 
-    List.each (Array.toList state.equalities) eq:
-        log "EQ" eq
+#    List.each (Array.toList state.equalities) eq:
+#        log "EQ" eq
 
     erStateF =
         solveEqualities (Array.toList state.equalities) erState0
@@ -1467,8 +1467,8 @@ doModule as State: Env: CA.Module: Res TA.Module =
         , substitutions = erStateF.substitutions
         }
 
-    List.each (Dict.toList erStateF.substitutions) (id & t):
-        log (Text.fromNumber id) t
+#    List.each (Dict.toList erStateF.substitutions) (id & t):
+#        log (Text.fromNumber id) t
 
     errors as [Error] =
         [
