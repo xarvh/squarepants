@@ -83,14 +83,6 @@ function as [TA.Type]: TA.Type: TA.Type =
     TA.TypeFn Pos.T (List.map (t: False & t) from) to
 
 
-#typeVariable as Name: TA.Type =
-#    name:
-#    TA.TypeAnnotationVariable Pos.T name
-
-
-
-
-
 
 #
 #
@@ -341,19 +333,17 @@ statements as Test =
 
 variableTypes as Test =
     Test.Group "Variable types"
-        []
-        [#
-        [ codeTest
+        [
+        , codeTest
             "Identity"
             """
-            id as a: a =
-              a: a
+            id as fn a: a =
+              fn a: a
             """
             (infer "id")
             (Test.isOkAndEqualTo
-                { ty = typeFunction (typeVariable "0a") (typeVariable "0a")
-                , freeTypeVariables = ftv "0a"
-                , isMutable = False
+                { type = function [tyvar 1] (tyvar 1)
+                , freeTyvars = Dict.empty
                 }
             )
 
@@ -368,7 +358,7 @@ variableTypes as Test =
             """
             (infer "r")
             Test.isOk
-        #]
+        ]
 
 
 mu as Test =

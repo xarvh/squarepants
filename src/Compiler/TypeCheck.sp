@@ -159,8 +159,6 @@ union Error_ =
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
     , ErrorIncompatibleTypes CA.Expression CA.Type
-    , ErrorVariableTypeIncompatible CA.Ref Instance CA.Type
-    , ErrorConstructorTypeIncompatible USR TA.Type CA.Type
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
@@ -187,6 +185,7 @@ union Context =
 
 
 union Why =
+    , Why_Annotation
     , Why_LetIn
     , Why_Record
     , Why_RecordExt
@@ -331,6 +330,11 @@ variableIsCompatibleWith as Env: CA.Type: TA.Type: Bool =
             variableIsCompatibleWith env c u
 
         CA.TypeAnnotationVariable _ nameC & TA.TypeUnificationVariable idU:
+
+            log "zzzzz" { nameC, idU }
+            log "-----" env.annotatedTyvarToGeneratedTyvar
+
+
             Dict.get nameC env.annotatedTyvarToGeneratedTyvar == Just idU
 
         #TypeRecord _ attrsC & TypeExtra (TypeRecordExt idU attrsU):
@@ -501,8 +505,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     typedBody & bodyType =
         try patternOut.maybeFullAnnotation as
             Just annotationType:
-                # TODO Should I use patternOut.type or (typeCa2Ta annotationType)?
-                checkExpression newEnv annotationType def.body @state & patternOut.patternType
+                checkExpression newEnv annotationType def.body @state & typeCa2Ta newEnv annotationType
             Nothing:
                 inferExpression newEnv def.body @state
 
@@ -942,10 +945,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    if variableIsCompatibleWith env expectedType var.type then
-                        None
-                    else
-                        addError env pos (ErrorVariableTypeIncompatible ref var expectedType) @state
+                    addEquality env pos Why_Annotation var.type (typeCa2Ta env expectedType) @state
 
             TA.Variable pos ref
 
@@ -956,10 +956,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
-                    if variableIsCompatibleWith env expectedType cons.type then
-                        None
-                    else
-                        addError env pos (ErrorConstructorTypeIncompatible usr cons.type expectedType) @state
+                    addEquality env pos Why_Annotation cons.type (typeCa2Ta env expectedType) @state
 
             TA.Constructor pos usr
 
@@ -1207,31 +1204,40 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
     try pattern as
         CA.PatternAny pos { isUnique, maybeName, maybeAnnotation }:
 
-            patternType as TA.Type =
+            (patternType as TA.Type) & (env1 as Env) =
                 try maybeAnnotation as
                     Nothing:
                         if isUnique then
-                            TA.TypeUnique pos << newType @state
+                            (TA.TypeUnique pos << newType @state) & env
                         else
-                            newType @state
+                            newType @state & env
 
                     Just annotation:
+
+                        blahEnv =
+                            { env with
+                            , annotatedTyvarToGeneratedTyvar =
+                                env.annotatedTyvarToGeneratedTyvar
+                                >> Dict.for (CA.typeTyvars annotation) name: _:
+                                      Dict.update name (v: v >> Maybe.withDefault (newTyvarId @state) >> Just)
+                            }
+
                         t =
-                            typeCa2Ta env annotation
+                            typeCa2Ta blahEnv annotation
 
                         if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
                             addError env pos ErrorUniquenessDoesNotMatch @state
                         else
                             None
 
-                        t
+                        t & blahEnv
 
 
-            newEnv =
+            env2 as Env =
                 try maybeName as
 
                     Nothing:
-                        env
+                        env1
 
                     Just name:
                         tyvars =
@@ -1247,7 +1253,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                             }
 
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                        { env with variables = Dict.insert (CA.RefLocal name) variable .variables }
+                        { env1 with variables = Dict.insert (CA.RefLocal name) variable .variables }
 
             typedPattern =
                 TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
@@ -1255,7 +1261,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
             {
             , typedPattern
             , patternType
-            , env = newEnv
+            , env = env2
             , maybeFullAnnotation = maybeAnnotation
             }
 
@@ -1598,16 +1604,6 @@ addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
 
 addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
     state@: _: caUnionDef: env:
-
-#    { usr, pars, constructors, directTypeDeps } =
-#        stuff
-#
-#    taDef as TA.UnionDef =
-#        {
-#        , usr
-#        , pars
-#        #, constructors = taConstructors
-#        }
 
     { env with namedTypes = Dict.insert caUnionDef.usr (UnionType caUnionDef) .namedTypes }
     >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state caUnionDef.pars)
