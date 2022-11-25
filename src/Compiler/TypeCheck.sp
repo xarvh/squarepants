@@ -292,60 +292,6 @@ generalize as Env: Instance: State@: TA.Type =
 # Types
 #
 #
-variableIsCompatibleWith as Env: CA.Type: TA.Type: Bool =
-    # This function is used to ensure that when a variable (or a constructor)
-    # from env can be used with the annotated/expected type
-    env: expected: variableType:
-
-    try expected & variableType as
-        CA.TypeNamed _ usrC argsC & TA.TypeOpaque _ usrU argsU:
-            if usrC /= usrU then
-                False
-            else
-                # TODO this is not efficient, we should stop at the first
-                List.map2 (variableIsCompatibleWith env) argsC argsU
-                >> List.all identity
-
-        CA.TypeFn _ modsAndArgsC outC & TA.TypeFn _ modsAndArgsU outU:
-            # TODO clean this up
-            x =
-                List.map2 Tuple.pair modsAndArgsC modsAndArgsU
-                >> List.all ((modC & inC) & (modU & inU)):
-                    modC /= modU and variableIsCompatibleWith env inC inU
-
-            x and variableIsCompatibleWith env outC outU
-
-        CA.TypeRecord _ attrC & TA.TypeRecord _ attrU:
-            onlyC & both & onlyU =
-                onlyBothOnly attrC attrU
-
-            if onlyC /= Dict.empty or onlyU /= Dict.empty then
-                False
-            else
-                both
-                >> Dict.values
-                >> List.all (c & u): variableIsCompatibleWith env c u
-
-        CA.TypeUnique _ c & TA.TypeUnique _ u:
-            variableIsCompatibleWith env c u
-
-        CA.TypeAnnotationVariable _ nameC & TA.TypeUnificationVariable idU:
-
-            log "zzzzz" { nameC, idU }
-            log "-----" env.annotatedTyvarToGeneratedTyvar
-
-
-            Dict.get nameC env.annotatedTyvarToGeneratedTyvar == Just idU
-
-        #TypeRecord _ attrsC & TypeExtra (TypeRecordExt idU attrsU):
-        #    ????
-
-        # TODO Probably needs to manage more TypeUnificationVariable?
-
-        _:
-            False
-
-
 typeCa2Ta as Env: CA.Type: TA.Type =
     env: ca:
 

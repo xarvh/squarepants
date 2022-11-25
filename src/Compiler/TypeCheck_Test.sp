@@ -65,9 +65,9 @@ tyBool as TA.Type =
     TA.TypeOpaque Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
-ftv as Text: Dict Text TA.TypeClasses =
+ftv as TA.UnificationVariableId: Dict Int None =
     n:
-    Dict.singleton n { allowFunctions = Just True, allowUniques = Just False }
+    Dict.singleton n None
 
 
 forall as List Text: Dict Text TA.TypeClasses =
@@ -486,24 +486,22 @@ mu as Test =
 
 higherOrderTypes as Test =
     Test.Group "higher order types"
-        []
-        [#
+        [
         , codeTest
-            "ONLY Parse precedence"
+            "Parse precedence"
             """
             union T a = T a
 
-            a as T a: T a =
-                l: l
+            a as fn T a: T a =
+                fn l: l
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                { ty =
-                    typeFunction
-                        (CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable "0a" ])
-                        (CA.TypeConstant Pos.T (TH.localType "T") [ typeVariable "0a" ])
-                , isMutable = False
-                , freeTypeVariables = ftv "0a"
+                { type =
+                    function
+                        [TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ]]
+                        (TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ])
+                , freeTyvars = ftv 0
                 }
             )
         , codeTest
@@ -517,12 +515,11 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , isMutable = False
-                , freeTypeVariables = Dict.singleton "1" { allowFunctions = True, allowUniques = True }
-                , ty =
-                    CA.TypeConstant Pos.T
+                , freeTyvars = Dict.singleton 1 None
+                , type =
+                    TA.TypeOpaque Pos.T
                         (TH.localType "X")
-                        [ CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = True }]
+                        [ tyvar 1 ]
                 }
             )
         , codeTest
@@ -570,7 +567,7 @@ higherOrderTypes as Test =
             """
             (infer "f")
             (Test.errorContains [ "Wrap"])
-        #]
+        ]
 
 
 
