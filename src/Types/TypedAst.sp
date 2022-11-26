@@ -79,7 +79,7 @@ alias ValueDef =
     , pattern as Pattern
     , native as Bool
     , body as Expression
-    , tyvars as Dict Name TypeClasses
+    , tyvars as Dict UnificationVariableId TypeClasses
     , directValueDeps as Set USR
     }
 

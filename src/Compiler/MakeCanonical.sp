@@ -1430,8 +1430,12 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
             {
             , pos
             , typeUsr = unionUsr
-            , type = CA.TypeFn pos (List.map (a: True & a) caPars) unionType
             , pars = caPars
+            , type =
+                if caPars == [] then
+                    unionType
+                else
+                    CA.TypeFn pos (List.map (a: True & a) caPars) unionType
             }
 
         constructors

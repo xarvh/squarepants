@@ -460,12 +460,20 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     else
         None
 
+
+    tyvars as Dict TA.UnificationVariableId TA.TypeClasses =
+        Dict.empty
+        >> Dict.for def.tyvars name: typeClasses:
+            try Dict.get name newEnv.annotatedTyvarToGeneratedTyvar as
+                Nothing: todo << "compiler error: missing annotatedTyvarToGeneratedTyvar for " .. name
+                Just tyvarId: Dict.insert tyvarId typeClasses
+
     {
     , pattern = patternOut.typedPattern
     , native = def.native
     , body = typedBody
     , directValueDeps = def.directValueDeps
-    , tyvars = def.tyvars
+    , tyvars
     }
     &
     patternOut.env

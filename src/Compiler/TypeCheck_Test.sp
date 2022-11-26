@@ -34,7 +34,7 @@ codeTest =
 alias Out =
     {
     , type as TA.Type
-    , freeTyvars as Dict TA.UnificationVariableId None
+    , freeTyvars as Dict TA.UnificationVariableId TA.TypeClasses
     }
 
 
@@ -65,9 +65,9 @@ tyBool as TA.Type =
     TA.TypeOpaque Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
-ftv as TA.UnificationVariableId: Dict Int None =
+ftv as TA.UnificationVariableId: Dict TA.UnificationVariableId TA.TypeClasses =
     n:
-    Dict.singleton n None
+    Dict.singleton n { allowFunctions = Just True, allowUniques = Just False }
 
 
 forall as List Text: Dict Text TA.TypeClasses =
@@ -157,7 +157,7 @@ infer as Text: Text: Result Text Out =
                 TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
                     {
                     , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
-                    , freeTyvars = Dict.empty #todo "" #def.tyvars
+                    , freeTyvars = def.tyvars
                     }
                     >> Ok
 
@@ -343,7 +343,7 @@ variableTypes as Test =
             (infer "id")
             (Test.isOkAndEqualTo
                 { type = function [tyvar 1] (tyvar 1)
-                , freeTyvars = Dict.empty
+                , freeTyvars = ftv 1
                 }
             )
 
@@ -501,7 +501,7 @@ higherOrderTypes as Test =
                     function
                         [TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ]]
                         (TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ])
-                , freeTyvars = ftv 0
+                , freeTyvars = ftv 1
                 }
             )
         , codeTest
@@ -515,7 +515,7 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.singleton 1 None
+                , freeTyvars = ftv 1
                 , type =
                     TA.TypeOpaque Pos.T
                         (TH.localType "X")
