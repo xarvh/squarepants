@@ -229,34 +229,56 @@ const sp_benchStop = (name) => {
 //
 
 
-const sp_toHuman = (a) => {
+const id = (n) => '    '.repeat(n);
+
+
+const sp_toHuman = (a, l = 0) => {
 
   if (Array.isArray(a))
-    return sp_toHumanAsList([], a) || sp_toHumanAsUnion(a);
+    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);
 
   if (typeof a === 'function') {
-    return '<function>';
+    return '<fn ' + a.length + '>';
   }
 
   if (typeof a === 'object') {
-    let x = [];
-    for (let i in a) x.push(i + ' = ' + sp_toHuman(a[i]));
-    return '{' + x.join(', ') + '}';
+    let acc = '{\\n';
+    for (let key in a)
+        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';
+
+    return acc + id(l) + '}';
   }
 
   return JSON.stringify(a, null, 0);
 }
 
 
-const sp_toHumanAsUnion = (a) => {
-  return a[0] + ' ' + a.slice(1).map(arg => '(' + sp_toHuman(arg) + ')').join(' ');
+const sp_toHumanAsUnion = (a, l) => {
+
+  if (a.length === 1) {
+      return a[0];
+  }
+
+  let acc = a[0] + '\\n';
+
+  a.slice(1).forEach(arg => {
+
+      const sub = sp_toHuman(arg, l + 1);
+      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)
+          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';
+      else
+          acc += id(l + 1) + sub + '\\n';
+
+  })
+
+  return acc;
 }
 
 
-const sp_toHumanAsList = (arrayAccum, list) => {
-  if (list[0] === '""" .. listCons .. """') {
-    arrayAccum.push(sp_toHuman(list[1]));
-    return sp_toHumanAsList(arrayAccum, list[2]);
+const sp_toHumanAsList = (arrayAccum, list, l) => {
+  if (list[0] === '""" .. listCons .. """' && list.length === 3) {
+    arrayAccum.push(sp_toHuman(list[1], l));
+    return sp_toHumanAsList(arrayAccum, list[2], l);
   }
 
   if (list[0] === '""" .. listNil .. """')
