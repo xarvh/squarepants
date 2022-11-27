@@ -282,8 +282,8 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [tyvar 2] tyNumber
-                , tyvars = freeTyvarsInferred [2]
+                , type = function [tyvar 1] tyNumber
+                , tyvars = freeTyvarsInferred [1]
                 }
             )
         , codeTest "[reg] Multiple arguments are correctly inferred"
@@ -580,11 +580,11 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , tyvars = freeTyvarsInferred [2]
+                , tyvars = freeTyvarsInferred [1]
                 , type =
                     TA.TypeOpaque Pos.G
                         (TH.localType "X")
-                        [ tyvar 2 ]
+                        [ tyvar 1 ]
                 }
             )
         , codeTest
@@ -654,7 +654,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , tyvars = freeTyvarsInferred [2, 4, 5]
+                , tyvars = freeTyvarsInferred [1, 2, 3]
                 , type =
                     function
                         [TA.TypeRecordExt 1
@@ -663,43 +663,34 @@ records as Test =
                         (tyvar 3)
                 }
             )
-#        , codeTest
-#            """
-#            Attribute mutation
-#            """
-#            """
-#            a =
-#                @b:-
-#                @b.meh.blah += 1
-#            """
-#            (infer "a")
-#            (Test.isOkAndEqualTo {
-#                , freeTypeVariables =
-#                    [ "2", "4" ]
+        , codeTest
+            """
+            Attribute mutation
+            """
+            """
+            a = fn @b: (@b.meh.blah += 1)
+            """
+            (infer "a")
+            (Test.isOkAndEqualTo
+                {
+                , tyvars = freeTyvarsInferred [ 1, 2 ]
 #                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
 #                    >> Dict.fromList
-#                , isMutable =
-#                    False
-#                , ty =
-#                    typeFunction
-#                        (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
-#                            "a"
-#                            { allowFunctions = True, allowUniques = True }
-#                            (Dict.singleton "meh"
-#                                (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
-#                                    "b"
-#                                    { allowFunctions = True, allowUniques = True }
-#                                    (Dict.singleton
-#                                        "blah"
-#                                        (CA.TypeMutable Pos.N CoreTypes.number)
-#                                    )
-#                                )
-#                            )
-#                        )
-#                        LambdaConsuming
-#                        CoreTypes.none
-#                }
-#            )
+                , type =
+                    function
+                        [TA.TypeRecordExt 1
+                            (Dict.singleton "meh"
+                                (TA.TypeRecordExt 2
+                                    (Dict.singleton
+                                        "blah"
+                                        tyNumber
+                                    )
+                                )
+                            )
+                        ]
+                        tyNone
+                }
+            )
 #        , codeTest "Tuple3 direct item mutability"
 #            """
 #            x =
