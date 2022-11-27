@@ -81,6 +81,7 @@ alias ValueDef =
     , body as Expression
     , tyvars as Dict UnificationVariableId TypeClasses
     , directValueDeps as Set USR
+    , isFullyAnnotated as Bool
     }
 
 

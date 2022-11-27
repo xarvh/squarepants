@@ -460,13 +460,16 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     else
         None
 
-
     tyvars as Dict TA.UnificationVariableId TA.TypeClasses =
-        Dict.empty
-        >> Dict.for def.tyvars name: typeClasses:
-            try Dict.get name newEnv.annotatedTyvarToGeneratedTyvar as
-                Nothing: todo << "compiler error: missing annotatedTyvarToGeneratedTyvar for " .. name
-                Just tyvarId: Dict.insert tyvarId typeClasses
+        if patternOut.maybeFullAnnotation == Nothing then
+            Dict.diff (TA.typeTyvars patternOut.patternType) env.nonFreeTyvars
+            >> Dict.map tyvarId: None: { allowFunctions = Nothing, allowUniques = Nothing }
+        else
+            Dict.empty
+            >> Dict.for def.tyvars name: typeClasses:
+                try Dict.get name newEnv.annotatedTyvarToGeneratedTyvar as
+                    Nothing: todo << "compiler error: missing annotatedTyvarToGeneratedTyvar for " .. name
+                    Just tyvarId: Dict.insert tyvarId typeClasses
 
     {
     , pattern = patternOut.typedPattern
@@ -474,6 +477,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     , body = typedBody
     , directValueDeps = def.directValueDeps
     , tyvars
+    , isFullyAnnotated = patternOut.maybeFullAnnotation /= Nothing
     }
     &
     patternOut.env
@@ -1333,6 +1337,37 @@ checkPattern as Env: CA.Type: CA.Pattern: State@: TA.Pattern & Env =
     out.typedPattern & out.env
 
 
+
+#
+# Def Resolution
+#
+# After we have resolved all equalities, we want to go through each def and replace all tyvars with the resolved type
+#
+resolveTypesInValueDef as Dict TA.UnificationVariableId TA.Type: TA.ValueDef: TA.ValueDef =
+    substitutions: def:
+
+    typeClasses =
+        {
+        , allowFunctions = Nothing
+        , allowUniques = Nothing
+        }
+
+    tyvars =
+        if def.isFullyAnnotated then
+            def.tyvars
+        else
+            Dict.empty
+            >> Dict.for def.tyvars tyvarId: typeClasses: acc:
+                try Dict.get tyvarId substitutions as
+                    Nothing: acc
+                    Just type: Dict.join (Dict.map (k: v: typeClasses ) << TA.typeTyvars type) acc
+
+    # TODO: actually resolve all types
+
+    { def with tyvars }
+
+
+
 #
 #
 # Module
@@ -1415,6 +1450,14 @@ doModule as State: Env: CA.Module: Res TA.Module =
     erStateF =
         solveEqualities (Array.toList state.equalities) erState0
 
+    Debug.benchStop "type check"
+
+    Debug.benchStart None
+
+    resolvedValueDefs =
+        Dict.map (k: resolveTypesInValueDef erStateF.substitutions) typedValueDefs
+
+    Debug.benchStop "type resolution"
 
     #
     # packaging & closing
@@ -1423,7 +1466,7 @@ doModule as State: Env: CA.Module: Res TA.Module =
         {
         , umr = caModule.umr
         , asText = caModule.asText
-        , valueDefs = typedValueDefs
+        , valueDefs = resolvedValueDefs
         , substitutions = erStateF.substitutions
         }
 
@@ -1440,7 +1483,6 @@ doModule as State: Env: CA.Module: Res TA.Module =
         ]
         >> List.concat
 
-    Debug.benchStop "type check"
 
     if errors == [] then
         Ok typedModule

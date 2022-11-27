@@ -34,7 +34,7 @@ codeTest =
 alias Out =
     {
     , type as TA.Type
-    , freeTyvars as Dict TA.UnificationVariableId TA.TypeClasses
+    , tyvars as Dict TA.UnificationVariableId TA.TypeClasses
     }
 
 
@@ -42,7 +42,7 @@ outToHuman as Out: Text =
     out:
 
     [
-    , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
+    , "  tyvars = " .. Debug.toHuman (Dict.toList out.tyvars)
     , "  type = " .. Debug.toHuman out.type
     ]
         >> Text.join "\n"
@@ -65,9 +65,14 @@ tyBool as TA.Type =
     TA.TypeOpaque Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
-ftv as TA.UnificationVariableId: Dict TA.UnificationVariableId TA.TypeClasses =
+freeTyvarsAnnotated as TA.UnificationVariableId: Dict TA.UnificationVariableId TA.TypeClasses =
     n:
     Dict.singleton n { allowFunctions = Just True, allowUniques = Just False }
+
+
+freeTyvarsInferred as TA.UnificationVariableId: Dict TA.UnificationVariableId TA.TypeClasses =
+    n:
+    Dict.singleton n { allowFunctions = Nothing, allowUniques = Nothing }
 
 
 forall as List Text: Dict Text TA.TypeClasses =
@@ -151,13 +156,21 @@ infer as Text: Text: Result Text Out =
         { isUnique, maybeAnnotation, def } :: tail:
             try def.pattern as
 
+                TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
+
+
 #                ty & tyvars =
 #                    HCA.normalizeTypeAndTyvars var.ty var.freeTypeVariables
 
-                TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
+
+                    List.each (Dict.toList taModule.substitutions) blah:
+                        log "*" blah
+
+
+
                     {
                     , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
-                    , freeTyvars = def.tyvars
+                    , tyvars = def.tyvars
                     }
                     >> Ok
 
@@ -180,7 +193,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = tyNumber
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
             )
         , codeTest "Known function with wrong *number* of args"
@@ -198,7 +211,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = function [tyNumber] tyNumber
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
             )
         , codeTest
@@ -208,7 +221,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = function [tyNumber] tyNumber
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
             )
         , codeTest
@@ -218,7 +231,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = function [tyvar 2] tyNumber
-                , freeTyvars = Dict.empty
+                , tyvars = freeTyvarsInferred 2
                 }
             )
         , codeTest "[reg] Multiple arguments are correctly inferred"
@@ -256,7 +269,7 @@ statements as Test =
               False
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = tyBool, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = tyBool, tyvars = Dict.empty })
         , codeTest
             """
             Definition statement return type None
@@ -266,7 +279,7 @@ statements as Test =
               f = fn x: 3
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = tyNone, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = tyNone, tyvars = Dict.empty })
         , codeTest
             """
             [reg] Definition statement with annotation return type None
@@ -343,7 +356,7 @@ variableTypes as Test =
             (infer "id")
             (Test.isOkAndEqualTo
                 { type = function [tyvar 1] (tyvar 1)
-                , freeTyvars = ftv 1
+                , tyvars = freeTyvarsAnnotated 1
                 }
             )
 
@@ -501,7 +514,7 @@ higherOrderTypes as Test =
                     function
                         [TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ]]
                         (TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ])
-                , freeTyvars = ftv 1
+                , tyvars = freeTyvarsAnnotated 1
                 }
             )
         , codeTest
@@ -515,11 +528,11 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = ftv 1
+                , tyvars = freeTyvarsInferred 2
                 , type =
-                    TA.TypeOpaque Pos.T
+                    TA.TypeOpaque Pos.G
                         (TH.localType "X")
-                        [ tyvar 1 ]
+                        [ tyvar 2 ]
                 }
             )
         , codeTest
