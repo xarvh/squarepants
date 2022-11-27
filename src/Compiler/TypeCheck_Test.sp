@@ -668,7 +668,7 @@ records as Test =
             Attribute mutation
             """
             """
-            a = fn @b: (@b.meh.blah += 1)
+            a = fn @b: @b.meh.blah += 1
             """
             (infer "a")
             (Test.isOkAndEqualTo

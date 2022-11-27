@@ -384,6 +384,25 @@ functions as Test =
                         )
                 }
             )
+        , codeTest
+            """
+            [reg] argument not being recognized?
+            """
+            """
+            a = fn @b: @b += 1
+            """
+            firstDefinition
+            (Test.isOkAndEqualTo <<
+                {
+                , pattern = variable "a"
+                , nonFn = []
+                , body =
+                    e << FA.Fn
+                        [ variable "x" ]
+                        ( e << FA.Statements []
+                        )
+                }
+            )
         ]
 
 

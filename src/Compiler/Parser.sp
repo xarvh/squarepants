@@ -408,6 +408,7 @@ expr as Env: Parser FA.Expression =
 
         # TODO pipes can't actually be mixed
         , binopsOr env Op.Pipe
+        , binopsOr env Op.Mutop
         ]
 
 
