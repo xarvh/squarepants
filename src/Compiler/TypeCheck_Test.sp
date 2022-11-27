@@ -65,20 +65,14 @@ tyBool as TA.Type =
     TA.TypeOpaque Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
-freeTyvarsAnnotated as TA.UnificationVariableId: Dict TA.UnificationVariableId TA.TypeClasses =
-    n:
-    Dict.singleton n { allowFunctions = Just True, allowUniques = Just False }
+freeTyvarsAnnotated as [TA.UnificationVariableId]: Dict TA.UnificationVariableId TA.TypeClasses =
+    ids:
+    Dict.empty >> List.for ids id: Dict.insert id { allowFunctions = Just True, allowUniques = Just False }
 
 
-freeTyvarsInferred as TA.UnificationVariableId: Dict TA.UnificationVariableId TA.TypeClasses =
-    n:
-    Dict.singleton n { allowFunctions = Nothing, allowUniques = Nothing }
-
-
-forall as List Text: Dict Text TA.TypeClasses =
-    vars:
-    List.for vars (n: Dict.insert n { allowFunctions = Just True, allowUniques = Just False }) Dict.empty
-
+freeTyvarsInferred as [TA.UnificationVariableId]: Dict TA.UnificationVariableId TA.TypeClasses =
+    ids:
+    Dict.empty >> List.for ids id: Dict.insert id { allowFunctions = Nothing, allowUniques = Nothing }
 
 
 #TODO merge these two
@@ -158,24 +152,82 @@ infer as Text: Text: Result Text Out =
 
                 TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
 
-
-#                ty & tyvars =
-#                    HCA.normalizeTypeAndTyvars var.ty var.freeTypeVariables
-
-
                     List.each (Dict.toList taModule.substitutions) blah:
                         log "*" blah
-
-
 
                     {
                     , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
                     , tyvars = def.tyvars
                     }
+                    >> normalizeOut
                     >> Ok
 
                 _:
                     Err "pattern fail"
+
+
+
+
+normalizeTyvarId as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.UnificationVariableId: TA.UnificationVariableId =
+    hash@: id:
+
+    try Hash.get hash id as
+        Just nid: nid
+        Nothing:
+          maxId @= 0
+          Hash.each hash k: v:
+            if v > maxId then
+                @maxId := v
+            else
+                None
+
+          nid = maxId + 1
+          Hash.insert @hash id nid
+          nid
+
+
+normalizeType as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.Type: TA.Type =
+    hash@: type:
+    try type as
+        TA.TypeOpaque p usr args:
+            TA.TypeOpaque p usr (List.map (normalizeType @hash) args)
+
+        TA.TypeAlias p usr args:
+            TA.TypeAlias p usr (List.map (normalizeType @hash) args)
+
+        TA.TypeFn p pars out:
+            TA.TypeFn p
+                (List.map (Tuple.mapSecond (normalizeType @hash)) pars)
+                (normalizeType @hash out)
+
+        TA.TypeRecord p attrs:
+            TA.TypeRecord p (Dict.map (k: (normalizeType @hash)) attrs)
+
+        TA.TypeUnique p t:
+            TA.TypeUnique p (normalizeType @hash t)
+
+        TA.TypeUnificationVariable id:
+            TA.TypeUnificationVariable (normalizeTyvarId @hash id)
+
+        TA.TypeRecordExt id attrs:
+            TA.TypeRecordExt
+                (normalizeTyvarId @hash id)
+                (Dict.map (k: (normalizeType @hash)) attrs)
+
+        TA.TypeError p:
+            type
+
+
+normalizeOut as Out: Out =
+    out:
+
+    hash @= Hash.empty
+
+    {
+    , type = normalizeType @hash out.type
+    , tyvars = Dict.empty >> Dict.for out.tyvars id: tc: Dict.insert (normalizeTyvarId @hash id) tc
+    }
+
 
 
 
@@ -231,7 +283,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = function [tyvar 2] tyNumber
-                , tyvars = freeTyvarsInferred 2
+                , tyvars = freeTyvarsInferred [2]
                 }
             )
         , codeTest "[reg] Multiple arguments are correctly inferred"
@@ -356,7 +408,7 @@ variableTypes as Test =
             (infer "id")
             (Test.isOkAndEqualTo
                 { type = function [tyvar 1] (tyvar 1)
-                , tyvars = freeTyvarsAnnotated 1
+                , tyvars = freeTyvarsAnnotated [1]
                 }
             )
 
@@ -514,7 +566,7 @@ higherOrderTypes as Test =
                     function
                         [TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ]]
                         (TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ])
-                , tyvars = freeTyvarsAnnotated 1
+                , tyvars = freeTyvarsAnnotated [1]
                 }
             )
         , codeTest
@@ -528,7 +580,7 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , tyvars = freeTyvarsInferred 2
+                , tyvars = freeTyvarsInferred [2]
                 , type =
                     TA.TypeOpaque Pos.G
                         (TH.localType "X")
@@ -591,164 +643,164 @@ higherOrderTypes as Test =
 
 records as Test =
     Test.Group "Records"
-        []
-        [#
-        , codeTest "Attribute access"
-            """
-            a = b: b.meh.blah
-            """
-            (infer "a")
-            (Test.isOkAndEqualTo
-                { freeTypeVariables = forall [ "2", "4", "5" ]
-                , isMutable = False
-                , ty =
-                    typeFunction
-                        (CA.TypeRecordExt (Pos.I 2)
-                            "a"
-                            { allowFunctions = True, allowUniques = False }
-                            (Dict.singleton "meh" (CA.TypeRecordExt (Pos.I 2) "b" { allowFunctions = True, allowUniques = False } (Dict.singleton "blah" (typeVariable "c"))))
-                        )
-                        (typeVariable "c")
-                }
-            )
+        [
         , codeTest
             """
-            Attribute mutation
+            Attribute access
             """
             """
-            a =
-                @b:-
-                @b.meh.blah += 1
+            a = fn b: b.meh.blah
             """
             (infer "a")
-            (Test.isOkAndEqualTo {
-                , freeTypeVariables =
-                    [ "2", "4" ]
-                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
-                    >> Dict.fromList
-                , isMutable =
-                    False
-                , ty =
-                    typeFunction
-                        (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
-                            "a"
-                            { allowFunctions = True, allowUniques = True }
-                            (Dict.singleton "meh"
-                                (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
-                                    "b"
-                                    { allowFunctions = True, allowUniques = True }
-                                    (Dict.singleton
-                                        "blah"
-                                        (CA.TypeMutable Pos.N CoreTypes.number)
-                                    )
-                                )
-                            )
-                        )
-                        LambdaConsuming
-                        CoreTypes.none
+            (Test.isOkAndEqualTo
+                {
+                , tyvars = freeTyvarsInferred [2, 4, 5]
+                , type =
+                    function
+                        [TA.TypeRecordExt 1
+                            (Dict.singleton "meh" (TA.TypeRecordExt 2 (Dict.singleton "blah" (tyvar 3))))
+                        ]
+                        (tyvar 3)
                 }
             )
-        , codeTest "Tuple3 direct item mutability"
-            """
-            x =
-                @a = mut << 3 & False & 2
-
-                @a.third += 1
-            """
-            (infer "x")
-            Test.isOk
-        , codeTest "Tuple2 direct item mutability, annotated"
-            """
-            x = y:
-               @a as @(Number & Number) =
-                 mut << 1 & 2
-
-               @a.first += 1
-            """
-            (infer "x")
-            Test.isOk
-        , codeTest
-            "functional update"
-            "a = b: { b with x = 1 }"
-            (infer "a")
-            (Test.isOkAndEqualTo
-                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
-                    { freeTypeVariables = forall [ "2" ]
-                    , isMutable = False
-                    , ty = typeFunction re re
-                    }
-                )
-            )
-        , codeTest "SKIP instantiate and refine inferred records"
-            """
-            a = t: { t with x = 1 }
-            c = a
-            """
-            (infer "c")
-            (Test.isOkAndEqualTo
-                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
-                    {
-                    , freeTypeVariables = forall [ "a" ]
-                    , isMutable = False
-                    , ty = typeFunction re re
-                    }
-                )
-            )
-        , codeTest "[reg] excessive forallness in records"
-            """
-            x = q:
-             a = q.first
-             a
-            """
-            (infer "x")
-            (Test.isOkAndEqualTo
-                { freeTypeVariables = forall [ "3", "4" ]
-                , isMutable = False
-                , ty =
-                    typeFunction
-                        (CA.TypeRecordExt
-                            (Pos.I 2)
-                            "a"
-                            { allowFunctions = True, allowUniques = False }
-                            (Dict.fromList [ "first" & typeVariable "b" ])
-                        )
-                        (typeVariable "b")
-                }
-            )
-        , codeTest "[reg] refineType when the record has a non-extensible alias"
-            """
-            alias A = { c as Number, d as Number }
-
-            upd as A: A = a:
-              { a with c = .c + 1 }
-            """
-            (infer "upd")
-            Test.isOk
-        , codeTest "[reg] infinite recursion on addSubstitution/unify_"
-            """
-            alias B = { l as [Text] }
-
-            readOne as B: (Text & B) = b:
-                try b.l as
-                    []: "" & b
-                    h :: t: h & { b with l = t }
-            """
-            (infer "readOne")
-            Test.isOk
-        , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
-            """
-            alias R = { x as Number, y as Number }
-
-            rec as R: R =
-                s:
-                    if True then
-                        { s with y = .y }
-                    else
-                        rec { s with y = .y }
-            """
-            (infer "rec")
-            Test.isOk
-        #]
+#        , codeTest
+#            """
+#            Attribute mutation
+#            """
+#            """
+#            a =
+#                @b:-
+#                @b.meh.blah += 1
+#            """
+#            (infer "a")
+#            (Test.isOkAndEqualTo {
+#                , freeTypeVariables =
+#                    [ "2", "4" ]
+#                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
+#                    >> Dict.fromList
+#                , isMutable =
+#                    False
+#                , ty =
+#                    typeFunction
+#                        (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
+#                            "a"
+#                            { allowFunctions = True, allowUniques = True }
+#                            (Dict.singleton "meh"
+#                                (CA.TypeMutable Pos.T << CA.TypeRecordExt (Pos.I 2)
+#                                    "b"
+#                                    { allowFunctions = True, allowUniques = True }
+#                                    (Dict.singleton
+#                                        "blah"
+#                                        (CA.TypeMutable Pos.N CoreTypes.number)
+#                                    )
+#                                )
+#                            )
+#                        )
+#                        LambdaConsuming
+#                        CoreTypes.none
+#                }
+#            )
+#        , codeTest "Tuple3 direct item mutability"
+#            """
+#            x =
+#                @a = mut << 3 & False & 2
+#
+#                @a.third += 1
+#            """
+#            (infer "x")
+#            Test.isOk
+#        , codeTest "Tuple2 direct item mutability, annotated"
+#            """
+#            x = y:
+#               @a as @(Number & Number) =
+#                 mut << 1 & 2
+#
+#               @a.first += 1
+#            """
+#            (infer "x")
+#            Test.isOk
+#        , codeTest
+#            "functional update"
+#            "a = b: { b with x = 1 }"
+#            (infer "a")
+#            (Test.isOkAndEqualTo
+#                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
+#                    { freeTypeVariables = forall [ "2" ]
+#                    , isMutable = False
+#                    , ty = typeFunction re re
+#                    }
+#                )
+#            )
+#        , codeTest "SKIP instantiate and refine inferred records"
+#            """
+#            a = t: { t with x = 1 }
+#            c = a
+#            """
+#            (infer "c")
+#            (Test.isOkAndEqualTo
+#                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
+#                    {
+#                    , freeTypeVariables = forall [ "a" ]
+#                    , isMutable = False
+#                    , ty = typeFunction re re
+#                    }
+#                )
+#            )
+#        , codeTest "[reg] excessive forallness in records"
+#            """
+#            x = q:
+#             a = q.first
+#             a
+#            """
+#            (infer "x")
+#            (Test.isOkAndEqualTo
+#                { freeTypeVariables = forall [ "3", "4" ]
+#                , isMutable = False
+#                , ty =
+#                    typeFunction
+#                        (CA.TypeRecordExt
+#                            (Pos.I 2)
+#                            "a"
+#                            { allowFunctions = True, allowUniques = False }
+#                            (Dict.fromList [ "first" & typeVariable "b" ])
+#                        )
+#                        (typeVariable "b")
+#                }
+#            )
+#        , codeTest "[reg] refineType when the record has a non-extensible alias"
+#            """
+#            alias A = { c as Number, d as Number }
+#
+#            upd as A: A = a:
+#              { a with c = .c + 1 }
+#            """
+#            (infer "upd")
+#            Test.isOk
+#        , codeTest "[reg] infinite recursion on addSubstitution/unify_"
+#            """
+#            alias B = { l as [Text] }
+#
+#            readOne as B: (Text & B) = b:
+#                try b.l as
+#                    []: "" & b
+#                    h :: t: h & { b with l = t }
+#            """
+#            (infer "readOne")
+#            Test.isOk
+#        , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
+#            """
+#            alias R = { x as Number, y as Number }
+#
+#            rec as R: R =
+#                s:
+#                    if True then
+#                        { s with y = .y }
+#                    else
+#                        rec { s with y = .y }
+#            """
+#            (infer "rec")
+#            Test.isOk
+        ]
 
 
 
