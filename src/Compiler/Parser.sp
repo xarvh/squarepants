@@ -334,10 +334,6 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
             inlineOrBelowOrIndented (kind (Token.CurlyBrace Token.Closed)) >> on _:
             FA.Record { maybeExtension, attrs = Maybe.withDefault [] attrs } >> ok
 
-        Token.Unop unop:
-            expr env >> on e:
-            FA.Unop unop e >> ok
-
         Token.Fn:
             rawList (expr env) >> on args:
             kind Token.Colon >> on _:
@@ -391,6 +387,7 @@ expr as Env: Parser FA.Expression =
         expressionWithLeftDelimiter
         # the `Or` stands for `Or higher priority parser`
         [
+        , unopsOr env
         , functionApplicationOr env
         , binopsOr env Op.Exponential
         , binopsOr env Op.Multiplicative
@@ -452,6 +449,35 @@ functionApplicationOr as Env: Parser FA.Expression: Parser FA.Expression =
 
         fnExpression :: args:
             FA.Expression (pos env start end) (FA.Call fnExpression args) >> ok
+
+
+
+
+unopsOr as Env: Parser FA.Expression: Parser FA.Expression =
+    env: higher:
+
+    Parser.maybe unaryOperator >> on maybeUnary:
+    higher >> on right:
+    here >> on end:
+    try maybeUnary as
+        Just ( op & Token _ start _ _ ):
+            FA.Unop op right
+            >> FA.Expression (pos env start end)
+            >> ok
+
+        Nothing:
+            ok right
+
+
+unaryOperator as Parser ( Op.UnopId & Token ) =
+    oneToken >> on token:
+    try token as
+        Token c s e (Token.Unop op):
+            Parser.accept ( op & token )
+
+        _:
+            Parser.reject
+
 
 
 

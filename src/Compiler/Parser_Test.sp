@@ -389,19 +389,14 @@ functions as Test =
             [reg] argument not being recognized?
             """
             """
-            a = fn @b: @b += 1
+            @b += 1
             """
-            firstDefinition
-            (Test.isOkAndEqualTo <<
-                {
-                , pattern = variable "a"
-                , nonFn = []
-                , body =
-                    e << FA.Fn
-                        [ variable "x" ]
-                        ( e << FA.Statements []
-                        )
-                }
+            firstEvaluation
+            (Test.isOkAndEqualTo << e <<
+                FA.Binop Op.Mutop <<
+                    (e << FA.Unop Op.UnopRecycle << variable "b")
+                    &
+                    [ Prelude.mutableAdd & (e << FA.LiteralNumber "1") ]
             )
         ]
 
