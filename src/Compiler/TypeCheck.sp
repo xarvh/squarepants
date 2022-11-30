@@ -89,7 +89,9 @@ initState as Int: State =
 alias Instance = {
     , definedAt as Pos
     , type as TA.Type
-    , freeTyvars as Dict TA.UnificationVariableId TA.TypeClasses
+
+    # TODO Should this be only for annotated tyvars?
+    , tyvars as Dict TA.UnificationVariableId TA.TypeClasses
     }
 
 
@@ -267,7 +269,7 @@ getVariableByRef as CA.Ref: Env: Maybe Instance =
 generalize as Env: Instance: State@: TA.Type =
     env: typeWithClasses: state@:
 
-    typeWithClasses.type >> Dict.for typeWithClasses.freeTyvars tyvarId: typeClasses:
+    typeWithClasses.type >> Dict.for typeWithClasses.tyvars tyvarId: typeClasses:
 
         replacementType =
             try Dict.get tyvarId env.nonFreeTyvars as
@@ -439,9 +441,9 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     env: def: state@:
 
     patternOut =
-        inferPattern env def.pattern @state
+        inferPattern env False def.pattern @state
 
-    newEnv =
+    envWithContext =
         { patternOut.env with
         , context = Context_LetInBody
         }
@@ -451,12 +453,14 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     typedBody & bodyType =
         try patternOut.maybeFullAnnotation as
             Just annotationType:
-                checkExpression newEnv annotationType def.body @state & typeCa2Ta newEnv annotationType
+                checkExpression envWithContext annotationType def.body @state & typeCa2Ta envWithContext annotationType
             Nothing:
-                inferExpression newEnv def.body @state
+                inferExpression envWithContext def.body @state
+
+    # TODO clean all the `== Nothing`, maybe put them together
 
     if patternOut.maybeFullAnnotation == Nothing then
-        addEquality newEnv (CA.patternPos def.pattern) Why_LetIn patternOut.patternType bodyType @state
+        addEquality envWithContext (CA.patternPos def.pattern) Why_LetIn patternOut.patternType bodyType @state
     else
         None
 
@@ -467,9 +471,15 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
         else
             Dict.empty
             >> Dict.for def.tyvars name: typeClasses:
-                try Dict.get name newEnv.annotatedTyvarToGeneratedTyvar as
+                try Dict.get name envWithContext.annotatedTyvarToGeneratedTyvar as
                     Nothing: todo << "compiler error: missing annotatedTyvarToGeneratedTyvar for " .. name
                     Just tyvarId: Dict.insert tyvarId typeClasses
+
+    nonFreeTyvars =
+        if patternOut.maybeFullAnnotation /= Nothing then
+            patternOut.env.nonFreeTyvars
+        else
+            patternOut.env.nonFreeTyvars >> Dict.for (TA.typeTyvars patternOut.patternType) (k: v: Dict.insert k None)
 
     {
     , pattern = patternOut.typedPattern
@@ -480,7 +490,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     , isFullyAnnotated = patternOut.maybeFullAnnotation /= Nothing
     }
     &
-    patternOut.env
+    { patternOut.env with nonFreeTyvars }
 
 
 
@@ -558,6 +568,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
         CA.Record pos (Just ext) attrExpressions:
 
+
             typedValueAndValueTypeByName as Dict Name (TA.Expression & TA.Type) =
                 attrExpressions >> Dict.map name: value:
                     inferExpression { env with context = Context_Argument name .context } value @state
@@ -628,7 +639,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 patternsAndExpressions >> List.map (pa & exp):
 
                     patternOut as PatternOut =
-                        inferPattern env pa @state
+                        inferPattern env False pa @state
 
                     addEquality env pos Why_TryPattern patternOut.patternType valueType @state
 
@@ -669,7 +680,7 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
     try par as
         CA.ParameterPattern pa:
             patternOut =
-                inferPattern env pa @state
+                inferPattern env True pa @state
 
             TA.ParameterPattern patternOut.typedPattern & patternOut.patternType & insertNonFreeTyvars patternOut.patternType patternOut.env
 
@@ -683,7 +694,7 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
                 {
                 , definedAt = pos
                 , type
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
 
             newEnv as Env =
@@ -813,11 +824,12 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
 
 
         TA.TypeUnificationVariable id:
-            ty = TA.TypeRecordExt id valueTypeByName
+            ty = TA.TypeRecordExt (newTyvarId @state) valueTypeByName
 
             addEquality env pos Why_RecordExt extType ty @state
 
             ty
+
 
         _:
             addError env pos ErrorNotCompatibleWithRecord @state
@@ -841,7 +853,7 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
                 None
 
             typedPa & env1 =
-                checkPattern env expectedType pa @state
+                checkPattern env expectedType True pa @state
 
             TA.ParameterPattern typedPa & env1
 
@@ -859,7 +871,7 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
                 , definedAt = pos
                 , type = typeCa2Ta env expectedType
                 # TODO not sure about this here???
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
 
             localEnv as Env =
@@ -1051,7 +1063,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                 patternsAndExpressions >> List.map (pa & exp):
 
                     inferredPattern =
-                        inferPattern env pa @state
+                        inferPattern env False pa @state
 
                     newEnv =
                         { inferredPattern.env with
@@ -1156,8 +1168,8 @@ alias PatternOut = {
     }
 
 
-inferPattern as Env: CA.Pattern: State@: PatternOut =
-    env: pattern: state@:
+inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
+    env: isParam: pattern: state@:
 
     try pattern as
         CA.PatternAny pos { isUnique, maybeName, maybeAnnotation }:
@@ -1198,20 +1210,52 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                         env1
 
                     Just name:
+                        [#
+                           Function parameters instead are **totally determined by how they are used in the function's body**,
+                           so they are always added to the scope as non-free type variables.
+                           If we turned them into free type variables, the block would not be able to constrain them.
+
+                           Defined instance values are **totally determined by their definition**, how they are used must not
+                           affect their type, so each time they are used they can be used with different free type vars.
+
+                           TODO: what about instance variables added by try..as patterns?
+
+
+                           ?????? Is this still valid for uniques?
+                           Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
+                           i.e: `x = Nothing` has type `Maybe a`, but once I mutate it to `@x := Just 1` its type would
+                           change to `Maybe Number` and we don't want that.
+                           ?????
+
+                        #]
                         tyvars =
-                             patternType
-                             >> TA.typeTyvars
-                             >> Dict.map k: v: { allowFunctions = Nothing, allowUniques = Nothing }
+                            # TODO should tyvar be only for annotated tyvars? (ie, to store typeclasses?)
+                            if isParam then
+                                Dict.empty
+                            else
+                                #]
+                                patternType
+                                >> TA.typeTyvars
+                                >> Dict.map k: v: { allowFunctions = Nothing, allowUniques = Nothing }
 
                         variable as Instance =
                             {
                             , definedAt = pos
                             , type = patternType
-                            , freeTyvars = tyvars
+                            , tyvars
                             }
 
+                        nonFreeTyvars =
+                            if isParam then
+                                Dict.join (TA.typeTyvars patternType) env1.nonFreeTyvars
+                            else
+                                env1.nonFreeTyvars
+
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                        { env1 with variables = Dict.insert (CA.RefLocal name) variable .variables }
+                        { env1 with
+                        , variables = Dict.insert (CA.RefLocal name) variable .variables
+                        , nonFreeTyvars
+                        }
 
             typedPattern =
                 TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
@@ -1248,7 +1292,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                 [] & [] & env >> List.forReversed arguments arg: (typedPas & paTypes & envX):
 
                     out =
-                        inferPattern envX arg @state
+                        inferPattern envX isParam arg @state
 
                     (out.typedPattern :: typedPas) & (out.patternType :: paTypes) & out.env
 
@@ -1305,7 +1349,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                 Dict.empty & env >> Dict.for pas name: pa: (dict & envX):
 
                     out =
-                        inferPattern envX pa @state
+                        inferPattern envX isParam pa @state
 
                     Dict.insert name (out.typedPattern & out.patternType) dict & out.env
 
@@ -1326,11 +1370,11 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
 
 
 
-checkPattern as Env: CA.Type: CA.Pattern: State@: TA.Pattern & Env =
-    env: expectedType: pattern: state@:
+checkPattern as Env: CA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
+    env: expectedType: isParam: pattern: state@:
 
     # TODO
-    out = inferPattern env pattern @state
+    out = inferPattern env isParam pattern @state
 
     addEquality env (CA.patternPos pattern) Why_Todo out.patternType (typeCa2Ta env expectedType) @state
 
@@ -1568,7 +1612,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     {
                     , definedAt = valueStuff.pos
                     , type = typeCa2Ta_ (nameToTyvarId @state @hash) annotation
-                    , freeTyvars = translateTyvars @state @hash def.tyvars
+                    , tyvars = translateTyvars @state @hash def.tyvars
                     }
 
                 { envX with variables = Dict.insert ref typeWithClasses .variables }
@@ -1592,7 +1636,7 @@ addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
         {
         , definedAt = Pos.G
         , type = typeCa2Ta_ (nameToTyvarId @state @hash) caConstructor.type
-        , freeTyvars = translateTyvars @state @hash caTyvars
+        , tyvars = translateTyvars @state @hash caTyvars
         }
 
     { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }

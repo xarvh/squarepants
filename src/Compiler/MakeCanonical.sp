@@ -908,7 +908,8 @@ translateParameter as Env: FA.Expression: Res CA.Parameter =
 
     try maybeWord as
         Just word:
-            isValid = word.modifier /= Token.NameNoModifier and not word.isUpper and word.maybeModule == Nothing and word.attrPath == []
+            isValid = word.modifier == Token.NameNoModifier and not word.isUpper and word.maybeModule == Nothing and word.attrPath == []
+
             if not isValid then
                 error pos [ "I was expecting a local variable name here... =|" ]
             else

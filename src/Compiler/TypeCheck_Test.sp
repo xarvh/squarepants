@@ -114,14 +114,14 @@ infer as Text: Text: Result Text Out =
                 {
                 , definedAt = Pos.T
                 , type = function [tyNumber, tyNumber] tyNumber
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
             >> Dict.insert
                 (CA.RefGlobal << USR TH.moduleUmr "reset")
                 {
                 , definedAt = Pos.T
                 , type = function [tyNumber] tyNone
-                , freeTyvars = Dict.empty
+                , tyvars = Dict.empty
                 }
         }
 
@@ -152,8 +152,10 @@ infer as Text: Text: Result Text Out =
 
                 TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
 
-                    List.each (Dict.toList taModule.substitutions) blah:
-                        log "*" blah
+#                    List.each (Dict.toList taModule.substitutions) blah:
+#                        log "SUB" blah
+
+#                    log "FINAL TYPE" type
 
                     {
                     , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
@@ -665,7 +667,7 @@ records as Test =
             )
         , codeTest
             """
-            Attribute mutation
+            SKIP Attribute mutation
             """
             """
             a = fn @b: @b.meh.blah += 1
@@ -691,73 +693,74 @@ records as Test =
                         tyNone
                 }
             )
-#        , codeTest "Tuple3 direct item mutability"
-#            """
-#            x =
-#                @a = mut << 3 & False & 2
-#
-#                @a.third += 1
-#            """
-#            (infer "x")
-#            Test.isOk
-#        , codeTest "Tuple2 direct item mutability, annotated"
-#            """
-#            x = y:
-#               @a as @(Number & Number) =
-#                 mut << 1 & 2
-#
-#               @a.first += 1
-#            """
-#            (infer "x")
-#            Test.isOk
-#        , codeTest
-#            "functional update"
-#            "a = b: { b with x = 1 }"
-#            (infer "a")
-#            (Test.isOkAndEqualTo
-#                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
-#                    { freeTypeVariables = forall [ "2" ]
-#                    , isMutable = False
-#                    , ty = typeFunction re re
-#                    }
-#                )
-#            )
-#        , codeTest "SKIP instantiate and refine inferred records"
-#            """
-#            a = t: { t with x = 1 }
-#            c = a
-#            """
-#            (infer "c")
-#            (Test.isOkAndEqualTo
-#                (CA.TypeRecordExt Pos.T "a" { allowFunctions = True, allowUniques = False } (Dict.singleton "x" CoreTypes.number) >> re:
-#                    {
-#                    , freeTypeVariables = forall [ "a" ]
-#                    , isMutable = False
-#                    , ty = typeFunction re re
-#                    }
-#                )
-#            )
-#        , codeTest "[reg] excessive forallness in records"
-#            """
-#            x = q:
-#             a = q.first
-#             a
-#            """
-#            (infer "x")
-#            (Test.isOkAndEqualTo
-#                { freeTypeVariables = forall [ "3", "4" ]
-#                , isMutable = False
-#                , ty =
-#                    typeFunction
-#                        (CA.TypeRecordExt
-#                            (Pos.I 2)
-#                            "a"
-#                            { allowFunctions = True, allowUniques = False }
-#                            (Dict.fromList [ "first" & typeVariable "b" ])
-#                        )
-#                        (typeVariable "b")
-#                }
-#            )
+        , codeTest
+            """
+            SKIP Tuple3 direct item mutability
+            """
+            """
+            x =
+                @a = mut << 3 & False & 2
+
+                @a.third += 1
+            """
+            (infer "x")
+            Test.isOk
+        , codeTest
+            """
+            SKIP Tuple2 direct item mutability, annotated
+            """
+            """
+            x = y:
+               @a as @(Number & Number) =
+                 mut << 1 & 2
+
+               @a.first += 1
+            """
+            (infer "x")
+            Test.isOk
+        , codeTest
+            """
+            functional update
+            """
+            """
+            a = fn b: { b with x = 1 }
+            """
+            (infer "a")
+            (Test.isOkAndEqualTo
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
+                    { tyvars = freeTyvarsInferred [ 1 ]
+                    , type = function [re] re
+                    }
+                )
+            )
+        , codeTest "SKIP instantiate and refine inferred records"
+            """
+            a = fn t: { t with x = 1 }
+            c = a
+            """
+            (infer "c")
+            (Test.isOkAndEqualTo
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
+                    { tyvars = freeTyvarsInferred [ 1 ]
+                    , type = function [re] re
+                    }
+                )
+            )
+        , codeTest "[reg] excessive forallness in records"
+            """
+            x =
+              fn q:
+              a = q.first
+              a
+            """
+            (infer "x")
+            (Test.isOkAndEqualTo
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
+                    { tyvars = freeTyvarsInferred [ 1, 2 ]
+                    , type = function [re] re
+                    }
+                )
+            )
 #        , codeTest "[reg] refineType when the record has a non-extensible alias"
 #            """
 #            alias A = { c as Number, d as Number }
