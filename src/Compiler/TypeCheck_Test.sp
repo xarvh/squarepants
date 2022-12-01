@@ -755,9 +755,9 @@ records as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "first" (tyvar 2)) >> re:
                     { tyvars = freeTyvarsInferred [ 1, 2 ]
-                    , type = function [re] re
+                    , type = function [re] (tyvar 2)
                     }
                 )
             )

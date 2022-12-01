@@ -341,7 +341,7 @@ functions as Test =
             )
         , codeTest
             """
-            SKIP [reg] Fn with multiple indented statements
+            [reg] Fn with multiple indented statements
             """
             """
             fn x:
@@ -361,24 +361,25 @@ functions as Test =
             )
         , codeTest
             """
-            SKIP [reg] Fn with definition
+            [reg] Fn with definition
             """
             """
-            fn x:
-            y = 1
-            x
+            a =
+                fn x:
+                y = 1
+                x
             """
             firstDefinition
             (Test.isOkAndEqualTo <<
                 {
-                , pattern = variable "z"
+                , pattern = variable "a"
                 , nonFn = []
                 , body =
                     e << FA.Fn
                         [ variable "x" ]
                         ( e << FA.Statements
                             [
-                            , FA.Evaluation << variable "x"
+                            , FA.ValueDef { pattern = variable "y", nonFn = [], body = e << FA.LiteralNumber "1" }
                             , FA.Evaluation << variable "x"
                             ]
                         )

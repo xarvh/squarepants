@@ -81,24 +81,6 @@ discardSecond as Parser a: Parser b: Parser a =
     ok aa
 
 
-inlineOrIndented as Parser a: Parser a =
-    p:
-    Parser.oneOf
-        [ block p
-        , p
-        ]
-
-
-inlineOrBelowOrIndented as Parser a: Parser a =
-    p:
-    Parser.oneOf
-        [
-        , block p
-        , sib p
-        , p
-        ]
-
-
 maybeWithDefault as a: Parser a: Parser a =
     a: p:
     Parser.oneOf [ p, ok a ]
@@ -126,35 +108,6 @@ oomSeparatedBy as Parser a: Parser b: Parser [b] =
     pa >> on head:
     Parser.zeroOrMore (discardFirst sep pa) >> on tail:
     ok <<  head :: tail
-
-
-[#|
-
-    a >> b >> c
-
-    a
-        >> b
-        >> c
-
-    a
-        >> b
-        >> c
-
-    a
-        >> b
-        >> c
-
-#]
-block as Parser a: Parser a =
-    surroundStrict Token.BlockStart Token.BlockEnd
-
-
-sib as Parser a: Parser a =
-    discardFirst (kind Token.NewSiblingLine)
-
-
-maybeNewLine as Parser a: Parser a =
-    discardFirst (Parser.maybe (kind Token.NewSiblingLine))
 
 
 sepListAtSep as Parser sep: Parser item: Parser [sep & item] =
@@ -227,6 +180,93 @@ word as Env: Parser (At Token.Word) =
         _: Parser.reject
 
 
+#
+# Indentation
+#
+
+[#|
+
+    a >> b >> c
+
+    a
+        >> b
+        >> c
+
+    a
+        >> b
+        >> c
+
+    a
+        >> b
+        >> c
+
+#]
+block as Parser a: Parser a =
+    surroundStrict Token.BlockStart Token.BlockEnd
+
+
+sib as Parser a: Parser a =
+    discardFirst (kind Token.NewSiblingLine)
+
+
+maybeNewLine as Parser a: Parser a =
+    discardFirst (Parser.maybe (kind Token.NewSiblingLine))
+
+
+inlineOrBelowOrIndented as Parser a: Parser a =
+    p:
+    Parser.oneOf
+        [
+        , block p
+        , sib p
+        , p
+        ]
+
+
+#
+# Statement blocks
+#
+
+siblingStatements as Env: Parser FA.Expression =
+  env:
+
+  here
+  >> on start:
+
+  oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
+  >> on stats:
+
+  here
+  >> on end:
+
+  # Is this optimization really necessary?
+  try stats as
+      [ FA.Evaluation expr ]:
+          ok expr
+
+      many:
+          FA.Expression (pos env start end) (FA.Statements stats) >> ok
+
+
+indentedOrInlineStatements as Env: Parser FA.Expression =
+    env:
+
+    Parser.oneOf
+        [
+        , block (siblingStatements env)
+        , expr env
+        ]
+
+
+alignedOrInlineStatements as Env: Parser FA.Expression =
+    env:
+
+    Parser.oneOf
+        [
+        , block (siblingStatements env)
+        , sib (siblingStatements env)
+        , expr env
+        ]
 
 
 #
@@ -337,15 +377,15 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
         Token.Fn:
             rawList (expr env) >> on args:
             kind Token.Colon >> on _:
-            inlineOrBelowOrIndented (expr env) >> on body:
+            alignedOrInlineStatements env >> on body:
             FA.Fn args body >> ok
 
         Token.If:
             expr env >> on condition:
             inlineOrBelowOrIndented (kind Token.Then) >> on _:
-            inlineOrBelowOrIndented (expr env) >> on true:
+            alignedOrInlineStatements env >> on true:
             inlineOrBelowOrIndented (kind Token.Else) >> on _:
-            inlineOrBelowOrIndented (expr env) >> on false:
+            alignedOrInlineStatements env >> on false:
             FA.If { condition, true, false } >> ok
 
         Token.Try:
@@ -356,7 +396,7 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
             patternAndValue as Parser (FA.Expression & FA.Expression) =
                 expr env >> on p:
                 kind Token.Colon >> on _:
-                inlineStatementOrBlock env >> on value:
+                indentedOrInlineStatements env >> on value:
                 ok ( p & value )
 
             inlineOrBelowOrIndented (expr env) >> on value:
@@ -507,7 +547,7 @@ definition as Env: Parser FA.Statement =
     expr env >> on p:
     Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> on nf:
     inlineOrBelowOrIndented (kind Token.Defop) >> on defModifier:
-    inlineStatementOrBlock env >> on body:
+    indentedOrInlineStatements env >> on body:
 
 #    end =
 #        body
@@ -524,24 +564,6 @@ definition as Env: Parser FA.Statement =
     }
     >> FA.ValueDef
     >> ok
-
-
-inlineStatementOrBlock as Env: Parser FA.Expression =
-    env:
-
-    statementsBlock as Parser FA.Expression =
-        here >> on start:
-        block (oomSeparatedBy (kind Token.NewSiblingLine) (statement env)) >> on stats:
-        here >> on end:
-        # Is this optimization really necessary?
-        try stats as
-            [ FA.Evaluation expr ]: ok expr
-            many: FA.Expression (pos env start end) (FA.Statements stats) >> ok
-
-    Parser.oneOf
-        [ Parser.breakCircularDefinition (_: expr env)
-        , statementsBlock
-        ]
 
 
 #
