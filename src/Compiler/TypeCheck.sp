@@ -96,10 +96,12 @@ alias Instance = {
     }
 
 
-#union NamedType =
-#    , OpaqueType [At Name]
-#    , UnionType CA.UnionDef
-#    , AliasType CA.AliasDef
+alias ExpandedAlias =
+    {
+    , pars as [At Name]
+    , type as TA.Type
+    }
+
 
 
 alias Env = {
@@ -107,7 +109,7 @@ alias Env = {
     , constructors as ByUsr Instance
     , variables as Dict TA.Ref Instance
 
-    , expandedAliases as ByUsr ([Name] & TA.Type)
+    , expandedAliases as ByUsr ExpandedAlias
     , exactTypes as ByUsr [At Name]
 
     [#
@@ -148,7 +150,8 @@ initEnv as Env =
     , context = Context_Global
     , constructors = Dict.empty
     , variables = Dict.empty
-    , namedTypes = Dict.empty
+    , expandedAliases = Dict.empty
+    , exactTypes = Dict.empty
     , nonFreeTyvars = Dict.empty
     , annotatedTyvarToGeneratedTyvar = Dict.empty
     }
@@ -317,7 +320,7 @@ typeCa2Ta_ as (Name: TA.UnificationVariableId): CA.Type: TA.Type =
 
     try ca as
        CA.TypeNamed p usr pars:
-           TA.TypeNamed p usr (List.map ctu pars)
+           todo "TA.TypeNamed p usr (List.map ctu pars)"
 
        CA.TypeFn p modsAndArgs out:
            xxx = List.map (Tuple.mapSecond ctu) modsAndArgs
@@ -340,8 +343,8 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
        TA.TypeUnique p ty:
          True
 
-       TA.TypeNamed p usr args:
-          List.any variableOfThisTypeMustBeFlaggedUnique args
+#       TA.TypeNamed p usr args:
+#          List.any variableOfThisTypeMustBeFlaggedUnique args
 
        TA.TypeFn p args out:
           False
@@ -358,47 +361,47 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
 
 
 
-expandType as Env: State@: CA.Type: CA.Type =
-    env: state@: type:
-
-    try type as
-        CA.TypeNamed pos usr args:
-
-            checkArgsLengthThen as [At Name]: (a: CA.Type): CA.Type =
-                pars: continue:
-
-                if List.length args /= List.length pars then
-                    addError env pos (ErrorWrongNumberOfTypeArguments usr pars args) @state
-                    CA.TypeError pos
-                else
-                    continue None
-
-            try Dict.get usr env.namedTypes as
-                Nothing:
-                    addError env pos (ErrorNamedTypeNotFound usr) @state
-                    type
-
-                Just (OpaqueType pars):
-                    checkArgsLengthThen pars _:
-                    type
-
-                Just (UnionType unionDef):
-                    checkArgsLengthThen unionDef.pars _:
-                    type
-
-                Just (AliasType aliasDef):
-                    checkArgsLengthThen aliasDef.pars _:
-
-                    expandAlias args aliasDef
-                    ....
-                    typeByParName as Dict Name CA.Type =
-                        List.map2 ((At pos name): p: name & p) aliasDef.pars args
-                        >> Dict.fromList
-
-                    replaceTyvarsInCaType env typeByParName @state aliasDef.usr aliasDef.type
-
-        _:
-            type
+#expandType as Env: State@: CA.Type: CA.Type =
+#    env: state@: type:
+#
+#    try type as
+#        CA.TypeNamed pos usr args:
+#
+#            checkArgsLengthThen as [At Name]: (a: CA.Type): CA.Type =
+#                pars: continue:
+#
+#                if List.length args /= List.length pars then
+#                    addError env pos (ErrorWrongNumberOfTypeArguments usr pars args) @state
+#                    CA.TypeError pos
+#                else
+#                    continue None
+#
+#            try Dict.get usr env.namedTypes as
+#                Nothing:
+#                    addError env pos (ErrorNamedTypeNotFound usr) @state
+#                    type
+#
+#                Just (OpaqueType pars):
+#                    checkArgsLengthThen pars _:
+#                    type
+#
+#                Just (UnionType unionDef):
+#                    checkArgsLengthThen unionDef.pars _:
+#                    type
+#
+#                Just (AliasType aliasDef):
+#                    checkArgsLengthThen aliasDef.pars _:
+#
+#                    expandAlias args aliasDef
+#                    ....
+#                    typeByParName as Dict Name CA.Type =
+#                        List.map2 ((At pos name): p: name & p) aliasDef.pars args
+#                        >> Dict.fromList
+#
+#                    replaceTyvarsInCaType env typeByParName @state aliasDef.usr aliasDef.type
+#
+#        _:
+#            type
 
 
 replaceTyvarsInCaType as Env: Dict Name CA.Type: State@: USR: CA.Type: CA.Type =
@@ -889,10 +892,7 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
 
 
 checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
-    env: rawExpectedType: caExpression: state@:
-
-    expectedType as CA.Type =
-        expandType env @state rawExpectedType
+    env: expectedType: caExpression: state@:
 
     try caExpression & expectedType as
 
@@ -1575,31 +1575,20 @@ makeResolutionError as Env: CA.Module: (Equality & Text): Error =
 # Populate global Env
 #
 #
-nameToTyvarId as State@: (Hash Name TA.UnificationVariableId)@: Name: TA.UnificationVariableId =
-    state@: hash@: varname:
-    try Hash.get hash varname as
-        Just tyvarId: tyvarId
-        Nothing:
-            tyvarId = newTyvarId @state
-            Hash.insert @hash varname tyvarId
-            tyvarId
-
-
-translateTyvars as State@: (Hash Name TA.UnificationVariableId)@: Dict Name CA.TypeClasses: Dict TA.UnificationVariableId TA.TypeClasses =
-    state@: hash@: classesByName:
-
-    zot =
-       name: classes:
-        Dict.insert (nameToTyvarId @state @hash name) classes
-
-    Dict.empty >> Dict.for classesByName zot
-
-
 addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
     state@: umr: def: env:
 
-    hash @=
-        Hash.empty
+    nameToIdAndClasses as Dict Name (TA.UnificationVariableId & TA.TypeClasses) =
+        def.tyvars
+        >> Dict.map name: classes: newTyvarId @state & classes
+
+    nameToType as Dict Name TA.Type =
+        nameToTypeAndClasses >> Dict.map k: (id & classes): TA.TypeUnificationVariable id
+
+    unificationIdToClasses as Dict TA.UnificationVariableId TA.TypeClasses =
+        nameToIdAndClasses
+        >> Dict.values
+        >> Dict.fromList
 
     env >> Dict.for (CA.patternNames def.pattern) valueName: valueStuff: envX:
         try valueStuff.maybeAnnotation as
@@ -1613,14 +1602,17 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     >> USR umr
                     >> CA.RefGlobal
 
-                typeWithClasses as Instance =
+                type as TA.Type =
+                    expandParamsAndAliases @state Context_Global env.expandedAliases tyvarsTypeByName annotation
+
+                instance as Instance =
                     {
                     , definedAt = valueStuff.pos
-                    , type = typeCa2Ta_ (nameToTyvarId @state @hash) annotation
-                    , tyvars = translateTyvars @state @hash def.tyvars
+                    , type
+                    , tyvars = Dict.intersect unificationIdToClasses (TA.typeTyvars type)
                     }
 
-                { envX with variables = Dict.insert ref typeWithClasses .variables }
+                { envX with variables = Dict.insert ref instance .variables }
 
 
 addConstructorToGlobalEnv as State@: Dict Name TA.Type: Name: CA.Constructor: Env: Result (Pos & Text) Env =
@@ -1630,13 +1622,7 @@ addConstructorToGlobalEnv as State@: Dict Name TA.Type: Name: CA.Constructor: En
         caConstructor.typeUsr
 
     type as TA.Type =
-        try expandParamsAndAliases env.expandedAliases paramsByName caConstructor.type as
-            Err (pos & message):
-                addError env pos (Error_Expansion message) @state
-                TA.Error pos
-
-            Ok ty:
-                ty
+        expandParamsAndAliases @state Context_Global env.expandedAliases paramsByName caConstructor.type
 
     tyvars as Dict Name CA.TypeClasses =
         type
@@ -1665,8 +1651,8 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
     >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName)
 
 
-expandParamsAndAliases as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: Result (Pos & Text) TA.Type =
-    expandedAliases: argsByName: caType:
+expandParamsAndAliases as State@: Context: ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: TA.Type =
+    state@: context: expandedAliases: argsByName: caType:
 
     try caType as
         CA.TypeNamed pos usr pars:
@@ -1679,16 +1665,16 @@ expandParamsAndAliases as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: 
                     TA.TypeExact p usr expandedPars
 
                 Just (paramsList & expandedAlias):
-
                     if List.length paramsList /= List.length expandedPars then
-                        Err (pos & "wrong number of alias args")
+                        Array.push @state.errors (pos & context & Error_WrongAliasArity paramsList expandedPars)
+                        TA.TypeError pos
+
                     else
                         map =
                             List.map2 Tuple.pair paramsList expandedPars
                             >> Dict.fromList
 
-                        expandParamsAndAliases expandedAliases map expandedAlias
-
+                        expandParamsAndAliases @state context expandedAliases map expandedAlias
 
         CA.TypeFn p modsAndArgs out:
             args = List.map (Tuple.mapSecond ctu) modsAndArgs
@@ -1703,22 +1689,26 @@ expandParamsAndAliases as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: 
         CA.TypeAnnotationVariable pos name:
             try Dict.get name argsByName as
                 Nothing:
-                    Err << pos & "undefined tyvar " .. name
+                    Array.push @state.errors (pos & context & Error_UndefinedTyvar name)
+                    TA.TypeError pos
 
                 Just ty:
                     ty
 
 
 
-expandAndInsertAlias as CA.AliasDef: ByUsr (Int & TA.Type): ByUsr (Int & TA.Type) =
-    aliasDef: aliasAccum:
+expandAndInsertAlias as State@: CA.AliasDef: ByUsr ExpandedAlias: ByUsr ExpandedAlias =
+    state@: aliasDef: aliasAccum:
 
     paramsMap =
         aliasDef.pars
         >> List.indexedMap index: (At pos name): name & TA.TypeUnificationVariable index
         >> Dict.fromList
 
-    expandParamsAndAliases aliasAccum paramsMap aliasDef.type
+    expandedType =
+        expandParamsAndAliases @state Context_Global aliasAccum paramsMap aliasDef.type
+
+    Dict.insert aliasDef.usr { pars = aliasDef.pars, type = expandedType } aliasAccum
 
 
 
@@ -1754,31 +1744,29 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
         RefHierarchy.reorder (getAliasDependencies allAliases) allAliases
 
     if circulars /= [] then
-        List.each circular:
+        # TODO: should I even use expandAndInsertAlias if there are circulars?
+        log "=========> ERROR circulars aliases!!" circulars
+        circulars >> List.each circular:
             Array.push @state.errors (pos & Context_Alias & Error_CircularAlias circular)
-
-        Err ...
-
     else
+        None
 
-        # Expand all aliases
-        Dict.empty
-        >> Dict.forRes allAliases expandAndInsertAlias
-        >> onOk expandedAliases: # Dict USR (Int & TA.Type) =
+    # Expand all aliases
+    expandedAliases as Dict USR ExpandedAlias =
+        Dict.empty >> Dict.for allAliases (expandAndInsertAlias @state)
 
-        doStuff as CA.Module: Env: Env =
-            caModule: env:
-            env
-            >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
-            >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)
+    doStuff as CA.Module: Env: Env =
+        caModule: env:
+        env
+        >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
+        >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)
 
-        { initEnv with
-        , expandedAliases
-        }
-        >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
-        >> List.for allModules doStuff
-        >> Tuple.pair state
-        >> Ok
+    { initEnv with
+    , expandedAliases
+    }
+    >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
+    >> List.for allModules doStuff
+    >> Tuple.pair state
 
 
 
