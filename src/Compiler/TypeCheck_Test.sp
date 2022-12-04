@@ -590,7 +590,7 @@ higherOrderTypes as Test =
                 }
             )
         , codeTest
-            "SKIP [reg] type check mistakes a union type with free tyvars for a free tyvar?"
+            "SKIP(move to MakeCanonical) [reg] type check mistakes a union type with free tyvars for a free tyvar?"
             """
             union O r e o = O r e o
 
@@ -614,7 +614,7 @@ higherOrderTypes as Test =
         , codeTest
             # TODO this should be MakeCanonical's responsibility?
             """
-            SKIP [reg] Should complain about undefined type argument
+            SKIP(move to MakeCanonical) [reg] Should complain about undefined type argument
             """
             """
             union O a = O Text output
@@ -667,7 +667,7 @@ records as Test =
             )
         , codeTest
             """
-            SKIP Attribute mutation
+            SKIP(mutation) Attribute mutation
             """
             """
             a = fn @b: @b.meh.blah += 1
@@ -695,7 +695,7 @@ records as Test =
             )
         , codeTest
             """
-            SKIP Tuple3 direct item mutability
+            SKIP(mutation) Tuple3 direct item mutability
             """
             """
             x =
@@ -707,7 +707,7 @@ records as Test =
             Test.isOk
         , codeTest
             """
-            SKIP Tuple2 direct item mutability, annotated
+            SKIP(mutation) Tuple2 direct item mutability, annotated
             """
             """
             x = y:
@@ -733,7 +733,7 @@ records as Test =
                     }
                 )
             )
-        , codeTest "SKIP instantiate and refine inferred records"
+        , codeTest "SKIP(needs reordering) instantiate and refine inferred records"
             """
             a = fn t: { t with x = 1 }
             c = a
@@ -761,15 +761,15 @@ records as Test =
                     }
                 )
             )
-#        , codeTest "[reg] refineType when the record has a non-extensible alias"
-#            """
-#            alias A = { c as Number, d as Number }
-#
-#            upd as A: A = a:
-#              { a with c = .c + 1 }
-#            """
-#            (infer "upd")
-#            Test.isOk
+        , codeTest "[reg] refineType when the record has a non-extensible alias"
+            """
+            alias A = { c as Number, d as Number }
+
+            upd as fn A: A = fn a:
+              { a with c = .c + 1 }
+            """
+            (infer "upd")
+            Test.isOk
 #        , codeTest "[reg] infinite recursion on addSubstitution/unify_"
 #            """
 #            alias B = { l as [Text] }

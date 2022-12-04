@@ -309,11 +309,12 @@ typeCa2Ta as Env: CA.Type: TA.Type =
 typeCa2Ta_ as (Name: TA.UnificationVariableId): CA.Type: TA.Type =
     f: ca:
 
-    ctu = typeCa2Ta_ f
+    ctu =
+        typeCa2Ta_ f
 
     try ca as
        CA.TypeNamed p usr pars:
-           TA.TypeOpaque p usr (List.map ctu pars)
+           TA.TypeNamed p usr (List.map ctu pars)
 
        CA.TypeFn p modsAndArgs out:
            xxx = List.map (Tuple.mapSecond ctu) modsAndArgs
@@ -336,9 +337,8 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
        TA.TypeUnique p ty:
          True
 
-       TA.TypeOpaque p usr pars:
-          # Opaques cannot contain uniques?
-          List.any variableOfThisTypeMustBeFlaggedUnique pars
+       TA.TypeNamed p usr args:
+          List.any variableOfThisTypeMustBeFlaggedUnique args
 
        TA.TypeFn p args out:
           False
@@ -386,6 +386,8 @@ expandType as Env: State@: CA.Type: CA.Type =
                 Just (AliasType aliasDef):
                     checkArgsLengthThen aliasDef.pars _:
 
+                    expandAlias args aliasDef
+                    ....
                     typeByParName as Dict Name CA.Type =
                         List.map2 ((At pos name): p: name & p) aliasDef.pars args
                         >> Dict.fromList
@@ -1649,23 +1651,131 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
     >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state caUnionDef.pars)
 
 
+
+
+
+
+
+
+
+expandAliasParams as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: Result (Pos & Text) TA.Type =
+    allAliases: argsByName: caType:
+
+    try caType as
+        CA.TypeNamed pos usr pars:
+
+            expandedPars =
+                List.map ctu pars
+
+            try Dict.get usr allAliases as
+                Nothing:
+                    TA.TypeExact p usr expandedPars
+
+                Just (paramsList & expandedAlias):
+
+                    if List.length paramsList /= List.length expandedPars then
+                        Err (pos & "wrong number of alias args")
+                    else
+                        map =
+                            List.map2 Tuple.pair paramsList expandedPars
+                            >> Dict.fromList
+
+                        expandAliasParams allAliases map expandedAlias
+
+
+        CA.TypeFn p modsAndArgs out:
+            args = List.map (Tuple.mapSecond ctu) modsAndArgs
+            TA.TypeFn p args (ctu out)
+
+        CA.TypeRecord p attrs:
+            TA.TypeRecord p (Dict.map (k: ctu) attrs)
+
+        CA.TypeUnique p ty:
+            TA.TypeUnique p (ctu ty)
+
+        CA.TypeAnnotationVariable pos name:
+            try Dict.get name argsByName as
+                Nothing:
+                    Err << pos & "undefined tyvar " .. name
+
+                Just ty:
+                    ty
+
+
+
+expandAndInsertAlias as CA.AliasDef: ByUsr (Int & TA.Type): ByUsr (Int & TA.Type) =
+    aliasDef: aliasAccum:
+
+    paramsMap =
+        aliasDef.pars
+        >> List.indexedMap index: (At pos name): name & TA.TypeUnificationVariable index
+        >> Dict.fromList
+
+    expandAliasParams aliasAccum paramsMap aliasDef.type
+
+
+
+
+getAliasDependencies as ByUsr aliasDef: CA.AliasDef: Set USR =
+    allAliases: aliasDef:
+
+    aliasDef.directTypeDeps
+    >> Dict.filter usr: _: Dict.member usr allAliases
+
+    # TODO: RefHierarchy should accept and Dict, not just a Set
+    # Then we can remove this
+    >> Dict.map k: v: None
+
+
+
+
+
 initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
     allModules:
 
     state @=
         initState 0
 
-    doStuff as CA.Module: Env: Env =
-        caModule: env:
-        env
-        >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
-        >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
-        #TODO >> Dict.for caModule.aliasDefs (addAliasToGlobalEnv @state)
-        >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)
+    # Before we expand the aliases, we need to reorder them
+    allAliases as Dict USR CA.AliasDef =
+        Dict.empty
+        >> List.for allModules mod:
+            Dict.for caModule.aliasDefs name: aliasDef:
+                Dict.insert aliasDef.usr aliasDef
 
-    initEnv
-    >> List.for allModules doStuff
-    >> Tuple.pair state
+    circulars & orderedAliases =
+        RefHierarchy.reorder (getAliasDependencies allAliases) allAliases
+
+    if circulars /= [] then
+        List.each circular:
+            Array.push @state.errors (pos & Context_Alias & Error_CircularAlias circular)
+
+        Err ...
+
+    else
+
+        # Expand all aliases
+        Dict.empty
+        >> Dict.forRes allAliases expandAndInsertAlias
+        >> onOk expandedAliases: # Dict USR (Int & TA.Type) =
+
+        doStuff as CA.Module: Env: Env =
+            caModule: env:
+            env
+            >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
+            >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)
+
+        { initEnv with
+        , expandedAliases
+        }
+        >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
+        >> List.for allModules doStuff
+        >> Tuple.pair state
+        >> Ok
+
+
+
+
 
 
 #
@@ -1679,7 +1789,13 @@ alias ERState = {
     }
 
 
-addErrorIf as Bool: Equality: Text: ERState: ERState =
+addErError as Equality: Text: ERState: ERState =
+    equality: message: state:
+
+    { state with errors = (equality & message) :: .errors }
+
+
+addErErrorIf as Bool: Equality: Text: ERState: ERState =
     test: equality: message: state:
 
     if test then
@@ -1710,19 +1826,37 @@ solveEqualities as [Equality]: ERState: ERState =
                     replaceUnificationVariable tyvarId t1 tail state
 
 
-                TA.TypeOpaque _ usr1 args1 & TA.TypeOpaque _ usr2 args2:
-                    newEqualities as [Equality] =
-                        List.indexedMap2 (index: Equality context pos (Why_TypeArgument usr1 index why)) args1 args2
+                TA.TypeNamed _ usr1 args1 & TA.TypeNamed usr2 args2:
+                    if usr1 == usr2 then
+                        newEqualities as [Equality] =
+                            List.indexedMap2 (index: Equality context pos (Why_TypeArgument usr1 index why)) args1 args2
 
-                    state
-                    >> addErrorIf (usr1 /= usr2) head "different opaque types"
-                    >> solveEqualities (List.append tail newEqualities)
+                        solveEqualities (List.append tail newEqualities) state
+
+                    else
+                        try Dict.get usr1 state.namedTypes as
+                            Nothing: todo << "namedType not found: " .. Debug.toHuman usr1
+
+                            Just (AliasType aliasDef):
+                                solveEqualities (Equality context pos why (expandAlias aliasDef args1) type2 :: tail) state
+
+                            _:
+                                solveNamedVsNonAlias usr2 args2 t1 tail state
+
+
+                TA.TypeNamed _ usr1 args1 & t2:
+                    solveNamedVsNonAlias usr1 args1 t2 tail state
+
+
+                t1 & TA.TypeNamed _ usr2 args2:
+                    solveNamedVsNonAlias usr2 args2 t1 tail state
 
 
                 TA.TypeFn _ pars1 out1 & TA.TypeFn _ pars2 out2:
                     if List.length pars1 /= List.length pars2 then
                         state
-                        >> addErrorIf True head "functions expect a different number of arguments"
+                        >> addErError head "functions expect a different number of arguments"
+                        >> solveEqualities tail
 
                     else
                         both =
@@ -1736,7 +1870,7 @@ solveEqualities as [Equality]: ERState: ERState =
                             Equality context pos (Why_FunctionOutput why) out1 out2
 
                         state
-                        >> List.for both (((m1 & _) & (m2 & _)): addErrorIf (m1 /= m2) head "argument modifiers don't match")
+                        >> List.for both (((m1 & _) & (m2 & _)): addErErrorIf (m1 /= m2) head "argument modifiers don't match")
                         >> solveEqualities (List.concat [inEqualities, [outEquality], tail])
 
 
@@ -1749,7 +1883,7 @@ solveEqualities as [Equality]: ERState: ERState =
                               Equality context pos (Why_Attribute why) attrType1 attrType2 :: eqs
 
                     state
-                    >> addErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match"
+                    >> addErErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match"
                     >> solveEqualities newEqualities
 
 
@@ -1770,8 +1904,29 @@ solveEqualities as [Equality]: ERState: ERState =
 
 
                 _:
-                    { state with errors = (head & "types are incompatible") :: .errors }
+                    state
+                    >> addErError head "types are incompatible")
                     >> solveEqualities tail
+
+
+
+solveNamedVsNonAlias as USR: [TA.Type]: TA.Type: Equality: [Equality]: ERState: ERState =
+    usr1: args1: t2: head: tail: state:
+
+    try Dict.get usr1 state.namedTypes as
+        Nothing:
+            todo << "namedType not found: " .. Debug.toHuman usr1
+
+        Just (AliasType aliasDef):
+
+            Equality context pos why _ _ = head
+
+            solveEqualities (Equality context pos why t2 (expandAlias aliasDef args1) :: tail) state
+
+        _:
+            state
+            >> addErError head "these named types are incompatible")
+            >> solveEqualities tail
 
 
 
@@ -1826,8 +1981,8 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
         applySubstitutionToType tyvarId replacingType
 
     try originalType as
-        TA.TypeOpaque pos usr pars:
-            TA.TypeOpaque pos usr (List.map rec pars)
+        TA.TypeNamed pos usr pars:
+            TA.TypeNamed pos usr (List.map rec pars)
 
         [#
         TypeAnnotationVariable pos name:
