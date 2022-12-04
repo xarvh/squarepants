@@ -91,21 +91,24 @@ alias Instance = {
     , type as TA.Type
 
     # TODO Should this be only for annotated tyvars?
+    # TODO: or: should this be only for free tyvars?
     , tyvars as Dict TA.UnificationVariableId TA.TypeClasses
     }
 
 
-union NamedType =
-    , OpaqueType [At Name]
-    , UnionType CA.UnionDef
-    , AliasType CA.AliasDef
+#union NamedType =
+#    , OpaqueType [At Name]
+#    , UnionType CA.UnionDef
+#    , AliasType CA.AliasDef
 
 
 alias Env = {
     , context as Context
     , constructors as ByUsr Instance
     , variables as Dict TA.Ref Instance
-    , namedTypes as ByUsr NamedType
+
+    , expandedAliases as ByUsr ([Name] & TA.Type)
+    , exactTypes as ByUsr [At Name]
 
     [#
        Every time we use a value in an expression, we must re-instantiate its free variables, because each time they can be used in a different way.
@@ -1620,25 +1623,31 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                 { envX with variables = Dict.insert ref typeWithClasses .variables }
 
 
-addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
-    state@: args: name: caConstructor: env:
+addConstructorToGlobalEnv as State@: Dict Name TA.Type: Name: CA.Constructor: Env: Result (Pos & Text) Env =
+    state@: paramsByName: name: caConstructor: env:
 
     USR umr _ =
         caConstructor.typeUsr
 
-    hash @=
-        Hash.empty
+    type as TA.Type =
+        try expandParamsAndAliases env.expandedAliases paramsByName caConstructor.type as
+            Err (pos & message):
+                addError env pos (Error_Expansion message) @state
+                TA.Error pos
 
-    caTyvars as Dict Name CA.TypeClasses =
-        args
-        >> List.map ((At p n): (n & { allowFunctions = Just True, allowUniques = Just True }))
-        >> Dict.fromList
+            Ok ty:
+                ty
+
+    tyvars as Dict Name CA.TypeClasses =
+        type
+        >> TA.typeTyvars
+        >> Dict.map k: v: { allowFunctions = Just True, allowUniques = Just True }
 
     taConstructor as Instance =
         {
         , definedAt = Pos.G
-        , type = typeCa2Ta_ (nameToTyvarId @state @hash) caConstructor.type
-        , tyvars = translateTyvars @state @hash caTyvars
+        , type
+        , tyvars
         }
 
     { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }
@@ -1647,19 +1656,17 @@ addConstructorToGlobalEnv as State@: [At Name]: Name: CA.Constructor: Env: Env =
 addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
     state@: _: caUnionDef: env:
 
-    { env with namedTypes = Dict.insert caUnionDef.usr (UnionType caUnionDef) .namedTypes }
-    >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state caUnionDef.pars)
+    paramsByName as Dict Name TA.Type =
+        caUnionDef.pars
+        >> List.map (At pos name): name & newType @state
+        >> Dict.fromList
+
+    { env with exactTypes = Dict.insert caUnionDef.usr caUnionDef.pars .exactTypes }
+    >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName)
 
 
-
-
-
-
-
-
-
-expandAliasParams as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: Result (Pos & Text) TA.Type =
-    allAliases: argsByName: caType:
+expandParamsAndAliases as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: Result (Pos & Text) TA.Type =
+    expandedAliases: argsByName: caType:
 
     try caType as
         CA.TypeNamed pos usr pars:
@@ -1667,7 +1674,7 @@ expandAliasParams as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: Resul
             expandedPars =
                 List.map ctu pars
 
-            try Dict.get usr allAliases as
+            try Dict.get usr expandedAliases as
                 Nothing:
                     TA.TypeExact p usr expandedPars
 
@@ -1680,7 +1687,7 @@ expandAliasParams as ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: Resul
                             List.map2 Tuple.pair paramsList expandedPars
                             >> Dict.fromList
 
-                        expandAliasParams allAliases map expandedAlias
+                        expandParamsAndAliases expandedAliases map expandedAlias
 
 
         CA.TypeFn p modsAndArgs out:
@@ -1711,7 +1718,7 @@ expandAndInsertAlias as CA.AliasDef: ByUsr (Int & TA.Type): ByUsr (Int & TA.Type
         >> List.indexedMap index: (At pos name): name & TA.TypeUnificationVariable index
         >> Dict.fromList
 
-    expandAliasParams aliasAccum paramsMap aliasDef.type
+    expandParamsAndAliases aliasAccum paramsMap aliasDef.type
 
 
 
@@ -1826,30 +1833,16 @@ solveEqualities as [Equality]: ERState: ERState =
                     replaceUnificationVariable tyvarId t1 tail state
 
 
-                TA.TypeNamed _ usr1 args1 & TA.TypeNamed usr2 args2:
-                    if usr1 == usr2 then
+                TA.TypeExact _ usr1 args1 & TA.TypeExact usr2 args2:
+                    if usr1 /= usr2 then
+                        state
+                        >> addErError head "types are incompatible"
+                        >> solveEqualities tail
+                    else
                         newEqualities as [Equality] =
                             List.indexedMap2 (index: Equality context pos (Why_TypeArgument usr1 index why)) args1 args2
 
                         solveEqualities (List.append tail newEqualities) state
-
-                    else
-                        try Dict.get usr1 state.namedTypes as
-                            Nothing: todo << "namedType not found: " .. Debug.toHuman usr1
-
-                            Just (AliasType aliasDef):
-                                solveEqualities (Equality context pos why (expandAlias aliasDef args1) type2 :: tail) state
-
-                            _:
-                                solveNamedVsNonAlias usr2 args2 t1 tail state
-
-
-                TA.TypeNamed _ usr1 args1 & t2:
-                    solveNamedVsNonAlias usr1 args1 t2 tail state
-
-
-                t1 & TA.TypeNamed _ usr2 args2:
-                    solveNamedVsNonAlias usr2 args2 t1 tail state
 
 
                 TA.TypeFn _ pars1 out1 & TA.TypeFn _ pars2 out2:
@@ -1905,28 +1898,28 @@ solveEqualities as [Equality]: ERState: ERState =
 
                 _:
                     state
-                    >> addErError head "types are incompatible")
+                    >> addErError head "types are incompatible"
                     >> solveEqualities tail
 
 
 
-solveNamedVsNonAlias as USR: [TA.Type]: TA.Type: Equality: [Equality]: ERState: ERState =
-    usr1: args1: t2: head: tail: state:
-
-    try Dict.get usr1 state.namedTypes as
-        Nothing:
-            todo << "namedType not found: " .. Debug.toHuman usr1
-
-        Just (AliasType aliasDef):
-
-            Equality context pos why _ _ = head
-
-            solveEqualities (Equality context pos why t2 (expandAlias aliasDef args1) :: tail) state
-
-        _:
-            state
-            >> addErError head "these named types are incompatible")
-            >> solveEqualities tail
+#solveNamedVsNonAlias as USR: [TA.Type]: TA.Type: Equality: [Equality]: ERState: ERState =
+#    usr1: args1: t2: head: tail: state:
+#
+#    try Dict.get usr1 state.namedTypes as
+#        Nothing:
+#            todo << "namedType not found: " .. Debug.toHuman usr1
+#
+#        Just (AliasType aliasDef):
+#
+#            Equality context pos why _ _ = head
+#
+#            solveEqualities (Equality context pos why t2 (expandAlias aliasDef args1) :: tail) state
+#
+#        _:
+#            state
+#            >> addErError head "these named types are incompatible")
+#            >> solveEqualities tail
 
 
 
@@ -1981,8 +1974,8 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
         applySubstitutionToType tyvarId replacingType
 
     try originalType as
-        TA.TypeNamed pos usr pars:
-            TA.TypeNamed pos usr (List.map rec pars)
+        TA.TypeExact pos usr pars:
+            TA.TypeExact pos usr (List.map rec pars)
 
         [#
         TypeAnnotationVariable pos name:

@@ -9,7 +9,7 @@ alias UnificationVariableId =
 
 union Type =
     , TypeExact Pos USR [Type]
-    , TypeExpandedAlias USR Type
+    #, TypeExpandedAlias USR Type
     , TypeFn Pos [Bool & Type] Type
     , TypeRecord Pos (Dict Name Type)
     , TypeUnique Pos Type
