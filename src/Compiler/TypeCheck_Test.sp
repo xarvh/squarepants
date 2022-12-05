@@ -54,15 +54,15 @@ tyvar as Int: TA.Type =
 
 
 tyNumber as TA.Type =
-    TA.TypeOpaque Pos.N ("Number" >> Meta.spCoreUSR) []
+    TA.TypeExact Pos.N ("Number" >> Meta.spCoreUSR) []
 
 
 tyNone as TA.Type =
-    TA.TypeOpaque Pos.N ("None" >> Meta.spCoreUSR) []
+    TA.TypeExact Pos.N ("None" >> Meta.spCoreUSR) []
 
 
 tyBool as TA.Type =
-    TA.TypeOpaque Pos.N ("Bool" >> Meta.spCoreUSR) []
+    TA.TypeExact Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
 freeTyvarsAnnotated as [TA.UnificationVariableId]: Dict TA.UnificationVariableId TA.TypeClasses =
@@ -191,11 +191,11 @@ normalizeTyvarId as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.
 normalizeType as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.Type: TA.Type =
     hash@: type:
     try type as
-        TA.TypeOpaque p usr args:
-            TA.TypeOpaque p usr (List.map (normalizeType @hash) args)
+        TA.TypeExact p usr args:
+            TA.TypeExact p usr (List.map (normalizeType @hash) args)
 
-        TA.TypeAlias p usr args:
-            TA.TypeAlias p usr (List.map (normalizeType @hash) args)
+#        TA.TypeAlias p usr args:
+#            TA.TypeAlias p usr (List.map (normalizeType @hash) args)
 
         TA.TypeFn p pars out:
             TA.TypeFn p
@@ -566,8 +566,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     function
-                        [TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ]]
-                        (TA.TypeOpaque Pos.T (TH.localType "T") [ tyvar 1 ])
+                        [TA.TypeExact Pos.T (TH.localType "T") [ tyvar 1 ]]
+                        (TA.TypeExact Pos.T (TH.localType "T") [ tyvar 1 ])
                 , tyvars = freeTyvarsAnnotated [1]
                 }
             )
@@ -584,7 +584,7 @@ higherOrderTypes as Test =
                 {
                 , tyvars = freeTyvarsInferred [1]
                 , type =
-                    TA.TypeOpaque Pos.G
+                    TA.TypeExact Pos.G
                         (TH.localType "X")
                         [ tyvar 1 ]
                 }

@@ -138,8 +138,8 @@ patternNames as Pattern: Dict Name Pos =
 typeTyvars as Type: Dict UnificationVariableId None =
     type:
     try type as
-        TypeOpaque pos usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeAlias pos usr args:  Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
+        TypeExact pos usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
+        #TypeAlias pos usr args:  Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
         TypeFn pos ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord pos attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         #TODO Should we say here that the var must allow uniqueness?

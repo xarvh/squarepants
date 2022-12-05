@@ -296,8 +296,8 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
        TA.TypeUnique p ty:
          True
 
-#       TA.TypeNamed p usr args:
-#          List.any variableOfThisTypeMustBeFlaggedUnique args
+       TA.TypeExact p usr args:
+          List.any variableOfThisTypeMustBeFlaggedUnique args
 
        TA.TypeFn p args out:
           False
