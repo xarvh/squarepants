@@ -98,7 +98,7 @@ alias Instance = {
 
 alias ExpandedAlias =
     {
-    , pars as [At Name]
+    , pars as [TA.UnificationVariableId]
     , type as TA.Type
     }
 
@@ -174,9 +174,9 @@ union Error_ =
     , ErrorUniquenessDoesNotMatch
     , ErrorRecyclingDoesNotMatch
     , ErrorUndefinedTypeVariable Name
-    , ErrorWrongNumberOfTypeArguments USR [At Name] [CA.Type]
+    , ErrorWrongNumberOfTypeArguments USR [TA.UnificationVariableId] [TA.Type]
     , ErrorNamedTypeNotFound USR
-    , ErrorCircularAlias USR
+    , ErrorCircularAlias [USR]
 
 
 union Context =
@@ -244,17 +244,6 @@ addError as Env: Pos: Error_: State@: None =
     Array.push @state.errors (pos & env.context & error)
 
 
-#linearizeCurriedParameters as TA.Type: [LambdaModifier & TA.Type]: [LambdaModifier & TA.Type] & TA.Type =
-#    type: accum:
-#
-#    try type as
-#        TA.TypeFn pos from modifier to:
-#            linearizeCurriedParameters to << (modifier & from) :: accum
-#
-#        _:
-#            List.reverse accum & type
-
-
 getConstructorByUsr as USR: Env: Maybe Instance =
     usr: env:
 
@@ -297,45 +286,9 @@ generalize as Env: Instance: State@: TA.Type =
 
 #
 #
-# Types
+# Uniqueness
 #
 #
-typeCa2Ta as Env: CA.Type: TA.Type =
-    env: ca:
-
-    f as Name: TA.UnificationVariableId =
-        name:
-        try Dict.get name env.annotatedTyvarToGeneratedTyvar as
-            Just tyvarId: tyvarId
-            Nothing: todo << "compiler error: typeCa2Ta: name `" .. name .. "` not found"
-
-    typeCa2Ta_ f ca
-
-
-typeCa2Ta_ as (Name: TA.UnificationVariableId): CA.Type: TA.Type =
-    f: ca:
-
-    ctu =
-        typeCa2Ta_ f
-
-    try ca as
-       CA.TypeNamed p usr pars:
-           todo "TA.TypeNamed p usr (List.map ctu pars)"
-
-       CA.TypeFn p modsAndArgs out:
-           xxx = List.map (Tuple.mapSecond ctu) modsAndArgs
-           TA.TypeFn p xxx (ctu out)
-
-       CA.TypeRecord p attrs:
-           TA.TypeRecord p (Dict.map (k: ctu) attrs)
-
-       CA.TypeUnique p ty:
-           TA.TypeUnique p (ctu ty)
-
-       CA.TypeAnnotationVariable _ name:
-            TA.TypeUnificationVariable (f name)
-
-
 variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
     ca:
 
@@ -360,84 +313,97 @@ variableOfThisTypeMustBeFlaggedUnique as TA.Type: Bool =
           False
 
 
+#
+#
+# CA to TA translation
+#
+#
+expandTyvarsInType as State@: Context: Dict TA.UnificationVariableId TA.Type: TA.Type: TA.Type =
+    state@: context: tyvarIdsToType: type:
 
-#expandType as Env: State@: CA.Type: CA.Type =
-#    env: state@: type:
-#
-#    try type as
-#        CA.TypeNamed pos usr args:
-#
-#            checkArgsLengthThen as [At Name]: (a: CA.Type): CA.Type =
-#                pars: continue:
-#
-#                if List.length args /= List.length pars then
-#                    addError env pos (ErrorWrongNumberOfTypeArguments usr pars args) @state
-#                    CA.TypeError pos
-#                else
-#                    continue None
-#
-#            try Dict.get usr env.namedTypes as
-#                Nothing:
-#                    addError env pos (ErrorNamedTypeNotFound usr) @state
-#                    type
-#
-#                Just (OpaqueType pars):
-#                    checkArgsLengthThen pars _:
-#                    type
-#
-#                Just (UnionType unionDef):
-#                    checkArgsLengthThen unionDef.pars _:
-#                    type
-#
-#                Just (AliasType aliasDef):
-#                    checkArgsLengthThen aliasDef.pars _:
-#
-#                    expandAlias args aliasDef
-#                    ....
-#                    typeByParName as Dict Name CA.Type =
-#                        List.map2 ((At pos name): p: name & p) aliasDef.pars args
-#                        >> Dict.fromList
-#
-#                    replaceTyvarsInCaType env typeByParName @state aliasDef.usr aliasDef.type
-#
-#        _:
-#            type
+    rec =
+      expandTyvarsInType @state context tyvarIdsToType
+
+    try type as
+        TA.TypeExact pos usr args:
+            TA.TypeExact pos usr (List.map rec args)
+
+        TA.TypeFn pos ins out:
+            TA.TypeFn pos (List.map (Tuple.mapSecond rec) ins) (rec out)
+
+        TA.TypeRecord pos attrs:
+            TA.TypeRecord pos (Dict.map (k: rec) attrs)
+
+        TA.TypeUnique pos type:
+            TA.TypeUnique pos (rec type)
+
+        TA.TypeUnificationVariable id:
+            try Dict.get id tyvarIdsToType as
+                Nothing: todo << "Compiler bug: this is not supposed to happen"
+                Just ty: ty
+
+        TA.TypeRecordExt id attrs:
+            TA.TypeRecordExt id (Dict.map (k: rec) attrs)
+
+        TA.TypeError pos:
+            type
 
 
-replaceTyvarsInCaType as Env: Dict Name CA.Type: State@: USR: CA.Type: CA.Type =
-    env: dict: state@: aliasUsr: ty:
+expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Type: CA.Type: TA.Type =
+    state@: context: allAliases: argsByName: caType:
 
-    rec as CA.Type: CA.Type =
-        replaceTyvarsInCaType env dict @state aliasUsr
+    rec =
+        expandParamsAndAliases @state context allAliases argsByName
 
-    try ty as
-
+    try caType as
         CA.TypeNamed pos usr pars:
-            if usr == aliasUsr then
-                addError env pos (ErrorCircularAlias usr) @state
-                CA.TypeError pos
-            else
-                CA.TypeNamed pos usr (List.map rec pars)
 
-        CA.TypeFn pos fnPars fnOut:
-            CA.TypeFn pos (List.map (Tuple.mapSecond rec) fnPars) (rec fnOut)
+            expandedPars =
+                List.map rec pars
 
-        CA.TypeRecord pos attrs:
-            CA.TypeRecord pos (Dict.map (k: rec) attrs)
+            try Dict.get usr allAliases as
+                Nothing:
+                    TA.TypeExact pos usr expandedPars
 
-        CA.TypeUnique pos type:
-            # To remove this, we can "just" not replace all the constructors args?
-            CA.TypeUnique pos (rec type)
+                Just expandedAlias:
+                    if List.length expandedAlias.pars /= List.length expandedPars then
+                        Array.push @state.errors (pos & context & ErrorWrongNumberOfTypeArguments usr expandedAlias.pars expandedPars)
+                        TA.TypeError pos
+
+                    else
+                        tyvarIdsToType as Dict TA.UnificationVariableId TA.Type =
+                            List.map2 Tuple.pair expandedAlias.pars expandedPars
+                            >> Dict.fromList
+
+                        expandTyvarsInType @state context tyvarIdsToType expandedAlias.type
+
+        CA.TypeFn p modsAndArgs out:
+            args = List.map (Tuple.mapSecond rec) modsAndArgs
+            TA.TypeFn p args (rec out)
+
+        CA.TypeRecord p attrs:
+            TA.TypeRecord p (Dict.map (k: rec) attrs)
+
+        CA.TypeUnique p ty:
+            TA.TypeUnique p (rec ty)
 
         CA.TypeAnnotationVariable pos name:
-            try Dict.get name dict as
+            try Dict.get name argsByName as
                 Nothing:
-                    addError env pos (ErrorUndefinedTypeVariable name) @state
-                    CA.TypeError pos
+                    Array.push @state.errors (pos & context & ErrorUndefinedTypeVariable name)
+                    TA.TypeError pos
 
-                Just expanded:
-                    expanded
+                Just ty:
+                    ty
 
+
+typeCa2Ta as State@: Env: CA.Type: TA.Type =
+    state@: env: ca:
+
+    nameToType =
+        Dict.map (k: TA.TypeUnificationVariable) env.annotatedTyvarToGeneratedTyvar
+
+    expandParamsAndAliases @state env.context env.expandedAliases nameToType ca
 
 
 #
@@ -461,7 +427,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     typedBody & bodyType =
         try patternOut.maybeFullAnnotation as
             Just annotationType:
-                checkExpression envWithContext annotationType def.body @state & typeCa2Ta envWithContext annotationType
+                checkExpression envWithContext annotationType def.body @state & typeCa2Ta @state envWithContext annotationType
             Nothing:
                 inferExpression envWithContext def.body @state
 
@@ -514,11 +480,11 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
         # TODO would be nice to be able to say that from here on, `caExpression as Expression any`
         CA.LiteralNumber pos n:
-            TA.LiteralNumber pos n & (typeCa2Ta env CoreTypes.number)
+            TA.LiteralNumber pos n & (typeCa2Ta @state env CoreTypes.number)
 
 
         CA.LiteralText pos text:
-            TA.LiteralText pos text & (typeCa2Ta env CoreTypes.text)
+            TA.LiteralText pos text & (typeCa2Ta @state env CoreTypes.text)
 
 
         CA.Variable pos ref:
@@ -877,7 +843,7 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
             variable as Instance =
                 {
                 , definedAt = pos
-                , type = typeCa2Ta env expectedType
+                , type = typeCa2Ta @state env expectedType
                 # TODO not sure about this here???
                 , tyvars = Dict.empty
                 }
@@ -920,7 +886,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    addEquality env pos Why_Annotation var.type (typeCa2Ta env expectedType) @state
+                    addEquality env pos Why_Annotation var.type (typeCa2Ta @state env expectedType) @state
 
             TA.Variable pos ref
 
@@ -931,7 +897,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
-                    addEquality env pos Why_Annotation cons.type (typeCa2Ta env expectedType) @state
+                    addEquality env pos Why_Annotation cons.type (typeCa2Ta @state env expectedType) @state
 
             TA.Constructor pos usr
 
@@ -953,7 +919,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                         typedPar & envX1 =
                             checkParameter { envX with context = Context_FnPar parIndex .context } isRecyclingT parT par @state
 
-                        Array.push @typedPars (typedPar & typeCa2Ta env parT)
+                        Array.push @typedPars (typedPar & typeCa2Ta @state env parT)
                         @parIndex += 1
 
                         envX1
@@ -965,7 +931,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Call pos reference args & _:
-            checkCallCo env (typeCa2Ta env expectedType) pos reference args @state
+            checkCallCo env (typeCa2Ta @state env expectedType) pos reference args @state
 
 
         CA.Record pos (Just ext) valueByName & CA.TypeRecord _ typeByName:
@@ -1021,7 +987,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
             requiredType =
                 expectedType
-                >> typeCa2Ta env
+                >> typeCa2Ta @state env
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
 
@@ -1198,7 +1164,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                             }
 
                         t =
-                            typeCa2Ta blahEnv annotation
+                            typeCa2Ta @state blahEnv annotation
 
                         if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
                             addError env pos ErrorUniquenessDoesNotMatch @state
@@ -1276,7 +1242,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
         CA.PatternLiteralText pos text:
             {
             , typedPattern = TA.PatternLiteralText pos text
-            , patternType = typeCa2Ta env CoreTypes.text
+            , patternType = typeCa2Ta @state env CoreTypes.text
             , env
             , maybeFullAnnotation = Just CoreTypes.text
             }
@@ -1285,7 +1251,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
         CA.PatternLiteralNumber pos n:
             {
             , typedPattern = TA.PatternLiteralNumber pos n
-            , patternType = typeCa2Ta env CoreTypes.number
+            , patternType = typeCa2Ta @state env CoreTypes.number
             , env
             , maybeFullAnnotation = Just CoreTypes.number
             }
@@ -1381,7 +1347,7 @@ checkPattern as Env: CA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
     # TODO
     out = inferPattern env isParam pattern @state
 
-    addEquality env (CA.patternPos pattern) Why_Todo out.patternType (typeCa2Ta env expectedType) @state
+    addEquality env (CA.patternPos pattern) Why_Todo out.patternType (typeCa2Ta @state env expectedType) @state
 
     out.typedPattern & out.env
 
@@ -1583,7 +1549,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
         >> Dict.map name: classes: newTyvarId @state & classes
 
     nameToType as Dict Name TA.Type =
-        nameToTypeAndClasses >> Dict.map k: (id & classes): TA.TypeUnificationVariable id
+        nameToIdAndClasses >> Dict.map k: (id & classes): TA.TypeUnificationVariable id
 
     unificationIdToClasses as Dict TA.UnificationVariableId TA.TypeClasses =
         nameToIdAndClasses
@@ -1603,7 +1569,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     >> CA.RefGlobal
 
                 type as TA.Type =
-                    expandParamsAndAliases @state Context_Global env.expandedAliases tyvarsTypeByName annotation
+                    expandParamsAndAliases @state Context_Global env.expandedAliases nameToType annotation
 
                 instance as Instance =
                     {
@@ -1615,7 +1581,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                 { envX with variables = Dict.insert ref instance .variables }
 
 
-addConstructorToGlobalEnv as State@: Dict Name TA.Type: Name: CA.Constructor: Env: Result (Pos & Text) Env =
+addConstructorToGlobalEnv as State@: Dict Name TA.Type: Name: CA.Constructor: Env: Env =
     state@: paramsByName: name: caConstructor: env:
 
     USR umr _ =
@@ -1624,7 +1590,7 @@ addConstructorToGlobalEnv as State@: Dict Name TA.Type: Name: CA.Constructor: En
     type as TA.Type =
         expandParamsAndAliases @state Context_Global env.expandedAliases paramsByName caConstructor.type
 
-    tyvars as Dict Name CA.TypeClasses =
+    tyvars as Dict TA.UnificationVariableId CA.TypeClasses =
         type
         >> TA.typeTyvars
         >> Dict.map k: v: { allowFunctions = Just True, allowUniques = Just True }
@@ -1644,80 +1610,51 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
 
     paramsByName as Dict Name TA.Type =
         caUnionDef.pars
-        >> List.map (At pos name): name & newType @state
+        >> List.map ((At pos name): name & newType @state)
         >> Dict.fromList
 
     { env with exactTypes = Dict.insert caUnionDef.usr caUnionDef.pars .exactTypes }
     >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName)
 
 
-expandParamsAndAliases as State@: Context: ByUsr ([Name] & TA.Type): Dict Name TA.Type: CA.Type: TA.Type =
-    state@: context: expandedAliases: argsByName: caType:
-
-    try caType as
-        CA.TypeNamed pos usr pars:
-
-            expandedPars =
-                List.map ctu pars
-
-            try Dict.get usr expandedAliases as
-                Nothing:
-                    TA.TypeExact p usr expandedPars
-
-                Just (paramsList & expandedAlias):
-                    if List.length paramsList /= List.length expandedPars then
-                        Array.push @state.errors (pos & context & Error_WrongAliasArity paramsList expandedPars)
-                        TA.TypeError pos
-
-                    else
-                        map =
-                            List.map2 Tuple.pair paramsList expandedPars
-                            >> Dict.fromList
-
-                        expandParamsAndAliases @state context expandedAliases map expandedAlias
-
-        CA.TypeFn p modsAndArgs out:
-            args = List.map (Tuple.mapSecond ctu) modsAndArgs
-            TA.TypeFn p args (ctu out)
-
-        CA.TypeRecord p attrs:
-            TA.TypeRecord p (Dict.map (k: ctu) attrs)
-
-        CA.TypeUnique p ty:
-            TA.TypeUnique p (ctu ty)
-
-        CA.TypeAnnotationVariable pos name:
-            try Dict.get name argsByName as
-                Nothing:
-                    Array.push @state.errors (pos & context & Error_UndefinedTyvar name)
-                    TA.TypeError pos
-
-                Just ty:
-                    ty
 
 
 
-expandAndInsertAlias as State@: CA.AliasDef: ByUsr ExpandedAlias: ByUsr ExpandedAlias =
-    state@: aliasDef: aliasAccum:
 
-    paramsMap =
-        aliasDef.pars
-        >> List.indexedMap index: (At pos name): name & TA.TypeUnificationVariable index
+
+
+namedParsToIdParsAndDict as [At Name]: [TA.UnificationVariableId] & Dict Name TA.Type =
+    atPars:
+
+    idPars =
+        atPars
+        >> List.indexedMap (index: atName: index)
+
+    typeByName =
+        atPars
+        >> List.indexedMap (index: (At pos name): name & TA.TypeUnificationVariable index)
         >> Dict.fromList
 
-    expandedType =
-        expandParamsAndAliases @state Context_Global aliasAccum paramsMap aliasDef.type
-
-    Dict.insert aliasDef.usr { pars = aliasDef.pars, type = expandedType } aliasAccum
+    idPars & typeByName
 
 
+expandAndInsertAlias as State@: USR: CA.AliasDef: ByUsr ExpandedAlias: ByUsr ExpandedAlias =
+    state@: usr: aliasDef: aliasAccum:
+
+    pars & typeByName =
+        namedParsToIdParsAndDict aliasDef.pars
+
+    type as TA.Type =
+        expandParamsAndAliases @state Context_Global aliasAccum typeByName aliasDef.type
+
+    Dict.insert usr { pars, type } aliasAccum
 
 
 getAliasDependencies as ByUsr aliasDef: CA.AliasDef: Set USR =
     allAliases: aliasDef:
 
     aliasDef.directTypeDeps
-    >> Dict.filter usr: _: Dict.member usr allAliases
+    >> Dict.filter (usr: _: Dict.member usr allAliases)
 
     # TODO: RefHierarchy should accept and Dict, not just a Set
     # Then we can remove this
@@ -1734,10 +1671,10 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
         initState 0
 
     # Before we expand the aliases, we need to reorder them
-    allAliases as Dict USR CA.AliasDef =
+    allAliases as ByUsr CA.AliasDef =
         Dict.empty
         >> List.for allModules mod:
-            Dict.for caModule.aliasDefs name: aliasDef:
+            Dict.for mod.aliasDefs name: aliasDef:
                 Dict.insert aliasDef.usr aliasDef
 
     circulars & orderedAliases =
@@ -1746,13 +1683,13 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
     if circulars /= [] then
         # TODO: should I even use expandAndInsertAlias if there are circulars?
         log "=========> ERROR circulars aliases!!" circulars
-        circulars >> List.each circular:
-            Array.push @state.errors (pos & Context_Alias & Error_CircularAlias circular)
+        List.each circulars circular:
+            Array.push @state.errors (Pos.G & Context_Global & ErrorCircularAlias circular)
     else
         None
 
     # Expand all aliases
-    expandedAliases as Dict USR ExpandedAlias =
+    expandedAliases as ByUsr ExpandedAlias =
         Dict.empty >> Dict.for allAliases (expandAndInsertAlias @state)
 
     doStuff as CA.Module: Env: Env =
@@ -1821,7 +1758,7 @@ solveEqualities as [Equality]: ERState: ERState =
                     replaceUnificationVariable tyvarId t1 tail state
 
 
-                TA.TypeExact _ usr1 args1 & TA.TypeExact usr2 args2:
+                TA.TypeExact _ usr1 args1 & TA.TypeExact _ usr2 args2:
                     if usr1 /= usr2 then
                         state
                         >> addErError head "types are incompatible"
