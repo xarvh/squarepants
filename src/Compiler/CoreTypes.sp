@@ -153,7 +153,7 @@ listDef as CA.UnionDef =
         [ item, list item ]
 
     type as CA.Type =
-        List.forReversed pars (ar: ty: CA.TypeFn p [False & ar] ty) (list item)
+        CA.TypeFn p [False & item, False & list item] (list item)
 
     consDef as CA.Constructor =
         {

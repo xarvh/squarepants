@@ -83,6 +83,8 @@ alias TypeClasses = {
 
 alias ValueDef = {
     , pattern as Pattern
+
+    # TODO: have maybeBody instead of native?
     , native as Bool
     , body as Expression
 

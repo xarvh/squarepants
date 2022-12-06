@@ -445,7 +445,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
 
     typedBody & bodyType =
         if def.native then
-            TA.Error Pos.N & patternOut.patternType
+            TA.LiteralText Pos.N "native" & patternOut.patternType
         else
             try patternOut.maybeFullAnnotation as
                 Just annotationType:
