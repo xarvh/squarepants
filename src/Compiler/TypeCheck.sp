@@ -166,7 +166,7 @@ union Error_ =
     , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
-    , ErrorIncompatibleTypes CA.Expression CA.Type
+    , ErrorIncompatibleTypes CA.Expression TA.Type
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
@@ -190,6 +190,7 @@ union Context =
     , Context_IfCondition
     , Context_IfFalse
     , Context_IfTrue
+    , Context_AttributeName Name Context
 
 
 union Why =
@@ -217,9 +218,22 @@ union Equality =
 
 
 
+#
+# Core types
+#
+coreTypeBool as TA.Type =
+    TA.TypeExact CoreTypes.p CoreTypes.boolDef.usr []
+
+coreTypeNumber as TA.Type =
+    TA.TypeExact CoreTypes.p CoreTypes.numberDef.usr []
+
+coreTypeText as TA.Type =
+    TA.TypeExact CoreTypes.p CoreTypes.textDef.usr []
 
 
-
+#
+#
+#
 newTyvarId as State@: TA.UnificationVariableId =
     state@:
     @state.lastUnificationVarId += 1
@@ -397,7 +411,7 @@ expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Typ
                     ty
 
 
-typeCa2Ta as State@: Env: CA.Type: TA.Type =
+annotationToTaType as State@: Env: CA.Type: TA.Type =
     state@: env: ca:
 
     nameToType =
@@ -417,19 +431,28 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     patternOut =
         inferPattern env False def.pattern @state
 
+    nonFreeTyvars =
+        if patternOut.maybeFullAnnotation /= Nothing then
+            patternOut.env.nonFreeTyvars
+        else
+            patternOut.env.nonFreeTyvars >> Dict.for (TA.typeTyvars patternOut.patternType) (k: v: Dict.insert k None)
+
     envWithContext =
         { patternOut.env with
         , context = Context_LetInBody
         }
 
-    # TODO do not check body if native!
 
     typedBody & bodyType =
-        try patternOut.maybeFullAnnotation as
-            Just annotationType:
-                checkExpression envWithContext annotationType def.body @state & typeCa2Ta @state envWithContext annotationType
-            Nothing:
-                inferExpression envWithContext def.body @state
+        if def.native then
+            TA.Error Pos.N & patternOut.patternType
+        else
+            try patternOut.maybeFullAnnotation as
+                Just annotationType:
+                    taType = annotationToTaType @state envWithContext annotationType
+                    checkExpression envWithContext taType def.body @state & taType
+                Nothing:
+                    inferExpression envWithContext def.body @state
 
     # TODO clean all the `== Nothing`, maybe put them together
 
@@ -448,12 +471,6 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                 try Dict.get name envWithContext.annotatedTyvarToGeneratedTyvar as
                     Nothing: todo << "compiler error: missing annotatedTyvarToGeneratedTyvar for " .. name
                     Just tyvarId: Dict.insert tyvarId typeClasses
-
-    nonFreeTyvars =
-        if patternOut.maybeFullAnnotation /= Nothing then
-            patternOut.env.nonFreeTyvars
-        else
-            patternOut.env.nonFreeTyvars >> Dict.for (TA.typeTyvars patternOut.patternType) (k: v: Dict.insert k None)
 
     {
     , pattern = patternOut.typedPattern
@@ -480,11 +497,11 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
         # TODO would be nice to be able to say that from here on, `caExpression as Expression any`
         CA.LiteralNumber pos n:
-            TA.LiteralNumber pos n & (typeCa2Ta @state env CoreTypes.number)
+            TA.LiteralNumber pos n & coreTypeNumber
 
 
         CA.LiteralText pos text:
-            TA.LiteralText pos text & (typeCa2Ta @state env CoreTypes.text)
+            TA.LiteralText pos text & coreTypeText
 
 
         CA.Variable pos ref:
@@ -581,7 +598,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
         CA.If pos { condition, true, false }:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } CoreTypes.bool condition @state
+                checkExpression { env with context = Context_IfCondition } coreTypeBool condition @state
 
             typedTrue & trueType =
                 inferExpression { env with context = Context_IfTrue } true @state
@@ -815,7 +832,7 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
 #
 
 
-checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
+checkParameter as Env: Bool: TA.Type: CA.Parameter: State@: TA.Parameter & Env =
     env: isRecycling: expectedType: par: state@:
 
     try par as
@@ -843,7 +860,7 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
             variable as Instance =
                 {
                 , definedAt = pos
-                , type = typeCa2Ta @state env expectedType
+                , type = expectedType
                 # TODO not sure about this here???
                 , tyvars = Dict.empty
                 }
@@ -857,12 +874,12 @@ checkParameter as Env: Bool: CA.Type: CA.Parameter: State@: TA.Parameter & Env =
 
 
 
-checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
+checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
     env: expectedType: caExpression: state@:
 
     try caExpression & expectedType as
 
-        CA.LiteralNumber pos n & CA.TypeNamed _ typeUsr []:
+        CA.LiteralNumber pos n & TA.TypeExact _ typeUsr []:
             if typeUsr /= CoreTypes.numberDef.usr then
                 addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
             else
@@ -871,7 +888,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
             TA.LiteralNumber pos n
 
 
-        CA.LiteralText pos text & CA.TypeNamed _ typeUsr []:
+        CA.LiteralText pos text & TA.TypeExact _ typeUsr []:
             if typeUsr /= CoreTypes.textDef.usr then
                 addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
             else
@@ -886,7 +903,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    addEquality env pos Why_Annotation var.type (typeCa2Ta @state env expectedType) @state
+                    addEquality env pos Why_Annotation var.type expectedType @state
 
             TA.Variable pos ref
 
@@ -897,12 +914,12 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorConstructorNotFound usr) @state
 
                 Just cons:
-                    addEquality env pos Why_Annotation cons.type (typeCa2Ta @state env expectedType) @state
+                    addEquality env pos Why_Annotation cons.type expectedType @state
 
             TA.Constructor pos usr
 
 
-        CA.Fn pos pars body & CA.TypeFn _ parsT out:
+        CA.Fn pos pars body & TA.TypeFn _ parsT out:
 
             if List.length pars > List.length parsT then
                 addError env pos ErrorTooManyArguments @state
@@ -919,7 +936,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
                         typedPar & envX1 =
                             checkParameter { envX with context = Context_FnPar parIndex .context } isRecyclingT parT par @state
 
-                        Array.push @typedPars (typedPar & typeCa2Ta @state env parT)
+                        Array.push @typedPars (typedPar & parT)
                         @parIndex += 1
 
                         envX1
@@ -931,10 +948,10 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Call pos reference args & _:
-            checkCallCo env (typeCa2Ta @state env expectedType) pos reference args @state
+            checkCallCo env expectedType pos reference args @state
 
 
-        CA.Record pos (Just ext) valueByName & CA.TypeRecord _ typeByName:
+        CA.Record pos (Just ext) valueByName & TA.TypeRecord _ typeByName:
 
             # ext must have type expectedType
             # TODO: add context
@@ -956,7 +973,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
             TA.Record pos (Just typedExt) typedValueByName
 
 
-        CA.Record pos Nothing valueByName & CA.TypeRecord _ typeByName:
+        CA.Record pos Nothing valueByName & TA.TypeRecord _ typeByName:
             aOnly & both & bOnly =
                 onlyBothOnly valueByName typeByName
 
@@ -987,7 +1004,6 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
 
             requiredType =
                 expectedType
-                >> typeCa2Ta @state env
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
 
@@ -1010,7 +1026,7 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
         CA.If pos { condition, true, false } & _:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } CoreTypes.bool condition @state
+                checkExpression { env with context = Context_IfCondition } coreTypeBool condition @state
 
             typedTrue =
                 checkExpression { env with context = Context_IfTrue } expectedType true @state
@@ -1059,14 +1075,14 @@ checkExpression as Env: CA.Type: CA.Expression: State@: TA.Expression =
             TA.DestroyIn name << checkExpression env expectedType exp @state
 
 
-        _ & CA.TypeError pos:
+        _ & TA.TypeError pos:
             TA.Error pos
 
 
         _:
-            # TODO (todo "CA.expressionPos caExpression")
-            addError env Pos.G (ErrorIncompatibleTypes caExpression expectedType) @state
-            TA.LiteralText Pos.G "todo?"
+            pos = CA.expressionPos caExpression
+            addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
+            TA.Error pos
 
 
 
@@ -1164,7 +1180,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                             }
 
                         t =
-                            typeCa2Ta @state blahEnv annotation
+                            annotationToTaType @state blahEnv annotation
 
                         if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
                             addError env pos ErrorUniquenessDoesNotMatch @state
@@ -1242,7 +1258,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
         CA.PatternLiteralText pos text:
             {
             , typedPattern = TA.PatternLiteralText pos text
-            , patternType = typeCa2Ta @state env CoreTypes.text
+            , patternType = coreTypeText
             , env
             , maybeFullAnnotation = Just CoreTypes.text
             }
@@ -1251,7 +1267,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
         CA.PatternLiteralNumber pos n:
             {
             , typedPattern = TA.PatternLiteralNumber pos n
-            , patternType = typeCa2Ta @state env CoreTypes.number
+            , patternType = coreTypeNumber
             , env
             , maybeFullAnnotation = Just CoreTypes.number
             }
@@ -1276,7 +1292,10 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
                     Just cons:
                         argModAndTypes & returnType =
-                            todo "linearizeCurriedParameters (generalize env cons @state) []"
+                            try cons.type as
+                                TA.TypeFn _ ins out: ins & out
+                                TA.TypeExact _ usr args: [] & cons.type
+                                _: todo << "compiler bug: cons.type is not a cons but a " .. toHuman cons.type
 
                         rl =
                             List.length argModAndTypes
@@ -1290,7 +1309,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                             None
 
                         if rl < gl then
-                            addError env pos ErrorNotEnoughArguments @state
+                            addError env pos ErrorTooManyArguments @state
                         else
                             None
 
@@ -1341,13 +1360,13 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
 
 
-checkPattern as Env: CA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
+checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
     env: expectedType: isParam: pattern: state@:
 
     # TODO
     out = inferPattern env isParam pattern @state
 
-    addEquality env (CA.patternPos pattern) Why_Todo out.patternType (typeCa2Ta @state env expectedType) @state
+    addEquality env (CA.patternPos pattern) Why_Todo out.patternType expectedType @state
 
     out.typedPattern & out.env
 
@@ -1455,15 +1474,16 @@ doModule as State: Env: CA.Module: Res TA.Module =
     #
     erState0 =
         {
-        , substitutions = Dict.empty
+        , equalities = Array.toList state.equalities
         , errors = []
+        , substitutions = Dict.empty
         }
 
 #    List.each (Array.toList state.equalities) eq:
 #        log "EQ" eq
 
     erStateF =
-        solveEqualities (Array.toList state.equalities) erState0
+        solveEqualities erState0
 
     Debug.benchStop "type check"
 
@@ -1716,8 +1736,9 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
 #
 #
 alias ERState = {
-    , substitutions as Dict TA.UnificationVariableId TA.Type
+    , equalities as [Equality]
     , errors as [Equality & Text]
+    , substitutions as Dict TA.UnificationVariableId TA.Type
     }
 
 
@@ -1736,45 +1757,48 @@ addErErrorIf as Bool: Equality: Text: ERState: ERState =
         state
 
 
-solveEqualities as [Equality]: ERState: ERState =
-    remainingEqualities: state:
+solveEqualities as ERState: ERState =
+    oldState:
 
-    try remainingEqualities as
+    try oldState.equalities as
         []:
-            state
+            oldState
 
         head :: tail:
 
             Equality context pos why type1 type2 =
                 head
 
+            state =
+                { oldState with equalities = tail }
+
             try type1 & type2 as
 
                 TA.TypeUnificationVariable tyvarId & t2:
-                    replaceUnificationVariable tyvarId t2 tail state
+                    replaceUnificationVariable tyvarId t2 state
 
 
                 t1 & TA.TypeUnificationVariable tyvarId:
-                    replaceUnificationVariable tyvarId t1 tail state
+                    replaceUnificationVariable tyvarId t1 state
 
 
                 TA.TypeExact _ usr1 args1 & TA.TypeExact _ usr2 args2:
                     if usr1 /= usr2 then
                         state
                         >> addErError head "types are incompatible"
-                        >> solveEqualities tail
+                        >> solveEqualities
                     else
                         newEqualities as [Equality] =
                             List.indexedMap2 (index: Equality context pos (Why_TypeArgument usr1 index why)) args1 args2
 
-                        solveEqualities (List.append tail newEqualities) state
+                        solveEqualities { state with equalities = List.append .equalities newEqualities }
 
 
                 TA.TypeFn _ pars1 out1 & TA.TypeFn _ pars2 out2:
                     if List.length pars1 /= List.length pars2 then
                         state
                         >> addErError head "functions expect a different number of arguments"
-                        >> solveEqualities tail
+                        >> solveEqualities
 
                     else
                         both =
@@ -1787,30 +1811,30 @@ solveEqualities as [Equality]: ERState: ERState =
                         outEquality as Equality =
                             Equality context pos (Why_FunctionOutput why) out1 out2
 
-                        state
+                        { state with equalities = List.concat [inEqualities, [outEquality], .equalities] }
                         >> List.for both (((m1 & _) & (m2 & _)): addErErrorIf (m1 /= m2) head "argument modifiers don't match")
-                        >> solveEqualities (List.concat [inEqualities, [outEquality], tail])
+                        >> solveEqualities
 
 
                 TA.TypeRecord _ attrs1 & TA.TypeRecord _ attrs2:
                     only1 & both & only2 =
                         onlyBothOnly attrs1 attrs2
 
-                    newEqualities as [Equality] =
-                        tail >> Dict.for both attrName: (attrType1 & attrType2): eqs:
+                    equalities as [Equality] =
+                        state.equalities >> Dict.for both attrName: (attrType1 & attrType2): eqs:
                               Equality context pos (Why_Attribute why) attrType1 attrType2 :: eqs
 
-                    state
+                    { state with equalities }
                     >> addErErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match"
-                    >> solveEqualities newEqualities
+                    >> solveEqualities
 
 
                 TA.TypeRecordExt tyvar1 attrs1 & TA.TypeRecord _ attrs2:
-                    solveRecordExt why tyvar1 attrs1 attrs2 tail state
+                    solveRecordExt head tyvar1 attrs1 attrs2 state
 
 
                 TA.TypeRecord _ attrs1 & TA.TypeRecordExt tyvar2 attrs2:
-                    solveRecordExt why tyvar2 attrs2 attrs1 tail state
+                    solveRecordExt head tyvar2 attrs2 attrs1 state
 
 
                 TA.TypeRecordExt tyvar1 attrs1 & TA.TypeRecordExt tyvar2 attr2:
@@ -1818,67 +1842,48 @@ solveEqualities as [Equality]: ERState: ERState =
 
 
                 TA.TypeUnique _ m1 & TA.TypeUnique _ m2:
-                    solveEqualities (Equality context pos why m1 m2 :: tail) state
+                    solveEqualities { state with equalities = Equality context pos why m1 m2 :: .equalities }
 
 
                 _:
                     state
                     >> addErError head "types are incompatible"
-                    >> solveEqualities tail
+                    >> solveEqualities
 
 
+solveRecordExt as Equality: TA.UnificationVariableId: Dict Name TA.Type: Dict Name TA.Type: ERState: ERState =
+    equality: tyvar1: attrs1: attrs2: state:
 
-#solveNamedVsNonAlias as USR: [TA.Type]: TA.Type: Equality: [Equality]: ERState: ERState =
-#    usr1: args1: t2: head: tail: state:
-#
-#    try Dict.get usr1 state.namedTypes as
-#        Nothing:
-#            todo << "namedType not found: " .. Debug.toHuman usr1
-#
-#        Just (AliasType aliasDef):
-#
-#            Equality context pos why _ _ = head
-#
-#            solveEqualities (Equality context pos why t2 (expandAlias aliasDef args1) :: tail) state
-#
-#        _:
-#            state
-#            >> addErError head "these named types are incompatible")
-#            >> solveEqualities tail
+    #
+    # { tyvar1 with attrs1 } == { attrs2 }
+    #
+    # =>    tyvar1 == { attrs2 }
+    #
+    # =>    all of attrs1 must be in attrs2 and match
+    #
 
+    Equality context pos why _ _ =
+        equality
 
+    newState =
+        state >> Dict.for attrs1 name: type1: s:
+            try Dict.get name attrs2 as
+                Nothing:
+                    state >> addErError equality ("missing attribute " .. name)
+                Just type2:
+                    { state with equalities = Equality (Context_AttributeName name context) pos why type1 type2 :: .equalities }
 
-
-solveRecordExt as Why: TA.UnificationVariableId: Dict Name TA.Type: Dict Name TA.Type: [Equality]: ERState: ERState =
-    why: tyvar1: attrs1: type2: remainingEqualities:
-
-    todo "solveRecordExt"
-#            # { attrs1 } == { tyvar2 with attrs2 }
-#            only1 & both & only2 =
-#                onlyBothOnly attrs1 attrs2
-#
-#            only2 must be empty
-#
-#            tyvar2 must == attrs1
-#
-#            all `both` must match
+    replaceUnificationVariable tyvar1 (TA.TypeRecord pos attrs2) newState
 
 
-
-
-
-
-
-
-
-replaceUnificationVariable as TA.UnificationVariableId: TA.Type: [Equality]: ERState: ERState =
-    tyvarId: replacingType: remainingEqualities: state:
+replaceUnificationVariable as TA.UnificationVariableId: TA.Type: ERState: ERState =
+    tyvarId: replacingType: state:
 
     #TODO: check that replacingType does not contain tyvarId
 
-    newEqualities =
+    equalities =
         # TODO we don't care about map preserving order
-        remainingEqualities >> List.map (Equality context pos why t1 t2):
+        state.equalities >> List.map (Equality context pos why t1 t2):
             Equality context pos why
                 (applySubstitutionToType tyvarId replacingType t1)
                 (applySubstitutionToType tyvarId replacingType t2)
@@ -1888,7 +1893,7 @@ replaceUnificationVariable as TA.UnificationVariableId: TA.Type: [Equality]: ERS
         >> Dict.map (tyvarId: type: applySubstitutionToType tyvarId replacingType type)
         >> Dict.insert tyvarId replacingType
 
-    solveEqualities newEqualities { state with substitutions }
+    solveEqualities { state with substitutions, equalities }
 
 
 

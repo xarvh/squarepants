@@ -499,6 +499,10 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
             consumedFinal & CA.Record pos maybeExtending attrsFinal
 
 
+        CA.RecordAccess pos name expr:
+            doExpression env @state expr
+
+
         CA.LetIn valueDef e:
 
             uniques & env1 =

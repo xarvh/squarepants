@@ -238,3 +238,20 @@ patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, maybeAnnotati
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
         PatternRecord pos _ ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
 
+
+expressionPos as Expression: Pos =
+    exp:
+    try exp as
+        LiteralNumber p _: p
+        LiteralText p _: p
+        Variable p _: p
+        Constructor p _: p
+        Fn p _ _: p
+        Call p _ _: p
+        Record p _ _: p
+        RecordAccess p _ _: p
+        LetIn def exp: patternPos def.pattern
+        If p _: p
+        Try p _: p
+        DestroyIn _ _: Pos.G
+

@@ -761,7 +761,10 @@ records as Test =
                     }
                 )
             )
-        , codeTest "[reg] refineType when the record has a non-extensible alias"
+        , codeTest
+            """
+            [reg] refineType when the record has a non-extensible alias
+            """
             """
             alias A = { c as Number, d as Number }
 
@@ -770,17 +773,21 @@ records as Test =
             """
             (infer "upd")
             Test.isOk
-#        , codeTest "[reg] infinite recursion on addSubstitution/unify_"
-#            """
-#            alias B = { l as [Text] }
-#
-#            readOne as B: (Text & B) = b:
-#                try b.l as
-#                    []: "" & b
-#                    h :: t: h & { b with l = t }
-#            """
-#            (infer "readOne")
-#            Test.isOk
+        , codeTest
+            """
+            [reg] infinite recursion on addSubstitution/unify_
+            """
+            """
+            alias B = { l as [Text] }
+
+            readOne as fn B: (Text & B) =
+                fn b:
+                try b.l as
+                    , []: "" & b
+                    , [h, ...t]: h & { b with l = t }
+            """
+            (infer "readOne")
+            Test.isOk
 #        , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
 #            """
 #            alias R = { x as Number, y as Number }
