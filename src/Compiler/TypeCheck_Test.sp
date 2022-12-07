@@ -65,6 +65,11 @@ tyBool as TA.Type =
     TA.TypeExact Pos.N ("Bool" >> Meta.spCoreUSR) []
 
 
+tyList as TA.Type: TA.Type =
+    item:
+    TA.TypeExact Pos.N ("Bool" >> Meta.spCoreUSR) [item]
+
+
 freeTyvarsAnnotated as [TA.UnificationVariableId]: Dict TA.UnificationVariableId TA.TypeClasses =
     ids:
     Dict.empty >> List.for ids id: Dict.insert id { allowFunctions = Just True, allowUniques = Just False }
@@ -788,19 +793,23 @@ records as Test =
             """
             (infer "readOne")
             Test.isOk
-#        , codeTest "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension"
-#            """
-#            alias R = { x as Number, y as Number }
-#
-#            rec as R: R =
-#                s:
-#                    if True then
-#                        { s with y = .y }
-#                    else
-#                        rec { s with y = .y }
-#            """
-#            (infer "rec")
-#            Test.isOk
+        , codeTest
+            """
+            [reg] unifyToNonExtensibleRecord correctly substitutes the record extension
+            """
+            """
+            alias R = { x as Number, y as Number }
+
+            rec as fn R: R =
+                fn s:
+
+                if True then
+                    { s with y = .y }
+                else
+                    rec { s with y = .y }
+            """
+            (infer "rec")
+            Test.isOk
         ]
 
 
@@ -812,40 +821,62 @@ records as Test =
 
 patterns as Test =
     Test.Group "Patterns"
-        []
-        [#
-        [ codeTest "List unpacking"
+        [
+        , codeTest
             """
-            x = q:
+            ONLY Constructor unpacking
+            """
+            """
+            union Z a = Z a
+
+            identityFunction =
+               fn a:
+               Z b = Z a
+               b
+            """
+            (infer "identityFunction")
+            (Test.isOkAndEqualTo
+                { tyvars = freeTyvarsInferred [1]
+                , type = function [tyvar 1] (tyvar 1)
+                }
+            )
+        , codeTest
+            """
+            List unpacking
+            """
+            """
+            x =
+               fn q:
                [ first, second ] = q
                first
             """
             (infer "x")
-            #
             (Test.isOkAndEqualTo
-                { freeTypeVariables = ftv "2"
-                , isMutable = False
-                , ty =
-                    typeFunction
-                        (CoreTypes.list ( CA.TypeVariable (Pos.I 11) "a" { allowFunctions = True, allowUniques = False }))
-                        (CA.TypeVariable (Pos.I 11) "a" {allowFunctions = True, allowUniques = False })
+                { tyvars = freeTyvarsInferred [1]
+                , type =
+                    function
+                        [tyList (tyvar 1)]
+                        (tyvar 1)
                 }
             )
-        , codeTest "Records are correctly unpacked"
+        , codeTest
             """
-            x = q:
+            Records are correctly unpacked
+            """
+            """
+            x =
+                fn q:
                 { first } = q
                 first
             """
             (infer "x")
             #
             (Test.isOkAndEqualTo
-                { freeTypeVariables = forall [ "2" ]
-                , isMutable = False
-                , ty =
-                    typeFunction
-                        (CA.TypeRecord Pos.T (Dict.fromList [ ( "first" & typeVariable "a" ) ]))
-                        (typeVariable "a")
+                { tyvars = freeTyvarsInferred [1]
+                , type =
+                    function
+                        [TA.TypeRecord Pos.T (Dict.fromList [ ( "first" & tyvar 1 ) ])]
+                        (tyvar 1)
                 }
             )
          [# TODO
@@ -860,16 +891,18 @@ patterns as Test =
 
              But still, I don't understand the problem enough to reproduce it reliably.
           #]
-        , codeTest "[reg] Constructors should instantiate their variable types"
+        , codeTest
             """
-            each as [a]: (a: b): None =
-                ls: f:
+            [reg] Constructors should instantiate their variable types
+            """
+            """
+            each as fn [a], (fn a: b): None =
+                fn ls, f:
                 try ls as
-                    Core.Nil:
-                        None
+                    , Core.Nil: None
 
             result =
-                  1 :: Core.Nil = Core.Nil
+                1 :: Core.Nil = Core.Nil
             """
             (infer "result")
             #
@@ -891,7 +924,6 @@ patterns as Test =
             #
             Test.isOk
         ]
-        #]
 
 
 

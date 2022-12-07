@@ -501,6 +501,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
         CA.RecordAccess pos name expr:
             doExpression env @state expr
+            >> Tuple.mapSecond (CA.RecordAccess pos name)
 
 
         CA.LetIn valueDef e:

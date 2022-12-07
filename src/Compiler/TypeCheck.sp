@@ -167,6 +167,7 @@ union Error_ =
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
     , ErrorTryingToAccessAttributeOfNonRecord Name TA.Type
     , ErrorIncompatibleTypes CA.Expression TA.Type
+    , ErrorIncompatiblePattern CA.Pattern TA.Type
     , ErrorCallingANonFunction
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
@@ -591,6 +592,8 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
             typedRest & restType =
                 inferExpression defEnv rest @state
+
+            log "@@@@@@@@@@@@@@@@@@@@@@@" { typedDef, restType }
 
             TA.LetIn typedDef typedRest & restType
 
@@ -1159,100 +1162,9 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
     env: isParam: pattern: state@:
 
     try pattern as
-        CA.PatternAny pos { isUnique, maybeName, maybeAnnotation }:
+        CA.PatternAny pos args:
 
-            (patternType as TA.Type) & (env1 as Env) =
-                try maybeAnnotation as
-                    Nothing:
-                        if isUnique then
-                            (TA.TypeUnique pos << newType @state) & env
-                        else
-                            newType @state & env
-
-                    Just annotation:
-
-                        blahEnv =
-                            { env with
-                            , annotatedTyvarToGeneratedTyvar =
-                                env.annotatedTyvarToGeneratedTyvar
-                                >> Dict.for (CA.typeTyvars annotation) name: _:
-                                      Dict.update name (v: v >> Maybe.withDefault (newTyvarId @state) >> Just)
-                            }
-
-                        t =
-                            annotationToTaType @state blahEnv annotation
-
-                        if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
-                            addError env pos ErrorUniquenessDoesNotMatch @state
-                        else
-                            None
-
-                        t & blahEnv
-
-
-            env2 as Env =
-                try maybeName as
-
-                    Nothing:
-                        env1
-
-                    Just name:
-                        [#
-                           Function parameters instead are **totally determined by how they are used in the function's body**,
-                           so they are always added to the scope as non-free type variables.
-                           If we turned them into free type variables, the block would not be able to constrain them.
-
-                           Defined instance values are **totally determined by their definition**, how they are used must not
-                           affect their type, so each time they are used they can be used with different free type vars.
-
-                           TODO: what about instance variables added by try..as patterns?
-
-
-                           ?????? Is this still valid for uniques?
-                           Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
-                           i.e: `x = Nothing` has type `Maybe a`, but once I mutate it to `@x := Just 1` its type would
-                           change to `Maybe Number` and we don't want that.
-                           ?????
-
-                        #]
-                        tyvars =
-                            # TODO should tyvar be only for annotated tyvars? (ie, to store typeclasses?)
-                            if isParam then
-                                Dict.empty
-                            else
-                                #]
-                                patternType
-                                >> TA.typeTyvars
-                                >> Dict.map k: v: { allowFunctions = Nothing, allowUniques = Nothing }
-
-                        variable as Instance =
-                            {
-                            , definedAt = pos
-                            , type = patternType
-                            , tyvars
-                            }
-
-                        nonFreeTyvars =
-                            if isParam then
-                                Dict.join (TA.typeTyvars patternType) env1.nonFreeTyvars
-                            else
-                                env1.nonFreeTyvars
-
-                        # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                        { env1 with
-                        , variables = Dict.insert (CA.RefLocal name) variable .variables
-                        , nonFreeTyvars
-                        }
-
-            typedPattern =
-                TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
-
-            {
-            , typedPattern
-            , patternType
-            , env = env2
-            , maybeFullAnnotation = maybeAnnotation
-            }
+            inferPatternAny env isParam pos args @state
 
 
         CA.PatternLiteralText pos text:
@@ -1292,7 +1204,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
                     Just cons:
                         argModAndTypes & returnType =
-                            try cons.type as
+                            try generalize env cons @state as
                                 TA.TypeFn _ ins out: ins & out
                                 TA.TypeExact _ usr args: [] & cons.type
                                 _: todo << "compiler bug: cons.type is not a cons but a " .. toHuman cons.type
@@ -1360,15 +1272,186 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
 
 
+inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, maybeAnnotation as Maybe CA.Type }: State@: PatternOut =
+    env: isParam: pos: ({ isUnique, maybeName, maybeAnnotation }): state@:
+
+    (patternType as TA.Type) & (env1 as Env) =
+        try maybeAnnotation as
+            Nothing:
+                if isUnique then
+                    (TA.TypeUnique pos << newType @state) & env
+                else
+                    newType @state & env
+
+            Just annotation:
+
+                blahEnv =
+                    { env with
+                    , annotatedTyvarToGeneratedTyvar =
+                        env.annotatedTyvarToGeneratedTyvar
+                        >> Dict.for (CA.typeTyvars annotation) name: _:
+                              Dict.update name (v: v >> Maybe.withDefault (newTyvarId @state) >> Just)
+                    }
+
+                t =
+                    annotationToTaType @state blahEnv annotation
+
+                if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
+                    addError env pos ErrorUniquenessDoesNotMatch @state
+                else
+                    None
+
+                t & blahEnv
+
+    log "***************" { maybeName, patternType }
+
+    env2 as Env =
+        try maybeName as
+
+            Nothing:
+                env1
+
+            Just name:
+                [#
+                   Function parameters instead are **totally determined by how they are used in the function's body**,
+                   so they are always added to the scope as non-free type variables.
+                   If we turned them into free type variables, the block would not be able to constrain them.
+
+                   Defined instance values are **totally determined by their definition**, how they are used must not
+                   affect their type, so each time they are used they can be used with different free type vars.
+
+                   TODO: what about instance variables added by try..as patterns?
+
+
+                   ?????? Is this still valid for uniques?
+                   Mutables can mutate to any value of a given specific type, so they can't be polymorphic.
+                   i.e: `x = Nothing` has type `Maybe a`, but once I mutate it to `@x := Just 1` its type would
+                   change to `Maybe Number` and we don't want that.
+                   ?????
+
+                #]
+                tyvars =
+                    # TODO should tyvar be only for annotated tyvars? (ie, to store typeclasses?)
+                    if isParam then
+                        Dict.empty
+                    else
+                        patternType
+                        >> TA.typeTyvars
+                        >> Dict.map k: v: { allowFunctions = Nothing, allowUniques = Nothing }
+
+                variable as Instance =
+                    {
+                    , definedAt = pos
+                    , type = patternType
+                    , tyvars
+                    }
+
+                nonFreeTyvars =
+                    if isParam then
+                        Dict.join (TA.typeTyvars patternType) env1.nonFreeTyvars
+                    else
+                        env1.nonFreeTyvars
+
+                # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
+                { env1 with
+                , variables = Dict.insert (CA.RefLocal name) variable .variables
+                , nonFreeTyvars
+                }
+
+    typedPattern =
+        TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = patternType }
+
+    {
+    , typedPattern
+    , patternType
+    , env = env2
+    , maybeFullAnnotation = maybeAnnotation
+    }
+
+
+
+
+
+
+
+
 checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
     env: expectedType: isParam: pattern: state@:
 
-    # TODO
-    out = inferPattern env isParam pattern @state
+    try pattern & expectedType as
+        CA.PatternAny pos { isUnique, maybeName, maybeAnnotation } & _:
+            try maybeAnnotation as
+                Nothing: None
+                Just annotation: todo "Just annotation"
 
-    addEquality env (CA.patternPos pattern) Why_Todo out.patternType expectedType @state
+            newEnv as Env =
+                try maybeName as
+                    Nothing:
+                        env
 
-    out.typedPattern & out.env
+                    Just name:
+                        variable as Instance =
+                            {
+                            , definedAt = pos
+                            , type = expectedType
+
+                            # TODO help I don't know what I'm doing here
+                            , tyvars = Dict.empty
+                            }
+
+                        nonFreeTyvars =
+                            if isParam then
+                                Dict.join (TA.typeTyvars expectedType) env.nonFreeTyvars
+                            else
+                                env.nonFreeTyvars
+
+                        # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
+                        { env with
+                        , variables = Dict.insert (CA.RefLocal name) variable .variables
+                        , nonFreeTyvars
+                        }
+
+            TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = expectedType } & newEnv
+
+
+        CA.PatternLiteralText pos text & TA.TypeExact _ typeUsr []:
+            if typeUsr /= CoreTypes.textDef.usr then
+                addError env pos (ErrorIncompatiblePattern pattern expectedType) @state
+            else
+                None
+
+            TA.PatternLiteralText pos text & env
+
+
+        CA.PatternLiteralNumber pos text & TA.TypeExact _ typeUsr []:
+            if typeUsr /= CoreTypes.numberDef.usr then
+                addError env pos (ErrorIncompatiblePattern pattern expectedType) @state
+            else
+                None
+
+            TA.PatternLiteralNumber pos text & env
+
+
+        CA.PatternConstructor pos usr arguments & _:
+            todo """
+            {
+            , typedPattern = TA.PatternConstructor pos usr typedArguments
+            , patternType = finalType
+            , env = newEnv
+            , maybeFullAnnotation = Nothing # TODO
+            }
+            """
+
+
+        CA.PatternRecord pos completeness pas & _:
+            todo """
+            {
+            , typedPattern = TA.PatternRecord pos typedPatternsAndPatternTypesByName
+            , patternType
+            , env = newEnv
+            , maybeFullAnnotation = Nothing # TODO
+            }
+            """
 
 
 
@@ -1422,14 +1505,14 @@ insertAnnotatedAndNonAnnotated as CA.Pattern: CA.ValueDef: [CA.ValueDef] & [CA.V
         ann & (def :: nonAnn)
 
 
-doModule as State: Env: CA.Module: Res TA.Module =
+doModule as Int: Env: CA.Module: Res TA.Module =
     state0: env: caModule:
 
     Debug.benchStart None
 
     # state is per module
     state as State @=
-        state0
+        initState state0
 
     annotated & nonAnnotated =
         Dict.for caModule.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
@@ -1479,8 +1562,8 @@ doModule as State: Env: CA.Module: Res TA.Module =
         , substitutions = Dict.empty
         }
 
-#    List.each (Array.toList state.equalities) eq:
-#        log "EQ" eq
+    List.each (Array.toList state.equalities) eq:
+        log "EQ" eq
 
     erStateF =
         solveEqualities erState0
@@ -1648,11 +1731,11 @@ namedParsToIdParsAndDict as [At Name]: [TA.UnificationVariableId] & Dict Name TA
 
     idPars =
         atPars
-        >> List.indexedMap (index: atName: index)
+        >> List.indexedMap (index: atName: -index)
 
     typeByName =
         atPars
-        >> List.indexedMap (index: (At pos name): name & TA.TypeUnificationVariable index)
+        >> List.indexedMap (index: (At pos name): name & TA.TypeUnificationVariable -index)
         >> Dict.fromList
 
     idPars & typeByName
@@ -1684,7 +1767,7 @@ getAliasDependencies as ByUsr aliasDef: CA.AliasDef: Set USR =
 
 
 
-initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
+initStateAndGlobalEnv as [CA.Module]: Int & Compiler/TypeCheck.Env =
     allModules:
 
     state @=
@@ -1718,12 +1801,17 @@ initStateAndGlobalEnv as [CA.Module]: State & Compiler/TypeCheck.Env =
         >> Dict.for caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state)
         >> Dict.for caModule.valueDefs (pattern: addValueToGlobalEnv @state caModule.umr)
 
-    { initEnv with
-    , expandedAliases
-    }
-    >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
-    >> List.for allModules doStuff
-    >> Tuple.pair state
+    env =
+        { initEnv with
+        , expandedAliases
+        }
+        >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
+        >> List.for allModules doStuff
+
+    # TODO this shenanigan of pulling out `id` is needed because mutation is bugged
+    id = state.lastUnificationVarId
+
+    id & env
 
 
 

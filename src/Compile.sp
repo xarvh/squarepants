@@ -418,14 +418,14 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    (typeCheckState as Compiler/TypeCheck.State) & (typeCheckGlobalEnv as Compiler/TypeCheck.Env) =
+    (lastUnificationVarId as Int) & (typeCheckGlobalEnv as Compiler/TypeCheck.Env) =
         Compiler/TypeCheck.initStateAndGlobalEnv modulesWithDestruction
 
 
     log "Type checking..." ""
 
     modulesWithDestruction
-    >> List.map (m: Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv m >> resToIo eenv)
+    >> List.map (m: Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv)
     >> IO.parallel
     >> IO.onSuccess typeCheckedModules:
 

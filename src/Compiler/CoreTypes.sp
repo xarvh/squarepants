@@ -155,6 +155,14 @@ listDef as CA.UnionDef =
     type as CA.Type =
         CA.TypeFn p [False & item, False & list item] (list item)
 
+    nilDef as CA.Constructor =
+       {
+       , pos = p
+       , pars = []
+       , type = list item
+       , typeUsr = usr
+       }
+
     consDef as CA.Constructor =
         {
         , pos = p
@@ -168,7 +176,7 @@ listDef as CA.UnionDef =
     , pars = [ At Pos.G "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" { pos = p, pars = [], type = list item, typeUsr = usr }
+            >> Dict.insert "Nil" nilDef
             >> Dict.insert "Cons" consDef
     , directTypeDeps = Set.empty
     }
