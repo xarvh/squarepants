@@ -824,7 +824,7 @@ patterns as Test =
         [
         , codeTest
             """
-            SKIP Constructor unpacking
+            Constructor unpacking
             """
             """
             union Z a = Z a
@@ -1002,43 +1002,54 @@ try_as as Test =
 #
 
 
-if_else as Test = 
+if_else as Test =
     Test.Group "if..else"
-        []
-        [# codeTest "basic functionality"
+        [
+        , codeTest
             """
-            x = q:
-              if q then 1
-              else 2
+            basic functionality
+            """
+            """
+            x =
+                fn q:
+                if q then 1
+                else 2
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                { freeTypeVariables = Dict.empty
-                , isMutable = False
-                , ty = typeFunction CoreTypes.bool CoreTypes.number
+                { tyvars = Dict.empty
+                , type = function [tyBool] tyNumber
                 }
             )
 
         #
-        , codeTest "rejects non-bool conditions"
+        , codeTest
             """
-            x = q:
-              if 1 then 1
-              else 2
+            rejects non-bool conditions
+            """
+            """
+            x =
+                fn q:
+                if 1 then 1
+                else 2
             """
             (infer "x")
             (Test.errorContains [ "Bool"])
 
         #
-        , codeTest "rejects non-matching blocks"
+        , codeTest
             """
-            x = q:
-              if q then 2
-              else False
+            rejects non-matching blocks
+            """
+            """
+            x =
+                fn q:
+                if q then 2
+                else False
             """
             (infer "x")
             (Test.errorContains [ "Number"])
-        #]
+        ]
 
 
 
