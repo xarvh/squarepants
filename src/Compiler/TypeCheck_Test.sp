@@ -824,7 +824,7 @@ patterns as Test =
         [
         , codeTest
             """
-            ONLY Constructor unpacking
+            SKIP Constructor unpacking
             """
             """
             union Z a = Z a
@@ -842,7 +842,7 @@ patterns as Test =
             )
         , codeTest
             """
-            List unpacking
+            SKIP List unpacking
             """
             """
             x =
@@ -934,52 +934,66 @@ patterns as Test =
 
 try_as as Test =
     Test.Group "try..as"
-        []
-        [# codeTest "basic functionality"
+        [
+        , codeTest
             """
-            x = q:
+            basic functionality
+            """
+            """
+            x =
+                fn q:
                 try q as
-                    True: 2
-                    _: 3
+                    , True: 2
+                    , _: 3
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                { freeTypeVariables = Dict.empty
-                , isMutable = False
-                , ty = typeFunction CoreTypes.bool CoreTypes.number
+                { tyvars = Dict.empty
+                , type = function [tyBool] tyNumber
                 }
             )
 
         #
-        , codeTest "rejects non-matching patterns"
+        , codeTest
             """
-            x = q:
+            rejects non-matching patterns
+            """
+            """
+            x =
+                fn q:
                 try q as
-                    True: 2
-                    []: 3
+                    , True: 2
+                    , []: 3
             """
             (infer "x")
             (Test.errorContains [ "List", "Bool" ])
 
         #
-        , codeTest "rejects non-matching blocks"
+        , codeTest
             """
-            x = q:
-             try q as
-               True: 2
-               False: False
+            rejects non-matching blocks
+            """
+            """
+            x =
+                fn q:
+                try q as
+                    , True: 2
+                    , False: False
             """
             (infer "x")
             (Test.errorContains [ "Number", "Bool" ])
-        , codeTest "[reg] actually infers blocks"
+        , codeTest
+            """
+            [reg] actually infers blocks
+            """
             """
             x as Number =
-              try "" as
-                "": y
+                try "" as
+                    , "": y
             """
             (infer "x")
             (Test.errorContains [ "y" ])
-        #]
+        ]
 
 
 
