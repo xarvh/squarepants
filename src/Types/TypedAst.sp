@@ -148,47 +148,13 @@ typeTyvars as Type: Dict UnificationVariableId None =
         TypeRecordExt id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
 
 
-#
-# Stuff that should live... somewhere else?
-#
-
-#alias InstanceVariable = {
-#    , definedAt as Pos
-#    , type as Type
-#    , tyvars as Dict Name TypeClasses
-#    , isUnique as Bool
-#    }
-
-
-#alias Globals = {
-#    , types as ByUsr TypeDef
-#    , constructors as ByUsr Constructor
-#    , instanceVariables as ByUsr InstanceVariable
-#    , tyvarIdCounter as Int
-#    }
-
-
-
-#
-# ....?
-#
-#union TypeDef =
-#    , TypeDefAlias AliasDef
-#    , TypeDefUnion UnionDef
-#
-#
-#alias AliasDef = {
-#    , usr as USR
-#    , pars as [At Name]
-#    , type as Type
-#    #, directTypeDeps as TypeDeps
-#    }
-#
-#
-#alias UnionDef = {
-#    , usr as USR
-#    , pars as [At Name]
-#    #, constructors as Dict Name Constructor
-#    #, directTypeDeps as TypeDeps
-#    }
+typeAllowsFunctions as Type: Bool =
+    type:
+    try type as
+        TypeFn pos ins out: True
+        TypeUnificationVariable id: True
+        TypeExact pos usr args: List.any typeAllowsFunctions args
+        TypeRecord pos attrs: Dict.any (k: typeAllowsFunctions) attrs
+        TypeUnique pos ty: typeAllowsFunctions ty
+        TypeRecordExt id attrs: Dict.any (k: typeAllowsFunctions) attrs
 

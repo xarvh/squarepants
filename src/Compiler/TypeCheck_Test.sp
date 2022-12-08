@@ -1060,21 +1060,20 @@ if_else as Test =
 
 nonFunction as Test =
     Test.Group "NonFunction"
-        []
-        [#
-        codeTest
+        [
+        , codeTest
             """
             Basic functionality
             """
             """
-            blah as [a]: [a] with a NonFunction =
-              a:
+            blah as fn [a]: [a] with a NonFunction =
+              fn a:
               a
 
             meh =
-              blah [x: x]
+                blah [fn x: x]
             """
             (infer "meh")
-            (Test.errorContains [ "can't contain functions"])
-        #]
+            (Test.errorContains [ "ErrorTypeAllowsFunctions"])
+        ]
 

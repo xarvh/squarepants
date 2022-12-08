@@ -178,6 +178,7 @@ union Error_ =
     , ErrorWrongNumberOfTypeArguments USR [TA.UnificationVariableId] [TA.Type]
     , ErrorNamedTypeNotFound USR
     , ErrorCircularAlias [USR]
+    , ErrorTypeAllowsFunctions TA.Type
 
 
 union Context =
@@ -592,8 +593,6 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
             typedRest & restType =
                 inferExpression defEnv rest @state
-
-            log "@@@@@@@@@@@@@@@@@@@@@@@" { typedDef, restType }
 
             TA.LetIn typedDef typedRest & restType
 
@@ -1303,8 +1302,6 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
 
                 t & blahEnv
 
-    log "***************" { maybeName, patternType }
-
     env2 as Env =
         try maybeName as
 
@@ -1463,12 +1460,6 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
 resolveTypesInValueDef as Dict TA.UnificationVariableId TA.Type: TA.ValueDef: TA.ValueDef =
     substitutions: def:
 
-    typeClasses =
-        {
-        , allowFunctions = Nothing
-        , allowUniques = Nothing
-        }
-
     tyvars =
         if def.isFullyAnnotated then
             def.tyvars
@@ -1476,8 +1467,12 @@ resolveTypesInValueDef as Dict TA.UnificationVariableId TA.Type: TA.ValueDef: TA
             Dict.empty
             >> Dict.for def.tyvars tyvarId: typeClasses: acc:
                 try Dict.get tyvarId substitutions as
-                    Nothing: acc
-                    Just type: Dict.join (Dict.map (k: v: typeClasses ) << TA.typeTyvars type) acc
+                    Nothing:
+                        acc
+
+                    Just type:
+                        Dict.join (Dict.map (k: v: typeClasses ) << TA.typeTyvars type) acc
+
 
     # TODO: actually resolve all types
 
@@ -1562,11 +1557,24 @@ doModule as Int: Env: CA.Module: Res TA.Module =
         , substitutions = Dict.empty
         }
 
-    List.each (Array.toList state.equalities) eq:
-        log "EQ" eq
+#    List.each (Array.toList state.equalities) eq:
+#        log "EQ" eq
 
     erStateF =
         solveEqualities erState0
+
+    Hash.each state.classesByTyvarId tyvarId: typeClasses:
+        if typeClasses.allowFunctions /= Just False then
+            None
+        else
+            try Dict.get tyvarId erStateF.substitutions as
+                Nothing:
+                    None
+                Just taType:
+                    if TA.typeAllowsFunctions taType then
+                        addError env Pos.G (ErrorTypeAllowsFunctions taType) @state
+                    else
+                        None
 
     Debug.benchStop "type check"
 

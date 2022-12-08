@@ -1436,7 +1436,7 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
                 if caPars == [] then
                     unionType
                 else
-                    CA.TypeFn pos (List.map (a: True & a) caPars) unionType
+                    CA.TypeFn pos (List.map (a: False & a) caPars) unionType
             }
 
         constructors
