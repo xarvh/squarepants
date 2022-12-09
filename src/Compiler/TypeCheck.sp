@@ -1805,11 +1805,11 @@ solveEqualities as ERState: ERState =
             try type1 & type2 as
 
                 TA.TypeUnificationVariable tyvarId & t2:
-                    replaceUnificationVariable tyvarId t2 state
+                    replaceUnificationVariable head tyvarId t2 state
 
 
                 t1 & TA.TypeUnificationVariable tyvarId:
-                    replaceUnificationVariable tyvarId t1 state
+                    replaceUnificationVariable head tyvarId t1 state
 
 
                 TA.TypeExact _ usr1 args1 & TA.TypeExact _ usr2 args2:
@@ -1903,27 +1903,46 @@ solveRecordExt as Equality: TA.UnificationVariableId: Dict Name TA.Type: Dict Na
                 Just type2:
                     { state with equalities = Equality (Context_AttributeName name context) pos why type1 type2 :: .equalities }
 
-    replaceUnificationVariable tyvar1 (TA.TypeRecord pos attrs2) newState
+    replaceUnificationVariable equality tyvar1 (TA.TypeRecord pos attrs2) newState
 
 
-replaceUnificationVariable as TA.UnificationVariableId: TA.Type: ERState: ERState =
-    tyvarId: replacingType: state:
+replaceUnificationVariable as Equality: TA.UnificationVariableId: TA.Type: ERState: ERState =
+    equality: tyvarId: replacingType: state:
 
-    #TODO: check that replacingType does not contain tyvarId
+    if replacingType == TA.TypeUnificationVariable tyvarId then
+        state
+    else if occurs tyvarId replacingType then
+        addErError equality "circular!?" state
+    else
+        equalities =
+            # TODO we don't care about map preserving order
+            state.equalities >> List.map (Equality context pos why t1 t2):
+                Equality context pos why
+                    (applySubstitutionToType tyvarId replacingType t1)
+                    (applySubstitutionToType tyvarId replacingType t2)
 
-    equalities =
-        # TODO we don't care about map preserving order
-        state.equalities >> List.map (Equality context pos why t1 t2):
-            Equality context pos why
-                (applySubstitutionToType tyvarId replacingType t1)
-                (applySubstitutionToType tyvarId replacingType t2)
+        substitutions =
+            state.substitutions
+            >> Dict.map (tyvarId: type: applySubstitutionToType tyvarId replacingType type)
+            >> Dict.insert tyvarId replacingType
 
-    substitutions =
-        state.substitutions
-        >> Dict.map (tyvarId: type: applySubstitutionToType tyvarId replacingType type)
-        >> Dict.insert tyvarId replacingType
+        solveEqualities { state with substitutions, equalities }
 
-    solveEqualities { state with substitutions, equalities }
+
+
+occurs as TA.UnificationVariableId: TA.Type: Bool =
+    tyvarId: type:
+
+    rec = occurs tyvarId
+
+    try type as
+        TA.TypeFn pos ins out: List.any ((m & t): rec t) ins or rec out
+        TA.TypeUnificationVariable id: id == tyvarId
+        TA.TypeExact pos usr args: List.any rec args
+        TA.TypeRecord pos attrs: Dict.any (k: rec) attrs
+        TA.TypeUnique pos ty: rec ty
+        TA.TypeRecordExt id attrs: Dict.any (k: rec) attrs
+
 
 
 

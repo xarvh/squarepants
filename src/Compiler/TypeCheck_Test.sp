@@ -620,13 +620,13 @@ higherOrderTypes as Test =
             (Test.errorContains [ "undefined"])
         , codeTest
             """
-            SKIP [reg] Named vars can't be refined?
+            [reg] Named vars can't be refined?
             """
             """
             union Wrap a = W a
 
-            f as a: Wrap a =
-                a: a
+            f as fn a: Wrap a =
+                fn a: a
             """
             (infer "f")
             (Test.errorContains [ "Wrap"])
