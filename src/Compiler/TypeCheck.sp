@@ -569,8 +569,6 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             typedRest & restType =
                 inferExpression defEnv rest @state
 
-            log "@@@@@@@@@@@@@@@@@@@@@@@" { typedDef, restType }
-
             TA.LetIn typedDef typedRest & restType
 
 
@@ -1373,7 +1371,7 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
 resolveTypesInValueDef as Dict TA.UnificationVariableId TA.Type: TA.ValueDef: TA.ValueDef =
     substitutions: def:
 
-    def
+    { def with pattern = subsOnPattern substitutions .pattern }
 
 #    freeTyvars =
 #        if def.isFullyAnnotated then
@@ -1392,6 +1390,24 @@ resolveTypesInValueDef as Dict TA.UnificationVariableId TA.Type: TA.ValueDef: TA
 #    # TODO: actually resolve all types in the def body
 #
 #    { def with freeTyvars }
+
+
+
+subsOnPattern as Dict TA.UnificationVariableId TA.Type: TA.Pattern: TA.Pattern =
+    substitutions: pattern:
+
+    try pattern as
+        TA.PatternLiteralNumber pos _: pattern
+        TA.PatternLiteralText pos _: pattern
+
+        TA.PatternAny pos stuff:
+            TA.PatternAny pos { stuff with type = applyAllSubstitutions substitutions .type }
+
+        TA.PatternConstructor pos path ps:
+            TA.PatternConstructor pos path (List.map (subsOnPattern substitutions) ps)
+
+        TA.PatternRecord pos ps:
+            TA.PatternRecord pos (Dict.map (k: (p & t): subsOnPattern substitutions p & applyAllSubstitutions substitutions t) ps)
 
 
 
