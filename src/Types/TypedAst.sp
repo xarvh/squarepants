@@ -68,7 +68,8 @@ union Parameter =
     , ParameterRecycle Pos Name
 
 
-alias TypeClasses = {
+alias Tyvar = {
+    , originalName as Name
     , allowFunctions as Maybe Bool
     , allowUniques as Maybe Bool
     }
@@ -79,7 +80,7 @@ alias ValueDef =
     , pattern as Pattern
     , native as Bool
     , body as Expression
-    , tyvars as Dict UnificationVariableId TypeClasses
+    , freeTyvars as Dict UnificationVariableId Tyvar
     , directValueDeps as Set USR
     , isFullyAnnotated as Bool
     }

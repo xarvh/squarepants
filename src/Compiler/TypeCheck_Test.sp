@@ -34,7 +34,7 @@ codeTest =
 alias Out =
     {
     , type as TA.Type
-    , tyvars as Dict TA.UnificationVariableId TA.TypeClasses
+    , tyvars as Dict TA.UnificationVariableId TA.Tyvar
     }
 
 
@@ -70,14 +70,9 @@ tyList as TA.Type: TA.Type =
     TA.TypeExact Pos.N ("Bool" >> Meta.spCoreUSR) [item]
 
 
-freeTyvarsAnnotated as [TA.UnificationVariableId]: Dict TA.UnificationVariableId TA.TypeClasses =
+freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVariableId TA.Tyvar =
     ids:
-    Dict.empty >> List.for ids id: Dict.insert id { allowFunctions = Just True, allowUniques = Just False }
-
-
-freeTyvarsInferred as [TA.UnificationVariableId]: Dict TA.UnificationVariableId TA.TypeClasses =
-    ids:
-    Dict.empty >> List.for ids id: Dict.insert id { allowFunctions = Nothing, allowUniques = Nothing }
+    Dict.empty >> List.for ids (id & name): Dict.insert id { name, allowFunctions = Just True, allowUniques = Just False }
 
 
 #TODO merge these two
@@ -156,15 +151,9 @@ infer as Text: Text: Result Text Out =
             try def.pattern as
 
                 TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
-
-#                    List.each (Dict.toList taModule.substitutions) blah:
-#                        log "SUB" blah
-
-#                    log "FINAL TYPE" type
-
                     {
-                    , type = Compiler/TypeCheck.applyAllSubstitutions taModule.substitutions type
-                    , tyvars = def.tyvars
+                    , type
+                    , tyvars = def.freeTyvars
                     }
                     >> normalizeOut
                     >> Ok
@@ -290,7 +279,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = function [tyvar 1] tyNumber
-                , tyvars = freeTyvarsInferred [1]
+                , freeTyvars = Dict.empty
                 }
             )
         , codeTest "[reg] Multiple arguments are correctly inferred"
@@ -587,7 +576,7 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , tyvars = freeTyvarsInferred [1]
+                , freeTyvars = Dict.empty
                 , type =
                     TA.TypeExact Pos.G
                         (TH.localType "X")
@@ -661,7 +650,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , tyvars = freeTyvarsInferred [1, 2, 3]
+                , freeTyvars = Dict.empty
                 , type =
                     function
                         [TA.TypeRecordExt 1
@@ -680,7 +669,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , tyvars = freeTyvarsInferred [ 1, 2 ]
+                , freeTyvars = Dict.empty
 #                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
 #                    >> Dict.fromList
                 , type =
@@ -733,7 +722,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
-                    { tyvars = freeTyvarsInferred [ 1 ]
+                    { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
                 )
@@ -746,7 +735,7 @@ records as Test =
             (infer "c")
             (Test.isOkAndEqualTo
                 (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
-                    { tyvars = freeTyvarsInferred [ 1 ]
+                    { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
                 )
@@ -761,7 +750,7 @@ records as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 (TA.TypeRecordExt 1 (Dict.singleton "first" (tyvar 2)) >> re:
-                    { tyvars = freeTyvarsInferred [ 1, 2 ]
+                    { freeTyvars = Dict.empty
                     , type = function [re] (tyvar 2)
                     }
                 )
@@ -836,7 +825,7 @@ patterns as Test =
             """
             (infer "identityFunction")
             (Test.isOkAndEqualTo
-                { tyvars = freeTyvarsInferred [1]
+                { freeTyvars = Dict.empty
                 , type = function [tyvar 1] (tyvar 1)
                 }
             )
@@ -852,7 +841,7 @@ patterns as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                { tyvars = freeTyvarsInferred [1]
+                { freeTyvars = Dict.empty
                 , type =
                     function
                         [tyList (tyvar 1)]
@@ -872,7 +861,7 @@ patterns as Test =
             (infer "x")
             #
             (Test.isOkAndEqualTo
-                { tyvars = freeTyvarsInferred [1]
+                { freeTyvars = Dict.empty
                 , type =
                     function
                         [TA.TypeRecord Pos.T (Dict.fromList [ ( "first" & tyvar 1 ) ])]
