@@ -444,8 +444,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
             patternOut.env
         else
             { patternOut.env with
-            , variables =
-                .variables
+            , variables = .variables
                 >> Dict.for (TA.patternNames patternOut.typedPattern) name: _: vars:
                     Dict.update (CA.RefLocal name) (Maybe.map updateInstance) vars
             }
@@ -1694,7 +1693,7 @@ getAliasDependencies as ByUsr aliasDef: CA.AliasDef: Set USR =
 
 
 
-initStateAndGlobalEnv as [CA.Module]: Int & Compiler/TypeCheck.Env =
+initStateAndGlobalEnv as [CA.Module]: Int & Env =
     allModules:
 
     state @=
