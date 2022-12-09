@@ -586,12 +586,15 @@ higherOrderTypes as Test =
                 }
             )
         , codeTest
-            "SKIP(move to MakeCanonical) [reg] type check mistakes a union type with free tyvars for a free tyvar?"
+            """
+            [reg] type check mistakes a union type with free tyvars for a free tyvar?
+            """
             """
             union O r e o = O r e o
 
-            run as (r: O r e o): r: O r e o = rToOreo: r:
-                rToOreo r
+            run as fn (fn r: O r e o), r: O r e o =
+               fn rToOreo, r:
+               rToOreo r
             """
             (infer "run")
             Test.isOk
