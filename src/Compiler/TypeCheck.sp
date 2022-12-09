@@ -377,7 +377,7 @@ annotationToTaType as State@: Env: CA.Type: TA.Type =
     state@: env: ca:
 
     nameToType =
-        Dict.map (k: TA.TypeUnificationVariable) env.annotatedTyvarToGeneratedTyvar
+        Dict.map (k: TA.TypeUnificationVariable) env.annotatedTyvarsByName
 
     expandParamsAndAliases @state env.context env.expandedAliases nameToType ca
 
@@ -430,12 +430,25 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                 Nothing:
                     inferExpression envWithContext def.body @state
 
-    # TODO clean all the `== Nothing`, maybe put them together
 
     if patternOut.maybeFullAnnotation == Nothing then
         addEquality envWithContext (CA.patternPos def.pattern) Why_LetIn patternOut.patternType bodyType @state
     else
         None
+
+    updateInstance as Instance: Instance =
+        instance: { instance with freeTyvars }
+
+    finalEnv as Env =
+        if freeTyvars == Dict.empty then
+            patternOut.env
+        else
+            { patternOut.env with
+            , variables =
+                .variables
+                >> Dict.for (TA.patternNames patternOut.typedPattern) name: _: vars:
+                    Dict.update (CA.RefLocal name) (Maybe.map updateInstance) vars
+            }
 
     {
     , pattern = patternOut.typedPattern
@@ -446,7 +459,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
     , isFullyAnnotated = patternOut.maybeFullAnnotation /= Nothing
     }
     &
-    { patternOut.env with boundTyvars }
+    finalEnv
 
 
 
@@ -1117,7 +1130,6 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
     try pattern as
         CA.PatternAny pos args:
-
             inferPatternAny env isParam pos args @state
 
 
@@ -1258,11 +1270,11 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
                     {
                     , definedAt = pos
                     , type = patternType
-                    , freeTypeVariables = Dict.empty
+                    , freeTyvars = Dict.empty
                     }
 
                 # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                { env1 with
+                { env with
                 , variables = Dict.insert (CA.RefLocal name) variable .variables
                 }
 
@@ -1302,21 +1314,12 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
                             {
                             , definedAt = pos
                             , type = expectedType
-
-                            # TODO help I don't know what I'm doing here
-                            , tyvars = Dict.empty
+                            , freeTyvars = Dict.empty
                             }
-
-                        boundTyvars =
-                            if isParam then
-                                Dict.join (TA.typeTyvars expectedType) env.boundTyvars
-                            else
-                                env.boundTyvars
 
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
                         { env with
                         , variables = Dict.insert (CA.RefLocal name) variable .variables
-                        , boundTyvars
                         }
 
             TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = expectedType } & newEnv
@@ -1371,23 +1374,25 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
 resolveTypesInValueDef as Dict TA.UnificationVariableId TA.Type: TA.ValueDef: TA.ValueDef =
     substitutions: def:
 
-    tyvars =
-        if def.isFullyAnnotated then
-            def.tyvars
-        else
-            Dict.empty
-            >> Dict.for def.tyvars tyvarId: typeClasses: acc:
-                try Dict.get tyvarId substitutions as
-                    Nothing:
-                        acc
+    def
 
-                    Just type:
-                        Dict.join (Dict.map (k: v: typeClasses ) << TA.typeTyvars type) acc
-
-
-    # TODO: actually resolve all types
-
-    { def with tyvars }
+#    freeTyvars =
+#        if def.isFullyAnnotated then
+#            def.tyvars
+#        else
+#            Dict.empty
+#            >> Dict.for def.freeTyvars tyvarId: typeClasses: acc:
+#                try Dict.get tyvarId substitutions as
+#                    Nothing:
+#                        acc
+#
+#                    Just type:
+#                        Dict.join (Dict.map (k: v: typeClasses ) << TA.typeTyvars type) acc
+#
+#
+#    # TODO: actually resolve all types in the def body
+#
+#    { def with freeTyvars }
 
 
 
@@ -1566,14 +1571,14 @@ makeResolutionError as Env: CA.Module: (Equality & Text): Error =
 addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
     state@: umr: def: env:
 
-    nameToIdAndClasses as Dict Name (TA.UnificationVariableId & TA.TypeClasses) =
+    nameToIdAndClasses as Dict Name (TA.UnificationVariableId & TA.Tyvar) =
         def.tyvars
-        >> Dict.map name: classes: newTyvarId @state & classes
+        >> Dict.map name: ({ allowFunctions, allowUniques }): newTyvarId @state & { originalName = name, allowFunctions, allowUniques }
 
     nameToType as Dict Name TA.Type =
         nameToIdAndClasses >> Dict.map k: (id & classes): TA.TypeUnificationVariable id
 
-    unificationIdToClasses as Dict TA.UnificationVariableId TA.TypeClasses =
+    unificationIdToClasses as Dict TA.UnificationVariableId TA.Tyvar =
         nameToIdAndClasses
         >> Dict.values
         >> Dict.fromList
@@ -1597,7 +1602,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     {
                     , definedAt = valueStuff.pos
                     , type
-                    , tyvars = Dict.intersect unificationIdToClasses (TA.typeTyvars type)
+                    , freeTyvars = Dict.intersect unificationIdToClasses (TA.typeTyvars type)
                     }
 
                 { envX with variables = Dict.insert ref instance .variables }
@@ -1630,12 +1635,13 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
 
     paramsByName as Dict Name TA.Type =
         caUnionDef.pars
-        >> List.indexedMap index: ((At pos name): name & TA.TypeUnificationVariable -index)
+        >> List.indexedMap (index: ((At pos name): name & TA.TypeUnificationVariable -index))
         >> Dict.fromList
 
     freeTyvars as Dict TA.UnificationVariableId TA.Tyvar =
         caUnionDef.pars
-        >> List.indexedMap index: ((At pos name): name & { name, allowFunctions = Just True, allowUniques = Just True })
+        >> List.indexedMap (index: ((At pos name): -index & { originalName = name, allowFunctions = Just True, allowUniques = Just True }))
+        >> Dict.fromList
 
     { env with exactTypes = Dict.insert caUnionDef.usr caUnionDef.pars .exactTypes }
     >> Dict.for caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName freeTyvars)
