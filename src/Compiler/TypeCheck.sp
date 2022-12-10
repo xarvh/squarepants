@@ -1534,7 +1534,7 @@ doModule as Int: Env: CA.Module: Res TA.Module =
         [
         , state.errors
           >> Array.toList
-          >> List.map (makeInferenceAndCheckError env caModule)
+          >> List.map (makeInferenceAndCheckError env)
         , erStateF.errors
           >> List.map (makeResolutionError env caModule)
         ]
@@ -1555,8 +1555,8 @@ applyAllSubstitutions as Dict TA.UnificationVariableId TA.Type: TA.Type: TA.Type
     Dict.for subs applySubstitutionToType
 
 
-makeInferenceAndCheckError as Env: CA.Module: (Pos & Context & Error_): Error =
-    env: caModule: (pos & context & error):
+makeInferenceAndCheckError as Env: (Pos & Context & Error_): Error =
+    env: (pos & context & error):
 
     Error.Simple pos eenv:
         [
@@ -1709,7 +1709,7 @@ getAliasDependencies as ByUsr aliasDef: CA.AliasDef: Set USR =
 
 
 
-initStateAndGlobalEnv as [CA.Module]: Int & Env =
+initStateAndGlobalEnv as [CA.Module]: Res (TA.UnificationVariableId & Env) =
     allModules:
 
     state @=
@@ -1750,14 +1750,16 @@ initStateAndGlobalEnv as [CA.Module]: Int & Env =
         >> List.for CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None)
         >> List.for allModules doStuff
 
-    # TODO this shenanigan of pulling out `id` is needed because mutation is bugged
-    id = state.lastUnificationVarId
+    try Array.toList state.errors as
+        []:
+            state.lastUnificationVarId & env
+            >> Ok
 
-    id & env
-
-
-
-
+        list:
+            list
+            >> List.map (makeInferenceAndCheckError env)
+            >> Error.Nested
+            >> Err
 
 
 #

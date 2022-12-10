@@ -147,6 +147,7 @@ typeTyvars as Type: Dict UnificationVariableId None =
         TypeUnique pos ty: typeTyvars ty
         TypeUnificationVariable id: Dict.singleton id None
         TypeRecordExt id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
+        TypeError p: Dict.empty
 
 
 typeAllowsFunctions as Type: Bool =
@@ -158,4 +159,5 @@ typeAllowsFunctions as Type: Bool =
         TypeRecord pos attrs: Dict.any (k: typeAllowsFunctions) attrs
         TypeUnique pos ty: typeAllowsFunctions ty
         TypeRecordExt id attrs: Dict.any (k: typeAllowsFunctions) attrs
+        TypeError p: True
 

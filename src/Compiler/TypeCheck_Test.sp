@@ -105,8 +105,9 @@ infer as Text: Text: Result Text Out =
     modules as [CA.Module] =
         List.append Prelude.coreModules [caModule]
 
-    typeCheckState & typeCheckGlobalEnv_ =
-        Compiler/TypeCheck.initStateAndGlobalEnv modules
+    Compiler/TypeCheck.initStateAndGlobalEnv modules
+    >> TH.resErrorToStrippedText code
+    >> onOk (lastUnificationVarId & typeCheckGlobalEnv_):
 
     typeCheckGlobalEnv as Compiler/TypeCheck.Env =
         { typeCheckGlobalEnv_ with
@@ -128,7 +129,7 @@ infer as Text: Text: Result Text Out =
         }
 
     caModule
-    >> Compiler/TypeCheck.doModule typeCheckState typeCheckGlobalEnv
+    >> Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv
     >> TH.resErrorToStrippedText code
     >> onOk taModule:
 
@@ -611,16 +612,15 @@ higherOrderTypes as Test =
             (infer "fun")
             (Test.errorContains [ "wrong"])
         , codeTest
-            # TODO this should be MakeCanonical's responsibility?
             """
-            SKIP(move to MakeCanonical) [reg] Should complain about undefined type argument
+            [reg] Should complain about undefined type argument
             """
             """
             union O a = O Text output
             x = 1
             """
             (infer "x")
-            (Test.errorContains [ "undefined"])
+            (Test.errorContains [ "output" ])
         , codeTest
             """
             [reg] Named vars can't be refined?

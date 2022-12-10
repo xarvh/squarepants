@@ -418,9 +418,8 @@ compileMain as CompileMainPars: IO Int =
 
 
     log "Solving globals..." ""
-    (lastUnificationVarId as Int) & (typeCheckGlobalEnv as Compiler/TypeCheck.Env) =
-        Compiler/TypeCheck.initStateAndGlobalEnv modulesWithDestruction
-
+    Compiler/TypeCheck.initStateAndGlobalEnv modulesWithDestruction
+    >> onResSuccess eenv (lastUnificationVarId & typeCheckGlobalEnv):
 
     log "Type checking..." ""
 
