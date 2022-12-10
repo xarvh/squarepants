@@ -14,9 +14,9 @@ All the crunching is done at compile time, which means that, for unique values, 
 
 specs as Test =
     Test.Group "Mutability spec" [
-#      , howDoesItLookLike
+      , howDoesItLookLike
       , uniquenessTyping
-#      , mutation
+      , mutation
 #      , parentScope
 #      , records
 #      , unions
@@ -56,10 +56,10 @@ howDoesItLookLike as Test =
                 numbers:
 
                 # The core function `mut` transforms an immutable value in a mutable one
-                @total as @Number =
+                !total as !Number =
                     mut 0
 
-                @count as @Number =
+                !count as !Number =
                     mut 0
 
                 each numbers number:
@@ -186,114 +186,7 @@ uniquenessTyping as Test =
             ]
         , Test.Group
             """
-            Functions can consume mutables by using `:-` instead of `:`
-            """
-            [
-#            , codeTest
-#                """
-#                Consume a unique
-#                """
-#                """
-#                consumer as @Number:- None =
-#                    x:-
-#                    None
-#
-#                scope =
-#                    @x =
-#                        mut 1
-#
-#                    consumer x
-#
-#                    x
-#                """
-#              (infer "scope")
-#              (Test.errorContains [ "x", "used already here"])
-#            , codeTest
-#                """
-#                Refuse an immutable
-#                """
-#                """
-#                consumer as @Number:- None =
-#                    x:-
-#                    None
-#
-#                scope =
-#                    x =
-#                        1
-#
-#                    consumer x
-#                """
-#                (infer "scope")
-#                (Test.errorContains ["incompatible"])
-#            , codeTest
-#                """
-#                Refuse to mutate 1
-#                """
-#                """
-#                consumer as @Number:- None =
-#                    x:-
-#                    None
-#
-#                scope as None =
-#                    @x as @Number =
-#                        mut 1
-#
-#                    consumer @x
-#                """
-#                (infer "scope")
-#                (Test.errorContains ["but the function needs to consume it"])
-#            , codeTest
-#                """
-#                Refuse to mutate 2
-#                """
-#                """
-#                scope =
-#
-#                    consumer =
-#                        x:-
-#                        None
-#
-#                    @x =
-#                        mut 1
-#
-#                    consumer @x
-#                """
-#                (infer "scope")
-#                (Test.errorContains ["but the function needs to consume it"])
-#            , codeTest
-#                """
-#                Annotation should match implementation 1
-#                """
-#                """
-#                consumer as @Number:- None =
-#                    @x:
-#                    None
-#                """
-#                (infer "scope")
-#                (Test.errorContains ["different mutability"])
-#            , codeTest
-#                """
-#                Annotation should match implementation 2
-#                """
-#                """
-#                consumer as @Number: None =
-#                    @x:-
-#                    None
-#                """
-#                (infer "scope")
-#                (Test.errorContains ["different mutability"])
-#            , codeTest
-#                """
-#                SKIP When consumed the `@` is optional in annotation, definition and call, and will be removed by the formatter.
-#                """
-#                """
-#                """
-#                (infer "scope")
-#                (Test.errorContains [""])
-            ]
-        , Test.Group
-            """
-            "When we construct a function with mutable elements in its closure that function itself must be mutable."
+            "SKIP When we construct a function with mutable elements in its closure that function itself must be mutable."
             """
             [
             , codeTest
@@ -313,7 +206,7 @@ uniquenessTyping as Test =
 
 mutation as Test =
     Test.Group "Mutation" [
-        , Test.Group "Mutables can be mutated in place" [
+        , Test.Group "Uniques can be mutated in place" [
             [# TODO enable once the new parser self-compiles
             , valueTest
                 """
@@ -334,7 +227,7 @@ mutation as Test =
                 """
                 """
                 scope =
-                    @x = mut 1
+                    !x = mut 1
                     @x += 1
                     @x += 1
                 """
@@ -346,7 +239,7 @@ mutation as Test =
                 """
                 """
                 scope =
-                    @x = mut 1
+                    !x = mut 1
                     consume x
                     @x += 1
                 """
@@ -356,15 +249,15 @@ mutation as Test =
         , Test.Group "A function can be defined to mutate its arguments" [
             , codeTest
                 """
-                base
+                ONLY base
                 """
                 """
-                funz as @Number: None =
-                    @a:
+                funz as fn @Number: None =
+                    fn @a:
                     @a += 3
 
                 scope =
-                    @x = mut 0
+                    !x = mut 0
                     funz @x
                     funz @x
                 """
@@ -378,21 +271,11 @@ mutation as Test =
                 """
                 """
                 scope =
-                    @x = mut 0
+                    !x = mut 0
                     funz @x @x
                 """
                 (infer "scope")
                 (Test.errorContains [ "twice" ])
-            ]
-        , Test.Group "Functions that mutate their arguments cannot be auto-curried; partial calls will result in a compiler error." [
-            , codeTest
-                """
-                SKIP No point in checking this since auto-curry will be removed.
-                """
-                """
-                """
-                (infer "scope")
-                (Test.errorContains [])
             ]
         ]
 

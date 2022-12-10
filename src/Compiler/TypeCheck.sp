@@ -171,7 +171,6 @@ union Why =
     , Why_IfBranches
     , Why_TryPattern
     , Why_TryExpression
-    , Why_AttributeAccess
     , Why_ReturnType
     , Why_Argument Int
     , Why_CalledAsFunction
@@ -973,7 +972,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
 
-            addEquality env pos Why_AttributeAccess expressionType requiredType @state
+            addEquality env pos Why_RecordAccess expressionType requiredType @state
 
             TA.RecordAccess pos attrName typedExpression
 
@@ -1102,8 +1101,8 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
                         newType @state
 
                     Just var:
-                        todo "apply attrPath"
-                        var.type
+                        var.type >> List.for attrPath attrName: tyAcc:
+                            inferRecordAccess env pos attrName tyAcc @state
 
             TA.ArgumentRecycle pos attrPath name & type
 
