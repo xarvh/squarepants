@@ -10,7 +10,7 @@ allTests as [ Test ] = [
     , List_Test.tests
     , Dict_Test.tests
     , RefHierarchy_Test.tests
-#    , Mutability_Spec.specs
+    , Mutability_Spec.specs
     ]
 
 

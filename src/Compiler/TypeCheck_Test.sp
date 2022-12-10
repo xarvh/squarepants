@@ -102,8 +102,12 @@ infer as Text: Text: Result Text Out =
     >> TH.resErrorToStrippedText code
     >> onOk caModule:
 
+    Compiler/UniquenessCheck.doModule caModule
+    >> TH.resErrorToStrippedText code
+    >> onOk moduleWithDestroy:
+
     modules as [CA.Module] =
-        List.append Prelude.coreModules [caModule]
+        List.append Prelude.coreModules [moduleWithDestroy]
 
     Compiler/TypeCheck.initStateAndGlobalEnv modules
     >> TH.resErrorToStrippedText code
@@ -128,7 +132,7 @@ infer as Text: Text: Result Text Out =
                 }
         }
 
-    caModule
+    moduleWithDestroy
     >> Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv
     >> TH.resErrorToStrippedText code
     >> onOk taModule:

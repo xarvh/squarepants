@@ -10,17 +10,16 @@ Uniqueness typing allows Squarepants to ensure that, at any given time, there is
 All the crunching is done at compile time, which means that, for unique values, the run-time does not need to keep track of allocation/destruction: no garbage collection, no reference counting needed.
 
 #]
-[#
 
 
 specs as Test =
     Test.Group "Mutability spec" [
-      , howDoesItLookLike
+#      , howDoesItLookLike
       , uniquenessTyping
-      , mutation
-      , parentScope
-      , records
-      , unions
+#      , mutation
+#      , parentScope
+#      , records
+#      , unions
       ]
 
 
@@ -34,69 +33,8 @@ valueTest as Text: (None: a): Test.CodeExpectation a: Test =
 codeTest =
     Test.codeTest Debug.toHuman
 
-check as Text: Result Text (Compiler/TypeCheck.Env & CA.Module) =
-    code:
-
-    blah as Res (Compiler/TypeCheck.Env & CA.Module) =
-        params as Compiler/MakeCanonical.Params = {
-            , meta = TH.meta
-            , stripLocations = True
-            , source = TH.source
-            , name = TH.moduleName
-            }
-
-        Compiler/MakeCanonical.textToCanonicalModule params code
-        >> onOk module:
-
-        Compiler/UniquenessCheck.doModule module
-        >> onOk moduleWithDestroyIn:
-
-        modules =
-            Dict.insert TH.moduleUmr module Prelude.coreModulesByUmr
-
-        Compiler/Pipeline.globalExpandedTypes modules >> onOk expandedTypes:
-
-        { types, constructors, instanceVariables } = expandedTypes
-
-#        env as Compiler/TypeCheck.Env = {
-#            , context as Context
-#            , constructors
-#            , variables as Dict TA.Ref TypeWithClasses
-#            , tyvarsInParentAnnotations = Dict.empty
-#
-#            # This is used to give meaningfule errors?
-#            , annotatedTyvarToGeneratedTyvar = Dict.empty
-#
-            #??????????????????/
-#            , types
-#            , constructors
-#            , currentModule = TH.moduleUmr
-#            , meta = TH.meta
-#            , nonFreeTyvars = Dict.empty
-#            , nonAnnotatedRecursives = Dict.empty
-#            , instanceVariables = Dict.mapKeys CA.RefGlobal instanceVariables
-#            }
-
-        todo "Compiler/TypeCheck.fromModule env moduleWithDestroyIn"
-
-    TH.resErrorToStrippedText code blah
-
-
-infer as Text: Text: Result Text { type as TA.Type, freeTypeVariables as Dict Name CA.TypeClasses } =
-    varName: code:
-
-    check code
-    >> onOk (typeCheckEnv & moduleWithDestroyIn):
-
-    usr =
-        USR typeCheckEnv.currentModule varName
-
-    try Dict.get (CA.RefGlobal usr) typeCheckEnv.instanceVariables as
-        Nothing:
-            Err "Dict fail"
-
-        Just { definedAt, ty, freeTypeVariables, isMutable }:
-            Ok { type = ty, freeTypeVariables }
+infer as Text: Text: Result Text Compiler/TypeCheck_Test.Out =
+    Compiler/TypeCheck_Test.infer
 
 
 
@@ -114,7 +52,7 @@ howDoesItLookLike as Test =
             SKIP Example: maintaining mutable state
             """
             """
-            average as [Number]: Number =
+            average as fn [Number]: Number =
                 numbers:
 
                 # The core function `mut` transforms an immutable value in a mutable one
@@ -132,7 +70,7 @@ howDoesItLookLike as Test =
                 # Also in Squarepants division by 0 yields 0
                 @total / @count
             """
-            check
+            (infer "average")
             Test.isOk
 
         , codeTest
@@ -140,17 +78,17 @@ howDoesItLookLike as Test =
             SKIP Example: File IO
             """
             """
-            logToFile as @IO: Text: Result IO.Error None =
-                @io: content:
+            logToFile as fn @IO, Text: Result IO.Error None =
+                fn @io, content:
 
                 IO.openFile @io IO.Append "blah.log"
-                >> isOk @fileDescriptor:
+                >> isOk fn @fileDescriptor:
 
                 IO.writeFile @io content @fileDescriptor
 
                 # fileDescriptor is automatically closed here
             """
-            check
+            (infer "logToFile")
             Test.isOk
         ]
 
@@ -164,193 +102,210 @@ uniquenessTyping as Test =
             Types can be flagged as mutable
             """
             """
-            alias A = @Number
+            alias A = !Number
 
-            alias B a = @a
+            alias B a = !a
 
-            alias C = @(Text: Number)
+            alias C = !(fn Text: Number)
+
+            z = 1
             """
-            check
+            (infer "z")
             Test.isOk
-        , Test.Group "Mutable types are not interchangeable with their non-mutable counterpart" [
+        #
+        , Test.Group
+            """
+            Mutable types are not interchangeable with their non-mutable counterpart
+            """
+            [
             , codeTest "1"
                 """
-                a as @Number = 1
+                a as !Number = 1
                 """
-                check
-                (Test.errorContains ["The two types are not compatible"])
+                (infer "a")
+                (Test.errorContains ["ErrorUniquenessDoesNotMatch"])
             , codeTest "2"
                 """
                 a as Number = mut 1
                 """
-                check
-                (Test.errorContains ["Annotation says unique but actual type is not unique"])
+                (infer "a")
+                (Test.errorContains ["incompatible"])
             ]
-        , Test.Group "A variable with mutable type must be explicitly declared as mutable with `@`" [
+        , Test.Group
+            """
+            A variable with mutable type must be explicitly declared as mutable with `!`
+            """
+            [
             , codeTest "1"
                 """
                 z =
-                    @a as @Number = mut 1
+                    !a as !Number = mut 1
                 """
-                check
+                (infer "z")
                 Test.isOk
             , codeTest "2"
                 """
-                a as @Number = mut 1
+                a as !Number = mut 1
                 """
-                check
-                (Test.errorContains ["UNIQUENESS"])
+                (infer "a")
+                (Test.errorContains ["UniquenessDoesNotMatch"])
             ]
-        , Test.Group """Referencing a mutable variable "consumes" it""" [
+        , Test.Group
+            """
+            Referencing a mutable variable "spends" it
+            """
+            [
             , codeTest "base"
                 """
                 scope =
-                    @x =
+                    !x =
                         mut 1
 
-                    @y =
+                    !y =
                         # The first time we do it it works!
                         x
 
-                    @z =
+                    !z =
                         # But here `x` is now consumed, so we get a compiler error!
                         x
                 """
-                check
+                (infer "scope")
                 (Test.errorContains ["used already here"])
 
             , codeTest "tuple"
                 """
                 scope =
-                    @x =
+                    !x =
                         mut 1
 
-                    @y =
+                    !y =
                         x & x
                 """
-                check
+                (infer "scope")
                 (Test.errorContains ["used already here"])
             ]
         , Test.Group
             """
             Functions can consume mutables by using `:-` instead of `:`
-            """ [
-            , codeTest
-                """
-                Consume a unique
-                """
-                """
-                consumer as @Number:- None =
-                    x:-
-                    None
-
-                scope =
-                    @x =
-                        mut 1
-
-                    consumer x
-
-                    x
-                """
-              check
-              (Test.errorContains [ "x", "used already here"])
-            , codeTest
-                """
-                Refuse an immutable
-                """
-                """
-                consumer as @Number:- None =
-                    x:-
-                    None
-
-                scope =
-                    x =
-                        1
-
-                    consumer x
-                """
-                check
-                (Test.errorContains ["incompatible"])
-            , codeTest
-                """
-                Refuse to mutate 1
-                """
-                """
-                consumer as @Number:- None =
-                    x:-
-                    None
-
-                scope as None =
-                    @x as @Number =
-                        mut 1
-
-                    consumer @x
-                """
-                check
-                (Test.errorContains ["but the function needs to consume it"])
-            , codeTest
-                """
-                Refuse to mutate 2
-                """
-                """
-                scope =
-
-                    consumer =
-                        x:-
-                        None
-
-                    @x =
-                        mut 1
-
-                    consumer @x
-                """
-                check
-                (Test.errorContains ["but the function needs to consume it"])
-            , codeTest
-                """
-                Annotation should match implementation 1
-                """
-                """
-                consumer as @Number:- None =
-                    @x:
-                    None
-                """
-                check
-                (Test.errorContains ["different mutability"])
-            , codeTest
-                """
-                Annotation should match implementation 2
-                """
-                """
-                consumer as @Number: None =
-                    @x:-
-                    None
-                """
-                check
-                (Test.errorContains ["different mutability"])
-            , codeTest
-                """
-                SKIP When consumed the `@` is optional in annotation, definition and call, and will be removed by the formatter.
-                """
-                """
-                """
-                check
-                (Test.errorContains [""])
+            """
+            [
+#            , codeTest
+#                """
+#                Consume a unique
+#                """
+#                """
+#                consumer as @Number:- None =
+#                    x:-
+#                    None
+#
+#                scope =
+#                    @x =
+#                        mut 1
+#
+#                    consumer x
+#
+#                    x
+#                """
+#              (infer "scope")
+#              (Test.errorContains [ "x", "used already here"])
+#            , codeTest
+#                """
+#                Refuse an immutable
+#                """
+#                """
+#                consumer as @Number:- None =
+#                    x:-
+#                    None
+#
+#                scope =
+#                    x =
+#                        1
+#
+#                    consumer x
+#                """
+#                (infer "scope")
+#                (Test.errorContains ["incompatible"])
+#            , codeTest
+#                """
+#                Refuse to mutate 1
+#                """
+#                """
+#                consumer as @Number:- None =
+#                    x:-
+#                    None
+#
+#                scope as None =
+#                    @x as @Number =
+#                        mut 1
+#
+#                    consumer @x
+#                """
+#                (infer "scope")
+#                (Test.errorContains ["but the function needs to consume it"])
+#            , codeTest
+#                """
+#                Refuse to mutate 2
+#                """
+#                """
+#                scope =
+#
+#                    consumer =
+#                        x:-
+#                        None
+#
+#                    @x =
+#                        mut 1
+#
+#                    consumer @x
+#                """
+#                (infer "scope")
+#                (Test.errorContains ["but the function needs to consume it"])
+#            , codeTest
+#                """
+#                Annotation should match implementation 1
+#                """
+#                """
+#                consumer as @Number:- None =
+#                    @x:
+#                    None
+#                """
+#                (infer "scope")
+#                (Test.errorContains ["different mutability"])
+#            , codeTest
+#                """
+#                Annotation should match implementation 2
+#                """
+#                """
+#                consumer as @Number: None =
+#                    @x:-
+#                    None
+#                """
+#                (infer "scope")
+#                (Test.errorContains ["different mutability"])
+#            , codeTest
+#                """
+#                SKIP When consumed the `@` is optional in annotation, definition and call, and will be removed by the formatter.
+#                """
+#                """
+#                """
+#                (infer "scope")
+#                (Test.errorContains [""])
             ]
         , Test.Group
             """
             "When we construct a function with mutable elements in its closure that function itself must be mutable."
-            """ [
+            """
+            [
             , codeTest
                 """
-                SKIP base
+                base
                 """
                 """
                 scope =
-                    @x = mut 1
-                    z: x
+                    !x = mut 1
+                    fn z: x
                 """
-              check
+              (infer "scope")
               (Test.errorContains [ "?" ])
             ]
         ]
@@ -383,7 +338,7 @@ mutation as Test =
                     @x += 1
                     @x += 1
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -395,7 +350,7 @@ mutation as Test =
                     consume x
                     @x += 1
                 """
-                check
+                (infer "scope")
                 (Test.errorContains ["being consumed here"])
             ]
         , Test.Group "A function can be defined to mutate its arguments" [
@@ -413,7 +368,7 @@ mutation as Test =
                     funz @x
                     funz @x
                 """
-                check
+                (infer "scope")
                 Test.isOk
             ]
         , Test.Group "Calling a function that mutates a unique variable temporarily consumes the variable." [
@@ -426,7 +381,7 @@ mutation as Test =
                     @x = mut 0
                     funz @x @x
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "twice" ])
             ]
         , Test.Group "Functions that mutate their arguments cannot be auto-curried; partial calls will result in a compiler error." [
@@ -436,7 +391,7 @@ mutation as Test =
                 """
                 """
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [])
             ]
         ]
@@ -459,7 +414,7 @@ parentScope as Test =
                 """
                 """
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [])
             ]
         ]
@@ -486,7 +441,7 @@ records as Test =
                     @r as { x as Number, y as @Number } =
                         { x = 0, y = mut 0 }
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -497,7 +452,7 @@ records as Test =
                     @r as { x as Number, y as Number } =
                         { x = 0, y = 0 }
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "UNIQUENESS" ])
             , codeTest
                 """
@@ -508,7 +463,7 @@ records as Test =
                     r as { x as Number, y as @Number } =
                         { x = 0, y = mut 0 }
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "UNIQUENESS" ])
 
             , codeTest
@@ -520,7 +475,7 @@ records as Test =
                     @r =
                         { x = 0, y = mut 0 }
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -531,7 +486,7 @@ records as Test =
                     @r =
                         { x = 0, y = 0 }
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "not compatible" ])
             , codeTest
                 """
@@ -542,7 +497,7 @@ records as Test =
                     r =
                         { x = 0, y = mut 0 }
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "UNIQUE" ])
             , codeTest
                 """
@@ -552,7 +507,7 @@ records as Test =
                 scope =
                     { x = 0, y = mut 0 }
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "UNIQUE" ])
             ]
         , Test.Group
@@ -577,7 +532,7 @@ records as Test =
                     @yy as @Number =
                         mutableY
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -596,7 +551,7 @@ records as Test =
                     @yy as @Number =
                         y
                 """
-                check
+                (infer "scope")
                 Test.isOk
             ]
         , Test.Group
@@ -613,7 +568,7 @@ records as Test =
                     @record = { x = 0, y = mut 0 }
                     @record.x += 3
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -624,7 +579,7 @@ records as Test =
                     @record = { x = 0, y = mut 0 }
                     doStuff @record.x @record.y
                 """
-                check
+                (infer "scope")
                 (Test.errorContains [ "same mutable twice in the same function call" ])
             , codeTest
                 """
@@ -638,7 +593,7 @@ records as Test =
 
                     @record.x += 1
                 """
-                check
+                (infer "scope")
                 Test.isOk
             ]
         ]
@@ -671,7 +626,7 @@ unions as Test =
                     i as Something =
                         Immutable 1
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -695,7 +650,7 @@ unions as Test =
                     ii as Something =
                         i
                 """
-                check
+                (infer "scope")
                 Test.isOk
             , codeTest
                 """
@@ -712,9 +667,8 @@ unions as Test =
                     @mm as Blah @Number =
                         m
                 """
-                check
+                (infer "scope")
                 Test.isOk
             ]
         ]
 
-#]
