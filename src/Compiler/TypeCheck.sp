@@ -152,7 +152,7 @@ union Context =
     , Context_Global # this is never actually used =|
     , Context_Module UMR
     , Context_Argument Name Context
-    , Context_LetInBody
+    , Context_LetInBody [Name]
     , Context_FnPar Int Context
     , Context_FnBody Pos Context
     , Context_TryBranch
@@ -415,7 +415,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
 
     envWithContext =
         { patternOut.env with
-        , context = Context_LetInBody
+        , context = Context_LetInBody (TA.patternNames patternOut.typedPattern >> Dict.keys)
         }
 
     typedBody & bodyType =
@@ -644,9 +644,10 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
 
         CA.ParameterRecycle pos name:
 
-            # TODO check name already in env?
+            # TODO check name already in env? Is it MakeCanonical resp?
 
-            type = TA.TypeUnique pos (newType @state)
+            type =
+                TA.TypeUnique pos (newType @state)
 
             typeWithClasses as Instance =
                 {

@@ -1296,6 +1296,27 @@ translateTypeVariable as Pos: Token.Word: Res CA.Type =
         >> Ok
 
 
+translateTypeFunctionParameter as ReadOnly: FA.Expression: Res (Bool & CA.Type) =
+    ro: expression:
+
+    FA.Expression pos expr_ =
+        expression
+
+    (mod as Bool) & (e as FA.Expression) =
+        try expr_ as
+            FA.Unop Op.UnopRecycle faOperand:
+                True & faOperand
+            _:
+                False & expression
+
+    e
+    >> translateType ro
+    >> onOk caExpression:
+
+    mod & caExpression
+    >> Ok
+
+
 translateType as ReadOnly: FA.Expression: Res CA.Type =
     ro: (FA.Expression pos expr_):
 
@@ -1353,14 +1374,14 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
 
         FA.Fn faParams faReturn:
             faParams
-            >> List.mapRes (translateType ro)
+            >> List.mapRes (translateTypeFunctionParameter ro)
             >> onOk caParams:
 
             faReturn
             >> translateType ro
             >> onOk caReturn:
 
-            CA.TypeFn pos (List.map (t: False & t) caParams) caReturn
+            CA.TypeFn pos caParams caReturn
             >> Ok
 
         FA.Binop Op.Tuple sepList:
@@ -1381,7 +1402,7 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
 
         _:
             # TODO: do all other constructors explicitly
-            error pos [ "Not sure what's up with this type =|" ]
+            error pos [ "Not sure what's up with this type =|", toHuman expr_ ]
 
 
 #

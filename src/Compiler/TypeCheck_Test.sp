@@ -93,7 +93,7 @@ infer as Text: Text: Result Text Out =
 
     params as Compiler/MakeCanonical.Params = {
         , meta = TH.meta
-        , stripLocations = True
+        , stripLocations = False
         , source = TH.source
         , name = TH.moduleName
         }
