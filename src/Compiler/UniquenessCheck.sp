@@ -315,10 +315,10 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
         CA.LiteralNumber pos l:
             re
 
-        CA.Variable pos (CA.RefGlobal _):
+        CA.Variable pos (RefGlobal _):
             re
 
-        CA.Variable pos (CA.RefLocal name):
+        CA.Variable pos (RefLocal name):
             try Dict.get name env.variables as
                 Nothing:
                     errorUndefinedVariable pos name @state

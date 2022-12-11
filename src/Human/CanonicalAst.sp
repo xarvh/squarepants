@@ -76,8 +76,11 @@ typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
 
         parensIf (pri > threshold) str
 
-    try type as
-        CA.TypeNamed pos usr args:
+    CA.Type _ _ type_ =
+        type
+
+    try type_ as
+        CA.TypeNamed usr args:
             ( (if args == [] then 0 else 1) & (usrToText currentUmr meta usr :: List.map (parensIfGreaterThan 0) args >> Text.join " "))
 
 #        CA.TypeNamed pos usr args:
@@ -95,13 +98,10 @@ typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
                      >> Text.join " "
               #]
 
-        CA.TypeUnique pos ty:
-            0 & "@" .. typeToText currentUmr meta ty
-
-        CA.TypeAnnotationVariable pos name:
+        CA.TypeAnnotationVariable name:
             ( 0 & name)
 
-        CA.TypeFn pos pars to:
+        CA.TypeFn pars to:
             todo "CA.TypeFn"
 #            arrow =
 #                try lambdaModifier as
@@ -110,7 +110,7 @@ typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
 #
 #            ( 2 & ([ parensIfGreaterThan 1 from , arrow , parensIfGreaterThan 2 to ] >> Text.join ""))
 
-        CA.TypeRecord pos attrs:
+        CA.TypeRecord attrs:
 
             attrsString =
                 attrs
@@ -249,38 +249,34 @@ normalizeTypeAndTyvars as CA.Type: Dict Text a: ( CA.Type & Dict Text a ) =
 
 
 normType as CA.Type: NormMonad CA.Type =
-    ty:
-    try ty as
-        CA.TypeNamed pos name args:
+    (CA.Type pos uni ty_):
+    try ty_ as
+        CA.TypeNamed name args:
             StateMonad.list_map normType args >> andThen args_n:
-            return << CA.TypeNamed pos name args_n
+            return << CA.Type pos uni << CA.TypeNamed name args_n
 
 #        CA.TypeAlias pos usr args:
 #            StateMonad.list_map normType args >> andThen args_n:
 #            return << CA.TypeAlias pos usr args_n
 
-        CA.TypeAnnotationVariable pos name:
+        CA.TypeAnnotationVariable name:
             normName name >> andThen n:
-            return << CA.TypeAnnotationVariable pos n
+            return << CA.Type pos uni << CA.TypeAnnotationVariable n
 
-        CA.TypeFn pos pars to0:
+        CA.TypeFn pars to0:
             todo "CA.TypeFn"
 #            (normType from0) >> andThen from1:
 #            (normType to0) >> andThen to1:
 #            return << CA.TypeFn pos from1 fromIsMut to1
 
-        CA.TypeRecord pos attrs0:
+        CA.TypeRecord attrs0:
             (StateMonad.dict_map (k: normType) attrs0) >> andThen attrs1:
-            return << CA.TypeRecord pos attrs1
+            return << CA.Type pos uni << CA.TypeRecord attrs1
 
 #        CA.TypeRecordExt pos name0 flags attrs0:
 #            normName name0 >> andThen name1:
 #            StateMonad.dict_map (k: normType) attrs0 >> andThen attrs1:
 #            return << CA.TypeRecordExt pos name1 flags attrs1
-
-        CA.TypeUnique pos t:
-            (normType t) >> andThen t1:
-            return << CA.TypeUnique pos t1
 
 
 

@@ -600,7 +600,7 @@ translateConstructor as Compiler/MakeEmittable.State@: USR & TA.Type: JA.Stateme
 
     definitionBody =
         try taType as
-            TA.TypeFn pos pars out:
+            TA.Type pos uni (TA.TypeFn pars out):
 
                 argNames as [Text] =
                     pars >> List.indexedMap index: name: constructorArgumentName (index + 1)

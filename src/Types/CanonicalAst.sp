@@ -1,27 +1,15 @@
 
-
-#
-# AST
-#
-
-
-# A reference to a defined variable
-union Ref =
-    # This is for stuff defined inside the current function/block
-    , RefLocal Name
-    # This is for stuff defined at root level
-    , RefGlobal USR
-
-
 union Type =
-    , TypeNamed Pos USR [Type]
-    , TypeFn Pos [Bool & Type] Type
-    , TypeRecord Pos (Dict Name Type)
-    , TypeUnique Pos Type
-    , TypeAnnotationVariable Pos Name
+    Type Pos UniqueOrImmutable Type_
+
+union Type_ =
+    , TypeNamed USR [Type]
+    , TypeFn [RecycleOrSpend & Type] Type
+    , TypeRecord (Dict Name Type)
+    , TypeAnnotationVariable Name
     # This is used as a placeholder when there is an error and a type can't be determined
     # It's useful to avoid piling up errors (I think)
-    , TypeError Pos
+    , TypeError
 
 
 union Expression =
@@ -166,6 +154,9 @@ skipLetIns as CA.Expression: CA.Expression =
         _: expr
 
 
+makeUnique as CA.Type: CA.Type =
+    (CA.Type pos _ type_):
+    CA.Type pos Uni type_
 
 
 
@@ -174,29 +165,28 @@ skipLetIns as CA.Expression: CA.Expression =
 #
 
 
-unmod as [Bool & param]: [param] =
+unmod as [mod & param]: [param] =
     List.map Tuple.second
 
-mapmod as (a: b): [Bool & a]: [Bool & b] =
+mapmod as (a: b): [mod & a]: [mod & b] =
     f:
     List.map (Tuple.mapSecond f)
 
 
 
 typeTyvars as Type: Dict Name Pos =
-    ty:
+    (Type pos _ ty_):
 
     fromList as [Type]: Dict Name Pos =
         list:
         List.for list (item: acc: Dict.join acc (typeTyvars item)) Dict.empty
 
-    try ty as
-        TypeNamed _ _ args: fromList args
-#        TypeAlias _ _ args: fromList args
-        TypeFn _ pars to: fromList << to :: unmod pars
-        TypeRecord _ attrs: fromList (Dict.values attrs)
-        TypeUnique _ t: typeTyvars t
-        TypeAnnotationVariable pos name: Dict.singleton name pos
+    try ty_ as
+        TypeNamed _ args: fromList args
+        TypeFn pars to: fromList << to :: unmod pars
+        TypeRecord attrs: fromList (Dict.values attrs)
+        TypeAnnotationVariable name: Dict.singleton name pos
+        TypeError: Dict.empty
 
 
 patternPos as Pattern: Pos =

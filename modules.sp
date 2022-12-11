@@ -25,6 +25,21 @@ sourceDir =
        importAs = CoreTypes
 
     module =
+       path = Types/Ast
+       importAs = Ast
+       globalTypes =
+          Ref
+          UniqueOrImmutable
+          RecycleOrSpend
+       globalValues =
+          RefLocal
+          RefGlobal
+          Uni
+          Imm
+          Recycle
+          Spend
+
+    module =
        path = Types/TypedAst
        importAs = TA
 

@@ -1,21 +1,18 @@
 
-# A reference to a defined variable
-alias Ref = CA.Ref
-
-
 alias UnificationVariableId =
     Int
 
 
 union Type =
-    , TypeExact Pos USR [Type]
-    #, TypeExpandedAlias USR Type
-    , TypeFn Pos [Bool & Type] Type
-    , TypeRecord Pos (Dict Name Type)
-    , TypeUnique Pos Type
+    Type Pos UniqueOrImmutable Type_
+
+union Type_ =
+    , TypeExact USR [Type]
+    , TypeFn [RecycleOrSpend & Type] Type
+    , TypeRecord (Dict Name Type)
     , TypeUnificationVariable UnificationVariableId
     , TypeRecordExt UnificationVariableId (Dict Name Type)
-    , TypeError Pos
+    , TypeError
 
 
 union Expression =
@@ -137,27 +134,23 @@ patternNames as Pattern: Dict Name Pos =
 
 
 typeTyvars as Type: Dict UnificationVariableId None =
-    type:
-    try type as
-        TypeExact pos usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        #TypeAlias pos usr args:  Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeFn pos ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
-        TypeRecord pos attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
-        #TODO Should we say here that the var must allow uniqueness?
-        TypeUnique pos ty: typeTyvars ty
+    (Type _ _ type_):
+    try type_ as
+        TypeExact usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
+        TypeFn ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
+        TypeRecord attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeUnificationVariable id: Dict.singleton id None
         TypeRecordExt id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
-        TypeError p: Dict.empty
+        TypeError: Dict.empty
 
 
 typeAllowsFunctions as Type: Bool =
-    type:
-    try type as
-        TypeFn pos ins out: True
+    (Type _ _ type_):
+    try type_ as
+        TypeFn ins out: True
         TypeUnificationVariable id: True
-        TypeExact pos usr args: List.any typeAllowsFunctions args
-        TypeRecord pos attrs: Dict.any (k: typeAllowsFunctions) attrs
-        TypeUnique pos ty: typeAllowsFunctions ty
+        TypeExact usr args: List.any typeAllowsFunctions args
+        TypeRecord attrs: Dict.any (k: typeAllowsFunctions) attrs
         TypeRecordExt id attrs: Dict.any (k: typeAllowsFunctions) attrs
-        TypeError p: True
+        TypeError: True
 

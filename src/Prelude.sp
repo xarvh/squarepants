@@ -33,12 +33,12 @@ tupleUsr as Text: USR =
 
 tyVar as Name: CA.Type =
     name:
-    CA.TypeAnnotationVariable Pos.N name
+    CA.Type Pos.N Imm << CA.TypeAnnotationVariable name
 
 
 tyFn as [CA.Type]: CA.Type: CA.Type =
     pars: to:
-    CA.TypeFn Pos.N (List.map (p: False & p) pars) to
+    CA.Type Pos.N Imm << CA.TypeFn (List.map (p: Spend & p) pars) to
 
 
 typeUnopUniform as CA.Type: CA.Type =
@@ -166,7 +166,8 @@ tuple as Op.Binop = {
         Dict.empty
             >> Dict.insert "first" (tyVar "a")
             >> Dict.insert "second" (tyVar "b")
-            >> CA.TypeRecord Pos.N
+            >> CA.TypeRecord
+            >> CA.Type Pos.N Imm
             >> typeBinop (tyVar "a") (tyVar "b")
     , nonFn = []
     }
@@ -234,7 +235,7 @@ mutableAdd as Op.Binop = {
     , symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop (CA.TypeUnique Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
+    , type = CA.Type Pos.N Imm << CA.TypeFn [Recycle & CA.makeUnique CoreTypes.number, Spend & CoreTypes.number] CoreTypes.none
     , nonFn = []
     }
 
@@ -244,7 +245,7 @@ mutableSubtract as Op.Binop = {
     , symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop (CA.TypeUnique Pos.N CoreTypes.number) CoreTypes.number CoreTypes.none
+    , type = typeBinop (CA.makeUnique CoreTypes.number) CoreTypes.number CoreTypes.none
     , nonFn = []
     }
 
@@ -370,7 +371,7 @@ functions as [Function] = [
 
 mut as Function = {
     , usr = coreUsr "mut"
-    , type = tyFn [tyVar "a"] (CA.TypeUnique Pos.N (tyVar "a"))
+    , type = tyFn [tyVar "a"] (CA.makeUnique (tyVar "a"))
     , nonFn = [ "a" ]
     }
 
@@ -378,7 +379,7 @@ mut as Function = {
 # TODO remove this one, it's used only by the typecheck tests?
 reinit as Function = {
     , usr = coreUsr "reinit"
-    , type = tyFn [CA.TypeUnique Pos.N (tyVar "a"), (tyVar "a")] CoreTypes.none
+    , type = tyFn [CA.makeUnique (tyVar "a"), (tyVar "a")] CoreTypes.none
     , nonFn = [ "a" ]
     }
 

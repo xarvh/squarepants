@@ -249,7 +249,7 @@ mutation as Test =
         , Test.Group "A function can be defined to mutate its arguments" [
             , codeTest
                 """
-                ONLY base
+                base
                 """
                 """
                 funz as fn @Number: None =

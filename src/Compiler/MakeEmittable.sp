@@ -150,17 +150,17 @@ translatePatternRec as Pattern: EA.Expression: [ Bool & DollarName & EA.Expressi
                 translatePatternRec pa (EA.RecordAccess name accessExpr)
 
 
-translateVariableArgs as State@: TA.Ref: EA.Expression =
+translateVariableArgs as State@: Ref: EA.Expression =
     state@: ref: #({ ref, attrPath }):
 
     variableName =
         try ref as
-            CA.RefLocal name:
+            RefLocal name:
                 DollarName n =
                     userSpecifiedName name
                 n
 
-            CA.RefGlobal usr:
+            RefGlobal usr:
                 translateUsr @state usr
 
     EA.Variable variableName [] #attrPath

@@ -20,9 +20,9 @@ localType as Name: USR =
     USR moduleUmr name
 
 
-rootLocal as Name: CA.Ref =
+rootLocal as Name: Ref =
     name:
-    CA.RefGlobal << USR moduleUmr name
+    RefGlobal << USR moduleUmr name
 
 
 #
@@ -121,18 +121,18 @@ resErrorToStrippedText as Text: Res a: Result Text a =
 # Same as core types, but have Pos.T rather than Pos.N
 #
 boolType as CA.Type =
-    CA.TypeNamed Pos.T ("Bool" >> Meta.spCoreUSR) []
+    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "Bool") []
 
 
 numberType as CA.Type =
-    CA.TypeNamed Pos.T ("Number" >> Meta.spCoreUSR) []
+    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "Number") []
 
 
 noneType as CA.Type =
-    CA.TypeNamed Pos.T ("None" >> Meta.spCoreUSR) []
+    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "None") []
 
 
 listType as CA.Type: CA.Type =
     itemType:
-    CA.TypeNamed Pos.T ("List" >> Meta.spCoreUSR) [ itemType ]
+    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "List") [ itemType ]
 

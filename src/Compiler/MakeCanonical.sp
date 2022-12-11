@@ -97,7 +97,7 @@ maybeForeignUsr as (Meta: Dict Text USR): ReadOnly: Maybe Name: Name: Maybe USR 
                 Nothing:
                     # TODO should this produce an error instead?
                     # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
-                    #CA.RefGlobal (USR Meta.SourcePlaceholder moduleName name)
+                    #RefGlobal (USR Meta.SourcePlaceholder moduleName name)
 #                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
 #                        log "*" x
                     todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
@@ -113,19 +113,19 @@ resolveToUsr as (Meta: Dict Text USR): ReadOnly: Maybe Name: Name: USR =
         >> Maybe.withDefault (USR ro.currentModule name)
 
 
-resolveToValueRef as ReadOnly: Bool: Maybe Name: Name: CA.Ref =
+resolveToValueRef as ReadOnly: Bool: Maybe Name: Name: Ref =
     ro: declaredInsideFunction: maybeModule: name:
 
     try maybeForeignUsr (m: m.globalValues) ro maybeModule name as
         Just usr:
-            CA.RefGlobal usr
+            RefGlobal usr
 
         Nothing:
             if declaredInsideFunction then
-                CA.RefLocal name
+                RefLocal name
 
             else
-                CA.RefGlobal << USR ro.currentModule name
+                RefGlobal << USR ro.currentModule name
 
 
 resolveToTypeUsr as ReadOnly: Maybe Name: Name: USR =
@@ -142,13 +142,13 @@ resolveToConstructorUsr as ReadOnly: Maybe Name: Name: USR =
 
 
 typeDeps as CA.Type: Set USR: Set USR =
-    type: acc:
-    try type as
-        CA.TypeNamed _ usr args: acc >> Set.insert usr >> List.for args typeDeps
-        CA.TypeAnnotationVariable _ _: acc
-        CA.TypeFn _ params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
-        CA.TypeRecord _ attrs: Dict.for attrs (k: typeDeps) acc
-        CA.TypeUnique _ t: typeDeps t acc
+    (CA.Type _ _ type_): acc:
+    try type_ as
+        CA.TypeNamed usr args: acc >> Set.insert usr >> List.for args typeDeps
+        CA.TypeAnnotationVariable _: acc
+        CA.TypeFn params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
+        CA.TypeRecord attrs: Dict.for attrs (k: typeDeps) acc
+        CA.TypeError: acc
 
 
 alias Deps = {
@@ -199,7 +199,7 @@ expressionDeps as CA.Expression: Deps: Deps =
         CA.LiteralText _ _:
             deps
 
-        CA.Variable _ (CA.RefGlobal usr):
+        CA.Variable _ (RefGlobal usr):
             { deps with values = Set.insert usr .values }
 
         CA.Variable _ _:
@@ -777,7 +777,7 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
                     >> translateExpression env
                     >> onOk caOperand:
 
-                    CA.Call pos (CA.Variable pos (CA.RefGlobal Prelude.unaryMinus.usr)) [CA.ArgumentExpression caOperand]
+                    CA.Call pos (CA.Variable pos (RefGlobal Prelude.unaryMinus.usr)) [CA.ArgumentExpression caOperand]
                     >> Ok
 
         FA.Binop group sepList:
@@ -964,7 +964,7 @@ translateRecord as Env: Pos: Maybe (Maybe FA.Expression): [FA.RecordAttribute]: 
                 Text.fromNumber env.nextGeneratedVariableName
 
             var =
-                CA.Variable Pos.G (CA.RefLocal varName)
+                CA.Variable Pos.G (RefLocal varName)
 
             newEnv =
                 { env with
@@ -1226,7 +1226,7 @@ makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: Res CA.Expression =
                 error pos [ "Can't << to a recyclable" ]
 
     else
-        CA.Call pos (CA.Variable pos (CA.RefGlobal op.usr)) [left, right]
+        CA.Call pos (CA.Variable pos (RefGlobal op.usr)) [left, right]
         >> Ok
 
 
@@ -1277,7 +1277,8 @@ translateNamedType as ReadOnly: Pos: Token.Word: [CA.Type]: Res CA.Type =
         error pos [ "Type names have no attributes to access" ]
     else
         caArgs
-        >> CA.TypeNamed pos (resolveToTypeUsr ro word.maybeModule word.name)
+        >> CA.TypeNamed (resolveToTypeUsr ro word.maybeModule word.name)
+        >> CA.Type pos Imm
         >> Ok
 
 
@@ -1292,22 +1293,23 @@ translateTypeVariable as Pos: Token.Word: Res CA.Type =
         error pos [ "No point it getting tyvars from modules?" ]
     else
         word.name
-        >> CA.TypeAnnotationVariable pos
+        >> CA.TypeAnnotationVariable
+        >> CA.Type pos Imm
         >> Ok
 
 
-translateTypeFunctionParameter as ReadOnly: FA.Expression: Res (Bool & CA.Type) =
+translateTypeFunctionParameter as ReadOnly: FA.Expression: Res (RecycleOrSpend & CA.Type) =
     ro: expression:
 
     FA.Expression pos expr_ =
         expression
 
-    (mod as Bool) & (e as FA.Expression) =
+    (mod as RecycleOrSpend) & (e as FA.Expression) =
         try expr_ as
             FA.Unop Op.UnopRecycle faOperand:
-                True & faOperand
+                Recycle & faOperand
             _:
-                False & expression
+                Spend & expression
 
     e
     >> translateType ro
@@ -1369,7 +1371,8 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
                 >> onOk caAttrs:
 
                 caAttrs
-                >> CA.TypeRecord pos
+                >> CA.TypeRecord
+                >> CA.Type pos Imm
                 >> Ok
 
         FA.Fn faParams faReturn:
@@ -1381,7 +1384,8 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             >> translateType ro
             >> onOk caReturn:
 
-            CA.TypeFn pos caParams caReturn
+            CA.TypeFn caParams caReturn
+            >> CA.Type pos Imm
             >> Ok
 
         FA.Binop Op.Tuple sepList:
@@ -1389,15 +1393,16 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             >> translateTuple (translateType ro)
             >> onOk recordAttrs:
 
-            CA.TypeRecord pos recordAttrs
+            CA.TypeRecord recordAttrs
+            >> CA.Type pos Imm
             >> Ok
 
         FA.Unop Op.UnopUnique faOperand:
             faOperand
             >> translateType ro
-            >> onOk caOperand:
+            >> onOk (CA.Type _ _ type_):
 
-            CA.TypeUnique pos caOperand
+            CA.Type pos Uni type_
             >> Ok
 
         _:
@@ -1457,7 +1462,7 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
                 if caPars == [] then
                     unionType
                 else
-                    CA.TypeFn pos (List.map (a: False & a) caPars) unionType
+                    CA.Type pos Imm << CA.TypeFn (List.map (a: Spend & a) caPars) unionType
             }
 
         constructors
@@ -1553,11 +1558,12 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
                 Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
 
         FA.UnionDef fa:
+            At pos _ = fa.name
+
             translateTypeName fa.name
             >> onOk name:
 
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-                At pos _ = fa.name
                 error pos [ name .. " declared twice!" ]
 
             else
@@ -1572,8 +1578,9 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
 
                 type =
                     caPars
-                    >> List.map ((At pos name): CA.TypeAnnotationVariable pos name)
-                    >> CA.TypeNamed Pos.G usr
+                    >> List.map ((At p name): CA.Type p Imm (CA.TypeAnnotationVariable name))
+                    >> CA.TypeNamed usr
+                    >> CA.Type pos Imm
 
                 Dict.empty
                 >> List.forRes fa.constructors (translateConstructor ro type usr)

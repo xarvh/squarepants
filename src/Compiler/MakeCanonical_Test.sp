@@ -272,7 +272,8 @@ tuples as Test =
                          Dict.empty
                             >> Dict.insert "first" TH.numberType
                             >> Dict.insert "second" TH.numberType
-                            >> CA.TypeRecord p
+                            >> CA.TypeRecord
+                            >> CA.Type p Imm
                             >> Just
                       }
                 , native = False
@@ -348,7 +349,7 @@ records as Test =
                 CA.LetIn
                     (valueDef "0" (CA.Variable p (TH.rootLocal "m" )))
                     (CA.Record p
-                        (Just (CA.Variable Pos.G (CA.RefLocal "0" )))
+                        (Just (CA.Variable Pos.G (RefLocal "0" )))
                         (Dict.fromList
                             [
                             , "c" & CA.LiteralNumber p 1
@@ -364,10 +365,10 @@ records as Test =
                 CA.LetIn
                     (valueDef "0" (CA.Variable p (TH.rootLocal "a" )))
                     (CA.Record p
-                        (Just (CA.Variable Pos.G (CA.RefLocal "0" )))
+                        (Just (CA.Variable Pos.G (RefLocal "0" )))
                         (Dict.fromList
                             [
-                            , "y" & (CA.RecordAccess p "x" (CA.Variable Pos.G (CA.RefLocal "0" )))
+                            , "y" & (CA.RecordAccess p "x" (CA.Variable Pos.G (RefLocal "0" )))
                             ]
                         )
                     )
@@ -502,7 +503,7 @@ functions as Test =
                     (CA.Call p
                         (CA.Variable p (TH.rootLocal "add"))
                         [
-                        , CA.ArgumentExpression (CA.Variable p (CA.RefLocal "x"))
+                        , CA.ArgumentExpression (CA.Variable p (RefLocal "x"))
                         , CA.ArgumentExpression (CA.LiteralNumber p 1)
                         ]
                     )
@@ -541,7 +542,7 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 { body = CA.LiteralNumber p 1
                 , native = False
-                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.TypeAnnotationVariable p "a" }
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.Type p Imm << CA.TypeAnnotationVariable "a" }
                 , tyvars = Dict.singleton "a" { allowFunctions = Just False, allowUniques = Just False }
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty

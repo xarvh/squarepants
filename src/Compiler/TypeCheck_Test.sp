@@ -48,26 +48,30 @@ outToHuman as Out: Text =
         >> Text.join "\n"
 
 
+t as TA.Type_: TA.Type =
+    TA.Type Pos.T Imm
+
 
 tyvar as Int: TA.Type =
-    TA.TypeUnificationVariable
+    id:
+    TA.Type Pos.G Imm (TA.TypeUnificationVariable id)
 
 
 tyNumber as TA.Type =
-    TA.TypeExact Pos.N ("Number" >> Meta.spCoreUSR) []
+    TA.Type Pos.N Imm << TA.TypeExact ("Number" >> Meta.spCoreUSR) []
 
 
 tyNone as TA.Type =
-    TA.TypeExact Pos.N ("None" >> Meta.spCoreUSR) []
+    TA.Type Pos.N Imm << TA.TypeExact ("None" >> Meta.spCoreUSR) []
 
 
 tyBool as TA.Type =
-    TA.TypeExact Pos.N ("Bool" >> Meta.spCoreUSR) []
+    TA.Type Pos.N Imm << TA.TypeExact ("Bool" >> Meta.spCoreUSR) []
 
 
 tyList as TA.Type: TA.Type =
     item:
-    TA.TypeExact Pos.N ("List" >> Meta.spCoreUSR) [item]
+    TA.Type Pos.N Imm << TA.TypeExact ("List" >> Meta.spCoreUSR) [item]
 
 
 freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVariableId TA.Tyvar =
@@ -77,11 +81,9 @@ freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVar
         Dict.insert id { originalName, allowFunctions = Just True, allowUniques = Just False }
 
 
-#TODO merge these two
-
 function as [TA.Type]: TA.Type: TA.Type =
     from: to:
-    TA.TypeFn Pos.T (List.map (t: False & t) from) to
+    TA.Type Pos.T Imm << TA.TypeFn (List.map (t: Spend & t) from) to
 
 
 
@@ -93,7 +95,7 @@ infer as Text: Text: Result Text Out =
 
     params as Compiler/MakeCanonical.Params = {
         , meta = TH.meta
-        , stripLocations = False
+        , stripLocations = True
         , source = TH.source
         , name = TH.moduleName
         }
@@ -117,14 +119,14 @@ infer as Text: Text: Result Text Out =
         { typeCheckGlobalEnv_ with
         , variables = .variables
             >> Dict.insert
-                (CA.RefGlobal << USR TH.moduleUmr "add")
+                (RefGlobal << USR TH.moduleUmr "add")
                 {
                 , definedAt = Pos.T
                 , type = function [tyNumber, tyNumber] tyNumber
                 , freeTyvars = Dict.empty
                 }
             >> Dict.insert
-                (CA.RefGlobal << USR TH.moduleUmr "reset")
+                (RefGlobal << USR TH.moduleUmr "reset")
                 {
                 , definedAt = Pos.T
                 , type = function [tyNumber] tyNone
@@ -139,8 +141,9 @@ infer as Text: Text: Result Text Out =
 
     toMatch as (CA.Pattern & TA.ValueDef): Maybe { isUnique as Bool, maybeAnnotation as Maybe CA.Type, def as TA.ValueDef } =
         (pattern & def):
+
         try pattern as
-            CA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName = Just name }:
+            CA.PatternAny _ { isUnique, maybeAnnotation, maybeName = Just name }:
                 Just { isUnique, maybeAnnotation, def }
             _:
                 Nothing
@@ -156,8 +159,7 @@ infer as Text: Text: Result Text Out =
 
         { isUnique, maybeAnnotation, def } :: tail:
             try def.pattern as
-
-                TA.PatternAny Pos.T { isUnique, maybeAnnotation, maybeName, type }:
+                TA.PatternAny _ { isUnique, maybeAnnotation, maybeName, type }:
                     {
                     , type
                     , freeTyvars = def.freeTyvars
@@ -191,33 +193,39 @@ normalizeTyvarId as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.
 
 normalizeType as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.Type: TA.Type =
     hash@: type:
-    try type as
-        TA.TypeExact p usr args:
-            TA.TypeExact p usr (List.map (normalizeType @hash) args)
 
-#        TA.TypeAlias p usr args:
-#            TA.TypeAlias p usr (List.map (normalizeType @hash) args)
+    TA.Type pos uni type_ =
+        type
 
-        TA.TypeFn p pars out:
-            TA.TypeFn p
+    ta =
+        TA.Type pos uni
+
+    try type_ as
+        TA.TypeExact usr args:
+            TA.TypeExact usr (List.map (normalizeType @hash) args)
+            >> ta
+
+        TA.TypeFn pars out:
+            TA.TypeFn
                 (List.map (Tuple.mapSecond (normalizeType @hash)) pars)
                 (normalizeType @hash out)
+            >> ta
 
-        TA.TypeRecord p attrs:
-            TA.TypeRecord p (Dict.map (k: (normalizeType @hash)) attrs)
-
-        TA.TypeUnique p t:
-            TA.TypeUnique p (normalizeType @hash t)
+        TA.TypeRecord attrs:
+            TA.TypeRecord (Dict.map (k: (normalizeType @hash)) attrs)
+            >> ta
 
         TA.TypeUnificationVariable id:
             TA.TypeUnificationVariable (normalizeTyvarId @hash id)
+            >> ta
 
         TA.TypeRecordExt id attrs:
             TA.TypeRecordExt
                 (normalizeTyvarId @hash id)
                 (Dict.map (k: (normalizeType @hash)) attrs)
+            >> ta
 
-        TA.TypeError p:
+        TA.TypeError:
             type
 
 
@@ -567,8 +575,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     function
-                        [TA.TypeExact Pos.T (TH.localType "T") [ tyvar 1 ]]
-                        (TA.TypeExact Pos.T (TH.localType "T") [ tyvar 1 ])
+                        [t << TA.TypeExact (TH.localType "T") [ tyvar 1 ]]
+                        (t << TA.TypeExact (TH.localType "T") [ tyvar 1 ])
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -585,7 +593,7 @@ higherOrderTypes as Test =
                 {
                 , freeTyvars = Dict.empty
                 , type =
-                    TA.TypeExact Pos.G
+                    t << TA.TypeExact
                         (TH.localType "X")
                         [ tyvar 1 ]
                 }
@@ -662,8 +670,8 @@ records as Test =
                 , freeTyvars = Dict.empty
                 , type =
                     function
-                        [TA.TypeRecordExt 1
-                            (Dict.singleton "meh" (TA.TypeRecordExt 2 (Dict.singleton "blah" (tyvar 3))))
+                        [t << TA.TypeRecordExt 1
+                            (Dict.singleton "meh" (t << TA.TypeRecordExt 2 (Dict.singleton "blah" (tyvar 3))))
                         ]
                         (tyvar 3)
                 }
@@ -683,9 +691,9 @@ records as Test =
 #                    >> Dict.fromList
                 , type =
                     function
-                        [TA.TypeRecordExt 1
+                        [t << TA.TypeRecordExt 1
                             (Dict.singleton "meh"
-                                (TA.TypeRecordExt 2
+                                (t << TA.TypeRecordExt 2
                                     (Dict.singleton
                                         "blah"
                                         tyNumber
@@ -730,7 +738,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> t >> re:
                     { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
@@ -743,7 +751,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> t >> re:
                     { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
@@ -758,7 +766,7 @@ records as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "first" (tyvar 2)) >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "first" (tyvar 2)) >> t >> re:
                     { freeTyvars = Dict.empty
                     , type = function [re] (tyvar 2)
                     }
@@ -873,7 +881,7 @@ patterns as Test =
                 { freeTyvars = Dict.empty
                 , type =
                     function
-                        [TA.TypeRecord Pos.T (Dict.fromList [ ( "first" & tyvar 1 ) ])]
+                        [t << TA.TypeRecord (Dict.fromList [ ( "first" & tyvar 1 ) ])]
                         (tyvar 1)
                 }
             )

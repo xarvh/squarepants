@@ -16,20 +16,21 @@ makeUsr as Name: USR =
 
 
 nameToType as Text: [CA.Type]: CA.Type =
-    name:
-    name
-    >> makeUsr
-    >> CA.TypeNamed p
+    name: args:
+
+    args
+    >> CA.TypeNamed (makeUsr name)
+    >> CA.Type p Imm
 
 
 defToType as CA.UnionDef: [CA.Type]: CA.Type =
-    def:
-    CA.TypeNamed p def.usr
+    def: pars:
+    CA.Type p Imm (CA.TypeNamed def.usr pars)
 
 
 usrToVariable as USR: CA.Expression =
     u:
-    CA.Variable p (CA.RefGlobal u)
+    CA.Variable p (RefGlobal u)
 
 
 #
@@ -147,13 +148,13 @@ listDef as CA.UnionDef =
         makeUsr "List"
 
     item as CA.Type =
-        CA.TypeAnnotationVariable p "item"
+        CA.Type p Imm << CA.TypeAnnotationVariable "item"
 
     pars as [CA.Type] =
         [ item, list item ]
 
     type as CA.Type =
-        CA.TypeFn p [False & item, False & list item] (list item)
+        CA.Type p Imm << CA.TypeFn [Spend & item, Spend & list item] (list item)
 
     nilDef as CA.Constructor =
        {
