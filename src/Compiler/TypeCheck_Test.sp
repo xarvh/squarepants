@@ -52,6 +52,10 @@ t as TA.Type_: TA.Type =
     TA.Type Pos.T Imm
 
 
+g as TA.Type_: TA.Type =
+    TA.Type Pos.G Imm
+
+
 tyvar as Int: TA.Type =
     id:
     TA.Type Pos.G Imm (TA.TypeUnificationVariable id)
@@ -670,8 +674,8 @@ records as Test =
                 , freeTyvars = Dict.empty
                 , type =
                     function
-                        [t << TA.TypeRecordExt 1
-                            (Dict.singleton "meh" (t << TA.TypeRecordExt 2 (Dict.singleton "blah" (tyvar 3))))
+                        [g << TA.TypeRecordExt 1
+                            (Dict.singleton "meh" (g << TA.TypeRecordExt 2 (Dict.singleton "blah" (tyvar 3))))
                         ]
                         (tyvar 3)
                 }
@@ -691,9 +695,9 @@ records as Test =
 #                    >> Dict.fromList
                 , type =
                     function
-                        [t << TA.TypeRecordExt 1
+                        [g << TA.TypeRecordExt 1
                             (Dict.singleton "meh"
-                                (t << TA.TypeRecordExt 2
+                                (g << TA.TypeRecordExt 2
                                     (Dict.singleton
                                         "blah"
                                         tyNumber
@@ -738,7 +742,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> t >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> g >> re:
                     { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
@@ -751,7 +755,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> t >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "x" tyNumber) >> g >> re:
                     { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
@@ -766,7 +770,7 @@ records as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt 1 (Dict.singleton "first" (tyvar 2)) >> t >> re:
+                (TA.TypeRecordExt 1 (Dict.singleton "first" (tyvar 2)) >> g >> re:
                     { freeTyvars = Dict.empty
                     , type = function [re] (tyvar 2)
                     }
