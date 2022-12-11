@@ -86,10 +86,12 @@ initState as Int: State =
     }
 
 
-alias Instance = {
+alias Instance =
+    {
     , definedAt as Pos
     , type as TA.Type
     , freeTyvars as Dict TA.UnificationVariableId TA.Tyvar
+    , uni as UniqueOrImmutable
     }
 
 
@@ -139,7 +141,9 @@ union Error_ =
     , ErrorTooManyArguments
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
-    , ErrorUniquenessDoesNotMatch
+    , ErrorUniquenessDoesNotMatch TA.Type CA.Expression
+    , ErrorUniquenessDoesNotMatchParameter
+    , ErrorUniquenessDoesNotMatchPattern
     , ErrorRecyclingDoesNotMatch
     , ErrorUndefinedTypeVariable Name
     , ErrorWrongNumberOfTypeArguments USR [TA.UnificationVariableId] [TA.Type]
@@ -234,6 +238,12 @@ addError as Env: Pos: Error_: State@: None =
     env: pos: error: state@:
 
     Array.push @state.errors (pos & env.context & error)
+
+
+addErrorIf as Bool: Env: Pos: Error_: State@: None =
+    test: env: pos: error: state@:
+
+    if test then addError env pos error @state else None
 
 
 getConstructorByUsr as USR: Env: Maybe Instance =
@@ -681,6 +691,7 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
                 , definedAt = pos
                 , type
                 , freeTyvars = Dict.empty
+                , uni = Uni
                 }
 
             newEnv as Env =
@@ -862,13 +873,16 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
             else
                 None
 
-            # TODO: expectedType must be unique!!!
+            try expectedType as
+                TA.Type _ Uni _: None
+                TA.Type _ Imm _: addError env pos ErrorUniquenessDoesNotMatchParameter @state
 
             variable as Instance =
                 {
                 , definedAt = pos
                 , type = expectedType
                 , freeTyvars = Dict.empty
+                , uni = Uni
                 }
 
             localEnv as Env =
@@ -879,29 +893,32 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
 
 
 
-
 checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
     env: expectedType: caExpression: state@:
 
-    TA.Type typePos uni expectedType_ =
+    TA.Type typePos expectedUni expectedType_ =
         expectedType
+
+    addErrorIfUnique as Pos: None =
+        pos:
+        addErrorIf (expectedUni == Uni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
 
     try caExpression & expectedType_ as
 
         CA.LiteralNumber pos n & TA.TypeExact typeUsr []:
-            if typeUsr /= CoreTypes.numberDef.usr then
-                addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
-            else
-                None
+            addErrorIfUnique pos
+
+            addErrorIf (typeUsr /= CoreTypes.numberDef.usr)
+                env pos (ErrorIncompatibleTypes caExpression expectedType) @state
 
             TA.LiteralNumber pos n
 
 
         CA.LiteralText pos text & TA.TypeExact typeUsr []:
-            if typeUsr /= CoreTypes.textDef.usr then
-                addError env pos (ErrorIncompatibleTypes caExpression expectedType) @state
-            else
-                None
+            addErrorIfUnique pos
+
+            addErrorIf (typeUsr /= CoreTypes.textDef.usr)
+                env pos (ErrorIncompatibleTypes caExpression expectedType) @state
 
             TA.LiteralText pos text
 
@@ -912,12 +929,15 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
+                    addErrorIf (expectedUni /= var.uni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
                     addEquality env pos Why_Annotation var.type expectedType @state
 
             TA.Variable pos ref
 
 
         CA.Constructor pos usr & _:
+            addErrorIfUnique pos
+
             try getConstructorByUsr usr env as
                 Nothing:
                     addError env pos (ErrorConstructorNotFound usr) @state
@@ -929,6 +949,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Fn pos pars body & TA.TypeFn parsT out:
+            addErrorIfUnique pos
 
             if List.length pars > List.length parsT then
                 addError env pos ErrorTooManyArguments @state
@@ -962,6 +983,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Record pos (Just ext) valueByName & TA.TypeRecord typeByName:
+            addErrorIfUnique pos
 
             # ext must have type expectedType
             # TODO: add context
@@ -984,6 +1006,8 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Record pos Nothing valueByName & TA.TypeRecord typeByName:
+            addErrorIfUnique pos
+
             aOnly & both & bOnly =
                 onlyBothOnly valueByName typeByName
 
@@ -1016,7 +1040,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                 expectedType
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
-                >> TA.Type typePos uni
+                >> TA.Type typePos expectedUni
 
             addEquality env pos Why_RecordAccess expressionType requiredType @state
 
@@ -1298,7 +1322,7 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
                     annotationToTaType @state env annotation
 
                 if variableOfThisTypeMustBeFlaggedUnique t /= isUnique then
-                    addError env pos ErrorUniquenessDoesNotMatch @state
+                    addError env pos (ErrorUniquenessDoesNotMatchPattern) @state
                 else
                     None
 
@@ -1315,6 +1339,7 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
                     , definedAt = pos
                     , type = patternType
                     , freeTyvars = Dict.empty
+                    , uni = if isUnique then Uni else Imm
                     }
 
                 # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
@@ -1362,6 +1387,7 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
                             , definedAt = pos
                             , type = expectedType
                             , freeTyvars = Dict.empty
+                            , uni = if isUnique then Uni else Imm
                             }
 
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
@@ -1668,6 +1694,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     , definedAt = valueStuff.pos
                     , type
                     , freeTyvars = Dict.intersect unificationIdToClasses (TA.typeTyvars type)
+                    , uni = Imm
                     }
 
                 { envX with variables = Dict.insert ref instance .variables }
@@ -1690,6 +1717,7 @@ addConstructorToGlobalEnv as State@: Dict Name TA.Type: Dict TA.UnificationVaria
         , definedAt = Pos.G
         , type
         , freeTyvars = freeTyvars >> Dict.filter k: v: Dict.member k consTyvars
+        , uni = Imm
         }
 
     { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }

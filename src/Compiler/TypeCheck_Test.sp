@@ -128,6 +128,7 @@ infer as Text: Text: Result Text Out =
                 , definedAt = Pos.T
                 , type = function [tyNumber, tyNumber] tyNumber
                 , freeTyvars = Dict.empty
+                , uni = Imm
                 }
             >> Dict.insert
                 (RefGlobal << USR TH.moduleUmr "reset")
@@ -135,6 +136,7 @@ infer as Text: Text: Result Text Out =
                 , definedAt = Pos.T
                 , type = function [tyNumber] tyNone
                 , freeTyvars = Dict.empty
+                , uni = Imm
                 }
         }
 
