@@ -124,12 +124,13 @@ uniquenessTyping as Test =
                 """
                 (infer "a")
                 (Test.errorContains ["ErrorUniquenessDoesNotMatch"])
-            , codeTest "2"
+            , codeTest
+                "2"
                 """
                 a as Number = mut 1
                 """
                 (infer "a")
-                (Test.errorContains ["incompatible"])
+                (Test.errorContains ["unique"])
             ]
         , Test.Group
             """
@@ -205,8 +206,10 @@ uniquenessTyping as Test =
 
 
 mutation as Test =
-    Test.Group "Mutation" [
-        , Test.Group "Uniques can be mutated in place" [
+    Test.Group "Mutation"
+        [
+        , Test.Group "Uniques can be mutated in place"
+            [
             [# TODO enable once the new parser self-compiles
             , valueTest
                 """
@@ -223,7 +226,7 @@ mutation as Test =
             #]
             , codeTest
                 """
-                Mutation does NOT consume the unique
+                ONLY Mutation does NOT consume the unique
                 """
                 """
                 scope =

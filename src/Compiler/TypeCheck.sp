@@ -211,11 +211,6 @@ typeG as TA.Type_: TA.Type =
     TA.Type Pos.G Imm
 
 
-makeUnique as TA.Type: TA.Type =
-    (TA.Type pos _ type_):
-    TA.Type pos Uni type_
-
-
 newTyvarId as State@: TA.UnificationVariableId =
     state@:
     @state.lastUnificationVarId += 1
@@ -275,7 +270,10 @@ generalize as Env: Instance: State@: TA.Type =
         # We need to remember that this new tyvar has typeclass contraints
         Hash.insert @state.tyvarsById generalizedTyvarId tyvar
 
-        applySubstitutionToType originalTyvarId (TA.Type Pos.G Imm << TA.TypeUnificationVariable generalizedTyvarId)
+        generalizedTyvarId
+        >> TA.TypeUnificationVariable
+        >> TA.Type Pos.G instance.uni
+        >> applySubstitutionToType originalTyvarId
 
 
 #
@@ -388,6 +386,7 @@ expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Typ
                             >> Dict.fromList
 
                         expandTyvarsInType @state context tyvarIdsToType expandedAlias.type
+                        >> TA.setUni uni
 
         CA.TypeFn modsAndArgs out:
             args = List.map (Tuple.mapSecond rec) modsAndArgs
@@ -406,7 +405,7 @@ expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Typ
                     >> ta
 
                 Just ty:
-                    ty
+                    TA.setUni uni ty
 
 
 annotationToTaType as State@: Env: CA.Type: TA.Type =
@@ -464,13 +463,10 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                     taType = annotationToTaType @state envWithContext annotationType
                     checkExpression envWithContext taType def.body @state & taType
                 Nothing:
-                    inferExpression envWithContext def.body @state
-
-
-    if patternOut.maybeFullAnnotation == Nothing then
-        addEquality envWithContext (CA.patternPos def.pattern) Why_LetIn patternOut.patternType bodyType @state
-    else
-        None
+                    tuple = inferExpression envWithContext def.body @state
+                    log "===============" patternOut.patternType
+                    addEquality envWithContext (CA.patternPos def.pattern) Why_LetIn patternOut.patternType tuple.second @state
+                    tuple
 
     updateInstance as Instance: Instance =
         instance: { instance with freeTyvars }
@@ -1266,7 +1262,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                         ## `blah` /could/ be unique, but in this case we'll just assume it is NOT
 
                         if List.any variableOfThisTypeMustBeFlaggedUnique argumentTypes then
-                            makeUnique returnType
+                            TA.setUni Uni returnType
                         else
                             returnType
 
@@ -1313,7 +1309,7 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
             Nothing:
                 if isUnique then
                     newType @state
-                    >> makeUnique
+                    >> TA.setUni Uni
                 else
                     newType @state
 
@@ -1356,11 +1352,6 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
     , env = envWithVariable
     , maybeFullAnnotation = maybeAnnotation
     }
-
-
-
-
-
 
 
 
@@ -1520,9 +1511,9 @@ doModule as Int: Env: CA.Module: Res TA.Module =
         Dict.for caModule.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
 
     if List.length nonAnnotated > 1 then
-      todo "Right now the compiler supports only one root-level non-annotated value per module. =("
+        todo "Right now the compiler supports only one root-level non-annotated value per module. =("
     else
-      None
+        None
 
     [# TODO I can restore this once I remove the patterns from CanonicalAST
 
@@ -1879,13 +1870,18 @@ solveEqualities as ERState: ERState =
             Equality context pos why type1 type2 =
                 head
 
-            TA.Type _ _ type1_ = type1
-            TA.Type _ _ type2_ = type2
+            TA.Type _ uni1 type1_ = type1
+            TA.Type _ uni2 type2_ = type2
 
             state =
                 { oldState with equalities = tail }
 
-            try type1_ & type2_ as
+            if uni1 /= uni2 then
+                state
+                >> addErError head "one is unique, the other is immutable"
+                >> solveEqualities
+            else
+              try type1_ & type2_ as
 
                 TA.TypeUnificationVariable tyvarId & t2:
                     replaceUnificationVariable head tyvarId type2 state
@@ -2060,7 +2056,7 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
 
         TA.TypeUnificationVariable id:
             if id == tyvarId then
-                replacingType
+                TA.setUni uni replacingType
             else
                 originalType
 

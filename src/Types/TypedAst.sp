@@ -120,6 +120,9 @@ initModule as Text: UMR: Module =
 #
 # helpers
 #
+setUni as UniqueOrImmutable: Type: Type =
+    uni: (Type p _ t):
+    TA.Type p uni t
 
 
 patternNames as Pattern: Dict Name Pos =
