@@ -17,6 +17,7 @@ specs as Test =
       , howDoesItLookLike
       , uniquenessTyping
       , mutation
+
 #      , parentScope
 #      , records
 #      , unions
@@ -226,7 +227,7 @@ mutation as Test =
             #]
             , codeTest
                 """
-                ONLY Mutation does NOT consume the unique
+                Mutation does NOT consume the unique
                 """
                 """
                 scope =

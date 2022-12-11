@@ -4,14 +4,11 @@ alias UnificationVariableId =
 
 
 union Type =
-    Type Pos UniqueOrImmutable Type_
-
-union Type_ =
-    , TypeExact USR [Type]
-    , TypeFn [RecycleOrSpend & Type] Type
-    , TypeRecord (Dict Name Type)
-    , TypeUnificationVariable UnificationVariableId
-    , TypeRecordExt UnificationVariableId (Dict Name Type)
+    , TypeExact UniqueOrImmutable USR [Type]
+    , TypeFn UniqueOrImmutable [RecycleOrSpend & Type] Type
+    , TypeRecord UniqueOrImmutable (Dict Name Type)
+    , TypeUnificationVariable (Maybe UniqueOrImmutable) UnificationVariableId
+    , TypeRecordExt UniqueOrImmutable UnificationVariableId (Dict Name Type)
     , TypeError
 
 
@@ -83,20 +80,9 @@ alias ValueDef =
     }
 
 
-
-
 #
 # Module
 #
-
-#alias Constructor =
-#    {
-#    , pos as Pos
-#    , typeUsr as USR
-#    , type as Type
-#    , args as [Type]
-#    }
-
 
 alias Module =
     {
@@ -116,15 +102,9 @@ initModule as Text: UMR: Module =
     }
 
 
-
 #
 # helpers
 #
-setUni as UniqueOrImmutable: Type: Type =
-    uni: (Type p _ t):
-    TA.Type p uni t
-
-
 patternNames as Pattern: Dict Name Pos =
     p:
     try p as
@@ -137,23 +117,54 @@ patternNames as Pattern: Dict Name Pos =
 
 
 typeTyvars as Type: Dict UnificationVariableId None =
-    (Type _ _ type_):
-    try type_ as
-        TypeExact usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeFn ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
-        TypeRecord attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
-        TypeUnificationVariable id: Dict.singleton id None
-        TypeRecordExt id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
+    type:
+    try type as
+        TypeExact _ usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
+        TypeFn _ ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
+        TypeRecord _ attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
+        TypeUnificationVariable _ id: Dict.singleton id None
+        TypeRecordExt _ id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeError: Dict.empty
 
 
 typeAllowsFunctions as Type: Bool =
-    (Type _ _ type_):
-    try type_ as
-        TypeFn ins out: True
-        TypeUnificationVariable id: True
-        TypeExact usr args: List.any typeAllowsFunctions args
-        TypeRecord attrs: Dict.any (k: typeAllowsFunctions) attrs
-        TypeRecordExt id attrs: Dict.any (k: typeAllowsFunctions) attrs
+    type:
+    try type as
+        TypeFn _ ins out: True
+        TypeUnificationVariable _ id: True
+        TypeExact _ usr args: List.any typeAllowsFunctions args
+        TypeRecord _ attrs: Dict.any (k: typeAllowsFunctions) attrs
+        TypeRecordExt _ id attrs: Dict.any (k: typeAllowsFunctions) attrs
         TypeError: True
 
+
+setUni as UniqueOrImmutable: Type: Type =
+    uni: type:
+    try type as
+        TypeFn _ ins out:
+            TypeFn uni ins out
+
+        TypeUnificationVariable _ id:
+            TypeUnificationVariable (Just uni) id
+
+        TypeExact _ usr args:
+            TypeExact uni usr args
+
+        TypeRecord _ attrs:
+            TypeRecord uni attrs
+
+        TypeRecordExt _ id attrs:
+            TypeRecordExt uni id attrs
+
+        TypeError:
+            TypeError
+
+getUni as Type: Maybe UniqueOrImmutable =
+    type:
+    try type as
+        TypeFn uni ins out: Just uni
+        TypeUnificationVariable maybeUni id: maybeUni
+        TypeExact uni usr args: Just uni
+        TypeRecord uni attrs: Just uni
+        TypeRecordExt uni id attrs: Just uni
+        TypeError: Nothing
