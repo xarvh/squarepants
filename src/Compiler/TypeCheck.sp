@@ -142,7 +142,7 @@ union Error_ =
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch TA.Type CA.Expression
-    , ErrorUniquenessDoesNotMatchParameter
+    , ErrorUniquenessDoesNotMatchParameter TA.Type
     , ErrorUniquenessDoesNotMatchPattern
     , ErrorRecyclingDoesNotMatch
     , ErrorUndefinedTypeVariable Name
@@ -552,7 +552,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             callType =
                 newType @state
 
-            checkCallCo env callType pos reference args @state & callType
+            checkCall env callType pos reference args @state & callType
 
 
         CA.Record pos Nothing attrs:
@@ -875,7 +875,7 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
 
             try expectedType as
                 TA.Type _ Uni _: None
-                TA.Type _ Imm _: addError env pos ErrorUniquenessDoesNotMatchParameter @state
+                TA.Type _ Imm _: addError env pos (ErrorUniquenessDoesNotMatchParameter expectedType) @state
 
             variable as Instance =
                 {
@@ -979,7 +979,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Call pos reference args & _:
-            checkCallCo env expectedType pos reference args @state
+            checkCall env expectedType pos reference args @state
 
 
         CA.Record pos (Just ext) valueByName & TA.TypeRecord typeByName:
@@ -1122,7 +1122,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
 
-checkCallCo as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression =
+checkCall as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression =
     env: expectedType: pos: reference: givenArgs: state@:
 
     # `reference givenArg1 givenArg2 ...` must be of `expectedType`

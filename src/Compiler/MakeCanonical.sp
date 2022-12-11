@@ -1301,22 +1301,25 @@ translateTypeVariable as Pos: Token.Word: Res CA.Type =
 translateTypeFunctionParameter as ReadOnly: FA.Expression: Res (RecycleOrSpend & CA.Type) =
     ro: expression:
 
-    FA.Expression pos expr_ =
+    FA.Expression _ expr_ =
         expression
 
-    (mod as RecycleOrSpend) & (e as FA.Expression) =
-        try expr_ as
-            FA.Unop Op.UnopRecycle faOperand:
-                Recycle & faOperand
-            _:
-                Spend & expression
+    try expr_ as
+        FA.Unop Op.UnopRecycle faOperand:
+            faOperand
+            >> translateType ro
+            >> onOk (CA.Type pos _ type_):
 
-    e
-    >> translateType ro
-    >> onOk caExpression:
+            Recycle & (CA.Type pos Uni type_)
+            >> Ok
 
-    mod & caExpression
-    >> Ok
+        _:
+            expression
+            >> translateType ro
+            >> onOk caType:
+
+            Spend & caType
+            >> Ok
 
 
 translateType as ReadOnly: FA.Expression: Res CA.Type =

@@ -246,7 +246,11 @@ mutation as Test =
                 (infer "scope")
                 (Test.errorContains ["being consumed here"])
             ]
-        , Test.Group "A function can be defined to mutate its arguments" [
+        , Test.Group
+            """
+            A function can be defined to mutate its arguments
+            """
+            [
             , codeTest
                 """
                 base
