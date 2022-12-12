@@ -57,6 +57,11 @@ tyvar as Int: TA.Type =
     TA.TypeUnificationVariable Nothing id
 
 
+tyvarImm as Int: TA.Type =
+    id:
+    TA.TypeUnificationVariable (Just Imm) id
+
+
 tyNumber as TA.Type =
     TA.TypeExact Imm ("Number" >> Meta.spCoreUSR) []
 
@@ -409,7 +414,7 @@ variableTypes as Test =
             """
             (infer "id")
             (Test.isOkAndEqualTo
-                { type = function [tyvar 1] (tyvar 1)
+                { type = function [tyvarImm 1] (tyvarImm 1)
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -566,8 +571,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     function
-                        [ TA.TypeExact Imm (TH.localType "T") [ tyvar 1 ]]
-                        ( TA.TypeExact Imm (TH.localType "T") [ tyvar 1 ])
+                        [ TA.TypeExact Imm (TH.localType "T") [ tyvarImm 1 ]]
+                        ( TA.TypeExact Imm (TH.localType "T") [ tyvarImm 1 ])
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -586,7 +591,7 @@ higherOrderTypes as Test =
                 , type =
                     TA.TypeExact Imm
                         (TH.localType "X")
-                        [ tyvar 1 ]
+                        [ tyvarImm 1 ]
                 }
             )
         , codeTest
@@ -834,7 +839,7 @@ patterns as Test =
             (infer "identityFunction")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = function [tyvar 1] (tyvar 1)
+                , type = function [tyvar 1] (tyvarImm 1)
                 }
             )
         , codeTest
@@ -852,8 +857,8 @@ patterns as Test =
                 { freeTyvars = Dict.empty
                 , type =
                     function
-                        [tyList (tyvar 1)]
-                        (tyvar 1)
+                        [tyList (tyvarImm 1)]
+                        (tyvarImm 1)
                 }
             )
         , codeTest

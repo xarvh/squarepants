@@ -1946,31 +1946,41 @@ solveRecordExt as Equality: TA.UnificationVariableId: Dict Name TA.Type: Dict Na
 
 
 replaceUnificationVariable as Equality: Maybe UniqueOrImmutable: TA.UnificationVariableId: TA.Type: ERState: ERState =
-    equality: maybeUni: tyvarId: replacingType: state:
+    equality: maybeUni: tyvarId: replacingType_: state:
 
-    # TODO Do something with maybe uni?
+    replacingType =
+        try maybeUni & replacingType_ as
+            Just uni & TA.TypeUnificationVariable _ tyvarId2:
+                TA.TypeUnificationVariable (Just uni) tyvarId2
+            _:
+                replacingType_
 
-    try replacingType as
-        TA.TypeUnificationVariable uni tyvarId2:
-            state
+    isSame =
+        try replacingType as
+            TA.TypeUnificationVariable uni tyvarId2:
+                tyvarId == tyvarId2
 
-        _:
-            if occurs tyvarId replacingType then
-                addErError equality "circular!?" state
-            else
-                equalities =
-                    # TODO we don't care about map preserving order
-                    state.equalities >> List.map (Equality context pos why t1 t2):
-                        Equality context pos why
-                            (applySubstitutionToType tyvarId replacingType t1)
-                            (applySubstitutionToType tyvarId replacingType t2)
+            _:
+                False
 
-                substitutions =
-                    state.substitutions
-                    >> Dict.map (tyvarId: type: applySubstitutionToType tyvarId replacingType type)
-                    >> Dict.insert tyvarId replacingType
+    if isSame then
+        state
+    else if occurs tyvarId replacingType then
+        addErError equality "circular!?" state
+    else
+        equalities =
+            # TODO we don't care about map preserving order
+            state.equalities >> List.map (Equality context pos why t1 t2):
+                Equality context pos why
+                    (applySubstitutionToType tyvarId replacingType t1)
+                    (applySubstitutionToType tyvarId replacingType t2)
 
-                { state with substitutions, equalities }
+        substitutions =
+            state.substitutions
+            >> Dict.map (tyvarId: type: applySubstitutionToType tyvarId replacingType type)
+            >> Dict.insert tyvarId replacingType
+
+        { state with substitutions, equalities }
 
 
 occurs as TA.UnificationVariableId: TA.Type: Bool =
