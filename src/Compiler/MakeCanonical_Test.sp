@@ -204,7 +204,7 @@ lists as Test =
             (Test.isOkAndEqualTo
                 { body = CA.Variable p (TH.rootLocal "l")
                 , native = False
-                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "l", maybeAnnotation = (TH.boolType >> CoreTypes.list >> Just) }
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "l", maybeAnnotation = (TH.caBool >> CoreTypes.list >> Just) }
                 , tyvars = Dict.empty
 
                 , directConsDeps = Dict.empty
@@ -270,8 +270,8 @@ tuples as Test =
                       , maybeName = Just "a"
                       , maybeAnnotation =
                          Dict.empty
-                            >> Dict.insert "first" TH.numberType
-                            >> Dict.insert "second" TH.numberType
+                            >> Dict.insert "first" TH.caNumber
+                            >> Dict.insert "second" TH.caNumber
                             >> CA.TypeRecord
                             >> CA.Type p Imm
                             >> Just

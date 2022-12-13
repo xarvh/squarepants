@@ -48,35 +48,13 @@ outToHuman as Out: Text =
     >> Text.join "\n"
 
 
-t as TA.Type: TA.Type =
-    a: a
-
 
 tyvar as Int: TA.Type =
-    id:
-    TA.TypeUnificationVariable Nothing id
+    TH.taTyvar
 
 
 tyvarImm as Int: TA.Type =
-    id:
-    TA.TypeUnificationVariable (Just Imm) id
-
-
-tyNumber as TA.Type =
-    TA.TypeExact Imm ("Number" >> Meta.spCoreUSR) []
-
-
-tyNone as TA.Type =
-    TA.TypeExact Imm ("None" >> Meta.spCoreUSR) []
-
-
-tyBool as TA.Type =
-    TA.TypeExact Imm ("Bool" >> Meta.spCoreUSR) []
-
-
-tyList as TA.Type: TA.Type =
-    item:
-    TA.TypeExact Imm ("List" >> Meta.spCoreUSR) [item]
+    TH.taTyvarImm
 
 
 freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVariableId TA.Tyvar =
@@ -127,7 +105,7 @@ infer as Text: Text: Result Text Out =
                 (RefGlobal << USR TH.moduleUmr "add")
                 {
                 , definedAt = Pos.T
-                , type = function [tyNumber, tyNumber] tyNumber
+                , type = function [TH.taNumber, TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
                 , uni = Imm
                 }
@@ -135,7 +113,7 @@ infer as Text: Text: Result Text Out =
                 (RefGlobal << USR TH.moduleUmr "reset")
                 {
                 , definedAt = Pos.T
-                , type = function [tyNumber] tyNone
+                , type = function [TH.taNumber] TH.taNone
                 , freeTyvars = Dict.empty
                 , uni = Imm
                 }
@@ -251,7 +229,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = tyNumber
+                , type = TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -269,7 +247,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [tyNumber] tyNumber
+                , type = function [TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -279,7 +257,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [tyNumber] tyNumber
+                , type = function [TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -289,7 +267,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [tyvar 1] tyNumber
+                , type = function [tyvar 1] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -328,7 +306,7 @@ statements as Test =
               False
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = tyBool, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = TH.taBool, freeTyvars = Dict.empty })
         , codeTest
             """
             Definition statement return type None
@@ -338,7 +316,7 @@ statements as Test =
               f = fn x: 3
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = tyNone, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = TH.taNone, freeTyvars = Dict.empty })
         , codeTest
             """
             [reg] Definition statement with annotation return type None
@@ -478,7 +456,7 @@ mu as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                { ty = typeFunction tyNumber LambdaConsuming tyNone
+                { ty = typeFunction TH.taNumber LambdaConsuming TH.taNone
                 , freeTypeVariables = Dict.empty
                 , isMutable = False
                 }
@@ -692,12 +670,12 @@ records as Test =
                                 ( TA.TypeRecordExt Imm 2
                                     (Dict.singleton
                                         "blah"
-                                        tyNumber
+                                        TH.taNumber
                                     )
                                 )
                             )
                         ]
-                        tyNone
+                        TH.taNone
                 }
             )
         , codeTest
@@ -734,7 +712,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt Imm 1 (Dict.singleton "x" tyNumber) >>  re:
+                (TA.TypeRecordExt Imm 1 (Dict.singleton "x" TH.taNumber) >>  re:
                     { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
@@ -747,7 +725,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt Imm 1 (Dict.singleton "x" tyNumber) >>  re:
+                (TA.TypeRecordExt Imm 1 (Dict.singleton "x" TH.taNumber) >>  re:
                     { freeTyvars = Dict.empty
                     , type = function [re] re
                     }
@@ -857,7 +835,7 @@ patterns as Test =
                 { freeTyvars = Dict.empty
                 , type =
                     function
-                        [tyList (tyvarImm 1)]
+                        [TH.taList (tyvarImm 1)]
                         (tyvarImm 1)
                 }
             )
@@ -951,7 +929,7 @@ try_as as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = function [tyBool] tyNumber
+                , type = function [TH.taBool] TH.taNumber
                 }
             )
 
@@ -1020,7 +998,7 @@ if_else as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = function [tyBool] tyNumber
+                , type = function [TH.taBool] TH.taNumber
                 }
             )
 

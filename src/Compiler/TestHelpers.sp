@@ -87,52 +87,51 @@ resErrorToStrippedText as Text: Res a: Result Text a =
 
 
 #
-# Pipelines
-#
-#textToFormattableModule as Text: Res [FA.Statement] =
-#    code:
-#    tokensResult =
-#        as Res [Token]
-#        Compiler/Lexer.lexer moduleName code
-#
-#    tokensToStatsResult as [Token]: Res [FA.Statement] =
-#        tokens:
-#        Compiler/Parser.parse stripLocations moduleName tokens
-#
-#    onOk tokensToStatsResult tokensResult
-
-
-#textToCanonicalModule as Text: Res CA.Module =
-#    code:
-#
-#    env =
-#        as Compiler/MakeCanonical.ReadOnly
-#        {
-#        , currentModule = moduleUmr
-#        , meta = defaultMeta
-#        }
-#
-#    code
-#        >> textToFormattableModule
-#        >> onOk (Compiler/MakeCanonical.translateModule env code moduleUmr)
-
-
-#
 # Same as core types, but have Pos.T rather than Pos.N
 #
-boolType as CA.Type =
+caBool as CA.Type =
     CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "Bool") []
 
 
-numberType as CA.Type =
+caNumber as CA.Type =
     CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "Number") []
 
 
-noneType as CA.Type =
+caNone as CA.Type =
     CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "None") []
 
 
-listType as CA.Type: CA.Type =
+caList as CA.Type: CA.Type =
     itemType:
     CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "List") [ itemType ]
+
+
+#
+# TA Types
+#
+taTyvar as Int: TA.Type =
+    id:
+    TA.TypeUnificationVariable Nothing id
+
+
+taTyvarImm as Int: TA.Type =
+    id:
+    TA.TypeUnificationVariable (Just Imm) id
+
+
+taNumber as TA.Type =
+    TA.TypeExact Imm ("Number" >> Meta.spCoreUSR) []
+
+
+taNone as TA.Type =
+    TA.TypeExact Imm ("None" >> Meta.spCoreUSR) []
+
+
+taBool as TA.Type =
+    TA.TypeExact Imm ("Bool" >> Meta.spCoreUSR) []
+
+
+taList as TA.Type: TA.Type =
+    item:
+    TA.TypeExact Imm ("List" >> Meta.spCoreUSR) [item]
 
