@@ -17,9 +17,8 @@ specs as Test =
       , howDoesItLookLike
       , uniquenessTyping
       , mutation
-
-#      , parentScope
-#      , records
+      , parentScope
+      , records
 #      , unions
       ]
 
@@ -291,22 +290,31 @@ mutation as Test =
 parentScope as Test =
     Test.Group
         """
-        Mutating a variable in the parent scope
+        Recycling a variable in the parent scope
         """
         [
         , Test.Group
             """
-            A function that mutates any mutable belonging to an ancestor scope is "tainted" by that mutableGeneral
+            A function that recycles any unique belonging to an ancestor scope "requires" that unique.
             """
             [
             , codeTest
                 """
-                SKIP also wait for removing auto-curry
+                SKIP -----> Function with requirements cannot be returned <----------
                 """
                 """
+                scope =
+                    !x =
+                        mut 1
+
+                    f =
+                        fn n:
+                        @x += n
+
+                    f
                 """
                 (infer "scope")
-                (Test.errorContains [])
+                (Test.errorContains ["zzzzz"])
             ]
         ]
 
@@ -320,42 +328,48 @@ records as Test =
         [
         , Test.Group
             """
-            A record that has at least one mutable attribute is itself mutable
+            A record that has at least one unique attribute is itself unique
             """
             [
             , codeTest
                 """
-                Annotation, valid
+                ONLY Annotation, valid
                 """
                 """
                 scope =
-                    @r as { x as Number, y as @Number } =
+                    fn None:
+                    !r as { x as Number, y as !Number } =
                         { x = 0, y = mut 0 }
+                    r
                 """
                 (infer "scope")
-                Test.isOk
+                (Test.isOkAndEqualTo
+                    { freeTyvars = Dict.empty
+                    , type = TA.TypeUnificationVariable (Just Imm) 1
+                    }
+                )
             , codeTest
                 """
                 Annotation, invalid 1
                 """
                 """
                 scope =
-                    @r as { x as Number, y as Number } =
+                    !r as { x as Number, y as Number } =
                         { x = 0, y = 0 }
                 """
                 (infer "scope")
-                (Test.errorContains [ "UNIQUENESS" ])
+                (Test.errorContains [ "ErrorUniquenessDoesNotMatchPattern" ])
             , codeTest
                 """
                 Annotation, invalid 2
                 """
                 """
                 scope =
-                    r as { x as Number, y as @Number } =
+                    r as { x as Number, y as !Number } =
                         { x = 0, y = mut 0 }
                 """
                 (infer "scope")
-                (Test.errorContains [ "UNIQUENESS" ])
+                (Test.errorContains [ "ErrorUniquenessDoesNotMatchPattern" ])
 
             , codeTest
                 """
@@ -363,7 +377,7 @@ records as Test =
                 """
                 """
                 scope =
-                    @r =
+                    !r =
                         { x = 0, y = mut 0 }
                 """
                 (infer "scope")
@@ -374,11 +388,11 @@ records as Test =
                 """
                 """
                 scope =
-                    @r =
+                    !r =
                         { x = 0, y = 0 }
                 """
                 (infer "scope")
-                (Test.errorContains [ "not compatible" ])
+                (Test.errorContains [ "one is unique, the other is immutable" ])
             , codeTest
                 """
                 No annotation, invalid 2
@@ -412,15 +426,15 @@ records as Test =
                 """
                 """
                 scope =
-                    @r = { x = 0, y = mut 1 }
+                    !r = { x = 0, y = mut 1 }
 
-                    { x = immutableX, y = @mutableY } =
+                    { x = immutableX, y = !mutableY } =
                         r
 
                     xx as Number =
                         immutableX
 
-                    @yy as @Number =
+                    !yy as !Number =
                         mutableY
                 """
                 (infer "scope")
@@ -431,15 +445,15 @@ records as Test =
                 """
                 """
                 scope =
-                    @r = { x = 0, y = mut 1 }
+                    !r = { x = 0, y = mut 1 }
 
-                    { x, @y } =
+                    { x, !y } =
                         r
 
                     xx as Number =
                         x
 
-                    @yy as @Number =
+                    !yy as !Number =
                         y
                 """
                 (infer "scope")
@@ -456,7 +470,7 @@ records as Test =
                 """
                 """
                 scope =
-                    @record = { x = 0, y = mut 0 }
+                    !record = { x = 0, y = mut 0 }
                     @record.x += 3
                 """
                 (infer "scope")
@@ -467,7 +481,7 @@ records as Test =
                 """
                 """
                 scope =
-                    @record = { x = 0, y = mut 0 }
+                    !record = { x = 0, y = mut 0 }
                     doStuff @record.x @record.y
                 """
                 (infer "scope")
@@ -478,7 +492,7 @@ records as Test =
                 """
                 """
                 scope =
-                    @record = { x = 0, y = mut 0 }
+                    !record = { x = 0, y = mut 0 }
 
                     a = record.x
 
