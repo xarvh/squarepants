@@ -64,12 +64,6 @@ freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVar
         Dict.insert id { originalName, allowFunctions = Just True, allowUniques = Just False }
 
 
-function as [TA.Type]: TA.Type: TA.Type =
-    from: to:
-    TA.TypeFn Imm (List.map (t: Spend & t) from) to
-
-
-
 #
 #
 #
@@ -105,7 +99,7 @@ infer as Text: Text: Result Text Out =
                 (RefGlobal << USR TH.moduleUmr "add")
                 {
                 , definedAt = Pos.T
-                , type = function [TH.taNumber, TH.taNumber] TH.taNumber
+                , type = TH.taFunction [TH.taNumber, TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
                 , uni = Imm
                 }
@@ -113,7 +107,7 @@ infer as Text: Text: Result Text Out =
                 (RefGlobal << USR TH.moduleUmr "reset")
                 {
                 , definedAt = Pos.T
-                , type = function [TH.taNumber] TH.taNone
+                , type = TH.taFunction [TH.taNumber] TH.taNone
                 , freeTyvars = Dict.empty
                 , uni = Imm
                 }
@@ -247,7 +241,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [TH.taNumber] TH.taNumber
+                , type = TH.taFunction [TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -257,7 +251,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [TH.taNumber] TH.taNumber
+                , type = TH.taFunction [TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -267,7 +261,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = function [tyvar 1] TH.taNumber
+                , type = TH.taFunction [tyvar 1] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -392,7 +386,7 @@ variableTypes as Test =
             """
             (infer "id")
             (Test.isOkAndEqualTo
-                { type = function [tyvarImm 1] (tyvarImm 1)
+                { type = TH.taFunction [tyvarImm 1] (tyvarImm 1)
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -548,7 +542,7 @@ higherOrderTypes as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 { type =
-                    function
+                    TH.taFunction
                         [ TA.TypeExact Imm (TH.localType "T") [ tyvarImm 1 ]]
                         ( TA.TypeExact Imm (TH.localType "T") [ tyvarImm 1 ])
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
@@ -643,7 +637,7 @@ records as Test =
                 {
                 , freeTyvars = Dict.empty
                 , type =
-                    function
+                    TH.taFunction
                         [ TA.TypeRecordExt Imm 1
                             (Dict.singleton "meh" ( TA.TypeRecordExt Imm 2 (Dict.singleton "blah" (tyvar 3))))
                         ]
@@ -664,7 +658,7 @@ records as Test =
 #                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
 #                    >> Dict.fromList
                 , type =
-                    function
+                    TH.taFunction
                         [ TA.TypeRecordExt Imm 1
                             (Dict.singleton "meh"
                                 ( TA.TypeRecordExt Imm 2
@@ -714,7 +708,7 @@ records as Test =
             (Test.isOkAndEqualTo
                 (TA.TypeRecordExt Imm 1 (Dict.singleton "x" TH.taNumber) >>  re:
                     { freeTyvars = Dict.empty
-                    , type = function [re] re
+                    , type = TH.taFunction [re] re
                     }
                 )
             )
@@ -727,7 +721,7 @@ records as Test =
             (Test.isOkAndEqualTo
                 (TA.TypeRecordExt Imm 1 (Dict.singleton "x" TH.taNumber) >>  re:
                     { freeTyvars = Dict.empty
-                    , type = function [re] re
+                    , type = TH.taFunction [re] re
                     }
                 )
             )
@@ -742,7 +736,7 @@ records as Test =
             (Test.isOkAndEqualTo
                 (TA.TypeRecordExt Imm 1 (Dict.singleton "first" (tyvar 2)) >>  re:
                     { freeTyvars = Dict.empty
-                    , type = function [re] (tyvar 2)
+                    , type = TH.taFunction [re] (tyvar 2)
                     }
                 )
             )
@@ -817,7 +811,7 @@ patterns as Test =
             (infer "identityFunction")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = function [tyvar 1] (tyvarImm 1)
+                , type = TH.taFunction [tyvar 1] (tyvarImm 1)
                 }
             )
         , codeTest
@@ -834,7 +828,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
                 , type =
-                    function
+                    TH.taFunction
                         [TH.taList (tyvarImm 1)]
                         (tyvarImm 1)
                 }
@@ -854,7 +848,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
                 , type =
-                    function
+                    TH.taFunction
                         [ TA.TypeRecord Imm (Dict.fromList [ ( "first" & tyvar 1 ) ])]
                         (tyvar 1)
                 }
@@ -929,7 +923,7 @@ try_as as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = function [TH.taBool] TH.taNumber
+                , type = TH.taFunction [TH.taBool] TH.taNumber
                 }
             )
 
@@ -998,7 +992,7 @@ if_else as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = function [TH.taBool] TH.taNumber
+                , type = TH.taFunction [TH.taBool] TH.taNumber
                 }
             )
 

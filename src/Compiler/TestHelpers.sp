@@ -135,3 +135,8 @@ taList as TA.Type: TA.Type =
     item:
     TA.TypeExact Imm ("List" >> Meta.spCoreUSR) [item]
 
+
+taFunction as [TA.Type]: TA.Type: TA.Type =
+    from: to:
+    TA.TypeFn Imm (List.map (t: Spend & t) from) to
+

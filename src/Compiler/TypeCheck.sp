@@ -364,7 +364,14 @@ expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Typ
             TA.TypeFn uni args (rec out)
 
         CA.TypeRecord attrs:
-            TA.TypeRecord uni (Dict.map (k: rec) attrs)
+
+            uniRecord =
+                if uni == Uni or Dict.any (k: (CA.Type pos imm _): imm == Uni) attrs then
+                    Uni
+                else
+                    Imm
+
+            TA.TypeRecord uniRecord (Dict.map (k: rec) attrs)
 
         CA.TypeAnnotationVariable name:
             try Dict.get name argsByName as
@@ -534,7 +541,6 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
 
         CA.Record pos (Just ext) attrExpressions:
-
 
             typedValueAndValueTypeByName as Dict Name (TA.Expression & TA.Type) =
                 attrExpressions >> Dict.map name: value:
@@ -960,7 +966,6 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Record pos Nothing valueByName & TA.TypeRecord uni typeByName:
-            addErrorIfUnique pos
 
             aOnly & both & bOnly =
                 onlyBothOnly valueByName typeByName

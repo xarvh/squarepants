@@ -333,7 +333,7 @@ records as Test =
             [
             , codeTest
                 """
-                ONLY Annotation, valid
+                Annotation, valid
                 """
                 """
                 scope =
@@ -345,7 +345,16 @@ records as Test =
                 (infer "scope")
                 (Test.isOkAndEqualTo
                     { freeTyvars = Dict.empty
-                    , type = TA.TypeUnificationVariable (Just Imm) 1
+                    , type =
+                        TH.taFunction
+                            [TH.taNone]
+                            ([
+                              , "x" & TH.taNumber
+                              , "y" & TA.setUni Uni TH.taNumber
+                              ]
+                              >> Dict.fromList
+                              >> TA.TypeRecord Uni
+                            )
                     }
                 )
             , codeTest
