@@ -13,15 +13,17 @@ All the crunching is done at compile time, which means that, for unique values, 
 
 
 specs as Test =
-    Test.Group "Mutability spec" [
-      , howDoesItLookLike
-      , uniquenessTyping
-      , mutation
-      , parentScope
-      , records
+    Test.Group "Mutability spec"
+      [
+#      , howDoesItLookLike
+#      , uniquenessTyping
+#      , mutation
+#      , parentScope
+#      , records
 #      , unions
       ]
 
+[#
 
 #
 # Boilerplate code, not really needed to understand the system
@@ -586,3 +588,4 @@ unions as Test =
             ]
         ]
 
+#]

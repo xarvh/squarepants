@@ -34,7 +34,7 @@ codeTest =
 alias Out =
     {
     , type as TA.Type
-    , freeTyvars as Dict TA.UnificationVariableId TA.Tyvar
+    , freeTyvars as Dict TA.TyvarId TA.Tyvar
     }
 
 
@@ -57,7 +57,7 @@ tyvarImm as Int: TA.Type =
     TH.taTyvarImm
 
 
-freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVariableId TA.Tyvar =
+freeTyvarsAnnotated as [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
     ids:
     Dict.empty
     >> List.for ids (id & originalName):
@@ -152,7 +152,7 @@ infer as Text: Text: Result Text Out =
 
 
 
-normalizeTyvarId as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.UnificationVariableId: TA.UnificationVariableId =
+normalizeTyvarId as Hash TA.TyvarId TA.TyvarId@: TA.TyvarId: TA.TyvarId =
     hash@: id:
 
     try Hash.get hash id as
@@ -170,7 +170,7 @@ normalizeTyvarId as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.
           nid
 
 
-normalizeType as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.Type: TA.Type =
+normalizeType as Hash TA.TyvarId TA.TyvarId@: TA.Type: TA.Type =
     hash@: type:
 
     try type as
@@ -185,8 +185,8 @@ normalizeType as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.Typ
         TA.TypeRecord uni attrs:
             TA.TypeRecord uni (Dict.map (k: (normalizeType @hash)) attrs)
 
-        TA.TypeUnificationVariable maybeUni id:
-            TA.TypeUnificationVariable maybeUni (normalizeTyvarId @hash id)
+        TA.TypeVar maybeUni id:
+            TA.TypeVar maybeUni (normalizeTyvarId @hash id)
 
         TA.TypeRecordExt uni id attrs:
             TA.TypeRecordExt uni
