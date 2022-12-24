@@ -507,7 +507,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 try getConstructorByUsr usr env as
                     Nothing:
                         addError env pos (ErrorConstructorNotFound usr) @state
-                        TA.TypeError
+                        typeError
 
                     Just cons:
                         generalize env cons @state
@@ -663,7 +663,6 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
                 , definedAt = pos
                 , type
                 , freeTyvars = Dict.empty
-                , uni = Uni
                 }
 
             newEnv as Env =
@@ -710,9 +709,25 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
 
 
 inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
-    env: pos: attrName: inferredType: state@:
+    env: pos: attrName: recordType: state@:
 
-    try inferredType as
+    #
+    #   inferredType.attrName
+    #
+    # We need to guarantee that `inferredType` has an attribute of the correct name
+    # Then we need to figure out the type of the attribute.
+
+    TA.Type recordUni recordBase =
+        recordType
+
+    # If recordType is unique, then attrName can be unique or immutable
+    # If recordType is imm, then attrName MUST be immutable
+    #
+    # Our UniquenessType doesn't tell us whether something is actually unique or not, it just
+    # tells us whether it is *compatible* with being unique.
+    # Therefore, the attribute has always the same uni as the record.
+
+    try recordBase as
         TA.TypeRecord attrTypes:
             try Dict.get attrName attrTypes as
                 Just type:
@@ -720,7 +735,7 @@ inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
 
                 Nothing:
                     addError env pos (ErrorRecordDoesNotHaveAttribute attrName) @state
-                    TA.TypeError
+                    typeError
 
         TA.TypeRecordExt tyvarId extensionAttrTypes:
             try Dict.get attrName extensionAttrTypes as
@@ -729,30 +744,37 @@ inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
 
                 Nothing:
                     newExtId = newTyvarId @state
-                    newAttrType = newType @state
+                    newAttrType = newTypeWithUni recordUni @state
 
-                    type =
-                        TA.TypeRecordExt newExtId (Dict.insert attrName newAttrType extensionAttrTypes)
+                    oldRecordType =
+                        TA.TypeVar tyvarId
+                        >> TA.Type recordUni
 
-                    addEquality env pos Why_RecordAccess (TA.TypeVar tyvarId) type @state
+                    newRecordType =
+                        Dict.insert attrName newAttrType extensionAttrTypes
+                        >> TA.TypeRecordExt newExtId
+                        >> TA.Type recordUni
+
+                    addEquality env pos Why_RecordAccess oldRecordType newRecordType @state
 
                     newAttrType
 
-
         TA.TypeVar id:
             newExtId = newTyvarId @state
-            newAttrType = newType @state
+            newAttrType = newTypeWithUni recordUni @state
 
-            type as TA.Type =
-                TA.Type TA.UniT << TA.TypeRecordExt newExtId (Dict.singleton attrName newAttrType)
+            newRecordType as TA.Type =
+                Dict.singleton attrName newAttrType
+                >> TA.TypeRecordExt newExtId
+                >> TA.Type recordUni
 
-            addEquality env pos Why_RecordAccess (TA.TypeVar maybeUni id) type @state
+            addEquality env pos Why_RecordAccess recordType newRecordType @state
 
             newAttrType
 
 
         _:
-            addError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
+            addError env pos (ErrorTryingToAccessAttributeOfNonRecord attrName recordType) @state
             typeError
 
 
@@ -804,7 +826,7 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
 
         _:
             addError env pos ErrorNotCompatibleWithRecord @state
-            TA.TypeError
+            typeError
 
 
 #
@@ -835,17 +857,11 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
             else
                 None
 
-            unused =
-                try TA.getUni expectedType as
-                    Just Imm: addError env pos (ErrorUniquenessDoesNotMatchParameter expectedType) @state
-                    _: None
-
             variable as Instance =
                 {
                 , definedAt = pos
                 , type = expectedType
                 , freeTyvars = Dict.empty
-                , uni = Uni
                 }
 
             localEnv as Env =
@@ -858,15 +874,14 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
 checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
     env: expectedType: caExpression: state@:
 
-    expectedUni =
-        TA.getUni expectedType
-        >> Maybe.withDefault Imm
+    TA.Type expectedUni expectedBase =
+        expectedType
 
     addErrorIfUnique as Pos: None =
         pos:
-        addErrorIf (expectedUni == Uni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+        addErrorIf (expectedUni == TA.UniT) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
 
-    try caExpression & expectedType as
+    try caExpression & expectedBase as
 
         CA.LiteralNumber pos n & TA.TypeExact typeUsr []:
             addErrorIfUnique pos
@@ -892,7 +907,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    addErrorIf (expectedUni /= var.uni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+                    #addErrorIf (expectedUni /= var.isUnique) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
                     addEquality env pos Why_Annotation var.type expectedType @state
 
             TA.Variable pos ref
@@ -911,7 +926,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
             TA.Constructor pos usr
 
 
-        CA.Fn pos pars body & TA.TypeFn uni parsT out:
+        CA.Fn pos pars body & TA.TypeFn parsT out:
             addErrorIfUnique pos
 
             if List.length pars > List.length parsT then
@@ -947,7 +962,6 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Record pos (Just ext) valueByName & TA.TypeRecord typeByName:
-            addErrorIfUnique pos
 
             # ext must have type expectedType
             # TODO: add context
@@ -1003,6 +1017,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                 expectedType
                 >> Dict.singleton attrName
                 >> TA.TypeRecordExt newId
+                >> TA.Type expectedUni
 
             addEquality env pos Why_RecordAccess expressionType requiredType @state
 
@@ -1130,7 +1145,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
 
                     Nothing:
                         addError env pos (ErrorVariableNotFound ref) @state
-                        TA.TypeError
+                        typeError
 
                     Just var:
                         var.type >> List.for attrPath attrName: tyAcc:
@@ -1194,7 +1209,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
                     Nothing:
                         addError env pos (ErrorConstructorNotFound usr) @state
-                        TA.TypeError
+                        typeError
 
                     Just cons:
                         argModAndTypes & returnType =
@@ -1315,7 +1330,9 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
 checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
     env: expectedType: isParam: pattern: state@:
 
-    try pattern & expectedType as
+    TA.Type expectedUni expectedBase = expectedType
+
+    try pattern & expectedBase as
         CA.PatternAny pos { isUnique, maybeName, maybeAnnotation } & _:
             try maybeAnnotation as
                 Nothing: None
@@ -1786,7 +1803,7 @@ initStateAndGlobalEnv as [CA.Module]: Res (TA.TyvarId & Env) =
 alias ERState = {
     , equalities as [Equality]
     , errors as [Equality & Text]
-    , substitutions as Dict TA.TyvarId TA.Type
+    , substitutions as Dict TA.TyvarId TA.BaseType
     }
 
 
@@ -1997,7 +2014,7 @@ solveRecordExt as Equality: TA.TyvarId: Dict Name TA.Type: Dict Name TA.Type: ER
     replaceUnificationVariable equality Nothing tyvar1 (TA.TypeRecord attrs2) newState
 
 
-replaceUnificationVariable as Equality: Maybe UniqueOrImmutable: TA.TyvarId: TA.Type: ERState: ERState =
+replaceUnificationVariable as Equality: Maybe UniqueOrImmutable: TA.TyvarId: TA.BaseType: ERState: ERState =
     equality: maybeUni: tyvarId: replacingType_: state:
 
     replacingType =
