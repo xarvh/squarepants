@@ -138,8 +138,7 @@ union Error_ =
     , ErrorIncompatibleTypes CA.Expression TA.Type
     , ErrorIncompatiblePattern CA.Pattern TA.Type
     , ErrorCallingANonFunction
-    , ErrorTooManyArguments
-    , ErrorNotEnoughArguments
+    , ErrorWrongNumberOfArguments
     , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch TA.Type CA.Expression
     , ErrorUniquenessDoesNotMatchParameter TA.Type
@@ -522,7 +521,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
         CA.Call pos reference args:
 
             callType =
-                newType @state
+                newTypeWithUni TA.UniT @state
 
             checkCall env callType pos reference args @state & callType
 
@@ -929,11 +928,8 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
         CA.Fn pos pars body & TA.TypeFn parsT out:
             addErrorIfUnique pos
 
-            if List.length pars > List.length parsT then
-                addError env pos ErrorTooManyArguments @state
-                TA.Error pos
-            else if List.length pars < List.length parsT then
-                addError env pos ErrorNotEnoughArguments @state
+            if List.length pars /= List.length parsT then
+                addError env pos ErrorWrongNumberOfArguments @state
                 TA.Error pos
             else
                 typedPars @= Array.fromList []
@@ -1099,28 +1095,116 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
 
-checkCall as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression =
+inferCall as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression & TA.Type =
     env: expectedType: pos: reference: givenArgs: state@:
+
+    # Uniqueness:
+    #
+    # how does the return value depend from the args?
+    #
+    #   reference givenArg1 givenArg1
+    #
+    # `reference` must have type `fn A1, A2: R`
+
+#
+# nice
+#
+#        A1 potrebbe avere (UnivarId 3)
+#        A2 potrebbe essere qualcosa di piu' complicato
+#        R potrebbe essere una funzione di A1 e A2
+#
+#
+#      Esempio
+#
+#        Just as fn a: Maybe a: with a CanBeUnique
+#
+#
+#        Maybe.map as (fn a: b): Maybe a: Maybe b with a, b CanBeUnique
+#
+#
+#        ref type =
+#              fn
+#                  , fn (Uv 1, Basevar 2): (Uv 3, Basevar 4)
+#
+#                  , Maybe (Uv 1, Basevar 2)
+#
+#                  : Maybe (Uv 3, Basevar 4)
+#
+#                  ---> Uv 1 == Uv 3
+
+#        Result.onOk as (fn a: Result e b): Result e a: Result b with a CanBeUnique, b CanBeUnique
+
 
     # `reference givenArg1 givenArg2 ...` must be of `expectedType`
 
-    typedReference & inferredReferenceType =
+    typedReference & (TA.Type referenceUni referenceBase) =
         inferExpression env reference @state
+
+    #
+    # There should be no cases where referenceBase is a TA.TypeVar:
+    #
+    # ----> Unless deferred resolution bites me in the butt
+    #
+    # Non-annotated globals are ordered so that they should be inferred before they are referenced
+    # Annotated globals are annotated
+    # Recursive globals must be annotated
+    #
+
+
+    ok, but what about function pars that are functions?
+
+
+    blah =
+        fn a, b:
+            a z
+
+            # I have no clue whether `a` returns an uni or an imm
+            # So I can just flag it as UniT?
+
+            if I want "check only", I need to be able to tell `z` whether it is UniF or UniT
+
+            However, since I don't know `a`, I could say, in principle, that z is UniT
+
+            ----> What if later on I discover that its return value is used twice?
+
+
+
+    #
+    # Locals can't be used before they are defined
+    #
+    parameterTypes & returnType =
+        try referenceBase as
+            TA.TypeFn params return: params & return
+
+            TA.TypeVar tyvarId: todo "Compiler Bug: ok, I need to fix this and I fear is the deferred resolution"
+
+            _: addError env pos (ErrorCallingANonFunction referenceBase) @state
 
     typedArgumentsAndArgumentTypes as [TA.Argument & TA.Type] =
         givenArgs >> List.map arg:
             inferArgument env arg @state
 
-    toTypeArg as (TA.Argument & TA.Type): RecycleOrSpend & TA.Type =
-        (arg & type):
-        try arg as
-            TA.ArgumentExpression _: Spend & type
-            TA.ArgumentRecycle _ _ _: Recycle & type
+    if List.length parameterTypes /= List.length typedArgumentsAndArgumentTypes then
+        addError env pos ErrorWrongNumberOfArguments @state
+    else
+        list_eachWithIndex2 0 parameterTypes typedArgumentsAndArgumentTypes index: paramType: (typedArg & argType):
+            addEquality env pos (Why_Argument index) paramType argType @state
 
-    expectedReferenceType as TA.Type =
-        TA.Type TA.UniF << TA.TypeFn (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
 
-    addEquality env pos Why_CalledAsFunction inferredReferenceType expectedReferenceType @state
+    # --------------------> I still need to check that the whole function call is consistent with its tyvars!
+
+
+
+#    toTypeArg as (TA.Argument & TA.Type): RecycleOrSpend & TA.Type =
+#        (arg & type):
+#        try arg as
+#            TA.ArgumentExpression _: Spend & type
+#            TA.ArgumentRecycle _ _ _: Recycle & type
+
+#    expectedReferenceType as TA.Type =
+#        TA.Type TA.UniF << TA.TypeFn (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
+#
+#    addEquality env pos Why_CalledAsFunction inferredReferenceType expectedReferenceType @state
 
     TA.Call pos typedReference typedArgumentsAndArgumentTypes
 
@@ -1224,13 +1308,8 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                         gl =
                             List.length arguments
 
-                        if rl > gl then
-                            addError env pos ErrorNotEnoughArguments @state
-                        else
-                            None
-
-                        if rl < gl then
-                            addError env pos ErrorTooManyArguments @state
+                        if rl /= gl then
+                            addError env pos ErrorWrongNumberOfArguments @state
                         else
                             None
 
@@ -1924,6 +2003,7 @@ solveEqualities as ERState: ERState =
                     replaceUnificationVariable head maybeUni tyvarId type1 state
                     >> solveEqualities
 
+
                 TA.TypeExact usr1 args1 & TA.TypeExact usr2 args2:
                     if usr1 /= usr2 then
                         state
@@ -2067,33 +2147,38 @@ occurs as TA.TyvarId: TA.Type: Bool =
         TA.TypeError: False
 
 
-applySubstitutionToType as TA.TyvarId: TA.BaseType: TA.Type: TA.Type =
-    tyvarId: newBaseType: (TA.Type originalU originalB):
+
+applySubstitutionToBaseType as TA.TyvarId: TA.BaseType: TA.BaseType: TA.BaseType =
+    tyvarId: newBaseType: originalB:
 
     rec as TA.Type: TA.Type =
         applySubstitutionToType tyvarId newBaseType
 
-    updatedB =
-        try originalB as
-            TA.TypeExact usr pars:
-                TA.TypeExact usr (List.map rec pars)
+    try originalB as
+        TA.TypeExact usr pars:
+            TA.TypeExact usr (List.map rec pars)
 
-            TA.TypeFn pars out:
-                TA.TypeFn (CA.mapmod rec pars) (rec out)
+        TA.TypeFn pars out:
+            TA.TypeFn (CA.mapmod rec pars) (rec out)
 
-            TA.TypeRecord attrs:
-                TA.TypeRecord (Dict.map (k: rec) attrs)
+        TA.TypeRecord attrs:
+            TA.TypeRecord (Dict.map (k: rec) attrs)
 
-            TA.TypeVar id:
-                if id /= tyvarId then
-                    originalB
-                else
-                    newBaseType
+        TA.TypeVar id:
+            if id /= tyvarId then
+                originalB
+            else
+                newBaseType
 
-            TA.TypeRecordExt id attrs:
-                if id == tyvarId then
-                    newBaseType
-                else
-                    TA.TypeRecordExt id (Dict.map (k: rec) attrs)
+        TA.TypeRecordExt id attrs:
+            if id == tyvarId then
+                newBaseType
+            else
+                TA.TypeRecordExt id (Dict.map (k: rec) attrs)
 
-    TA.Type originalU updatedB
+
+applySubstitutionToType as TA.TyvarId: TA.BaseType: TA.Type: TA.Type =
+    tyvarId: newBaseType: (TA.Type originalU originalB):
+
+    applySubstitutionToBaseType tyvarId newBaseType originalB
+    >> TA.Type originalU
