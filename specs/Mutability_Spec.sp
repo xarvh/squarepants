@@ -14,15 +14,14 @@ All the crunching is done at compile time, which means that, for unique values, 
 
 specs as Test =
     Test.Group "Mutability spec" [
-#      , howDoesItLookLike
-#      , uniquenessTyping
-#      , mutation
-#      , parentScope
-#      , records
-#      , unions
+      , howDoesItLookLike
+      , uniquenessTyping
+      , mutation
+      , parentScope
+      , records
+      , unions
       ]
 
-[#
 
 #
 # Boilerplate code, not really needed to understand the system
@@ -339,7 +338,7 @@ records as Test =
                 """
                 scope =
                     fn None:
-                    !r as { x as Number, y as !Number } =
+                    !r as !{ x as Number, y as !Number } =
                         { x = 0, y = mut 0 }
                     r
                 """
@@ -351,10 +350,10 @@ records as Test =
                             [TH.taNone]
                             ([
                               , "x" & TH.taNumber
-                              , "y" & TA.setUni Uni TH.taNumber
+                              , "y" & TA.setUni TA.AllowUni TH.taNumber
                               ]
                               >> Dict.fromList
-                              >> TA.TypeRecord Uni
+                              >> TA.TypeRecord TA.AllowUni
                             )
                     }
                 )
@@ -587,4 +586,3 @@ unions as Test =
             ]
         ]
 
-#]
