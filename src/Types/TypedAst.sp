@@ -3,12 +3,26 @@ alias UnificationVariableId =
     Int
 
 
+union Uniqueness =
+    # We don't care to distinguish between unique and immutable
+    # In theory, all expressions that work with a unique will work with an immutable, but not vice-versa
+    # So we track only what MUST be immutable, and what instead could work for either.
+    #
+    # This is very useful because if we don't know anything about a type, then there is also nothing against
+    # using it as unique, so we can set it to AllowUni.
+    #
+    # When we unify AllowUni and ForceImm, the result is always ForceImm
+    # Then we set all non-unique declarations to ForceImm and we let the uniqueness check step actually check it
+    , AllowUni
+    , ForceImm
+
+
 union Type =
-    , TypeExact UniqueOrImmutable USR [Type]
-    , TypeFn UniqueOrImmutable [RecycleOrSpend & Type] Type
-    , TypeRecord UniqueOrImmutable (Dict Name Type)
-    , TypeUnificationVariable (Maybe UniqueOrImmutable) UnificationVariableId
-    , TypeRecordExt UniqueOrImmutable UnificationVariableId (Dict Name Type)
+    , TypeExact Uniqueness USR [Type]
+    , TypeFn [RecycleOrSpend & Type] Type
+    , TypeRecord Uniqueness (Dict Name Type)
+    , TypeUnificationVariable Uniqueness UnificationVariableId
+    , TypeRecordExt Uniqueness UnificationVariableId (Dict Name Type)
     , TypeError
 
 
@@ -64,8 +78,8 @@ union Parameter =
 
 alias Tyvar = {
     , originalName as Name
-    , allowFunctions as Maybe Bool
-    , allowUniques as Maybe Bool
+    , allowFunctions as Bool
+    , allowUniques as Bool
     }
 
 
@@ -138,14 +152,17 @@ typeAllowsFunctions as Type: Bool =
         TypeError: True
 
 
-setUni as UniqueOrImmutable: Type: Type =
+setUni as Uniqueness: Type: Type =
     uni: type:
     try type as
-        TypeFn _ ins out:
-            TypeFn uni ins out
+        TypeFn ins out:
+            if uni == TA.AllowUni then
+                todo "Compiler bug: functions should always be ForceImm"
+            else
+                type
 
         TypeUnificationVariable _ id:
-            TypeUnificationVariable (Just uni) id
+            TypeUnificationVariable uni id
 
         TypeExact _ usr args:
             TypeExact uni usr args
@@ -159,12 +176,13 @@ setUni as UniqueOrImmutable: Type: Type =
         TypeError:
             TypeError
 
-getUni as Type: Maybe UniqueOrImmutable =
+
+getUni as Type: Uniqueness =
     type:
     try type as
-        TypeFn uni ins out: Just uni
-        TypeUnificationVariable maybeUni id: maybeUni
-        TypeExact uni usr args: Just uni
-        TypeRecord uni attrs: Just uni
-        TypeRecordExt uni id attrs: Just uni
-        TypeError: Nothing
+        TypeFn uni ins out: ForceImm
+        TypeUnificationVariable uni id: uni
+        TypeExact uni usr args: uni
+        TypeRecord uni attrs: uni
+        TypeRecordExt uni id attrs: uni
+        TypeError: AllowUni

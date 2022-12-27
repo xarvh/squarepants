@@ -289,8 +289,8 @@ translateDefinition as Bool: Env: FA.ValueDef: Res (CA.ValueDef) =
         >> CA.patternTyvars
         >> Dict.map tyvarName: pos:
             {
-            , allowFunctions = Just << List.all ((At pos name): name /= tyvarName) nonFn
-            , allowUniques = Just False
+            , allowFunctions = List.all ((At pos name): name /= tyvarName) nonFn
+            , allowUniques = False
             }
 
     # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv

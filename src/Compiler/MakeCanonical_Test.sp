@@ -543,7 +543,7 @@ nonFunction as Test =
                 { body = CA.LiteralNumber p 1
                 , native = False
                 , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.Type p Imm << CA.TypeAnnotationVariable "a" }
-                , tyvars = Dict.singleton "a" { allowFunctions = Just False, allowUniques = Just False }
+                , tyvars = Dict.singleton "a" { allowFunctions = False, allowUniques = False }
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty

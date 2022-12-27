@@ -111,32 +111,32 @@ caList as CA.Type: CA.Type =
 #
 taTyvar as Int: TA.Type =
     id:
-    TA.TypeUnificationVariable Nothing id
+    TA.TypeUnificationVariable TA.AllowUni id
 
 
 taTyvarImm as Int: TA.Type =
     id:
-    TA.TypeUnificationVariable (Just Imm) id
+    TA.TypeUnificationVariable TA.ForceImm id
 
 
 taNumber as TA.Type =
-    TA.TypeExact Imm ("Number" >> Meta.spCoreUSR) []
+    TA.TypeExact TA.ForceImm ("Number" >> Meta.spCoreUSR) []
 
 
 taNone as TA.Type =
-    TA.TypeExact Imm ("None" >> Meta.spCoreUSR) []
+    TA.TypeExact TA.ForceImm ("None" >> Meta.spCoreUSR) []
 
 
 taBool as TA.Type =
-    TA.TypeExact Imm ("Bool" >> Meta.spCoreUSR) []
+    TA.TypeExact TA.ForceImm ("Bool" >> Meta.spCoreUSR) []
 
 
 taList as TA.Type: TA.Type =
     item:
-    TA.TypeExact Imm ("List" >> Meta.spCoreUSR) [item]
+    TA.TypeExact TA.ForceImm ("List" >> Meta.spCoreUSR) [item]
 
 
 taFunction as [TA.Type]: TA.Type: TA.Type =
     from: to:
-    TA.TypeFn Imm (List.map (t: Spend & t) from) to
+    TA.TypeFn (List.map (t: Spend & t) from) to
 

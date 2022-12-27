@@ -64,8 +64,8 @@ union PatternCompleteness =
 
 
 alias TypeClasses = {
-    , allowFunctions as Maybe Bool
-    , allowUniques as Maybe Bool
+    , allowFunctions as Bool
+    , allowUniques as Bool
     }
 
 
