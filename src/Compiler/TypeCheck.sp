@@ -408,7 +408,7 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                     Dict.insert tyvarId tyvar ftById & Dict.insert tyvarName tyvarId atByName
 
     patternOut =
-        inferPattern { env with annotatedTyvarsByName } False def.pattern @state
+        inferPattern { env with annotatedTyvarsByName } def.pattern @state
 
     envWithContext =
         { patternOut.env with
@@ -478,7 +478,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 try getVariableByRef ref env as
                     Nothing:
                         addError env pos (ErrorVariableNotFound ref) @state
-                        newType @state
+                        TA.TypeError
 
                     Just var:
                         generalize env var @state
@@ -491,7 +491,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 try getConstructorByUsr usr env as
                     Nothing:
                         addError env pos (ErrorConstructorNotFound usr) @state
-                        newType @state
+                        TA.TypeError
 
                     Just cons:
                         generalize env cons @state
@@ -506,7 +506,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
         CA.Call pos reference args:
 
             callType =
-                newType @state
+                newType TA.AllowUni @state
 
             checkCall env callType pos reference args @state & callType
 
@@ -523,7 +523,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             valueTypeByName as Dict Name TA.Type =
                 Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
-            TA.Record pos Nothing typedValueByName & TA.TypeRecord Imm valueTypeByName
+            TA.Record pos Nothing typedValueByName & TA.TypeRecord TA.AllowUni valueTypeByName
 
 
         CA.Record pos (Just ext) attrExpressions:
@@ -598,7 +598,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 patternsAndExpressions >> List.map (pa & exp):
 
                     patternOut as PatternOut =
-                        inferPattern env False pa @state
+                        inferPattern env pa @state
 
                     addEquality env pos Why_TryPattern patternOut.patternType valueType @state
 
@@ -630,7 +630,7 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
     try par as
         CA.ParameterPattern pa:
             patternOut =
-                inferPattern env True pa @state
+                inferPattern env pa @state
 
             TA.ParameterPattern patternOut.typedPattern & patternOut.patternType & patternOut.env
 
@@ -715,7 +715,9 @@ inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
 
                 Nothing:
                     newExtId = newTyvarId @state
-                    newAttrType = newType @state
+
+                    # Attrs have always the same default uni as the record
+                    newAttrType = newType uni @state
 
                     type =
                         TA.TypeRecordExt uni newExtId (Dict.insert attrName newAttrType extensionAttrTypes)
@@ -727,7 +729,9 @@ inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
 
         TA.TypeUnificationVariable uni id:
             newExtId = newTyvarId @state
-            newAttrType = newType @state
+
+            # Attrs have always the same default uni as the record
+            newAttrType = newType uni @state
 
             type as TA.Type =
                 TA.TypeRecordExt uni newExtId (Dict.singleton attrName newAttrType)
@@ -806,7 +810,7 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
                 None
 
             typedPa & env1 =
-                checkPattern env expectedType True pa @state
+                checkPattern env expectedType pa @state
 
             TA.ParameterPattern typedPa & env1
 
@@ -817,10 +821,10 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
             else
                 None
 
-            unused =
-                try TA.getUni expectedType as
-                    Just Imm: addError env pos (ErrorUniquenessDoesNotMatchParameter expectedType) @state
-                    _: None
+            if TA.getUni expectedType == TA.ForceImm then
+                addError env pos (ErrorUniquenessDoesNotMatchParameter expectedType) @state
+            else
+                None
 
             variable as Instance =
                 {
@@ -842,16 +846,15 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
     expectedUni =
         TA.getUni expectedType
-        >> Maybe.withDefault Imm
 
-    addErrorIfUnique as Pos: None =
+    addErrorIfAllowsUnique as Pos: None =
         pos:
-        addErrorIf (expectedUni == Uni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+        addErrorIf (expectedUni == TA.AllowUni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
 
     try caExpression & expectedType as
 
         CA.LiteralNumber pos n & TA.TypeExact uni typeUsr []:
-            addErrorIfUnique pos
+            addErrorIfAllowsUnique pos
 
             addErrorIf (typeUsr /= CoreTypes.numberDef.usr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
@@ -860,7 +863,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.LiteralText pos text & TA.TypeExact uni typeUsr []:
-            addErrorIfUnique pos
+            addErrorIfAllowsUnique pos
 
             addErrorIf (typeUsr /= CoreTypes.textDef.usr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
@@ -874,14 +877,15 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                     addError env pos (ErrorVariableNotFound ref) @state
 
                 Just var:
-                    addErrorIf (expectedUni /= var.uni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+                    shouldBeUni = expectedUni == TA.AllowUni
+                    addErrorIf (shouldBeUni /= var.isUnique) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
                     addEquality env pos Why_Annotation var.type expectedType @state
 
             TA.Variable pos ref
 
 
         CA.Constructor pos usr & _:
-            addErrorIfUnique pos
+            addErrorIfAllowsUnique pos
 
             try getConstructorByUsr usr env as
                 Nothing:
@@ -894,7 +898,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Fn pos pars body & TA.TypeFn parsT out:
-            addErrorIfUnique pos
+            addErrorIfAllowsUnique pos
 
             if List.length pars > List.length parsT then
                 addError env pos ErrorTooManyArguments @state
@@ -929,7 +933,6 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Record pos (Just ext) valueByName & TA.TypeRecord uni typeByName:
-            addErrorIfUnique pos
 
             # ext must have type expectedType
             # TODO: add context
@@ -1029,7 +1032,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                 patternsAndExpressions >> List.map (pa & exp):
 
                     inferredPattern =
-                        inferPattern env False pa @state
+                        inferPattern env pa @state
 
                     newEnv =
                         { inferredPattern.env with
@@ -1112,7 +1115,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
 
                     Nothing:
                         addError env pos (ErrorVariableNotFound ref) @state
-                        newType @state
+                        TA.TypeError
 
                     Just var:
                         var.type >> List.for attrPath attrName: tyAcc:
@@ -1134,13 +1137,12 @@ alias PatternOut = {
     }
 
 
-inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
-    # TODO remove isParam
-    env: isParam: pattern: state@:
+inferPattern as Env: CA.Pattern: State@: PatternOut =
+    env: pattern: state@:
 
     try pattern as
         CA.PatternAny pos args:
-            inferPatternAny env isParam pos args @state
+            inferPatternAny env pos args @state
 
 
         CA.PatternLiteralText pos text:
@@ -1167,7 +1169,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                 [] & [] & env >> List.forReversed arguments arg: (typedPas & paTypes & envX):
 
                     out =
-                        inferPattern envX isParam arg @state
+                        inferPattern envX arg @state
 
                     (out.typedPattern :: typedPas) & (out.patternType :: paTypes) & out.env
 
@@ -1176,7 +1178,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
                     Nothing:
                         addError env pos (ErrorConstructorNotFound usr) @state
-                        newType @state
+                        TA.TypeError
 
                     Just cons:
                         argModAndTypes & returnType =
@@ -1220,7 +1222,7 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
                 Dict.empty & env >> Dict.for pas name: pa: (dict & envX):
 
                     out =
-                        inferPattern envX isParam pa @state
+                        inferPattern envX pa @state
 
                     Dict.insert name (out.typedPattern & out.patternType) dict & out.env
 
@@ -1229,8 +1231,8 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
             patternType as TA.Type =
                 try completeness as
-                    CA.Complete: TA.TypeRecord Imm patternTypeByName
-                    CA.Partial: TA.TypeRecordExt Imm (newTyvarId @state) patternTypeByName
+                    CA.Complete: TA.TypeRecord TA.AllowUni patternTypeByName
+                    CA.Partial: TA.TypeRecordExt TA.AllowUni (newTyvarId @state) patternTypeByName
 
             {
             , typedPattern = TA.PatternRecord pos typedPatternsAndPatternTypesByName
@@ -1241,24 +1243,21 @@ inferPattern as Env: Bool: CA.Pattern: State@: PatternOut =
 
 
 
-inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, maybeAnnotation as Maybe CA.Type }: State@: PatternOut =
-    env: isParam: pos: ({ isUnique, maybeName, maybeAnnotation }): state@:
+inferPatternAny as Env: Pos: { isUnique as Bool, maybeName as Maybe Name, maybeAnnotation as Maybe CA.Type }: State@: PatternOut =
+    env: pos: ({ isUnique, maybeName, maybeAnnotation }): state@:
 
     patternType as TA.Type =
         try maybeAnnotation as
             Nothing:
-                if isUnique then
-                    newType @state
-                    >> TA.setUni Uni
-                else
-                    newType @state
+                uni = if isUnique then TA.AllowUni else TA.ForceImm
+                newType uni @state
 
             Just annotation:
                 t =
                     annotationToTaType @state env annotation
 
                 # TODO not sure about this...?
-                if TA.getUni t == ForceImm and isUnique then
+                if TA.getUni t == TA.ForceImm and isUnique then
                     addError env pos (ErrorUniquenessDoesNotMatchPattern) @state
                 else
                     None
@@ -1296,8 +1295,8 @@ inferPatternAny as Env: Bool: Pos: { isUnique as Bool, maybeName as Maybe Name, 
 
 
 
-checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
-    env: expectedType: isParam: pattern: state@:
+checkPattern as Env: TA.Type: CA.Pattern: State@: TA.Pattern & Env =
+    env: expectedType: pattern: state@:
 
     try pattern & expectedType as
         CA.PatternAny pos { isUnique, maybeName, maybeAnnotation } & _:
@@ -1327,7 +1326,7 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
             TA.PatternAny pos { isUnique, maybeName, maybeAnnotation, type = expectedType } & newEnv
 
 
-        CA.PatternLiteralText pos text & TA.TypeExact Imm typeUsr []:
+        CA.PatternLiteralText pos text & TA.TypeExact uni typeUsr []:
             if typeUsr /= CoreTypes.textDef.usr then
                 addError env pos (ErrorIncompatiblePattern pattern expectedType) @state
             else
@@ -1336,7 +1335,7 @@ checkPattern as Env: TA.Type: Bool: CA.Pattern: State@: TA.Pattern & Env =
             TA.PatternLiteralText pos text & env
 
 
-        CA.PatternLiteralNumber pos text & TA.TypeExact Imm typeUsr []:
+        CA.PatternLiteralNumber pos text & TA.TypeExact uni typeUsr []:
             if typeUsr /= CoreTypes.numberDef.usr then
                 addError env pos (ErrorIncompatiblePattern pattern expectedType) @state
             else
@@ -1813,20 +1812,20 @@ solveEqualities as ERState: ERState =
 
             uni =
                 try TA.getUni type1 & TA.getUni type2 as
-                    AllowUni & AllowUni:
-                        AllowUni
+                    TA.AllowUni & TA.AllowUni:
+                        TA.AllowUni
                     _:
-                        ForceImm
+                        TA.ForceImm
 
             try type1 & type2 as
 
                         TA.TypeUnificationVariable _ tyvarId & t2:
-                            replaceUnificationVariable head tyvarId uni (TA.setUni uni t2) state
+                            replaceUnificationVariable head tyvarId (TA.setUni uni t2) state
                             >> solveEqualities
 
 
                         t1 & TA.TypeUnificationVariable _ tyvarId:
-                            replaceUnificationVariable head uni tyvarId (TA.setUni uni t1) state
+                            replaceUnificationVariable head tyvarId (TA.setUni uni t1) state
                             >> solveEqualities
 
                         TA.TypeExact _ usr1 args1 & TA.TypeExact _ usr2 args2:
@@ -1920,7 +1919,7 @@ solveRecordExt as Equality: TA.Uniqueness: TA.UnificationVariableId: Dict Name T
 
 
 replaceUnificationVariable as Equality: TA.UnificationVariableId: TA.Type: ERState: ERState =
-    equality: uni: tyvarId: replacingType: state:
+    equality: tyvarId: replacingType: state:
 
     isSame =
         try replacingType as
@@ -1985,7 +1984,8 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
             if id /= tyvarId then
                 originalType
             else if uni == TA.ForceImm and TA.getUni replacingType == TA.AllowUni then
-                todo "Compiler bug: ForceImm cannot be replaced by AllowUni"
+                log "Compiler bug: ForceImm cannot be replaced by AllowUni" { replacingType, originalType }
+                replacingType
             else
                 replacingType
 

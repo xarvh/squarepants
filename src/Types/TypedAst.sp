@@ -134,7 +134,7 @@ typeTyvars as Type: Dict UnificationVariableId None =
     type:
     try type as
         TypeExact _ usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeFn _ ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
+        TypeFn ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord _ attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeUnificationVariable _ id: Dict.singleton id None
         TypeRecordExt _ id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
@@ -144,7 +144,7 @@ typeTyvars as Type: Dict UnificationVariableId None =
 typeAllowsFunctions as Type: Bool =
     type:
     try type as
-        TypeFn _ ins out: True
+        TypeFn ins out: True
         TypeUnificationVariable _ id: True
         TypeExact _ usr args: List.any typeAllowsFunctions args
         TypeRecord _ attrs: Dict.any (k: typeAllowsFunctions) attrs
@@ -180,7 +180,7 @@ setUni as Uniqueness: Type: Type =
 getUni as Type: Uniqueness =
     type:
     try type as
-        TypeFn uni ins out: ForceImm
+        TypeFn ins out: ForceImm
         TypeUnificationVariable uni id: uni
         TypeExact uni usr args: uni
         TypeRecord uni attrs: uni

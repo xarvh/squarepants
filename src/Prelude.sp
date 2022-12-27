@@ -445,8 +445,8 @@ insertInModule as USR: CA.Type: [Name]: ModuleByUmr: ModuleByUmr =
         >> CA.typeTyvars
         >> Dict.map tyvarName: pos:
             {
-            , allowFunctions = not (List.member tyvarName nonFn) >> Just
-            , allowUniques = Just False
+            , allowFunctions = not (List.member tyvarName nonFn)
+            , allowUniques = False
             }
 
     def as CA.ValueDef = {

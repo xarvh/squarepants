@@ -61,7 +61,7 @@ freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVar
     ids:
     Dict.empty
     >> List.for ids (id & originalName):
-        Dict.insert id { originalName, allowFunctions = Just True, allowUniques = Just False }
+        Dict.insert id { originalName, allowFunctions = True, allowUniques = False }
 
 
 #
@@ -101,7 +101,7 @@ infer as Text: Text: Result Text Out =
                 , definedAt = Pos.T
                 , type = TH.taFunction [TH.taNumber, TH.taNumber] TH.taNumber
                 , freeTyvars = Dict.empty
-                , uni = Imm
+                , isUnique = False
                 }
             >> Dict.insert
                 (RefGlobal << USR TH.moduleUmr "reset")
@@ -109,7 +109,7 @@ infer as Text: Text: Result Text Out =
                 , definedAt = Pos.T
                 , type = TH.taFunction [TH.taNumber] TH.taNone
                 , freeTyvars = Dict.empty
-                , uni = Imm
+                , isUnique = False
                 }
         }
 
@@ -177,8 +177,8 @@ normalizeType as Hash TA.UnificationVariableId TA.UnificationVariableId@: TA.Typ
         TA.TypeExact uni usr args:
             TA.TypeExact uni usr (List.map (normalizeType @hash) args)
 
-        TA.TypeFn uni pars out:
-            TA.TypeFn uni
+        TA.TypeFn pars out:
+            TA.TypeFn
                 (List.map (Tuple.mapSecond (normalizeType @hash)) pars)
                 (normalizeType @hash out)
 
@@ -256,12 +256,12 @@ functions as Test =
                 }
             )
         , codeTest
-            "[reg] fn has type None"
+            "[reg] fn had type None"
             "a = fn x: 1"
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = TH.taFunction [tyvar 1] TH.taNumber
+                , type = TH.taFunction [tyvarImm 1] TH.taNumber
                 , freeTyvars = Dict.empty
                 }
             )
@@ -543,8 +543,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     TH.taFunction
-                        [ TA.TypeExact Imm (TH.localType "T") [ tyvarImm 1 ]]
-                        ( TA.TypeExact Imm (TH.localType "T") [ tyvarImm 1 ])
+                        [ TA.TypeExact TA.ForceImm (TH.localType "T") [ tyvarImm 1 ]]
+                        ( TA.TypeExact TA.ForceImm (TH.localType "T") [ tyvarImm 1 ])
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -561,9 +561,9 @@ higherOrderTypes as Test =
                 {
                 , freeTyvars = Dict.empty
                 , type =
-                    TA.TypeExact Imm
+                    TA.TypeExact TA.ForceImm
                         (TH.localType "X")
-                        [ tyvarImm 1 ]
+                        [ tyvar 1 ]
                 }
             )
         , codeTest
@@ -638,10 +638,10 @@ records as Test =
                 , freeTyvars = Dict.empty
                 , type =
                     TH.taFunction
-                        [ TA.TypeRecordExt Imm 1
-                            (Dict.singleton "meh" ( TA.TypeRecordExt Imm 2 (Dict.singleton "blah" (tyvar 3))))
+                        [ TA.TypeRecordExt TA.ForceImm 1
+                            (Dict.singleton "meh" ( TA.TypeRecordExt TA.ForceImm 2 (Dict.singleton "blah" (tyvarImm 3))))
                         ]
-                        (tyvar 3)
+                        (tyvarImm 3)
                 }
             )
         , codeTest
@@ -659,9 +659,9 @@ records as Test =
 #                    >> Dict.fromList
                 , type =
                     TH.taFunction
-                        [ TA.TypeRecordExt Imm 1
+                        [ TA.TypeRecordExt TA.AllowUni 1
                             (Dict.singleton "meh"
-                                ( TA.TypeRecordExt Imm 2
+                                ( TA.TypeRecordExt TA.AllowUni 2
                                     (Dict.singleton
                                         "blah"
                                         TH.taNumber
@@ -706,7 +706,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt Imm 1 (Dict.singleton "x" TH.taNumber) >>  re:
+                (TA.TypeRecordExt TA.ForceImm 1 (Dict.singleton "x" TH.taNumber) >> re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }
@@ -719,7 +719,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt Imm 1 (Dict.singleton "x" TH.taNumber) >>  re:
+                (TA.TypeRecordExt TA.AllowUni 1 (Dict.singleton "x" TH.taNumber) >>  re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }
@@ -734,9 +734,9 @@ records as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt Imm 1 (Dict.singleton "first" (tyvar 2)) >>  re:
+                (TA.TypeRecordExt TA.ForceImm 1 (Dict.singleton "first" (tyvarImm 2)) >>  re:
                     { freeTyvars = Dict.empty
-                    , type = TH.taFunction [re] (tyvar 2)
+                    , type = TH.taFunction [re] (tyvarImm 2)
                     }
                 )
             )
@@ -811,7 +811,7 @@ patterns as Test =
             (infer "identityFunction")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = TH.taFunction [tyvar 1] (tyvarImm 1)
+                , type = TH.taFunction [tyvarImm 1] (tyvarImm 1)
                 }
             )
         , codeTest
@@ -849,8 +849,8 @@ patterns as Test =
                 { freeTyvars = Dict.empty
                 , type =
                     TH.taFunction
-                        [ TA.TypeRecord Imm (Dict.fromList [ ( "first" & tyvar 1 ) ])]
-                        (tyvar 1)
+                        [ TA.TypeRecord TA.ForceImm (Dict.fromList [ ( "first" & tyvarImm 1 ) ])]
+                        (tyvarImm 1)
                 }
             )
          [# TODO
