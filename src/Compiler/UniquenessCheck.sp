@@ -1,6 +1,5 @@
 
-alias Argument = CA.Argument
-alias Expression = CA.Expression
+alias Expression = TA.Expression
 
 
 
@@ -132,11 +131,11 @@ consumeInEnv as Dict Name Pos: Env: Env =
     { env with variables = Dict.map translate .variables }
 
 
-addPatternToEnv as CA.Pattern: Env: Dict Name Pos & Env =
+addPatternToEnv as TA.Pattern: Env: Dict Name Pos & Env =
     pattern: env:
 
     names =
-        CA.patternNames pattern
+        TA.patternNames pattern
 
     insertVariable =
        name: stuff:
@@ -157,37 +156,7 @@ addPatternToEnv as CA.Pattern: Env: Dict Name Pos & Env =
     uniques & localEnv
 
 
-
-#doCall as Env: State@: Pos: Expression: Argument: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
-#    env: state@: pos: reference: argument:
-#
-#    doneReference =
-#        try reference as
-#            CA.Call p ref arg:
-#                doCall env @state p ref arg
-#
-#            _:
-#              consumed & expression =
-#                  doExpression env @state reference
-#
-#              { mutables = Dict.empty, consumed, expression }
-#
-#
-#    doneArg =
-#        doArgument env @state pos {
-#            , mutables = doneReference.mutables
-#            , consumed = doneReference.consumed
-#            , argument
-#            }
-#
-#    {
-#    , mutables = doneArg.mutables
-#    , consumed = doneArg.consumed
-#    , expression = CA.Call pos doneReference.expression doneArg.argument
-#    }
-
-
-doCallCo as Env: State@: Pos: Expression: [Argument]: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
+doCall as Env: State@: Pos: Expression: [TA.Argument & TA.Type]: { mutables as Dict Name Pos, consumed as Dict Name Pos, expression as Expression } =
     env: state@: pos: reference: arguments:
 
     doneReference =
@@ -203,28 +172,28 @@ doCallCo as Env: State@: Pos: Expression: [Argument]: { mutables as Dict Name Po
         , consumed = doneReference.consumed
         , arguments = []
         }
-        >> List.forReversed arguments arg: s:
+        >> List.forReversed arguments (arg & type): s:
             { mutables, consumed, arguments } = s
             da = doArgument env @state pos { mutables, consumed, argument = arg }
-            { mutables = da.mutables, consumed = da.consumed, arguments = da.argument :: arguments }
+            { mutables = da.mutables, consumed = da.consumed, arguments = (da.argument & type) :: arguments }
 
     {
     , mutables = doneArgs.mutables
     , consumed = doneArgs.consumed
-    , expression = CA.Call pos doneReference.expression doneArgs.arguments
+    , expression = TA.Call pos doneReference.expression doneArgs.arguments
     }
 
 
 
 
-alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as Argument }
+alias MCA = { mutables as Dict Name Pos, consumed as Dict Name Pos, argument as TA.Argument }
 
 doArgument as Env: State@: Pos: MCA: MCA =
     env: state@: pos: mca:
 
     try mca.argument as
 
-        CA.ArgumentExpression expr:
+        TA.ArgumentExpression expr:
 
             consumed & expression =
                 doExpression env @state expr
@@ -237,10 +206,10 @@ doArgument as Env: State@: Pos: MCA: MCA =
             {
             , mutables = mca.mutables
             , consumed = Dict.join consumed mca.consumed
-            , argument = CA.ArgumentExpression expression
+            , argument = TA.ArgumentExpression expression
             }
 
-        CA.ArgumentRecycle p1 name attrPath:
+        TA.ArgumentRecycle p1 attrPath name:
 
             # TODO https://github.com/xarvh/squarepants/projects/1#card-85087726
             x =
@@ -262,9 +231,6 @@ doArgument as Env: State@: Pos: MCA: MCA =
             , consumed = Dict.empty
             }
 
-        CA.ArgumentRecycle _ _ _:
-            Debug.todo "TODO: Mutable args should not be able to reference globals!?"
-
 
 alias ParsAcc =
     {
@@ -274,11 +240,11 @@ alias ParsAcc =
     }
 
 
-doParameter as CA.Parameter: ParsAcc: ParsAcc =
-    par: acc:
+doParameter as TA.Parameter & TA.Type: ParsAcc: ParsAcc =
+    (par & type): acc:
 
     try par as
-        CA.ParameterPattern pa:
+        TA.ParameterPattern pa:
             uniques & localEnv =
                 addPatternToEnv pa acc.localEnv
 
@@ -287,7 +253,7 @@ doParameter as CA.Parameter: ParsAcc: ParsAcc =
             , localEnv
             }
 
-        CA.ParameterRecycle pos name:
+        TA.ParameterRecycle pos name:
 
             var as Variable =
                 {
@@ -309,16 +275,16 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
         Dict.empty & expression
 
     try expression as
-        CA.LiteralText pos l:
+        TA.LiteralText pos l:
             re
 
-        CA.LiteralNumber pos l:
+        TA.LiteralNumber pos l:
             re
 
-        CA.Variable pos (RefGlobal _):
+        TA.Variable pos (RefGlobal _):
             re
 
-        CA.Variable pos (RefLocal name):
+        TA.Variable pos (RefLocal name):
             try Dict.get name env.variables as
                 Nothing:
                     errorUndefinedVariable pos name @state
@@ -337,10 +303,10 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                             Dict.singleton name pos & expression
 
 
-        CA.Constructor pos usr:
+        TA.Constructor pos usr:
             re
 
-        CA.Fn pos pars body:
+        TA.Fn pos pars body:
 
             { parsToBeSpent, parsToBeRecycled, localEnv } =
                 { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
@@ -355,7 +321,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                     if Dict.member name spentByBody then
                         exp
                     else
-                        CA.DestroyIn name exp
+                        TA.DestroyIn name exp
 
             # TODO: if spentFromParent /= Dict.empty, this fn should be flagged as unique!!!!
             spentFromParent =
@@ -368,26 +334,18 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                 else
                     None
 
-            spentFromParent & CA.Fn pos pars exprWithDestruction
+            spentFromParent & TA.Fn pos pars exprWithDestruction
 
 
-#        CA.Call pos reference argument:
-#
-#            { mutables, consumed, expression = expr } =
-#                doCall env @state pos reference argument
-#
-#            consumed & expr
-
-
-        CA.Call pos reference arguments:
+        TA.Call pos reference arguments:
 
             { mutables, consumed, expression = expr } =
-                doCallCo env @state pos reference arguments
+                doCall env @state pos reference arguments
 
             consumed & expr
 
 
-        CA.If pos { condition, true, false }:
+        TA.If pos { condition, true, false }:
 
             consumedByCondition & conditionExpression =
                 doExpression env @state condition
@@ -412,7 +370,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                     if Dict.member name consumedByTrue then
                         exp
                     else
-                        CA.DestroyIn name exp
+                        TA.DestroyIn name exp
 
             finalFalseExpression =
                 # false should destroy all muts consumed by true
@@ -420,10 +378,10 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                     if Dict.member name consumedByFalse then
                         exp
                     else
-                        CA.DestroyIn name exp
+                        TA.DestroyIn name exp
 
             finalExpression =
-                CA.If pos {
+                TA.If pos {
                     , condition = conditionExpression
                     , true = finalTrueExpression
                     , false = finalFalseExpression
@@ -432,7 +390,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
             allConsumed & finalExpression
 
 
-        CA.Try pos { value, patternsAndExpressions }:
+        TA.Try pos { type, value, patternsAndExpressions }:
 
             consumedByValue & valueExpression =
                 doExpression env @state value
@@ -457,21 +415,21 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                     Dict.join consumed
 
             # Pass 2:
-            newPatternsAndBlocks as [CA.Pattern & Expression]=
+            newPatternsAndBlocks as [TA.Pattern & Expression]=
                 consumedAndPatternsAndBlocks >> List.map (consumed & pattern & blockExpression):
                     finalBlock =
                         blockExpression >> Dict.for allConsumed name: pos: exp:
                             if Dict.member name consumed then
                                 exp
                             else
-                                CA.DestroyIn name exp
+                                TA.DestroyIn name exp
 
                     pattern & finalBlock
 
-            allConsumed & CA.Try pos { value = valueExpression, patternsAndExpressions = newPatternsAndBlocks }
+            allConsumed & TA.Try pos { type, value = valueExpression, patternsAndExpressions = newPatternsAndBlocks }
 
 
-        CA.Record pos maybeExtending attrValueByName:
+        TA.Record pos maybeExtending attrValueByName:
 
             consumedByExt =
                 try maybeExtending as
@@ -496,15 +454,15 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
                     Dict.join consumed consumedSoFar & Dict.insert name expr attrs
 
-            consumedFinal & CA.Record pos maybeExtending attrsFinal
+            consumedFinal & TA.Record pos maybeExtending attrsFinal
 
 
-        CA.RecordAccess pos name expr:
+        TA.RecordAccess pos name expr:
             doExpression env @state expr
-            >> Tuple.mapSecond (CA.RecordAccess pos name)
+            >> Tuple.mapSecond (TA.RecordAccess pos name)
 
 
-        CA.LetIn valueDef e:
+        TA.LetIn valueDef e:
 
             uniques & env1 =
                 addPatternToEnv valueDef.pattern env
@@ -519,17 +477,17 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                 doExpression localEnv @state e
 
             finalExpression =
-                CA.LetIn { valueDef with body = bodyExpression } eExpression
+                TA.LetIn { valueDef with body = bodyExpression } eExpression
                 >> Dict.for uniques name: pos: exp:
                     try Dict.get name consumedByE as
                         Just _: exp
                         Nothing:
-                            CA.DestroyIn name exp
+                            TA.DestroyIn name exp
 
             Dict.join consumedByBody consumedByE & finalExpression
 
 
-doModule as CA.Module: Res CA.Module =
+doModule as TA.Module: Res TA.Module =
     module:
 
     state as State @= {
@@ -540,11 +498,11 @@ doModule as CA.Module: Res CA.Module =
         , variables = Dict.empty
         }
 
-    addDestruction as pa: CA.ValueDef: CA.ValueDef =
+    addDestruction as pa: TA.ValueDef: TA.ValueDef =
         _: def:
 
         consumed & body =
-            Compiler/UniquenessCheck.doExpression env @state def.body
+            doExpression env @state def.body
 
         { def with body }
 

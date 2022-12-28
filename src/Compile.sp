@@ -408,30 +408,32 @@ compileMain as CompileMainPars: IO Int =
         }
 
 
-    log "Uniqueness check..." ""
+    log "Solving globals..." ""
+    modules
+    >> Dict.values
+    >> Compiler/TypeCheck.initStateAndGlobalEnv
+    >> onResSuccess eenv (lastUnificationVarId & typeCheckGlobalEnv):
+
+    log "Type checking..." ""
 
     modules
     >> Dict.values
+    >> List.map (m: Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv)
+    >> IO.parallel
+    >> IO.onSuccess typedModules:
+
+
+    log "Uniqueness check..." ""
+
+    typedModules
     >> List.map (m: Compiler/UniquenessCheck.doModule m >> resToIo eenv)
     >> IO.parallel
     >> IO.onSuccess modulesWithDestruction:
 
 
-    log "Solving globals..." ""
-    Compiler/TypeCheck.initStateAndGlobalEnv modulesWithDestruction
-    >> onResSuccess eenv (lastUnificationVarId & typeCheckGlobalEnv):
-
-    log "Type checking..." ""
-
-    modulesWithDestruction
-    >> List.map (m: Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv)
-    >> IO.parallel
-    >> IO.onSuccess typeCheckedModules:
-
-
     log "Emittable AST..." ""
 
-    typeCheckedModules
+    modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
     >> onResSuccess eenv (meState & emittableStatements):

@@ -81,12 +81,8 @@ infer as Text: Text: Result Text Out =
     >> TH.resErrorToStrippedText code
     >> onOk caModule:
 
-    Compiler/UniquenessCheck.doModule caModule
-    >> TH.resErrorToStrippedText code
-    >> onOk moduleWithDestroy:
-
     modules as [CA.Module] =
-        List.append Prelude.coreModules [moduleWithDestroy]
+        List.append Prelude.coreModules [caModule]
 
     Compiler/TypeCheck.initStateAndGlobalEnv modules
     >> TH.resErrorToStrippedText code
@@ -113,10 +109,15 @@ infer as Text: Text: Result Text Out =
                 }
         }
 
-    moduleWithDestroy
+    caModule
     >> Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv
     >> TH.resErrorToStrippedText code
     >> onOk taModule:
+
+    taModule
+    >> Compiler/UniquenessCheck.doModule
+    >> TH.resErrorToStrippedText code
+    >> onOk moduleWithDestroy:
 
     toMatch as (CA.Pattern & TA.ValueDef): Maybe { isUnique as Bool, maybeAnnotation as Maybe CA.Type, def as TA.ValueDef } =
         (pattern & def):
@@ -128,7 +129,7 @@ infer as Text: Text: Result Text Out =
                 Nothing
 
     matches =
-        taModule.valueDefs
+        moduleWithDestroy.valueDefs
         >> Dict.toList
         >> List.filterMap toMatch
 
@@ -884,7 +885,7 @@ patterns as Test =
             #
         , codeTest
             """
-            [reg] Trying to check against an inferred value?
+            ONLY [reg] Trying to check against an inferred value?
             """
             """
             tuple as Text & Number =

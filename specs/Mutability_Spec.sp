@@ -96,10 +96,14 @@ howDoesItLookLike as Test =
 
 
 uniquenessTyping as Test =
-    Test.Group "Uniqueness Typing" [
+    Test.Group
+        """
+        Uniqueness Typing
+        """
+        [
         , codeTest
             """
-            Types can be flagged as mutable
+            Types can be flagged as unique
             """
             """
             alias A = !Number
@@ -115,26 +119,73 @@ uniquenessTyping as Test =
         #
         , Test.Group
             """
-            Mutable types are not interchangeable with their non-mutable counterpart
+            Functions cannot be unique
             """
             [
-            , codeTest "1"
+            , codeTest
+                """
+                Annotated
+                """
+                """
+                scope =
+                    !f as !(fn Number: Number) =
+                        todo ""
+                    None
+                """
+                (infer "scope")
+                (Test.errorContains ["ErrorUniquenessDoesNotMatch"])
+            , codeTest
+                """
+                SKIP (I don't want to rely on mut being nonFn) Inferred
+                """
+                """
+                f as fn a: a = fn x: x
+                scope =
+                    q = mut f
+                    None
+                """
+                (infer "scope")
+                (Test.errorContains ["zzzzzz"])
+            ]
+        #
+        , Test.Group
+            """
+            Conversions
+            """
+            [
+            , codeTest
+                """
+                Immutables cannot be used in place of uniques 1
+                """
                 """
                 a as !Number = 1
                 """
                 (infer "a")
                 (Test.errorContains ["ErrorUniquenessDoesNotMatch"])
             , codeTest
-                "2"
+                """
+                Immutables cannot be used in place of uniques 2
+                """
+                """
+                scope =
+                    x = 1
+                    @x += 1
+                """
+                (infer "a")
+                (Test.errorContains ["is immutable"])
+            , codeTest
+                """
+                Uniques can be implicitly transformed in immutables
+                """
                 """
                 a as Number = mut 1
                 """
                 (infer "a")
-                (Test.errorContains ["unique"])
+                Test.isOk
             ]
         , Test.Group
             """
-            A variable with mutable type must be explicitly declared as mutable with `!`
+            ONLY A variable with mutable type must be explicitly declared as mutable with `!`
             """
             [
             , codeTest "1"

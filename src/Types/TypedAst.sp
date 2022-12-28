@@ -119,11 +119,11 @@ initModule as Text: UMR: Module =
 #
 # helpers
 #
-patternNames as Pattern: Dict Name Pos =
+patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, type as Type } =
     p:
     try p as
         PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _, type = _ }: Dict.empty
-        PatternAny pos { isUnique = _, maybeName = Just n, maybeAnnotation = _, type = _ }: Dict.singleton n pos
+        PatternAny pos { isUnique, maybeName = Just n, maybeAnnotation = _, type }: Dict.singleton n { pos, isUnique, type }
         PatternLiteralNumber pos _: Dict.empty
         PatternLiteralText pos _: Dict.empty
         PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty

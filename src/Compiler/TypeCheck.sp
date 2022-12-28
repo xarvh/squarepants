@@ -151,6 +151,7 @@ union Error_ =
     , ErrorNamedTypeNotFound USR
     , ErrorCircularAlias [USR]
     , ErrorTypeAllowsFunctions TA.Type
+    , ErrorFunctionsCannotBeUnique
 
 
 union Context =
@@ -314,11 +315,11 @@ expandTyvarsInType as State@: Context: Dict TA.UnificationVariableId TA.Type: TA
             TA.TypeError
 
 
-expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Type: CA.Type: TA.Type =
-    state@: context: allAliases: argsByName: (CA.Type pos uni type_):
+expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name TA.Type: CA.Type: TA.Type & UniqueOrImmutable =
+    env: state@: context: allAliases: argsByName: (CA.Type pos uni type_):
 
     rec =
-        expandParamsAndAliases @state context allAliases argsByName
+        expandParamsAndAliases env @state context allAliases argsByName
 
     maybeSetForceImm =
         ty:
@@ -335,8 +336,19 @@ expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Typ
 
             try Dict.get usr allAliases as
                 Nothing:
-                    TA.TypeExact TA.AllowUni usr expandedPars
-                    >> maybeSetForceImm
+                    #
+                    #    union Blah a =
+                    #        , AnImm a
+                    #        , Nada
+                    #        , Funz (fn a: a)
+                    #
+                    #    z as Blah !Number = todo ""
+                    # 
+                    # Is `z` unique?
+                    #
+#                    ----> Here I need to calculate uni given expandedPars
+#                    ----> Every exact type should have rules to translate pars uniqueness into type uniqueness?
+                    TA.TypeExact TA.AllowUni usr expandedPars & uni
 
                 Just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
@@ -352,30 +364,30 @@ expandParamsAndAliases as State@: Context: ByUsr ExpandedAlias: Dict Name TA.Typ
                         >> maybeSetForceImm
 
         CA.TypeFn modsAndArgs out:
+            addErrorIf (uni == Uni) env pos (ErrorFunctionsCannotBeUnique) @state
             args = List.map (Tuple.mapSecond rec) modsAndArgs
-            TA.TypeFn args (rec out)
+            TA.TypeFn args (rec out) & Imm
 
         CA.TypeRecord attrs:
-            # A record literal is always compatible with being unique
-            TA.TypeRecord TA.AllowUni (Dict.map (k: rec) attrs)
+            TA.TypeRecord TA.AllowUni (Dict.map (k: rec) attrs) & uni
 
         CA.TypeAnnotationVariable name:
             try Dict.get name argsByName as
                 Nothing:
                     Array.push @state.errors (pos & context & ErrorUndefinedTypeVariable name)
-                    TA.TypeError
+                    TA.TypeError & uni
 
                 Just ty:
-                    maybeSetForceImm ty
+                    ty & uni
 
 
-annotationToTaType as State@: Env: CA.Type: TA.Type =
+annotationToTaType as State@: Env: CA.Type: TA.Type & Bool =
     state@: env: ca:
 
     nameToType =
         Dict.map (k: v: TA.TypeUnificationVariable TA.ForceImm v) env.annotatedTyvarsByName
 
-    expandParamsAndAliases @state env.context env.expandedAliases nameToType ca
+    expandParamsAndAliases env @state env.context env.expandedAliases nameToType ca
 
 
 #
@@ -400,7 +412,8 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                         newTyvarId @state
 
                     tyvar as TA.Tyvar =
-                        { allowFunctions = typeClasses.allowFunctions
+                        {
+                        , allowFunctions = typeClasses.allowFunctions
                         , allowUniques = typeClasses.allowUniques
                         , originalName = tyvarName
                         }
@@ -872,14 +885,16 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Variable pos ref & _:
-            try getVariableByRef ref env as
-                Nothing:
-                    addError env pos (ErrorVariableNotFound ref) @state
 
-                Just var:
-                    shouldBeUni = expectedUni == TA.AllowUni
-                    addErrorIf (shouldBeUni /= var.isUnique) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
-                    addEquality env pos Why_Annotation var.type expectedType @state
+            bleh =
+                try getVariableByRef ref env as
+                    Nothing:
+                        addError env pos (ErrorVariableNotFound ref) @state
+
+                    Just var:
+                        shouldBeUni = expectedUni == TA.AllowUni
+                        addErrorIf (shouldBeUni /= var.isUnique) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+                        addEquality env pos Why_Annotation var.type expectedType @state
 
             TA.Variable pos ref
 
@@ -887,12 +902,13 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
         CA.Constructor pos usr & _:
             addErrorIfAllowsUnique pos
 
-            try getConstructorByUsr usr env as
-                Nothing:
-                    addError env pos (ErrorConstructorNotFound usr) @state
+            bleh =
+                try getConstructorByUsr usr env as
+                    Nothing:
+                        addError env pos (ErrorConstructorNotFound usr) @state
 
-                Just cons:
-                    addEquality env pos Why_Annotation cons.type expectedType @state
+                    Just cons:
+                        addEquality env pos Why_Annotation cons.type expectedType @state
 
             TA.Constructor pos usr
 
@@ -1253,11 +1269,14 @@ inferPatternAny as Env: Pos: { isUnique as Bool, maybeName as Maybe Name, maybeA
                 newType uni @state
 
             Just annotation:
-                t =
+                taType & shouldBeUnique =
                     annotationToTaType @state env annotation
 
-                # TODO not sure about this...?
-                if TA.getUni t == TA.ForceImm and isUnique then
+                #
+                # a as !Number = ...
+                # !a as Number = ...
+                #
+                if shouldBeUnique /= isUnique then
                     addError env pos (ErrorUniquenessDoesNotMatchPattern) @state
                 else
                     None
@@ -1615,7 +1634,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     >> RefGlobal
 
                 type as TA.Type =
-                    expandParamsAndAliases @state Context_Global env.expandedAliases nameToType annotation
+                    expandParamsAndAliases env @state Context_Global env.expandedAliases nameToType annotation
 
                 instance as Instance =
                     {
@@ -1635,7 +1654,7 @@ addConstructorToGlobalEnv as State@: Dict Name TA.Type: Dict TA.UnificationVaria
         caConstructor.typeUsr
 
     type as TA.Type =
-        expandParamsAndAliases @state Context_Global env.expandedAliases paramsByName caConstructor.type
+        expandParamsAndAliases env @state Context_Global env.expandedAliases paramsByName caConstructor.type
 
     consTyvars =
         TA.typeTyvars type
@@ -1696,7 +1715,7 @@ expandAndInsertAlias as State@: USR: CA.AliasDef: ByUsr ExpandedAlias: ByUsr Exp
         namedParsToIdParsAndDict aliasDef.pars
 
     type as TA.Type =
-        expandParamsAndAliases @state Context_Global aliasAccum typeByName aliasDef.type
+        expandParamsAndAliases env @state Context_Global aliasAccum typeByName aliasDef.type
 
     Dict.insert usr { pars, type } aliasAccum
 
@@ -1935,7 +1954,6 @@ replaceUnificationVariable as Equality: TA.UnificationVariableId: TA.Type: ERSta
         addErError equality "circular!?" state
     else
         equalities =
-            # TODO we don't care about map preserving order
             state.equalities >> List.map (Equality context pos why t1 t2):
                 Equality context pos why
                     (applySubstitutionToType tyvarId replacingType t1)
@@ -1994,4 +2012,7 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
                 replacingType
             else
                 TA.TypeRecordExt uni id (Dict.map (k: rec) attrs)
+
+        TA.TypeError:
+            TA.TypeError
 
