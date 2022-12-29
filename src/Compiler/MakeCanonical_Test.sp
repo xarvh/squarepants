@@ -272,8 +272,8 @@ tuples as Test =
                          Dict.empty
                             >> Dict.insert "first" TH.caNumber
                             >> Dict.insert "second" TH.caNumber
-                            >> CA.TypeRecord
-                            >> CA.Type p Imm
+                            >> CA.TypeRecord Imm
+                            >> CA.Type p
                             >> Just
                       }
                 , native = False
@@ -542,7 +542,7 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 { body = CA.LiteralNumber p 1
                 , native = False
-                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.Type p Imm << CA.TypeAnnotationVariable "a" }
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "funz", maybeAnnotation =  Just << CA.Type p << CA.TypeAnnotationVariable Imm "a" }
                 , tyvars = Dict.singleton "a" { allowFunctions = False, allowUniques = False }
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty

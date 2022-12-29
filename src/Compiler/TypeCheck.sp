@@ -151,7 +151,6 @@ union Error_ =
     , ErrorNamedTypeNotFound USR
     , ErrorCircularAlias [USR]
     , ErrorTypeAllowsFunctions TA.Type
-    , ErrorFunctionsCannotBeUnique
 
 
 union Context =
@@ -315,40 +314,74 @@ expandTyvarsInType as State@: Context: Dict TA.UnificationVariableId TA.Type: TA
             TA.TypeError
 
 
+
+caTypeUniqueness as CA.Type: UniqueOrImmutable =
+    (CA.Type _ type_):
+    try type_ as
+       CA.TypeNamed usr uniFromPars pars:
+          try uniFromPars as
+              CA.UniIsFixed uni: uni
+              CA.UniIsFromPars: if List.any (p: caTypeUniqueness p == Uni) pars then Uni else Imm
+
+       CA.TypeFn _ _: Imm
+       CA.TypeRecord uni _: uni
+       CA.TypeAnnotationVariable uni _: uni
+       CA.TypeError: Imm
+
+
+uniqueOrImmutableToUniqueness as UniqueOrImmutable: TA.Uniqueness =
+    uni:
+    if uni == Uni then TA.AllowUni else TA.ForceImm
+
+
 expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name TA.Type: CA.Type: TA.Type & UniqueOrImmutable =
-    env: state@: context: allAliases: argsByName: (CA.Type pos uni type_):
+    env: state@: context: allAliases: argsByName: type:
+
+    CA.Type pos type_ =
+        type
 
     rec =
         expandParamsAndAliases env @state context allAliases argsByName
 
-    maybeSetForceImm =
-        ty:
-        if uni == Imm then
-            TA.setUni TA.ForceImm ty
-        else
-            ty
-
     try type_ as
-        CA.TypeNamed usr pars:
+        CA.TypeFn modsAndArgs out:
+            args = List.map (Tuple.mapSecond (t: rec t >> Tuple.first)) modsAndArgs
+            TA.TypeFn args (rec out >> Tuple.first) & Imm
+
+        CA.TypeRecord uni attrs:
+            # TODO check that an imm record does not have uni attrs
+            TA.TypeRecord (uniqueOrImmutableToUniqueness uni) (Dict.map (k: v: rec v >> Tuple.first) attrs) & uni
+
+        CA.TypeAnnotationVariable uni name:
+            try Dict.get name argsByName as
+                Nothing:
+                    Array.push @state.errors (pos & context & ErrorUndefinedTypeVariable name)
+                    TA.TypeError & uni
+
+                Just ty:
+                    ty & uni
+
+        CA.TypeNamed usr uniFromPars pars:
+
+            expandedParsAndUnis =
+                List.map rec pars
 
             expandedPars =
-                List.map rec pars
+                List.map Tuple.first expandedParsAndUnis
+
+            unis =
+                List.map Tuple.second expandedParsAndUnis
+
+            uni =
+                try uniFromPars as
+                    TA.UniIsFixed Imm: 
+                    TA.UniIsFixed Uni:
+                    TA.UniIsFromPars:
+
 
             try Dict.get usr allAliases as
                 Nothing:
-                    #
-                    #    union Blah a =
-                    #        , AnImm a
-                    #        , Nada
-                    #        , Funz (fn a: a)
-                    #
-                    #    z as Blah !Number = todo ""
-                    # 
-                    # Is `z` unique?
-                    #
-#                    ----> Here I need to calculate uni given expandedPars
-#                    ----> Every exact type should have rules to translate pars uniqueness into type uniqueness?
-                    TA.TypeExact TA.AllowUni usr expandedPars & uni
+                    TA.TypeExact TA.AllowUni usr expandedPars & caTypeUniqueness type
 
                 Just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
@@ -361,24 +394,6 @@ expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name T
                             >> Dict.fromList
 
                         expandTyvarsInType @state context tyvarIdsToType expandedAlias.type
-                        >> maybeSetForceImm
-
-        CA.TypeFn modsAndArgs out:
-            addErrorIf (uni == Uni) env pos (ErrorFunctionsCannotBeUnique) @state
-            args = List.map (Tuple.mapSecond rec) modsAndArgs
-            TA.TypeFn args (rec out) & Imm
-
-        CA.TypeRecord attrs:
-            TA.TypeRecord TA.AllowUni (Dict.map (k: rec) attrs) & uni
-
-        CA.TypeAnnotationVariable name:
-            try Dict.get name argsByName as
-                Nothing:
-                    Array.push @state.errors (pos & context & ErrorUndefinedTypeVariable name)
-                    TA.TypeError & uni
-
-                Just ty:
-                    ty & uni
 
 
 annotationToTaType as State@: Env: CA.Type: TA.Type & Bool =

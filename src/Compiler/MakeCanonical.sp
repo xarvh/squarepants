@@ -82,6 +82,40 @@ error as Pos: [Text]: Res a =
 
 
 #
+#
+#
+typeSetUni as Pos: UniqueOrImmutable: CA.Type: Res CA.Type =
+    pos: uni: type:
+
+    CA.Type p_ type_ =
+        type
+
+    ok = t: CA.Type p_ t >> Ok
+
+    try type_ as
+        CA.TypeNamed usr _ pars:
+            CA.TypeNamed usr (CA.UniIsFixed uni) pars
+            >> ok
+
+        CA.TypeFn _ _:
+            if uni == Imm then
+                Ok type
+            else
+                error pos [ "Can't set TypeFn to Uni", toHuman type ]
+
+        CA.TypeRecord _ attrs:
+            CA.TypeRecord uni attrs
+            >> ok
+
+        CA.TypeAnnotationVariable _ name:
+            CA.TypeAnnotationVariable uni name
+            >> ok
+
+        CA.TypeError:
+            Ok type
+
+
+#
 # Names resolution
 #
 
@@ -142,12 +176,12 @@ resolveToConstructorUsr as ReadOnly: Maybe Name: Name: USR =
 
 
 typeDeps as CA.Type: Set USR: Set USR =
-    (CA.Type _ _ type_): acc:
+    (CA.Type _ type_): acc:
     try type_ as
-        CA.TypeNamed usr args: acc >> Set.insert usr >> List.for args typeDeps
-        CA.TypeAnnotationVariable _: acc
+        CA.TypeNamed usr _ args: acc >> Set.insert usr >> List.for args typeDeps
+        CA.TypeAnnotationVariable _ _: acc
         CA.TypeFn params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
-        CA.TypeRecord attrs: Dict.for attrs (k: typeDeps) acc
+        CA.TypeRecord _ attrs: Dict.for attrs (k: typeDeps) acc
         CA.TypeError: acc
 
 
@@ -1277,8 +1311,8 @@ translateNamedType as ReadOnly: Pos: Token.Word: [CA.Type]: Res CA.Type =
         error pos [ "Type names have no attributes to access" ]
     else
         caArgs
-        >> CA.TypeNamed (resolveToTypeUsr ro word.maybeModule word.name)
-        >> CA.Type pos Imm
+        >> CA.TypeNamed (resolveToTypeUsr ro word.maybeModule word.name) (CA.UniIsFixed Imm)
+        >> CA.Type pos
         >> Ok
 
 
@@ -1293,8 +1327,8 @@ translateTypeVariable as Pos: Token.Word: Res CA.Type =
         error pos [ "No point it getting tyvars from modules?" ]
     else
         word.name
-        >> CA.TypeAnnotationVariable
-        >> CA.Type pos Imm
+        >> CA.TypeAnnotationVariable Imm
+        >> CA.Type pos
         >> Ok
 
 
@@ -1308,9 +1342,9 @@ translateTypeFunctionParameter as ReadOnly: FA.Expression: Res (RecycleOrSpend &
         FA.Unop Op.UnopRecycle faOperand:
             faOperand
             >> translateType ro
-            >> onOk (CA.Type pos _ type_):
+            >> onOk (CA.Type pos type_):
 
-            Recycle & (CA.Type pos Uni type_)
+            Recycle & (CA.Type pos type_)
             >> Ok
 
         _:
@@ -1374,8 +1408,8 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
                 >> onOk caAttrs:
 
                 caAttrs
-                >> CA.TypeRecord
-                >> CA.Type pos Imm
+                >> CA.TypeRecord Imm
+                >> CA.Type pos
                 >> Ok
 
         FA.Fn faParams faReturn:
@@ -1388,7 +1422,7 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             >> onOk caReturn:
 
             CA.TypeFn caParams caReturn
-            >> CA.Type pos Imm
+            >> CA.Type pos
             >> Ok
 
         FA.Binop Op.Tuple sepList:
@@ -1396,17 +1430,16 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             >> translateTuple (translateType ro)
             >> onOk recordAttrs:
 
-            CA.TypeRecord recordAttrs
-            >> CA.Type pos Imm
+            CA.TypeRecord Imm recordAttrs
+            >> CA.Type pos
             >> Ok
 
         FA.Unop Op.UnopUnique faOperand:
             faOperand
             >> translateType ro
-            >> onOk (CA.Type _ _ type_):
+            >> onOk t:
 
-            CA.Type pos Uni type_
-            >> Ok
+            typeSetUni pos Uni t
 
         _:
             # TODO: do all other constructors explicitly
@@ -1465,7 +1498,7 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
                 if caPars == [] then
                     unionType
                 else
-                    CA.Type pos Imm << CA.TypeFn (List.map (a: Spend & a) caPars) unionType
+                    CA.Type pos << CA.TypeFn (List.map (a: Spend & a) caPars) unionType
             }
 
         constructors
@@ -1581,9 +1614,9 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
 
                 type =
                     caPars
-                    >> List.map ((At p name): CA.Type p Imm (CA.TypeAnnotationVariable name))
-                    >> CA.TypeNamed usr
-                    >> CA.Type pos Imm
+                    >> List.map ((At p name): CA.Type p (CA.TypeAnnotationVariable Imm name))
+                    >> CA.TypeNamed usr (CA.UniIsFixed Imm)
+                    >> CA.Type pos
 
                 Dict.empty
                 >> List.forRes fa.constructors (translateConstructor ro type usr)

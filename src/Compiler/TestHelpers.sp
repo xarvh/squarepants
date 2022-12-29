@@ -90,20 +90,20 @@ resErrorToStrippedText as Text: Res a: Result Text a =
 # Same as core types, but have Pos.T rather than Pos.N
 #
 caBool as CA.Type =
-    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "Bool") []
+    CA.Type Pos.T << CA.TypeNamed (Meta.spCoreUSR "Bool") (CA.UniIsFixed Imm) []
 
 
 caNumber as CA.Type =
-    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "Number") []
+    CA.Type Pos.T << CA.TypeNamed (Meta.spCoreUSR "Number") (CA.UniIsFixed Imm) []
 
 
 caNone as CA.Type =
-    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "None") []
+    CA.Type Pos.T << CA.TypeNamed (Meta.spCoreUSR "None") (CA.UniIsFixed Imm) []
 
 
 caList as CA.Type: CA.Type =
     itemType:
-    CA.Type Pos.T Imm << CA.TypeNamed (Meta.spCoreUSR "List") [ itemType ]
+    CA.Type Pos.T << CA.TypeNamed (Meta.spCoreUSR "List") (CA.UniIsFixed Imm) [ itemType ]
 
 
 #

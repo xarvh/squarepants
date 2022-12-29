@@ -1,12 +1,18 @@
 
 union Type =
-    Type Pos UniqueOrImmutable Type_
+    Type Pos Type_
+
+
+union UniFromPars =
+    , UniIsFromPars
+    , UniIsFixed UniqueOrImmutable
+
 
 union Type_ =
-    , TypeNamed USR [Type]
+    , TypeNamed USR UniFromPars [Type]
     , TypeFn [RecycleOrSpend & Type] Type
-    , TypeRecord (Dict Name Type)
-    , TypeAnnotationVariable Name
+    , TypeRecord UniqueOrImmutable (Dict Name Type)
+    , TypeAnnotationVariable UniqueOrImmutable Name
     # This is used as a placeholder when there is an error and a type can't be determined
     # It's useful to avoid piling up errors (I think)
     , TypeError
@@ -171,7 +177,6 @@ unmod as [mod & param]: [param] =
 mapmod as (a: b): [mod & a]: [mod & b] =
     f:
     List.map (Tuple.mapSecond f)
-
 
 
 typeTyvars as Type: Dict Name Pos =
