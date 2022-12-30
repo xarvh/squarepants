@@ -885,7 +885,7 @@ patterns as Test =
             #
         , codeTest
             """
-            ONLY [reg] Trying to check against an inferred value?
+            [reg] Trying to check against an inferred value?
             """
             """
             tuple as Text & Number =

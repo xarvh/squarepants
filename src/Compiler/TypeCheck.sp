@@ -199,7 +199,7 @@ coreTypeBool as TA.Type =
     TA.TypeExact TA.ForceImm CoreTypes.boolDef.usr []
 
 coreTypeNumber as TA.Type =
-    TA.TypeExact TA.ForceImm CoreTypes.numberDef.usr []
+    TA.TypeExact TA.AllowUni CoreTypes.numberDef.usr []
 
 coreTypeText as TA.Type =
     TA.TypeExact TA.ForceImm CoreTypes.textDef.usr []
@@ -369,34 +369,31 @@ expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name T
             expandedPars =
                 List.map Tuple.first expandedParsAndUnis
 
-            unis =
-                List.map Tuple.second expandedParsAndUnis
-
             uni =
                 try uniFromPars as
-                    TA.UniIsFixed Imm: 
-                    TA.UniIsFixed Uni:
-                    TA.UniIsFromPars:
-
+                    CA.UniIsFixed Imm: Imm
+                    CA.UniIsFixed Uni: Uni
+                    CA.UniIsFromPars: if List.any (pau: pau.second == Uni) expandedParsAndUnis then Uni else Imm
 
             try Dict.get usr allAliases as
                 Nothing:
-                    TA.TypeExact TA.AllowUni usr expandedPars & caTypeUniqueness type
+                    TA.TypeExact (uniqueOrImmutableToUniqueness uni) usr expandedPars & uni
 
                 Just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
                         Array.push @state.errors (pos & context & ErrorWrongNumberOfTypeArguments usr expandedAlias.pars expandedPars)
-                        TA.TypeError
+                        TA.TypeError & uni
 
                     else
                         tyvarIdsToType as Dict TA.UnificationVariableId TA.Type =
                             List.map2 Tuple.pair expandedAlias.pars expandedPars
                             >> Dict.fromList
 
-                        expandTyvarsInType @state context tyvarIdsToType expandedAlias.type
+                        # TODO: if uni == Imm, check that the expanded alias is not Uni
+                        expandTyvarsInType @state context tyvarIdsToType expandedAlias.type & uni
 
 
-annotationToTaType as State@: Env: CA.Type: TA.Type & Bool =
+annotationToTaType as State@: Env: CA.Type: TA.Type & UniqueOrImmutable =
     state@: env: ca:
 
     nameToType =
@@ -449,7 +446,8 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
         else
             try patternOut.maybeFullAnnotation as
                 Just annotationType:
-                    taType = annotationToTaType @state envWithContext annotationType
+                    taType & uni = annotationToTaType @state envWithContext annotationType
+                    # TODO: uni should enter checkExpression
                     checkExpression envWithContext taType def.body @state & taType
                 Nothing:
                     tuple = inferExpression envWithContext def.body @state
@@ -882,8 +880,6 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
     try caExpression & expectedType as
 
         CA.LiteralNumber pos n & TA.TypeExact uni typeUsr []:
-            addErrorIfAllowsUnique pos
-
             addErrorIf (typeUsr /= CoreTypes.numberDef.usr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
 
@@ -1284,19 +1280,19 @@ inferPatternAny as Env: Pos: { isUnique as Bool, maybeName as Maybe Name, maybeA
                 newType uni @state
 
             Just annotation:
-                taType & shouldBeUnique =
+                taType & uniOrImm =
                     annotationToTaType @state env annotation
 
                 #
                 # a as !Number = ...
                 # !a as Number = ...
                 #
-                if shouldBeUnique /= isUnique then
+                if (uniOrImm == Uni) /= isUnique then
                     addError env pos (ErrorUniquenessDoesNotMatchPattern) @state
                 else
                     None
 
-                t
+                taType
 
     envWithVariable as Env =
         try maybeName as
@@ -1648,8 +1644,10 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
                     >> USR umr
                     >> RefGlobal
 
-                type as TA.Type =
+                (type as TA.Type) & uni =
                     expandParamsAndAliases env @state Context_Global env.expandedAliases nameToType annotation
+
+                # TODO: ensure that uni is Imm
 
                 instance as Instance =
                     {
@@ -1668,7 +1666,7 @@ addConstructorToGlobalEnv as State@: Dict Name TA.Type: Dict TA.UnificationVaria
     USR umr _ =
         caConstructor.typeUsr
 
-    type as TA.Type =
+    (type as TA.Type) & uni =
         expandParamsAndAliases env @state Context_Global env.expandedAliases paramsByName caConstructor.type
 
     consTyvars =
@@ -1729,8 +1727,8 @@ expandAndInsertAlias as State@: USR: CA.AliasDef: ByUsr ExpandedAlias: ByUsr Exp
     pars & typeByName =
         namedParsToIdParsAndDict aliasDef.pars
 
-    type as TA.Type =
-        expandParamsAndAliases env @state Context_Global aliasAccum typeByName aliasDef.type
+    (type as TA.Type) & uni =
+        expandParamsAndAliases initEnv @state Context_Global aliasAccum typeByName aliasDef.type
 
     Dict.insert usr { pars, type } aliasAccum
 

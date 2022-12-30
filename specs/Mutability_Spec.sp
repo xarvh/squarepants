@@ -49,26 +49,26 @@ howDoesItLookLike as Test =
         [
         , codeTest
             """
-            SKIP Example: maintaining mutable state
+            Example: maintaining mutable state
             """
             """
             average as fn [Number]: Number =
-                numbers:
+                fn numbers:
 
-                # The core function `mut` transforms an immutable value in a mutable one
+                # The core function `uni` transforms an immutable value in a unique one
+                # Unique values can be changed in place, ie, "mutated"
                 !total as !Number =
-                    mut 0
+                    0
 
                 !count as !Number =
-                    mut 0
+                    0
 
-                each numbers number:
+                (todo "List.each") numbers fn number:
                     @total += number
                     @count += 1
 
-                # Most algebraic operators accept both immutable and mutable values
-                # Also in Squarepants division by 0 yields 0
-                @total / @count
+                # In Squarepants division by 0 yields 0
+                total / count
             """
             (infer "average")
             Test.isOk
@@ -110,12 +110,21 @@ uniquenessTyping as Test =
 
             alias B a = !a
 
+            z = 1
+            """
+            (infer "z")
+            Test.isOk
+        , codeTest
+            """
+            Functions can't be flagged as unique
+            """
+            """
             alias C = !(fn Text: Number)
 
             z = 1
             """
             (infer "z")
-            Test.isOk
+            (Test.errorContains ["TypeFn", "Uni"])
         #
         , Test.Group
             """
@@ -133,7 +142,7 @@ uniquenessTyping as Test =
                     None
                 """
                 (infer "scope")
-                (Test.errorContains ["ErrorUniquenessDoesNotMatch"])
+                (Test.errorContains ["TypeFn"])
             , codeTest
                 """
                 SKIP (I don't want to rely on mut being nonFn) Inferred
@@ -185,7 +194,7 @@ uniquenessTyping as Test =
             ]
         , Test.Group
             """
-            ONLY A variable with mutable type must be explicitly declared as mutable with `!`
+            A variable with mutable type must be explicitly declared as mutable with `!`
             """
             [
             , codeTest "1"
@@ -466,7 +475,7 @@ records as Test =
                 (Test.errorContains [ "UNIQUE" ])
             , codeTest
                 """
-                Reject global unique
+                SKIP (unis are cast automatically to imms) Reject global unique
                 """
                 """
                 scope =
@@ -542,7 +551,7 @@ records as Test =
                 """
                 scope =
                     !record = { x = 0, y = mut 0 }
-                    doStuff @record.x @record.y
+                    (todo "") @record.x @record.y
                 """
                 (infer "scope")
                 (Test.errorContains [ "same mutable twice in the same function call" ])
@@ -577,7 +586,7 @@ unions as Test =
             [
             , codeTest
                 """
-                Annotated
+                SKIP (design changed) Annotated
                 """
                 """
                 union Something =
@@ -595,7 +604,7 @@ unions as Test =
                 Test.isOk
             , codeTest
                 """
-                Inferred
+                SKIP (design changed) Inferred
                 """
                 """
                 union Something =
@@ -619,7 +628,7 @@ unions as Test =
                 Test.isOk
             , codeTest
                 """
-                Free
+                SKIP (design changed) Free
                 """
                 """
                 union Blah a =

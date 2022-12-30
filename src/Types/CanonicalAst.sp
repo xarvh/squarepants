@@ -160,12 +160,6 @@ skipLetIns as CA.Expression: CA.Expression =
         _: expr
 
 
-makeUnique as CA.Type: CA.Type =
-    (CA.Type pos _ type_):
-    CA.Type pos Uni type_
-
-
-
 #
 # helpers
 #
@@ -180,17 +174,17 @@ mapmod as (a: b): [mod & a]: [mod & b] =
 
 
 typeTyvars as Type: Dict Name Pos =
-    (Type pos _ ty_):
+    (Type pos ty_):
 
     fromList as [Type]: Dict Name Pos =
         list:
         List.for list (item: acc: Dict.join acc (typeTyvars item)) Dict.empty
 
     try ty_ as
-        TypeNamed _ args: fromList args
+        TypeNamed _ _ args: fromList args
         TypeFn pars to: fromList << to :: unmod pars
-        TypeRecord attrs: fromList (Dict.values attrs)
-        TypeAnnotationVariable name: Dict.singleton name pos
+        TypeRecord _ attrs: fromList (Dict.values attrs)
+        TypeAnnotationVariable _ name: Dict.singleton name pos
         TypeError: Dict.empty
 
 

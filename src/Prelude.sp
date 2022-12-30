@@ -33,12 +33,12 @@ tupleUsr as Text: USR =
 
 tyVar as Name: CA.Type =
     name:
-    CA.Type Pos.N Imm << CA.TypeAnnotationVariable name
+    CA.Type Pos.N << CA.TypeAnnotationVariable Imm name
 
 
 tyFn as [CA.Type]: CA.Type: CA.Type =
     pars: to:
-    CA.Type Pos.N Imm << CA.TypeFn (List.map (p: Spend & p) pars) to
+    CA.Type Pos.N << CA.TypeFn (List.map (p: Spend & p) pars) to
 
 
 typeUnopUniform as CA.Type: CA.Type =
@@ -54,6 +54,30 @@ typeBinop as CA.Type: CA.Type: CA.Type: CA.Type =
 typeBinopUniform as CA.Type: CA.Type =
     ty:
     typeBinop ty ty ty
+
+
+makeUnique as CA.Type: CA.Type =
+    (CA.Type pos type_):
+
+    t =
+        try type_ as
+            CA.TypeNamed usr _ pars:
+                CA.TypeNamed usr (CA.UniIsFixed Uni) pars
+
+            CA.TypeFn pars out:
+                todo "TypeFn can' be uni"
+
+            CA.TypeRecord _ attrs:
+                CA.TypeRecord Uni attrs
+
+            CA.TypeAnnotationVariable _ name:
+                CA.TypeAnnotationVariable Uni name
+
+            CA.TypeError:
+                CA.TypeError
+
+    CA.Type pos t
+
 
 
 
@@ -166,8 +190,8 @@ tuple as Op.Binop = {
         Dict.empty
             >> Dict.insert "first" (tyVar "a")
             >> Dict.insert "second" (tyVar "b")
-            >> CA.TypeRecord
-            >> CA.Type Pos.N Imm
+            >> CA.TypeRecord Imm
+            >> CA.Type Pos.N
             >> typeBinop (tyVar "a") (tyVar "b")
     , nonFn = []
     }
@@ -235,7 +259,7 @@ mutableAdd as Op.Binop = {
     , symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = CA.Type Pos.N Imm << CA.TypeFn [Recycle & CA.makeUnique CoreTypes.number, Spend & CoreTypes.number] CoreTypes.none
+    , type = CA.Type Pos.N << CA.TypeFn [Recycle & makeUnique CoreTypes.number, Spend & CoreTypes.number] CoreTypes.none
     , nonFn = []
     }
 
@@ -245,7 +269,7 @@ mutableSubtract as Op.Binop = {
     , symbol = "-="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = typeBinop (CA.makeUnique CoreTypes.number) CoreTypes.number CoreTypes.none
+    , type = typeBinop (makeUnique CoreTypes.number) CoreTypes.number CoreTypes.none
     , nonFn = []
     }
 
@@ -371,7 +395,7 @@ functions as [Function] = [
 
 mut as Function = {
     , usr = coreUsr "mut"
-    , type = tyFn [tyVar "a"] (CA.makeUnique (tyVar "a"))
+    , type = tyFn [tyVar "a"] (makeUnique (tyVar "a"))
     , nonFn = [ "a" ]
     }
 
@@ -379,7 +403,7 @@ mut as Function = {
 # TODO remove this one, it's used only by the typecheck tests?
 reinit as Function = {
     , usr = coreUsr "reinit"
-    , type = tyFn [CA.makeUnique (tyVar "a"), (tyVar "a")] CoreTypes.none
+    , type = tyFn [makeUnique (tyVar "a"), (tyVar "a")] CoreTypes.none
     , nonFn = [ "a" ]
     }
 
