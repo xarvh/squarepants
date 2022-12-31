@@ -123,6 +123,10 @@ taNumber as TA.Type =
     TA.TypeExact TA.ForceImm ("Number" >> Meta.spCoreUSR) []
 
 
+taNumberAllowUni as TA.Type =
+    TA.TypeExact TA.AllowUni ("Number" >> Meta.spCoreUSR) []
+
+
 taNone as TA.Type =
     TA.TypeExact TA.ForceImm ("None" >> Meta.spCoreUSR) []
 

@@ -197,7 +197,7 @@ uniquenessTyping as Test =
                 Uniques can be implicitly transformed in immutables
                 """
                 """
-                a as Number = mut 1
+                a as Number = 1
                 """
                 (infer "a")
                 Test.isOk
@@ -210,13 +210,13 @@ uniquenessTyping as Test =
             , codeTest "1"
                 """
                 z =
-                    !a as !Number = mut 1
+                    !a as !Number = 1
                 """
                 (infer "z")
                 Test.isOk
             , codeTest "2"
                 """
-                a as !Number = mut 1
+                a as !Number = 1
                 """
                 (infer "a")
                 (Test.errorContains ["UniquenessDoesNotMatch"])
@@ -230,7 +230,7 @@ uniquenessTyping as Test =
                 """
                 scope =
                     !x =
-                        mut 1
+                        1
 
                     !y =
                         # The first time we do it it works!
@@ -247,7 +247,7 @@ uniquenessTyping as Test =
                 """
                 scope =
                     !x =
-                        mut 1
+                        1
 
                     !y =
                         x & x
@@ -266,7 +266,7 @@ uniquenessTyping as Test =
                 """
                 """
                 scope =
-                    !x = mut 1
+                    !x = 1
                     fn z: x
                 """
               (infer "scope")
@@ -278,7 +278,10 @@ uniquenessTyping as Test =
 mutation as Test =
     Test.Group "Mutation"
         [
-        , Test.Group "Uniques can be mutated in place"
+        , Test.Group
+            """
+            Uniques can be mutated in place
+            """
             [
             [# TODO enable once the new parser self-compiles
             , valueTest
@@ -287,7 +290,7 @@ mutation as Test =
                 """
                 _:
                     @x =
-                        mut 1
+                        1
 
                     @x += 2
 
@@ -300,7 +303,7 @@ mutation as Test =
                 """
                 """
                 scope =
-                    !x = mut 1
+                    !x = 1
                     @x += 1
                     @x += 1
                 """
@@ -312,8 +315,8 @@ mutation as Test =
                 """
                 """
                 scope =
-                    !x = mut 1
-                    consume x
+                    !x = 1
+                    (todo "consume") x
                     @x += 1
                 """
                 (infer "scope")
@@ -334,22 +337,26 @@ mutation as Test =
                     @a += 3
 
                 scope =
-                    !x = mut 0
+                    !x = 0
                     funz @x
                     funz @x
                 """
                 (infer "scope")
                 Test.isOk
             ]
-        , Test.Group "Calling a function that mutates a unique variable temporarily consumes the variable." [
+        , Test.Group
+            """
+            Calling a function that mutates a unique variable temporarily consumes the variable.
+            """
+            [
             , codeTest
                 """
                 base
                 """
                 """
                 scope =
-                    !x = mut 0
-                    funz @x @x
+                    !x = 0
+                    (todo "funz") @x @x
                 """
                 (infer "scope")
                 (Test.errorContains [ "twice" ])
@@ -375,7 +382,7 @@ parentScope as Test =
                 """
                 scope =
                     !x =
-                        mut 1
+                        1
 
                     f =
                         fn n:
@@ -398,104 +405,6 @@ records as Test =
         [
         , Test.Group
             """
-            A record that has at least one unique attribute is itself unique
-            """
-            [
-            , codeTest
-                """
-                Annotation, valid
-                """
-                """
-                scope =
-                    fn None:
-                    !r as !{ x as Number, y as !Number } =
-                        { x = 0, y = mut 0 }
-                    r
-                """
-                (infer "scope")
-                (Test.isOkAndEqualTo
-                    { freeTyvars = Dict.empty
-                    , type =
-                        TH.taFunction
-                            [TH.taNone]
-                            ([
-                              , "x" & TH.taNumber
-                              , "y" & TA.setUni TA.AllowUni TH.taNumber
-                              ]
-                              >> Dict.fromList
-                              >> TA.TypeRecord TA.AllowUni
-                            )
-                    }
-                )
-            , codeTest
-                """
-                Annotation, invalid 1
-                """
-                """
-                scope =
-                    !r as { x as Number, y as Number } =
-                        { x = 0, y = 0 }
-                """
-                (infer "scope")
-                (Test.errorContains [ "ErrorUniquenessDoesNotMatchPattern" ])
-            , codeTest
-                """
-                Annotation, invalid 2
-                """
-                """
-                scope =
-                    r as { x as Number, y as !Number } =
-                        { x = 0, y = mut 0 }
-                """
-                (infer "scope")
-                (Test.errorContains [ "ErrorUniquenessDoesNotMatchPattern" ])
-
-            , codeTest
-                """
-                No annotation, valid
-                """
-                """
-                scope =
-                    !r =
-                        { x = 0, y = mut 0 }
-                """
-                (infer "scope")
-                Test.isOk
-            , codeTest
-                """
-                No annotation, invalid 1
-                """
-                """
-                scope =
-                    !r =
-                        { x = 0, y = 0 }
-                """
-                (infer "scope")
-                (Test.errorContains [ "one is unique, the other is immutable" ])
-            , codeTest
-                """
-                No annotation, invalid 2
-                """
-                """
-                scope =
-                    r =
-                        { x = 0, y = mut 0 }
-                """
-                (infer "scope")
-                (Test.errorContains [ "UNIQUE" ])
-            , codeTest
-                """
-                SKIP (unis are cast automatically to imms) Reject global unique
-                """
-                """
-                scope =
-                    { x = 0, y = mut 0 }
-                """
-                (infer "scope")
-                (Test.errorContains [ "UNIQUE" ])
-            ]
-        , Test.Group
-            """
             An immutable attribute of a mutable record can be unpacked to an immutable
             """
             [
@@ -505,7 +414,7 @@ records as Test =
                 """
                 """
                 scope =
-                    !r = { x = 0, y = mut 1 }
+                    !r = { x = 0, y = 1 }
 
                     { x = immutableX, y = !mutableY } =
                         r
@@ -520,11 +429,11 @@ records as Test =
                 Test.isOk
             , codeTest
                 """
-                SKIP 2
+                SKIP (parser doesn't like !y) 2
                 """
                 """
                 scope =
-                    !r = { x = 0, y = mut 1 }
+                    !r = { x = 0, y = 1 }
 
                     { x, !y } =
                         r
@@ -549,7 +458,7 @@ records as Test =
                 """
                 """
                 scope =
-                    !record = { x = 0, y = mut 0 }
+                    !record = { x = 0, y = 0 }
                     @record.x += 3
                 """
                 (infer "scope")
@@ -560,7 +469,7 @@ records as Test =
                 """
                 """
                 scope =
-                    !record = { x = 0, y = mut 0 }
+                    !record = { x = 0, y = 0 }
                     (todo "") @record.x @record.y
                 """
                 (infer "scope")
@@ -571,7 +480,7 @@ records as Test =
                 """
                 """
                 scope =
-                    !record = { x = 0, y = mut 0 }
+                    !record = { x = 0, y = 0 }
 
                     a = record.x
 
@@ -605,7 +514,7 @@ unions as Test =
 
                 scope =
                     @m as @Something =
-                        Mutable (mut 0)
+                        Mutable 0
 
                     i as Something =
                         Immutable 1
@@ -623,7 +532,7 @@ unions as Test =
 
                 scope =
                     @m =
-                        Mutable (mut 0)
+                        Mutable 0
 
                     i =
                         Immutable 1
@@ -646,7 +555,7 @@ unions as Test =
 
                 scope =
                     @m =
-                        Blah (mut 0)
+                        Blah 0
 
                     @mm as Blah @Number =
                         m

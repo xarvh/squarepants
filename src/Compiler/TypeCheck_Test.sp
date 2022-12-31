@@ -262,7 +262,7 @@ functions as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , type = TH.taFunction [tyvarImm 1] TH.taNumber
+                , type = TH.taFunction [tyvarImm 1] TH.taNumberAllowUni
                 , freeTyvars = Dict.empty
                 }
             )
@@ -707,7 +707,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt TA.ForceImm 1 (Dict.singleton "x" TH.taNumber) >> re:
+                (TA.TypeRecordExt TA.ForceImm 1 (Dict.singleton "x" TH.taNumberAllowUni) >> re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }
@@ -924,7 +924,7 @@ try_as as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = TH.taFunction [TH.taBool] TH.taNumber
+                , type = TH.taFunction [TH.taBool] TH.taNumberAllowUni
                 }
             )
 
@@ -993,7 +993,7 @@ if_else as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = TH.taFunction [TH.taBool] TH.taNumber
+                , type = TH.taFunction [TH.taBool] TH.taNumberAllowUni
                 }
             )
 
