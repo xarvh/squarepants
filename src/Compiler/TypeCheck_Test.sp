@@ -68,7 +68,7 @@ freeTyvarsAnnotated as [TA.UnificationVariableId & Name]: Dict TA.UnificationVar
 #
 #
 infer as Text: Text: Result Text Out =
-    name: code:
+    targetName: code:
 
     params as Compiler/MakeCanonical.Params = {
         , meta = TH.meta
@@ -119,12 +119,12 @@ infer as Text: Text: Result Text Out =
     >> TH.resErrorToStrippedText code
     >> onOk moduleWithDestroy:
 
-    toMatch as (CA.Pattern & TA.ValueDef): Maybe { isUnique as Bool, maybeAnnotation as Maybe CA.Type, def as TA.ValueDef } =
+    toMatch as (CA.Pattern & TA.ValueDef): Maybe TA.ValueDef =
         (pattern & def):
 
         try pattern as
             CA.PatternAny _ { isUnique, maybeAnnotation, maybeName = Just name }:
-                Just { isUnique, maybeAnnotation, def }
+                if name == targetName then Just def else Nothing
             _:
                 Nothing
 
@@ -137,7 +137,7 @@ infer as Text: Text: Result Text Out =
         []:
             Err "dict fail"
 
-        { isUnique, maybeAnnotation, def } :: tail:
+        def :: tail:
             try def.pattern as
                 TA.PatternAny _ { isUnique, maybeAnnotation, maybeName, type }:
                     {

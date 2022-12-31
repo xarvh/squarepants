@@ -101,6 +101,19 @@ uniquenessTyping as Test =
         Uniqueness Typing
         """
         [
+        , Test.Group
+            """
+            ONLY All literal expressions allow uniqueness
+            """
+            [
+            , codeTest "failure" "f as fn Number: !Number = fn x: x" (infer "f") (Test.errorContains [ "ErrorUniquenessDoesNotMatch" ])
+            , codeTest "Number"  "f as fn a: Number = fn _: 1" (infer "f") Test.isOk
+#            , codeTest "Number" "f = fn _: 1" (infer "f") Test.isOk
+#            , codeTest "Text" """!z = "hello" """ (infer "z") Test.isOk
+#            , codeTest "Constructor, no pars" "!z = True" (infer "z") Test.isOk
+#            , codeTest "Constructor, pars" "!z = Just 0" (infer "z") Test.isOk
+#            , codeTest "Record" "!z = {}" (infer "z") Test.isOk
+            ]
         , codeTest
             """
             Types can be flagged as unique
