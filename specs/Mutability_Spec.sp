@@ -103,16 +103,15 @@ uniquenessTyping as Test =
         [
         , Test.Group
             """
-            ONLY All literal expressions allow uniqueness
+            All literal expressions allow uniqueness
             """
             [
             , codeTest "failure" "f as fn Number: !Number = fn x: x" (infer "f") (Test.errorContains [ "ErrorUniquenessDoesNotMatch" ])
-            , codeTest "Number"  "f as fn a: Number = fn _: 1" (infer "f") Test.isOk
-#            , codeTest "Number" "f = fn _: 1" (infer "f") Test.isOk
-#            , codeTest "Text" """!z = "hello" """ (infer "z") Test.isOk
-#            , codeTest "Constructor, no pars" "!z = True" (infer "z") Test.isOk
-#            , codeTest "Constructor, pars" "!z = Just 0" (infer "z") Test.isOk
-#            , codeTest "Record" "!z = {}" (infer "z") Test.isOk
+            , codeTest "Number"  "f as fn a: !Number = fn _: 1" (infer "f") Test.isOk
+            , codeTest "Text"    """f as fn a: !Text = fn _: "meh" """ (infer "f") Test.isOk
+            , codeTest "Record"  "f as fn a: !{} = fn _: {}" (infer "f") Test.isOk
+            , codeTest "Constructor 1"  "f as fn a: !Bool = fn _: True" (infer "f") Test.isOk
+            # TODO: Constructor with pars
             ]
         , codeTest
             """
@@ -150,24 +149,22 @@ uniquenessTyping as Test =
                 """
                 """
                 scope =
-                    !f as !(fn Number: Number) =
+                    !f as !fn Number: Number =
                         todo ""
-                    None
                 """
                 (infer "scope")
                 (Test.errorContains ["TypeFn"])
             , codeTest
                 """
-                SKIP (I don't want to rely on mut being nonFn) Inferred
+                Inferred
                 """
                 """
-                f as fn a: a = fn x: x
                 scope =
-                    q = mut f
-                    None
+                    !f =
+                        fn _: 1
                 """
                 (infer "scope")
-                (Test.errorContains ["zzzzzz"])
+                (Test.errorContains ["is unique", "but its type is"])
             ]
         #
         , Test.Group

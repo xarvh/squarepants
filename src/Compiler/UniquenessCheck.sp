@@ -3,7 +3,6 @@ alias Expression = TA.Expression
 
 
 
-
 union MutableAvailability =
     , Available
     , ConsumedAt Pos
@@ -18,11 +17,13 @@ alias Variable = {
     , definedAt as Pos
     , name as Name
     , mode as VariableMode
+    , type as TA.Type
     }
 
 
 alias Env = {
     , variables as Dict Name Variable
+    , substitutions as Dict TA.UnificationVariableId TA.Type
     }
 
 
@@ -42,6 +43,17 @@ addError as Pos: State@: (Error.Env: List Text): None =
 #
 # Errors
 #
+
+errorUniqueHasImmType as Name: Pos: TA.Type: State@: None =
+    name: pos: type: state@:
+
+    addError pos @state eenv:
+        [
+        , "Variable `" .. name .. "` is unique, but its type is:"
+        , toHuman type
+        ]
+
+
 
 errorReferencingConsumedVariable as Text: Pos: Pos: State@: None =
     name: pos: consumedPos: state@:
@@ -131,22 +143,33 @@ consumeInEnv as Dict Name Pos: Env: Env =
     { env with variables = Dict.map translate .variables }
 
 
-addPatternToEnv as TA.Pattern: Env: Dict Name Pos & Env =
-    pattern: env:
+addPatternToEnv as State@: TA.Pattern: Env: Dict Name Pos & Env =
+    state@: pattern: env:
 
     names =
         TA.patternNames pattern
 
+
     insertVariable =
-       name: stuff:
+        name: ({ pos, isUnique, type }):
 
-       mode =
-           if stuff.isUnique then Mutable Available else Immutable
+        mode =
+           if isUnique then Mutable Available else Immutable
 
-       Dict.insert name { definedAt = stuff.pos, name, mode }
+        resolvedType =
+            Compiler/TypeCheck.applyAllSubstitutions env.substitutions type
+
+        if isUnique and TA.getUni resolvedType == TA.ForceImm then
+            errorUniqueHasImmType name pos resolvedType @state
+        else
+            None
+
+        Dict.insert name { definedAt = pos, name, mode, type = resolvedType }
+
 
     localEnv =
         { env with variables = Dict.for names insertVariable .variables }
+
 
     uniques =
         names
@@ -240,13 +263,13 @@ alias ParsAcc =
     }
 
 
-doParameter as TA.Parameter & TA.Type: ParsAcc: ParsAcc =
-    (par & type): acc:
+doParameter as State@: TA.Parameter & TA.Type: ParsAcc: ParsAcc =
+    state@: (par & type): acc:
 
     try par as
         TA.ParameterPattern pa:
             uniques & localEnv =
-                addPatternToEnv pa acc.localEnv
+                addPatternToEnv @state pa acc.localEnv
 
             { acc with
             , parsToBeSpent = Dict.join uniques .parsToBeSpent
@@ -255,11 +278,20 @@ doParameter as TA.Parameter & TA.Type: ParsAcc: ParsAcc =
 
         TA.ParameterRecycle pos name:
 
+            resolvedType =
+                Compiler/TypeCheck.applyAllSubstitutions acc.localEnv.substitutions type
+
+            if TA.getUni resolvedType == TA.ForceImm then
+                errorUniqueHasImmType name pos resolvedType @state
+            else
+                None
+
             var as Variable =
                 {
                 , definedAt = pos
                 , name
                 , mode = Mutable Available
+                , type = resolvedType
                 }
 
             { acc with
@@ -310,7 +342,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
 
             { parsToBeSpent, parsToBeRecycled, localEnv } =
                 { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
-                >> List.for pars doParameter
+                >> List.for pars (doParameter @state)
 
             spentByBody & bodyExpression =
                 doExpression localEnv @state body
@@ -403,7 +435,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                 patternsAndExpressions >> List.map (pattern & block):
 
                     mutables_should_be_empty & localEnv =
-                        addPatternToEnv pattern newEnv
+                        addPatternToEnv @state pattern newEnv
 
                     consumedByBlock & blockExpression =
                         doExpression localEnv @state block
@@ -465,7 +497,7 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
         TA.LetIn valueDef e:
 
             uniques & env1 =
-                addPatternToEnv valueDef.pattern env
+                addPatternToEnv @state valueDef.pattern env
 
             consumedByBody & bodyExpression =
                 doExpression env1 @state valueDef.body
@@ -496,6 +528,7 @@ doModule as TA.Module: Res TA.Module =
 
     env as Env = {
         , variables = Dict.empty
+        , substitutions = module.substitutions
         }
 
     addDestruction as pa: TA.ValueDef: TA.ValueDef =

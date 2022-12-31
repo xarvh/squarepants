@@ -127,6 +127,7 @@ initEnv as Env =
     }
 
 
+# TODO: once we have proper error messages, there won't be much point in using these instead than error functions directly
 union Error_ =
     , ErrorCircularValue [CA.Pattern]
     , ErrorVariableNotFound Ref
@@ -202,7 +203,7 @@ coreTypeNumber as TA.Type =
     TA.TypeExact TA.AllowUni CoreTypes.numberDef.usr []
 
 coreTypeText as TA.Type =
-    TA.TypeExact TA.ForceImm CoreTypes.textDef.usr []
+    TA.TypeExact TA.AllowUni CoreTypes.textDef.usr []
 
 
 #
@@ -887,8 +888,6 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.LiteralText pos text & TA.TypeExact uni typeUsr []:
-            addErrorIfAllowsUnique pos
-
             addErrorIf (typeUsr /= CoreTypes.textDef.usr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
 
@@ -911,8 +910,6 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.Constructor pos usr & _:
-            addErrorIfAllowsUnique pos
-
             bleh =
                 try getConstructorByUsr usr env as
                     Nothing:
