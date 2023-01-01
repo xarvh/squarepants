@@ -1142,6 +1142,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
                         TA.TypeError
 
                     Just var:
+
                         var.type >> List.for attrPath attrName: tyAcc:
                             inferRecordAccess env pos attrName tyAcc @state
 

@@ -257,7 +257,7 @@ uniquenessTyping as Test =
             ]
         , Test.Group
             """
-            "SKIP When we construct a function with mutable elements in its closure that function itself must be mutable."
+            A function cannot consume uniques outside its own scope.
             """
             [
             , codeTest

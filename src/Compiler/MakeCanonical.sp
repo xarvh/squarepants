@@ -1344,7 +1344,10 @@ translateTypeFunctionParameter as ReadOnly: FA.Expression: Res (RecycleOrSpend &
             >> translateType ro
             >> onOk (CA.Type pos type_):
 
-            Recycle & (CA.Type pos type_)
+            typeSetUni pos Uni (CA.Type pos type_)
+            >> onOk t:
+
+            Recycle & t
             >> Ok
 
         _:
