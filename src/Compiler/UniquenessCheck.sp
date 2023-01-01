@@ -583,13 +583,13 @@ doExpression as Env: State@: Expression: UniOut Expression =
                         Nothing:
                             TA.DestroyIn name exp
 
-
-#            ----> an expression cannot contain a function that requires forbidden uniques?
-#            ----> all expressions set "recycled" but only functions set "required"!?
-
+            spent =
+                doneExpression.spent
+                >> Dict.for uniques (name: _: Dict.remove name)
+                >> Dict.join doneDefBody.spent
 
             {
-            , spent = Dict.join doneDefBody.spent doneExpression.spent
+            , spent
             , required = Dict.join doneDefBody.required doneExpression.required
             , resolved = finalExpression
             }
