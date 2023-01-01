@@ -377,7 +377,7 @@ parentScope as Test =
             [
             , codeTest
                 """
-                SKIP -----> Function with requirements cannot be returned <----------
+                -----> Function with requirements cannot be returned <----------
                 """
                 """
                 scope =
@@ -476,15 +476,16 @@ records as Test =
                 (Test.errorContains [ "same mutable twice in the same function call" ])
             , codeTest
                 """
-                SKIP Unpacking an immutable does not consume the unique
+                SKIP (low priority) Unpacking an immutable does not consume the unique
                 """
                 """
                 scope =
-                    !record = { x = 0, y = 0 }
+                    x = 1
+                    !record = { x, y = 0 }
 
                     a = record.x
 
-                    @record.x += 1
+                    @record.y += 1
                 """
                 (infer "scope")
                 Test.isOk
