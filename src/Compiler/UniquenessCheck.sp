@@ -350,6 +350,7 @@ doExpression as Env: State@: Expression: { recycled as Dict Name Pos, spent as D
             re
 
         TA.Fn pos pars body:
+            # TODO: move this in its own function, it's really big
 
             { parsToBeSpent, parsToBeRecycled, localEnv } =
                 { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
@@ -358,7 +359,9 @@ doExpression as Env: State@: Expression: { recycled as Dict Name Pos, spent as D
             doneBody =
                 doExpression localEnv @state body
 
-            # variables that are not spent by the body need to be explicitly destroyed
+            #
+            # Variables that are not spent by the body need to be explicitly destroyed
+            #
             exprWithDestruction =
                 doneBody.resolvedExpression >> Dict.for parsToBeSpent name: pos: exp:
                     if Dict.member name doneBody.spent then
@@ -366,15 +369,20 @@ doExpression as Env: State@: Expression: { recycled as Dict Name Pos, spent as D
                     else
                         TA.DestroyIn name exp
 
+            #
+            # Ensure that the function does not spend any arg that should be recycled!
+            #
+            spentThatShouldHaveBeenRecycled =
+                Dict.intersect doneBody.spent parsToBeRecycled
 
+            if spentThatShouldHaveBeenRecycled /= Dict.empty  then
+                errorConsumingRecycledParameters spentThatShouldHaveBeenRecycled @state
+            else
+                None
 
-            !!!!!!!!!!
-
-            1) functions cannot consume from the parent
-            2) expressions are tainted by what they recycle
-                ---> let..ins remove taint of whatever they define
-
-
+            #
+            # Functions cannot spend variables from the parent scope
+            #
             spentFromParent =
                 Dict.diff doneBody.spent parsToBeSpent
 
@@ -383,33 +391,22 @@ doExpression as Env: State@: Expression: { recycled as Dict Name Pos, spent as D
             else
                 None
 
-
-
-            # check recycled
-            Dict.each parsToBeRecycled name: pos:
-                if Dict.member name doneBody.spent then
-                    errorConsumingRecycledParameter name pos @state
-                else
-                    None
-
-
-
-
-
+            #
+            # Expressions "require" all variables from the parent scope that they recycle
+            #
             recycledFromParent =
                 Dict.diff doneBody.recycled parsToBeRecycled
 
-            recycledFromParent & TA.Fn pos pars exprWithDestruction
+            { recycled = recycledFromParent, spent = Dict.empty, resolvedExpression = TA.Fn pos pars exprWithDestruction }
 
 
         TA.Call pos reference arguments:
+            doCall env @state pos reference arguments
 
+            # TODO just consolidate all names. -_-
             { mutables, consumed, expression = expr } =
-                doCall env @state pos reference arguments
 
-            add recycled vars to the consumed.
-
-            consumed & expr
+            { recycled = mutables, spent = consumed, resolvedExpression = expr }
 
 
         TA.If pos { condition, true, false }:
