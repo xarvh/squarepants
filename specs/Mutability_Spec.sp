@@ -237,7 +237,7 @@ uniquenessTyping as Test =
                         x
 
                     !z =
-                        # But here `x` is now consumed, so we get a compiler error!
+                        # But here `x` is now spent, so we get a compiler error!
                         x
                 """
                 (infer "scope")
@@ -270,7 +270,7 @@ uniquenessTyping as Test =
                     fn z: x
                 """
               (infer "scope")
-              (Test.errorContains [ "?" ])
+              (Test.errorContains [ "but they were declared in its parent scope", "x" ])
             ]
         ]
 
@@ -311,7 +311,7 @@ mutation as Test =
                 Test.isOk
             , codeTest
                 """
-                Mutation requires the unique not to be consumed
+                Mutation requires the unique not to be spent
                 """
                 """
                 scope =
@@ -320,7 +320,7 @@ mutation as Test =
                     @x += 1
                 """
                 (infer "scope")
-                (Test.errorContains ["being consumed here"])
+                (Test.errorContains ["being spent here"])
             ]
         , Test.Group
             """
