@@ -13,7 +13,8 @@ union VariableMode =
     , Mutable MutableAvailability
 
 
-alias Variable = {
+alias Variable =
+    {
     , definedAt as Pos
     , name as Name
     , mode as VariableMode
@@ -21,13 +22,15 @@ alias Variable = {
     }
 
 
-alias Env = {
+alias Env =
+    {
     , variables as Dict Name Variable
     , substitutions as Dict TA.UnificationVariableId TA.Type
     }
 
 
-alias State = {
+alias State =
+    {
     , errors as Array Error
     }
 
@@ -87,6 +90,14 @@ errorMutatingAnImmutable as Text: Pos: State@: None =
 
     addError p @state eenv: [
         , name .. " is immutable, but you are trying to mutate it"
+        ]
+
+
+errorFunctionsCannotConsumeParentUniques as Pos: Dict Name Pos: State@: None =
+    pos: spentFromParent: state@:
+
+    addError p @state eenv: [
+        , "This function is consuming these variables, but they were declared in its parent scope: " .. (Dict.keys spentFromParent >> Dict.join ", ")
         ]
 
 
@@ -300,11 +311,11 @@ doParameter as State@: TA.Parameter & TA.Type: ParsAcc: ParsAcc =
             }
 
 
-doExpression as Env: State@: Expression: Dict Name Pos & Expression =
+doExpression as Env: State@: Expression: { recycled as Dict Name Pos, spent as Dict Name Pos, & resolvedExpression as Expression } =
     env: state@: expression:
 
     re =
-        Dict.empty & expression
+        { recycled = Dict.empty, spent = Dict.empty, resolvedExpression = expression }
 
     try expression as
         TA.LiteralText pos l:
@@ -328,11 +339,11 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                             re
 
                         Mutable Available:
-                            Dict.singleton name pos & expression
+                            { recycled = Dict.empty, spent = Dict.singleton name pos, resolvedExpression = expression }
 
                         Mutable (ConsumedAt consumedPos):
                             errorReferencingConsumedVariable name pos consumedPos @state
-                            Dict.singleton name pos & expression
+                            { recycled = Dict.empty, spent = Dict.singleton name pos, resolvedExpression = expression }
 
 
         TA.Constructor pos usr:
@@ -344,35 +355,59 @@ doExpression as Env: State@: Expression: Dict Name Pos & Expression =
                 { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
                 >> List.for pars (doParameter @state)
 
-            spentByBody & bodyExpression =
+            doneBody =
                 doExpression localEnv @state body
 
             # variables that are not spent by the body need to be explicitly destroyed
             exprWithDestruction =
-                bodyExpression >> Dict.for parsToBeSpent name: pos: exp:
-                    if Dict.member name spentByBody then
+                doneBody.resolvedExpression >> Dict.for parsToBeSpent name: pos: exp:
+                    if Dict.member name doneBody.spent then
                         exp
                     else
                         TA.DestroyIn name exp
 
-            # TODO: if spentFromParent /= Dict.empty, this fn should be flagged as unique!!!!
+
+
+            !!!!!!!!!!
+
+            1) functions cannot consume from the parent
+            2) expressions are tainted by what they recycle
+                ---> let..ins remove taint of whatever they define
+
+
             spentFromParent =
-                Dict.diff spentByBody parsToBeSpent
+                Dict.diff doneBody.spent parsToBeSpent
+
+            if spentFromParent /= Dict.emtpy then
+                errorFunctionsCannotConsumeParentUniques pos spentFromParent @state
+            else
+                None
+
+
 
             # check recycled
             Dict.each parsToBeRecycled name: pos:
-                if Dict.member name spentByBody then
+                if Dict.member name doneBody.spent then
                     errorConsumingRecycledParameter name pos @state
                 else
                     None
 
-            spentFromParent & TA.Fn pos pars exprWithDestruction
+
+
+
+
+            recycledFromParent =
+                Dict.diff doneBody.recycled parsToBeRecycled
+
+            recycledFromParent & TA.Fn pos pars exprWithDestruction
 
 
         TA.Call pos reference arguments:
 
             { mutables, consumed, expression = expr } =
                 doCall env @state pos reference arguments
+
+            add recycled vars to the consumed.
 
             consumed & expr
 
