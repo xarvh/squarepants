@@ -55,7 +55,6 @@ howDoesItLookLike as Test =
             average as fn [Number]: Number =
                 fn numbers:
 
-                # The core function `uni` transforms an immutable value in a unique one
                 # Unique values can be changed in place, ie, "mutated"
                 !total as !Number =
                     0
@@ -126,23 +125,23 @@ uniquenessTyping as Test =
             """
             (infer "z")
             Test.isOk
-        , codeTest
-            """
-            Functions can't be flagged as unique
-            """
-            """
-            alias C = !(fn Text: Number)
-
-            z = 1
-            """
-            (infer "z")
-            (Test.errorContains ["TypeFn", "Uni"])
         #
         , Test.Group
             """
             Functions cannot be unique
             """
             [
+            , codeTest
+                """
+                Type annotation
+                """
+                """
+                alias C = !fn Text: Number
+
+                z = 1
+                """
+                (infer "z")
+                (Test.errorContains ["TypeFn", "Uni"])
             , codeTest
                 """
                 Annotated
@@ -377,7 +376,7 @@ parentScope as Test =
             [
             , codeTest
                 """
-                -----> Function with requirements cannot be returned <----------
+                LetIns cannot return functions with requirements
                 """
                 """
                 scope =
@@ -391,7 +390,31 @@ parentScope as Test =
                     f
                 """
                 (infer "scope")
-                (Test.errorContains ["zzzzz"])
+                (Test.errorContains ["x", "required"])
+            , codeTest
+                """
+                Functions cannot return functions with UNIQUE requirements
+                """
+                """
+                f =
+                    fn !x:
+                    fn n:
+                    @x += n
+                """
+                (infer "f")
+                (Test.errorContains ["x", "required"])
+            , codeTest
+                """
+                Functions cannot return functions with RECYCLED requirements
+                """
+                """
+                f =
+                    fn @x:
+                    fn n:
+                    @x += n
+                """
+                (infer "f")
+                (Test.errorContains ["x", "required"])
             ]
         ]
 
