@@ -1,3 +1,32 @@
+#
+# Tests
+#
+
+
+tests as Test =
+    Test.Group
+        """
+        MakeCanonical
+        """
+        [
+        , unionTypes
+        , binops
+        , tuples
+        , lists
+        , moduleAndAttributePaths
+        , records
+        , patterns
+        , annotations
+        , pipes
+        , functions
+        , nonFunction
+        , argumentPlaceholders
+        ]
+
+
+#
+# Helpers
+#
 
 
 params as Compiler/MakeCanonical.Params = {
@@ -87,34 +116,6 @@ valueDef as Name: CA.Expression: CA.ValueDef =
     , directConsDeps = Dict.empty
     , directValueDeps = Dict.empty
     }
-
-
-
-
-#
-# Tests
-#
-
-
-tests as Test =
-    Test.Group
-        """
-        MakeCanonical
-        """
-        [
-        , unionTypes
-        , binops
-        , tuples
-        , lists
-        , moduleAndAttributePaths
-        , records
-        , patterns
-        , annotations
-        , pipes
-        , functions
-        , nonFunction
-        ]
-
 
 
 
@@ -547,6 +548,46 @@ nonFunction as Test =
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
+                }
+            )
+        ]
+
+
+argumentPlaceholders as Test =
+    Test.Group
+        """
+        Argument placeholders
+        """
+        [
+        , codeTest
+            """
+            Base
+            """
+            """
+            f = f ? ?
+            """
+            firstDefinitionStripDeps
+            (Test.isOkAndEqualTo
+                {
+                , native = False
+                , pattern = CA.PatternAny p { isUnique = False, maybeName = Just "f", maybeAnnotation = Nothing }
+                , tyvars = Dict.empty
+                , directConsDeps = Dict.empty
+                , directTypeDeps = Dict.empty
+                , directValueDeps = Dict.empty
+                , body =
+                    CA.Fn p
+                        [
+                        , CA.ParameterPattern (CA.PatternAny p { isUnique = False, maybeName = Just "0", maybeAnnotation = Nothing })
+                        , CA.ParameterPattern (CA.PatternAny p { isUnique = False, maybeName = Just "1", maybeAnnotation = Nothing })
+                        ]
+                        ( CA.Call p
+                            (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDir "<Test>") "(test)") "f")))
+                            [
+                            , CA.ArgumentExpression (CA.Variable p (RefLocal "0"))
+                            , CA.ArgumentExpression (CA.Variable p (RefLocal "1"))
+                            ]
+                        )
                 }
             )
         ]

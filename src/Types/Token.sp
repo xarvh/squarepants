@@ -44,6 +44,7 @@ union Kind =
     , TextLiteral Text
     , NumberLiteral Text
     , Word Word
+    , ArgumentPlaceholder
     # Keywords
     , Fn
     , If

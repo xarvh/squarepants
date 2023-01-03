@@ -336,6 +336,9 @@ exprWithLeftDelimiter as Env: Token.Kind: Parser FA.Expr_ =
             maybe (discardFirst (kind Token.As) (expr env)) >> on maybeType:
             FA.Variable { maybeType, word = w } >> ok
 
+        Token.ArgumentPlaceholder:
+            FA.ArgumentPlaceholder >> ok
+
         Token.NumberLiteral s:
             FA.LiteralNumber s >> ok
 

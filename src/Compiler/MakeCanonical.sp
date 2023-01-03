@@ -783,10 +783,11 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             >> onOk caRef:
 
             faArgs
-            >> List.mapRes (translateArgument env)
-            >> onOk caArgs:
+            >> translateArgumentsAndPlaceholders pos env
+            >> onOk (caArgs & wrap):
 
             CA.Call pos caRef caArgs
+            >> wrap
             >> Ok
 
         FA.If { condition, true, false }:
@@ -878,6 +879,70 @@ translateExpression as Env: FA.Expression: Res CA.Expression =
             >> Ok
 
 
+
+
+translateArgumentsAndPlaceholders as Pos: Env: [FA.Expression]: Res ([CA.Argument] & (CA.Expression: CA.Expression)) =
+    pos: env: faArgs:
+
+
+    insertArg =
+        faArg: ({ caPars, caArgs, arity }):
+
+        FA.Expression pos faArg_ =
+            faArg
+
+        try faArg_ as
+
+            FA.ArgumentPlaceholder:
+                name =
+                    Text.fromNumber arity
+
+                caPar as CA.Parameter =
+                    {
+                    , isUnique = False
+                    , maybeName = Just name
+                    , maybeAnnotation = Nothing
+                    }
+                    >> CA.PatternAny pos
+                    >> CA.ParameterPattern
+
+                caArg as CA.Argument =
+                    CA.ArgumentExpression (CA.Variable pos (RefLocal name))
+
+                {
+                , caPars = caPar :: caPars
+                , caArgs = caArg :: caArgs
+                , arity = arity + 1
+                }
+                >> Ok
+
+            _:
+                translateArgument env faArg
+                >> onOk caArg:
+
+                {
+                , caPars = caPars
+                , caArgs = caArg :: caArgs
+                , arity = arity + 1
+                }
+                >> Ok
+
+    {
+    , caPars = []
+    , caArgs = []
+    , arity = 0
+    }
+    >> List.forRes faArgs insertArg
+    >> onOk ({ caPars, caArgs, arity }):
+
+    wrap =
+        if caPars == [] then
+            identity
+        else
+            call: CA.Fn pos (List.reverse caPars) call
+
+    List.reverse caArgs & wrap
+    >> Ok
 
 
 translateVariable as Env: Pos: Maybe FA.Expression: Token.Word: Res CA.Expression =
@@ -1047,7 +1112,7 @@ translateAndInsertRecordAttribute as Env: FA.RecordAttribute: Dict Text CA.Expre
         >> Ok
 
 
-translateArgument as Env: FA.Expression: Res (CA.Argument) =
+translateArgument as Env: FA.Expression: Res CA.Argument =
     env: faExpr:
 
     try faExpr as
