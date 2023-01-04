@@ -377,6 +377,10 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                     >> List.forReversed namesAndExpressions wrapWithUnpackedPatternVar
                     >> wrapWithActualLetIn
 
+        TA.DestroyIn name e:
+            translateExpression @state @counter e
+
+
 
 translateRootValueDef as State@: UMR: TA.ValueDef: ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
     state@: umr: def: accum:

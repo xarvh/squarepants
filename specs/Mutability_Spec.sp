@@ -74,7 +74,7 @@ howDoesItLookLike as Test =
 
         , codeTest
             """
-            SKIP Example: File IO
+            SKIP (needs IO in the test env) Example: File IO
             """
             """
             logToFile as fn @IO, Text: Result IO.Error None =
@@ -522,70 +522,99 @@ unions as Test =
         Unions
         """
         [
-        , Test.Group
+        # LetIn
+        , codeTest
             """
-            Constructors that take at least one mutable argument will produce a mutable version of their type
+            LetIn: Unpack immutable to immutable
             """
-            [
-            , codeTest
-                """
-                SKIP (design changed) Annotated
-                """
-                """
-                union Something =
-                    , Mutable @Number
-                    , Immutable Number
-
-                scope =
-                    @m as @Something =
-                        Mutable 0
-
-                    i as Something =
-                        Immutable 1
-                """
-                (infer "scope")
-                Test.isOk
-            , codeTest
-                """
-                SKIP (design changed) Inferred
-                """
-                """
-                union Something =
-                    , Mutable @Number
-                    , Immutable Number
-
-                scope =
-                    @m =
-                        Mutable 0
-
-                    i =
-                        Immutable 1
-
-                    @mm as @Something =
-                        m
-
-                    ii as Something =
-                        i
-                """
-                (infer "scope")
-                Test.isOk
-            , codeTest
-                """
-                SKIP (design changed) Free
-                """
-                """
-                union Blah a =
-                    , Blah a
-
-                scope =
-                    @m =
-                        Blah 0
-
-                    @mm as Blah @Number =
-                        m
-                """
-                (infer "scope")
-                Test.isOk
-            ]
+            """
+            union Z a = Z a
+            scope =
+                x = Z 0
+                (Z y) = x
+            """
+            (infer "scope")
+            Test.isOk
+        , codeTest
+            """
+            LetIn: Unpack unique to immutable
+            """
+            """
+            union Z a = Z a
+            scope =
+                !x = Z 0
+                (Z y) = x
+            """
+            (infer "scope")
+            Test.isOk
+        , codeTest
+            """
+            LetIn: Unpack unique to unique
+            """
+            """
+            union Z a = Z a
+            scope =
+                !x = Z 0
+                (Z !y) = x
+                @y += 1
+            """
+            (infer "scope")
+            Test.isOk
+        , codeTest
+            """
+            LetIn: Unpack immutable to unique
+            """
+            """
+            union Z a = Z a
+            scope =
+                x = Z 0
+                (Z !y) = x
+            """
+            (infer "scope")
+            (Test.errorContains [ "??" ])
+        # Fn
+        , codeTest
+            """
+            Fn: Unpack immutable to immutable
+            """
+            """
+            union Z a = Z a
+            f as fn (Z a): Z a =
+                 fn (Z a): Z a
+            """
+            (infer "f")
+            Test.isOk
+        , codeTest
+            """
+            Fn: Unpack unique to immutable
+            """
+            """
+            union Z a = Z a
+            f as fn (Z !a): Z a =
+                 fn (Z !a): Z a
+            """
+            (infer "f")
+            Test.isOk
+        , codeTest
+            """
+            Fn: Unpack unique to unique
+            """
+            """
+            union Z a = Z a
+            f as fn (Z !a): Z !a =
+                 fn (Z !a): Z a
+            """
+            (infer "f")
+            Test.isOk
+        , codeTest
+            """
+            Fn: Unpack immutable to unique
+            """
+            """
+            union Z a = Z a
+            f as fn (Z a): Z !a =
+                 fn (Z a): Z a
+            """
+            (infer "f")
+            (Test.errorContains [ "??" ])
         ]
-

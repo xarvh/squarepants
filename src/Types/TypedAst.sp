@@ -17,8 +17,15 @@ union Uniqueness =
     , ForceImm
 
 
+# TODO find a better naming. This is so confusing
+# TODO merge it with the one in CA?
+union UniFromPars =
+    , UniIsFromPars
+    , UniIsFixed Uniqueness
+
+
 union Type =
-    , TypeExact Uniqueness USR [Type]
+    , TypeExact UniFromPars USR [Type]
     , TypeFn [RecycleOrSpend & Type] Type
     , TypeRecord Uniqueness (Dict Name Type)
     , TypeUnificationVariable Uniqueness UnificationVariableId
@@ -165,7 +172,7 @@ setUni as Uniqueness: Type: Type =
             TypeUnificationVariable uni id
 
         TypeExact _ usr args:
-            TypeExact uni usr args
+            TypeExact (UniIsFixed uni) usr args
 
         TypeRecord _ attrs:
             TypeRecord uni attrs
@@ -182,7 +189,11 @@ getUni as Type: Uniqueness =
     try type as
         TypeFn ins out: ForceImm
         TypeUnificationVariable uni id: uni
-        TypeExact uni usr args: uni
         TypeRecord uni attrs: uni
         TypeRecordExt uni id attrs: uni
         TypeError: AllowUni
+        TypeExact uniFromPars usr args:
+            try uniFromPars as
+                UniIsFixed uni: uni
+                UniIsFromPars: if List.any (a: getUni a == AllowUni) args then AllowUni else ForceImm
+

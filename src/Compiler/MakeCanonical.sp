@@ -1,18 +1,4 @@
 
-
-#maybe_mapRes as (a: Result e b): Maybe a: Result e (Maybe b) =
-#    f: maybeA:
-#
-#    try maybeA as
-#        Nothing:
-#            Ok Nothing
-#
-#        Just a:
-#            Result.map Just (f a)
-
-
-
-
 alias Params = {
     , meta as Meta
     , stripLocations as Bool
@@ -1683,7 +1669,7 @@ insertRootStatement as ReadOnly:  FA.Statement: CA.Module: Res (CA.Module) =
                 type =
                     caPars
                     >> List.map ((At p name): CA.Type p (CA.TypeAnnotationVariable Imm name))
-                    >> CA.TypeNamed usr (CA.UniIsFixed Imm)
+                    >> CA.TypeNamed usr CA.UniIsFromPars
                     >> CA.Type pos
 
                 Dict.empty

@@ -140,7 +140,7 @@ union Error_ =
     , ErrorIncompatibleTypes CA.Expression TA.Type
     , ErrorIncompatiblePattern CA.Pattern TA.Type
     , ErrorCallingANonFunction
-    , ErrorTooManyArguments
+    , ErrorWrongNumberOfArguments
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch TA.Type CA.Expression
@@ -197,13 +197,13 @@ union Equality =
 # Core types
 #
 coreTypeBool as TA.Type =
-    TA.TypeExact TA.ForceImm CoreTypes.boolDef.usr []
+    TA.TypeExact (TA.UniIsFixed TA.ForceImm) CoreTypes.boolDef.usr []
 
 coreTypeNumber as TA.Type =
-    TA.TypeExact TA.AllowUni CoreTypes.numberDef.usr []
+    TA.TypeExact (TA.UniIsFixed TA.AllowUni) CoreTypes.numberDef.usr []
 
 coreTypeText as TA.Type =
-    TA.TypeExact TA.AllowUni CoreTypes.textDef.usr []
+    TA.TypeExact (TA.UniIsFixed TA.AllowUni) CoreTypes.textDef.usr []
 
 
 #
@@ -269,7 +269,7 @@ generalize as Env: Instance: State@: TA.Type =
             generalizedTyvarId =
                 newTyvarId @state
 
-            # We need to remember that this new tyvar has typeclass contraints
+            # The new tyvar has the same typeclasses as the original!
             Hash.insert @state.tyvarsById generalizedTyvarId tyvar
 
             uni =
@@ -315,21 +315,6 @@ expandTyvarsInType as State@: Context: Dict TA.UnificationVariableId TA.Type: TA
             TA.TypeError
 
 
-
-caTypeUniqueness as CA.Type: UniqueOrImmutable =
-    (CA.Type _ type_):
-    try type_ as
-       CA.TypeNamed usr uniFromPars pars:
-          try uniFromPars as
-              CA.UniIsFixed uni: uni
-              CA.UniIsFromPars: if List.any (p: caTypeUniqueness p == Uni) pars then Uni else Imm
-
-       CA.TypeFn _ _: Imm
-       CA.TypeRecord uni _: uni
-       CA.TypeAnnotationVariable uni _: uni
-       CA.TypeError: Imm
-
-
 uniqueOrImmutableToUniqueness as UniqueOrImmutable: TA.Uniqueness =
     uni:
     if uni == Uni then TA.AllowUni else TA.ForceImm
@@ -370,15 +355,15 @@ expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name T
             expandedPars =
                 List.map Tuple.first expandedParsAndUnis
 
-            uni =
+            unifp & uni =
                 try uniFromPars as
-                    CA.UniIsFixed Imm: Imm
-                    CA.UniIsFixed Uni: Uni
-                    CA.UniIsFromPars: if List.any (pau: pau.second == Uni) expandedParsAndUnis then Uni else Imm
+                    CA.UniIsFixed Imm: TA.UniIsFixed TA.ForceImm & Imm
+                    CA.UniIsFixed Uni: TA.UniIsFixed TA.AllowUni & Uni
+                    CA.UniIsFromPars: TA.UniIsFromPars & Uni
 
             try Dict.get usr allAliases as
                 Nothing:
-                    TA.TypeExact (uniqueOrImmutableToUniqueness uni) usr expandedPars & uni
+                    TA.TypeExact unifp usr expandedPars & uni
 
                 Just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
@@ -924,11 +909,8 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
         CA.Fn pos pars body & TA.TypeFn parsT out:
             addErrorIfAllowsUnique pos
 
-            if List.length pars > List.length parsT then
-                addError env pos ErrorTooManyArguments @state
-                TA.Error pos
-            else if List.length pars < List.length parsT then
-                addError env pos ErrorNotEnoughArguments @state
+            if List.length pars /= List.length parsT then
+                addError env pos ErrorWrongNumberOfArguments @state
                 TA.Error pos
             else
                 typedPars @= Array.fromList []
@@ -1218,15 +1200,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                         gl =
                             List.length arguments
 
-                        if rl > gl then
-                            addError env pos ErrorNotEnoughArguments @state
-                        else
-                            None
-
-                        if rl < gl then
-                            addError env pos ErrorTooManyArguments @state
-                        else
-                            None
+                        addErrorIf (rl /= gl) env pos ErrorWrongNumberOfArguments @state
 
                         list_eachWithIndex2 0 argModAndTypes argumentTypes index: (mod & paramType): argType:
                             addEquality env pos (Why_Argument index) paramType argType @state
@@ -1355,32 +1329,34 @@ checkPattern as Env: TA.Type: CA.Pattern: State@: TA.Pattern & Env =
 
 
         CA.PatternLiteralText pos text & TA.TypeExact uni typeUsr []:
-            if typeUsr /= CoreTypes.textDef.usr then
-                addError env pos (ErrorIncompatiblePattern pattern expectedType) @state
-            else
-                None
+            addErrorIf (typeUsr /= CoreTypes.textDef.usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
 
             TA.PatternLiteralText pos text & env
 
 
         CA.PatternLiteralNumber pos text & TA.TypeExact uni typeUsr []:
-            if typeUsr /= CoreTypes.numberDef.usr then
-                addError env pos (ErrorIncompatiblePattern pattern expectedType) @state
-            else
-                None
+            addErrorIf (typeUsr /= CoreTypes.numberDef.usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
 
             TA.PatternLiteralNumber pos text & env
 
 
-        CA.PatternConstructor pos usr arguments & _:
-            todo """
-            {
-            , typedPattern = TA.PatternConstructor pos usr typedArguments
-            , patternType = finalType
-            , env = newEnv
-            , maybeFullAnnotation = Nothing # TODO
-            }
-            """
+        CA.PatternConstructor pos usr arguments & TA.TypeExact uni typeUsr argTypes:
+            addErrorIf (typeUsr /= usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
+            addErrorIf (List.length arguments /= List.length argTypes) env pos ErrorWrongNumberOfArguments @state
+
+            # TODO: if any of the errors above triggered, there is not much point in checking the arguments.
+            # Maybe we should just use inferPattern on them (so that their variables are still added to the env) and call it a day?
+
+            zzz as (CA.Pattern & TA.Type): (Env & [TA.Pattern]): (Env & [TA.Pattern])=
+                (arg & type): (envX & args):
+                    taArg & envX1 = checkPattern envX type arg @state
+                    envX1 & (taArg :: args)
+
+
+            (newEnv as Env) & (typedArgs as [TA.Pattern]) =
+                env & [] >> List.forReversed (List.map2 Tuple.pair arguments argTypes) zzz
+
+            TA.PatternConstructor pos usr typedArgs & newEnv
 
 
         CA.PatternRecord pos completeness pas & _:
@@ -1853,7 +1829,6 @@ solveEqualities as ERState: ERState =
                             replaceUnificationVariable head tyvarId (TA.setUni uni t2) state
                             >> solveEqualities
 
-
                         t1 & TA.TypeUnificationVariable _ tyvarId:
                             replaceUnificationVariable head tyvarId (TA.setUni uni t1) state
                             >> solveEqualities
@@ -2013,7 +1988,7 @@ applySubstitutionToType as TA.UnificationVariableId: TA.Type: TA.Type: TA.Type =
             if id /= tyvarId then
                 originalType
             else if uni == TA.ForceImm and TA.getUni replacingType == TA.AllowUni then
-                log "Compiler bug: ForceImm cannot be replaced by AllowUni" { replacingType, originalType }
+                log "Compiler bug: ForceImm cannot be replaced by AllowUni" { tyvarId, replacingType, originalType }
                 replacingType
             else
                 replacingType

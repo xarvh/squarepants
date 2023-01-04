@@ -120,24 +120,24 @@ taTyvarImm as Int: TA.Type =
 
 
 taNumber as TA.Type =
-    TA.TypeExact TA.ForceImm ("Number" >> Meta.spCoreUSR) []
+    TA.TypeExact (TA.UniIsFixed TA.ForceImm) ("Number" >> Meta.spCoreUSR) []
 
 
 taNumberAllowUni as TA.Type =
-    TA.TypeExact TA.AllowUni ("Number" >> Meta.spCoreUSR) []
+    TA.TypeExact (TA.UniIsFixed TA.AllowUni) ("Number" >> Meta.spCoreUSR) []
 
 
 taNone as TA.Type =
-    TA.TypeExact TA.ForceImm ("None" >> Meta.spCoreUSR) []
+    TA.TypeExact (TA.UniIsFixed TA.ForceImm) ("None" >> Meta.spCoreUSR) []
 
 
 taBool as TA.Type =
-    TA.TypeExact TA.ForceImm ("Bool" >> Meta.spCoreUSR) []
+    TA.TypeExact (TA.UniIsFixed TA.ForceImm) ("Bool" >> Meta.spCoreUSR) []
 
 
 taList as TA.Type: TA.Type =
     item:
-    TA.TypeExact TA.ForceImm ("List" >> Meta.spCoreUSR) [item]
+    TA.TypeExact (TA.UniIsFixed TA.ForceImm) ("List" >> Meta.spCoreUSR) [item]
 
 
 taFunction as [TA.Type]: TA.Type: TA.Type =

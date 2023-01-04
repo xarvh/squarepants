@@ -1,5 +1,4 @@
 
-
 tests as Test =
     Test.Group "TypeCheck" [
         , functions
@@ -15,11 +14,8 @@ tests as Test =
         ]
 
 
-
 # TODO test rejection of circular aliases
 # TODO test rejection of arguments with the same name
-
-
 
 
 #
@@ -544,8 +540,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     TH.taFunction
-                        [ TA.TypeExact TA.ForceImm (TH.localType "T") [ tyvarImm 1 ]]
-                        ( TA.TypeExact TA.ForceImm (TH.localType "T") [ tyvarImm 1 ])
+                        [ TA.TypeExact (TA.UniIsFixed TA.ForceImm) (TH.localType "T") [ tyvarImm 1 ]]
+                        ( TA.TypeExact (TA.UniIsFixed TA.ForceImm) (TH.localType "T") [ tyvarImm 1 ])
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -562,7 +558,7 @@ higherOrderTypes as Test =
                 {
                 , freeTyvars = Dict.empty
                 , type =
-                    TA.TypeExact TA.ForceImm
+                    TA.TypeExact (TA.UniIsFixed TA.ForceImm)
                         (TH.localType "X")
                         [ tyvar 1 ]
                 }
