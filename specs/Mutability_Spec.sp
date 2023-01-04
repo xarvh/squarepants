@@ -589,7 +589,7 @@ unions as Test =
                 (Z !y) = x
             """
             (infer "scope")
-            (Test.errorContains [ "??" ])
+            (Test.errorContains [ "y", "unique" ])
         # Fn
         , codeTest
             """

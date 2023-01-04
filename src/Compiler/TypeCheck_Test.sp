@@ -643,7 +643,7 @@ records as Test =
             )
         , codeTest
             """
-            SKIP(mutation) Attribute mutation
+            Attribute mutation
             """
             """
             a = fn @b: @b.meh.blah += 1
@@ -652,16 +652,14 @@ records as Test =
             (Test.isOkAndEqualTo
                 {
                 , freeTyvars = Dict.empty
-#                    >> List.map (n: n & { allowFunctions = True, allowUniques = True })
-#                    >> Dict.fromList
                 , type =
-                    TH.taFunction
-                        [ TA.TypeRecordExt TA.AllowUni 1
+                    TA.TypeFn
+                        [ Recycle & TA.TypeRecordExt TA.AllowUni 1
                             (Dict.singleton "meh"
                                 ( TA.TypeRecordExt TA.AllowUni 2
                                     (Dict.singleton
                                         "blah"
-                                        TH.taNumber
+                                        TH.taNumberAllowUni
                                     )
                                 )
                             )
@@ -671,11 +669,11 @@ records as Test =
             )
         , codeTest
             """
-            SKIP(mutation) Tuple3 direct item mutability
+            Tuple3 direct item mutability
             """
             """
             x =
-                @a = mut << 3 & False & 2
+                !a = 3 & False & 2
 
                 @a.third += 1
             """
@@ -683,12 +681,13 @@ records as Test =
             Test.isOk
         , codeTest
             """
-            SKIP(mutation) Tuple2 direct item mutability, annotated
+            Tuple2 direct item mutability, annotated
             """
             """
-            x = y:
-               @a as @(Number & Number) =
-                 mut << 1 & 2
+            x =
+               fn _:
+               !a as !(!Number & !Number) =
+                 1 & 2
 
                @a.first += 1
             """
