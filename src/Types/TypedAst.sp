@@ -172,13 +172,16 @@ setUni as Uniqueness: Type: Type =
             TypeUnificationVariable uni id
 
         TypeExact _ usr args:
-            TypeExact (UniIsFixed uni) usr args
+            newArgs = if uni == AllowUni then args else List.map (setUni uni) args
+            TypeExact (UniIsFixed uni) usr newArgs
 
         TypeRecord _ attrs:
-            TypeRecord uni attrs
+            newAttrs = if uni == AllowUni then attrs else Dict.map (k: setUni uni) attrs
+            TypeRecord uni newAttrs
 
         TypeRecordExt _ id attrs:
-            TypeRecordExt uni id attrs
+            newAttrs = if uni == AllowUni then attrs else Dict.map (k: setUni uni) attrs
+            TypeRecordExt uni id newAttrs
 
         TypeError:
             TypeError

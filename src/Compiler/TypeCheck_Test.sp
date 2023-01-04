@@ -560,7 +560,7 @@ higherOrderTypes as Test =
                 , type =
                     TA.TypeExact (TA.UniIsFixed TA.ForceImm)
                         (TH.localType "X")
-                        [ tyvar 1 ]
+                        [ tyvarImm 1 ]
                 }
             )
         , codeTest
@@ -703,7 +703,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecordExt TA.ForceImm 1 (Dict.singleton "x" TH.taNumberAllowUni) >> re:
+                (TA.TypeRecordExt TA.ForceImm 1 (Dict.singleton "x" TH.taNumber) >> re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }

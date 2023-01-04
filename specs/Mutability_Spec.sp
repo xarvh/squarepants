@@ -522,6 +522,24 @@ unions as Test =
         Unions
         """
         [
+        , codeTest
+            """
+            Uniques inside immutables are converted to immutables
+            """
+            """
+            union Z a = Z a
+            x = Z 0
+            """
+            (infer "x")
+            (Test.isOkAndEqualTo
+                {
+                , freeTyvars = Dict.empty
+                , type =
+                    TA.TypeExact (TA.UniIsFixed TA.ForceImm)
+                        (TH.localType "Z")
+                        [ TH.taNumber ]
+                }
+            )
         # LetIn
         , codeTest
             """
