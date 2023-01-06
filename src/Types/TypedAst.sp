@@ -1,5 +1,5 @@
 
-alias UnificationVariableId =
+alias TyvarId =
     Int
 
 
@@ -28,8 +28,9 @@ union Type =
     , TypeExact UniFromPars USR [Type]
     , TypeFn [RecycleOrSpend & Type] Type
     , TypeRecord Uniqueness (Dict Name Type)
-    , TypeUnificationVariable Uniqueness UnificationVariableId
-    , TypeRecordExt Uniqueness UnificationVariableId (Dict Name Type)
+    , TypeVar Uniqueness TyvarId
+
+    , TypeRecordExt Uniqueness TyvarId (Dict Name Type)
     , TypeError
 
 
@@ -95,7 +96,7 @@ alias ValueDef =
     , pattern as Pattern
     , native as Bool
     , body as Expression
-    , freeTyvars as Dict UnificationVariableId Tyvar
+    , freeTyvars as Dict TyvarId Tyvar
     , directValueDeps as Set USR
     , isFullyAnnotated as Bool
     }
@@ -110,7 +111,7 @@ alias Module =
     , umr as UMR
     , asText as Text
     , valueDefs as Dict CA.Pattern ValueDef
-    , substitutions as Dict UnificationVariableId Type
+    , substitutions as Dict TyvarId Type
     }
 
 
@@ -137,13 +138,13 @@ patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, type as Type 
         PatternRecord pos ps: Dict.for ps (k: (pa & ty): pa >> patternNames >> Dict.join) Dict.empty
 
 
-typeTyvars as Type: Dict UnificationVariableId None =
+typeTyvars as Type: Dict TyvarId None =
     type:
     try type as
         TypeExact _ usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
         TypeFn ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord _ attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
-        TypeUnificationVariable _ id: Dict.singleton id None
+        TypeVar _ id: Dict.singleton id None
         TypeRecordExt _ id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeError: Dict.empty
 
@@ -152,7 +153,7 @@ typeAllowsFunctions as Type: Bool =
     type:
     try type as
         TypeFn ins out: True
-        TypeUnificationVariable _ id: True
+        TypeVar _ id: True
         TypeExact _ usr args: List.any typeAllowsFunctions args
         TypeRecord _ attrs: Dict.any (k: typeAllowsFunctions) attrs
         TypeRecordExt _ id attrs: Dict.any (k: typeAllowsFunctions) attrs
@@ -168,8 +169,8 @@ setUni as Uniqueness: Type: Type =
             else
                 type
 
-        TypeUnificationVariable _ id:
-            TypeUnificationVariable uni id
+        TypeVar _ id:
+            TypeVar uni id
 
         TypeExact _ usr args:
             newArgs = if uni == AllowUni then args else List.map (setUni uni) args
@@ -191,7 +192,7 @@ getUni as Type: Uniqueness =
     type:
     try type as
         TypeFn ins out: ForceImm
-        TypeUnificationVariable uni id: uni
+        TypeVar uni id: uni
         TypeRecord uni attrs: uni
         TypeRecordExt uni id attrs: uni
         TypeError: AllowUni

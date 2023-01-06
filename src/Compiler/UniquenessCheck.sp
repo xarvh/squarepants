@@ -30,7 +30,7 @@ alias Variable =
 alias Env =
     {
     , variables as Dict Name Variable
-    , substitutions as Dict TA.UnificationVariableId TA.Type
+    , substitutions as Dict TA.TyvarId TA.Type
     }
 
 
