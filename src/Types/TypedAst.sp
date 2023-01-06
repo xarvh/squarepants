@@ -24,14 +24,28 @@ union UniFromPars =
     , UniIsFixed Uniqueness
 
 
-union Type =
-    , TypeExact UniFromPars USR [Type]
-    , TypeFn [RecycleOrSpend & Type] Type
-    , TypeRecord Uniqueness (Dict Name Type)
-    , TypeVar Uniqueness TyvarId
 
-    , TypeRecordExt Uniqueness TyvarId (Dict Name Type)
-    , TypeError
+
+
+union TypeEither = TU TypeUni, TI TypeImm
+
+union TypeUni =
+    , TypeUnionUni USR [TypeUni]
+    , TypeRecordUni (Maybe TyvarId) (Dict Name TypeUni)
+    , TypeVarUni TyvarId
+
+    , TypeErrorUni
+
+union TypeImm =
+    , TypeFn [RecycleOrSpend & TypeUni] TypeUni
+    , TypeUnionImm USR [TypeImm]
+    , TypeRecordImm (Maybe TyvarId) (Dict Name TypeImm)
+    , TypeVarImm TyvarId
+    , TypeErrorImm
+
+uniToImm as TypeUni: TypeImm =
+    todo "uniToImm"
+
 
 
 union Expression =
@@ -39,8 +53,8 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos USR
-    , Fn Pos [Parameter & Type] Expression
-    , Call Pos Expression [Argument & Type]
+    , Fn Pos [Parameter] Expression
+    , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
     , Record Pos (Maybe Expression) (Dict Name Expression)
@@ -53,7 +67,7 @@ union Expression =
         }
     , Try Pos {
         , value as Expression
-        , type as Type
+        , type as TypeEither
         , patternsAndExpressions as [Pattern & Expression]
         }
     , DestroyIn Name Expression
@@ -63,25 +77,25 @@ union Expression =
 union Pattern =
     , PatternAny Pos
         {
-        , isUnique as Bool
         , maybeName as Maybe Text
         , maybeAnnotation as Maybe CA.Type
-        , type as Type
+        , type as TypeEither
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos USR [Pattern]
-    , PatternRecord Pos (Dict Name (Pattern & Type))
+
+    , PatternRecord Pos (Dict Name (Pattern & TypeEither))
 
 
 union Argument =
-    , ArgumentExpression Expression
-    , ArgumentRecycle Pos [Name] Name
+    , ArgumentExpression TypeEither Expression
+    , ArgumentRecycle TypeUni Pos [Name] Name
 
 
 union Parameter =
-    , ParameterPattern Pattern
-    , ParameterRecycle Pos Name
+    , ParameterPattern TypeEither Pattern
+    , ParameterRecycle TypeUni Pos Name
 
 
 alias Tyvar = {
@@ -111,7 +125,7 @@ alias Module =
     , umr as UMR
     , asText as Text
     , valueDefs as Dict CA.Pattern ValueDef
-    , substitutions as Dict TyvarId Type
+    , substitutions as Dict TyvarId TypeEither
     }
 
 
@@ -127,7 +141,7 @@ initModule as Text: UMR: Module =
 #
 # helpers
 #
-patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, type as Type } =
+patternNames as Pattern: Dict Name { pos as Pos, isUnique as Bool, type as TypeEither } =
     p:
     try p as
         PatternAny pos { isUnique = _, maybeName = Nothing, maybeAnnotation = _, type = _ }: Dict.empty
