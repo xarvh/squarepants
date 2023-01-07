@@ -26,9 +26,15 @@ union UniFromPars =
 
 union Type =
     , TypeExact UniFromPars USR [Type]
-    , TypeFn [RecycleOrSpend & Type] Type
+    , TypeFn Uniqueness [RecycleOrSpend & Type] Type
     , TypeRecord Uniqueness (Dict Name Type)
     , TypeVar TyvarId
+
+    # This is Uni, not Uniqueness.
+    # Uniqueness is "imm only" vs "either goes"
+    # Uni is "imm" vs "uni"
+#    , TypeVarFixed UniqueOrImmutable TyvarId
+
     , TypeRecordExt Uniqueness TyvarId (Dict Name Type)
     , TypeError
 
@@ -141,7 +147,7 @@ typeTyvars as Type: Dict TyvarId None =
     type:
     try type as
         TypeExact _ usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
-        TypeFn ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
+        TypeFn _ ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord _ attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeVar id: Dict.singleton id None
         TypeRecordExt _ id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
@@ -151,7 +157,7 @@ typeTyvars as Type: Dict TyvarId None =
 typeAllowsFunctions as Type: Bool =
     type:
     try type as
-        TypeFn ins out: True
+        TypeFn _ ins out: True
         TypeVar id: True
         TypeExact _ usr args: List.any typeAllowsFunctions args
         TypeRecord _ attrs: Dict.any (k: typeAllowsFunctions) attrs
@@ -162,11 +168,8 @@ typeAllowsFunctions as Type: Bool =
 setUni as Uniqueness: Type: Type =
     uni: type:
     try type as
-        TypeFn ins out:
-            if uni == TA.AllowUni then
-                todo "Compiler bug: functions should always be ForceImm"
-            else
-                type
+        TypeFn _ ins out:
+            TypeFn uni ins out
 
         TypeVar id:
             type
@@ -190,7 +193,7 @@ setUni as Uniqueness: Type: Type =
 getUni as Type: Maybe Uniqueness =
     type:
     try type as
-        TypeFn ins out: Just ForceImm
+        TypeFn uni ins out: Just uni
         TypeVar id: Nothing
         TypeRecord uni attrs: Just uni
         TypeRecordExt uni id attrs: Just uni

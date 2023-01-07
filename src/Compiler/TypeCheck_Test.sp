@@ -174,8 +174,8 @@ normalizeType as Hash TA.TyvarId TA.TyvarId@: TA.Type: TA.Type =
         TA.TypeExact uni usr args:
             TA.TypeExact uni usr (List.map (normalizeType @hash) args)
 
-        TA.TypeFn pars out:
-            TA.TypeFn
+        TA.TypeFn uni pars out:
+            TA.TypeFn uni
                 (List.map (Tuple.mapSecond (normalizeType @hash)) pars)
                 (normalizeType @hash out)
 
@@ -653,7 +653,7 @@ records as Test =
                 {
                 , freeTyvars = Dict.empty
                 , type =
-                    TA.TypeFn
+                    TA.TypeFn TA.AllowUni
                         [ Recycle & TA.TypeRecordExt TA.AllowUni 1
                             (Dict.singleton "meh"
                                 ( TA.TypeRecordExt TA.AllowUni 2

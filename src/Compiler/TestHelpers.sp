@@ -143,5 +143,5 @@ taList as TA.Type: TA.Type =
 
 taFunction as [TA.Type]: TA.Type: TA.Type =
     from: to:
-    TA.TypeFn (List.map (t: Spend & t) from) to
+    TA.TypeFn TA.ForceImm (List.map (t: Spend & t) from) to
 

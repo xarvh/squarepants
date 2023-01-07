@@ -36,6 +36,11 @@
 #]
 
 
+bug as Text: a =
+    msg:
+    todo ("Compiler bug: " .. msg)
+
+
 # TODO move this to Dict
 onlyBothOnly as Dict key a: Dict key b: Dict key a & Dict key (a & b) & Dict key b =
     da: db:
@@ -296,8 +301,8 @@ expandTyvarsInType as State@: Context: Dict TA.TyvarId TA.Type: TA.Type: TA.Type
         TA.TypeExact uni usr args:
             TA.TypeExact uni usr (List.map rec args)
 
-        TA.TypeFn ins out:
-            TA.TypeFn (List.map (Tuple.mapSecond rec) ins) (rec out)
+        TA.TypeFn uni ins out:
+            TA.TypeFn uni (List.map (Tuple.mapSecond rec) ins) (rec out)
 
         TA.TypeRecord uni attrs:
             TA.TypeRecord uni (Dict.map (k: rec) attrs)
@@ -331,7 +336,7 @@ expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name T
     try type_ as
         CA.TypeFn modsAndArgs out:
             args = List.map (Tuple.mapSecond (t: rec t >> Tuple.first)) modsAndArgs
-            TA.TypeFn args (rec out >> Tuple.first) & Imm
+            TA.TypeFn (todo "uni") args (rec out >> Tuple.first) & Imm
 
         CA.TypeRecord uni attrs:
             # TODO check that an imm record does not have uni attrs
@@ -432,10 +437,9 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
             try patternOut.maybeFullAnnotation as
                 Just annotationType:
                     taType & uni = annotationToTaType @state envWithContext annotationType
-                    # TODO: uni should enter checkExpression
-                    checkExpression envWithContext taType def.body @state & taType
+                    checkExpression envWithContext uni taType def.body @state & taType
                 Nothing:
-                    tuple = inferExpression envWithContext def.body @state
+                    tuple = inferExpression envWithContext (todo "patternOut.mustBeImm") def.body @state
                     addEquality envWithContext (CA.patternPos def.pattern) Why_LetIn patternOut.patternType tuple.second @state
                     tuple
 
@@ -470,18 +474,24 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
 # Expressions
 #
 #
-inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
-    env: caExpression: state@:
+inferExpression as Env: Bool: CA.Expression: State@: TA.Expression & TA.Type =
+    env: mustBeImm: caExpression: state@:
+
+    xxx =
+        if mustBeImm then
+            TA.setUni TA.ForceImm
+        else
+            identity
 
     try caExpression as
 
         # TODO would be nice to be able to say that from here on, `caExpression as Expression any`
         CA.LiteralNumber pos n:
-            TA.LiteralNumber pos n & coreTypeNumber
+            TA.LiteralNumber pos n & xxx coreTypeNumber
 
 
         CA.LiteralText pos text:
-            TA.LiteralText pos text & coreTypeText
+            TA.LiteralText pos text & xxx coreTypeText
 
 
         CA.Variable pos ref:
@@ -494,7 +504,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                     Just var:
                         generalize env var @state
 
-            TA.Variable pos ref & ty
+            TA.Variable pos ref & xxx ty
 
 
         CA.Constructor pos usr:
@@ -507,7 +517,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                     Just cons:
                         generalize env cons @state
 
-            TA.Constructor pos usr & ty
+            TA.Constructor pos usr & xxx ty
 
 
         CA.Fn pos caPars body:
@@ -516,17 +526,17 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
         CA.Call pos reference args:
 
-            callType =
+            returnType =
                 newType @state
 
-            checkCall env callType pos reference args @state & callType
+            checkCall env Nothing returnType pos reference args @state & returnType
 
 
         CA.Record pos Nothing attrs:
 
             typedValueAndValueTypeByName =
                 attrs >> Dict.map name: value:
-                    inferExpression { env with context = Context_Argument name .context } value @state
+                    inferExpression { env with context = Context_Argument name .context } mustBeImm value @state
 
             typedValueByName as Dict Name TA.Expression =
                 Dict.map (k: Tuple.first) typedValueAndValueTypeByName
@@ -534,14 +544,14 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
             valueTypeByName as Dict Name TA.Type =
                 Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
-            TA.Record pos Nothing typedValueByName & TA.TypeRecord TA.AllowUni valueTypeByName
+            TA.Record pos Nothing typedValueByName & xxx (TA.TypeRecord TA.AllowUni valueTypeByName)
 
 
         CA.Record pos (Just ext) attrExpressions:
 
             typedValueAndValueTypeByName as Dict Name (TA.Expression & TA.Type) =
                 attrExpressions >> Dict.map name: value:
-                    inferExpression { env with context = Context_Argument name .context } value @state
+                    inferExpression { env with context = Context_Argument name .context } mustBeImm value @state
 
             typedValueByName as Dict Name TA.Expression =
                 Dict.map (k: Tuple.first) typedValueAndValueTypeByName
@@ -550,17 +560,17 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
             typedExt & extType =
-                inferExpression env ext @state
+                inferExpression env mustBeImm ext @state
 
-            TA.Record pos (Just typedExt) typedValueByName & inferRecordExtended env pos extType valueTypeByName @state
+            TA.Record pos (Just typedExt) typedValueByName & xxx (inferRecordExtended env pos extType valueTypeByName @state)
 
 
         CA.RecordAccess pos attrName recordExpression:
 
             typedExpr & inferredType =
-                inferExpression env recordExpression @state
+                inferExpression env mustBeImm recordExpression @state
 
-            TA.RecordAccess pos attrName typedExpr & inferRecordAccess env pos attrName inferredType @state
+            TA.RecordAccess pos attrName typedExpr & inferRecordAccess env pos mustBeImm attrName inferredType @state
 
 
         CA.LetIn def rest:
@@ -569,7 +579,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                 doDefinition env def @state
 
             typedRest & restType =
-                inferExpression defEnv rest @state
+                inferExpression defEnv mustBeImm rest @state
 
             TA.LetIn typedDef typedRest & restType
 
@@ -577,13 +587,13 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
         CA.If pos { condition, true, false }:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } coreTypeBool condition @state
+                checkExpression { env with context = Context_IfCondition } (todo "either goes... use infer instead?") coreTypeBool condition @state
 
             typedTrue & trueType =
-                inferExpression { env with context = Context_IfTrue } true @state
+                inferExpression { env with context = Context_IfTrue } mustBeImm true @state
 
             typedFalse & falseType =
-                inferExpression { env with context = Context_IfFalse } false @state
+                inferExpression { env with context = Context_IfFalse } mustBeImm false @state
 
             addEquality env pos Why_IfBranches trueType falseType @state
 
@@ -600,7 +610,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
         CA.Try pos { value, patternsAndExpressions }:
 
             typedValue & valueType =
-                inferExpression env value @state
+                inferExpression env False value @state
 
             finalType =
                 newType @state
@@ -619,7 +629,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
                         }
 
                     typedExpression & expressionType =
-                        inferExpression newEnv exp @state
+                        inferExpression newEnv mustBeImm exp @state
 
                     addEquality newEnv (CA.patternPos pa) Why_TryExpression finalType expressionType @state
 
@@ -630,7 +640,7 @@ inferExpression as Env: CA.Expression: State@: TA.Expression & TA.Type =
 
         CA.DestroyIn name expression:
             typedExpression & expressionType =
-                inferExpression env expression @state
+                inferExpression env mustBeImm expression @state
 
             TA.DestroyIn name typedExpression & expressionType
 
@@ -692,10 +702,10 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
             envX1
 
     typedBody & bodyType =
-        inferExpression { newEnv with context = Context_FnBody pos env.context } body @state
+        inferExpression { newEnv with context = Context_FnBody pos env.context } False body @state
 
     type as TA.Type =
-        TA.TypeFn (Array.toList parTypes) bodyType
+        TA.TypeFn TA.AllowUni (Array.toList parTypes) bodyType
 
     exp =
         TA.Fn pos (Array.toList typedPars) typedBody
@@ -706,8 +716,10 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
 
 
 
-inferRecordAccess as Env: Pos: Name: TA.Type: State@: TA.Type =
-    env: pos: attrName: inferredType: state@:
+inferRecordAccess as Env: Pos: Bool: Name: TA.Type: State@: TA.Type =
+    env: pos: mustBeImm: attrName: inferredType: state@:
+
+    todo "use mustBeImm"
 
     try inferredType as
         TA.TypeRecord uni attrTypes:
@@ -840,12 +852,21 @@ checkParameter as Env: RecycleOrSpend: TA.Type: CA.Parameter: State@: TA.Paramet
             TA.ParameterRecycle pos name & localEnv
 
 
-checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
-    env: expectedType: caExpression: state@:
+checkExpression as Env: UniqueOrImmutable: TA.Type: CA.Expression: State@: TA.Expression =
+    env: expectedUni: expectedType: caExpression: state@:
 
-    expectedUni =
-        TA.getUni expectedType
-        >> Maybe.withDefault TA.AllowUni
+
+
+#    __unused__ =
+#        try expectedUni & TA.getUni expectedType as
+#            # Nothing means tyvar
+#            Uni & Nothing: 
+#            Imm & Nothing: 
+
+
+
+
+
 
     try caExpression & expectedType as
 
@@ -871,7 +892,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                         addError env pos (ErrorVariableNotFound ref) @state
 
                     Just var:
-                        addErrorIf (var.isUnique and expectedUni /= TA.AllowUni) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+                        addErrorIf (expectedUni == Uni and not var.isUnique) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
                         addEquality env pos Why_Annotation var.type expectedType @state
 
             TA.Variable pos ref
@@ -889,8 +910,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
             TA.Constructor pos usr
 
 
-        CA.Fn pos pars body & TA.TypeFn parsT out:
-            addErrorIf (expectedUni /= TA.ForceImm) env pos (ErrorUniquenessDoesNotMatch expectedType caExpression) @state
+        CA.Fn pos pars body & TA.TypeFn uni parsT out:
 
             if List.length pars /= List.length parsT then
                 addError env pos ErrorWrongNumberOfArguments @state
@@ -912,13 +932,14 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                         envX1
 
                 typedBody =
-                    checkExpression localEnv out body @state
+                    # ----> Do I use `getUni out` here?
+                    checkExpression localEnv (todo "CA.Fn check") out body @state
 
                 TA.Fn pos (Array.toList typedPars) typedBody
 
 
         CA.Call pos reference args & _:
-            checkCall env expectedType pos reference args @state
+            checkCall env (Just expectedUni) expectedType pos reference args @state
 
 
         CA.Record pos (Just ext) valueByName & TA.TypeRecord uni typeByName:
@@ -926,7 +947,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
             # ext must have type expectedType
             # TODO: add context
             typedExt =
-                checkExpression env expectedType ext @state
+                checkExpression env expectedUni expectedType ext @state
 
             # all valueByName attrs must be in typeByName
             typedValueByName =
@@ -934,11 +955,10 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                     try Dict.get attrName typeByName as
                         Nothing:
                             addError env pos ErrorRecordHasAttributesNotInAnnotation @state
-                            # TODO: is there a smarter way?
-                            Tuple.first (inferExpression env attrExpr @state)
+                            # This is not super clean, but since it's an error condition, it's probably fine
+                            Tuple.first (inferExpression env (uni == TA.ForceImm) attrExpr @state)
                         Just attrType:
-                            # TODO: add context
-                            checkExpression env attrType attrExpr @state
+                            checkExpression { env with context = Context_AttributeName attrName .context } expectedUni attrType attrExpr @state
 
             TA.Record pos (Just typedExt) typedValueByName
 
@@ -959,7 +979,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
             typedAttrs =
                 both >> Dict.map name: (value & type):
                     # TODO add attribute name to env!?
-                    checkExpression env type value @state
+                    checkExpression env (todo "getUni type") type value @state
 
             TA.Record pos Nothing typedAttrs
 
@@ -967,7 +987,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
         CA.RecordAccess pos attrName exp & _:
 
             typedExpression & expressionType =
-                inferExpression env exp @state
+                inferExpression env (todo "uni is the same as expected uni") exp @state
 
             newId =
                 newTyvarId @state
@@ -975,7 +995,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
             requiredType =
                 expectedType
                 >> Dict.singleton attrName
-                >> TA.TypeRecordExt expectedUni newId
+                >> TA.TypeRecordExt (uniqueOrImmutableToUniqueness expectedUni) newId
 
             addEquality env pos Why_RecordAccess expressionType requiredType @state
 
@@ -988,7 +1008,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                 doDefinition env def @state
 
             typedRest =
-                checkExpression defEnv expectedType rest @state
+                checkExpression defEnv expectedUni expectedType rest @state
 
             TA.LetIn typedDef typedRest
 
@@ -996,13 +1016,13 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
         CA.If pos { condition, true, false } & _:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } coreTypeBool condition @state
+                checkExpression { env with context = Context_IfCondition } (todo "no expected uni for if condition") coreTypeBool condition @state
 
             typedTrue =
-                checkExpression { env with context = Context_IfTrue } expectedType true @state
+                checkExpression { env with context = Context_IfTrue } expectedUni expectedType true @state
 
             typedFalse =
-                checkExpression { env with context = Context_IfFalse } expectedType false @state
+                checkExpression { env with context = Context_IfFalse } expectedUni expectedType false @state
 
             TA.If pos {
                 , condition = typedCondition
@@ -1014,7 +1034,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
         CA.Try pos { value, patternsAndExpressions } & _:
 
             typedValue & valueType =
-                inferExpression env value @state
+                inferExpression env False value @state
 
             typedPatternsAndExpressions =
                 patternsAndExpressions >> List.map (pa & exp):
@@ -1030,7 +1050,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
                     addEquality env pos Why_TryPattern inferredPattern.patternType valueType @state
 
                     typedExpression =
-                        checkExpression newEnv expectedType exp @state
+                        checkExpression newEnv expectedUni expectedType exp @state
 
                     inferredPattern.typedPattern & typedExpression
 
@@ -1042,7 +1062,7 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
         CA.DestroyIn name exp & _:
-            TA.DestroyIn name << checkExpression env expectedType exp @state
+            TA.DestroyIn name << checkExpression env expectedUni expectedType exp @state
 
 
         _ & TA.TypeError:
@@ -1057,13 +1077,13 @@ checkExpression as Env: TA.Type: CA.Expression: State@: TA.Expression =
 
 
 
-checkCall as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression =
-    env: expectedType: pos: reference: givenArgs: state@:
+checkCall as Env: Maybe UniqueOrImmutable: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Expression =
+    env: maybeExpectedUni: expectedType: pos: reference: givenArgs: state@:
 
     # `reference givenArg1 givenArg2 ...` must be of `expectedType`
 
     typedReference & inferredReferenceType =
-        inferExpression env reference @state
+        inferExpression env True reference @state
 
     typedArgumentsAndArgumentTypes as [TA.Argument & TA.Type] =
         givenArgs >> List.map arg:
@@ -1076,7 +1096,7 @@ checkCall as Env: TA.Type: Pos: CA.Expression: [CA.Argument]: State@: TA.Express
             TA.ArgumentRecycle _ _ _: Recycle & type
 
     expectedReferenceType as TA.Type =
-        TA.TypeFn (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
+        TA.TypeFn (todo "uni") (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
 
     addEquality env pos Why_CalledAsFunction inferredReferenceType expectedReferenceType @state
 
@@ -1090,7 +1110,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
     try arg as
         CA.ArgumentExpression exp:
             typedExp & expType =
-                inferExpression env exp @state
+                inferExpression env False exp @state
 
             TA.ArgumentExpression typedExp & expType
 
@@ -1108,7 +1128,7 @@ inferArgument as Env: CA.Argument: State@: TA.Argument & TA.Type =
                     Just var:
 
                         var.type >> List.for attrPath attrName: tyAcc:
-                            inferRecordAccess env pos attrName tyAcc @state
+                            inferRecordAccess env pos False attrName tyAcc @state
 
             TA.ArgumentRecycle pos attrPath name & type
 
@@ -1172,7 +1192,7 @@ inferPattern as Env: CA.Pattern: State@: PatternOut =
                     Just cons:
                         argModAndTypes & returnType =
                             try generalize env cons @state as
-                                TA.TypeFn ins out: ins & out
+                                TA.TypeFn _ ins out: ins & out
                                 TA.TypeExact uni usr args: [] & cons.type
                                 _: todo << "compiler bug: cons.type is not a cons but a " .. toHuman cons.type
 
@@ -1281,9 +1301,12 @@ checkPattern as Env: TA.Type: CA.Pattern: State@: TA.Pattern & Env =
 
     try pattern & expectedType as
         CA.PatternAny pos { isUnique, maybeName, maybeAnnotation } & _:
-            try maybeAnnotation as
-                Nothing: None
-                Just annotation: todo "Just annotation"
+
+            __discard__ =
+                try maybeAnnotation as
+                    Nothing: None
+                    Just annotation:
+                        todo "TODO Test that annotation matches expected type and isUnique"
 
             newEnv as Env =
                 try maybeName as
@@ -1431,7 +1454,7 @@ doModule as Int: Env: CA.Module: Res TA.Module =
         Dict.for caModule.valueDefs insertAnnotatedAndNonAnnotated ([] & [])
 
     if List.length nonAnnotated > 1 then
-        todo "Right now the compiler supports only one root-level non-annotated value per module. =("
+        bug "Right now the compiler supports only one root-level non-annotated value per module. =("
     else
         None
 
@@ -1835,7 +1858,7 @@ solveEqualities as ERState: ERState =
                         solveEqualities { state with equalities = List.append .equalities newEqualities }
 
 
-                TA.TypeFn pars1 out1 & TA.TypeFn pars2 out2:
+                TA.TypeFn _ pars1 out1 & TA.TypeFn _ pars2 out2:
                     if List.length pars1 /= List.length pars2 then
                         state
                         >> addErError head "functions expect a different number of arguments"
@@ -1879,7 +1902,7 @@ solveEqualities as ERState: ERState =
 
 
                 TA.TypeRecordExt _ tyvar1 attrs1 & TA.TypeRecordExt _ tyvar2 attr2:
-                    todo "will this actually happen?"
+                    bug "will this actually happen?"
 
 
                 _:
@@ -1950,7 +1973,7 @@ occurs as TA.TyvarId: TA.Type: Bool =
         occurs tyvarId
 
     try type as
-        TA.TypeFn ins out: List.any ((m & t): rec t) ins or rec out
+        TA.TypeFn _ ins out: List.any ((m & t): rec t) ins or rec out
         TA.TypeVar id: id == tyvarId
         TA.TypeExact uni usr args: List.any rec args
         TA.TypeRecord uni attrs: Dict.any (k: rec) attrs
@@ -1968,8 +1991,8 @@ applySubstitutionToType as TA.TyvarId: TA.Type: TA.Type: TA.Type =
         TA.TypeExact uni usr pars:
             TA.TypeExact uni usr (List.map rec pars)
 
-        TA.TypeFn pars out:
-            TA.TypeFn (CA.mapmod rec pars) (rec out)
+        TA.TypeFn uni pars out:
+            TA.TypeFn uni (CA.mapmod rec pars) (rec out)
 
         TA.TypeRecord uni attrs:
             TA.TypeRecord uni (Dict.map (k: rec) attrs)
