@@ -182,8 +182,8 @@ normalizeType as Hash TA.TyvarId TA.TyvarId@: TA.Type: TA.Type =
         TA.TypeRecord uni attrs:
             TA.TypeRecord uni (Dict.map (k: (normalizeType @hash)) attrs)
 
-        TA.TypeVar maybeUni id:
-            TA.TypeVar maybeUni (normalizeTyvarId @hash id)
+        TA.TypeVar id:
+            TA.TypeVar (normalizeTyvarId @hash id)
 
         TA.TypeRecordExt uni id attrs:
             TA.TypeRecordExt uni

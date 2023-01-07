@@ -236,7 +236,7 @@ addPatternToEnv as State@: TA.Pattern: Env: [Name] & Dict Name Pos & Env =
         resolvedType =
             Compiler/TypeCheck.applyAllSubstitutions env.substitutions type
 
-        if isUnique and TA.getUni resolvedType == TA.ForceImm then
+        if isUnique and TA.getUni resolvedType == Just TA.ForceImm then
             errorUniqueHasImmType name pos resolvedType @state
         else
             None
@@ -364,7 +364,7 @@ doParameter as State@: TA.Parameter & TA.Type: ParsAcc: ParsAcc =
             resolvedType =
                 Compiler/TypeCheck.applyAllSubstitutions acc.localEnv.substitutions type
 
-            if TA.getUni resolvedType == TA.ForceImm then
+            if TA.getUni resolvedType /= Just TA.AllowUni then
                 errorUniqueHasImmType name pos resolvedType @state
             else
                 None

@@ -28,8 +28,7 @@ union Type =
     , TypeExact UniFromPars USR [Type]
     , TypeFn [RecycleOrSpend & Type] Type
     , TypeRecord Uniqueness (Dict Name Type)
-    , TypeVar Uniqueness TyvarId
-
+    , TypeVar TyvarId
     , TypeRecordExt Uniqueness TyvarId (Dict Name Type)
     , TypeError
 
@@ -144,7 +143,7 @@ typeTyvars as Type: Dict TyvarId None =
         TypeExact _ usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
         TypeFn ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord _ attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
-        TypeVar _ id: Dict.singleton id None
+        TypeVar id: Dict.singleton id None
         TypeRecordExt _ id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeError: Dict.empty
 
@@ -153,7 +152,7 @@ typeAllowsFunctions as Type: Bool =
     type:
     try type as
         TypeFn ins out: True
-        TypeVar _ id: True
+        TypeVar id: True
         TypeExact _ usr args: List.any typeAllowsFunctions args
         TypeRecord _ attrs: Dict.any (k: typeAllowsFunctions) attrs
         TypeRecordExt _ id attrs: Dict.any (k: typeAllowsFunctions) attrs
@@ -169,8 +168,8 @@ setUni as Uniqueness: Type: Type =
             else
                 type
 
-        TypeVar _ id:
-            TypeVar uni id
+        TypeVar id:
+            type
 
         TypeExact _ usr args:
             newArgs = if uni == AllowUni then args else List.map (setUni uni) args
@@ -185,19 +184,31 @@ setUni as Uniqueness: Type: Type =
             TypeRecordExt uni id newAttrs
 
         TypeError:
-            TypeError
+            type
 
 
-getUni as Type: Uniqueness =
+getUni as Type: Maybe Uniqueness =
     type:
     try type as
-        TypeFn ins out: ForceImm
-        TypeVar uni id: uni
-        TypeRecord uni attrs: uni
-        TypeRecordExt uni id attrs: uni
-        TypeError: AllowUni
+        TypeFn ins out: Just ForceImm
+        TypeVar id: Nothing
+        TypeRecord uni attrs: Just uni
+        TypeRecordExt uni id attrs: Just uni
+        TypeError: Nothing
         TypeExact uniFromPars usr args:
             try uniFromPars as
-                UniIsFixed uni: uni
-                UniIsFromPars: if List.any (a: getUni a == AllowUni) args then AllowUni else ForceImm
+                UniIsFixed uni: Just uni
+                UniIsFromPars:
+                    #
+                    # TODO I have no clue whether this makes sense or not
+                    #
+                    # if at least one is Uni, type is uni
+                    # if there are no Unis: if all are Force, then is force
+                    # otherwise nothing
 
+                    if List.any (a: getUni a == Just AllowUni) args then
+                        Just AllowUni
+                    else if List.all (a: getUni a == Just ForceImm) args then
+                        Just ForceImm
+                    else
+                        Nothing
