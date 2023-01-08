@@ -336,7 +336,7 @@ expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name T
     try type_ as
         CA.TypeFn modsAndArgs out:
             args = List.map (Tuple.mapSecond (t: rec t >> Tuple.first)) modsAndArgs
-            TA.TypeFn (todo "uni") args (rec out >> Tuple.first) & Imm
+            TA.TypeFn TA.AllowUni args (rec out >> Tuple.first) & Imm
 
         CA.TypeRecord uni attrs:
             # TODO check that an imm record does not have uni attrs
@@ -439,7 +439,8 @@ doDefinition as Env: CA.ValueDef: State@: TA.ValueDef & Env =
                     taType & uni = annotationToTaType @state envWithContext annotationType
                     checkExpression envWithContext uni taType def.body @state & taType
                 Nothing:
-                    tuple = inferExpression envWithContext (todo "patternOut.mustBeImm") def.body @state
+                    mustBeImm = not (CA.patternContainsUnique def.pattern)
+                    tuple = inferExpression envWithContext mustBeImm def.body @state
                     addEquality envWithContext (CA.patternPos def.pattern) Why_LetIn patternOut.patternType tuple.second @state
                     tuple
 
