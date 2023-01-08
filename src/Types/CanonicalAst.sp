@@ -92,7 +92,6 @@ alias ValueDef = {
 
 
 
-
 #
 # Module
 #
@@ -147,17 +146,6 @@ initModule as Text: UMR: Module =
     , valueDefs = Dict.empty
     }
 
-
-
-#
-#
-#
-
-skipLetIns as CA.Expression: CA.Expression =
-    expr:
-    try expr as
-        LetIn def e: skipLetIns e
-        _: expr
 
 
 #

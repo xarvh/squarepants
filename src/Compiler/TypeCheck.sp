@@ -288,6 +288,29 @@ generalize as Env: Instance: State@: TA.Type =
 
 #
 #
+#
+expectedTypeToUniOrImm as TA.Type: UniqueOrImmutable =
+    expectedType:
+
+    u =
+        try expectedType as
+            TA.TypeFn uni _ _: uni
+            TA.TypeVar _: TA.ForceImm
+            TA.TypeRecord uni _: uni
+            TA.TypeRecordExt uni _ _: uni
+            TA.TypeError: TA.AllowUni
+            TA.TypeExact (TA.UniIsFixed uni) _ args: uni
+            TA.TypeExact TA.UniIsFromPars _ args: todo "bodyUni UniIsFromPars"
+
+    if u == TA.ForceImm then Imm else Uni
+
+
+
+
+
+
+#
+#
 # CA to TA translation
 #
 #
@@ -588,7 +611,8 @@ inferExpression as Env: Bool: CA.Expression: State@: TA.Expression & TA.Type =
         CA.If pos { condition, true, false }:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } (todo "either goes... use infer instead?") coreTypeBool condition @state
+                # TODO Allow Uni conditions
+                checkExpression { env with context = Context_IfCondition } Imm coreTypeBool condition @state
 
             typedTrue & trueType =
                 inferExpression { env with context = Context_IfTrue } mustBeImm true @state
@@ -720,7 +744,7 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
 inferRecordAccess as Env: Pos: Bool: Name: TA.Type: State@: TA.Type =
     env: pos: mustBeImm: attrName: inferredType: state@:
 
-    todo "use mustBeImm"
+    # TODO ----> todo "use mustBeImm"
 
     try inferredType as
         TA.TypeRecord uni attrTypes:
@@ -933,8 +957,7 @@ checkExpression as Env: UniqueOrImmutable: TA.Type: CA.Expression: State@: TA.Ex
                         envX1
 
                 typedBody =
-                    # ----> Do I use `getUni out` here?
-                    checkExpression localEnv (todo "CA.Fn check") out body @state
+                    checkExpression localEnv (expectedTypeToUniOrImm expectedType) out body @state
 
                 TA.Fn pos (Array.toList typedPars) typedBody
 
@@ -980,7 +1003,7 @@ checkExpression as Env: UniqueOrImmutable: TA.Type: CA.Expression: State@: TA.Ex
             typedAttrs =
                 both >> Dict.map name: (value & type):
                     # TODO add attribute name to env!?
-                    checkExpression env (todo "getUni type") type value @state
+                    checkExpression env (expectedTypeToUniOrImm type) type value @state
 
             TA.Record pos Nothing typedAttrs
 
@@ -988,7 +1011,7 @@ checkExpression as Env: UniqueOrImmutable: TA.Type: CA.Expression: State@: TA.Ex
         CA.RecordAccess pos attrName exp & _:
 
             typedExpression & expressionType =
-                inferExpression env (todo "uni is the same as expected uni") exp @state
+                inferExpression env (expectedUni == Imm) exp @state
 
             newId =
                 newTyvarId @state
@@ -1017,7 +1040,8 @@ checkExpression as Env: UniqueOrImmutable: TA.Type: CA.Expression: State@: TA.Ex
         CA.If pos { condition, true, false } & _:
 
             typedCondition =
-                checkExpression { env with context = Context_IfCondition } (todo "no expected uni for if condition") coreTypeBool condition @state
+                # TODO use inferExpression instead, so that uniques can be used too?
+                checkExpression { env with context = Context_IfCondition } Imm coreTypeBool condition @state
 
             typedTrue =
                 checkExpression { env with context = Context_IfTrue } expectedUni expectedType true @state
@@ -1097,7 +1121,7 @@ checkCall as Env: Maybe UniqueOrImmutable: TA.Type: Pos: CA.Expression: [CA.Argu
             TA.ArgumentRecycle _ _ _: Recycle & type
 
     expectedReferenceType as TA.Type =
-        TA.TypeFn (todo "uni") (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
+        TA.TypeFn TA.AllowUni (List.map toTypeArg typedArgumentsAndArgumentTypes) expectedType
 
     addEquality env pos Why_CalledAsFunction inferredReferenceType expectedReferenceType @state
 
