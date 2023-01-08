@@ -28,7 +28,7 @@ union Type =
     , TypeExact UniFromPars USR [Type]
     , TypeFn Uniqueness [RecycleOrSpend & Type] Type
     , TypeRecord Uniqueness (Dict Name Type)
-    , TypeVar TyvarId
+    , TypeVar (Maybe Uniqueness) TyvarId
 
     # This is Uni, not Uniqueness.
     # Uniqueness is "imm only" vs "either goes"
@@ -149,7 +149,7 @@ typeTyvars as Type: Dict TyvarId None =
         TypeExact _ usr args: Dict.empty >> List.for args (a: Dict.join (typeTyvars a))
         TypeFn _ ins out: typeTyvars out >> List.for ins (_ & in): Dict.join (typeTyvars in)
         TypeRecord _ attrs: Dict.empty >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
-        TypeVar id: Dict.singleton id None
+        TypeVar _ id: Dict.singleton id None
         TypeRecordExt _ id attrs: Dict.singleton id None >> Dict.for attrs (k: a: Dict.join (typeTyvars a))
         TypeError: Dict.empty
 
@@ -158,7 +158,7 @@ typeAllowsFunctions as Type: Bool =
     type:
     try type as
         TypeFn _ ins out: True
-        TypeVar id: True
+        TypeVar _ id: True
         TypeExact _ usr args: List.any typeAllowsFunctions args
         TypeRecord _ attrs: Dict.any (k: typeAllowsFunctions) attrs
         TypeRecordExt _ id attrs: Dict.any (k: typeAllowsFunctions) attrs
@@ -171,8 +171,8 @@ setUni as Uniqueness: Type: Type =
         TypeFn _ ins out:
             TypeFn uni ins out
 
-        TypeVar id:
-            type
+        TypeVar _ id:
+            TypeVar (Just uni) id
 
         TypeExact _ usr args:
             newArgs = if uni == AllowUni then args else List.map (setUni uni) args
@@ -194,7 +194,7 @@ getUni as Type: Maybe Uniqueness =
     type:
     try type as
         TypeFn uni ins out: Just uni
-        TypeVar id: Nothing
+        TypeVar u id: u
         TypeRecord uni attrs: Just uni
         TypeRecordExt uni id attrs: Just uni
         TypeError: Nothing

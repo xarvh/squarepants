@@ -222,7 +222,7 @@ newTyvarId as State@: TA.TyvarId =
 
 newType as State@: TA.Type =
     state@:
-    TA.TypeVar (newTyvarId @state)
+    TA.TypeVar Nothing (newTyvarId @state)
 
 
 addEquality as Env: Pos: Why: TA.Type: TA.Type: State@: None =
@@ -281,7 +281,7 @@ generalize as Env: Instance: State@: TA.Type =
 #                if tyvar.allowUniques then TA.AllowUni else TA.ForceImm
 
             generalizedTyvarId
-            >> TA.TypeVar
+            >> TA.TypeVar Nothing
             >> applySubstitutionToType originalTyvarId
 
 
@@ -295,7 +295,7 @@ expectedTypeToUniOrImm as TA.Type: UniqueOrImmutable =
     u =
         try expectedType as
             TA.TypeFn uni _ _: uni
-            TA.TypeVar _: TA.ForceImm
+            TA.TypeVar u _: Maybe.withDefault TA.ForceImm u
             TA.TypeRecord uni _: uni
             TA.TypeRecordExt uni _ _: uni
             TA.TypeError: TA.AllowUni
@@ -330,10 +330,17 @@ expandTyvarsInType as State@: Context: Dict TA.TyvarId TA.Type: TA.Type: TA.Type
         TA.TypeRecord uni attrs:
             TA.TypeRecord uni (Dict.map (k: rec) attrs)
 
-        TA.TypeVar id:
+        TA.TypeVar u id:
             try Dict.get id tyvarIdsToType as
                 Nothing: todo << "Compiler bug: this is not supposed to happen"
-                Just ty: ty
+                Just ty:
+                    if u == Just TA.ForceImm and TA.getUni ty /= Just TA.ForceImm then
+                        log "ERROR, replacing forceImm with non-force" { id, ty }
+                        None
+                    else
+                        None
+
+                    ty
 
         TA.TypeRecordExt uni id attrs:
             TA.TypeRecordExt uni id (Dict.map (k: rec) attrs)
@@ -410,7 +417,7 @@ annotationToTaType as State@: Env: CA.Type: TA.Type & UniqueOrImmutable =
     state@: env: ca:
 
     nameToType =
-        Dict.map (k: v: TA.TypeVar v) env.annotatedTyvarsByName
+        Dict.map (k: v: TA.TypeVar (Just TA.ForceImm) v) env.annotatedTyvarsByName
 
     expandParamsAndAliases env @state env.context env.expandedAliases nameToType ca
 
@@ -574,9 +581,15 @@ inferExpression as Env: Bool: CA.Expression: State@: TA.Expression & TA.Type =
 
         CA.Record pos (Just ext) attrExpressions:
 
+            typedExt & extType =
+                inferExpression env mustBeImm ext @state
+
+            extIsImm =
+                TA.getUni extType == Just TA.ForceImm
+
             typedValueAndValueTypeByName as Dict Name (TA.Expression & TA.Type) =
                 attrExpressions >> Dict.map name: value:
-                    inferExpression { env with context = Context_Argument name .context } mustBeImm value @state
+                    inferExpression { env with context = Context_Argument name .context } extIsImm value @state
 
             typedValueByName as Dict Name TA.Expression =
                 Dict.map (k: Tuple.first) typedValueAndValueTypeByName
@@ -584,14 +597,10 @@ inferExpression as Env: Bool: CA.Expression: State@: TA.Expression & TA.Type =
             valueTypeByName as Dict Name TA.Type =
                 Dict.map (k: Tuple.second) typedValueAndValueTypeByName
 
-            typedExt & extType =
-                inferExpression env mustBeImm ext @state
-
             TA.Record pos (Just typedExt) typedValueByName & xxx (inferRecordExtended env pos extType valueTypeByName @state)
 
 
         CA.RecordAccess pos attrName recordExpression:
-
             typedExpr & inferredType =
                 inferExpression env mustBeImm recordExpression @state
 
@@ -686,7 +695,7 @@ inferParam as Env: CA.Parameter: State@: TA.Parameter & TA.Type & Env =
             # TODO check name already in env? Is it MakeCanonical resp?
 
             type =
-                TA.TypeVar (newTyvarId @state)
+                TA.TypeVar (Just TA.AllowUni) (newTyvarId @state)
 
             typeWithClasses as Instance =
                 {
@@ -745,12 +754,20 @@ inferFn as Env: Pos: [CA.Parameter]: CA.Expression: State@: TA.Expression & TA.T
 inferRecordAccess as Env: Pos: Bool: Name: TA.Type: State@: TA.Type =
     env: pos: mustBeImm: attrName: inferredType: state@:
 
-    # TODO ----> todo "use mustBeImm"
+    # TODO I am not sure this check even makes sense? I'm too tired to think
+    logMismatches =
+        type:
+        if mustBeImm and TA.getUni type /= Just TA.ForceImm then
+            log "mismatching UNI, maybe should be set?" { type, attrName, inferredType }
+            None
+        else
+            None
 
     try inferredType as
         TA.TypeRecord uni attrTypes:
             try Dict.get attrName attrTypes as
                 Just type:
+                    logMismatches type
                     type
 
                 Nothing:
@@ -760,32 +777,40 @@ inferRecordAccess as Env: Pos: Bool: Name: TA.Type: State@: TA.Type =
         TA.TypeRecordExt uni tyvarId extensionAttrTypes:
             try Dict.get attrName extensionAttrTypes as
                 Just type:
+                    logMismatches type
                     type
 
                 Nothing:
                     newExtId = newTyvarId @state
 
                     # Attrs have always the same default uni as the record
-                    newAttrType = newType @state
+                    newAttrType =
+                        TA.TypeVar (Just uni) (newTyvarId @state)
 
                     type =
                         TA.TypeRecordExt uni newExtId (Dict.insert attrName newAttrType extensionAttrTypes)
 
-                    addEquality env pos Why_RecordAccess (TA.TypeVar tyvarId) type @state
+                    addEquality env pos Why_RecordAccess (TA.TypeVar (Just uni) tyvarId) type @state
 
                     newAttrType
 
 
-        TA.TypeVar id:
+        TA.TypeVar u id:
             newExtId = newTyvarId @state
 
+            uni =
+                if mustBeImm then
+                    Just TA.ForceImm
+                else
+                    u
+
             # Attrs have always the same default uni as the record
-            newAttrType = newType @state
+            newAttrType = TA.TypeVar uni (newTyvarId @state)
 
             type as TA.Type =
-                TA.TypeRecordExt TA.AllowUni newExtId (Dict.singleton attrName newAttrType)
+                TA.TypeRecordExt (Maybe.withDefault TA.AllowUni uni) newExtId (Dict.singleton attrName newAttrType)
 
-            addEquality env pos Why_RecordAccess (TA.TypeVar id) type @state
+            addEquality env pos Why_RecordAccess inferredType type @state
 
             newAttrType
 
@@ -828,9 +853,9 @@ inferRecordExtended as Env: Pos: TA.Type: Dict Name TA.Type: State@: TA.Type =
             TA.TypeRecordExt uni newExtId (Dict.join valueTypeByName extensionOnly)
 
 
-        TA.TypeVar id:
+        TA.TypeVar u id:
             ty =
-                TA.TypeRecordExt TA.AllowUni (newTyvarId @state) valueTypeByName
+                TA.TypeRecordExt (Maybe.withDefault TA.AllowUni u) (newTyvarId @state) valueTypeByName
 
             addEquality env pos Why_RecordExt extType ty @state
 
@@ -1276,8 +1301,8 @@ inferPatternAny as Env: Pos: { isUnique as Bool, maybeName as Maybe Name, maybeA
     patternType as TA.Type =
         try maybeAnnotation as
             Nothing:
-#                uni = if isUnique then TA.AllowUni else TA.ForceImm
-                newType @state
+                uni = if isUnique then TA.AllowUni else TA.ForceImm
+                TA.TypeVar (Just uni) (newTyvarId @state)
 
             Just annotation:
                 taType & uniOrImm =
@@ -1624,7 +1649,7 @@ addValueToGlobalEnv as State@: UMR: CA.ValueDef: Env: Env =
         >> Dict.map name: ({ allowFunctions, allowUniques }): newTyvarId @state & { originalName = name, allowFunctions, allowUniques }
 
     nameToType as Dict Name TA.Type =
-        nameToIdAndClasses >> Dict.map k: (id & classes): TA.TypeVar id
+        nameToIdAndClasses >> Dict.map k: (id & classes): TA.TypeVar Nothing id
 
     unificationIdToClasses as Dict TA.TyvarId TA.Tyvar =
         nameToIdAndClasses
@@ -1687,7 +1712,7 @@ addUnionTypeAndConstructorsToGlobalEnv as State@: a: CA.UnionDef: Env: Env =
 
     paramsByName as Dict Name TA.Type =
         caUnionDef.pars
-        >> List.indexedMap (index: ((At pos name): name & TA.TypeVar -index))
+        >> List.indexedMap (index: ((At pos name): name & TA.TypeVar Nothing -index))
         >> Dict.fromList
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
@@ -1709,7 +1734,7 @@ namedParsToIdParsAndDict as [At Name]: [TA.TyvarId] & Dict Name TA.Type =
 
     typeByName =
         atPars
-        >> List.indexedMap (index: (At pos name): name & TA.TypeVar -index)
+        >> List.indexedMap (index: (At pos name): name & TA.TypeVar Nothing -index)
         >> Dict.fromList
 
     idPars & typeByName
@@ -1864,11 +1889,11 @@ solveEqualities as ERState: ERState =
 
             try type1 & type2 as
 
-                TA.TypeVar tyvarId & t2:
+                TA.TypeVar _ tyvarId & t2:
                     replaceUnificationVariable head tyvarId (TA.setUni uni t2) state
                     >> solveEqualities
 
-                t1 & TA.TypeVar tyvarId:
+                t1 & TA.TypeVar _ tyvarId:
                     replaceUnificationVariable head tyvarId (TA.setUni uni t1) state
                     >> solveEqualities
 
@@ -1967,7 +1992,7 @@ replaceUnificationVariable as Equality: TA.TyvarId: TA.Type: ERState: ERState =
 
     isSame =
         try replacingType as
-            TA.TypeVar tyvarId2:
+            TA.TypeVar _ tyvarId2:
                 tyvarId == tyvarId2
 
             _:
@@ -2000,7 +2025,7 @@ occurs as TA.TyvarId: TA.Type: Bool =
 
     try type as
         TA.TypeFn _ ins out: List.any ((m & t): rec t) ins or rec out
-        TA.TypeVar id: id == tyvarId
+        TA.TypeVar _ id: id == tyvarId
         TA.TypeExact uni usr args: List.any rec args
         TA.TypeRecord uni attrs: Dict.any (k: rec) attrs
         TA.TypeRecordExt uni id attrs: Dict.any (k: rec) attrs
@@ -2023,12 +2048,12 @@ applySubstitutionToType as TA.TyvarId: TA.Type: TA.Type: TA.Type =
         TA.TypeRecord uni attrs:
             TA.TypeRecord uni (Dict.map (k: rec) attrs)
 
-        TA.TypeVar id:
+        TA.TypeVar uni id:
             if id /= tyvarId then
                 originalType
-#            else if uni == TA.ForceImm and TA.getUni replacingType == TA.AllowUni then
-#                log "Compiler bug: ForceImm cannot be replaced by AllowUni" { tyvarId, replacingType, originalType }
-#                replacingType
+            else if uni == Just TA.ForceImm and TA.getUni replacingType /= Just TA.ForceImm then
+                log "Compiler bug: ForceImm cannot be replaced by AllowUni" { tyvarId, replacingType, originalType }
+                replacingType
             else
                 replacingType
 

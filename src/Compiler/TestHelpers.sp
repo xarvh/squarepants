@@ -111,13 +111,12 @@ caList as CA.Type: CA.Type =
 #
 taTyvar as Int: TA.Type =
     id:
-    TA.TypeVar id
+    TA.TypeVar Nothing id
 
 
 taTyvarImm as Int: TA.Type =
-    # TODO same as above
     id:
-    TA.TypeVar id
+    TA.TypeVar (Just TA.ForceImm) id
 
 
 taNumber as TA.Type =

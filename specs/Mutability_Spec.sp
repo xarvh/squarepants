@@ -126,6 +126,9 @@ uniquenessTyping as Test =
             (infer "z")
             Test.isOk
         #
+
+        [# Yeah, they can
+
         , Test.Group
             """
             Functions cannot be unique
@@ -165,6 +168,7 @@ uniquenessTyping as Test =
                 (infer "scope")
                 (Test.errorContains ["is unique", "but its type is"])
             ]
+        #]
         #
         , Test.Group
             """
