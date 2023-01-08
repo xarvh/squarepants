@@ -154,7 +154,7 @@ listDef as CA.UnionDef =
         [ item, list item ]
 
     type as CA.Type =
-        CA.Type p << CA.TypeFn [Spend & item, Spend & list item] (list item)
+        CA.Type p << CA.TypeFn Uni [Spend & item, Spend & list item] (list item)
 
     nilDef as CA.Constructor =
        {

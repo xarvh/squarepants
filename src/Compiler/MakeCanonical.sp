@@ -83,11 +83,9 @@ typeSetUni as Pos: UniqueOrImmutable: CA.Type: Res CA.Type =
             CA.TypeNamed usr (CA.UniIsFixed uni) pars
             >> ok
 
-        CA.TypeFn _ _:
-            if uni == Imm then
-                Ok type
-            else
-                error pos [ "Can't set TypeFn to Uni", toHuman type ]
+        CA.TypeFn _ in out:
+            CA.TypeFn uni in out
+            >> ok
 
         CA.TypeRecord _ attrs:
             CA.TypeRecord uni attrs
@@ -166,7 +164,7 @@ typeDeps as CA.Type: Set USR: Set USR =
     try type_ as
         CA.TypeNamed usr _ args: acc >> Set.insert usr >> List.for args typeDeps
         CA.TypeAnnotationVariable _ _: acc
-        CA.TypeFn params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
+        CA.TypeFn _ params to: acc >> typeDeps to >> List.for params ((_ & f): typeDeps f)
         CA.TypeRecord _ attrs: Dict.for attrs (k: typeDeps) acc
         CA.TypeError: acc
 
@@ -1475,7 +1473,7 @@ translateType as ReadOnly: FA.Expression: Res CA.Type =
             >> translateType ro
             >> onOk caReturn:
 
-            CA.TypeFn caParams caReturn
+            CA.TypeFn Imm caParams caReturn
             >> CA.Type pos
             >> Ok
 
@@ -1552,7 +1550,7 @@ translateConstructor as ReadOnly: CA.Type: USR: FA.Expression: Dict Name CA.Cons
                 if caPars == [] then
                     unionType
                 else
-                    CA.Type pos << CA.TypeFn (List.map (a: Spend & a) caPars) unionType
+                    CA.Type pos << CA.TypeFn Uni (List.map (a: Spend & a) caPars) unionType
             }
 
         constructors

@@ -101,7 +101,7 @@ typeToPriorityAndText as UMR: Meta: CA.Type: Int & Text =
         CA.TypeAnnotationVariable uni name:
             ( 0 & name)
 
-        CA.TypeFn pars to:
+        CA.TypeFn _ pars to:
             todo "CA.TypeFn"
 #            arrow =
 #                try lambdaModifier as
@@ -264,7 +264,7 @@ normType as CA.Type: NormMonad CA.Type =
             normName name >> andThen n:
             return << CA.Type pos << CA.TypeAnnotationVariable uni n
 
-        CA.TypeFn pars to0:
+        CA.TypeFn _ pars to0:
             todo "CA.TypeFn"
 #            (normType from0) >> andThen from1:
 #            (normType to0) >> andThen to1:

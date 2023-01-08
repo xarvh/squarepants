@@ -529,7 +529,9 @@ higherOrderTypes as Test =
     Test.Group "higher order types"
         [
         , codeTest
-            "Parse precedence"
+            """
+            Parse precedence
+            """
             """
             union T a = T a
 

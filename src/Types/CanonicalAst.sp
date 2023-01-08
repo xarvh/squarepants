@@ -10,7 +10,7 @@ union UniFromPars =
 
 union Type_ =
     , TypeNamed USR UniFromPars [Type]
-    , TypeFn [RecycleOrSpend & Type] Type
+    , TypeFn UniqueOrImmutable [RecycleOrSpend & Type] Type
     , TypeRecord UniqueOrImmutable (Dict Name Type)
     , TypeAnnotationVariable UniqueOrImmutable Name
     # This is used as a placeholder when there is an error and a type can't be determined
@@ -170,7 +170,7 @@ typeTyvars as Type: Dict Name Pos =
 
     try ty_ as
         TypeNamed _ _ args: fromList args
-        TypeFn pars to: fromList << to :: unmod pars
+        TypeFn _ pars to: fromList << to :: unmod pars
         TypeRecord _ attrs: fromList (Dict.values attrs)
         TypeAnnotationVariable _ name: Dict.singleton name pos
         TypeError: Dict.empty

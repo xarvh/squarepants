@@ -38,7 +38,7 @@ tyVar as Name: CA.Type =
 
 tyFn as [CA.Type]: CA.Type: CA.Type =
     pars: to:
-    CA.Type Pos.N << CA.TypeFn (List.map (p: Spend & p) pars) to
+    CA.Type Pos.N << CA.TypeFn Imm (List.map (p: Spend & p) pars) to
 
 
 typeUnopUniform as CA.Type: CA.Type =
@@ -64,8 +64,8 @@ makeUnique as CA.Type: CA.Type =
             CA.TypeNamed usr _ pars:
                 CA.TypeNamed usr (CA.UniIsFixed Uni) pars
 
-            CA.TypeFn pars out:
-                todo "TypeFn can' be uni"
+            CA.TypeFn _ pars out:
+                CA.TypeFn Uni pars out
 
             CA.TypeRecord _ attrs:
                 CA.TypeRecord Uni attrs
@@ -259,7 +259,7 @@ mutableAdd as Op.Binop = {
     , symbol = "+="
     , precedence = Op.Mutop
     , associativity = Op.NonAssociative
-    , type = CA.Type Pos.N << CA.TypeFn [Recycle & makeUnique CoreTypes.number, Spend & CoreTypes.number] CoreTypes.none
+    , type = CA.Type Pos.N << CA.TypeFn Imm [Recycle & makeUnique CoreTypes.number, Spend & CoreTypes.number] CoreTypes.none
     , nonFn = []
     }
 

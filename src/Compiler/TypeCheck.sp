@@ -357,9 +357,9 @@ expandParamsAndAliases as Env: State@: Context: ByUsr ExpandedAlias: Dict Name T
         expandParamsAndAliases env @state context allAliases argsByName
 
     try type_ as
-        CA.TypeFn modsAndArgs out:
+        CA.TypeFn uni modsAndArgs out:
             args = List.map (Tuple.mapSecond (t: rec t >> Tuple.first)) modsAndArgs
-            TA.TypeFn TA.AllowUni args (rec out >> Tuple.first) & Imm
+            TA.TypeFn (uniqueOrImmutableToUniqueness uni) args (rec out >> Tuple.first) & Imm
 
         CA.TypeRecord uni attrs:
             # TODO check that an imm record does not have uni attrs
@@ -546,6 +546,7 @@ inferExpression as Env: Bool: CA.Expression: State@: TA.Expression & TA.Type =
 
         CA.Fn pos caPars body:
             inferFn env pos caPars body @state
+            >> Tuple.mapSecond xxx
 
 
         CA.Call pos reference args:
@@ -957,7 +958,7 @@ checkExpression as Env: UniqueOrImmutable: TA.Type: CA.Expression: State@: TA.Ex
                         envX1
 
                 typedBody =
-                    checkExpression localEnv (expectedTypeToUniOrImm expectedType) out body @state
+                    checkExpression localEnv (expectedTypeToUniOrImm out) out body @state
 
                 TA.Fn pos (Array.toList typedPars) typedBody
 
