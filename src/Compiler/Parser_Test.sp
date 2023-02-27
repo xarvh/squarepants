@@ -73,6 +73,14 @@ firstDefinition as Text: Result Text { pattern as FA.Expression, nonFn as [At To
     code >> firstStatement >> onOk asDefinition
 
 
+firstEvaluationOfDefinition as Text: Result Text FA.Expression =
+    code:
+    code
+    >> firstStatement
+    >> onOk asDefinition
+    >> onOk (def: Ok def.body)
+
+
 #firstEvaluationOfDefinition as Text: Result Text FA.Expression =
 #    code:
 #
@@ -264,11 +272,12 @@ functions as Test =
             Sibling nesting
             """
             """
-            fn a:
-            fn b:
-            3
+            z =
+              fn a:
+              fn b:
+              3
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo <<
                 e << FA.Fn
                     [ variable "a" ]
@@ -308,10 +317,11 @@ functions as Test =
             Pass to function without parens, below
             """
             """
-            xxx fn y:
-            y
+            z =
+              xxx fn y:
+              y
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo <<
                 e << FA.Call
                     ( variable "xxx" )
@@ -539,12 +549,13 @@ lists as Test =
             Multiline
             """
             """
-            [
-            , a
-            , b
-            ]
+            z =
+              [
+              , a
+              , b
+              ]
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
               (e << FA.List [ False & variable "a", False & variable "b" ])
             )
@@ -553,12 +564,13 @@ lists as Test =
             Ancient egyptian
             """
             """
-            blah [
-            , a
-            , b
-            ]
+            z =
+              blah [
+              , a
+              , b
+              ]
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
               (e << FA.Call (variable "blah") [e << FA.List [ False & variable "a", False & variable "b" ]])
             )
@@ -603,12 +615,13 @@ records as Test =
             )
         , codeTest "Multiline"
             """
-            {
-            , x = a
-            , y = b
-            }
+            z =
+              {
+              , x = a
+              , y = b
+              }
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
               (e << FA.Record
                   {
@@ -629,11 +642,12 @@ records as Test =
             )
         , codeTest "Pattern extension"
             """
-            { with
-            , x = a
-            }
+            z =
+              { with
+              , x = a
+              }
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
               (e << FA.Record
                   {
@@ -644,11 +658,12 @@ records as Test =
             )
         , codeTest "Expression extension"
             """
-            { z with
-            , x = a
-            }
+            q =
+              { z with
+              , x = a
+              }
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
               (e << FA.Record
                   {
@@ -733,12 +748,13 @@ ifs as Test =
             Multiline, formatted
             """
             """
-            if a then
-                b
-            else
-                c
+            z =
+              if a then
+                  b
+              else
+                  c
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo << e <<
                 FA.If
                     {
@@ -752,10 +768,11 @@ ifs as Test =
             Multiline, compact
             """
             """
-            if a then b
-            else c
+            z =
+              if a then b
+              else c
             """
-            firstEvaluation
+            firstEvaluationOfDefinition
             (Test.isOkAndEqualTo << e <<
                 FA.If
                     {

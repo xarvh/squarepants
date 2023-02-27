@@ -76,8 +76,7 @@ run as Reader a: Text: [FA.Statement]: Res a =
 read as Reader a: Text: Text: Res a =
     reader: moduleName: sponContent:
     sponContent
-        >> Compiler/Lexer.lexer moduleName
-        >> onOk (Compiler/Parser.parse { moduleName, stripLocations = False })
+        >> Compiler/Parser.textToFormattableModule { moduleName, stripLocations = False }
         >> onOk (run reader moduleName)
 
 
