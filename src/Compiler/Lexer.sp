@@ -56,6 +56,7 @@ alias ReadState = {
     , tabsOrSpaces as TabsOrSpaces
 
     # accumulator
+    , sections as Array [Token]
     , tokens as Array Token
     }
 
@@ -79,6 +80,7 @@ readStateInit as Text: Text: ReadState =
     , moduleName
     , tokenStart = 0
     , tabsOrSpaces = NoTabsOrSpacesYet
+    , sections = Array.fromList []
     , tokens = Array.fromList []
     }
 
@@ -138,6 +140,13 @@ updateIndent as Int: Int: Token.Kind: ReadState@: None =
         else
             # this means that state.lineIndent == head.indent
             if head.isBlock then #and kind /= Token.Comment then
+
+                if state.lineIndent /= 0 then
+                    None
+                else
+                    Array.push @state.sections (Array.toList state.tokens)
+                    @state.tokens := Array.fromList []
+
                 addIndentToken start Token.NewSiblingLine @state
             else
                 None
@@ -307,6 +316,7 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
                     , name
                     , attrPath = attrs
                     }
+
                 absAddToken start end (Token.Word word) @state
 
     snips =
@@ -791,8 +801,10 @@ closeOpenBlocks as ReadState@: None =
     List.each state.indentStack _:
         Array.push @state.tokens << Token Token.N pos pos Token.BlockEnd
 
+    Array.push @state.sections (Array.toList state.tokens)
 
-lexer as Text: Text: Res [Token] =
+
+lexer as Text: Text: Res [[Token]] =
     moduleName: moduleCode:
 
     Debug.benchStart None
@@ -815,7 +827,7 @@ lexer as Text: Text: Res [Token] =
 
     if state.errors == [] then
         closeOpenBlocks @state
-        state.tokens
+        state.sections
             >> Array.toList
             >> Ok
             >> btw Debug.benchStop "lexer"

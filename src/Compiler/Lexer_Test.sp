@@ -73,14 +73,14 @@ valueTest as Text: (None: a): Test.CodeExpectation a: Test =
     Test.valueTest toHuman
 
 
-lexTokens as Text: Result Text (List Token) =
+lexTokens as Text: Result Text [[Token]] =
     s:
     s
         >> Compiler/Lexer.lexer TH.moduleName
         >> TH.resErrorToStrippedText s
 
 
-lexTokensAndDrop as Int: Text: Result Text (List Token) =
+lexTokensAndDrop as Int: Text: Result Text [[Token]] =
     name: s:
     s
         >> lexTokens
@@ -153,34 +153,34 @@ unaryAddittiveOps as Test =
             "-a"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << Token.Unop Op.UnopMinus
                 , Token n 1 2 << lowerName "a"
-                ]
+                ]]
             )
         , codeTest "a - -a"
             "a - -a"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << lowerName "a"
                 , Token n 2 3 << Token.Binop Prelude.subtract
                 , Token n 4 5 << Token.Unop Op.UnopMinus
                 , Token n 5 6 << lowerName "a"
-                ]
+                ]]
             )
         , codeTest "a-a"
             "a-a"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << lowerName "a"
                 , Token n 1 2 << Token.Unop Op.UnopMinus
                 , Token n 2 3 << lowerName "a"
-                ]
+                ]]
             )
 #        , codeTest "Consuming colon:"
 #            ":-"
@@ -194,10 +194,10 @@ unaryAddittiveOps as Test =
             "-="
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0 0 Token.NewSiblingLine
                 , Token n 0 2 << Token.Binop Prelude.mutableSubtract
-                ]
+                ]]
             )
         ]
 
@@ -208,7 +208,7 @@ indentation as Test =
             "\na =\n 1\nb = 1"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 1 1 << Token.NewSiblingLine
                 , Token n 1 2 << lowerName "a"
                 , Token n 3 4 << Token.Defop
@@ -219,7 +219,7 @@ indentation as Test =
                 , Token n 8 9 << lowerName "b"
                 , Token n 10 11 << Token.Defop
                 , Token n 12 13 << Token.NumberLiteral "1"
-                ]
+                ]]
             )
         , codeTest
             """
@@ -234,7 +234,7 @@ indentation as Test =
             """
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0  0  << Token.NewSiblingLine
                 , Token n 0  6  << lowerName "module"
                 , Token n 7  8  << Token.Defop
@@ -251,7 +251,7 @@ indentation as Test =
                 , Token n 59 63 << upperName "None"
                 , Token n 63 63 << Token.BlockEnd
                 , Token n 63 63 << Token.BlockEnd
-                ]
+                ]]
             )
         , codeTest
             """
@@ -284,7 +284,7 @@ indentation as Test =
             )
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n (0) (0)  Token.NewSiblingLine
                 , Token n (0) (6) (lowerName "module")
                 , Token n (7) (8) Token.Defop
@@ -332,7 +332,7 @@ indentation as Test =
                 , Token n (247) (248) (Token.Defop )
                 , Token n (249) (250) (lowerName "h")
                 , Token n (250) (250) (Token.BlockEnd )
-                ]
+                ]]
             )
         ]
 
@@ -346,33 +346,33 @@ comments as Test =
             "\n#\na = 1\n"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
 #                , Token n 1 2 << Token.Comment
                 , Token n 3 3 << Token.NewSiblingLine
                 , Token n 3 4 << lowerName "a"
                 , Token n 5 6 << Token.Defop
                 , Token n 7 8 << Token.NumberLiteral "1"
-                ]
+                ]]
             )
         , codeTest "[reg] nested comments allow a spurious newline?"
             "\n[#[##]#]\na = 1\n"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
 #                , Token n 1 8 << Token.Comment
                 , Token n 10 10 << Token.NewSiblingLine
                 , Token n 10 11 << lowerName "a"
                 , Token n 12 13 << Token.Defop
                 , Token n 14 15 << Token.NumberLiteral "1"
-                ]
+                ]]
             )
         , codeTest "Single line"
             "# hello"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
 #                , Token n 0 7 <<  Token.Comment
-                ]
+                ]]
             )
         , codeTest "Multi line"
             """
@@ -388,7 +388,7 @@ a [# inline #] = 1
 """
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
 #                , Token n 0 16 << Token.Comment
                 , Token n 19 19 << Token.NewSiblingLine
                 , Token n 19 20 << lowerName "a"
@@ -397,18 +397,18 @@ a [# inline #] = 1
                 , Token n 36 37 << Token.NumberLiteral "1"
 #                , Token n 39 58 << Token.Comment
 #                , Token n 61 78 << Token.Comment
-                ]
+                ]]
             )
         , codeTest
             "brackets"
             "[]"
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 1 << Token.SquareBracket Token.Open
                 , Token n 1 2 << Token.SquareBracket Token.Closed
-                ]
+                ]]
             )
 
         , codeTest
@@ -423,7 +423,7 @@ a [# inline #] = 1
             """
             lexTokens
             (Test.isOkAndEqualTo
-                [
+                [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 8 << lowerName "allTests"
                 , Token n 9 10 << Token.Defop
@@ -433,7 +433,7 @@ a [# inline #] = 1
 #                , Token n 21 22 << Token.Comment
                 , Token n 27 28 << Token.SquareBracket Token.Closed
                 , Token n 28 28 << Token.BlockEnd
-                ]
+                ]]
             )
         ]
 
@@ -443,15 +443,15 @@ underscores as Test =
         [ codeTest "'_' as a Name"
             "_"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token n 0 1 << lowerName "_"])
+            (Test.isOkAndEqualTo [[ Token n 0 1 << lowerName "_"]])
         , codeTest "'_10_20' as a Name"
             "_10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token n 0 6 << lowerName "_10_20" ])
+            (Test.isOkAndEqualTo [[ Token n 0 6 << lowerName "_10_20" ]])
         , codeTest "'10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [ Token n 0 5 << Token.NumberLiteral "10_20" ])
+            (Test.isOkAndEqualTo [[ Token n 0 5 << Token.NumberLiteral "10_20" ]])
         ]
 
 
@@ -478,20 +478,20 @@ textLiterals as Test =
             "Empty Text"
             "\"\""
             lexTokens
-            (Test.isOkAndEqualTo [
+            (Test.isOkAndEqualTo [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 2 << Token.TextLiteral ""
-                ]
+                ]]
             )
         , codeTest
             "Followed by colon"
             "\"n\":\n"
             lexTokens
-            (Test.isOkAndEqualTo [
+            (Test.isOkAndEqualTo [[
                 , Token n 0 0 << Token.NewSiblingLine
                 , Token n 0 3 << Token.TextLiteral "n"
                 , Token n 3 4 << Token.Colon
-                ]
+                ]]
             )
 #        , codeTest
 #            "[reg] should not add the indent!"

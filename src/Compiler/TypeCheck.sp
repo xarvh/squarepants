@@ -184,7 +184,9 @@ union Error_ =
     , ErrorIncompatibleTypes CA.Expression TA.FullType
     , ErrorIncompatiblePattern CA.Pattern TA.FullType
     , ErrorCallingANonFunction TA.RawType
-    , ErrorWrongNumberOfArguments
+    , ErrorWrongNumberOfArguments { given as Int, expected as Int, reference as CA.Expression }
+    , ErrorWrongNumberOfParameters
+    , ErrorWrongNumberOfConstructorArguments
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
     , ErrorUniquenessDoesNotMatch { fix as Uniqueness, mut as Uniqueness }
@@ -1270,7 +1272,7 @@ checkExpression as Env: TA.FullType: CA.Expression: State@: TA.Expression =
         CA.Fn pos pars body & TA.TypeFn parTypes out:
 
             if List.length pars /= List.length parTypes then
-                addError env pos ErrorWrongNumberOfArguments @state
+                addError env pos ErrorWrongNumberOfParameters @state
                 TA.Error pos
             else
                 typedPars @= Array.fromList []
@@ -1438,8 +1440,10 @@ doCall as Env: Pos: Maybe TA.FullType: CA.Expression: [CA.Argument]: State@: TA.
         try inferredReferenceType.raw as
 
             TA.TypeFn parTypes outType:
-                if List.length parTypes /= List.length typedArguments then
-                    addError env pos ErrorWrongNumberOfArguments @state
+                given = List.length typedArguments
+                expected = List.length parTypes
+                if expected /= given then
+                    addError env pos (ErrorWrongNumberOfArguments { reference, given, expected }) @state
                     fullTypeError
                 else
                     list_eachWithIndex2 0 typedArguments parTypes index: givenArg: parType:
@@ -1589,7 +1593,7 @@ inferPattern as Env: Uniqueness: CA.Pattern: State@: PatternOut =
                                 TA.TypeFn ins out: ins & out.raw
                                 _: [] & x.raw
 
-                        addErrorIf (List.length parTypes /= List.length arguments) env pos ErrorWrongNumberOfArguments @state
+                        addErrorIf (List.length parTypes /= List.length arguments) env pos ErrorWrongNumberOfConstructorArguments @state
 
                         list_eachWithIndex2 0 parTypes argumentTypes index: parType: argType:
                             try parType as
@@ -1723,14 +1727,55 @@ checkPattern as Env: TA.FullType: CA.Pattern: State@: TA.Pattern & Env =
 
 
         CA.PatternRecord pos completeness pas & _:
-            todo """
-            {
-            , typedPattern = TA.PatternRecord pos typedPatternsAndPatternTypesByName
-            , patternType
-            , env = newEnv
-            , maybeFullAnnotation = Nothing # TODO
-            }
-            """
+            checkPatternRecord env pos expectedType completeness pas @state
+
+
+
+checkPatternRecord as Env: Pos: TA.FullType: CA.PatternCompleteness: Dict Name CA.Pattern: State@: TA.Pattern & Env =
+    env: pos: expectedType: completeness: pas: state@:
+
+    { uni, raw = _ } =
+        expectedType
+
+    try expectedType.raw as
+        TA.TypeRecord Nothing attrs:
+
+            paOnly & both & typeOnly =
+                onlyBothOnly pas attrs
+
+            addErrorIf (paOnly /= Dict.empty) env pos
+                (ErrorRecordHasAttributesNotInAnnotation)
+                @state
+
+            addErrorIf (typeOnly /= Dict.empty and completeness == CA.Complete) env pos
+                # TODO "add `with` if you don't want to use all attrs"
+                (ErrorRecordIsMissingAttibutesInAnnotation)
+                @state
+
+            taPas & envF =
+                Dict.empty & env
+                >> Dict.for both name: (pa & raw): (acc & envX):
+                    taPa & envX0 =
+                        checkPattern { envX with context = Context_AttributeName name env.context } { uni, raw } pa @state
+
+                    Dict.insert name (taPa & raw) acc & { envX0 with context = env.context }
+
+            TA.PatternRecord pos taPas & envF
+
+
+        TA.TypeRecord (Just tyvarId) a:
+            bug "can't annotate extensible types"
+
+        _:
+            addError env pos ErrorNotCompatibleWithRecord @state
+
+            envF =
+                env >> Dict.for pas name: pa: envX:
+                    out = inferPattern envX expectedType.uni pa @state
+                    out.env
+
+            patternError pos & envF
+
 
 
 checkPatternConstructor as Env: Pos: TA.FullType: USR: [CA.Pattern]: State@: TA.Pattern & Env =
@@ -1762,7 +1807,7 @@ checkPatternConstructor as Env: Pos: TA.FullType: USR: [CA.Pattern]: State@: TA.
                     _: [] & fullType
 
             if List.length arguments /= List.length requiredParTypes then
-                addError env pos ErrorWrongNumberOfArguments @state
+                addError env pos ErrorWrongNumberOfConstructorArguments @state
                 patternError pos & insertArgsOnError env
 
             else

@@ -640,31 +640,21 @@ binaryOperators as Op.Precedence: Parser Op.Binop =
 #
 # Module
 #
-module_ as Env: Parser FA.Module =
+section as Env: Parser (Maybe FA.Statement) =
     env:
 
-    start =
-        Parser.maybe (kind Token.NewSiblingLine)
-
-    e =
+    fillers =
         Parser.oneOf
             [ kind Token.BlockEnd
             , kind Token.NewSiblingLine
             ]
 
-    # This is called `zzz` rather than `end` because apparently there is some really
-    # bad problems with sorting that result in this (?) being declared before Parser.end?
-    zzz =
-        Parser.zeroOrMore e >> on _:
-        Parser.end
+    Parser.zeroOrMore (kind Token.NewSiblingLine) >> on _:
+    Parser.maybe (statement env) >> on maybeStatement:
+    Parser.zeroOrMore fillers >> on _:
+    Parser.end >> on _:
 
-    statements =
-        oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
-
-    Parser.oneOf
-        [ Parser.map (_: []) Parser.end
-        , Parser.surroundWith start zzz statements
-        ]
+    Parser.accept maybeStatement
 
 
 #
@@ -681,11 +671,11 @@ makeError as Text: [Token]: Text: Res a =
     Error.res p (eenv: [ message ])
 
 
-parse as Env: [Token]: Res FA.Module =
+parse as Env: [Token]: Res (Maybe FA.Statement) =
     env: tokens:
 
-    (failureStates as [[Token]]) & (outcome as Parser.Outcome Token [FA.Statement]) =
-        Parser.runParser (module_ env) tokens
+    (failureStates as [[Token]]) & (outcome as Parser.Outcome Token (Maybe FA.Statement)) =
+        Parser.runParser (section env) tokens
 
     try outcome as
         Parser.Accepted readState output:
@@ -703,7 +693,7 @@ parse as Env: [Token]: Res FA.Module =
 
             message =
                 try readState as
-                    []: "I got to the end of file and I can't make sense of it. =("
+                    []: "I got to the end of the statement and I can't make sense of it. =("
                     _: "I got stuck parsing here. =("
 
             makeError env.moduleName readState message
@@ -712,18 +702,18 @@ parse as Env: [Token]: Res FA.Module =
 textToFormattableModule as Env: Text: Res FA.Module =
     env: code:
 
-    tokensResult as Res [Token] =
+    tokensResult as Res [[Token]] =
         Compiler/Lexer.lexer env.moduleName code
 
-    tokensToStatsResult as [Token]: Res [FA.Statement] =
-        tokens:
+    tokensResult
+    >> onOk sections:
 
-#        List.each tokens t:
-#              log "*" t
+    Debug.benchStart None
+    result =
+        sections
+        >> List.mapRes (parse env)
+        >> Result.map (List.filterMap identity)
 
-        Debug.benchStart None
-        parse env tokens
-        >> btw Debug.benchStop "parse"
+    Debug.benchStop "parse"
 
-    Result.onOk tokensToStatsResult tokensResult
-
+    result
