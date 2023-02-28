@@ -1312,10 +1312,6 @@ makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: Res CA.Expression =
     if op.symbol == Prelude.sendRight.symbol then
         # arg3 >> fun arg1 arg2
         try right as
-            CA.ArgumentExpression (CA.Call p ref args):
-                CA.Call p ref (List.concat [args, [left]])
-                >> Ok
-
             CA.ArgumentExpression ref:
                 CA.Call pos ref [left]
                 >> Ok
@@ -1326,10 +1322,6 @@ makeBinop as Pos: CA.Argument: Op.Binop: CA.Argument: Res CA.Expression =
     else if op.symbol == Prelude.sendLeft.symbol then
         # arg3 >> fun arg1 arg2
         try left as
-            CA.ArgumentExpression (CA.Call p ref args):
-                CA.Call p ref (List.concat [args, [right]])
-                >> Ok
-
             CA.ArgumentExpression ref:
                 CA.Call pos ref [right]
                 >> Ok
