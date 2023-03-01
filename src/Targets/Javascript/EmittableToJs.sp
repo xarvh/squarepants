@@ -16,16 +16,16 @@ recycleTempVariable =
 
 union Override = Override
     {
-    , call as Env: [EA.Argument]: JA.Expr
-    , value as Env: JA.Expr
+    , call as fn Env, [EA.Argument]: JA.Expr
+    , value as fn Env: JA.Expr
     }
 
 
-coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
-    emState@:
+coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
+    fn @emState:
 
-    corelib as Text: Text: USR =
-        m: n:
+    corelib as fn Text, Text: USR =
+        fn m, n:
         USR (UMR Meta.Core m) n
 
     [
@@ -85,6 +85,7 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , corelib "Hash" "for" & function  "hash_for"
     , corelib "Hash" "each" & function  "hash_each"
     #
+    , corelib "Array" "each" & function  "array_each"
     , corelib "Array" "push" & function  "array_push"
     , corelib "Array" "pop" & function  "array_pop"
     , corelib "Array" "get" & function  "array_get"
@@ -96,20 +97,20 @@ coreOverrides as Compiler/MakeEmittable.State@: Dict EA.Name Override =
     , corelib "List" "sortBy" & function  "list_sortBy"
     ]
     >> Dict.fromList
-    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState)
+    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
 
 
 unaryPlus as Override =
     {
-    , value = env: todo "unaryPlus has no raw value"
+    , value = fn env: todo "unaryPlus has no raw value"
     , call =
-        env: arguments:
+        fn env, arguments:
         try arguments as
-            [ EA.ArgumentSpend arg ]:
+            , [ EA.ArgumentSpend arg ]:
                 # Num.unaryPlus n == n
                 translateExpressionToExpression env arg
 
-            _:
+            , _:
                 todo "compiler bug: wrong number of arguments for unop"
     }
     >> Override
@@ -117,82 +118,82 @@ unaryPlus as Override =
 
 unaryMinus as Override =
     {
-    , value = env: todo "unaryMinus has no raw value"
+    , value = fn env: todo "unaryMinus has no raw value"
     , call =
-        env: arguments:
+        fn env, arguments:
         try arguments as
-            [ EA.ArgumentSpend arg ]:
+            , [ EA.ArgumentSpend arg ]:
                 # Num.unaryMinus n == -n
                 JA.Unop "-" (translateExpressionToExpression env arg)
 
-            _:
+            , _:
                 todo "compiler bug: wrong number of arguments for unop"
     }
     >> Override
 
 
-binop as Text: Override =
-    jsOp:
+binop as fn Text: Override =
+    fn jsOp:
     {
-    , value = env: todo << "binop " .. jsOp .. " has no raw value"
+    , value = fn env: todo << "binop " .. jsOp .. " has no raw value"
     , call =
-        env: arguments:
+        fn env, arguments:
         try arguments as
-            [ right, left ]:
+            , [ right, left ]:
                 JA.Binop jsOp
                     (translateArg { nativeBinop = True } env right)
                     (translateArg { nativeBinop = True } env left)
 
-            _:
+            , _:
                 todo << "compiler bug: wrong number of arguments for binop" .. toHuman { jsOp, arguments }
     }
     >> Override
 
 
-constructor as Text: Override =
-    jsValue:
+constructor as fn Text: Override =
+    fn jsValue:
     {
-    , value = env: JA.Var jsValue
-    , call = env: args: makeCall env (JA.Var jsValue) args
+    , value = fn env: JA.Var jsValue
+    , call = fn env, args: makeCall env (JA.Var jsValue) args
     }
     >> Override
 
 
 
-function as Text: Override =
-    jaName:
+function as fn Text: Override =
+    fn jaName:
     {
-    , value = env: JA.Var jaName
-    , call = env: args: makeCall env (JA.Var jaName) args
+    , value = fn env: JA.Var jaName
+    , call = fn env, args: makeCall env (JA.Var jaName) args
     }
     >> Override
 
 
 
-translateVariable as Env: Name: JA.Expr =
-    env: variableName:
+translateVariable as fn Env, Name: JA.Expr =
+    fn env, variableName:
 
     try Dict.get variableName env.overrides as
-        Just (Override { call, value }):
+        , Just (Override { call, value }):
             value env
 
-        Nothing:
+        , Nothing:
             JA.Var variableName
 
 
-accessAttrs as [Text]: JA.Expr: JA.Expr =
-    attrPath: e:
-    List.for attrPath JA.AccessWithDot e
+accessAttrs as fn [Text], JA.Expr: JA.Expr =
+    fn attrPath, e:
+    List.for e attrPath JA.AccessWithDot
 
 
-translateArg as { nativeBinop as Bool }: Env: EA.Argument: JA.Expr =
-    stuff: env: eaExpression:
+translateArg as fn { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
+    fn stuff, env, eaExpression:
 
     try eaExpression as
-        EA.ArgumentSpend e:
+        , EA.ArgumentSpend e:
             translateExpressionToExpression env e
 
-        EA.ArgumentRecycle attrPath name:
+        , EA.ArgumentRecycle attrPath name:
             accessAttrs attrPath (JA.Var name)
 
 
@@ -229,8 +230,8 @@ translateArg as { nativeBinop as Bool }: Env: EA.Argument: JA.Expr =
 #]
 
 
-constructorArgumentName as Int: JA.Name =
-    i:
+constructorArgumentName as fn Int: JA.Name =
+    fn i:
     "$" .. Text.fromNumber i
 
 
@@ -240,21 +241,21 @@ constructorArgumentName as Int: JA.Name =
 #
 
 
-accessArrayIndex as Int: JA.Expr: JA.Expr =
-    index:
+accessArrayIndex as fn Int, JA.Expr: JA.Expr =
+    fn index, j:
 
     index
     >> Text.fromNumber
     >> JA.Literal
-    >> JA.AccessWithBrackets
+    >> JA.AccessWithBrackets __ j
 
 
-literalString as Text: JA.Expr =
-    str:
+literalString as fn Text: JA.Expr =
+    fn str:
     escaped =
         str
-            >> Text.replace "\n" "\\n"
-            >> Text.replace "\"" "\\\""
+            >> Text.replace "\n" "\\n" __
+            >> Text.replace "\"" "\\\"" __
 
     "\"" .. escaped .. "\""
     >> JA.Literal
@@ -269,31 +270,31 @@ union TranslatedExpression =
     , Inline JA.Expr
 
 
-translateExpressionToExpression as Env: EA.Expression: JA.Expr =
-    env: expr:
+translateExpressionToExpression as fn Env, EA.Expression: JA.Expr =
+    fn env, expr:
     try translateExpression env expr as
-        Inline e:
+        , Inline e:
             e
 
-        Block block:
+        , Block block:
             JA.Call (JA.BlockLambda [] block) []
 
 
-makeCall as Env: JA.Expr: [EA.Argument]: JA.Expr =
-    env: jaRef: args:
+makeCall as fn Env, JA.Expr, [EA.Argument]: JA.Expr =
+    fn env, jaRef, args:
 
     call =
         args
-        >> List.map (translateArg { nativeBinop = False } env)
-        >> JA.Call jaRef
+        >> List.map (translateArg { nativeBinop = False } env __) __
+        >> JA.Call jaRef __
 
-    asRecycled as EA.Argument: Maybe JA.Expr =
-        arg:
+    asRecycled as fn EA.Argument: Maybe JA.Expr =
+        fn arg:
         try arg as
-            EA.ArgumentSpend _: Nothing
-            EA.ArgumentRecycle attrPath name:
+            , EA.ArgumentSpend _: Nothing
+            , EA.ArgumentRecycle attrPath name:
                 translateVariable env name
-                >> accessAttrs attrPath
+                >> accessAttrs attrPath __
                 >> Just
 
     recycledArgs =
@@ -305,6 +306,17 @@ makeCall as Env: JA.Expr: [EA.Argument]: JA.Expr =
         #
         call
     else
+        zzz =
+            fn index, arg:
+
+            bracketIndex =
+                index + 1
+                >> Text.fromNumber
+                >> JA.Literal
+
+            JA.Binop "=" arg (JA.AccessWithBrackets bracketIndex recycleTempVariable)
+
+
         #
         # (t = ref(arg1, re1, arg3, re2, ....), re1 = t[1], re2 = t[2], t[0]);
         #
@@ -313,12 +325,7 @@ makeCall as Env: JA.Expr: [EA.Argument]: JA.Expr =
         , [ JA.Binop "=" recycleTempVariable call ]
 
         # re1 = t[1], re2 = t[2]
-        , recycledArgs >> List.indexedMap index: arg:
-            bracketIndex =
-                index + 1
-                >> Text.fromNumber
-                >> JA.Literal
-            JA.Binop "=" arg (JA.AccessWithBrackets bracketIndex recycleTempVariable)
+        , recycledArgs >> List.indexedMap zzz __
 
         # t[2]
         , [ JA.AccessWithBrackets (JA.Literal "0") recycleTempVariable ]
@@ -328,46 +335,48 @@ makeCall as Env: JA.Expr: [EA.Argument]: JA.Expr =
 
 
 
-translateExpression as Env: EA.Expression: TranslatedExpression =
-    env: eaExpression:
+translateExpression as fn Env, EA.Expression: TranslatedExpression =
+    fn env, eaExpression:
 
     try eaExpression as
-        EA.Variable name:
+        , EA.Variable name:
             translateVariable env name
             >> Inline
 
-        EA.Call ref args:
+        , EA.Call ref args:
             maybeNativeOverride =
                 try ref as
-                    EA.Variable name: Dict.get name env.overrides
-                    _: Nothing
+                    , EA.Variable name: Dict.get name env.overrides
+                    , _: Nothing
 
             try maybeNativeOverride as
-                Just (Override { call, value = _ }):
+                , Just (Override { call, value = _ }):
                     call env args
                     >> Inline
 
-                Nothing:
+                , Nothing:
                     makeCall env (translateExpressionToExpression env ref) args
                     >> Inline
 
-        EA.Fn eaArgs body:
+        , EA.Fn eaArgs body:
 
             argsWithNames as [Bool & Name] =
-                eaArgs >> List.indexedMap index: (re & maybeName):
+                zzz = fn index, (re & maybeName):
                     try maybeName as
-                        Just name: re & name
-                        Nothing: re & "_" .. Text.fromNumber index
+                        , Just name: re & name
+                        , Nothing: re & "_" .. Text.fromNumber index
+
+                eaArgs >> List.indexedMap zzz __
 
             recycledPars as [JA.Expr] =
                 argsWithNames
-                >> List.filter Tuple.first
-                >> List.map ((_ & name): JA.Var name)
+                >> List.filter Tuple.first __
+                >> List.map (fn (_ & name): JA.Var name) __
 
             statementsRaw as [JA.Statement] =
                 try translateExpression env body as
-                    Inline expr: [JA.Return expr]
-                    Block block: block
+                    , Inline expr: [JA.Return expr]
+                    , Block block: block
 
             #
             # Per EA.Call above, recycling functions must return also the new values for the recycled variables
@@ -378,98 +387,98 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                 else
                     # Replace all `return x` statements with `return [x, ...recycledPars]`
                     addRecycled =
-                        stat:
+                        fn stat:
                         try stat as
-                            JA.Return e: JA.Return (JA.Array (e :: recycledPars))
-                            _: stat
+                            , JA.Return e: JA.Return (JA.Array (e :: recycledPars))
+                            , _: stat
 
                     List.map addRecycled statementsRaw
 
             Inline << JA.BlockLambda (List.map Tuple.second argsWithNames) statementsFinal
 
 
-        EA.LetIn { maybeName, letExpression, inExpression, type }:
+        , EA.LetIn { maybeName, letExpression, inExpression, type }:
 
             inStatements =
                 try translateExpression env inExpression as
-                    Block stats: stats
-                    Inline jaExpression: [JA.Return jaExpression]
+                    , Block stats: stats
+                    , Inline jaExpression: [JA.Return jaExpression]
 
             try maybeName as
-                Nothing:
+                , Nothing:
                     try translateExpression env letExpression as
-                        Inline expr:
+                        , Inline expr:
                             Block << JA.Eval expr :: inStatements
 
-                        Block stats:
+                        , Block stats:
                             Block << List.concat [stats, inStatements]
 
-                Just name:
+                , Just name:
                     letStatement =
                         letExpression
-                        >> translateExpressionToExpression env
-                        >> JA.Define (type.uni == Uni) name
+                        >> translateExpressionToExpression env __
+                        >> JA.Define (type.uni == Uni) name __
 
                     Block << letStatement :: inStatements
 
 
-        EA.LiteralText string:
+        , EA.LiteralText string:
             literalString string
             >> Inline
 
-        EA.LiteralNumber num:
+        , EA.LiteralNumber num:
             Text.fromNumber num
             >> JA.Literal
             >> Inline
 
-        EA.Conditional test true false:
+        , EA.Conditional test true false:
             JA.Conditional
                 (translateExpressionToExpression env test)
                 (translateExpressionToExpression env true)
                 (translateExpressionToExpression env false)
             >> Inline
 
-        EA.And eaTests:
+        , EA.And eaTests:
             jaTests =
-                List.map (translateExpressionToExpression env) eaTests
+                List.map (translateExpressionToExpression env __) eaTests
 
             try List.reverse jaTests as
-                []:
+                , []:
                     JA.Literal "true"
                     >> Inline
 
-                head :: tail:
+                , head :: tail:
                     head
-                    >> List.for tail (test: expr: JA.Binop "&&" test expr)
+                    >> List.for __ tail (fn test, expr: JA.Binop "&&" test expr)
                     >> Inline
 
-        EA.ShallowEqual a b:
+        , EA.ShallowEqual a b:
             JA.Binop "==="
                 (translateExpressionToExpression env a)
                 (translateExpressionToExpression env b)
             >> Inline
 
-        EA.LiteralArray items:
+        , EA.LiteralArray items:
             items
-            >> List.map (translateExpressionToExpression env)
+            >> List.map (translateExpressionToExpression env __) __
             >> JA.Array
             >> Inline
 
-        EA.ArrayAccess index array:
+        , EA.ArrayAccess index array:
             array
-            >> translateExpressionToExpression env
-            >> accessArrayIndex index
+            >> translateExpressionToExpression env __
+            >> accessArrayIndex index __
             >> Inline
 
-        EA.Constructor name:
+        , EA.Constructor name:
             translateVariable env name
             >> Inline
 
-        EA.ConstructorAccess argIndex value:
+        , EA.ConstructorAccess argIndex value:
             accessArrayIndex (argIndex + 1) (translateExpressionToExpression env value)
             >> Inline
 
-        EA.IsConstructor name eaValue:
+        , EA.IsConstructor name eaValue:
             jaValue =
                 translateExpressionToExpression env eaValue
 
@@ -477,29 +486,29 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             jaExpr as JA.Expr =
                 try name as
 
-                    "True":
+                    , "True":
                         jaValue
 
-                    "False":
+                    , "False":
                         JA.Unop "!" jaValue
 
-                    _:
+                    , _:
                         JA.Binop "===" (accessArrayIndex 0 jaValue) (literalString name)
 
             Inline jaExpr
 
-        EA.LiteralRecord maybeExtend attrNamesAndValues:
+        , EA.LiteralRecord maybeExtend attrNamesAndValues:
             obj =
                 Dict.empty
-                >> List.for attrNamesAndValues (name & value):
-                    Dict.insert name (translateExpressionToExpression env value)
+                >> List.for __ attrNamesAndValues fn (name & value), d:
+                    Dict.insert name (translateExpressionToExpression env value) d
                 >> JA.Record
 
             try maybeExtend as
-                Nothing:
+                , Nothing:
                     Inline obj
 
-                Just extend:
+                , Just extend:
                     JA.Call (JA.Var "Object.assign")
                         [ JA.Record Dict.empty
                         , translateExpressionToExpression env extend
@@ -507,11 +516,11 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
                         ]
                         >> Inline
 
-        EA.RecordAccess attrName value:
+        , EA.RecordAccess attrName value:
             JA.AccessWithDot attrName (translateExpressionToExpression env value)
             >> Inline
 
-        EA.MissingPattern pos value:
+        , EA.MissingPattern pos value:
             human =
                 Error.posToHuman env.errorEnv pos
 
@@ -520,13 +529,13 @@ translateExpression as Env: EA.Expression: TranslatedExpression =
             , JA.Call (JA.Literal "sp_toHuman") [ translateExpressionToExpression env value ]
             # JA.Call (JA.Literal "console.log") [ JA.Call (JA.Literal "JSON.stringify") [ JA.Var tryName ]]
             ]
-            >> JA.Call (JA.Literal "sp_throw")
+            >> JA.Call (JA.Literal "sp_throw") __
             >> Inline
 
 
 
-translateConstructor as Compiler/MakeEmittable.State@: USR & TA.FullType: JA.Statement =
-    emState@: (usr & full):
+translateConstructor as fn @Compiler/MakeEmittable.State, USR & TA.FullType: JA.Statement =
+    fn @emState, (usr & full):
 
     taType =
         full.raw
@@ -540,16 +549,16 @@ translateConstructor as Compiler/MakeEmittable.State@: USR & TA.FullType: JA.Sta
 
     definitionBody =
         try taType as
-            TA.TypeFn pars out:
+            , TA.TypeFn pars out:
 
                 argNames as [Text] =
-                    pars >> List.indexedMap index: name: constructorArgumentName (index + 1)
+                    pars >> List.indexedMap (fn index, name: constructorArgumentName (index + 1)) __
 
                 arrayHead :: List.map JA.Var argNames
                 >> JA.Array
-                >> JA.SimpleLambda argNames
+                >> JA.SimpleLambda argNames __
 
-            _:
+            , _:
                 JA.Array [ arrayHead ]
 
     usrAsText =
@@ -558,14 +567,14 @@ translateConstructor as Compiler/MakeEmittable.State@: USR & TA.FullType: JA.Sta
     JA.Define False usrAsText definitionBody
 
 
-translateDef as Env: EA.GlobalDefinition: Maybe JA.Statement =
-    env: def:
+translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
+    fn env, def:
 
     try Dict.get def.name env.overrides as
-        Just _:
+        , Just _:
             Nothing
 
-        Nothing:
+        , Nothing:
             JA.Define False def.name (translateExpressionToExpression env def.expr)
             >> Just
 
@@ -578,24 +587,24 @@ alias TranslateAllPars =
     , platformOverrides as [USR & Text]
     }
 
-translateAll as Compiler/MakeEmittable.State@: TranslateAllPars: [JA.Statement] =
-    emState@: pars:
+translateAll as fn @Compiler/MakeEmittable.State, TranslateAllPars: [JA.Statement] =
+    fn @emState, pars:
 
     { errorEnv, constructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [JA.Statement] =
-        List.map (translateConstructor @emState) constructors
+        List.map (translateConstructor @emState __) constructors
 
     env as Env =
       {
       , errorEnv
-      , overrides = coreOverrides @emState >> List.for platformOverrides (usr & runtimeName):
-          Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName)
+      , overrides = coreOverrides @emState >> List.for __ platformOverrides fn (usr & runtimeName), d:
+          Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName) d
       }
 
     jaStatements as [JA.Statement] =
-        List.filterMap (translateDef env) eaDefs
+        List.filterMap (translateDef env __) eaDefs
 
     List.concat [ jaConstructors, jaStatements ]
 

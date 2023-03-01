@@ -1,102 +1,103 @@
 
 
-id as Int: Text =
-    level:
+id as fn Int: Text =
+    fn level:
     Text.repeat level "  "
 
 
-emitStatement as Int: JA.Statement: Text =
-    l: stat:
+emitStatement as fn Int, JA.Statement: Text =
+    fn l, stat:
 
-    std = mid: expr:
+    std =
+        fn mid, expr:
         id l .. mid .. emitExpr l expr .. ";"
 
     try stat as
-        JA.Eval e:
+        , JA.Eval e:
             std "" e
 
-        JA.Return e:
+        , JA.Return e:
             std "return " e
 
-        JA.Define isReassignable name e:
+        , JA.Define isReassignable name e:
             modifier = if isReassignable then "let" else "const"
             std (modifier .. " " .. name .. " = ") e
 
-        JA.If condition block:
+        , JA.If condition block:
             id l .. "if (" .. emitExpr l condition .. ") " .. emitBlock l block
 
 
-emitBlock as Int: List JA.Statement: Text =
-    l: block:
+emitBlock as fn Int, List JA.Statement: Text =
+    fn l, block:
     lines =
         block
-            >> List.map (emitStatement (l + 1))
-            >> Text.join "\n"
+        >> List.map (emitStatement (l + 1) __) __
+        >> Text.join "\n" __
 
     "{\n" .. lines .. "\n" .. id l .. "}"
 
 
 # TODO reduce the number of parens?
-emitExpr as Int: JA.Expr: Text =
-    l: expression:
+emitExpr as fn Int, JA.Expr: Text =
+    fn l, expression:
     try expression as
-        JA.Literal s:
+        , JA.Literal s:
             s
 
-        JA.Var n:
+        , JA.Var n:
             n
 
-        JA.Call ref args:
-            "(" .. emitExpr l ref .. ")(" .. Text.join ", " (List.map (emitExpr l) args) .. ")"
+        , JA.Call ref args:
+            "(" .. emitExpr l ref .. ")(" .. Text.join ", " (List.map (emitExpr l __) args) .. ")"
 
-        JA.Unop op left:
+        , JA.Unop op left:
             op .. "(" .. emitExpr l left .. ")"
 
-        JA.Binop op left right:
+        , JA.Binop op left right:
             "(" .. emitExpr l left .. " " .. op .. " " .. emitExpr l right .. ")"
 
-        JA.Mutop op yield left right:
+        , JA.Mutop op yield left right:
             "(" .. emitExpr l left .. " " .. op .. " " .. emitExpr l right .. ", " .. yield .. ")"
 
-        JA.SimpleLambda params expr:
+        , JA.SimpleLambda params expr:
             "((" .. Text.join ", " params .. ") => " .. emitExpr l expr .. ")"
 
-        JA.BlockLambda params stats:
+        , JA.BlockLambda params stats:
             "((" .. Text.join ", " params .. ") => " .. emitBlock l stats .. ")"
 
-        JA.Record attrs:
+        , JA.Record attrs:
             if attrs == Dict.empty then
                 "{}"
 
             else
                 attrs
-                    >> Dict.toList
-                    >> List.sortBy Tuple.first
-                    >> List.map (( key & value ): id (l + 1) .. key .. ": " .. emitExpr (l + 1) value .. ",")
-                    >> (a: "({\n" .. Text.join "\n" a .. "\n" .. id l .. "})")
+                >> Dict.toList
+                >> List.sortBy Tuple.first __
+                >> List.map (fn ( key & value ): id (l + 1) .. key .. ": " .. emitExpr (l + 1) value .. ",") __
+                >> (fn a: "({\n" .. Text.join "\n" a .. "\n" .. id l .. "})")
 
-        JA.AccessWithDot name e:
+        , JA.AccessWithDot name e:
             emitExpr l e .. "." .. name
 
-        JA.AccessWithBrackets i expr:
+        , JA.AccessWithBrackets i expr:
             "(" .. emitExpr l expr .. ")[" .. emitExpr l i .. "]"
 
-        JA.Conditional p true false:
+        , JA.Conditional p true false:
             ("(" .. emitExpr l p .. "\n")
                 .. (id (l + 1) .. "? " .. emitExpr (l + 1) true)
                 .. "\n"
                 .. (id (l + 1) .. ": " .. emitExpr (l + 1) false)
                 .. ")"
 
-        JA.Array items:
+        , JA.Array items:
             if items == [] then
                 "[]"
 
             else
                 items
-                    >> List.map (i: id (l + 1) .. emitExpr (l + 1) i .. ",")
-                    >> (a: "([\n" .. Text.join "\n" a .. "\n" .. id l .. "])")
+                >> List.map (fn i: id (l + 1) .. emitExpr (l + 1) i .. ",") __
+                >> (fn a: "([\n" .. Text.join "\n" a .. "\n" .. id l .. "])") __
 
-        JA.Comma expr:
-            "(" .. Text.join ", " (List.map (emitExpr l) expr) .. ")"
+        , JA.Comma expr:
+            "(" .. Text.join ", " (List.map (emitExpr l __) expr) .. ")"
 

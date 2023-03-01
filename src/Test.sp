@@ -160,23 +160,22 @@ getName as fn Test: Text =
 flattenAndRun as fn [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome }] =
     fn tests:
 
-    flattened =
+    flattened as [T] =
         outcomesRec "" (Group "" tests) []
         >> List.map (fn r: if Text.contains "SKIP" r.name then { r with getOutcome = fn None: Skipped } else r) __
 
-    onlies =
+    onlies as [T] =
         flattened
         >> List.filter (fn r: Text.contains "ONLY" r.name) __
 
-    runnable =
+    runnable as [T] =
         if onlies /= [] then onlies else flattened
 
 
-    runTest =
+    runTest as fn T: { name as Text, code as Text, outcome as TestOutcome } =
         fn r:
         { name, code, getOutcome } = r
         { name, code, outcome = getOutcome None }
-
 
     List.map runTest runnable
 

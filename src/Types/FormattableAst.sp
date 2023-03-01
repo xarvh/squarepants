@@ -67,7 +67,7 @@ union Expr_ =
 
     , Statements [Statement]
 
-    # The Bool is for whether there's a trailing `...`
+    # The Bool is for whether there's a leading `...`
     , List [Bool & Expression]
 
     #

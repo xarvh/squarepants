@@ -34,38 +34,40 @@ alias Module = {
     }
 
 
-textToMeta as Text: Text: Res Meta =
-    sponName: sponContent:
-    sponContent >> textToModulesFile sponName >> Result.map toMeta
+textToMeta as fn Text, Text: Res Meta =
+    fn sponName, sponContent:
+    sponContent
+    >> textToModulesFile sponName __
+    >> Result.map toMeta __
 
 
-toMeta as ModulesFile: Meta =
-    mf:
+toMeta as fn ModulesFile: Meta =
+    fn mf:
     Meta.init
-        >> List.for mf.libraries insertLibrary
-        >> List.for mf.sourceDirs insertModules
+    >> List.for __ mf.libraries insertLibrary
+    >> List.for __ mf.sourceDirs insertModules
 
 
-insertLibrary as Library: Meta: Meta =
-    lib: meta:
+insertLibrary as fn Library, Meta: Meta =
+    fn lib, meta:
 
     umr =
         try lib.source as
-            "core:prelude": Meta.Core
-            "core:browser": Meta.Browser
-            "core:posix": Meta.Posix
-            _: todo << "Library source `" .. lib.source .. "` is not supported."
+            , "core:prelude": Meta.Core
+            , "core:browser": Meta.Browser
+            , "core:posix": Meta.Posix
+            , _: todo << "Library source `" .. lib.source .. "` is not supported."
 
-    List.for lib.modules (insertModule umr) meta
-
-
-insertModules as SourceDir: Meta: Meta =
-    sd:
-    List.for sd.modules (insertModule (Meta.SourceDir sd.path))
+    List.for meta lib.modules (insertModule umr __ __)
 
 
-insertModule as Meta.Source: Module: Meta: Meta =
-    source: mod: meta:
+insertModules as fn SourceDir, Meta: Meta =
+    fn sd, m:
+    List.for m sd.modules (insertModule (Meta.SourceDir sd.path) __ __)
+
+
+insertModule as fn Meta.Source, Module, Meta: Meta =
+    fn source, mod, meta:
 
 #    path =
 #        if source == Meta.Core:
@@ -82,16 +84,16 @@ insertModule as Meta.Source: Module: Meta: Meta =
         UMR source mod.path
 
     insertGlobal =
-       varName:
+       fn varName, d:
        # TODO fail if varName is used already
        varName
-           # TODO should probably split on module load instead
-           >> USR umr
-           >> Dict.insert varName
+       # TODO should probably split on module load instead
+       >> USR umr __
+       >> Dict.insert varName __ d
 
     {
-    , globalValues = List.for mod.globalValues insertGlobal meta.globalValues
-    , globalTypes = List.for mod.globalTypes insertGlobal meta.globalTypes
+    , globalValues = List.for meta.globalValues mod.globalValues insertGlobal
+    , globalTypes = List.for meta.globalTypes mod.globalTypes insertGlobal
     , moduleVisibleAsToUmr = Dict.insert visibleAs umr meta.moduleVisibleAsToUmr
     , umrToModuleVisibleAs = Dict.insert umr visibleAs meta.umrToModuleVisibleAs
     }
@@ -109,10 +111,10 @@ union RootEntry =
 
 
 moduleReader as SPON.Reader Module =
-    SPON.field "path" SPON.upperName >> SPON.onAcc path:
-    SPON.maybe (SPON.field "importAs" SPON.upperName) >> SPON.onAcc visibleAs:
-    SPON.maybe (SPON.field "globalTypes" (SPON.many SPON.upperName)) >> SPON.onAcc globalTypes:
-    SPON.maybe (SPON.field "globalValues" (SPON.many SPON.lowerOrUpperName)) >> SPON.onAcc globalValues:
+    SPON.field "path" SPON.upperName >> SPON.onAcc fn path:
+    SPON.maybe (SPON.field "importAs" SPON.upperName) >> SPON.onAcc fn visibleAs:
+    SPON.maybe (SPON.field "globalTypes" (SPON.many SPON.upperName)) >> SPON.onAcc fn globalTypes:
+    SPON.maybe (SPON.field "globalValues" (SPON.many SPON.lowerOrUpperName)) >> SPON.onAcc fn globalValues:
     SPON.return
         { path = path
         , visibleAs = Maybe.withDefault path visibleAs
@@ -122,8 +124,8 @@ moduleReader as SPON.Reader Module =
 
 
 libraryReader as SPON.Reader Library =
-    SPON.field "source" SPON.text >> SPON.onAcc source:
-    SPON.many (SPON.field "module" moduleReader) >> SPON.onAcc modules:
+    SPON.field "source" SPON.text >> SPON.onAcc fn source:
+    SPON.many (SPON.field "module" moduleReader) >> SPON.onAcc fn modules:
     SPON.return
         { source = source
         , modules = modules
@@ -131,8 +133,8 @@ libraryReader as SPON.Reader Library =
 
 
 sourceDirectoryReader as SPON.Reader SourceDir =
-    SPON.field "path" SPON.text >> SPON.onAcc path:
-    SPON.many (SPON.field "module" moduleReader) >> SPON.onAcc modules:
+    SPON.field "path" SPON.text >> SPON.onAcc fn path:
+    SPON.many (SPON.field "module" moduleReader) >> SPON.onAcc fn modules:
     SPON.return
         { path = path
         , modules = modules
@@ -140,25 +142,25 @@ sourceDirectoryReader as SPON.Reader SourceDir =
 
 
 modulesFileReader as SPON.Reader [RootEntry] =
-    [ (SPON.field "library" libraryReader) >> SPON.onAcc (lib: SPON.return << Lib lib)
-    , (SPON.field "sourceDir" sourceDirectoryReader) >> (SPON.onAcc dir: SPON.return << Dir dir)
+    [ (SPON.field "library" libraryReader) >> SPON.onAcc (fn lib: SPON.return << Lib lib)
+    , (SPON.field "sourceDir" sourceDirectoryReader) >> (SPON.onAcc fn dir: SPON.return << Dir dir)
     ]
-        >> SPON.oneOf
-        >> SPON.many
+    >> SPON.oneOf
+    >> SPON.many
 
 
-textToModulesFile as Text: Text: Res ModulesFile =
-    sponName: sponContent:
-    insert as RootEntry: ModulesFile: ModulesFile =
-        rootEntry: mf:
+textToModulesFile as fn Text, Text: Res ModulesFile =
+    fn sponName, sponContent:
+    insert as fn RootEntry, ModulesFile: ModulesFile =
+        fn rootEntry, mf:
         try rootEntry as
-            Lib lib:
+            , Lib lib:
                 { mf with libraries = lib :: mf.libraries }
 
-            Dir dir:
+            , Dir dir:
                 { mf with sourceDirs = dir :: mf.sourceDirs }
 
     sponContent
-        >> SPON.read modulesFileReader sponName
-        >> Result.map rootEntries: List.for rootEntries insert initModulesFile
+        >> SPON.read modulesFileReader sponName __
+        >> Result.map (fn rootEntries: List.for initModulesFile rootEntries insert) __
 

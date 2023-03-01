@@ -17,7 +17,7 @@ alias Parser a =
 #
 # Helpers
 #
-on =
+on as fn (fn a: Parser b): fn Parser a: Parser b =
     Parser.andThen
 
 

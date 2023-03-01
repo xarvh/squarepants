@@ -1,13 +1,13 @@
 
 
-valueTest as Text: (None: a): Test.CodeExpectation a: Test =
-    Test.valueTest toHuman
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+    Test.valueTest toHuman __ __ __
 
 
 
 graph1 as Dict Text (Text & Set Text) =
 
-  x = k: l: k & (k & Set.fromList l)
+  x = fn k, l: k & (k & Set.fromList l)
 
   [
   , x "a" [ "b", "d" ]
@@ -22,7 +22,7 @@ graph1 as Dict Text (Text & Set Text) =
 
 graph2 as Dict Text (Text & Set Text) =
 
-  x = k: l: k & (k & Set.fromList l)
+  x = fn k, l: k & (k & Set.fromList l)
 
   [
   , x "a" [ "b", "d" ]
@@ -40,7 +40,7 @@ canonicalJsTest as Test =
         """
         [reg] THIS SHOULD BE IN CANONICALTOJS
         """
-        (_: Core.compare None None)
+        (fn _: Core.compare None None)
         (Test.isOkAndEqualTo 0)
 
 
@@ -51,7 +51,7 @@ tests as Test =
             """
             Basic
             """
-            _:
+            fn _:
                 RefHierarchy.reorder Tuple.second graph1
 
             (Test.isOkAndEqualTo << [] & ["d", "e", "c", "b", "a"])
@@ -60,7 +60,7 @@ tests as Test =
             """
             Circular
             """
-            _:
+            fn _:
                 RefHierarchy.reorder Tuple.second graph2
 
             (Test.isOkAndEqualTo << [[ "b", "d", "c" ]] & ["d", "e", "c", "b", "a"])

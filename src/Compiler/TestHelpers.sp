@@ -63,8 +63,6 @@ resErrorToStrippedText as fn Text, Res a: Result Text a =
     Result.mapError errorToText res
 
 
-[#
-
 #
 # Meta
 #
@@ -82,8 +80,8 @@ meta as Meta =
 
     metaResult =
         DefaultModules.asText
-        >> ModulesFile.textToMeta "DefaultModules"
-        >> Result.mapError (fn e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
+        >> ModulesFile.textToMeta "DefaultModules" __
+        >> Result.mapError (fn e: e >> Error.toFormattedText eenv __ >> formattedToStrippedText) __
 
     try metaResult as
         , Err e:
@@ -145,4 +143,3 @@ taFunction as fn [TA.RawType], TA.RawType: TA.RawType =
     fn from, to:
     TA.TypeFn (List.map (fn t: TA.ParSp (toImm t)) from) (toImm to)
 
-#]

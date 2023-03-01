@@ -415,6 +415,11 @@ const hash_each = (hash, f) => {
 // Arrays
 //
 
+const array_each = (array, f) => {
+    array.forEach(f);
+    return [null, array];
+}
+
 const array_push = (array, item) => {
     array.push(item);
     return [null, array];

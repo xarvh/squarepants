@@ -1,11 +1,11 @@
 
 
-dirname as Text: Text =
-    _:
+dirname as fn Text: Text =
+    fn _:
     todo "Path.dirname"
 
 
-resolve as [Text]: Text =
-    _:
+resolve as fn [Text]: Text =
+    fn _:
     todo "Path.resolve"
 

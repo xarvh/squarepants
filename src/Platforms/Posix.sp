@@ -1,6 +1,7 @@
 
 
-platform as Types/Platform.Platform = {
+platform as Types/Platform.Platform =
+    {
     , name = "posix"
     , compile
     , defaultModules = DefaultModules.asText .. posixModules
@@ -24,8 +25,8 @@ library =
     """
 
 
-compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
-    getRidOfMe: targetUsr: emState@: emittableStatements:
+compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
+    fn getRidOfMe, targetUsr, @emState, emittableStatements:
 
     { errorEnv = eenv, constructors } =
         getRidOfMe
@@ -56,8 +57,8 @@ compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.Gl
 
     statements =
         jaStatements
-            >> List.map (Targets/Javascript/JsToText.emitStatement 0)
-            >> Text.join "\n\n"
+        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+        >> Text.join "\n\n" __
 
     header .. Targets/Javascript/Runtime.nativeDefinitions .. posixRuntime .. statements .. callMain
 
@@ -77,10 +78,10 @@ const { performance } = require('perf_hooks');
 overrides as [USR & Text] =
 
     ioModule =
-        USR (UMR Meta.Posix "IO")
+        USR (UMR Meta.Posix "IO") __
 
     pathModule =
-        USR (UMR Meta.Posix "Path")
+        USR (UMR Meta.Posix "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"
@@ -156,7 +157,7 @@ const io_readFile = (path) => io_wrap((never) => {
 });
 
 
-const io_writeFile = (path) => (content) => io_wrap((never) => {
+const io_writeFile = (path, content) => io_wrap((never) => {
     // as Text: Text: IO Int
 
     try {
