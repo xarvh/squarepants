@@ -29,7 +29,8 @@ tests as Test =
 # Helpers
 #
 
-params as Compiler/MakeCanonical.Params = {
+params as Compiler/MakeCanonical.Params =
+    {
     , meta = TH.meta
     , stripLocations = True
     , source = TH.source
@@ -37,55 +38,56 @@ params as Compiler/MakeCanonical.Params = {
     }
 
 
-textToModule as Text: Result Text CA.Module =
-    code:
+textToModule as fn Text: Result Text CA.Module =
+    fn code:
     code
-        >> Compiler/MakeCanonical.textToCanonicalModule params
-        >> TH.resErrorToStrippedText code
+    >> Compiler/MakeCanonical.textToCanonicalModule params __
+    >> TH.resErrorToStrippedText code __
 
 
-codeTest as Text: Text: (Text: Result Text ok): Test.CodeExpectation ok: Test =
-    Test.codeTest toHuman
+codeTest as fn Text, Text, (fn Text: Result Text ok), Test.CodeExpectation ok: Test =
+    Test.codeTest toHuman __ __ __ __
 
 
-firstDefinition as Text: Result Text CA.ValueDef =
-    code:
+firstDefinition as fn Text: Result Text CA.ValueDef =
+    fn code:
     code
         >> textToModule
-        >> onOk (mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail")
+        >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail" __)
 
 
-firstDefinitionStripDeps as Text: Result Text CA.ValueDef =
-    code:
+firstDefinitionStripDeps as fn Text: Result Text CA.ValueDef =
+    fn code:
     code
         >> firstDefinition
-        >> Result.map (v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty })
+        >> Result.map (fn v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty }) __
 
 
-firstEvaluation as Text: Text: Result Text CA.Expression =
-    name: code:
+firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
+    fn name: fn code:
     code
-        >> firstDefinition
-        >> onOk (def: Ok def.body)
+    >> firstDefinition
+    >> onOk (fn def: Ok def.body)
 
 
 # TODO move this to Helpers?
-transformAB as Text: Result Text ( CA.ValueDef & CA.ValueDef ) =
-    code:
+transformAB as fn Text: Result Text ( CA.ValueDef & CA.ValueDef ) =
+    fn code:
 
-    findAB = mod:
-        try mod.valueDefs >> Dict.values >> List.sortBy (def: def.pattern) as
-            [a, b]: Just (a & b)
-            _: Nothing
+    findAB =
+        fn mod:
+        try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.pattern) __ as
+            , [a, b]: Just (a & b)
+            , _: Nothing
 
     code
         >> textToModule
-        >> onOk (x: x >> findAB >> Result.fromMaybe "findAB fail")
+        >> onOk (fn x: x >> findAB >> Result.fromMaybe "findAB fail" __)
 
 
-shouldHaveSameAB as (ab: c): Test.CodeExpectation ( ab & ab ) =
-    getter:
-    Test.freeform << ( a & b ):
+shouldHaveSameAB as fn (fn ab: c): Test.CodeExpectation ( ab & ab ) =
+    fn getter:
+    Test.freeform << fn ( a & b ):
     if getter a == getter b then
         Nothing
 
@@ -94,7 +96,7 @@ shouldHaveSameAB as (ab: c): Test.CodeExpectation ( ab & ab ) =
         , toHuman (getter a)
         , toHuman (getter b)
         ]
-        >> Text.join "\n"
+        >> Text.join "\n" __
         >> Just
 
 
@@ -102,8 +104,8 @@ p as Pos =
     Pos.T
 
 
-valueDef as Name: CA.Expression: CA.ValueDef =
-    name: body:
+valueDef as fn Name, CA.Expression: CA.ValueDef =
+    fn name, body:
 
     {
     , uni = Imm
@@ -169,21 +171,21 @@ binops as Test =
             b = (v >> f) >> g
             """
             transformAB
-            (shouldHaveSameAB x: x.body)
+            (shouldHaveSameAB fn x: x.body)
         , codeTest "right associativity"
             """
             a = v :: f :: g
             b = v :: (f :: g)
             """
             transformAB
-            (shouldHaveSameAB x: x.body)
+            (shouldHaveSameAB fn x: x.body)
         , codeTest "precedence"
             """
             a = 1 + 2 * 3 + 4
             b = 1 + (2 * 3) + 4
             """
             transformAB
-            (shouldHaveSameAB x: x.body)
+            (shouldHaveSameAB fn x: x.body)
         ]
 
 
@@ -277,9 +279,9 @@ tuples as Test =
                       , maybeName = Just "a"
                       , maybeAnnotation =
                          Dict.empty
-                            >> Dict.insert "first" TH.caNumber
-                            >> Dict.insert "second" TH.caNumber
-                            >> CA.TypeRecord p
+                            >> Dict.insert "first" TH.caNumber __
+                            >> Dict.insert "second" TH.caNumber __
+                            >> CA.TypeRecord p __
                             >> Just
                       }
                 , native = False
@@ -308,13 +310,13 @@ tuples as Test =
 
 
 moduleAndAttributePaths as Test =
-    accept = s:
+    accept = fn s:
         codeTest s
             ("a = " .. s)
             firstDefinition
             Test.isOk
 
-    reject = s: m:
+    reject = fn s, m:
         codeTest s
             ("a = " .. s)
             firstDefinition
@@ -558,7 +560,7 @@ nonFunction as Test =
                 , uni = Imm
                 , native = False
                 , pattern = CA.PatternAny p { maybeName = Just "funz", maybeAnnotation = CA.TypeAnnotationVariable p "a" >> Just }
-                , tyvars = Dict.singleton "a" { allowFunctions = False }
+                , tyvars = Dict.ofOne "a" { allowFunctions = False }
                 , univars = Dict.empty
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
@@ -640,8 +642,8 @@ polymorphicUniques as Test =
                         , native = False
                         , uni = Depends 1
                         , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Just (CA.TypeAnnotationVariable p "a") }
-                        , tyvars = Dict.singleton "a" { allowFunctions = True }
-                        , univars = Dict.singleton 1 None
+                        , tyvars = Dict.ofOne "a" { allowFunctions = True }
+                        , univars = Dict.ofOne 1 None
                         , directConsDeps = Dict.empty
                         , directTypeDeps = Dict.empty
                         , directValueDeps = Dict.empty
@@ -657,7 +659,7 @@ polymorphicUniques as Test =
             """
             isOk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = meh
             """
-            (t: firstDefinitionStripDeps t >> Result.map (x: x.univars))
+            (fn t: firstDefinitionStripDeps t >> Result.map (fn x: x.univars) __)
             (Test.isOkAndEqualTo << Dict.fromList [1 & None, 2 & None])
         ]
 

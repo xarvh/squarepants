@@ -6,38 +6,41 @@ union Outcome a =
 
 
 alias Reader a =
-    [FA.Statement]: Outcome a
+    fn [FA.Statement]: Outcome a
 
 #
 # Composition
 #
-onAcc as (a: Reader b): Reader a: Reader b =
-    chainedReaderB: readerA: statements:
+onAcc as fn (fn a: Reader b): fn Reader a: Reader b =
+    fn chainedReaderB:
+    fn readerA:
+    fn statements:
     try readerA statements as
-        Accepted newStatements a:
-            chainedReaderB a newStatements
+        , Accepted newStatements a:
+            (chainedReaderB a) newStatements
 
-        Rejected reason:
+        , Rejected reason:
             Rejected reason
 
-        Failed reason:
+        , Failed reason:
             Failed reason
 
 
-return as a: Reader a =
-    a: statements:
+return as fn a: Reader a =
+    fn a: fn statements:
     Accepted statements a
 
 
-getPos as [FA.Statement]: Pos =
-    statements:
+getPos as fn [FA.Statement]: Pos =
+    fn statements:
     try statements as
-        head :: tail: FA.statementPos head
-        []: posEnd
+        , head :: tail: FA.statementPos head
+        , []: posEnd
 
 
-reject as Text: Reader any =
-    message: statements:
+reject as fn Text: Reader any =
+    fn message:
+    fn statements:
     Rejected << At (getPos statements) message
 
 
@@ -50,43 +53,43 @@ posEnd as Pos =
     Pos.End ""
 
 
-unhackPosEnd as Text: Pos: Pos =
-    moduleName: pos:
+unhackPosEnd as fn Text, Pos: Pos =
+    fn moduleName, pos:
     try pos as
-        Pos.End _: Pos.End moduleName
-        _: pos
+        , Pos.End _: Pos.End moduleName
+        , _: pos
 
 
-run as Reader a: Text: [FA.Statement]: Res a =
-    readerA: sponName: statements:
+run as fn Reader a, Text, [FA.Statement]: Res a =
+    fn readerA, sponName, statements:
     try readerA statements as
-        Accepted [] a:
+        , Accepted [] a:
             Ok a
 
-        Accepted (head :: tail) a:
-            Error.res (FA.statementPos head) _: [ "unread statements" ]
+        , Accepted (head :: tail) a:
+            Error.res (FA.statementPos head) fn _: [ "unread statements" ]
 
-        Rejected (At pos r):
-            Error.res (unhackPosEnd sponName pos) _: [ r ]
+        , Rejected (At pos r):
+            Error.res (unhackPosEnd sponName pos) fn _: [ r ]
 
-        Failed (At pos r):
-            Error.res (unhackPosEnd sponName pos) _: [ r ]
+        , Failed (At pos r):
+            Error.res (unhackPosEnd sponName pos) fn _: [ r ]
 
 
-read as Reader a: Text: Text: Res a =
-    reader: moduleName: sponContent:
+read as fn Reader a, Text, Text: Res a =
+    fn reader, moduleName, sponContent:
     sponContent
-        >> Compiler/Parser.textToFormattableModule { moduleName, stripLocations = False }
-        >> onOk (run reader moduleName)
+    >> Compiler/Parser.textToFormattableModule { moduleName, stripLocations = False } __
+    >> onOk (run reader moduleName __)
 
 
 logHead as Reader None =
-    statements:
+    fn statements:
     try statements as
-        head :: tail:
+        , head :: tail:
             log "LOG" head
             None
-        []:
+        , []:
             log "LOG" None
 
     Accepted statements None
@@ -98,48 +101,48 @@ logHead as Reader None =
 
 
 text as Reader Text =
-    statements:
+    fn statements:
     try statements as
-        [ FA.Evaluation (FA.Expression _ (FA.LiteralText t)) ]:
+        , [ FA.Evaluation (FA.Expression _ (FA.LiteralText t)) ]:
             Accepted [] t
 
-        [ s ]:
+        , [ s ]:
             Rejected << At (FA.statementPos s) "expecting a text literal"
 
-        _:
+        , _:
             Failed << At posEnd "expecting a single statement"
 
 
 word as Reader Token.Word =
-    statements:
+    fn statements:
     try statements as
-        FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word })) :: tail:
+        , FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word })) :: tail:
             Accepted tail word
 
-        [ s ]:
+        , [ s ]:
             Rejected << At (FA.statementPos s) "expecting an Uppercase name"
 
-        _:
+        , _:
             Failed << At posEnd "expecting a statement"
 
 
 upperName as Reader Text =
-    word >> onAcc w:
+    word >> onAcc fn w:
 
     try w as
-        { modifier = Token.NameNoModifier , isUpper = True , maybeModule = Nothing , name , attrPath = [] }:
+        , { modifier = Token.NameNoModifier , isUpper = True , maybeModule = Nothing , name , attrPath = [] }:
             return name
-        _:
+        , _:
             reject "expecting an upper case name"
 
 
 lowerOrUpperName as Reader Text =
-    word >> onAcc w:
+    word >> onAcc fn w:
 
     try w as
-        { modifier = Token.NameNoModifier , isUpper = _ , maybeModule = Nothing , name , attrPath = [] }:
+        , { modifier = Token.NameNoModifier , isUpper = _ , maybeModule = Nothing , name , attrPath = [] }:
             return name
-        _:
+        , _:
             reject "expecting an upper or lower case name"
 
 
@@ -149,31 +152,33 @@ lowerOrUpperName as Reader Text =
 #
 
 
-oneOf as [Reader a]: Reader a =
-    readers: statements:
+oneOf as fn [Reader a]: Reader a =
+    fn readers:
+    fn statements:
     try readers as
-        []:
+        , []:
             pos =
                 try statements as
-                    head :: _: FA.statementPos head
-                    _: posEnd
+                    , head :: _: FA.statementPos head
+                    , _: posEnd
 
             Rejected << At pos "options exhausted"
 
-        headReader :: tail:
+        , headReader :: tail:
             try headReader statements as
-                Rejected _:
-                    oneOf tail statements
+                , Rejected _:
+                    (oneOf tail) statements
 
-                otherwise:
+                , otherwise:
                     otherwise
 
 
-many as Reader a: Reader [a] =
-    readerA:
+many as fn Reader a: Reader [a] =
+    fn readerA:
 
-    rec as [a]: Reader [a] =
-        accum: statements:
+    rec as fn [a]: Reader [a] =
+        fn accum:
+        fn statements:
         if statements == [] then
             [#
                Allowing emptiness at the right-hand side of `=` is ugly, but it's useful for commenting stuff out
@@ -187,45 +192,47 @@ many as Reader a: Reader [a] =
 
         else
             try readerA statements as
-                Accepted tail a:
-                    rec (a :: accum) tail
+                , Accepted tail a:
+                    (rec (a :: accum)) tail
 
-                Rejected e:
+                , Rejected e:
                     Rejected e
 
-                Failed e:
+                , Failed e:
                     Failed e
 
     rec []
 
 
-maybe as Reader a: Reader (Maybe a) =
-    readerA: statements:
+maybe as fn Reader a: Reader (Maybe a) =
+    fn readerA:
+    fn statements:
     try readerA statements as
-        Accepted tail a:
+        , Accepted tail a:
             Accepted tail (Just a)
 
-        Rejected _:
+        , Rejected _:
             Accepted statements Nothing
 
-        Failed r:
+        , Failed r:
             Failed r
 
 
 # HACK
-expressionToStatements as FA.Expression: [FA.Statement] =
-    e:
+expressionToStatements as fn FA.Expression: [FA.Statement] =
+    fn e:
     try e as
-      FA.Expression _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
-      FA.Expression _ (FA.Statements stats): stats
-      _: [FA.Evaluation e]
+      , FA.Expression _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
+      , FA.Expression _ (FA.Statements stats): stats
+      , _: [FA.Evaluation e]
 
 
-field as Text: Reader a: Reader a =
-    fieldName: fieldReader: statements:
+field as fn Text, Reader a: Reader a =
+    fn fieldName, fieldReader:
+    fn statements:
 
     try statements as
-        FA.ValueDef
+        , FA.ValueDef
             {
             , body
             , nonFn
@@ -247,22 +254,22 @@ field as Text: Reader a: Reader a =
             } :: tail:
                 if name == fieldName then
                     try fieldReader (expressionToStatements body) as
-                        Accepted unreadStatements a:
+                        , Accepted unreadStatements a:
                             try unreadStatements as
-                                []:
+                                , []:
                                     Accepted tail a
 
-                                head :: _:
-                                    Failed << At (FA.statementPos head) << "Could not make sense of all the statements in field `" .. fieldName .. "`."
+                                , head :: _:
+                                    Failed << At (FA.statementPos head) __ << "Could not make sense of all the statements in field `" .. fieldName .. "`."
 
-                        otherwise:
+                        , otherwise:
                             otherwise
 
                 else
-                    Rejected << At pos << "expecting `" .. fieldName .. " =`"
+                    Rejected << At pos __ << "expecting `" .. fieldName .. " =`"
 
-        head :: tail:
+        , head :: tail:
             Rejected << At (FA.statementPos head) "missing a simple assignment (ie `something = `)"
 
-        []:
+        , []:
             Rejected << At posEnd "unexpected end of file"

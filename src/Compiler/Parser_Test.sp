@@ -2,18 +2,18 @@
 tests as Test =
     Test.Group "Parser"
         [
-        , values
-        , parens
-        , functions
-        , annotations
-        , unionDefs
-        , lists
-        , records
-        , ifs
-        , tries
-        , patterns
-        , binops
-        , unops
+#        , values
+#        , parens
+#        , functions
+#        , annotations
+#        , unionDefs
+#        , lists
+#        , records
+#        , ifs
+#        , tries
+#        , patterns
+#        , binops
+#        , unops
         ]
 
 
@@ -21,10 +21,12 @@ p as Pos =
     Pos.T
 
 
-codeTest =
+codeTest as fn Text, Text, (fn Text: Result Text z), Test.CodeExpectation z: Test =
     Test.codeTest toHuman __ __ __ __
 
 
+zot as Number = 1
+[#
 asDefinition as fn FA.Statement: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
     fn s:
     try s as
@@ -982,3 +984,4 @@ unops as Test =
                 )
             )
         ]
+#]

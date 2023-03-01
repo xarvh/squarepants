@@ -26,7 +26,7 @@ tests as Test =
 
 
 codeTest =
-    Test.codeTest outToHuman
+    Test.codeTest outToHuman __ __ __ __
 
 
 alias Out =
@@ -36,25 +36,25 @@ alias Out =
     }
 
 
-outToHuman as Out: Text =
-    out:
+outToHuman as fn Out: Text =
+    fn out:
 
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
-    , "  type = " .. Debug.toHuman out.type
+    , "  type = " .. Human/Type.display "" (Human/Type.doRawType {} out.type)
     ]
-    >> Text.join "\n"
+    >> Text.join "\n" __
 
 
 
-tyvar as Int: TA.RawType =
+tyvar as fn Int: TA.RawType =
     TH.taTyvar
 
 
-freeTyvarsAnnotated as [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
-    ids:
+freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
+    fn ids:
     Dict.empty
-    >> List.for ids (id & originalName):
+    >> List.for __ ids fn (id & originalName), d:
         Dict.insert id
               {
               , originalName
@@ -63,13 +63,14 @@ freeTyvarsAnnotated as [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
               , generalizedAt = Pos.G
               , generalizedFor = RefLocal ""
               }
+              d
 
 
 #
 #
 #
-infer as Text: Text: Result Text Out =
-    targetName: code:
+infer as fn Text: fn Text: Result Text Out =
+    fn targetName: fn code:
 
     params as Compiler/MakeCanonical.Params =
         {
@@ -80,15 +81,15 @@ infer as Text: Text: Result Text Out =
         }
 
     Compiler/MakeCanonical.textToCanonicalModule params code
-    >> TH.resErrorToStrippedText code
-    >> onOk caModule:
+    >> TH.resErrorToStrippedText code __
+    >> onOk fn caModule:
 
     modules as [CA.Module] =
         List.append Prelude.coreModules [caModule]
 
     Compiler/TypeCheck.initStateAndGlobalEnv modules
-    >> TH.resErrorToStrippedText code
-    >> onOk (lastUnificationVarId & typeCheckGlobalEnv_):
+    >> TH.resErrorToStrippedText code __
+    >> onOk fn (luv & typeCheckGlobalEnv_):
 
     typeCheckGlobalEnv as Compiler/TypeCheck.Env =
         { typeCheckGlobalEnv_ with
@@ -101,6 +102,7 @@ infer as Text: Text: Result Text Out =
                 , freeTyvars = Dict.empty
                 , freeUnivars = Dict.empty
                 }
+                __
             >> Dict.insert
                 (RefGlobal << USR TH.moduleUmr "reset")
                 {
@@ -109,37 +111,41 @@ infer as Text: Text: Result Text Out =
                 , freeTyvars = Dict.empty
                 , freeUnivars = Dict.empty
                 }
+                __
         }
 
+    !lastUnificationVarId =
+        cloneImm luv
+
     caModule
-    >> Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv
-    >> TH.resErrorToStrippedText code
-    >> onOk taModule:
+    >> Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv __
+    >> TH.resErrorToStrippedText code __
+    >> onOk fn taModule:
 
     taModule
     >> Compiler/UniquenessCheck.doModule
-    >> TH.resErrorToStrippedText code
-    >> onOk moduleWithDestroy:
+    >> TH.resErrorToStrippedText code __
+    >> onOk fn moduleWithDestroy:
 
-    toMatch as (CA.Pattern & TA.ValueDef): Maybe TA.ValueDef =
-        (pattern & def):
+    toMatch as fn (CA.Pattern & TA.ValueDef): Maybe TA.ValueDef =
+        fn (pattern & def):
 
         try pattern as
-            CA.PatternAny _ { maybeAnnotation, maybeName = Just name }:
+            , CA.PatternAny _ { maybeAnnotation, maybeName = Just name }:
                 if name == targetName then Just def else Nothing
-            _:
+            , _:
                 Nothing
 
     matches =
         moduleWithDestroy.valueDefs
         >> Dict.toList
-        >> List.filterMap toMatch
+        >> List.filterMap toMatch __
 
     try matches as
-        []:
+        , []:
             Err "dict fail"
 
-        def :: tail:
+        , def :: tail:
             {
             , type = def.type.raw
             , freeTyvars = def.freeTyvars
@@ -148,16 +154,16 @@ infer as Text: Text: Result Text Out =
             >> Ok
 
 
-normalizeTyvarId as Hash TA.TyvarId TA.TyvarId@: TA.TyvarId: TA.TyvarId =
-    hash@: id:
+normalizeTyvarId as fn @Hash TA.TyvarId TA.TyvarId, TA.TyvarId: TA.TyvarId =
+    fn @hash, id:
 
-    try Hash.get hash id as
-        Just nid: nid
-        Nothing:
-          maxId @= 0
-          Hash.each hash k: v:
-            if v > maxId then
-                @maxId := v
+    try Hash.get @hash id as
+        , Just nid: nid
+        , Nothing:
+          !maxId = 0
+          Hash.each @hash fn k, v:
+            if v > cloneUni @maxId then
+                @maxId := cloneImm v
             else
                 None
 
@@ -166,41 +172,41 @@ normalizeTyvarId as Hash TA.TyvarId TA.TyvarId@: TA.TyvarId: TA.TyvarId =
           nid
 
 
-normalizeType as Hash TA.TyvarId TA.TyvarId@: TA.RawType: TA.RawType =
-    hash@: type:
+normalizeType as fn @Hash TA.TyvarId TA.TyvarId, TA.RawType: TA.RawType =
+    fn @hash, type:
 
     try type as
-        TA.TypeExact usr args:
-            TA.TypeExact usr (List.map (normalizeType @hash) args)
+        , TA.TypeExact usr args:
+            TA.TypeExact usr (List.map (normalizeType @hash __) args)
 
-        TA.TypeFn pars out:
+        , TA.TypeFn pars out:
             TA.TypeFn
-                (TA.mapPars (normalizeType @hash) pars)
+                (TA.mapPars (normalizeType @hash __) pars)
                 { out with raw = normalizeType @hash .raw }
 
-        TA.TypeRecord Nothing attrs:
-            TA.TypeRecord Nothing (Dict.map (k: (normalizeType @hash)) attrs)
+        , TA.TypeRecord Nothing attrs:
+            TA.TypeRecord Nothing (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
 
-        TA.TypeRecord (Just id) attrs:
+        , TA.TypeRecord (Just id) attrs:
             TA.TypeRecord
                 (Just << normalizeTyvarId @hash id)
-                (Dict.map (k: (normalizeType @hash)) attrs)
+                (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
 
-        TA.TypeVar id:
+        , TA.TypeVar id:
             TA.TypeVar (normalizeTyvarId @hash id)
 
-        TA.TypeError:
+        , TA.TypeError:
             TA.TypeError
 
 
-normalizeOut as Out: Out =
-    out:
+normalizeOut as fn Out: Out =
+    fn out:
 
-    hash @= Hash.empty
+    !hash = Hash.fromList []
 
     {
     , type = normalizeType @hash out.type
-    , freeTyvars = Dict.empty >> Dict.for out.freeTyvars id: tc: Dict.insert (normalizeTyvarId @hash id) tc
+    , freeTyvars = Dict.for Dict.empty out.freeTyvars fn id, tc, d: Dict.insert (normalizeTyvarId @hash id) tc d
     }
 
 
@@ -269,11 +275,28 @@ functions as Test =
             Test.isOk
         , codeTest "Annotation should be consistent with mutability"
             """
-            f as @Number: Number = a:
+            f as fn @Number: Number = fn a:
               a
             """
             (infer "f")
-            (Test.errorContains [])
+            (Test.errorContains ["RecyclingDoesNotMatch"])
+
+        , codeTest
+            """
+            [reg] on is missing tyvars?
+            """
+            """
+            andThen as [a] = []
+
+            on = andThen
+            """
+            (infer "on")
+            (Test.isOkAndEqualTo
+                {
+                , freeTyvars = Dict.empty
+                , type = TH.taBool
+                }
+            )
         ]
 
 
@@ -519,7 +542,7 @@ records as Test =
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord (Just 1)
-                            (Dict.singleton "meh" ( TA.TypeRecord (Just 2) (Dict.singleton "blah" (tyvar 3))))
+                            (Dict.ofOne "meh" ( TA.TypeRecord (Just 2) (Dict.ofOne "blah" (tyvar 3))))
                         ]
                         (tyvar 3)
                 }
@@ -538,9 +561,9 @@ records as Test =
                 , type =
                     TA.TypeFn
                         [ TA.ParRe << TA.TypeRecord (Just 1)
-                            (Dict.singleton "meh"
+                            (Dict.ofOne "meh"
                                 ( TA.TypeRecord (Just 2)
-                                    (Dict.singleton
+                                    (Dict.ofOne
                                         "blah"
                                         TH.taNumber
                                     )
@@ -585,7 +608,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                (TA.TypeRecord (Just 1) (Dict.singleton "x" TH.taNumber) >> re:
+                (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber) >> fn re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }
@@ -598,7 +621,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                (TA.TypeRecord (Just 1) (Dict.singleton "x" TH.taNumber) >> re:
+                (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber) >> fn re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }
@@ -613,7 +636,7 @@ records as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                (TA.TypeRecord (Just 1) (Dict.singleton "first" (tyvar 2)) >> re:
+                (TA.TypeRecord (Just 1) (Dict.ofOne "first" (tyvar 2)) >> fn re:
                     { freeTyvars = Dict.empty
                     , type = TH.taFunction [re] (tyvar 2)
                     }
@@ -958,9 +981,7 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = TH.taNumber
-                , freeTyvars = Dict.empty
-
-                , freeTyvars = Dict.singleton 1
+                , freeTyvars = Dict.ofOne 1
                         {
                         , originalName = ""
                         , allowFunctions = False
@@ -1159,7 +1180,7 @@ toEmittable as Text: Text: Result Text EA.Expression =
         def :: tail:
 
             state as Compiler/MakeEmittable.State @= {
-                , sourceDirsToId = Hash.empty
+                , sourceDirsToId = Hash.fromList []
                 , sourceDirsCounter = 0
                 }
 

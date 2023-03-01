@@ -2,17 +2,17 @@
 
 ### LIST
 
-list_intersperse as a: [a]: [a]: [a] =
-    separator: items: acc:
+list_intersperse as fn a, [a], [a]: [a] =
+    fn separator, items, acc:
 
     try items as
-        []:
+        , []:
             List.reverse acc
 
-        [last]:
+        , [last]:
             List.reverse (last :: acc)
 
-        head :: tail:
+        , head :: tail:
             list_intersperse separator tail (separator :: head :: acc)
 
 
@@ -39,48 +39,48 @@ union TextTree =
 
 
 
-display as Text: TextTree: Text =
-    indent: tree:
+display as fn Text, TextTree: Text =
+    fn indent, tree:
 
     try tree as
-        Span _ content:
+        , Span _ content:
             indent .. content
 
-        Block NotIndented content:
+        , Block NotIndented content:
             content
-            >> List.map (display indent)
-            >> Text.join "\n"
+            >> List.map (display indent __) __
+            >> Text.join "\n" __
 
-        Block (IndentedWithHeader header) content:
+        , Block (IndentedWithHeader header) content:
 
             head =
                 indent .. header
 
             tail =
                 content
-                >> List.map (display << indent .. "    ")
+                >> List.map (display (indent .. "    ") __) __
 
-            head :: tail >> Text.join "\n"
+            head :: tail >> Text.join "\n" __
 
 
-maybeSpan as Int: [Text]: [TextTree]: Maybe TextTree =
-    complexityAcc: textAcc: content:
+maybeSpan as fn Int, [Text], [TextTree]: Maybe TextTree =
+    fn complexityAcc, textAcc, content:
 
     if complexityAcc > 20 then
       Nothing
     else
       try content as
-          []:
+          , []:
               textAcc
               >> List.reverse
-              >> Text.join ""
-              >> Span complexityAcc
+              >> Text.join "" __
+              >> Span complexityAcc __
               >> Just
 
-          Span complexity snippet :: tail:
+          , Span complexity snippet :: tail:
               maybeSpan (complexity + complexityAcc) (snippet :: textAcc) tail
 
-          _:
+          , _:
               Nothing
 
 
@@ -88,14 +88,14 @@ maybeSpan as Int: [Text]: [TextTree]: Maybe TextTree =
 #####
 
 
-text as Text: TextTree =
-    text:
+text as fn Text: TextTree =
+    fn text:
 
     Span (Text.length text) text
 
 
-stack as [TextTree]: TextTree =
-    content:
+stack as fn [TextTree]: TextTree =
+    fn content:
 
     Block NotIndented content
 
@@ -110,14 +110,14 @@ stack as [TextTree]: TextTree =
 #    b
 #    c
 #
-rowOrIndented as Text: [TextTree]: TextTree =
-    header: content:
+rowOrIndented as fn Text, [TextTree]: TextTree =
+    fn header, content:
 
     try maybeSpan 0 [] (text (header .. " ") :: content) as
-        Just span:
+        , Just span:
             span
 
-        Nothing:
+        , Nothing:
             Block (IndentedWithHeader header) content
 
 
@@ -130,43 +130,42 @@ rowOrIndented as Text: [TextTree]: TextTree =
 #    b
 #    c
 #
-rowOrHead as Text: [TextTree]: TextTree =
+rowOrHead as fn Text, [TextTree]: TextTree =
     #TODO Needs a change in the TextTree type
     rowOrIndented
 
 
-separatedBy as Text: [TextTree]: TextTree =
-    separator: content:
+separatedBy as fn Text, [TextTree]: TextTree =
+    fn separator, content:
 
     try maybeSpan 0 [] (list_intersperse (text separator) content []) as
-        Just span:
+        , Just span:
             span
 
-        Nothing:
+        , Nothing:
             content
-            >> List.map (c: rowOrIndented separator [c])
-            >> Block NotIndented
+            >> List.map (fn c: rowOrIndented separator [c]) __
+            >> Block NotIndented __
 
 
 
-
-list as { open as Text, separator as Text, close as Text, items as [TextTree]}: TextTree =
-    ({ open, separator, close, items }):
+list as fn { open as Text, separator as Text, close as Text, items as [TextTree]}: TextTree =
+    fn ({ open, separator, close, items }):
 
     zero = Text.length open + Text.length close
 
     try maybeSpan zero [open .. " "] (list_intersperse (text separator) items []) as
-        Just (Span com t):
+        , Just (Span com t):
             Span com (t .. close)
 
-        _:
+        , _:
             [
             , [text open]
-            , items >> List.map (c: rowOrHead separator [c])
+            , items >> List.map (fn c: rowOrHead separator [c]) __
             , [text << " " .. close]
             ]
             >> List.concat
-            >> Block NotIndented
+            >> Block NotIndented __
 
 
 
@@ -176,35 +175,35 @@ alias Env =
     }
 
 
-tyvarIdToText as Env: TA.TyvarId: Text =
-    env: id:
+tyvarIdToText as fn Env, TA.TyvarId: Text =
+    fn env, id:
 
     # TODO translate to original tyvar name?
     Text.fromNumber id
 
 
-usrToText as Env: USR: Text =
-    env: usr:
+usrToText as fn Env, USR: Text =
+    fn env, usr:
 
     USR umr name = usr
     # TODO use display umr if name is not in modules.sp
     name
 
 
-uniToText as Env: Uniqueness: Text =
-    env: uni:
+uniToText as fn Env, Uniqueness: Text =
+    fn env, uni:
 
     try uni as
-        Imm: ""
-        Uni: "!"
-        Depends n: Text.fromNumber n .. "?"
+        , Imm: ""
+        , Uni: "!"
+        , Depends n: Text.fromNumber n .. "?"
 
 
-doRawType as Env: TA.RawType: TextTree =
-    env: raw:
+doRawType as fn Env, TA.RawType: TextTree =
+    fn env, raw:
 
     try raw as
-        TA.TypeExact usr raws:
+        , TA.TypeExact usr raws:
             #
             #   TheUsr Arg1 Arg2...
             #
@@ -218,9 +217,9 @@ doRawType as Env: TA.RawType: TextTree =
             #
             rowOrIndented
                 (usrToText env usr)
-                (List.map (doRawType env) raws)
+                (List.map (doRawType env __) raws)
 
-        TA.TypeFn parTypes full:
+        , TA.TypeFn parTypes full:
             #
             #   fn A, B: C
             #
@@ -230,17 +229,17 @@ doRawType as Env: TA.RawType: TextTree =
             #     : C
             #
             [
-            , separatedBy "," (List.map (doParType env) parTypes)
+            , separatedBy "," (List.map (doParType env __) parTypes)
             , rowOrIndented ":" [doFullType env full]
             ]
-            >> rowOrIndented "fn"
+            >> rowOrIndented "fn" __
 
-        TA.TypeVar tyvarId:
+        , TA.TypeVar tyvarId:
             tyvarId
             >> Text.fromNumber
             >> text
 
-        TA.TypeRecord maybeExtId attrs:
+        , TA.TypeRecord maybeExtId attrs:
             #
             #   { ext with x as X, y as Y }
             #
@@ -251,41 +250,41 @@ doRawType as Env: TA.RawType: TextTree =
             #
             # TODO tuple
             #
-            doAttr as (Name & TA.RawType): TextTree =
-                (name & raw):
-                rowOrHead (name .. " as") [doRawType env raw]
+            doAttr as fn (Name & TA.RawType): TextTree =
+                fn (name & r):
+                rowOrHead (name .. " as") [doRawType env r]
 
             open =
                 try maybeExtId as
-                    Just tyvarId: "{ " .. tyvarIdToText env tyvarId .. " with"
-                    Nothing: "{"
+                    , Just tyvarId: "{ " .. tyvarIdToText env tyvarId .. " with"
+                    , Nothing: "{"
 
             list
                 {
                 , open
                 , separator = ","
                 , close = "}"
-                , items = attrs >> Dict.toList >> List.map doAttr
+                , items = attrs >> Dict.toList >> List.map doAttr __
                 }
 
 
-        TA.TypeError:
+        , TA.TypeError:
             text "???"
 
 
-doFullType as Env: TA.FullType: TextTree =
-    env: ({ uni, raw }):
+doFullType as fn Env, TA.FullType: TextTree =
+    fn env, ({ uni, raw }):
 
     # TODO try to keep it in a row
     rowOrIndented (uniToText env uni) [doRawType env raw]
 
 
-doParType as Env: TA.ParType: TextTree =
-    env: parType:
+doParType as fn Env, TA.ParType: TextTree =
+    fn env, parType:
 
     try parType as
-        TA.ParSp full: doFullType env full
+        , TA.ParSp full: doFullType env full
 
         # TODO try to keep it in a row
-        TA.ParRe raw: rowOrHead "@" [doRawType env raw]
+        , TA.ParRe raw: rowOrHead "@" [doRawType env raw]
 

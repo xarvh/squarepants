@@ -29,13 +29,13 @@ specs as Test =
 # Boilerplate code, not really needed to understand the system
 #
 
-valueTest as Text: (None: a): Test.CodeExpectation a: Test =
-    Test.valueTest toHuman
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+    Test.valueTest toHuman __ __ __
 
 codeTest =
-    Test.codeTest Debug.toHuman
+    Test.codeTest Debug.toHuman __ __ __ __
 
-infer as Text: Text: Result Text Compiler/TypeCheck_Test.Out =
+infer as fn Text: fn Text: Result Text Compiler/TypeCheck_Test.Out =
     Compiler/TypeCheck_Test.infer
 
 

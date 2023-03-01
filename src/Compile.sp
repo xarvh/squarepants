@@ -1,9 +1,8 @@
 
+allowModule as fn Text: Bool =
+    fn filename:
 
-allowModule as Text: Bool =
-    filename:
-
-    not << List.any (n: Text.contains n filename) [
+    not << List.any (fn n: Text.contains n filename) [
 #        , "src/Types/TypedAst.sp"
 #        , "src/Types/Token.sp"
 #        , "src/Types/Pos.sp"
@@ -25,7 +24,7 @@ allowModule as Text: Bool =
 #        , "src/SPON.sp"
 #        , "src/SPLib/Parser.sp"
 #        , "src/SPLib/Buffer.sp"
-        , "src/RefHierarchy_Test.sp"
+#        , "src/RefHierarchy_Test.sp"
 #        , "src/RefHierarchy.sp"
 #        , "src/Prelude.sp"
         , "src/Platforms/RawJavaScript.sp"
@@ -43,14 +42,14 @@ allowModule as Text: Bool =
 #        , "src/Compiler/Parser_Test.sp"
 #        , "src/Compiler/Parser.sp"
 #        , "src/Compiler/MakeEmittable.sp"
-        , "src/Compiler/MakeCanonical_Test.sp"
+#        , "src/Compiler/MakeCanonical_Test.sp"
 #        , "src/Compiler/MakeCanonical.sp"
-        , "src/Compiler/Lexer_Test.sp"
+#        , "src/Compiler/Lexer_Test.sp"
 #        , "src/Compiler/Lexer.sp"
 #        , "src/Compiler/Error.sp"
 #        , "src/Compiler/CoreTypes.sp"
 #        , "src/Compile.sp"
-        , "specs/Uniqueness.sp"
+#        , "specs/Uniqueness.sp"
 #        , "lib/posix/Path.sp"
 #        , "lib/posix/IO.sp"
 #        , "lib/core/Tuple.sp"
@@ -58,16 +57,16 @@ allowModule as Text: Bool =
 #        , "lib/core/Set.sp"
 #        , "lib/core/Result.sp"
 #        , "lib/core/Maybe.sp"
-        , "lib/core/List_Test.sp"
+#        , "lib/core/List_Test.sp"
 #        , "lib/core/List.sp"
-        , "lib/core/Hash_Test.sp"
+#        , "lib/core/Hash_Test.sp"
 #        , "lib/core/Hash.sp"
-        , "lib/core/Dict_Test.sp"
+#        , "lib/core/Dict_Test.sp"
 #        , "lib/core/Dict.sp"
 #        , "lib/core/Debug.sp"
 #        , "lib/core/Core.sp"
 #        , "lib/core/Basics.sp"
-        , "lib/core/Array_Test.sp"
+#        , "lib/core/Array_Test.sp"
 #        , "lib/core/Array.sp"
       ]
 
@@ -88,39 +87,39 @@ coreDirName as Text =
 #
 # IO
 #
-formattedToConsoleColoredText as Error.FormattedText: Text =
-    formattedText:
+formattedToConsoleColoredText as fn Error.FormattedText: Text =
+    fn formattedText:
     try formattedText as
-        Error.FormattedText_Default t: t
-        Error.FormattedText_Emphasys t: Term.yellow t
-        Error.FormattedText_Warning t: Term.red t
-        Error.FormattedText_Decoration t: Term.blue t
+        , Error.FormattedText_Default t: t
+        , Error.FormattedText_Emphasys t: Term.yellow t
+        , Error.FormattedText_Warning t: Term.red t
+        , Error.FormattedText_Decoration t: Term.blue t
 
 
-resToIo as Error.Env: Res a: IO a =
-    errorEnv: res:
+resToIo as fn Error.Env, Res a: IO a =
+    fn errorEnv, res:
     try res as
-        Ok a: IO.succeed a
-        Err e:
+        , Ok a: IO.succeed a
+        , Err e:
             e
-            >> Error.toFormattedText errorEnv
-            >> List.map formattedToConsoleColoredText
-            >> Text.join ""
+            >> Error.toFormattedText errorEnv __
+            >> List.map formattedToConsoleColoredText __
+            >> Text.join "" __
             >> IO.fail
 
 
-onResSuccess as Error.Env: (a: IO b): Res a: IO b =
-    errorEnv: f: res:
+onResSuccess as fn Error.Env, (fn a: IO b): fn Res a: IO b =
+    fn errorEnv, f: fn res:
     res
-    >> resToIo errorEnv
-    >> IO.onSuccess f
+    >> resToIo errorEnv __
+    >> (IO.onSuccess f) __
 
 
 #
 # Load modules.sp
 #
-loadModulesFile as Types/Platform.Platform: Text: IO ModulesFile.ModulesFile =
-    platform: projectRoot:
+loadModulesFile as fn Types/Platform.Platform, Text: IO ModulesFile.ModulesFile =
+    fn platform, projectRoot:
 
     path =
         [ projectRoot, modulesFileName ]
@@ -130,26 +129,26 @@ loadModulesFile as Types/Platform.Platform: Text: IO ModulesFile.ModulesFile =
 
     path
     >> IO.readFile
-    >> IO.onResult result:
+    >> IO.onResult fn result:
 
     modulesAsText =
         try result as
-            Ok f:
+            , Ok f:
                 f
 
-            Err _:
-                log "Using default modules.sp"
+            , Err _:
+                log "Using default modules.sp" ""
                 platform.defaultModules
 
     eenv as Error.Env =
         {
-        , moduleByName = Dict.singleton modulesFileName {
+        , moduleByName = Dict.ofOne modulesFileName {
             , fsPath = modulesFileName
             , content = modulesAsText
             }
         }
 
-    resToIo eenv << ModulesFile.textToModulesFile modulesFileName modulesAsText
+    resToIo eenv __ << ModulesFile.textToModulesFile modulesFileName modulesAsText
 
 
 
@@ -158,48 +157,50 @@ loadModulesFile as Types/Platform.Platform: Text: IO ModulesFile.ModulesFile =
 #
 
 
-asModule as (Bool & Text): Maybe Text =
-    tuple:
+asModule as fn (Bool & Text): Maybe Text =
+    fn tuple:
     isDirectory & name = tuple
 
-    if isDirectory or Text.startsWithRegex "[A-Z][a-zA-Z0-9_]*[.]sp$" name /= name then
+    if isDirectory or (Text.startsWithRegex "[A-Z][a-zA-Z0-9_]*[.]sp$") name /= name then
         Nothing
     else
         name
-            >> Text.replace ".sp" ""
+            >> Text.replace ".sp" "" __
             >> Just
 
 
-asModuleDirectory as (Bool & Text): Maybe Text =
-    tuple:
+asModuleDirectory as fn (Bool & Text): Maybe Text =
+    fn tuple:
     isDirectory & name = tuple
 
-    if isDirectory and Text.startsWithRegex "^[A-Z][a-zA-Z0-9_]*$" name == name then
+    if isDirectory and (Text.startsWithRegex "^[A-Z][a-zA-Z0-9_]*$") name == name then
         Just name
     else
         Nothing
 
 
-listSourceDir as Text: Text: IO [Text] =
-    sourceDirRoot: modulePathWithTrailingSlash:
+listSourceDir as fn Text, Text: IO [Text] =
+    fn sourceDirRoot, modulePathWithTrailingSlash:
 
     path =
         sourceDirRoot .. "/" .. modulePathWithTrailingSlash
 
-    IO.readDir path >> IO.onSuccess dirContents:
+    IO.readDir path
+    >> IO.onSuccess fn dirContents:
 
     directChildren =
         dirContents
-        >> List.filterMap asModule
-        >> List.map (fileName: modulePathWithTrailingSlash .. fileName)
+        >> List.filterMap asModule __
+        >> List.map (fn fileName: modulePathWithTrailingSlash .. fileName) __
 
     getDescendants as IO [[Text]] =
         dirContents
-        >> List.filterMap asModuleDirectory
-        >> List.map (subDir: listSourceDir sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/"))
+        >> List.filterMap asModuleDirectory __
+        >> List.map (fn subDir: listSourceDir sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/")) __
         >> IO.parallel
 
-    getDescendants >> IO.onSuccess descendants:
+    getDescendants
+    >> IO.onSuccess fn descendants:
 
     [ directChildren, List.concat descendants ]
     >> List.concat
@@ -207,34 +208,35 @@ listSourceDir as Text: Text: IO [Text] =
 
 
 # TODO move this to Meta?
-umrToFileName as Text: UMR: Text =
-    corePath: umr:
+umrToFileName as fn Text, UMR: Text =
+    fn corePath, umr:
 
     UMR source name =
         umr
 
     try source as
-        Meta.SourceDir d:
+        , Meta.SourceDir d:
             Path.resolve [ d, name .. ".sp" ]
 
-        Meta.Core:
-            Path.resolve (corePath :: "core" :: (Text.split "/" << name .. ".sp"))
+        , Meta.Core:
+            Path.resolve (corePath :: "core" :: (Text.split "/" __ << name .. ".sp"))
 
-        Meta.Posix:
-            Path.resolve (corePath :: "posix" :: (Text.split "/" << name .. ".sp"))
+        , Meta.Posix:
+            Path.resolve (corePath :: "posix" :: (Text.split "/" __ << name .. ".sp"))
 
-        Meta.Browser:
-            Path.resolve (corePath :: "browser" :: (Text.split "/" << name .. ".sp"))
+        , Meta.Browser:
+            Path.resolve (corePath :: "browser" :: (Text.split "/" __ << name .. ".sp"))
 
 
-loadModule as Meta: UMR: Text: IO CA.Module =
-    meta: umr: fileName:
+loadModule as fn Meta, UMR, Text: IO CA.Module =
+    fn meta, umr, fileName:
 
     # TODO get rid of eenv so this is not needed
     UMR source moduleName =
         umr
 
-    IO.readFile fileName  >> IO.onSuccess moduleAsText:
+    IO.readFile fileName
+    >> IO.onSuccess fn moduleAsText:
 
     params as Compiler/MakeCanonical.Params = {
         , meta
@@ -244,13 +246,13 @@ loadModule as Meta: UMR: Text: IO CA.Module =
         }
 
     eenv as Error.Env = {
-        , moduleByName = Dict.singleton moduleName {
+        , moduleByName = Dict.ofOne moduleName {
             , fsPath = fileName
             , content = moduleAsText
             }
         }
 
-    resToIo eenv << Compiler/MakeCanonical.textToCanonicalModule params moduleAsText
+    resToIo eenv __ << Compiler/MakeCanonical.textToCanonicalModule params moduleAsText
 
 
 alias ModuleAndPath = {
@@ -259,37 +261,37 @@ alias ModuleAndPath = {
     }
 
 
-sdItemToUMR as Meta.Source: Text: UMR =
-    source: fileName:
+sdItemToUMR as fn Meta.Source, Text: UMR =
+    fn source, fileName:
     fileName
-    >> Text.replace ".sp" ""
-    >> UMR source
+    >> Text.replace ".sp" "" __
+    >> UMR source __
 
 
-updateSourceDir as [Text]: ModulesFile.SourceDir: ModulesFile.SourceDir =
-    fileNames:
+updateSourceDir as fn [Text], ModulesFile.SourceDir: ModulesFile.SourceDir =
+    fn fileNames, orig:
 
-    insertModuleName as Text: ModulesFile.SourceDir: ModulesFile.SourceDir =
-        name: sd:
-        try List.find (m: m.path == name) sd.modules as
-            Just _: sd
-            Nothing: { sd with modules = { path = name, visibleAs = name, globalValues = [], globalTypes = [] } :: .modules }
+    insertModuleName as fn Text, ModulesFile.SourceDir: ModulesFile.SourceDir =
+        fn name, sd:
+        try List.find (fn m: m.path == name) sd.modules as
+            , Just _: sd
+            , Nothing: { sd with modules = { path = name, visibleAs = name, globalValues = [], globalTypes = [] } :: .modules }
 
-    List.for fileNames insertModuleName
+    List.for orig fileNames insertModuleName
 
 
-loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
-    env: platform: entryModuleDir: projectRoot:
+loadMeta as fn IO.Env, Types/Platform.Platform, Text, Text: IO Meta =
+    fn env, platform, entryModuleDir, projectRoot:
 
     loadModulesFile platform projectRoot
-    >> IO.onSuccess modulesFileRaw:
+    >> IO.onSuccess fn modulesFileRaw:
 
     resolvedDirs =
         modulesFileRaw.sourceDirs
-        >> List.map sd: { sd with path = Path.resolve [ projectRoot, .path ] }
+        >> List.map (fn sd: { sd with path = Path.resolve [ projectRoot, .path ] }) __
 
     allDirs =
-        if List.any (sd: sd.path == entryModuleDir) resolvedDirs then
+        if List.any (fn sd: sd.path == entryModuleDir) resolvedDirs then
             resolvedDirs
         else
             { path = entryModuleDir, modules = [] } :: resolvedDirs
@@ -301,11 +303,11 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
     # before building Meta we need to add those that are not mentioned.
     getAllSourceDirLists as IO [[Text]] =
         modulesFile.sourceDirs
-        >> List.map (sd: listSourceDir sd.path "")
+        >> List.map (fn sd: listSourceDir sd.path "") __
         >> IO.parallel
 
     getAllSourceDirLists
-    >> IO.onSuccess allSourceDirLists:
+    >> IO.onSuccess fn allSourceDirLists:
 
     updatedSourceDirs as [ModulesFile.SourceDir] =
         List.map2 updateSourceDir allSourceDirLists modulesFile.sourceDirs
@@ -318,17 +320,17 @@ loadMeta as IO.Env: Types/Platform.Platform: Text: Text: IO Meta =
 #
 # Compile
 #
-searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
-    isWantedFile: searchDir:
+searchAncestorDirectories as fn (fn Bool & Text: Bool), Text: IO (Maybe Text) =
+    fn isWantedFile, searchDir:
 
     IO.readDir searchDir
-    >> IO.onResult result:
+    >> IO.onResult fn result:
 
     try result as
-        Err _:
+        , Err _:
             IO.succeed Nothing
 
-        Ok dirContents:
+        , Ok dirContents:
             if List.any isWantedFile dirContents then
                 searchDir
                 >> Just
@@ -339,10 +341,10 @@ searchAncestorDirectories as (Bool & Text: Bool): Text: IO (Maybe Text) =
                 if parent == searchDir then
                     IO.succeed Nothing
                 else
-                    parent >> searchAncestorDirectories isWantedFile
+                    parent >> searchAncestorDirectories isWantedFile __
 
-mergeWithCore as CA.Module: CA.Module: CA.Module =
-    coreModule: userModule:
+mergeWithCore as fn CA.Module, CA.Module: CA.Module =
+    fn coreModule, userModule:
 
 #    need to strip positions before merging >_<
 
@@ -372,8 +374,8 @@ alias CompileMainPars = {
     }
 
 
-compileMain as CompileMainPars: IO Int =
-    pars:
+compileMain as fn CompileMainPars: IO Int =
+    fn pars:
 
     #
     # Figure out project root
@@ -388,7 +390,7 @@ compileMain as CompileMainPars: IO Int =
 #
 #    moduleAsText
 #    >> Compiler/Parser.textToFormattableModule { moduleName = entryModulePath, stripLocations = False }
-#    >> resToIo { moduleByName = Dict.singleton entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
+#    >> resToIo { moduleByName = Dict.ofOne entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
 #    >> IO.onSuccess out:
 #
 #    log "==" out
@@ -400,8 +402,8 @@ compileMain as CompileMainPars: IO Int =
         Path.dirname entryModulePath
 
     entryModuleDir
-    >> searchAncestorDirectories ((isDirectory & fileName): not isDirectory and fileName == modulesFileName)
-    >> IO.onSuccess maybeProjectRoot:
+    >> searchAncestorDirectories (fn (isDirectory & fileName): not isDirectory and fileName == modulesFileName) __
+    >> IO.onSuccess fn maybeProjectRoot:
 
     projectRoot =
         Maybe.withDefault entryModuleDir maybeProjectRoot
@@ -410,7 +412,7 @@ compileMain as CompileMainPars: IO Int =
     # Load meta and figure out entry point's USR
     #
     loadMeta pars.env pars.platform entryModuleDir projectRoot
-    >> IO.onSuccess meta:
+    >> IO.onSuccess fn meta:
 
 
 
@@ -419,14 +421,14 @@ compileMain as CompileMainPars: IO Int =
         meta.moduleVisibleAsToUmr
         >> Dict.values
         # TODO split umrToFileName so we can call it without `""`
-        >> List.find umr: umrToFileName "" umr == entryModulePath
+        >> List.find (fn umr: umrToFileName "" umr == entryModulePath) __
 
     entryUsr =
         try maybeEntryUmr as
-            Nothing:
+            , Nothing:
                 todo << "Error: you are asking me to compile module " .. entryModulePath .. " but I can't find it anywhere."
 
-            Just umr:
+            , Just umr:
                 USR umr "main"
 
     #
@@ -435,16 +437,16 @@ compileMain as CompileMainPars: IO Int =
     [ pars.selfPath ]
     >> Path.resolve
     >> Path.dirname
-    >> searchAncestorDirectories ((isDirectory & fileName): isDirectory and fileName == libDirectoryName)
-    >> IO.onSuccess maybeCorelibParent:
+    >> searchAncestorDirectories (fn (isDirectory & fileName): isDirectory and fileName == libDirectoryName) __
+    >> IO.onSuccess fn maybeCorelibParent:
 
 
     corePath =
         try maybeCorelibParent as
-            Nothing:
+            , Nothing:
                 todo << "Error: I expect to find the " .. libDirectoryName .. " directory next to the spcc executable " .. pars.selfPath .. " but I can't find it."
 
-            Just p:
+            , Just p:
                 Path.resolve [ p, libDirectoryName ]
 
 
@@ -459,27 +461,30 @@ compileMain as CompileMainPars: IO Int =
     loadAllModules as IO [CA.Module] =
         meta.moduleVisibleAsToUmr
         >> Dict.values
-        >> List.filter (umr: allowModule (umrToFileName corePath umr))
-        >> List.map (umr: loadModule meta umr (umrToFileName corePath umr))
+        >> List.filter (fn umr: allowModule (umrToFileName corePath umr)) __
+        >> List.map (fn umr: loadModule meta umr (umrToFileName corePath umr)) __
         >> IO.parallel
 
-    loadAllModules >> IO.onSuccess userModules:
+    loadAllModules >> IO.onSuccess fn userModules:
 
     modules as Dict UMR CA.Module =
-        Prelude.coreModulesByUmr >> List.for userModules module:
-            Dict.update module.umr maybeCore:
+        Prelude.coreModulesByUmr >> List.for __ userModules fn module, d:
+            zzz = fn maybeCore:
                 try maybeCore as
-                    Nothing: Just module
-                    Just core: Just (mergeWithCore core module)
+                    , Nothing: Just module
+                    , Just core: Just (mergeWithCore core module)
+
+            Dict.update module.umr zzz d
 
     # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
     eenv as Error.Env =
-        getName = n:
+        getName =
+            fn n:
             Meta.UMR source name = n.umr
             name
 
         { moduleByName =
-            List.for (Dict.values modules) (m: Dict.insert (getName m) { fsPath = umrToFileName corePath m.umr, content = m.asText }) Dict.empty
+            List.for Dict.empty (Dict.values modules) (fn m, d: Dict.insert (getName m) { fsPath = umrToFileName corePath m.umr, content = m.asText } d)
         }
 
 
@@ -487,48 +492,52 @@ compileMain as CompileMainPars: IO Int =
     modules
     >> Dict.values
     >> Compiler/TypeCheck.initStateAndGlobalEnv
-    >> onResSuccess eenv (lastUnificationVarId & typeCheckGlobalEnv):
+    >> onResSuccess eenv fn (luv & typeCheckGlobalEnv):
 
     log "Type checking..." ""
 
+    !lastUnificationVarId =
+        cloneImm luv
+
     modules
     >> Dict.values
-    >> List.map (m: Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv)
+    >> List.map (fn m: Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv __) __
     >> IO.parallel
-    >> IO.onSuccess typedModules:
+    >> IO.onSuccess fn typedModules:
 
 
     log "Uniqueness check..." ""
 
     typedModules
-    >> List.map (m: Compiler/UniquenessCheck.doModule m >> resToIo eenv)
+    >> List.map (fn m: Compiler/UniquenessCheck.doModule m >> resToIo eenv __) __
     >> IO.parallel
-    >> IO.onSuccess modulesWithDestruction:
+    >> IO.onSuccess fn modulesWithDestruction:
 
 
     log "Emittable AST..." ""
 
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll
-    >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
-    >> onResSuccess eenv (meState & emittableStatements):
+    >> Result.mapError (fn e: todo "MakeEmittable.translateAll returned Err") __
+    >> onResSuccess eenv fn (meState & emittableStatements):
 
-    emittableState @=
-        meState
+    !emittableState =
+        cloneImm meState
 
-    log "= Platform specific stuff ="
+    log "= Platform specific stuff =" ""
+
     js =
         pars.platform.compile
             {
             , errorEnv = eenv
-            , constructors = Dict.toList (Dict.map (k: v: v.type) typeCheckGlobalEnv.constructors)
+            , constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
             }
             entryUsr
             @emittableState
             emittableStatements
 
     IO.writeFile outputFile js
-    >> IO.onSuccess _:
+    >> IO.onSuccess fn _:
 
-    IO.writeStdout << "---> " .. outputFile .. " written. =)"
+    IO.writeStdout __ << "---> " .. outputFile .. " written. =)"
 

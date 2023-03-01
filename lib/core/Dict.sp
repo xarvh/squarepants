@@ -396,6 +396,25 @@ merge as fn (fn key, a, res: res), (fn key, a, b, res: res), (fn key, b, res: re
   List.for intermediateResult leftovers liftLeftStep
 
 
+onlyBothOnly as fn Dict key a, Dict key b: Dict key a & Dict key (a & b) & Dict key b =
+    fn da, db:
+
+    onAOnly =
+        fn key, a, (aOnly & both & bOnly):
+        insert key a aOnly & both & bOnly
+
+    onBOnly =
+        fn key, b, (aOnly & both & bOnly):
+        aOnly & both & insert key b bOnly
+
+    onBoth =
+        fn key, a, b, (aOnly & both & bOnly):
+        aOnly & insert key (a & b) both & bOnly
+
+    merge onAOnly onBoth onBOnly da db (empty & empty & empty)
+
+
+
 # TRANSFORM
 
 

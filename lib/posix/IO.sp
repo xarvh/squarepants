@@ -34,8 +34,8 @@ _run as fn Never, IO a: Result Text a =
     neverToResult never
 
 
-onSuccess as fn (fn a: IO b), IO a: IO b =
-    fn f, m:
+onSuccess as fn (fn a: IO b): fn IO a: IO b =
+    fn f: fn m:
     IO fn never:
         try _run never m as
             , Ok a:
@@ -45,8 +45,8 @@ onSuccess as fn (fn a: IO b), IO a: IO b =
                 Err e
 
 
-onResult as fn (fn Result Text a: IO b), IO a: IO b =
-    fn f, m:
+onResult as fn (fn Result Text a: IO b): fn IO a: IO b =
+    fn f: fn m:
     IO fn never:
         m
         >> _run never __

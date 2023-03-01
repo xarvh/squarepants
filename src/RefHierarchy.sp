@@ -13,8 +13,8 @@ alias State key = {
 #
 # https://www.electricmonk.nl/docs/dependency_resolving_algorithm/dependency_resolving_algorithm.html
 #
-resolve as (key: Set key): key: [key]: State key: State key with key NonFunction =
-    getEdges: target: path: state0:
+resolve as fn (fn key: Set key), key, [key], State key: State key with key NonFunction =
+    fn getEdges, target, path, state0:
 
     if List.member target state0.resolved then
         state0
@@ -22,13 +22,13 @@ resolve as (key: Set key): key: [key]: State key: State key with key NonFunction
     else if List.member target path then
 
         circ as [key] =
-            target :: List.takeWhile (key: key /= target) path
+            target :: List.takeWhile (fn key: key /= target) path
 
         { state0 with circular = Dict.insert (Set.fromList circ) circ .circular }
 
     else
         s =
-            state0 >> Dict.for (getEdges target) (a: None: resolve getEdges a (target :: path))
+            state0 >> Dict.for __ (getEdges target) (fn a, None, d: resolve getEdges a (target :: path) d)
 
         { s with resolved = target :: .resolved }
 
@@ -36,14 +36,14 @@ resolve as (key: Set key): key: [key]: State key: State key with key NonFunction
 #
 # Interface function
 #
-reorder as (node: Set key): Dict key node: [[key]] & [key] with key NonFunction =
-    nodeToEdges: nodesById:
+reorder as fn (fn node: Set key), Dict key node: [[key]] & [key] with key NonFunction =
+    fn nodeToEdges, nodesById:
 
-    keyToEdges as key: Set key =
-        id:
+    keyToEdges as fn key: Set key =
+        fn id:
         try Dict.get id nodesById as
-            Nothing: Set.empty
-            Just node: nodeToEdges node
+            , Nothing: Set.empty
+            , Just node: nodeToEdges node
 
     state0 = {
         , resolved = []
@@ -51,7 +51,7 @@ reorder as (node: Set key): Dict key node: [[key]] & [key] with key NonFunction 
         }
 
     stateF =
-        state0 >> Dict.for nodesById (k: v: resolve keyToEdges k [])
+        state0 >> Dict.for __ nodesById (fn k, v, d: resolve keyToEdges k [] d)
 
     Dict.values stateF.circular & List.reverse stateF.resolved
 
