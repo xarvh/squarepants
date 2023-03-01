@@ -1,13 +1,14 @@
 
 
 # TODO: rewrite the whole thing so that each module has all the info and this type is not needed
-alias Env = {
+alias Env =
+    {
     , moduleByName as Dict Text { fsPath as Text, content as Text }
     }
 
 
 alias Description =
-    Env: [Text]
+    fn Env: [Text]
 
 
 union Error =
@@ -19,8 +20,8 @@ alias Res a =
     Result Error a
 
 
-res as Pos: Description: Res a =
-    pos: desc:
+res as fn Pos, Description: Res a =
+    fn pos, desc:
     Err << Simple pos desc
 
 
@@ -34,19 +35,18 @@ union FormattedText =
     , FormattedText_Decoration Text
 
 
-toFormattedText as Env: Error: [FormattedText] =
-    eenv: e:
+toFormattedText as fn Env, Error: [FormattedText] =
+    fn eenv, e:
 
     newline =
         FormattedText_Default ""
 
     tupleToFormattedText =
-        x:
+        fn x:
         pos & descr = x
         toText eenv pos descr
 
-    flatten e []
-        >> List.concatMap tupleToFormattedText
+    List.concatMap tupleToFormattedText (flatten e [])
 
 
 #
@@ -55,35 +55,35 @@ toFormattedText as Env: Error: [FormattedText] =
 #
 formatSeparator as Text = "$|$|$"
 formatSuffix as Text = "$`$`$"
-formatWrap as Text: Text: Text = fmtName: text: formatSeparator .. fmtName .. formatSuffix .. text .. formatSeparator
+formatWrap as fn Text, Text: Text = fn fmtName, text: formatSeparator .. fmtName .. formatSuffix .. text .. formatSeparator
 
-breakDownText as Text: [FormattedText] =
-  text:
+breakDownText as fn Text: [FormattedText] =
+  fn text:
 
-  formatSnippet as Int: Text: FormattedText =
-      index: snippet:
+  formatSnippet as fn Int, Text: FormattedText =
+      fn index, snippet:
 
       if modBy 2 index == 0 then
           FormattedText_Default snippet
       else
           try Text.split formatSuffix snippet as
-              ["emphasys", s]: FormattedText_Emphasys s
-              ["warning", s]: FormattedText_Warning s
-              ["decoration", s]: FormattedText_Decoration s
-              _: FormattedText_Default snippet
+              , ["emphasys", s]: FormattedText_Emphasys s
+              , ["warning", s]: FormattedText_Warning s
+              , ["decoration", s]: FormattedText_Decoration s
+              , _: FormattedText_Default snippet
 
   text
-      >> Text.split formatSeparator
-      >> List.indexedMap formatSnippet
+  >> Text.split formatSeparator __
+  >> List.indexedMap formatSnippet __
 
-emph as Text: Text =
-    formatWrap "emphasys"
+emph as fn Text: Text =
+    formatWrap "emphasys" __
 
-warn as Text: Text =
-    formatWrap "warning"
+warn as fn Text: Text =
+    formatWrap "warning" __
 
-deco as Text: Text =
-    formatWrap "decoration"
+deco as fn Text: Text =
+    formatWrap "decoration" __
 
 
 #
@@ -99,14 +99,14 @@ union Highlight =
 ###
 
 
-flatten as Error: [Pos & Description]: [Pos & Description] =
-    e: accum:
+flatten as fn Error, [Pos & Description]: [Pos & Description] =
+    fn e, accum:
     try e as
-        Simple pos descr:
-            pos & descr :: accum
+        , Simple pos descr:
+            [pos & descr, ...accum]
 
-        Nested ls:
-            List.for ls flatten accum
+        , Nested ls:
+            List.for accum ls flatten
 
 
 #
@@ -114,8 +114,8 @@ flatten as Error: [Pos & Description]: [Pos & Description] =
 #
 
 
-positionToLineAndColumn as Text: Int: { line as Int, col as Int } =
-    s: index:
+positionToLineAndColumn as fn Text, Int: { line as Int, col as Int } =
+    fn s, index:
 
     before =
         Text.slice 0 index s
@@ -128,50 +128,50 @@ positionToLineAndColumn as Text: Int: { line as Int, col as Int } =
 
     colNumber =
         lines
-            >> List.last
-            >> Maybe.map Text.length
-            >> Maybe.withDefault 0
+        >> List.last
+        >> Maybe.map Text.length __
+        >> Maybe.withDefault 0 __
 
     { line = lineNumber, col = colNumber }
 
 
-highlightSplit as Highlight: ( Dict Int ( Int & Int ) & Set Int ): ( Dict Int ( Int & Int ) & Set Int ) =
-    h: x:
+highlightSplit as fn Highlight, ( Dict Int ( Int & Int ) & Set Int ): ( Dict Int ( Int & Int ) & Set Int ) =
+    fn h, x:
     words & lines = x
     try h as
-        HighlightWord { line, colStart, colEnd }:
+        , HighlightWord { line, colStart, colEnd }:
             ( Dict.insert line ( colStart & colEnd ) words & lines)
 
-        HighlightBlock { lineStart, lineEnd }:
-            ( words & (List.for (List.range lineStart lineEnd) Set.insert lines))
+        , HighlightBlock { lineStart, lineEnd }:
+            ( words & (List.for lines (List.range lineStart lineEnd) Set.insert))
 
 
-fmtBlock as Int: [Highlight]: [Text]: Text =
-    start: highlights: ls:
+fmtBlock as fn Int, [Highlight], [Text]: Text =
+    fn start, highlights, ls:
 
     ( highlightedWords & highlightedLines ) =
-        List.for highlights highlightSplit ( Dict.empty & Set.empty )
+        List.for ( Dict.empty & Set.empty ) highlights highlightSplit
 
     pad =
         (start + List.length ls)
-            >> Text.fromNumber
-            >> Text.length
+        >> Text.fromNumber
+        >> Text.length
 
     wordHighlight =
-        lineNumber:
+        fn lineNumber:
         try Dict.get lineNumber highlightedWords as
-            Nothing:
+            , Nothing:
                 ""
 
-            Just ( s & e ):
+            , Just ( s & e ):
                 "\n"
-                    .. Text.repeat pad " "
-                    .. "   "
-                    .. Text.repeat s " "
-                    .. warn (Text.repeat (max 1 << e - s) "^")
+                .. Text.repeat pad " "
+                .. "   "
+                .. Text.repeat (s - 1) " "
+                .. warn (Text.repeat (max 1 (e - s)) "^")
 
     lineDem =
-        lineIndex:
+        fn lineIndex:
         if Set.member lineIndex highlightedLines then
             warn " > "
 
@@ -179,29 +179,29 @@ fmtBlock as Int: [Highlight]: [Text]: Text =
             " | "
 
     fmtLine =
-        i: line:
+        fn i, line:
 
         index =
             i + start
 
         s =
             index
-                >> Text.fromNumber
-                >> Text.padLeft pad " "
+            >> Text.fromNumber
+            >> Text.padLeft pad " " __
 
         s
-            .. lineDem index
-            .. line
-            .. wordHighlight index
+        .. lineDem index
+        .. line
+        .. wordHighlight index
 
     ls
-        >> List.indexedMap fmtLine
-        >> Text.join "\n"
-        >> (s: s .. "\n")
+    >> List.indexedMap fmtLine __
+    >> Text.join "\n" __
+    >> (fn s: s .. "\n")
 
 
-showCodeBlock as Text: { line as Int, col as Int }: { line as Int, col as Int }: Text =
-    code: start: end:
+showCodeBlock as fn Text, { line as Int, col as Int }, { line as Int, col as Int }: Text =
+    fn code, start, end:
 
     if end.line < 0 then
         ""
@@ -224,33 +224,33 @@ showCodeBlock as Text: { line as Int, col as Int }: { line as Int, col as Int }:
             List.length lines
 
         startLine =
-            start.line - extraLines - 1 >> clamp 0 (maxLines - 1)
+            clamp 0 (maxLines - 1) (start.line - extraLines - 1)
 
         endLine =
-            end.line + extraLines >> clamp 0 (maxLines - 1)
+            clamp 0 (maxLines - 1) (end.line + extraLines)
 
         size =
-            max 1 << endLine - startLine
+            max 1 (endLine - startLine)
 
         lines
-            >> List.drop startLine
-            >> List.take size
-            >> fmtBlock (startLine + 1) [ highlight ]
+        >> List.drop startLine __
+        >> List.take size __
+        >> fmtBlock (startLine + 1) [ highlight ] __
 
 
-posToHuman as Env: Pos: { location as Text, block as Text } =
-    eEnv: pos:
+posToHuman as fn Env, Pos: { location as Text, block as Text } =
+    fn eEnv, pos:
 
     noBlock =
-        loc:
+        fn loc:
         { location = loc
         , block = ""
         }
 
     try pos as
-        Pos.P moduleName startAsInt endAsInt:
+        , Pos.P moduleName startAsInt endAsInt:
             try Dict.get moduleName eEnv.moduleByName as
-                Just mod:
+                , Just mod:
                     start =
                         positionToLineAndColumn mod.content startAsInt
 
@@ -261,15 +261,15 @@ posToHuman as Env: Pos: { location as Text, block as Text } =
                     , block = showCodeBlock mod.content start end
                     }
 
-                Nothing:
+                , Nothing:
                     noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
 
-        Pos.End moduleName:
+        , Pos.End moduleName:
             try Dict.get moduleName eEnv.moduleByName as
-                Just mod:
+                , Just mod:
 
                     end =
-                        positionToLineAndColumn mod.content << Text.length mod.content - 1
+                        positionToLineAndColumn mod.content (Text.length mod.content - 1)
 
                     start =
                         { line = end.line - 8
@@ -280,39 +280,39 @@ posToHuman as Env: Pos: { location as Text, block as Text } =
                     , block = showCodeBlock mod.content start end
                     }
 
-                Nothing:
+                , Nothing:
                     noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
 
-        Pos.N:
+        , Pos.N:
             noBlock "<native code>"
 
-        Pos.S:
+        , Pos.S:
             noBlock "<the location information has been stripped>"
 
-        Pos.T:
+        , Pos.T:
             noBlock "<defined in test modules>"
 
-        Pos.I n:
+        , Pos.I n:
             noBlock << "<inferred " .. Text.fromNumber n .. ">"
 
-        Pos.G:
+        , Pos.G:
             noBlock "<generated>"
 
 
 
-toText as Env: Pos: Description: [FormattedText] =
-    env: pos: desc:
+toText as fn Env, Pos, Description: [FormattedText] =
+    fn env, pos, desc:
 
     { location, block } =
         posToHuman env pos
 
     description =
         env
-            >> desc
-            >> (d: block :: d)
-            >> List.concatMap (Text.split "\n")
-            >> List.map (s: "  " .. s)
-            >> Text.join "\n"
+        >> desc
+        >> (fn d: [block, ...d])
+        >> List.concatMap (Text.split "\n" __) __
+        >> List.map (fn s: "  " .. s) __
+        >> Text.join "\n" __
 
     [
     , ""
@@ -322,6 +322,6 @@ toText as Env: Pos: Description: [FormattedText] =
     , description
     , ""
     ]
-        >> Text.join "\n"
-        >> breakDownText
+    >> Text.join "\n" __
+    >> breakDownText
 

@@ -1,70 +1,64 @@
 
+
 alias Int =
     Number
 
 
-identity as a: a =
-    a:
+identity as fn a: a =
+    fn a:
     a
 
 
-not as Bool: Bool =
-    b:
+not as fn Bool: Bool =
+    fn b:
     if b then False else True
 
 
 # Am I actually using this?
-btw as (a: b): a: c: c =
-    f: a: c:
+btw as fn (fn a: b), a, c: c =
+    fn f, a, c:
     f a
     c
 
 
+cloneUni as fn @a: !a =
+    fn @a:
+    todo "cloneUni"
 
-#mut as a: @a =
-#    a:
-#    todo "mut"
-#
-#destroy as @a:- None =
-#    @a:-
-#    None
-#
-#set as a: @a: None =
-#   new: @m:
-#
-#   destroy m
-#   @m = mut a
 
+cloneImm as fn a: !a =
+    fn a:
+    todo "cloneImm"
 
 
 #
 # TODO move these to Number module?
 #
 
-max as Number: Number: Number =
-    a: b:
-    if a > b then a else: b
+max as fn Number, Number: Number =
+    fn a, b:
+    if a > b then a else b
 
 
-min as Number: Number: Number =
-    a: b:
-    if a < b then a else: b
+min as fn Number, Number: Number =
+    fn a, b:
+    if a < b then a else b
 
 
-clamp as Number: Number: Number: Number =
-    low: high: n:
+clamp as fn Number, Number, Number: Number =
+    fn low, high, n:
     if n < low then low
     else if n > high then high
     else n
 
 
-round as Number: Int =
-    n:
+round as fn Number: Int =
+    fn n:
     todo "round"
 
 
-modBy as Int: Int: Int =
-    a: b:
+modBy as fn Int, Int: Int =
+    fn a, b:
 
     # Native
     todo "modBy is native"

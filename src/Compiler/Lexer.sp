@@ -34,20 +34,17 @@ alias Indent = {
 
 
 alias ReadState = {
-    , buffer as Buffer
+    , nextPos as Int
 
     , column as Int
     , line as Int
     , lineIndent as Int
 
-    , errors as [Error]
-
-    # TODO get rid of this
-    , moduleName as Text
+    , errors as Array (fn Text: Error)
 
     # indent / block stuff
     , soFarThereAreNoTokensInThisLine as Bool
-    , indentStack as [Indent]
+    , indentStack as Array Indent
     , indentStartsABlock as Bool
 
     # state machine
@@ -61,23 +58,22 @@ alias ReadState = {
     }
 
 
-readStateInit as Text: Text: ReadState =
-    moduleName: moduleCode: {
-
-    , buffer = Buffer.init moduleCode
+readStateInit as fn Text: !ReadState =
+    fn moduleCode:
+    {
+    , nextPos = 0
 
     , column = 0
     , line = 0
     , lineIndent = 0
 
-    , errors = []
+    , errors = Array.fromList []
 
     , soFarThereAreNoTokensInThisLine = True
-    , indentStack = []
+    , indentStack = Array.fromList []
     , indentStartsABlock = True
 
     , mode = Indent
-    , moduleName
     , tokenStart = 0
     , tabsOrSpaces = NoTabsOrSpacesYet
     , sections = Array.fromList []
@@ -85,54 +81,58 @@ readStateInit as Text: Text: ReadState =
     }
 
 
-getPos as ReadState@: Int =
-    state@:
-    state.buffer.nextPos
+getPos as fn @ReadState: !Int =
+    fn @state:
+    cloneUni @state.nextPos
 
 
-addError as Text: ReadState@: None =
-    message: state@:
+addError as fn Text, @ReadState: None =
+    fn message, @state:
 
     end =
         getPos @state
 
+    start =
+        cloneUni @state.tokenStart
+
     error =
-        Error.Simple (Pos.P state.moduleName state.tokenStart end) _: [ message ]
+        fn moduleName:
+        (Error.Simple (Pos.P moduleName start end) (fn _: [ message ]))
 
-    @state.errors := error :: state.errors
-    @state.tokenStart := end
-
-
-setMode as Mode: ReadState@: None =
-    mode: state@:
-
-    @state.mode := mode
+    Array.push @state.errors error
+    @state.tokenStart := cloneImm end
 
 
-addIndentToken as Int: Token.Kind: ReadState@: None =
-    pos: kind: state@:
-    Array.push @state.tokens << Token Token.N pos pos kind
+setMode as fn Mode, @ReadState: None =
+    fn mode, @state:
+
+    @state.mode := cloneImm mode
 
 
-updateIndent as Int: Int: Token.Kind: ReadState@: None =
-    start: end: kind: state@:
+addIndentToken as fn Int, Token.Kind, @ReadState: None =
+    fn pos, kind, @state:
+    Array.push @state.tokens (Token Token.N pos pos kind)
 
-    #log "UPD" state.indentStack
 
-    manageIndent = head:
-        #log "MAN" { li = state.lineIndent, he = head.indent }
-        if state.lineIndent > head.indent then
+updateIndent as fn Int, Int, Token.Kind, @ReadState: None =
+    fn start, end, kind, @state:
 
-            newIndent = {
-                , isBlock = state.indentStartsABlock
-                , indent = state.lineIndent
+    manageIndent =
+        fn head:
+
+        lineIndent = cloneUni @state.lineIndent
+
+        if lineIndent > head.indent then
+
+            newIndent =
+                {
+                , isBlock = cloneUni @state.indentStartsABlock
+                , indent = lineIndent
                 }
 
-            #log "NEW" newIndent
+            Array.push @state.indentStack newIndent
 
-            @state.indentStack := newIndent :: state.indentStack
-
-            if state.indentStartsABlock then
+            if cloneUni @state.indentStartsABlock then
                 addIndentToken start Token.BlockStart @state
             else
                 None
@@ -141,10 +141,11 @@ updateIndent as Int: Int: Token.Kind: ReadState@: None =
             # this means that state.lineIndent == head.indent
             if head.isBlock then #and kind /= Token.Comment then
 
-                if state.lineIndent /= 0 then
+                list = Array.toList @state.tokens
+                if cloneUni @state.lineIndent /= 0 or list == [] then
                     None
                 else
-                    Array.push @state.sections (Array.toList state.tokens)
+                    Array.push @state.sections list
                     @state.tokens := Array.fromList []
 
                 addIndentToken start Token.NewSiblingLine @state
@@ -152,10 +153,9 @@ updateIndent as Int: Int: Token.Kind: ReadState@: None =
                 None
 
 
-    try state.indentStack as
-        head :: tail:
-            if state.lineIndent < head.indent then
-                @state.indentStack := tail
+    try Array.pop @state.indentStack as
+        , Just head:
+            if cloneUni @state.lineIndent < head.indent then
                 if head.isBlock then
                     addIndentToken start Token.BlockEnd @state
                 else
@@ -163,61 +163,62 @@ updateIndent as Int: Int: Token.Kind: ReadState@: None =
 
                 updateIndent start end kind @state
             else
+                # Ugly... Would probably be better to get the last element instead without popping it
+                Array.push @state.indentStack head
                 manageIndent head
 
-        []:
+        , Nothing:
             manageIndent { indent = 0, isBlock = True }
 
 
 # TODO Rename to addContentToken
-absAddToken as Int: Int: Token.Kind: ReadState@: None =
-    start: end: kind: state@:
+absAddToken as fn Int, Int, Token.Kind, @ReadState: None =
+    fn start, end, kind, @state:
 
-    #log "ADD" { kind, col = state.column, li = state.lineIndent }
-    if state.soFarThereAreNoTokensInThisLine then
+    if cloneUni @state.soFarThereAreNoTokensInThisLine then
         @state.soFarThereAreNoTokensInThisLine := False
         updateIndent start end kind @state
     else
         None
 
-    indentStartsABlock =
+    !indentStartsABlock =
         try kind as
             # maybe start block after these
-            Token.Then: True
-            Token.Else: True
-            Token.As: True
-            Token.Colon: True
+            , Token.Then: True
+            , Token.Else: True
+            , Token.As: True
+            , Token.Colon: True
 #            Token.ConsumingColon: True
-            Token.Defop: True
+            , Token.Defop: True
 #            Token.Comment: state.indentStartsABlock
-            _: False
+            , _: False
 
     @state.indentStartsABlock := indentStartsABlock
-    Array.push @state.tokens << Token Token.N start end kind
-    @state.tokenStart := end
+    Array.push @state.tokens (Token Token.N start end kind)
+    @state.tokenStart := cloneImm end
 
 
-relAddToken as Int: Int: Token.Kind: ReadState@: None =
-    ds: de: kind: state@:
+relAddToken as fn Int, Int, Token.Kind, @ReadState: None =
+    fn ds, de, kind, @state:
     pos = getPos @state
     absAddToken (pos + ds) (pos + de) kind @state
 
 
-addOneIndentToken as Token.Kind: ReadState@: None =
-    kind: state@:
+addOneIndentToken as fn Token.Kind, @ReadState: None =
+    fn kind, @state:
     pos = getPos @state
-    Array.push @state.tokens << Token Token.N pos pos kind
+    Array.push @state.tokens (Token Token.N pos pos kind)
 
 
-getChunk as ReadState@: Int & Int & Text =
-    state@:
-    start = state.tokenStart
+getChunk as fn Text, @ReadState: Int & Int & Text =
+    fn buffer, @state:
+    start = cloneUni @state.tokenStart
     end = getPos @state
-    start & end & Buffer.slice state.tokenStart end state.buffer
+    start & end & Text.slice start end buffer
 
 
-unindent as Text: Text =
-    raw:
+unindent as fn Text: Text =
+    fn raw:
 
     [#
           blah """hello"""
@@ -237,52 +238,59 @@ unindent as Text: Text =
         lines =
             Text.split "\n" multilineText
 
-        countLeadingSpaces as Text: Int =
-            line:
+        countLeadingSpaces as fn Text: Int =
+            re = Text.startsWithRegex "[ ]*"
+            fn line:
             line
-                >> Text.startsWithRegex "[ ]*"
-                >> Text.length
+            >> re
+            >> Text.length
 
         minLead =
             lines
-                >> List.filter (s: Text.trimLeft s /= "")
-                >> List.map countLeadingSpaces
-                >> List.minimum
-                >> Maybe.withDefault 0
+            >> List.filter (fn s: Text.trimLeft s /= "") __
+            >> List.map countLeadingSpaces __
+            >> List.minimum
+            >> Maybe.withDefault 0 __
 
         lines
-            >> List.map (Text.dropLeft minLead)
-            >> Text.join "\n"
-            >> Text.replaceRegex "\n[ ]*$" ""
+        >> List.map (Text.dropLeft minLead __) __
+        >> Text.join "\n" __
+        >> (Text.replaceRegex "\n[ ]*$") "" __
 
 
 #
 # Words (names, keywords, logical ops)
 #
-isWordStart as Text: Bool =
-    char:
-    Text.startsWithRegex "[a-zA-Z._]" char /= ""
+isWordStart as fn Text: Bool =
+    re = Text.startsWithRegex "[a-zA-Z._]"
+
+    fn char:
+    re char /= ""
 
 
-isWordBody as Text: Bool =
-    char:
-    Text.startsWithRegex "[a-zA-Z./_0-9]" char /= ""
+isWordBody as fn Text: Bool =
+    re = Text.startsWithRegex "[a-zA-Z./_0-9]"
+
+    fn char:
+    re char /= ""
 
 
-startsWithUpperChar as Text: Bool =
-    s:
-    try Text.startsWithRegex "[A-Z]" s as
-        "": False
-        _: True
+startsWithUpperChar as fn Text: Bool =
+    re = Text.startsWithRegex "[A-Z]"
+
+    fn s:
+    try re s as
+        , "": False
+        , _: True
 
 
-addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
-    start: end: modifier: chunk: state@:
+addLowerOrUpperWord as fn Int, Int, Token.NameModifier, Text, @ReadState: None =
+    fn start, end, modifier, chunk, @state:
 
     upperName =
-        maybeModule: name:
+        fn maybeModule, name:
         try modifier as
-            Token.NameNoModifier:
+            , Token.NameNoModifier:
                 word as Token.Word =
                     {
                     , modifier
@@ -294,14 +302,14 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
 
                 absAddToken start end (Token.Word word) @state
 
-            Token.NameStartsWithDot:
+            , Token.NameStartsWithDot:
                 addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
 
 #            Token.NameMutable:
 #                absAddToken start end (Token.UpperName maybeModule name) @state
 
     lowerName =
-        maybeModule: name: attrs:
+        fn maybeModule, name, attrs:
         if List.any startsWithUpperChar attrs then
             addError "attribute names must start with a lowercase letter" @state
         else
@@ -316,20 +324,19 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
                     , name
                     , attrPath = attrs
                     }
-
                 absAddToken start end (Token.Word word) @state
 
     snips =
         Text.split "." chunk
 
-    if List.any (s: s == "") snips then
+    if List.any (fn s: s == "") snips then
         addError "use spaces around `..` to concatenate Text" @state
     else
       try snips as
-        []:
+        , []:
             todo "should not happen"
 
-        [ one ]:
+        , [ one ]:
             # value
             # Type
             # Constructor
@@ -338,7 +345,7 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
             else
                 lowerName Nothing one []
 
-        first :: second :: more:
+        , [first, second, ...more]:
             # value.attr1
             # value.attr1.attr2
             # Module.value
@@ -347,16 +354,16 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
             try startsWithUpperChar first & startsWithUpperChar second as
                 # value.attr1
                 # value.attr1.attr2
-                False & False:
+                , False & False:
                     lowerName Nothing first (second :: more)
 
                 # Module.value
                 # Module.value.attr
                 # Module.value.attr1.attr2
-                True & False:
+                , True & False:
                     lowerName (Just first) second more
 
-                True & True:
+                , True & True:
                     # Module.Type
                     # Module.Constructor
                     if more /= [] then
@@ -364,60 +371,62 @@ addLowerOrUpperWord as Int: Int: Token.NameModifier: Text: ReadState @: None =
                     else
                         upperName (Just first) second
 
-                False & True:
+                , False & True:
                     # something.Something
                     addError "Something wrong with uppercases?" @state
 
 
-addWordToken as Token.NameModifier: ReadState@: None =
-    modifier: state@:
+addWordToken as fn Text, Token.NameModifier, @ReadState: None =
+    fn buffer, modifier, @state:
 
-    start = state.tokenStart
+    start = cloneUni @state.tokenStart
 
     end = getPos @state
 
     ds = (if modifier == Token.NameNoModifier then 0 else 1)
 
-    chunk = Buffer.slice (state.tokenStart + ds) end state.buffer
+    chunk = Text.slice (start + ds) end buffer
 
     maybeKeywordKind =
         try chunk as
-            "fn": Just << Token.Fn
-            "if": Just << Token.If
-            "then": Just << Token.Then
-            "else": Just << Token.Else
-            "try": Just << Token.Try
-            "as": Just << Token.As
-            "with": Just << Token.With
-            "and": Just << Token.Binop Prelude.and_
-            "or": Just << Token.Binop Prelude.or_
-            "__": Just << Token.ArgumentPlaceholder
-            _: Nothing
+            , "fn": Just << Token.Fn
+            , "if": Just << Token.If
+            , "then": Just << Token.Then
+            , "else": Just << Token.Else
+            , "try": Just << Token.Try
+            , "as": Just << Token.As
+            , "with": Just << Token.With
+            , "and": Just << Token.Binop Prelude.and_
+            , "or": Just << Token.Binop Prelude.or_
+            , "__": Just << Token.ArgumentPlaceholder
+            , _: Nothing
 
     try maybeKeywordKind & modifier as
-        Just kind & Token.NameNoModifier:
+        , Just kind & Token.NameNoModifier:
             absAddToken start end kind @state
 
-        Just kind & _:
+        , Just kind & _:
             addError (chunk .. " as a keyword, you can't really use it this way") @state
 
-        _:
+        , _:
             addLowerOrUpperWord start end modifier chunk @state
 
 
 #
 # Number literals
 #
-isNumber as Text: Bool =
-    char:
-    Text.startsWithRegex "[0-9_.]" char /= ""
+isNumber as fn Text: Bool =
+    re = Text.startsWithRegex "[0-9_.]"
+
+    fn char:
+    re char /= ""
 
 
-addNumberToken as ReadState@: None =
-    state@:
+addNumberToken as fn Text, @ReadState: None =
+    fn buffer, @state:
 
     start & end & chunk =
-        getChunk @state
+        getChunk buffer @state
 
     # TODO ensure that there as one or zero dots
     # This as probably best done in lexOne
@@ -426,85 +435,84 @@ addNumberToken as ReadState@: None =
 
     # TODO what about exponential notation?
 
-    @state
-        >> absAddToken start end (Token.NumberLiteral chunk)
+    absAddToken start end (Token.NumberLiteral chunk) @state
 
 
 #
 # Squiggles (ops and symbols)
 #
-isSquiggle as Text: Bool =
-    char:
+isSquiggle as fn Text: Bool =
+    fn char:
     try char as
-       "=": True
-       ":": True
-       "*": True
-       "+": True
-       "-": True
-       "/": True
-       ">": True
-       "<": True
-       "!": True
-       "?": True
-       "&": True
-       "^": True
-       "@": True
-       "$": True
-       _: False
+       , "=": True
+       , ":": True
+       , "*": True
+       , "+": True
+       , "-": True
+       , "/": True
+       , ">": True
+       , "<": True
+       , "!": True
+       , "?": True
+       , "&": True
+       , "^": True
+       , "@": True
+       , "$": True
+       , _: False
 
 
-addSquiggleToken as Bool: ReadState@: None =
-    nextIsSpace: state@:
+addSquiggleToken as fn Text, Bool, @ReadState: None =
+    fn buffer, nextIsSpace, @state:
 
     start & end & chunk =
-        getChunk @state
+        getChunk buffer @state
 
-    add = kind:
-        absAddToken start end kind @state
+    add =
+        absAddToken start end __ @state
 
     try chunk as
-        ":": add << Token.Colon
-        "=": add << Token.Defop
-        "?": add << Token.UniquenessPolymorphismBinop
-        "!": add << Token.Unop Op.UnopUnique
-        "@": add << Token.Unop Op.UnopRecycle
-        "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Op.UnopMinus)
-        "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Op.UnopPlus)
-        op:
+        , ":": add << Token.Colon
+        , "=": add << Token.Defop
+        , "?": add << Token.UniquenessPolymorphismBinop
+        , "!": add << Token.Unop Op.UnopUnique
+        , "@": add << Token.Unop Op.UnopRecycle
+        , "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Op.UnopMinus)
+        , "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Op.UnopPlus)
+        , op:
             try Dict.get chunk Prelude.binopsBySymbol as
-                Just binop:
+                , Just binop:
                     add << Token.Binop binop
-                Nothing:
+                , Nothing:
                     addError ("Invalid operator: `" .. chunk .. "`") @state
 
 
 #
 # Parens and comma
 #
-addParenOrCommaToken as Text: ReadState@: None =
-    char: state@:
+addParenOrCommaToken as fn Text, @ReadState: None =
+    fn char, @state:
 
-    add = kind:
-        relAddToken 0 1 kind @state
+    add =
+        relAddToken 0 1 __ @state
 
     try char as
-        "(": add << Token.RoundParen Token.Open
-        ")": add << Token.RoundParen Token.Closed
-        "[": add << Token.SquareBracket Token.Open
-        "]": add << Token.SquareBracket Token.Closed
-        "{": add << Token.CurlyBrace Token.Open
-        "}": add << Token.CurlyBrace Token.Closed
-        ",": add << Token.Comma
+        , "(": add << Token.RoundParen Token.Open
+        , ")": add << Token.RoundParen Token.Closed
+        , "[": add << Token.SquareBracket Token.Open
+        , "]": add << Token.SquareBracket Token.Closed
+        , "{": add << Token.CurlyBrace Token.Open
+        , "}": add << Token.CurlyBrace Token.Closed
+        , ",": add << Token.Comma
 
         # This shuld never happen?
-        _: addError ("I can't make sense of this piece of text: `" .. char .. "`") @state
+        , _: addError ("I can't make sense of this piece of text: `" .. char .. "`") @state
 
 
 #
 # Outer machine state lexer
 #
-lexOne as Text: ReadState@: None =
-    char: state@:
+lexOne as fn Text, Text, @ReadState: None =
+    fn buffer, char, @state:
 
     # TODO rewrite the whole thing with ReadState mutable?
 
@@ -512,57 +520,57 @@ lexOne as Text: ReadState@: None =
     pos =
         getPos @state
 
-    try state.mode as
+    try cloneUni @state.mode as
 
-        Indent:
-          try state.tabsOrSpaces as
-            Tabs:
-                tryIndent "\t" char @state
+        , Indent:
+          try cloneUni @state.tabsOrSpaces as
+            , Tabs:
+                tryIndent buffer "\t" char @state
 
-            Spaces:
-                tryIndent " " char @state
+            , Spaces:
+                tryIndent buffer " " char @state
 
-            NoTabsOrSpacesYet:
+            , NoTabsOrSpacesYet:
               try char as
-                  " ":
+                  , " ":
                       @state.tabsOrSpaces := Spaces
-                      lexOne char @state
-                  "\t":
+                      lexOne buffer char @state
+                  , "\t":
                       @state.tabsOrSpaces := Tabs
-                      lexOne char @state
-                  _:
-                      tryIndent " " char @state
+                      lexOne buffer char @state
+                  , _:
+                      tryIndent buffer " " char @state
 
-        Default:
+        , Default:
           try char as
-            "":
+            , "":
                 None
 
-            ".":
+            , ".":
                 setMode Dot_One @state
 
 #            "@":
 #                @state.tokenStart := getPos @state
 #                setMode Mutable @state
 
-            "#":
+            , "#":
                 setMode LineComment @state
 
-            "[":
+            , "[":
                 setMode ContentOpeningBlockComment @state
 
-            "\"":
+            , "\"":
                 setMode ContentOpeningQuotes_One @state
 
-            "\n":
+            , "\n":
                 @state.tokenStart := getPos @state + 1
                 @state.soFarThereAreNoTokensInThisLine := True
                 setMode Indent @state
 
-            " ":
+            , " ":
                 @state.tokenStart := getPos @state + 1
 
-            _:
+            , _:
                 @state.tokenStart := getPos @state
                 if isWordStart char then
                     setMode (Word Token.NameNoModifier) @state
@@ -573,10 +581,10 @@ lexOne as Text: ReadState@: None =
                 else if isSquiggle char then
                     setMode Squiggles @state
 
-                else:
+                else
                     addParenOrCommaToken char @state
 
-        Dot_One:
+        , Dot_One:
           if char == "." then
               setMode Dot_Two @state
           else if isWordStart char then
@@ -587,7 +595,7 @@ lexOne as Text: ReadState@: None =
           else
               addError "no idea what this is" @state
 
-        Dot_Two:
+        , Dot_Two:
           if char == "." then
               relAddToken (0 - 1) 1 Token.ThreeDots @state
               setMode Default @state
@@ -595,9 +603,9 @@ lexOne as Text: ReadState@: None =
           else
               relAddToken (0 - 1) 1 (Token.Binop Prelude.textConcat) @state
               setMode Default @state
-              lexOne char @state
+              lexOne buffer char @state
 
-        Mutable:
+        , Mutable:
 #            if isWordStart char then
 #                setMode (Word Token.NameMutable) @state
 
@@ -607,80 +615,79 @@ lexOne as Text: ReadState@: None =
             else
                 addError "no idea what this is" @state
 
-        Word modifier:
+        , Word modifier:
             if isWordBody char then
               None
 
             else
-                  addWordToken modifier @state
+                  addWordToken buffer modifier @state
                   setMode Default @state
-                  lexOne char @state
+                  lexOne buffer char @state
 
-        NumberLiteral:
+        , NumberLiteral:
             if isNumber char then
-              None
-
+                None
             else
-                  addNumberToken @state
-                  setMode Default @state
-                  lexOne char @state
+                addNumberToken buffer @state
+                setMode Default @state
+                lexOne buffer char @state
 
-        Squiggles:
+        , Squiggles:
             if isSquiggle char then
-              None
-
+                None
             else
-                  addSquiggleToken (char == " ") @state
-                  setMode Default @state
-                  lexOne char @state
+                addSquiggleToken buffer (char == " ") @state
+                setMode Default @state
+                lexOne buffer char @state
 
-        ContentOpeningQuotes_One:
+        , ContentOpeningQuotes_One:
           if char == "\"" then
-                setMode ContentOpeningQuotes_Two @state
+              setMode ContentOpeningQuotes_Two @state
 
           else if char == "" then
-                  addError "there's no closing quotes" @state
+              addError "there's no closing quotes" @state
 
-          else:
-                @state.tokenStart := getPos @state - 1
-                setMode (SingleQuote { lastEscape = -1 }) @state
-                lexOne char @state
+          else
+              @state.tokenStart := getPos @state - 1
+              setMode (SingleQuote { lastEscape = -1 }) @state
+              lexOne buffer char @state
 
-        ContentOpeningQuotes_Two:
+        , ContentOpeningQuotes_Two:
           if char == "\"" then
-                @state.tokenStart := getPos @state - 2
-                setMode (TripleQuote { lastEscape = -1, closingQuotes = 0 }) @state
-          else:
-                # TODO replace with unary `-` once it works
-                relAddToken (0 - 2) 0 (Token.TextLiteral "") @state
-                setMode Default @state
-                lexOne char @state
+              @state.tokenStart := getPos @state - 2
+              setMode (TripleQuote { lastEscape = -1, closingQuotes = 0 }) @state
+          else
+              # TODO replace with unary `-` once it works
+              relAddToken (0 - 2) 0 (Token.TextLiteral "") @state
+              setMode Default @state
+              lexOne buffer char @state
 
-        SingleQuote { lastEscape }:
+
+        , SingleQuote { lastEscape }:
           previousIsEscape =
-            pos == lastEscape + 1
+              pos == lastEscape + 1
 
           if char == "" then
-                addError "there's no closing quotes" @state
+              addError "there's no closing quotes" @state
 
           else if previousIsEscape then
               setMode (SingleQuote { lastEscape }) @state
 
           else
             try char as
-              "\"":
-                  start = state.tokenStart
+              , "\"":
+                  start = cloneUni @state.tokenStart
                   end = pos + 1
 
                   value =
-                      state.buffer
-                          >> Buffer.slice (start + 1) (end - 1)
-                          >> Text.replace "\\\"" "\""
+                      buffer
+                      >> Text.slice (start + 1) (end - 1) __
+                      >> Text.replace "\\\"" "\"" __
 
                   absAddToken start end (Token.TextLiteral value) @state
                   setMode Default @state
 
-              "\\":
+              , "\\":
                   setMode (SingleQuote { lastEscape = pos }) @state
 
               [# This should actually be valid, but fixed by spfmt
@@ -693,91 +700,91 @@ lexOne as Text: ReadState@: None =
                       >> resError start state
               #]
 
-              _:
+              , _:
                 None
 
-        TripleQuote { lastEscape, closingQuotes }:
+        , TripleQuote { lastEscape, closingQuotes }:
           previousIsEscape =
-            pos == lastEscape + 1
+              pos == lastEscape + 1
 
           if char == "" then
-                  addError "unterminated triple quotes" @state
+              addError "unterminated triple quotes" @state
 
           else if previousIsEscape then
-                  setMode (TripleQuote { lastEscape, closingQuotes = 0 }) @state
+              setMode (TripleQuote { lastEscape, closingQuotes = 0 }) @state
 
           else
              try char as
-               "\"":
+               , "\"":
                   if closingQuotes == 2 then
                     # TODO maybe move away the finalization code from here?
-                    start = state.tokenStart
+                    start = cloneUni @state.tokenStart
                     end = pos + 1
 
                     value =
-                        state.buffer
-                            >> Buffer.slice (start + 3) (end - 3)
-                            >> unindent
+                        buffer
+                        >> Text.slice (start + 3) (end - 3) __
+                        >> unindent
 
                     absAddToken start end (Token.TextLiteral value) @state
                     setMode Default @state
                   else
                     setMode (TripleQuote { lastEscape, closingQuotes = closingQuotes + 1 }) @state
 
-               "\\":
+               , "\\":
                     setMode (TripleQuote { lastEscape = pos, closingQuotes = 0 }) @state
 
-               _:
+               , _:
                     setMode (TripleQuote { lastEscape, closingQuotes = 0 }) @state
 
-        LineComment:
+
+        , LineComment:
           if char == "\n" or char == "" then
-#                  absAddToken state.tokenStart (getPos @state) Token.Comment @state
-                  setMode Default @state
-                  lexOne char @state
+              setMode Default @state
+              lexOne buffer char @state
           else
               None
 
-        ContentOpeningBlockComment:
-          if char == "#" then
-                setMode (BlockComment { nesting = 1, previous = "" }) @state
-          else:
-                # TODO replace with -1 once it as supported
-                relAddToken (0 - 1) 0 (Token.SquareBracket Token.Open) @state
-                setMode Default @state
-                lexOne char @state
 
-        BlockComment { nesting, previous }:
-          continueWithDeltaNesting = dn:
+        , ContentOpeningBlockComment:
+          if char == "#" then
+              setMode (BlockComment { nesting = 1, previous = "" }) @state
+          else
+              # TODO replace with -1 once it as supported
+              relAddToken (0 - 1) 0 (Token.SquareBracket Token.Open) @state
+              setMode Default @state
+              lexOne buffer char @state
+
+        , BlockComment { nesting, previous }:
+          continueWithDeltaNesting =
+              fn dn:
               setMode (BlockComment { nesting = nesting + dn, previous = char }) @state
 
           try previous & char as
-            "[" & "#":
+            , "[" & "#":
                 continueWithDeltaNesting 1
 
-            "#" & "]":
+            , "#" & "]":
                 if nesting > 1 then
-                  continueWithDeltaNesting (0 - 1)
+                    continueWithDeltaNesting (0 - 1)
                 else
-#                      absAddToken state.tokenStart (getPos @state) Token.Comment @state
-                      setMode Default @state
+                    setMode Default @state
 
-            _ & "":
-                    addError "unterminated block comment" @state
+            , _ & "":
+                addError "unterminated block comment" @state
 
-            _:
+            , _:
                 continueWithDeltaNesting 0
 
 
-tryIndent as Text: Text: ReadState@: None =
-    indentChar: char: state@:
+tryIndent as fn Text, Text, Text, @ReadState: None =
+    fn buffer, indentChar, char, @state:
 
     if char == indentChar or char == "" then
         None
 
     else if char == " " or char == "\t" then
-        @state
-            >> addError "mixing tabs and spaces!"
+        addError "mixing tabs and spaces!" @state
 
     else if char == "\n" then
         # line is empty, ignore
@@ -787,34 +794,36 @@ tryIndent as Text: Text: ReadState@: None =
     else if char == "#" then
         setMode LineComment @state
     else
-        @state.lineIndent := state.column
+        @state.lineIndent := cloneUni @state.column
         setMode Default @state
-        lexOne char @state
+        lexOne buffer char @state
 
 
-closeOpenBlocks as ReadState@: None =
-    state@:
+closeOpenBlocks as fn @ReadState: None =
+    fn @state:
 
     pos =
         getPos @state
 
-    List.each state.indentStack _:
-        Array.push @state.tokens << Token Token.N pos pos Token.BlockEnd
+    s = Array.toList @state.indentStack
 
-    Array.push @state.sections (Array.toList state.tokens)
+    List.each s fn _:
+        Array.push @state.tokens (Token Token.N pos pos Token.BlockEnd)
+
+    Array.push @state.sections (Array.toList @state.tokens)
 
 
-lexer as Text: Text: Res [[Token]] =
-    moduleName: moduleCode:
+lexer as fn Text, Text: Res [[Token]] =
+    fn moduleName, moduleCode:
 
     Debug.benchStart None
 
-    state @= readStateInit moduleName moduleCode
+    !state = readStateInit moduleCode
 
-    Text.forEach moduleCode char:
-        lexOne char @state
+    Text.forEach moduleCode fn char:
+        lexOne moduleCode char @state
 
-        @state.buffer.nextPos += 1
+        @state.nextPos += 1
 
         if char == "\n" then
             @state.line += 1
@@ -823,17 +832,19 @@ lexer as Text: Text: Res [[Token]] =
             @state.column += 1
 
 
-    lexOne "" @state
+    lexOne moduleCode "" @state
 
-    if state.errors == [] then
-        closeOpenBlocks @state
-        state.sections
-            >> Array.toList
+    Debug.benchStop "lexer"
+
+    try Array.toList @state.errors as
+        , []:
+            closeOpenBlocks @state
+            Array.toList @state.sections
             >> Ok
-            >> btw Debug.benchStop "lexer"
-    else
-        state.errors
+
+        , errors:
+            errors
+            >> List.map (fn e: e moduleName) __
             >> Error.Nested
             >> Err
-            >> btw Debug.benchStop "lexer"
 

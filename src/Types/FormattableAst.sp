@@ -117,17 +117,17 @@ alias RecordAttribute =
     }
 
 
-sepToList as SepList sep item: [item] =
-    (head & tuples):
+sepToList as fn SepList sep item: [item] =
+    fn (head & tuples):
     head :: List.map Tuple.second tuples
 
 
-statementPos as Statement: Pos =
-    statement:
+statementPos as fn Statement: Pos =
+    fn statement:
     try statement as
-        Evaluation (Expression pos expr_): pos
+        , Evaluation (Expression pos expr_): pos
         # TODO: the position should encompass the WHOLE definition, not just its start
-        ValueDef { pattern = Expression pos expr_, nonFn, body }: pos
-        AliasDef { name = At pos _, args, type }: pos
-        UnionDef { name = At pos _, args, constructors }: pos
+        , ValueDef { pattern = Expression pos expr_, nonFn, body }: pos
+        , AliasDef { name = At pos _, args, type }: pos
+        , UnionDef { name = At pos _, args, constructors }: pos
 

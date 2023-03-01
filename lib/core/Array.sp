@@ -4,37 +4,42 @@ union Array a =
     Array__ (Array a)
 
 
-push as Array a @: a: None =
-    array@: item:
+push as fn @Array a, a: None =
+    fn @array, item:
     todo "native"
 
 
-pop as Array a @: Maybe a =
-    array@:
+pop as fn @Array a: Maybe a =
+    fn @array:
     todo "native"
 
 
-get as Array a: Int: Maybe a =
-    array: index:
+get as fn @Array a, Int: Maybe a =
+    fn @array, index:
     todo "native"
 
 
-set as Array a @: Int: a: Bool =
-    array@: index: item:
+set as fn @Array a, Int, a: Bool =
+    fn @array, index, item:
     todo "native"
 
 
-sortBy as Array a @: (a: b): None with b NonFunction =
-    array@: f:
+sortBy as fn @Array a, (fn a: b): None with b NonFunction =
+    fn @array, f:
     todo "native"
 
 
-# TODO List.toArray
-fromList as [a]: Array a =
-    list:
+fromList as fn [a]: !Array a =
+    fn list:
     todo "native"
 
 
-toList as Array a: [a] =
-    array:
+toList as fn @Array a: [a] =
+    fn @array:
     todo "native"
+
+
+each as fn @Array a, (fn a: None): None =
+    fn @array, f:
+    todo "native"
+

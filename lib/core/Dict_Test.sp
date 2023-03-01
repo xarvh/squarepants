@@ -1,6 +1,6 @@
 
-valueTest as Text: (None: a): Test.CodeExpectation a: Test =
-    Test.valueTest toHuman
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+    Test.valueTest toHuman __ __ __
 
 
 tests as Test =
@@ -18,21 +18,21 @@ insertAndGet as Test =
             """
             get, success
             """
-            _:
+            fn _:
                 Dict.empty
-                    >> Dict.insert (Just "a") 1
-                    >> Dict.insert (Just "b") 2
-                    >> Dict.get (Just "a")
+                    >> Dict.insert (Just "a") 1 __
+                    >> Dict.insert (Just "b") 2 __
+                    >> Dict.get (Just "a") __
             (Test.isOkAndEqualTo << Just 1)
         , valueTest
             """
             get, fail
             """
-            _:
+            fn _:
                 Dict.empty
-                    >> Dict.insert (Just "a") 1
-                    >> Dict.insert (Just "b") 2
-                    >> Dict.get (Just "c")
+                    >> Dict.insert (Just "a") 1 __
+                    >> Dict.insert (Just "b") 2 __
+                    >> Dict.get (Just "c") __
             (Test.isOkAndEqualTo << Nothing)
         ]
 
@@ -44,13 +44,13 @@ lists as Test =
             """
             keys
             """
-            _:
+            fn _:
                 Dict.empty
-                    >> Dict.insert (Just "a") 1
-                    >> Dict.insert (Just "b") 2
-                    >> Dict.insert Nothing 2
+                    >> Dict.insert (Just "a") 1 __
+                    >> Dict.insert (Just "b") 2 __
+                    >> Dict.insert Nothing 2 __
                     >> Dict.keys
-                    >> List.sortBy identity
+                    >> List.sortBy identity __
             (Test.isOkAndEqualTo
                 [
                 , Just "a"
@@ -62,12 +62,12 @@ lists as Test =
             """
             values
             """
-            _:
+            fn _:
                 Dict.empty
-                    >> Dict.insert (Just "a") { a = 1 }
-                    >> Dict.insert (Just "b") { a = 3 }
+                    >> Dict.insert (Just "a") { a = 1 } __
+                    >> Dict.insert (Just "b") { a = 3 } __
                     >> Dict.values
-                    >> List.sortBy identity
+                    >> List.sortBy identity __
             (Test.isOkAndEqualTo
                 [
                 , { a = 1 }

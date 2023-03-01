@@ -172,7 +172,6 @@ initEnv as Env =
 union Error_ =
     , ErrorUnresolvableUniqueness UnivarEquality Uniqueness
     , ErrorShouldBeUnique
-    , ErrorIfConditionMustBeBool
     , ErrorCircularValue
     , ErrorVariableNotFound Ref
     , ErrorConstructorNotFound USR
@@ -923,7 +922,7 @@ doTry as Env: Pos: TA.RawType: CA.Expression: [Uniqueness & CA.Pattern & CA.Expr
             typedExpression & expressionType =
                 inferExpression newEnv exp @state
 
-            addEquality newEnv (CA.patternPos pa) Why_TryExpression expectedRaw expressionType.raw @state
+            addEquality newEnv (CA.expressionPos exp) Why_TryExpression expectedRaw expressionType.raw @state
 
             u = inferUni uniX expressionType.uni
             l = (patternOut.typedPattern & typedExpression) :: acc
@@ -1380,7 +1379,7 @@ checkExpression as Env: TA.FullType: CA.Expression: State@: TA.Expression =
             typedCondition & conditionType =
                 inferExpression { env with context = Context_IfCondition } condition @state
 
-            addErrorIf (conditionType.raw /= coreTypeBool) env pos ErrorIfConditionMustBeBool @state
+            addEquality env pos Why_IfCondition coreTypeBool conditionType.raw @state
 
             typedTrue =
                 checkExpression { env with context = Context_IfTrue } expectedType true @state

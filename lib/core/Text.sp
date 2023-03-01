@@ -3,140 +3,141 @@
 #
 
 
-forEach as Text: (Text: None): None =
-    text: f:
+forEach as fn Text, (fn Text: None): None =
+    fn text, f:
     todo "native"
 
 
-length as Text: Int =
-    s:
+length as fn Text: Int =
+    fn s:
     todo "native"
 
 
-slice as Int: Int: Text: Text =
-    start: end: s:
+slice as fn Int, Int, Text: Text =
+    fn start, end, s:
     todo "native"
 
 
-fromNumber as Number: Text =
-    n:
+fromNumber as fn Number: Text =
+    fn n:
     todo "native"
 
 
-toNumber as Text: Maybe Number =
-    s:
+toNumber as fn Text: Maybe Number =
+    fn s:
     todo "native"
 
 
-startsWith as Text: Text: Bool =
-    sub: s:
+startsWith as fn Text, Text: Bool =
+    fn sub, s:
     todo "native"
 
 
-trimLeft as Text: Text =
-    s:
+trimLeft as fn Text: Text =
+    fn s:
     todo "native"
 
 
-dropLeft as Int: Text: Text =
-    n: s:
+dropLeft as fn Int, Text: Text =
+    fn n, s:
     todo "native"
 
 
-dropRight as Int: Text: Text =
-    n: s:
+dropRight as fn Int, Text: Text =
+    fn n, s:
 
     if n > 0 then
-        # TODO use -n once the parser is fixed
-        slice 0 (0 - n) s
-    else:
+        slice 0 -n s
+    else
         s
 
 
-padLeft as Int: Text: Text: Text =
-    minLength: pad: s:
+padLeft as fn Int, Text, Text: Text =
+    fn minLength, pad, s:
 
     textLength = Text.length s
 
     if textLength < minLength then
       times = (textLength - minLength) / Text.length pad
       repeat times pad .. s
-    else:
+    else
       s
 
 
-padRight as Int: Text: Text: Text =
-    minLength: pad: s:
+padRight as fn Int, Text, Text: Text =
+    fn minLength, pad, s:
 
     textLength = Text.length s
 
     if textLength < minLength then
       times = (textLength - minLength) / Text.length pad
       s .. repeat times pad
-    else:
+    else
       s
 
 
-repeat as Int: Text: Text =
-    n: s:
+repeat as fn Int, Text: Text =
+    fn n, s:
 
-    join "" << List.repeat n s
+    join "" (List.repeat n s)
 
 
-replace as Text: Text: Text: Text =
-    toRemove: toPut: s:
+replace as fn Text, Text, Text: Text =
+    fn toRemove, toPut, s:
 
     # TODO use a native
-    s >> Text.split toRemove >> Text.join toPut
+    s
+    >> Text.split toRemove __
+    >> Text.join toPut __
 
 
 # HACK
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
-startsWithRegex as Text: Text: Text =
-    regex: s:
+startsWithRegex as fn Text: fn Text: Text =
+    fn regex: fn s:
     todo "native"
 
 
-replaceRegex as Text: Text: Text: Text =
-    regex: replaceWith: s:
+replaceRegex as fn Text: fn Text, Text: Text =
+    fn regex: fn replaceWith, s:
     todo "native"
 
 
-split as Text: Text: [ Text ] =
-    separator: target:
+split as fn Text, Text: [ Text ] =
+    fn separator, target:
     todo "native"
 
 
-contains as Text: Text: Bool =
-    sub: str:
+contains as fn Text, Text: Bool =
+    fn sub, str:
 
     # TODO use a native
     try split sub str as
-      [ _ ]: False
-      _: True
+      , [ _ ]: False
+      , _: True
 
 #
 # Non native functions
 #
 
 
-join as Text: [Text]: Text =
-    sep: listOfText:
+join as fn Text, [Text]: Text =
+    fn sep, listOfText:
 
     try listOfText as
-        Core.Nil:
+        , Core.Nil:
           ""
 
-        Core.Cons head tail:
-          rec as [ Text ]: Text: Text =
-            ls: acc:
+        , Core.Cons head tail:
+          rec as fn [ Text ], Text: Text =
+            fn ls, acc:
 
             try ls as
-              Core.Nil:
+              , Core.Nil:
                 acc
-              Core.Cons h t:
-                rec t << acc .. sep .. h
+              , Core.Cons h t:
+                rec t (acc .. sep .. h)
 
           rec tail head
 

@@ -1,5 +1,5 @@
 union Test =
-    , Single Text Text (None: TestOutcome)
+    , Single Text Text (fn None: TestOutcome)
     , Group Text [ Test ]
     , NotNow Test
 
@@ -10,13 +10,13 @@ union TestOutcome =
     , Error Text
 
 
-maybeToOutcome as Maybe Text: TestOutcome =
-    m:
+maybeToOutcome as fn Maybe Text: TestOutcome =
+    fn m:
     try m as
-        Just e:
+        , Just e:
             Error e
 
-        Nothing:
+        , Nothing:
             Success
 
 
@@ -26,63 +26,64 @@ maybeToOutcome as Maybe Text: TestOutcome =
 
 
 union CodeExpectation ok =
-    , CodeExpectation ((ok: Text): Result Text ok: Maybe Text)
+    , CodeExpectation (fn (fn ok: Text), Result Text ok: Maybe Text)
 
 
-valueTest as (a: Text): Text: (None: a): CodeExpectation a: Test =
-    toText: title: generateValue: ce:
+valueTest as fn (fn a: Text), Text, (fn None: a), CodeExpectation a: Test =
+    fn toText, title, generateValue, ce:
 
     CodeExpectation toMaybeError =
         ce
 
-    Single title "" _:
+    Single title "" fn _:
       None
         >> generateValue
         >> Ok
-        >> toMaybeError toText
+        >> toMaybeError toText __
         >> maybeToOutcome
 
 
-codeTest as (ok: Text): Text: Text: (Text: Result Text ok): CodeExpectation ok: Test =
-    toText: title: code: functionToTest: ce:
+codeTest as fn (fn ok: Text), Text, Text, (fn Text: Result Text ok), CodeExpectation ok: Test =
+    fn toText, title, code, functionToTest, ce:
 
     CodeExpectation toMaybeError =
         ce
 
-    Single title code _:
+    Single title code fn _:
         code
             >> functionToTest
-            >> toMaybeError toText
+            >> toMaybeError toText __
             >> maybeToOutcome
 
 
-freeform as (ok: Maybe Text): CodeExpectation ok =
-    test:
-    CodeExpectation << toText: result:
+freeform as fn (fn ok: Maybe Text): CodeExpectation ok =
+    fn test:
+
+    CodeExpectation << fn toText, result:
     try result as
-        Err e: Just e
-        Ok actualOk: test actualOk
+        , Err e: Just e
+        , Ok actualOk: test actualOk
 
 
 isOk as CodeExpectation ok =
-    CodeExpectation toText: result:
+    CodeExpectation fn toText, result:
         try result as
-            Err e:
+            , Err e:
                 Just e
 
-            Ok actualOk:
+            , Ok actualOk:
                 Nothing
 
 
-isOkAndEqualTo as ok: CodeExpectation ok =
-    expectedOk:
+isOkAndEqualTo as fn ok: CodeExpectation ok =
+    fn expectedOk:
 
-    CodeExpectation toText: result:
+    CodeExpectation fn toText, result:
       try result as
-          Err e:
+          , Err e:
               Just e
 
-          Ok actualOk:
+          , Ok actualOk:
               if actualOk == expectedOk then
                   Nothing
               else
@@ -92,25 +93,25 @@ isOkAndEqualTo as ok: CodeExpectation ok =
                   , "actual = "
                   , toText actualOk
                   ]
-                      >> Text.join "\n"
+                      >> Text.join "\n" __
                       >> Just
 
-errorContains as [Text]: CodeExpectation ok =
-    snippets:
+errorContains as fn [Text]: CodeExpectation ok =
+    fn snippets:
 
-    CodeExpectation toText: result:
+    CodeExpectation fn toText, result:
       try result as
-          Ok ok:
+          , Ok ok:
               Just << "I was expecting an error, but got: Ok " .. toText ok
 
-          Err e:
+          , Err e:
               missing =
-                  snippets >> List.filter sn: not (Text.contains sn e)
+                  snippets >> List.filter (fn sn: not (Text.contains sn e)) __
               if missing == [] then
                   Nothing
-              else:
+              else
                   indentedError =
-                      e >> Text.split "\n" >> List.map (l: "    " .. l) >> Text.join "\n"
+                      e >> Text.split "\n" __ >> List.map (fn l: "    " .. l) __ >> Text.join "\n" __
 
                   Just << "Error message:\n\n" .. indentedError .. "\n\nis missing snippets: " .. Text.join ", " missing
 
@@ -123,55 +124,56 @@ errorContains as [Text]: CodeExpectation ok =
 alias T = {
     , name as Text
     , code as Text
-    , getOutcome as None: TestOutcome
+    , getOutcome as fn None: TestOutcome
     }
 
 
-outcomesRec as Text: Test: [T]: [T] =
-    path: test: accum:
+outcomesRec as fn Text, Test, [T]: [T] =
+    fn path, test, accum:
 
     try test as
-        Single name code f:
+        , Single name code f:
               { name = path .. name, code, getOutcome = f } :: accum
 
-        NotNow t:
-            { name = path .. getName t, code = "", getOutcome = None: Skipped } :: accum
+        , NotNow t:
+              thing as T = { name = path .. getName t, code = "", getOutcome = fn None: Skipped }
+              thing :: accum
 
-        Group pathSegment ts:
-            List.for ts (outcomesRec (path .. pathSegment .. " / ")) accum
+        , Group pathSegment ts:
+              List.for accum ts (outcomesRec (path .. pathSegment .. " / ") __ __)
 
 
-getName as Test: Text =
-    test:
+getName as fn Test: Text =
+    fn test:
 
     try test as
-        Single n code f:
+        , Single n code f:
             n
 
-        Group n ls:
+        , Group n ls:
             n
 
-        NotNow t:
+        , NotNow t:
             getName t
 
 
-flattenAndRun as [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome }] =
-    tests:
+flattenAndRun as fn [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome }] =
+    fn tests:
 
     flattened =
         outcomesRec "" (Group "" tests) []
-        >> List.map r: if Text.contains "SKIP" r.name then { r with getOutcome = None: Skipped } else r
+        >> List.map (fn r: if Text.contains "SKIP" r.name then { r with getOutcome = fn None: Skipped } else r) __
 
     onlies =
         flattened
-        >> List.filter r: Text.contains "ONLY" r.name
+        >> List.filter (fn r: Text.contains "ONLY" r.name) __
 
     runnable =
         if onlies /= [] then onlies else flattened
 
 
     runTest =
-        r:
+        fn r:
         { name, code, getOutcome } = r
         { name, code, outcome = getOutcome None }
 
@@ -179,19 +181,16 @@ flattenAndRun as [ Test ]: [{ name as Text, code as Text, outcome as TestOutcome
     List.map runTest runnable
 
 
-
-
-
-errorsFirst as TestOutcome: Number =
-    outcome:
+errorsFirst as fn TestOutcome: Number =
+    fn outcome:
 
     try outcome as
-        Error e:
-            0 - 1
+        , Error e:
+            -1
 
-        Skipped:
+        , Skipped:
             0
 
-        Success:
+        , Success:
             1
 

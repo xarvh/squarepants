@@ -1,57 +1,40 @@
 
 
 union Hash k v =
-    Hash__ (Hash k v)
+    , Hash__ (Hash k v)
 
 
-empty as Hash k v with k NonFunction =
-    # I can't believe it worked
-    Hash__ << todo "native"
-
-
-insert as Hash k v @: k: v: None with k NonFunction =
-    h@: k: v:
+insert as fn @Hash k v, k, v: None with k NonFunction =
+    fn @h, k, v:
     todo "native"
 
 
-remove as Hash k v @: k: None with k NonFunction =
-    h@: k:
+remove as fn @Hash k v, k: None with k NonFunction =
+    fn @h, k:
     todo "native"
 
 
-get as Hash k v: k: Maybe v with k NonFunction =
-    h: k:
+get as fn @Hash k v, k: Maybe v with k NonFunction =
+    fn @h, k:
     todo "native"
 
 
-for as Hash k v: (k: v: a: a): a: a with k NonFunction =
-    h: f: a:
+for as fn @Hash k v, (fn k, v, a: a), a: a with k NonFunction =
+    fn @h, f, a:
     todo "native"
 
 
-each as Hash k v: (k: v: None): None with k NonFunction =
-    h: f:
+each as fn @Hash k v, (fn k, v: None): None with k NonFunction =
+    fn @h, f:
     todo "native"
 
 
-fromList as [k & v]: Hash k v with k NonFunction =
-    l:
-    h @= empty
-    List.each l (k & v):
-        insert @h k v
-    h
+fromList as fn [k & v]: !Hash k v with k NonFunction =
+    fn l:
+    todo "native"
 
 
-toList as Hash k v: [k & v] with k NonFunction =
-    h:
-    [] >> for h k: v: l: (k & v) :: l
-
-
-# TODO
-#fromDict as Dict k v: Hash k v with k NonFunction =
-#    d:
-#
-#
-#toDict as Hash k v: Dict k v: with k NonFunction =
-#    h:
+toList as fn @Hash k v: [k & v] with k NonFunction =
+    fn @h:
+    for @h (fn k, v, l: [k & v, ...l]) []
 

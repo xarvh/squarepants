@@ -3,53 +3,53 @@ alias Int =
     Number
 
 
-coreUsr as Text: USR =
-    USR (UMR Meta.Core "Core")
+coreUsr as fn Text: USR =
+    USR (UMR Meta.Core "Core") __
 
 
-listUsr as Text: USR =
-    USR (UMR Meta.Core "List")
+listUsr as fn Text: USR =
+    USR (UMR Meta.Core "List") __
 
 
-textUsr as Text: USR =
-    USR (UMR Meta.Core "Text")
+textUsr as fn Text: USR =
+    USR (UMR Meta.Core "Text") __
 
 
-numberUsr as Text: USR =
-    USR (UMR Meta.Core "Number")
+numberUsr as fn Text: USR =
+    USR (UMR Meta.Core "Number") __
 
 
-debugUsr as Text: USR =
-    USR (UMR Meta.Core "Debug")
+debugUsr as fn Text: USR =
+    USR (UMR Meta.Core "Debug") __
 
 
-tupleUsr as Text: USR =
-    USR (UMR Meta.Core "Tuple")
+tupleUsr as fn Text: USR =
+    USR (UMR Meta.Core "Tuple") __
 
 
 #
 # Helpers
 #
 
-tyVar as Name: CA.RawType =
-    name:
+tyVar as fn Name: CA.RawType =
+    fn name:
     CA.TypeAnnotationVariable Pos.N name
 
 
-tyFn as [CA.RawType]: CA.RawType: CA.RawType =
-    pars: to:
+tyFn as fn [CA.RawType], CA.RawType: CA.RawType =
+    fn pars, to:
     CA.TypeFn Pos.N
-        (List.map (p: CA.ParSp (toImm p)) pars)
+        (List.map (fn p: CA.ParSp (toImm p)) pars)
         (toImm to)
 
 
-typeBinop as CA.RawType: CA.RawType: CA.RawType: CA.RawType =
-    left: right: return:
+typeBinop as fn CA.RawType, CA.RawType, CA.RawType: CA.RawType =
+    fn left, right, return:
     tyFn [left, right] return
 
 
-typeBinopUnique as CA.RawType: CA.RawType =
-    ty:
+typeBinopUnique as fn CA.RawType: CA.RawType =
+    fn ty:
     CA.TypeFn Pos.N [ CA.ParSp (toImm ty), CA.ParSp (toImm ty)] (toUni ty)
 
 
@@ -102,7 +102,7 @@ binops as [Op.Binop] = [
 
 
 binopsBySymbol as Dict Text Op.Binop =
-    Dict.empty >> List.for binops (bop: Dict.insert bop.symbol bop)
+    List.for Dict.empty binops (fn bop, d: Dict.insert bop.symbol bop d)
 
 
 #
@@ -160,10 +160,10 @@ tuple as Op.Binop = {
     , associativity = Op.NonAssociative
     , type =
         Dict.empty
-            >> Dict.insert "first" (tyVar "a")
-            >> Dict.insert "second" (tyVar "b")
-            >> CA.TypeRecord Pos.N
-            >> typeBinop (tyVar "a") (tyVar "b")
+        >> Dict.insert "first" (tyVar "a") __
+        >> Dict.insert "second" (tyVar "b") __
+        >> CA.TypeRecord Pos.N __
+        >> typeBinop (tyVar "a") (tyVar "b") __
     , nonFn = []
     }
 
@@ -415,8 +415,8 @@ alias ModuleByUmr =
     Dict UMR (CA.Module)
 
 
-insertInModule as USR: CA.RawType: [Name]: ModuleByUmr: ModuleByUmr =
-  usr: type: nonFn: mo:
+insertInModule as fn USR, CA.RawType, [Name], ModuleByUmr: ModuleByUmr =
+  fn usr, type, nonFn, mo:
 
   USR umr name =
       usr
@@ -425,14 +425,17 @@ insertInModule as USR: CA.RawType: [Name]: ModuleByUmr: ModuleByUmr =
     mo
   else
 
-    tyvars =
-        type
-        >> CA.typeTyvars
-        >> Dict.map tyvarName: pos:
+    zzz =
+      fn tyvarName, pos:
             {
             #, annotatedAt = Pos.N
             , allowFunctions = not (List.member tyvarName nonFn)
             }
+
+    tyvars =
+        type
+        >> CA.typeTyvars
+        >> Dict.map zzz __
 
     def as CA.ValueDef =
         {
@@ -449,8 +452,8 @@ insertInModule as USR: CA.RawType: [Name]: ModuleByUmr: ModuleByUmr =
         , directValueDeps = Dict.empty
         }
 
-    update as Maybe CA.Module: Maybe CA.Module =
-        maybeModule:
+    update as fn Maybe CA.Module: Maybe CA.Module =
+        fn maybeModule:
         maybeModule
         >> Maybe.withDefault {
             , umr
@@ -459,33 +462,34 @@ insertInModule as USR: CA.RawType: [Name]: ModuleByUmr: ModuleByUmr =
             , unionDefs = Dict.empty
             , valueDefs = Dict.empty
             }
-        >> module: { module with valueDefs = Dict.insert def.pattern def .valueDefs }
+            __
+        >> fn module: { module with valueDefs = Dict.insert def.pattern def .valueDefs }
         >> Just
 
     Dict.update umr update mo
 
 
-insertUnop as Op.Unop: ModuleByUmr: ModuleByUmr =
-    unop:
-    insertInModule unop.usr unop.type []
+insertUnop as fn Op.Unop, ModuleByUmr: ModuleByUmr =
+    fn unop, m:
+    insertInModule unop.usr unop.type [] m
 
 
-insertBinop as Op.Binop: ModuleByUmr: ModuleByUmr =
-    binop:
-    insertInModule binop.usr binop.type binop.nonFn
+insertBinop as fn Op.Binop, ModuleByUmr: ModuleByUmr =
+    fn binop, m:
+    insertInModule binop.usr binop.type binop.nonFn m
 
 
-insertFunction as Function: ModuleByUmr: ModuleByUmr =
-    function:
-    insertInModule function.usr function.type function.nonFn
+insertFunction as fn Function, ModuleByUmr: ModuleByUmr =
+    fn function, m:
+    insertInModule function.usr function.type function.nonFn m
 
 
 coreModulesByUmr as Dict UMR CA.Module =
     Dict.empty
-    >> insertUnop unaryPlus
-    >> insertUnop unaryMinus
-    >> List.for binops insertBinop
-    >> List.for functions insertFunction
+    >> insertUnop unaryPlus __
+    >> insertUnop unaryMinus __
+    >> List.for __ binops insertBinop
+    >> List.for __ functions insertFunction
 
 
 coreModules as [CA.Module] =

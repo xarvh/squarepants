@@ -1,7 +1,7 @@
 
 
-valueTest as Text: (None: a): Test.CodeExpectation a: Test =
-    Test.valueTest toHuman
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+    Test.valueTest toHuman __ __ __
 
 
 tests as Test =
@@ -11,8 +11,8 @@ tests as Test =
             """
             insert
             """
-            _:
-                h @= Hash.fromList [1 & 2]
+            fn _:
+                !h = Hash.fromList [1 & 2]
                 Hash.insert @h 2 3
                 h
 
@@ -21,8 +21,8 @@ tests as Test =
             """
             remove
             """
-            _:
-                h @= Hash.fromList [1 & 2, 3 & 4]
+            fn _:
+                !h = Hash.fromList [1 & 2, 3 & 4]
                 Hash.remove @h 1
                 h
 
@@ -31,39 +31,41 @@ tests as Test =
             """
             get Just
             """
-            _:
-                h = Hash.fromList [1 & 2, 3 & 4]
-                Hash.get h 1
+            fn _:
+                !h = Hash.fromList [1 & 2, 3 & 4]
+                Hash.get @h 1
 
             (Test.isOkAndEqualTo << Just 2)
         , valueTest
             """
             get Nothing
             """
-            _:
-                h = Hash.fromList [1 & 2, 3 & 4]
-                Hash.get h 66
+            fn _:
+                !h = Hash.fromList [1 & 2, 3 & 4]
+                Hash.get @h 66
 
             (Test.isOkAndEqualTo Nothing)
         , valueTest
             """
             for
             """
-            _:
+            fn _:
+                !hash = Hash.fromList [Just True & 2, Nothing & 4]
+
                 []
-                    >> Hash.for (Hash.fromList [Just True & 2, Nothing & 4]) k: v: a: (v & k) :: a
-                    >> List.sortBy Tuple.first
+                >> Hash.for @hash (fn k, v, a: [v & k, ...a]) __
+                >> List.sortBy Tuple.first __
 
             (Test.isOkAndEqualTo [2 & Just True, 4 & Nothing])
         , valueTest
             """
             each
             """
-            _:
-                a @= Array.fromList []
-
-                Hash.each (Hash.fromList [Just True & 2, Nothing & 1]) k: v:
-                    List.each (List.range 1 v) _:
+            fn _:
+                !a = Array.fromList []
+                !hash = Hash.fromList [Just True & 2, Nothing & 1]
+                Hash.each @hash fn k, v:
+                    List.each (List.range 1 v) fn _:
                         Array.push @a k
 
                 Array.sortBy @a identity

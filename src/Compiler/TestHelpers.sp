@@ -15,24 +15,66 @@ moduleUmr as UMR =
     UMR source moduleName
 
 
-localType as Name: USR =
-    name:
-    USR moduleUmr name
+localType as fn Name: USR =
+    USR moduleUmr __
 
 
-rootLocal as Name: Ref =
-    name:
+rootLocal as fn Name: Ref =
+    fn name:
     RefGlobal << USR moduleUmr name
 
+
+#
+# Errors
+#
+formattedToStrippedText as fn [Error.FormattedText]: Text =
+    fn formatted:
+
+    strip as fn Error.FormattedText: Text =
+        fn fmt:
+        try fmt as
+            , Error.FormattedText_Default t: t
+            , Error.FormattedText_Emphasys t: t
+            , Error.FormattedText_Warning t: t
+            , Error.FormattedText_Decoration t: t
+
+    formatted
+    >> List.map strip __
+    >> Text.join "" __
+
+
+dummyErrorEnv as fn Text: Error.Env =
+    fn code:
+    {
+    #, metaFile = { sourceDirs = [], libraries = [] }
+    , moduleByName = Dict.ofOne moduleName { fsPath = "<TestPath>", content = code }
+    }
+
+
+resErrorToStrippedText as fn Text, Res a: Result Text a =
+    fn code, res:
+
+    errorToText =
+        fn e:
+        e
+        >> Error.toFormattedText (dummyErrorEnv code) __
+        >> formattedToStrippedText
+
+    Result.mapError errorToText res
+
+
+[#
 
 #
 # Meta
 #
 meta as Meta =
 
-    eenv as Error.Env = {
+    eenv as Error.Env =
+        {
         , moduleByName =
-            Dict.singleton "DefaultModules" {
+            Dict.ofOne "DefaultModules"
+                {
                 , fsPath = "<DefaultModules>"
                 , content = DefaultModules.asText
                 }
@@ -40,50 +82,15 @@ meta as Meta =
 
     metaResult =
         DefaultModules.asText
-            >> ModulesFile.textToMeta "DefaultModules"
-            >> Result.mapError (e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
+        >> ModulesFile.textToMeta "DefaultModules"
+        >> Result.mapError (fn e: e >> Error.toFormattedText eenv >> formattedToStrippedText)
 
     try metaResult as
-        Err e:
+        , Err e:
             log ("Error in DefaultModules.sp: " .. e) None
             todo "error loading DefaultModules.sp"
-        Ok m:
+        , Ok m:
             m
-
-
-#
-# Errors
-#
-formattedToStrippedText as [Error.FormattedText]: Text =
-    formatted:
-
-    strip as Error.FormattedText: Text =
-        fmt:
-        try fmt as
-            Error.FormattedText_Default t: t
-            Error.FormattedText_Emphasys t: t
-            Error.FormattedText_Warning t: t
-            Error.FormattedText_Decoration t: t
-
-    formatted
-        >> List.map strip
-        >> Text.join ""
-
-
-dummyErrorEnv as Text: Error.Env =
-    code:
-    {
-    #, metaFile = { sourceDirs = [], libraries = [] }
-    , moduleByName = Dict.singleton moduleName { fsPath = "<TestPath>", content = code }
-    }
-
-
-resErrorToStrippedText as Text: Res a: Result Text a =
-    code:
-    Result.mapError e:
-        e
-            >> Error.toFormattedText (dummyErrorEnv code)
-            >> formattedToStrippedText
 
 
 #
@@ -101,22 +108,20 @@ caNone as CA.RawType =
     CA.TypeNamed Pos.T (Meta.spCoreUSR "None") []
 
 
-caList as CA.RawType: CA.RawType =
-    itemType:
+caList as fn CA.RawType: CA.RawType =
+    fn itemType:
     CA.TypeNamed Pos.T (Meta.spCoreUSR "List") [ itemType ]
 
 
 #
 # TA Types
 #
-taTyvar as Int: TA.RawType =
-    id:
-    TA.TypeVar id
+taTyvar as fn Int: TA.RawType =
+    TA.TypeVar __
 
 
-taTyvarImm as Int: TA.RawType =
-    id:
-    TA.TypeVar id
+taTyvarImm as fn Int: TA.RawType =
+    TA.TypeVar __
 
 
 taNumber as TA.RawType =
@@ -131,12 +136,13 @@ taBool as TA.RawType =
     TA.TypeExact ("Bool" >> Meta.spCoreUSR) []
 
 
-taList as TA.RawType: TA.RawType =
-    item:
+taList as fn TA.RawType: TA.RawType =
+    fn item:
     TA.TypeExact ("List" >> Meta.spCoreUSR) [item]
 
 
-taFunction as [TA.RawType]: TA.RawType: TA.RawType =
-    from: to:
-    TA.TypeFn (List.map (t: TA.ParSp (toImm t)) from) (toImm to)
+taFunction as fn [TA.RawType], TA.RawType: TA.RawType =
+    fn from, to:
+    TA.TypeFn (List.map (fn t: TA.ParSp (toImm t)) from) (toImm to)
 
+#]

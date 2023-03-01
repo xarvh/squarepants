@@ -69,6 +69,6 @@ spCoreUmr as UMR =
     UMR Core spCorePath
 
 
-spCoreUSR as Name: USR =
-    USR spCoreUmr
+spCoreUSR as fn Name: USR =
+    USR spCoreUmr __
 

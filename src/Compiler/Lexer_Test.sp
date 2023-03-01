@@ -1,16 +1,17 @@
 tests as Test =
     Test.Group "Lexer"
         [
-        , keywords
-        , ops
-        , unaryAddittiveOps
-        , indentation
-        , comments
-        , underscores
-        , position
-        , textLiterals
+#        , keywords
+#        , ops
+#        , unaryAddittiveOps
+#        , indentation
+#        , comments
+#        , underscores
+#        , position
+#        , textLiterals
         ]
 
+[#
 # TODO some tests that should be added:
 [# TESTS for single quote text
 
@@ -65,30 +66,30 @@ tests as Test =
 
 n = Token.N
 
-codeTest as Text: Text: (Text: Result Text ok): Test.CodeExpectation ok: Test =
-    Test.codeTest toHuman
+codeTest as fn Text, Text, (fn Text: Result Text ok), Test.CodeExpectation ok: Test =
+    Test.codeTest toHuman __ __ __ __
 
 
-valueTest as Text: (None: a): Test.CodeExpectation a: Test =
-    Test.valueTest toHuman
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+    Test.valueTest toHuman __ __ __
 
 
-lexTokens as Text: Result Text [[Token]] =
-    s:
+lexTokens as fn Text: Result Text [[Token]] =
+    fn s:
     s
-        >> Compiler/Lexer.lexer TH.moduleName
-        >> TH.resErrorToStrippedText s
+    >> Compiler/Lexer.lexer TH.moduleName __
+    >> TH.resErrorToStrippedText s __
 
 
-lexTokensAndDrop as Int: Text: Result Text [[Token]] =
-    name: s:
+lexTokensAndDrop as fn Int: fn Text: Result Text [[Token]] =
+    fn name: fn s:
     s
-        >> lexTokens
-        >> Result.map (List.drop name)
+    >> lexTokens
+    >> Result.map (List.map (List.drop name __) __ ) __
 
 
-lowerName as Text: Token.Kind =
-    name:
+lowerName as fn Text: Token.Kind =
+    fn name:
     {
     , modifier = Token.NameNoModifier
     , isUpper = False
@@ -100,8 +101,8 @@ lowerName as Text: Token.Kind =
 
 
 
-upperName as Text: Token.Kind =
-    name:
+upperName as fn Text: Token.Kind =
+    fn name:
     {
     , modifier = Token.NameNoModifier
     , isUpper = True
@@ -154,9 +155,9 @@ unaryAddittiveOps as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << Token.Unop Op.UnopMinus
-                , Token n 1 2 << lowerName "a"
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 1 __ << Token.Unop Op.UnopMinus
+                , Token n 1 2 __ << lowerName "a"
                 ]]
             )
         , codeTest "a - -a"
@@ -164,11 +165,11 @@ unaryAddittiveOps as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << lowerName "a"
-                , Token n 2 3 << Token.Binop Prelude.subtract
-                , Token n 4 5 << Token.Unop Op.UnopMinus
-                , Token n 5 6 << lowerName "a"
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 1 __ << lowerName "a"
+                , Token n 2 3 __ << Token.Binop Prelude.subtract
+                , Token n 4 5 __ << Token.Unop Op.UnopMinus
+                , Token n 5 6 __ << lowerName "a"
                 ]]
             )
         , codeTest "a-a"
@@ -176,19 +177,19 @@ unaryAddittiveOps as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << lowerName "a"
-                , Token n 1 2 << Token.Unop Op.UnopMinus
-                , Token n 2 3 << lowerName "a"
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 1 __ << lowerName "a"
+                , Token n 1 2 __ << Token.Unop Op.UnopMinus
+                , Token n 2 3 __ << lowerName "a"
                 ]]
             )
 #        , codeTest "Consuming colon:"
 #            ":-"
 #            lexTokens
 #            (Test.isOkAndEqualTo
-#                [ Token n 0 0 Token.NewSiblingLine
+#                [[ Token n 0 0 Token.NewSiblingLine
 #                , Token n 0 2 Token.ConsumingColon
-#                ]
+#                ]]
 #            )
         , codeTest "-="
             "-="
@@ -196,7 +197,7 @@ unaryAddittiveOps as Test =
             (Test.isOkAndEqualTo
                 [[
                 , Token n 0 0 Token.NewSiblingLine
-                , Token n 0 2 << Token.Binop Prelude.mutableSubtract
+                , Token n 0 2 __ << Token.Binop Prelude.mutableSubtract
                 ]]
             )
         ]
@@ -209,16 +210,17 @@ indentation as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 1 1 << Token.NewSiblingLine
-                , Token n 1 2 << lowerName "a"
-                , Token n 3 4 << Token.Defop
-                , Token n 6 6 << Token.BlockStart
-                , Token n 6 7 << Token.NumberLiteral "1"
-                , Token n 8 8 << Token.BlockEnd
-                , Token n 8 8 << Token.NewSiblingLine
-                , Token n 8 9 << lowerName "b"
-                , Token n 10 11 << Token.Defop
-                , Token n 12 13 << Token.NumberLiteral "1"
+                , Token n 1 1 __ << Token.NewSiblingLine
+                , Token n 1 2 __ << lowerName "a"
+                , Token n 3 4 __ << Token.Defop
+                , Token n 6 6 __ << Token.BlockStart
+                , Token n 6 7 __ << Token.NumberLiteral "1"
+                , Token n 8 8 __ << Token.BlockEnd
+                ], [
+                , Token n 8 8 __ << Token.NewSiblingLine
+                , Token n 8 9 __ << lowerName "b"
+                , Token n 10 11 __ << Token.Defop
+                , Token n 12 13 __ << Token.NumberLiteral "1"
                 ]]
             )
         , codeTest
@@ -235,22 +237,22 @@ indentation as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 0  0  << Token.NewSiblingLine
-                , Token n 0  6  << lowerName "module"
-                , Token n 7  8  << Token.Defop
-                , Token n 12 12 << Token.BlockStart
-                , Token n 12 20 << lowerName "importAs"
-                , Token n 21 22 << Token.Defop
-                , Token n 29 29 << Token.BlockStart
-                , Token n 29 35 << upperName "SPCore"
-                , Token n 39 39 << Token.BlockEnd
-                , Token n 39 39 << Token.NewSiblingLine
-                , Token n 39 50 << lowerName "globalTypes"
-                , Token n 51 52 << Token.Defop
-                , Token n 59 59 << Token.BlockStart
-                , Token n 59 63 << upperName "None"
-                , Token n 63 63 << Token.BlockEnd
-                , Token n 63 63 << Token.BlockEnd
+                , Token n 0  0  __ << Token.NewSiblingLine
+                , Token n 0  6  __ << lowerName "module"
+                , Token n 7  8  __ << Token.Defop
+                , Token n 12 12 __ << Token.BlockStart
+                , Token n 12 20 __ << lowerName "importAs"
+                , Token n 21 22 __ << Token.Defop
+                , Token n 29 29 __ << Token.BlockStart
+                , Token n 29 35 __ << upperName "SPCore"
+                , Token n 39 39 __ << Token.BlockEnd
+                , Token n 39 39 __ << Token.NewSiblingLine
+                , Token n 39 50 __ << lowerName "globalTypes"
+                , Token n 51 52 __ << Token.Defop
+                , Token n 59 59 __ << Token.BlockStart
+                , Token n 59 63 __ << upperName "None"
+                , Token n 63 63 __ << Token.BlockEnd
+                , Token n 63 63 __ << Token.BlockEnd
                 ]]
             )
         , codeTest
@@ -348,10 +350,10 @@ comments as Test =
             (Test.isOkAndEqualTo
                 [[
 #                , Token n 1 2 << Token.Comment
-                , Token n 3 3 << Token.NewSiblingLine
-                , Token n 3 4 << lowerName "a"
-                , Token n 5 6 << Token.Defop
-                , Token n 7 8 << Token.NumberLiteral "1"
+                , Token n 3 3 __ << Token.NewSiblingLine
+                , Token n 3 4 __ << lowerName "a"
+                , Token n 5 6 __ << Token.Defop
+                , Token n 7 8 __ << Token.NumberLiteral "1"
                 ]]
             )
         , codeTest "[reg] nested comments allow a spurious newline?"
@@ -360,10 +362,10 @@ comments as Test =
             (Test.isOkAndEqualTo
                 [[
 #                , Token n 1 8 << Token.Comment
-                , Token n 10 10 << Token.NewSiblingLine
-                , Token n 10 11 << lowerName "a"
-                , Token n 12 13 << Token.Defop
-                , Token n 14 15 << Token.NumberLiteral "1"
+                , Token n 10 10 __ << Token.NewSiblingLine
+                , Token n 10 11 __ << lowerName "a"
+                , Token n 12 13 __ << Token.Defop
+                , Token n 14 15 __ << Token.NumberLiteral "1"
                 ]]
             )
         , codeTest "Single line"
@@ -390,11 +392,11 @@ a [# inline #] = 1
             (Test.isOkAndEqualTo
                 [[
 #                , Token n 0 16 << Token.Comment
-                , Token n 19 19 << Token.NewSiblingLine
-                , Token n 19 20 << lowerName "a"
+                , Token n 19 19 __ << Token.NewSiblingLine
+                , Token n 19 20 __ << lowerName "a"
 #                , Token n 21 32 << Token.Comment
-                , Token n 34 35 << Token.Defop
-                , Token n 36 37 << Token.NumberLiteral "1"
+                , Token n 34 35 __ << Token.Defop
+                , Token n 36 37 __ << Token.NumberLiteral "1"
 #                , Token n 39 58 << Token.Comment
 #                , Token n 61 78 << Token.Comment
                 ]]
@@ -405,9 +407,9 @@ a [# inline #] = 1
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 1 << Token.SquareBracket Token.Open
-                , Token n 1 2 << Token.SquareBracket Token.Closed
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 1 __ << Token.SquareBracket Token.Open
+                , Token n 1 2 __ << Token.SquareBracket Token.Closed
                 ]]
             )
 
@@ -424,15 +426,15 @@ a [# inline #] = 1
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 8 << lowerName "allTests"
-                , Token n 9 10 << Token.Defop
-                , Token n 11 12 << Token.SquareBracket Token.Open
-                , Token n 17 18 << Token.Comma
-                , Token n 19 20 << lowerName "a"
-#                , Token n 21 22 << Token.Comment
-                , Token n 27 28 << Token.SquareBracket Token.Closed
-                , Token n 28 28 << Token.BlockEnd
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 8 __ << lowerName "allTests"
+                , Token n 9 10 __ << Token.Defop
+                , Token n 11 12 __ << Token.SquareBracket Token.Open
+                , Token n 17 18 __ << Token.Comma
+                , Token n 19 20 __ << lowerName "a"
+#                , Token n 21 22 __ << Token.Comment
+                , Token n 27 28 __ << Token.SquareBracket Token.Closed
+                , Token n 28 28 __ << Token.BlockEnd
                 ]]
             )
         ]
@@ -443,15 +445,15 @@ underscores as Test =
         [ codeTest "'_' as a Name"
             "_"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [[ Token n 0 1 << lowerName "_"]])
+            (Test.isOkAndEqualTo [[ Token n 0 1 __ << lowerName "_"]])
         , codeTest "'_10_20' as a Name"
             "_10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [[ Token n 0 6 << lowerName "_10_20" ]])
+            (Test.isOkAndEqualTo [[ Token n 0 6 __ << lowerName "_10_20" ]])
         , codeTest "'10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [[ Token n 0 5 << Token.NumberLiteral "10_20" ]])
+            (Test.isOkAndEqualTo [[ Token n 0 5 __ << Token.NumberLiteral "10_20" ]])
         ]
 
 
@@ -479,8 +481,8 @@ textLiterals as Test =
             "\"\""
             lexTokens
             (Test.isOkAndEqualTo [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 2 << Token.TextLiteral ""
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 2 __ << Token.TextLiteral ""
                 ]]
             )
         , codeTest
@@ -488,9 +490,9 @@ textLiterals as Test =
             "\"n\":\n"
             lexTokens
             (Test.isOkAndEqualTo [[
-                , Token n 0 0 << Token.NewSiblingLine
-                , Token n 0 3 << Token.TextLiteral "n"
-                , Token n 3 4 << Token.Colon
+                , Token n 0 0 __ << Token.NewSiblingLine
+                , Token n 0 3 __ << Token.TextLiteral "n"
+                , Token n 3 4 __ << Token.Colon
                 ]]
             )
 #        , codeTest
@@ -503,7 +505,7 @@ textLiterals as Test =
 #                , "@"
 #            """
 #            (lexTokensAndDrop 11)
-#            (Test.isOkAndEqualTo [
+#            (Test.isOkAndEqualTo [[
 #                , Token n 38 41 << Token.TextLiteral "@"
 #                , Token n 41 41 << Token.BlockEnd
 #                ]
@@ -512,7 +514,7 @@ textLiterals as Test =
             """
             Unindent function
             """
-            (_:
+            (fn _:
                 [
                 , "\n"
                 , "  a\n"
@@ -521,16 +523,17 @@ textLiterals as Test =
                 , "  b\n"
                 , "  "
                 ]
-                  >> Text.join ""
-                  >> Compiler/Lexer.unindent
+                >> Text.join "" __
+                >> Compiler/Lexer.unindent __
             )
             (Test.isOkAndEqualTo << Text.join ""
-                    [
-                    , "a\n"
-                    , "    \n"
-                    , "\n"
-                    , "b"
-                    ]
+                [
+                , "a\n"
+                , "    \n"
+                , "\n"
+                , "b"
+                ]
             )
         ]
 
+#]

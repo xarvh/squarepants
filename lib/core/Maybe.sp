@@ -4,48 +4,48 @@ union Maybe a =
     , Just a
 
 
-andThen as (a: Maybe b): Maybe a: Maybe b =
-    f: ma:
+andThen as fn (fn a: Maybe b): fn Maybe a: Maybe b =
+    fn f: fn ma:
     try ma as
-        Nothing: Nothing
-        Just a: f a
+        , Nothing: Nothing
+        , Just a: f a
 
 
-map as (a: b): Maybe a: Maybe b =
-  f: m:
-  try m as
-    Nothing: Nothing
-    Just v: Just (f v)
-
-
-map2 as (a: b: c): Maybe a: Maybe b: Maybe c =
-    f: ma: mb:
-    ma >> andThen a:
-    mb >> andThen b:
-    Just (f a b)
-
-
-map3 as (a: b: c: d): Maybe a: Maybe b: Maybe c: Maybe d =
-    f: ma: mb: mc:
-    ma >> andThen a:
-    mb >> andThen b:
-    mc >> andThen c:
-    Just (f a b c)
-
-
-mapRes as (a: Result e b): Maybe a: Result e (Maybe b) =
-    f: m:
+map as fn (fn a: b), Maybe a: Maybe b =
+    fn f, m:
     try m as
-        Nothing:
+        , Nothing: Nothing
+        , Just v: Just (f v)
+
+
+#map2 as fn (fn a, b: c), Maybe a, Maybe b: Maybe c =
+#    fn f, ma, mb:
+#    ma >> andThen fn a:
+#    mb >> andThen fn b:
+#    Just (f a b)
+
+
+#map3 as fn (fn a, b, c: d), Maybe a, Maybe b, Maybe c: Maybe d =
+#    fn f, ma, mb, mc:
+#    ma >> andThen fn a:
+#    mb >> andThen fn b:
+#    mc >> andThen fn c:
+#    Just (f a b c)
+
+
+mapRes as fn (fn a: Result e b), Maybe a: Result e (Maybe b) =
+    fn f, m:
+    try m as
+        , Nothing:
             Ok Nothing
 
-        Just a:
-            f a >> Result.map Just
+        , Just a:
+            Result.map Just (f a)
 
 
-withDefault as a: Maybe a: a =
-  default: maybe:
-  try maybe as
-    Just v: v
-    Nothing: default
+withDefault as fn a, Maybe a: a =
+    fn default, maybe:
+    try maybe as
+        , Just v: v
+        , Nothing: default
 
