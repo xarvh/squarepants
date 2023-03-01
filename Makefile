@@ -1,7 +1,7 @@
 
 default:
 	reset
-	/usr/bin/time --format=%E ./squarepants src/Main.sp build/unstable || (xcowsay "spsp T_T"; exit 1)
+	/usr/bin/time --format=%E ./squarepants src/TempMain.sp build/unstable || (xcowsay "spsp T_T"; exit 1)
 	xcowsay "spsp Done"
 
 with-unstable:

@@ -303,9 +303,6 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                         translateVariableArgs @state ref & identity
 
                     _:
-                        eaValue =
-                            translateExpression @state @counter value
-
                         DollarName tryName =
                             generateTryName @counter
 
@@ -314,7 +311,7 @@ translateExpression as State@: Int@: Expression: EA.Expression =
                             EA.LetIn
                                 {
                                 , maybeName = Just tryName
-                                , letExpression = eaValue
+                                , letExpression = translateExpression @state @counter value
                                 , inExpression = tryExpression
                                 , type = valueType
                                 }

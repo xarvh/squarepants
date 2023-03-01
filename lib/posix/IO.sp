@@ -1,12 +1,13 @@
 
 
-alias Env = {
+alias Env =
+    {
     , vars as Dict Text Text
     }
 
 
 alias Program =
-    Env: [Text]: IO Int
+    fn Env, [Text]: IO Int
 
 
 union Never =
@@ -14,74 +15,74 @@ union Never =
 
 
 union IO a =
-    IO (Never: Result Text a)
+    IO (fn Never: Result Text a)
 
 
-succeed as a: IO a =
-    a:
-    IO (never: Ok a)
+succeed as fn a: IO a =
+    fn a:
+    IO (fn never: Ok a)
 
 
-fail as Text: IO a =
-    message:
-    IO (never: Err message)
+fail as fn Text: IO a =
+    fn message:
+    IO (fn never: Err message)
 
 
-_run as Never: IO a: Result Text a =
-    never: r:
+_run as fn Never, IO a: Result Text a =
+    fn never, r:
     IO neverToResult = r
     neverToResult never
 
 
-onSuccess as (a: IO b): IO a: IO b =
-    f: m:
-    IO never:
+onSuccess as fn (fn a: IO b), IO a: IO b =
+    fn f, m:
+    IO fn never:
         try _run never m as
-            Ok a:
+            , Ok a:
                 _run never (f a)
 
-            Err e:
+            , Err e:
                 Err e
 
 
-onResult as (Result Text a: IO b): IO a: IO b =
-    f: m:
-    IO never:
+onResult as fn (fn Result Text a: IO b), IO a: IO b =
+    fn f, m:
+    IO fn never:
         m
-            >> _run never
-            >> f
-            >> _run never
+        >> _run never __
+        >> f
+        >> _run never __
 
 
 #
 # Posix
 #
-parallel as [IO a]: IO [a] =
-    _:
+parallel as fn [IO a]: IO [a] =
+    fn _:
     todo "io.parallel"
 
 
-readDir as Text: IO [Bool & Text] =
-    _:
+readDir as fn Text: IO [Bool & Text] =
+    fn _:
     todo "io.readDir"
 
 
-readFile as Text: IO Text =
-    _:
+readFile as fn Text: IO Text =
+    fn _:
     todo "io.readFile"
 
 
-writeFile as Text: Text: IO Int =
-    _:
+writeFile as fn Text, Text: IO Int =
+    fn _, _:
     todo "io.writeFile"
 
 
-writeStdout as Text: IO Int =
-    _:
+writeStdout as fn Text: IO Int =
+    fn _:
     todo "io.writeStdout"
 
 
-writeStderr as Text: IO Int =
-    _:
+writeStderr as fn Text: IO Int =
+    fn _:
     todo "io.writeStderr"
 

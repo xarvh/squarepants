@@ -22,103 +22,65 @@ p as Pos =
 
 
 codeTest =
-    Test.codeTest toHuman
+    Test.codeTest toHuman __ __ __ __
 
 
-asDefinition as FA.Statement: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
-    s:
+asDefinition as fn FA.Statement: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
+    fn s:
     try s as
-        FA.ValueDef a:
+        , FA.ValueDef a:
             Ok a
 
-        _:
+        , _:
             Err "Test says: no def"
 
 
-asEvaluation as FA.Statement: Result Text FA.Expression =
-    s:
+asEvaluation as fn FA.Statement: Result Text FA.Expression =
+    fn s:
     try s as
-        FA.Evaluation a:
+        , FA.Evaluation a:
             Ok a
 
-        _:
+        , _:
             Err "Test says: no eval"
 
 
-firstStatement as Text: Result Text FA.Statement =
-    code:
+firstStatement as fn Text: Result Text FA.Statement =
+    fn code:
 
     grabFirst =
-        stats:
+        fn stats:
         try stats as
-            []: Err "Test says: no statements"
-            head :: tail: Ok head
+            , []: Err "Test says: no statements"
+            , head :: tail: Ok head
 
     code
-        >> Compiler/Parser.textToFormattableModule {
-            , stripLocations = True
-            , moduleName = "Test"
-            }
-        >> TH.resErrorToStrippedText code
-        >> onOk grabFirst
+    >> Compiler/Parser.textToFormattableModule
+        {
+        , stripLocations = True
+        , moduleName = "Test"
+        }
+        __
+    >> TH.resErrorToStrippedText code __
+    >> onOk grabFirst
 
 
-firstEvaluation as Text: Result Text FA.Expression =
-    code:
+firstEvaluation as fn Text: Result Text FA.Expression =
+    fn code:
     code >> firstStatement >> onOk asEvaluation
 
 
-firstDefinition as Text: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
-    code:
+firstDefinition as fn Text: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
+    fn code:
     code >> firstStatement >> onOk asDefinition
 
 
-firstEvaluationOfDefinition as Text: Result Text FA.Expression =
-    code:
+firstEvaluationOfDefinition as fn Text: Result Text FA.Expression =
+    fn code:
     code
     >> firstStatement
     >> onOk asDefinition
-    >> onOk (def: Ok def.body)
-
-
-#firstEvaluationOfDefinition as Text: Result Text FA.Expression =
-#    code:
-#
-#    grabFirst = def:
-#        try def.body as
-#           []: Err "Test says: empty def body"
-#           head :: tail: Ok head
-#
-#    code
-#        >> firstDefinition
-#        >> onOk grabFirst
-#        >> onOk asEvaluation
-#
-#
-#firstAnnotation as Text: Result Text FA.Expression =
-#    code:
-#
-#    grabAnnotation = #as FA.ValueDef: Result Text FA.Type =
-#        def:
-#        try def.pattern as
-#            #FA.PatternAny pos name mutable (Just ty): Ok ty
-#            _: Err "no annotation"
-#
-#    code
-#        >> firstStatement
-#        >> onOk asDefinition
-#        # TODO test also the nonFn field!!!
-#        >> onOk grabAnnotation
-#
-#
-#typeConstant as Text: FA.Expression =
-#    name:
-#    FA.TypeConstant p Nothing name []
-#
-#
-#
-#
-#
+    >> onOk (fn def: Ok def.body)
 
 
 values as Test =
@@ -135,7 +97,6 @@ values as Test =
             """
             firstDefinition
             Test.isOk
-
 
         , codeTest
             """
@@ -193,18 +154,18 @@ parens as Test =
 #
 #
 
-e as FA.Expr_: FA.Expression =
-    FA.Expression p
+e as fn FA.Expr_: FA.Expression =
+    FA.Expression p __
 
 
-tuple as FA.Expression: FA.Expression: FA.Expression =
-    a: b:
+tuple as fn FA.Expression, FA.Expression: FA.Expression =
+    fn a, b:
 
     e << FA.Binop Op.Tuple (a & [Prelude.tuple & b])
 
 
-word as Name: Token.Word =
-    name:
+word as fn Name: Token.Word =
+    fn name:
     {
     , modifier = Token.NameNoModifier
     , isUpper = False
@@ -214,8 +175,8 @@ word as Name: Token.Word =
     }
 
 
-variable as Name: FA.Expression =
-    name:
+variable as fn Name: FA.Expression =
+    fn name:
     {
     , maybeType = Nothing
     , word = word name
@@ -224,8 +185,8 @@ variable as Name: FA.Expression =
     >> e
 
 
-annotatedVariable as Name: FA.Expression: FA.Expression =
-    name: type:
+annotatedVariable as fn Name, FA.Expression: FA.Expression =
+    fn name, type:
     {
     , maybeType = Just type
     , word = word name
@@ -339,7 +300,7 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                e << FA.Binop Op.Pipe <<
+                e << FA.Binop Op.Pipe __ <<
                     variable "value" &
                         [
                         , Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn [variable "x"] (variable "blah")])
@@ -401,8 +362,8 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo << e <<
-                FA.Binop Op.Mutop <<
-                    (e << FA.Unop Op.UnopRecycle << variable "b")
+                FA.Binop Op.Mutop __ <<
+                    (e << FA.Unop Op.UnopRecycle __ << variable "b")
                     &
                     [ Prelude.mutableAdd & (e << FA.LiteralNumber "1") ]
             )
@@ -448,16 +409,17 @@ annotations as Test =
 
 unionDefs as Test =
 
-    asTypeDef = s:
+    asTypeDef =
+        fn s:
         try s as
-            FA.UnionDef a:
+            , FA.UnionDef a:
                 Ok a
 
-            _:
+            , _:
                 Err "no type def"
 
     firstTypeDef =
-        x: x >> firstStatement >> onOk asTypeDef
+        fn x: x >> firstStatement >> onOk asTypeDef
 
     Test.Group
         """
@@ -914,11 +876,11 @@ patterns as Test =
 binops as Test =
 
     sendBtoC =
-        e << FA.Binop Op.Pipe <<
+        e << FA.Binop Op.Pipe __ <<
             variable "b" & [ Prelude.sendRight & variable "c" ]
 
     sendBtoCtoD =
-        e << FA.Binop Op.Pipe <<
+        e << FA.Binop Op.Pipe __ <<
             variable "b" & [ Prelude.sendRight & variable "c", Prelude.sendRight & variable "d" ]
 
     Test.Group "Binops"

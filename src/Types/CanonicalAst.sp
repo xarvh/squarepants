@@ -149,8 +149,8 @@ alias Module =
     }
 
 
-initModule as Text: UMR: Module =
-    asText: umr:
+initModule as fn Text, UMR: Module =
+    fn asText, umr:
     {
     , umr
     , asText
@@ -166,73 +166,73 @@ initModule as Text: UMR: Module =
 #
 
 
-parTypeToRaw as ParType: RawType =
-    p:
+parTypeToRaw as fn ParType: RawType =
+    fn p:
     try p as
-        ParRe raw: raw
-        ParSp full: full.raw
+        , ParRe raw: raw
+        , ParSp full: full.raw
 
 
-typeTyvars as RawType: Dict Name Pos =
-    raw:
+typeTyvars as fn RawType: Dict Name Pos =
+    fn raw:
 
-    fromList as [RawType]: Dict Name Pos =
-        list:
-        List.for list (item: acc: Dict.join acc (typeTyvars item)) Dict.empty
+    fromList as fn [RawType]: Dict Name Pos =
+        fn list:
+        List.for Dict.empty list (fn item, acc: Dict.join acc (typeTyvars item))
 
     try raw as
-        TypeNamed _ _ args: fromList args
-        TypeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
-        TypeRecord _ attrs: fromList (Dict.values attrs)
-        TypeAnnotationVariable pos name: Dict.singleton name pos
-        TypeError _: Dict.empty
+        , TypeNamed _ _ args: fromList args
+        , TypeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
+        , TypeRecord _ attrs: fromList (Dict.values attrs)
+        , TypeAnnotationVariable pos name: Dict.ofOne name pos
+        , TypeError _: Dict.empty
 
 
-patternPos as Pattern: Pos =
-    pa:
+patternPos as fn Pattern: Pos =
+    fn pa:
     try pa as
-        PatternAny p _: p
-        PatternLiteralText p _: p
-        PatternLiteralNumber p _: p
-        PatternConstructor p _ _: p
-        PatternRecord p _ _: p
+        , PatternAny p _: p
+        , PatternLiteralText p _: p
+        , PatternLiteralNumber p _: p
+        , PatternConstructor p _ _: p
+        , PatternRecord p _ _: p
 
 
-patternTyvars as Pattern: Dict Name Pos =
-    pa:
+patternTyvars as fn Pattern: Dict Name Pos =
+    fn pa:
     try pa as
-        PatternAny _ { maybeName = _, maybeAnnotation = Just t }: typeTyvars t
-        PatternAny _ { maybeName = _, maybeAnnotation = Nothing }: Dict.empty
-        PatternLiteralText _ _: Dict.empty
-        PatternLiteralNumber _ _: Dict.empty
-        PatternConstructor _ _ args: List.for args (arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
-        PatternRecord _ _ attrs: Dict.for attrs (k: arg: acc: Dict.join acc (patternTyvars arg)) Dict.empty
+        , PatternAny _ { maybeName = _, maybeAnnotation = Just t }: typeTyvars t
+        , PatternAny _ { maybeName = _, maybeAnnotation = Nothing }: Dict.empty
+        , PatternLiteralText _ _: Dict.empty
+        , PatternLiteralNumber _ _: Dict.empty
+        , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
+        , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
 
 
-patternNames as Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe RawType } =
-    p:
+patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe RawType } =
+    fn p:
     try p as
-        PatternAny pos { maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
-        PatternAny pos { maybeName = Just n, maybeAnnotation }: Dict.singleton n { pos, maybeAnnotation }
-        PatternLiteralNumber pos _: Dict.empty
-        PatternLiteralText pos _: Dict.empty
-        PatternConstructor pos path ps: List.for ps (x: x >> patternNames >> Dict.join) Dict.empty
-        PatternRecord pos _ ps: Dict.for ps (k: v: v >> patternNames >> Dict.join) Dict.empty
+        , PatternAny pos { maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
+        , PatternAny pos { maybeName = Just n, maybeAnnotation }: Dict.ofOne n { pos, maybeAnnotation }
+        , PatternLiteralNumber pos _: Dict.empty
+        , PatternLiteralText pos _: Dict.empty
+        , PatternConstructor pos path ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join a __)
+        , PatternRecord pos _ ps: Dict.for Dict.empty ps (fn k, v, a: v >> patternNames >> Dict.join a __)
 
 
-expressionPos as Expression: Pos =
-    exp:
+expressionPos as fn Expression: Pos =
+    fn exp:
     try exp as
-        LiteralNumber p _: p
-        LiteralText p _: p
-        Variable p _: p
-        Constructor p _: p
-        Fn p _ _: p
-        Call p _ _: p
-        Record p _ _: p
-        RecordAccess p _ _: p
-        LetIn def exp: patternPos def.pattern
-        If p _: p
-        Try p _: p
-        DestroyIn _ _: Pos.G
+        , LiteralNumber p _: p
+        , LiteralText p _: p
+        , Variable p _: p
+        , Constructor p _: p
+        , Fn p _ _: p
+        , Call p _ _: p
+        , Record p _ _: p
+        , RecordAccess p _ _: p
+        , LetIn def e: expressionPos e
+        , If p _: p
+        , Try p _: p
+        , DestroyIn _ _: Pos.G
 

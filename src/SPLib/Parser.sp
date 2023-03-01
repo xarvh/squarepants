@@ -10,7 +10,7 @@ Arguments:
 
 #]
 alias Parser token output =
-    [[token]]: [token]: [[token]] & Outcome token output
+    fn [[token]], [token]: [[token]] & Outcome token output
 
 
 #alias State token = [token]
@@ -22,8 +22,8 @@ union Outcome token output =
     , Aborted [token] Text
 
 
-runParser as Parser token output: [token]: [[token]] & Outcome token output =
-    parser: readState:
+runParser as fn Parser token output, [token]: [[token]] & Outcome token output =
+    fn parser, readState:
     parser [ readState ] readState
 
 
@@ -40,9 +40,9 @@ runParser as Parser token output: [token]: [[token]] & Outcome token output =
 Use as little as possible, ideally the parser should always accept.
 
 #]
-abort as Text: Parser token output =
-    error:
-    rejections: readState:
+abort as fn Text: Parser token output =
+    fn error:
+    fn rejections, readState:
     rejections & Aborted readState error
 
 
@@ -50,27 +50,27 @@ abort as Text: Parser token output =
 #]
 # TODO can take one more function to actually put together the rejected states, and maybe merge it with the error type?
 reject as Parser token output =
-    rejections: readState:
+    fn rejections, readState:
     (readState :: rejections) & Rejected
 
 
 [#| Accept the read state, without consuming any input
 #]
-accept as a: Parser token a =
-    a:
-    rejections: readState:
+accept as fn a: Parser token a =
+    fn a:
+    fn rejections, readState:
         rejections & Accepted readState a
 
 
 [#| Consume and return the next token
 #]
 consumeOne as Parser token token =
-    rejections: readState:
+    fn rejections, readState:
     try readState as
-        []:
+        , []:
             (readState :: rejections) & Rejected
 
-        token :: nextState:
+        , token :: nextState:
             rejections & Accepted nextState token
 
 
@@ -79,39 +79,41 @@ consumeOne as Parser token token =
 If you talk monads, this is the monadic `bind`, Haskell's `>>=`.
 
 #]
-andThen as (a: Parser t b): Parser t a: Parser t b =
-    chainedParser: firstParser:
-    re0: readState:
+andThen as fn (fn a: Parser t b): fn Parser t a: Parser t b =
+    fn chainedParser:
+    fn firstParser:
+    fn re0, readState:
     try firstParser re0 readState as
-        re1 & Accepted nextReadState a:
-            chainedParser a re1 nextReadState
+        , re1 & Accepted nextReadState a:
+            (chainedParser a) re1 nextReadState
 
-        re1 & Rejected:
+        , re1 & Rejected:
             re1 & Rejected
 
-        re1 & Aborted rs e:
+        , re1 & Aborted rs e:
             re1 & Aborted rs e
 
 
 [#| #]
-thenWithDefault as Parser t b: (a: Parser t b): Parser t a: Parser t b =
-    fallbackParser: chainedParser: firstParser:
-    re0: readState:
+thenWithDefault as fn Parser t b, (fn a: Parser t b): fn Parser t a: Parser t b =
+    fn fallbackParser, chainedParser:
+    fn firstParser:
+    fn re0, readState:
     try firstParser re0 readState as
-        re1 & Aborted rs reason:
+        , re1 & Aborted rs reason:
             re1 & Aborted rs reason
 
-        re1 & Rejected:
+        , re1 & Rejected:
             fallbackParser re1 readState
 
-        re1 & Accepted nextReadState a:
-            chainedParser a re1 nextReadState
+        , re1 & Accepted nextReadState a:
+            (chainedParser a) re1 nextReadState
 
 
 [#| Pulls out the current state
 #]
 here as Parser t [t] =
-    rejections: readState:
+    fn rejections, readState:
         rejections & Accepted readState readState
 
 
@@ -120,15 +122,15 @@ here as Parser t [t] =
 #
 
 
-map as (a: b): Parser token a: Parser token b =
-    f: p:
-    p >> andThen b:
+map as fn (fn a: b), Parser token a: Parser token b =
+    fn f, p:
+    p >> andThen fn b:
     accept (f b)
 
 
-without as Parser t o: Parser t None =
-    p:
-    p >> thenWithDefault (accept None) _:
+without as fn Parser t o: Parser t None =
+    fn p:
+    p >> thenWithDefault (accept None) fn _:
     reject
 
 
@@ -136,86 +138,60 @@ end as Parser t None =
     without consumeOne
 
 
-oneOf as [Parser t o]: Parser t o =
-    ps: rejections: readState:
+oneOf as fn [Parser t o]: Parser t o =
+    fn ps:
+    fn rejections, readState:
 
     try ps as
-        []:
+        , []:
             rejections & Rejected
 
-        headParser :: tailParsers:
+        , headParser :: tailParsers:
             try headParser rejections readState as
-                re1 & Rejected:
-                    oneOf tailParsers re1 readState
+                , re1 & Rejected:
+                    (oneOf tailParsers) re1 readState
 
-                acceptedOrAborted:
+                , acceptedOrAborted:
                     acceptedOrAborted
 
 
-maybe as Parser t o: Parser t (Maybe o) =
-    p:
-    p >> thenWithDefault (accept Nothing) x:
+maybe as fn Parser t o: Parser t (Maybe o) =
+    fn p:
+    p >> thenWithDefault (accept Nothing) fn x:
     accept << Just x
 
 
-tuple2 as Parser t a: Parser t b: Parser t ( a & b ) =
-    pa: pb:
-    pa >> andThen a:
-    pb >> andThen b:
+tuple2 as fn Parser t a, Parser t b: Parser t ( a & b ) =
+    fn pa, pb:
+    pa >> andThen fn a:
+    pb >> andThen fn b:
     accept ( a & b )
 
 
-tuple3 as Parser t a: Parser t b: Parser t c: Parser t ( a & b & c ) =
-    pa: pb: pc:
-    pa >> andThen a:
-    pb >> andThen b:
-    pc >> andThen c:
+tuple3 as fn Parser t a, Parser t b, Parser t c: Parser t ( a & b & c ) =
+    fn pa, pb, pc:
+    pa >> andThen fn a:
+    pb >> andThen fn b:
+    pc >> andThen fn c:
     accept ( a & b & c )
 
 
-zeroOrMore as Parser t o: Parser t [o] =
-    p:
-    p >> thenWithDefault (accept []) head:
-    zeroOrMore p >> andThen tail:
+zeroOrMore as fn Parser t o: Parser t [o] =
+    fn p:
+    p >> thenWithDefault (accept []) fn head:
+    zeroOrMore p >> andThen fn tail:
     accept (head :: tail)
 
 
-oneOrMore as Parser t o: Parser t ( o & [o] ) =
-    p:
+oneOrMore as fn Parser t o: Parser t ( o & [o] ) =
+    fn p:
     tuple2 p (zeroOrMore p)
 
 
 # This is used so that `expression` functions don't keep calling themselves right at their definition
-breakCircularDefinition as (None: Parser t o): Parser t o =
-    a:
+breakCircularDefinition as fn (fn None: Parser t o): Parser t o =
+    fn a:
     accept None >> andThen a
-
-
-[# If SP allowed cyclic values in let expressions, we could use this
-
-
-   type alias ExpressionArgs t i o ignored =
-       { term : Parser t o
-       , openParen : Parser t ignored
-       , closedParen : Parser t ignored
-       , ops : [Parser t o: Parser t o]
-       }
-
-
-   expression : ExpressionArgs t i o ignored: Parser t o
-   expression args =
-       let
-           parens : Parser t o: Parser t o
-           parens higher =
-               surroundWith args.openParen args.closedParen (do (accept None) <| \_: expr)
-
-           expr : Parser t o
-           expr =
-               expressionRec args.term (higherOr parens :: args.ops)
-       in
-       expr
-
-#]
 
 
 [#| This is how you put together an expression so that you avoid left recursion and set your operations precedence
@@ -225,25 +201,25 @@ breakCircularDefinition as (None: Parser t o): Parser t o =
 <https://stackoverflow.com/a/4165483>
 
 #]
-expression as Parser t o: [Parser t o: Parser t o]: Parser t o =
-    term: ops:
+expression as fn Parser t o, [fn Parser t o: Parser t o]: Parser t o =
+    fn term, ops:
     try ops as
-        []:
+        , []:
             term
 
-        op :: rest:
+        , op :: rest:
             expression (op term) rest
 
 
-higherOr as Parser t o: Parser t o: Parser t o =
-    parser: higher:
+higherOr as fn Parser t o: fn Parser t o: Parser t o =
+    fn parser: fn higher:
     oneOf [ higher, parser ]
 
 
-surroundWith as Parser t ignoredOutput1: Parser t ignoredOutput2: Parser t output: Parser t output =
-    left: right: parser:
-    left >> andThen _:
-    parser >> andThen p:
-    right >> andThen _:
+surroundWith as fn Parser t ignoredOutput1, Parser t ignoredOutput2, Parser t output: Parser t output =
+    fn left, right, parser:
+    left >> andThen fn _:
+    parser >> andThen fn p:
+    right >> andThen fn _:
     accept p
 

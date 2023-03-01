@@ -5,24 +5,24 @@
 
 # TODO these code are for JS only. Move them in the JS platform?
 
-color as Text: Text: Text =
-    code: text:
+color as fn Text: fn Text: Text =
+    fn code: fn text:
 
     code .. text .. "\x1b[0m"
 
 
-blue as Text: Text =
-    color  "\x1b[34m"
+blue as fn Text: Text =
+    color "\x1b[34m"
 
 
-green as Text: Text =
+green as fn Text: Text =
     color "\x1b[32m"
 
 
-yellow as Text: Text =
+yellow as fn Text: Text =
     color "\x1b[33m"
 
 
-red as Text: Text =
+red as fn Text: Text =
     color "\x1b[31m"
 

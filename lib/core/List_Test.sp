@@ -1,6 +1,6 @@
 
-valueTest as Text: (None: a): Test.CodeExpectation a: Test =
-    Test.valueTest toHuman
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+    Test.valueTest toHuman __ __ __
 
 
 tests as Test =
@@ -17,13 +17,13 @@ sortBy as Test =
             """
             Can actually sort stuff
             """
-            _:
+            fn _:
                 [
                 , Just 23
                 , Nothing
                 , Just 11
                 ]
-                    >> List.sortBy identity
+                >> List.sortBy identity __
             (Test.isOkAndEqualTo
                 [
                 , Just 11
@@ -35,13 +35,13 @@ sortBy as Test =
             """
             Correctly orders tuple-2
             """
-            _:
+            fn _:
                 [
                 , 23 & 1
                 , 1 & 2
                 , 11 & 3
                 ]
-                    >> List.sortBy identity
+                >> List.sortBy identity __
             (Test.isOkAndEqualTo
                 [
                 , 1 & 2
@@ -53,14 +53,14 @@ sortBy as Test =
             """
             Correctly orders tuple-3
             """
-            _:
+            fn _:
                 [
                 , "z" & "a" & "2"
                 , "a" & "b" & "33"
                 , "z" & "a" & "1"
                 , "z" & "b" & "3"
                 ]
-                    >> List.sortBy identity
+                >> List.sortBy identity __
             (Test.isOkAndEqualTo
                 [
                 , "a" & "b" & "33"
@@ -80,7 +80,7 @@ concat as Test =
             """
             concats two lists
             """
-            (_: List.concat [ [1, 2], [3, 4] ])
+            (fn _: List.concat [ [1, 2], [3, 4] ])
             (Test.isOkAndEqualTo [ 1, 2, 3, 4])
         ]
 

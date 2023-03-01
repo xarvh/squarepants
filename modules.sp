@@ -103,11 +103,6 @@ sourceDir =
             Token
 
     module =
-       path = SPLib/Buffer
-       importAs = Buffer
-       globalTypes = Buffer
-
-    module =
        path = SPLib/Parser
        importAs = Parser
 
@@ -184,6 +179,8 @@ library =
         globalTypes = Int
         globalValues =
             clamp
+            cloneImm
+            cloneUni
             identity
             not
             modBy

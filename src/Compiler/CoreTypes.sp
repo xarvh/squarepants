@@ -11,23 +11,23 @@ umr as UMR =
     UMR Meta.Core "Core"
 
 
-makeUsr as Name: USR =
-    USR umr
+makeUsr as fn Name: USR =
+    USR umr __
 
 
-nameToType as Text: [CA.RawType]: CA.RawType =
-    name: args:
+nameToType as fn Text, [CA.RawType]: CA.RawType =
+    fn name, args:
 
     CA.TypeNamed p (makeUsr name) args
 
 
-defToType as CA.UnionDef: [CA.RawType]: CA.RawType =
-    def: pars:
+defToType as fn CA.UnionDef, [CA.RawType]: CA.RawType =
+    fn def, pars:
     CA.TypeNamed p def.usr pars
 
 
-usrToVariable as USR: CA.Expression =
-    u:
+usrToVariable as fn USR: CA.Expression =
+    fn u:
     CA.Variable p (RefGlobal u)
 
 
@@ -88,7 +88,7 @@ noneDef as CA.UnionDef =
     {
     , usr
     , pars = []
-    , constructors = Dict.singleton noneName { pos = p, ins = [], out = none, typeUsr = usr }
+    , constructors = Dict.ofOne noneName { pos = p, ins = [], out = none, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -117,8 +117,8 @@ boolDef as CA.UnionDef =
     , pars = []
     , constructors =
         Dict.empty
-        >> Dict.insert "True" { pos = p, ins = [], out = bool, typeUsr = usr }
-        >> Dict.insert "False" { pos = p, ins = [], out = bool, typeUsr = usr }
+        >> Dict.insert "True" { pos = p, ins = [], out = bool, typeUsr = usr } __
+        >> Dict.insert "False" { pos = p, ins = [], out = bool, typeUsr = usr } __
     , directTypeDeps = Set.empty
     }
 
@@ -136,8 +136,8 @@ cons as USR =
     makeUsr "Cons"
 
 
-list as CA.RawType: CA.RawType =
-    item:
+list as fn CA.RawType: CA.RawType =
+    fn item:
     nameToType "List" [ item ]
 
 
@@ -169,8 +169,8 @@ listDef as CA.UnionDef =
     , pars = [ At Pos.G "item" ]
     , constructors =
         Dict.empty
-            >> Dict.insert "Nil" nilDef
-            >> Dict.insert "Cons" consDef
+        >> Dict.insert "Nil" nilDef __
+        >> Dict.insert "Cons" consDef __
     , directTypeDeps = Set.empty
     }
 

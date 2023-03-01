@@ -26,38 +26,38 @@ union At a =
     At Pos a
 
 
-start as Pos: Int =
-    pos:
+start as fn Pos: Int =
+    fn pos:
     try pos as
-        P m s e: s
-        _: 0
+        , P m s e: s
+        , _: 0
 
 
-end as Pos: Int =
-    pos:
+end as fn Pos: Int =
+    fn pos:
     try pos as
-        P m s e: e
-        _: 0
+        , P m s e: e
+        , _: 0
 
 
-range as Pos: Pos: Pos =
-    a: b:
+range as fn Pos, Pos: Pos =
+    fn a, b:
     try a & b as
-        P ma sa ea & P mb sb eb:
+        , P ma sa ea & P mb sb eb:
             if ma /= mb then
                 todo "trying to range across two different modules"
             else
                 P ma (min sa sb) (max ea eb)
 
-        P _ _ _ & _:
+        , P _ _ _ & _:
             a
 
-        _:
+        , _:
             b
 
 
-drop as At a: a =
-    x:
+drop as fn At a: a =
+    fn x:
     At pos a = x
     a
 

@@ -64,7 +64,7 @@ compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.Gl
 
 header as Text =
     # HACK the stack size is needed because we don't yet have tail-call optimization. T_T
-    """#!/usr/bin/env -S node --stack-size=65500
+    """#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096
 
 //Error.stackTraceLimit = 100;
 

@@ -1,25 +1,25 @@
 
-first as a & b: a =
-    t:
+first as fn a & b: a =
+    fn t:
     t.first
 
-second as a & b: b =
-    t:
+second as fn a & b: b =
+    fn t:
     t.second
 
-mapFirst as (a: ma): a & b: ma & b =
-    f: t:
+mapFirst as fn (fn a: ma), a & b: ma & b =
+    fn f, t:
     f t.first & t.second
 
-mapSecond as (b: mb): a & b: a & mb =
-    f: t:
+mapSecond as fn (fn b: mb), a & b: a & mb =
+    fn f, t:
     t.first & f t.second
 
-mapBoth as (a: ma): (b: mb): a & b: ma & mb =
-    fa: fb: t:
+mapBoth as fn (fn a: ma), (fn b: mb), a & b: ma & mb =
+    fn fa, fb, t:
     fa t.first & fb t.second
 
-pair as a: b: a & b =
-    a: b:
+pair as fn a, b: a & b =
+    fn a, b:
     a & b
 

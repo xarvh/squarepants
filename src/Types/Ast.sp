@@ -25,12 +25,12 @@ union Uniqueness =
     , Depends UnivarId
 
 
-toImm as raw: { raw as raw, uni as Uniqueness } =
-    raw:
+toImm as fn raw: { raw as raw, uni as Uniqueness } =
+    fn raw:
     { raw, uni = Imm }
 
 
-toUni as raw: { raw as raw, uni as Uniqueness } =
-    raw:
+toUni as fn raw: { raw as raw, uni as Uniqueness } =
+    fn raw:
     { raw, uni = Uni }
 

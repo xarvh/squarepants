@@ -4,71 +4,55 @@ alias Set a =
     Dict a None
 
 
-empty as Set a =
-    #with a NonFunction
+empty as Set a with a NonFunction =
     Dict.empty
 
 
-member as a: Set a: Bool =
-    #with a NonFunction
+member as fn a, Set a: Bool with a NonFunction =
     Dict.member
 
 
-size as Set a: Int =
-    #with a NonFunction
+size as fn Set a: Int with a NonFunction =
     Dict.size
 
 
-isEmpty as Set a: Bool =
-    #with a NonFunction
+isEmpty as fn Set a: Bool with a NonFunction =
     Dict.isEmpty
 
 
-insert as a: Set a: Set a =
-    a:
-    #with a NonFunction
-    Dict.insert a None
+insert as fn a, Set a: Set a with a NonFunction =
+    Dict.insert __ None __
 
 
-remove as a: Set a: Set a =
-    #with a NonFunction
+remove as fn a, Set a: Set a with a NonFunction =
     Dict.remove
 
 
-singleton as a: Set a =
-    a:
-    #with a NonFunction
-    Dict.singleton a None
+ofOne as fn a: Set a with a NonFunction =
+    Dict.ofOne __ None
 
 
-join as Set a: Set a: Set a =
-    #with a NonFunction
+join as fn Set a, Set a: Set a with a NonFunction =
     Dict.join
 
 
-intersect as Set a: Set a: Set a =
-    #with a NonFunction
+intersect as fn Set a, Set a: Set a with a NonFunction =
     Dict.intersect
 
 
-diff as Set a: Set a: Set a =
-    #with a NonFunction
+diff as fn Set a, Set a: Set a with a NonFunction =
     Dict.diff
 
 
-map as (a: b): Set a: Set b =
-    f: set:
-    #with a, b NonFunction
-    Dict.for set (k: _: Dict.insert (f k) None) Dict.empty
+map as fn (fn a: b), Set a: Set b with a NonFunction =
+    fn f, set:
+    Dict.for empty set (fn k, _, d: Dict.insert (f k) None d)
 
 
-toList as Set a: [a] =
-    #with a NonFunction
+toList as fn Set a: [a] with a NonFunction =
     Dict.keys
 
 
-fromList as [a]: Set a =
-    list:
-    #with a NonFunction
-    List.for list insert Set.empty
+fromList as fn [a]: Set a with a NonFunction =
+    List.for empty __ insert
 
