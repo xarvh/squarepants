@@ -15172,7 +15172,7 @@ const $sd0$Platforms$Browser$platform = ({
   quickstart: "TODO",
 });
 
-const $sd0$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+const $sd0$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=16096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
 
 const $sd0$Platforms$Posix$overrides = ((() => {
   const $ioModule = ($sd0$Types$Meta$USR)((($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix))("IO"));

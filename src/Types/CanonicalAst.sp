@@ -231,7 +231,7 @@ expressionPos as Expression: Pos =
         Call p _ _: p
         Record p _ _: p
         RecordAccess p _ _: p
-        LetIn def exp: patternPos def.pattern
+        LetIn def e: expressionPos e
         If p _: p
         Try p _: p
         DestroyIn _ _: Pos.G

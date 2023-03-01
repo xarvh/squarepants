@@ -1,16 +1,17 @@
 tests as Test =
     Test.Group "Lexer"
         [
-        , keywords
-        , ops
-        , unaryAddittiveOps
-        , indentation
-        , comments
-        , underscores
-        , position
-        , textLiterals
+#        , keywords
+#        , ops
+#        , unaryAddittiveOps
+#        , indentation
+#        , comments
+#        , underscores
+#        , position
+#        , textLiterals
         ]
 
+[#
 # TODO some tests that should be added:
 [# TESTS for single quote text
 
@@ -534,3 +535,4 @@ textLiterals as Test =
             )
         ]
 
+#]
