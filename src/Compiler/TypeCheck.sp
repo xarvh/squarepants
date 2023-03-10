@@ -778,7 +778,7 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
             typedRest & restType =
                 inferExpression defEnv rest @state
 
-            TA.LetIn typedDef typedRest & restType
+            TA.LetIn typedDef typedRest restType & restType
 
 
         , CA.If pos { condition, true, false }:
@@ -942,7 +942,7 @@ inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & T
         TA.TypeFn (Array.toList @parTypes) bodyType
 
     exp =
-        TA.Fn pos (Array.toList @typedPars) typedBody
+        TA.Fn pos (Array.toList @typedPars) typedBody bodyType
 
     exp & { uni = Uni, raw = type }
 
@@ -1215,7 +1215,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                 typedBody =
                     checkExpression localEnv out body @state
 
-                TA.Fn pos (Array.toList @typedPars) typedBody
+                TA.Fn pos (Array.toList @typedPars) typedBody out
 
 
         , CA.Call pos reference args & _:
@@ -1296,7 +1296,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             typedRest =
                 checkExpression defEnv expectedType rest @state
 
-            TA.LetIn typedDef typedRest
+            TA.LetIn typedDef typedRest expectedType
 
 
         , CA.If pos { condition, true, false } & _:
@@ -2341,11 +2341,7 @@ solveOneEquality as fn Equality, ERState: ERState =
 
                 , TA.TypeExact usr1 args1 & TA.TypeExact usr2 args2:
                     if usr1 /= usr2 then
-
-                        log "ERR" { usr1, usr2 }
-
-                        state
-                        >> addErError head "types are incompatible2" __
+                        addErError head "types are incompatible2" state
                     else
                         newEqualities as [Equality] =
                             List.indexedMap2 (fn index, a, b: Equality context pos (Why_TypeArgument usr1 index why) a b) args2 args1

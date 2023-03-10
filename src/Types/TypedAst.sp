@@ -29,13 +29,18 @@ union Expression =
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos USR
-    , Fn Pos [Parameter] Expression
+    , Fn Pos [Parameter] Expression FullType
     , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
     , Record Pos (Maybe Expression) (Dict Name Expression)
     , RecordAccess Pos Name Expression
-    , LetIn ValueDef Expression
+
+    # TODO Adding the FullType here increases compile time by 10% by itself.
+    # This is because there are a lot of LetIns and each requires its resolution.
+    # At the same time, most of them are repeated, because nested LetIns have the same value.
+    # So maybe there is a way to optimize this?
+    , LetIn ValueDef Expression FullType
     , If Pos
         {
         , condition as Expression
@@ -232,8 +237,8 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         , Variable _ _: expression
         , Constructor _ _: expression
 
-        , Fn p pars body:
-            Fn p (List.map (resolvePar saf __) pars) (rec body)
+        , Fn p pars body bodyType:
+            Fn p (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
 
         , Call p ref args:
             Call p (rec ref) (List.map (resolveArg saf __) args)
@@ -244,8 +249,8 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         , RecordAccess p name exp:
             RecordAccess p name (rec exp)
 
-        , LetIn def body:
-            LetIn (resolveValueDef saf def) (rec body)
+        , LetIn def rest restType:
+            LetIn (resolveValueDef saf def) (rec rest) (resolveFull saf restType)
 
         , If p { condition, true, false }:
             If p { condition = rec condition, true = rec true, false = rec false }

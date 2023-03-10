@@ -263,7 +263,7 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
         , TA.RecordAccess _ attrName exp:
             EA.RecordAccess attrName (translateExpression @state @counter exp)
 
-        , TA.Fn pos taPars body:
+        , TA.Fn pos taPars body bodyT:
 
             eaBody =
                 translateExpression @state @counter body
@@ -347,7 +347,7 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
             >> wrapWithLetIn
 
 
-        , TA.LetIn valueDef e:
+        , TA.LetIn valueDef e bodyType:
             try pickMainName valueDef.pattern as
                 , NoNamedVariables:
                     EA.LetIn
