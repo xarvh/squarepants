@@ -13,13 +13,13 @@ Features:
   * Immutable first, with support for local, confined mutation ("what happens in the scope stays in the scope")
 
 Not-yet-implemented features:
-  * An advanced module system borne out of my experience working on 200K LOC applications
+  * An import-less module system borne out of my experience working on 200K LOC applications
   * Support for linear algebra and hardware graphic acceleration as a first-class citizen
 
 
 Status
 ------
-Squarepants can currently compile its own compiler to JavaScript running on Node.js
+Squarepants can currently compile its own compiler to JavaScript; it can be run in Node.js or can be used for rudimentary web pages.
 
 The compiler is slow and the current priority is to make it a lot faster.
 
@@ -44,7 +44,8 @@ Language Overview
         1
 
     # Declare a function with three parameters
-    addThreeNumbers = x: y: z:
+    addThreeNumbers =
+        fn x, y, z:
         x + y + z
 
 
@@ -62,8 +63,8 @@ Language Overview
         addThreeNumbers 1 2 3
 
 
-    fibonacci as Int: Int =
-        n:
+    fibonacci as fn Int: Int =
+        fn n:
 
         # if-then-else always yields a value
         if n < 2 then
@@ -72,48 +73,47 @@ Language Overview
             n + fibonacci (n - 1)
 
 
-    subtractTwoFrom as Vec2: Vec2 =
-        n:
-
-        # operators can be used prefixed, like functions
-        # `left - right` becomes `(-) right left`
-        # (this is opposite to what Haskell or Elm do)
-        (-) 2 n
-
-
     # Square brackets mean "List".
     # All items must be of the same type
-    listOfText as [Text] = [
+    listOfText as [Text] =
+        [
         , "Gary"
         , "Bikini Bottom"
         , "I'm ready! Promotion!"
         ]
 
 
-    # `>>` and `<<` are just syntactic sugar, read them as "send to".
-    # They help using less parens and help visualizing how a value is
+    # TODO explain argument placeholders
+
+
+    # `>>` is just syntactic sugar, read it as "send to".
+    # It helps using less parens and visualizing how a value is
     # transformed step-by-step.
-    repeatHello as Int: Text =
-        times:
+    repeatHello as fn Int: Text =
+        fn times:
         "Hello!"
-            >> List.repeat times
-            >> Text.join ", "
-            >> (..) " And append this text at the end"
+        >> List.repeat times __
+        >> Text.join ", " __
+        >> __ .. " And append this text at the end"
 
 
-    # When you see `@`, it means "this thing is mutable"
+    # Squarepants has uniqueness typing, which means that some values can be used only
+    # once, until they are reassigned.
     # If you come from Haskell, think of it as sintactic sugar around the State monad.
     #
     # Notice that `average` is still a pure function.
     #
-    average as [Int]: Float =
-        numbers:
+    average as fn [Int]: Float =
+        fn numbers:
 
-        # mutable variables can only be local and can't leave their scope.
-        n @= 0
-        sum @= 0
+        # Unique variables can only be local and can't leave their scope.
+        # They are declared with `!`.
+        !n = 0
+        !sum = 0
 
-        List.each numbers x:
+        # `@` is used to immediately reassign a unique.
+        # In practice, is how you get mutation.
+        List.each numbers fn x:
             @n += 1
             @sum += x
 
@@ -121,11 +121,10 @@ Language Overview
         sum / n
 
 
-    # The argument preceding `@:` is mutable
-    generateTwoRandomNumbers as Int: Int: Random.Seed @: Int & Int =
-        min_: max_: @seed:
+    # '&' is used for tuples
+    generateTwoRandomNumbers as fn Int, Int, @Random.Seed: Int & Int =
+        fn min_, max_, @seed:
 
-        # '&' is used for tuples
         Random.number min_ max_ @seed & Random.number min_ max_ @seed
 
 
@@ -138,32 +137,33 @@ Language Overview
         , Error Text
         , Available payload
 
-    getStatusName as LoadingState payload: Text =
-        loadingState:
+    getStatusName as fn LoadingState payload: Text =
+        fn loadingState:
 
         try loadingState as
-            NotRequested: "Not needed"
-            Requested: "Awaiting server response"
-            Error message: "Error: " .. message
-            Available _: "Successfully loaded"
+            , NotRequested: "Not needed"
+            , Requested: "Awaiting server response"
+            , Error message: "Error: " .. message
+            , Available _: "Successfully loaded"
 
-    getPayload as LoadingState payload: Maybe payload =
-        loadingState:
+    getPayload as fn LoadingState payload: Maybe payload =
+        fn loadingState:
 
         try loadingState as
-            Available payload: Just payload
-            _: Nothing
-
+            , Available payload: Just payload
+            , _: Nothing
 
 
     # Records
 
-    alias Crab = {
+    alias Crab =
+        {
         , name as Text
         , money as Float
         }
 
-    eugeneKrabs as Crab = {
+    eugeneKrabs as Crab =
+        {
         , name = "Eugene H. Krabs"
         , money = 2 #TODO 2_345_678.90
         }
@@ -172,20 +172,20 @@ Language Overview
     # TODO add a record access example
 
 
-    earnMoney as Float: Crab: Crab =
-        profit: crab:
+    earnMoney as fn Float, Crab: Crab =
+        fn profit, crab:
 
         # `.money` is a shorthand for `crab.money`
         { crab with money = .money + profit }
 
 
     # pseudo do-notation
-    getAllHouses as (Text: Maybe house): Maybe { rock as house, moai as house, pineapple as house } =
-        getAsset:
+    getAllHouses as fn (fn Text: Maybe house): Maybe { rock as house, moai as house, pineapple as house } =
+        fn getAsset:
 
-        getAsset "rock" >> Maybe.onJust rock:
-        getAsset "moai" >> Maybe.onJust moai:
-        getAsset "pineapple" >> Maybe.onJust pineapple:
+        getAsset "rock" >> Maybe.onJust fn rock:
+        getAsset "moai" >> Maybe.onJust fn moai:
+        getAsset "pineapple" >> Maybe.onJust fn pineapple:
         Just { rock, moai, pineapple }
 
 
@@ -273,7 +273,7 @@ Special Features
 
 * Confined Mutability (see NOTES/Mutability.md)
 * No import statements (see NOTES/Modules.md)
-* Platforms (?)
+* Multi-platform by default
 
 
 If you come from Elm
