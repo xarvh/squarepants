@@ -321,6 +321,7 @@ parentScope as Test =
                     f =
                         fn n:
                         @x += n
+                        None
 
                     f
                 """
@@ -335,6 +336,7 @@ parentScope as Test =
                     fn !x:
                     fn n:
                     @x += n
+                    None
                 """
                 (infer "f")
                 (Test.errorContains ["x", "from outside"])
@@ -347,6 +349,7 @@ parentScope as Test =
                     fn @x:
                     fn n:
                     @x += n
+                    None
                 """
                 (infer "f")
                 (Test.errorContains ["x", "from outside"])
@@ -371,9 +374,10 @@ parentScope as Test =
                         n
 
                     array_push f @functions
+                    None
                 """
                 (infer "addFunctions")
-                (Test.errorContains ["x", "from outside"])
+                (Test.errorContains ["x", "outside"])
             ]
         ]
 

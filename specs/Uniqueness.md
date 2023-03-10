@@ -233,6 +233,8 @@ Recycling a variable in the parent scope
 ----------------------------------------
 
 * A function cannot *spend* any unique variables from its closure, unless it also reassigns the variable before the function itself ends.
+  NOTE: There is nothing in theory that prevents this from being allowed, but, absent a significant use case for it, I prefer to leave
+  it out for simplicity's sake.
 
     ```
     !x =
@@ -289,7 +291,7 @@ Recycling a variable in the parent scope
 
 * An expression requires all the requirements of its sub-expressions.
 
-* Expressions with any such requirement cannot be returned.
+* Expressions with any such requirement that also contain functions cannot be returned.
 
   --> A function call that recycles a unique also adds all its requirements to the unique.
   This is a result of the correspondence between recycling and "return and reassign":
@@ -329,10 +331,9 @@ Recycling a variable in the parent scope
 
   `addFunctions` must return `functions`, but since the latter has requirements, `addFunctions` is invalid.
 
-
-  --------> ISSUE: this check can get in the way when returning simple stuff like `None`
-  Should probably change the rule, so that any non-function is ok?
-
+  In practice, this means that:
+      * A function call that has requirements cannot recycle a unique that contains functions.
+      * A function or let..in cannot return an expression that has requirements AND contains functions.
 
 
 * Expressions with requirements cannot be evaluated at a point where the unique they require has been consumed

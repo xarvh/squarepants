@@ -93,28 +93,48 @@ addError as fn Pos, @state, (fn Error.Env: List Text): None =
 #
 
 
+errorTaintedCallRecyclesFunctions as fn Pos, Name, Dict Name { usedAt as Pos, fnPos as Pos }, @State: None =
+    fn callPos, name, required, @state:
+
+    #addFunctions as fn @Array (fn Int: Int): None =
+    #      fn @functions:
+    #
+    #      !x =
+    #          1
+    #
+    #      f as fn Int: Int =
+    #          fn n:
+    #          @x += 1
+    #          n
+    #
+    #      array_push f @functions
+    #      None
+
+    addError callPos @state fn eenv:
+        [
+        , "This function call could allow some unique values (" .. (required >> Dict.keys >> Text.join ", " __) .. ")"
+        , "to be recycled by a functions contained in the argument `" .. name .. "` outside of the scope where they were declared."
+        , "This would be BAD. [TODO link to wiki]"
+        , "TODO improve this explanation."
+        ]
+
 
 errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Name, { usedAt as Pos, fnPos as Pos }, @state: None =
     fn name, ({ usedAt, fnPos }), @state:
 
-    log "IGNORING errorReferencingConsumedVariable" name
-    None
+    addError fnPos @state fn eenv:
 
-#    addError fnPos @state fn eenv:
-#
-#        { location, block } =
-#            Error.posToHuman eenv usedAt
-#
-#        [
-#        , "This expression needs to access the unique variable `" .. name .. "` because it uses it here:"
-#        , ""
-#        , block
-#        , ""
-#        , "The problem is that returning a function from the expression could allow accessing `" .. name .. "` from outside of where `" .. name .. "` was declared."
-#        , "This would be BAD. [TODO link to wiki]"
-#        , ""
-#        , "---> COMPILER BUG <--- You are receiving this error even if you are not returning a function. Hopefully I'll be able to fix this soon."
-#        ]
+        { location, block } =
+            Error.posToHuman eenv usedAt
+
+        [
+        , "This expression needs to access the unique variable `" .. name .. "` because it uses it here:"
+        , ""
+        , block
+        , ""
+        , "The problem is that returning a function from the expression could allow accessing `" .. name .. "` from outside of where `" .. name .. "` was declared."
+        , "This would be BAD. [TODO link to wiki]"
+        ]
 
 
 errorUniqueHasImmType as fn Name, Pos, TA.FullType, @state: None =
@@ -307,6 +327,24 @@ doCall as fn Env, @state, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expressio
             >> doArgument env @state pos __
             >> uniOutMap (fn resolvedArg: resolvedArg :: acc.resolved) __
 
+    asRecyclingFunction as fn TA.Argument: Maybe Name =
+        fn arg:
+        try arg as
+            , TA.ArgumentRecycle p raw path name:
+                if TA.typeAllowsFunctions (fn tyvarId: False) raw then
+                    Just name
+                else
+                    Nothing
+
+            , TA.ArgumentExpression _ _:
+                Nothing
+
+    if doneArgs.required /= Dict.empty or doneReference.required /= Dict.empty then
+        List.each (List.filterMap asRecyclingFunction arguments) fn name:
+            errorTaintedCallRecyclesFunctions pos name (Dict.join doneArgs.required doneReference.required) @state
+    else
+        None
+
     {
     , recycled = Dict.join doneReference.recycled doneArgs.recycled
     #
@@ -462,69 +500,8 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
         , TA.Constructor pos usr:
             re
 
-        , TA.Fn pos pars body:
-            # TODO: move this in its own function, it's really big
-
-            { parsToBeSpent, parsToBeRecycled, localEnv } =
-                { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
-                >> List.for __ pars (doParameter @state __ __)
-
-            doneBody =
-                doExpression localEnv @state body
-
-            #
-            # Variables that are not spent by the body need to be explicitly destroyed
-            #
-            exprWithDestruction =
-                doneBody.resolved >> Dict.for __ parsToBeSpent fn name, _, exp:
-                    if Dict.member name doneBody.spent then
-                        exp
-                    else
-                        TA.DestroyIn name exp
-
-            #
-            # Ensure that the function does not spend any arg that should be recycled!
-            #
-            spentThatShouldHaveBeenRecycled =
-                Dict.intersect doneBody.spent parsToBeRecycled
-
-            if spentThatShouldHaveBeenRecycled /= Dict.empty  then
-                errorConsumingRecycledParameters pos spentThatShouldHaveBeenRecycled @state
-            else
-                None
-
-            #
-            # Functions cannot spend variables from the parent scope
-            #
-            spentFromParent =
-                Dict.diff doneBody.spent parsToBeSpent
-
-            if spentThatShouldHaveBeenRecycled == Dict.empty and spentFromParent /= Dict.empty then
-                errorFunctionsCannotConsumeParentUniques pos spentFromParent @state
-            else
-                None
-
-            #
-            # Expressions "require" all variables from the parent scope that they recycle
-            # and any other variable already required by its body
-            #
-            required as Required =
-                doneBody.recycled
-                >> Dict.map (fn k, usedAt: { usedAt, fnPos = pos }) __
-                >> Dict.join doneBody.required __
-                >> Dict.diff __ parsToBeRecycled
-
-            Dict.each (Dict.join parsToBeRecycled parsToBeSpent) fn varName, parPos:
-                try Dict.get varName doneBody.required as
-                    , Nothing: None
-                    , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope varName r @state
-
-            {
-            , recycled = Dict.diff doneBody.recycled parsToBeRecycled
-            , required
-            , spent = Dict.empty
-            , resolved = TA.Fn pos pars exprWithDestruction
-            }
+        , TA.Fn pos pars body bodyType:
+            doFn env pos @state pars body bodyType
 
 
         , TA.Call pos reference arguments:
@@ -675,7 +652,7 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
             >> uniOutMap (TA.RecordAccess pos name __) __
 
 
-        , TA.LetIn valueDef e:
+        , TA.LetIn valueDef rest restType:
 
             # TODO clean up these notes
             #
@@ -704,15 +681,18 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
                 >> requireInEnv addedVars doneDefBody.required __
 
             doneExpression =
-                doExpression localEnv @state e
+                doExpression localEnv @state rest
 
-            List.each addedVars fn varName:
-                try Dict.get varName doneExpression.required as
-                    , Nothing: None
-                    , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope varName r @state
+            if TA.typeAllowsFunctions (fn tyvarId: False) restType.raw then
+                List.each addedVars fn varName:
+                    try Dict.get varName doneExpression.required as
+                        , Nothing: None
+                        , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope varName r @state
+            else
+                None
 
             finalExpression =
-                TA.LetIn { valueDef with body = doneDefBody.resolved } doneExpression.resolved
+                TA.LetIn { valueDef with body = doneDefBody.resolved } doneExpression.resolved restType
                 >> Dict.for __ uniques fn name, pos, exp:
                     try Dict.get name doneExpression.spent as
                         , Just _: exp
@@ -733,6 +713,74 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
             , spent
             , resolved = finalExpression
             }
+
+
+doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut TA.Expression =
+    fn env, pos, @state, pars, body, bodyType:
+
+    { parsToBeSpent, parsToBeRecycled, localEnv } =
+        { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
+        >> List.for __ pars (doParameter @state __ __)
+
+    doneBody =
+        doExpression localEnv @state body
+
+    #
+    # Variables that are not spent by the body need to be explicitly destroyed
+    #
+    exprWithDestruction =
+        doneBody.resolved >> Dict.for __ parsToBeSpent fn name, _, exp:
+            if Dict.member name doneBody.spent then
+                exp
+            else
+                TA.DestroyIn name exp
+
+    #
+    # Ensure that the function does not spend any arg that should be recycled!
+    #
+    spentThatShouldHaveBeenRecycled =
+        Dict.intersect doneBody.spent parsToBeRecycled
+
+    if spentThatShouldHaveBeenRecycled /= Dict.empty  then
+        errorConsumingRecycledParameters pos spentThatShouldHaveBeenRecycled @state
+    else
+        None
+
+    #
+    # Functions cannot spend variables from the parent scope
+    #
+    spentFromParent =
+        Dict.diff doneBody.spent parsToBeSpent
+
+    if spentThatShouldHaveBeenRecycled == Dict.empty and spentFromParent /= Dict.empty then
+        errorFunctionsCannotConsumeParentUniques pos spentFromParent @state
+    else
+        None
+
+    #
+    # Expressions "require" all variables from the parent scope that they recycle
+    # and any other variable already required by its body
+    #
+    required as Required =
+        doneBody.recycled
+        >> Dict.map (fn k, usedAt: { usedAt, fnPos = pos }) __
+        >> Dict.join doneBody.required __
+        >> Dict.diff __ parsToBeRecycled
+
+    if TA.typeAllowsFunctions (fn tyvarId: False) bodyType.raw then
+        Dict.each (Dict.join parsToBeRecycled parsToBeSpent) fn varName, parPos:
+            try Dict.get varName doneBody.required as
+                , Nothing: None
+                , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope varName r @state
+    else
+        None
+
+    {
+    , recycled = Dict.diff doneBody.recycled parsToBeRecycled
+    , required
+    , spent = Dict.empty
+    , resolved = TA.Fn pos pars exprWithDestruction bodyType
+    }
 
 
 doModule as fn TA.Module: Res TA.Module =
