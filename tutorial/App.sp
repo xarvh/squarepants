@@ -5,8 +5,8 @@ pixelColor =
     fn x, y:
 
     {
-    , r = if x < 0.5 then 0.1 else 0.6
-    , g = 0.5
+    , r = if x < 50% then 10% else 60%
+    , g = 50%
     , b = y
     }
 """
@@ -92,11 +92,9 @@ onMouseMove as VirtualDom.EventHandler Msg =
     Ok << OnMouseMove x y
 
 
-floatToDec as fn Number: Text =
+floatToPercent as fn Number: Text =
     fn n:
-
-    round (n * 100) / 100
-    >> Text.fromNumber
+    Text.fromNumber (round (n * 100)) .. "%"
 
 
 view as fn Model: Html Msg =
@@ -131,8 +129,8 @@ view as fn Model: Html Msg =
                 , Just { x, y }:
                     div []
                         [
-                        , div [] [ Html.text << "x = " .. floatToDec x ]
-                        , div [] [ Html.text << "y = " .. floatToDec y ]
+                        , div [] [ Html.text << "x = " .. floatToPercent x ]
+                        , div [] [ Html.text << "y = " .. floatToPercent y ]
                         ]
 
             , div [ class "content" ]
