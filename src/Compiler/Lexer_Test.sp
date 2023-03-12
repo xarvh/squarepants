@@ -1,17 +1,18 @@
 tests as Test =
     Test.Group "Lexer"
         [
-#        , keywords
-#        , ops
-#        , unaryAddittiveOps
-#        , indentation
-#        , comments
-#        , underscores
-#        , position
-#        , textLiterals
+        , keywords
+        , ops
+        , unaryAddittiveOps
+        , indentation
+        , comments
+        , underscores
+        , position
+        , textLiterals
+        , numberLiterals
         ]
 
-[#
+
 # TODO some tests that should be added:
 [# TESTS for single quote text
 
@@ -214,13 +215,13 @@ indentation as Test =
                 , Token n 1 2 __ << lowerName "a"
                 , Token n 3 4 __ << Token.Defop
                 , Token n 6 6 __ << Token.BlockStart
-                , Token n 6 7 __ << Token.NumberLiteral "1"
+                , Token n 6 7 __ << Token.NumberLiteral False "1"
                 , Token n 8 8 __ << Token.BlockEnd
                 ], [
                 , Token n 8 8 __ << Token.NewSiblingLine
                 , Token n 8 9 __ << lowerName "b"
                 , Token n 10 11 __ << Token.Defop
-                , Token n 12 13 __ << Token.NumberLiteral "1"
+                , Token n 12 13 __ << Token.NumberLiteral False "1"
                 ]]
             )
         , codeTest
@@ -353,7 +354,7 @@ comments as Test =
                 , Token n 3 3 __ << Token.NewSiblingLine
                 , Token n 3 4 __ << lowerName "a"
                 , Token n 5 6 __ << Token.Defop
-                , Token n 7 8 __ << Token.NumberLiteral "1"
+                , Token n 7 8 __ << Token.NumberLiteral False "1"
                 ]]
             )
         , codeTest "[reg] nested comments allow a spurious newline?"
@@ -365,7 +366,7 @@ comments as Test =
                 , Token n 10 10 __ << Token.NewSiblingLine
                 , Token n 10 11 __ << lowerName "a"
                 , Token n 12 13 __ << Token.Defop
-                , Token n 14 15 __ << Token.NumberLiteral "1"
+                , Token n 14 15 __ << Token.NumberLiteral False "1"
                 ]]
             )
         , codeTest "Single line"
@@ -396,7 +397,7 @@ a [# inline #] = 1
                 , Token n 19 20 __ << lowerName "a"
 #                , Token n 21 32 << Token.Comment
                 , Token n 34 35 __ << Token.Defop
-                , Token n 36 37 __ << Token.NumberLiteral "1"
+                , Token n 36 37 __ << Token.NumberLiteral False "1"
 #                , Token n 39 58 << Token.Comment
 #                , Token n 61 78 << Token.Comment
                 ]]
@@ -453,7 +454,7 @@ underscores as Test =
         , codeTest "'10_20' as a Number"
             "10_20"
             (lexTokensAndDrop 1)
-            (Test.isOkAndEqualTo [[ Token n 0 5 __ << Token.NumberLiteral "10_20" ]])
+            (Test.isOkAndEqualTo [[ Token n 0 5 __ << Token.NumberLiteral False "10_20" ]])
         ]
 
 
@@ -536,4 +537,17 @@ textLiterals as Test =
             )
         ]
 
-#]
+
+
+numberLiterals as Test =
+    Test.Group "Number literals"
+        [
+        , codeTest
+            "Percent"
+            "10%"
+            (lexTokensAndDrop 1)
+            (Test.isOkAndEqualTo [[
+                , Token n 0 2 __ << Token.NumberLiteral True "10"
+                ]]
+            )
+        ]

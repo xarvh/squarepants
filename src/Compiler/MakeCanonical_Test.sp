@@ -22,6 +22,7 @@ tests as Test =
         , nonFunction
         , argumentPlaceholders
         , polymorphicUniques
+        , numbers
         ]
 
 
@@ -663,3 +664,21 @@ polymorphicUniques as Test =
             (Test.isOkAndEqualTo << Dict.fromList [1 & None, 2 & None])
         ]
 
+
+numbers as Test =
+    Test.Group
+        """
+        Numbers
+        """
+        [
+        , codeTest
+            "Percent"
+            "a = 1%"
+            (firstEvaluation "a")
+            (Test.isOkAndEqualTo << CA.LiteralNumber p 0.01)
+        , codeTest
+            "Underscore"
+            "a = 1_000_000"
+            (firstEvaluation "a")
+            (Test.isOkAndEqualTo << CA.LiteralNumber p (1000 * 1000))
+        ]

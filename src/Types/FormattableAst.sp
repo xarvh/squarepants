@@ -62,7 +62,7 @@ union Expression =
 
 union Expr_ =
     , LiteralText Text
-    , LiteralNumber Text
+    , LiteralNumber Bool Text
     , ArgumentPlaceholder
 
     , Statements [Statement]

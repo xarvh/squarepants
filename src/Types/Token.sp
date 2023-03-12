@@ -42,7 +42,7 @@ union Kind =
     , BadIndent
     # Terms
     , TextLiteral Text
-    , NumberLiteral Text
+    , NumberLiteral Bool Text
     , Word Word
     , ArgumentPlaceholder
     , UniquenessPolymorphismBinop

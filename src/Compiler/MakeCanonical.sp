@@ -662,8 +662,8 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
         , FA.LiteralText l:
             Ok << CA.PatternLiteralText pos l
 
-        , FA.LiteralNumber l:
-            translateNumber CA.PatternLiteralNumber pos l
+        , FA.LiteralNumber isPercent l:
+            translateNumber isPercent CA.PatternLiteralNumber pos l
 
         # Stuff that's not valid for patterns
 
@@ -756,8 +756,8 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
     fn env, (FA.Expression pos expr_):
 
     try expr_ as
-        , FA.LiteralNumber str:
-            translateNumber CA.LiteralNumber pos str
+        , FA.LiteralNumber isPercent str:
+            translateNumber isPercent CA.LiteralNumber pos str
 
         , FA.LiteralText v:
             Ok << CA.LiteralText pos v
@@ -1032,18 +1032,19 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
             >> Ok
 
 
-translateNumber as fn (fn Pos, Number: a), Pos, Text: Res a =
-    fn constructor, pos, numberAsText:
+translateNumber as fn Bool, (fn Pos, Number: a), Pos, Text: Res a =
+    fn isPercent, constructor, pos, numberAsText:
 
-    try Text.toNumber numberAsText as
+    try Text.toNumber (Text.replace "_" "" numberAsText) as
         , Nothing:
-            error pos [
+            error pos
+                [
                 , "invalid number: `" .. numberAsText .. "`"
                 , "TODO link to documentation on valid number formats"
                 ]
 
         , Just n:
-            Ok << constructor pos n
+            Ok << constructor pos (if isPercent then n / 100 else n)
 
 
 translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Res CA.Expression =

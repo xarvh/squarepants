@@ -422,8 +422,8 @@ isNumber as fn Text: Bool =
     re char /= ""
 
 
-addNumberToken as fn Text, @ReadState: None =
-    fn buffer, @state:
+addNumberToken as fn Bool, Text, @ReadState: None =
+    fn isPercent, buffer, @state:
 
     start & end & chunk =
         getChunk buffer @state
@@ -435,7 +435,7 @@ addNumberToken as fn Text, @ReadState: None =
 
     # TODO what about exponential notation?
 
-    absAddToken start end (Token.NumberLiteral chunk) @state
+    absAddToken start end (Token.NumberLiteral isPercent chunk) @state
 
 
 #
@@ -627,8 +627,11 @@ lexOne as fn Text, Text, @ReadState: None =
         , NumberLiteral:
             if isNumber char then
                 None
+            else if char == "%" then
+                addNumberToken True buffer @state
+                setMode Default @state
             else
-                addNumberToken buffer @state
+                addNumberToken False buffer @state
                 setMode Default @state
                 lexOne buffer char @state
 

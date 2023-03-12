@@ -343,12 +343,12 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
         , Token.ArgumentPlaceholder:
             FA.ArgumentPlaceholder >> ok
 
-        , Token.NumberLiteral s:
+        , Token.NumberLiteral isPercent s:
             Parser.oneOf
               [
               , discardFirst (kind Token.UniquenessPolymorphismBinop) (expr env) >> on fn e:
                  FA.Poly s e >> ok
-              , FA.LiteralNumber s >> ok
+              , FA.LiteralNumber isPercent s >> ok
               ]
 
         , Token.TextLiteral s:

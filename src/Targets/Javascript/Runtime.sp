@@ -123,7 +123,7 @@ const basics_compare = (a, b) => {
   return 0;
 }
 
-const sp_divide = (right, left) => {
+const sp_divide = (left, right) => {
   if (right === 0) return 0;
   return left / right;
 }

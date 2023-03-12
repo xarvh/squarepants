@@ -114,7 +114,7 @@ const basics_compare = (a, b) => {
   return 0;
 }
 
-const sp_divide = (right, left) => {
+const sp_divide = (left, right) => {
   if (right === 0) return 0;
   return left / right;
 }
@@ -1595,9 +1595,10 @@ const $sd0$Types$FormattableAst$List = (($1) => ([
   $1,
 ]));
 
-const $sd0$Types$FormattableAst$LiteralNumber = (($1) => ([
+const $sd0$Types$FormattableAst$LiteralNumber = (($1, $2) => ([
   "LiteralNumber",
   $1,
+  $2,
 ]));
 
 const $sd0$Types$FormattableAst$LiteralText = (($1) => ([
@@ -1976,9 +1977,10 @@ const $sd0$Types$Token$NewSiblingLine = ([
   "NewSiblingLine",
 ]);
 
-const $sd0$Types$Token$NumberLiteral = (($1) => ([
+const $sd0$Types$Token$NumberLiteral = (($1, $2) => ([
   "NumberLiteral",
   $1,
+  $2,
 ]));
 
 const $sd0$Types$Token$Open = ([
@@ -4930,13 +4932,13 @@ const $sd0$Compiler$Lexer$getChunk = (($buffer, $state) => {
   ]);
 });
 
-const $sd0$Compiler$Lexer$addNumberToken = (($buffer, $state) => {
+const $sd0$Compiler$Lexer$addNumberToken = (($isPercent, $buffer, $state) => {
   const $$chunk = ((__re__ = ($sd0$Compiler$Lexer$getChunk)($buffer, $state)), ($state = (__re__)[1]), (__re__)[0]);
   const $chunk = $$chunk.third;
   const $end = $$chunk.second;
   const $start = $$chunk.first;
   return ([
-    ((__re__ = ($sd0$Compiler$Lexer$absAddToken)($start, $end, ($sd0$Types$Token$NumberLiteral)($chunk), $state)), ($state = (__re__)[1]), (__re__)[0]),
+    ((__re__ = ($sd0$Compiler$Lexer$absAddToken)($start, $end, ($sd0$Types$Token$NumberLiteral)($isPercent, $chunk), $state)), ($state = (__re__)[1]), (__re__)[0]),
     $state,
   ]);
 });
@@ -5681,11 +5683,16 @@ const $sd0$Compiler$Lexer$lexOne = (($buffer, $char, $state) => {
                 : ((($$try1)[0] === "NumberLiteral")
                   ? (($sd0$Compiler$Lexer$isNumber)($char)
                     ? null
-                    : ((() => {
-                      ((__re__ = ($sd0$Compiler$Lexer$addNumberToken)($buffer, $state)), ($state = (__re__)[1]), (__re__)[0]);
-                      ((__re__ = ($sd0$Compiler$Lexer$setMode)($sd0$Compiler$Lexer$Default, $state)), ($state = (__re__)[1]), (__re__)[0]);
-                      return ((__re__ = ($sd0$Compiler$Lexer$lexOne)($buffer, $char, $state)), ($state = (__re__)[1]), (__re__)[0]);
-                    }))())
+                    : ((sp_equal)($char, "%")
+                      ? ((() => {
+                        ((__re__ = ($sd0$Compiler$Lexer$addNumberToken)(true, $buffer, $state)), ($state = (__re__)[1]), (__re__)[0]);
+                        return ((__re__ = ($sd0$Compiler$Lexer$setMode)($sd0$Compiler$Lexer$Default, $state)), ($state = (__re__)[1]), (__re__)[0]);
+                      }))()
+                      : ((() => {
+                        ((__re__ = ($sd0$Compiler$Lexer$addNumberToken)(false, $buffer, $state)), ($state = (__re__)[1]), (__re__)[0]);
+                        ((__re__ = ($sd0$Compiler$Lexer$setMode)($sd0$Compiler$Lexer$Default, $state)), ($state = (__re__)[1]), (__re__)[0]);
+                        return ((__re__ = ($sd0$Compiler$Lexer$lexOne)($buffer, $char, $state)), ($state = (__re__)[1]), (__re__)[0]);
+                      }))()))
                   : ((($$try1)[0] === "Squiggles")
                     ? (($sd0$Compiler$Lexer$isSquiggle)($char)
                       ? null
@@ -5748,7 +5755,7 @@ const $sd0$Compiler$Lexer$lexOne = (($buffer, $char, $state) => {
                                     })), $state)), ($state = (__re__)[1]), (__re__)[0])
                                     : (true
                                       ? null
-                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 677:12', (sp_toHuman)($char)))))));
+                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 680:12', (sp_toHuman)($char)))))));
                           }))()
                           : ((($$try1)[0] === "TripleQuote")
                             ? ((() => {
@@ -5787,7 +5794,7 @@ const $sd0$Compiler$Lexer$lexOne = (($buffer, $char, $state) => {
                                           closingQuotes: 0,
                                           lastEscape: $lastEscape,
                                         })), $state)), ($state = (__re__)[1]), (__re__)[0])
-                                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 717:13', (sp_toHuman)($char)))))));
+                                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 720:13', (sp_toHuman)($char)))))));
                             }))()
                             : ((($$try1)[0] === "LineComment")
                               ? (((sp_equal)($char, "\n") || (sp_equal)($char, ""))
@@ -5831,7 +5838,7 @@ const $sd0$Compiler$Lexer$lexOne = (($buffer, $char, $state) => {
                                           ? ((__re__ = ($sd0$Compiler$Lexer$addError)("unterminated block comment", $state)), ($state = (__re__)[1]), (__re__)[0])
                                           : (true
                                             ? ($continueWithDeltaNesting)(0)
-                                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 763:10', (sp_toHuman)($$try2))))));
+                                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 766:10', (sp_toHuman)($$try2))))));
                                   }))()
                                   : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 523:4', (sp_toHuman)($$try1))))))))))))))))),
     $state,
@@ -5886,7 +5893,7 @@ const $sd0$Compiler$Lexer$lexer = (($moduleName, $moduleCode) => {
           }), $1);
         }))($errors)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 839:4', (sp_toHuman)($$try1))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Lexer.sp 842:4', (sp_toHuman)($$try1))));
 });
 
 const $sd0$Compiler$Error$res = (($pos, $desc) => {
@@ -6267,10 +6274,11 @@ const $sd0$Compiler$Parser$exprWithLeftDelimiter = (($env, $tokenKind) => {
       ? ($sd0$Compiler$Parser$ok)($sd0$Types$FormattableAst$ArgumentPlaceholder)
       : ((($tokenKind)[0] === "NumberLiteral")
         ? ((() => {
-          const $s = ($tokenKind)[1];
+          const $isPercent = ($tokenKind)[1];
+          const $s = ($tokenKind)[2];
           return ($sd0$SPLib$Parser$oneOf)(($core$Core$Cons)((($sd0$Compiler$Parser$on)((($e) => {
             return ($sd0$Compiler$Parser$ok)(($sd0$Types$FormattableAst$Poly)($s, $e));
-          })))(($sd0$Compiler$Parser$discardFirst)(($sd0$Compiler$Parser$kind)($sd0$Types$Token$UniquenessPolymorphismBinop), ($sd0$Compiler$Parser$expr)($env))), ($core$Core$Cons)(($sd0$Compiler$Parser$ok)(($sd0$Types$FormattableAst$LiteralNumber)($s)), $core$Core$Nil)));
+          })))(($sd0$Compiler$Parser$discardFirst)(($sd0$Compiler$Parser$kind)($sd0$Types$Token$UniquenessPolymorphismBinop), ($sd0$Compiler$Parser$expr)($env))), ($core$Core$Cons)(($sd0$Compiler$Parser$ok)(($sd0$Types$FormattableAst$LiteralNumber)($isPercent, $s)), $core$Core$Nil)));
         }))()
         : ((($tokenKind)[0] === "TextLiteral")
           ? ((() => {
@@ -6990,7 +6998,7 @@ const $sd0$Compiler$MakeCanonical$translateAndInsertRecordAttributeType = (($ro,
               return ($sd0$Compiler$MakeCanonical$translateRawType)($ro, $1);
             }))($faType));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1358:8', (sp_toHuman)($maybeFaType)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1359:8', (sp_toHuman)($maybeFaType)))));
   })))(($sd0$Compiler$MakeCanonical$translateAttributeName)($faAttr.name));
 });
 
@@ -7021,14 +7029,14 @@ const $sd0$Compiler$MakeCanonical$translatePoly = (($expr) => {
                 second: $e,
               }));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1430:12', (sp_toHuman)($$try1))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1431:12', (sp_toHuman)($$try1))));
       }))()
       : (true
         ? ($core$Result$Ok)(({
           first: $sd0$Types$Ast$Imm,
           second: $expr,
         }))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1423:4', (sp_toHuman)($expr_)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1424:4', (sp_toHuman)($expr_)))));
 });
 
 const $sd0$Compiler$MakeCanonical$translateFullType = (($ro, $expr) => {
@@ -7169,7 +7177,7 @@ const $sd0$Compiler$MakeCanonical$translateTypeFunctionParameter = (($ro, $expre
       }))(((($1) => {
         return ($sd0$Compiler$MakeCanonical$translateFullType)($ro, $1);
       }))($expression))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1406:4', (sp_toHuman)($expr_))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1407:4', (sp_toHuman)($expr_))));
 });
 
 const $sd0$Compiler$MakeCanonical$translateTypeVariable = (($pos, $word) => {
@@ -7215,7 +7223,7 @@ const $sd0$Compiler$MakeCanonical$translateRawType = (($ro, $$expr_) => {
           }))()
           : (true
             ? ($sd0$Compiler$MakeCanonical$error)($refPos, ($core$Core$Cons)("I was expecting a named type here", $core$Core$Nil))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1471:12', (sp_toHuman)($ref))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1472:12', (sp_toHuman)($ref))));
       }))()
       : ((($expr_)[0] === "List")
         ? ((() => {
@@ -7234,7 +7242,7 @@ const $sd0$Compiler$MakeCanonical$translateRawType = (($ro, $$expr_) => {
               }))()
               : (true
                 ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("List items must all have the same type, so you can specify only one type", $core$Core$Nil))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1483:12', (sp_toHuman)($dotsAndItems)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1484:12', (sp_toHuman)($dotsAndItems)))));
         }))()
         : ((($expr_)[0] === "Record")
           ? ((() => {
@@ -7281,7 +7289,7 @@ const $sd0$Compiler$MakeCanonical$translateRawType = (($ro, $$expr_) => {
               }))()
               : (true
                 ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("Not sure what's up with this type =|", ($core$Core$Cons)((sp_toHuman)($expr_), $core$Core$Nil)))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1457:4', (sp_toHuman)($expr_)))))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1458:4', (sp_toHuman)($expr_)))))))));
 });
 
 const $sd0$Compiler$MakeCanonical$translateConstructor = (($ro, $unionType, $unionUsr, $$expr_, $constructors) => {
@@ -7306,7 +7314,7 @@ const $sd0$Compiler$MakeCanonical$translateConstructor = (($ro, $unionType, $uni
       }))()
       : (true
         ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("I was expecting a constructor name here", $core$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1547:8', (sp_toHuman)($expr_)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1548:8', (sp_toHuman)($expr_)))));
   return (($core$Result$onOk)((($$faPars) => {
     const $maybeType = $$faPars.first.maybeType;
     const $word = $$faPars.first.word;
@@ -7675,7 +7683,7 @@ const $sd0$Compiler$MakeCanonical$translateArgument = (($env, $faExpr) => {
         }))()
         : (true
           ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("I can recycle only variables!", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1133:12', (sp_toHuman)($faOperand))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1134:12', (sp_toHuman)($faOperand))));
     }))()
     : (true
       ? (($core$Result$onOk)((($caExpr) => {
@@ -7683,7 +7691,7 @@ const $sd0$Compiler$MakeCanonical$translateArgument = (($env, $faExpr) => {
       })))(((($1) => {
         return ($sd0$Compiler$MakeCanonical$translateExpression)($env, $1);
       }))($faExpr))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1131:4', (sp_toHuman)($faExpr))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1132:4', (sp_toHuman)($faExpr))));
 });
 
 const $sd0$Compiler$MakeCanonical$translateArgumentsAndPlaceholders = (($pos, $env, $faArgs) => {
@@ -7747,7 +7755,7 @@ const $sd0$Compiler$MakeCanonical$notAllSeparators = (($f, $ls) => {
           ? ($sd0$Compiler$MakeCanonical$notAllSeparators)($f, $tail)
           : true);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1235:4', (sp_toHuman)($ls))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1236:4', (sp_toHuman)($ls))));
 });
 
 const $sd0$Compiler$MakeCanonical$sameDirectionAs = (($a, $b) => {
@@ -7765,7 +7773,7 @@ const $sd0$Compiler$MakeCanonical$sameDirectionAs = (($a, $b) => {
               ? (sp_equal)($b.symbol, "<")
               : (true
                 ? false
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1253:8', (sp_toHuman)($$try1)))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1254:8', (sp_toHuman)($$try1)))))));
     }))());
 });
 
@@ -7778,7 +7786,7 @@ const $sd0$Compiler$MakeCanonical$makeBinop = (($pos, $left, $op, $right) => {
       }))()
       : ((($right)[0] === "ArgumentRecycle")
         ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("Can't >> to a recyclable", $core$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1314:8', (sp_toHuman)($right))))
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1315:8', (sp_toHuman)($right))))
     : ((sp_equal)($op.symbol, $sd0$Prelude$sendLeft.symbol)
       ? ((($left)[0] === "ArgumentExpression")
         ? ((() => {
@@ -7787,7 +7795,7 @@ const $sd0$Compiler$MakeCanonical$makeBinop = (($pos, $left, $op, $right) => {
         }))()
         : ((($left)[0] === "ArgumentRecycle")
           ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("Can't << to a recyclable", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1324:8', (sp_toHuman)($left))))
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1325:8', (sp_toHuman)($left))))
       : ($core$Result$Ok)(($sd0$Types$CanonicalAst$Call)($pos, ($sd0$Types$CanonicalAst$Variable)($pos, ($sd0$Types$Ast$RefGlobal)($op.usr)), ($core$Core$Cons)($left, ($core$Core$Cons)($right, $core$Core$Nil))))));
 });
 
@@ -7805,7 +7813,7 @@ const $sd0$Compiler$MakeCanonical$translateBinopSepListRec = (($env, $pos, $left
           })))(($sd0$Compiler$MakeCanonical$makeBinop)($pos, ($sd0$Types$CanonicalAst$ArgumentExpression)($leftAccum), $op, $caRight));
         })))(($sd0$Compiler$MakeCanonical$translateArgument)($env, $faRight));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1293:4', (sp_toHuman)($opsAndRight))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1294:4', (sp_toHuman)($opsAndRight))));
 });
 
 const $sd0$Compiler$MakeCanonical$translateBinopSepList_leftAssociative = (($env, $pos, $leftAccum, $opsAndRight) => {
@@ -7827,7 +7835,7 @@ const $sd0$Compiler$MakeCanonical$translateBinopSepList_rightAssociative = (($en
             return ($sd0$Compiler$MakeCanonical$makeBinop)($pos, ($sd0$Types$CanonicalAst$ArgumentExpression)($caLeft), $op, ($sd0$Types$CanonicalAst$ArgumentExpression)($caRight));
           })))(($sd0$Compiler$MakeCanonical$translateBinopSepList_rightAssociative)($env, $pos, $right, $tail));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1273:4', (sp_toHuman)($opsAndRight))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1274:4', (sp_toHuman)($opsAndRight))));
   })))(($sd0$Compiler$MakeCanonical$translateExpression)($env, $left));
 });
 
@@ -7862,7 +7870,7 @@ const $sd0$Compiler$MakeCanonical$translateBinops = (($env, $pos, $group, $$firs
           })))(($sd0$Compiler$MakeCanonical$translateExpression)($env, $firstItem))
           : (true
             ? ($sd0$Compiler$MakeCanonical$translateSimpleBinop)($env, $pos, $firstItem, $firstSep, $secondItem)
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1166:12', (sp_toHuman)($group))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1167:12', (sp_toHuman)($group))));
       }))()
       : (((($firstTail)[0] === "Cons") && ((($firstTail)[2])[0] === "Cons"))
         ? ((() => {
@@ -7917,19 +7925,21 @@ const $sd0$Compiler$MakeCanonical$translateBinops = (($env, $pos, $group, $$firs
                     ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("mutops can't be chained", $core$Core$Nil))
                     : (true
                       ? ($sd0$Compiler$MakeCanonical$translateBinopSepList_rightAssociative)($env, $pos, $firstItem, $firstTail)
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1184:12', (sp_toHuman)($group))))))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1185:12', (sp_toHuman)($group))))))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1161:4', (sp_toHuman)($firstTail)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1162:4', (sp_toHuman)($firstTail)))));
 });
 
-const $sd0$Compiler$MakeCanonical$translateNumber = (($constructor, $pos, $numberAsText) => {
-  const $$try1 = (text_toNumber)($numberAsText);
+const $sd0$Compiler$MakeCanonical$translateNumber = (($isPercent, $constructor, $pos, $numberAsText) => {
+  const $$try1 = (text_toNumber)(($core$Text$replace)("_", "", $numberAsText));
   return ((($$try1)[0] === "Nothing")
     ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)(("invalid number: `" + ($numberAsText + "`")), ($core$Core$Cons)("TODO link to documentation on valid number formats", $core$Core$Nil)))
     : ((($$try1)[0] === "Just")
       ? ((() => {
         const $n = ($$try1)[1];
-        return ($core$Result$Ok)(($constructor)($pos, $n));
+        return ($core$Result$Ok)(($constructor)($pos, ($isPercent
+          ? (sp_divide)($n, 100)
+          : $n)));
       }))()
       : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1038:4', (sp_toHuman)($$try1))));
 });
@@ -8229,8 +8239,9 @@ const $sd0$Compiler$MakeCanonical$translateRawPattern = (($env, $$expr_) => {
                   }))()
                   : ((($expr_)[0] === "LiteralNumber")
                     ? ((() => {
-                      const $l = ($expr_)[1];
-                      return ($sd0$Compiler$MakeCanonical$translateNumber)($sd0$Types$CanonicalAst$PatternLiteralNumber, $pos, $l);
+                      const $isPercent = ($expr_)[1];
+                      const $l = ($expr_)[2];
+                      return ($sd0$Compiler$MakeCanonical$translateNumber)($isPercent, $sd0$Types$CanonicalAst$PatternLiteralNumber, $pos, $l);
                     }))()
                     : ((($expr_)[0] === "Statements")
                       ? ((() => {
@@ -8341,7 +8352,7 @@ const $sd0$Compiler$MakeCanonical$translateRecord = (($env, $pos, $maybeMaybeExt
       ? ($sd0$Compiler$MakeCanonical$error)($pos, ($core$Core$Cons)("I need to know what record you are updating", $core$Core$Nil))
       : ((($maybeMaybeExtension)[0] === "Nothing")
         ? ($core$Result$Ok)($core$Maybe$Nothing)
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1053:8', (sp_toHuman)($maybeMaybeExtension)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1054:8', (sp_toHuman)($maybeMaybeExtension)))));
   return (($core$Result$onOk)((($maybeCaExt) => {
     return ((($maybeCaExt)[0] === "Nothing")
       ? (($core$Result$onOk)((($caAttrs) => {
@@ -8394,7 +8405,7 @@ const $sd0$Compiler$MakeCanonical$translateRecord = (($env, $pos, $maybeMaybeExt
             }));
           }))($core$Dict$empty));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1061:4', (sp_toHuman)($maybeCaExt))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1062:4', (sp_toHuman)($maybeCaExt))));
   })))($zzz);
 });
 
@@ -8594,8 +8605,9 @@ const $sd0$Compiler$MakeCanonical$translateExpression = (($env, $$expr_) => {
   const $expr_ = ($$expr_)[2];
   return ((($expr_)[0] === "LiteralNumber")
     ? ((() => {
-      const $str = ($expr_)[1];
-      return ($sd0$Compiler$MakeCanonical$translateNumber)($sd0$Types$CanonicalAst$LiteralNumber, $pos, $str);
+      const $isPercent = ($expr_)[1];
+      const $str = ($expr_)[2];
+      return ($sd0$Compiler$MakeCanonical$translateNumber)($isPercent, $sd0$Types$CanonicalAst$LiteralNumber, $pos, $str);
     }))()
     : ((($expr_)[0] === "LiteralText")
       ? ((() => {
@@ -9068,7 +9080,7 @@ const $sd0$Compiler$MakeCanonical$insertRootStatement = (($ro, $faStatement, $ca
                 }))($fa.args)));
             })))(($sd0$Compiler$MakeCanonical$translateTypeName)($fa.name));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1632:4', (sp_toHuman)($faStatement))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1633:4', (sp_toHuman)($faStatement))))));
 });
 
 const $sd0$Types$CanonicalAst$initModule = (($asText, $umr) => {
@@ -14951,8 +14963,6 @@ const $sd0$Compiler$Lexer$addOneIndentToken = (($kind, $state) => {
   ]);
 });
 
-const $sd0$Compiler$Lexer_Test$tests = ($sd0$Test$Group)("Lexer", $core$Core$Nil);
-
 const $sd0$Test$codeTest = (($toText, $title, $code, $functionToTest, $ce) => {
   const $$toMaybeError = $ce;
   const $toMaybeError = ($$toMaybeError)[1];
@@ -14963,8 +14973,19 @@ const $sd0$Test$codeTest = (($toText, $title, $code, $functionToTest, $ce) => {
   }));
 });
 
-const $sd0$Compiler$MakeCanonical_Test$codeTest = (($1, $2, $3, $4) => {
+const $sd0$Compiler$Lexer_Test$codeTest = (($1, $2, $3, $4) => {
   return ($sd0$Test$codeTest)(sp_toHuman, $1, $2, $3, $4);
+});
+
+const $sd0$Compiler$TestHelpers$moduleName = "(test)";
+
+const $sd0$Compiler$TestHelpers$dummyErrorEnv = (($code) => {
+  return ({
+    moduleByName: ($core$Dict$ofOne)($sd0$Compiler$TestHelpers$moduleName, ({
+      content: $code,
+      fsPath: "<TestPath>",
+    })),
+  });
 });
 
 const $sd0$Compiler$TestHelpers$formattedToStrippedText = (($formatted) => {
@@ -14996,6 +15017,267 @@ const $sd0$Compiler$TestHelpers$formattedToStrippedText = (($formatted) => {
   }))(((($1) => {
     return ($core$List$map)($strip, $1);
   }))($formatted));
+});
+
+const $sd0$Compiler$TestHelpers$resErrorToStrippedText = (($code, $res) => {
+  const $errorToText = (($e) => {
+    return ($sd0$Compiler$TestHelpers$formattedToStrippedText)(((($1) => {
+      return ($sd0$Compiler$Error$toFormattedText)(($sd0$Compiler$TestHelpers$dummyErrorEnv)($code), $1);
+    }))($e));
+  });
+  return ($core$Result$mapError)($errorToText, $res);
+});
+
+const $sd0$Compiler$Lexer_Test$lexTokens = (($s) => {
+  return ((($1) => {
+    return ($sd0$Compiler$TestHelpers$resErrorToStrippedText)($s, $1);
+  }))(((($1) => {
+    return ($sd0$Compiler$Lexer$lexer)($sd0$Compiler$TestHelpers$moduleName, $1);
+  }))($s));
+});
+
+const $sd0$Compiler$Lexer_Test$lowerName = (($name) => {
+  return ($sd0$Types$Token$Word)(({
+    attrPath: $core$Core$Nil,
+    isUpper: false,
+    maybeModule: $core$Maybe$Nothing,
+    modifier: $sd0$Types$Token$NameNoModifier,
+    name: $name,
+  }));
+});
+
+const $sd0$Compiler$Lexer_Test$n = $sd0$Types$Token$N;
+
+const $sd0$Compiler$Lexer_Test$comments = ($sd0$Test$Group)("Comments", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("[reg] statement after comment", "\n#\na = 1\n", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 3, 3, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 3, 4, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 5, 6, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 7, 8, $3);
+}))(($sd0$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil)))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("[reg] nested comments allow a spurious newline?", "\n[#[##]#]\na = 1\n", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 10, 10, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 10, 11, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 12, 13, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 14, 15, $3);
+}))(($sd0$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil)))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("Single line", "# hello", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)($core$Core$Nil, $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("Multi line", "[# single line #]\n\na [# inline #] = 1\n\n[#\n    multi line\n#]\n\n[# [# nested #] #]", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 19, 19, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 19, 20, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 34, 35, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 36, 37, $3);
+}))(($sd0$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil)))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("brackets", "[]", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 1, $3);
+}))(($sd0$Types$Token$SquareBracket)($sd0$Types$Token$Open)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 1, 2, $3);
+}))(($sd0$Types$Token$SquareBracket)($sd0$Types$Token$Closed)), $core$Core$Nil))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("[reg] Inline comments should not break a block", "allTests = [\n    , a\n#\n    ]", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 8, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("allTests")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 9, 10, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 11, 12, $3);
+}))(($sd0$Types$Token$SquareBracket)($sd0$Types$Token$Open)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 17, 18, $3);
+}))($sd0$Types$Token$Comma), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 19, 20, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 27, 28, $3);
+}))(($sd0$Types$Token$SquareBracket)($sd0$Types$Token$Closed)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 28, 28, $3);
+}))($sd0$Types$Token$BlockEnd), $core$Core$Nil)))))))), $core$Core$Nil))), $core$Core$Nil)))))));
+
+const $sd0$Compiler$Lexer_Test$upperName = (($name) => {
+  return ($sd0$Types$Token$Word)(({
+    attrPath: $core$Core$Nil,
+    isUpper: true,
+    maybeModule: $core$Maybe$Nothing,
+    modifier: $sd0$Types$Token$NameNoModifier,
+    name: $name,
+  }));
+});
+
+const $sd0$Compiler$Lexer_Test$indentation = ($sd0$Test$Group)("Blocks, sibling lines, indentation", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("1", "\na =\n 1\nb = 1", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 1, 1, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 1, 2, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 3, 4, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 6, 6, $3);
+}))($sd0$Types$Token$BlockStart), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 6, 7, $3);
+}))(($sd0$Types$Token$NumberLiteral)(false, "1")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 8, 8, $3);
+}))($sd0$Types$Token$BlockEnd), $core$Core$Nil)))))), ($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 8, 8, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 8, 9, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("b")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 10, 11, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 12, 13, $3);
+}))(($sd0$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil)))), $core$Core$Nil)))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("[reg] spurious spaces in front of field name", "module =\n   importAs =\n      SPCore\n   globalTypes =\n      None", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 6, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("module")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 7, 8, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 12, 12, $3);
+}))($sd0$Types$Token$BlockStart), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 12, 20, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("importAs")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 21, 22, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 29, 29, $3);
+}))($sd0$Types$Token$BlockStart), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 29, 35, $3);
+}))(($sd0$Compiler$Lexer_Test$upperName)("SPCore")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 39, 39, $3);
+}))($sd0$Types$Token$BlockEnd), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 39, 39, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 39, 50, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("globalTypes")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 51, 52, $3);
+}))($sd0$Types$Token$Defop), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 59, 59, $3);
+}))($sd0$Types$Token$BlockStart), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 59, 63, $3);
+}))(($sd0$Compiler$Lexer_Test$upperName)("None")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 63, 63, $3);
+}))($sd0$Types$Token$BlockEnd), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 63, 63, $3);
+}))($sd0$Types$Token$BlockEnd), $core$Core$Nil)))))))))))))))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("Blocks and not", ($core$Text$join)("\n", ($core$Core$Cons)("module =", ($core$Core$Cons)("   i =", ($core$Core$Cons)("        j", ($core$Core$Cons)("            >> k", ($core$Core$Cons)("            >> s", ($core$Core$Cons)("", ($core$Core$Cons)("   importAs =", ($core$Core$Cons)("      SPCore", ($core$Core$Cons)("", ($core$Core$Cons)("   globalTypes =", ($core$Core$Cons)("      None", ($core$Core$Cons)("", ($core$Core$Cons)("   a +     # no block start!", ($core$Core$Cons)("        b   # no sibling", ($core$Core$Cons)("        c", ($core$Core$Cons)("", ($core$Core$Cons)("   d =     # block start", ($core$Core$Cons)("        e   # sibling!", ($core$Core$Cons)("        f", ($core$Core$Cons)("", ($core$Core$Cons)("   g = h", $core$Core$Nil)))))))))))))))))))))), $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 6, ($sd0$Compiler$Lexer_Test$lowerName)("module")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 7, 8, $sd0$Types$Token$Defop), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 12, 12, $sd0$Types$Token$BlockStart), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 12, 13, ($sd0$Compiler$Lexer_Test$lowerName)("i")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 14, 15, $sd0$Types$Token$Defop), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 24, 24, $sd0$Types$Token$BlockStart), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 24, 25, ($sd0$Compiler$Lexer_Test$lowerName)("j")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 38, 40, ($sd0$Types$Token$Binop)($sd0$Prelude$sendRight)), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 41, 42, ($sd0$Compiler$Lexer_Test$lowerName)("k")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 55, 57, ($sd0$Types$Token$Binop)($sd0$Prelude$sendRight)), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 58, 59, ($sd0$Compiler$Lexer_Test$lowerName)("s")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 64, 64, $sd0$Types$Token$BlockEnd), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 64, 64, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 64, 72, ($sd0$Compiler$Lexer_Test$lowerName)("importAs")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 73, 74, $sd0$Types$Token$Defop), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 81, 81, $sd0$Types$Token$BlockStart), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 81, 87, ($sd0$Compiler$Lexer_Test$upperName)("SPCore")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 92, 92, $sd0$Types$Token$BlockEnd), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 92, 92, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 92, 103, ($sd0$Compiler$Lexer_Test$lowerName)("globalTypes")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 104, 105, $sd0$Types$Token$Defop), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 112, 112, $sd0$Types$Token$BlockStart), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 112, 116, ($sd0$Compiler$Lexer_Test$upperName)("None")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 121, 121, $sd0$Types$Token$BlockEnd), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 121, 121, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 121, 122, ($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 123, 124, ($sd0$Types$Token$Binop)($sd0$Prelude$add)), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 155, 156, ($sd0$Compiler$Lexer_Test$lowerName)("b")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 180, 181, ($sd0$Compiler$Lexer_Test$lowerName)("c")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 186, 186, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 186, 187, ($sd0$Compiler$Lexer_Test$lowerName)("d")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 188, 189, $sd0$Types$Token$Defop), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 216, 216, $sd0$Types$Token$BlockStart), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 216, 217, ($sd0$Compiler$Lexer_Test$lowerName)("e")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 239, 239, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 239, 240, ($sd0$Compiler$Lexer_Test$lowerName)("f")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 245, 245, $sd0$Types$Token$BlockEnd), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 245, 245, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 245, 246, ($sd0$Compiler$Lexer_Test$lowerName)("g")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 247, 248, $sd0$Types$Token$Defop), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 249, 250, ($sd0$Compiler$Lexer_Test$lowerName)("h")), ($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 250, 250, $sd0$Types$Token$BlockEnd), $core$Core$Nil))))))))))))))))))))))))))))))))))))))))))), $core$Core$Nil))), $core$Core$Nil))));
+
+const $sd0$Compiler$Lexer_Test$keywords = ($sd0$Test$Group)("keywords", $core$Core$Nil);
+
+const $sd0$Compiler$Lexer_Test$lexTokensAndDrop = (($name) => {
+  return (($s) => {
+    return ((($1) => {
+      return ($core$Result$map)((($1) => {
+        return ($core$List$map)((($1) => {
+          return ($core$List$drop)($name, $1);
+        }), $1);
+      }), $1);
+    }))(($sd0$Compiler$Lexer_Test$lexTokens)($s));
+  });
+});
+
+const $sd0$Compiler$Lexer_Test$numberLiterals = ($sd0$Test$Group)("Number literals", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("Percent", "10%", ($sd0$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 2, $3);
+}))(($sd0$Types$Token$NumberLiteral)(true, "10")), $core$Core$Nil), $core$Core$Nil))), $core$Core$Nil));
+
+const $sd0$Compiler$Lexer_Test$ops = ($sd0$Test$Group)("Operators", $core$Core$Nil);
+
+const $sd0$Test$errorContains = (($snippets) => {
+  return ($sd0$Test$CodeExpectation)((($toText, $result) => {
+    return ((($result)[0] === "Ok")
+      ? ((() => {
+        const $ok = ($result)[1];
+        return ($core$Maybe$Just)(("I was expecting an error, but got: Ok " + ($toText)($ok)));
+      }))()
+      : ((($result)[0] === "Err")
+        ? ((() => {
+          const $e = ($result)[1];
+          const $missing = ((($1) => {
+            return ($core$List$filter)((($sn) => {
+              return ($core$Basics$not)(($core$Text$contains)($sn, $e));
+            }), $1);
+          }))($snippets);
+          return ((sp_equal)($missing, $core$Core$Nil)
+            ? $core$Maybe$Nothing
+            : ((() => {
+              const $indentedError = ((($1) => {
+                return ($core$Text$join)("\n", $1);
+              }))(((($1) => {
+                return ($core$List$map)((($l) => {
+                  return ("    " + $l);
+                }), $1);
+              }))(((($1) => {
+                return (text_split)("\n", $1);
+              }))($e)));
+              return ($core$Maybe$Just)(("Error message:\n\n" + ($indentedError + ("\n\nis missing snippets: " + ($core$Text$join)(", ", $missing)))));
+            }))());
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Test.sp 103:6', (sp_toHuman)($result))));
+  }));
+});
+
+const $sd0$Compiler$Lexer_Test$position = ($sd0$Test$Group)("Position", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("[reg] ops position", "blah <>", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$errorContains)(($core$Core$Cons)("blah <>", $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("[reg] ops position, with newline", "blah <>\n", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$errorContains)(($core$Core$Cons)("blah <>", $core$Core$Nil))), $core$Core$Nil)));
+
+const $sd0$Compiler$Lexer_Test$valueTest = (($1, $2, $3) => {
+  return ($sd0$Test$valueTest)(sp_toHuman, $1, $2, $3);
+});
+
+const $sd0$Compiler$Lexer_Test$textLiterals = ($sd0$Test$Group)("Text literals", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("Empty Text", "\"\"", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 2, $3);
+}))(($sd0$Types$Token$TextLiteral)("")), $core$Core$Nil)), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("Followed by colon", "\"n\":\n", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 3, $3);
+}))(($sd0$Types$Token$TextLiteral)("n")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 3, 4, $3);
+}))($sd0$Types$Token$Colon), $core$Core$Nil))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$valueTest)("Unindent function", ((_0) => {
+  return ((($0) => {
+    return ($sd0$Compiler$Lexer$unindent)($0);
+  }))(((($1) => {
+    return ($core$Text$join)("", $1);
+  }))(($core$Core$Cons)("\n", ($core$Core$Cons)("  a\n", ($core$Core$Cons)("      \n", ($core$Core$Cons)("\n", ($core$Core$Cons)("  b\n", ($core$Core$Cons)("  ", $core$Core$Nil))))))));
+}), ($sd0$Test$isOkAndEqualTo)(($core$Text$join)("", ($core$Core$Cons)("a\n", ($core$Core$Cons)("    \n", ($core$Core$Cons)("\n", ($core$Core$Cons)("b", $core$Core$Nil))))))), $core$Core$Nil))));
+
+const $sd0$Compiler$Lexer_Test$unaryAddittiveOps = ($sd0$Test$Group)("Unary addittive ops", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("-a", "-a", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 1, $3);
+}))(($sd0$Types$Token$Unop)($sd0$Types$Op$UnopMinus)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 1, 2, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), $core$Core$Nil))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("a - -a", "a - -a", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 1, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 2, 3, $3);
+}))(($sd0$Types$Token$Binop)($sd0$Prelude$subtract)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 4, 5, $3);
+}))(($sd0$Types$Token$Unop)($sd0$Types$Op$UnopMinus)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 5, 6, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), $core$Core$Nil))))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("a-a", "a-a", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $3);
+}))($sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 1, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 1, 2, $3);
+}))(($sd0$Types$Token$Unop)($sd0$Types$Op$UnopMinus)), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 2, 3, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("a")), $core$Core$Nil)))), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("-=", "-=", $sd0$Compiler$Lexer_Test$lexTokens, ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 0, $sd0$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 2, $3);
+}))(($sd0$Types$Token$Binop)($sd0$Prelude$mutableSubtract)), $core$Core$Nil)), $core$Core$Nil))), $core$Core$Nil)))));
+
+const $sd0$Compiler$Lexer_Test$underscores = ($sd0$Test$Group)("Underscores", ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("'_' as a Name", "_", ($sd0$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 1, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("_")), $core$Core$Nil), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("'_10_20' as a Name", "_10_20", ($sd0$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 6, $3);
+}))(($sd0$Compiler$Lexer_Test$lowerName)("_10_20")), $core$Core$Nil), $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$Lexer_Test$codeTest)("'10_20' as a Number", "10_20", ($sd0$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd0$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($3) => {
+  return ($sd0$Types$Token$Token)($sd0$Compiler$Lexer_Test$n, 0, 5, $3);
+}))(($sd0$Types$Token$NumberLiteral)(false, "10_20")), $core$Core$Nil), $core$Core$Nil))), $core$Core$Nil))));
+
+const $sd0$Compiler$Lexer_Test$tests = ($sd0$Test$Group)("Lexer", ($core$Core$Cons)($sd0$Compiler$Lexer_Test$keywords, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$ops, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$unaryAddittiveOps, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$indentation, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$comments, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$underscores, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$position, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$textLiterals, ($core$Core$Cons)($sd0$Compiler$Lexer_Test$numberLiterals, $core$Core$Nil))))))))));
+
+const $sd0$Compiler$MakeCanonical_Test$codeTest = (($1, $2, $3, $4) => {
+  return ($sd0$Test$codeTest)(sp_toHuman, $1, $2, $3, $4);
 });
 
 const $sd0$DefaultModules$asText = "library =\n    source = \"core:prelude\"\n\n    module =\n        path = Core\n        importAs = Core\n        globalTypes =\n            None\n            Bool\n            Text\n            Number\n        globalValues =\n            None\n            True\n            False\n            mut\n\n    module =\n        path = List\n        importAs = List\n\n    module =\n        path = Maybe\n        importAs = Maybe\n        globalTypes =\n            Maybe\n        globalValues =\n           Just\n           Nothing\n\n    module =\n        path = Text\n        importAs = Text\n\n    module =\n        path = Tuple\n        importAs = Tuple\n\n    module =\n        path = Debug\n        importAs = Debug\n        globalValues =\n            log\n            todo\n\n    module =\n        path = Basics\n        globalTypes =\n            Int\n        globalValues =\n            assert\n            clamp\n            identity\n            modBy\n            min\n            max\n\n    module =\n        path = Dict\n        importAs = Dict\n        globalTypes = Dict\n\n    module =\n        path = Set\n        importAs = Set\n        globalTypes = Set\n\n    module =\n        path = Result\n        importAs = Result\n        globalTypes = Result\n        globalValues =\n            Ok\n            Err";
@@ -15038,8 +15320,6 @@ const $sd0$Compiler$TestHelpers$meta = ((() => {
       : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TestHelpers.sp 86:4', (sp_toHuman)($metaResult))));
 }))();
 
-const $sd0$Compiler$TestHelpers$moduleName = "(test)";
-
 const $sd0$Compiler$TestHelpers$source = ($sd0$Types$Meta$SourceDir)("<Test>");
 
 const $sd0$Compiler$MakeCanonical_Test$params = ({
@@ -15047,24 +15327,6 @@ const $sd0$Compiler$MakeCanonical_Test$params = ({
   name: $sd0$Compiler$TestHelpers$moduleName,
   source: $sd0$Compiler$TestHelpers$source,
   stripLocations: true,
-});
-
-const $sd0$Compiler$TestHelpers$dummyErrorEnv = (($code) => {
-  return ({
-    moduleByName: ($core$Dict$ofOne)($sd0$Compiler$TestHelpers$moduleName, ({
-      content: $code,
-      fsPath: "<TestPath>",
-    })),
-  });
-});
-
-const $sd0$Compiler$TestHelpers$resErrorToStrippedText = (($code, $res) => {
-  const $errorToText = (($e) => {
-    return ($sd0$Compiler$TestHelpers$formattedToStrippedText)(((($1) => {
-      return ($sd0$Compiler$Error$toFormattedText)(($sd0$Compiler$TestHelpers$dummyErrorEnv)($code), $1);
-    }))($e));
-  });
-  return ($core$Result$mapError)($errorToText, $res);
 });
 
 const $sd0$Compiler$MakeCanonical_Test$textToModule = (($code) => {
@@ -15183,7 +15445,7 @@ const $sd0$Compiler$MakeCanonical_Test$transformAB = (($code) => {
       }))()
       : (true
         ? $core$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical_Test.sp 79:8', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical_Test.sp 80:8', (sp_toHuman)($$try1))));
   });
   return (($core$Result$onOk)((($x) => {
     return ((($1) => {
@@ -15242,40 +15504,6 @@ const $sd0$Compiler$MakeCanonical_Test$lists = ($sd0$Test$Group)("Lists", ($core
   univars: $core$Dict$empty,
 }))), $core$Core$Nil));
 
-const $sd0$Test$errorContains = (($snippets) => {
-  return ($sd0$Test$CodeExpectation)((($toText, $result) => {
-    return ((($result)[0] === "Ok")
-      ? ((() => {
-        const $ok = ($result)[1];
-        return ($core$Maybe$Just)(("I was expecting an error, but got: Ok " + ($toText)($ok)));
-      }))()
-      : ((($result)[0] === "Err")
-        ? ((() => {
-          const $e = ($result)[1];
-          const $missing = ((($1) => {
-            return ($core$List$filter)((($sn) => {
-              return ($core$Basics$not)(($core$Text$contains)($sn, $e));
-            }), $1);
-          }))($snippets);
-          return ((sp_equal)($missing, $core$Core$Nil)
-            ? $core$Maybe$Nothing
-            : ((() => {
-              const $indentedError = ((($1) => {
-                return ($core$Text$join)("\n", $1);
-              }))(((($1) => {
-                return ($core$List$map)((($l) => {
-                  return ("    " + $l);
-                }), $1);
-              }))(((($1) => {
-                return (text_split)("\n", $1);
-              }))($e)));
-              return ($core$Maybe$Just)(("Error message:\n\n" + ($indentedError + ("\n\nis missing snippets: " + ($core$Text$join)(", ", $missing)))));
-            }))());
-        }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Test.sp 103:6', (sp_toHuman)($result))));
-  }));
-});
-
 const $sd0$Compiler$MakeCanonical_Test$moduleAndAttributePaths = ((() => {
   const $accept = (($s) => {
     return ($sd0$Compiler$MakeCanonical_Test$codeTest)($s, ("a = " + $s), $sd0$Compiler$MakeCanonical_Test$firstDefinition, $sd0$Test$isOk);
@@ -15302,6 +15530,8 @@ const $sd0$Compiler$MakeCanonical_Test$nonFunction = ($sd0$Test$Group)("NonFunct
   uni: $sd0$Types$Ast$Imm,
   univars: $core$Dict$empty,
 }))), $core$Core$Nil));
+
+const $sd0$Compiler$MakeCanonical_Test$numbers = ($sd0$Test$Group)("Numbers", ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("Percent", "a = 1%", ($sd0$Compiler$MakeCanonical_Test$firstEvaluation)("a"), ($sd0$Test$isOkAndEqualTo)(($sd0$Types$CanonicalAst$LiteralNumber)($sd0$Compiler$MakeCanonical_Test$p, 0.01))), ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("Underscore", "a = 1_000_000", ($sd0$Compiler$MakeCanonical_Test$firstEvaluation)("a"), ($sd0$Test$isOkAndEqualTo)(($sd0$Types$CanonicalAst$LiteralNumber)($sd0$Compiler$MakeCanonical_Test$p, (1000 * 1000)))), $core$Core$Nil)));
 
 const $sd0$Compiler$MakeCanonical_Test$patterns = ($sd0$Test$Group)("Patterns", ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("Record patterns can be partial", "a =\n  { with c } = d", ($sd0$Compiler$MakeCanonical_Test$firstEvaluation)("a"), $sd0$Test$isOk), ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("[reg] record patterns are NOT extensible", "a =\n  { b with c } = d", ($sd0$Compiler$MakeCanonical_Test$firstEvaluation)("a"), ($sd0$Test$errorContains)(($core$Core$Cons)("extend pattern", $core$Core$Nil))), $core$Core$Nil)));
 
@@ -15417,7 +15647,7 @@ const $sd0$Compiler$MakeCanonical_Test$tuples = ($sd0$Test$Group)("Tuples", ($co
 
 const $sd0$Compiler$MakeCanonical_Test$unionTypes = ($sd0$Test$Group)("Union types", ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("tuples op precedence", "union A = X Bool & Bool", $sd0$Compiler$MakeCanonical_Test$textToModule, ($sd0$Test$errorContains)(($core$Core$Cons)("expecting a constructor", $core$Core$Nil))), ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("Tuples op precedence works with parens", "union A = X (Bool & Bool)", $sd0$Compiler$MakeCanonical_Test$textToModule, $sd0$Test$isOk), ($core$Core$Cons)(($sd0$Compiler$MakeCanonical_Test$codeTest)("[reg] Should reject uppercase arg name", "union Outcome Token output = A", $sd0$Compiler$MakeCanonical_Test$textToModule, ($sd0$Test$errorContains)(($core$Core$Cons)("must start with a lowercase", $core$Core$Nil))), $core$Core$Nil))));
 
-const $sd0$Compiler$MakeCanonical_Test$tests = ($sd0$Test$Group)("MakeCanonical", ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$unionTypes, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$binops, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$tuples, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$lists, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$moduleAndAttributePaths, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$records, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$patterns, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$annotations, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$pipes, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$functions, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$nonFunction, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$argumentPlaceholders, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$polymorphicUniques, $core$Core$Nil))))))))))))));
+const $sd0$Compiler$MakeCanonical_Test$tests = ($sd0$Test$Group)("MakeCanonical", ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$unionTypes, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$binops, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$tuples, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$lists, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$moduleAndAttributePaths, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$records, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$patterns, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$annotations, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$pipes, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$functions, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$nonFunction, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$argumentPlaceholders, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$polymorphicUniques, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$numbers, $core$Core$Nil)))))))))))))));
 
 const $sd0$Compiler$Parser$surroundMultiline = (($left, $right, $content) => {
   return ($sd0$Compiler$Parser$discardFirst)(($sd0$Compiler$Parser$kind)($left), ($sd0$Compiler$Parser$inlineOrBelowOrIndented)(($sd0$Compiler$Parser$discardSecond)($content, ($sd0$Compiler$Parser$inlineOrBelowOrIndented)(($sd0$Compiler$Parser$kind)($right)))));
@@ -16809,7 +17039,7 @@ const $sd0$Targets$Javascript$Runtime$listCons = "Cons";
 
 const $sd0$Targets$Javascript$Runtime$listNil = "Nil";
 
-const $sd0$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (right, left) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd0$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd0$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd0$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n    "))))))))))))));
+const $sd0$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd0$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd0$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd0$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n    "))))))))))))));
 
 const $sd0$Platforms$Browser$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
   const $$constructors = $getRidOfMe;
