@@ -1,6 +1,7 @@
 
 
-platform as Types/Platform.Platform = {
+platform as Types/Platform.Platform =
+    {
     , name = "rawjs"
     , compile
     , defaultModules = DefaultModules.asText
@@ -9,8 +10,8 @@ platform as Types/Platform.Platform = {
     }
 
 
-compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.GlobalDefinition]: Text =
-    getRidOfMe: targetUsr: emState@: emittableStatements:
+compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
+    fn getRidOfMe, targetUsr, @emState, emittableStatements:
 
     { errorEnv = eenv, constructors } =
         getRidOfMe
@@ -29,8 +30,8 @@ compile as Types/Platform.GetRidOfMe: USR: Compiler/MakeEmittable.State@: [EA.Gl
 
     statements =
         jaStatements
-            >> List.map (Targets/Javascript/JsToText.emitStatement 0)
-            >> Text.join "\n\n"
+        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+        >> Text.join "\n\n" __
 
     main =
         Compiler/MakeEmittable.translateUsr @emState targetUsr

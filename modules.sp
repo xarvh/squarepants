@@ -50,10 +50,6 @@ sourceDir =
        importAs = CA
 
     module =
-       path = Human/CanonicalAst
-       importAs = HCA
-
-    module =
        path = Types/EmittableAst
        importAs = EA
 

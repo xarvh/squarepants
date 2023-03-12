@@ -1,43 +1,44 @@
 
-yellow as Text: Text =
-    t:
+yellow as fn Text: Text =
+    fn t:
     "<span class=yellow>" .. t .. "</span>"
 
-red as Text: Text =
-    t:
+red as fn Text: Text =
+    fn t:
     "<span class=red>" .. t .. "</span>"
 
-blue as Text: Text =
-    t:
+blue as fn Text: Text =
+    fn t:
     "<span class=blue>" .. t .. "</span>"
 
 
-formattedToConsoleColoredText as Error.FormattedText: Text =
-    formattedText:
+formattedToConsoleColoredText as fn Error.FormattedText: Text =
+    fn formattedText:
     try formattedText as
-        Error.FormattedText_Default t: t
-        Error.FormattedText_Emphasys t: yellow t
-        Error.FormattedText_Warning t: red t
-        Error.FormattedText_Decoration t: blue t
+        , Error.FormattedText_Default t: t
+        , Error.FormattedText_Emphasys t: yellow t
+        , Error.FormattedText_Warning t: red t
+        , Error.FormattedText_Decoration t: blue t
 
 
-resToConsoleText as Error.Env: Res a: Result Text a =
-    errorEnv: res:
+resToConsoleText as fn Error.Env, Res a: Result Text a =
+    fn errorEnv, res:
     try res as
-        Ok a: Ok a
-        Err e:
+        , Ok a: Ok a
+        , Err e:
             e
-            >> Error.toFormattedText errorEnv
-            >> List.map formattedToConsoleColoredText
-            >> Text.join ""
+            >> Error.toFormattedText errorEnv __
+            >> List.map formattedToConsoleColoredText __
+            >> Text.join "" __
             >> Err
 
 
 
-onResSuccess as Error.Env: (a: Result Text b): Res a: Result Text b =
-    errorEnv: f: res:
+onResSuccess as fn Error.Env, (fn a: Result Text b): fn Res a: Result Text b =
+    fn errorEnv, f:
+    fn res:
     res
-    >> resToConsoleText errorEnv
+    >> resToConsoleText errorEnv __
     >> onOk f
 
 
@@ -48,14 +49,15 @@ onResSuccess as Error.Env: (a: Result Text b): Res a: Result Text b =
 # Module loading
 #
 
-loadModule as Meta: UMR: Text: Res CA.Module =
-    meta: umr: moduleAsText:
+loadModule as fn Meta, UMR, Text: Res CA.Module =
+    fn meta, umr, moduleAsText:
 
     # TODO get rid of eenv so this is not needed
     UMR source moduleName =
         umr
 
-    params as Compiler/MakeCanonical.Params = {
+    params as Compiler/MakeCanonical.Params =
+        {
         , meta
         , stripLocations = False
         , source
@@ -63,7 +65,7 @@ loadModule as Meta: UMR: Text: Res CA.Module =
         }
 
     eenv as Error.Env = {
-        , moduleByName = Dict.singleton moduleName {
+        , moduleByName = Dict.ofOne moduleName {
             , fsPath = "<user input>"
             , content = moduleAsText
             }
@@ -73,37 +75,11 @@ loadModule as Meta: UMR: Text: Res CA.Module =
 
 
 
-
-
-
-
-
 #
 # Compile
 #
 
-typeCheckModule as Meta: CA.Globals: CA.Module: Res Compiler/TypeCheck.Env =
-    meta: globals: module:
-
-    env as Compiler/TypeCheck.Env = {
-        , currentModule = module.umr
-        , meta
-        , instanceVariables = Dict.mapKeys CA.RefRoot globals.instanceVariables
-        , constructors = globals.constructors
-        , types = globals.types
-        , nonFreeTyvars = Dict.empty
-        , nonAnnotatedRecursives = Dict.empty
-        }
-
-    Compiler/TypeCheck.fromModule env module
-
-
-
-
-
-
-
-main as Text: Result Text Text =
+main as fn Text: Result Text Text =
 
     platform =
         Platforms/RawJavaScript.platform
@@ -116,13 +92,14 @@ main as Text: Result Text Text =
 
     meta =
       try ModulesFile.textToModulesFile modulesFileName platform.defaultModules as
-          Ok m:
+          , Ok m:
               ModulesFile.toMeta m
 
-          Err err:
+          , Err err:
               eenv as Error.Env =
                   {
-                  , moduleByName = Dict.singleton modulesFileName {
+                  , moduleByName = Dict.ofOne modulesFileName
+                      {
                       , fsPath = modulesFileName
                       , content = platform.defaultModules
                       }
@@ -130,9 +107,9 @@ main as Text: Result Text Text =
 
               errAsText =
                   err
-                    >> Error.toFormattedText eenv
-                    >> List.map formattedToConsoleColoredText
-                    >> Text.join ""
+                  >> Error.toFormattedText eenv __
+                  >> List.map formattedToConsoleColoredText __
+                  >> Text.join "" __
 
               Debug.log errAsText "--"
 
@@ -146,49 +123,52 @@ main as Text: Result Text Text =
       USR umr "pixelColor"
 
 
-    code:
-
+    fn code:
 
     eenv as Error.Env =
         { moduleByName =
-            Dict.singleton inputFileName { fsPath = "", content = code }
+            Dict.ofOne inputFileName { fsPath = "", content = code }
         }
 
-
     loadModule meta umr code
-    >> resToConsoleText eenv
-    >> onOk module:
+    >> resToConsoleText eenv __
+    >> onOk fn caModule:
 
+    allCaModules =
+        [ caModule, ...Prelude.coreModules ]
 
-    modules =
-        Dict.singleton umr module
+    allCaModules
+    >> Compiler/TypeCheck.initStateAndGlobalEnv
+    >> onResSuccess eenv fn (luv & typeCheckGlobalEnv):
 
+    !lastUnificationVarId =
+        cloneImm luv
 
-    globals =
-        try Compiler/Pipeline.globalExpandedTypes modules as
-            Err e:
-                Debug.todo << Debug.toHuman e
-
-            Ok g: g
-
-    typeCheckModules =
-        (Dict.values modules)
-        >> List.mapRes (m: typeCheckModule meta globals m)
-
+    allCaModules
+    >> List.mapRes (Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv __) __
+    >> onResSuccess eenv fn taModules:
 
     # ---> check that `pixelColor` has the correct type
 
-    Compiler/MakeEmittable.translateAll (Dict.values modules)
-    >> Result.mapError (e: todo "MakeEmittable.translateAll returned Err")
-    >> onResSuccess eenv (emState & emittableStatements):
+    taModules
+    >> List.mapRes Compiler/UniquenessCheck.doModule __
+    >> onResSuccess eenv fn modulesWithDestruction:
 
-    emittableState as Compiler/MakeEmittable.State @= emState
+    modulesWithDestruction
+    >> Compiler/MakeEmittable.translateAll
+    >> Result.mapError (fn e: todo "MakeEmittable.translateAll returned Err") __
+    >> onResSuccess eenv fn (meState & emittableStatements):
 
-    platform.compile {
+    !emittableState =
+        cloneImm meState
+
+    platform.compile
+        {
         , errorEnv = eenv
-        , constructors = Dict.toList globals.constructors
+        , constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
         }
         entryUsr
         @emittableState
         emittableStatements
     >> Ok
+

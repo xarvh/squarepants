@@ -15,63 +15,61 @@ alias Attr msg =
 none as Html msg =
     VirtualDom.TextNode ""
 
-text as Text: Html msg =
-    VirtualDom.TextNode
+text as fn Text: Html msg =
+    VirtualDom.TextNode __
 
-div as [Attr msg]: [Html msg]: Html msg =
-    VirtualDom.ElementNode "div"
+div as fn [Attr msg], [Html msg]: Html msg =
+    VirtualDom.ElementNode "div" __ __
 
-span as [Attr msg]: [Html msg]: Html msg =
-    VirtualDom.ElementNode "span"
+span as fn [Attr msg], [Html msg]: Html msg =
+    VirtualDom.ElementNode "span" __ __
 
-a as [Attr msg]: [Html msg]: Html msg =
-    VirtualDom.ElementNode "a"
+a as fn [Attr msg], [Html msg]: Html msg =
+    VirtualDom.ElementNode "a" __ __
 
-input as [Attr msg]: Html msg =
-    attrs:
-    VirtualDom.ElementNode "input" attrs []
+input as fn [Attr msg]: Html msg =
+    VirtualDom.ElementNode "input" __ []
 
-textarea as [Attr msg]: Text: Html msg =
-    attrs: content:
+textarea as fn [Attr msg], Text: Html msg =
+    fn attrs, content:
     VirtualDom.ElementNode "textarea" attrs [ VirtualDom.TextNode content ]
 
-pre as [Attr msg]: [Html msg]: Html msg =
-    VirtualDom.ElementNode "pre"
+pre as fn [Attr msg], [Html msg]: Html msg =
+    VirtualDom.ElementNode "pre" __ __
 
-code as [Attr msg]: [Html msg]: Html msg =
-    VirtualDom.ElementNode "code"
+code as fn [Attr msg], [Html msg]: Html msg =
+    VirtualDom.ElementNode "code" __ __
 
-canvas as [Attr msg]: Html msg =
-    attrs:
-    VirtualDom.ElementNode "canvas" attrs []
+canvas as fn [Attr msg]: Html msg =
+    VirtualDom.ElementNode "canvas" __ []
 
 #
 # Attributes
 #
 
-id as Text: Attr msg =
-    VirtualDom.DomAttribute "id"
+id as fn Text: Attr msg =
+    VirtualDom.DomAttribute "id" __
 
-class as Text: Attr msg =
-    VirtualDom.CssClass
+class as fn Text: Attr msg =
+    VirtualDom.CssClass __
 
-href as Text: Attr msg =
-    VirtualDom.DomAttribute "href"
+href as fn Text: Attr msg =
+    VirtualDom.DomAttribute "href" __
 
-width as Text: Attr msg =
-    VirtualDom.DomAttribute "width"
+width as fn Text: Attr msg =
+    VirtualDom.DomAttribute "width" __
 
-height as Text: Attr msg =
-    VirtualDom.DomAttribute "height"
+height as fn Text: Attr msg =
+    VirtualDom.DomAttribute "height" __
 
-on as Text: VirtualDom.EventHandler msg: Attr msg =
-    VirtualDom.Listener
+on as fn Text, VirtualDom.EventHandler msg: Attr msg =
+    VirtualDom.Listener __ __
 
-onClick as msg: Attr msg =
-    msg:
-    on "click" (event: Ok msg)
+onClick as fn msg: Attr msg =
+    fn msg:
+    on "click" (fn event: Ok msg)
 
-onInput as (Text: msg): Attr msg =
-    textToMsg:
-    on "input" (e: e >> VirtualDom.eventToText ["target", "value"] >> Result.map textToMsg)
+onInput as fn (fn Text: msg): Attr msg =
+    fn textToMsg:
+    on "input" (fn e: VirtualDom.eventToText ["target", "value"] e >> Result.map textToMsg __)
 

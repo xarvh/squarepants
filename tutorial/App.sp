@@ -2,7 +2,7 @@
 initialContent as Text =
     """
 pixelColor =
-    x: y:
+    fn x, y:
 
     {
     , r = if x < 0.5 then 0.1 else 0.6
@@ -19,14 +19,17 @@ union Msg =
   , OnMouseLeave
 
 
-alias Model = {
+alias Model =
+    {
     , code as Text
     , maybePosition as Maybe { x as Number, y as Number }
     , maybeError as Maybe Text
     }
 
 
-init as None: Model = _: {
+init as fn None: Model =
+    fn _:
+    {
     , code = initialContent
     , maybePosition = Nothing
     , maybeError = compileAndUpdateCanvas initialContent
@@ -34,51 +37,51 @@ init as None: Model = _: {
 
 
 
-updateCanvas as Text: Text: Result Text None =
-    domId: compiledJs:
+updateCanvas as fn Text, Text: Result Text None =
+    fn domId, compiledJs:
 
     # TODO remove this hack once we have a proper FFI
     VirtualDom.unsafeExecuteJavaScript "updateCanvas" { domId, compiledJs }
 
 
 
-compileAndUpdateCanvas as Text: Maybe Text =
-    code:
+compileAndUpdateCanvas as fn Text: Maybe Text =
+    fn code:
 
-    try CompileText.main code >> Result.onOk (updateCanvas "output") as
-        Ok _:
+    try CompileText.main code >> onOk (updateCanvas "output" __) as
+        , Ok _:
             Nothing
 
-        Err error:
+        , Err error:
             Just error
 
 
-update as Msg: Model: Model =
-    msg: model:
+update as fn Msg, Model: Model =
+    fn msg, model:
 
     try msg as
-        OnInput code:
+        , OnInput code:
             # TODO updateCanvas should be handled as a side effect once we have uniqueness types
             { model with
             , code = code
             , maybeError = compileAndUpdateCanvas code
             }
 
-        OnMouseMove x y:
+        , OnMouseMove x y:
             { model with maybePosition = Just { x, y } }
 
-        OnMouseLeave:
+        , OnMouseLeave:
             { model with maybePosition = Nothing }
 
 
 
 onMouseMove as VirtualDom.EventHandler Msg =
-    event:
+    fn event:
 
-    VirtualDom.eventToFloat [ "target", "clientWidth" ] event >> onOk clientWidth:
-    VirtualDom.eventToFloat [ "target", "clientHeight" ] event >> onOk clientHeight:
-    VirtualDom.eventToFloat [ "offsetX" ] event >> onOk offsetX:
-    VirtualDom.eventToFloat [ "offsetY" ] event >> onOk offsetY:
+    VirtualDom.eventToFloat [ "target", "clientWidth" ] event >> onOk fn clientWidth:
+    VirtualDom.eventToFloat [ "target", "clientHeight" ] event >> onOk fn clientHeight:
+    VirtualDom.eventToFloat [ "offsetX" ] event >> onOk fn offsetX:
+    VirtualDom.eventToFloat [ "offsetY" ] event >> onOk fn offsetY:
 
     # -1 because we want coordinates to be from 0 to 1 inclusive
     w = clientWidth - 1
@@ -89,15 +92,15 @@ onMouseMove as VirtualDom.EventHandler Msg =
     Ok << OnMouseMove x y
 
 
-floatToDec as Number: Text =
-    n:
+floatToDec as fn Number: Text =
+    fn n:
 
     round (n * 100) / 100
     >> Text.fromNumber
 
 
-view as Model: Html Msg =
-    model:
+view as fn Model: Html Msg =
+    fn model:
 
     class =
         Html.class
@@ -118,14 +121,14 @@ view as Model: Html Msg =
                   []
                   [ Html.text "The compiler is also written in Squarepants, so it can be used by the page to compile the program below." ]
             , try model.maybePosition as
-                Nothing:
+                , Nothing:
                     div []
                         [
                         , div [] [ Html.text "This program is executed for every pixel of the image at the right." ]
                         , div [] [ Html.text "It takes the x and y coordinates of the pixel, and transforms it into a color." ]
                         ]
 
-                Just { x, y }:
+                , Just { x, y }:
                     div []
                         [
                         , div [] [ Html.text << "x = " .. floatToDec x ]
@@ -152,17 +155,17 @@ view as Model: Html Msg =
                         , Html.width "300"
                         , Html.height "300"
                         , Html.on "mousemove" onMouseMove
-                        , Html.on "mouseleave" (e: Ok OnMouseLeave)
+                        , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
                         ]
                     ]
                 ]
             , Html.pre [ Html.class "error" ]
                 [
                 , try model.maybeError as
-                    Just e:
+                    , Just e:
                         Html.code [] [ Html.text  e ]
 
-                    Nothing:
+                    , Nothing:
                         Html.none
                 ]
             ]

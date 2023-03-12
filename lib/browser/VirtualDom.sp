@@ -27,7 +27,7 @@ union Event =
 
 
 alias EventHandler msg =
-    Event: Result Text msg
+    fn Event: Result Text msg
 
 
 union Attr msg =
@@ -40,45 +40,45 @@ union Attr msg =
 ###################
 
 
-jsCreateTextNode as Text: DomNode =
-    content:
+jsCreateTextNode as fn Text: DomNode =
+    fn content:
     todo "jsCreateTextNode"
 
-jsCreateElement as Text: DomNode =
-    tagName:
+jsCreateElement as fn Text: DomNode =
+    fn tagName:
     todo "jsCreateElement"
 
-jsReplaceWith as DomNode: DomNode: DomNode =
-    new: old:
+jsReplaceWith as fn DomNode, DomNode: DomNode =
+    fn new, old:
     todo "jsReplaceWith"
 
-jsAppendChild as { parent as DomNode, child as DomNode }: None =
-    pars:
+jsAppendChild as fn { parent as DomNode, child as DomNode }: None =
+    fn pars:
     todo "jsAppendChild"
 
-jsSetAttribute as Text: Text: DomNode: None =
-    name: value: domNode:
+jsSetAttribute as fn Text, Text, DomNode: None =
+    fn name, value, domNode:
     todo "jsSetAttribute"
 
-jsRemoveAttribute as Text: DomNode: None =
-    name: domNode:
+jsRemoveAttribute as fn Text, DomNode: None =
+    fn name, domNode:
     todo "jsRemoveAttribute"
 
-jsAddEventListener as Text: EventHandler msg: DomNode: None =
-    eventName: eventHandler: domNode:
+jsAddEventListener as fn Text, EventHandler msg, DomNode: None =
+    fn eventName, eventHandler, domNode:
     todo "jsAddEventListener"
 
-jsRemoveEventListener as Text: EventHandler msg: DomNode: None =
-    eventName: eventHandler: domNode:
+jsRemoveEventListener as fn Text, EventHandler msg, DomNode: None =
+    fn eventName, eventHandler, domNode:
     todo "jsRemoveEventListener"
 
-setChild as (DomNode: DomNode): Int: DomNode: None =
-    update: index: parent:
+setChild as fn (fn DomNode: DomNode), Int, DomNode: None =
+    fn update, index, parent:
     todo "setChild"
 
 
-removeAllChildrenStartingFromIndex as Int: DomNode: None =
-    index: parent:
+removeAllChildrenStartingFromIndex as fn Int, DomNode: None =
+    fn index, parent:
     todo "removeAllChildrenStartingFromIndex"
 
 
@@ -86,98 +86,98 @@ removeAllChildrenStartingFromIndex as Int: DomNode: None =
 
 # TODO eventually we'll support decoders
 
-eventToText as [Text]: Event: Result Text Text =
-    path: event:
+eventToText as fn [Text], Event: Result Text Text =
+    fn path, event:
     todo "eventToText"
 
 
-eventToFloat as [Text]: Event: Result Text Number =
-    path: event:
+eventToFloat as fn [Text], Event: Result Text Number =
+    fn path, event:
     todo "eventToFloat"
 
 
 # TODO eventually we'll have some FFI
 
-unsafeExecuteJavaScript as Text: a: Result Text None =
-    functionName: argument:
+unsafeExecuteJavaScript as fn Text, a: Result Text None =
+    fn functionName, argument:
     todo "unsafeExecuteJavaScript"
 
 
 ###################
 
 
-updateDomAttrs as [Attr msg]: [Attr msg]: DomNode: None =
-    new: old: domNode:
+updateDomAttrs as fn [Attr msg], [Attr msg], DomNode: None =
+    fn new, old, domNode:
 
     # TODO maybe I should store these separately so I don't have to re-process old to compare them?
 
     # TODO also, I'm removing and re-adding listeners every single time, it's probably not a good idea
 
-    oldClass @= ""
-    oldStyle @= ""
-    oldDomAttrs @= Hash.empty
+    !oldClass = ""
+    !oldStyle = ""
+    !oldDomAttrs = Hash.fromList []
 
-    List.each old a:
+    List.each old fn a:
         try a as
-            CssClass value:
-                @oldClass := oldClass .. " " .. value
+            , CssClass value:
+                @oldClass := cloneUni @oldClass .. " " .. value
 
-            CssStyle key value:
-                @oldStyle := oldStyle .. key .. ": " .. value .. "; "
+            , CssStyle key value:
+                @oldStyle := cloneUni @oldStyle .. key .. ": " .. value .. "; "
 
-            Listener eventName eventHandler:
+            , Listener eventName eventHandler:
                 jsRemoveEventListener eventName eventHandler domNode
 
-            DomAttribute name value:
+            , DomAttribute name value:
                 Hash.insert @oldDomAttrs name value
 
-    if oldClass /= "" then
-        Hash.insert @oldDomAttrs "class" oldClass
+    if cloneUni @oldClass /= "" then
+        Hash.insert @oldDomAttrs "class" (cloneUni @oldClass)
     else
         None
 
-    if oldStyle /= "" then
-        Hash.insert @oldDomAttrs "style" oldStyle
+    if cloneUni @oldStyle /= "" then
+        Hash.insert @oldDomAttrs "style" (cloneUni @oldStyle)
     else
         None
 
 
-    newClass @= ""
-    newStyle @= ""
-    newDomAttrs @= Hash.empty
+    !newClass = ""
+    !newStyle = ""
+    !newDomAttrs = Hash.fromList []
 
-    List.each new a:
+    List.each new fn a:
         try a as
-            CssClass value:
-                @newClass := newClass .. " " .. value
+            , CssClass value:
+                @newClass := cloneUni @newClass .. " " .. value
 
-            CssStyle key value:
-                @newStyle := newStyle .. key .. ": " .. value .. "; "
+            , CssStyle key value:
+                @newStyle := cloneUni @newStyle .. key .. ": " .. value .. "; "
 
-            Listener eventName eventHandler:
+            , Listener eventName eventHandler:
                 jsAddEventListener eventName eventHandler domNode
 
-            DomAttribute name value:
+            , DomAttribute name value:
                 Hash.insert @newDomAttrs name value
 
 
-    if newClass /= "" then
-        Hash.insert @newDomAttrs "class" newClass
+    if cloneUni @newClass /= "" then
+        Hash.insert @newDomAttrs "class" (cloneUni @newClass)
     else
         None
 
-    if newStyle == "" then
-        Hash.insert @newDomAttrs "style"newStyle
+    if cloneUni @newStyle == "" then
+        Hash.insert @newDomAttrs "style" (cloneUni @newStyle)
     else
         None
 
 
-    Hash.each newDomAttrs newName: newValue:
-        try Hash.get oldDomAttrs newName as
-            Nothing:
+    Hash.each @newDomAttrs fn newName, newValue:
+        try Hash.get @oldDomAttrs newName as
+            , Nothing:
                 jsSetAttribute newName newValue domNode
 
-            Just oldValue:
+            , Just oldValue:
 
                 Hash.remove @oldDomAttrs newName
 
@@ -186,46 +186,46 @@ updateDomAttrs as [Attr msg]: [Attr msg]: DomNode: None =
                 else
                     None
 
-    Hash.each oldDomAttrs oldName: oldValue:
-        try Hash.get newDomAttrs oldName as
-            Nothing:
+    Hash.each @oldDomAttrs fn oldName, oldValue:
+        try Hash.get @newDomAttrs oldName as
+            , Nothing:
                 jsRemoveAttribute oldName domNode
-            Just newValue:
+            , Just newValue:
                 None
 
 
 
-render as VirtualNode msg: DomNode =
-    vnode:
+render as fn VirtualNode msg: DomNode =
+    fn vnode:
 
     try vnode as
-        ElementNode tagName attrs children:
+        , ElementNode tagName attrs children:
             renderElementNode tagName attrs children
 
-        TextNode content:
+        , TextNode content:
             jsCreateTextNode content
 
 
-renderElementNode as Text: [Attr msg]: [VirtualNode msg]: DomNode =
-    tagName: attrs: children:
+renderElementNode as fn Text, [Attr msg], [VirtualNode msg]: DomNode =
+    fn tagName, attrs, children:
 
     domNode =
         jsCreateElement tagName
 
     updateDomAttrs attrs [] domNode
 
-    List.each children child:
+    List.each children fn child:
         jsAppendChild { parent = domNode, child = render child }
 
     domNode
 
 
-updateDomNode as VirtualNode msg: VirtualNode msg: DomNode: DomNode =
-    new: old: domNode:
+updateDomNode as fn VirtualNode msg, VirtualNode msg, DomNode: DomNode =
+    fn new, old, domNode:
 
     try new & old as
 
-        ElementNode nTag nAttr nChildren & ElementNode oTag oAttr oChildren:
+        , ElementNode nTag nAttr nChildren & ElementNode oTag oAttr oChildren:
 
             if nTag /= oTag then
                 jsReplaceWith (renderElementNode nTag nAttr nChildren) domNode
@@ -235,32 +235,32 @@ updateDomNode as VirtualNode msg: VirtualNode msg: DomNode: DomNode =
                 updateDomChildren nChildren oChildren 0 domNode
                 domNode
 
-        TextNode n & TextNode o:
+        , TextNode n & TextNode o:
             if n == o then
                 domNode
             else
                 jsReplaceWith (jsCreateTextNode n) domNode
 
-        _:
+        , _:
             jsReplaceWith (render new) domNode
 
 
-updateDomChildren as [VirtualNode msg]: [VirtualNode msg]: Int: DomNode: None =
-    new: old: index: parentNode:
+updateDomChildren as fn [VirtualNode msg], [VirtualNode msg], Int, DomNode: None =
+    fn new, old, index, parentNode:
 
     try new & old as
-        (n :: ns) & (o :: os):
-            setChild (updateDomNode n o) index parentNode
+        , (n :: ns) & (o :: os):
+            setChild (updateDomNode n o __) index parentNode
             updateDomChildren ns os (index + 1) parentNode
 
-        (n :: ns) & []:
-            List.each new child:
+        , (n :: ns) & []:
+            List.each new fn child:
                 jsAppendChild { parent = parentNode, child = render child }
 
-        [] & (o :: os):
+        , [] & (o :: os):
             removeAllChildrenStartingFromIndex index parentNode
 
-        [] & []:
+        , [] & []:
             None
 
 
@@ -268,7 +268,8 @@ updateDomChildren as [VirtualNode msg]: [VirtualNode msg]: Int: DomNode: None =
 
 
 alias App msg model =
-    { init as None: model
-    , update as msg: model: model
-    , view as model: VirtualNode msg
+    {
+    , init as fn None: model
+    , update as fn msg, model: model
+    , view as fn model: VirtualNode msg
     }

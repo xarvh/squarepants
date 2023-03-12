@@ -1,20 +1,7 @@
-[# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
 
 
 sourceDir =
     path = "."
-
-
-sourceDir =
-    # TODO remove this, it is here only because we don't have lazy module loading
-    path = "../lib/posix"
-
-    module =
-       path = IO
-       globalTypes = IO
-
-    module =
-       path = Path
 
 
 library =
@@ -28,6 +15,10 @@ library =
 
     module =
         path = VirtualDom
+
+
+sourceDir =
+    path = "../specs"
 
 
 sourceDir =
@@ -50,12 +41,29 @@ sourceDir =
        importAs = CoreTypes
 
     module =
-       path = Types/CanonicalAst
-       importAs = CA
+       path = Types/Ast
+       importAs = Ast
+       globalTypes =
+          Name
+          Ref
+          UnivarId
+          Uniqueness
+       globalValues =
+          RefLocal
+          RefGlobal
+          Uni
+          Imm
+          toImm
+          toUni
+          Depends
 
     module =
-       path = Human/CanonicalAst
-       importAs = HCA
+       path = Types/TypedAst
+       importAs = TA
+
+    module =
+       path = Types/CanonicalAst
+       importAs = CA
 
     module =
        path = Types/EmittableAst
@@ -78,8 +86,12 @@ sourceDir =
         importAs = Meta
         globalTypes =
             Meta
-            Name
             ByUsr
+            USR
+            UMR
+        globalValues =
+            USR
+            UMR
 
     module =
         path = Types/Op
@@ -103,13 +115,20 @@ sourceDir =
             Token
 
     module =
-       path = SPLib/Buffer
-       importAs = Buffer
-       globalTypes = Buffer
-
-    module =
        path = SPLib/Parser
        importAs = Parser
+
+
+# This will be transformed into a platform
+library =
+    source = "core:posix"
+
+    module =
+       path = IO
+       globalTypes = IO
+
+    module =
+       path = Path
 
 
 library =
@@ -172,6 +191,8 @@ library =
         globalTypes = Int
         globalValues =
             clamp
+            cloneImm
+            cloneUni
             identity
             not
             modBy

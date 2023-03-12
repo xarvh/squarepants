@@ -4081,12 +4081,6 @@ const $posix$IO$succeed = (($a) => {
   }));
 });
 
-const $sd0$Compile$allowModule = (($filename) => {
-  return ($core$Basics$not)(($core$List$any)((($n) => {
-    return ($core$Text$contains)($n, $filename);
-  }), ($core$Core$Cons)("src/Targets/Javascript/CanonicalToJs_Test.sp", ($core$Core$Cons)("src/StateMonad.sp", ($core$Core$Cons)("src/Platforms/RawJavaScript.sp", ($core$Core$Cons)("src/Platforms/Browser.sp", ($core$Core$Cons)("src/Human/CanonicalAst.sp", $core$Core$Nil)))))));
-});
-
 const $sd0$Compile$asModule = (($tuple) => {
   const $$isDirectory = $tuple;
   const $name = $$isDirectory.second;
@@ -4167,7 +4161,7 @@ const $sd0$Compile$formattedToConsoleColoredText = (($formattedText) => {
             const $t = ($formattedText)[1];
             return ($sd0$Term$blue)($t);
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 92:4', (sp_toHuman)($formattedText))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 20:4', (sp_toHuman)($formattedText))))));
 });
 
 const $sd0$Compiler$Error$flatten = (($e, $accum) => {
@@ -4466,7 +4460,7 @@ const $sd0$Compile$resToIo = (($errorEnv, $res) => {
           return ($sd0$Compiler$Error$toFormattedText)($errorEnv, $1);
         }))($e))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 101:4', (sp_toHuman)($res))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 29:4', (sp_toHuman)($res))));
 });
 
 const $sd0$ModulesFile$initModulesFile = ({
@@ -6797,7 +6791,7 @@ const $sd0$Compile$loadModulesFile = (($platform, $projectRoot) => {
           (sp_log)("Using default modules.sp", "");
           return $platform.defaultModules;
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 135:8', (sp_toHuman)($result))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 63:8', (sp_toHuman)($result))));
     const $eenv = ({
       moduleByName: ($core$Dict$ofOne)($sd0$Compile$modulesFileName, ({
         content: $modulesAsText,
@@ -6829,7 +6823,7 @@ const $sd0$Compile$updateSourceDir = (($fileNames, $orig) => {
             }), $0.modules),
           }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 276:8', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 204:8', (sp_toHuman)($$try1))));
   });
   return ($core$List$for)($orig, $fileNames, $insertModuleName);
 });
@@ -9175,7 +9169,7 @@ const $sd0$Compile$searchAncestorDirectories = (($isWantedFile, $searchDir) => {
                 }))($parent));
             }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 329:4', (sp_toHuman)($result))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 257:4', (sp_toHuman)($result))));
   })))((io_readDir)($searchDir));
 });
 
@@ -9200,7 +9194,7 @@ const $sd0$Compile$umrToFileName = (($corePath, $umr) => {
           ? (path_resolve)((sp_cons)($corePath, (sp_cons)("browser", ((($1) => {
             return (text_split)("/", $1);
           }))(($name + ".sp")))))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 217:4', (sp_toHuman)($source))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 145:4', (sp_toHuman)($source))))));
 });
 
 const $sd0$Compiler$MakeEmittable$circularIsError = (($globalDefsByName, $names) => {
@@ -14814,7 +14808,7 @@ const $sd0$Compile$compileMain = (($pars) => {
             const $umr = ($maybeEntryUmr)[1];
             return ($sd0$Types$Meta$USR)($umr, "main");
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 427:8', (sp_toHuman)($maybeEntryUmr))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 355:8', (sp_toHuman)($maybeEntryUmr))));
       return (($posix$IO$onSuccess)((($maybeCorelibParent) => {
         const $corePath = ((($maybeCorelibParent)[0] === "Nothing")
           ? (sp_todo)(("Error: I expect to find the " + ($sd0$Compile$libDirectoryName + (" directory next to the spcc executable " + ($pars.selfPath + " but I can't find it.")))))
@@ -14823,18 +14817,14 @@ const $sd0$Compile$compileMain = (($pars) => {
               const $p = ($maybeCorelibParent)[1];
               return (path_resolve)(($core$Core$Cons)($p, ($core$Core$Cons)($sd0$Compile$libDirectoryName, $core$Core$Nil)));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 445:8', (sp_toHuman)($maybeCorelibParent))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 373:8', (sp_toHuman)($maybeCorelibParent))));
         const $outputFile = ($core$Maybe$withDefault)($pars.platform.defaultOutputPath, $pars.maybeOutputPath);
         (sp_log)("Loading modules...", "");
         const $loadAllModules = (io_parallel)(((($1) => {
           return ($core$List$map)((($umr) => {
             return ($sd0$Compile$loadModule)($meta, $umr, ($sd0$Compile$umrToFileName)($corePath, $umr));
           }), $1);
-        }))(((($1) => {
-          return ($core$List$filter)((($umr) => {
-            return ($sd0$Compile$allowModule)(($sd0$Compile$umrToFileName)($corePath, $umr));
-          }), $1);
-        }))(($core$Dict$values)($meta.moduleVisibleAsToUmr))));
+        }))(($core$Dict$values)($meta.moduleVisibleAsToUmr)));
         return (($posix$IO$onSuccess)((($userModules) => {
           const $modules = ((($0) => {
             return ($core$List$for)($0, $userModules, (($module, $d) => {
@@ -14846,7 +14836,7 @@ const $sd0$Compile$compileMain = (($pars) => {
                       const $core = ($maybeCore)[1];
                       return ($core$Maybe$Just)(($sd0$Compile$mergeWithCore)($core, $module));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 473:16', (sp_toHuman)($maybeCore))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 400:16', (sp_toHuman)($maybeCore))));
               });
               return ($core$Dict$update)($module.umr, $zzz, $d);
             }));
@@ -15890,43 +15880,63 @@ const $sd1$Uniqueness$specs = ($sd0$Test$Group)("Uniqueness", ($core$Core$Cons)(
 
 const $sd0$Main$allTests = ($core$Core$Cons)($sd0$Compiler$Lexer_Test$tests, ($core$Core$Cons)($sd0$Compiler$Parser_Test$tests, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$tests, ($core$Core$Cons)($sd0$Compiler$TypeCheck_Test$tests, ($core$Core$Cons)($core$Hash_Test$tests, ($core$Core$Cons)($core$Array_Test$tests, ($core$Core$Cons)($core$List_Test$tests, ($core$Core$Cons)($core$Dict_Test$tests, ($core$Core$Cons)($sd0$RefHierarchy_Test$tests, ($core$Core$Cons)($sd1$Uniqueness$specs, $core$Core$Nil))))))))));
 
-const $sd0$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+const $sd0$Platforms$Browser$virtualDomModule = (($1) => {
+  return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Browser, "VirtualDom"), $1);
+});
 
-const $sd0$Platforms$Posix$overrides = ((() => {
-  const $ioModule = (($1) => {
-    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "IO"), $1);
-  });
-  const $pathModule = (($1) => {
-    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "Path"), $1);
-  });
-  return ($core$Core$Cons)(({
-    first: ($ioModule)("parallel"),
-    second: "io_parallel",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("readDir"),
-    second: "io_readDir",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("readFile"),
-    second: "io_readFile",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("writeFile"),
-    second: "io_writeFile",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("writeStdout"),
-    second: "io_writeStdout",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("writeStderr"),
-    second: "io_writeStderr",
-  }), ($core$Core$Cons)(({
-    first: ($pathModule)("dirname"),
-    second: "path_dirname",
-  }), ($core$Core$Cons)(({
-    first: ($pathModule)("resolve"),
-    second: "path_resolve",
-  }), $core$Core$Nil))))))));
-}))();
+const $sd0$Platforms$Browser$footer = (($state, $targetUsr) => {
+  const $main = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($state, $targetUsr)), ($state = (__re__)[1]), (__re__)[0]);
+  const $updateDomNode = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($state, ($sd0$Platforms$Browser$virtualDomModule)("updateDomNode"))), ($state = (__re__)[1]), (__re__)[0]);
+  return ([
+    ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model = " + ($main + (".update(msg, model);\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom = " + ($main + (".view(model);\n\n        " + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model = " + ($main + ".init(null);\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n    ")))))))),
+    $state,
+  ]);
+});
 
-const $sd0$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = arrayFromListLow(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(arrayToListLow(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path, content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.info(content);\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n\nconst path_dirname = path.dirname;\n";
+const $sd0$Platforms$Browser$header = "(function (win) {\n";
+
+const $sd0$Platforms$Browser$overrides = ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsCreateTextNode"),
+  second: "virtualDom_jsCreateTextNode",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsCreateElement"),
+  second: "virtualDom_jsCreateElement",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsReplaceWith"),
+  second: "virtualDom_jsReplaceWith",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsAppendChild"),
+  second: "virtualDom_jsAppendChild",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsSetAttribute"),
+  second: "virtualDom_jsSetAttribute",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsRemoveAttribute"),
+  second: "virtualDom_jsRemoveAttribute",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsAddEventListener"),
+  second: "virtualDom_jsAddEventListener",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsRemoveEventListener"),
+  second: "virtualDom_jsRemoveEventListener",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("eventToText"),
+  second: "virtualDom_eventToText",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("eventToFloat"),
+  second: "virtualDom_eventToFloat",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("setChild"),
+  second: "virtualDom_setChild",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("removeAllChildrenStartingFromIndex"),
+  second: "virtualDom_removeAllChildrenStartingFromIndex",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("unsafeExecuteJavaScript"),
+  second: "virtualDom_unsafeExecuteJavaScript",
+}), $core$Core$Nil)))))))))))));
+
+const $sd0$Platforms$Browser$runtime = "const crawlObject = (path, type, object) => {\n\n    while(path[0] === 'Cons') {\n\n        const head = path[1];\n        const tail = path[2];\n\n        const o = object[head];\n\n        if (o === undefined) {\n            return [ 'Err', 'no field named: ' + head ];\n        }\n\n        object = o;\n        path = path[2];\n    }\n\n    return typeof object === type\n        ? [ 'Ok', object ]\n        : [ 'Err', 'wrong type: ' + typeof object ]\n        ;\n}\n\n\nconst virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);\nconst virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);\n\n// TODO ensure that those who must return None actually return None (ie, null)\nconst virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);\nconst virtualDom_jsCreateElement = (tag) => document.createElement(tag);\nconst virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }\nconst virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);\nconst virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);\nconst virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);\n\n\nconst virtualDom_setChild = (upd, index, parentNode) => {\n    const child = parentNode.childNodes[index];\n    child && upd(child);\n};\n\n\nconst virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {\n    while(parentNode.childNodes[index]) {\n      parentNode.removeChild(parentNode.childNodes[index]);\n    }\n}\n\n\n// an EventHandler is a function that takes an Event and produces a msg\nconst virtualDom_jsAddEventListener = (eventName, handler, node) => {\n\n    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};\n\n    if (node.squarepantsEventHandlers[eventName]) {\n      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    }\n\n    const onEvent = (event) => dispatch(handler(event));\n    node.squarepantsEventHandlers[eventName] = onEvent;\n    node.addEventListener(eventName, onEvent);\n};\n\nconst virtualDom_jsRemoveEventListener = (eventName, handler, node) => {\n    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    node.squarepantsEventHandlers[eventName] = undefined;\n}\n\nconst virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {\n    let error = null;\n\n    try {\n        const fn = functionName.split('.').reduce((obj, name) => obj[name], window);\n        fn(argument);\n    } catch (e) {\n      error = e;\n    }\n\n    return error\n        ? [ 'Err', error.message ]\n        : [ 'Ok', null ]\n}\n";
 
 const $sd0$Targets$Javascript$EmittableToJs$accessAttrs = (($attrPath, $e) => {
   return ($core$List$for)($e, $attrPath, $sd0$Types$JavascriptAst$AccessWithDot);
@@ -16801,6 +16811,77 @@ const $sd0$Targets$Javascript$Runtime$listNil = "Nil";
 
 const $sd0$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (right, left) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd0$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd0$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd0$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n    "))))))))))))));
 
+const $sd0$Platforms$Browser$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
+  const $$constructors = $getRidOfMe;
+  const $eenv = $$constructors.errorEnv;
+  const $constructors = $$constructors.constructors;
+  const $jaStatements = ((__re__ = ($sd0$Targets$Javascript$EmittableToJs$translateAll)($emState, ({
+    constructors: $constructors,
+    eaDefs: $emittableStatements,
+    errorEnv: $eenv,
+    platformOverrides: $sd0$Platforms$Browser$overrides,
+  }))), ($emState = (__re__)[1]), (__re__)[0]);
+  const $statements = ((($1) => {
+    return ($core$Text$join)("\n\n", $1);
+  }))(((($1) => {
+    return ($core$List$map)((($1) => {
+      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
+    }), $1);
+  }))($jaStatements));
+  return ([
+    ($sd0$Platforms$Browser$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Browser$runtime + ($statements + ((__re__ = ($sd0$Platforms$Browser$footer)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]))))),
+    $emState,
+  ]);
+});
+
+const $sd0$Platforms$Browser$modules = "\nlibrary =\n    source = \"core:browser\"\n\n    module =\n        path = Browser";
+
+const $sd0$Platforms$Browser$platform = ({
+  compile: $sd0$Platforms$Browser$compile,
+  defaultModules: ($sd0$DefaultModules$asText + $sd0$Platforms$Browser$modules),
+  defaultOutputPath: "index.js",
+  name: "browser",
+  quickstart: "TODO",
+});
+
+const $sd0$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+
+const $sd0$Platforms$Posix$overrides = ((() => {
+  const $ioModule = (($1) => {
+    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "IO"), $1);
+  });
+  const $pathModule = (($1) => {
+    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "Path"), $1);
+  });
+  return ($core$Core$Cons)(({
+    first: ($ioModule)("parallel"),
+    second: "io_parallel",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("readDir"),
+    second: "io_readDir",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("readFile"),
+    second: "io_readFile",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("writeFile"),
+    second: "io_writeFile",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("writeStdout"),
+    second: "io_writeStdout",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("writeStderr"),
+    second: "io_writeStderr",
+  }), ($core$Core$Cons)(({
+    first: ($pathModule)("dirname"),
+    second: "path_dirname",
+  }), ($core$Core$Cons)(({
+    first: ($pathModule)("resolve"),
+    second: "path_resolve",
+  }), $core$Core$Nil))))))));
+}))();
+
+const $sd0$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = arrayFromListLow(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(arrayToListLow(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path, content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.info(content);\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n\nconst path_dirname = path.dirname;\n";
+
 const $sd0$Platforms$Posix$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
   const $$constructors = $getRidOfMe;
   const $eenv = $$constructors.errorEnv;
@@ -16837,7 +16918,41 @@ const $sd0$Platforms$Posix$platform = ({
   quickstart: "TODO",
 });
 
-const $sd0$Main$availablePlatforms = ($core$Core$Cons)($sd0$Platforms$Posix$platform, $core$Core$Nil);
+const $sd0$Platforms$RawJavaScript$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
+  const $$constructors = $getRidOfMe;
+  const $eenv = $$constructors.errorEnv;
+  const $constructors = $$constructors.constructors;
+  (sp_log)("Creating JS AST...", "");
+  const $jaStatements = ((__re__ = ($sd0$Targets$Javascript$EmittableToJs$translateAll)($emState, ({
+    constructors: $constructors,
+    eaDefs: $emittableStatements,
+    errorEnv: $eenv,
+    platformOverrides: $core$Core$Nil,
+  }))), ($emState = (__re__)[1]), (__re__)[0]);
+  (sp_log)("Emitting JS...", "");
+  const $statements = ((($1) => {
+    return ($core$Text$join)("\n\n", $1);
+  }))(((($1) => {
+    return ($core$List$map)((($1) => {
+      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
+    }), $1);
+  }))($jaStatements));
+  const $main = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]);
+  return ([
+    ("(function() {\n" + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($statements + ("\n return " + ($main + ";\n })();"))))),
+    $emState,
+  ]);
+});
+
+const $sd0$Platforms$RawJavaScript$platform = ({
+  compile: $sd0$Platforms$RawJavaScript$compile,
+  defaultModules: $sd0$DefaultModules$asText,
+  defaultOutputPath: "squarepants.mjs",
+  name: "rawjs",
+  quickstart: "TODO",
+});
+
+const $sd0$Main$availablePlatforms = ($core$Core$Cons)($sd0$Platforms$Posix$platform, ($core$Core$Cons)($sd0$Platforms$RawJavaScript$platform, ($core$Core$Cons)($sd0$Platforms$Browser$platform, $core$Core$Nil)));
 
 const $sd0$Main$cliDefaults = ({
   platform: $sd0$Platforms$Posix$platform,

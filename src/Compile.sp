@@ -1,76 +1,4 @@
 
-allowModule as fn Text: Bool =
-    fn filename:
-
-    not << List.any (fn n: Text.contains n filename) [
-#        , "src/Types/TypedAst.sp"
-#        , "src/Types/Token.sp"
-#        , "src/Types/Pos.sp"
-#        , "src/Types/Platform.sp"
-#        , "src/Types/Op.sp"
-#        , "src/Types/Meta.sp"
-#        , "src/Types/JavascriptAst.sp"
-#        , "src/Types/FormattableAst.sp"
-#        , "src/Types/EmittableAst.sp"
-#        , "src/Types/CanonicalAst.sp"
-#        , "src/Types/Ast.sp"
-#        , "/src/Test.sp"
-#        , "src/Term.sp"
-#        , "src/Targets/Javascript/Runtime.sp"
-#        , "src/Targets/Javascript/JsToText.sp"
-#        , "src/Targets/Javascript/EmittableToJs.sp"
-        , "src/Targets/Javascript/CanonicalToJs_Test.sp"
-        , "src/StateMonad.sp"
-#        , "src/SPON.sp"
-#        , "src/SPLib/Parser.sp"
-#        , "src/SPLib/Buffer.sp"
-#        , "src/RefHierarchy_Test.sp"
-#        , "src/RefHierarchy.sp"
-#        , "src/Prelude.sp"
-        , "src/Platforms/RawJavaScript.sp"
-#        , "src/Platforms/Posix.sp"
-        , "src/Platforms/Browser.sp"
-#        , "src/ModulesFile.sp"
-#        , "src/Main.sp"
-        , "src/Human/CanonicalAst.sp"
-#        , "src/Human/Type.sp"
-#        , "src/DefaultModules.sp"
-#        , "src/Compiler/UniquenessCheck.sp"
-#        , "src/Compiler/TypeCheck_Test.sp"
-#        , "src/Compiler/TypeCheck.sp"
-#        , "src/Compiler/TestHelpers.sp"
-#        , "src/Compiler/Parser_Test.sp"
-#        , "src/Compiler/Parser.sp"
-#        , "src/Compiler/MakeEmittable.sp"
-#        , "src/Compiler/MakeCanonical_Test.sp"
-#        , "src/Compiler/MakeCanonical.sp"
-#        , "src/Compiler/Lexer_Test.sp"
-#        , "src/Compiler/Lexer.sp"
-#        , "src/Compiler/Error.sp"
-#        , "src/Compiler/CoreTypes.sp"
-#        , "src/Compile.sp"
-#        , "specs/Uniqueness.sp"
-#        , "lib/posix/Path.sp"
-#        , "lib/posix/IO.sp"
-#        , "lib/core/Tuple.sp"
-#        , "lib/core/Text.sp"
-#        , "lib/core/Set.sp"
-#        , "lib/core/Result.sp"
-#        , "lib/core/Maybe.sp"
-#        , "lib/core/List_Test.sp"
-#        , "lib/core/List.sp"
-#        , "lib/core/Hash_Test.sp"
-#        , "lib/core/Hash.sp"
-#        , "lib/core/Dict_Test.sp"
-#        , "lib/core/Dict.sp"
-#        , "lib/core/Debug.sp"
-#        , "lib/core/Core.sp"
-#        , "lib/core/Basics.sp"
-#        , "lib/core/Array_Test.sp"
-#        , "lib/core/Array.sp"
-      ]
-
-
 
 modulesFileName as Text =
     "modules.sp"
@@ -461,7 +389,6 @@ compileMain as fn CompileMainPars: IO Int =
     loadAllModules as IO [CA.Module] =
         meta.moduleVisibleAsToUmr
         >> Dict.values
-        >> List.filter (fn umr: allowModule (umrToFileName corePath umr)) __
         >> List.map (fn umr: loadModule meta umr (umrToFileName corePath umr)) __
         >> IO.parallel
 
