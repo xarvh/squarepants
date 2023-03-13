@@ -106,7 +106,7 @@ unaryPlus as Override =
     , call =
         fn env, arguments:
         try arguments as
-            , [ EA.ArgumentSpend arg ]:
+            , [ EA.ArgumentSpend fullType arg ]:
                 # Num.unaryPlus n == n
                 translateExpressionToExpression env arg
 
@@ -122,7 +122,7 @@ unaryMinus as Override =
     , call =
         fn env, arguments:
         try arguments as
-            , [ EA.ArgumentSpend arg ]:
+            , [ EA.ArgumentSpend fullType arg ]:
                 # Num.unaryMinus n == -n
                 JA.Unop "-" (translateExpressionToExpression env arg)
 
@@ -190,10 +190,10 @@ translateArg as fn { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
     fn stuff, env, eaExpression:
 
     try eaExpression as
-        , EA.ArgumentSpend e:
+        , EA.ArgumentSpend fullType e:
             translateExpressionToExpression env e
 
-        , EA.ArgumentRecycle attrPath name:
+        , EA.ArgumentRecycle rawType attrPath name:
             accessAttrs attrPath (JA.Var name)
 
 
@@ -291,8 +291,8 @@ makeCall as fn Env, JA.Expr, [EA.Argument]: JA.Expr =
     asRecycled as fn EA.Argument: Maybe JA.Expr =
         fn arg:
         try arg as
-            , EA.ArgumentSpend _: Nothing
-            , EA.ArgumentRecycle attrPath name:
+            , EA.ArgumentSpend _ _: Nothing
+            , EA.ArgumentRecycle rawType attrPath name:
                 translateVariable env name
                 >> accessAttrs attrPath __
                 >> Just

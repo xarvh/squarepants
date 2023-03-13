@@ -234,14 +234,14 @@ translateArgAndType as fn @State, @Int, TA.Argument: EA.Argument =
 
     try taArg as
         , TA.ArgumentExpression fullType exp:
-            EA.ArgumentSpend << translateExpression @state @counter exp
+            EA.ArgumentSpend fullType (translateExpression @state @counter exp)
 
         , TA.ArgumentRecycle pos rawType attrPath name:
 
             DollarName n =
                 userSpecifiedName name
 
-            EA.ArgumentRecycle attrPath n
+            EA.ArgumentRecycle rawType attrPath n
 
 
 translateExpression as fn @State, @Int, Expression: EA.Expression =

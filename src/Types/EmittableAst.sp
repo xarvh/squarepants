@@ -42,8 +42,8 @@ union Expression =
 
 
 union Argument =
-    , ArgumentRecycle [Name] Name
-    , ArgumentSpend Expression
+    , ArgumentRecycle TA.RawType [Name] Name
+    , ArgumentSpend TA.FullType Expression
 
 
 alias GlobalDefinition =
