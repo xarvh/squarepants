@@ -24,22 +24,22 @@ formattedToConsoleColoredText as fn Error.FormattedText: Text =
         , Error.FormattedText_Decoration t: Term.blue t
 
 
-resToIo as fn Error.Env, Res a: IO a =
-    fn errorEnv, res:
+resToIo as fn Res a: IO a =
+    fn res:
     try res as
         , Ok a: IO.succeed a
         , Err e:
             e
-            >> Error.toFormattedText errorEnv __
+            >> Error.toFormattedText
             >> List.map formattedToConsoleColoredText __
             >> Text.join "" __
             >> IO.fail
 
 
-onResSuccess as fn Error.Env, (fn a: IO b): fn Res a: IO b =
-    fn errorEnv, f: fn res:
+onResSuccess as fn (fn a: IO b): fn Res a: IO b =
+    fn f: fn res:
     res
-    >> resToIo errorEnv __
+    >> resToIo
     >> (IO.onSuccess f) __
 
 
@@ -68,15 +68,15 @@ loadModulesFile as fn Types/Platform.Platform, Text: IO ModulesFile.ModulesFile 
                 log "Using default modules.sp" ""
                 platform.defaultModules
 
-    eenv as Error.Env =
-        {
-        , moduleByName = Dict.ofOne modulesFileName {
-            , fsPath = modulesFileName
-            , content = modulesAsText
-            }
-        }
+#    eenv as Error.Env =
+#        {
+#        , moduleByName = Dict.ofOne modulesFileName {
+#            , fsPath = modulesFileName
+#            , content = modulesAsText
+#            }
+#        }
 
-    resToIo eenv __ << ModulesFile.textToModulesFile modulesFileName modulesAsText
+    resToIo << ModulesFile.textToModulesFile modulesFileName modulesAsText
 
 
 
@@ -159,28 +159,17 @@ umrToFileName as fn Text, UMR: Text =
 loadModule as fn Meta, UMR, Text: IO CA.Module =
     fn meta, umr, fileName:
 
-    # TODO get rid of eenv so this is not needed
-    UMR source moduleName =
-        umr
-
     IO.readFile fileName
     >> IO.onSuccess fn moduleAsText:
 
-    params as Compiler/MakeCanonical.Params = {
+    params as Compiler/MakeCanonical.ReadOnly =
+        {
         , meta
-        , stripLocations = False
-        , source
-        , name = moduleName
+        , umr
+        , errorModule = { fsPath = fileName, content = moduleAsText }
         }
 
-    eenv as Error.Env = {
-        , moduleByName = Dict.ofOne moduleName {
-            , fsPath = fileName
-            , content = moduleAsText
-            }
-        }
-
-    resToIo eenv __ << Compiler/MakeCanonical.textToCanonicalModule params moduleAsText
+    resToIo << Compiler/MakeCanonical.textToCanonicalModule False params
 
 
 alias ModuleAndPath = {
@@ -404,22 +393,22 @@ compileMain as fn CompileMainPars: IO Int =
             Dict.update module.umr zzz d
 
     # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
-    eenv as Error.Env =
-        getName =
-            fn n:
-            Meta.UMR source name = n.umr
-            name
-
-        { moduleByName =
-            List.for Dict.empty (Dict.values modules) (fn m, d: Dict.insert (getName m) { fsPath = umrToFileName corePath m.umr, content = m.asText } d)
-        }
+#    eenv as Error.Env =
+#        getName =
+#            fn n:
+#            Meta.UMR source name = n.umr
+#            name
+#
+#        { moduleByName =
+#            List.for Dict.empty (Dict.values modules) (fn m, d: Dict.insert (getName m) { fsPath = umrToFileName corePath m.umr, content = m.asText } d)
+#        }
 
 
     log "Solving globals..." ""
     modules
     >> Dict.values
     >> Compiler/TypeCheck.initStateAndGlobalEnv
-    >> onResSuccess eenv fn (luv & typeCheckGlobalEnv):
+    >> onResSuccess fn (luv & typeCheckGlobalEnv):
 
     log "Type checking..." ""
 
@@ -428,7 +417,7 @@ compileMain as fn CompileMainPars: IO Int =
 
     modules
     >> Dict.values
-    >> List.map (fn m: Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv m >> resToIo eenv __) __
+    >> List.map (fn m: Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv m >> resToIo) __
     >> IO.parallel
     >> IO.onSuccess fn typedModules:
 
@@ -436,7 +425,7 @@ compileMain as fn CompileMainPars: IO Int =
     log "Uniqueness check..." ""
 
     typedModules
-    >> List.map (fn m: Compiler/UniquenessCheck.doModule m >> resToIo eenv __) __
+    >> List.map (fn m: Compiler/UniquenessCheck.doModule m >> resToIo) __
     >> IO.parallel
     >> IO.onSuccess fn modulesWithDestruction:
 
@@ -446,7 +435,7 @@ compileMain as fn CompileMainPars: IO Int =
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (fn e: todo "MakeEmittable.translateAll returned Err") __
-    >> onResSuccess eenv fn (meState & emittableStatements):
+    >> onResSuccess fn (meState & emittableStatements):
 
     !emittableState =
         cloneImm meState
@@ -456,7 +445,6 @@ compileMain as fn CompileMainPars: IO Int =
     js =
         pars.platform.compile
             {
-            , errorEnv = eenv
             , constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
             }
             entryUsr

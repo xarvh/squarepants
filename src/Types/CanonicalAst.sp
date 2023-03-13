@@ -140,6 +140,7 @@ alias Constructor =
 
 alias Module =
     {
+    , fsPath as Text
     , umr as UMR
     , asText as Text
 
@@ -149,10 +150,11 @@ alias Module =
     }
 
 
-initModule as fn Text, UMR: Module =
-    fn asText, umr:
+initModule as fn Text, UMR, Text: Module =
+    fn fsPath, umr, asText:
     {
     , umr
+    , fsPath
     , asText
     , aliasDefs = Dict.empty
     , unionDefs = Dict.empty

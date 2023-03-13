@@ -78,8 +78,9 @@ valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
 lexTokens as fn Text: Result Text [[Token]] =
     fn s:
     s
-    >> Compiler/Lexer.lexer TH.moduleName __
-    >> TH.resErrorToStrippedText s __
+    >> TH.errorModule
+    >> Compiler/Lexer.lexer
+    >> TH.resErrorToStrippedText
 
 
 lexTokensAndDrop as fn Int: fn Text: Result Text [[Token]] =

@@ -1,19 +1,4 @@
 
-alias Params =
-    {
-    , meta as Meta
-    , stripLocations as Bool
-    , source as Meta.Source
-    , name as Name
-    }
-
-
-#textToCanonicalModule as fn Params, Text: Res CA.Module =
-#    fn pars, code:
-#    todo "textToCanonicalModule"
-
-#
-
 [#
     `Env` is immutable and depends only on the parent scopes.
     Which means, each scope will have a different one.
@@ -49,7 +34,8 @@ alias Env =
 
 alias ReadOnly =
     {
-    , currentModule as UMR
+    , errorModule as Error.Module
+    , umr as UMR
     , meta as Meta
     }
 
@@ -71,9 +57,13 @@ initEnv as fn ReadOnly: Env =
 #
 
 
-error as fn Pos, [Text]: Res a =
-    fn pos, msg:
-    Error.res pos fn errorEnv: msg
+erroro as fn ReadOnly, Pos, [Text]: Res a =
+    fn ro, pos, msg:
+    Error.res ro.errorModule pos msg
+
+error as fn Env, Pos, [Text]: Res a =
+    fn env, pos, msg:
+    Error.res env.ro.errorModule pos msg
 
 
 #
@@ -105,7 +95,7 @@ resolveToUsr as fn (fn Meta: Dict Text USR), ReadOnly, Maybe Name, Name: USR =
     fn getter, ro, maybeModule, name:
 
     maybeForeignUsr getter ro maybeModule name
-        >> Maybe.withDefault (USR ro.currentModule name) __
+        >> Maybe.withDefault (USR ro.umr name) __
 
 
 resolveToValueRef as fn ReadOnly, Bool, Maybe Name, Name: Ref =
@@ -120,7 +110,7 @@ resolveToValueRef as fn ReadOnly, Bool, Maybe Name, Name: Ref =
                 RefLocal name
 
             else
-                RefGlobal << USR ro.currentModule name
+                RefGlobal << USR ro.umr name
 
 
 resolveToTypeUsr as fn ReadOnly, Maybe Name, Name: USR =
@@ -326,7 +316,7 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     >> onOk fn (uni & pattern):
 
     fa.nonFn
-    >> List.mapRes translateTypeParameter __
+    >> List.mapRes (translateTypeParameter env.ro __) __
     >> onOk fn nonFn:
 
     univars as Dict UnivarId None =
@@ -385,34 +375,34 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
 #
 # Pattern
 #
-translateAttributeName as fn FA.Expression: Res (Pos & Name & Maybe FA.Expression) =
-    fn (FA.Expression pos expr_):
+translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA.Expression) =
+    fn ro, (FA.Expression pos expr_):
 
     try expr_ as
         , FA.Variable { maybeType, word }:
 
             if word.modifier /= Token.NameNoModifier then
-                error pos [ "attribute names can't start with a dot" ]
+                erroro ro pos [ "attribute names can't start with a dot" ]
             else if word.isUpper then
-                error pos [ "attribute names must be lower case" ]
+                erroro ro pos [ "attribute names must be lower case" ]
             else if word.maybeModule /= Nothing then
-                error pos [ "attribute names must be single words" ]
+                erroro ro pos [ "attribute names must be single words" ]
             else if word.attrPath /= [] then
-                error pos [ "attribute names can't contain dots" ]
+                erroro ro pos [ "attribute names can't contain dots" ]
             else
                 pos & word.name & maybeType >> Ok
 
         , _:
-            error pos [ "Expecting an attribute name here" ]
+            erroro ro pos [ "Expecting an attribute name here" ]
 
 
 translatePatternConstructor as fn Env, Pos, Token.Word, [CA.Pattern]: Res CA.Pattern =
     fn env, pos, word, args:
 
     if word.modifier /= Token.NameNoModifier then
-        error pos [ "Constructor names cannot have modifiers" ]
+        error env pos [ "Constructor names cannot have modifiers" ]
     else if word.attrPath /= [] then
-        error pos [ "Constructors don't have attributes" ]
+        error env pos [ "Constructors don't have attributes" ]
     else
         args
         >> CA.PatternConstructor pos (resolveToConstructorUsr env.ro word.maybeModule word.name) __
@@ -423,11 +413,11 @@ translatePatternAny as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Patt
     fn env, pos, maybeFaType, word:
 
     if word.modifier /= Token.NameNoModifier then
-        error pos [ "Record access shorthands" ]
+        error env pos [ "Record access shorthands" ]
     else if word.attrPath /= [] then
-        error pos [ "To access attributes in pattern matching use { with theAttributeName = theVariableName }" ]
+        error env pos [ "To access attributes in pattern matching use { with theAttributeName = theVariableName }" ]
     else if word.maybeModule /= Nothing then
-        error pos [ "You can't access modules here..." ]
+        error env pos [ "You can't access modules here..." ]
     else
         resultMaybeRaw as Res (Maybe CA.RawType) =
             try maybeFaType as
@@ -455,16 +445,16 @@ insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict N
     # { x = pattern }
     # { x as Type }
 
-    translateAttributeName attr.name
+    translateAttributeName env.ro attr.name
     >> onOk fn (pos & caName & maybeFaType):
 
     if Dict.member caName caAttrs then
-        error pos [ "duplicate attribute name in pattern: " .. caName ]
+        error env pos [ "duplicate attribute name in pattern: " .. caName ]
 
     else
         try attr.maybeExpr & maybeFaType as
             , Just _ & Just (FA.Expression typePos _):
-                error typePos [ "if you want to annotate the attribute, use { x = y as TheType }" ]
+                error env typePos [ "if you want to annotate the attribute, use { x = y as TheType }" ]
 
             , Nothing & Just faType:
                 translateRawType env.ro faType
@@ -495,7 +485,7 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [{ name as F
     zzz =
         try maybeMaybeExt as
             , Just (Just (FA.Expression p expr_)):
-                error p [ "Can't extend patterns" ]
+                error env p [ "Can't extend patterns" ]
 
             , Just Nothing:
                 # { with attr1 = ... }
@@ -513,8 +503,8 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [{ name as F
     >> Result.map (fn x: CA.PatternRecord pos completeness x) __
 
 
-translateTuple as fn (fn FA.Expression: Res ca), FA.SepList Op.Binop FA.Expression: Res (Dict Name ca) =
-    fn translate, sepList:
+translateTuple as fn ReadOnly, (fn FA.Expression: Res ca), FA.SepList Op.Binop FA.Expression: Res (Dict Name ca) =
+    fn ro, translate, sepList:
 
     faExpressions as [FA.Expression] =
         FA.sepToList sepList
@@ -541,14 +531,14 @@ translateTuple as fn (fn FA.Expression: Res ca), FA.SepList Op.Binop FA.Expressi
             >> Ok
 
         , _:
-            error pos [ "tuples can be only of size 2 or 3, use a record instead" ]
+            erroro ro pos [ "tuples can be only of size 2 or 3, use a record instead" ]
 
 
 translateFullPattern as fn Env, FA.Expression: Res (Uniqueness & CA.Pattern) =
     fn env, expr:
 
     expr
-    >> translatePoly __
+    >> translatePoly env.ro __
     >> onOk fn (uni & e):
 
     translateRawPattern env e
@@ -567,7 +557,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
             if word.isUpper then
                 if maybeType /= Nothing then
-                    error pos [ "Pattern constructors can't have type annotations" ]
+                    error env pos [ "Pattern constructors can't have type annotations" ]
                 else
                     translatePatternConstructor env pos word []
             else
@@ -577,9 +567,9 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
             try ref as
                 , FA.Variable { maybeType, word }:
                     if not word.isUpper then
-                        error pos [ "I need an uppercase constructor name here" ]
+                        error env pos [ "I need an uppercase constructor name here" ]
                     else if maybeType /= Nothing then
-                        error pos [ "Constructors can't be annotated (yet? would it make sense?)" ]
+                        error env pos [ "Constructors can't be annotated (yet? would it make sense?)" ]
                     else
                         faArgs
                         >> List.mapRes (translateRawPattern env __) __
@@ -587,7 +577,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                         translatePatternConstructor env pos word caPars
 
                 , _:
-                    error pos [ "I was expecting a constructor name here" ]
+                    error env pos [ "I was expecting a constructor name here" ]
 
         , FA.List faItems:
 
@@ -605,7 +595,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
                 , [lastHasDots & FA.Expression pos lastFaExpr, ...reversedFaRest]:
                     if List.any Tuple.first reversedFaRest then
-                        error pos [ "only the last item in a list can have ... triple dots" ]
+                        error env pos [ "only the last item in a list can have ... triple dots" ]
 
                     else if not lastHasDots then
                         reversedFaItems
@@ -629,14 +619,14 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                                 >> Ok
 
                             , _:
-                                error pos [ "sorry, I don't understand the dots here..." ]
+                                error env pos [ "sorry, I don't understand the dots here..." ]
 
         , FA.Record { maybeExtension, attrs }:
             translatePatternRecord env pos maybeExtension attrs
 
         , FA.Binop Op.Tuple sepList:
             sepList
-            >> translateTuple (translateRawPattern env __) __
+            >> translateTuple env.ro (translateRawPattern env __) __
             >> onOk fn recordAttrs:
 
             CA.PatternRecord pos CA.Complete recordAttrs
@@ -654,33 +644,33 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                     >> Ok
 
                 , []:
-                    error pos [ "should not happen: empty cons pattern" ]
+                    error env pos [ "should not happen: empty cons pattern" ]
 
         , FA.Binop opPrecedence sepList:
-            error pos [ "This binop can't be used in pattern matching" ]
+            error env pos [ "This binop can't be used in pattern matching" ]
 
         , FA.LiteralText l:
             Ok << CA.PatternLiteralText pos l
 
         , FA.LiteralNumber isPercent l:
-            translateNumber isPercent CA.PatternLiteralNumber pos l
+            translateNumber env.ro isPercent CA.PatternLiteralNumber pos l
 
         # Stuff that's not valid for patterns
 
         , FA.Statements stats:
-            error pos [ "WAT" ]
+            error env pos [ "WAT" ]
 
         , FA.Fn args body:
-            error pos [ "Can't pattern match on functions. =(" ]
+            error env pos [ "Can't pattern match on functions. =(" ]
 
         , FA.Unop unop expr:
-            error pos [ "This op can't be used in pattern matching" ]
+            error env pos [ "This op can't be used in pattern matching" ]
 
         , FA.If _:
-            error pos [ "if..then can't be used in pattern matching" ]
+            error env pos [ "if..then can't be used in pattern matching" ]
 
         , FA.Try _:
-            error pos [ "try..as can't be used in pattern matching" ]
+            error env pos [ "try..as can't be used in pattern matching" ]
 
 
 #
@@ -742,11 +732,11 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
 
         , FA.AliasDef fa :: tail:
             At pos _ = fa.name
-            error pos [ "Aliases can be declared only in the root scope" ]
+            error env pos [ "Aliases can be declared only in the root scope" ]
 
         , FA.UnionDef fa :: tail:
             At pos _ = fa.name
-            error pos [ "Types can be declared only in the root scope" ]
+            error env pos [ "Types can be declared only in the root scope" ]
 
 
 ##
@@ -757,7 +747,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
     try expr_ as
         , FA.LiteralNumber isPercent str:
-            translateNumber isPercent CA.LiteralNumber pos str
+            translateNumber env.ro isPercent CA.LiteralNumber pos str
 
         , FA.LiteralText v:
             Ok << CA.LiteralText pos v
@@ -784,7 +774,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                         Dict.intersect names envX.nonRootValues >> Dict.keys
 
                     if duplicates /= [] then
-                        error pos [ "parameters shadows these values: " .. Text.join "," duplicates ]
+                        error env pos [ "parameters shadows these values: " .. Text.join "," duplicates ]
                     else
                         Ok { envX with nonRootValues = Dict.join names .nonRootValues }
 
@@ -825,8 +815,8 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         , FA.Unop opId faOperand:
             try opId as
-                , Op.UnopUnique: error pos [ "can't use ! here because REASONS" ]
-                , Op.UnopRecycle: error pos [ "can recycle only in function calls!" ]
+                , Op.UnopUnique: error env pos [ "can't use ! here because REASONS" ]
+                , Op.UnopRecycle: error env pos [ "can recycle only in function calls!" ]
                 , Op.UnopPlus: translateExpression env faOperand
                 , Op.UnopMinus:
                     faOperand
@@ -854,7 +844,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
                 , (hasDots & head) :: rest:
                     if List.any Tuple.first rest then
-                        error pos [ "can use dots only on the last element (for now?)" ]
+                        error env pos [ "can use dots only on the last element (for now?)" ]
 
                     else
                         init & revItems =
@@ -900,7 +890,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             >> Ok
 
         , _:
-            error pos [ "something's wrong here...", toHuman expr_ ]
+            error env pos [ "something's wrong here...", toHuman expr_ ]
 
 
 translateArgumentsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Argument] & (fn CA.Expression: CA.Expression)) =
@@ -960,11 +950,11 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
     try word.modifier as
         , Token.NameStartsWithDot:
             if word.isUpper or word.maybeModule /= Nothing then
-                error pos [ "record attribute names must start with a lowercase letter" ]
+                error env pos [ "record attribute names must start with a lowercase letter" ]
             else
                 try env.maybeShorthandTarget as
                     , Nothing:
-                        error pos [
+                        error env pos [
                             , "Record update shorthands must be used inside a record update such as"
                             , "    { aRecord with anAttribute = doSomethingWith ." .. Text.join "." word.attrPath .. " }"
                             , "but we are not inside a record update!"
@@ -978,7 +968,7 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
         , Token.NameNoModifier:
             if word.isUpper then
                 if word.attrPath /= [] then
-                    error pos [ "something's wrong with the lexer?" ]
+                    error env pos [ "something's wrong with the lexer?" ]
                 else
                     resolveToConstructorUsr env.ro word.maybeModule word.name
                         >> CA.Constructor pos __
@@ -1006,7 +996,7 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
                     , FA.Variable { maybeType = Nothing, word }:
                         Ok (Just word)
                     , _:
-                        error p [ "@ should be followed by a variable name to recycle!" ]
+                        error env p [ "@ should be followed by a variable name to recycle!" ]
 
             , _:
                 Ok Nothing
@@ -1019,7 +1009,7 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
             isValid = word.modifier == Token.NameNoModifier and not word.isUpper and word.maybeModule == Nothing and word.attrPath == []
 
             if not isValid then
-                error pos [ "I was expecting a local variable name here... =|" ]
+                error env pos [ "I was expecting a local variable name here... =|" ]
             else
                 CA.ParameterRecycle pos word.name
                 >> Ok
@@ -1032,12 +1022,12 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
             >> Ok
 
 
-translateNumber as fn Bool, (fn Pos, Number: a), Pos, Text: Res a =
-    fn isPercent, constructor, pos, numberAsText:
+translateNumber as fn ReadOnly, Bool, (fn Pos, Number: a), Pos, Text: Res a =
+    fn ro, isPercent, constructor, pos, numberAsText:
 
     try Text.toNumber (Text.replace "_" "" numberAsText) as
         , Nothing:
-            error pos
+            erroro ro pos
                 [
                 , "invalid number: `" .. numberAsText .. "`"
                 , "TODO link to documentation on valid number formats"
@@ -1053,7 +1043,7 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
     zzz as Res (Maybe CA.Expression) =
         try maybeMaybeExtension as
             , Just (Just ext): translateExpression env ext >> Result.map Just __
-            , Just Nothing: error pos [ "I need to know what record you are updating" ]
+            , Just Nothing: error env pos [ "I need to know what record you are updating" ]
             , Nothing: Ok Nothing
 
     zzz
@@ -1110,11 +1100,11 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
 translateAndInsertRecordAttribute as fn Env, FA.RecordAttribute, Dict Text CA.Expression: Res (Dict Text CA.Expression) =
     fn env, attr, caAttrsAccum:
 
-    translateAttributeName attr.name
+    translateAttributeName env.ro attr.name
     >> onOk fn (pos & caName & maybeFaType):
 
     if Dict.member caName caAttrsAccum then
-        error pos [ "duplicate attribute: " .. caName ]
+        error env pos [ "duplicate attribute: " .. caName ]
     else
         attr.maybeExpr
         >> Maybe.withDefault attr.name __
@@ -1134,19 +1124,19 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
             try faOperand as
                 , FA.Variable { maybeType, word }:
                     if maybeType /= Nothing then
-                        error pos [ "Sorry, at least for now annotations are not supported here" ]
+                        error env pos [ "Sorry, at least for now annotations are not supported here" ]
                     else if word.maybeModule /= Nothing then
-                        error pos [ "Only values declared inside a function scope can be mutated!" ]
+                        error env pos [ "Only values declared inside a function scope can be mutated!" ]
                     else if word.modifier /= Token.NameNoModifier then
-                        error pos [ "This can't start with ." ]
+                        error env pos [ "This can't start with ." ]
                     else if word.isUpper then
-                        error pos [ "Can't recycle constructors" ]
+                        error env pos [ "Can't recycle constructors" ]
                     else
                         CA.ArgumentRecycle pos word.name word.attrPath
                         >> Ok
 
                 , _:
-                    error pos [ "I can recycle only variables!" ]
+                    error env pos [ "I can recycle only variables!" ]
 
         , _:
             faExpr
@@ -1186,22 +1176,22 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
                 , Op.Comparison:
                     if notAllSeparators (sameDirectionAs firstSep __) secondTail then
                         # TODO actually list the seps
-                        error pos [ "can't mix comparison ops with different direction" ]
+                        error env pos [ "can't mix comparison ops with different direction" ]
 
                     else
                         # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
-                        error pos [ "NI compops expansion" ]
+                        error env pos [ "NI compops expansion" ]
 
                 , Op.Logical:
                     if notAllSeparators (fn x: x == firstSep) secondTail then
-                        error pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
+                        error env pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
 
                     else
                         translateBinopSepList_rightAssociative env pos firstItem firstTail
 
                 , Op.Tuple:
                     if thirdTail /= [] then
-                        error pos [ "Tuples can't have more than 3 items, use a record instead." ]
+                        error env pos [ "Tuples can't have more than 3 items, use a record instead." ]
 
                     else
                          translateExpression env firstItem >> onOk fn first:
@@ -1216,7 +1206,7 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
 
                 , Op.Pipe:
                     if notAllSeparators (fn x: x == firstSep) secondTail then
-                        error pos [ "Mixing pipes is ambigous. Use parens." ]
+                        error env pos [ "Mixing pipes is ambigous. Use parens." ]
 
                     else if firstSep.associativity == Op.Right then
                         translateBinopSepList_rightAssociative env pos firstItem firstTail
@@ -1225,7 +1215,7 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
                         translateBinopSepList_leftAssociative env pos firstItem firstTail
 
                 , Op.Mutop:
-                    error pos [ "mutops can't be chained" ]
+                    error env pos [ "mutops can't be chained" ]
 
                 , _:
                     translateBinopSepList_rightAssociative env pos firstItem firstTail
@@ -1279,7 +1269,7 @@ translateBinopSepList_rightAssociative as fn Env, Pos, FA.Expression, [ Op.Binop
             translateBinopSepList_rightAssociative env pos right tail
             >> onOk fn caRight:
 
-            makeBinop pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
+            makeBinop env.ro pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
 
 
 translateBinopSepList_leftAssociative as fn Env, Pos, FA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
@@ -1297,7 +1287,7 @@ translateBinopSepListRec as fn Env, Pos, CA.Expression, [ Op.Binop & FA.Expressi
 
         , (op & faRight) :: tail:
             translateArgument env faRight >> onOk fn caRight:
-            makeBinop pos (CA.ArgumentExpression leftAccum) op caRight
+            makeBinop env.ro pos (CA.ArgumentExpression leftAccum) op caRight
             >> onOk fn binop:
             translateBinopSepListRec env pos binop tail
 
@@ -1307,8 +1297,8 @@ translateBinopSepListRec as fn Env, Pos, CA.Expression, [ Op.Binop & FA.Expressi
 `a + b` == `((+) b) a`
 
 #]
-makeBinop as fn Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expression =
-    fn pos, left, op, right:
+makeBinop as fn ReadOnly, Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expression =
+    fn ro, pos, left, op, right:
 
     if op.symbol == Prelude.sendRight.symbol then
         # arg3 >> fun arg1 arg2
@@ -1318,7 +1308,7 @@ makeBinop as fn Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expression =
                 >> Ok
 
             , CA.ArgumentRecycle _ _ _:
-                error pos [ "Can't >> to a recyclable" ]
+                erroro ro pos [ "Can't >> to a recyclable" ]
 
     else if op.symbol == Prelude.sendLeft.symbol then
         # arg3 >> fun arg1 arg2
@@ -1328,7 +1318,7 @@ makeBinop as fn Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expression =
                 >> Ok
 
             , CA.ArgumentRecycle _ _ _:
-                error pos [ "Can't << to a recyclable" ]
+                erroro ro pos [ "Can't << to a recyclable" ]
 
     else
         CA.Call pos (CA.Variable pos (RefGlobal op.usr)) [left, right]
@@ -1339,7 +1329,7 @@ translateSimpleBinop as fn Env, Pos, FA.Expression, Op.Binop, FA.Expression: Res
     fn env, pos, left, op, right:
     translateArgument env left >> onOk fn l:
     translateArgument env right >> onOk fn r:
-    makeBinop pos l op r
+    makeBinop env.ro pos l op r
 
 
 #
@@ -1350,15 +1340,15 @@ translateSimpleBinop as fn Env, Pos, FA.Expression, Op.Binop, FA.Expression: Res
 translateAndInsertRecordAttributeType as fn ReadOnly, FA.RecordAttribute, Dict Name CA.RawType: Res (Dict Name CA.RawType) =
     fn ro, faAttr, caAttrs:
 
-    translateAttributeName faAttr.name
+    translateAttributeName ro faAttr.name
     >> onOk fn (pos & name & maybeFaType):
 
     if Dict.member name caAttrs then
-        error pos [ "Duplicate attribute name: " .. name ]
+        erroro ro pos [ "Duplicate attribute name: " .. name ]
     else
         try maybeFaType as
             , Nothing:
-                error pos [ "I need to see the type of this attribute, `" .. name .. " as TheType`" ]
+                erroro ro pos [ "I need to see the type of this attribute, `" .. name .. " as TheType`" ]
 
             , Just faType:
                 faType
@@ -1366,7 +1356,7 @@ translateAndInsertRecordAttributeType as fn ReadOnly, FA.RecordAttribute, Dict N
                 >> onOk fn caType:
 
                 if faAttr.maybeExpr /= Nothing then
-                    error pos [ "I'm expecting a type here; `=` is for assignign values" ]
+                    erroro ro pos [ "I'm expecting a type here; `=` is for assignign values" ]
                 else
                     caAttrs
                     >> Dict.insert name caType __
@@ -1377,23 +1367,23 @@ translateNamedType as fn ReadOnly, Pos, Token.Word, [CA.RawType]: Res CA.RawType
     fn ro, pos, word, caArgs:
 
     if word.modifier /= Token.NameNoModifier then
-        error pos [ "I was expecting a type name here =|" ]
+        erroro ro pos [ "I was expecting a type name here =|" ]
     else if word.attrPath /= [] then
-        error pos [ "Type names have no attributes to access" ]
+        erroro ro pos [ "Type names have no attributes to access" ]
     else
         CA.TypeNamed pos (resolveToTypeUsr ro word.maybeModule word.name) caArgs
         >> Ok
 
 
-translateTypeVariable as fn Pos, Token.Word: Res Name =
-    fn pos, word:
+translateTypeVariable as fn ReadOnly, Pos, Token.Word: Res Name =
+    fn ro, pos, word:
 
     if word.modifier /= Token.NameNoModifier then
-        error pos [ "I was expecting a type variable name here =|" ]
+        erroro ro pos [ "I was expecting a type variable name here =|" ]
     else if word.attrPath /= [] then
-        error pos [ "Type variables have no attributes to access" ]
+        erroro ro pos [ "Type variables have no attributes to access" ]
     else if word.maybeModule /= Nothing then
-        error pos [ "No point it getting tyvars from modules?" ]
+        erroro ro pos [ "No point it getting tyvars from modules?" ]
     else
         Ok word.name
 
@@ -1416,8 +1406,8 @@ translateTypeFunctionParameter as fn ReadOnly, FA.Expression: Res CA.ParType =
             >> Result.map CA.ParSp __
 
 
-translatePoly as fn FA.Expression: Res (Uniqueness & FA.Expression) =
-    fn expr:
+translatePoly as fn ReadOnly, FA.Expression: Res (Uniqueness & FA.Expression) =
+    fn ro, expr:
 
     FA.Expression pos expr_ = expr
 
@@ -1429,7 +1419,7 @@ translatePoly as fn FA.Expression: Res (Uniqueness & FA.Expression) =
 
         , FA.Poly numberAsString e:
             try Text.toNumber numberAsString as
-                , Nothing: error pos [ "I need an integer number here" ]
+                , Nothing: erroro ro pos [ "I need an integer number here" ]
                 , Just n: Depends n & e >> Ok
 
         , _:
@@ -1442,7 +1432,7 @@ translateFullType as fn ReadOnly, FA.Expression: Res CA.FullType =
     fn ro, expr:
 
     expr
-    >> translatePoly
+    >> translatePoly ro __
     >> onOk fn (uni & e):
 
     translateRawType ro e
@@ -1458,11 +1448,11 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
     try expr_ as
         , FA.Variable { maybeType, word }:
             if maybeType /= Nothing then
-                error pos [ "Can't really specify the type of a type." ]
+                erroro ro pos [ "Can't really specify the type of a type." ]
             else if word.isUpper then
                 translateNamedType ro pos word []
             else
-                translateTypeVariable pos word
+                translateTypeVariable ro pos word
                 >> onOk fn tyvarName:
 
                 CA.TypeAnnotationVariable pos tyvarName
@@ -1478,16 +1468,16 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                     translateNamedType ro refPos word caArgs
 
                 , _:
-                    error refPos [ "I was expecting a named type here" ]
+                    erroro ro refPos [ "I was expecting a named type here" ]
 
         , FA.List dotsAndItems:
             try dotsAndItems as
                 , []:
-                    error pos [ "You need to specify the type of the List items" ]
+                    erroro ro pos [ "You need to specify the type of the List items" ]
 
                 , [ hasDots & faItem ]:
                     if hasDots then
-                        error pos [ "No need to use dots here" ]
+                        erroro ro pos [ "No need to use dots here" ]
                     else
                         translateRawType ro faItem
                         >> onOk fn caItem:
@@ -1496,11 +1486,11 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                         >> Ok
 
                 , _:
-                    error pos [ "List items must all have the same type, so you can specify only one type" ]
+                    erroro ro pos [ "List items must all have the same type, so you can specify only one type" ]
 
         , FA.Record { maybeExtension, attrs }:
             if maybeExtension /= Nothing then
-                error pos [ "Experimentally, extensible type annotations are disabled" ]
+                erroro ro pos [ "Experimentally, extensible type annotations are disabled" ]
 
             else
                 Dict.empty
@@ -1525,7 +1515,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 
         , FA.Binop Op.Tuple sepList:
             sepList
-            >> translateTuple (translateRawType ro __) __
+            >> translateTuple ro (translateRawType ro __) __
             >> onOk fn recordAttrs:
 
             CA.TypeRecord pos recordAttrs
@@ -1533,7 +1523,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 
         , _:
             # TODO: do all other constructors explicitly
-            error pos [ "Not sure what's up with this type =|", toHuman expr_ ]
+            erroro ro pos [ "Not sure what's up with this type =|", toHuman expr_ ]
 
 
 #
@@ -1553,7 +1543,7 @@ translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name C
                 var & pars >> Ok
 
             , _:
-                error pos [ "I was expecting a constructor name here" ]
+                erroro ro pos [ "I was expecting a constructor name here" ]
 
     zzz
     >> onOk fn ({ maybeType, word } & faPars):
@@ -1568,11 +1558,11 @@ translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name C
       word.attrPath == []
 
     if not isValidName then
-        error pos [ "I need just an Uppercase word here" ]
+        erroro ro pos [ "I need just an Uppercase word here" ]
 
     else if Dict.member word.name constructors then
         # TODO "union $whatever has two constructors with the same name!"
-        error pos [ "constructor " .. word.name .. " is duplicate" ]
+        erroro ro pos [ "constructor " .. word.name .. " is duplicate" ]
 
     else
         faPars
@@ -1592,32 +1582,32 @@ translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name C
         >> Ok
 
 
-translateTypeParameter as fn At Token.Word: Res (At Name) =
-    fn (At pos word):
+translateTypeParameter as fn ReadOnly, At Token.Word: Res (At Name) =
+    fn ro, (At pos word):
 
     if word.modifier /= Token.NameNoModifier then
-        error pos [ "Can't start with ." ]
+        erroro ro pos [ "Can't start with ." ]
     else if word.isUpper then
-        error pos [ "type params must start with a lowercase letter" ]
+        erroro ro pos [ "type params must start with a lowercase letter" ]
     else if word.maybeModule /= Nothing then
-        error pos [ "why modules here?" ]
+        erroro ro pos [ "why modules here?" ]
     else if word.attrPath /= [] then
-        error pos [ "why attrs here?" ]
+        erroro ro pos [ "why attrs here?" ]
     else
         Ok (At pos word.name)
 
 
-translateTypeName as fn At Token.Word: Res Name =
-    fn (At pos word):
+translateTypeName as fn ReadOnly, At Token.Word: Res Name =
+    fn ro, (At pos word):
 
     if word.modifier /= Token.NameNoModifier then
-        error pos [ "Can't start with ." ]
+        erroro ro pos [ "Can't start with ." ]
     else if not word.isUpper then
-        error pos [ "type names must start with Uppercase letter" ]
+        erroro ro pos [ "type names must start with Uppercase letter" ]
     else if word.maybeModule /= Nothing then
-        error pos [ "why modules here?" ]
+        erroro ro pos [ "why modules here?" ]
     else if word.attrPath /= [] then
-        error pos [ "why attrs here?" ]
+        erroro ro pos [ "why attrs here?" ]
     else
         Ok word.name
 
@@ -1632,7 +1622,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
 
     try faStatement as
         , FA.Evaluation (FA.Expression pos _):
-            error pos [ "Root Evaluations don't really do much =|" ]
+            erroro ro pos [ "Root Evaluations don't really do much =|" ]
 
         , FA.ValueDef d:
             d
@@ -1640,7 +1630,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
             >> onOk fn def:
 
             if def.uni /= Imm then
-                error (CA.patternPos def.pattern) [ "Unique values can be declared only inside functions." ]
+                erroro ro (CA.patternPos def.pattern) [ "Unique values can be declared only inside functions." ]
 
 
             # TODO check duplicates!!!!
@@ -1651,16 +1641,16 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                 Ok { caModule with valueDefs = Dict.insert def.pattern def .valueDefs }
 
         , FA.AliasDef fa:
-            translateTypeName fa.name
+            translateTypeName ro fa.name
             >> onOk fn name:
 
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
                 At pos _ = fa.name
-                error pos [ name .. " declared twice!" ]
+                erroro ro pos [ name .. " declared twice!" ]
 
             else
                 fa.args
-                >> List.mapRes translateTypeParameter __
+                >> List.mapRes (translateTypeParameter ro __) __
                 >> onOk fn caPars:
 
                 # TODO check that args are not duplicate
@@ -1671,7 +1661,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
 
                 aliasDef as CA.AliasDef =
                     {
-                    , usr = USR ro.currentModule name
+                    , usr = USR ro.umr name
                     , pars = caPars
                     , type
                     , directTypeDeps = typeDeps type Set.empty
@@ -1682,21 +1672,21 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
         , FA.UnionDef fa:
             At pos _ = fa.name
 
-            translateTypeName fa.name
+            translateTypeName ro fa.name
             >> onOk fn name:
 
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-                error pos [ name .. " declared twice!" ]
+                erroro ro pos [ name .. " declared twice!" ]
 
             else
                 fa.args
-                >> List.mapRes translateTypeParameter __
+                >> List.mapRes (translateTypeParameter ro __) __
                 >> onOk fn caPars:
 
                 # TODO check that args are not duplicate
 
                 usr =
-                    USR ro.currentModule name
+                    USR ro.umr name
 
                 type =
                     caPars
@@ -1719,13 +1709,13 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                 Ok { caModule with unionDefs = Dict.insert name unionDef .unionDefs }
 
 
-translateModule as fn ReadOnly, Text, UMR, FA.Module: Res (CA.Module) =
-    fn ro, asText, umr, faModule:
+translateModule as fn ReadOnly, FA.Module: Res CA.Module =
+    fn ro, faModule:
 
     Debug.benchStart None
 
     module =
-        CA.initModule asText umr
+        CA.initModule ro.errorModule.fsPath ro.umr ro.errorModule.content
 
     # Add all definitions
     module
@@ -1733,26 +1723,14 @@ translateModule as fn ReadOnly, Text, UMR, FA.Module: Res (CA.Module) =
     >> btw Debug.benchStop "translateModule" __
 
 
-textToCanonicalModule as fn Params, Text: Res CA.Module =
-    fn pars, code:
+textToCanonicalModule as fn Bool, ReadOnly: Res CA.Module =
+    fn stripLocations, ro:
 
-    ro as Compiler/MakeCanonical.ReadOnly =
-        {
-        , currentModule = UMR pars.source pars.name
-        , meta = pars.meta
-        }
-
-    umr as UMR =
-        UMR pars.source pars.name
-
-    code
+    {
+    , errorModule = ro.errorModule
+    , stripLocations
+    }
     >> Compiler/Parser.textToFormattableModule
-        {
-        , stripLocations = pars.stripLocations
-        , moduleName = pars.name
-        }
-        __
     >> Result.onOk fn faModule:
-    translateModule ro code umr faModule
+    translateModule ro faModule
 
-#]

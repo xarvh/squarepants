@@ -28,13 +28,12 @@ virtualDomModule as fn Text: USR =
 compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
     fn getRidOfMe, targetUsr, @emState, emittableStatements:
 
-    { errorEnv = eenv, constructors } =
+    { constructors } =
         getRidOfMe
 
     jaStatements =
         Targets/Javascript/EmittableToJs.translateAll @emState
           {
-          , errorEnv = eenv
           , constructors
           , eaDefs = emittableStatements
           , platformOverrides = overrides

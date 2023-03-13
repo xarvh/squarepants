@@ -35,7 +35,7 @@ getPos as fn [FA.Statement]: Pos =
     fn statements:
     try statements as
         , head :: tail: FA.statementPos head
-        , []: posEnd
+        , []: Pos.End
 
 
 reject as fn Text: Reader any =
@@ -47,40 +47,31 @@ reject as fn Text: Reader any =
 #
 # Main
 #
-
-# HACK: I don't want to inject and Env in every function just to get the module name, at least for now
-posEnd as Pos =
-    Pos.End ""
-
-
-unhackPosEnd as fn Text, Pos: Pos =
-    fn moduleName, pos:
-    try pos as
-        , Pos.End _: Pos.End moduleName
-        , _: pos
-
-
-run as fn Reader a, Text, [FA.Statement]: Res a =
-    fn readerA, sponName, statements:
+run as fn Reader a, Error.Module, [FA.Statement]: Res a =
+    fn readerA, errorModule, statements:
     try readerA statements as
         , Accepted [] a:
             Ok a
 
         , Accepted (head :: tail) a:
-            Error.res (FA.statementPos head) fn _: [ "unread statements" ]
+            Error.res errorModule (FA.statementPos head) [ "unread statements" ]
 
         , Rejected (At pos r):
-            Error.res (unhackPosEnd sponName pos) fn _: [ r ]
+            Error.res errorModule pos [ r ]
 
         , Failed (At pos r):
-            Error.res (unhackPosEnd sponName pos) fn _: [ r ]
+            Error.res errorModule pos [ r ]
 
 
 read as fn Reader a, Text, Text: Res a =
-    fn reader, moduleName, sponContent:
-    sponContent
-    >> Compiler/Parser.textToFormattableModule { moduleName, stripLocations = False } __
-    >> onOk (run reader moduleName __)
+    fn reader, fsPath, content:
+
+    errorModule as Error.Module =
+        { content, fsPath }
+
+    { errorModule, stripLocations = False }
+    >> Compiler/Parser.textToFormattableModule
+    >> onOk (run reader errorModule __)
 
 
 logHead as Reader None =
@@ -110,7 +101,7 @@ text as Reader Text =
             Rejected << At (FA.statementPos s) "expecting a text literal"
 
         , _:
-            Failed << At posEnd "expecting a single statement"
+            Failed << At Pos.End "expecting a single statement"
 
 
 word as Reader Token.Word =
@@ -123,7 +114,7 @@ word as Reader Token.Word =
             Rejected << At (FA.statementPos s) "expecting an Uppercase name"
 
         , _:
-            Failed << At posEnd "expecting a statement"
+            Failed << At Pos.End "expecting a statement"
 
 
 upperName as Reader Text =
@@ -160,7 +151,7 @@ oneOf as fn [Reader a]: Reader a =
             pos =
                 try statements as
                     , head :: _: FA.statementPos head
-                    , _: posEnd
+                    , _: Pos.End
 
             Rejected << At pos "options exhausted"
 
@@ -272,4 +263,4 @@ field as fn Text, Reader a: Reader a =
             Rejected << At (FA.statementPos head) "missing a simple assignment (ie `something = `)"
 
         , []:
-            Rejected << At posEnd "unexpected end of file"
+            Rejected << At Pos.End "unexpected end of file"

@@ -72,23 +72,24 @@ freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
 infer as fn Text: fn Text: Result Text Out =
     fn targetName: fn code:
 
-    params as Compiler/MakeCanonical.Params =
+    params as Compiler/MakeCanonical.ReadOnly =
         {
         , meta = TH.meta
-        , stripLocations = False
-        , source = TH.source
-        , name = TH.moduleName
+        , umr = TH.moduleUmr
+        , errorModule = TH.errorModule code
         }
 
-    Compiler/MakeCanonical.textToCanonicalModule params code
-    >> TH.resErrorToStrippedText code __
+    params
+    >> Compiler/MakeCanonical.textToCanonicalModule True __
+    >> TH.resErrorToStrippedText
     >> onOk fn caModule:
 
     modules as [CA.Module] =
         List.append Prelude.coreModules [caModule]
 
-    Compiler/TypeCheck.initStateAndGlobalEnv modules
-    >> TH.resErrorToStrippedText code __
+    modules
+    >> Compiler/TypeCheck.initStateAndGlobalEnv
+    >> TH.resErrorToStrippedText
     >> onOk fn (luv & typeCheckGlobalEnv_):
 
     typeCheckGlobalEnv as Compiler/TypeCheck.Env =
@@ -119,12 +120,12 @@ infer as fn Text: fn Text: Result Text Out =
 
     caModule
     >> Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv __
-    >> TH.resErrorToStrippedText code __
+    >> TH.resErrorToStrippedText
     >> onOk fn taModule:
 
     taModule
     >> Compiler/UniquenessCheck.doModule
-    >> TH.resErrorToStrippedText code __
+    >> TH.resErrorToStrippedText
     >> onOk fn moduleWithDestroy:
 
     toMatch as fn (CA.Pattern & TA.ValueDef): Maybe TA.ValueDef =
@@ -1101,115 +1102,4 @@ misc as Test =
             (infer "z")
             Test.isOk
         ]
-
-
-
-[#################################################
-
-toEmittable as Text: Text: Result Text EA.Expression =
-    targetName: code:
-
-    params as Compiler/MakeCanonical.Params =
-        {
-        , meta = TH.meta
-        , stripLocations = False
-        , source = TH.source
-        , name = TH.moduleName
-        }
-
-    Compiler/MakeCanonical.textToCanonicalModule params code
-    >> TH.resErrorToStrippedText code
-    >> onOk caModule:
-
-    modules as [CA.Module] =
-        List.append Prelude.coreModules [caModule]
-
-    Compiler/TypeCheck.initStateAndGlobalEnv modules
-    >> TH.resErrorToStrippedText code
-    >> onOk (lastUnificationVarId & typeCheckGlobalEnv_):
-
-    typeCheckGlobalEnv as Compiler/TypeCheck.Env =
-        { typeCheckGlobalEnv_ with
-        , variables = .variables
-            >> Dict.insert
-                (RefGlobal << USR TH.moduleUmr "add")
-                {
-                , definedAt = Pos.T
-                , type = toImm << TH.taFunction [TH.taNumber, TH.taNumber] TH.taNumber
-                , freeTyvars = Dict.empty
-                , freeUnivars = Dict.empty
-                }
-            >> Dict.insert
-                (RefGlobal << USR TH.moduleUmr "reset")
-                {
-                , definedAt = Pos.T
-                , type = toImm << TH.taFunction [TH.taNumber] TH.taNone
-                , freeTyvars = Dict.empty
-                , freeUnivars = Dict.empty
-                }
-        }
-
-    caModule
-    >> Compiler/TypeCheck.doModule lastUnificationVarId typeCheckGlobalEnv
-    >> TH.resErrorToStrippedText code
-    >> onOk taModule:
-
-    taModule
-    >> Compiler/UniquenessCheck.doModule
-    >> TH.resErrorToStrippedText code
-    >> onOk moduleWithDestroy:
-
-    toMatch as (CA.Pattern & TA.ValueDef): Maybe TA.ValueDef =
-        (pattern & def):
-
-        try pattern as
-            CA.PatternAny _ { maybeAnnotation, maybeName = Just name }:
-                if name == targetName then Just def else Nothing
-            _:
-                Nothing
-
-    matches =
-        moduleWithDestroy.valueDefs
-        >> Dict.toList
-        >> List.filterMap toMatch
-
-    try matches as
-        []:
-            Err "dict fail"
-
-        def :: tail:
-
-            state as Compiler/MakeEmittable.State @= {
-                , sourceDirsToId = Hash.fromList []
-                , sourceDirsCounter = 0
-                }
-
-            re =
-                Dict.empty
-                >> Compiler/MakeEmittable.translateRootValueDef @state TH.moduleUmr def
-                >> Dict.values
-
-            try re as
-                []: Err "def fail"
-                h :: _: Ok h.expr
-
-
-
-zzzz as Test =
-    Test.Group
-        "Emittable"
-        [
-        , (Test.codeTest Debug.toHuman)
-            """
-            [reg] ????
-            """
-            """
-            a = 0 - 1
-            """
-            (toEmittable "a")
-            (Test.isOkAndEqualTo <<
-                EA.LiteralText ""
-            )
-        ]
-#]
 

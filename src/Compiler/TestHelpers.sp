@@ -6,6 +6,9 @@
 moduleName as Text =
     "(test)"
 
+errorModule as fn Text: Error.Module =
+    fn content:
+    { fsPath = "<Test>", content }
 
 source as Meta.Source =
     Meta.SourceDir "<Test>"
@@ -43,21 +46,13 @@ formattedToStrippedText as fn [Error.FormattedText]: Text =
     >> Text.join "" __
 
 
-dummyErrorEnv as fn Text: Error.Env =
-    fn code:
-    {
-    #, metaFile = { sourceDirs = [], libraries = [] }
-    , moduleByName = Dict.ofOne moduleName { fsPath = "<TestPath>", content = code }
-    }
-
-
-resErrorToStrippedText as fn Text, Res a: Result Text a =
-    fn code, res:
+resErrorToStrippedText as fn Res a: Result Text a =
+    fn res:
 
     errorToText =
         fn e:
         e
-        >> Error.toFormattedText (dummyErrorEnv code) __
+        >> Error.toFormattedText
         >> formattedToStrippedText
 
     Result.mapError errorToText res
@@ -68,20 +63,10 @@ resErrorToStrippedText as fn Text, Res a: Result Text a =
 #
 meta as Meta =
 
-    eenv as Error.Env =
-        {
-        , moduleByName =
-            Dict.ofOne "DefaultModules"
-                {
-                , fsPath = "<DefaultModules>"
-                , content = DefaultModules.asText
-                }
-        }
-
     metaResult =
         DefaultModules.asText
         >> ModulesFile.textToMeta "DefaultModules" __
-        >> Result.mapError (fn e: e >> Error.toFormattedText eenv __ >> formattedToStrippedText) __
+        >> Result.mapError (fn e: e >> Error.toFormattedText >> formattedToStrippedText) __
 
     try metaResult as
         , Err e:

@@ -2,7 +2,6 @@
 alias GetRidOfMe =
     {
     , constructors as [USR & TA.FullType]
-    , errorEnv as Error.Env
     }
 
 

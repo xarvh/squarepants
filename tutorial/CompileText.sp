@@ -21,28 +21,24 @@ formattedToConsoleColoredText as fn Error.FormattedText: Text =
         , Error.FormattedText_Decoration t: blue t
 
 
-resToConsoleText as fn Error.Env, Res a: Result Text a =
-    fn errorEnv, res:
+resToConsoleText as fn Res a: Result Text a =
+    fn res:
     try res as
         , Ok a: Ok a
         , Err e:
             e
-            >> Error.toFormattedText errorEnv __
+            >> Error.toFormattedText
             >> List.map formattedToConsoleColoredText __
             >> Text.join "" __
             >> Err
 
 
-
-onResSuccess as fn Error.Env, (fn a: Result Text b): fn Res a: Result Text b =
-    fn errorEnv, f:
+onResSuccess as fn (fn a: Result Text b): fn Res a: Result Text b =
+    fn f:
     fn res:
     res
-    >> resToConsoleText errorEnv __
+    >> resToConsoleText
     >> onOk f
-
-
-
 
 
 #
@@ -50,28 +46,16 @@ onResSuccess as fn Error.Env, (fn a: Result Text b): fn Res a: Result Text b =
 #
 
 loadModule as fn Meta, UMR, Text: Res CA.Module =
-    fn meta, umr, moduleAsText:
+    fn meta, umr, content:
 
-    # TODO get rid of eenv so this is not needed
-    UMR source moduleName =
-        umr
-
-    params as Compiler/MakeCanonical.Params =
+    params as Compiler/MakeCanonical.ReadOnly =
         {
         , meta
-        , stripLocations = False
-        , source
-        , name = moduleName
+        , errorModule = { fsPath = "", content }
+        , umr
         }
 
-    eenv as Error.Env = {
-        , moduleByName = Dict.ofOne moduleName {
-            , fsPath = "<user input>"
-            , content = moduleAsText
-            }
-        }
-
-    Compiler/MakeCanonical.textToCanonicalModule params moduleAsText
+    Compiler/MakeCanonical.textToCanonicalModule False params
 
 
 
@@ -96,18 +80,9 @@ main as fn Text: Result Text Text =
               ModulesFile.toMeta m
 
           , Err err:
-              eenv as Error.Env =
-                  {
-                  , moduleByName = Dict.ofOne modulesFileName
-                      {
-                      , fsPath = modulesFileName
-                      , content = platform.defaultModules
-                      }
-                  }
-
               errAsText =
                   err
-                  >> Error.toFormattedText eenv __
+                  >> Error.toFormattedText
                   >> List.map formattedToConsoleColoredText __
                   >> Text.join "" __
 
@@ -125,13 +100,8 @@ main as fn Text: Result Text Text =
 
     fn code:
 
-    eenv as Error.Env =
-        { moduleByName =
-            Dict.ofOne inputFileName { fsPath = "", content = code }
-        }
-
     loadModule meta umr code
-    >> resToConsoleText eenv __
+    >> resToConsoleText
     >> onOk fn caModule:
 
     allCaModules =
@@ -139,32 +109,31 @@ main as fn Text: Result Text Text =
 
     allCaModules
     >> Compiler/TypeCheck.initStateAndGlobalEnv
-    >> onResSuccess eenv fn (luv & typeCheckGlobalEnv):
+    >> onResSuccess fn (luv & typeCheckGlobalEnv):
 
     !lastUnificationVarId =
         cloneImm luv
 
     allCaModules
     >> List.mapRes (Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv __) __
-    >> onResSuccess eenv fn taModules:
+    >> onResSuccess fn taModules:
 
     # ---> check that `pixelColor` has the correct type
 
     taModules
     >> List.mapRes Compiler/UniquenessCheck.doModule __
-    >> onResSuccess eenv fn modulesWithDestruction:
+    >> onResSuccess fn modulesWithDestruction:
 
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll
     >> Result.mapError (fn e: todo "MakeEmittable.translateAll returned Err") __
-    >> onResSuccess eenv fn (meState & emittableStatements):
+    >> onResSuccess fn (meState & emittableStatements):
 
     !emittableState =
         cloneImm meState
 
     platform.compile
         {
-        , errorEnv = eenv
         , constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
         }
         entryUsr

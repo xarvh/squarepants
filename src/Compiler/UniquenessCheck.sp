@@ -27,6 +27,7 @@ alias Variable =
 
 alias Env =
     {
+    , errorModule as Error.Module
     , variables as Dict Name Variable
     }
 
@@ -82,10 +83,10 @@ uniOutMap as fn (fn a: b), UniOut a: UniOut b =
 
 
 
-addError as fn Pos, @state, (fn Error.Env: List Text): None =
-    fn pos, @state, messageConstructor:
+addError as fn Env, Pos, @state, [Text]: None =
+    fn env, pos, @state, messageConstructor:
 
-    Array.push @state.errors (Error.Simple pos messageConstructor)
+    Array.push @state.errors (Error.Simple env.errorModule pos messageConstructor)
 
 
 #
@@ -93,8 +94,8 @@ addError as fn Pos, @state, (fn Error.Env: List Text): None =
 #
 
 
-errorTaintedCallRecyclesFunctions as fn Pos, Name, Dict Name { usedAt as Pos, fnPos as Pos }, @State: None =
-    fn callPos, name, required, @state:
+errorTaintedCallRecyclesFunctions as fn Env, Pos, Name, Dict Name { usedAt as Pos, fnPos as Pos }, @State: None =
+    fn env, callPos, name, required, @state:
 
     #addFunctions as fn @Array (fn Int: Int): None =
     #      fn @functions:
@@ -110,7 +111,7 @@ errorTaintedCallRecyclesFunctions as fn Pos, Name, Dict Name { usedAt as Pos, fn
     #      array_push f @functions
     #      None
 
-    addError callPos @state fn eenv:
+    addError env callPos @state
         [
         , "This function call could allow some unique values (" .. (required >> Dict.keys >> Text.join ", " __) .. ")"
         , "to be recycled by a functions contained in the argument `" .. name .. "` outside of the scope where they were declared."
@@ -119,14 +120,14 @@ errorTaintedCallRecyclesFunctions as fn Pos, Name, Dict Name { usedAt as Pos, fn
         ]
 
 
-errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Name, { usedAt as Pos, fnPos as Pos }, @state: None =
-    fn name, ({ usedAt, fnPos }), @state:
+errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { usedAt as Pos, fnPos as Pos }, @state: None =
+    fn env, name, ({ usedAt, fnPos }), @state:
 
-    addError fnPos @state fn eenv:
 
-        { location, block } =
-            Error.posToHuman eenv usedAt
+    { location, block } =
+        Error.posToHuman env.errorModule usedAt
 
+    addError env fnPos @state
         [
         , "This expression needs to access the unique variable `" .. name .. "` because it uses it here:"
         , ""
@@ -137,10 +138,10 @@ errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Name, { usedA
         ]
 
 
-errorUniqueHasImmType as fn Name, Pos, TA.FullType, @state: None =
-    fn name, pos, type, @state:
+errorUniqueHasImmType as fn Env, Name, Pos, TA.FullType, @state: None =
+    fn env, name, pos, type, @state:
 
-    addError pos @state fn eenv:
+    addError env pos @state
         [
         , "Variable `" .. name .. "` is unique, but its type is:"
         , toHuman type
@@ -148,90 +149,88 @@ errorUniqueHasImmType as fn Name, Pos, TA.FullType, @state: None =
 
 
 
-errorReferencingConsumedVariable as fn Text, Pos, Pos, @state: None =
-    fn name, pos, consumedPos, @state:
+errorReferencingConsumedVariable as fn Env, Text, Pos, Pos, @state: None =
+    fn env, name, pos, consumedPos, @state:
 
-    addError pos @state fn eenv:
+    { location, block } =
+        Error.posToHuman env.errorModule pos
 
-        { location, block } =
-            Error.posToHuman eenv pos
+    cons =
+        Error.posToHuman env.errorModule consumedPos
 
-        cons =
-            Error.posToHuman eenv consumedPos
-
+    addError env pos @state
         [
         , "You can't reference again the variable `" .. name .. "` because it was used already here:"
         , cons.block
         ]
 
 
-errorConsumingRecycledParameters as fn Pos, Dict Name Pos, @state: None =
-    fn pos, spentThatShouldHaveBeenRecycled, @state:
+errorConsumingRecycledParameters as fn env, Pos, Dict Name Pos, @state: None =
+    fn env, pos, spentThatShouldHaveBeenRecycled, @state:
 
-    addError pos @state fn eenv:
+    addError env pos @state
         [
         , "errorConsumingRecycledParameters"
         , toHuman spentThatShouldHaveBeenRecycled
         ]
 
 
-errorUndefinedVariable as fn Pos, Text, @state: None =
-    fn p, name, @state:
+errorUndefinedVariable as fn Env, Pos, Text, @state: None =
+    fn env, p, name, @state:
 
-    addError p @state fn eenv: [
+    addError env p @state
+        [
         , "undefined variable: " .. name
         ]
 
 
-errorMutatingAnImmutable as fn Text, Pos, @state: None =
-    fn name, p, @state:
+errorMutatingAnImmutable as fn Env, Text, Pos, @state: None =
+    fn env, name, p, @state:
 
-    addError p @state fn eenv: [
+    addError env p @state [
         , name .. " is immutable, but you are trying to mutate it"
         ]
 
 
-errorFunctionsCannotConsumeParentUniques as fn Pos, Dict Name Pos, @state: None =
-    fn functionPos, spentFromParent, @state:
+errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @state: None =
+    fn env, functionPos, spentFromParent, @state:
 
-    addError functionPos @state fn eenv:
+    zzz =
+        fn (name & spentPos):
+          { block, location } = Error.posToHuman env.errorModule spentPos
+          block .. "\n"
 
-        zzz =
-            fn (name & spentPos):
-              { block, location } = Error.posToHuman eenv spentPos
-              block .. "\n"
+    blocks =
+      spentFromParent
+      >> Dict.toList
+      >> List.sortBy Tuple.second __
+      >> List.map zzz __
 
-        blocks =
-          spentFromParent
-          >> Dict.toList
-          >> List.sortBy Tuple.second __
-          >> List.map zzz __
-
-        [
-        , [ "This function is spending the unique variable `" .. (Dict.keys spentFromParent >> Text.join "`, `" __) .. "`" ]
-        , [ "" ]
-        , blocks
-        , [ "However, functions cannot spend uniques that were declared outside their body." ]
-        ]
-        >> List.concat
+    [
+    , [ "This function is spending the unique variable `" .. (Dict.keys spentFromParent >> Text.join "`, `" __) .. "`" ]
+    , [ "" ]
+    , blocks
+    , [ "However, functions cannot spend uniques that were declared outside their body." ]
+    ]
+    >> List.concat
+    >> addError env functionPos @state __
 
 
-errorConsumingRecycledParameter as fn Text, Pos, @state: None =
-    fn name, pos, @state:
+errorConsumingRecycledParameter as fn Env, Text, Pos, @state: None =
+    fn env, name, pos, @state:
 
-    addError pos @state fn eenv: [
+    addError env pos @state [
         , name .. " is passed as recycled, but the function wants to spend it"
         ]
 
 
-errorMutatingAConsumed as fn Text, Pos, Pos, @state: None =
-    fn name, p2, p1, @state:
+errorMutatingAConsumed as fn Env, Text, Pos, Pos, @state: None =
+    fn env, name, p2, p1, @state:
 
-    addError p1 @state fn eenv:
+    { location, block } =
+        Error.posToHuman env.errorModule p2
 
-        { location, block } =
-            Error.posToHuman eenv p2
-
+    addError env p1 @state
         [
         , "This code spends the unique variable `" .. name .. "`, but `" .. name .. "` is being used again here:"
         , ""
@@ -242,14 +241,14 @@ errorMutatingAConsumed as fn Text, Pos, Pos, @state: None =
         ]
 
 
-errorMutatingTwice as fn Text, Pos, Pos, @state: None =
-    fn name, p1, p2, @state:
+errorMutatingTwice as fn Env, Text, Pos, Pos, @state: None =
+    fn env, name, p1, p2, @state:
 
-    addError p1 @state fn eenv:
 
-        { location, block } =
-            Error.posToHuman eenv p2
+    { location, block } =
+        Error.posToHuman env.errorModule p2
 
+    addError env p1 @state
         [
         , name .. " is already being mutated here: "
         , block
@@ -341,7 +340,7 @@ doCall as fn Env, @state, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expressio
 
     if doneArgs.required /= Dict.empty or doneReference.required /= Dict.empty then
         List.each (List.filterMap asRecyclingFunction arguments) fn name:
-            errorTaintedCallRecyclesFunctions pos name (Dict.join doneArgs.required doneReference.required) @state
+            errorTaintedCallRecyclesFunctions env pos name (Dict.join doneArgs.required doneReference.required) @state
     else
         None
 
@@ -374,7 +373,7 @@ doArgument as fn Env, @state, Pos, UniOut TA.Argument: UniOut TA.Argument =
             Dict.each doneExpression.spent fn name, p1:
                 try Dict.get name doneSoFar.spent as
                     , Nothing: None
-                    , Just p2: errorReferencingConsumedVariable name p1 p2 @state
+                    , Just p2: errorReferencingConsumedVariable env name p1 p2 @state
 
             {
             # We don't count `recycled` in the arguments, because by the time we actually execute the call,
@@ -390,17 +389,17 @@ doArgument as fn Env, @state, Pos, UniOut TA.Argument: UniOut TA.Argument =
             # TODO https://github.com/xarvh/squarepants/projects/1#card-85087726
             x =
               try Dict.get name env.variables as
-                , Nothing: errorUndefinedVariable p1 name @state
+                , Nothing: errorUndefinedVariable env p1 name @state
                 , Just variable:
                     try variable.mode as
                         , Unique Available: None
-                        , Immutable: errorMutatingAnImmutable name p1 @state
-                        , Unique (ConsumedAt p2): errorMutatingAConsumed name p1 p2 @state
+                        , Immutable: errorMutatingAnImmutable env name p1 @state
+                        , Unique (ConsumedAt p2): errorMutatingAConsumed env name p1 p2 @state
 
             y =
               try Dict.get name doneSoFar.recycled as
                 , Nothing: None
-                , Just p2: errorMutatingTwice name p1 p2 @state
+                , Just p2: errorMutatingTwice env name p1 p2 @state
 
             { doneSoFar with
             , recycled = Dict.insert name p1 doneSoFar.recycled
@@ -467,7 +466,7 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
         , TA.Variable pos (RefLocal name):
             try Dict.get name env.variables as
                 , Nothing:
-                    errorUndefinedVariable pos name @state
+                    errorUndefinedVariable env pos name @state
                     re
 
                 , Just variable:
@@ -489,7 +488,7 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
                             }
 
                         , Unique (ConsumedAt consumedPos):
-                            errorReferencingConsumedVariable name pos consumedPos @state
+                            errorReferencingConsumedVariable env name pos consumedPos @state
                             {
                             , recycled = Dict.empty
                             , required = variable.required
@@ -630,7 +629,7 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
                         Dict.merge (fn k, v, d: d) (fn k, a, b, d: Dict.insert k (a & b) d) (fn k, v, d: d) spent doneSoFar.spent Dict.empty
 
                     Dict.each consumedTwice fn n, (p1 & p2):
-                        errorReferencingConsumedVariable n p1 p2 @state
+                        errorReferencingConsumedVariable env n p1 p2 @state
 
                     {
                     , recycled = Dict.join recycled doneSoFar.recycled
@@ -687,7 +686,7 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
                 List.each addedVars fn varName:
                     try Dict.get varName doneExpression.required as
                         , Nothing: None
-                        , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope varName r @state
+                        , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope env varName r @state
             else
                 None
 
@@ -742,7 +741,7 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
         Dict.intersect doneBody.spent parsToBeRecycled
 
     if spentThatShouldHaveBeenRecycled /= Dict.empty  then
-        errorConsumingRecycledParameters pos spentThatShouldHaveBeenRecycled @state
+        errorConsumingRecycledParameters env pos spentThatShouldHaveBeenRecycled @state
     else
         None
 
@@ -753,7 +752,7 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
         Dict.diff doneBody.spent parsToBeSpent
 
     if spentThatShouldHaveBeenRecycled == Dict.empty and spentFromParent /= Dict.empty then
-        errorFunctionsCannotConsumeParentUniques pos spentFromParent @state
+        errorFunctionsCannotConsumeParentUniques env pos spentFromParent @state
     else
         None
 
@@ -771,7 +770,7 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
         Dict.each (Dict.join parsToBeRecycled parsToBeSpent) fn varName, parPos:
             try Dict.get varName doneBody.required as
                 , Nothing: None
-                , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope varName r @state
+                , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope env varName r @state
     else
         None
 
@@ -795,6 +794,7 @@ doModule as fn TA.Module: Res TA.Module =
 
     env as Env =
         {
+        , errorModule = { fsPath = module.fsPath, content = module.asText }
         , variables = Dict.empty
         }
 
