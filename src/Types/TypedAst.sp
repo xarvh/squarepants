@@ -121,15 +121,17 @@ alias Substitutions =
 alias Module =
     {
     , umr as UMR
+    , fsPath as Text
     , asText as Text
     , valueDefs as Dict CA.Pattern ValueDef
     }
 
 
-initModule as fn Text, UMR: Module =
-    fn asText, umr:
+initModule as fn Text, Text, UMR: Module =
+    fn fsPath, asText, umr:
     {
     , umr
+    , fsPath
     , asText
     , valueDefs = Dict.empty
     }

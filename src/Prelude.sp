@@ -457,6 +457,7 @@ insertInModule as fn USR, CA.RawType, [Name], ModuleByUmr: ModuleByUmr =
         maybeModule
         >> Maybe.withDefault {
             , umr
+            , fsPath = "<native>"
             , asText = ""
             , aliasDefs = Dict.empty
             , unionDefs = Dict.empty

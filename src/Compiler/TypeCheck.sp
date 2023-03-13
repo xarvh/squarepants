@@ -124,6 +124,7 @@ alias ExpandedAlias =
 
 alias Env =
     {
+    , errorModule as Error.Module
     , context as Context
     , constructors as ByUsr Instance
     , variables as Dict Ref Instance
@@ -138,6 +139,7 @@ alias Env =
 
 initEnv as Env =
     {
+    , errorModule = { fsPath = "<internal>", content = "" }
     , context = Context_Global
     , constructors = Dict.empty
     , variables = Dict.empty
@@ -1872,7 +1874,10 @@ doRootDefinition as fn @Int, @Array Error, CA.Module, Env, CA.ValueDef: TA.Value
 
 
 doModule as fn @Int, Env, CA.Module: Res TA.Module =
-    fn @lastUnificationVarId, env, caModule:
+    fn @lastUnificationVarId, globalEnv, caModule:
+
+    env as Env =
+        { globalEnv with errorModule = { fsPath = caModule.fsPath, content = caModule.asText } }
 
     annotated & nonAnnotated =
         Dict.for ([] & []) caModule.valueDefs insertAnnotatedAndNonAnnotated
@@ -1917,6 +1922,7 @@ doModule as fn @Int, Env, CA.Module: Res TA.Module =
     #
     typedModule as TA.Module =
         {
+        , fsPath = caModule.fsPath
         , umr = caModule.umr
         , asText = caModule.asText
         , valueDefs
@@ -1937,7 +1943,7 @@ doModule as fn @Int, Env, CA.Module: Res TA.Module =
 makeInferenceAndCheckError as fn Env, (Pos & Context & Error_): Error =
     fn env, (pos & context & error):
 
-    Error.Simple pos fn eenv:
+    Error.Simple env.errorModule pos
         [
         , Debug.toHuman error
         , Debug.toHuman context
@@ -1947,7 +1953,7 @@ makeInferenceAndCheckError as fn Env, (Pos & Context & Error_): Error =
 makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
     fn env, caModule, (Equality context pos why t1 t2 & message):
 
-    Error.Simple pos fn eenv:
+    Error.Simple env.errorModule pos
         [
         , message
         , Debug.toHuman context

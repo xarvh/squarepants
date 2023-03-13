@@ -40,7 +40,7 @@ alias ReadState = {
     , line as Int
     , lineIndent as Int
 
-    , errors as Array (fn Text: Error)
+    , errors as Array (fn Error.Module: Error)
 
     # indent / block stuff
     , soFarThereAreNoTokensInThisLine as Bool
@@ -95,9 +95,8 @@ addError as fn Text, @ReadState: None =
     start =
         cloneUni @state.tokenStart
 
-    error =
-        fn moduleName:
-        (Error.Simple (Pos.P moduleName start end) (fn _: [ message ]))
+    error as fn Error.Module: Error =
+        Error.Simple __ (Pos.P start end) [ message ]
 
     Array.push @state.errors error
     @state.tokenStart := cloneImm end
@@ -816,10 +815,13 @@ closeOpenBlocks as fn @ReadState: None =
     Array.push @state.sections (Array.toList @state.tokens)
 
 
-lexer as fn Text, Text: Res [[Token]] =
-    fn moduleName, moduleCode:
+lexer as fn Error.Module: Res [[Token]] =
+    fn module:
 
     Debug.benchStart None
+
+    moduleCode =
+        module.content
 
     !state = readStateInit moduleCode
 
@@ -847,7 +849,7 @@ lexer as fn Text, Text: Res [[Token]] =
 
         , errors:
             errors
-            >> List.map (fn e: e moduleName) __
+            >> List.map (fn e: e module) __
             >> Error.Nested
             >> Err
 

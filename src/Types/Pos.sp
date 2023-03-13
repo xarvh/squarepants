@@ -4,12 +4,12 @@
 # The names are kept very short to keep them debug-output-friendly
 #
 union Pos =
-    # actual position: module reference, start, end
-    , P Text Int Int
+    # actual position: start, end
+    , P Int Int
     # module-wide error
-    , M Text
+    , M
     # parsing reached the end of file
-    , End Text
+    , End
     # stripped
     , S
     # defined natively, usually in Core or Prelude
@@ -29,27 +29,24 @@ union At a =
 start as fn Pos: Int =
     fn pos:
     try pos as
-        , P m s e: s
+        , P s e: s
         , _: 0
 
 
 end as fn Pos: Int =
     fn pos:
     try pos as
-        , P m s e: e
+        , P s e: e
         , _: 0
 
 
 range as fn Pos, Pos: Pos =
     fn a, b:
     try a & b as
-        , P ma sa ea & P mb sb eb:
-            if ma /= mb then
-                todo "trying to range across two different modules"
-            else
-                P ma (min sa sb) (max ea eb)
+        , P sa ea & P sb eb:
+            P (min sa sb) (max ea eb)
 
-        , P _ _ _ & _:
+        , P _ _ & _:
             a
 
         , _:

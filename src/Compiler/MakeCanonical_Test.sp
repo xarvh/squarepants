@@ -30,20 +30,22 @@ tests as Test =
 # Helpers
 #
 
-params as Compiler/MakeCanonical.Params =
+params as fn Error.Module: Compiler/MakeCanonical.ReadOnly =
+    fn errorModule:
     {
     , meta = TH.meta
-    , stripLocations = True
-    , source = TH.source
-    , name = TH.moduleName
+    , umr = TH.moduleUmr
+    , errorModule
     }
 
 
 textToModule as fn Text: Result Text CA.Module =
     fn code:
     code
-    >> Compiler/MakeCanonical.textToCanonicalModule params __
-    >> TH.resErrorToStrippedText code __
+    >> TH.errorModule
+    >> params
+    >> Compiler/MakeCanonical.textToCanonicalModule True __
+    >> TH.resErrorToStrippedText
 
 
 codeTest as fn Text, Text, (fn Text: Result Text ok), Test.CodeExpectation ok: Test =

@@ -229,12 +229,12 @@ translateParameter as fn @State, @Int, EA.Expression, TA.Parameter: EA.Expressio
                     List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & (False & Just mainName)
 
 
-translateArgAndType as fn @State, @Int, TA.Argument: EA.Argument =
-    fn @state, @counter, taArg:
+translateArgAndType as fn TA.Module, @State, @Int, TA.Argument: EA.Argument =
+    fn module, @state, @counter, taArg:
 
     try taArg as
         , TA.ArgumentExpression fullType exp:
-            EA.ArgumentSpend fullType (translateExpression @state @counter exp)
+            EA.ArgumentSpend fullType (translateExpression module @state @counter exp)
 
         , TA.ArgumentRecycle pos rawType attrPath name:
 
@@ -244,8 +244,8 @@ translateArgAndType as fn @State, @Int, TA.Argument: EA.Argument =
             EA.ArgumentRecycle rawType attrPath n
 
 
-translateExpression as fn @State, @Int, Expression: EA.Expression =
-    fn @state, @counter, expression:
+translateExpression as fn TA.Module, @State, @Int, Expression: EA.Expression =
+    fn module, @state, @counter, expression:
 
     try expression as
         , TA.LiteralNumber _ num:
@@ -261,12 +261,12 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
             EA.Constructor (translateUsr @state usr)
 
         , TA.RecordAccess _ attrName exp:
-            EA.RecordAccess attrName (translateExpression @state @counter exp)
+            EA.RecordAccess attrName (translateExpression module @state @counter exp)
 
         , TA.Fn pos taPars body bodyT:
 
             eaBody =
-                translateExpression @state @counter body
+                translateExpression module @state @counter body
 
             wrappedBody & eaPars =
                 eaBody & []
@@ -281,19 +281,19 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first __
-            >> List.map (Tuple.mapSecond (translateExpression @state @counter __) __) __
-            >> EA.LiteralRecord (Maybe.map (translateExpression @state @counter __) extends) __
+            >> List.map (Tuple.mapSecond (translateExpression module @state @counter __) __) __
+            >> EA.LiteralRecord (Maybe.map (translateExpression module @state @counter __) extends) __
 
         , TA.Call _ ref argsAndTypes:
             EA.Call
-                (translateExpression @state @counter ref)
-                (List.map (translateArgAndType @state @counter __) argsAndTypes)
+                (translateExpression module @state @counter ref)
+                (List.map (translateArgAndType module @state @counter __) argsAndTypes)
 
         , TA.If _ ar:
             EA.Conditional
-                (translateExpression @state @counter ar.condition)
-                (translateExpression @state @counter ar.true)
-                (translateExpression @state @counter ar.false)
+                (translateExpression module @state @counter ar.condition)
+                (translateExpression module @state @counter ar.true)
+                (translateExpression module @state @counter ar.false)
 
         , TA.Try pos { value, valueType, patternsAndExpressions }:
 
@@ -312,7 +312,7 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
                             EA.LetIn
                                 {
                                 , maybeName = Just tryName
-                                , letExpression = translateExpression @state @counter value
+                                , letExpression = translateExpression module @state @counter value
                                 , inExpression = tryExpression
                                 , type = valueType
                                 }
@@ -333,14 +333,15 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
-                    translateExpression @state @counter block
+                    translateExpression module @state @counter block
                     >> List.for __ namesAndExpressions fn (type & DollarName name & letExpression), inExpression:
                         EA.LetIn { maybeName = Just name, type, letExpression, inExpression }
 
                 EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
 
             default =
-                EA.MissingPattern pos valueExpression
+                human = Error.posToHuman { fsPath = module.fsPath, content = module.asText } pos
+                EA.MissingPattern human.location valueExpression
 
             default
             >> List.forReversed __ patternsAndExpressions addTryPatternAndBlock
@@ -354,8 +355,8 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
                         {
                         , maybeName = Nothing
                         , type = valueDef.type
-                        , letExpression = translateExpression @state @counter valueDef.body
-                        , inExpression = translateExpression @state @counter e
+                        , letExpression = translateExpression module @state @counter valueDef.body
+                        , inExpression = translateExpression module @state @counter e
                         }
 
                 , TrivialPattern (DollarName defName) type:
@@ -363,8 +364,8 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
                         {
                         , maybeName = Just defName
                         , type
-                        , letExpression = translateExpression @state @counter valueDef.body
-                        , inExpression = translateExpression @state @counter e
+                        , letExpression = translateExpression module @state @counter valueDef.body
+                        , inExpression = translateExpression module @state @counter e
                         }
 
                 , SafeMainName (DollarName mainName):
@@ -387,21 +388,23 @@ translateExpression as fn @State, @Int, Expression: EA.Expression =
                             {
                             , maybeName = Just mainName
                             , type = valueDef.type
-                            , letExpression = translateExpression @state @counter valueDef.body
+                            , letExpression = translateExpression module @state @counter valueDef.body
                             , inExpression
                             }
 
-                    translateExpression @state @counter e
+                    translateExpression module @state @counter e
                     >> List.forReversed __ namesAndExpressions wrapWithUnpackedPatternVar
                     >> wrapWithActualLetIn
 
         , TA.DestroyIn name e:
-            translateExpression @state @counter e
+            translateExpression module @state @counter e
 
 
 
-translateRootValueDef as fn @State, UMR, TA.ValueDef, ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
-    fn @state, umr, def, accum:
+translateRootValueDef as fn TA.Module, @State, TA.ValueDef, ByName EA.GlobalDefinition: ByName EA.GlobalDefinition =
+    fn module, @state, def, accum:
+
+    umr = module.umr
 
     !counter = 0
 
@@ -419,7 +422,7 @@ translateRootValueDef as fn @State, UMR, TA.ValueDef, ByName EA.GlobalDefinition
 
             accum >> Dict.insert usrAsText {
               , name = usrAsText
-              , expr = translateExpression @state @counter def.body
+              , expr = translateExpression module @state @counter def.body
               , deps
               }
               __
@@ -430,7 +433,7 @@ translateRootValueDef as fn @State, UMR, TA.ValueDef, ByName EA.GlobalDefinition
 
             mainDef as EA.GlobalDefinition =
                 { name = mainUsrAsText
-                , expr = translateExpression @state @counter def.body
+                , expr = translateExpression module @state @counter def.body
                 , deps
                 }
 
@@ -479,7 +482,7 @@ translateAll as fn [TA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) 
     globalDefsByName as ByName EA.GlobalDefinition =
         Dict.empty >> List.for __ modules fn module, d:
             Dict.for d module.valueDefs fn _, def, a:
-                translateRootValueDef @state module.umr def a
+                translateRootValueDef module @state def a
 
     circulars & reorderedNames =
         RefHierarchy.reorder (fn globalDef: globalDef.deps) globalDefsByName

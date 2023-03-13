@@ -5,7 +5,6 @@
 
 alias Env =
     {
-    , errorEnv as Error.Env
     , overrides as Dict EA.Name Override
     }
 
@@ -520,12 +519,9 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             JA.AccessWithDot attrName (translateExpressionToExpression env value)
             >> Inline
 
-        , EA.MissingPattern pos value:
-            human =
-                Error.posToHuman env.errorEnv pos
-
+        , EA.MissingPattern location value:
             [ JA.Literal "'Missing pattern in try..as'"
-            , JA.Literal ("'" .. human.location .. "'")
+            , JA.Literal ("'" .. location .. "'")
             , JA.Call (JA.Literal "sp_toHuman") [ translateExpressionToExpression env value ]
             # JA.Call (JA.Literal "console.log") [ JA.Call (JA.Literal "JSON.stringify") [ JA.Var tryName ]]
             ]
@@ -581,7 +577,6 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
 
 alias TranslateAllPars =
     {
-    , errorEnv as Error.Env
     , constructors as [USR & TA.FullType]
     , eaDefs as [EA.GlobalDefinition]
     , platformOverrides as [USR & Text]
@@ -590,7 +585,7 @@ alias TranslateAllPars =
 translateAll as fn @Compiler/MakeEmittable.State, TranslateAllPars: [JA.Statement] =
     fn @emState, pars:
 
-    { errorEnv, constructors, eaDefs, platformOverrides } =
+    { constructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [JA.Statement] =
@@ -598,7 +593,6 @@ translateAll as fn @Compiler/MakeEmittable.State, TranslateAllPars: [JA.Statemen
 
     env as Env =
       {
-      , errorEnv
       , overrides = coreOverrides @emState >> List.for __ platformOverrides fn (usr & runtimeName), d:
           Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName) d
       }

@@ -1,18 +1,14 @@
 
 
-# TODO: rewrite the whole thing so that each module has all the info and this type is not needed
-alias Env =
+alias Module =
     {
-    , moduleByName as Dict Text { fsPath as Text, content as Text }
+    , fsPath as Text
+    , content as Text
     }
 
 
-alias Description =
-    fn Env: [Text]
-
-
 union Error =
-    , Simple Pos Description
+    , Simple Module Pos [Text]
     , Nested [ Error ]
 
 
@@ -20,9 +16,9 @@ alias Res a =
     Result Error a
 
 
-res as fn Pos, Description: Res a =
-    fn pos, desc:
-    Err << Simple pos desc
+res as fn Module, Pos, [Text]: Res a =
+    fn mod, pos, desc:
+    Err << Simple mod pos desc
 
 
 #
@@ -35,16 +31,12 @@ union FormattedText =
     , FormattedText_Decoration Text
 
 
-toFormattedText as fn Env, Error: [FormattedText] =
-    fn eenv, e:
-
-    newline =
-        FormattedText_Default ""
+toFormattedText as fn Error: [FormattedText] =
+    fn e:
 
     tupleToFormattedText =
-        fn x:
-        pos & descr = x
-        toText eenv pos descr
+        fn (mod & pos & descr):
+        toText mod pos descr
 
     List.concatMap tupleToFormattedText (flatten e [])
 
@@ -99,11 +91,11 @@ union Highlight =
 ###
 
 
-flatten as fn Error, [Pos & Description]: [Pos & Description] =
+flatten as fn Error, [Module & Pos & [Text]]: [Module & Pos & [Text]] =
     fn e, accum:
     try e as
-        , Simple pos descr:
-            [pos & descr, ...accum]
+        , Simple mod pos descr:
+            [mod & pos & descr, ...accum]
 
         , Nested ls:
             List.for accum ls flatten
@@ -238,8 +230,8 @@ showCodeBlock as fn Text, { line as Int, col as Int }, { line as Int, col as Int
         >> fmtBlock (startLine + 1) [ highlight ] __
 
 
-posToHuman as fn Env, Pos: { location as Text, block as Text } =
-    fn eEnv, pos:
+posToHuman as fn Module, Pos: { location as Text, block as Text } =
+    fn mod, pos:
 
     noBlock =
         fn loc:
@@ -248,40 +240,33 @@ posToHuman as fn Env, Pos: { location as Text, block as Text } =
         }
 
     try pos as
-        , Pos.P moduleName startAsInt endAsInt:
-            try Dict.get moduleName eEnv.moduleByName as
-                , Just mod:
-                    start =
-                        positionToLineAndColumn mod.content startAsInt
+        , Pos.P startAsInt endAsInt:
 
-                    end =
-                        positionToLineAndColumn mod.content endAsInt
+            start =
+                positionToLineAndColumn mod.content startAsInt
 
-                    { location = mod.fsPath .. " " .. Text.fromNumber start.line .. ":" .. Text.fromNumber start.col
-                    , block = showCodeBlock mod.content start end
-                    }
+            end =
+                positionToLineAndColumn mod.content endAsInt
 
-                , Nothing:
-                    noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
+            { location = mod.fsPath .. " " .. Text.fromNumber start.line .. ":" .. Text.fromNumber start.col
+            , block = showCodeBlock mod.content start end
+            }
 
-        , Pos.End moduleName:
-            try Dict.get moduleName eEnv.moduleByName as
-                , Just mod:
 
-                    end =
-                        positionToLineAndColumn mod.content (Text.length mod.content - 1)
+        , Pos.End:
 
-                    start =
-                        { line = end.line - 8
-                        , col = 0
-                        }
+            end =
+                positionToLineAndColumn mod.content (Text.length mod.content - 1)
 
-                    { location = mod.fsPath .. " " .. Text.fromNumber end.line .. ":0 (end of file)"
-                    , block = showCodeBlock mod.content start end
-                    }
+            start =
+                { line = end.line - 8
+                , col = 0
+                }
 
-                , Nothing:
-                    noBlock << "<The module name is `" .. moduleName .. "` but I can't find it. This as a compiler bug.>"
+            { location = mod.fsPath .. " " .. Text.fromNumber end.line .. ":0 (end of file)"
+            , block = showCodeBlock mod.content start end
+            }
+
 
         , Pos.N:
             noBlock "<native code>"
@@ -300,16 +285,14 @@ posToHuman as fn Env, Pos: { location as Text, block as Text } =
 
 
 
-toText as fn Env, Pos, Description: [FormattedText] =
-    fn env, pos, desc:
+toText as fn Module, Pos, [Text]: [FormattedText] =
+    fn mod, pos, desc:
 
     { location, block } =
-        posToHuman env pos
+        posToHuman mod pos
 
     description =
-        env
-        >> desc
-        >> (fn d: [block, ...d])
+        [block, ...desc]
         >> List.concatMap (Text.split "\n" __) __
         >> List.map (fn s: "  " .. s) __
         >> Text.join "\n" __

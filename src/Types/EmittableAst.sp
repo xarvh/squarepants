@@ -36,9 +36,7 @@ union Expression =
     , IsConstructor Name Expression
     , LiteralRecord (Maybe Expression) [AttrName & Expression]
     , RecordAccess AttrName Expression
-
-    # TODO Replace `pos` with the directly calculated location, so that errorEnv is not necessary any more?
-    , MissingPattern Pos Expression
+    , MissingPattern Text Expression
 
 
 union Argument =

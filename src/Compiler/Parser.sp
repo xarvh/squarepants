@@ -1,7 +1,7 @@
 
 alias Env =
     {
-    , moduleName as Text
+    , errorModule as Error.Module
     , stripLocations as Bool
     }
 
@@ -47,7 +47,7 @@ pos as fn Env, Int, Int: Pos =
     if env.stripLocations then
         Pos.T
     else
-        Pos.P env.moduleName start end
+        Pos.P start end
 
 
 #
@@ -660,15 +660,15 @@ rootStatement as fn Env: Parser (Maybe FA.Statement) =
 #
 # Main
 #
-makeError as fn Text, [Token], Text: Res a =
-    fn moduleName, readState, message:
+makeError as fn Env, [Token], Text: Res a =
+    fn env, readState, message:
 
     p =
         try readState as
-            , []: Pos.P moduleName 0 1
-            , Token comment start end k :: rest: Pos.P moduleName start end
+            , []: Pos.P 0 1
+            , Token comment start end k :: rest: Pos.P start end
 
-    Error.res p (fn eenv: [ message ])
+    Error.res env.errorModule p [ message ]
 
 
 parse as fn Env, [Token]: Res (Maybe FA.Statement) =
@@ -682,7 +682,7 @@ parse as fn Env, [Token]: Res (Maybe FA.Statement) =
             Ok output
 
         , Parser.Aborted readState message:
-            makeError env.moduleName readState message
+            makeError env readState message
 
         , Parser.Rejected:
             findMin = fn readState, best:
@@ -696,14 +696,14 @@ parse as fn Env, [Token]: Res (Maybe FA.Statement) =
                     , []: "I got to the end of the statement and I can't make sense of it. =("
                     , _: "I got stuck parsing here. =("
 
-            makeError env.moduleName readState message
+            makeError env readState message
 
 
-textToFormattableModule as fn Env, Text: Res FA.Module =
-    fn env, code:
+textToFormattableModule as fn Env: Res FA.Module =
+    fn env:
 
     tokensResult as Res [[Token]] =
-        Compiler/Lexer.lexer env.moduleName code
+        Compiler/Lexer.lexer env.errorModule
 
     tokensResult
     >> onOk fn rootStatements:
