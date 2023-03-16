@@ -468,7 +468,7 @@ circularIsError as fn ByName EA.GlobalDefinition, [Name]: Bool =
     List.any zzz names
 
 
-translateAll as fn [TA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) =
+translateAll as fn [TA.Module]: Res (State & [EA.GlobalDefinition]) =
     fn modules:
 
     Debug.benchStart None
@@ -495,7 +495,7 @@ translateAll as fn [TA.Module]: Result [[Name]] (State & [EA.GlobalDefinition]) 
     s = state
 
     if errors /= [] then
-        Err errors
+        todo "translateAll: Err errors"
     else
        reorderedNames
        >> List.filterMap (fn name: Dict.get name globalDefsByName) __

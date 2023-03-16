@@ -3,11 +3,14 @@
 platform as Types/Platform.Platform =
     {
     , name = "rawjs"
-    , compile
     , defaultModules = DefaultModules.asText
     , quickstart = "TODO"
     , defaultOutputPath = "squarepants.mjs"
+    , compileStatements = fn _, @z, _: todo "rawjs: compileStatements"
+    , makeExecutable = fn _, _: todo "rawjs: makeExecutable"
     }
+
+
 
 
 compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =

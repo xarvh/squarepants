@@ -1969,6 +1969,33 @@ makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
 # Populate global Env
 #
 #
+addNativeValueToGlobalEnv as fn @State, USR, { type as CA.RawType, value as a }, Env: Env =
+    fn @state, (USR umr name), { with type }, env:
+
+    zzz =
+      fn tyvarName, pos:
+            { allowFunctions = True } #TODO!!! not (List.member tyvarName nonFn) }
+
+    tyvars =
+        type
+        >> CA.typeTyvars
+        >> Dict.map zzz __
+
+    addValueToGlobalEnv @state umr
+        {
+        , uni = Imm
+        , pattern = CA.PatternAny Pos.N { maybeName = Just name, maybeAnnotation = Just type }
+        , native = True
+        , body = CA.LiteralText Pos.N name
+        , tyvars
+        , univars = Dict.empty # TODO!!!
+        , directTypeDeps = Dict.empty
+        , directConsDeps = Dict.empty
+        , directValueDeps = Dict.empty
+        }
+        env
+
+
 addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
     fn @state, umr, def, env:
 
@@ -2149,8 +2176,8 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
     >> Dict.map (fn k, v: None) __
 
 
-initStateAndGlobalEnv as fn [CA.Module]: Res (TA.TyvarId & Env) =
-    fn allModules:
+initStateAndGlobalEnv as fn Dict USR { type as CA.RawType, value as Compiler/Compiler.ExposedValue }, [CA.Module]: Res (TA.TyvarId & Env) =
+    fn nativeValues, allModules:
 
     !state =
         initState 0
@@ -2188,6 +2215,7 @@ initStateAndGlobalEnv as fn [CA.Module]: Res (TA.TyvarId & Env) =
         , expandedAliases
         }
         >> List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)
+        >> Dict.for __ nativeValues (addNativeValueToGlobalEnv @state __ __ __)
         >> List.for __ allModules doStuff
 
     try Array.toList @state.errors as

@@ -3,10 +3,11 @@
 platform as Types/Platform.Platform =
     {
     , name = "browser"
-    , compile
     , defaultModules = DefaultModules.asText .. modules
     , quickstart = "TODO"
     , defaultOutputPath = "index.js"
+    , compileStatements = fn _, @z, _: todo "Browser: compileStatements"
+    , makeExecutable = fn _, _: todo "Browser: makeExecutable"
     }
 
 

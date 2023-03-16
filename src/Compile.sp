@@ -68,14 +68,6 @@ loadModulesFile as fn Types/Platform.Platform, Text: IO ModulesFile.ModulesFile 
                 log "Using default modules.sp" ""
                 platform.defaultModules
 
-#    eenv as Error.Env =
-#        {
-#        , moduleByName = Dict.ofOne modulesFileName {
-#            , fsPath = modulesFileName
-#            , content = modulesAsText
-#            }
-#        }
-
     resToIo << ModulesFile.textToModulesFile modulesFileName modulesAsText
 
 
@@ -178,11 +170,11 @@ alias ModuleAndPath = {
     }
 
 
-sdItemToUMR as fn Meta.Source, Text: UMR =
-    fn source, fileName:
-    fileName
-    >> Text.replace ".sp" "" __
-    >> UMR source __
+#sdItemToUMR as fn Meta.Source, Text: UMR =
+#    fn source, fileName:
+#    fileName
+#    >> Text.replace ".sp" "" __
+#    >> UMR source __
 
 
 updateSourceDir as fn [Text], ModulesFile.SourceDir: ModulesFile.SourceDir =
@@ -265,15 +257,6 @@ mergeWithCore as fn CA.Module, CA.Module: CA.Module =
 
 #    need to strip positions before merging >_<
 
-#    xxx = Dict.join coreModule.valueDefs userModule.valueDefs
-#
-#    if userModule.umr == UMR Meta.Core "Tuple" then
-#      List.each (Dict.keys xxx) k:
-#        log "*" k
-#      None
-#    else
-#      None
-
     { userModule with
     , aliasDefs = Dict.join coreModule.aliasDefs .aliasDefs
     , unionDefs = Dict.join coreModule.unionDefs .unionDefs
@@ -300,21 +283,6 @@ compileMain as fn CompileMainPars: IO Int =
     entryModulePath =
         Path.resolve [ pars.entryModulePath ]
 
-
-
-#    IO.readFile entryModulePath
-#    >> IO.onSuccess moduleAsText:
-#
-#    moduleAsText
-#    >> Compiler/Parser.textToFormattableModule { moduleName = entryModulePath, stripLocations = False }
-#    >> resToIo { moduleByName = Dict.ofOne entryModulePath { fsPath = entryModulePath, content = moduleAsText } }
-#    >> IO.onSuccess out:
-#
-#    log "==" out
-#
-#    IO.writeStdout "done"
-
-
     entryModuleDir =
         Path.dirname entryModulePath
 
@@ -330,8 +298,6 @@ compileMain as fn CompileMainPars: IO Int =
     #
     loadMeta pars.env pars.platform entryModuleDir projectRoot
     >> IO.onSuccess fn meta:
-
-
 
     # This will be replaced once we get lazy loading
     maybeEntryUmr =
@@ -357,7 +323,6 @@ compileMain as fn CompileMainPars: IO Int =
     >> searchAncestorDirectories (fn (isDirectory & fileName): isDirectory and fileName == libDirectoryName) __
     >> IO.onSuccess fn maybeCorelibParent:
 
-
     corePath =
         try maybeCorelibParent as
             , Nothing:
@@ -366,7 +331,6 @@ compileMain as fn CompileMainPars: IO Int =
             , Just p:
                 Path.resolve [ p, libDirectoryName ]
 
-
     #
     #
     #
@@ -374,84 +338,34 @@ compileMain as fn CompileMainPars: IO Int =
         Maybe.withDefault pars.platform.defaultOutputPath pars.maybeOutputPath
 
 
-    log "Loading modules..." ""
-    loadAllModules as IO [CA.Module] =
-        meta.moduleVisibleAsToUmr
-        >> Dict.values
-        >> List.map (fn umr: loadModule meta umr (umrToFileName corePath umr)) __
-        >> IO.parallel
+    loadFile as fn UMR: IO (UMR & Text) =
+        fn umr:
+        IO.readFile (umrToFileName corePath umr)
+        >> IO.onSuccess fn content:
+        IO.succeed (umr & content)
 
-    loadAllModules >> IO.onSuccess fn userModules:
-
-    modules as Dict UMR CA.Module =
-        Prelude.coreModulesByUmr >> List.for __ userModules fn module, d:
-            zzz = fn maybeCore:
-                try maybeCore as
-                    , Nothing: Just module
-                    , Just core: Just (mergeWithCore core module)
-
-            Dict.update module.umr zzz d
-
-    # TODO eenv should be eliminated completely, each module should have all the info necessary to produce errors
-#    eenv as Error.Env =
-#        getName =
-#            fn n:
-#            Meta.UMR source name = n.umr
-#            name
-#
-#        { moduleByName =
-#            List.for Dict.empty (Dict.values modules) (fn m, d: Dict.insert (getName m) { fsPath = umrToFileName corePath m.umr, content = m.asText } d)
-#        }
-
-
-    log "Solving globals..." ""
-    modules
+    meta.moduleVisibleAsToUmr
     >> Dict.values
-    >> Compiler/TypeCheck.initStateAndGlobalEnv
-    >> onResSuccess fn (luv & typeCheckGlobalEnv):
-
-    log "Type checking..." ""
-
-    !lastUnificationVarId =
-        cloneImm luv
-
-    modules
-    >> Dict.values
-    >> List.map (fn m: Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv m >> resToIo) __
+    >> List.map loadFile __
     >> IO.parallel
-    >> IO.onSuccess fn typedModules:
+    >> IO.onSuccess fn modulesAsText:
 
+    Compiler/Compiler.compileModules
+        {
+        , platform = pars.platform
+        , meta
+        , umrToFsPath = umrToFileName corePath __
+        , nativeValues = Prelude.coreNativeValues
+        }
+        modulesAsText
+        [entryUsr]
+    >> onResSuccess fn (targetsByName & compiledStatements):
 
-    log "Uniqueness check..." ""
+    (todo "validateMainType") targetsByName
+    >> onResSuccess fn mainName:
 
-    typedModules
-    >> List.map (fn m: Compiler/UniquenessCheck.doModule m >> resToIo) __
-    >> IO.parallel
-    >> IO.onSuccess fn modulesWithDestruction:
-
-
-    log "Emittable AST..." ""
-
-    modulesWithDestruction
-    >> Compiler/MakeEmittable.translateAll
-    >> Result.mapError (fn e: todo "MakeEmittable.translateAll returned Err") __
-    >> onResSuccess fn (meState & emittableStatements):
-
-    !emittableState =
-        cloneImm meState
-
-    log "= Platform specific stuff =" ""
-
-    js =
-        pars.platform.compile
-            {
-            , constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
-            }
-            entryUsr
-            @emittableState
-            emittableStatements
-
-    IO.writeFile outputFile js
+    pars.platform.makeExecutable mainName compiledStatements
+    >> IO.writeFile outputFile __
     >> IO.onSuccess fn _:
 
     IO.writeStdout __ << "---> " .. outputFile .. " written. =)"

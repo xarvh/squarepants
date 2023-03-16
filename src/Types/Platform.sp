@@ -10,7 +10,8 @@ alias GetRidOfMe =
 alias Platform =
     {
     , name as Text
-    , compile as fn GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text
+    , compileStatements as fn GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text
+    , makeExecutable as fn Text, Text: Text
     , defaultModules as Text
     , quickstart as Text
     , defaultOutputPath as Text

@@ -3,10 +3,11 @@
 platform as Types/Platform.Platform =
     {
     , name = "posix"
-    , compile
     , defaultModules = DefaultModules.asText .. posixModules
     , quickstart = "TODO"
     , defaultOutputPath = "nodeExecutable.js"
+    , compileStatements
+    , makeExecutable
     }
 
 
@@ -25,8 +26,8 @@ library =
     """
 
 
-compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-    fn getRidOfMe, targetUsr, @emState, emittableStatements:
+compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
+    fn getRidOfMe, @emState, emittableStatements:
 
     { constructors } =
         getRidOfMe
@@ -41,11 +42,18 @@ compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA
             }
 
     log "Emitting JS..." ""
+    jaStatements
+    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+    >> Text.join "\n\n" __
+
+
+makeExecutable as fn Text, Text: Text =
+    fn targetName, compiledStatements:
 
     callMain =
         """
         const args = arrayToListLow(process.argv.slice(1));
-        const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({}, args)[1]('never');
+        const out = """ .. targetName .. """({}, args)[1]('never');
         if (out[0] === 'Ok') {
             process.exitCode = out[1];
         } else {
@@ -54,12 +62,7 @@ compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA
         }
         """
 
-    statements =
-        jaStatements
-        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-        >> Text.join "\n\n" __
-
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. posixRuntime .. statements .. callMain
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. posixRuntime .. compiledStatements .. callMain
 
 
 header as Text =
@@ -71,7 +74,6 @@ header as Text =
 const { performance } = require('perf_hooks');
 
 """
-
 
 
 overrides as [USR & Text] =
@@ -191,3 +193,4 @@ const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
 const path_dirname = path.dirname;
 
 """
+
