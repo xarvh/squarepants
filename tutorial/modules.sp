@@ -134,6 +134,9 @@ library =
 library =
     source = "core:prelude"
 
+    module =
+        path = Self
+
     # unlike sourceDirs, libraries don't automatically expose all available modules
     module =
         path = Array_Test

@@ -129,19 +129,21 @@ union CliOptions =
         }
 
 
-alias CliState = {
+alias CliState =
+    {
     , platform as Types/Platform.Platform
     }
 
 
-cliDefaults as CliState = {
+cliDefaults as CliState =
+    {
     , platform = Platforms/Posix.platform
     }
 
 
-availablePlatforms as [Types/Platform.Platform] = [
+availablePlatforms as [Types/Platform.Platform] =
+    [
     , Platforms/Posix.platform
-    , Platforms/RawJavaScript.platform
     , Platforms/Browser.platform
     ]
 
@@ -157,9 +159,9 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
             try List.find (fn p: p.name == value) availablePlatforms as
                 , Nothing:
                     """
-  I don't know this platform name: `""" .. value .. """`
+                    I don't know this platform name: `""" .. value .. """`
 
-  Valid platform names are:
+                    Valid platform names are:
 
                     """
                     ..

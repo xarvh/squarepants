@@ -11,7 +11,7 @@ union Source =
     , Core
     , Posix # This one is a HACK, until we have proper platform management
     , Browser # This one is a HACK, until we have proper platform management
-    , SourceDir Text
+    , SourceDirId Text
 
 
 #
@@ -38,7 +38,14 @@ alias ByUsr a =
     Dict USR a
 
 
-alias Meta = {
+alias Meta =
+    {
+    # The sourceDirId is the one eventually used to produce an internal unique name for the variable.
+    # There are two main reasons for this:
+    # 1) We don't want local path references to enter in the compiled output
+    # 2) We don't want to have to deal with weird characters when we generate the internal names
+    , sourceDirIdToPath as Dict Text Text
+    , sourceDirIdCounter as Int
 
     # These resolve global symbol names
     , globalValues as Dict Name USR
@@ -53,7 +60,10 @@ alias Meta = {
     }
 
 
-init as Meta = {
+init as Meta =
+    {
+    , sourceDirIdToPath = Dict.empty
+    , sourceDirIdCounter = 0
     , globalValues = Dict.empty
     , globalTypes = Dict.empty
     , moduleVisibleAsToUmr = Dict.empty
@@ -61,12 +71,8 @@ init as Meta = {
     }
 
 
-spCorePath as Text =
-    "Core"
-
-
 spCoreUmr as UMR =
-    UMR Core spCorePath
+    UMR Meta.Core "Core"
 
 
 spCoreUSR as fn Name: USR =

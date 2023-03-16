@@ -70,55 +70,70 @@ error as fn Env, Pos, [Text]: Res a =
 # Names resolution
 #
 
-maybeForeignUsr as fn (fn Meta: Dict Text USR), ReadOnly, Maybe Name, Name: Maybe USR =
-    fn getter, ro, maybeModule, name:
+maybeForeignUsr as fn (fn Meta: Dict Text USR), ReadOnly, Pos, Maybe Name, Name: Res (Maybe USR) =
+    fn getter, ro, pos, maybeModule, name:
 
     try maybeModule as
+        , Nothing:
+            Dict.get name (getter ro.meta)
+            >> Ok
+
         , Just moduleName:
             try Dict.get moduleName ro.meta.moduleVisibleAsToUmr as
                 , Just umr:
-                    Just << USR umr name
+                    USR umr name
+                    >> Just
+                    >> Ok
 
                 , Nothing:
-                    # TODO should this produce an error instead?
-                    # i.e., does ro.meta.moduleVisibleAsToUmr contain *all* modules, aliased or not?
-                    #RefGlobal (USR Meta.SourcePlaceholder moduleName name)
+                    # For now we're assuming that ro.meta.moduleVisibleAsToUmr contains *all* modules, aliased or not
+                    erroro ro pos [ "I can't find the module `" .. moduleName .. "`" ]
+
+
+#                    (USR Meta.SourcePlaceholder moduleName name)
+#
 #                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
 #                        log "*" x
-                    todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
-
-        , Nothing:
-            Dict.get name (getter ro.meta)
+#                    todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
 
 
-resolveToUsr as fn (fn Meta: Dict Text USR), ReadOnly, Maybe Name, Name: USR =
-    fn getter, ro, maybeModule, name:
 
-    maybeForeignUsr getter ro maybeModule name
-        >> Maybe.withDefault (USR ro.umr name) __
+resolveToUsr as fn (fn Meta: Dict Text USR), ReadOnly, Pos, Maybe Name, Name: Res USR =
+    fn getter, ro, pos, maybeModule, name:
+
+    maybeForeignUsr getter ro pos maybeModule name
+    >> Result.map (Maybe.withDefault (USR ro.umr name) __) __
 
 
-resolveToValueRef as fn ReadOnly, Bool, Maybe Name, Name: Ref =
-    fn ro, declaredInsideFunction, maybeModule, name:
+resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
+    fn ro, pos, declaredInsideFunction, maybeModule, name:
 
-    try maybeForeignUsr (fn m: m.globalValues) ro maybeModule name as
-        , Just usr:
+    # TODO use Result.map?
+    try maybeForeignUsr (fn m: m.globalValues) ro pos maybeModule name as
+        , Err e:
+            Err e
+
+        , Ok (Just usr):
             RefGlobal usr
+            >> Ok
 
-        , Nothing:
+        , Ok Nothing:
             if declaredInsideFunction then
                 RefLocal name
+                >> Ok
 
             else
-                RefGlobal << USR ro.umr name
+                USR ro.umr name
+                >> RefGlobal
+                >> Ok
 
 
-resolveToTypeUsr as fn ReadOnly, Maybe Name, Name: USR =
-    resolveToUsr (fn m: m.globalTypes) __ __ __
+resolveToTypeUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
+    resolveToUsr (fn m: m.globalTypes) __ __ __ __
 
 
-resolveToConstructorUsr as fn ReadOnly, Maybe Name, Name: USR =
-    resolveToUsr (fn m: m.globalValues) __ __ __
+resolveToConstructorUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
+    resolveToUsr (fn m: m.globalValues) __ __ __ __
 
 
 #
@@ -404,8 +419,10 @@ translatePatternConstructor as fn Env, Pos, Token.Word, [CA.Pattern]: Res CA.Pat
     else if word.attrPath /= [] then
         error env pos [ "Constructors don't have attributes" ]
     else
-        args
-        >> CA.PatternConstructor pos (resolveToConstructorUsr env.ro word.maybeModule word.name) __
+        resolveToConstructorUsr env.ro pos word.maybeModule word.name
+        >> onOk fn usr:
+
+        CA.PatternConstructor pos usr args
         >> Ok
 
 
@@ -970,16 +987,20 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
                 if word.attrPath /= [] then
                     error env pos [ "something's wrong with the lexer?" ]
                 else
-                    resolveToConstructorUsr env.ro word.maybeModule word.name
-                        >> CA.Constructor pos __
-                        >> Ok
+                    resolveToConstructorUsr env.ro pos word.maybeModule word.name
+                    >> onOk fn usr:
+
+                    CA.Constructor pos usr
+                    >> Ok
 
             else
                 declaredInsideFunction =
                     Dict.member word.name env.nonRootValues
 
-                resolveToValueRef env.ro declaredInsideFunction word.maybeModule word.name
-                >> CA.Variable pos __
+                resolveToValueRef env.ro pos declaredInsideFunction word.maybeModule word.name
+                >> onOk fn usr:
+
+                CA.Variable pos usr
                 >> List.for __ word.attrPath (CA.RecordAccess pos __ __)
                 >> Ok
 
@@ -1371,7 +1392,10 @@ translateNamedType as fn ReadOnly, Pos, Token.Word, [CA.RawType]: Res CA.RawType
     else if word.attrPath /= [] then
         erroro ro pos [ "Type names have no attributes to access" ]
     else
-        CA.TypeNamed pos (resolveToTypeUsr ro word.maybeModule word.name) caArgs
+        resolveToTypeUsr ro pos word.maybeModule word.name
+        >> onOk fn usr:
+
+        CA.TypeNamed pos usr caArgs
         >> Ok
 
 

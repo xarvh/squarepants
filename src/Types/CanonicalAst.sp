@@ -190,6 +190,36 @@ typeTyvars as fn RawType: Dict Name Pos =
         , TypeError _: Dict.empty
 
 
+typeUnivars as fn RawType: Dict UnivarId None =
+    fn raw:
+
+    fromList as fn [RawType]: Dict UnivarId None =
+        fn list:
+        List.for Dict.empty list (fn item, acc: Dict.join acc (typeUnivars item))
+
+    insertUni as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
+        fn uni, acc:
+        try uni as
+            , Depends uid: Dict.insert uid None acc
+            , _: acc
+
+    parUnivars as fn ParType, Dict UnivarId None: Dict UnivarId None =
+        fn par, acc:
+        try par as
+            , ParSp full: insertUni full.uni (typeUnivars full.raw)
+            , ParRe _: acc
+
+    try raw as
+        , TypeNamed _ _ args: fromList args
+        , TypeRecord _ attrs: fromList (Dict.values attrs)
+        , TypeAnnotationVariable pos name: Dict.empty
+        , TypeError _: Dict.empty
+        , TypeFn _ pars to:
+            Dict.empty
+            >> insertUni to.uni __
+            >> List.for __ pars parUnivars
+
+
 patternPos as fn Pattern: Pos =
     fn pa:
     try pa as

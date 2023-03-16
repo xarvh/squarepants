@@ -2,11 +2,10 @@
 #
 # IMPORTANT
 #
-# The following code desperately needs two language features that are not yet available:
-#   1) Uniqueness types, to safely manage the update-in-place of DOM nodes
-#   2) Libraries, to expose only safe interfaces
+# The following code desperately needs to expose only safe interfaces,
+# but this will be possible only once the libraries system is in place.
 #
-# Until those are in place, this code is ***SUUUUUUPER UNSAFE**.
+# Until then, this code is **SUUUUUUPER UNSAFE**.
 #
 # Please use it only if you are willing to cope with a world of hurt.
 #
@@ -22,6 +21,10 @@ union DomNode =
     DomNode DomNode
 
 
+union Effect =
+    Effect Effect
+
+
 union Event =
     Event Event
 
@@ -35,6 +38,28 @@ union Attr msg =
     , CssStyle Text Text
     , Listener Text (EventHandler msg)
     , DomAttribute Text Text
+    , DomProperty Text Text
+
+
+#
+#
+#
+map as fn (fn a: b), VirtualNode a: VirtualNode b =
+    fn f, n:
+    try n as
+        , TextNode t:
+            TextNode t
+        , ElementNode name attrs children:
+            ElementNode name (List.map (mapAttr f __) attrs) (List.map (map f __) children)
+
+mapAttr as fn (fn a: b), Attr a: Attr b =
+    fn f, a:
+    try a as
+        , Listener n handler:
+            Listener n (fn ev: Result.map f (handler ev))
+
+        , _:
+          a
 
 
 ###################
@@ -55,6 +80,10 @@ jsReplaceWith as fn DomNode, DomNode: DomNode =
 jsAppendChild as fn { parent as DomNode, child as DomNode }: None =
     fn pars:
     todo "jsAppendChild"
+
+jsSetProperty as fn Text, Text, DomNode: None =
+    fn name, value, domNode:
+    todo "jsSetProperty"
 
 jsSetAttribute as fn Text, Text, DomNode: None =
     fn name, value, domNode:
@@ -96,11 +125,17 @@ eventToFloat as fn [Text], Event: Result Text Number =
     todo "eventToFloat"
 
 
-# TODO eventually we'll have some FFI
+###################
 
-unsafeExecuteJavaScript as fn Text, a: Result Text None =
-    fn functionName, argument:
-    todo "unsafeExecuteJavaScript"
+
+drawCanvas as fn Text, (fn Number, Number: { r as Number, g as Number, b as Number }): Effect =
+    fn id, shaderFn:
+    todo "drawCanvas"
+
+
+setViewportOf as fn Text, Number, Number: Effect =
+    fn id, top, left:
+    todo "setViewportOf"
 
 
 ###################
@@ -131,6 +166,9 @@ updateDomAttrs as fn [Attr msg], [Attr msg], DomNode: None =
             , DomAttribute name value:
                 Hash.insert @oldDomAttrs name value
 
+            , DomProperty name value:
+                None
+
     if cloneUni @oldClass /= "" then
         Hash.insert @oldDomAttrs "class" (cloneUni @oldClass)
     else
@@ -160,13 +198,16 @@ updateDomAttrs as fn [Attr msg], [Attr msg], DomNode: None =
             , DomAttribute name value:
                 Hash.insert @newDomAttrs name value
 
+            , DomProperty name value:
+                jsSetProperty name value domNode
+
 
     if cloneUni @newClass /= "" then
         Hash.insert @newDomAttrs "class" (cloneUni @newClass)
     else
         None
 
-    if cloneUni @newStyle == "" then
+    if cloneUni @newStyle /= "" then
         Hash.insert @newDomAttrs "style" (cloneUni @newStyle)
     else
         None
@@ -269,7 +310,7 @@ updateDomChildren as fn [VirtualNode msg], [VirtualNode msg], Int, DomNode: None
 
 alias App msg model =
     {
-    , init as fn None: model
-    , update as fn msg, model: model
+    , init as fn @Array Effect: model
+    , update as fn @Array Effect, msg, model: model
     , view as fn model: VirtualNode msg
     }

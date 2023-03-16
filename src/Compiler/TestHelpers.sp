@@ -11,7 +11,7 @@ errorModule as fn Text: Error.Module =
     { fsPath = "<Test>", content }
 
 source as Meta.Source =
-    Meta.SourceDir "<Test>"
+    Meta.SourceDirId "<Test>"
 
 
 moduleUmr as UMR =

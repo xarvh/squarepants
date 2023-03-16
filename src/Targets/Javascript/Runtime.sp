@@ -484,4 +484,31 @@ const sp_cons = (item, list) => {
 }
 
 const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));
+
+
+//
+// Dynamic loading
+//
+const self_load = (requestedTypeHumanized, pars, variantConstructor) => {
+
+    const actualTypeHumanized = sp_toHuman(pars.type);
+    if (actualTypeHumanized !== requestedTypeHumanized) {
+        return [ 'Err', pars.type ];
+    }
+
+    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
+    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
+    const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;
+    const js = $sd1$Platforms$Browser$compile(pars);
+
+    //   { name1, name2, name3, ... } = externals;
+    const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';
+
+    const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;
+
+    const arg = {};
+    pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);
+
+    return [ 'Ok', variantConstructor(Function('externs', body)(arg)) ];
+};
     """

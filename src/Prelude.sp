@@ -408,91 +408,43 @@ debugBenchStop as Function = {
 
 
 #
-# Modules
+# List of all core values, used by TypeCheck
 #
-
-alias ModuleByUmr =
-    Dict UMR (CA.Module)
-
-
-insertInModule as fn USR, CA.RawType, [Name], ModuleByUmr: ModuleByUmr =
-  fn usr, type, nonFn, mo:
-
-  USR umr name =
-      usr
-
-  if name == "" then
-    mo
-  else
-
-    zzz =
-      fn tyvarName, pos:
-            {
-            #, annotatedAt = Pos.N
-            , allowFunctions = not (List.member tyvarName nonFn)
-            }
-
-    tyvars =
-        type
-        >> CA.typeTyvars
-        >> Dict.map zzz __
-
-    def as CA.ValueDef =
-        {
-        , uni = Imm
-        , pattern = CA.PatternAny Pos.N { maybeName = Just name, maybeAnnotation = Just type }
-        , native = True
-        , body = CA.LiteralText Pos.N name
-
-        , tyvars
-        , univars = Dict.empty
-        #
-        , directTypeDeps = Dict.empty
-        , directConsDeps = Dict.empty
-        , directValueDeps = Dict.empty
-        }
-
-    update as fn Maybe CA.Module: Maybe CA.Module =
-        fn maybeModule:
-        maybeModule
-        >> Maybe.withDefault {
-            , umr
-            , fsPath = "<native>"
-            , asText = ""
-            , aliasDefs = Dict.empty
-            , unionDefs = Dict.empty
-            , valueDefs = Dict.empty
-            }
-            __
-        >> fn module: { module with valueDefs = Dict.insert def.pattern def .valueDefs }
-        >> Just
-
-    Dict.update umr update mo
+alias CoreValue =
+    {
+    , usr as USR
+    , raw as CA.RawType
+    , nonFn as Dict Name None
+    }
 
 
-insertUnop as fn Op.Unop, ModuleByUmr: ModuleByUmr =
+insertInModule as fn USR, CA.RawType, [Name], [CoreValue]: [CoreValue] =
+  fn usr, raw, nonFnAsList, list:
+
+  nonFn = Set.fromList nonFnAsList
+
+  [{ usr, raw, nonFn }, ...list]
+
+
+insertUnop as fn Op.Unop, [CoreValue]: [CoreValue] =
     fn unop, m:
     insertInModule unop.usr unop.type [] m
 
 
-insertBinop as fn Op.Binop, ModuleByUmr: ModuleByUmr =
+insertBinop as fn Op.Binop, [CoreValue]: [CoreValue] =
     fn binop, m:
     insertInModule binop.usr binop.type binop.nonFn m
 
 
-insertFunction as fn Function, ModuleByUmr: ModuleByUmr =
+insertFunction as fn Function, [CoreValue]: [CoreValue] =
     fn function, m:
     insertInModule function.usr function.type function.nonFn m
 
 
-coreModulesByUmr as Dict UMR CA.Module =
-    Dict.empty
+allCoreValues as [CoreValue] =
+    []
     >> insertUnop unaryPlus __
     >> insertUnop unaryMinus __
     >> List.for __ binops insertBinop
     >> List.for __ functions insertFunction
-
-
-coreModules as [CA.Module] =
-    Dict.values coreModulesByUmr
 

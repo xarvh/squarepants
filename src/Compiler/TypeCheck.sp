@@ -1665,7 +1665,7 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
 checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Name CA.Pattern, @State: TA.Pattern & Env =
     fn env, pos, expectedType, completeness, pas, @state:
 
-    { uni, raw = _ } =
+    { with uni } =
         expectedType
 
     try expectedType.raw as
@@ -1969,6 +1969,36 @@ makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
 # Populate global Env
 #
 #
+addCoreValueToCoreEnv as fn @State, Prelude.CoreValue, Env: Env =
+    fn @state, { usr, raw, nonFn }, env:
+
+    USR umr name =
+        usr
+
+    zzz =
+        fn tyvarName, pos:
+        { allowFunctions = not (Dict.member tyvarName nonFn) }
+
+    tyvars =
+        raw
+        >> CA.typeTyvars
+        >> Dict.map zzz __
+
+    addValueToGlobalEnv @state umr
+        {
+        , uni = Imm
+        , pattern = CA.PatternAny Pos.N { maybeName = Just name, maybeAnnotation = Just raw }
+        , native = True
+        , body = CA.LiteralText Pos.N name
+        , tyvars
+        , univars = CA.typeUnivars raw
+        , directTypeDeps = Dict.empty
+        , directConsDeps = Dict.empty
+        , directValueDeps = Dict.empty
+        }
+        env
+
+
 addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
     fn @state, umr, def, env:
 
@@ -2149,8 +2179,8 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
     >> Dict.map (fn k, v: None) __
 
 
-initStateAndGlobalEnv as fn [CA.Module]: Res (TA.TyvarId & Env) =
-    fn allModules:
+initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env) =
+    fn externalValues, allModules:
 
     !state =
         initState 0
@@ -2188,6 +2218,8 @@ initStateAndGlobalEnv as fn [CA.Module]: Res (TA.TyvarId & Env) =
         , expandedAliases
         }
         >> List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)
+        >> List.for __ Prelude.allCoreValues (addCoreValueToCoreEnv @state __ __)
+        >> List.for __ externalValues (fn (usr & instance), e: { e with variables = Dict.insert (RefGlobal usr) instance .variables })
         >> List.for __ allModules doStuff
 
     try Array.toList @state.errors as
@@ -2504,5 +2536,3 @@ applySubstitutionToType as fn TA.TyvarId, TA.RawType, TA.RawType: TA.RawType =
 
     TA.resolveRaw subsAsFns originalType
 
-
-#]
