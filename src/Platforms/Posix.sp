@@ -3,10 +3,10 @@
 platform as Types/Platform.Platform =
     {
     , name = "posix"
-    , compile
     , defaultModules = DefaultModules.asText .. posixModules
     , quickstart = "TODO"
     , defaultOutputPath = "nodeExecutable.js"
+    , makeExecutable
     }
 
 
@@ -25,27 +25,18 @@ library =
     """
 
 
-compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-    fn getRidOfMe, targetUsr, @emState, emittableStatements:
+makeExecutable as fn Self.LoadPars: Text =
+    fn out:
 
-    { constructors } =
-        getRidOfMe
+    # TODO check that type is `IO Int`
 
-    log "Creating JS AST..." ""
-    jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState
-            {
-            , constructors
-            , eaDefs = emittableStatements
-            , platformOverrides = overrides
-            }
-
-    log "Emitting JS..." ""
+    entryName =
+        Targets/Javascript/EmittableToJs.translateUsr out.entryUsr
 
     callMain =
         """
         const args = arrayToListLow(process.argv.slice(1));
-        const out = """ .. Compiler/MakeEmittable.translateUsr @emState targetUsr .. """({}, args)[1]('never');
+        const out = """ .. entryName .. """({}, args)[1]('never');
         if (out[0] === 'Ok') {
             process.exitCode = out[1];
         } else {
@@ -54,12 +45,22 @@ compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA
         }
         """
 
-    statements =
+    compiledStatements =
+        log "Creating JS AST..." ""
+        jaStatements =
+            Targets/Javascript/EmittableToJs.translateAll
+                {
+                , constructors = out.constructors
+                , eaDefs = out.defs
+                , platformOverrides = overrides
+                }
+
+        log "Emitting JS..." ""
         jaStatements
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
         >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. posixRuntime .. statements .. callMain
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. callMain
 
 
 header as Text =
@@ -71,7 +72,6 @@ header as Text =
 const { performance } = require('perf_hooks');
 
 """
-
 
 
 overrides as [USR & Text] =
@@ -94,7 +94,7 @@ overrides as [USR & Text] =
     ]
 
 
-posixRuntime as Text =
+runtime as Text =
     """
 
 //
@@ -191,3 +191,4 @@ const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
 const path_dirname = path.dirname;
 
 """
+

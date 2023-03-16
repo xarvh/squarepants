@@ -1,0 +1,158 @@
+/*
+ * Atomic
+ */
+
+.yellow { color: yellow; }
+.red { color: red; }
+.blue { color: blue; }
+.lineThrough { text-decoration: line-through; }
+
+.row { display: flex; }
+.col { display: flex; flex-direction: column; }
+.justify-center { display: flex; justify-content: center; }
+.align-center { display: flex; align-items: center; }
+.flex1 { flex: 1; }
+
+.w100 { width: 100%; }
+.h100 { height: 100%; }
+
+.mt { margin-top: 1em; }
+.mb { margin-bottom: 1em; }
+.ml { margin-left: 1em; }
+.mr { margin-right: 1em; }
+
+.p { padding: 1em; }
+.border { border: 1px solid lightgray; }
+
+.thirds > * {
+  max-width: 90vw;
+}
+
+.pointer { cursor: pointer; }
+
+
+
+/*
+ * Globals
+ */
+
+
+body {
+  display: flex;
+  justify-content: center;
+
+  /*
+  color: #ebdbb2;
+  background: #504945;
+  */
+  font-family: 'Fira Sans', sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+a { color: #fb4934; }
+a:active { color: #928374; }
+a:visited { color: #d3869b; }
+
+
+.page-width {
+  max-width: 1200px;
+}
+
+
+.column {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.content {
+  display: flex;
+}
+
+
+.input {
+  width: 500px;
+  margin-right: 10px;
+}
+
+
+.output-wrapper {
+  /* border: 2px solid black; */
+  padding: 2px;
+  border-radius: 4px;
+}
+
+
+.error {
+  margin-top: 20px;
+  font-family: monospace;
+}
+
+
+/*
+ * https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
+ */
+.editing, .highlighting {
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid lightgray;
+  width: calc(100% - 32px);
+  min-height: 400px;
+
+  /* In the same place */
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  overflow: auto; /* Can be scrolled */
+  white-space: nowrap; /* Allows textarea to scroll horizontally */
+}
+
+.editing, .highlighting, .highlighting * {
+  font-size: 12pt;
+  font-family: monospace;
+  line-height: 16pt;
+  tab-size: 2;
+}
+
+.highlighting * {
+  white-space: pre;
+}
+
+.editing {
+  z-index: 1;
+
+  color: transparent;
+  background: transparent;
+  caret-color: black;
+
+  resize: none;
+}
+
+.highlighting {
+  z-index: 0;
+}
+
+
+.pulse { animation: pulse 0.8s infinite alternate; }
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0.2; }
+}
+
+
+/* https://vimcolorschemes.com/morhetz/gruvbox */
+.upper  { color: #83a598; }
+.lower  { }
+
+.comment  { color: #928374; }
+
+.literal  { color: #b8bb26; }
+
+.op       { color: #d3869b; }
+.keyword  { color: #fb4934; }
+.paren    { color: #fe8019; }
+

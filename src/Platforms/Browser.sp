@@ -1,12 +1,11 @@
 
-
 platform as Types/Platform.Platform =
     {
     , name = "browser"
-    , compile
     , defaultModules = DefaultModules.asText .. modules
     , quickstart = "TODO"
     , defaultOutputPath = "index.js"
+    , makeExecutable
     }
 
 
@@ -18,6 +17,12 @@ library =
 
     module =
         path = Browser
+
+    module =
+        path = Html
+
+    module =
+        path = VirtualDom
     """
 
 
@@ -25,27 +30,35 @@ virtualDomModule as fn Text: USR =
     USR (UMR Meta.Browser "VirtualDom") __
 
 
-compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-    fn getRidOfMe, targetUsr, @emState, emittableStatements:
 
-    { constructors } =
-        getRidOfMe
+compile as fn Self.LoadPars: Text =
+    fn out:
 
+    log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState
-          {
-          , constructors
-          , eaDefs = emittableStatements
-          , platformOverrides = overrides
-          }
+        Targets/Javascript/EmittableToJs.translateAll
+            {
+            , constructors = out.constructors
+            , eaDefs = out.defs
+            , platformOverrides = overrides
+            }
 
-    statements =
-        jaStatements
-        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-        >> Text.join "\n\n" __
+    log "Emitting JS..." ""
+    jaStatements
+    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+    >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. statements .. footer @emState targetUsr
 
+
+makeExecutable as fn Self.LoadPars: Text =
+    fn out:
+
+    compiledStatements =
+        compile out
+
+    # TODO check that type is ....?
+
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out.entryUsr
 
 
 overrides as [USR & Text] =
@@ -54,6 +67,7 @@ overrides as [USR & Text] =
     , virtualDomModule "jsCreateElement" & "virtualDom_jsCreateElement"
     , virtualDomModule "jsReplaceWith" & "virtualDom_jsReplaceWith"
     , virtualDomModule "jsAppendChild" & "virtualDom_jsAppendChild"
+    , virtualDomModule "jsSetProperty" & "virtualDom_jsSetProperty"
     , virtualDomModule "jsSetAttribute" & "virtualDom_jsSetAttribute"
     , virtualDomModule "jsRemoveAttribute" & "virtualDom_jsRemoveAttribute"
     , virtualDomModule "jsAddEventListener" & "virtualDom_jsAddEventListener"
@@ -62,7 +76,8 @@ overrides as [USR & Text] =
     , virtualDomModule "eventToFloat" & "virtualDom_eventToFloat"
     , virtualDomModule "setChild" & "virtualDom_setChild"
     , virtualDomModule "removeAllChildrenStartingFromIndex" & "virtualDom_removeAllChildrenStartingFromIndex"
-    , virtualDomModule "unsafeExecuteJavaScript" & "virtualDom_unsafeExecuteJavaScript"
+    , virtualDomModule "drawCanvas" & "virtualDom_drawCanvas"
+    , virtualDomModule "setViewportOf" & "virtualDom_setViewportOf"
     ]
 
 
@@ -70,18 +85,19 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn @Compiler/MakeEmittable.State, USR: Text =
-    fn @state, targetUsr:
+footer as fn USR: Text =
+    fn mainUsr:
 
-    main =
-        Compiler/MakeEmittable.translateUsr @state targetUsr
+    mainName =
+        Targets/Javascript/EmittableToJs.translateUsr mainUsr
 
     updateDomNode =
-        Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
+        Targets/Javascript/EmittableToJs.translateUsr (virtualDomModule "updateDomNode")
 
     """
 
     // TODO these globals will be a hell of trouble if we want to run more than one app
+    let effects = [];
     let oldVirtualDom = {}; // TODO this should be properly initialized
     let model = null;
     let elementId = null;
@@ -91,7 +107,7 @@ footer as fn @Compiler/MakeEmittable.State, USR: Text =
 
             const msg = msgResult[1];
 
-            model = """ .. main .. """.update(msg, model);
+            model = """ .. mainName .. """.update(effects, msg, model)[0];
 
             // TODO set a flag and use requestAnimationFrame
             updateDom();
@@ -104,18 +120,21 @@ footer as fn @Compiler/MakeEmittable.State, USR: Text =
     function updateDom() {
         const e = win.document.getElementById(elementId);
 
-        const newVirtualDom = """ .. main .. """.view(model);
+        const newVirtualDom = """ .. mainName .. """.view(model);
 
         """ .. updateDomNode .. """(newVirtualDom, oldVirtualDom, e.childNodes[0]);
 
         oldVirtualDom = newVirtualDom;
+
+        effects.forEach((e) => e());
+        effects = [];
     }
 
 
 
     function main(eid) {
         elementId = eid;
-        model = """ .. main .. """.init(null);
+        model = """ .. mainName .. """.init(effects)[0];
         updateDom();
     }
 
@@ -167,6 +186,7 @@ const virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return 
 const virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);
 const virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);
 const virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);
+const virtualDom_jsSetProperty = (name, value, node) => node[name] = value;
 
 
 const virtualDom_setChild = (upd, index, parentNode) => {
@@ -201,19 +221,44 @@ const virtualDom_jsRemoveEventListener = (eventName, handler, node) => {
     node.squarepantsEventHandlers[eventName] = undefined;
 }
 
-const virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {
-    let error = null;
 
-    try {
-        const fn = functionName.split('.').reduce((obj, name) => obj[name], window);
-        fn(argument);
-    } catch (e) {
-      error = e;
+const virtualDom_setViewportOf = (id, top, left) => () => {
+    const e = document.getElementById(id);
+    if (!e) {
+        console.error('could not find element #' + id);
+        return
     }
 
-    return error
-        ? [ 'Err', error.message ]
-        : [ 'Ok', null ]
+    e.scrollTop = top;
+    e.scrollLeft = left;
 }
 
+
+const virtualDom_drawCanvas = (canvasId, shaderFn) => () => {
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error('could not find canvas', canvasId);
+        return
+    }
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.createImageData(w, h);
+
+    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+
+        const frag = shaderFn(x / (w - 1), 1 - y / (h - 1));
+
+        let j = (x + y * w) * 4;
+        imageData.data[j + 0] = frag.r * 255;
+        imageData.data[j + 1] = frag.g * 255;
+        imageData.data[j + 2] = frag.b * 255;
+        imageData.data[j + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+};
     """

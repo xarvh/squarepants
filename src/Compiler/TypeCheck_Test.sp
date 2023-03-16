@@ -84,11 +84,8 @@ infer as fn Text: fn Text: Result Text Out =
     >> TH.resErrorToStrippedText
     >> onOk fn caModule:
 
-    modules as [CA.Module] =
-        List.append Prelude.coreModules [caModule]
-
-    modules
-    >> Compiler/TypeCheck.initStateAndGlobalEnv
+    [caModule]
+    >> Compiler/TypeCheck.initStateAndGlobalEnv [] __
     >> TH.resErrorToStrippedText
     >> onOk fn (luv & typeCheckGlobalEnv_):
 
@@ -155,59 +152,14 @@ infer as fn Text: fn Text: Result Text Out =
             >> Ok
 
 
-normalizeTyvarId as fn @Hash TA.TyvarId TA.TyvarId, TA.TyvarId: TA.TyvarId =
-    fn @hash, id:
-
-    try Hash.get @hash id as
-        , Just nid: nid
-        , Nothing:
-          !maxId = 0
-          Hash.each @hash fn k, v:
-            if v > cloneUni @maxId then
-                @maxId := cloneImm v
-            else
-                None
-
-          nid = maxId + 1
-          Hash.insert @hash id nid
-          nid
-
-
-normalizeType as fn @Hash TA.TyvarId TA.TyvarId, TA.RawType: TA.RawType =
-    fn @hash, type:
-
-    try type as
-        , TA.TypeExact usr args:
-            TA.TypeExact usr (List.map (normalizeType @hash __) args)
-
-        , TA.TypeFn pars out:
-            TA.TypeFn
-                (TA.mapPars (normalizeType @hash __) pars)
-                { out with raw = normalizeType @hash .raw }
-
-        , TA.TypeRecord Nothing attrs:
-            TA.TypeRecord Nothing (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
-
-        , TA.TypeRecord (Just id) attrs:
-            TA.TypeRecord
-                (Just << normalizeTyvarId @hash id)
-                (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
-
-        , TA.TypeVar id:
-            TA.TypeVar (normalizeTyvarId @hash id)
-
-        , TA.TypeError:
-            TA.TypeError
-
-
 normalizeOut as fn Out: Out =
     fn out:
 
     !hash = Hash.fromList []
 
     {
-    , type = normalizeType @hash out.type
-    , freeTyvars = Dict.for Dict.empty out.freeTyvars fn id, tc, d: Dict.insert (normalizeTyvarId @hash id) tc d
+    , type = TA.normalizeType @hash out.type
+    , freeTyvars = Dict.for Dict.empty out.freeTyvars fn id, tc, d: Dict.insert (TA.normalizeTyvarId @hash id) tc d
     }
 
 

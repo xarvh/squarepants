@@ -1,54 +1,20 @@
+<!DOCTYPE HTML>
 <html>
 
   <head>
+    <meta charset="UTF-8">
     <script src="app.js"></script>
-    <link href="index.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
   </head>
 
   <body>
     <div id="app">
     </div>
-    <script type="text/javascript">
-
-        window.updateCanvas = (pars) => {
-            const canvas = document.getElementById(pars.domId);
-
-            if (canvas) {
-                writeOnCanvas(canvas, pars.compiledJs);
-            } else {
-                setTimeout(() => window.updateCanvas(pars), 5);
-            }
-        }
-
-
-        Squarepants.main("app");
-
-
-        function writeOnCanvas(canvas, compiledJs) {
-
-            const shaderFunction = eval(compiledJs);
-
-            const w = canvas.width;
-            const h = canvas.height;
-
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.createImageData(w, h);
-
-            for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
-
-                const frag = shaderFunction(x / (w - 1), 1 - y / (h - 1));
-
-                let j = (x + y * w) * 4;
-                imageData.data[j + 0] = frag.r * 255;
-                imageData.data[j + 1] = frag.g * 255;
-                imageData.data[j + 2] = frag.b * 255;
-                imageData.data[j + 3] = 255;
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-        }
-
-    </script>
+    <script type="text/javascript">Squarepants.main("app");</script>
   </body>
 
 </html>

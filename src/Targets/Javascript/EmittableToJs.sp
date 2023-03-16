@@ -5,7 +5,7 @@
 
 alias Env =
     {
-    , overrides as Dict EA.Name Override
+    , overrides as Dict USR Override
     }
 
 
@@ -20,8 +20,8 @@ union Override = Override
     }
 
 
-coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
-    fn @emState:
+coreOverrides as fn None: Dict USR Override =
+    fn None:
 
     corelib as fn Text, Text: USR =
         fn m, n:
@@ -93,10 +93,13 @@ coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
     , corelib "Array" "fromList" & function  "array_fromList"
     , corelib "Array" "toList" & function  "array_toList"
     #
-    , corelib "List" "sortBy" & function  "list_sortBy"
+    , corelib "List" "sortBy" & function "list_sortBy"
+    #
+    , corelib "Self" "load" & loadOverride
+    , corelib "Self" "introspect" & introspectOverride
+    , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
     >> Dict.fromList
-    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
 
 
 unaryPlus as Override =
@@ -169,15 +172,96 @@ function as fn Text: Override =
 
 
 
-translateVariable as fn Env, Name: JA.Expr =
-    fn env, variableName:
 
-    try Dict.get variableName env.overrides as
+#
+# Dynamic loading
+#
+introspectOverride as Override =
+
+    call =
+        fn env, eaArgs:
+
+        try eaArgs as
+            , [ EA.ArgumentSpend { with raw } e ]:
+
+                expression as JA.Expr =
+                    e
+                    >> Self.internalRepresentation
+                    >> JA.Literal
+
+                type as JA.Expr =
+                    raw
+                    >> Self.internalRepresentation
+                    >> JA.Literal
+
+                nonFn as JA.Expr =
+                    JA.Array [] # TODO!!!
+
+                value as JA.Expr =
+                    translateExpressionToExpression env e
+
+                [
+                , "expression" & expression
+                , "raw" & type
+                , "nonFn" & nonFn
+                , "value" & value
+                ]
+                >> Dict.fromList
+                >> JA.Record
+
+            , _:
+                todo "introspectOverride BUG?!"
+
+
+    {
+    , value = fn env: todo "TODO: monomorphization is not yet implemented so `introspect` can only be called directly"
+    , call
+    }
+    >> Override
+
+
+loadOverride as Override =
+
+    call =
+        fn env, eaArgs:
+
+        jaArgs =
+            List.map (translateArg { nativeBinop = False } env __) eaArgs
+
+        requestedTypeHumanized as JA.Expr =
+            try eaArgs as
+                , [ compiledProgram, EA.ArgumentSpend { with raw = TA.TypeFn [TA.ParSp { with raw = compiledType}] _ } _ ]:
+                    !hash = Hash.fromList []
+                    compiledType
+                    >> TA.normalizeType @hash __
+                    # TODO: once we have proper encoders, we can use those
+                    >> toHuman
+                    >> literalString
+
+                , _:
+                    todo "loadOverride BUG?!"
+
+        JA.Call (JA.Var "self_load") [ requestedTypeHumanized, ...jaArgs ]
+
+    {
+    , value = fn env: todo "TODO: load as value... I guess we need monomorphization?"
+    , call
+    }
+    >> Override
+
+
+#
+# Translation
+#
+maybeOverrideUsr as fn Env, USR: JA.Expr =
+    fn env, usr:
+
+    try Dict.get usr env.overrides as
         , Just (Override { call, value }):
             value env
 
         , Nothing:
-            JA.Var variableName
+            JA.Var (translateUsr usr)
 
 
 accessAttrs as fn [Text], JA.Expr: JA.Expr =
@@ -193,7 +277,7 @@ translateArg as fn { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
             translateExpressionToExpression env e
 
         , EA.ArgumentRecycle rawType attrPath name:
-            accessAttrs attrPath (JA.Var name)
+            accessAttrs attrPath (translateName name >> JA.Var)
 
 
 [#
@@ -292,7 +376,9 @@ makeCall as fn Env, JA.Expr, [EA.Argument]: JA.Expr =
         try arg as
             , EA.ArgumentSpend _ _: Nothing
             , EA.ArgumentRecycle rawType attrPath name:
-                translateVariable env name
+                name
+                >> translateName
+                >> JA.Var
                 >> accessAttrs attrPath __
                 >> Just
 
@@ -338,14 +424,20 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
     fn env, eaExpression:
 
     try eaExpression as
-        , EA.Variable name:
-            translateVariable env name
+        , EA.Variable (RefLocal name):
+            name
+            >> translateName
+            >> JA.Var
+            >> Inline
+
+        , EA.Variable (RefGlobal usr):
+            maybeOverrideUsr env usr
             >> Inline
 
         , EA.Call ref args:
             maybeNativeOverride =
                 try ref as
-                    , EA.Variable name: Dict.get name env.overrides
+                    , EA.Variable (RefGlobal usr): Dict.get usr env.overrides
                     , _: Nothing
 
             try maybeNativeOverride as
@@ -359,13 +451,14 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
 
         , EA.Fn eaArgs body:
 
-            argsWithNames as [Bool & Name] =
-                zzz = fn index, (re & maybeName):
+            argsWithNames as [Bool & Text] =
+                zzz =
+                    fn index, (re & maybeName):
                     try maybeName as
-                        , Just name: re & name
+                        , Just name: re & translateName name
                         , Nothing: re & "_" .. Text.fromNumber index
 
-                eaArgs >> List.indexedMap zzz __
+                List.indexedMap zzz eaArgs
 
             recycledPars as [JA.Expr] =
                 argsWithNames
@@ -416,7 +509,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                     letStatement =
                         letExpression
                         >> translateExpressionToExpression env __
-                        >> JA.Define (type.uni == Uni) name __
+                        >> JA.Define (type.uni == Uni) (translateName name) __
 
                     Block << letStatement :: inStatements
 
@@ -469,8 +562,8 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> accessArrayIndex index __
             >> Inline
 
-        , EA.Constructor name:
-            translateVariable env name
+        , EA.Constructor usr:
+            maybeOverrideUsr env usr
             >> Inline
 
         , EA.ConstructorAccess argIndex value:
@@ -523,15 +616,14 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             [ JA.Literal "'Missing pattern in try..as'"
             , JA.Literal ("'" .. location .. "'")
             , JA.Call (JA.Literal "sp_toHuman") [ translateExpressionToExpression env value ]
-            # JA.Call (JA.Literal "console.log") [ JA.Call (JA.Literal "JSON.stringify") [ JA.Var tryName ]]
             ]
             >> JA.Call (JA.Literal "sp_throw") __
             >> Inline
 
 
 
-translateConstructor as fn @Compiler/MakeEmittable.State, USR & TA.FullType: JA.Statement =
-    fn @emState, (usr & full):
+translateConstructor as fn USR & TA.FullType: JA.Statement =
+    fn (usr & full):
 
     taType =
         full.raw
@@ -558,7 +650,7 @@ translateConstructor as fn @Compiler/MakeEmittable.State, USR & TA.FullType: JA.
                 JA.Array [ arrayHead ]
 
     usrAsText =
-        Compiler/MakeEmittable.translateUsr @emState usr
+        translateUsr usr
 
     JA.Define False usrAsText definitionBody
 
@@ -566,13 +658,40 @@ translateConstructor as fn @Compiler/MakeEmittable.State, USR & TA.FullType: JA.
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn env, def:
 
-    try Dict.get def.name env.overrides as
+    try Dict.get def.usr env.overrides as
         , Just _:
             Nothing
 
         , Nothing:
-            JA.Define False def.name (translateExpressionToExpression env def.expr)
+            JA.Define False (translateUsr def.usr) (translateExpressionToExpression env def.expr)
             >> Just
+
+
+translateSource as fn Meta.Source: Text =
+    fn src:
+
+    try src as
+        , Meta.Core:
+            "core"
+
+        , Meta.Posix:
+            "posix"
+
+        , Meta.Browser:
+            "browser"
+
+        , Meta.SourceDirId id:
+            id
+
+
+translateUsr as fn USR: Text =
+    fn (USR (UMR source modulePath) name):
+    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. "$" .. name
+
+
+translateName as fn Name: Text =
+    fn n:
+    "$" .. n
 
 
 alias TranslateAllPars =
@@ -582,19 +701,19 @@ alias TranslateAllPars =
     , platformOverrides as [USR & Text]
     }
 
-translateAll as fn @Compiler/MakeEmittable.State, TranslateAllPars: [JA.Statement] =
-    fn @emState, pars:
+translateAll as fn TranslateAllPars: [JA.Statement] =
+    fn pars:
 
     { constructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [JA.Statement] =
-        List.map (translateConstructor @emState __) constructors
+        List.map (translateConstructor __) constructors
 
     env as Env =
       {
-      , overrides = coreOverrides @emState >> List.for __ platformOverrides fn (usr & runtimeName), d:
-          Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName) d
+      , overrides = List.for (coreOverrides None) platformOverrides fn (usr & runtimeName), d:
+          Dict.insert usr (function runtimeName) d
       }
 
     jaStatements as [JA.Statement] =

@@ -383,3 +383,14 @@ minimum as fn [Number]: Maybe Number =
       , _:
         Nothing
 
+
+maximum as fn [Number]: Maybe Number =
+    fn list:
+
+    try list as
+      , x :: xs:
+        Just (for x xs max)
+
+      , _:
+        Nothing
+

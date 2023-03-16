@@ -203,3 +203,6 @@ library =
           Ok
           Err
           onOk
+
+    module =
+        path = Self

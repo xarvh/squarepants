@@ -359,3 +359,48 @@ typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
         , TypeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
         , TypeError: True
 
+
+normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
+    fn @hash, id:
+
+    try Hash.get @hash id as
+        , Just nid: nid
+        , Nothing:
+          !maxId = 0
+          Hash.each @hash fn k, v:
+            if v > cloneUni @maxId then
+                @maxId := cloneImm v
+            else
+                None
+
+          nid = maxId + 1
+          Hash.insert @hash id nid
+          nid
+
+
+normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
+    fn @hash, type:
+
+    try type as
+        , TypeExact usr args:
+            TypeExact usr (List.map (normalizeType @hash __) args)
+
+        , TypeFn pars out:
+            TypeFn
+                (mapPars (normalizeType @hash __) pars)
+                { out with raw = normalizeType @hash .raw }
+
+        , TypeRecord Nothing attrs:
+            TypeRecord Nothing (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
+
+        , TypeRecord (Just id) attrs:
+            TypeRecord
+                (Just << normalizeTyvarId @hash id)
+                (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
+
+        , TypeVar id:
+            TypeVar (normalizeTyvarId @hash id)
+
+        , TypeError:
+            TypeError
+
