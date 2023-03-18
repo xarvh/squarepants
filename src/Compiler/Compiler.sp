@@ -32,7 +32,7 @@ alias Config =
     }
 
 
-compileModules as fn Config, [UMR & Text], [USR]: Res (Dict Name TA.Type & Text) =
+compileModules as fn Config, [UMR & Text], [USR]: Res (Dict Name TA.RawType & Text) =
     fn config, modulesAsText, targets:
 
     log "Loading modules..." ""
@@ -70,9 +70,6 @@ compileModules as fn Config, [UMR & Text], [USR]: Res (Dict Name TA.Type & Text)
     >> List.mapRes (Compiler/UniquenessCheck.doModule __) __
     >> onOk fn modulesWithDestruction:
 
-    mainTypeByName =
-        todo "mainTypeByName"
-
     log "Emittable AST..." ""
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll
@@ -88,6 +85,19 @@ compileModules as fn Config, [UMR & Text], [USR]: Res (Dict Name TA.Type & Text)
             { constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors) }
             @emittableState
             emittableStatements
+
+    ts =
+        Set.fromList targets
+
+    mainTypeByName =
+        List.for Dict.empty modulesWithDestruction fn mod, d:
+            Dict.for d mod.valueDefs fn pa, def, dd:
+                Dict.for dd (TA.patternNames def.pattern) fn name, { pos, type }, ddd:
+                    usr = USR mod.umr name
+                    if Set.member usr ts then
+                        Dict.insert (Compiler/MakeEmittable.translateUsr @emittableState usr) type.raw ddd
+                    else
+                        ddd
 
     Ok (mainTypeByName & programWithoutRuntime)
 

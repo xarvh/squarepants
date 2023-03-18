@@ -252,17 +252,33 @@ searchAncestorDirectories as fn (fn Bool & Text: Bool), Text: IO (Maybe Text) =
                 else
                     parent >> searchAncestorDirectories isWantedFile __
 
-mergeWithCore as fn CA.Module, CA.Module: CA.Module =
-    fn coreModule, userModule:
-
+#mergeWithCore as fn CA.Module, CA.Module: CA.Module =
+#    fn coreModule, userModule:
+#
 #    need to strip positions before merging >_<
+#
+#    { userModule with
+#    , aliasDefs = Dict.join coreModule.aliasDefs .aliasDefs
+#    , unionDefs = Dict.join coreModule.unionDefs .unionDefs
+#    , valueDefs = Dict.join coreModule.valueDefs .valueDefs
+#    }
 
-    { userModule with
-    , aliasDefs = Dict.join coreModule.aliasDefs .aliasDefs
-    , unionDefs = Dict.join coreModule.unionDefs .unionDefs
-    , valueDefs = Dict.join coreModule.valueDefs .valueDefs
-    }
 
+
+getMainName as fn Dict Name TA.RawType: Res Text =
+    fn targetsByName:
+
+    # TODO: actually check that type is IO Int
+    #    returnType as TA.Type =
+    #        TA.TypeExact ()
+
+    try Dict.toList targetsByName as
+        , [ name & type, ..._ ]:
+            Ok name
+
+        , z:
+            log "-->" z
+            todo "main type should be IO Int"
 
 
 alias CompileMainPars = {
@@ -331,12 +347,8 @@ compileMain as fn CompileMainPars: IO Int =
             , Just p:
                 Path.resolve [ p, libDirectoryName ]
 
-    #
-    #
-    #
     outputFile =
         Maybe.withDefault pars.platform.defaultOutputPath pars.maybeOutputPath
-
 
     loadFile as fn UMR: IO (UMR & Text) =
         fn umr:
@@ -361,7 +373,7 @@ compileMain as fn CompileMainPars: IO Int =
         [entryUsr]
     >> onResSuccess fn (targetsByName & compiledStatements):
 
-    (todo "validateMainType") targetsByName
+    getMainName targetsByName
     >> onResSuccess fn mainName:
 
     pars.platform.makeExecutable mainName compiledStatements
