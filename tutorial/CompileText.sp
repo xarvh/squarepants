@@ -112,7 +112,7 @@ main as fn Text: Result Text CompiledCode =
     Compiler/Compiler.compileModules config [umr & code] [entryUsr]
     >> onResSuccess fn compiledProgram:
 
-    Core.dynamicLoad compiledProgram CompiledNumber
+    Compiler/Compiler.dynamicLoad compiledProgram CompiledNumber
     >> Result.onErr fn _:
-    Core.dynamicLoad compiledProgram CompiledText
+    Compiler/Compiler.dynamicLoad compiledProgram CompiledText
 

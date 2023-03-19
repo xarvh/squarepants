@@ -33,6 +33,18 @@ const maybe_just = (a) => [ "Just", a ];
 
 
 //
+// Dynamic loading
+//
+const compiler_dynamicLoad = (variantType, compiledProgram, variantConstructor) => {
+
+    const [ __unused__ , typesByName, jsProgram ] = compiledProgram;
+
+    // find name that has correct type???
+
+    throw new Error('ni');
+};
+
+//
 // Basic ops
 //
 
@@ -652,6 +664,17 @@ const $posix$IO$IO = (($1) => ([
 const $posix$IO$Never = (($1) => ([
   "Never",
   $1,
+]));
+
+const $sd0$Compiler$Compiler$ExposedValue = ([
+  "ExposedValue",
+]);
+
+const $sd0$Compiler$Compiler$FUCK_AROUND_AND_FIND_OUT = (($1, $2, $3) => ([
+  "FUCK_AROUND_AND_FIND_OUT",
+  $1,
+  $2,
+  $3,
 ]));
 
 const $sd0$Compiler$Error$FormattedText_Decoration = (($1) => ([
@@ -2387,10 +2410,6 @@ const $core$Basics$not = (($b) => {
     : true);
 });
 
-const $core$Core$sendLeft = "native";
-
-const $core$Core$sendRight = "native";
-
 const $core$Dict$any = (($f, $dict) => {
   return ((($dict)[0] === "RBNode_elm_builtin")
     ? ((() => {
@@ -3895,7 +3914,7 @@ const $core$Result$fromMaybe = (($err, $maybe) => {
         const $a = ($maybe)[1];
         return ($core$Result$Ok)($a);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 34:4', (sp_toHuman)($maybe))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 42:4', (sp_toHuman)($maybe))));
 });
 
 const $core$Result$mapError = (($f, $result) => {
@@ -3909,7 +3928,23 @@ const $core$Result$mapError = (($f, $result) => {
         const $e1 = ($result)[1];
         return ($core$Result$Err)(($f)($e1));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 26:4', (sp_toHuman)($result))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 34:4', (sp_toHuman)($result))));
+});
+
+const $core$Result$onErr = (($f) => {
+  return (($result) => {
+    return ((($result)[0] === "Err")
+      ? ((() => {
+        const $e = ($result)[1];
+        return ($f)($e);
+      }))()
+      : ((($result)[0] === "Ok")
+        ? ((() => {
+          const $a = ($result)[1];
+          return ($core$Result$Ok)($a);
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 26:4', (sp_toHuman)($result))));
+  });
 });
 
 const $core$Result$withDefault = (($default, $result) => {
@@ -3920,7 +3955,7 @@ const $core$Result$withDefault = (($default, $result) => {
     }))()
     : ((($result)[0] === "Err")
       ? $default
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 42:4', (sp_toHuman)($result))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Result.sp 50:4', (sp_toHuman)($result))));
 });
 
 const $core$Set$diff = $core$Dict$diff;
@@ -6785,7 +6820,7 @@ const $sd0$Compile$updateSourceDir = (($fileNames, $orig) => {
             }), $0.modules),
           }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 193:8', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 185:8', (sp_toHuman)($$try1))));
   });
   return ($core$List$for)($orig, $fileNames, $insertModuleName);
 });
@@ -6886,6 +6921,60 @@ const $sd0$Compile$loadMeta = (($env, $platform, $entryModuleDir, $projectRoot) 
       }))()));
     })))($getAllSourceDirLists);
   })))(($sd0$Compile$loadModulesFile)($platform, $projectRoot));
+});
+
+const $sd0$Compile$onResSuccess = (($f) => {
+  return (($res) => {
+    return ((($0) => {
+      return (($posix$IO$onSuccess)($f))($0);
+    }))(($sd0$Compile$resToIo)($res));
+  });
+});
+
+const $sd0$Compile$searchAncestorDirectories = (($isWantedFile, $searchDir) => {
+  return (($posix$IO$onResult)((($result) => {
+    return ((($result)[0] === "Err")
+      ? ($posix$IO$succeed)($core$Maybe$Nothing)
+      : ((($result)[0] === "Ok")
+        ? ((() => {
+          const $dirContents = ($result)[1];
+          return (($core$List$any)($isWantedFile, $dirContents)
+            ? ($posix$IO$succeed)(($core$Maybe$Just)($searchDir))
+            : ((() => {
+              const $parent = (path_resolve)(($core$Core$Cons)($searchDir, ($core$Core$Cons)("..", $core$Core$Nil)));
+              return ((sp_equal)($parent, $searchDir)
+                ? ($posix$IO$succeed)($core$Maybe$Nothing)
+                : ((($1) => {
+                  return ($sd0$Compile$searchAncestorDirectories)($isWantedFile, $1);
+                }))($parent));
+            }))());
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 238:4', (sp_toHuman)($result))));
+  })))((io_readDir)($searchDir));
+});
+
+const $sd0$Compile$umrToFileName = (($corePath, $umr) => {
+  const $$name = $umr;
+  const $name = ($$name)[2];
+  const $source = ($$name)[1];
+  return ((($source)[0] === "SourceDir")
+    ? ((() => {
+      const $d = ($source)[1];
+      return (path_resolve)(($core$Core$Cons)($d, ($core$Core$Cons)(($name + ".sp"), $core$Core$Nil)));
+    }))()
+    : ((($source)[0] === "Core")
+      ? (path_resolve)((sp_cons)($corePath, (sp_cons)("core", ((($1) => {
+        return (text_split)("/", $1);
+      }))(($name + ".sp")))))
+      : ((($source)[0] === "Posix")
+        ? (path_resolve)((sp_cons)($corePath, (sp_cons)("posix", ((($1) => {
+          return (text_split)("/", $1);
+        }))(($name + ".sp")))))
+        : ((($source)[0] === "Browser")
+          ? (path_resolve)((sp_cons)($corePath, (sp_cons)("browser", ((($1) => {
+            return (text_split)("/", $1);
+          }))(($name + ".sp")))))
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 137:4', (sp_toHuman)($source))))));
 });
 
 const $sd0$Compiler$MakeCanonical$erroro = (($ro, $pos, $msg) => {
@@ -9075,83 +9164,6 @@ const $sd0$Compiler$MakeCanonical$textToCanonicalModule = (($stripLocations, $ro
   })));
 });
 
-const $sd0$Compile$loadModule = (($meta, $umr, $fileName) => {
-  return (($posix$IO$onSuccess)((($moduleAsText) => {
-    const $params = ({
-      errorModule: ({
-        content: $moduleAsText,
-        fsPath: $fileName,
-      }),
-      meta: $meta,
-      umr: $umr,
-    });
-    return ($sd0$Compile$resToIo)(($sd0$Compiler$MakeCanonical$textToCanonicalModule)(false, $params));
-  })))((io_readFile)($fileName));
-});
-
-const $sd0$Compile$mergeWithCore = (($coreModule, $userModule) => {
-  const $0 = $userModule;
-  return (Object.assign)({}, $0, ({
-    aliasDefs: ($core$Dict$join)($coreModule.aliasDefs, $0.aliasDefs),
-    unionDefs: ($core$Dict$join)($coreModule.unionDefs, $0.unionDefs),
-    valueDefs: ($core$Dict$join)($coreModule.valueDefs, $0.valueDefs),
-  }));
-});
-
-const $sd0$Compile$onResSuccess = (($f) => {
-  return (($res) => {
-    return ((($0) => {
-      return (($posix$IO$onSuccess)($f))($0);
-    }))(($sd0$Compile$resToIo)($res));
-  });
-});
-
-const $sd0$Compile$searchAncestorDirectories = (($isWantedFile, $searchDir) => {
-  return (($posix$IO$onResult)((($result) => {
-    return ((($result)[0] === "Err")
-      ? ($posix$IO$succeed)($core$Maybe$Nothing)
-      : ((($result)[0] === "Ok")
-        ? ((() => {
-          const $dirContents = ($result)[1];
-          return (($core$List$any)($isWantedFile, $dirContents)
-            ? ($posix$IO$succeed)(($core$Maybe$Just)($searchDir))
-            : ((() => {
-              const $parent = (path_resolve)(($core$Core$Cons)($searchDir, ($core$Core$Cons)("..", $core$Core$Nil)));
-              return ((sp_equal)($parent, $searchDir)
-                ? ($posix$IO$succeed)($core$Maybe$Nothing)
-                : ((($1) => {
-                  return ($sd0$Compile$searchAncestorDirectories)($isWantedFile, $1);
-                }))($parent));
-            }))());
-        }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 246:4', (sp_toHuman)($result))));
-  })))((io_readDir)($searchDir));
-});
-
-const $sd0$Compile$umrToFileName = (($corePath, $umr) => {
-  const $$name = $umr;
-  const $name = ($$name)[2];
-  const $source = ($$name)[1];
-  return ((($source)[0] === "SourceDir")
-    ? ((() => {
-      const $d = ($source)[1];
-      return (path_resolve)(($core$Core$Cons)($d, ($core$Core$Cons)(($name + ".sp"), $core$Core$Nil)));
-    }))()
-    : ((($source)[0] === "Core")
-      ? (path_resolve)((sp_cons)($corePath, (sp_cons)("core", ((($1) => {
-        return (text_split)("/", $1);
-      }))(($name + ".sp")))))
-      : ((($source)[0] === "Posix")
-        ? (path_resolve)((sp_cons)($corePath, (sp_cons)("posix", ((($1) => {
-          return (text_split)("/", $1);
-        }))(($name + ".sp")))))
-        : ((($source)[0] === "Browser")
-          ? (path_resolve)((sp_cons)($corePath, (sp_cons)("browser", ((($1) => {
-            return (text_split)("/", $1);
-          }))(($name + ".sp")))))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 145:4', (sp_toHuman)($source))))));
-});
-
 const $sd0$Compiler$MakeEmittable$circularIsError = (($globalDefsByName, $names) => {
   const $zzz = (($name) => {
     const $$try1 = ($core$Dict$get)($name, $globalDefsByName);
@@ -9873,7 +9885,7 @@ const $sd0$Compiler$MakeEmittable$translateAll = (($modules) => {
   }))($circulars);
   const $s = $state;
   return ((sp_not_equal)($errors, $core$Core$Nil)
-    ? ($core$Result$Err)($errors)
+    ? (sp_todo)("translateAll: Err errors")
     : ($core$Result$Ok)(((($1) => {
       return ($core$Tuple$pair)($s, $1);
     }))(((($1) => {
@@ -12638,7 +12650,7 @@ const $sd0$Compiler$TypeCheck$compareParTypes = (($currentEquality, $index, $p1,
                     }), $0.univarEqualities),
                   }));
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2308:16', (sp_toHuman)($$try2)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2336:16', (sp_toHuman)($$try2)))));
         }))();
         const $0 = $state1;
         return (Object.assign)({}, $0, ({
@@ -12647,7 +12659,7 @@ const $sd0$Compiler$TypeCheck$compareParTypes = (($currentEquality, $index, $p1,
       }))()
       : (true
         ? ($sd0$Compiler$TypeCheck$addErError)(($sd0$Compiler$TypeCheck$Equality)($context, $pos, ($sd0$Compiler$TypeCheck$Why_FunctionInput)($index, $why), $f1, $f2), "recycling does not match", $state0)
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2296:4', (sp_toHuman)($$try1)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2324:4', (sp_toHuman)($$try1)))));
 });
 
 const $sd0$Compiler$TypeCheck$list_forWithIndex2 = (($c, $index, $aa, $bb, $f) => {
@@ -12714,7 +12726,7 @@ const $sd0$Compiler$TypeCheck$occurs = (($tyvarId, $type) => {
           }))()
           : ((($type)[0] === "TypeError")
             ? false
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2488:4', (sp_toHuman)($type)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2516:4', (sp_toHuman)($type)))))));
 });
 
 const $sd0$Compiler$TypeCheck$replaceUnificationVariable = (($equality, $tyvarId, $replacingType, $state) => {
@@ -12725,7 +12737,7 @@ const $sd0$Compiler$TypeCheck$replaceUnificationVariable = (($equality, $tyvarId
     }))()
     : (true
       ? false
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2454:8', (sp_toHuman)($replacingType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2482:8', (sp_toHuman)($replacingType))));
   return ($isSame
     ? $state
     : (($sd0$Compiler$TypeCheck$occurs)($tyvarId, $replacingType)
@@ -12786,7 +12798,7 @@ const $sd0$Compiler$TypeCheck$solveRecordExt = (($equality, $swapEquality, $tyva
               equalities: (sp_cons)(($sd0$Compiler$TypeCheck$Equality)(($sd0$Compiler$TypeCheck$Context_AttributeName)($name, $context), $pos, $why, $a, $b), $0.equalities),
             }));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2440:12', (sp_toHuman)($$try1))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2468:12', (sp_toHuman)($$try1))));
     }));
   }))($state);
   return ($sd0$Compiler$TypeCheck$replaceUnificationVariable)($equality, $tyvar1, ($sd0$Types$TypedAst$TypeRecord)($core$Maybe$Nothing, $attrs2), $newState);
@@ -12876,7 +12888,7 @@ const $sd0$Compiler$TypeCheck$solveOneEquality = (($head, $state) => {
                             }), $0.univarEqualities),
                           }));
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2369:28', (sp_toHuman)($$try2)))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2397:28', (sp_toHuman)($$try2)))));
                 }))();
                 return ((($0) => {
                   return ($sd0$Compiler$TypeCheck$list_forWithIndex2)($0, 0, $pars1, $pars2, (($1, $2, $3, $4) => {
@@ -12968,7 +12980,7 @@ const $sd0$Compiler$TypeCheck$solveOneEquality = (($head, $state) => {
                         ? ((($2) => {
                           return ($sd0$Compiler$TypeCheck$addErError)($head, "types are incompatible1", $2);
                         }))($state)
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2338:14', (sp_toHuman)($$try1)))))))))))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2366:14', (sp_toHuman)($$try1)))))))))))));
 });
 
 const $sd0$Compiler$TypeCheck$solveEqualities = (($oldState) => {
@@ -12988,7 +13000,7 @@ const $sd0$Compiler$TypeCheck$solveEqualities = (($oldState) => {
           }));
         }))()));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2322:4', (sp_toHuman)($$try1))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2350:4', (sp_toHuman)($$try1))));
 });
 
 const $sd0$Compiler$TypeCheck$addSub = (($newId, $newUni, $subs) => {
@@ -13002,7 +13014,7 @@ const $sd0$Compiler$TypeCheck$addSub = (($newId, $newUni, $subs) => {
       }))()
       : (true
         ? $uni
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2216:8', (sp_toHuman)($uni))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2244:8', (sp_toHuman)($uni))));
   });
   return ((($2) => {
     return ($core$Dict$insert)($newId, $newUni, $2);
@@ -13041,10 +13053,10 @@ const $sd0$Compiler$TypeCheck$solveUniquenessConstraint = (($env, $eq, $state, $
                       ((__re__ = ($sd0$Compiler$TypeCheck$addError)($env, $eq.pos, ($sd0$Compiler$TypeCheck$ErrorUnresolvableUniqueness)($eq, $subUni), $state)), ($state = (__re__)[1]), (__re__)[0]);
                       return $subs;
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2237:16', (sp_toHuman)($$try2)))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2265:16', (sp_toHuman)($$try2)))));
             }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2228:4', (sp_toHuman)($$try1)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2256:4', (sp_toHuman)($$try1)))),
     $state,
   ]);
 });
@@ -13063,7 +13075,7 @@ const $sd0$Compiler$TypeCheck$solveUniquenessConstraints = (($env, $eqs, $state,
             return ((__re__ = ($sd0$Compiler$TypeCheck$solveUniquenessConstraint)($env, $head, $state, $3)), ($state = (__re__)[1]), (__re__)[0]);
           }))($subs));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2252:4', (sp_toHuman)($eqs)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2280:4', (sp_toHuman)($eqs)))),
     $state,
   ]);
 });
@@ -13473,6 +13485,109 @@ const $sd0$Types$TypedAst$typeTyvars = (($type) => {
               : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/TypedAst.sp 342:4', (sp_toHuman)($type))))))));
 });
 
+const $sd0$Compiler$TypeCheck$addValueToGlobalEnv = (($state, $umr, $def, $env) => {
+  const $nameToIdAndClasses = ((() => {
+    const $zzzz = (($name, $$allowFunctions) => {
+      const $allowFunctions = $$allowFunctions.allowFunctions;
+      return ({
+        first: ((__re__ = ($sd0$Compiler$TypeCheck$newTyvarId)($state)), ($state = (__re__)[1]), (__re__)[0]),
+        second: ({
+          allowFunctions: $allowFunctions,
+          generalizedAt: $sd0$Types$Pos$G,
+          generalizedFor: ($sd0$Types$Ast$RefLocal)(""),
+          originalName: $name,
+        }),
+      });
+    });
+    return ($core$Dict$map)($zzzz, $def.tyvars);
+  }))();
+  const $nameToType = ($core$Dict$map)((($k, $$classes) => {
+    const $id = $$classes.first;
+    const $classes = $$classes.second;
+    return ($sd0$Types$TypedAst$TypeVar)($id);
+  }), $nameToIdAndClasses);
+  const $tyvarIdToClasses = ($core$Dict$fromList)(($core$Dict$values)($nameToIdAndClasses));
+  const $originalIdToNewIdAndUnivar = ((($1) => {
+    return ($core$Dict$map)((($originalId, _1) => {
+      return ({
+        first: ((__re__ = ($sd0$Compiler$TypeCheck$newTyvarId)($state)), ($state = (__re__)[1]), (__re__)[0]),
+        second: ({
+          originalId: $originalId,
+        }),
+      });
+    }), $1);
+  }))($def.univars);
+  const $originalIdToUniqueness = ((($1) => {
+    return ($core$Dict$map)((($originalId, $$newId) => {
+      const $newId = $$newId.first;
+      const $univar = $$newId.second;
+      return $newId;
+    }), $1);
+  }))($originalIdToNewIdAndUnivar);
+  const $freeUnivars = ($core$Dict$fromList)(($core$Dict$values)($originalIdToNewIdAndUnivar));
+  return ([
+    ($core$Dict$for)($env, ($sd0$Types$CanonicalAst$patternNames)($def.pattern), (($valueName, $valueStuff, $envX) => {
+      const $$try1 = $valueStuff.maybeAnnotation;
+      return ((($$try1)[0] === "Nothing")
+        ? $envX
+        : ((($$try1)[0] === "Just")
+          ? ((() => {
+            const $annotation = ($$try1)[1];
+            const $raw = ((__re__ = ($sd0$Compiler$TypeCheck$translateRawType)($env, $nameToType, $originalIdToUniqueness, $state, $annotation)), ($state = (__re__)[1]), (__re__)[0]);
+            const $instance = ({
+              definedAt: $valueStuff.pos,
+              freeTyvars: ($core$Dict$intersect)($tyvarIdToClasses, ($sd0$Types$TypedAst$typeTyvars)($raw)),
+              freeUnivars: $freeUnivars,
+              type: ({
+                raw: $raw,
+                uni: $sd0$Types$Ast$Imm,
+              }),
+            });
+            const $ref = ($sd0$Types$Ast$RefGlobal)(((($1) => {
+              return ($sd0$Types$Meta$USR)($umr, $1);
+            }))($valueName));
+            const $0 = $envX;
+            return (Object.assign)({}, $0, ({
+              variables: ($core$Dict$insert)($ref, $instance, $0.variables),
+            }));
+          }))()
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2046:8', (sp_toHuman)($$try1))));
+    })),
+    $state,
+  ]);
+});
+
+const $sd0$Compiler$TypeCheck$addNativeValueToGlobalEnv = (($state, $$name, $$type, $env) => {
+  const $umr = ($$name)[1];
+  const $name = ($$name)[2];
+  const $type = $$type.type;
+  const $zzz = (($tyvarName, $pos) => {
+    return ({
+      allowFunctions: true,
+    });
+  });
+  const $tyvars = ((($1) => {
+    return ($core$Dict$map)($zzz, $1);
+  }))(($sd0$Types$CanonicalAst$typeTyvars)($type));
+  return ([
+    ((__re__ = ($sd0$Compiler$TypeCheck$addValueToGlobalEnv)($state, $umr, ({
+      body: ($sd0$Types$CanonicalAst$LiteralText)($sd0$Types$Pos$N, $name),
+      directConsDeps: $core$Dict$empty,
+      directTypeDeps: $core$Dict$empty,
+      directValueDeps: $core$Dict$empty,
+      native: true,
+      pattern: ($sd0$Types$CanonicalAst$PatternAny)($sd0$Types$Pos$N, ({
+        maybeAnnotation: ($core$Maybe$Just)($type),
+        maybeName: ($core$Maybe$Just)($name),
+      })),
+      tyvars: $tyvars,
+      uni: $sd0$Types$Ast$Imm,
+      univars: $core$Dict$empty,
+    }), $env)), ($state = (__re__)[1]), (__re__)[0]),
+    $state,
+  ]);
+});
+
 const $sd0$Compiler$TypeCheck$addConstructorToGlobalEnv = (($state, $paramsByName, $freeTyvars, $name, $caConstructor, $env) => {
   const $$umr = $caConstructor.typeUsr;
   const $umr = ($$umr)[1];
@@ -13555,78 +13670,6 @@ const $sd0$Compiler$TypeCheck$addUnionTypeAndConstructorsToGlobalEnv = (($state,
   ]);
 });
 
-const $sd0$Compiler$TypeCheck$addValueToGlobalEnv = (($state, $umr, $def, $env) => {
-  const $nameToIdAndClasses = ((() => {
-    const $zzzz = (($name, $$allowFunctions) => {
-      const $allowFunctions = $$allowFunctions.allowFunctions;
-      return ({
-        first: ((__re__ = ($sd0$Compiler$TypeCheck$newTyvarId)($state)), ($state = (__re__)[1]), (__re__)[0]),
-        second: ({
-          allowFunctions: $allowFunctions,
-          generalizedAt: $sd0$Types$Pos$G,
-          generalizedFor: ($sd0$Types$Ast$RefLocal)(""),
-          originalName: $name,
-        }),
-      });
-    });
-    return ($core$Dict$map)($zzzz, $def.tyvars);
-  }))();
-  const $nameToType = ($core$Dict$map)((($k, $$classes) => {
-    const $id = $$classes.first;
-    const $classes = $$classes.second;
-    return ($sd0$Types$TypedAst$TypeVar)($id);
-  }), $nameToIdAndClasses);
-  const $tyvarIdToClasses = ($core$Dict$fromList)(($core$Dict$values)($nameToIdAndClasses));
-  const $originalIdToNewIdAndUnivar = ((($1) => {
-    return ($core$Dict$map)((($originalId, _1) => {
-      return ({
-        first: ((__re__ = ($sd0$Compiler$TypeCheck$newTyvarId)($state)), ($state = (__re__)[1]), (__re__)[0]),
-        second: ({
-          originalId: $originalId,
-        }),
-      });
-    }), $1);
-  }))($def.univars);
-  const $originalIdToUniqueness = ((($1) => {
-    return ($core$Dict$map)((($originalId, $$newId) => {
-      const $newId = $$newId.first;
-      const $univar = $$newId.second;
-      return $newId;
-    }), $1);
-  }))($originalIdToNewIdAndUnivar);
-  const $freeUnivars = ($core$Dict$fromList)(($core$Dict$values)($originalIdToNewIdAndUnivar));
-  return ([
-    ($core$Dict$for)($env, ($sd0$Types$CanonicalAst$patternNames)($def.pattern), (($valueName, $valueStuff, $envX) => {
-      const $$try1 = $valueStuff.maybeAnnotation;
-      return ((($$try1)[0] === "Nothing")
-        ? $envX
-        : ((($$try1)[0] === "Just")
-          ? ((() => {
-            const $annotation = ($$try1)[1];
-            const $raw = ((__re__ = ($sd0$Compiler$TypeCheck$translateRawType)($env, $nameToType, $originalIdToUniqueness, $state, $annotation)), ($state = (__re__)[1]), (__re__)[0]);
-            const $instance = ({
-              definedAt: $valueStuff.pos,
-              freeTyvars: ($core$Dict$intersect)($tyvarIdToClasses, ($sd0$Types$TypedAst$typeTyvars)($raw)),
-              freeUnivars: $freeUnivars,
-              type: ({
-                raw: $raw,
-                uni: $sd0$Types$Ast$Imm,
-              }),
-            });
-            const $ref = ($sd0$Types$Ast$RefGlobal)(((($1) => {
-              return ($sd0$Types$Meta$USR)($umr, $1);
-            }))($valueName));
-            const $0 = $envX;
-            return (Object.assign)({}, $0, ({
-              variables: ($core$Dict$insert)($ref, $instance, $0.variables),
-            }));
-          }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2019:8', (sp_toHuman)($$try1))));
-    })),
-    $state,
-  ]);
-});
-
 const $sd0$Compiler$TypeCheck$initEnv = ({
   annotatedTyvarsByName: $core$Dict$empty,
   annotatedUnivarsByOriginalId: $core$Dict$empty,
@@ -13673,7 +13716,7 @@ const $sd0$Compiler$TypeCheck$expandAndInsertAlias = (($state, $allAliases, $usr
       }))()
       : ((($$try1)[0] === "Nothing")
         ? ($sd0$Compiler$TypeCheck$bug)("alias not found")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2124:8', (sp_toHuman)($$try1))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2151:8', (sp_toHuman)($$try1))));
   }))();
   const $$pars = ($sd0$Compiler$TypeCheck$namedParsToIdParsAndDict)($aliasDef.pars);
   const $typeByName = $$pars.second;
@@ -13706,7 +13749,7 @@ const $sd0$Compiler$TypeCheck$getAliasDependencies = (($allAliases, $aliasDef) =
   }))($aliasDef.directTypeDeps));
 });
 
-const $sd0$Compiler$TypeCheck$initStateAndGlobalEnv = (($allModules) => {
+const $sd0$Compiler$TypeCheck$initStateAndGlobalEnv = (($nativeValues, $allModules) => {
   let $state = ($sd0$Compiler$TypeCheck$initState)(0);
   const $allAliases = ((($0) => {
     return ($core$List$for)($0, $allModules, (($mod, $zz) => {
@@ -13751,6 +13794,10 @@ const $sd0$Compiler$TypeCheck$initStateAndGlobalEnv = (($allModules) => {
   const $env = ((($0) => {
     return ($core$List$for)($0, $allModules, $doStuff);
   }))(((($0) => {
+    return ($core$Dict$for)($0, $nativeValues, (($1, $2, $3) => {
+      return ((__re__ = ($sd0$Compiler$TypeCheck$addNativeValueToGlobalEnv)($state, $1, $2, $3)), ($state = (__re__)[1]), (__re__)[0]);
+    }));
+  }))(((($0) => {
     return ($core$List$for)($0, $sd0$Compiler$CoreTypes$allDefs, (($2, $3) => {
       return ((__re__ = ($sd0$Compiler$TypeCheck$addUnionTypeAndConstructorsToGlobalEnv)($state, null, $2, $3)), ($state = (__re__)[1]), (__re__)[0]);
     }));
@@ -13759,7 +13806,7 @@ const $sd0$Compiler$TypeCheck$initStateAndGlobalEnv = (($allModules) => {
     return (Object.assign)({}, $0, ({
       expandedAliases: $expandedAliases,
     }));
-  }))()));
+  }))())));
   const $$try1 = ((__re__ = (array_toList)($state.errors)), ($state.errors = (__re__)[1]), (__re__)[0]);
   return ((($$try1)[0] === "Nil")
     ? ($core$Result$Ok)(({
@@ -13775,7 +13822,7 @@ const $sd0$Compiler$TypeCheck$initStateAndGlobalEnv = (($allModules) => {
           }), $1);
         }))($list)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2193:4', (sp_toHuman)($$try1))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2221:4', (sp_toHuman)($$try1))));
 });
 
 const $sd0$Compiler$UniquenessCheck$addPatternToEnv = (($state, $pattern, $env) => {
@@ -14623,6 +14670,87 @@ const $sd0$Compiler$UniquenessCheck$doModule = (($module) => {
     : ($core$Result$Err)(($sd0$Compiler$Error$Nested)($errors)));
 });
 
+const $sd0$Compiler$Compiler$compileModules = (($config, $modulesAsText, $mainModule) => {
+  (sp_log)("Loading modules...", "");
+  const $loadModule = (($$content) => {
+    const $umr = $$content.first;
+    const $content = $$content.second;
+    return ($sd0$Compiler$MakeCanonical$textToCanonicalModule)(false, ({
+      errorModule: ({
+        content: $content,
+        fsPath: ($config.umrToFsPath)($umr),
+      }),
+      meta: $config.meta,
+      umr: $umr,
+    }));
+  });
+  return (($core$Result$onOk)((($userModules) => {
+    (sp_log)("Type checking...", "");
+    return (($core$Result$onOk)((($$luv) => {
+      const $luv = $$luv.first;
+      const $typeCheckGlobalEnv = $$luv.second;
+      let $lastUnificationVarId = (basics_cloneImm)($luv);
+      return (($core$Result$onOk)((($typedModules) => {
+        (sp_log)("Uniqueness check...", "");
+        return (($core$Result$onOk)((($modulesWithDestruction) => {
+          (sp_log)("Emittable AST...", "");
+          return (($core$Result$onOk)((($$emittableStatements) => {
+            const $meState = $$emittableStatements.first;
+            const $emittableStatements = $$emittableStatements.second;
+            let $emittableState = (basics_cloneImm)($meState);
+            (sp_log)("Platform...", "");
+            const $programWithoutRuntime = ((__re__ = ($config.platform.compileStatements)(({
+              constructors: ($core$Dict$toList)(($core$Dict$map)((($k, $v) => {
+                return $v.type;
+              }), $typeCheckGlobalEnv.constructors)),
+            }), $emittableState, $emittableStatements)), ($emittableState = (__re__)[1]), (__re__)[0]);
+            const $mainName = ((($1) => {
+              return ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($emittableState, $1)), ($emittableState = (__re__)[1]), (__re__)[0]);
+            }))(($sd0$Types$Meta$USR)($mainModule, "main"));
+            const $mainType = ((() => {
+              const $$try1 = ($core$List$find)((($mod) => {
+                return (sp_equal)($mod.umr, $mainModule);
+              }), $modulesWithDestruction);
+              return ((($$try1)[0] === "Nothing")
+                ? (sp_todo)("error can't find specified mainModule")
+                : ((($$try1)[0] === "Just")
+                  ? ((() => {
+                    const $mod = ($$try1)[1];
+                    const $getMain = (($def) => {
+                      return ($core$Dict$get)("main", ($sd0$Types$TypedAst$patternNames)($def.pattern));
+                    });
+                    const $$try2 = ((($1) => {
+                      return ($core$List$filterMap)($getMain, $1);
+                    }))(($core$Dict$values)($mod.valueDefs));
+                    return (((($$try2)[0] === "Cons") && ((($$try2)[2])[0] === "Nil"))
+                      ? ((() => {
+                        const $type = ($$try2)[1].type;
+                        return $type.raw;
+                      }))()
+                      : (true
+                        ? (sp_todo)("specified mainModule does not have a 'main'")
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Compiler.sp 110:16', (sp_toHuman)($$try2))));
+                  }))()
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Compiler.sp 101:8', (sp_toHuman)($$try1))));
+            }))();
+            return ($core$Result$Ok)(($sd0$Compiler$Compiler$FUCK_AROUND_AND_FIND_OUT)($mainName, $mainType, $programWithoutRuntime));
+          })))(($sd0$Compiler$MakeEmittable$translateAll)($modulesWithDestruction));
+        })))(((($1) => {
+          return ($core$List$mapRes)((($0) => {
+            return ($sd0$Compiler$UniquenessCheck$doModule)($0);
+          }), $1);
+        }))($typedModules));
+      })))(((($1) => {
+        return ($core$List$mapRes)((($2) => {
+          return ((__re__ = ($sd0$Compiler$TypeCheck$doModule)($lastUnificationVarId, $typeCheckGlobalEnv, $2)), ($lastUnificationVarId = (__re__)[1]), (__re__)[0]);
+        }), $1);
+      }))($userModules));
+    })))(($sd0$Compiler$TypeCheck$initStateAndGlobalEnv)($config.nativeValues, $userModules));
+  })))(((($1) => {
+    return ($core$List$mapRes)($loadModule, $1);
+  }))($modulesAsText));
+});
+
 const $sd0$Prelude$compare = ({
   nonFn: ($core$Core$Cons)("a", $core$Core$Nil),
   type: ($sd0$Prelude$tyFn)(($core$Core$Cons)(($sd0$Prelude$tyVar)("a"), ($core$Core$Cons)(($sd0$Prelude$tyVar)("a"), $core$Core$Nil)), $sd0$Compiler$CoreTypes$number),
@@ -14751,6 +14879,28 @@ const $sd0$Prelude$coreModulesByUmr = ((($0) => {
   return ($sd0$Prelude$insertUnop)($sd0$Prelude$unaryPlus, $1);
 }))($core$Dict$empty))));
 
+const $sd0$Prelude$coreModules = ($core$Dict$values)($sd0$Prelude$coreModulesByUmr);
+
+const $sd0$Prelude$coreNativeValues = ($core$List$for)($core$Dict$empty, $sd0$Prelude$coreModules, (($module, $d) => {
+  return ($core$Dict$for)($d, $module.valueDefs, (($pa, $def, $dd) => {
+    const $$try1 = $def.pattern;
+    return (((($$try1)[0] === "PatternAny") && (((($$try1)[2].maybeAnnotation)[0] === "Just") && ((($$try1)[2].maybeName)[0] === "Just")))
+      ? ((() => {
+        const $type = (($$try1)[2].maybeAnnotation)[1];
+        const $name = (($$try1)[2].maybeName)[1];
+        const $usr = ($sd0$Types$Meta$USR)($module.umr, $name);
+        const $value = $sd0$Compiler$Compiler$ExposedValue;
+        return ($core$Dict$insert)($usr, ({
+          type: $type,
+          value: $value,
+        }), $dd);
+      }))()
+      : (true
+        ? (sp_todo)("Compiler bug: bad pattern")
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Prelude.sp 503:12', (sp_toHuman)($$try1))));
+  }));
+}));
+
 const $sd0$Compile$compileMain = (($pars) => {
   const $entryModulePath = (path_resolve)(($core$Core$Cons)($pars.entryModulePath, $core$Core$Nil));
   const $entryModuleDir = (path_dirname)($entryModulePath);
@@ -14762,14 +14912,14 @@ const $sd0$Compile$compileMain = (($pars) => {
           return (sp_equal)(($sd0$Compile$umrToFileName)("", $umr), $entryModulePath);
         }), $1);
       }))(($core$Dict$values)($meta.moduleVisibleAsToUmr));
-      const $entryUsr = ((($maybeEntryUmr)[0] === "Nothing")
+      const $entryUmr = ((($maybeEntryUmr)[0] === "Nothing")
         ? (sp_todo)(("Error: you are asking me to compile module " + ($entryModulePath + " but I can't find it anywhere.")))
         : ((($maybeEntryUmr)[0] === "Just")
           ? ((() => {
             const $umr = ($maybeEntryUmr)[1];
-            return ($sd0$Types$Meta$USR)($umr, "main");
+            return $umr;
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 344:8', (sp_toHuman)($maybeEntryUmr))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 314:8', (sp_toHuman)($maybeEntryUmr))));
       return (($posix$IO$onSuccess)((($maybeCorelibParent) => {
         const $corePath = ((($maybeCorelibParent)[0] === "Nothing")
           ? (sp_todo)(("Error: I expect to find the " + ($sd0$Compile$libDirectoryName + (" directory next to the spcc executable " + ($pars.selfPath + " but I can't find it.")))))
@@ -14778,72 +14928,36 @@ const $sd0$Compile$compileMain = (($pars) => {
               const $p = ($maybeCorelibParent)[1];
               return (path_resolve)(($core$Core$Cons)($p, ($core$Core$Cons)($sd0$Compile$libDirectoryName, $core$Core$Nil)));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 362:8', (sp_toHuman)($maybeCorelibParent))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 331:8', (sp_toHuman)($maybeCorelibParent))));
         const $outputFile = ($core$Maybe$withDefault)($pars.platform.defaultOutputPath, $pars.maybeOutputPath);
-        (sp_log)("Loading modules...", "");
-        const $loadAllModules = (io_parallel)(((($1) => {
-          return ($core$List$map)((($umr) => {
-            return ($sd0$Compile$loadModule)($meta, $umr, ($sd0$Compile$umrToFileName)($corePath, $umr));
-          }), $1);
-        }))(($core$Dict$values)($meta.moduleVisibleAsToUmr)));
-        return (($posix$IO$onSuccess)((($userModules) => {
-          const $modules = ((($0) => {
-            return ($core$List$for)($0, $userModules, (($module, $d) => {
-              const $zzz = (($maybeCore) => {
-                return ((($maybeCore)[0] === "Nothing")
-                  ? ($core$Maybe$Just)($module)
-                  : ((($maybeCore)[0] === "Just")
-                    ? ((() => {
-                      const $core = ($maybeCore)[1];
-                      return ($core$Maybe$Just)(($sd0$Compile$mergeWithCore)($core, $module));
-                    }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 389:16', (sp_toHuman)($maybeCore))));
-              });
-              return ($core$Dict$update)($module.umr, $zzz, $d);
+        const $loadFile = (($umr) => {
+          return (($posix$IO$onSuccess)((($content) => {
+            return ($posix$IO$succeed)(({
+              first: $umr,
+              second: $content,
             }));
-          }))($sd0$Prelude$coreModulesByUmr);
-          (sp_log)("Solving globals...", "");
-          return (($sd0$Compile$onResSuccess)((($$luv) => {
-            const $luv = $$luv.first;
-            const $typeCheckGlobalEnv = $$luv.second;
-            (sp_log)("Type checking...", "");
-            let $lastUnificationVarId = (basics_cloneImm)($luv);
-            return (($posix$IO$onSuccess)((($typedModules) => {
-              (sp_log)("Uniqueness check...", "");
-              return (($posix$IO$onSuccess)((($modulesWithDestruction) => {
-                (sp_log)("Emittable AST...", "");
-                return (($sd0$Compile$onResSuccess)((($$emittableStatements) => {
-                  const $meState = $$emittableStatements.first;
-                  const $emittableStatements = $$emittableStatements.second;
-                  let $emittableState = (basics_cloneImm)($meState);
-                  (sp_log)("= Platform specific stuff =", "");
-                  const $js = ((__re__ = ($pars.platform.compile)(({
-                    constructors: ($core$Dict$toList)(($core$Dict$map)((($k, $v) => {
-                      return $v.type;
-                    }), $typeCheckGlobalEnv.constructors)),
-                  }), $entryUsr, $emittableState, $emittableStatements)), ($emittableState = (__re__)[1]), (__re__)[0]);
-                  return (($posix$IO$onSuccess)(((_0) => {
-                    return ((($0) => {
-                      return (io_writeStdout)($0);
-                    }))(("---> " + ($outputFile + " written. =)")));
-                  })))((io_writeFile)($outputFile, $js));
-                })))(((($1) => {
-                  return ($core$Result$mapError)((($e) => {
-                    return (sp_todo)("MakeEmittable.translateAll returned Err");
-                  }), $1);
-                }))(($sd0$Compiler$MakeEmittable$translateAll)($modulesWithDestruction)));
-              })))((io_parallel)(((($1) => {
-                return ($core$List$map)((($m) => {
-                  return ($sd0$Compile$resToIo)(($sd0$Compiler$UniquenessCheck$doModule)($m));
-                }), $1);
-              }))($typedModules)));
-            })))((io_parallel)(((($1) => {
-              return ($core$List$map)((($m) => {
-                return ($sd0$Compile$resToIo)(((__re__ = ($sd0$Compiler$TypeCheck$doModule)($lastUnificationVarId, $typeCheckGlobalEnv, $m)), ($lastUnificationVarId = (__re__)[1]), (__re__)[0]));
-              }), $1);
-            }))(($core$Dict$values)($modules))));
-          })))(($sd0$Compiler$TypeCheck$initStateAndGlobalEnv)(($core$Dict$values)($modules)));
-        })))($loadAllModules);
+          })))((io_readFile)(($sd0$Compile$umrToFileName)($corePath, $umr)));
+        });
+        return (($posix$IO$onSuccess)((($modulesAsText) => {
+          return (($sd0$Compile$onResSuccess)((($compiledValue) => {
+            return (($posix$IO$onSuccess)(((_0) => {
+              return ((($0) => {
+                return (io_writeStdout)($0);
+              }))(("---> " + ($outputFile + " written. =)")));
+            })))(((($1) => {
+              return (io_writeFile)($outputFile, $1);
+            }))(($pars.platform.makeExecutable)($compiledValue)));
+          })))(($sd0$Compiler$Compiler$compileModules)(({
+            meta: $meta,
+            nativeValues: $sd0$Prelude$coreNativeValues,
+            platform: $pars.platform,
+            umrToFsPath: (($1) => {
+              return ($sd0$Compile$umrToFileName)($corePath, $1);
+            }),
+          }), $modulesAsText, $entryUmr));
+        })))((io_parallel)(((($1) => {
+          return ($core$List$map)($loadFile, $1);
+        }))(($core$Dict$values)($meta.moduleVisibleAsToUmr))));
       })))(((($1) => {
         return ($sd0$Compile$searchAncestorDirectories)((($$fileName) => {
           const $isDirectory = $$fileName.first;
@@ -14863,12 +14977,43 @@ const $sd0$Compile$compileMain = (($pars) => {
 
 const $sd0$Compile$coreDirName = "core";
 
-const $sd0$Compile$sdItemToUMR = (($source, $fileName) => {
-  return ((($1) => {
-    return ($sd0$Types$Meta$UMR)($source, $1);
-  }))(((($2) => {
-    return ($core$Text$replace)(".sp", "", $2);
-  }))($fileName));
+const $sd0$Compile$getMainName = (($targetsByName) => {
+  const $$try1 = ($core$Dict$toList)($targetsByName);
+  return ((($$try1)[0] === "Cons")
+    ? ((() => {
+      const $name = ($$try1)[1].first;
+      const $type = ($$try1)[1].second;
+      return ($core$Result$Ok)($name);
+    }))()
+    : (true
+      ? ((() => {
+        const $z = $$try1;
+        (sp_log)("-->", $z);
+        return (sp_todo)("main type should be IO Int");
+      }))()
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compile.sp 263:4', (sp_toHuman)($$try1))));
+});
+
+const $sd0$Compile$loadModule = (($meta, $umr, $fileName) => {
+  return (($posix$IO$onSuccess)((($moduleAsText) => {
+    const $params = ({
+      errorModule: ({
+        content: $moduleAsText,
+        fsPath: $fileName,
+      }),
+      meta: $meta,
+      umr: $umr,
+    });
+    return ($sd0$Compile$resToIo)(($sd0$Compiler$MakeCanonical$textToCanonicalModule)(false, $params));
+  })))((io_readFile)($fileName));
+});
+
+const $sd0$Compiler$Compiler$dynamicLoad = (($compiledValue, $variantConstructor) => {
+  return (sp_todo)("native");
+});
+
+const $sd0$Compiler$Compiler$expose = (($a) => {
+  return (sp_todo)("native");
 });
 
 const $sd0$Compiler$CoreTypes$false = ($sd0$Compiler$CoreTypes$makeUsr)("False");
@@ -15722,8 +15867,6 @@ const $sd0$Compiler$TypeCheck_Test$normalizeOut = (($out) => {
   });
 });
 
-const $sd0$Prelude$coreModules = ($core$Dict$values)($sd0$Prelude$coreModulesByUmr);
-
 const $sd0$Compiler$TypeCheck_Test$infer = (($targetName) => {
   return (($code) => {
     const $params = ({
@@ -15793,7 +15936,9 @@ const $sd0$Compiler$TypeCheck_Test$infer = (($targetName) => {
         })))(($sd0$Compiler$TestHelpers$resErrorToStrippedText)(((($2) => {
           return ((__re__ = ($sd0$Compiler$TypeCheck$doModule)($lastUnificationVarId, $typeCheckGlobalEnv, $2)), ($lastUnificationVarId = (__re__)[1]), (__re__)[0]);
         }))($caModule)));
-      })))(($sd0$Compiler$TestHelpers$resErrorToStrippedText)(($sd0$Compiler$TypeCheck$initStateAndGlobalEnv)($modules)));
+      })))(($sd0$Compiler$TestHelpers$resErrorToStrippedText)(((($1) => {
+        return ($sd0$Compiler$TypeCheck$initStateAndGlobalEnv)($core$Dict$empty, $1);
+      }))($modules)));
     })))(($sd0$Compiler$TestHelpers$resErrorToStrippedText)(((($1) => {
       return ($sd0$Compiler$MakeCanonical$textToCanonicalModule)(true, $1);
     }))($params)));
@@ -16010,63 +16155,57 @@ const $sd1$Uniqueness$specs = ($sd0$Test$Group)("Uniqueness", ($core$Core$Cons)(
 
 const $sd0$Main$allTests = ($core$Core$Cons)($sd0$Compiler$Lexer_Test$tests, ($core$Core$Cons)($sd0$Compiler$Parser_Test$tests, ($core$Core$Cons)($sd0$Compiler$MakeCanonical_Test$tests, ($core$Core$Cons)($sd0$Compiler$TypeCheck_Test$tests, ($core$Core$Cons)($core$Hash_Test$tests, ($core$Core$Cons)($core$Array_Test$tests, ($core$Core$Cons)($core$List_Test$tests, ($core$Core$Cons)($core$Dict_Test$tests, ($core$Core$Cons)($sd0$RefHierarchy_Test$tests, ($core$Core$Cons)($sd1$Uniqueness$specs, $core$Core$Nil))))))))));
 
-const $sd0$Platforms$Browser$virtualDomModule = (($1) => {
-  return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Browser, "VirtualDom"), $1);
+const $sd0$Platforms$Browser$modules = "\nlibrary =\n    source = \"core:browser\"\n\n    module =\n        path = Browser";
+
+const $sd0$Platforms$Browser$platform = ({
+  compileStatements: ((_0, $z, _2) => {
+    return ([
+      (sp_todo)("Browser: compileStatements"),
+      $z,
+    ]);
+  }),
+  defaultModules: ($sd0$DefaultModules$asText + $sd0$Platforms$Browser$modules),
+  defaultOutputPath: "index.js",
+  makeExecutable: ((_0) => {
+    return (sp_todo)("Browser: makeExecutable");
+  }),
+  name: "browser",
+  quickstart: "TODO",
 });
 
-const $sd0$Platforms$Browser$footer = (($state, $targetUsr) => {
-  const $main = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($state, $targetUsr)), ($state = (__re__)[1]), (__re__)[0]);
-  const $updateDomNode = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($state, ($sd0$Platforms$Browser$virtualDomModule)("updateDomNode"))), ($state = (__re__)[1]), (__re__)[0]);
-  return ([
-    ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model = " + ($main + (".update(msg, model);\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom = " + ($main + (".view(model);\n\n        " + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model = " + ($main + ".init(null);\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n    ")))))))),
-    $state,
-  ]);
-});
-
-const $sd0$Platforms$Browser$header = "(function (win) {\n";
-
-const $sd0$Platforms$Browser$overrides = ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsCreateTextNode"),
-  second: "virtualDom_jsCreateTextNode",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsCreateElement"),
-  second: "virtualDom_jsCreateElement",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsReplaceWith"),
-  second: "virtualDom_jsReplaceWith",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsAppendChild"),
-  second: "virtualDom_jsAppendChild",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsSetAttribute"),
-  second: "virtualDom_jsSetAttribute",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsRemoveAttribute"),
-  second: "virtualDom_jsRemoveAttribute",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsAddEventListener"),
-  second: "virtualDom_jsAddEventListener",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("jsRemoveEventListener"),
-  second: "virtualDom_jsRemoveEventListener",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("eventToText"),
-  second: "virtualDom_eventToText",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("eventToFloat"),
-  second: "virtualDom_eventToFloat",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("setChild"),
-  second: "virtualDom_setChild",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("removeAllChildrenStartingFromIndex"),
-  second: "virtualDom_removeAllChildrenStartingFromIndex",
-}), ($core$Core$Cons)(({
-  first: ($sd0$Platforms$Browser$virtualDomModule)("unsafeExecuteJavaScript"),
-  second: "virtualDom_unsafeExecuteJavaScript",
-}), $core$Core$Nil)))))))))))));
-
-const $sd0$Platforms$Browser$runtime = "const crawlObject = (path, type, object) => {\n\n    while(path[0] === 'Cons') {\n\n        const head = path[1];\n        const tail = path[2];\n\n        const o = object[head];\n\n        if (o === undefined) {\n            return [ 'Err', 'no field named: ' + head ];\n        }\n\n        object = o;\n        path = path[2];\n    }\n\n    return typeof object === type\n        ? [ 'Ok', object ]\n        : [ 'Err', 'wrong type: ' + typeof object ]\n        ;\n}\n\n\nconst virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);\nconst virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);\n\n// TODO ensure that those who must return None actually return None (ie, null)\nconst virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);\nconst virtualDom_jsCreateElement = (tag) => document.createElement(tag);\nconst virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }\nconst virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);\nconst virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);\nconst virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);\n\n\nconst virtualDom_setChild = (upd, index, parentNode) => {\n    const child = parentNode.childNodes[index];\n    child && upd(child);\n};\n\n\nconst virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {\n    while(parentNode.childNodes[index]) {\n      parentNode.removeChild(parentNode.childNodes[index]);\n    }\n}\n\n\n// an EventHandler is a function that takes an Event and produces a msg\nconst virtualDom_jsAddEventListener = (eventName, handler, node) => {\n\n    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};\n\n    if (node.squarepantsEventHandlers[eventName]) {\n      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    }\n\n    const onEvent = (event) => dispatch(handler(event));\n    node.squarepantsEventHandlers[eventName] = onEvent;\n    node.addEventListener(eventName, onEvent);\n};\n\nconst virtualDom_jsRemoveEventListener = (eventName, handler, node) => {\n    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    node.squarepantsEventHandlers[eventName] = undefined;\n}\n\nconst virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {\n    let error = null;\n\n    try {\n        const fn = functionName.split('.').reduce((obj, name) => obj[name], window);\n        fn(argument);\n    } catch (e) {\n      error = e;\n    }\n\n    return error\n        ? [ 'Err', error.message ]\n        : [ 'Ok', null ]\n}\n";
+const $sd0$Platforms$Posix$overrides = ((() => {
+  const $ioModule = (($1) => {
+    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "IO"), $1);
+  });
+  const $pathModule = (($1) => {
+    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "Path"), $1);
+  });
+  return ($core$Core$Cons)(({
+    first: ($ioModule)("parallel"),
+    second: "io_parallel",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("readDir"),
+    second: "io_readDir",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("readFile"),
+    second: "io_readFile",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("writeFile"),
+    second: "io_writeFile",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("writeStdout"),
+    second: "io_writeStdout",
+  }), ($core$Core$Cons)(({
+    first: ($ioModule)("writeStderr"),
+    second: "io_writeStderr",
+  }), ($core$Core$Cons)(({
+    first: ($pathModule)("dirname"),
+    second: "path_dirname",
+  }), ($core$Core$Cons)(({
+    first: ($pathModule)("resolve"),
+    second: "path_resolve",
+  }), $core$Core$Nil))))))));
+}))();
 
 const $sd0$Targets$Javascript$EmittableToJs$accessAttrs = (($attrPath, $e) => {
   return ($core$List$for)($e, $attrPath, $sd0$Types$JavascriptAst$AccessWithDot);
@@ -16099,7 +16238,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateVariable = (($env, $variabl
     }))()
     : ((($$try1)[0] === "Nothing")
       ? ($sd0$Types$JavascriptAst$Var)($variableName)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 175:4', (sp_toHuman)($$try1))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 207:4', (sp_toHuman)($$try1))));
 });
 
 const $sd0$Targets$Javascript$EmittableToJs$makeCall = (($env, $jaRef, $args) => {
@@ -16124,7 +16263,7 @@ const $sd0$Targets$Javascript$EmittableToJs$makeCall = (($env, $jaRef, $args) =>
             return ($sd0$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, $1);
           }))(($sd0$Targets$Javascript$EmittableToJs$translateVariable)($env, $name)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 292:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 324:8', (sp_toHuman)($arg))));
   });
   const $recycledArgs = ($core$List$filterMap)($asRecycled, $args);
   return ((sp_equal)($recycledArgs, $core$Core$Nil)
@@ -16157,7 +16296,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
           }))()
           : (true
             ? $core$Maybe$Nothing
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 347:16', (sp_toHuman)($ref))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 379:16', (sp_toHuman)($ref))));
         return (((($maybeNativeOverride)[0] === "Just") && ((($maybeNativeOverride)[1])[0] === "Override"))
           ? ((() => {
             const $call = (($maybeNativeOverride)[1])[1].call;
@@ -16165,7 +16304,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
           }))()
           : ((($maybeNativeOverride)[0] === "Nothing")
             ? ($sd0$Targets$Javascript$EmittableToJs$Inline)(($sd0$Targets$Javascript$EmittableToJs$makeCall)($env, ($sd0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $ref), $args))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 351:12', (sp_toHuman)($maybeNativeOverride))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 383:12', (sp_toHuman)($maybeNativeOverride))));
       }))()
       : ((($eaExpression)[0] === "Fn")
         ? ((() => {
@@ -16188,7 +16327,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                     first: $re,
                     second: ("_" + (text_fromNumber)($index)),
                   })
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 364:20', (sp_toHuman)($maybeName))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 396:20', (sp_toHuman)($maybeName))));
             });
             return ((($1) => {
               return ($core$List$indexedMap)($zzz, $1);
@@ -16214,7 +16353,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                   const $block = ($$try4)[1];
                   return $block;
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 376:16', (sp_toHuman)($$try4))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 408:16', (sp_toHuman)($$try4))));
           }))();
           const $statementsFinal = ((sp_equal)($recycledPars, $core$Core$Nil)
             ? $statementsRaw
@@ -16227,7 +16366,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                   }))()
                   : (true
                     ? $stat
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 390:24', (sp_toHuman)($stat))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 422:24', (sp_toHuman)($stat))));
               });
               return ($core$List$map)($addRecycled, $statementsRaw);
             }))());
@@ -16251,7 +16390,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                     const $jaExpression = ($$try3)[1];
                     return ($core$Core$Cons)(($sd0$Types$JavascriptAst$Return)($jaExpression), $core$Core$Nil);
                   }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 402:16', (sp_toHuman)($$try3))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 434:16', (sp_toHuman)($$try3))));
             }))();
             return ((($maybeName)[0] === "Nothing")
               ? ((() => {
@@ -16266,7 +16405,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                       const $stats = ($$try2)[1];
                       return ($sd0$Targets$Javascript$EmittableToJs$Block)(($core$List$concat)(($core$Core$Cons)($stats, ($core$Core$Cons)($inStatements, $core$Core$Nil))));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 408:20', (sp_toHuman)($$try2))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 440:20', (sp_toHuman)($$try2))));
               }))()
               : ((($maybeName)[0] === "Just")
                 ? ((() => {
@@ -16278,7 +16417,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                   }))($letExpression));
                   return ($sd0$Targets$Javascript$EmittableToJs$Block)((sp_cons)($letStatement, $inStatements));
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 406:12', (sp_toHuman)($maybeName))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 438:12', (sp_toHuman)($maybeName))));
           }))()
           : ((($eaExpression)[0] === "LiteralText")
             ? ((() => {
@@ -16316,7 +16455,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                             }));
                           }))($head));
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 444:12', (sp_toHuman)($$try1))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 476:12', (sp_toHuman)($$try1))));
                   }))()
                   : ((($eaExpression)[0] === "ShallowEqual")
                     ? ((() => {
@@ -16365,7 +16504,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                                     ? ($sd0$Types$JavascriptAst$Unop)("!", $jaValue)
                                     : (true
                                       ? ($sd0$Types$JavascriptAst$Binop)("===", ($sd0$Targets$Javascript$EmittableToJs$accessArrayIndex)(0, $jaValue), ($sd0$Targets$Javascript$EmittableToJs$literalString)($name))
-                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 486:16', (sp_toHuman)($name)))));
+                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 518:16', (sp_toHuman)($name)))));
                                 return ($sd0$Targets$Javascript$EmittableToJs$Inline)($jaExpr);
                               }))()
                               : ((($eaExpression)[0] === "LiteralRecord")
@@ -16386,7 +16525,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                                         const $extend = ($maybeExtend)[1];
                                         return ($sd0$Targets$Javascript$EmittableToJs$Inline)(($sd0$Types$JavascriptAst$Call)(($sd0$Types$JavascriptAst$Var)("Object.assign"), ($core$Core$Cons)(($sd0$Types$JavascriptAst$Record)($core$Dict$empty), ($core$Core$Cons)(($sd0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $extend), ($core$Core$Cons)($obj, $core$Core$Nil)))));
                                       }))()
-                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 506:12', (sp_toHuman)($maybeExtend))));
+                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 538:12', (sp_toHuman)($maybeExtend))));
                                 }))()
                                 : ((($eaExpression)[0] === "RecordAccess")
                                   ? ((() => {
@@ -16402,7 +16541,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                                         return ($sd0$Types$JavascriptAst$Call)(($sd0$Types$JavascriptAst$Literal)("sp_throw"), $1);
                                       }))(($core$Core$Cons)(($sd0$Types$JavascriptAst$Literal)("'Missing pattern in try..as'"), ($core$Core$Cons)(($sd0$Types$JavascriptAst$Literal)(("'" + ($location + "'"))), ($core$Core$Cons)(($sd0$Types$JavascriptAst$Call)(($sd0$Types$JavascriptAst$Literal)("sp_toHuman"), ($core$Core$Cons)(($sd0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $value), $core$Core$Nil)), $core$Core$Nil)))));
                                     }))()
-                                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 340:4', (sp_toHuman)($eaExpression)))))))))))))))))));
+                                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 372:4', (sp_toHuman)($eaExpression)))))))))))))))))));
 });
 
 const $sd0$Targets$Javascript$EmittableToJs$translateExpressionToExpression = (($env, $expr) => {
@@ -16417,7 +16556,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateExpressionToExpression = ((
         const $block = ($$try1)[1];
         return ($sd0$Types$JavascriptAst$Call)(($sd0$Types$JavascriptAst$BlockLambda)($core$Core$Nil, $block), $core$Core$Nil);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 274:4', (sp_toHuman)($$try1))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 306:4', (sp_toHuman)($$try1))));
 });
 
 const $sd0$Targets$Javascript$EmittableToJs$translateArg = (($stuff, $env, $eaExpression) => {
@@ -16434,7 +16573,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateArg = (($stuff, $env, $eaEx
         const $name = ($eaExpression)[3];
         return ($sd0$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, ($sd0$Types$JavascriptAst$Var)($name));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 191:4', (sp_toHuman)($eaExpression))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 223:4', (sp_toHuman)($eaExpression))));
 });
 
 const $sd0$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
@@ -16455,7 +16594,7 @@ const $sd0$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
             arguments: $arguments,
             jsOp: $jsOp,
           }))))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 140:8', (sp_toHuman)($arguments))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 142:8', (sp_toHuman)($arguments))));
     }),
     value: (($env) => {
       return (sp_todo)(("binop " + ($jsOp + " has no raw value")));
@@ -16473,6 +16612,36 @@ const $sd0$Targets$Javascript$EmittableToJs$constructor = (($jsValue) => {
     }),
   }));
 });
+
+const $sd0$Targets$Javascript$EmittableToJs$translateType = (($env, $type) => {
+  return ($sd0$Types$JavascriptAst$Var)("TODO");
+});
+
+const $sd0$Targets$Javascript$EmittableToJs$dynamicLoad = ((() => {
+  const $call = (($env, $eaArgs) => {
+    const $jaArgs = ($core$List$map)((($2) => {
+      return ($sd0$Targets$Javascript$EmittableToJs$translateArg)(({
+        nativeBinop: false,
+      }), $env, $2);
+    }), $eaArgs);
+    const $type = (((($eaArgs)[0] === "Cons") && (((($eaArgs)[2])[0] === "Cons") && ((((($eaArgs)[2])[1])[0] === "ArgumentSpend") && (((((($eaArgs)[2])[1])[1].raw)[0] === "TypeFn") && ((((((($eaArgs)[2])[1])[1].raw)[1])[0] === "Cons") && (((((((($eaArgs)[2])[1])[1].raw)[1])[1])[0] === "ParSp") && (((((((($eaArgs)[2])[1])[1].raw)[1])[2])[0] === "Nil") && (((($eaArgs)[2])[2])[0] === "Nil"))))))))
+      ? ((() => {
+        const $compiledProgram = ($eaArgs)[1];
+        const $compiledType = (((((($eaArgs)[2])[1])[1].raw)[1])[1])[1].raw;
+        return ($sd0$Targets$Javascript$EmittableToJs$translateType)($env, $compiledType);
+      }))()
+      : (true
+        ? (sp_todo)("dynamicLoad BUG?!")
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 188:12', (sp_toHuman)($eaArgs))));
+    return ($sd0$Types$JavascriptAst$Call)(($sd0$Types$JavascriptAst$Var)("compiler_dynamicLoad"), ($core$Core$Cons)($type, $jaArgs));
+  });
+  return ($sd0$Targets$Javascript$EmittableToJs$Override)(({
+    call: $call,
+    value: (($env) => {
+      return (sp_todo)("TODO: dynamicLoad as value... I guess we need monomorphization?");
+    }),
+  }));
+}))();
 
 const $sd0$Targets$Javascript$EmittableToJs$function = (($jaName) => {
   return ($sd0$Targets$Javascript$EmittableToJs$Override)(({
@@ -16495,7 +16664,7 @@ const $sd0$Targets$Javascript$EmittableToJs$unaryMinus = ($sd0$Targets$Javascrip
       }))()
       : (true
         ? (sp_todo)("compiler bug: wrong number of arguments for unop")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 123:8', (sp_toHuman)($arguments))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 125:8', (sp_toHuman)($arguments))));
   }),
   value: (($env) => {
     return (sp_todo)("unaryMinus has no raw value");
@@ -16512,7 +16681,7 @@ const $sd0$Targets$Javascript$EmittableToJs$unaryPlus = ($sd0$Targets$Javascript
       }))()
       : (true
         ? (sp_todo)("compiler bug: wrong number of arguments for unop")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 107:8', (sp_toHuman)($arguments))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 109:8', (sp_toHuman)($arguments))));
   }),
   value: (($env) => {
     return (sp_todo)("unaryPlus has no raw value");
@@ -16702,7 +16871,10 @@ const $sd0$Targets$Javascript$EmittableToJs$coreOverrides = (($emState) => {
     }), ($core$Core$Cons)(({
       first: ($corelib)("List", "sortBy"),
       second: ($sd0$Targets$Javascript$EmittableToJs$function)("list_sortBy"),
-    }), $core$Core$Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),
+    }), ($core$Core$Cons)(({
+      first: ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)(($sd0$Types$Meta$SourceDir)("src"), "Compiler/Compiler"), "dynamicLoad"),
+      second: $sd0$Targets$Javascript$EmittableToJs$dynamicLoad,
+    }), $core$Core$Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),
     $emState,
   ]);
 });
@@ -16733,7 +16905,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateConstructor = (($emState, $
     }))()
     : (true
       ? ($sd0$Types$JavascriptAst$Array)(($core$Core$Cons)($arrayHead, $core$Core$Nil))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 547:8', (sp_toHuman)($taType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 579:8', (sp_toHuman)($taType))));
   const $usrAsText = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($emState, $usr)), ($emState = (__re__)[1]), (__re__)[0]);
   return ([
     ($sd0$Types$JavascriptAst$Define)(false, $usrAsText, $definitionBody),
@@ -16747,7 +16919,7 @@ const $sd0$Targets$Javascript$EmittableToJs$translateDef = (($env, $def) => {
     ? $core$Maybe$Nothing
     : ((($$try1)[0] === "Nothing")
       ? ($core$Maybe$Just)(($sd0$Types$JavascriptAst$Define)(false, $def.name, ($sd0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $def.expr)))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 569:4', (sp_toHuman)($$try1))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 601:4', (sp_toHuman)($$try1))));
 });
 
 const $sd0$Targets$Javascript$EmittableToJs$translateAll = (($emState, $pars) => {
@@ -16937,82 +17109,7 @@ const $sd0$Targets$Javascript$JsToText$emitStatement = (($l, $stat) => {
           : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/JsToText.sp 15:4', (sp_toHuman)($stat))))));
 });
 
-const $sd0$Targets$Javascript$Runtime$listCons = "Cons";
-
-const $sd0$Targets$Javascript$Runtime$listNil = "Nil";
-
-const $sd0$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd0$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd0$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd0$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n    "))))))))))))));
-
-const $sd0$Platforms$Browser$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
-  const $$constructors = $getRidOfMe;
-  const $constructors = $$constructors.constructors;
-  const $jaStatements = ((__re__ = ($sd0$Targets$Javascript$EmittableToJs$translateAll)($emState, ({
-    constructors: $constructors,
-    eaDefs: $emittableStatements,
-    platformOverrides: $sd0$Platforms$Browser$overrides,
-  }))), ($emState = (__re__)[1]), (__re__)[0]);
-  const $statements = ((($1) => {
-    return ($core$Text$join)("\n\n", $1);
-  }))(((($1) => {
-    return ($core$List$map)((($1) => {
-      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
-    }), $1);
-  }))($jaStatements));
-  return ([
-    ($sd0$Platforms$Browser$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Browser$runtime + ($statements + ((__re__ = ($sd0$Platforms$Browser$footer)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]))))),
-    $emState,
-  ]);
-});
-
-const $sd0$Platforms$Browser$modules = "\nlibrary =\n    source = \"core:browser\"\n\n    module =\n        path = Browser";
-
-const $sd0$Platforms$Browser$platform = ({
-  compile: $sd0$Platforms$Browser$compile,
-  defaultModules: ($sd0$DefaultModules$asText + $sd0$Platforms$Browser$modules),
-  defaultOutputPath: "index.js",
-  name: "browser",
-  quickstart: "TODO",
-});
-
-const $sd0$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
-
-const $sd0$Platforms$Posix$overrides = ((() => {
-  const $ioModule = (($1) => {
-    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "IO"), $1);
-  });
-  const $pathModule = (($1) => {
-    return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Posix, "Path"), $1);
-  });
-  return ($core$Core$Cons)(({
-    first: ($ioModule)("parallel"),
-    second: "io_parallel",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("readDir"),
-    second: "io_readDir",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("readFile"),
-    second: "io_readFile",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("writeFile"),
-    second: "io_writeFile",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("writeStdout"),
-    second: "io_writeStdout",
-  }), ($core$Core$Cons)(({
-    first: ($ioModule)("writeStderr"),
-    second: "io_writeStderr",
-  }), ($core$Core$Cons)(({
-    first: ($pathModule)("dirname"),
-    second: "path_dirname",
-  }), ($core$Core$Cons)(({
-    first: ($pathModule)("resolve"),
-    second: "path_resolve",
-  }), $core$Core$Nil))))))));
-}))();
-
-const $sd0$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = arrayFromListLow(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(arrayToListLow(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path, content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.info(content);\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n\nconst path_dirname = path.dirname;\n";
-
-const $sd0$Platforms$Posix$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
+const $sd0$Platforms$Posix$compileStatements = (($getRidOfMe, $emState, $emittableStatements) => {
   const $$constructors = $getRidOfMe;
   const $constructors = $$constructors.constructors;
   (sp_log)("Creating JS AST...", "");
@@ -17022,58 +17119,59 @@ const $sd0$Platforms$Posix$compile = (($getRidOfMe, $targetUsr, $emState, $emitt
     platformOverrides: $sd0$Platforms$Posix$overrides,
   }))), ($emState = (__re__)[1]), (__re__)[0]);
   (sp_log)("Emitting JS...", "");
-  const $callMain = ("const args = arrayToListLow(process.argv.slice(1));\nconst out = " + (((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]) + "({}, args)[1]('never');\n        if (out[0] === 'Ok') {\n            process.exitCode = out[1];\n        } else {\n            console.error(out[1]);\n            process.exitCode = 1;\n        }\n        "));
-  const $statements = ((($1) => {
-    return ($core$Text$join)("\n\n", $1);
-  }))(((($1) => {
-    return ($core$List$map)((($1) => {
-      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
-    }), $1);
-  }))($jaStatements));
   return ([
-    ($sd0$Platforms$Posix$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Posix$posixRuntime + ($statements + $callMain)))),
+    ((($1) => {
+      return ($core$Text$join)("\n\n", $1);
+    }))(((($1) => {
+      return ($core$List$map)((($1) => {
+        return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
+      }), $1);
+    }))($jaStatements)),
     $emState,
   ]);
+});
+
+const $sd0$Platforms$Posix$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+
+const $sd0$Platforms$Posix$posixRuntime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = arrayFromListLow(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(arrayToListLow(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path, content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.info(content);\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n\nconst path_dirname = path.dirname;\n";
+
+const $sd0$Targets$Javascript$Runtime$listCons = "Cons";
+
+const $sd0$Targets$Javascript$Runtime$listNil = "Nil";
+
+const $sd0$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Dynamic loading\n//\nconst compiler_dynamicLoad = (variantType, compiledProgram, variantConstructor) => {\n\n    const [ __unused__ , typesByName, jsProgram ] = compiledProgram;\n\n    // find name that has correct type???\n\n    throw new Error('ni');\n};\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd0$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd0$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd0$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd0$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n    "))))))))))))));
+
+const $sd0$Platforms$Posix$makeExecutable = (($$compiledStatements) => {
+  const $mainName = ($$compiledStatements)[1];
+  const $mainType = ($$compiledStatements)[2];
+  const $compiledStatements = ($$compiledStatements)[3];
+  const $callMain = ("const args = arrayToListLow(process.argv.slice(1));\nconst out = " + ($mainName + "({}, args)[1]('never');\n        if (out[0] === 'Ok') {\n            process.exitCode = out[1];\n        } else {\n            console.error(out[1]);\n            process.exitCode = 1;\n        }\n        "));
+  return ($sd0$Platforms$Posix$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Posix$posixRuntime + ($compiledStatements + $callMain))));
 });
 
 const $sd0$Platforms$Posix$posixModules = "\nlibrary =\n    source = \"core:posix\"\n\n    module =\n        path = IO\n        globalTypes = IO\n\n    module =\n        path = Path";
 
 const $sd0$Platforms$Posix$platform = ({
-  compile: $sd0$Platforms$Posix$compile,
+  compileStatements: $sd0$Platforms$Posix$compileStatements,
   defaultModules: ($sd0$DefaultModules$asText + $sd0$Platforms$Posix$posixModules),
   defaultOutputPath: "nodeExecutable.js",
+  makeExecutable: $sd0$Platforms$Posix$makeExecutable,
   name: "posix",
   quickstart: "TODO",
 });
 
-const $sd0$Platforms$RawJavaScript$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
-  const $$constructors = $getRidOfMe;
-  const $constructors = $$constructors.constructors;
-  (sp_log)("Creating JS AST...", "");
-  const $jaStatements = ((__re__ = ($sd0$Targets$Javascript$EmittableToJs$translateAll)($emState, ({
-    constructors: $constructors,
-    eaDefs: $emittableStatements,
-    platformOverrides: $core$Core$Nil,
-  }))), ($emState = (__re__)[1]), (__re__)[0]);
-  (sp_log)("Emitting JS...", "");
-  const $statements = ((($1) => {
-    return ($core$Text$join)("\n\n", $1);
-  }))(((($1) => {
-    return ($core$List$map)((($1) => {
-      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
-    }), $1);
-  }))($jaStatements));
-  const $main = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]);
-  return ([
-    ("(function() {\n" + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($statements + ("\n return " + ($main + ";\n })();"))))),
-    $emState,
-  ]);
-});
-
 const $sd0$Platforms$RawJavaScript$platform = ({
-  compile: $sd0$Platforms$RawJavaScript$compile,
+  compileStatements: ((_0, $z, _2) => {
+    return ([
+      (sp_todo)("rawjs: compileStatements"),
+      $z,
+    ]);
+  }),
   defaultModules: $sd0$DefaultModules$asText,
   defaultOutputPath: "squarepants.mjs",
+  makeExecutable: ((_0) => {
+    return (sp_todo)("rawjs: makeExecutable");
+  }),
   name: "rawjs",
   quickstart: "TODO",
 });
@@ -17094,7 +17192,7 @@ const $sd0$Main$parsePlatformName = (($maybeValue, $cliState) => {
           return (sp_equal)($p.name, $value);
         }), $sd0$Main$availablePlatforms);
         return ((($$try1)[0] === "Nothing")
-          ? ($core$Result$Err)(("I don't know this platform name: `" + ($value + ("`\n\n  Valid platform names are:\n\n                    " + ((($1) => {
+          ? ($core$Result$Err)(("I don't know this platform name: `" + ($value + ("`\n\n                    Valid platform names are:\n\n                    " + ((($1) => {
             return ($core$Text$join)("\n", $1);
           }))(($core$List$map)((($p) => {
             return ("    " + $p.name);
@@ -17368,6 +17466,109 @@ const $sd0$Main$parseCli = (($args) => {
       : (true
         ? $sd0$Main$Help
         : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 188:4', (sp_toHuman)($args)))));
+});
+
+const $sd0$Platforms$Browser$virtualDomModule = (($1) => {
+  return ($sd0$Types$Meta$USR)(($sd0$Types$Meta$UMR)($sd0$Types$Meta$Browser, "VirtualDom"), $1);
+});
+
+const $sd0$Platforms$Browser$footer = (($state, $targetUsr) => {
+  const $main = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($state, $targetUsr)), ($state = (__re__)[1]), (__re__)[0]);
+  const $updateDomNode = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($state, ($sd0$Platforms$Browser$virtualDomModule)("updateDomNode"))), ($state = (__re__)[1]), (__re__)[0]);
+  return ([
+    ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model = " + ($main + (".update(msg, model);\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom = " + ($main + (".view(model);\n\n        " + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model = " + ($main + ".init(null);\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n    ")))))))),
+    $state,
+  ]);
+});
+
+const $sd0$Platforms$Browser$header = "(function (win) {\n";
+
+const $sd0$Platforms$Browser$overrides = ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsCreateTextNode"),
+  second: "virtualDom_jsCreateTextNode",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsCreateElement"),
+  second: "virtualDom_jsCreateElement",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsReplaceWith"),
+  second: "virtualDom_jsReplaceWith",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsAppendChild"),
+  second: "virtualDom_jsAppendChild",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsSetAttribute"),
+  second: "virtualDom_jsSetAttribute",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsRemoveAttribute"),
+  second: "virtualDom_jsRemoveAttribute",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsAddEventListener"),
+  second: "virtualDom_jsAddEventListener",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("jsRemoveEventListener"),
+  second: "virtualDom_jsRemoveEventListener",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("eventToText"),
+  second: "virtualDom_eventToText",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("eventToFloat"),
+  second: "virtualDom_eventToFloat",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("setChild"),
+  second: "virtualDom_setChild",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("removeAllChildrenStartingFromIndex"),
+  second: "virtualDom_removeAllChildrenStartingFromIndex",
+}), ($core$Core$Cons)(({
+  first: ($sd0$Platforms$Browser$virtualDomModule)("unsafeExecuteJavaScript"),
+  second: "virtualDom_unsafeExecuteJavaScript",
+}), $core$Core$Nil)))))))))))));
+
+const $sd0$Platforms$Browser$runtime = "const crawlObject = (path, type, object) => {\n\n    while(path[0] === 'Cons') {\n\n        const head = path[1];\n        const tail = path[2];\n\n        const o = object[head];\n\n        if (o === undefined) {\n            return [ 'Err', 'no field named: ' + head ];\n        }\n\n        object = o;\n        path = path[2];\n    }\n\n    return typeof object === type\n        ? [ 'Ok', object ]\n        : [ 'Err', 'wrong type: ' + typeof object ]\n        ;\n}\n\n\nconst virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);\nconst virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);\n\n// TODO ensure that those who must return None actually return None (ie, null)\nconst virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);\nconst virtualDom_jsCreateElement = (tag) => document.createElement(tag);\nconst virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }\nconst virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);\nconst virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);\nconst virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);\n\n\nconst virtualDom_setChild = (upd, index, parentNode) => {\n    const child = parentNode.childNodes[index];\n    child && upd(child);\n};\n\n\nconst virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {\n    while(parentNode.childNodes[index]) {\n      parentNode.removeChild(parentNode.childNodes[index]);\n    }\n}\n\n\n// an EventHandler is a function that takes an Event and produces a msg\nconst virtualDom_jsAddEventListener = (eventName, handler, node) => {\n\n    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};\n\n    if (node.squarepantsEventHandlers[eventName]) {\n      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    }\n\n    const onEvent = (event) => dispatch(handler(event));\n    node.squarepantsEventHandlers[eventName] = onEvent;\n    node.addEventListener(eventName, onEvent);\n};\n\nconst virtualDom_jsRemoveEventListener = (eventName, handler, node) => {\n    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    node.squarepantsEventHandlers[eventName] = undefined;\n}\n\nconst virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {\n    let error = null;\n\n    try {\n        const fn = functionName.split('.').reduce((obj, name) => obj[name], window);\n        fn(argument);\n    } catch (e) {\n      error = e;\n    }\n\n    return error\n        ? [ 'Err', error.message ]\n        : [ 'Ok', null ]\n}\n";
+
+const $sd0$Platforms$Browser$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
+  const $$constructors = $getRidOfMe;
+  const $constructors = $$constructors.constructors;
+  const $jaStatements = ((__re__ = ($sd0$Targets$Javascript$EmittableToJs$translateAll)($emState, ({
+    constructors: $constructors,
+    eaDefs: $emittableStatements,
+    platformOverrides: $sd0$Platforms$Browser$overrides,
+  }))), ($emState = (__re__)[1]), (__re__)[0]);
+  const $statements = ((($1) => {
+    return ($core$Text$join)("\n\n", $1);
+  }))(((($1) => {
+    return ($core$List$map)((($1) => {
+      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
+    }), $1);
+  }))($jaStatements));
+  return ([
+    ($sd0$Platforms$Browser$header + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($sd0$Platforms$Browser$runtime + ($statements + ((__re__ = ($sd0$Platforms$Browser$footer)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]))))),
+    $emState,
+  ]);
+});
+
+const $sd0$Platforms$RawJavaScript$compile = (($getRidOfMe, $targetUsr, $emState, $emittableStatements) => {
+  const $$constructors = $getRidOfMe;
+  const $constructors = $$constructors.constructors;
+  (sp_log)("Creating JS AST...", "");
+  const $jaStatements = ((__re__ = ($sd0$Targets$Javascript$EmittableToJs$translateAll)($emState, ({
+    constructors: $constructors,
+    eaDefs: $emittableStatements,
+    platformOverrides: $core$Core$Nil,
+  }))), ($emState = (__re__)[1]), (__re__)[0]);
+  (sp_log)("Emitting JS...", "");
+  const $statements = ((($1) => {
+    return ($core$Text$join)("\n\n", $1);
+  }))(((($1) => {
+    return ($core$List$map)((($1) => {
+      return ($sd0$Targets$Javascript$JsToText$emitStatement)(0, $1);
+    }), $1);
+  }))($jaStatements));
+  const $main = ((__re__ = ($sd0$Compiler$MakeEmittable$translateUsr)($emState, $targetUsr)), ($emState = (__re__)[1]), (__re__)[0]);
+  return ([
+    ("(function() {\n" + ($sd0$Targets$Javascript$Runtime$nativeDefinitions + ($statements + ("\n return " + ($main + ";\n })();"))))),
+    $emState,
+  ]);
 });
 
 const $sd0$SPLib$Parser$higherOr = (($parser) => {

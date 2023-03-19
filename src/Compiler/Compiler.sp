@@ -11,7 +11,7 @@ expose as fn a: ExposedValue =
 
 
 union CompiledValue =
-    , FUCK_AROUND_AND_FIND_OUT (Dict Name TA.RawType) Text
+    , FUCK_AROUND_AND_FIND_OUT Text TA.RawType Text
 
 
 dynamicLoad as fn CompiledValue, (fn specific: general): Result Text general =
@@ -38,8 +38,8 @@ alias Config =
     }
 
 
-compileModules as fn Config, [UMR & Text], [USR]: Res CompiledValue =
-    fn config, modulesAsText, targets:
+compileModules as fn Config, [UMR & Text], UMR: Res CompiledValue =
+    fn config, modulesAsText, mainModule:
 
     log "Loading modules..." ""
 
@@ -92,18 +92,24 @@ compileModules as fn Config, [UMR & Text], [USR]: Res CompiledValue =
             @emittableState
             emittableStatements
 
-    ts =
-        Set.fromList targets
 
-    mainTypeByName =
-        List.for Dict.empty modulesWithDestruction fn mod, d:
-            Dict.for d mod.valueDefs fn pa, def, dd:
-                Dict.for dd (TA.patternNames def.pattern) fn name, { pos, type }, ddd:
-                    usr = USR mod.umr name
-                    if Set.member usr ts then
-                        Dict.insert (Compiler/MakeEmittable.translateUsr @emittableState usr) type.raw ddd
-                    else
-                        ddd
+    mainName =
+        USR mainModule "main"
+        >> Compiler/MakeEmittable.translateUsr @emittableState __
 
-    Ok << FUCK_AROUND_AND_FIND_OUT mainTypeByName programWithoutRuntime
+    mainType as TA.RawType =
+        try List.find (fn mod: mod.umr == mainModule) modulesWithDestruction as
+            , Nothing:
+                todo "error can't find specified mainModule"
+
+            , Just mod:
+                getMain =
+                    fn def:
+                    Dict.get "main" (TA.patternNames def.pattern)
+
+                try mod.valueDefs >> Dict.values >> List.filterMap getMain __ as
+                    , [ { with type } ]: type.raw
+                    , _: todo "specified mainModule does not have a 'main'"
+
+    Ok << FUCK_AROUND_AND_FIND_OUT mainName mainType programWithoutRuntime
 

@@ -48,19 +48,14 @@ compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State
 
 
 makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
-    fn (Compiler/Compiler.FUCK_AROUND_AND_FIND_OUT typeByName compiledStatements):
+    fn (Compiler/Compiler.FUCK_AROUND_AND_FIND_OUT mainName mainType compiledStatements):
 
-    # TODO actually fish up main
-    targetName =
-        typeByName
-        >> Dict.keys
-        >> List.head
-        >> Maybe.withDefault "BLAH" __
+    # TODO check that type is `IO Int`
 
     callMain =
         """
         const args = arrayToListLow(process.argv.slice(1));
-        const out = """ .. targetName .. """({}, args)[1]('never');
+        const out = """ .. mainName .. """({}, args)[1]('never');
         if (out[0] === 'Ok') {
             process.exitCode = out[1];
         } else {

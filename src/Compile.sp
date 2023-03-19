@@ -310,13 +310,13 @@ compileMain as fn CompileMainPars: IO Int =
         # TODO split umrToFileName so we can call it without `""`
         >> List.find (fn umr: umrToFileName "" umr == entryModulePath) __
 
-    entryUsr =
+    entryUmr =
         try maybeEntryUmr as
             , Nothing:
                 todo << "Error: you are asking me to compile module " .. entryModulePath .. " but I can't find it anywhere."
 
             , Just umr:
-                USR umr "main"
+                umr
 
     #
     # Figure out corelib's root
@@ -358,7 +358,7 @@ compileMain as fn CompileMainPars: IO Int =
         , nativeValues = Prelude.coreNativeValues
         }
         modulesAsText
-        [entryUsr]
+        entryUmr
     >> onResSuccess fn compiledValue:
 
     pars.platform.makeExecutable compiledValue
