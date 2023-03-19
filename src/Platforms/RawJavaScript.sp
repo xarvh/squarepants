@@ -7,7 +7,7 @@ platform as Types/Platform.Platform =
     , quickstart = "TODO"
     , defaultOutputPath = "squarepants.mjs"
     , compileStatements = fn _, @z, _: todo "rawjs: compileStatements"
-    , makeExecutable = fn _, _: todo "rawjs: makeExecutable"
+    , makeExecutable = fn _: todo "rawjs: makeExecutable"
     }
 
 

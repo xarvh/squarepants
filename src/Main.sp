@@ -157,9 +157,9 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
             try List.find (fn p: p.name == value) availablePlatforms as
                 , Nothing:
                     """
-  I don't know this platform name: `""" .. value .. """`
+                    I don't know this platform name: `""" .. value .. """`
 
-  Valid platform names are:
+                    Valid platform names are:
 
                     """
                     ..

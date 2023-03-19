@@ -24,6 +24,7 @@ alias Model =
     , code as Text
     , maybePosition as Maybe { x as Number, y as Number }
     , maybeError as Maybe Text
+    , compiledCode as CompileText.CompiledCode
     }
 
 
@@ -32,28 +33,30 @@ init as fn None: Model =
     {
     , code = initialContent
     , maybePosition = Nothing
-    , maybeError = compileAndUpdateCanvas initialContent
+    , maybeError = Nothing
+    , compiledCode = CompileText.CompiledText ""
     }
 
 
 
-updateCanvas as fn Text, Text: Result Text None =
-    fn domId, compiledJs:
+#updateCanvas as fn Text, Text: Result Text None =
+#    fn domId, compiledJs:
+#
+#    # TODO remove this hack once we have a proper FFI
+#    VirtualDom.unsafeExecuteJavaScript "updateCanvas" { domId, compiledJs }
 
-    # TODO remove this hack once we have a proper FFI
-    VirtualDom.unsafeExecuteJavaScript "updateCanvas" { domId, compiledJs }
 
 
-
-compileAndUpdateCanvas as fn Text: Maybe Text =
-    fn code:
-
-    try CompileText.main code >> onOk (updateCanvas "output" __) as
-        , Ok _:
-            Nothing
-
-        , Err error:
-            Just error
+#compileAndUpdateCanvas as fn Text: Maybe Text =
+#    fn code:
+#
+#    #try CompileText.main code >> onOk (updateCanvas "output" __) as
+#    try  as
+#        , Ok compiledCode:
+#            Nothing
+#
+#        , Err error:
+#            Just error
 
 
 update as fn Msg, Model: Model =
@@ -61,11 +64,19 @@ update as fn Msg, Model: Model =
 
     try msg as
         , OnInput code:
-            # TODO updateCanvas should be handled as a side effect once we have uniqueness types
-            { model with
-            , code = code
-            , maybeError = compileAndUpdateCanvas code
-            }
+            try CompileText.main code as
+                , Err error:
+                    { model with
+                    , code = code
+                    , maybeError = Just error
+                    }
+
+                , Ok compiledCode:
+                    { model with
+                    , code = code
+                    , maybeError = Nothing
+                    , compiledCode
+                    }
 
         , OnMouseMove x y:
             { model with maybePosition = Just { x, y } }
@@ -90,6 +101,33 @@ onMouseMove as VirtualDom.EventHandler Msg =
     y = 1 - offsetY / h
 
     Ok << OnMouseMove x y
+
+
+viewCompiledOutput as fn Model: Html Msg =
+    fn model:
+
+    try model.compiledCode as
+
+        , CompileText.CompiledNumber n:
+            Html.div
+                []
+                [ Html.text (Text.fromNumber n) ]
+
+        , CompileText.CompiledText t:
+            Html.div
+                []
+                [ Html.text t ]
+
+#        , CompileText.Shader s:
+#                    , Html.canvas
+#                        [
+#                        , Html.id "output"
+#                        , Html.width "300"
+#                        , Html.height "300"
+#                        , Html.on "mousemove" onMouseMove
+#                        , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
+#                        ]
+
 
 
 floatToPercent as fn Number: Text =
@@ -147,14 +185,7 @@ view as fn Model: Html Msg =
                     , class "output-wrapper"
                     ]
                     [
-                    , Html.canvas
-                        [
-                        , Html.id "output"
-                        , Html.width "300"
-                        , Html.height "300"
-                        , Html.on "mousemove" onMouseMove
-                        , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
-                        ]
+                    , viewCompiledOutput model
                     ]
                 ]
             , Html.pre [ Html.class "error" ]

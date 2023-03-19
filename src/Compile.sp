@@ -252,18 +252,6 @@ searchAncestorDirectories as fn (fn Bool & Text: Bool), Text: IO (Maybe Text) =
                 else
                     parent >> searchAncestorDirectories isWantedFile __
 
-#mergeWithCore as fn CA.Module, CA.Module: CA.Module =
-#    fn coreModule, userModule:
-#
-#    need to strip positions before merging >_<
-#
-#    { userModule with
-#    , aliasDefs = Dict.join coreModule.aliasDefs .aliasDefs
-#    , unionDefs = Dict.join coreModule.unionDefs .unionDefs
-#    , valueDefs = Dict.join coreModule.valueDefs .valueDefs
-#    }
-
-
 
 getMainName as fn Dict Name TA.RawType: Res Text =
     fn targetsByName:
@@ -371,12 +359,9 @@ compileMain as fn CompileMainPars: IO Int =
         }
         modulesAsText
         [entryUsr]
-    >> onResSuccess fn (targetsByName & compiledStatements):
+    >> onResSuccess fn compiledValue:
 
-    getMainName targetsByName
-    >> onResSuccess fn mainName:
-
-    pars.platform.makeExecutable mainName compiledStatements
+    pars.platform.makeExecutable compiledValue
     >> IO.writeFile outputFile __
     >> IO.onSuccess fn _:
 

@@ -7,7 +7,7 @@ platform as Types/Platform.Platform =
     , quickstart = "TODO"
     , defaultOutputPath = "index.js"
     , compileStatements = fn _, @z, _: todo "Browser: compileStatements"
-    , makeExecutable = fn _, _: todo "Browser: makeExecutable"
+    , makeExecutable = fn _: todo "Browser: makeExecutable"
     }
 
 

@@ -47,8 +47,15 @@ compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State
     >> Text.join "\n\n" __
 
 
-makeExecutable as fn Text, Text: Text =
-    fn targetName, compiledStatements:
+makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
+    fn (Compiler/Compiler.FUCK_AROUND_AND_FIND_OUT typeByName compiledStatements):
+
+    # TODO actually fish up main
+    targetName =
+        typeByName
+        >> Dict.keys
+        >> List.head
+        >> Maybe.withDefault "BLAH" __
 
     callMain =
         """

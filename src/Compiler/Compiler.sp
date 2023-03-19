@@ -1,12 +1,5 @@
 
 
-# Issue: is Core.Type compatible with CA.Type or with TA.Raw?
-
-# Issue: We're compiling to a Text and assuming that the runtime can be added to it
-
-# Issue: How do we prevent arbitrary code insertion?
-
-
 union ExposedValue =
     ExposedValue
     #Never ExposedValue
@@ -16,6 +9,19 @@ expose as fn a: ExposedValue =
     fn a:
     todo "native"
 
+
+union CompiledValue =
+    , FUCK_AROUND_AND_FIND_OUT (Dict Name TA.RawType) Text
+
+
+dynamicLoad as fn CompiledValue, (fn specific: general): Result Text general =
+    fn compiledValue, variantConstructor:
+    todo "native"
+
+
+#
+# ...
+#
 
 
 alias Config =
@@ -32,7 +38,7 @@ alias Config =
     }
 
 
-compileModules as fn Config, [UMR & Text], [USR]: Res (Dict Name TA.RawType & Text) =
+compileModules as fn Config, [UMR & Text], [USR]: Res CompiledValue =
     fn config, modulesAsText, targets:
 
     log "Loading modules..." ""
@@ -99,5 +105,5 @@ compileModules as fn Config, [UMR & Text], [USR]: Res (Dict Name TA.RawType & Te
                     else
                         ddd
 
-    Ok (mainTypeByName & programWithoutRuntime)
+    Ok << FUCK_AROUND_AND_FIND_OUT mainTypeByName programWithoutRuntime
 

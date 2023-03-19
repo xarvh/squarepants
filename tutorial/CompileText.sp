@@ -1,4 +1,6 @@
-
+#
+# Colors
+#
 yellow as fn Text: Text =
     fn t:
     "<span class=yellow>" .. t .. "</span>"
@@ -42,6 +44,26 @@ onResSuccess as fn (fn a: Result Text b): fn Res a: Result Text b =
 
 
 #
+# Meta
+#
+meta as Meta =
+  try ModulesFile.textToModulesFile "modules.sp" Platforms/RawJavaScript.platform.defaultModules as
+      , Ok m:
+          ModulesFile.toMeta m
+
+      , Err err:
+          errAsText =
+              err
+              >> Error.toFormattedText
+              >> List.map formattedToConsoleColoredText __
+              >> Text.join "" __
+
+          Debug.log errAsText "--"
+
+          Debug.todo "This is a compiler bug, not your fault."
+
+
+#
 # Module loading
 #
 
@@ -58,86 +80,39 @@ loadModule as fn Meta, UMR, Text: Res CA.Module =
     Compiler/MakeCanonical.textToCanonicalModule False params
 
 
-
 #
 # Compile
 #
+union CompiledCode =
+    , CompiledNumber Number
+    , CompiledText Text
 
-main as fn Text: Result Text Text =
 
-    platform =
-        Platforms/RawJavaScript.platform
-
-    modulesFileName =
-        "modules.sp"
+main as fn Text: Result Text CompiledCode =
 
     inputFileName =
         "user_input"
 
-    meta =
-      try ModulesFile.textToModulesFile modulesFileName platform.defaultModules as
-          , Ok m:
-              ModulesFile.toMeta m
-
-          , Err err:
-              errAsText =
-                  err
-                  >> Error.toFormattedText
-                  >> List.map formattedToConsoleColoredText __
-                  >> Text.join "" __
-
-              Debug.log errAsText "--"
-
-              Debug.todo "This is a compiler bug, not your fault."
-
     umr =
         UMR (Meta.SourceDir inputFileName) inputFileName
 
-
     entryUsr =
-      USR umr "pixelColor"
+        USR umr "pixelColor"
 
+    config as Compiler/Compiler.Config =
+        {
+        , platform = Platforms/RawJavaScript.platform
+        , meta
+        , umrToFsPath = fn _: inputFileName
+        , nativeValues = Prelude.coreNativeValues
+        }
 
     fn code:
 
-    loadModule meta umr code
-    >> resToConsoleText
-    >> onOk fn caModule:
+    Compiler/Compiler.compileModules config [umr & code] [entryUsr]
+    >> onResSuccess fn compiledProgram:
 
-    allCaModules =
-        [ caModule, ...Prelude.coreModules ]
-
-    allCaModules
-    >> Compiler/TypeCheck.initStateAndGlobalEnv
-    >> onResSuccess fn (luv & typeCheckGlobalEnv):
-
-    !lastUnificationVarId =
-        cloneImm luv
-
-    allCaModules
-    >> List.mapRes (Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv __) __
-    >> onResSuccess fn taModules:
-
-    # ---> check that `pixelColor` has the correct type
-
-    taModules
-    >> List.mapRes Compiler/UniquenessCheck.doModule __
-    >> onResSuccess fn modulesWithDestruction:
-
-    modulesWithDestruction
-    >> Compiler/MakeEmittable.translateAll
-    >> Result.mapError (fn e: todo "MakeEmittable.translateAll returned Err") __
-    >> onResSuccess fn (meState & emittableStatements):
-
-    !emittableState =
-        cloneImm meState
-
-    platform.compile
-        {
-        , constructors = Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
-        }
-        entryUsr
-        @emittableState
-        emittableStatements
-    >> Ok
+    Core.dynamicLoad compiledProgram CompiledNumber
+    >> Result.onErr fn _:
+    Core.dynamicLoad compiledProgram CompiledText
 

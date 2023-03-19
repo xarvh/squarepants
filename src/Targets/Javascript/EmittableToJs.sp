@@ -93,7 +93,9 @@ coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
     , corelib "Array" "fromList" & function  "array_fromList"
     , corelib "Array" "toList" & function  "array_toList"
     #
-    , corelib "List" "sortBy" & function  "list_sortBy"
+    , corelib "List" "sortBy" & function "list_sortBy"
+    #
+    , USR (UMR (Meta.SourceDir "src") "Compiler/Compiler") "dynamicLoad" & dynamicLoad
     ]
     >> Dict.fromList
     >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
@@ -167,6 +169,36 @@ function as fn Text: Override =
     }
     >> Override
 
+
+translateType as fn Env, TA.RawType: JA.Expr =
+    fn env, type:
+
+    JA.Var "TODO"
+
+
+dynamicLoad as Override =
+
+    call =
+        fn env, eaArgs:
+
+        jaArgs =
+            List.map (translateArg { nativeBinop = False } env __) eaArgs
+
+        type as JA.Expr =
+            try eaArgs as
+                , [ compiledProgram, EA.ArgumentSpend { with raw = TA.TypeFn [TA.ParSp { with raw = compiledType}] _ } _ ]:
+                    translateType env compiledType
+
+                , _:
+                    todo "dynamicLoad BUG?!"
+
+        JA.Call (JA.Var "compiler_dynamicLoad") [type, ...jaArgs]
+
+    {
+    , value = fn env: todo "TODO: dynamicLoad as value... I guess we need monomorphization?"
+    , call
+    }
+    >> Override
 
 
 translateVariable as fn Env, Name: JA.Expr =

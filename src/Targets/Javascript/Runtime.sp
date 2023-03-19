@@ -42,6 +42,18 @@ const maybe_just = (a) => [ "Just", a ];
 
 
 //
+// Dynamic loading
+//
+const compiler_dynamicLoad = (variantType, compiledProgram, variantConstructor) => {
+
+    const [ __unused__ , typesByName, jsProgram ] = compiledProgram;
+
+    // find name that has correct type???
+
+    throw new Error('ni');
+};
+
+//
 // Basic ops
 //
 
