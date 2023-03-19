@@ -497,14 +497,16 @@ coreModules as [CA.Module] =
     Dict.values coreModulesByUmr
 
 
-coreNativeValues as Dict USR { type as CA.RawType, value as Compiler/Compiler.ExposedValue } =
+#coreNativeValues as Dict USR { type as CA.RawType, value as Compiler/Compiler.ExposedValue } =
+coreNativeValues as Dict USR CA.RawType =
     List.for Dict.empty coreModules fn module, d:
         Dict.for d module.valueDefs fn pa, def, dd:
             try def.pattern as
                 , CA.PatternAny _ { maybeName = Just name, maybeAnnotation = Just type }:
                     usr = USR module.umr name
-                    value = Compiler/Compiler.ExposedValue
-                    Dict.insert usr { type, value } dd
+#                    value = Compiler/Compiler.ExposedValue
+#                    Dict.insert usr { type, value } dd
+                    Dict.insert usr type dd
 
                 , _:
                     todo "Compiler bug: bad pattern"

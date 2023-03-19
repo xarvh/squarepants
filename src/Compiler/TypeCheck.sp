@@ -1969,8 +1969,8 @@ makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
 # Populate global Env
 #
 #
-addNativeValueToGlobalEnv as fn @State, USR, { type as CA.RawType, value as a }, Env: Env =
-    fn @state, (USR umr name), { with type }, env:
+addNativeValueToGlobalEnv as fn @State, USR, CA.RawType, Env: Env =
+    fn @state, (USR umr name), type, env:
 
     zzz =
       fn tyvarName, pos:
@@ -2176,7 +2176,7 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
     >> Dict.map (fn k, v: None) __
 
 
-initStateAndGlobalEnv as fn Dict USR { type as CA.RawType, value as Compiler/Compiler.ExposedValue }, [CA.Module]: Res (TA.TyvarId & Env) =
+initStateAndGlobalEnv as fn Dict USR CA.RawType, [CA.Module]: Res (TA.TyvarId & Env) =
     fn nativeValues, allModules:
 
     !state =

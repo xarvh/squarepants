@@ -5,7 +5,7 @@ platform as Types/Platform.Platform =
     , defaultModules = DefaultModules.asText .. modules
     , quickstart = "TODO"
     , defaultOutputPath = "index.js"
-    , compileStatements
+#    , compileStatements
     , makeExecutable
     }
 
@@ -25,33 +25,38 @@ virtualDomModule as fn Text: USR =
     USR (UMR Meta.Browser "VirtualDom") __
 
 
-compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-    fn getRidOfMe, @emState, emittableStatements:
-
-    { constructors } =
-        getRidOfMe
-
-    log "Creating JS AST..." ""
-    jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState
-            {
-            , constructors
-            , eaDefs = emittableStatements
-            , platformOverrides = overrides
-            }
-
-    log "Emitting JS..." ""
-    jaStatements
-    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-    >> Text.join "\n\n" __
+#compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
+#    fn getRidOfMe, @emState, emittableStatements:
+#
+#    { constructors } =
+#        getRidOfMe
 
 
-makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
-    fn (Compiler/Compiler.FUCK_AROUND_AND_FIND_OUT mainName mainType compiledStatements):
+
+makeExecutable as fn Compiler/Compiler.CompileModulesOut: Text =
+    fn out:
+
+    !emState =
+        cloneImm out.state
+
+    compiledStatements =
+        log "Creating JS AST..." ""
+        jaStatements =
+            Targets/Javascript/EmittableToJs.translateAll @emState
+                {
+                , constructors = out.constructors
+                , eaDefs = out.defs
+                , platformOverrides = overrides
+                }
+
+        log "Emitting JS..." ""
+        jaStatements
+        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+        >> Text.join "\n\n" __
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer mainName
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer @emState mainName
 
 
 overrides as [USR & Text] =
@@ -76,12 +81,11 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn [# @Compiler/MakeEmittable.State, #] Text: Text =
-    fn [# @state, #] mainName:
+footer as fn @Compiler/MakeEmittable.State, Text: Text =
+    fn @state, mainName:
 
     updateDomNode =
-        #Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
-        "$browser$VirtualDom$updateDomNode"
+        Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
 
     """
 

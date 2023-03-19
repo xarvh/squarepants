@@ -468,8 +468,8 @@ circularIsError as fn ByName EA.GlobalDefinition, [Name]: Bool =
     List.any zzz names
 
 
-translateAll as fn [TA.Module]: Res (State & [EA.GlobalDefinition]) =
-    fn modules:
+translateAll as fn UMR, [TA.Module]: Res { entryName as Text, state as State, defs as [EA.GlobalDefinition] } =
+    fn entryModule, modules:
 
     Debug.benchStart None
 
@@ -478,6 +478,7 @@ translateAll as fn [TA.Module]: Res (State & [EA.GlobalDefinition]) =
         , sourceDirsToId = Hash.fromList []
         , sourceDirsCounter = 0
         }
+
 
     globalDefsByName as ByName EA.GlobalDefinition =
         Dict.empty >> List.for __ modules fn module, d:
@@ -492,13 +493,12 @@ translateAll as fn [TA.Module]: Res (State & [EA.GlobalDefinition]) =
     errors =
         circulars >> List.filter (circularIsError globalDefsByName __) __
 
-    s = state
-
     if errors /= [] then
         todo "translateAll: Err errors"
     else
-       reorderedNames
-       >> List.filterMap (fn name: Dict.get name globalDefsByName) __
-       >> Tuple.pair s __
-       >> Ok
-
+        {
+        , defs = List.filterMap (fn name: Dict.get name globalDefsByName) reorderedNames
+        , entryName = translateUsr @state (USR entryModule "main")
+        , state
+        }
+        >> Ok

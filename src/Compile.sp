@@ -350,18 +350,17 @@ compileMain as fn CompileMainPars: IO Int =
     >> IO.parallel
     >> IO.onSuccess fn modulesAsText:
 
-    Compiler/Compiler.compileModules
-        {
-        , platform = pars.platform
-        , meta
-        , umrToFsPath = umrToFileName corePath __
-        , nativeValues = Prelude.coreNativeValues
-        }
-        modulesAsText
-        entryUmr
-    >> onResSuccess fn compiledValue:
+    {
+    , meta
+    , umrToFsPath = umrToFileName corePath __
+    , nativeValues = Prelude.coreNativeValues
+    , modules = modulesAsText
+    , entryModule = entryUmr
+    }
+    >> Compiler/Compiler.compileModules
+    >> onResSuccess fn compileModulesOut:
 
-    pars.platform.makeExecutable compiledValue
+    pars.platform.makeExecutable compileModulesOut
     >> IO.writeFile outputFile __
     >> IO.onSuccess fn _:
 
