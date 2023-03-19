@@ -96,9 +96,6 @@ main as fn Text: Result Text CompiledCode =
     umr =
         UMR (Meta.SourceDir inputFileName) inputFileName
 
-    entryUsr =
-        USR umr "pixelColor"
-
     config as Compiler/Compiler.Config =
         {
         , platform = Platforms/RawJavaScript.platform
@@ -109,7 +106,7 @@ main as fn Text: Result Text CompiledCode =
 
     fn code:
 
-    Compiler/Compiler.compileModules config [umr & code] [entryUsr]
+    Compiler/Compiler.compileModules config [umr & code] umr
     >> onResSuccess fn compiledProgram:
 
     Compiler/Compiler.dynamicLoad compiledProgram CompiledNumber

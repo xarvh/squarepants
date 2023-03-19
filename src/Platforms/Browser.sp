@@ -1,13 +1,12 @@
 
-
 platform as Types/Platform.Platform =
     {
     , name = "browser"
     , defaultModules = DefaultModules.asText .. modules
     , quickstart = "TODO"
     , defaultOutputPath = "index.js"
-    , compileStatements = fn _, @z, _: todo "Browser: compileStatements"
-    , makeExecutable = fn _: todo "Browser: makeExecutable"
+    , compileStatements
+    , makeExecutable
     }
 
 
@@ -26,27 +25,33 @@ virtualDomModule as fn Text: USR =
     USR (UMR Meta.Browser "VirtualDom") __
 
 
-compile as fn Types/Platform.GetRidOfMe, USR, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-    fn getRidOfMe, targetUsr, @emState, emittableStatements:
+compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
+    fn getRidOfMe, @emState, emittableStatements:
 
     { constructors } =
         getRidOfMe
 
+    log "Creating JS AST..." ""
     jaStatements =
         Targets/Javascript/EmittableToJs.translateAll @emState
-          {
-          , constructors
-          , eaDefs = emittableStatements
-          , platformOverrides = overrides
-          }
+            {
+            , constructors
+            , eaDefs = emittableStatements
+            , platformOverrides = overrides
+            }
 
-    statements =
-        jaStatements
-        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-        >> Text.join "\n\n" __
+    log "Emitting JS..." ""
+    jaStatements
+    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+    >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. statements .. footer @emState targetUsr
 
+makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
+    fn (Compiler/Compiler.FUCK_AROUND_AND_FIND_OUT mainName mainType compiledStatements):
+
+    # TODO check that type is ....?
+
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer mainName
 
 
 overrides as [USR & Text] =
@@ -71,14 +76,12 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn @Compiler/MakeEmittable.State, USR: Text =
-    fn @state, targetUsr:
-
-    main =
-        Compiler/MakeEmittable.translateUsr @state targetUsr
+footer as fn [# @Compiler/MakeEmittable.State, #] Text: Text =
+    fn [# @state, #] mainName:
 
     updateDomNode =
-        Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
+        #Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
+        "$browser$VirtualDom$updateDomNode"
 
     """
 
@@ -92,7 +95,7 @@ footer as fn @Compiler/MakeEmittable.State, USR: Text =
 
             const msg = msgResult[1];
 
-            model = """ .. main .. """.update(msg, model);
+            model = """ .. mainName .. """.update(msg, model);
 
             // TODO set a flag and use requestAnimationFrame
             updateDom();
@@ -105,7 +108,7 @@ footer as fn @Compiler/MakeEmittable.State, USR: Text =
     function updateDom() {
         const e = win.document.getElementById(elementId);
 
-        const newVirtualDom = """ .. main .. """.view(model);
+        const newVirtualDom = """ .. mainName .. """.view(model);
 
         """ .. updateDomNode .. """(newVirtualDom, oldVirtualDom, e.childNodes[0]);
 
@@ -116,7 +119,7 @@ footer as fn @Compiler/MakeEmittable.State, USR: Text =
 
     function main(eid) {
         elementId = eid;
-        model = """ .. main .. """.init(null);
+        model = """ .. mainName .. """.init(null);
         updateDom();
     }
 

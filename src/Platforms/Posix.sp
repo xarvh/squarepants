@@ -64,7 +64,7 @@ makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
         }
         """
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. posixRuntime .. compiledStatements .. callMain
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. callMain
 
 
 header as Text =
@@ -98,7 +98,7 @@ overrides as [USR & Text] =
     ]
 
 
-posixRuntime as Text =
+runtime as Text =
     """
 
 //
