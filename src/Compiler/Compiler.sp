@@ -3,7 +3,6 @@
 #
 alias CompileModulesPars =
     {
-#    , platform as Types/Platform.Platform
     , meta as Meta
     , umrToFsPath as fn UMR: Text
 
@@ -92,30 +91,4 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
         Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
 
     Ok { constructors, entryName, type, state, defs }
-
-
-#
-# Dynamic loading
-#
-
-#union ExposedValue =
-#    ExposedValue
-#    #Never ExposedValue
-#
-#
-#expose as fn a: ExposedValue =
-#    fn a:
-#    todo "native"
-
-
-dynamicLoad as fn CompileModulesPars: fn (fn specific: general): Result Text general =
-    fn pars:
-    todo "native"
-
-
-
-
-
-
-
 

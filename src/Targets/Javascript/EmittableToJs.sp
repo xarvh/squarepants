@@ -95,7 +95,7 @@ coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
     #
     , corelib "List" "sortBy" & function "list_sortBy"
     #
-    , USR (UMR (Meta.SourceDir "src") "Compiler/Compiler") "dynamicLoad" & dynamicLoad
+    , corelib "Load" "dynamicLoad" & dynamicLoad
     ]
     >> Dict.fromList
     >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
@@ -173,7 +173,7 @@ function as fn Text: Override =
 translateType as fn Env, TA.RawType: JA.Expr =
     fn env, type:
 
-    JA.Var "TODO"
+    JA.Var "'TODO'"
 
 
 dynamicLoad as Override =
@@ -192,7 +192,7 @@ dynamicLoad as Override =
                 , _:
                     todo "dynamicLoad BUG?!"
 
-        JA.Call (JA.Var "compiler_dynamicLoad") [type, ...jaArgs]
+        JA.Call (JA.Var "load_dynamicLoad") [type, ...jaArgs]
 
     {
     , value = fn env: todo "TODO: dynamicLoad as value... I guess we need monomorphization?"

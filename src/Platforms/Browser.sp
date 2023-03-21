@@ -56,7 +56,7 @@ makeExecutable as fn Compiler/Compiler.CompileModulesOut: Text =
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer @emState mainName
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer @emState out.entryName
 
 
 overrides as [USR & Text] =
@@ -223,5 +223,19 @@ const virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {
         ? [ 'Err', error.message ]
         : [ 'Ok', null ]
 }
+
+
+//
+// Dynamic loading
+//
+const load_dynamicLoad = (variantType, compileModulesOut, variantConstructor) => {
+
+    console.log({variantType, compileModulesOut, variantConstructor});
+
+    // TODO check that variantType and compileModulesOut.out are the same
+
+    throw new Error('ni');
+};
+
 
     """

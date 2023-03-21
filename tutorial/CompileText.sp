@@ -64,23 +64,6 @@ meta as Meta =
 
 
 #
-# Module loading
-#
-
-loadModule as fn Meta, UMR, Text: Res CA.Module =
-    fn meta, umr, content:
-
-    params as Compiler/MakeCanonical.ReadOnly =
-        {
-        , meta
-        , errorModule = { fsPath = "", content }
-        , umr
-        }
-
-    Compiler/MakeCanonical.textToCanonicalModule False params
-
-
-#
 # Compile
 #
 union CompiledCode =
@@ -89,27 +72,25 @@ union CompiledCode =
 
 
 main as fn Text: Result Text CompiledCode =
+    fn code:
 
     inputFileName =
         "user_input"
 
-    umr =
+    entryModule =
         UMR (Meta.SourceDir inputFileName) inputFileName
 
-    config as Compiler/Compiler.Config =
-        {
-        , platform = Platforms/RawJavaScript.platform
-        , meta
-        , umrToFsPath = fn _: inputFileName
-        , nativeValues = Prelude.coreNativeValues
-        }
+    {
+    , meta
+    , umrToFsPath = fn _: inputFileName
+    , nativeValues = Prelude.coreNativeValues
+    , entryModule
+    , modules = [entryModule & code]
+    }
+    >> Compiler/Compiler.compileModules
+    >> onResSuccess fn out:
 
-    fn code:
-
-    Compiler/Compiler.compileModules config [umr & code] umr
-    >> onResSuccess fn compiledProgram:
-
-    Compiler/Compiler.dynamicLoad compiledProgram CompiledNumber
+    Load.dynamicLoad out CompiledNumber
     >> Result.onErr fn _:
-    Compiler/Compiler.dynamicLoad compiledProgram CompiledText
+    Load.dynamicLoad out CompiledText
 

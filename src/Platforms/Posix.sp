@@ -6,7 +6,7 @@ platform as Types/Platform.Platform =
     , defaultModules = DefaultModules.asText .. posixModules
     , quickstart = "TODO"
     , defaultOutputPath = "nodeExecutable.js"
-    , compileStatements
+#    , compileStatements
     , makeExecutable
     }
 
@@ -26,36 +26,36 @@ library =
     """
 
 
-compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-    fn getRidOfMe, @emState, emittableStatements:
+#compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
+#    fn getRidOfMe, @emState, emittableStatements:
+#
+#    { constructors } =
+#        getRidOfMe
+#
+#    log "Creating JS AST..." ""
+#    jaStatements =
+#        Targets/Javascript/EmittableToJs.translateAll @emState
+#            {
+#            , constructors
+#            , eaDefs = emittableStatements
+#            , platformOverrides = overrides
+#            }
+#
+#    log "Emitting JS..." ""
+#    jaStatements
+#    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+#    >> Text.join "\n\n" __
 
-    { constructors } =
-        getRidOfMe
 
-    log "Creating JS AST..." ""
-    jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState
-            {
-            , constructors
-            , eaDefs = emittableStatements
-            , platformOverrides = overrides
-            }
-
-    log "Emitting JS..." ""
-    jaStatements
-    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-    >> Text.join "\n\n" __
-
-
-makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
-    fn (Compiler/Compiler.FUCK_AROUND_AND_FIND_OUT mainName mainType compiledStatements):
+makeExecutable as fn Compiler/Compiler.CompileModulesOut: Text =
+    fn out:
 
     # TODO check that type is `IO Int`
 
     callMain =
         """
         const args = arrayToListLow(process.argv.slice(1));
-        const out = """ .. mainName .. """({}, args)[1]('never');
+        const out = """ .. out.entryName .. """({}, args)[1]('never');
         if (out[0] === 'Ok') {
             process.exitCode = out[1];
         } else {
@@ -63,6 +63,24 @@ makeExecutable as fn Compiler/Compiler.CompiledValue: Text =
             process.exitCode = 1;
         }
         """
+
+    !emState =
+        cloneImm out.state
+
+    compiledStatements =
+        log "Creating JS AST..." ""
+        jaStatements =
+            Targets/Javascript/EmittableToJs.translateAll @emState
+                {
+                , constructors = out.constructors
+                , eaDefs = out.defs
+                , platformOverrides = overrides
+                }
+
+        log "Emitting JS..." ""
+        jaStatements
+        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+        >> Text.join "\n\n" __
 
     header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. callMain
 
