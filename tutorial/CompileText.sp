@@ -90,7 +90,14 @@ main as fn Text: Result Text CompiledCode =
     >> Compiler/Compiler.compileModules
     >> onResSuccess fn out:
 
-    Load.dynamicLoad out CompiledNumber
-    >> Result.onErr fn _:
-    Load.dynamicLoad out CompiledText
+    loadResult as Result TA.RawType CompiledCode =
+        Load.dynamicLoad out CompiledNumber
+        >> Result.onErr fn _:
+        Load.dynamicLoad out CompiledText
 
+    loadResult
+    >> Result.onErr fn actualCompiledType:
+    actualCompiledType
+    >> Human/Type.doRawType {} __
+    >> Human/Type.display "" __
+    >> Err

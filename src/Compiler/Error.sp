@@ -8,6 +8,7 @@ alias Module =
 
 
 union Error =
+    , Raw [Text]
     , Simple Module Pos [Text]
     , Nested [ Error ]
 
@@ -32,13 +33,21 @@ union FormattedText =
 
 
 toFormattedText as fn Error: [FormattedText] =
-    fn e:
+    flatten __ []
 
-    tupleToFormattedText =
-        fn (mod & pos & descr):
-        toText mod pos descr
 
-    List.concatMap tupleToFormattedText (flatten e [])
+flatten as fn Error, [FormattedText]: [FormattedText] =
+    fn e, accum:
+
+    try e as
+        , Simple mod pos desc:
+            List.concat [ accum, simpleToText mod pos desc ]
+
+        , Raw desc:
+            List.concat [ accum, rawToText desc ]
+
+        , Nested ls:
+            List.for accum ls flatten
 
 
 #
@@ -88,21 +97,8 @@ union Highlight =
 
 
 
-###
-
-
-flatten as fn Error, [Module & Pos & [Text]]: [Module & Pos & [Text]] =
-    fn e, accum:
-    try e as
-        , Simple mod pos descr:
-            [mod & pos & descr, ...accum]
-
-        , Nested ls:
-            List.for accum ls flatten
-
-
 #
-# toText
+# simpleToText
 #
 
 
@@ -285,7 +281,7 @@ posToHuman as fn Module, Pos: { location as Text, block as Text } =
 
 
 
-toText as fn Module, Pos, [Text]: [FormattedText] =
+simpleToText as fn Module, Pos, [Text]: [FormattedText] =
     fn mod, pos, desc:
 
     { location, block } =
@@ -301,6 +297,25 @@ toText as fn Module, Pos, [Text]: [FormattedText] =
     , ""
     , ""
     , deco << Text.padRight 50 "-" (location .. " ")
+    , ""
+    , description
+    , ""
+    ]
+    >> Text.join "\n" __
+    >> breakDownText
+
+
+rawToText as fn [Text]: [FormattedText] =
+    fn desc:
+
+    description =
+        desc
+        >> List.concatMap (Text.split "\n" __) __
+        >> List.map (fn s: "  " .. s) __
+        >> Text.join "\n" __
+
+    [
+    , ""
     , ""
     , description
     , ""

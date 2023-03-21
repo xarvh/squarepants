@@ -170,12 +170,11 @@ function as fn Text: Override =
     >> Override
 
 
-translateType as fn Env, TA.RawType: JA.Expr =
-    fn env, type:
-
-    JA.Var "'TODO'"
 
 
+#
+# Dynamic loading
+#
 dynamicLoad as Override =
 
     call =
@@ -184,15 +183,20 @@ dynamicLoad as Override =
         jaArgs =
             List.map (translateArg { nativeBinop = False } env __) eaArgs
 
-        type as JA.Expr =
+        requestedTypeHumanized as JA.Expr =
             try eaArgs as
                 , [ compiledProgram, EA.ArgumentSpend { with raw = TA.TypeFn [TA.ParSp { with raw = compiledType}] _ } _ ]:
-                    translateType env compiledType
+                    !hash = Hash.fromList []
+                    compiledType
+                    >> TA.normalizeType @hash __
+                    # TODO: once we have proper encoders, we can use those
+                    >> toHuman
+                    >> literalString
 
                 , _:
                     todo "dynamicLoad BUG?!"
 
-        JA.Call (JA.Var "load_dynamicLoad") [type, ...jaArgs]
+        JA.Call (JA.Var "load_dynamicLoad") [ requestedTypeHumanized, ...jaArgs ]
 
     {
     , value = fn env: todo "TODO: dynamicLoad as value... I guess we need monomorphization?"
@@ -201,6 +205,9 @@ dynamicLoad as Override =
     >> Override
 
 
+#
+# Translation
+#
 translateVariable as fn Env, Name: JA.Expr =
     fn env, variableName:
 

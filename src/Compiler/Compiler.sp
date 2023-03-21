@@ -73,10 +73,18 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
     >> Compiler/MakeEmittable.translateAll pars.entryModule __
     >> onOk fn { entryName, state, defs }:
 
-    type as TA.RawType =
+    typeResult as Res TA.RawType =
         try List.find (fn mod: mod.umr == pars.entryModule) modulesWithDestruction as
             , Nothing:
-                todo "error can't find specified entryModule"
+                [
+                , "The entry module should be:"
+                , ""
+                , pars.umrToFsPath pars.entryModule
+                , ""
+                , "But I could not find any module matching that."
+                ]
+                >> Error.Raw
+                >> Err
 
             , Just mod:
                 getMain =
@@ -84,8 +92,24 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
                     Dict.get "main" (TA.patternNames def.pattern)
 
                 try mod.valueDefs >> Dict.values >> List.filterMap getMain __ as
-                    , [ { with type } ]: type.raw
-                    , _: todo "specified entryModule does not have a 'main'"
+                    , [ { with type } ]:
+                        !hash = Hash.fromList []
+
+                        TA.normalizeType @hash type.raw
+                        >> Ok
+
+                    , _:
+                        [
+                        , "The entry module " .. pars.umrToFsPath pars.entryModule
+                        , "does not seem to contain a `main` definition."
+                        , ""
+                        , "I need this to know where your program starts!"
+                        ]
+                        >> Error.Raw
+                        >> Err
+
+    typeResult
+    >> onOk fn type:
 
     constructors =
         Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)

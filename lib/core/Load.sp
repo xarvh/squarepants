@@ -16,6 +16,6 @@
 # TODO this makes core dependent on an external lib
 # Might need to move all of Compiler into core
 #
-dynamicLoad as fn Compiler/Compiler.CompileModulesOut, (fn specific: general): Result Text general =
+dynamicLoad as fn Compiler/Compiler.CompileModulesOut, (fn specific: general): Result TA.RawType general =
     todo "platform does not override dynamicLoad"
 

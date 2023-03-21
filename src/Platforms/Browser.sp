@@ -5,7 +5,6 @@ platform as Types/Platform.Platform =
     , defaultModules = DefaultModules.asText .. modules
     , quickstart = "TODO"
     , defaultOutputPath = "index.js"
-#    , compileStatements
     , makeExecutable
     }
 
@@ -25,11 +24,23 @@ virtualDomModule as fn Text: USR =
     USR (UMR Meta.Browser "VirtualDom") __
 
 
-#compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-#    fn getRidOfMe, @emState, emittableStatements:
-#
-#    { constructors } =
-#        getRidOfMe
+
+compile as fn @Compiler/MakeEmittable.State, Compiler/Compiler.CompileModulesOut: Text =
+    fn @emState, out:
+
+    log "Creating JS AST..." ""
+    jaStatements =
+        Targets/Javascript/EmittableToJs.translateAll @emState
+            {
+            , constructors = out.constructors
+            , eaDefs = out.defs
+            , platformOverrides = overrides
+            }
+
+    log "Emitting JS..." ""
+    jaStatements
+    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+    >> Text.join "\n\n" __
 
 
 
@@ -40,19 +51,7 @@ makeExecutable as fn Compiler/Compiler.CompileModulesOut: Text =
         cloneImm out.state
 
     compiledStatements =
-        log "Creating JS AST..." ""
-        jaStatements =
-            Targets/Javascript/EmittableToJs.translateAll @emState
-                {
-                , constructors = out.constructors
-                , eaDefs = out.defs
-                , platformOverrides = overrides
-                }
-
-        log "Emitting JS..." ""
-        jaStatements
-        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-        >> Text.join "\n\n" __
+        compile @emState out
 
     # TODO check that type is ....?
 
@@ -228,14 +227,20 @@ const virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {
 //
 // Dynamic loading
 //
-const load_dynamicLoad = (variantType, compileModulesOut, variantConstructor) => {
+const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
 
-    console.log({variantType, compileModulesOut, variantConstructor});
+    const actualTypeHumanized = sp_toHuman(out.type);
+    console.log({actualTypeHumanized, requestedTypeHumanized})
+    if (actualTypeHumanized !== requestedTypeHumanized) {
+        return [ 'Err', actualTypeHumanized ];
+    }
 
-    // TODO check that variantType and compileModulesOut.out are the same
+    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
+    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
+    const js = $sd1$Platforms$Browser$compile(out.state, out)[0];
+    const body = `{ ${js}; return ${out.entryName}; }`;
 
-    throw new Error('ni');
+    return [ 'Ok', variantConstructor(Function(body)()) ];
 };
-
 
     """
