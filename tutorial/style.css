@@ -1,0 +1,149 @@
+/*
+ * Atomic
+ */
+
+.yellow { color: yellow; }
+.red { color: red; }
+.blue { color: blue; }
+
+.row { display: flex; }
+.col { display: flex; flex-direction: column; }
+
+.mt { margin-top: 1em; }
+.mb { margin-bottom: 1em; }
+.ml { margin-left: 1em; }
+.mr { margin-right: 1em; }
+
+.p { padding: 1em; }
+
+.header {
+  font-family: sans;
+  font-weight: bold;
+}
+
+.border { border: 1px solid lightgray; }
+
+.thirds > * {
+  max-width: 90vw;
+}
+
+.pointer { cursor: pointer; }
+
+
+
+/*
+ * Globals
+ */
+
+
+body {
+  color: #ebdbb2;
+  background: #504945;
+  font-family: 'Fira Sans', sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+a { color: #fb4934; }
+a:active { color: #928374; }
+a:visited { color: #d3869b; }
+
+
+.page {
+    display: flex;
+    justify-content: center;
+}
+
+
+.column {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.content {
+    display: flex;
+}
+
+
+.input {
+    width: 500px;
+
+    margin-right: 10px;
+}
+
+
+.output-wrapper {
+    border: 2px solid black;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+
+.error {
+    margin-top: 20px;
+    font-family: monospace;
+}
+
+
+.editor {
+  border: 1px solid gray;
+}
+
+
+.editor-content {
+  position: relative;
+  background: #151515;
+
+  margin-left: 8px;
+}
+
+.editor-overlay, .editor-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+}
+
+
+.editor-overlay, .editor-textarea, .editor-line-numbers {
+  height: 100%;
+
+  margin: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  background: none;
+
+  padding: 2px;
+  font-size: 14px;
+  font-family: monospace;
+  white-space: pre;
+
+  caret-color: #c6b6ee;
+}
+
+.editor-overlay {
+  pointer-events: none;
+}
+
+.editor-line-numbers {
+  text-align: right;
+}
+
+/* https://vimcolorschemes.com/morhetz/gruvbox */
+.upper  { color: #83a598; }
+.lower  { }
+
+.comment  { color: #928374; }
+
+.literal  { color: #b8bb26; }
+
+.op       { color: #d3869b; }
+.keyword  { color: #fb4934; }
+.paren    { color: #fe8019; }
+

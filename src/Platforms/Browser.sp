@@ -72,7 +72,7 @@ overrides as [USR & Text] =
     , virtualDomModule "eventToFloat" & "virtualDom_eventToFloat"
     , virtualDomModule "setChild" & "virtualDom_setChild"
     , virtualDomModule "removeAllChildrenStartingFromIndex" & "virtualDom_removeAllChildrenStartingFromIndex"
-    , virtualDomModule "unsafeExecuteJavaScript" & "virtualDom_unsafeExecuteJavaScript"
+    , virtualDomModule "drawCanvas" & "virtualDom_drawCanvas"
     ]
 
 
@@ -89,6 +89,7 @@ footer as fn @Compiler/MakeEmittable.State, Text: Text =
     """
 
     // TODO these globals will be a hell of trouble if we want to run more than one app
+    let effects = [];
     let oldVirtualDom = {}; // TODO this should be properly initialized
     let model = null;
     let elementId = null;
@@ -98,7 +99,7 @@ footer as fn @Compiler/MakeEmittable.State, Text: Text =
 
             const msg = msgResult[1];
 
-            model = """ .. mainName .. """.update(msg, model);
+            model = """ .. mainName .. """.update(effects, msg, model)[0];
 
             // TODO set a flag and use requestAnimationFrame
             updateDom();
@@ -116,13 +117,16 @@ footer as fn @Compiler/MakeEmittable.State, Text: Text =
         """ .. updateDomNode .. """(newVirtualDom, oldVirtualDom, e.childNodes[0]);
 
         oldVirtualDom = newVirtualDom;
+
+        effects.forEach((e) => e());
+        effects = [];
     }
 
 
 
     function main(eid) {
         elementId = eid;
-        model = """ .. mainName .. """.init(null);
+        model = """ .. mainName .. """.init(effects)[0];
         updateDom();
     }
 
@@ -208,6 +212,37 @@ const virtualDom_jsRemoveEventListener = (eventName, handler, node) => {
     node.squarepantsEventHandlers[eventName] = undefined;
 }
 
+
+const virtualDom_drawCanvas = (canvasId, shaderFn) => () => {
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error('could not find canvas', canvasId);
+        return
+    }
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.createImageData(w, h);
+
+    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+
+        const frag = shaderFn(x / (w - 1), 1 - y / (h - 1));
+
+        let j = (x + y * w) * 4;
+        imageData.data[j + 0] = frag.r * 255;
+        imageData.data[j + 1] = frag.g * 255;
+        imageData.data[j + 2] = frag.b * 255;
+        imageData.data[j + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+};
+
+
+/*
 const virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {
     let error = null;
 
@@ -222,6 +257,7 @@ const virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {
         ? [ 'Err', error.message ]
         : [ 'Ok', null ]
 }
+*/
 
 
 //
@@ -230,9 +266,8 @@ const virtualDom_unsafeExecuteJavaScript = (functionName, argument) => {
 const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
 
     const actualTypeHumanized = sp_toHuman(out.type);
-    console.log({actualTypeHumanized, requestedTypeHumanized})
     if (actualTypeHumanized !== requestedTypeHumanized) {
-        return [ 'Err', actualTypeHumanized ];
+        return [ 'Err', out.type ];
     }
 
     // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`

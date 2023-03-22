@@ -2,11 +2,10 @@
 #
 # IMPORTANT
 #
-# The following code desperately needs two language features that are not yet available:
-#   1) Uniqueness types, to safely manage the update-in-place of DOM nodes
-#   2) Libraries, to expose only safe interfaces
+# The following code desperately needs to expose only safe interfaces,
+# but this will be possible only once the libraries system is in place.
 #
-# Until those are in place, this code is ***SUUUUUUPER UNSAFE**.
+# Until then, this code is **SUUUUUUPER UNSAFE**.
 #
 # Please use it only if you are willing to cope with a world of hurt.
 #
@@ -20,6 +19,10 @@ union VirtualNode msg =
 union DomNode =
     # This is a stupid way to say that DomNode has no constructors..
     DomNode DomNode
+
+
+union Effect =
+    Effect Effect
 
 
 union Event =
@@ -96,11 +99,12 @@ eventToFloat as fn [Text], Event: Result Text Number =
     todo "eventToFloat"
 
 
-# TODO eventually we'll have some FFI
+###################
 
-unsafeExecuteJavaScript as fn Text, a: Result Text None =
-    fn functionName, argument:
-    todo "unsafeExecuteJavaScript"
+
+drawCanvas as fn Text, (fn Number, Number: { r as Number, g as Number, b as Number }): Effect =
+    fn id, shaderFn:
+    todo "drawCanvas"
 
 
 ###################
@@ -166,7 +170,7 @@ updateDomAttrs as fn [Attr msg], [Attr msg], DomNode: None =
     else
         None
 
-    if cloneUni @newStyle == "" then
+    if cloneUni @newStyle /= "" then
         Hash.insert @newDomAttrs "style" (cloneUni @newStyle)
     else
         None
@@ -269,7 +273,7 @@ updateDomChildren as fn [VirtualNode msg], [VirtualNode msg], Int, DomNode: None
 
 alias App msg model =
     {
-    , init as fn None: model
-    , update as fn msg, model: model
+    , init as fn @Array Effect: model
+    , update as fn @Array Effect, msg, model: model
     , view as fn model: VirtualNode msg
     }

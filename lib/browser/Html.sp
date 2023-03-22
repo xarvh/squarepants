@@ -51,7 +51,10 @@ id as fn Text: Attr msg =
     VirtualDom.DomAttribute "id" __
 
 class as fn Text: Attr msg =
-    VirtualDom.CssClass __
+    VirtualDom.CssClass
+
+style as fn Text, Text: Attr msg =
+    VirtualDom.CssStyle
 
 href as fn Text: Attr msg =
     VirtualDom.DomAttribute "href" __
@@ -72,4 +75,8 @@ onClick as fn msg: Attr msg =
 onInput as fn (fn Text: msg): Attr msg =
     fn textToMsg:
     on "input" (fn e: VirtualDom.eventToText ["target", "value"] e >> Result.map textToMsg __)
+
+spellcheck as fn Bool: Attr msg =
+    fn s:
+    VirtualDom.DomAttribute "spellcheck" (if s then "true" else "false")
 

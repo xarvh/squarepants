@@ -69,6 +69,7 @@ meta as Meta =
 union CompiledCode =
     , CompiledNumber Number
     , CompiledText Text
+    , CompiledShader fn Number, Number: { r as Number, g as Number, b as Number }
 
 
 main as fn Text: Result Text CompiledCode =
@@ -94,6 +95,8 @@ main as fn Text: Result Text CompiledCode =
         Load.dynamicLoad out CompiledNumber
         >> Result.onErr fn _:
         Load.dynamicLoad out CompiledText
+        >> Result.onErr fn _:
+        Load.dynamicLoad out CompiledShader
 
     loadResult
     >> Result.onErr fn actualCompiledType:
