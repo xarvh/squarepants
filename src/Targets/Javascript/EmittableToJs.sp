@@ -190,11 +190,15 @@ expose as Override =
                     >> Load.internalRepresentation
                     >> JA.Literal
 
+                nonFn as JA.Expr =
+                    JA.Array [] # TODO!!!
+
                 value as JA.Expr =
                     translateExpressionToExpression env e
 
                 [
-                , "type" & type
+                , "raw" & type
+                , "nonFn" & nonFn
                 , "value" & value
                 ]
                 >> Dict.fromList
@@ -598,7 +602,6 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             [ JA.Literal "'Missing pattern in try..as'"
             , JA.Literal ("'" .. location .. "'")
             , JA.Call (JA.Literal "sp_toHuman") [ translateExpressionToExpression env value ]
-            # JA.Call (JA.Literal "console.log") [ JA.Call (JA.Literal "JSON.stringify") [ JA.Var tryName ]]
             ]
             >> JA.Call (JA.Literal "sp_throw") __
             >> Inline

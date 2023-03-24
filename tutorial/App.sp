@@ -3,6 +3,8 @@ initialContent as Text =
     """
 alias N = Number
 
+x = List.blah (fn x: x + 2) []
+
 main as fn N, N: { r as N, g as N, b as N } =
     fn x, y:
 

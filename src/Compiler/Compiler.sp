@@ -8,7 +8,7 @@ alias CompileModulesPars =
 
     # TODO: in theory, we should expose all union types referenced by these, and their constructors
     # In practice, I hope we'll get structural variant types before this becomes necessary
-    , exposedValues as [ USR & Load.ExposedValue ]
+    , exposedValues as [ USR & Load.Exposed ]
 
     # TODO
     #, nativeAliases as Dict USR { value as Core.Type, args as [Text] }
@@ -25,15 +25,15 @@ alias CompileModulesOut =
     , state as Compiler/MakeEmittable.State
     , defs as [EA.GlobalDefinition]
     , constructors as [USR & TA.FullType]
-    , externalValues as Hash Text Load.ExposedValue
+    , externalValues as Array { name as Text, exposed as Load.Exposed }
     }
 
 
-exposedValueToUsrAndInstance as fn USR & Load.ExposedValue: USR & Compiler/TypeCheck.Instance =
+exposedValueToUsrAndInstance as fn USR & Load.Exposed: USR & Compiler/TypeCheck.Instance =
     fn usr & exposed:
 
-    { raw, nonFn } =
-        Load.exposedType exposed
+    { with raw } =
+        exposed
 
     makeTyvar as fn TA.TyvarId, None: TA.Tyvar =
         fn tyvarId, None:
@@ -41,7 +41,7 @@ exposedValueToUsrAndInstance as fn USR & Load.ExposedValue: USR & Compiler/TypeC
         , generalizedAt = Pos.N
         , generalizedFor = RefGlobal usr
         , originalName = ""
-        , allowFunctions = not (Dict.member tyvarId nonFn)
+        , allowFunctions = True # TODO not (List.member tyvarId exposed.nonFn)
         }
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
@@ -149,11 +149,11 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
         Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
 
     !externalValues =
-        Hash.fromList []
+        Array.fromList []
 
     # TODO Can I avoid these uniqueness shenanigans?
     !state = cloneImm state0
-#    List.each pars.exposedValues (fn (usr & exp): Hash.insert @externalValues (Compiler/MakeEmittable.translateUsr @state usr) exp))
+    List.each pars.exposedValues (fn (usr & exposed): Array.push @externalValues { name = Compiler/MakeEmittable.translateUsr @state usr, exposed })
 
     Ok { constructors, entryName, type, state, externalValues, defs }
 

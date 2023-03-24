@@ -484,4 +484,30 @@ const sp_cons = (item, list) => {
 }
 
 const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));
+
+
+//
+// Dynamic loading
+//
+const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
+
+    const actualTypeHumanized = sp_toHuman(out.type);
+    if (actualTypeHumanized !== requestedTypeHumanized) {
+        return [ 'Err', out.type ];
+    }
+
+    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
+    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
+    const js = $sd1$Platforms$Browser$compile(out.state, out)[0];
+
+    //   { name1, name2, name3, ... } = externals;
+    const unpackExterns = 'const { ' + out.externalValues.map((e) => e.name).join(', ') + ' } = externs;';
+
+    const body = `{ ${unpackExterns}\n${js}; return ${out.entryName}; }`;
+
+    const arg = {};
+    out.externalValues.forEach((e) => arg[e.name] = e.exposed.value);
+
+    return [ 'Ok', variantConstructor(Function('externs', body)(arg)) ];
+};
     """

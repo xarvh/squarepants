@@ -84,7 +84,7 @@ main as fn Text: Result Text CompiledCode =
     {
     , meta
     , umrToFsPath = fn _: inputFileName
-    , exposedValues = []
+    , exposedValues = [ USR (UMR Meta.Core "List") "blah" & Load.expose List.map ]
     , entryModule
     , modules = [entryModule & code]
     }
