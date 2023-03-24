@@ -353,7 +353,7 @@ compileMain as fn CompileMainPars: IO Int =
     {
     , meta
     , umrToFsPath = umrToFileName corePath __
-    , nativeValues = Prelude.coreNativeValues
+    , exposedValues = []
     , modules = modulesAsText
     , entryModule = entryUmr
     }

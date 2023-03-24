@@ -1969,22 +1969,25 @@ makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
 # Populate global Env
 #
 #
-addNativeValueToGlobalEnv as fn @State, USR, CA.RawType, Env: Env =
-    fn @state, (USR umr name), type, env:
+addCoreValueToCoreEnv as fn @State, Prelude.CoreValue, Env: Env =
+    fn @state, { usr, raw, nonFn }, env:
+
+    USR umr name =
+        usr
 
     zzz =
-      fn tyvarName, pos:
-            { allowFunctions = True } #TODO!!! not (List.member tyvarName nonFn) }
+        fn tyvarName, pos:
+        { allowFunctions = not (Dict.member tyvarName nonFn) }
 
     tyvars =
-        type
+        raw
         >> CA.typeTyvars
         >> Dict.map zzz __
 
     addValueToGlobalEnv @state umr
         {
         , uni = Imm
-        , pattern = CA.PatternAny Pos.N { maybeName = Just name, maybeAnnotation = Just type }
+        , pattern = CA.PatternAny Pos.N { maybeName = Just name, maybeAnnotation = Just raw }
         , native = True
         , body = CA.LiteralText Pos.N name
         , tyvars
@@ -2176,8 +2179,8 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
     >> Dict.map (fn k, v: None) __
 
 
-initStateAndGlobalEnv as fn Dict USR CA.RawType, [CA.Module]: Res (TA.TyvarId & Env) =
-    fn nativeValues, allModules:
+initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env) =
+    fn externalValues, allModules:
 
     !state =
         initState 0
@@ -2215,7 +2218,8 @@ initStateAndGlobalEnv as fn Dict USR CA.RawType, [CA.Module]: Res (TA.TyvarId & 
         , expandedAliases
         }
         >> List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)
-        >> Dict.for __ nativeValues (addNativeValueToGlobalEnv @state __ __ __)
+        >> List.for __ Prelude.allCoreValues (addCoreValueToCoreEnv @state __ __)
+        >> List.for __ externalValues (fn (usr & instance), e: { e with variables = Dict.insert (RefGlobal usr) instance .variables })
         >> List.for __ allModules doStuff
 
     try Array.toList @state.errors as
@@ -2532,5 +2536,3 @@ applySubstitutionToType as fn TA.TyvarId, TA.RawType, TA.RawType: TA.RawType =
 
     TA.resolveRaw subsAsFns originalType
 
-
-#]

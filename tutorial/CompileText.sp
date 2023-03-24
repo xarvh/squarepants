@@ -84,7 +84,7 @@ main as fn Text: Result Text CompiledCode =
     {
     , meta
     , umrToFsPath = fn _: inputFileName
-    , nativeValues = Prelude.coreNativeValues
+    , exposedValues = []
     , entryModule
     , modules = [entryModule & code]
     }
@@ -104,3 +104,4 @@ main as fn Text: Result Text CompiledCode =
     >> Human/Type.doRawType {} __
     >> Human/Type.display "" __
     >> Err
+

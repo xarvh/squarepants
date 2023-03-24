@@ -8,7 +8,7 @@ alias CompileModulesPars =
 
     # TODO: in theory, we should expose all union types referenced by these, and their constructors
     # In practice, I hope we'll get structural variant types before this becomes necessary
-    , nativeValues as Dict USR CA.RawType
+    , exposedValues as [ USR & Load.ExposedValue ]
 
     # TODO
     #, nativeAliases as Dict USR { value as Core.Type, args as [Text] }
@@ -26,6 +26,37 @@ alias CompileModulesOut =
     , defs as [EA.GlobalDefinition]
     , constructors as [USR & TA.FullType]
     }
+
+
+exposedValueToUsrAndInstance as fn USR & Load.ExposedValue: USR & Compiler/TypeCheck.Instance =
+    fn usr & exposed:
+
+    { raw, nonFn } =
+        Load.exposedType exposed
+
+    makeTyvar as fn TA.TyvarId, None: TA.Tyvar =
+        fn tyvarId, None:
+        {
+        , generalizedAt = Pos.N
+        , generalizedFor = RefGlobal usr
+        , originalName = ""
+        , allowFunctions = not (Dict.member tyvarId nonFn)
+        }
+
+    freeTyvars as Dict TA.TyvarId TA.Tyvar =
+        raw
+        >> TA.typeTyvars
+        >> Dict.map makeTyvar __
+
+    usr
+    &
+    {
+    , definedAt = Pos.N
+    , type = { raw, uni = Imm }
+    , freeTyvars
+    , freeUnivars = Dict.empty
+    }
+
 
 
 compileModules as fn CompileModulesPars: Res CompileModulesOut =
@@ -53,7 +84,9 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
     >> onOk fn userModules:
 
     log "Type checking..." ""
-    Compiler/TypeCheck.initStateAndGlobalEnv [#pars.nativeAliases#] pars.nativeValues userModules
+
+    userModules
+    >> Compiler/TypeCheck.initStateAndGlobalEnv [#pars.nativeAliases#] (List.map exposedValueToUsrAndInstance pars.exposedValues) __
     >> onOk fn (luv & typeCheckGlobalEnv):
 
     !lastUnificationVarId =

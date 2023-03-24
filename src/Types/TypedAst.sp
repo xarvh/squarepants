@@ -404,4 +404,3 @@ normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
         , TypeError:
             TypeError
 
-

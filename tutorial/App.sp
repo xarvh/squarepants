@@ -124,7 +124,6 @@ wordToClass as fn Token.Word: Text =
         , _: if word.isUpper then "upper" else "lower"
 
 
-
 tokenToClass as fn Token.Kind: Text =
     fn kind:
 
@@ -185,12 +184,6 @@ viewColorToken as fn Text, Token, (Int & [Html msg]): Int & [Html msg] =
     tEnd & acc
 
 
-
-
-
-
-
-
 viewEditor as fn Model: Html Msg =
     fn model:
 
@@ -238,7 +231,7 @@ viewEditor as fn Model: Html Msg =
     Html.div
        [
        , Html.class "editor-content"
-       , widthAttr >> log "width" __
+       , widthAttr
        , heightAttr
        ]
        [ Html.textarea
@@ -251,8 +244,6 @@ viewEditor as fn Model: Html Msg =
            [ Html.class "editor-overlay" ]
            editorOverlay
        ]
-
-
 
 
 viewCompiledOutput as fn Model: Html Msg =
@@ -279,10 +270,6 @@ viewCompiledOutput as fn Model: Html Msg =
                 , Html.on "mousemove" onMouseMove
                 , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
                 ]
-
-
-
-
 
 
 view as fn Model: Html Msg =
@@ -321,12 +308,6 @@ view as fn Model: Html Msg =
             , div [ Html.class "content" ]
                 [
                 , viewEditor model
-#                , Html.textarea
-#                    [
-#                    , Html.class "input"
-#                    , Html.onInput OnInput
-#                    ]
-#                    model.code
                 , div
                     [
                     , Html.onClick OnClick

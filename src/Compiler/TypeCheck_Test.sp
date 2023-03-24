@@ -84,11 +84,8 @@ infer as fn Text: fn Text: Result Text Out =
     >> TH.resErrorToStrippedText
     >> onOk fn caModule:
 
-    modules as [CA.Module] =
-        List.append Prelude.coreModules [caModule]
-
-    modules
-    >> Compiler/TypeCheck.initStateAndGlobalEnv Dict.empty __
+    [caModule]
+    >> Compiler/TypeCheck.initStateAndGlobalEnv [] __
     >> TH.resErrorToStrippedText
     >> onOk fn (luv & typeCheckGlobalEnv_):
 

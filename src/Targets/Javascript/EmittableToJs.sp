@@ -96,6 +96,8 @@ coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
     , corelib "List" "sortBy" & function "list_sortBy"
     #
     , corelib "Load" "dynamicLoad" & dynamicLoad
+    , corelib "Load" "expose" & expose
+    , corelib "Load" "internalRepresentation" & function "JSON.stringify"
     ]
     >> Dict.fromList
     >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
@@ -175,6 +177,40 @@ function as fn Text: Override =
 #
 # Dynamic loading
 #
+expose as Override =
+
+    call =
+        fn env, eaArgs:
+
+        try eaArgs as
+            , [ EA.ArgumentSpend { with raw } e ]:
+
+                type as JA.Expr =
+                    raw
+                    >> Load.internalRepresentation
+                    >> JA.Literal
+
+                value as JA.Expr =
+                    translateExpressionToExpression env e
+
+                [
+                , "type" & type
+                , "value" & value
+                ]
+                >> Dict.fromList
+                >> JA.Record
+
+            , _:
+                todo "expose BUG?!"
+
+
+    {
+    , value = fn env: todo "TODO: monomorphization is not yet implemented so `expose` can only be called directly"
+    , call
+    }
+    >> Override
+
+
 dynamicLoad as Override =
 
     call =

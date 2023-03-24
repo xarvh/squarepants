@@ -2,14 +2,26 @@
 # Dynamic loading
 #
 
-#union ExposedValue =
-#    ExposedValue
-#    #Never ExposedValue
-#
-#
-#expose as fn a: ExposedValue =
-#    fn a:
-#    todo "native"
+union ExposedValue =
+    ExposedValue ExposedValue
+
+
+# This funciton exists for 2 reasons:
+#   1. I want ExposedValue to be able to contain any type of value, without any tyvar on ExposedValue
+#   2. Collect the inferred type
+expose as fn a: ExposedValue =
+    fn a:
+    todo "native"
+
+
+exposedType as fn ExposedValue: { raw as TA.RawType, nonFn as Dict TA.TyvarId Bool } =
+    fn e:
+    todo "native"
+
+
+internalRepresentation as fn a: Text with a NonFunction =
+    fn a:
+    todo "native"
 
 
 #

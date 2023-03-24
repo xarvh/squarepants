@@ -273,6 +273,21 @@ const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
     // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
     // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
     const js = $sd1$Platforms$Browser$compile(out.state, out)[0];
+
+
+
+    out.exposedValues is an Hash from names (ie, translated USRs) to values
+    (would also be nice if we removed those that are not used)
+          ---> Compiler needs to gen this from the native values, and maybe the dependencies?
+
+    add to the beginning of the js a:
+
+        { name, ... } = out.exposedValues
+
+    Then pass out.exposedValues as first argument to the Function constructor
+
+
+
     const body = `{ ${js}; return ${out.entryName}; }`;
 
     return [ 'Ok', variantConstructor(Function(body)()) ];
