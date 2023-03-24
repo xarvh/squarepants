@@ -275,6 +275,9 @@ const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
     const js = $sd1$Platforms$Browser$compile(out.state, out)[0];
 
 
+    //   { name1, name2, name3, ... } = externals;
+    const unpackExterns = '{ ' + out.exposedValues.map((a) => a.first).join(', ') + ' } = externs;';
+
 
     out.exposedValues is an Hash from names (ie, translated USRs) to values
     (would also be nice if we removed those that are not used)
@@ -288,9 +291,9 @@ const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
 
 
 
-    const body = `{ ${js}; return ${out.entryName}; }`;
+    const body = `{ ${unpackExterns}\n${js}; return ${out.entryName}; }`;
 
-    return [ 'Ok', variantConstructor(Function(body)()) ];
+    return [ 'Ok', variantConstructor(Function('externs', body)()) ];
 };
 
     """

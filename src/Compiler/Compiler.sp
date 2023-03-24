@@ -25,6 +25,7 @@ alias CompileModulesOut =
     , state as Compiler/MakeEmittable.State
     , defs as [EA.GlobalDefinition]
     , constructors as [USR & TA.FullType]
+    , externalValues as Hash Text Load.ExposedValue
     }
 
 
@@ -104,7 +105,7 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
     log "Emittable AST..." ""
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll pars.entryModule __
-    >> onOk fn { entryName, state, defs }:
+    >> onOk fn { entryName, state = state0, defs }:
 
     typeResult as Res TA.RawType =
         try List.find (fn mod: mod.umr == pars.entryModule) modulesWithDestruction as
@@ -147,5 +148,12 @@ compileModules as fn CompileModulesPars: Res CompileModulesOut =
     constructors =
         Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
 
-    Ok { constructors, entryName, type, state, defs }
+    !externalValues =
+        Hash.fromList []
+
+    # TODO Can I avoid these uniqueness shenanigans?
+    !state = cloneImm state0
+#    List.each pars.exposedValues (fn (usr & exp): Hash.insert @externalValues (Compiler/MakeEmittable.translateUsr @state usr) exp))
+
+    Ok { constructors, entryName, type, state, externalValues, defs }
 
