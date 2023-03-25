@@ -93,7 +93,7 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     log "Emittable AST..." ""
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll pars.entryModule __
-    >> onOk fn { entryName, state = state0, defs }:
+    >> onOk fn { entryName, defs }:
 
     typeResult as Res TA.RawType =
         try List.find (fn mod: mod.umr == pars.entryModule) modulesWithDestruction as
@@ -139,9 +139,7 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     !externalValues =
         Array.fromList []
 
-    # TODO Can I avoid these uniqueness shenanigans?
-    !state = cloneImm state0
-    List.each pars.exposedValues (fn (usr & exposed): Array.push @externalValues { name = Compiler/MakeEmittable.translateUsr @state usr, exposed })
+    List.each pars.exposedValues (fn (usr & exposed): Array.push @externalValues { name = Compiler/MakeEmittable.translateUsr usr, exposed })
 
-    Ok { constructors, entryName, type, state, externalValues, defs }
+    Ok { constructors, entryName, type, externalValues, defs }
 

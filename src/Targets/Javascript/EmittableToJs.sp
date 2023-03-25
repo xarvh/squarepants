@@ -20,8 +20,8 @@ union Override = Override
     }
 
 
-coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
-    fn @emState:
+coreOverrides as fn None: Dict EA.Name Override =
+    fn None:
 
     corelib as fn Text, Text: USR =
         fn m, n:
@@ -100,7 +100,7 @@ coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
     >> Dict.fromList
-    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
+    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr __) __
 
 
 unaryPlus as Override =
@@ -608,8 +608,8 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
 
 
 
-translateConstructor as fn @Compiler/MakeEmittable.State, USR & TA.FullType: JA.Statement =
-    fn @emState, (usr & full):
+translateConstructor as fn USR & TA.FullType: JA.Statement =
+    fn (usr & full):
 
     taType =
         full.raw
@@ -636,7 +636,7 @@ translateConstructor as fn @Compiler/MakeEmittable.State, USR & TA.FullType: JA.
                 JA.Array [ arrayHead ]
 
     usrAsText =
-        Compiler/MakeEmittable.translateUsr @emState usr
+        Compiler/MakeEmittable.translateUsr usr
 
     JA.Define False usrAsText definitionBody
 
@@ -660,19 +660,19 @@ alias TranslateAllPars =
     , platformOverrides as [USR & Text]
     }
 
-translateAll as fn @Compiler/MakeEmittable.State, TranslateAllPars: [JA.Statement] =
-    fn @emState, pars:
+translateAll as fn TranslateAllPars: [JA.Statement] =
+    fn pars:
 
     { constructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [JA.Statement] =
-        List.map (translateConstructor @emState __) constructors
+        List.map (translateConstructor __) constructors
 
     env as Env =
       {
-      , overrides = coreOverrides @emState >> List.for __ platformOverrides fn (usr & runtimeName), d:
-          Dict.insert (Compiler/MakeEmittable.translateUsr @emState usr) (function runtimeName) d
+      , overrides = List.for (coreOverrides None) platformOverrides fn (usr & runtimeName), d:
+          Dict.insert (Compiler/MakeEmittable.translateUsr usr) (function runtimeName) d
       }
 
     jaStatements as [JA.Statement] =

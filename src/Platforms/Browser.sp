@@ -25,12 +25,12 @@ virtualDomModule as fn Text: USR =
 
 
 
-compile as fn @Compiler/MakeEmittable.State, Self.LoadPars: Text =
-    fn @emState, out:
+compile as fn Self.LoadPars: Text =
+    fn out:
 
     log "Creating JS AST..." ""
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @emState
+        Targets/Javascript/EmittableToJs.translateAll
             {
             , constructors = out.constructors
             , eaDefs = out.defs
@@ -47,15 +47,12 @@ compile as fn @Compiler/MakeEmittable.State, Self.LoadPars: Text =
 makeExecutable as fn Self.LoadPars: Text =
     fn out:
 
-    !emState =
-        cloneImm out.state
-
     compiledStatements =
-        compile @emState out
+        compile out
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer @emState out.entryName
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out.entryName
 
 
 overrides as [USR & Text] =
@@ -80,11 +77,11 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn @Compiler/MakeEmittable.State, Text: Text =
-    fn @state, mainName:
+footer as fn Text: Text =
+    fn mainName:
 
     updateDomNode =
-        Compiler/MakeEmittable.translateUsr @state (virtualDomModule "updateDomNode")
+        Compiler/MakeEmittable.translateUsr (virtualDomModule "updateDomNode")
 
     """
 

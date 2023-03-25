@@ -6,7 +6,6 @@ platform as Types/Platform.Platform =
     , defaultModules = DefaultModules.asText .. posixModules
     , quickstart = "TODO"
     , defaultOutputPath = "nodeExecutable.js"
-#    , compileStatements
     , makeExecutable
     }
 
@@ -26,27 +25,6 @@ library =
     """
 
 
-#compileStatements as fn Types/Platform.GetRidOfMe, @Compiler/MakeEmittable.State, [EA.GlobalDefinition]: Text =
-#    fn getRidOfMe, @emState, emittableStatements:
-#
-#    { constructors } =
-#        getRidOfMe
-#
-#    log "Creating JS AST..." ""
-#    jaStatements =
-#        Targets/Javascript/EmittableToJs.translateAll @emState
-#            {
-#            , constructors
-#            , eaDefs = emittableStatements
-#            , platformOverrides = overrides
-#            }
-#
-#    log "Emitting JS..." ""
-#    jaStatements
-#    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
-#    >> Text.join "\n\n" __
-
-
 makeExecutable as fn Self.LoadPars: Text =
     fn out:
 
@@ -64,13 +42,10 @@ makeExecutable as fn Self.LoadPars: Text =
         }
         """
 
-    !emState =
-        cloneImm out.state
-
     compiledStatements =
         log "Creating JS AST..." ""
         jaStatements =
-            Targets/Javascript/EmittableToJs.translateAll @emState
+            Targets/Javascript/EmittableToJs.translateAll
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs

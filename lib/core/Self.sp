@@ -35,7 +35,7 @@ alias LoadPars =
     {
     , entryName as Text
     , type as TA.RawType
-    , state as Compiler/MakeEmittable.State
+    #, state as Compiler/MakeEmittable.State
     , defs as [EA.GlobalDefinition]
     , constructors as [USR & TA.FullType]
     , externalValues as Array { name as Text, exposed as Self.Self }
