@@ -25,7 +25,7 @@ virtualDomModule as fn Text: USR =
 
 
 
-compile as fn @Compiler/MakeEmittable.State, Compiler/Compiler.CompileModulesOut: Text =
+compile as fn @Compiler/MakeEmittable.State, Self.LoadPars: Text =
     fn @emState, out:
 
     log "Creating JS AST..." ""
@@ -44,7 +44,7 @@ compile as fn @Compiler/MakeEmittable.State, Compiler/Compiler.CompileModulesOut
 
 
 
-makeExecutable as fn Compiler/Compiler.CompileModulesOut: Text =
+makeExecutable as fn Self.LoadPars: Text =
     fn out:
 
     !emState =

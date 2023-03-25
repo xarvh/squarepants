@@ -205,4 +205,4 @@ library =
           onOk
 
     module =
-        path = Load
+        path = Self

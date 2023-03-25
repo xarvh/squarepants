@@ -129,19 +129,21 @@ union CliOptions =
         }
 
 
-alias CliState = {
+alias CliState =
+    {
     , platform as Types/Platform.Platform
     }
 
 
-cliDefaults as CliState = {
+cliDefaults as CliState =
+    {
     , platform = Platforms/Posix.platform
     }
 
 
-availablePlatforms as [Types/Platform.Platform] = [
+availablePlatforms as [Types/Platform.Platform] =
+    [
     , Platforms/Posix.platform
-    , Platforms/RawJavaScript.platform
     , Platforms/Browser.platform
     ]
 

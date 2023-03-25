@@ -489,7 +489,7 @@ const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, 
 //
 // Dynamic loading
 //
-const load_dynamicLoad = (requestedTypeHumanized, out, variantConstructor) => {
+const self_load = (requestedTypeHumanized, out, variantConstructor) => {
 
     const actualTypeHumanized = sp_toHuman(out.type);
     if (actualTypeHumanized !== requestedTypeHumanized) {

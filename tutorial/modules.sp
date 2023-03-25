@@ -135,7 +135,7 @@ library =
     source = "core:prelude"
 
     module =
-        path = Load
+        path = Self
 
     # unlike sourceDirs, libraries don't automatically expose all available modules
     module =

@@ -47,7 +47,7 @@ onResSuccess as fn (fn a: Result Text b): fn Res a: Result Text b =
 # Meta
 #
 meta as Meta =
-  try ModulesFile.textToModulesFile "modules.sp" Platforms/RawJavaScript.platform.defaultModules as
+  try ModulesFile.textToModulesFile "modules.sp" Platforms/Browser.platform.defaultModules as
       , Ok m:
           ModulesFile.toMeta m
 
@@ -84,7 +84,7 @@ main as fn Text: Result Text CompiledCode =
     {
     , meta
     , umrToFsPath = fn _: inputFileName
-    , exposedValues = [ USR (UMR Meta.Core "List") "blah" & Load.expose List.map ]
+    , exposedValues = [ USR (UMR Meta.Core "List") "blah" & Self.introspect List.map ]
     , entryModule
     , modules = [entryModule & code]
     }
@@ -92,11 +92,11 @@ main as fn Text: Result Text CompiledCode =
     >> onResSuccess fn out:
 
     loadResult as Result TA.RawType CompiledCode =
-        Load.dynamicLoad out CompiledNumber
+        Self.load out CompiledNumber
         >> Result.onErr fn _:
-        Load.dynamicLoad out CompiledText
+        Self.load out CompiledText
         >> Result.onErr fn _:
-        Load.dynamicLoad out CompiledShader
+        Self.load out CompiledShader
 
     loadResult
     >> Result.onErr fn actualCompiledType:

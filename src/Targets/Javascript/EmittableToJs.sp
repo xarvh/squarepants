@@ -95,9 +95,9 @@ coreOverrides as fn @Compiler/MakeEmittable.State: Dict EA.Name Override =
     #
     , corelib "List" "sortBy" & function "list_sortBy"
     #
-    , corelib "Load" "dynamicLoad" & dynamicLoad
-    , corelib "Load" "expose" & expose
-    , corelib "Load" "internalRepresentation" & function "JSON.stringify"
+    , corelib "Self" "load" & loadOverride
+    , corelib "Self" "introspect" & introspectOverride
+    , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
     >> Dict.fromList
     >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr @emState __) __
@@ -177,7 +177,7 @@ function as fn Text: Override =
 #
 # Dynamic loading
 #
-expose as Override =
+introspectOverride as Override =
 
     call =
         fn env, eaArgs:
@@ -187,7 +187,7 @@ expose as Override =
 
                 type as JA.Expr =
                     raw
-                    >> Load.internalRepresentation
+                    >> Self.internalRepresentation
                     >> JA.Literal
 
                 nonFn as JA.Expr =
@@ -205,17 +205,17 @@ expose as Override =
                 >> JA.Record
 
             , _:
-                todo "expose BUG?!"
+                todo "introspectOverride BUG?!"
 
 
     {
-    , value = fn env: todo "TODO: monomorphization is not yet implemented so `expose` can only be called directly"
+    , value = fn env: todo "TODO: monomorphization is not yet implemented so `introspect` can only be called directly"
     , call
     }
     >> Override
 
 
-dynamicLoad as Override =
+loadOverride as Override =
 
     call =
         fn env, eaArgs:
@@ -234,12 +234,12 @@ dynamicLoad as Override =
                     >> literalString
 
                 , _:
-                    todo "dynamicLoad BUG?!"
+                    todo "loadOverride BUG?!"
 
-        JA.Call (JA.Var "load_dynamicLoad") [ requestedTypeHumanized, ...jaArgs ]
+        JA.Call (JA.Var "self_load") [ requestedTypeHumanized, ...jaArgs ]
 
     {
-    , value = fn env: todo "TODO: dynamicLoad as value... I guess we need monomorphization?"
+    , value = fn env: todo "TODO: load as value... I guess we need monomorphization?"
     , call
     }
     >> Override

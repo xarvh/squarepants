@@ -8,7 +8,7 @@ alias CompileModulesPars =
 
     # TODO: in theory, we should expose all union types referenced by these, and their constructors
     # In practice, I hope we'll get structural variant types before this becomes necessary
-    , exposedValues as [ USR & Load.Exposed ]
+    , exposedValues as [ USR & Self.Self ]
 
     # TODO
     #, nativeAliases as Dict USR { value as Core.Type, args as [Text] }
@@ -18,18 +18,7 @@ alias CompileModulesPars =
     }
 
 
-alias CompileModulesOut =
-    {
-    , entryName as Text
-    , type as TA.RawType
-    , state as Compiler/MakeEmittable.State
-    , defs as [EA.GlobalDefinition]
-    , constructors as [USR & TA.FullType]
-    , externalValues as Array { name as Text, exposed as Load.Exposed }
-    }
-
-
-exposedValueToUsrAndInstance as fn USR & Load.Exposed: USR & Compiler/TypeCheck.Instance =
+exposedValueToUsrAndInstance as fn USR & Self.Self: USR & Compiler/TypeCheck.Instance =
     fn usr & exposed:
 
     { with raw } =
@@ -59,8 +48,7 @@ exposedValueToUsrAndInstance as fn USR & Load.Exposed: USR & Compiler/TypeCheck.
     }
 
 
-
-compileModules as fn CompileModulesPars: Res CompileModulesOut =
+compileModules as fn CompileModulesPars: Res Self.LoadPars =
     fn pars:
 
     log "Loading modules..." ""

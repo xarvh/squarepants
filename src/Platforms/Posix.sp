@@ -47,7 +47,7 @@ library =
 #    >> Text.join "\n\n" __
 
 
-makeExecutable as fn Compiler/Compiler.CompileModulesOut: Text =
+makeExecutable as fn Self.LoadPars: Text =
     fn out:
 
     # TODO check that type is `IO Int`
