@@ -128,16 +128,13 @@ listSourceDir as fn Text, Text: IO [Text] =
 
 
 # TODO move this to Meta?
-umrToFileName as fn Text, UMR: Text =
-    fn corePath, umr:
+umrToFileName as fn Meta, Text, UMR: Text =
+    fn meta, corePath, umr:
 
     UMR source name =
         umr
 
     try source as
-        , Meta.SourceDir d:
-            Path.resolve [ d, name .. ".sp" ]
-
         , Meta.Core:
             Path.resolve (corePath :: "core" :: (Text.split "/" __ << name .. ".sp"))
 
@@ -146,6 +143,12 @@ umrToFileName as fn Text, UMR: Text =
 
         , Meta.Browser:
             Path.resolve (corePath :: "browser" :: (Text.split "/" __ << name .. ".sp"))
+
+
+        , Meta.SourceDirId id:
+            try Dict.get id meta.sourceDirIdToPath as
+                , Nothing: todo << "invalid sourceDirId " .. id
+                , Just path: Path.resolve [ path, name .. ".sp" ]
 
 
 loadModule as fn Meta, UMR, Text: IO CA.Module =
@@ -308,7 +311,7 @@ compileMain as fn CompileMainPars: IO Int =
         meta.moduleVisibleAsToUmr
         >> Dict.values
         # TODO split umrToFileName so we can call it without `""`
-        >> List.find (fn umr: umrToFileName "" umr == entryModulePath) __
+        >> List.find (fn umr: umrToFileName meta "" umr == entryModulePath) __
 
     entryUmr =
         try maybeEntryUmr as
@@ -340,7 +343,7 @@ compileMain as fn CompileMainPars: IO Int =
 
     loadFile as fn UMR: IO (UMR & Text) =
         fn umr:
-        IO.readFile (umrToFileName corePath umr)
+        IO.readFile (umrToFileName meta corePath umr)
         >> IO.onSuccess fn content:
         IO.succeed (umr & content)
 
@@ -352,7 +355,7 @@ compileMain as fn CompileMainPars: IO Int =
 
     {
     , meta
-    , umrToFsPath = umrToFileName corePath __
+    , umrToFsPath = umrToFileName meta corePath __
     , exposedValues = []
     , modules = modulesAsText
     , entryModule = entryUmr

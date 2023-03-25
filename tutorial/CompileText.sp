@@ -62,6 +62,28 @@ meta as Meta =
 
           Debug.todo "This is a compiler bug, not your fault."
 
+#
+#
+#
+selfToExposed as fn Self.Self: USR & Self.Self =
+    fn self:
+
+    try self.expression as
+        EA.Variable name:
+            ...
+
+
+
+
+exposedValues as [ USR & Self.Self ] =
+    [
+    , Self.introspect Html.button
+    , Self.introspect Html.onClick
+    ]
+    >> List.map selfToExposed __
+
+
+
 
 #
 # Compile

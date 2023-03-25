@@ -50,10 +50,9 @@ generateTryName as fn @Int: DollarName =
     generatedName ("try" .. Text.fromNumber (cloneUni @counter))
 
 
-translateSource as fn @State, Meta.Source: Text =
-    fn @state, src:
+translateSource as fn Meta.Source: Text =
+    fn src:
 
-    # TODO just generate an id for each source, to avoid all stupid collisions and invalid characters
     try src as
         , Meta.Core:
             "core"
@@ -64,31 +63,23 @@ translateSource as fn @State, Meta.Source: Text =
         , Meta.Browser:
             "browser"
 
-        , Meta.SourceDir path:
-            try Hash.get @state.sourceDirsToId path as
-                , Nothing:
-                    n = "sd" .. Text.fromNumber (cloneUni @state.sourceDirsCounter)
-                    @state.sourceDirsCounter += 1
-                    Hash.insert @state.sourceDirsToId path n
-                    n
-
-                , Just id:
-                    id
+        , Meta.SourceDirId id:
+            id
 
 
-makeTextUsr as fn @State, UMR, DollarName: Name =
-    fn @state, umr, (DollarName name):
+makeTextUsr as fn UMR, DollarName: Name =
+    fn umr, (DollarName name):
 
     UMR source modulePath =
         umr
 
-    "$" .. translateSource @state source .. "$" .. Text.replace "/" "$" modulePath .. name
+    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. name
 
 
 translateUsr as fn @State, USR: Text =
     fn @state, usr:
     USR umr name = usr
-    makeTextUsr @state umr (userSpecifiedName name)
+    makeTextUsr umr (userSpecifiedName name)
 
 
 #
@@ -418,7 +409,7 @@ translateRootValueDef as fn TA.Module, @State, TA.ValueDef, ByName EA.GlobalDefi
 
         , TrivialPattern name type:
             usrAsText =
-                makeTextUsr @state umr name
+                makeTextUsr umr name
 
             accum >> Dict.insert usrAsText {
               , name = usrAsText
@@ -429,7 +420,7 @@ translateRootValueDef as fn TA.Module, @State, TA.ValueDef, ByName EA.GlobalDefi
 
         , SafeMainName mainName:
             mainUsrAsText =
-                makeTextUsr @state umr mainName
+                makeTextUsr umr mainName
 
             mainDef as EA.GlobalDefinition =
                 { name = mainUsrAsText
@@ -440,7 +431,7 @@ translateRootValueDef as fn TA.Module, @State, TA.ValueDef, ByName EA.GlobalDefi
             accum
             >> Dict.insert mainUsrAsText mainDef __
             >> List.for __ (translatePattern def.pattern (EA.Variable mainUsrAsText)) fn (type & name & expr), z:
-                textUsr = makeTextUsr @state umr name
+                textUsr = makeTextUsr umr name
                 Dict.insert textUsr { name = textUsr, expr, deps = Set.ofOne mainUsrAsText } z
 
 

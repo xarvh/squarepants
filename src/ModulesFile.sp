@@ -63,17 +63,19 @@ insertLibrary as fn Library, Meta: Meta =
 
 insertModules as fn SourceDir, Meta: Meta =
     fn sd, m:
-    List.for m sd.modules (insertModule (Meta.SourceDir sd.path) __ __)
+
+    n = m.sourceDirIdCounter + 1
+    id = "sd" .. Text.fromNumber n
+
+    { m with
+    , sourceDirIdCounter = n
+    , sourceDirIdToPath = Dict.insert id sd.path .sourceDirIdToPath
+    }
+    >> List.for __ sd.modules (insertModule (Meta.SourceDirId id) __ __)
 
 
 insertModule as fn Meta.Source, Module, Meta: Meta =
     fn source, mod, meta:
-
-#    path =
-#        if source == Meta.Core:
-#            Meta.spCorePath
-#        else
-#            mod.path
 
     visibleAs =
         # TODO fail if visibleAs is used already
@@ -91,7 +93,7 @@ insertModule as fn Meta.Source, Module, Meta: Meta =
        >> USR umr __
        >> Dict.insert varName __ d
 
-    {
+    { meta with
     , globalValues = List.for meta.globalValues mod.globalValues insertGlobal
     , globalTypes = List.for meta.globalTypes mod.globalTypes insertGlobal
     , moduleVisibleAsToUmr = Dict.insert visibleAs umr meta.moduleVisibleAsToUmr

@@ -604,7 +604,7 @@ argumentPlaceholders as Test =
                         , CA.ParameterPlaceholder "1" 1
                         ]
                         ( CA.Call p
-                            (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDir "<Test>") "(test)") "f")))
+                            (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "f")))
                             [
                             , CA.ArgumentExpression (CA.Variable p (RefLocal "0"))
                             , CA.ArgumentExpression (CA.Variable p (RefLocal "1"))
