@@ -52,7 +52,7 @@ makeExecutable as fn Self.LoadPars: Text =
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out.entryName
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out.entryUsr
 
 
 overrides as [USR & Text] =
@@ -77,11 +77,14 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn Text: Text =
-    fn mainName:
+footer as fn USR: Text =
+    fn mainUsr:
+
+    mainName =
+        Targets/Javascript/EmittableToJs.translateUsr mainUsr
 
     updateDomNode =
-        Compiler/MakeEmittable.translateUsr (virtualDomModule "updateDomNode")
+        Targets/Javascript/EmittableToJs.translateUsr (virtualDomModule "updateDomNode")
 
     """
 

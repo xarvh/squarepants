@@ -367,7 +367,7 @@ circularIsError as fn ByUsr EA.GlobalDefinition, [USR]: Bool =
     List.any zzz usrs
 
 
-translateAll as fn UMR, [TA.Module]: Res { entryUsr as Text, defs as [EA.GlobalDefinition] } =
+translateAll as fn UMR, [TA.Module]: Res { entryUsr as USR, defs as [EA.GlobalDefinition] } =
     fn entryModule, modules:
 
     Debug.benchStart None

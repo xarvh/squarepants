@@ -30,10 +30,13 @@ makeExecutable as fn Self.LoadPars: Text =
 
     # TODO check that type is `IO Int`
 
+    entryName =
+        Targets/Javascript/EmittableToJs.translateUsr out.entryUsr
+
     callMain =
         """
         const args = arrayToListLow(process.argv.slice(1));
-        const out = """ .. out.entryName .. """({}, args)[1]('never');
+        const out = """ .. entryName .. """({}, args)[1]('never');
         if (out[0] === 'Ok') {
             process.exitCode = out[1];
         } else {

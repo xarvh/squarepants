@@ -5,7 +5,7 @@
 
 alias Env =
     {
-    , overrides as Dict EA.Name Override
+    , overrides as Dict USR Override
     }
 
 
@@ -20,7 +20,7 @@ union Override = Override
     }
 
 
-coreOverrides as fn None: Dict EA.Name Override =
+coreOverrides as fn None: Dict USR Override =
     fn None:
 
     corelib as fn Text, Text: USR =
@@ -100,7 +100,6 @@ coreOverrides as fn None: Dict EA.Name Override =
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
     >> Dict.fromList
-    >> Dict.mapKeys (Compiler/MakeEmittable.translateUsr __) __
 
 
 unaryPlus as Override =
@@ -417,14 +416,16 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
     fn env, eaExpression:
 
     try eaExpression as
-        , EA.Variable name:
-            translateVariable env name
+        , EA.Variable ref:
+            ref
+            >> translateRef
+            >> translateVariable env
             >> Inline
 
         , EA.Call ref args:
             maybeNativeOverride =
                 try ref as
-                    , EA.Variable name: Dict.get name env.overrides
+                    , EA.Variable (RefGlobal usr): Dict.get usr env.overrides
                     , _: Nothing
 
             try maybeNativeOverride as
@@ -548,8 +549,10 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> accessArrayIndex index __
             >> Inline
 
-        , EA.Constructor name:
-            translateVariable env name
+        , EA.Constructor usr:
+            usr
+            >> translateUsr
+            >> translateVariable env
             >> Inline
 
         , EA.ConstructorAccess argIndex value:
@@ -636,7 +639,7 @@ translateConstructor as fn USR & TA.FullType: JA.Statement =
                 JA.Array [ arrayHead ]
 
     usrAsText =
-        Compiler/MakeEmittable.translateUsr usr
+        translateUsr usr
 
     JA.Define False usrAsText definitionBody
 
@@ -651,6 +654,16 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
         , Nothing:
             JA.Define False def.name (translateExpressionToExpression env def.expr)
             >> Just
+
+
+translateRef as fn Ref: Text =
+    fn ref:
+    todo "translateRef"
+
+
+translateUsr as fn USR: Text =
+    fn usr:
+    todo "translateUsr"
 
 
 alias TranslateAllPars =
@@ -672,7 +685,7 @@ translateAll as fn TranslateAllPars: [JA.Statement] =
     env as Env =
       {
       , overrides = List.for (coreOverrides None) platformOverrides fn (usr & runtimeName), d:
-          Dict.insert (Compiler/MakeEmittable.translateUsr usr) (function runtimeName) d
+          Dict.insert (translateUsr usr) (function runtimeName) d
       }
 
     jaStatements as [JA.Statement] =

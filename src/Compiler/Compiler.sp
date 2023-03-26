@@ -48,6 +48,44 @@ exposedValueToUsrAndInstance as fn USR & Self.Self: USR & Compiler/TypeCheck.Ins
     }
 
 
+findMainType as fn UMR, [TA.Module]: Res TA.RawType =
+    fn umr, modules:
+
+    try List.find (fn mod: mod.umr == umr) modules as
+        , Nothing:
+            [
+            , "The entry module should be:"
+            , ""
+            #TODO , pars.umrToFsPath pars.entryModule
+            , ""
+            , "But I could not find any module matching that."
+            ]
+            >> Error.Raw
+            >> Err
+
+        , Just mod:
+            getMain =
+                fn def:
+                Dict.get "main" (TA.patternNames def.pattern)
+
+            try mod.valueDefs >> Dict.values >> List.filterMap getMain __ as
+                , [ { with type } ]:
+                    !hash = Hash.fromList []
+
+                    TA.normalizeType @hash type.raw
+                    >> Ok
+
+                , _:
+                    [
+                    #TODO , "The entry module " .. pars.umrToFsPath pars.entryModule
+                    , "does not seem to contain a `main` definition."
+                    , ""
+                    , "I need this to know where your program starts!"
+                    ]
+                    >> Error.Raw
+                    >> Err
+
+
 compileModules as fn CompileModulesPars: Res Self.LoadPars =
     fn pars:
 
@@ -73,7 +111,6 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     >> onOk fn userModules:
 
     log "Type checking..." ""
-
     userModules
     >> Compiler/TypeCheck.initStateAndGlobalEnv [#pars.nativeAliases#] (List.map exposedValueToUsrAndInstance pars.exposedValues) __
     >> onOk fn (luv & typeCheckGlobalEnv):
@@ -95,48 +132,14 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     >> Compiler/MakeEmittable.translateAll pars.entryModule __
     >> onOk fn { entryUsr, defs }:
 
-    typeResult as Res TA.RawType =
-        try List.find (fn mod: mod.umr == pars.entryModule) modulesWithDestruction as
-            , Nothing:
-                [
-                , "The entry module should be:"
-                , ""
-                , pars.umrToFsPath pars.entryModule
-                , ""
-                , "But I could not find any module matching that."
-                ]
-                >> Error.Raw
-                >> Err
 
-            , Just mod:
-                getMain =
-                    fn def:
-                    Dict.get "main" (TA.patternNames def.pattern)
-
-                try mod.valueDefs >> Dict.values >> List.filterMap getMain __ as
-                    , [ { with type } ]:
-                        !hash = Hash.fromList []
-
-                        TA.normalizeType @hash type.raw
-                        >> Ok
-
-                    , _:
-                        [
-                        , "The entry module " .. pars.umrToFsPath pars.entryModule
-                        , "does not seem to contain a `main` definition."
-                        , ""
-                        , "I need this to know where your program starts!"
-                        ]
-                        >> Error.Raw
-                        >> Err
-
-    typeResult
+    findMainType pars.entryModule modulesWithDestruction
     >> onOk fn type:
 
-    constructors =
+    constructors as [ USR & TA.FullType ] =
         Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
 
-    !externalValues =
+    !externalValues as Array { usr as USR, self as Self.Self } =
         Array.fromList []
 
     List.each pars.exposedValues fn (usr & self):
