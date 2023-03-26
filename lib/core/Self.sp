@@ -11,7 +11,7 @@ union Value =
 
 alias Self =
     {
-    , expr as EA.Expression
+    , expression as EA.Expression
     , raw as TA.RawType
     , nonFn as Array TA.TyvarId
     , value as Value
@@ -37,7 +37,7 @@ alias LoadPars =
     , type as TA.RawType
     , defs as [EA.GlobalDefinition]
     , constructors as [USR & TA.FullType]
-    , externalValues as Array { usr as USR, self as Self.Self }
+    , externalValues as Array { name as Name, self as Self.Self }
     }
 
 load as fn LoadPars, (fn specific: general): Result TA.RawType general =

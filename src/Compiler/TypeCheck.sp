@@ -1665,7 +1665,7 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
 checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Name CA.Pattern, @State: TA.Pattern & Env =
     fn env, pos, expectedType, completeness, pas, @state:
 
-    { uni, raw = _ } =
+    { with uni } =
         expectedType
 
     try expectedType.raw as

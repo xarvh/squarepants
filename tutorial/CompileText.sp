@@ -69,10 +69,11 @@ selfToExposed as fn Self.Self: USR & Self.Self =
     fn self:
 
     try self.expression as
-        EA.Variable name:
-            ...
+        , EA.Variable (RefGlobal usr):
+            usr & self
 
-
+        , _:
+            todo << "can't create an USR for " .. toHuman self.expression
 
 
 exposedValues as [ USR & Self.Self ] =
@@ -101,7 +102,7 @@ main as fn Text: Result Text CompiledCode =
         "user_input"
 
     entryModule =
-        UMR (Meta.SourceDir inputFileName) inputFileName
+        UMR (Meta.SourceDirId inputFileName) inputFileName
 
     {
     , meta

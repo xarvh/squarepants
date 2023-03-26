@@ -194,26 +194,26 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         , TA.Try pos { value, valueType, patternsAndExpressions }:
 
             # 1. create a name for the value (unless it's already a variable)
-            valueExpression & wrapWithLetIn =
+            valueExpression & wrapWithLetIn & newEnv =
                 try value & valueType.uni as
                     , TA.Variable _ ref & Imm:
-                        EA.Variable ref & identity
+                        EA.Variable ref & identity & env
 
                     , _:
-                        tryName =
-                            Text.fromNumber env.genVarCounter
+                        tryName & newEnv =
+                            generateName env
 
                         wrap =
                             fn tryExpression:
                             EA.LetIn
                                 {
                                 , maybeName = Just tryName
-                                , letExpression = translateExpression { env with genVarCounter = .genVarCounter + 1 } value
+                                , letExpression = translateExpression newEnv value
                                 , inExpression = tryExpression
                                 , type = valueType
                                 }
 
-                        EA.Variable (RefLocal tryName) & wrap
+                        EA.Variable (RefLocal tryName) & wrap & newEnv
 
 
             # 2. if-elses
@@ -229,7 +229,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
-                    translateExpression env block
+                    translateExpression newEnv block
                     >> List.for __ namesAndExpressions fn (type & name & letExpression), inExpression:
                         EA.LetIn { maybeName = Just name, type, letExpression, inExpression }
 
@@ -266,6 +266,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
                 , GenerateName:
                     mainName & newEnv =
+                        # TODO check if valueDef.body is just a variable
                         generateName env
 
                     namesAndExpressions =

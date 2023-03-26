@@ -30,6 +30,9 @@ a as fn [Attr msg], [Html msg]: Html msg =
 input as fn [Attr msg]: Html msg =
     VirtualDom.ElementNode "input" __ []
 
+button as fn [Attr msg], [Html msg]: Html msg =
+    VirtualDom.ElementNode "button" __ __
+
 textarea as fn [Attr msg], Text: Html msg =
     fn attrs, content:
     VirtualDom.ElementNode "textarea" attrs [ VirtualDom.TextNode content ]
