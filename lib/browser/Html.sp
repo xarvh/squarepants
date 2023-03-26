@@ -8,6 +8,10 @@ alias Attr msg =
     VirtualDom.Attr msg
 
 
+map as fn (fn a: b), Html a: Html b =
+    VirtualDom.map
+
+
 #
 # Elements
 #

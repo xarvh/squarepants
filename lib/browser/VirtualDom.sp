@@ -40,6 +40,27 @@ union Attr msg =
     , DomAttribute Text Text
 
 
+#
+#
+#
+map as fn (fn a: b), VirtualNode a: VirtualNode b =
+    fn f, n:
+    try n as
+        , TextNode t:
+            TextNode t
+        , ElementNode name attrs children:
+            ElementNode name (List.map (mapAttr f __) attrs) (List.map (map f __) children)
+
+mapAttr as fn (fn a: b), Attr a: Attr b =
+    fn f, a:
+    try a as
+        , Listener n handler:
+            Listener n (fn ev: Result.map f (handler ev))
+
+        , _:
+          a
+
+
 ###################
 
 

@@ -1,26 +1,30 @@
 
 initialContent as Text =
     """
-alias N = Number
+main =
+   Html.button [ Html.onClick "BLAH" ] [ Html.text "Click me!!" ]
+    """
 
-x = List.blah (fn x: x + 2) []
 
-main as fn N, N: { r as N, g as N, b as N } =
-    fn x, y:
-
-    {
-    , r = if x < 50% then 10% else 60%
-    , g = 50%
-    , b = y
-    }
-"""
+#    """
+#alias N = Number
+#
+#main as fn N, N: { r as N, g as N, b as N } =
+#    fn x, y:
+#
+#    {
+#    , r = if x < 50% then 10% else 60%
+#    , g = 50%
+#    , b = y
+#    }
+#"""
 
 
 union Msg =
   , OnInput Text
-  , OnClick
   , OnMouseMove Number Number
   , OnMouseLeave
+  , OnEmbeddedInput Text
 
 
 alias Model =
@@ -53,6 +57,10 @@ update as fn @Array VirtualDom.Effect, Msg, Model: Model =
     fn @effects, msg, model:
 
     try msg as
+        , OnEmbeddedInput text:
+            log "embedded msg" text
+            model
+
         , OnInput code:
             try CompileText.main code as
                 , Err error:
@@ -252,6 +260,8 @@ viewCompiledOutput as fn Model: Html Msg =
     fn model:
 
     try model.compiledCode as
+        , CompileText.CompiledHtml html:
+            Html.map OnEmbeddedInput html
 
         , CompileText.CompiledNumber n:
             Html.div
@@ -312,7 +322,6 @@ view as fn Model: Html Msg =
                 , viewEditor model
                 , div
                     [
-                    , Html.onClick OnClick
                     , Html.class "output-wrapper"
                     ]
                     [

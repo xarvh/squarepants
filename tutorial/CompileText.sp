@@ -77,11 +77,21 @@ selfToExposed as fn Self.Self: USR & Self.Self =
 
 
 exposedValues as [ USR & Self.Self ] =
-    [
-    , Self.introspect Html.button
-    , Self.introspect Html.onClick
-    ]
-    >> List.map selfToExposed __
+
+    l1 =
+        [
+        , Self.introspect Html.button
+        , Self.introspect Html.onClick
+        , Self.introspect Html.text
+        ]
+        >> List.map selfToExposed __
+
+    l2 =
+        [USR (UMR Meta.Core "List") "blah" & Self.introspect (fn x: 0.1)]
+
+    [ l1, l2 ]
+    >> List.concat
+
 
 
 
@@ -93,6 +103,7 @@ union CompiledCode =
     , CompiledNumber Number
     , CompiledText Text
     , CompiledShader fn Number, Number: { r as Number, g as Number, b as Number }
+    , CompiledHtml (Html Text)
 
 
 main as fn Text: Result Text CompiledCode =
@@ -107,7 +118,7 @@ main as fn Text: Result Text CompiledCode =
     {
     , meta
     , umrToFsPath = fn _: inputFileName
-    , exposedValues = [ USR (UMR Meta.Core "List") "blah" & Self.introspect List.map ]
+    , exposedValues
     , entryModule
     , modules = [entryModule & code]
     }
@@ -120,6 +131,8 @@ main as fn Text: Result Text CompiledCode =
         Self.load out CompiledText
         >> Result.onErr fn _:
         Self.load out CompiledShader
+        >> Result.onErr fn _:
+        Self.load out CompiledHtml
 
     loadResult
     >> Result.onErr fn actualCompiledType:

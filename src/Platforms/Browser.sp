@@ -17,6 +17,12 @@ library =
 
     module =
         path = Browser
+
+    module =
+        path = Html
+
+    module =
+        path = VirtualDom
     """
 
 
