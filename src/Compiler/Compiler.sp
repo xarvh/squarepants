@@ -139,7 +139,8 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     !externalValues =
         Array.fromList []
 
-    List.each pars.exposedValues (fn (usr & exposed): Array.push @externalValues { name = Compiler/MakeEmittable.translateUsr usr, exposed })
+    List.each pars.exposedValues fn (usr & self):
+        Array.push @externalValues { usr, self }
 
     Ok { constructors, entryName, type, externalValues, defs }
 

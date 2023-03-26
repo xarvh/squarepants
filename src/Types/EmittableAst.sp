@@ -16,7 +16,7 @@ alias AttrName =
 union Expression =
     , LiteralText Text
     , LiteralNumber Number
-    , Variable Name
+    , Variable Ref
     , Call Expression [Argument]
     , Fn [Bool & Maybe Name] Expression
     , Conditional Expression Expression Expression

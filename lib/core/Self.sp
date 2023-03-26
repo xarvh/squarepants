@@ -38,7 +38,7 @@ alias LoadPars =
     #, state as Compiler/MakeEmittable.State
     , defs as [EA.GlobalDefinition]
     , constructors as [USR & TA.FullType]
-    , externalValues as Array { name as Text, exposed as Self.Self }
+    , externalValues as Array { usr as USR, self as Self.Self }
     }
 
 load as fn LoadPars, (fn specific: general): Result TA.RawType general =
