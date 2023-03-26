@@ -33,7 +33,7 @@ internalRepresentation as fn a: Text with a NonFunction =
 # not protected by the type check.
 alias LoadPars =
     {
-    , entryName as Text
+    , entryUsr as USR
     , type as TA.RawType
     #, state as Compiler/MakeEmittable.State
     , defs as [EA.GlobalDefinition]

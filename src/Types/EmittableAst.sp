@@ -31,7 +31,7 @@ union Expression =
         }
     , LiteralArray [Expression]
     , ArrayAccess Int Expression
-    , Constructor Name
+    , Constructor USR
     , ConstructorAccess Int Expression
     , IsConstructor Name Expression
     , LiteralRecord (Maybe Expression) [AttrName & Expression]
@@ -46,10 +46,10 @@ union Argument =
 
 alias GlobalDefinition =
     {
-    , name as Name
+    , usr as USR
     , expr as Expression
 
     # We need these to be able to put defs in the right order
-    , deps as Set Name
+    , deps as Set USR
     }
 

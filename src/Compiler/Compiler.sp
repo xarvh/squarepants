@@ -93,7 +93,7 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     log "Emittable AST..." ""
     modulesWithDestruction
     >> Compiler/MakeEmittable.translateAll pars.entryModule __
-    >> onOk fn { entryName, defs }:
+    >> onOk fn { entryUsr, defs }:
 
     typeResult as Res TA.RawType =
         try List.find (fn mod: mod.umr == pars.entryModule) modulesWithDestruction as
@@ -142,5 +142,5 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     List.each pars.exposedValues fn (usr & self):
         Array.push @externalValues { usr, self }
 
-    Ok { constructors, entryName, type, externalValues, defs }
+    Ok { constructors, entryUsr, type, externalValues, defs }
 

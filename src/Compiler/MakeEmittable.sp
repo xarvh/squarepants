@@ -17,6 +17,11 @@ union PickedName =
     , NoNamedVariables
 
 
+generateName as fn Env: Name & Env =
+    fn env:
+    Text.fromNumber (env.genVarCounter + 1) & { env with genVarCounter = 1 + .genVarCounter }
+
+
 pickMainName as fn TA.Pattern: PickedName =
     fn pattern:
     try pattern as
@@ -109,7 +114,7 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
                         generateName env
 
                     namesAndExpressions =
-                         translatePattern pa (EA.Variable mainName)
+                         translatePattern pa (EA.Variable (RefLocal mainName))
 
                     wrapWithArgumentLetIn =
                         fn (type & varName & letExpression), inExpression:
@@ -149,7 +154,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             EA.Variable ref
 
         , TA.Constructor _ usr:
-            EA.Constructor (translateUsr usr)
+            EA.Constructor usr
 
         , TA.RecordAccess _ attrName exp:
             EA.RecordAccess attrName (translateExpression env exp)
@@ -212,7 +217,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
 
             # 2. if-elses
-            addTryPatternAndBlock as fn (Pattern & TA.Expression), EA.Expression: EA.Expression =
+            addTryPatternAndBlock as fn (TA.Pattern & TA.Expression), EA.Expression: EA.Expression =
                 fn ( pattern & block ), nextTryExpression:
 
                 testIfPatternMatches as EA.Expression =
@@ -259,12 +264,12 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         , inExpression = translateExpression env e
                         }
 
-                , Generate:
+                , GenerateName:
                     mainName & newEnv =
                         generateName env
 
                     namesAndExpressions =
-                        translatePattern valueDef.pattern (EA.Variable mainName)
+                        translatePattern valueDef.pattern (EA.Variable (RefLocal mainName))
 
                     wrapWithUnpackedPatternVar as fn (TA.FullType & Name & EA.Expression), EA.Expression: EA.Expression =
                         fn (type & name & letExpression), inExpression:
@@ -298,12 +303,8 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 translateRootValueDef as fn Env, TA.ValueDef, ByUsr EA.GlobalDefinition: ByUsr EA.GlobalDefinition =
     fn env, def, accum:
 
-    umr = env.module.umr
-
-    !counter = 0
-
     deps =
-        Set.map (translateUsr __) def.directValueDeps
+        def.directValueDeps
 
     try pickMainName def.pattern as
 
@@ -311,31 +312,36 @@ translateRootValueDef as fn Env, TA.ValueDef, ByUsr EA.GlobalDefinition: ByUsr E
             accum
 
         , TrivialPattern name type:
-            usrAsText =
-                makeTextUsr umr name
+            usr =
+                USR env.module.umr name
 
-            accum >> Dict.insert usrAsText {
-              , name = usrAsText
-              , expr = translateExpression env def.body
-              , deps
-              }
-              __
+            Dict.insert usr
+                {
+                , usr
+                , expr = translateExpression env def.body
+                , deps
+                }
+                accum
 
-        , SafeMainName mainName:
-            mainUsrAsText =
-                makeTextUsr umr mainName
+        , GenerateName:
+            mainName & newEnv =
+                generateName env
+
+            mainUsr =
+                USR env.module.umr mainName
 
             mainDef as EA.GlobalDefinition =
-                { name = mainUsrAsText
-                , expr = translateExpression env def.body
+                {
+                , usr = mainUsr
+                , expr = translateExpression newEnv def.body
                 , deps
                 }
 
             accum
-            >> Dict.insert mainUsrAsText mainDef __
-            >> List.for __ (translatePattern def.pattern (EA.Variable mainUsrAsText)) fn (type & name & expr), z:
-                textUsr = makeTextUsr umr name
-                Dict.insert textUsr { name = textUsr, expr, deps = Set.ofOne mainUsrAsText } z
+            >> Dict.insert mainUsr mainDef __
+            >> List.for __ (translatePattern def.pattern (EA.Variable (RefGlobal mainUsr))) fn (type & name & expr), z:
+                subUsr = USR env.module.umr name
+                Dict.insert subUsr { usr = subUsr, expr, deps = Set.ofOne mainUsr } z
 
 
 #
@@ -343,26 +349,25 @@ translateRootValueDef as fn Env, TA.ValueDef, ByUsr EA.GlobalDefinition: ByUsr E
 #
 
 
-circularIsError as fn ByUsr EA.GlobalDefinition, [Name]: Bool =
-    fn globalDefsByName, names:
+circularIsError as fn ByUsr EA.GlobalDefinition, [USR]: Bool =
+    fn globalDefsByName, usrs:
 
-    zzz = fn name:
-      try Dict.get name globalDefsByName as
+    zzz =
+      fn usr:
+      try Dict.get usr globalDefsByName as
           , Nothing:
               # native or some special stuff?
               False
 
           , Just globalDef:
               try globalDef.expr as
-                  , EA.Fn _ _:
-                      False
-                  , _:
-                      True
+                  , EA.Fn _ _: False
+                  , _: True
 
-    List.any zzz names
+    List.any zzz usrs
 
 
-translateAll as fn UMR, [TA.Module]: Res { entryName as Text, defs as [EA.GlobalDefinition] } =
+translateAll as fn UMR, [TA.Module]: Res { entryUsr as Text, defs as [EA.GlobalDefinition] } =
     fn entryModule, modules:
 
     Debug.benchStart None
@@ -386,6 +391,6 @@ translateAll as fn UMR, [TA.Module]: Res { entryName as Text, defs as [EA.Global
     else
         {
         , defs = List.filterMap (fn name: Dict.get name globalDefsByName) reorderedNames
-        , entryName = translateUsr (USR entryModule "main")
+        , entryUsr = USR entryModule "main"
         }
         >> Ok
