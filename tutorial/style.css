@@ -13,6 +13,9 @@
 .align-center { display: flex; align-items: center; }
 .flex1 { flex: 1; }
 
+.w100 { width: 100%; }
+.h100 { height: 100%; }
+
 .mt { margin-top: 1em; }
 .mb { margin-bottom: 1em; }
 .ml { margin-left: 1em; }
@@ -95,7 +98,7 @@ a:visited { color: #d3869b; }
 .editing, .highlighting {
   margin: 10px;
   padding: 10px;
-  border: 0;
+  border: 1px solid lightgray;
   width: calc(100% - 32px);
   min-height: 400px;
 

@@ -258,24 +258,24 @@ viewEditor as fn Model: Html Msg =
     # https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
     Html.div
         [
-        , Html.style "height" "300px"
+#        , Html.style "height" "300px"
         , Html.style "position" "relative"
-        , Html.class "flex1"
+        , Html.class "flex1 h100"
         ]
         [
         , Html.textarea
             [
-            , Html.class "editing"
+            , Html.class "editing border"
             , Html.onInput OnInput
             , Html.on "scroll" onScrollEvent
             # TODO onkeydown tab
             , Html.spellcheck False
             ]
-           code
+            code
         , Html.pre
             [
             , Html.id "highlight"
-            , Html.class "highlighting"
+            , Html.class "highlighting border"
             , Html.ariaHidden True
             ]
             [
@@ -286,31 +286,38 @@ viewEditor as fn Model: Html Msg =
        ]
 
 
+
+viewCompiledHtml as fn Model, Html Text: [Html Msg] =
+    fn model, html:
+
+    [
+    , Html.div
+        [ Html.class "h100 border" ]
+        [ Html.map OnEmbeddedInput html ]
+    , Html.div
+        [ Html.class "ml" ]
+        (List.map (fn i: Html.div [] [ Html.text i]) model.embeddedInputs)
+    ]
+
+
+
 viewCompiledOutput as fn Model: Html Msg =
     fn model:
 
-    try model.compiledCode as
+    Html.div
+      [ Html.class "flex1 justify-center align-center h100" ]
+      (try model.compiledCode as
         , CompileText.CompiledHtml html:
-            Html.div
-                [ Html.class "flex1" ]
-                [ Html.map OnEmbeddedInput html
-                , Html.div
-                    []
-                    (List.map (fn i: Html.div [] [ Html.text i]) model.embeddedInputs)
-                ]
+            viewCompiledHtml model html
 
         , CompileText.CompiledNumber n:
-            Html.div
-                [ Html.class "flex1" ]
                 [ Html.text (Text.fromNumber n) ]
 
         , CompileText.CompiledText t:
-            Html.div
-                [ Html.class "flex1" ]
                 [ Html.text t ]
 
         , CompileText.CompiledShader shaderFn:
-            Html.canvas
+            [Html.canvas
                 [
                 , Html.class "flex1"
                 , Html.id "output"
@@ -318,6 +325,8 @@ viewCompiledOutput as fn Model: Html Msg =
                 , Html.on "mousemove" onMouseMove
                 , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
                 ]
+            ]
+      )
 
 
 view as fn Model: Html Msg =
@@ -337,6 +346,7 @@ view as fn Model: Html Msg =
                     [
                     , Html.src "https://xarvh.github.io/squarepants/logo/logo.svg"
                     , Html.alt "A stylized black Greek letter lambda, with square red pants, jumping happily"
+                    , Html.style "width" "50px"
                     ]
                 , Html.h1 []
                     [ Html.text "Squarepants "
@@ -344,32 +354,39 @@ view as fn Model: Html Msg =
                     , Html.text " demo"
                     ]
                 ]
-            # caption
-            , Html.div [ Html.class "ml" ]
-                [ Html.text "A small, scalable functional language for interactive apps, made for everyone" ]
             ]
 
         #
         # Page "payload"
         #
-        , Html.div [ Html.class "mb" ]
-              [
-              , Html.text "This page is entirely "
-              , Html.a [ Html.href "https://github.com/xarvh/squarepants/blob/main/tutorial/App.sp" ] [ Html.text "written" ]
-              , Html.text " in "
-              , Html.a [ Html.href "https://github.com/xarvh/squarepants#readme" ] [ Html.text "Squarepants" ]
-              , Html.text ", without any ad-hoc javaScript."
-              ]
+        , Html.div
+            [ Html.class "mb" ]
+            [
+            , Html.a [ Html.href "https://github.com/xarvh/squarepants#readme" ] [ Html.text "Squarepants" ]
+            , Html.text " is a small, scalable functional language for interactive apps, made for everyone."
+            ]
+
+        , Html.div
+            [ Html.class "mb" ]
+            [
+            , Html.text "This page is entirely "
+            , Html.a [ Html.href "https://github.com/xarvh/squarepants/blob/main/tutorial/App.sp" ] [ Html.text "written" ]
+            , Html.text " in Squarepants without any ad-hoc JavaScript."
+            ]
+
+
+
 #        , Html.div
 #            []
 #            [
-            , Html.div []
+            , Html.div
+                [ Html.class "mt mb" ]
                 [
-                , Html.text "Some quick examples: "
-                , Html.button [ Html.onClick << OnInput numberQuickExample ] [ Html.text "Numbers" ]
-                , Html.button [ Html.onClick << OnInput textQuickExample ] [ Html.text "Text" ]
-                , Html.button [ Html.onClick << OnInput htmlQuickExample ] [ Html.text "Html" ]
-                , Html.button [ Html.onClick << OnInput canvasQuickExample ] [ Html.text "Canvas" ]
+                , Html.text "Try some quick examples: "
+                , Html.button [ Html.class "ml", Html.onClick << OnInput numberQuickExample ] [ Html.text "Numbers" ]
+                , Html.button [ Html.class "ml", Html.onClick << OnInput textQuickExample ] [ Html.text "Text" ]
+                , Html.button [ Html.class "ml", Html.onClick << OnInput htmlQuickExample ] [ Html.text "Html" ]
+                , Html.button [ Html.class "ml", Html.onClick << OnInput canvasQuickExample ] [ Html.text "Canvas" ]
                 ]
 
             # Main
@@ -377,6 +394,7 @@ view as fn Model: Html Msg =
                 [
                 , Html.class "align-center"
                 , Html.style "min-width" "900px"
+                , Html.style "height" "50vh"
                 ]
                 [
                 , viewEditor model
@@ -405,13 +423,11 @@ view as fn Model: Html Msg =
 
             , div [ Html.class "content" ]
                 [
-                , viewEditor model
                 , div
                     [
                     , Html.class "output-wrapper"
                     ]
                     [
-                    , viewCompiledOutput model
                     ]
                 ]
             , Html.pre [ Html.class "error" ]
