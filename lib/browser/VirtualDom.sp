@@ -128,6 +128,11 @@ drawCanvas as fn Text, (fn Number, Number: { r as Number, g as Number, b as Numb
     todo "drawCanvas"
 
 
+setViewportOf as fn Text, Number, Number: Effect =
+    fn id, top, left:
+    todo "setViewportOf"
+
+
 ###################
 
 

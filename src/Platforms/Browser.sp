@@ -76,6 +76,7 @@ overrides as [USR & Text] =
     , virtualDomModule "setChild" & "virtualDom_setChild"
     , virtualDomModule "removeAllChildrenStartingFromIndex" & "virtualDom_removeAllChildrenStartingFromIndex"
     , virtualDomModule "drawCanvas" & "virtualDom_drawCanvas"
+    , virtualDomModule "setViewportOf" & "virtualDom_setViewportOf"
     ]
 
 
@@ -216,6 +217,18 @@ const virtualDom_jsAddEventListener = (eventName, handler, node) => {
 const virtualDom_jsRemoveEventListener = (eventName, handler, node) => {
     node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);
     node.squarepantsEventHandlers[eventName] = undefined;
+}
+
+
+const virtualDom_setViewportOf = (id, top, left) => () => {
+    const e = document.getElementById(id);
+    if (!e) {
+        console.error('could not find element #' + id);
+        return
+    }
+
+    e.scrollTop = top;
+    e.scrollLeft = left;
 }
 
 

@@ -5,9 +5,13 @@
 .yellow { color: yellow; }
 .red { color: red; }
 .blue { color: blue; }
+.lineThrough { text-decoration: line-through; }
 
 .row { display: flex; }
 .col { display: flex; flex-direction: column; }
+.justify-center { display: flex; justify-content: center; }
+.align-center { display: flex; align-items: center; }
+.flex1 { flex: 1; }
 
 .mt { margin-top: 1em; }
 .mb { margin-bottom: 1em; }
@@ -15,12 +19,6 @@
 .mr { margin-right: 1em; }
 
 .p { padding: 1em; }
-
-.header {
-  font-family: sans;
-  font-weight: bold;
-}
-
 .border { border: 1px solid lightgray; }
 
 .thirds > * {
@@ -37,8 +35,13 @@
 
 
 body {
+  display: flex;
+  justify-content: center;
+
+  /*
   color: #ebdbb2;
   background: #504945;
+  */
   font-family: 'Fira Sans', sans-serif;
 }
 
@@ -51,89 +54,85 @@ a:active { color: #928374; }
 a:visited { color: #d3869b; }
 
 
-.page {
-    display: flex;
-    justify-content: center;
+.page-width {
+  max-width: 1200px;
 }
 
 
 .column {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 
 .content {
-    display: flex;
+  display: flex;
 }
 
 
 .input {
-    width: 500px;
-
-    margin-right: 10px;
+  width: 500px;
+  margin-right: 10px;
 }
 
 
 .output-wrapper {
-    border: 2px solid black;
-    padding: 2px;
-    border-radius: 4px;
+  /* border: 2px solid black; */
+  padding: 2px;
+  border-radius: 4px;
 }
 
 
 .error {
-    margin-top: 20px;
-    font-family: monospace;
+  margin-top: 20px;
+  font-family: monospace;
 }
 
 
-.editor {
-  border: 1px solid gray;
-}
+/*
+ * https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
+ */
+.editing, .highlighting {
+  margin: 10px;
+  padding: 10px;
+  border: 0;
+  width: calc(100% - 32px);
+  min-height: 400px;
 
-
-.editor-content {
-  position: relative;
-  background: #151515;
-
-  margin-left: 8px;
-}
-
-.editor-overlay, .editor-textarea {
+  /* In the same place */
   position: absolute;
   top: 0;
   left: 0;
-  bottom: 0;
-  right: 0;
-  width: 100%;
+
+  overflow: auto; /* Can be scrolled */
+  white-space: nowrap; /* Allows textarea to scroll horizontally */
 }
 
-
-.editor-overlay, .editor-textarea, .editor-line-numbers {
-  height: 100%;
-
-  margin: 0;
-  resize: none;
-  border: none;
-  outline: none;
-  background: none;
-
-  padding: 2px;
-  font-size: 14px;
+.editing, .highlighting, .highlighting * {
+  font-size: 12pt;
   font-family: monospace;
+  line-height: 16pt;
+  tab-size: 2;
+}
+
+.highlighting * {
   white-space: pre;
-
-  caret-color: #c6b6ee;
 }
 
-.editor-overlay {
-  pointer-events: none;
+.editing {
+  z-index: 1;
+
+  color: transparent;
+  background: transparent;
+  caret-color: black;
+
+  resize: none;
 }
 
-.editor-line-numbers {
-  text-align: right;
+.highlighting {
+  z-index: 0;
 }
+
 
 /* https://vimcolorschemes.com/morhetz/gruvbox */
 .upper  { color: #83a598; }

@@ -80,9 +80,12 @@ exposedValues as [ USR & Self.Self ] =
 
     l1 =
         [
+        , Self.introspect Html.div
         , Self.introspect Html.button
         , Self.introspect Html.onClick
         , Self.introspect Html.text
+        , Self.introspect Html.style
+        , Self.introspect Html.class
         ]
         >> List.map selfToExposed __
 
