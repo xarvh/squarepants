@@ -17,9 +17,18 @@ textQuickExample as Text =
 htmlQuickExample as Text =
     """
 main =
-   Html.button
-      [ Html.onClick "BLAH" ]
-      [ Html.text "Click me!!" ]
+   Html.div
+      [ Html.class "col" ]
+      [
+      , Html.button
+           [ Html.onClick "Event:Apple" ]
+           [ Html.text "Apple" ]
+
+      , Html.button
+           [ Html.onClick "Pear click!" ]
+           [ Html.text "Pear" ]
+      ]
+
     """
 
 
@@ -81,7 +90,7 @@ update as fn @Array VirtualDom.Effect, Msg, Model: Model =
 
     try msg as
         , OnEmbeddedInput text:
-            { model with embeddedInputs = [ text, ... .embeddedInputs ] }
+            { model with embeddedInputs = List.take 10 [ text, ... .embeddedInputs ] }
 
         , OnScroll top left:
             syncScroll @effects top left
@@ -283,6 +292,18 @@ viewEditor as fn Model: Html Msg =
               [ Html.class "highlighting-content" ]
               highlightedContent
             ]
+        , Html.div
+              [
+              , Html.style "position" "absolute"
+              , Html.style "top" "calc(50% - 12px)"
+              , Html.style "left" "calc(100% - 15px)"
+
+              , Html.style "width" "0"
+              , Html.style "height" "0"
+              , Html.style "border" "25px solid transparent"
+              , Html.style "border-left" "25px solid lightgrey"
+              ]
+              []
        ]
 
 
@@ -295,8 +316,15 @@ viewCompiledHtml as fn Model, Html Text: [Html Msg] =
         [ Html.class "h100 border" ]
         [ Html.map OnEmbeddedInput html ]
     , Html.div
-        [ Html.class "ml" ]
-        (List.map (fn i: Html.div [] [ Html.text i]) model.embeddedInputs)
+        [ Html.class "h100 ml col" ]
+        [ Html.div [] [ Html.text "Last messages:" ]
+        , if model.embeddedInputs == [] then
+            Html.div [] [ Html.text "(none yet)" ]
+          else
+            Html.div
+              [ Html.class "ml" ]
+              (List.map (fn i: Html.div [] [ Html.text i ]) model.embeddedInputs)
+        ]
     ]
 
 
@@ -311,10 +339,16 @@ viewCompiledOutput as fn Model: Html Msg =
             viewCompiledHtml model html
 
         , CompileText.CompiledNumber n:
-                [ Html.text (Text.fromNumber n) ]
+                [ Html.div
+                    [ Html.style "font-size" "400%" ]
+                    [ Html.text (Text.fromNumber n) ]
+                ]
 
         , CompileText.CompiledText t:
-                [ Html.text t ]
+                [ Html.div
+                    [ Html.style "font-size" "200%" ]
+                    [ Html.text t ]
+                ]
 
         , CompileText.CompiledShader shaderFn:
             [Html.canvas
