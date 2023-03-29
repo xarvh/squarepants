@@ -270,6 +270,7 @@ viewEditor as fn Model: Html Msg =
     Html.div
         [
         , Html.style "position" "relative"
+        , Html.style "margin-bottom" "2em"
         , Html.class "flex1 h100"
         ]
         [
@@ -311,12 +312,14 @@ viewEditor as fn Model: Html Msg =
                 else
                   [ Html.div
                       [
+                      , Html.class "pulse"
                       , Html.style "color" "red"
                       , Html.style "font-size" "130px"
                       , Html.style "position" "relative"
                       , Html.style "left" "-15px"
                       , Html.style "top" "-5px"
                       , Html.style "z-index" "2"
+                      , Html.style "user-select" "none"
                       ]
                       [ Html.text "×" ]
                   ]
@@ -355,7 +358,7 @@ viewCompiledOutput as fn Model: Html Msg =
     fn model:
 
     Html.div
-      [ Html.class "flex1 justify-center align-center h100" ]
+      [ Html.class "flex1 justify-center align-center h100 mt" ]
       (try model.compiledCode as
         , CompileText.CompiledHtml html:
             viewCompiledHtml model html
@@ -431,39 +434,42 @@ view as fn Model: Html Msg =
             ]
 
 
+        , Html.div
+            [ Html.class "mt mb" ]
+            [
+            , Html.text "Try some quick examples: "
+            , Html.button [ Html.class "ml", Html.onClick << OnInput numberQuickExample ] [ Html.text "Numbers" ]
+            , Html.button [ Html.class "ml", Html.onClick << OnInput textQuickExample ] [ Html.text "Text" ]
+            , Html.button [ Html.class "ml", Html.onClick << OnInput htmlQuickExample ] [ Html.text "Html" ]
+            , Html.button [ Html.class "ml", Html.onClick << OnInput canvasQuickExample ] [ Html.text "Canvas" ]
+            ]
 
-#        , Html.div
-#            []
-#            [
-            , Html.div
-                [ Html.class "mt mb" ]
-                [
-                , Html.text "Try some quick examples: "
-                , Html.button [ Html.class "ml", Html.onClick << OnInput numberQuickExample ] [ Html.text "Numbers" ]
-                , Html.button [ Html.class "ml", Html.onClick << OnInput textQuickExample ] [ Html.text "Text" ]
-                , Html.button [ Html.class "ml", Html.onClick << OnInput htmlQuickExample ] [ Html.text "Html" ]
-                , Html.button [ Html.class "ml", Html.onClick << OnInput canvasQuickExample ] [ Html.text "Canvas" ]
-                ]
-
-            # Main
-            , Html.div
-                [
-                , Html.class "align-center"
-                , Html.style "min-width" "900px"
-                , Html.style "height" "50vh"
-                ]
-                [
-                , viewEditor model
-                , viewCompiledOutput model
-                ]
-            # Error
-            , try model.maybeError as
-                , Nothing:
-                    Html.none
-                , Just error:
-                    Html.pre
-                        []
+        # Main
+        , Html.div
+            [
+            , Html.class "align-center"
+            , Html.style "min-width" "900px"
+            , Html.style "height" "50vh"
+            ]
+            [
+            , viewEditor model
+            , viewCompiledOutput model
+            ]
+        # Error
+        , try model.maybeError as
+            , Nothing:
+                Html.none
+            , Just error:
+                Html.div
+                    []
+                    [
+                    , Html.div
+                        [ Html.class "mt red pulse" ]
+                        [ Html.text "Error!" ]
+                    , Html.pre
+                        [ Html.style "margin-top" "0" ]
                         [ error ]
+                    ]
         ]
 
 

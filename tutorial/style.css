@@ -137,6 +137,13 @@ a:visited { color: #d3869b; }
 }
 
 
+.pulse { animation: pulse 3s infinite alternate; }
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+
 /* https://vimcolorschemes.com/morhetz/gruvbox */
 .upper  { color: #83a598; }
 .lower  { }
