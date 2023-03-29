@@ -1,29 +1,29 @@
 #
 # Colors
 #
-yellow as fn Text: Text =
+yellow as fn Text: Html msg =
     fn t:
-    "<span class=yellow>" .. t .. "</span>"
+    Html.span [ Html.class "yellow" ] [ Html.text t ]
 
-red as fn Text: Text =
+red as fn Text: Html msg =
     fn t:
-    "<span class=red>" .. t .. "</span>"
+    Html.span [ Html.class "red" ] [ Html.text t ]
 
-blue as fn Text: Text =
+blue as fn Text: Html msg =
     fn t:
-    "<span class=blue>" .. t .. "</span>"
+    Html.span [ Html.class "blue" ] [ Html.text t ]
 
 
-formattedToConsoleColoredText as fn Error.FormattedText: Text =
+formattedToConsoleColoredText as fn Error.FormattedText: Html msg =
     fn formattedText:
     try formattedText as
-        , Error.FormattedText_Default t: t
+        , Error.FormattedText_Default t: Html.text t
         , Error.FormattedText_Emphasys t: yellow t
         , Error.FormattedText_Warning t: red t
         , Error.FormattedText_Decoration t: blue t
 
 
-resToConsoleText as fn Res a: Result Text a =
+resToConsoleText as fn Res a: Result (Html msg) a =
     fn res:
     try res as
         , Ok a: Ok a
@@ -31,11 +31,11 @@ resToConsoleText as fn Res a: Result Text a =
             e
             >> Error.toFormattedText
             >> List.map formattedToConsoleColoredText __
-            >> Text.join "" __
+            >> Html.div [] __
             >> Err
 
 
-onResSuccess as fn (fn a: Result Text b): fn Res a: Result Text b =
+onResSuccess as fn (fn a: Result (Html msg) b): fn Res a: Result (Html msg) b =
     fn f:
     fn res:
     res
@@ -55,7 +55,7 @@ meta as Meta =
           errAsText =
               err
               >> Error.toFormattedText
-              >> List.map formattedToConsoleColoredText __
+              >> List.map toHuman __
               >> Text.join "" __
 
           Debug.log errAsText "--"
@@ -97,6 +97,17 @@ exposedValues as [ USR & Self.Self ] =
 
 
 
+viewErrorWrongType as fn TA.RawType: Html msg =
+    fn type:
+
+    Html.div
+        []
+        [ Html.text "I don't know how to use this type:"
+        , type
+          >> Human/Type.doRawType {} __
+          >> Human/Type.display "" __
+          >> Html.text
+        ]
 
 
 #
@@ -109,7 +120,7 @@ union CompiledCode =
     , CompiledHtml (Html Text)
 
 
-main as fn Text: Result Text CompiledCode =
+main as fn Text: Result (Html msg) CompiledCode =
     fn code:
 
     inputFileName =
@@ -140,7 +151,6 @@ main as fn Text: Result Text CompiledCode =
     loadResult
     >> Result.onErr fn actualCompiledType:
     actualCompiledType
-    >> Human/Type.doRawType {} __
-    >> Human/Type.display "" __
+    >> viewErrorWrongType
     >> Err
 

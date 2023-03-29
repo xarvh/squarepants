@@ -59,7 +59,9 @@ alias Model =
     {
     , code as Text
     , maybePosition as Maybe { x as Number, y as Number }
-    , maybeError as Maybe Text
+
+    # TODO don't put Html in the model
+    , maybeError as Maybe (Html Msg)
     , compiledCode as CompileText.CompiledCode
     , embeddedInputs as [Text]
     }
@@ -267,7 +269,6 @@ viewEditor as fn Model: Html Msg =
     # https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
     Html.div
         [
-#        , Html.style "height" "300px"
         , Html.style "position" "relative"
         , Html.class "flex1 h100"
         ]
@@ -302,8 +303,24 @@ viewEditor as fn Model: Html Msg =
               , Html.style "height" "0"
               , Html.style "border" "25px solid transparent"
               , Html.style "border-left" "25px solid lightgrey"
+
+              , Html.class "align-center justify-center"
               ]
-              []
+              ( if model.maybeError == Nothing then
+                  []
+                else
+                  [ Html.div
+                      [
+                      , Html.style "color" "red"
+                      , Html.style "font-size" "130px"
+                      , Html.style "position" "relative"
+                      , Html.style "left" "-15px"
+                      , Html.style "top" "-5px"
+                      , Html.style "z-index" "2"
+                      ]
+                      [ Html.text "×" ]
+                  ]
+              )
        ]
 
 
@@ -317,11 +334,16 @@ viewCompiledHtml as fn Model, Html Text: [Html Msg] =
         [ Html.map OnEmbeddedInput html ]
     , Html.div
         [ Html.class "h100 ml col" ]
-        [ Html.div [] [ Html.text "Last messages:" ]
+        [ Html.div [ Html.class "mb" ] [ Html.text "Last messages:" ]
         , if model.embeddedInputs == [] then
-            Html.div [] [ Html.text "(none yet)" ]
-          else
             Html.div
+                [
+                , Html.style "margin-bottom" "4px"
+                , Html.style "color" "gray"
+                ]
+                [ Html.text "(none yet)" ]
+          else
+            Html.code
               [ Html.class "ml" ]
               (List.map (fn i: Html.div [] [ Html.text i ]) model.embeddedInputs)
         ]
@@ -434,7 +456,15 @@ view as fn Model: Html Msg =
                 , viewEditor model
                 , viewCompiledOutput model
                 ]
-#            ]
+            # Error
+            , try model.maybeError as
+                , Nothing:
+                    Html.none
+                , Just error:
+                    Html.pre
+                        []
+                        [ error ]
+        ]
 
 
 [#
@@ -475,7 +505,6 @@ view as fn Model: Html Msg =
                 ]
             ]
 #]
-        ]
 
 
 main as VirtualDom.App Msg Model =
