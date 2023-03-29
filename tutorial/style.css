@@ -137,10 +137,10 @@ a:visited { color: #d3869b; }
 }
 
 
-.pulse { animation: pulse 3s infinite alternate; }
+.pulse { animation: pulse 0.8s infinite alternate; }
 @keyframes pulse {
   from { opacity: 1; }
-  to { opacity: 0; }
+  to { opacity: 0.2; }
 }
 
 

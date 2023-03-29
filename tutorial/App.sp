@@ -310,7 +310,7 @@ viewEditor as fn Model: Html Msg =
               ( if model.maybeError == Nothing then
                   []
                 else
-                  [ Html.div
+                  [ Html.a
                       [
                       , Html.class "pulse"
                       , Html.style "color" "red"
@@ -320,6 +320,8 @@ viewEditor as fn Model: Html Msg =
                       , Html.style "top" "-5px"
                       , Html.style "z-index" "2"
                       , Html.style "user-select" "none"
+                      , Html.style "text-decoration" "none"
+                      , Html.href "#error"
                       ]
                       [ Html.text "×" ]
                   ]
@@ -461,7 +463,7 @@ view as fn Model: Html Msg =
                 Html.none
             , Just error:
                 Html.div
-                    []
+                    [ Html.id "error" ]
                     [
                     , Html.div
                         [ Html.class "mt red pulse" ]
