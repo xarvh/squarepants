@@ -38,6 +38,7 @@ union Attr msg =
     , CssStyle Text Text
     , Listener Text (EventHandler msg)
     , DomAttribute Text Text
+    , DomProperty Text Text
 
 
 #
@@ -79,6 +80,10 @@ jsReplaceWith as fn DomNode, DomNode: DomNode =
 jsAppendChild as fn { parent as DomNode, child as DomNode }: None =
     fn pars:
     todo "jsAppendChild"
+
+jsSetProperty as fn Text, Text, DomNode: None =
+    fn name, value, domNode:
+    todo "jsSetProperty"
 
 jsSetAttribute as fn Text, Text, DomNode: None =
     fn name, value, domNode:
@@ -161,6 +166,9 @@ updateDomAttrs as fn [Attr msg], [Attr msg], DomNode: None =
             , DomAttribute name value:
                 Hash.insert @oldDomAttrs name value
 
+            , DomProperty name value:
+                None
+
     if cloneUni @oldClass /= "" then
         Hash.insert @oldDomAttrs "class" (cloneUni @oldClass)
     else
@@ -189,6 +197,9 @@ updateDomAttrs as fn [Attr msg], [Attr msg], DomNode: None =
 
             , DomAttribute name value:
                 Hash.insert @newDomAttrs name value
+
+            , DomProperty name value:
+                jsSetProperty name value domNode
 
 
     if cloneUni @newClass /= "" then

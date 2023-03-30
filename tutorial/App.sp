@@ -102,13 +102,13 @@ update as fn @Array VirtualDom.Effect, Msg, Model: Model =
             try CompileText.main code as
                 , Err error:
                     { model with
-                    , code = code
+                    , code
                     , maybeError = Just error
                     }
 
                 , Ok compiledCode:
                     { model with
-                    , code = code
+                    , code
                     , maybeError = Nothing
                     , compiledCode
                     }
@@ -281,6 +281,7 @@ viewEditor as fn Model: Html Msg =
             , Html.on "scroll" onScrollEvent
             # TODO onkeydown tab
             , Html.spellcheck False
+            , Html.value code
             ]
             code
         , Html.pre
@@ -433,6 +434,11 @@ view as fn Model: Html Msg =
             , Html.text "This page is entirely "
             , Html.a [ Html.href "https://github.com/xarvh/squarepants/blob/main/tutorial/App.sp" ] [ Html.text "written" ]
             , Html.text " in Squarepants without any ad-hoc JavaScript."
+            ]
+        , Html.div
+            [ Html.class "mb" ]
+            [
+            , Html.text "(Also, both Squarepants and this page are under heavy development and are far from completed. Expect bugs.)"
             ]
 
 

@@ -67,6 +67,7 @@ overrides as [USR & Text] =
     , virtualDomModule "jsCreateElement" & "virtualDom_jsCreateElement"
     , virtualDomModule "jsReplaceWith" & "virtualDom_jsReplaceWith"
     , virtualDomModule "jsAppendChild" & "virtualDom_jsAppendChild"
+    , virtualDomModule "jsSetProperty" & "virtualDom_jsSetProperty"
     , virtualDomModule "jsSetAttribute" & "virtualDom_jsSetAttribute"
     , virtualDomModule "jsRemoveAttribute" & "virtualDom_jsRemoveAttribute"
     , virtualDomModule "jsAddEventListener" & "virtualDom_jsAddEventListener"
@@ -185,6 +186,7 @@ const virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return 
 const virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);
 const virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);
 const virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);
+const virtualDom_jsSetProperty = (name, value, node) => node[name] = value;
 
 
 const virtualDom_setChild = (upd, index, parentNode) => {

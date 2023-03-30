@@ -60,6 +60,9 @@ textarea as fn [Attr msg], Text: Html msg =
 # Attributes
 #
 
+alt as fn Text: Attr msg =
+    VirtualDom.DomAttribute "alt" __
+
 ariaHidden as fn Bool: Attr msg =
     fn s:
     VirtualDom.DomAttribute "aria-hidden" (if s then "true" else "false")
@@ -85,8 +88,8 @@ height as fn Text: Attr msg =
 src as fn Text: Attr msg =
     VirtualDom.DomAttribute "src" __
 
-alt as fn Text: Attr msg =
-    VirtualDom.DomAttribute "alt" __
+value as fn Text: Attr msg =
+    VirtualDom.DomProperty "value" __
 
 on as fn Text, VirtualDom.EventHandler msg: Attr msg =
     VirtualDom.Listener __ __
