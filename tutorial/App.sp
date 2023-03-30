@@ -379,13 +379,35 @@ viewCompiledOutput as fn Model: Html Msg =
                 ]
 
         , CompileText.CompiledShader shaderFn:
-            [Html.canvas
+            [ Html.div
+                [ Html.class "row" ]
                 [
-                , Html.class "flex1"
-                , Html.id "output"
-                , Html.height "300"
-                , Html.on "mousemove" onMouseMove
-                , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
+                , Html.canvas
+                    [
+                    , Html.class "flex1"
+                    , Html.id "output"
+                    , Html.height "300"
+                    , Html.on "mousemove" onMouseMove
+                    , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
+                    ]
+                , try model.maybePosition as
+                    , Nothing:
+                        # TODO replace with this with a layout that doesn't jump around... -_-
+                        div [ Html.class "ml", Html.style "visibility" "hidden" ] [ Html.text "Program output:" ]
+
+                    , Just { x, y }:
+                        out = shaderFn x y
+                        Html.div
+                            [ Html.class "ml" ]
+                            [
+                            , div [] [ Html.text "Program input:" ]
+                            , div [] [ Html.text << "x = " .. floatToPercent x ]
+                            , div [] [ Html.text << "y = " .. floatToPercent y ]
+                            , div [ Html.class "mt" ] [ Html.text "Program output:" ]
+                            , div [] [ Html.text << "r = " .. floatToPercent out.r ]
+                            , div [] [ Html.text << "g = " .. floatToPercent out.g ]
+                            , div [] [ Html.text << "b = " .. floatToPercent out.b ]
+                            ]
                 ]
             ]
       )
