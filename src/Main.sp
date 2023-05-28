@@ -145,6 +145,7 @@ availablePlatforms as [Types/Platform.Platform] =
     [
     , Platforms/Posix.platform
     , Platforms/Browser.platform
+    , Platforms/WebGpu.platform
     ]
 
 

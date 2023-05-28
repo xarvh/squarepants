@@ -144,7 +144,6 @@ umrToFileName as fn Meta, Text, UMR: Text =
         , Meta.Browser:
             Path.resolve (corePath :: "browser" :: (Text.split "/" __ << name .. ".sp"))
 
-
         , Meta.SourceDirId id:
             try Dict.get id meta.sourceDirIdToPath as
                 , Nothing: todo << "invalid sourceDirId " .. id
