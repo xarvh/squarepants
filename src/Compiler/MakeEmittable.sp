@@ -11,6 +11,7 @@ alias Env =
 # Translation
 #
 
+
 union PickedName =
     , TrivialPattern Name TA.FullType
     , GenerateName
@@ -78,10 +79,10 @@ testPattern as fn TA.Pattern, EA.Expression, [EA.Expression]: [EA.Expression] =
             accum
 
         , TA.PatternLiteralText _ text:
-            EA.ShallowEqual (EA.LiteralText text) valueToTest :: accum
+            EA.CompareWithLiteralText text valueToTest :: accum
 
         , TA.PatternLiteralNumber _  num:
-            EA.ShallowEqual (EA.LiteralNumber num) valueToTest :: accum
+            EA.CompareWithLiteralNumber num valueToTest :: accum
 
         , TA.PatternConstructor _ (USR umr name) pas:
             (EA.IsConstructor name valueToTest :: accum)
@@ -223,7 +224,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                 testIfPatternMatches as EA.Expression =
                     testPattern pattern valueExpression []
                     >> List.reverse
-                    >> EA.And
+                    >> EA.PatternMatchConditions
 
                 namesAndExpressions as [ TA.FullType & Name & EA.Expression ] =
                     translatePattern pattern valueExpression

@@ -1,9 +1,14 @@
-#
-# Right now, we emit JS so this maps well to JS.
-#
-# Once we will target lower level languages (Wasm, Spir-V, LLVM?) we'll
-# modify this to better describe those.
-#
+[#
+
+* No arbitrary let..ins: variables can only be declared inside blocks.
+  (SP doesn't really allow arbitrary let..ins either...)
+
+* No inline functions
+
+* No pattern matching
+
+#]
+
 
 alias Name =
     Text
@@ -18,24 +23,20 @@ union Expression =
     , LiteralNumber Number
     , Variable Ref
     , Call Expression [Argument]
-    , Fn [Bool & Maybe Name] Expression
-    , Conditional Expression Expression Expression
-    , And [Expression]
-    , ShallowEqual Expression Expression
-    , LetIn
-        {
-        , maybeName as Maybe Name
-        , type as TA.FullType
-        , letExpression as Expression
-        , inExpression as Expression
-        }
-    , LiteralArray [Expression]
-    , ArrayAccess Int Expression
+
+    , IfExpression Expression Expression Expression
+
+    , PatternMatchConditions [Expression]
+    , CompareWithLiteralText Text Expression
+    , CompareWithLiteralNumber Number Expression
+    , IsConstructor Name Expression
+
     , Constructor USR
     , ConstructorAccess Int Expression
-    , IsConstructor Name Expression
+
     , LiteralRecord (Maybe Expression) [AttrName & Expression]
     , RecordAccess AttrName Expression
+
     , MissingPattern Text Expression
 
 
@@ -44,10 +45,29 @@ union Argument =
     , ArgumentSpend TA.FullType Expression
 
 
+union Statement =
+    , VarDefinition
+          {
+          , name as Name
+          , type as TA.FullType
+          , value as Expression
+          }
+    , FnDefinition
+          {
+          , name as Name
+          , type as TA.FullType
+          , args as [Bool & Maybe Name]
+          , body as [Statement]
+          }
+    , IfStatement Expression [Statement] [Statement]
+    , Evaluation Expression
+    , Return Expression
+
+
 alias GlobalDefinition =
     {
     , usr as USR
-    , expr as Expression
+    , stats as [Statement]
 
     # We need these to be able to put defs in the right order
     , deps as Set USR
