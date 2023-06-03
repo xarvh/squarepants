@@ -1,11 +1,24 @@
 [#
 
-* No arbitrary let..ins: variables can only be declared inside blocks.
+EmittableAst basically models a lower-level language, specifically one that does not have:
+
+
+* Arbitrary let..ins: variables can only be declared inside blocks.
   (SP doesn't really allow arbitrary let..ins either...)
 
-* No inline functions
+  This is because let..in can't be constructed in WGSL in any way.
 
-* No pattern matching
+  In JS they can be constructed with `(() => { let x; return f(x); })()`, but I assume it
+  comes with a performance penalty, so probably good to get rid of these too?
+
+
+* Pattern matching
+  This is a very high-level feature, no language I'm considering as target supports it even remotely.
+
+
+As of now, WGSL has also no support for higher-rank functions, functions declarations inside the body
+of another function or pointer-to-functions; however we are not removing these features (yet?) from
+EmittableAst because we are going to instead solve them by aggressive inlining.
 
 #]
 
