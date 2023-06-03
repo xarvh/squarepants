@@ -141,28 +141,65 @@ translateArgAndType as fn Env, TA.Argument: EA.Argument =
             EA.ArgumentRecycle rawType attrPath name
 
 
-translateExpression as fn Env, TA.Expression: EA.Expression =
+[#
+
+    TODO: Explain why are we doing this batshit mess
+
+
+#]
+alias TransOut =
+    {
+    , recByStats as Set Name
+    , stats as [EA.Statement]
+    , recByExpr as Set Name
+    , expr as EA.Expression
+    }
+
+
+none as fn EA.Expression: TransOut =
+    fn expr:
+    {
+    , recByStats = Set.empty
+    , stats as []
+    , recByExpr = Set.empty
+    , expr
+    }
+
+
+
+translateExpression as fn Env, TA.Expression: TransOut =
     fn env, expression:
 
     try expression as
         , TA.LiteralNumber _ num:
-            EA.LiteralNumber num
+            none << EA.LiteralNumber num
 
         , TA.LiteralText _ text:
-            EA.LiteralText text
+            none << EA.LiteralText text
 
         , TA.Variable _ ref:
-            EA.Variable ref
+            none << EA.Variable ref
 
         , TA.Constructor _ usr:
-            EA.Constructor usr
+            none << EA.Constructor usr
 
         , TA.RecordAccess _ attrName exp:
-            EA.RecordAccess attrName (translateExpression env exp)
+            { translateExpression env exp with expr = EA.RecordAccess attrName .expr }
 
         , TA.Fn pos taPars body bodyT:
-            eaBody =
+            bodyOut =
                 translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
+
+            eaBody =
+                # TODO use EA.Evaluation instead of EA.Return if bodyT is `None`?
+                List.concat [ bodyOut.stats, [ EA.Return bodyOut.expr ] ]
+
+
+
+
+            # TODO: add another acc to the for below, remove any rec in pas, starting from eaBody.recByStats + eaBody.recByExpr
+            recByExpr =
+                all bodyOut.recs - all recyclable pars
 
             wrappedBody & eaPars =
                 eaBody & []
@@ -172,18 +209,35 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         translateParameter newEnv bodyAcc taPar
                     bodyX & (eaPar :: eaParsAcc)
 
-            EA.Fn eaPars wrappedBody
+
+
+            { recByStats = Set.none, stats = [], recByExpr, expr = EA.Fn eaPars wrappedBody }
 
         , TA.Record _ extends attrs:
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first __
+
+
+            ----> Ensure all side effecty ops are done in order!!!
+
+
             >> List.map (Tuple.mapSecond (translateExpression env __) __) __
             >> EA.LiteralRecord (Maybe.map (translateExpression env __) extends) __
 
         , TA.Call _ ref argsAndTypes:
+
+            refStats & refExpr =
+                translateExpression env ref
+
+            argStats
+
+
+
             EA.Call
                 (translateExpression env ref)
+
+                ----> Ensure all side effecty ops are done in order!!!
                 (List.map (translateArgAndType env __) argsAndTypes)
 
         , TA.If _ ar:

@@ -16,9 +16,9 @@ EmittableAst basically models a lower-level language, specifically one that does
   This is a very high-level feature, no language I'm considering as target supports it even remotely.
 
 
-As of now, WGSL has also no support for higher-rank functions, functions declarations inside the body
-of another function or pointer-to-functions; however we are not removing these features (yet?) from
-EmittableAst because we are going to instead solve them by aggressive inlining.
+As of now, WGSL has also no support for higher-rank functions/lambdas, functions declarations inside
+the body of another function; however we are not removing these features (yet?) from EmittableAst
+because we are going to instead solve them by aggressive inlining.
 
 #]
 
@@ -36,6 +36,7 @@ union Expression =
     , LiteralNumber Number
     , Variable Ref
     , Call Expression [Argument]
+    , Fn [Bool & Maybe Name] [Statement]
 
     , IfExpression Expression Expression Expression
 
