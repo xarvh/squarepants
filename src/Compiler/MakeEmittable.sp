@@ -95,41 +95,6 @@ testPattern as fn TA.Pattern, EA.Expression, [EA.Expression]: [EA.Expression] =
 
 
 
-translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool & Maybe Name) =
-    fn env, bodyAcc, param:
-
-    try param as
-        , TA.ParameterRecycle pos rawType name:
-            bodyAcc & (True & Just name)
-
-        , TA.ParameterPattern fullType pa:
-            try pickMainName pa as
-                , NoNamedVariables:
-                    bodyAcc & (False & Nothing)
-
-                , TrivialPattern argName type:
-                    bodyAcc & (False & Just argName)
-
-                , GenerateName:
-                    mainName & newEnv =
-                        generateName env
-
-                    namesAndExpressions =
-                         translatePattern pa (EA.Variable (RefLocal mainName))
-
-                    wrapWithArgumentLetIn =
-                        fn (type & varName & letExpression), inExpression:
-                        EA.LetIn
-                            {
-                            , maybeName = Just varName
-                            , letExpression
-                            , inExpression
-                            , type
-                            }
-
-                    List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & (False & Just mainName)
-
-
 translateArgAndType as fn Env, TA.Argument: EA.Argument =
     fn env, taArg:
 
@@ -147,27 +112,27 @@ translateArgAndType as fn Env, TA.Argument: EA.Argument =
 
 
 #]
-alias TransOut =
+alias TranslateOut =
     {
-    , recByStats as Set Name
+    , recycledInStats as Set Name
     , stats as [EA.Statement]
-    , recByExpr as Set Name
+    , recycledInExpr as Set Name
     , expr as EA.Expression
     }
 
 
-none as fn EA.Expression: TransOut =
+none as fn EA.Expression: TranslateOut =
     fn expr:
     {
-    , recByStats = Set.empty
+    , recycledInStats = Set.empty
     , stats as []
-    , recByExpr = Set.empty
+    , recycledInExpr = Set.empty
     , expr
     }
 
 
 
-translateExpression as fn Env, TA.Expression: TransOut =
+translateExpression as fn Env, TA.Expression: TranslateOut =
     fn env, expression:
 
     try expression as
@@ -187,31 +152,7 @@ translateExpression as fn Env, TA.Expression: TransOut =
             { translateExpression env exp with expr = EA.RecordAccess attrName .expr }
 
         , TA.Fn pos taPars body bodyT:
-            bodyOut =
-                translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
-
-            eaBody =
-                # TODO use EA.Evaluation instead of EA.Return if bodyT is `None`?
-                List.concat [ bodyOut.stats, [ EA.Return bodyOut.expr ] ]
-
-
-
-
-            # TODO: add another acc to the for below, remove any rec in pas, starting from eaBody.recByStats + eaBody.recByExpr
-            recByExpr =
-                all bodyOut.recs - all recyclable pars
-
-            wrappedBody & eaPars =
-                eaBody & []
-                >> List.forReversed __ taPars fn taPar, (bodyAcc & eaParsAcc):
-                    bodyX & eaPar =
-                        newEnv = { env with genVarCounter = List.length eaParsAcc + .genVarCounter }
-                        translateParameter newEnv bodyAcc taPar
-                    bodyX & (eaPar :: eaParsAcc)
-
-
-
-            { recByStats = Set.none, stats = [], recByExpr, expr = EA.Fn eaPars wrappedBody }
+            translateFn env taPars body
 
         , TA.Record _ extends attrs:
             attrs
@@ -353,6 +294,85 @@ translateExpression as fn Env, TA.Expression: TransOut =
 
         , TA.DestroyIn name e:
             translateExpression env e
+
+
+
+translateFn as fn Env, [TA.Parameter], TA.Expression: TranslateOut =
+
+    bodyOut =
+        translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
+
+    eaBody =
+        # TODO use EA.Evaluation instead of EA.Return if bodyT is `None`?
+        List.concat [ bodyOut.stats, [ EA.Return bodyOut.expr ] ]
+
+    recycledInBody =
+        Set.join bodyOut.recycledInStats bodyOut.recycledInExpr
+
+    #
+    # To get recycledInExpr we take all vars that have been recycled in the body, and remove those that are actually declared as function params.
+    #
+    # If any param needs to be unwrapped, we add a statement for it.
+    #
+    { with recycledInExpr, body, pars } =
+        List.forReversed
+            {
+            , env
+            , recycledInExpr = recycledInBody
+            , body = eaBody
+            , pars = []
+            }
+            taPars
+            translateAndAddParameter
+
+    { recycledInStats = Set.none, stats = [], recycledInExpr, expr = EA.Fn eaPars wrappedBody }
+
+
+
+alias ParameterAcc =
+    {
+    , env as Env
+    , recycledInExpr as Set Name
+    , body as [EA.Statement]
+    , pars as [Bool & Maybe Name]
+    }
+
+
+
+translateAndAddParameter as fn TA.Parameter, ParameterAcc: ParameterAcc =
+    fn par, acc:
+
+    try par as
+        , TA.ParameterRecycle pos rawType name:
+            { acc with
+            , recycledInExpr = Set.remove name .recycledInExpr
+            , pars = [True & Just name, ...(.pars)]
+            }
+
+        , TA.ParameterPattern fullType pa:
+            try pickMainName pa as
+                , NoNamedVariables:
+                    { acc with pars = [False & Nothing, ...(.pars)] }
+
+                , TrivialPattern argName type:
+                    { acc with pars = [False & Just argName, ...(.pars)] }
+
+                , GenerateName:
+                    mainName & env =
+                        generateName acc.env
+
+                    namesAndExpressions =
+                        translatePattern pa (EA.Variable (RefLocal mainName))
+
+                    body =
+                        List.for acc.body namesAndExpressions fn (type & name & value), stats:
+                            [VarDefinition { name, type, value }, ...stats]
+
+                    { acc with
+                    , env
+                    , body
+                    , pars = [False & Just mainName, ...(.pars)]
+                    }
 
 
 
