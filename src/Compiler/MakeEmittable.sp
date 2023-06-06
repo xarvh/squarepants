@@ -112,23 +112,39 @@ translateArgAndType as fn Env, TA.Argument: EA.Argument =
 
 
 #]
-alias TranslateOut =
+alias TranslateBase value =
     {
     , recycledInStats as Set Name
     , stats as [EA.Statement]
     , recycledInExpr as Set Name
-    , expr as EA.Expression
+    , value as value
     }
 
 
-none as fn EA.Expression: TranslateOut =
-    fn expr:
+alias TranslateOut =
+    TranslateBase EA.Expression
+
+
+none as fn value: TranslateBase value =
+    fn value:
     {
     , recycledInStats = Set.empty
     , stats as []
     , recycledInExpr = Set.empty
-    , expr
+    , value
     }
+
+
+merge as fn TranslateBase a: TranslateBase b, (fn a, b: c): TranslateBase c =
+    fn ta, tb, f:
+    {
+    , recycledInStats = Set.join ta.recycledInStats tb.recycledInStats
+    , stats = List.concat ta.stats tb.stats
+    , recycledInExpr = Set.join ta.recycledInExpr tb.recycledInExpr
+    , value = f ta.value tb.value
+    }
+
+
 
 
 
@@ -155,16 +171,8 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
             translateFn env taPars body
 
         , TA.Record _ extends attrs:
-            attrs
-            >> Dict.toList
-            >> List.sortBy Tuple.first __
+            translateRecord env extends attrs
 
-
-            ----> Ensure all side effecty ops are done in order!!!
-
-
-            >> List.map (Tuple.mapSecond (translateExpression env __) __) __
-            >> EA.LiteralRecord (Maybe.map (translateExpression env __) extends) __
 
         , TA.Call _ ref argsAndTypes:
 
@@ -373,6 +381,101 @@ translateAndAddParameter as fn TA.Parameter, ParameterAcc: ParameterAcc =
                     , body
                     , pars = [False & Just mainName, ...(.pars)]
                     }
+
+
+
+translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: TranslateOut =
+    fn env, taMaybeExtends, taAttrs:
+
+    [#
+        Given
+
+            r1 = { a = Random.int @seed1, b = Random.int @seed1 }
+            r2 = { b = Random.int @seed2, a = Random.int @seed2 }
+
+        If seed1 and seed2 are initially the same, r1 and r2 must also be the same.
+
+        This is obtained by
+          1) Relying on Dict to order attributes alphabetically
+          2) Ensuring that when we break let..ins into statements+expression, we don't mangle the recycling order
+
+    #]
+    attrOutsByName =
+        Dict.map (fn k, v: translateExpression env v) taAttrs
+
+
+    [#
+        The other problem is that of let..ins inside the record declaration.
+
+            r =
+              {
+              , a = (x = Random.int @seed1; x)
+              , b = (x = Random.int @seed1; x)
+              }
+
+        The problems are:
+          1) If we pull out the let..ins, we have two different definitions for `x`.
+              Every definition should be made unique.
+
+          2) If both stats and expr recycle, we still need to maintain recycle order after
+              stats and expr have been separated and mixed with stats and expr from other
+              attrs.
+              An algorithm to manage this would be:
+
+                for any attr
+                    if ANY recycle in expr is used by any of the subsequent stats
+                        assign expr to a var, then use the var to init the record
+                    else
+                        no problem, use expr directly
+
+
+    vvvv The code below does NOT deal with let..ins defining overlapping names
+
+
+    attrsEnv & attrsOut =
+        Dict.for (env & none Dict.empty) attrOutsByName fn name, out, (envX & acc):
+
+            ooo =
+                if out.recycledInExpr /= Set.empty and no recycled in subsequent stats then
+                    envX & out
+
+                else
+                    varName & newEnv =
+                        generateName envX
+
+                    { out with
+                    , recycledInStats = Set.join .recycledInStats .recycledInExpr
+                    , stats = List.concat .stats [ EA.VarDefinition varName ??? .expr ]
+                    , recycledInExpr = Set.empty
+                    , value = EA.Variable (RefLocal varName)
+                    }
+
+            newEnv & merge acc ooo fn attrs, value: Dict.insert name value attrs
+    #]
+
+    eaMaybeExtend =
+      try taMaybeExtends as
+          Nothing:
+              none Nothing
+
+        Just taExtends:
+            extendsOut =
+                translateExpression attrsEnv taExtends
+
+              {
+              , recycledInStats = extendsOut.recycledInStats
+              , stats = extendsOut.stats
+              , recycledInExpr = extendsOut.recycledInExpr
+              , value = Just extendsOut.value
+              }
+
+    out =
+        merge extendsOut attrsOut fn ext, att: EA.LiteralRecord (Just ext) att
+
+    if out.stats /= [] then
+        todo "TODO" (env.module.fsPath .. " Compiler TODO: let..in inside record literal is not YET implemented. =("
+    else
+        out
 
 
 

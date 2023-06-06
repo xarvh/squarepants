@@ -33,7 +33,7 @@ union Expression =
     , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
-    , Record Pos (Maybe Expression) (Dict Name Expression)
+    , LiteralRecord Pos (Maybe Expression) (Dict Name Expression)
     , RecordAccess Pos Name Expression
 
     # TODO Adding the FullType here increases compile time by 10% by itself.
