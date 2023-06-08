@@ -7,6 +7,16 @@ alias Env =
     }
 
 
+
+
+location as fn Env, Pos: Text =
+    fn env, pos:
+
+    (Error.posToHuman { fsPath = env.module.fsPath, content = env.module.asText } pos).location
+
+
+
+
 #
 # Translation
 #
@@ -173,27 +183,44 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
         , TA.Record _ extends attrs:
             translateRecord env extends attrs
 
-
         , TA.Call _ ref argsAndTypes:
-
-            refStats & refExpr =
-                translateExpression env ref
-
-            argStats
-
-
-
-            EA.Call
-                (translateExpression env ref)
-
-                ----> Ensure all side effecty ops are done in order!!!
-                (List.map (translateArgAndType env __) argsAndTypes)
+            translateCall env ref argsAndTypes
 
         , TA.If _ ar:
-            EA.Conditional
-                (translateExpression env ar.condition)
-                (translateExpression env ar.true)
-                (translateExpression env ar.false)
+            conditionOut =
+                translateExpression env ar.condition
+
+            trueOut =
+                translateExpression env ar.true
+
+            falseOut =
+                translateExpression env ar.false
+
+            if trueOut.stats == [] and falseOut.stats == [] then
+                {
+                , recycledInStats = conditionOut.recycledInStats
+                , stats = conditionOut.stats
+                , recycledInExpr = Set.join conditionOut.recycledInExpr (Set.join trueOut.recycledInStats falseOut.recycledInStats)
+                , value = EA.IfExpression conditionOut.value trueOut.value falseOut.value
+                }
+            else
+                todo (location env pos .. " let..in inside if branches not yet implemented =(")
+                [#
+                generatedVar
+                IfStatement
+                evaluate generatedVar
+
+                {
+                , recycledInStats = conditionOut.recycledInStats
+                , stats = conditionOut.stats
+                , recycledInExpr = Set.join conditionOut.recycledInExpr (Set.join trueOut.recycledInStats falseOut.recycledInStats)
+                , value =
+                    EA.Conditional
+                        conditionOut.value
+                        (List.concat trueOut.stats [ EA.Evaluation ... ])
+                        ()
+                }
+                #]
 
         , TA.Try pos { value, valueType, patternsAndExpressions }:
 
@@ -240,8 +267,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
                 EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
 
             default =
-                human = Error.posToHuman { fsPath = env.module.fsPath, content = env.module.asText } pos
-                EA.MissingPattern human.location valueExpression
+                EA.MissingPattern (location env pos) valueExpression
 
             default
             >> List.forReversed __ patternsAndExpressions addTryPatternAndBlock
@@ -429,7 +455,7 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
                         no problem, use expr directly
 
 
-    vvvv The code below does NOT deal with let..ins defining overlapping names
+    vvvv The code below does NOT deal with let..ins from different attributes defining overlapping names
 
 
     attrsEnv & attrsOut =
@@ -473,10 +499,42 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
         merge extendsOut attrsOut fn ext, att: EA.LiteralRecord (Just ext) att
 
     if out.stats /= [] then
-        todo "TODO" (env.module.fsPath .. " Compiler TODO: let..in inside record literal is not YET implemented. =("
+        todo (location env pos .. " Compiler TODO: let..in inside record literal is not YET implemented. =("
     else
         out
 
+
+translateCall as fn Env, TA.Expression, [TA.Argumen]: TranslateOut =
+    fn env, ref, args:
+
+    refOut =
+        translateExpression env ref
+
+    argOuts =
+        List.map (translateArgAndType env __) args
+
+    [#
+
+        for any arg
+            if ANY recycle in exp is used by any of the subsequent stats
+                use a var
+            else
+                no problem, use exp directly
+
+        Just like records however, we need to ensure that each let..in in each argument does not have
+        clashing names.
+
+    #]
+
+    if List.any (fn o: o.stats /= []) argOuts then
+        todo (location env pos .. " Compiler TODO: let..in inside function call argument is not YET implemented. =("
+    else
+        {
+        , recycledInStats = Set.empty
+        , stats = refOut.stats
+        , recycledInExpr = List.for refOut.recycledInExpr argOuts fn o, a: Set.join a o.recycledInExpr
+        , value = EA.Call refOut.value (List.map (fn o: o.value) argOuts)
+        }
 
 
 translateRootValueDef as fn Env, TA.ValueDef, ByUsr EA.GlobalDefinition: ByUsr EA.GlobalDefinition =
