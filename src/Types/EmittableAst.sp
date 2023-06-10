@@ -20,6 +20,9 @@ As of now, WGSL has also no support for higher-rank functions/lambdas, functions
 the body of another function; however we are not removing these features (yet?) from EmittableAst
 because we are going to instead solve them by aggressive inlining.
 
+
+TODO: it's probably unnecessary to do this extra step, I can probably turn the TypedAST directly into WebGPU/WASM
+
 #]
 
 
@@ -51,7 +54,6 @@ union Expression =
     , LiteralRecord (Maybe Expression) [AttrName & Expression]
     , RecordAccess AttrName Expression
 
-    , MissingPattern Text Expression
 
 
 union Argument =
@@ -75,7 +77,9 @@ union Statement =
           }
     , IfStatement Expression [Statement] [Statement]
     , Evaluation Expression
+    , Assignment Name Expression
     , Return Expression
+    , MissingPattern Text Expression
 
 
 alias GlobalDefinition =

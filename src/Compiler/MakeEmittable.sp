@@ -126,7 +126,7 @@ alias TranslateBase value =
     {
     , recycledInStats as Set Name
     , stats as [EA.Statement]
-    , recycledInExpr as Set Name
+    , recycledInValue as Set Name
     , value as value
     }
 
@@ -140,7 +140,7 @@ none as fn value: TranslateBase value =
     {
     , recycledInStats = Set.empty
     , stats as []
-    , recycledInExpr = Set.empty
+    , recycledInValue = Set.empty
     , value
     }
 
@@ -150,7 +150,7 @@ merge as fn TranslateBase a: TranslateBase b, (fn a, b: c): TranslateBase c =
     {
     , recycledInStats = Set.join ta.recycledInStats tb.recycledInStats
     , stats = List.concat ta.stats tb.stats
-    , recycledInExpr = Set.join ta.recycledInExpr tb.recycledInExpr
+    , recycledInValue = Set.join ta.recycledInValue tb.recycledInValue
     , value = f ta.value tb.value
     }
 
@@ -200,7 +200,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
                 {
                 , recycledInStats = conditionOut.recycledInStats
                 , stats = conditionOut.stats
-                , recycledInExpr = Set.join conditionOut.recycledInExpr (Set.join trueOut.recycledInStats falseOut.recycledInStats)
+                , recycledInValue = Set.join conditionOut.recycledInValue (Set.join trueOut.recycledInStats falseOut.recycledInStats)
                 , value = EA.IfExpression conditionOut.value trueOut.value falseOut.value
                 }
             else
@@ -213,7 +213,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
                 {
                 , recycledInStats = conditionOut.recycledInStats
                 , stats = conditionOut.stats
-                , recycledInExpr = Set.join conditionOut.recycledInExpr (Set.join trueOut.recycledInStats falseOut.recycledInStats)
+                , recycledInValue = Set.join conditionOut.recycledInValue (Set.join trueOut.recycledInStats falseOut.recycledInStats)
                 , value =
                     EA.Conditional
                         conditionOut.value
@@ -223,56 +223,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
                 #]
 
         , TA.Try pos { value, valueType, patternsAndExpressions }:
-
-            # 1. create a name for the value (unless it's already a variable)
-            valueExpression & wrapWithLetIn & newEnv =
-                try value & valueType.uni as
-                    , TA.Variable _ ref & Imm:
-                        EA.Variable ref & identity & env
-
-                    , _:
-                        tryName & newEnv =
-                            generateName env
-
-                        wrap =
-                            fn tryExpression:
-                            EA.LetIn
-                                {
-                                , maybeName = Just tryName
-                                , letExpression = translateExpression newEnv value
-                                , inExpression = tryExpression
-                                , type = valueType
-                                }
-
-                        EA.Variable (RefLocal tryName) & wrap & newEnv
-
-
-            # 2. if-elses
-            addTryPatternAndBlock as fn (TA.Pattern & TA.Expression), EA.Expression: EA.Expression =
-                fn ( pattern & block ), nextTryExpression:
-
-                testIfPatternMatches as EA.Expression =
-                    testPattern pattern valueExpression []
-                    >> List.reverse
-                    >> EA.PatternMatchConditions
-
-                namesAndExpressions as [ TA.FullType & Name & EA.Expression ] =
-                    translatePattern pattern valueExpression
-
-                whenConditionMatches as EA.Expression =
-                    translateExpression newEnv block
-                    >> List.for __ namesAndExpressions fn (type & name & letExpression), inExpression:
-                        EA.LetIn { maybeName = Just name, type, letExpression, inExpression }
-
-                EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
-
-            default =
-                EA.MissingPattern (location env pos) valueExpression
-
-            default
-            >> List.forReversed __ patternsAndExpressions addTryPatternAndBlock
-            >> wrapWithLetIn
-
+            translateTryAs env value valueType patternsAndExpressions
 
         , TA.LetIn valueDef e bodyType:
             try pickMainName valueDef.pattern as
@@ -341,32 +292,32 @@ translateFn as fn Env, [TA.Parameter], TA.Expression: TranslateOut =
         List.concat [ bodyOut.stats, [ EA.Return bodyOut.expr ] ]
 
     recycledInBody =
-        Set.join bodyOut.recycledInStats bodyOut.recycledInExpr
+        Set.join bodyOut.recycledInStats bodyOut.recycledInValue
 
     #
-    # To get recycledInExpr we take all vars that have been recycled in the body, and remove those that are actually declared as function params.
+    # To get recycledInValue we take all vars that have been recycled in the body, and remove those that are actually declared as function params.
     #
     # If any param needs to be unwrapped, we add a statement for it.
     #
-    { with recycledInExpr, body, pars } =
+    { with recycledInValue, body, pars } =
         List.forReversed
             {
             , env
-            , recycledInExpr = recycledInBody
+            , recycledInValue = recycledInBody
             , body = eaBody
             , pars = []
             }
             taPars
             translateAndAddParameter
 
-    { recycledInStats = Set.none, stats = [], recycledInExpr, expr = EA.Fn eaPars wrappedBody }
+    { recycledInStats = Set.none, stats = [], recycledInValue, expr = EA.Fn eaPars wrappedBody }
 
 
 
 alias ParameterAcc =
     {
     , env as Env
-    , recycledInExpr as Set Name
+    , recycledInValue as Set Name
     , body as [EA.Statement]
     , pars as [Bool & Maybe Name]
     }
@@ -379,7 +330,7 @@ translateAndAddParameter as fn TA.Parameter, ParameterAcc: ParameterAcc =
     try par as
         , TA.ParameterRecycle pos rawType name:
             { acc with
-            , recycledInExpr = Set.remove name .recycledInExpr
+            , recycledInValue = Set.remove name .recycledInValue
             , pars = [True & Just name, ...(.pars)]
             }
 
@@ -462,7 +413,7 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
         Dict.for (env & none Dict.empty) attrOutsByName fn name, out, (envX & acc):
 
             ooo =
-                if out.recycledInExpr /= Set.empty and no recycled in subsequent stats then
+                if out.recycledInValue /= Set.empty and no recycled in subsequent stats then
                     envX & out
 
                 else
@@ -470,9 +421,9 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
                         generateName envX
 
                     { out with
-                    , recycledInStats = Set.join .recycledInStats .recycledInExpr
+                    , recycledInStats = Set.join .recycledInStats .recycledInValue
                     , stats = List.concat .stats [ EA.VarDefinition varName ??? .expr ]
-                    , recycledInExpr = Set.empty
+                    , recycledInValue = Set.empty
                     , value = EA.Variable (RefLocal varName)
                     }
 
@@ -491,7 +442,7 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
               {
               , recycledInStats = extendsOut.recycledInStats
               , stats = extendsOut.stats
-              , recycledInExpr = extendsOut.recycledInExpr
+              , recycledInValue = extendsOut.recycledInValue
               , value = Just extendsOut.value
               }
 
@@ -502,6 +453,7 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
         todo (location env pos .. " Compiler TODO: let..in inside record literal is not YET implemented. =("
     else
         out
+
 
 
 translateCall as fn Env, TA.Expression, [TA.Argumen]: TranslateOut =
@@ -532,9 +484,128 @@ translateCall as fn Env, TA.Expression, [TA.Argumen]: TranslateOut =
         {
         , recycledInStats = Set.empty
         , stats = refOut.stats
-        , recycledInExpr = List.for refOut.recycledInExpr argOuts fn o, a: Set.join a o.recycledInExpr
+        , recycledInValue = List.for refOut.recycledInValue argOuts fn o, a: Set.join a o.recycledInValue
         , value = EA.Call refOut.value (List.map (fn o: o.value) argOuts)
         }
+
+
+
+translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expression]: TranslateOut =
+    fn env0, value, valueType, patternsAndExpressions:
+
+    # 1. create a name for the value (unless it's already a variable)
+    { valueExpr, valueStats, recycledInValue0 & env1 } =
+        try value & valueType.uni as
+            , TA.Variable _ ref & Imm:
+                {
+                , valueExpr = EA.Variable ref
+                , valueStats = []
+                , recycledInValue0 = Set.empty
+                , env1 = env0
+                }
+
+            , _:
+                valueOut =
+                    translateExpression env0 value
+
+                if valueOut.stats /= [] then
+                    todo "try..as stats!?"
+                else
+                    None
+
+                tryName & env1 =
+                    generateName env0
+
+                definition =
+                    EA.VarDefinition
+                        {
+                        , name = tryName
+                        , type = valueType
+                        , value = valueOut.expr
+                        }
+
+                {
+                , valueExpr = EA.Variable (RefLocal tryName)
+                , valueStats = [definition]
+                , recycledInValue0 = valueOut.recycledInValue
+                , env1
+                }
+
+    # 2. if-elses
+    resultName & env2 =
+        generateName env1
+
+    [#
+        let generated;
+
+        if condition1
+            statements
+            generated = value
+        else if condition2
+            statements
+            generated = condition2
+        else
+            crash "missing case: ..."
+
+        generated;
+
+    #]
+
+    addTryPatternAndBlock as fn TA.Pattern & TA.Expression, EA.Statement & Set Name: EA.Statement & Set Name =
+        fn pattern & block, nextTryStatement & recycled0:
+
+        testIfPatternMatches as EA.Expression =
+            testPattern pattern valueExpression []
+            >> List.reverse
+            >> EA.PatternMatchConditions
+
+        namesAndExpressions as [ TA.FullType & Name & EA.Expression ] =
+            translatePattern pattern valueExpression
+
+        whenConditionMatches as [EA.Statement] =
+
+            patternUnpackingStats =
+                List.map namesAndExpressions fn type & name & value:
+                    EA.VarDefinition { name, type, value }
+
+            blockOut =
+                translateExpression env2 block
+
+            [
+            , patternUnpackingStats
+            , blockOut.stats
+            , EA.Assignment resultName blockOut.value
+            ]
+            >> List.concat
+
+        recycled1 =
+            recycled0
+            >> Set.join __ blockOut.recycledInStats
+            >> Set.join __ blockOut.recycledInValue
+
+        recycled1 & EA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
+
+
+    # 3. end
+    default =
+        EA.MissingPattern (location env pos) valueExpression
+
+    recycledInValue1 & ifElseStat =
+        List.forReversed (recycledInValue0 & default) patternsAndExpressions addTryPatternAndBlock
+
+    {
+    , recycledInStats = Set.empty
+    , stats = List.concat [valueStats, [ifElseStat]]
+    , recycledInValue = recycledInValue1
+    , value = EA.Variable resultName
+    }
+
+
+
+#
+#
+#
+
 
 
 translateRootValueDef as fn Env, TA.ValueDef, ByUsr EA.GlobalDefinition: ByUsr EA.GlobalDefinition =
