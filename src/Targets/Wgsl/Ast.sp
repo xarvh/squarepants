@@ -47,7 +47,7 @@ union Statement =
           , body as [Statement]
           }
     , IfStatement Expression [Statement] [Statement]
-    , Evaluation Expression
+    , Execution Expression
     , Assignment Name Expression
     , Return Expression
     , MissingPattern Text Expression

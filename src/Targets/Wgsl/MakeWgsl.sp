@@ -105,16 +105,27 @@ testPattern as fn TA.Pattern, WA.Expression, [WA.Expression]: [WA.Expression] =
                 testPattern pa (WA.RecordAccess name valueToTest) a
 
 
-
-translateArgAndType as fn Env, TA.Argument: WA.Argument =
+translateArgAndType as fn Env, TA.Argument: TranslateBase WA.Argument =
     fn env, taArg:
 
     try taArg as
         , TA.ArgumentExpression fullType exp:
-            WA.ArgumentSpend fullType (translateExpression env exp)
+            expOut =
+                translateExpression env exp
+            {
+            , recycledInStats = expOut.recycledInStats
+            , stats = expOut.stats
+            , recycledInValue = expOut.recycledInValue
+            , value = WA.ArgumentSpend fullType expOut.value
+            }
 
         , TA.ArgumentRecycle pos rawType attrPath name:
-            WA.ArgumentRecycle rawType attrPath name
+            {
+            , recycledInStats = Set.empty
+            , stats = []
+            , recycledInValue = Set.ofOne name
+            , value = WA.ArgumentRecycle rawType attrPath name
+            }
 
 
 [#
@@ -140,17 +151,22 @@ none as fn value: TranslateBase value =
     fn value:
     {
     , recycledInStats = Set.empty
-    , stats as []
+    , stats = []
     , recycledInValue = Set.empty
     , value
     }
+
+
+map as fn (fn a: b), TranslateBase a: TranslateBase b =
+    fn f, a:
+    todo "map"
 
 
 merge as fn TranslateBase a, TranslateBase b, (fn a, b: c): TranslateBase c =
     fn ta, tb, f:
     {
     , recycledInStats = Set.join ta.recycledInStats tb.recycledInStats
-    , stats = List.concat ta.stats tb.stats
+    , stats = List.concat [ ta.stats, tb.stats ]
     , recycledInValue = Set.join ta.recycledInValue tb.recycledInValue
     , value = f ta.value tb.value
     }
@@ -167,7 +183,8 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
             none << WA.LiteralNumber num
 
         , TA.LiteralText _ text:
-            none << WA.LiteralText text
+            todo "add error"
+            none << WA.Variable (RefLocal "ERROR")
 
         , TA.Variable _ ref:
             none << WA.Variable ref
@@ -176,7 +193,8 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
             none << WA.Constructor usr
 
         , TA.RecordAccess _ attrName exp:
-            { translateExpression env exp with expr = WA.RecordAccess attrName .expr }
+            translateExpression env exp
+            >> map (WA.RecordAccess attrName __)
 
         , TA.Fn pos taPars body bodyT:
             translateFn env taPars body
@@ -227,56 +245,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
             translateTryAs env value valueType patternsAndExpressions
 
         , TA.LetIn valueDef e bodyType:
-            try pickMainName valueDef.pattern as
-                , NoNamedVariables:
-                    WA.LetIn
-                        {
-                        , maybeName = Nothing
-                        , type = valueDef.type
-                        , letExpression = translateExpression env valueDef.body
-                        , inExpression = translateExpression env e
-                        }
-
-                , TrivialPattern defName type:
-                    WA.LetIn
-                        {
-                        , maybeName = Just defName
-                        , type
-                        , letExpression = translateExpression env valueDef.body
-                        , inExpression = translateExpression env e
-                        }
-
-                , GenerateName:
-                    mainName & newEnv =
-                        # TODO check if valueDef.body is just a variable
-                        generateName env
-
-                    namesAndExpressions =
-                        translatePattern valueDef.pattern (WA.Variable (RefLocal mainName))
-
-                    wrapWithUnpackedPatternVar as fn (TA.FullType & Name & WA.Expression), WA.Expression: WA.Expression =
-                        fn (type & name & letExpression), inExpression:
-                        WA.LetIn
-                            {
-                            , maybeName = Just name
-                            , type
-                            , letExpression
-                            , inExpression
-                            }
-
-                    wrapWithActualLetIn as fn WA.Expression: WA.Expression =
-                        fn inExpression:
-                        WA.LetIn
-                            {
-                            , maybeName = Just mainName
-                            , type = valueDef.type
-                            , letExpression = translateExpression newEnv valueDef.body
-                            , inExpression
-                            }
-
-                    translateExpression newEnv e
-                    >> List.forReversed __ namesAndExpressions wrapWithUnpackedPatternVar
-                    >> wrapWithActualLetIn
+            translateLetIn env valueDef e bodyType
 
         , TA.DestroyIn name e:
             translateExpression env e
@@ -457,7 +426,7 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
 
 
 
-translateCall as fn Env, TA.Expression, [TA.Argumen]: TranslateOut =
+translateCall as fn Env, TA.Expression, [TA.Argument]: TranslateOut =
     fn env, ref, args:
 
     refOut =
@@ -566,8 +535,8 @@ translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expressio
         whenConditionMatches as [WA.Statement] =
 
             patternUnpackingStats =
-                List.map namesAndExpressions fn type & name & value:
-                    WA.VarDefinition { name, type, value }
+                List.map namesAndExpressions fn type & name & v:
+                    WA.VarDefinition { name, type, value = v }
 
             blockOut =
                 translateExpression env2 block
@@ -600,6 +569,72 @@ translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expressio
     , recycledInValue = recycledInValue1
     , value = WA.Variable resultName
     }
+
+
+
+translateLetIn as fn Env, TA.ValueDef, TA.Expression, TA.FullType: TranslateOut =
+    fn env, valueDef, e, bodyType:
+
+    letOut =
+        translateExpression env valueDef.body
+
+    inOut =
+        translateExpression env e
+
+    setupStats =
+        try pickMainName valueDef.pattern as
+            , NoNamedVariables:
+                [ WA.Execution letOut.value ]
+
+            , TrivialPattern defName type:
+                [ WA.VarDefinition defName letOut.value ]
+
+            , GenerateName:
+                mainName & newEnv =
+                    # TODO check if valueDef.body is just a variable
+                    generateName env
+
+                mainNameDef =
+                    WA.VarDefinition
+                        {
+                        , name = mainName
+                        , type = valueDef.type
+                        , value = letOut.value
+                        }
+
+                patternUnpackingStats =
+                    WA.Variable (RefLocal mainName)
+                    >> translatePattern valueDef.pattern
+                    >> List.map namesAndExpressions fn type & name & v:
+                        WA.VarDefinition { name, type, value = v }
+
+                [mainNameDef, ...patternUnpackingStats]
+
+    stats =
+        [
+        , letOut.stats
+        , setupStats
+        , inOut.stats
+        ]
+
+    recycledInStats =
+        letOut.recycledInStats
+        >> Set.join letOut.recycledInValue
+        >> Set.join letIn.recycledInStats
+
+    value =
+        inOut.value
+
+    recycledInValue =
+        inOut.recycledInValue
+
+    {
+    , stats
+    , recycledInStats
+    , value
+    , recycledInValue
+    }
+
 
 
 
