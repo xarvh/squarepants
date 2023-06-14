@@ -194,18 +194,18 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
 
         , TA.RecordAccess _ attrName exp:
             translateExpression env exp
-            >> map (WA.RecordAccess attrName __)
+            >> map (WA.RecordAccess attrName __) __
 
         , TA.Fn pos taPars body bodyT:
             translateFn env taPars body
 
-        , TA.Record _ extends attrs:
-            translateRecord env extends attrs
+        , TA.Record pos extends attrs:
+            translateRecord pos env extends attrs
 
-        , TA.Call _ ref argsAndTypes:
-            translateCall env ref argsAndTypes
+        , TA.Call pos ref argsAndTypes:
+            translateCall env pos ref argsAndTypes
 
-        , TA.If _ ar:
+        , TA.If pos ar:
             conditionOut =
                 translateExpression env ar.condition
 
@@ -215,15 +215,17 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
             falseOut =
                 translateExpression env ar.false
 
-            if trueOut.stats == [] and falseOut.stats == [] then
-                {
-                , recycledInStats = conditionOut.recycledInStats
-                , stats = conditionOut.stats
-                , recycledInValue = Set.join conditionOut.recycledInValue (Set.join trueOut.recycledInStats falseOut.recycledInStats)
-                , value = WA.IfExpression conditionOut.value trueOut.value falseOut.value
-                }
-            else
-                todo (location env pos .. " let..in inside if branches not yet implemented =(")
+#            if trueOut.stats == [] and falseOut.stats == [] then
+#                {
+#                , recycledInStats = conditionOut.recycledInStats
+#                , stats = conditionOut.stats
+#                , recycledInValue = Set.join conditionOut.recycledInValue (Set.join trueOut.recycledInStats falseOut.recycledInStats)
+#                , value = WA.IfExpression conditionOut.value trueOut.value falseOut.value
+#                }
+#            else
+
+            todo (location env pos .. " let..in inside if branches not yet implemented =(")
+
                 [#
                 generatedVar
                 IfStatement
@@ -242,7 +244,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
                 #]
 
         , TA.Try pos { value, valueType, patternsAndExpressions }:
-            translateTryAs env value valueType patternsAndExpressions
+            translateTryAs env pos value valueType patternsAndExpressions
 
         , TA.LetIn valueDef e bodyType:
             translateLetIn env valueDef e bodyType
@@ -253,13 +255,14 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
 
 
 translateFn as fn Env, [TA.Parameter], TA.Expression: TranslateOut =
+    fn env, taPars, taBody:
 
     bodyOut =
-        translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
+        translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } taBody
 
     eaBody =
         # TODO use WA.Evaluation instead of WA.Return if bodyT is `None`?
-        List.concat [ bodyOut.stats, [ WA.Return bodyOut.expr ] ]
+        List.concat [ bodyOut.stats, [ WA.Return bodyOut.value ] ]
 
     recycledInBody =
         Set.join bodyOut.recycledInStats bodyOut.recycledInValue
@@ -280,7 +283,12 @@ translateFn as fn Env, [TA.Parameter], TA.Expression: TranslateOut =
             taPars
             translateAndAddParameter
 
-    { recycledInStats = Set.none, stats = [], recycledInValue, expr = WA.Fn eaPars wrappedBody }
+    {
+    , recycledInStats = Set.empty
+    , stats = []
+    , recycledInValue
+    , value = todo "WA.Fn eaPars wrappedBody"
+    }
 
 
 
@@ -321,7 +329,7 @@ translateAndAddParameter as fn TA.Parameter, ParameterAcc: ParameterAcc =
 
                     body =
                         List.for acc.body namesAndExpressions fn (type & name & value), stats:
-                            [VarDefinition { name, type, value }, ...stats]
+                            [ WA.VarDefinition { name, type, value }, ...stats]
 
                     { acc with
                     , env
@@ -331,8 +339,8 @@ translateAndAddParameter as fn TA.Parameter, ParameterAcc: ParameterAcc =
 
 
 
-translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: TranslateOut =
-    fn env, taMaybeExtends, taAttrs:
+translateRecord as fn Pos, Env, Maybe TA.Expression, Dict Name TA.Expression: TranslateOut =
+    fn pos, env, taMaybeExtends, taAttrs:
 
     [#
         Given
@@ -374,50 +382,30 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
                         assign expr to a var, then use the var to init the record
                     else
                         no problem, use expr directly
-
-
-    vvvv The code below does NOT deal with let..ins from different attributes defining overlapping names
-
-
-    attrsEnv & attrsOut =
-        Dict.for (env & none Dict.empty) attrOutsByName fn name, out, (envX & acc):
-
-            ooo =
-                if out.recycledInValue /= Set.empty and no recycled in subsequent stats then
-                    envX & out
-
-                else
-                    varName & newEnv =
-                        generateName envX
-
-                    { out with
-                    , recycledInStats = Set.join .recycledInStats .recycledInValue
-                    , stats = List.concat .stats [ WA.VarDefinition varName ??? .expr ]
-                    , recycledInValue = Set.empty
-                    , value = WA.Variable (RefLocal varName)
-                    }
-
-            newEnv & merge acc ooo fn attrs, value: Dict.insert name value attrs
     #]
 
-    eaMaybeExtend =
+
+    #
+    # NOTE: Right now we do not allow let..ins inside record attribute definitions.
+    # TODO: this should be enforced by CanonicalAst!!!
+    #
+    # NOTE: We are relying on Dict to sort attributes alphabetically to ensure consistency of recycling order.
+    #
+    attrsOut =
+        Dict.forReversed (none []) attrOutsByName fn name, o, acc:
+            merge acc o fn attrs, value: [name & value, ...attrs]
+
+    maybeExtendsOut =
         try taMaybeExtends as
             , Nothing:
                 none Nothing
 
             , Just taExtends:
-                extendsOut =
-                    translateExpression attrsEnv taExtends
-
-                {
-                , recycledInStats = extendsOut.recycledInStats
-                , stats = extendsOut.stats
-                , recycledInValue = extendsOut.recycledInValue
-                , value = Just extendsOut.value
-                }
+                translateExpression env taExtends
+                >> map Just __
 
     out =
-        merge extendsOut attrsOut fn ext, att: WA.LiteralRecord (Just ext) att
+        merge maybeExtendsOut attrsOut fn maybeExt, att: WA.LiteralRecord maybeExt att
 
     if out.stats /= [] then
         todo << location env pos .. " Compiler TODO: let..in inside record literal is not YET implemented. =("
@@ -426,8 +414,8 @@ translateRecord as fn Env, Maybe TA.Expression, Dict Name TA.Expression: Transla
 
 
 
-translateCall as fn Env, TA.Expression, [TA.Argument]: TranslateOut =
-    fn env, ref, args:
+translateCall as fn Env, Pos, TA.Expression, [TA.Argument]: TranslateOut =
+    fn env, pos, ref, args:
 
     refOut =
         translateExpression env ref
@@ -460,8 +448,8 @@ translateCall as fn Env, TA.Expression, [TA.Argument]: TranslateOut =
 
 
 
-translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expression]: TranslateOut =
-    fn env0, value, valueType, patternsAndExpressions:
+translateTryAs as fn Env, Pos, TA.Expression, TA.FullType, [TA.Pattern & TA.Expression]: TranslateOut =
+    fn env0, pos, value, valueType, patternsAndExpressions:
 
     # 1. create a name for the value (unless it's already a variable)
     { valueExpr, valueStats, recycledInValue0, env1 } =
@@ -491,7 +479,7 @@ translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expressio
                         {
                         , name = tryName
                         , type = valueType
-                        , value = valueOut.expr
+                        , value = valueOut.value
                         }
 
                 {
@@ -525,26 +513,25 @@ translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expressio
         fn pattern & block, nextTryStatement & recycled0:
 
         testIfPatternMatches as WA.Expression =
-            testPattern pattern valueExpression []
+            testPattern pattern valueExpr []
             >> List.reverse
             >> WA.PatternMatchConditions
 
         namesAndExpressions as [ TA.FullType & Name & WA.Expression ] =
-            translatePattern pattern valueExpression
+            translatePattern pattern valueExpr
+
+        blockOut =
+            translateExpression env2 block
 
         whenConditionMatches as [WA.Statement] =
 
             patternUnpackingStats =
-                List.map namesAndExpressions fn type & name & v:
-                    WA.VarDefinition { name, type, value = v }
-
-            blockOut =
-                translateExpression env2 block
+                List.map (fn type & name & v: WA.VarDefinition { name, type, value = v }) namesAndExpressions
 
             [
             , patternUnpackingStats
             , blockOut.stats
-            , WA.Assignment resultName blockOut.value
+            , [WA.Assignment resultName blockOut.value]
             ]
             >> List.concat
 
@@ -553,21 +540,21 @@ translateTryAs as fn Env, TA.Expression, TA.FullType, [TA.Pattern & TA.Expressio
             >> Set.join __ blockOut.recycledInStats
             >> Set.join __ blockOut.recycledInValue
 
-        recycled1 & WA.Conditional testIfPatternMatches whenConditionMatches nextTryExpression
+        WA.IfStatement testIfPatternMatches whenConditionMatches nextTryStatement & recycled1
 
 
     # 3. end
     default =
-        WA.MissingPattern (location env pos) valueExpression
+        WA.MissingPattern (location env2 pos) valueExpr
 
-    recycledInValue1 & ifElseStat =
-        List.forReversed (recycledInValue0 & default) patternsAndExpressions addTryPatternAndBlock
+    ifElseStat & recycledInValue1 =
+        List.forReversed (default & recycledInValue0) patternsAndExpressions addTryPatternAndBlock
 
     {
     , recycledInStats = Set.empty
     , stats = List.concat [valueStats, [ifElseStat]]
     , recycledInValue = recycledInValue1
-    , value = WA.Variable resultName
+    , value = WA.Variable (RefLocal resultName)
     }
 
 

@@ -13,8 +13,6 @@ union Expression =
     , Call Expression [Argument]
     , Fn [Bool & Maybe Name] [Statement]
 
-    , IfExpression Expression Expression Expression
-
     , PatternMatchConditions [Expression]
     , CompareWithLiteralText Text Expression
     , CompareWithLiteralNumber Number Expression
