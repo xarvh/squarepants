@@ -22,28 +22,38 @@ alias FullType =
     }
 
 
+alias Block =
+    # TODO a Block is an Expression that also allows let..in
+    , Expression
+
+
 union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos USR
-    , Fn Pos [Parameter] Expression
+    , Fn Pos [Parameter] Block
     , Call Pos Expression [Argument]
+      #
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
+      #
+      # Also, attribute values could be Blocks
+      #
     , Record Pos (Maybe Expression) (Dict Name Expression)
     , RecordAccess Pos Name Expression
-    , LetIn ValueDef Expression
+    # TODO remove this once we implement Blocks
+    , LetIn ValueDef Block
     , If Pos
         {
         , condition as Expression
-        , true as Expression
-        , false as Expression
+        , true as Block
+        , false as Block
         }
     , Try Pos
         {
         , value as Expression
-        , patternsAndExpressions as [Uniqueness & Pattern & Expression]
+        , patternsAndExpressions as [Uniqueness & Pattern & Block]
         }
     , DestroyIn Name Expression
 
@@ -90,7 +100,7 @@ alias ValueDef =
 
     # TODO: have maybeBody instead of native?
     , native as Bool
-    , body as Expression
+    , body as Block
 
     , tyvars as Dict Name Tyvar
     , univars as Dict UnivarId None
