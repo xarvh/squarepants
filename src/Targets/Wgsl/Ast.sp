@@ -9,7 +9,7 @@ alias AttrName =
 
 union Expression =
     , LiteralNumber Number
-    , Variable Ref
+    , Variable VarName
     , Call Expression [Argument]
     , Fn [Bool & Maybe Name] [Statement]
 

@@ -2,12 +2,21 @@
 
 alias Env =
     {
-    , genVarCounter as Int
     , module as TA.Module
+
+    , genVarCounter as Int
+
+    , availableResultLocals as Set TA.Type
+
+    , localsTaToWa as Dict Name WA.VarName
+    , localsWa as Set WA.VarName
     }
 
 
 
+#
+#
+#
 
 location as fn Env, Pos: Text =
     fn env, pos:
@@ -17,10 +26,18 @@ location as fn Env, Pos: Text =
 
 
 
-
 #
 # Translation
 #
+
+
+generateName as fn Env: WA.VarName & Env =
+    fn env:
+
+    n = env.genVarCounter + 1
+
+    WA.generateName n & { env with genVarCounter = n }
+
 
 
 union PickedName =
@@ -28,10 +45,6 @@ union PickedName =
     , GenerateName
     , NoNamedVariables
 
-
-generateName as fn Env: Name & Env =
-    fn env:
-    Text.fromNumber (env.genVarCounter + 1) & { env with genVarCounter = 1 + .genVarCounter }
 
 
 pickMainName as fn TA.Pattern: PickedName =
@@ -46,6 +59,7 @@ pickMainName as fn TA.Pattern: PickedName =
                 GenerateName
             else
                 NoNamedVariables
+
 
 
 translatePattern as fn TA.Pattern, WA.Expression: [ TA.FullType & Name & WA.Expression ] =
@@ -128,69 +142,23 @@ translateArgAndType as fn Env, TA.Argument: TranslateBase WA.Argument =
             }
 
 
-[#
 
-    TODO: Explain why are we doing this batshit mess
-
-
-#]
-alias TranslateBase value =
-    {
-    , recycledInStats as Set Name
-    , stats as [WA.Statement]
-    , recycledInValue as Set Name
-    , value as value
-    }
-
-
-alias TranslateOut =
-    TranslateBase WA.Expression
-
-
-none as fn value: TranslateBase value =
-    fn value:
-    {
-    , recycledInStats = Set.empty
-    , stats = []
-    , recycledInValue = Set.empty
-    , value
-    }
-
-
-map as fn (fn a: b), TranslateBase a: TranslateBase b =
-    fn f, a:
-    todo "map"
-
-
-merge as fn TranslateBase a, TranslateBase b, (fn a, b: c): TranslateBase c =
-    fn ta, tb, f:
-    {
-    , recycledInStats = Set.join ta.recycledInStats tb.recycledInStats
-    , stats = List.concat [ ta.stats, tb.stats ]
-    , recycledInValue = Set.join ta.recycledInValue tb.recycledInValue
-    , value = f ta.value tb.value
-    }
-
-
-
-
-
-translateExpression as fn Env, TA.Expression: TranslateOut =
+translateExpression as fn Env, TA.Expression: Env & [WA.Statement] & WA.Expression =
     fn env, expression:
 
     try expression as
         , TA.LiteralNumber _ num:
-            none << WA.LiteralNumber num
+            [] & WA.LiteralNumber num
 
         , TA.LiteralText _ text:
             todo "add error"
-            none << WA.Variable (RefLocal "ERROR")
+            [] & WA.Variable (RefLocal "ERROR")
 
         , TA.Variable _ ref:
-            none << WA.Variable ref
+            [] & WA.Variable ref
 
         , TA.Constructor _ usr:
-            none << WA.Constructor usr
+            [] & WA.Constructor usr
 
         , TA.RecordAccess _ attrName exp:
             translateExpression env exp
@@ -206,42 +174,7 @@ translateExpression as fn Env, TA.Expression: TranslateOut =
             translateCall env pos ref argsAndTypes
 
         , TA.If pos ar:
-            conditionOut =
-                translateExpression env ar.condition
-
-            trueOut =
-                translateExpression env ar.true
-
-            falseOut =
-                translateExpression env ar.false
-
-#            if trueOut.stats == [] and falseOut.stats == [] then
-#                {
-#                , recycledInStats = conditionOut.recycledInStats
-#                , stats = conditionOut.stats
-#                , recycledInValue = Set.join conditionOut.recycledInValue (Set.join trueOut.recycledInStats falseOut.recycledInStats)
-#                , value = WA.IfExpression conditionOut.value trueOut.value falseOut.value
-#                }
-#            else
-
-            todo (location env pos .. " let..in inside if branches not yet implemented =(")
-
-                [#
-                generatedVar
-                IfStatement
-                evaluate generatedVar
-
-                {
-                , recycledInStats = conditionOut.recycledInStats
-                , stats = conditionOut.stats
-                , recycledInValue = Set.join conditionOut.recycledInValue (Set.join trueOut.recycledInStats falseOut.recycledInStats)
-                , value =
-                    WA.Conditional
-                        conditionOut.value
-                        (List.concat trueOut.stats [ WA.Evaluation ... ])
-                        ()
-                }
-                #]
+            translateIf env pos ar.condition ar.true ar.false
 
         , TA.Try pos { value, valueType, patternsAndExpressions }:
             translateTryAs env pos value valueType patternsAndExpressions
@@ -414,38 +347,136 @@ translateRecord as fn Pos, Env, Maybe TA.Expression, Dict Name TA.Expression: Tr
 
 
 
-translateCall as fn Env, Pos, TA.Expression, [TA.Argument]: TranslateOut =
-    fn env, pos, ref, args:
+[#
+    We assume that EVERY expression in the call can potentially mess with uniques.
 
-    refOut =
-        translateExpression env ref
+    Since the order of uniques manipulation is important, we need to guarantee the
+    execution order of every expression in the call.
 
-    argOuts =
-        List.map (translateArgAndType env __) args
 
-    [#
+    (ref a1 .. aN)
 
-        for any arg
-            if ANY recycle in exp is used by any of the subsequent stats
-                use a var
+    |
+    |
+    |
+    V
+
+    ref/statements
+
+    a1/statements
+    gen1 = a1/expr
+
+    ...
+
+    aL/statements   // This is the last argument with statements
+    genL = aL/expr
+
+    ref(gen1, ..., genL, aL+1/expr, ... aN/expr)
+
+    // ^^^ If it's not native or main, inline the call ^^^
+
+    // NOTE: we inline *after* hoisting because, again, we need to guarantee execution order.
+
+#]
+translateCall as fn Env, Pos, TA.Expression, [TA.Argument]: Env & [WA.Statement] & WA.Expression =
+    fn env0, pos, ref, taArgs:
+
+    env1 & refStats & refExpr =
+        translateExpression env0 ref
+
+    (env2 as Env) & (hoistedArgs as [[WA.Statement] & WA.Argument]) & (simpleArgs as [WA.Argument])=
+        List.forReversed (env1 & []) taArgs fn arg, envX0 & hoisted & simple:
+
+            envX1 & argStats & argExpr =
+                translateArgAndType envX0 arg
+
+            if hoisted == [] and argStats == [] then
+                envX1 & hoisted & [argExpr, ...simple]
             else
-                no problem, use exp directly
+                envX1 & [argStats & argExpr, ...hoisted] & simple
 
-        Just like records however, we need to ensure that each let..in in each argument does not have
-        clashing names.
+    env3 & hoistedStats =
+        ...
 
-    #]
+    hoistedArgs =
+        ...
 
-    if List.any (fn o: o.stats /= []) argOuts then
-        todo << location env pos .. " Compiler TODO: let..in inside function call argument is not YET implemented. =("
-    else
-        {
-        , recycledInStats = Set.empty
-        , stats = refOut.stats
-        , recycledInValue = List.for refOut.recycledInValue argOuts fn o, a: Set.join a o.recycledInValue
-        , value = WA.Call refOut.value (List.map (fn o: o.value) argOuts)
-        }
+    waArgs =
+        ...
 
+    stats =
+        [
+        , refStats
+        , hoistedStats
+        ]
+        >> List.concat
+
+
+
+    expr =
+        if "function is overridden" then
+            WA.Call ref waArgs
+        else
+            inline env ref waArgs
+
+    env3 & stats & expr
+
+
+[#
+
+    (if condition then true else false)
+
+    |
+    |
+    |
+    V
+
+    $condition/statements
+
+    var result/type;
+
+    if ($condition/value) {
+        $true/statements
+        result/type = $true/value
+    } else {
+        $false/statements
+        result/type = $false/value
+    }
+
+    result/type;
+
+#]
+translateIf as fn Env, Pos, TA.Expression, TA.Expression, TA.Expression: Env & [WA.Statement] & WA.Expression =
+    fn env0, pos, taCondition, taTrue, taFalse:
+
+    env1 & conditionStats & conditionExpr =
+        translateExpression env0 ar.condition
+
+    _ & trueStats & trueExpr =
+        translateExpression env1 ar.true
+
+    _ & falseStats & falseExpr =
+        translateExpression env1 ar.false
+
+    env2 & resultStats & resultLocal =
+        getResultLocal (todo "type!!!") env1
+
+    stats =
+        [
+        , conditionOut.statements
+        , resultStats
+        , WA.IfStatement conditionOut.value
+            [
+            , true.statements
+            , WA.Assignment resultLocal true.value
+            ]
+            [
+            , false.statements
+            , WA.Assignment resultLocal false.value
+            ]
+        ]
+
+    env2 & stats & WA.VarName resultLocal
 
 
 translateTryAs as fn Env, Pos, TA.Expression, TA.FullType, [TA.Pattern & TA.Expression]: TranslateOut =
