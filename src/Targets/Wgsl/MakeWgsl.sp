@@ -3,6 +3,7 @@
 alias Env =
     {
     , module as TA.Module
+    , inlineEnv as Inline.InlineEnv
 
     , genVarCounter as Int
 
@@ -171,7 +172,16 @@ translateExpression as fn Env, TA.Expression: Env & [WA.Statement] & WA.Expressi
             translateRecord pos env extends attrs
 
         , TA.Call pos ref argsAndTypes:
-            translateCall env pos ref argsAndTypes
+            try Inline.inline env.inlineEnv ref argsAndTypes as
+                , Inline.Circular circulars:
+                    add error
+                    env & [] & WA.Error
+
+                , Inline.Inlined inlinedExpression:
+                    translateExpression env inlinedExpression
+
+                , Inline.NotInlined:
+                    translateCall env pos ref argsAndTypes
 
         , TA.If pos ar:
             translateIf env pos ar.condition ar.true ar.false
@@ -372,11 +382,6 @@ translateRecord as fn Pos, Env, Maybe TA.Expression, Dict Name TA.Expression: Tr
     genL = aL/expr
 
     ref(gen1, ..., genL, aL+1/expr, ... aN/expr)
-
-    // ^^^ If it's not native or main, inline the call ^^^
-
-    // NOTE: we inline *after* hoisting because, again, we need to guarantee execution order.
-
 #]
 translateCall as fn Env, Pos, TA.Expression, [TA.Argument]: Env & [WA.Statement] & WA.Expression =
     fn env0, pos, ref, taArgs:
@@ -411,15 +416,7 @@ translateCall as fn Env, Pos, TA.Expression, [TA.Argument]: Env & [WA.Statement]
         ]
         >> List.concat
 
-
-
-    expr =
-        if "function is overridden" then
-            WA.Call ref waArgs
-        else
-            inline env ref waArgs
-
-    env3 & stats & expr
+    env3 & stats & WA.Call ref waArgs
 
 
 [#
