@@ -3,7 +3,7 @@
 alias Env =
     {
     , module as TA.Module
-    , inlineEnv as Inline.InlineEnv
+    , inlineEnv as Inline.Env
 
     , genVarCounter as Int
 
@@ -149,21 +149,21 @@ translateExpression as fn Env, TA.Expression: Env & [WA.Statement] & WA.Expressi
 
     try expression as
         , TA.LiteralNumber _ num:
-            [] & WA.LiteralNumber num
+            env & [] & WA.LiteralNumber num
 
         , TA.LiteralText _ text:
             todo "add error"
-            [] & WA.Variable (RefLocal "ERROR")
+            env & [] & WA.Variable (RefLocal "ERROR")
 
         , TA.Variable _ ref:
-            [] & WA.Variable ref
+            env & [] & WA.Variable ref
 
         , TA.Constructor _ usr:
-            [] & WA.Constructor usr
+            env & [] & WA.Constructor usr
 
         , TA.RecordAccess _ attrName exp:
-            translateExpression env exp
-            >> map (WA.RecordAccess attrName __) __
+            e & s & e = translateExpression env exp
+            e & s & WA.RecordAccess attrName e
 
         , TA.Fn pos taPars body bodyT:
             translateFn env taPars body
