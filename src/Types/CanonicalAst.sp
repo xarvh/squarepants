@@ -22,17 +22,12 @@ alias FullType =
     }
 
 
-alias Block =
-    # TODO a Block is an Expression that also allows let..in
-    , Expression
-
-
 union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
     , Constructor Pos USR
-    , Fn Pos [Parameter] Block
+    , Fn Pos [Parameter] Expression
     , Call Pos Expression [Argument]
       #
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -43,17 +38,17 @@ union Expression =
     , Record Pos (Maybe Expression) (Dict Name Expression)
     , RecordAccess Pos Name Expression
     # TODO remove this once we implement Blocks
-    , LetIn ValueDef Block
+    , LetIn ValueDef Expression
     , If Pos
         {
         , condition as Expression
-        , true as Block
-        , false as Block
+        , true as Expression
+        , false as Expression
         }
     , Try Pos
         {
         , value as Expression
-        , patternsAndExpressions as [Uniqueness & Pattern & Block]
+        , patternsAndExpressions as [Uniqueness & Pattern & Expression]
         }
     , DestroyIn Name Expression
 
@@ -100,7 +95,7 @@ alias ValueDef =
 
     # TODO: have maybeBody instead of native?
     , native as Bool
-    , body as Block
+    , body as Expression
 
     , tyvars as Dict Name Tyvar
     , univars as Dict UnivarId None

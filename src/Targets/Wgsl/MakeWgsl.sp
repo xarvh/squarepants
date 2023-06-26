@@ -3,7 +3,7 @@
 alias Env =
     {
     , module as TA.Module
-    , inlineEnv as Inline.Env
+    , normalizeEnv as Compiler/Normalize.Env
 
     , genVarCounter as Int
 
@@ -172,15 +172,15 @@ translateExpression as fn Env, TA.Expression: Env & [WA.Statement] & WA.Expressi
             translateRecord pos env extends attrs
 
         , TA.Call pos ref argsAndTypes:
-            try Inline.inline env.inlineEnv ref argsAndTypes as
-                , Inline.Circular circulars:
-                    add error
-                    env & [] & WA.Error
-
-                , Inline.Inlined inlinedExpression:
-                    translateExpression env inlinedExpression
-
-                , Inline.NotInlined:
+#            try Inline.inline env.inlineEnv ref argsAndTypes as
+#                , Inline.Circular circulars:
+#                    add error
+#                    env & [] & WA.Error
+#
+#                , Inline.Inlined inlinedExpression:
+#                    translateExpression env inlinedExpression
+#
+#                , Inline.NotInlined:
                     translateCall env pos ref argsAndTypes
 
         , TA.If pos ar:
@@ -401,13 +401,13 @@ translateCall as fn Env, Pos, TA.Expression, [TA.Argument]: Env & [WA.Statement]
                 envX1 & [argStats & argExpr, ...hoisted] & simple
 
     env3 & hoistedStats =
-        ...
+        todo "env3"
 
     hoistedArgs =
-        ...
+        todo "hoistedArgs"
 
     waArgs =
-        ...
+        todo "waArgs"
 
     stats =
         [
