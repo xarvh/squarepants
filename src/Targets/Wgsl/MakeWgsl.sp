@@ -3,7 +3,7 @@
 alias Env =
     {
     , module as TA.Module
-    , normalizeEnv as Compiler/Normalize.Env
+    #, normalizeEnv as Compiler/Normalize.Env
 
     , genVarCounter as Int
 
