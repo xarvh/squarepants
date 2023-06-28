@@ -34,9 +34,13 @@ union Neutral =
     # the reference will never be a Value because then it could be a Closure, and then we could evaluate it!
     , NCall Neutral [ArgValue]
 
+    , NNum Number
+    , NCons USR
+    , NRecord (Maybe Value) (Dict Name Value)
     , NAccessConstructorArgument Int Value
     , NAccessRecordAttribute Name Value
-
+    , NIf Value Value Value
+    , NDestroy Name Value
 
 
 eval as fn Env, TA.Expression: Value =
@@ -66,6 +70,51 @@ eval as fn Env, TA.Expression: Value =
                     >> List.for env __ insertArgInEnv
                     >> eval __ body
 
+        , TA.LetIn def body type:
+            # TODO inline only if (used only once) or (type is function)
+            # TODO what about uniques?
+            # TODO check for recursives?
+            env
+            >> insertPatternInEnv [] def.pattern (eval env def.body) __
+            >> eval __ body
+
+        , TA.LiteralNumber pos n:
+            Neutral << NNum n
+
+        , TA.LiteralText pos text:
+            todo "text not supported"
+
+        , TA.Constructor pos usr:
+            Neutral << NCons usr
+
+        , TA.Record pos maybeExt attrs:
+            NRecord
+                (Maybe.map (eval env __) maybeExt)
+                (Dict.map (fn k, v: eval env v) attrs)
+            >> Neutral
+
+        , TA.RecordAccess pos name expr:
+            expr
+            >> eval env __
+            >> NAccessRecordAttribute name __
+            >> Neutral
+
+        , TA.If pos { condition, true, false }:
+            NIf
+                (eval env condition)
+                (eval env true)
+                (eval env false)
+            >> Neutral
+
+        , TA.Try pos { value, valueType, patternsAndExpressions }:
+            todo "..."
+
+        , TA.DestroyIn name expr:
+            NDestroy name (eval env expr)
+            >> Neutral
+
+        , TA.Error pos:
+            todo "compiler bug"
 
 
 evalArgs as fn Env, TA.Argument: ArgValue =
