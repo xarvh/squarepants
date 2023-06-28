@@ -29,9 +29,13 @@ union ArgValue =
 # This describes something that can't be further evaluated?
 union Neutral =
     , NVar Pos Ref
+    , NUni [Name] Name
 
     # the reference will never be a Value because then it could be a Closure, and then we could evaluate it!
     , NCall Neutral [ArgValue]
+
+    , NAccessConstructorArgument Int Value
+    , NAccessRecordAttribute Name Value
 
 
 
@@ -81,15 +85,46 @@ insertArgInEnv as fn TA.Parameter & ArgValue, Env: Env =
     fn par & arg, env:
 
     try par & arg as
-        , TA.ParameterPattern fullTypeP pattern & ArgSpend expression:
-            todo "..."
-
 
         , TA.ParameterRecycle posP rawType nameP & ArgRecycle attrPath nameA:
-            todo "..."
+            Dict.insert (RefLocal nameP) (Neutral << NUni attrPath nameA) env
+
+        , TA.ParameterPattern fullTypeP pattern & ArgSpend expression:
+            insertPatternInEnv [] pattern expression env
 
         , _:
             todo "compiler bug"
+
+
+
+insertPatternInEnv as fn [fn Value: Value], TA.Pattern, Value, Env: Env =
+    fn accessors, pattern, value, env:
+
+    try pattern as
+        , TA.PatternAny pos { maybeName, type }:
+
+            try maybeName as
+                , Nothing:
+                    env
+
+                , Just name:
+                    Dict.insert (RefLocal name) (List.for value accessors fn a, e: a e) env
+
+        , TA.PatternLiteralNumber _ _:
+            env
+
+        , TA.PatternLiteralText _ _:
+            env
+
+        , TA.PatternConstructor pos usr args:
+            List.indexedFor env args fn index, arg, envX:
+                insertPatternInEnv [fn v: Neutral (NAccessConstructorArgument index v), ...accessors] arg value envX
+
+        , TA.PatternRecord pos attrs:
+            Dict.for env attrs fn name, arg & ty, envX:
+                insertPatternInEnv [fn v: Neutral (NAccessRecordAttribute name v), ...accessors] arg value envX
+
+
 
 
 
