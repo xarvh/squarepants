@@ -11,6 +11,9 @@
 #
 
 
+# TODO: We are not enforcing recycling order!!!
+
+
 alias Env =
     Dict Ref Value
 
@@ -35,12 +38,19 @@ union Neutral =
     , NCall Neutral [ArgValue]
 
     , NNum Number
+    , NIsNum Number Value
+
     , NCons USR
-    , NRecord (Maybe Value) (Dict Name Value)
+    , NIsCons Name Value
     , NAccessConstructorArgument Int Value
+
+    , NRecord (Maybe Value) (Dict Name Value)
     , NAccessRecordAttribute Name Value
+
     , NIf Value Value Value
+    , NTry Value [(fn Value: [Value]) & Value]
     , NDestroy Name Value
+
 
 
 eval as fn Env, TA.Expression: Value =
@@ -59,7 +69,7 @@ eval as fn Env, TA.Expression: Value =
         , TA.Call pos ref args:
 
             argValues =
-                List.map (evalArgs env __) args
+                List.map (evalArg env __) args
 
             try eval env ref as
                 , Neutral neutral:
@@ -107,7 +117,10 @@ eval as fn Env, TA.Expression: Value =
             >> Neutral
 
         , TA.Try pos { value, valueType, patternsAndExpressions }:
-            todo "..."
+            v = eval env value
+
+            NTry v (List.map (evalPatternAndExpression env v __) patternsAndExpressions)
+            >> Neutral
 
         , TA.DestroyIn name expr:
             NDestroy name (eval env expr)
@@ -117,7 +130,8 @@ eval as fn Env, TA.Expression: Value =
             todo "compiler bug"
 
 
-evalArgs as fn Env, TA.Argument: ArgValue =
+
+evalArg as fn Env, TA.Argument: ArgValue =
     fn env, taArg:
 
     try taArg as
@@ -126,7 +140,6 @@ evalArgs as fn Env, TA.Argument: ArgValue =
 
         , TA.ArgumentExpression fullType expr:
             ArgSpend (eval env expr)
-
 
 
 
@@ -172,6 +185,38 @@ insertPatternInEnv as fn [fn Value: Value], TA.Pattern, Value, Env: Env =
         , TA.PatternRecord pos attrs:
             Dict.for env attrs fn name, arg & ty, envX:
                 insertPatternInEnv [fn v: Neutral (NAccessRecordAttribute name v), ...accessors] arg value envX
+
+
+
+evalPatternAndExpression as fn Env, Value, TA.Pattern & TA.Expression: (fn Value: [Value]) & Value =
+    fn env, value, pattern & expression:
+
+    testPattern pattern __ [] & eval (insertPatternInEnv [] pattern value env) expression
+
+
+
+testPattern as fn TA.Pattern, Value, [Value]: [Value] =
+    fn pattern, valueToTest, accum:
+    try pattern as
+
+        , TA.PatternAny _ _:
+            accum
+
+        , TA.PatternLiteralText _ text:
+            todo "text pattern not supported"
+
+        , TA.PatternLiteralNumber _  num:
+            [Neutral << NIsNum num valueToTest, ...accum]
+
+        , TA.PatternConstructor _ (USR umr name) pas:
+            [Neutral << NIsCons name valueToTest, ...accum]
+            >> List.indexedFor __ pas fn index, argPattern, a:
+                testPattern argPattern (Neutral << NAccessConstructorArgument index valueToTest) a
+
+        , TA.PatternRecord _ attrs:
+            accum >> Dict.for __ attrs fn name, (pa & type), a:
+                testPattern pa (Neutral << NAccessRecordAttribute name valueToTest) a
+
 
 
 
