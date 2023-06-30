@@ -32,7 +32,7 @@ union ArgValue =
 # This describes something that can't be further evaluated?
 union Neutral =
     , NVar Pos Ref
-    , NUni [Name] Name
+    , NRecycle [Name] Name
 
     # the reference will never be a Value because then it could be a Closure, and then we could evaluate it!
     , NCall Neutral [ArgValue]
@@ -149,7 +149,7 @@ insertArgInEnv as fn TA.Parameter & ArgValue, Env: Env =
     try par & arg as
 
         , TA.ParameterRecycle posP rawType nameP & ArgRecycle attrPath nameA:
-            Dict.insert (RefLocal nameP) (Neutral << NUni attrPath nameA) env
+            Dict.insert (RefLocal nameP) (Neutral << NRecycle attrPath nameA) env
 
         , TA.ParameterPattern fullTypeP pattern & ArgSpend expression:
             insertPatternInEnv [] pattern expression env

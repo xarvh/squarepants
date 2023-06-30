@@ -15,6 +15,72 @@ alias Env =
 
 
 
+
+
+reify as fn Env, Deno.Value: WA.Expression =
+    fn env, value:
+
+    try value as
+        , Deno.Neutral neutral:
+            reifyNeutral allNames neutral
+
+        , Deno.Closure scope pos pars body fullType:
+
+            [#
+            freshPars & localScope & localEnv =
+                List.forReversed ([] & scope & env) pars fn par, pas & scopeX & envX:
+
+                    f & envX1 =
+                        fresh par envX
+
+                    localValue =
+                        Deno.Neutral (Deno.NVar f)
+
+                    [f, ...pas] & Dict.insert par localValue scopeX & envX1
+
+            bodyValue =
+                eval localEnv body
+            #]
+
+            todo "WA.Fn freshPars (reify localAllNames bodyValue)"
+
+
+
+
+reifyNeutral as fn Env, Deno.Neutral: WA.Expression =
+    fn env, neutral:
+
+    try neutral as
+        , Deno.NVar pos ref:
+            translateVariable env ref
+
+        , Deno.NRecycle attrPath name:
+            todo ""
+
+        , Deno.NCall ref args:
+            todo ""
+
+#        , NNum Number
+#        , NIsNum Number Value
+#
+#        , NCons USR
+#        , NIsCons Name Value
+#        , NAccessConstructorArgument Int Value
+#
+#        , NRecord (Maybe Value) (Dict Name Value)
+#        , NAccessRecordAttribute Name Value
+#
+#        , NIf Value Value Value
+#        , NTry Value [(fn Value: [Value]) & Value]
+#        , NDestroy Name Value
+
+
+
+
+
+
+[#
+
 #
 #
 #
@@ -703,6 +769,8 @@ translateRootValueDef as fn Env, TA.ValueDef, ByUsr WA.GlobalDefinition: ByUsr W
                 Dict.insert subUsr { usr = subUsr, expr, deps = Set.ofOne mainUsr } z
 
 
+#]
+
 #
 # Main
 #
@@ -766,3 +834,5 @@ translateAll as fn UMR, [TA.Module]: Res { entryUsr as USR, defs as [WA.GlobalDe
         , entryUsr = USR entryModule "main"
         }
         >> Ok
+
+

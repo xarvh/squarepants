@@ -11,7 +11,6 @@ union Expression =
     , LiteralNumber Number
     , Variable VarName
     , Call Expression [Argument]
-    , Fn [Bool & Maybe Name] [Statement]
 
     , PatternMatchConditions [Expression]
     , CompareWithLiteralText Text Expression
