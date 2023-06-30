@@ -4,9 +4,10 @@ alias TyvarId =
 
 
 union RawType =
-    , TypeExact USR [RawType]
+    , TypeOpaque USR [RawType]
     , TypeFn [ParType] FullType
     , TypeVar TyvarId
+    , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
     , TypeError
 
@@ -28,7 +29,7 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
-    , Constructor Pos USR
+    , Constructor Pos Name [Expression]
     , Fn Pos [Parameter] Expression FullType
     , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -65,7 +66,7 @@ union Pattern =
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos USR [Pattern]
+    , PatternConstructor Pos Name [Pattern]
     , PatternRecord Pos (Dict Name (Pattern & RawType))
 
 

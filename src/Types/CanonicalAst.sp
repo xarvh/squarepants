@@ -1,8 +1,9 @@
 
 union RawType =
-    # alias, opaque or union
+    # alias, opaque
     , TypeNamed Pos USR [RawType]
     , TypeFn Pos [ParType] FullType
+    , TypeUnion Pos (Dict Name [RawType])
     , TypeRecord Pos (Dict Name RawType)
     , TypeAnnotationVariable Pos Name
     # This is used as a placeholder when there is an error and a type can't be determined
@@ -26,7 +27,7 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
-    , Constructor Pos USR
+    , Constructor Pos Name [Expression]
     , Fn Pos [Parameter] Expression
     , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -67,7 +68,7 @@ union Pattern =
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos USR [Pattern]
+    , PatternConstructor Pos Name [Pattern]
     , PatternRecord Pos PatternCompleteness (Dict Name Pattern)
 
 
@@ -97,7 +98,6 @@ alias ValueDef =
 
     # Do we need these here?
     , directTypeDeps as TypeDeps
-    , directConsDeps as Set USR
     , directValueDeps as Set USR
     }
 
@@ -120,24 +120,6 @@ alias AliasDef =
     }
 
 
-alias UnionDef =
-    {
-    , usr as USR
-    , pars as [At Name]
-    , constructors as Dict Name Constructor
-    , directTypeDeps as TypeDeps
-    }
-
-
-alias Constructor =
-    {
-    , pos as Pos
-    , typeUsr as USR
-    , ins as [RawType]
-    , out as RawType
-    }
-
-
 alias Module =
     {
     , fsPath as Text
@@ -145,7 +127,6 @@ alias Module =
     , asText as Text
 
     , aliasDefs as Dict Name AliasDef
-    , unionDefs as Dict Name UnionDef
     , valueDefs as Dict Pattern ValueDef
     }
 
@@ -157,7 +138,6 @@ initModule as fn Text, UMR, Text: Module =
     , fsPath
     , asText
     , aliasDefs = Dict.empty
-    , unionDefs = Dict.empty
     , valueDefs = Dict.empty
     }
 
@@ -185,6 +165,7 @@ typeTyvars as fn RawType: Dict Name Pos =
     try raw as
         , TypeNamed _ _ args: fromList args
         , TypeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
+        , TypeUnion _ argsByCons: fromList << List.concat << Dict.values argsByCons
         , TypeRecord _ attrs: fromList (Dict.values attrs)
         , TypeAnnotationVariable pos name: Dict.ofOne name pos
         , TypeError _: Dict.empty
@@ -211,6 +192,7 @@ typeUnivars as fn RawType: Dict UnivarId None =
 
     try raw as
         , TypeNamed _ _ args: fromList args
+        , TypeUnion _ argsByCons: fromList << List.concat << Dict.values argsByCons
         , TypeRecord _ attrs: fromList (Dict.values attrs)
         , TypeAnnotationVariable pos name: Dict.empty
         , TypeError _: Dict.empty
@@ -248,7 +230,7 @@ patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe Raw
         , PatternAny pos { maybeName = Just n, maybeAnnotation }: Dict.ofOne n { pos, maybeAnnotation }
         , PatternLiteralNumber pos _: Dict.empty
         , PatternLiteralText pos _: Dict.empty
-        , PatternConstructor pos path ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join a __)
+        , PatternConstructor pos name ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join a __)
         , PatternRecord pos _ ps: Dict.for Dict.empty ps (fn k, v, a: v >> patternNames >> Dict.join a __)
 
 
@@ -258,7 +240,7 @@ expressionPos as fn Expression: Pos =
         , LiteralNumber p _: p
         , LiteralText p _: p
         , Variable p _: p
-        , Constructor p _: p
+        , Constructor p _ _: p
         , Fn p _ _: p
         , Call p _ _: p
         , Record p _ _: p

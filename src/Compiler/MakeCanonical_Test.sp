@@ -63,7 +63,7 @@ firstDefinitionStripDeps as fn Text: Result Text CA.ValueDef =
     fn code:
     code
         >> firstDefinition
-        >> Result.map (fn v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty }) __
+        >> Result.map (fn v: { v with directTypeDeps = Dict.empty, directValueDeps = Dict.empty }) __
 
 
 firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
@@ -120,7 +120,6 @@ valueDef as fn Name, CA.Expression: CA.ValueDef =
     , univars = Dict.empty
 
     , directTypeDeps = Dict.empty
-    , directConsDeps = Dict.empty
     , directValueDeps = Dict.empty
     }
 
@@ -218,7 +217,6 @@ lists as Test =
                 , tyvars = Dict.empty
                 , univars = Dict.empty
 
-                , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 }
@@ -290,7 +288,6 @@ tuples as Test =
                 , native = False
                 , tyvars = Dict.empty
                 , univars = Dict.empty
-                , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 }
@@ -565,7 +562,6 @@ nonFunction as Test =
                 , pattern = CA.PatternAny p { maybeName = Just "funz", maybeAnnotation = CA.TypeAnnotationVariable p "a" >> Just }
                 , tyvars = Dict.ofOne "a" { allowFunctions = False }
                 , univars = Dict.empty
-                , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 }
@@ -594,7 +590,6 @@ argumentPlaceholders as Test =
                 , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Nothing }
                 , tyvars = Dict.empty
                 , univars = Dict.empty
-                , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 , body =
@@ -636,7 +631,6 @@ polymorphicUniques as Test =
                 , pattern = CA.PatternAny p { maybeName = Just "scope", maybeAnnotation = Nothing }
                 , tyvars = Dict.empty
                 , univars = Dict.empty
-                , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 , body =
@@ -647,12 +641,11 @@ polymorphicUniques as Test =
                         , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Just (CA.TypeAnnotationVariable p "a") }
                         , tyvars = Dict.ofOne "a" { allowFunctions = True }
                         , univars = Dict.ofOne 1 None
-                        , directConsDeps = Dict.empty
                         , directTypeDeps = Dict.empty
                         , directValueDeps = Dict.empty
                         , body = CA.Variable p (TH.rootLocal "meh")
                         }
-                        (CA.Constructor Pos.G CoreTypes.noneValue)
+                        (CA.Constructor Pos.G CoreTypes.noneValue [])
                 }
             )
         , codeTest

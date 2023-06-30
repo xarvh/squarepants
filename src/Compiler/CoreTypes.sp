@@ -79,8 +79,8 @@ noneName =
 none as CA.RawType =
     nameToType noneName []
 
-noneValue as USR =
-    makeUsr noneName
+noneValue as Name =
+    noneName
 
 
 noneDef as CA.UnionDef =
@@ -128,12 +128,12 @@ boolDef as CA.UnionDef =
 #
 
 
-nil as USR =
-    makeUsr "Nil"
+nil as Name =
+    "Nil"
 
 
-cons as USR =
-    makeUsr "Cons"
+cons as Name =
+    "Cons"
 
 
 list as fn CA.RawType: CA.RawType =

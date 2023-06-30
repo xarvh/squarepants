@@ -83,7 +83,7 @@ testPattern as fn TA.Pattern, EA.Expression, [EA.Expression]: [EA.Expression] =
         , TA.PatternLiteralNumber _  num:
             EA.ShallowEqual (EA.LiteralNumber num) valueToTest :: accum
 
-        , TA.PatternConstructor _ (USR umr name) pas:
+        , TA.PatternConstructor _ name pas:
             (EA.IsConstructor name valueToTest :: accum)
             >> List.indexedFor __ pas fn index, argPattern, a:
                 testPattern argPattern (EA.ConstructorAccess index valueToTest) a
@@ -153,8 +153,9 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         , TA.Variable _ ref:
             EA.Variable ref
 
-        , TA.Constructor _ usr:
-            EA.Constructor usr
+        , TA.Constructor _ name args:
+            todo "EA.Constructor"
+            EA.Constructor name
 
         , TA.RecordAccess _ attrName exp:
             EA.RecordAccess attrName (translateExpression env exp)

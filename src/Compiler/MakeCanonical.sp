@@ -132,10 +132,6 @@ resolveToTypeUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
     resolveToUsr (fn m: m.globalTypes) __ __ __ __
 
 
-resolveToConstructorUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
-    resolveToUsr (fn m: m.globalValues) __ __ __ __
-
-
 #
 # Dependencies
 #
@@ -160,7 +156,6 @@ typeDeps as fn CA.RawType, Set USR: Set USR =
 alias Deps =
     {
     , types as Set USR
-    , cons as Set USR
     , values as Set USR
     }
 
@@ -168,7 +163,6 @@ alias Deps =
 deps_init =
     {
     , types = Set.empty
-    , cons = Set.empty
     , values = Set.empty
     }
 
@@ -179,7 +173,7 @@ patternDeps as fn CA.Pattern, Deps: Deps =
     try pattern as
 
         , CA.PatternConstructor _ usr ps:
-            List.for { deps with cons = Set.insert usr .cons } ps patternDeps
+            List.for deps ps patternDeps
 
         , CA.PatternRecord _ completeness ps:
             Dict.for deps ps (fn k, v, a: patternDeps v a)
@@ -213,8 +207,8 @@ expressionDeps as fn CA.Expression, Deps: Deps =
         , CA.Variable _ _:
             deps
 
-        , CA.Constructor _ usr:
-            { deps with cons = Set.insert usr .cons }
+        , CA.Constructor _ usr args:
+            List.for deps args expressionDeps
 
         , CA.Fn _ pars body:
             deps
@@ -379,7 +373,6 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     , body
     #
     , directTypeDeps = deps.types
-    , directConsDeps = deps.cons
     , directValueDeps = deps.values
     }
     >> Ok
@@ -418,11 +411,10 @@ translatePatternConstructor as fn Env, Pos, Token.Word, [CA.Pattern]: Res CA.Pat
         error env pos [ "Constructor names cannot have modifiers" ]
     else if word.attrPath /= [] then
         error env pos [ "Constructors don't have attributes" ]
+    else if word.maybeModule /= Nothing then
+        error env pos [ "Constructors don't need a module name" ]
     else
-        resolveToConstructorUsr env.ro pos word.maybeModule word.name
-        >> onOk fn usr:
-
-        CA.PatternConstructor pos usr args
+        CA.PatternConstructor pos word.name args
         >> Ok
 
 
@@ -703,7 +695,7 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
     try stats as
         , []:
             CoreTypes.noneValue
-            >> CA.Constructor Pos.G __
+            >> CA.Constructor Pos.G __ []
             >> Ok
 
         , [ FA.Evaluation faExpression ]:
@@ -725,7 +717,6 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
 
                 # TODO Do we need these here?
                 , directTypeDeps = Dict.empty
-                , directConsDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 }
 
@@ -863,7 +854,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
             try rev as
                 , []:
-                    CA.Constructor pos CoreTypes.nil
+                    CA.Constructor pos CoreTypes.nil []
                     >> Ok
 
                 , (hasDots & head) :: rest:
@@ -884,7 +875,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                             translateExpression env faItem
                             >> onOk fn caItem:
 
-                            CA.Call pos (CA.Constructor pos CoreTypes.cons) [CA.ArgumentExpression caItem, CA.ArgumentExpression acc]
+                            CA.Call pos (CA.Constructor pos CoreTypes.cons []) [CA.ArgumentExpression caItem, CA.ArgumentExpression acc]
                             >> Ok
 
         , FA.Try { value, patterns }:
@@ -993,11 +984,10 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
             if word.isUpper then
                 if word.attrPath /= [] then
                     error env pos [ "something's wrong with the lexer?" ]
+                else if word.maybeModule /= Nothing then
+                    error env pos [ "Constructors don't need module names" ]
                 else
-                    resolveToConstructorUsr env.ro pos word.maybeModule word.name
-                    >> onOk fn usr:
-
-                    CA.Constructor pos usr
+                    CA.Constructor pos word.name []
                     >> Ok
 
             else
@@ -1115,7 +1105,6 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
 
                 # TODO populate deps?
                 , directTypeDeps = Dict.empty
-                , directConsDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 }
 
@@ -1558,61 +1547,6 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
             erroro ro pos [ "Not sure what's up with this type =|", toHuman expr_ ]
 
 
-#
-# Union constructor
-#
-
-
-translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
-    fn ro, unionType, unionUsr, (FA.Expression pos expr_), constructors:
-
-    zzz =
-        try expr_ as
-            , FA.Variable var:
-                var & [] >> Ok
-
-            , FA.Call (FA.Expression _ (FA.Variable var)) pars:
-                var & pars >> Ok
-
-            , _:
-                erroro ro pos [ "I was expecting a constructor name here" ]
-
-    zzz
-    >> onOk fn ({ maybeType, word } & faPars):
-
-    isValidName =
-      word.modifier == Token.NameNoModifier
-      and
-      word.isUpper
-      and
-      word.maybeModule == Nothing
-      and
-      word.attrPath == []
-
-    if not isValidName then
-        erroro ro pos [ "I need just an Uppercase word here" ]
-
-    else if Dict.member word.name constructors then
-        # TODO "union $whatever has two constructors with the same name!"
-        erroro ro pos [ "constructor " .. word.name .. " is duplicate" ]
-
-    else
-        faPars
-        >> List.mapRes (translateRawType ro __) __
-        >> onOk fn ins:
-
-        c as CA.Constructor =
-            {
-            , pos
-            , typeUsr = unionUsr
-            , ins
-            , out = unionType
-            }
-
-        constructors
-        >> Dict.insert word.name c __
-        >> Ok
-
 
 translateTypeParameter as fn ReadOnly, At Token.Word: Res (At Name) =
     fn ro, (At pos word):
@@ -1676,7 +1610,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
             translateTypeName ro fa.name
             >> onOk fn name:
 
-            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
+            if Dict.member name caModule.aliasDefs then
                 At pos _ = fa.name
                 erroro ro pos [ name .. " declared twice!" ]
 
@@ -1700,45 +1634,6 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                     }
 
                 Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
-
-        , FA.UnionDef fa:
-            At pos _ = fa.name
-
-            translateTypeName ro fa.name
-            >> onOk fn name:
-
-            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-                erroro ro pos [ name .. " declared twice!" ]
-
-            else
-                fa.args
-                >> List.mapRes (translateTypeParameter ro __) __
-                >> onOk fn caPars:
-
-                # TODO check that args are not duplicate
-
-                usr =
-                    USR ro.umr name
-
-                type =
-                    caPars
-                    >> List.map (fn (At p n): CA.TypeAnnotationVariable p n) __
-                    >> CA.TypeNamed pos usr __
-
-                Dict.empty
-                >> List.forRes __ fa.constructors (translateConstructor ro type usr __ __)
-                >> onOk fn constructors:
-
-                unionDef as CA.UnionDef =
-                    {
-                    , usr
-                    , pars = caPars
-                    , constructors
-                    # I could probably break the deps by constructor, but would it be much useful in practice?
-                    , directTypeDeps = Dict.for Set.empty constructors (fn k, c, z: List.for z c.ins typeDeps)
-                    }
-
-                Ok { caModule with unionDefs = Dict.insert name unionDef .unionDefs }
 
 
 translateModule as fn ReadOnly, FA.Module: Res CA.Module =
