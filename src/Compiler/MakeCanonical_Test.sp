@@ -213,7 +213,7 @@ lists as Test =
                 , uni = Imm
                 , body = CA.Variable p (TH.rootLocal "l")
                 , native = False
-                , pattern = CA.PatternAny p { maybeName = Just "l", maybeAnnotation = (TH.caBool >> CoreTypes.list >> Just) }
+                , pattern = CA.PatternAny p { maybeName = Just "l", maybeAnnotation = (TH.caBool >> CoreTypes.listType >> Just) }
                 , tyvars = Dict.empty
                 , univars = Dict.empty
 
@@ -645,7 +645,7 @@ polymorphicUniques as Test =
                         , directValueDeps = Dict.empty
                         , body = CA.Variable p (TH.rootLocal "meh")
                         }
-                        (CA.Constructor Pos.G CoreTypes.noneValue [])
+                        (CA.Constructor Pos.G CoreTypes.noneName [])
                 }
             )
         , codeTest

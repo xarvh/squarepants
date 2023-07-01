@@ -694,7 +694,7 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
 
     try stats as
         , []:
-            CoreTypes.noneValue
+            CoreTypes.noneName
             >> CA.Constructor Pos.G __ []
             >> Ok
 
@@ -1499,7 +1499,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                         translateRawType ro faItem
                         >> onOk fn caItem:
 
-                        CoreTypes.list caItem
+                        CoreTypes.listType caItem
                         >> Ok
 
                 , _:

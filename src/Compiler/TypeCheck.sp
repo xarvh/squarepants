@@ -229,13 +229,13 @@ union Equality =
 # Core types
 #
 coreTypeBool as TA.RawType =
-    TA.TypeExact CoreTypes.boolDef.usr []
+    TA.TypeUnion Nothing CoreTypes.boolCons
 
 coreTypeNumber as TA.RawType =
-    TA.TypeExact CoreTypes.numberDef.usr []
+    TA.TypeOpaque CoreTypes.numberUsr []
 
 coreTypeText as TA.RawType =
-    TA.TypeExact CoreTypes.textDef.usr []
+    TA.TypeOpaque CoreTypes.textUsr []
 
 
 fullTypeError as TA.FullType =
@@ -329,8 +329,8 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
         replaceUnivarRec old new __
 
     try raw as
-        , TA.TypeExact usr args:
-            TA.TypeExact usr (List.map doRaw args)
+        , TA.TypeOpaque usr args:
+            TA.TypeOpaque usr (List.map doRaw args)
 
         , TA.TypeRecord maybeExt attrs:
             TA.TypeRecord maybeExt (Dict.map (fn k, v: doRaw v) attrs)
@@ -370,8 +370,8 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, @State, TA.RawType: TA.RawT
         expandTyvarsInType tyvarIdsToType @state __
 
     try type as
-        , TA.TypeExact usr args:
-            TA.TypeExact usr (List.map rec args)
+        , TA.TypeOpaque usr args:
+            TA.TypeOpaque usr (List.map rec args)
 
         , TA.TypeFn ins out:
             TA.TypeFn (TA.mapPars rec ins) { out with raw = rec .raw }
@@ -458,7 +458,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
 
             try Dict.get usr env.expandedAliases as
                 , Nothing:
-                    TA.TypeExact usr expandedPars
+                    TA.TypeOpaque usr expandedPars
 
                 , Just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
@@ -739,18 +739,19 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
             TA.Variable pos ref & ty
 
 
-        , CA.Constructor pos usr:
-            ty =
-                try getConstructorByUsr usr env as
-                    , Nothing:
-                        addError env pos (ErrorConstructorNotFound usr) @state
-                        fullTypeError
-
-                    , Just cons:
-                        generalize env pos (RefGlobal usr) cons @state
-
-            # TODO setting Uni like this feels a bit hacky... =|
-            TA.Constructor pos usr & { ty with uni = Uni }
+        , CA.Constructor pos name args:
+            todo "CA.Constructor args"
+#            ty =
+#                try getConstructorByUsr usr env as
+#                    , Nothing:
+#                        addError env pos (ErrorConstructorNotFound usr) @state
+#                        fullTypeError
+#
+#                    , Just cons:
+#                        generalize env pos (RefGlobal usr) cons @state
+#
+#            # TODO setting Uni like this feels a bit hacky... =|
+#            TA.Constructor pos usr & { ty with uni = Uni }
 
 
         , CA.Fn pos caPars body:
@@ -1146,15 +1147,15 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
     try caExpression & expectedType.raw as
 
-        , CA.LiteralNumber pos n & TA.TypeExact typeUsr []:
-            addErrorIf (typeUsr /= CoreTypes.numberDef.usr)
+        , CA.LiteralNumber pos n & TA.TypeOpaque typeUsr []:
+            addErrorIf (typeUsr /= CoreTypes.numberUsr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
 
             TA.LiteralNumber pos n
 
 
-        , CA.LiteralText pos text & TA.TypeExact typeUsr []:
-            addErrorIf (typeUsr /= CoreTypes.textDef.usr)
+        , CA.LiteralText pos text & TA.TypeOpaque typeUsr []:
+            addErrorIf (typeUsr /= CoreTypes.textUsr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
 
             TA.LiteralText pos text
@@ -1175,21 +1176,22 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             TA.Variable pos ref
 
 
-        , CA.Constructor pos usr & _:
-            bleh =
-                try getConstructorByUsr usr env as
-                    , Nothing:
-                        addError env pos (ErrorConstructorNotFound usr) @state
-
-                    , Just cons:
-                        full as TA.FullType =
-                            generalize env pos (RefGlobal usr) cons @state
-
-                        addEquality env pos Why_Annotation full.raw expectedType.raw @state
-                        # TODO is there any point in doing this when we know that cons literal must be Uni?
-                        # checkUni env pos { fix = expectedType.uni, mut = cons.type.uni } @state
-
-            TA.Constructor pos usr
+        , CA.Constructor pos name args & _:
+            todo "check CA.Constructor"
+#            bleh =
+#                try getConstructorByUsr usr env as
+#                    , Nothing:
+#                        addError env pos (ErrorConstructorNotFound usr) @state
+#
+#                    , Just cons:
+#                        full as TA.FullType =
+#                            generalize env pos (RefGlobal usr) cons @state
+#
+#                        addEquality env pos Why_Annotation full.raw expectedType.raw @state
+#                        # TODO is there any point in doing this when we know that cons literal must be Uni?
+#                        # checkUni env pos { fix = expectedType.uni, mut = cons.type.uni } @state
+#
+#            TA.Constructor pos usr
 
 
         , CA.Fn pos pars body & TA.TypeFn parTypes out:
@@ -1492,7 +1494,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
             }
 
 
-        , CA.PatternConstructor pos usr arguments:
+        , CA.PatternConstructor pos name arguments:
 
             argumentOuts & newEnv =
                 [] & env >> List.forReversed __ arguments fn arg, (argOuts & envX):
@@ -1509,34 +1511,35 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
                 List.map (fn out: out.patternType) argumentOuts
 
             finalType =
-                try getConstructorByUsr usr env as
-
-                    , Nothing:
-                        addError env pos (ErrorConstructorNotFound usr) @state
-                        TA.TypeError
-
-                    , Just cons:
-                        x as TA.FullType =
-                            generalize env pos (RefGlobal usr) cons @state
-
-                        parTypes & returnType =
-                            try x.raw as
-                                , TA.TypeFn ins out: ins & out.raw
-                                , _: [] & x.raw
-
-                        addErrorIf (List.length parTypes /= List.length arguments) env pos ErrorWrongNumberOfConstructorArguments @state
-
-                        list_eachWithIndex2 0 parTypes argumentTypes fn index, parType, argType:
-                            try parType as
-                                , TA.ParRe raw: bug "cons can't recycle?!"
-                                , TA.ParSp full:
-                                    # TODO -----> check unis
-                                    addEquality env pos (Why_Argument index) full.raw argType @state
-
-                        returnType
+                todo "finalType"
+#                try getConstructorByUsr usr env as
+#
+#                    , Nothing:
+#                        addError env pos (ErrorConstructorNotFound usr) @state
+#                        TA.TypeError
+#
+#                    , Just cons:
+#                        x as TA.FullType =
+#                            generalize env pos (RefGlobal usr) cons @state
+#
+#                        parTypes & returnType =
+#                            try x.raw as
+#                                , TA.TypeFn ins out: ins & out.raw
+#                                , _: [] & x.raw
+#
+#                        addErrorIf (List.length parTypes /= List.length arguments) env pos ErrorWrongNumberOfConstructorArguments @state
+#
+#                        list_eachWithIndex2 0 parTypes argumentTypes fn index, parType, argType:
+#                            try parType as
+#                                , TA.ParRe raw: bug "cons can't recycle?!"
+#                                , TA.ParSp full:
+#                                    # TODO -----> check unis
+#                                    addEquality env pos (Why_Argument index) full.raw argType @state
+#
+#                        returnType
 
             {
-            , typedPattern = TA.PatternConstructor pos usr typedArguments
+            , typedPattern = TA.PatternConstructor pos name typedArguments
             , patternType = finalType
             , env = newEnv
             , maybeFullAnnotation = Nothing #TODO
@@ -1641,13 +1644,13 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
             TA.PatternAny pos { maybeName, type = expectedType } & newEnv
 
 
-        , CA.PatternLiteralText pos text & TA.TypeExact typeUsr []:
+        , CA.PatternLiteralText pos text & TA.TypeOpaque typeUsr []:
             addErrorIf (typeUsr /= CoreTypes.textDef.usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
 
             TA.PatternLiteralText pos text & env
 
 
-        , CA.PatternLiteralNumber pos text & TA.TypeExact typeUsr []:
+        , CA.PatternLiteralNumber pos text & TA.TypeOpaque typeUsr []:
             addErrorIf (typeUsr /= CoreTypes.numberDef.usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
 
             TA.PatternLiteralNumber pos text & env
@@ -2377,7 +2380,7 @@ solveOneEquality as fn Equality, ERState: ERState =
                     state
                     >> replaceUnificationVariable head tyvarId t1 __
 
-                , TA.TypeExact usr1 args1 & TA.TypeExact usr2 args2:
+                , TA.TypeOpaque usr1 args1 & TA.TypeOpaque usr2 args2:
                     if usr1 /= usr2 then
                         addErError head "types are incompatible2" state
                     else
@@ -2520,7 +2523,7 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
     try type as
         , TA.TypeFn ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
         , TA.TypeVar id: id == tyvarId
-        , TA.TypeExact usr args: List.any rec args
+        , TA.TypeOpaque usr args: List.any rec args
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
         , TA.TypeError: False
 

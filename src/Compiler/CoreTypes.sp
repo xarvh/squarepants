@@ -21,32 +21,17 @@ nameToType as fn Text, [CA.RawType]: CA.RawType =
     CA.TypeNamed p (makeUsr name) args
 
 
-defToType as fn CA.UnionDef, [CA.RawType]: CA.RawType =
-    fn def, pars:
-    CA.TypeNamed p def.usr pars
-
-
-usrToVariable as fn USR: CA.Expression =
-    fn u:
-    CA.Variable p (RefGlobal u)
-
-
 #
 # Text
 #
 
 
-textDef as CA.UnionDef =
-    {
-    , usr = makeUsr "Text"
-    , pars = []
-    , constructors = Dict.empty
-    , directTypeDeps = Set.empty
-    }
+textUsr as USR =
+    makeUsr "Text"
 
 
-text as CA.RawType =
-    defToType textDef []
+textType as CA.RawType =
+    CA.TypeNamed p textUsr []
 
 
 #
@@ -54,17 +39,12 @@ text as CA.RawType =
 #
 
 
-numberDef as CA.UnionDef =
-    {
-    , usr = makeUsr "Number"
-    , pars = []
-    , constructors = Dict.empty
-    , directTypeDeps = Set.empty
-    }
+numberUsr as USR =
+    makeUsr "Number"
 
 
-number as CA.RawType =
-    defToType numberDef []
+numberType as CA.RawType =
+    CA.TypeNamed p numberUsr []
 
 
 #
@@ -72,23 +52,19 @@ number as CA.RawType =
 #
 
 
-noneName =
+noneName as Name =
     "None"
 
 
-none as CA.RawType =
+noneType as CA.RawType =
     nameToType noneName []
 
-noneValue as Name =
-    noneName
 
-
-noneDef as CA.UnionDef =
-    usr = makeUsr noneName
+noneDef as CA.AliasDef =
     {
-    , usr
+    , usr = makeUsr noneName
     , pars = []
-    , constructors = Dict.ofOne noneName { pos = p, ins = [], out = none, typeUsr = usr }
+    , type = Dict.ofOne noneName []
     , directTypeDeps = Set.empty
     }
 
@@ -98,29 +74,33 @@ noneDef as CA.UnionDef =
 #
 
 
-true as USR =
-    makeUsr "True"
+true as Name =
+    "True"
 
 
-false as USR =
-    makeUsr "False"
+false as Name =
+    "False"
 
 
-bool as CA.RawType =
+boolType as CA.RawType =
     nameToType "Bool" []
 
 
-boolDef as CA.UnionDef =
-    usr = makeUsr "Bool"
+boolCons as Dict Name [a] =
+    Dict.empty
+    >> Dict.insert true [] __
+    >> Dict.insert false [] __
+
+
+boolDef as CA.AliasDef =
     {
-    , usr
+    , usr = makeUsr "Bool"
     , pars = []
-    , constructors =
-        Dict.empty
-        >> Dict.insert "True" { pos = p, ins = [], out = bool, typeUsr = usr } __
-        >> Dict.insert "False" { pos = p, ins = [], out = bool, typeUsr = usr } __
+    , type = CA.TypeUnion p boolCons
     , directTypeDeps = Set.empty
     }
+
+
 
 
 #
@@ -136,12 +116,12 @@ cons as Name =
     "Cons"
 
 
-list as fn CA.RawType: CA.RawType =
+listType as fn CA.RawType: CA.RawType =
     fn item:
     nameToType "List" [ item ]
 
 
-listDef as CA.UnionDef =
+listDef as CA.AliasDef =
     usr =
         makeUsr "List"
 
