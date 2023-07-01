@@ -203,21 +203,9 @@ doRawType as fn Env, TA.RawType: TextTree =
     fn env, raw:
 
     try raw as
-        , TA.TypeExact usr raws:
-            #
-            #   TheUsr Arg1 Arg2...
-            #
-            # or
-            #
-            #   TheUsr
-            #       Arg1
-            #       Arg2
-            #
-            # TODO what about List?
-            #
-            rowOrIndented
-                (usrToText env usr)
-                (List.map (doRawType env __) raws)
+        , TA.TypeUnion maybeExt cons:
+            Debug.toHuman cons
+            >> text
 
         , TA.TypeFn parTypes full:
             #

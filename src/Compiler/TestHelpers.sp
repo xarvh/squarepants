@@ -108,20 +108,20 @@ taTyvarImm as fn Int: TA.RawType =
 
 
 taNumber as TA.RawType =
-    TA.TypeExact ("Number" >> Meta.spCoreUSR) []
+    TA.TypeOpaque CoreTypes.numberUsr []
 
 
 taNone as TA.RawType =
-    TA.TypeExact ("None" >> Meta.spCoreUSR) []
+    TA.TypeUnion Nothing CoreTypes.noneCons
 
 
 taBool as TA.RawType =
-    TA.TypeExact ("Bool" >> Meta.spCoreUSR) []
+    TA.TypeUnion Nothing CoreTypes.boolCons
 
 
 taList as fn TA.RawType: TA.RawType =
     fn item:
-    TA.TypeExact ("List" >> Meta.spCoreUSR) [item]
+    TA.TypeUnion Nothing CoreTypes.listCons [item]
 
 
 taFunction as fn [TA.RawType], TA.RawType: TA.RawType =

@@ -67,6 +67,19 @@ for as fn state, [item], (fn item, state: state): state =
           for (function h init) tail function
 
 
+for2 as fn state, [a], [b], (fn a, b, state: state): state =
+    fn init, aList, bList, function:
+    try aList & bList as
+      , [] & _:
+          init
+
+      , _ & []:
+          init
+
+      , [headA, ...tailA] & [headB, ...tailB]:
+          for2 (function headA headB init) tailA tailB function
+
+
 indexedFor as fn state, [item], (fn Int, item, state: state): state =
     fn init, aList, function:
     for (0 & init) aList (fn item, (index & accum): index + 1 & function index item accum)
@@ -106,6 +119,13 @@ forReversed as fn state, [item], (fn item, state: state): state =
 
                                           f a (f b (f c (f d res)))
     foldrHelper init 0 list
+
+
+forReversed2 as fn state, [a], [b], (fn a, b, state: state): state =
+    fn init, listA, listB, f:
+
+    # TODO optimize
+    for2 init (reverse listA) (reverse listB) f
 
 
 length as fn [a]: Int =

@@ -423,8 +423,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     TH.taFunction
-                        [ TA.TypeExact (TH.localType "T") [ tyvar 1 ]]
-                        ( TA.TypeExact (TH.localType "T") [ tyvar 1 ])
+                        [ TA.TypeOpaque (TH.localType "T") [ tyvar 1 ]]
+                        ( TA.TypeOpaque (TH.localType "T") [ tyvar 1 ])
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -441,7 +441,7 @@ higherOrderTypes as Test =
                 {
                 , freeTyvars = freeTyvars [1]
                 , type =
-                    TA.TypeExact
+                    TA.TypeOpaque
                         (TH.localType "X")
                         [ tyvar 1 ]
                 }

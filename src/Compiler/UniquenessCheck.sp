@@ -496,8 +496,8 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
                             , resolved = expression
                             }
 
-        , TA.Constructor pos usr:
-            re
+        , TA.Constructor pos name args:
+            todo "re"
 
         , TA.Fn pos pars body bodyType:
             doFn env pos @state pars body bodyType

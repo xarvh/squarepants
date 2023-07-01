@@ -60,11 +60,15 @@ noneType as CA.RawType =
     nameToType noneName []
 
 
+noneCons as Dict Name [a] =
+    Dict.ofOne noneName []
+
+
 noneDef as CA.AliasDef =
     {
     , usr = makeUsr noneName
     , pars = []
-    , type = Dict.ofOne noneName []
+    , type = CA.TypeUnion Pos.N noneCons
     , directTypeDeps = Set.empty
     }
 
@@ -108,6 +112,10 @@ boolDef as CA.AliasDef =
 #
 
 
+listName as Name =
+    "List"
+
+
 nil as Name =
     "Nil"
 
@@ -118,39 +126,26 @@ cons as Name =
 
 listType as fn CA.RawType: CA.RawType =
     fn item:
-    nameToType "List" [ item ]
+    nameToType listName [ item ]
 
 
 listDef as CA.AliasDef =
     usr =
-        makeUsr "List"
+        makeUsr listName
 
     item as CA.RawType =
         CA.TypeAnnotationVariable p "item"
 
-    nilDef as CA.Constructor =
-       {
-       , pos = p
-       , ins = []
-       , out = list item
-       , typeUsr = usr
-       }
+    constructors =
+        Dict.empty
+        >> Dict.insert nil [] __
+        >> Dict.insert cons [ item, listType item ] __
 
-    consDef as CA.Constructor =
-        {
-        , pos = p
-        , ins = [ item, list item ]
-        , out = list item
-        , typeUsr = usr
-        }
 
     {
     , usr
     , pars = [ At Pos.G "item" ]
-    , constructors =
-        Dict.empty
-        >> Dict.insert "Nil" nilDef __
-        >> Dict.insert "Cons" consDef __
+    , type = CA.TypeUnion p constructors
     , directTypeDeps = Set.empty
     }
 
@@ -160,12 +155,12 @@ listDef as CA.AliasDef =
 #
 
 
-allDefs as [CA.UnionDef] =
+allDefs as [CA.AliasDef] =
     [
     , noneDef
     , boolDef
     , listDef
-    , textDef
-    , numberDef
+#    , textDef
+#    , numberDef
     ]
 

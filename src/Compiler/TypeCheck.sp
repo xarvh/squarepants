@@ -157,8 +157,9 @@ union Error_ =
     , ErrorShouldBeUnique
     , ErrorCircularValue
     , ErrorVariableNotFound Ref
-    , ErrorConstructorNotFound USR
+    , ErrorConstructorNotInType Name
     , ErrorNotCompatibleWithRecord
+    , ErrorNotCompatibleWithUnion
     , ErrorRecordDoesNotHaveAttribute Name [# TODO other attrs to give context? #]
     , ErrorRecordHasAttributesNotInAnnotation # TODO which attrs?
     , ErrorRecordIsMissingAttibutesInAnnotation # TODO which attrs?
@@ -1645,19 +1646,19 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
 
 
         , CA.PatternLiteralText pos text & TA.TypeOpaque typeUsr []:
-            addErrorIf (typeUsr /= CoreTypes.textDef.usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
+            addErrorIf (typeUsr /= CoreTypes.textUsr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
 
             TA.PatternLiteralText pos text & env
 
 
         , CA.PatternLiteralNumber pos text & TA.TypeOpaque typeUsr []:
-            addErrorIf (typeUsr /= CoreTypes.numberDef.usr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
+            addErrorIf (typeUsr /= CoreTypes.numberUsr) env pos (ErrorIncompatiblePattern pattern expectedType) @state
 
             TA.PatternLiteralNumber pos text & env
 
 
-        , CA.PatternConstructor pos usr arguments & _:
-            checkPatternConstructor env pos expectedType usr arguments @state
+        , CA.PatternConstructor pos name arguments & _:
+            checkPatternConstructor env pos expectedType name arguments @state
 
 
         , CA.PatternRecord pos completeness pas & _:
@@ -1712,56 +1713,54 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 
 
 
-checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [CA.Pattern], @State: TA.Pattern & Env =
-    fn env, pos, expectedType, usr, arguments, @state:
+checkPatternConstructor as fn Env, Pos, TA.FullType, Name, [CA.Pattern], @State: TA.Pattern & Env =
+    fn env, pos, expectedType, name, arguments, @state:
 
     insertArgsOnError as fn Env: Env =
         List.for __ arguments fn arg, envX:
             out = inferPattern envX expectedType.uni arg @state
             out.env
 
-    try getConstructorByUsr usr env as
-        , Nothing:
-            addError env pos (ErrorConstructorNotFound usr) @state
+
+    try expectedType.raw as
+
+        , TA.TypeUnion maybeExt constructorsByName:
+            try Dict.get name constructorsByName as
+
+                , Nothing:
+                    addError env pos (ErrorConstructorNotInType name) @state
+                    patternError pos & insertArgsOnError env
+
+                , Just expectedArgTypes:
+
+                    if List.length arguments /= List.length expectedArgTypes then
+                        addError env pos ErrorWrongNumberOfConstructorArguments @state
+                        patternError pos & insertArgsOnError env
+
+                    else
+                        (newEnv as Env) & (typedArgs as [TA.Pattern]) =
+                            List.forReversed2 (env & []) arguments expectedArgTypes fn actualArgument, expectedArgType, envX & args:
+
+                                fullType as TA.FullType =
+                                    {
+                                    , uni = expectedType.uni
+                                    , raw = expectedArgType
+                                    }
+
+                                taArg & envX1 =
+                                    checkPattern envX fullType actualArgument @state
+
+                                envX & [taArg, ...args]
+
+
+                        # TODO check that args uni are the same or castable as expectedType.uni
+
+                        TA.PatternConstructor pos name typedArgs & newEnv
+
+
+        , _:
+            addError env pos ErrorNotCompatibleWithUnion @state
             patternError pos & insertArgsOnError env
-
-        , Just instance:
-
-            # We know already that this constructor's uniqueness is expectedType.uni,
-            # so we can skip its generalization
-            fullType_ =
-                generalize env pos (RefGlobal usr) { instance with freeUnivars = Dict.empty } @state
-
-            fullType =
-                { fullType_ with raw = replaceUnivarRec 1 expectedType.uni .raw }
-
-            (requiredParTypes as [TA.ParType]) & (requiredOut as TA.FullType) =
-                try fullType.raw as
-                    , TA.TypeFn ax o: ax & o
-                    , _: [] & fullType
-
-            if List.length arguments /= List.length requiredParTypes then
-                addError env pos ErrorWrongNumberOfConstructorArguments @state
-                patternError pos & insertArgsOnError env
-
-            else
-                checkArg as fn (CA.Pattern & TA.ParType), (Env & [TA.Pattern]): (Env & [TA.Pattern]) =
-                    fn (arg & parType), (envX & args):
-                        taArg & envX1 =
-                            try parType as
-                                , TA.ParSp full: checkPattern envX full arg @state
-                                , TA.ParRe raw: bug "should not happen???"
-
-                        envX1 & (taArg :: args)
-
-                (newEnv as Env) & (typedArgs as [TA.Pattern]) =
-                    env & [] >> List.forReversed __ (List.map2 Tuple.pair arguments requiredParTypes) checkArg
-
-                addEquality env pos Why_CalledAsFunction requiredOut.raw expectedType.raw @state
-
-                # TODO check that args uni are the same or castable as expectedType.uni
-
-                TA.PatternConstructor pos usr typedArgs & newEnv
 
 
 
@@ -1996,7 +1995,6 @@ addCoreValueToCoreEnv as fn @State, Prelude.CoreValue, Env: Env =
         , tyvars
         , univars = CA.typeUnivars raw
         , directTypeDeps = Dict.empty
-        , directConsDeps = Dict.empty
         , directValueDeps = Dict.empty
         }
         env
@@ -2076,66 +2074,6 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
                 { envX with variables = Dict.insert ref instance .variables }
 
 
-addConstructorToGlobalEnv as fn @State, Dict Name TA.RawType, Dict TA.TyvarId TA.Tyvar, Name, CA.Constructor, Env: Env =
-    fn @state, paramsByName, freeTyvars, name, caConstructor, env:
-
-    USR umr _ =
-        caConstructor.typeUsr
-
-    ins =
-        caConstructor.ins >> List.map (fn in: CA.ParSp { uni = Depends 1, raw = in }) __
-
-    caRaw =
-        if ins == [] then
-            caConstructor.out
-        else
-            CA.TypeFn Pos.G ins { uni = Depends 1, raw = caConstructor.out }
-
-    raw =
-        translateRawType env paramsByName Dict.empty @state caRaw
-
-    consTyvars =
-        TA.typeTyvars raw
-
-    taConstructor as Instance =
-        {
-        , definedAt = Pos.G
-        , type = toImm raw
-        , freeTyvars = freeTyvars >> Dict.filter (fn k, v: Dict.member k consTyvars) __
-        , freeUnivars = Dict.ofOne 1 { originalId = 1 }
-        }
-
-    { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }
-
-
-addUnionTypeAndConstructorsToGlobalEnv as fn @State, a, CA.UnionDef, Env: Env =
-    fn @state, _, caUnionDef, env:
-
-    paramsByName as Dict Name TA.RawType =
-        caUnionDef.pars
-        >> List.indexedMap (fn index, (At pos name): name & TA.TypeVar -index) __
-        >> Dict.fromList
-
-    makeTyvar =
-        fn index, (At pos name):
-            -index & {
-                , originalName = name
-                #, annotatedAt = pos
-                , generalizedAt = Pos.G
-                , generalizedFor = RefLocal ""
-                , allowFunctions = True
-                }
-
-    freeTyvars as Dict TA.TyvarId TA.Tyvar =
-        caUnionDef.pars
-        >> List.indexedMap makeTyvar __
-        >> Dict.fromList
-
-    { env with exactTypes = Dict.insert caUnionDef.usr caUnionDef.pars .exactTypes }
-    >> Dict.for __ caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName freeTyvars __ __ __)
-
-
-
 namedParsToIdParsAndDict as fn [At Name]: [TA.TyvarId] & Dict Name TA.RawType =
     fn atPars:
 
@@ -2213,14 +2151,13 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
     doStuff as fn CA.Module, Env: Env =
         fn caModule, env:
         env
-        >> Dict.for __ caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state __ __ __)
         >> Dict.for __ caModule.valueDefs (fn pattern, v, a: addValueToGlobalEnv @state caModule.umr v a)
 
     env =
         { initEnv with
         , expandedAliases
         }
-        >> List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)
+        >> todo "List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)"
         >> List.for __ Prelude.allCoreValues (addCoreValueToCoreEnv @state __ __)
         >> List.for __ externalValues (fn (usr & instance), e: { e with variables = Dict.insert (RefGlobal usr) instance .variables })
         >> List.for __ allModules doStuff

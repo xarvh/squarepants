@@ -189,8 +189,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 , Nothing: raw
                 , Just replacement: replacement
 
-        , TypeExact usr pars:
-            TypeExact usr (List.map rec pars)
+        , TypeOpaque usr pars:
+            TypeOpaque usr (List.map rec pars)
 
         , TypeFn pars out:
             TypeFn
@@ -238,7 +238,9 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         , LiteralNumber _ _: expression
         , LiteralText _ _: expression
         , Variable _ _: expression
-        , Constructor _ _: expression
+
+        , Constructor p name args:
+            Constructor p name (List.map (resolveExpression saf __) args)
 
         , Fn p pars body bodyType:
             Fn p (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
@@ -341,7 +343,7 @@ patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
 typeTyvars as fn RawType: Dict TyvarId None =
     fn type:
     try type as
-        , TypeExact usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
+        , TypeOpaque usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
         , TypeVar id: Dict.ofOne id None
         , TypeRecord Nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         , TypeRecord (Just id) attrs: Dict.ofOne id None >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
@@ -356,7 +358,7 @@ typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
     try type as
         , TypeFn ins out: True
         , TypeVar id: testId id
-        , TypeExact usr args: List.any (typeAllowsFunctions testId __) args
+        , TypeOpaque usr args: List.any (typeAllowsFunctions testId __) args
         , TypeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
         , TypeError: True
 
@@ -383,8 +385,8 @@ normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     fn @hash, type:
 
     try type as
-        , TypeExact usr args:
-            TypeExact usr (List.map (normalizeType @hash __) args)
+        , TypeOpaque usr args:
+            TypeOpaque usr (List.map (normalizeType @hash __) args)
 
         , TypeFn pars out:
             TypeFn
