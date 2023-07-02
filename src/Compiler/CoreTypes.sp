@@ -116,6 +116,10 @@ listName as Name =
     "List"
 
 
+listUsr as USR =
+    makeUsr listName
+
+
 nil as Name =
     "Nil"
 
@@ -129,7 +133,7 @@ listCons as fn item: Dict Name [item] =
 
     Dict.empty
     >> Dict.insert nil [] __
-    >> Dict.insert cons [ item, listType item ] __
+    >> Dict.insert cons [ item, CA.TypeNamed p listUsr [ item ] ] __
 
 
 listType as fn CA.RawType: CA.RawType =
@@ -139,8 +143,8 @@ listType as fn CA.RawType: CA.RawType =
 
 listDef as CA.AliasDef =
     {
-    , usr = makeUsr listName
-    , pars = [ At Pos.G "item" ]
+    , usr = listUsr
+    , pars = [ At p "item" ]
     , type = listType (CA.TypeAnnotationVariable p "item")
     , directTypeDeps = Set.empty
     }
