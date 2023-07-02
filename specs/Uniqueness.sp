@@ -559,8 +559,7 @@ unions as Test =
             (Test.isOkAndEqualTo
                 {
                 , freeTyvars = Dict.empty
-                , type =
-                    todo """TA.TypeAlias (TH.localType "Z") [ TH.taNumber ]"""
+                , type = TA.TypeUnion Nothing (Dict.ofOne "Z" [ TH.taNumber ])
                 }
             )
 
