@@ -121,7 +121,7 @@ taBool as TA.RawType =
 
 taList as fn TA.RawType: TA.RawType =
     fn item:
-    TA.TypeUnion Nothing CoreTypes.listCons [item]
+    TA.TypeUnion Nothing (CoreTypes.listCons item)
 
 
 taFunction as fn [TA.RawType], TA.RawType: TA.RawType =

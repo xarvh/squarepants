@@ -124,28 +124,24 @@ cons as Name =
     "Cons"
 
 
+listCons as fn item: Dict Name [item] =
+    fn item:
+
+    Dict.empty
+    >> Dict.insert nil [] __
+    >> Dict.insert cons [ item, listType item ] __
+
+
 listType as fn CA.RawType: CA.RawType =
     fn item:
-    nameToType listName [ item ]
+    CA.TypeUnion p (listCons item)
 
 
 listDef as CA.AliasDef =
-    usr =
-        makeUsr listName
-
-    item as CA.RawType =
-        CA.TypeAnnotationVariable p "item"
-
-    constructors =
-        Dict.empty
-        >> Dict.insert nil [] __
-        >> Dict.insert cons [ item, listType item ] __
-
-
     {
-    , usr
+    , usr = makeUsr listName
     , pars = [ At Pos.G "item" ]
-    , type = CA.TypeUnion p constructors
+    , type = listType (CA.TypeAnnotationVariable p "item")
     , directTypeDeps = Set.empty
     }
 

@@ -560,9 +560,7 @@ unions as Test =
                 {
                 , freeTyvars = Dict.empty
                 , type =
-                    TA.TypeExact
-                        (TH.localType "Z")
-                        [ TH.taNumber ]
+                    todo """TA.TypeAlias (TH.localType "Z") [ TH.taNumber ]"""
                 }
             )
 
