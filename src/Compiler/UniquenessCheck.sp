@@ -497,7 +497,28 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
                             }
 
         , TA.Constructor pos name args:
-            todo "re"
+
+            doneArgs as UniOut [TA.Expression] =
+                uniOutInit []
+                >> List.forReversed __ args fn value, doneSoFar:
+                    { recycled, required, spent, resolved } =
+                        doExpression env @state value
+
+                    consumedTwice =
+                        Dict.merge (fn k, v, d: d) (fn k, a, b, d: Dict.insert k (a & b) d) (fn k, v, d: d) spent doneSoFar.spent Dict.empty
+
+                    Dict.each consumedTwice fn n, (p1 & p2):
+                        errorReferencingConsumedVariable env n p1 p2 @state
+
+                    {
+                    , recycled = Dict.join recycled doneSoFar.recycled
+                    , required = Dict.join required doneSoFar.required
+                    , spent = Dict.join spent doneSoFar.spent
+                    , resolved = [resolved, ...doneSoFar.resolved]
+                    }
+
+            uniOutMap (TA.Constructor pos name __) doneArgs
+
 
         , TA.Fn pos pars body bodyType:
             doFn env pos @state pars body bodyType
