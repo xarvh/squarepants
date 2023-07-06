@@ -207,6 +207,11 @@ doRawType as fn Env, TA.RawType: TextTree =
             Debug.toHuman cons
             >> text
 
+        , TA.TypeOpaque usr pars:
+            # TODO pars!!!
+            Debug.toHuman usr
+            >> text
+
         , TA.TypeFn parTypes full:
             #
             #   fn A, B: C

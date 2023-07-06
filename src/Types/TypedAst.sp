@@ -9,6 +9,7 @@ union RawType =
     , TypeVar TyvarId
     , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
+    , TypeFix TyvarId RawType
     , TypeError
 
 
@@ -205,6 +206,14 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 , Just replacement: replacement
                 , Nothing: TypeRecord (Just id) (Dict.map (fn k, v: rec v) attrs)
 
+        , TypeUnion Nothing attrs:
+            TypeUnion Nothing (Dict.map (fn k, v: List.map rec v) attrs)
+
+        , TypeUnion (Just id) attrs:
+            try saf.ty id as
+                , Just replacement: replacement
+                , Nothing: TypeUnion (Just id) (Dict.map (fn k, v: List.map rec v) attrs)
+
         , TypeError:
             TypeError
 
@@ -342,11 +351,19 @@ patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
 
 typeTyvars as fn RawType: Dict TyvarId None =
     fn type:
+
+    addConsTyvars =
+        Dict.for __ __ fn consName, consArgs, acc0:
+            List.for acc0 consArgs fn argType, acc1:
+                Dict.join (typeTyvars argType) acc1
+
     try type as
         , TypeOpaque usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
         , TypeVar id: Dict.ofOne id None
         , TypeRecord Nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         , TypeRecord (Just id) attrs: Dict.ofOne id None >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
+        , TypeUnion Nothing consByName: addConsTyvars Dict.empty consByName
+        , TypeUnion (Just id) consByName: addConsTyvars (Dict.ofOne id None) consByName
         , TypeError: Dict.empty
         , TypeFn ins out:
             typeTyvars out.raw

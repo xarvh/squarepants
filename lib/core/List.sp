@@ -30,6 +30,16 @@ find as fn (fn a: Bool), [a]: Maybe a =
                 find test t
 
 
+findMap as fn (fn a: Maybe b), [a]: Maybe b =
+    fn f, list:
+    try list as
+        , []: Nothing
+        , [h, ...t]:
+            try f h as
+                , Just r: Just r
+                , Nothing: findMap f t
+
+
 member as fn a, [a]: Bool = # TODO with a NonFunction =
     fn a, list:
     try list as
@@ -413,4 +423,21 @@ maximum as fn [Number]: Maybe Number =
 
       , _:
         Nothing
+
+
+circularPairs as fn [a]: [a & a] =
+    fn list:
+
+    rec =
+        fn zero, tt, acc:
+            try tt as
+                , []: acc
+                , [first, ...tail]:
+                    try tail as
+                        , []: [zero & first, ...acc]
+                        , [second, ...moar]: rec zero tail [second & first, ...acc]
+
+    try list as
+        , []: []
+        , [head, ...tail]: rec head list []
 

@@ -130,7 +130,6 @@ alias Env =
     , variables as Dict Ref Instance
 
     , expandedAliases as ByUsr ExpandedAlias
-    , exactTypes as ByUsr [At Name]
 
     , annotatedTyvarsByName as Dict Name TA.TyvarId
     , annotatedUnivarsByOriginalId as Dict UnivarId UnivarId
@@ -144,7 +143,6 @@ initEnv as Env =
     , constructors = Dict.empty
     , variables = Dict.empty
     , expandedAliases = Dict.empty
-    , exactTypes = Dict.empty
     , annotatedTyvarsByName = Dict.empty
     , annotatedUnivarsByOriginalId = Dict.empty
     }
@@ -440,6 +438,10 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
 
         , CA.TypeRecord pos caAttrs:
             TA.TypeRecord Nothing (Dict.map (fn name, v: rec v) caAttrs)
+
+
+        , CA.TypeUnion pos consByName:
+            TA.TypeUnion Nothing (Dict.map (fn name, v: List.map rec v) consByName)
 
 
         , CA.TypeAnnotationVariable pos name:
@@ -741,18 +743,7 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
 
 
         , CA.Constructor pos name args:
-            todo "CA.Constructor args"
-#            ty =
-#                try getConstructorByUsr usr env as
-#                    , Nothing:
-#                        addError env pos (ErrorConstructorNotFound usr) @state
-#                        fullTypeError
-#
-#                    , Just cons:
-#                        generalize env pos (RefGlobal usr) cons @state
-#
-#            # TODO setting Uni like this feels a bit hacky... =|
-#            TA.Constructor pos usr & { ty with uni = Uni }
+            inferUnion env pos name args @state
 
 
         , CA.Fn pos caPars body:
@@ -1002,6 +993,23 @@ inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
             TA.TypeError
 
 
+inferUnion as fn Env, Pos, Name, [CA.Expression], @State: TA.Expression & TA.FullType =
+    fn env, pos, consName, caArgs, @state:
+
+    taArgs as [TA.Expression & TA.FullType] =
+        List.map (inferExpression { env with context = Context_Argument consName .context } __ @state) caArgs
+
+    typedArgs as [TA.Expression] =
+        List.map Tuple.first taArgs
+
+    argTypes as [TA.RawType] =
+        List.map (fn e & f: f.raw) taArgs
+
+    id =
+        newTyvarId @state
+
+    TA.Constructor pos consName typedArgs & { uni = Uni, raw = TA.TypeUnion (Just id) (Dict.ofOne consName argTypes) }
+
 
 
 inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State: TA.Expression & TA.FullType =
@@ -1177,22 +1185,26 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             TA.Variable pos ref
 
 
-        , CA.Constructor pos name args & _:
-            todo "check CA.Constructor"
-#            bleh =
-#                try getConstructorByUsr usr env as
-#                    , Nothing:
-#                        addError env pos (ErrorConstructorNotFound usr) @state
-#
-#                    , Just cons:
-#                        full as TA.FullType =
-#                            generalize env pos (RefGlobal usr) cons @state
-#
-#                        addEquality env pos Why_Annotation full.raw expectedType.raw @state
-#                        # TODO is there any point in doing this when we know that cons literal must be Uni?
-#                        # checkUni env pos { fix = expectedType.uni, mut = cons.type.uni } @state
-#
-#            TA.Constructor pos usr
+        , CA.Constructor pos name actualArgs & TA.TypeUnion Nothing consByName:
+
+            try Dict.get name consByName as
+                , Nothing:
+                    addError env pos (ErrorConstructorNotInType name) @state
+                    TA.Error pos
+
+                , Just expectedArgTypes:
+
+                    if List.length expectedArgTypes /= List.length actualArgs then
+                        addError env pos (ErrorWrongNumberOfConstructorArguments) @state
+                        TA.Error pos
+                    else
+                        fullExpectedArgTypes =
+                            List.map (fn raw: { raw, uni = Imm }) expectedArgTypes
+
+                        typedArgs =
+                            List.map2 (checkExpression env __ __ @state) fullExpectedArgTypes actualArgs
+
+                        TA.Constructor pos name typedArgs
 
 
         , CA.Fn pos pars body & TA.TypeFn parTypes out:
@@ -2109,6 +2121,97 @@ expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: 
     Dict.insert usr { pars, type } aliasAccum
 
 
+
+makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
+    fn allowRecursion, requiredUsr, requiringType:
+
+    rec as fn CA.RawType: Result {} CA.RawType =
+        makeTypeRecursive allowRecursion requiredUsr __
+
+    recAllow as fn CA.RawType: Result {} CA.RawType =
+        makeTypeRecursive True requiredUsr __
+
+    try requiringType as
+        , CA.TypeNamed pos usr args:
+
+            List.mapRes rec args
+            >> onOk fn fixedArgs:
+
+            if requiredUsr /= usr then
+                CA.TypeNamed pos usr fixedArgs
+                >> Ok
+
+            else if allowRecursion then
+                CA.TypeRecursive pos requiredUsr fixedArgs
+                >> Ok
+
+            else
+                Err {}
+
+        , CA.TypeUnion pos consByName:
+            consByName
+            >> Dict.mapRes (fn name, cons: List.mapRes recAllow cons) __
+            >> Result.map (CA.TypeUnion pos __) __
+
+        , CA.TypeAnnotationVariable pos name:
+            Ok requiringType
+
+        , CA.TypeRecord pos attrs:
+            attrs
+            >> Dict.mapRes (fn k, v: rec v) __
+            >> Result.map (CA.TypeRecord pos __) __
+
+        , CA.TypeFn pos ins out:
+            mapPar =
+                fn par:
+                try par as
+                    , CA.ParRe raw: Result.map CA.ParRe (rec raw)
+                    , CA.ParSp full: Result.map (fn raw: CA.ParSp { full with raw }) (rec full.raw)
+
+            List.mapRes mapPar ins
+            >> onOk fn fixedIns:
+
+            rec out.raw
+            >> onOk fn fixedOutRaw:
+
+            CA.TypeFn pos fixedIns { out with raw = fixedOutRaw }
+            >> Ok
+
+
+
+
+toFixedType as fn ByUsr CA.AliasDef, USR & USR: Maybe (ByUsr CA.AliasDef) =
+    fn aliases, required & requiring:
+
+    requiringDef =
+        try Dict.get requiring aliases as
+            , Just a: a
+            , Nothing: bug "no alias =("
+
+    try makeTypeRecursive False required requiringDef.type as
+        , Ok fixedType:
+            aliases
+            >> Dict.insert requiring { requiringDef with type = fixedType } __
+            >> Just
+
+        , Err {}: Nothing
+
+
+
+tryToBreakCircular as fn [USR], ByUsr CA.AliasDef: Res (ByUsr CA.AliasDef) =
+    fn circular, aliases:
+
+    pairs =
+        List.circularPairs circular
+
+    try List.findMap (toFixedType aliases __) pairs as
+        , Just fixedAliases:
+            Ok fixedAliases
+
+        , Nothing:
+            todo "Err can't fix circular"
+
+
 getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
     fn allAliases, aliasDef:
 
@@ -2123,43 +2226,37 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
 initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env) =
     fn externalValues, allModules:
 
-    !state =
-        initState 0
-
     # Before we expand the aliases, we need to reorder them
-    allAliases as ByUsr CA.AliasDef =
+    rawAliases as ByUsr CA.AliasDef =
         Dict.empty
         >> List.for __ allModules fn mod, zz:
             Dict.for zz mod.aliasDefs fn name, aliasDef, d:
                 Dict.insert aliasDef.usr aliasDef d
 
     circulars & orderedAliases =
-        RefHierarchy.reorder (getAliasDependencies allAliases __) allAliases
+        RefHierarchy.reorder (getAliasDependencies rawAliases __) rawAliases
 
-    if circulars /= [] then
-        # TODO: should I even use expandAndInsertAlias if there are circulars?
-        log "=========> ERROR circulars aliases!!" circulars
-        List.each circulars fn circular:
-            Array.push @state.errors (Pos.G & Context_Global & ErrorCircularAlias circular)
-    else
-        None
+    rawAliases
+    >> List.forRes __ circulars tryToBreakCircular
+    >> onOk fn fixedAliases:
+
+    !state =
+        initState 0
 
     # Expand all aliases
     expandedAliases as ByUsr ExpandedAlias =
-        Dict.empty >> List.for __ orderedAliases (expandAndInsertAlias @state allAliases __ __)
+        List.for Dict.empty orderedAliases (expandAndInsertAlias @state fixedAliases __ __)
 
     doStuff as fn CA.Module, Env: Env =
         fn caModule, env:
-        env
-        >> Dict.for __ caModule.valueDefs (fn pattern, v, a: addValueToGlobalEnv @state caModule.umr v a)
+        Dict.for env caModule.valueDefs (fn pattern, v, a: addValueToGlobalEnv @state caModule.umr v a)
 
     env =
         { initEnv with
         , expandedAliases
         }
-        >> todo "List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)"
         >> List.for __ Prelude.allCoreValues (addCoreValueToCoreEnv @state __ __)
-        >> List.for __ externalValues (fn (usr & instance), e: { e with variables = Dict.insert (RefGlobal usr) instance .variables })
+        >> List.for __ externalValues (fn usr & instance, e: { e with variables = Dict.insert (RefGlobal usr) instance .variables })
         >> List.for __ allModules doStuff
 
     try Array.toList @state.errors as
@@ -2461,6 +2558,7 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         , TA.TypeFn ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
         , TA.TypeVar id: id == tyvarId
         , TA.TypeOpaque usr args: List.any rec args
+        , TA.TypeUnion _ consByName: Dict.any (fn k, v: List.any rec v) consByName
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
         , TA.TypeError: False
 

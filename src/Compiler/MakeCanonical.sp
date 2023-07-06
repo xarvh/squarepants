@@ -143,6 +143,7 @@ typeDeps as fn CA.RawType, Set USR: Set USR =
         , CA.TypeNamed _ usr args: acc >> Set.insert usr __ >> List.for __ args typeDeps
         , CA.TypeAnnotationVariable _ _: acc
         , CA.TypeRecord _ attrs: Dict.for acc attrs (fn k, v, a: typeDeps v a)
+        , CA.TypeUnion _ argsByName: Dict.for acc argsByName (fn k, v, a: List.for a v typeDeps)
         , CA.TypeError _: acc
         , CA.TypeFn _ params to:
             acc
@@ -298,6 +299,7 @@ addRawTypeUnivars as fn CA.RawType, Dict UnivarId None: Dict UnivarId None =
     try raw as
         , CA.TypeNamed _ _ args: List.for acc args addRawTypeUnivars
         , CA.TypeRecord _ attrs: Dict.for acc attrs (fn k, v, a: addRawTypeUnivars v a)
+        , CA.TypeUnion _ argsByName: Dict.for acc argsByName (fn k, v, a: List.for a v addRawTypeUnivars)
         , CA.TypeAnnotationVariable _ _: acc
         , CA.TypeError _: acc
         , CA.TypeFn _ pars out:
@@ -1634,6 +1636,93 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                     }
 
                 Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
+
+
+        , FA.UnionDef fa:
+            #
+            # TODO: remove all this once we have updated the syntax to support structural union types
+            #
+            At pos _ = fa.name
+
+            translateTypeName ro fa.name
+            >> onOk fn name:
+
+            if Dict.member name caModule.aliasDefs then
+                erroro ro pos [ name .. " declared twice!" ]
+
+            else
+                fa.args
+                >> List.mapRes (translateTypeParameter ro __) __
+                >> onOk fn caPars:
+
+                # TODO check that args are not duplicate
+
+                usr =
+                    USR ro.umr name
+
+                Set.empty & Dict.empty
+                >> List.forRes __ fa.constructors (translateConstructor ro __ __)
+                >> onOk fn allTypeDeps & constructors:
+
+                aliasDef as CA.AliasDef =
+                    {
+                    , usr = USR ro.umr name
+                    , pars = caPars
+                    , type = CA.TypeUnion pos constructors
+                    , directTypeDeps = Set.remove usr allTypeDeps
+                    }
+
+                Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
+
+
+
+translateConstructor as fn ReadOnly, FA.Expression, Set USR & Dict Name [CA.RawType]: Res (Set USR & Dict Name [CA.RawType]) =
+    fn ro, (FA.Expression pos expr_), deps0 & constructors0:
+
+    zzz =
+        try expr_ as
+            , FA.Variable var:
+                var & [] >> Ok
+
+            , FA.Call (FA.Expression _ (FA.Variable var)) pars:
+                var & pars >> Ok
+
+            , _:
+                erroro ro pos [ "I was expecting a constructor name here" ]
+
+    zzz
+    >> onOk fn ({ maybeType, word } & faPars):
+
+    isValidName =
+      word.modifier == Token.NameNoModifier
+      and
+      word.isUpper
+      and
+      word.maybeModule == Nothing
+      and
+      word.attrPath == []
+
+    if not isValidName then
+        erroro ro pos [ "I need just an Uppercase word here" ]
+
+    else if Dict.member word.name constructors0 then
+        # TODO "union $whatever has two constructors with the same name!"
+        erroro ro pos [ "constructor " .. word.name .. " is duplicate" ]
+
+    else
+        faPars
+        >> List.mapRes (translateRawType ro __) __
+        >> onOk fn ins:
+
+        deps1 =
+            List.for deps0 ins typeDeps
+
+        constructors1 =
+            Dict.insert word.name ins constructors0
+
+        deps1 & constructors1
+        >> Ok
+
 
 
 translateModule as fn ReadOnly, FA.Module: Res CA.Module =
