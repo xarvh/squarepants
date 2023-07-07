@@ -376,6 +376,7 @@ typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
         , TypeFn ins out: True
         , TypeVar id: testId id
         , TypeOpaque usr args: List.any (typeAllowsFunctions testId __) args
+        , TypeUnion _ consByName: Dict.any (fn k, v: List.any (typeAllowsFunctions testId __) v) consByName
         , TypeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
         , TypeError: True
 
@@ -401,25 +402,33 @@ normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
 normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     fn @hash, type:
 
+    rec =
+        normalizeType @hash __
+
+    recId =
+        normalizeTyvarId @hash __
+
     try type as
         , TypeOpaque usr args:
-            TypeOpaque usr (List.map (normalizeType @hash __) args)
+            TypeOpaque usr (List.map rec args)
 
         , TypeFn pars out:
             TypeFn
-                (mapPars (normalizeType @hash __) pars)
-                { out with raw = normalizeType @hash .raw }
+                (mapPars rec pars)
+                { out with raw = rec .raw }
 
-        , TypeRecord Nothing attrs:
-            TypeRecord Nothing (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
-
-        , TypeRecord (Just id) attrs:
+        , TypeRecord maybeId attrs:
             TypeRecord
-                (Just << normalizeTyvarId @hash id)
-                (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
+                (Maybe.map recId maybeId)
+                (Dict.map (fn k, v: rec v) attrs)
+
+        , TypeUnion maybeId consByName:
+            TypeUnion
+                (Maybe.map recId maybeId)
+                (Dict.map (fn k, v: List.map rec v) consByName)
 
         , TypeVar id:
-            TypeVar (normalizeTyvarId @hash id)
+            TypeVar (recId id)
 
         , TypeError:
             TypeError

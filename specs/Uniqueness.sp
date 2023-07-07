@@ -552,14 +552,13 @@ unions as Test =
             Uniques inside immutables are converted to immutables
             """
             """
-            union Z a = Z a
             x = Z 0
             """
             (infer "x")
             (Test.isOkAndEqualTo
                 {
                 , freeTyvars = Dict.empty
-                , type = TA.TypeUnion Nothing (Dict.ofOne "Z" [ TH.taNumber ])
+                , type = TA.TypeUnion (Just 1) (Dict.ofOne "Z" [ TH.taNumber ])
                 }
             )
 
@@ -579,7 +578,7 @@ unions as Test =
             [reg] solveOneEquality can receive switched given/required when evaluating a cast?
             """
             """
-            z as [fn None: None] = (fn None: None) :: []
+            z as [fn None: None] = [fn None: None, ...[]]
             """
             (infer "z")
             Test.isOk

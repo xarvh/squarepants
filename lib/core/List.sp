@@ -62,9 +62,9 @@ sortBy as fn (fn a: b), [a]: [a] = # TODO with b NonFunction =
     todo "implemented natively"
 
 
-#indexBy as fn (fn a: key), [a]: Dict key a with key NonFunction =
-#    fn getIndex, list:
-#    for list (fn i: Dict.insert (getIndex i) i) Dict.empty
+indexBy as fn (fn a: key), [a]: Dict key a with key NonFunction =
+    fn getIndex, list:
+    for Dict.empty list fn i, a: Dict.insert (getIndex i) i a
 
 
 for as fn state, [item], (fn item, state: state): state =
@@ -93,6 +93,12 @@ for2 as fn state, [a], [b], (fn a, b, state: state): state =
 indexedFor as fn state, [item], (fn Int, item, state: state): state =
     fn init, aList, function:
     for (0 & init) aList (fn item, (index & accum): index + 1 & function index item accum)
+    >> Tuple.second
+
+
+indexedFor2 as fn state, [a], [b], (fn Int, a, b, state: state): state =
+    fn init, aList, bList, function:
+    for2 (0 & init) aList bList (fn a, b, (index & accum): index + 1 & function index a b accum)
     >> Tuple.second
 
 

@@ -196,6 +196,7 @@ union Context =
     , Context_IfFalse
     , Context_IfTrue
     , Context_AttributeName Name Context
+    , Context_ConstructorArgument Name Int
 
 
 union Why =
@@ -220,6 +221,7 @@ union Why =
 
 # TODO turn this into a record
 # Also, make it obvious that the two types are not interchangeable, because one is "given", the other is "required"
+# Also also: maybe context should follow each individual type, so we actually know what they refer to!?
 union Equality =
     , Equality Context Pos Why TA.RawType TA.RawType
 
@@ -331,6 +333,9 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
         , TA.TypeOpaque usr args:
             TA.TypeOpaque usr (List.map doRaw args)
 
+        , TA.TypeUnion maybeExt consByName:
+            TA.TypeUnion maybeExt (Dict.map (fn k, v: List.map doRaw v) consByName)
+
         , TA.TypeRecord maybeExt attrs:
             TA.TypeRecord maybeExt (Dict.map (fn k, v: doRaw v) attrs)
 
@@ -375,16 +380,16 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, @State, TA.RawType: TA.RawT
         , TA.TypeFn ins out:
             TA.TypeFn (TA.mapPars rec ins) { out with raw = rec .raw }
 
-        , TA.TypeRecord Nothing attrs:
-            TA.TypeRecord Nothing (Dict.map (fn k, v: rec v) attrs)
+        , TA.TypeRecord maybeId attrs:
+            TA.TypeRecord maybeId (Dict.map (fn k, v: rec v) attrs)
+
+        , TA.TypeUnion maybeId consByName:
+            TA.TypeUnion maybeId (Dict.map (fn k, v: List.map rec v) consByName)
 
         , TA.TypeVar id:
             try Dict.get id tyvarIdsToType as
                 , Nothing: bug "this is not supposed to happen"
                 , Just ty: ty
-
-        , TA.TypeRecord (Just id) attrs:
-            TA.TypeRecord (Just id) (Dict.map (fn k, v: rec v) attrs)
 
         , TA.TypeError:
             TA.TypeError
@@ -1524,32 +1529,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
                 List.map (fn out: out.patternType) argumentOuts
 
             finalType =
-                todo "finalType"
-#                try getConstructorByUsr usr env as
-#
-#                    , Nothing:
-#                        addError env pos (ErrorConstructorNotFound usr) @state
-#                        TA.TypeError
-#
-#                    , Just cons:
-#                        x as TA.FullType =
-#                            generalize env pos (RefGlobal usr) cons @state
-#
-#                        parTypes & returnType =
-#                            try x.raw as
-#                                , TA.TypeFn ins out: ins & out.raw
-#                                , _: [] & x.raw
-#
-#                        addErrorIf (List.length parTypes /= List.length arguments) env pos ErrorWrongNumberOfConstructorArguments @state
-#
-#                        list_eachWithIndex2 0 parTypes argumentTypes fn index, parType, argType:
-#                            try parType as
-#                                , TA.ParRe raw: bug "cons can't recycle?!"
-#                                , TA.ParSp full:
-#                                    # TODO -----> check unis
-#                                    addEquality env pos (Why_Argument index) full.raw argType @state
-#
-#                        returnType
+                TA.TypeUnion (Just (newTyvarId @state)) (Dict.ofOne name argumentTypes)
 
             {
             , typedPattern = TA.PatternConstructor pos name typedArguments
@@ -1972,8 +1952,9 @@ makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
         , message
         , Debug.toHuman context
         , Debug.toHuman why
+        , "TYPE 1 -----------------------"
         , typeToHuman env t1
-        , ""
+        , "TYPE 2 -----------------------"
         , typeToHuman env t2
         ]
 
@@ -2228,7 +2209,7 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
 
     # Before we expand the aliases, we need to reorder them
     rawAliases as ByUsr CA.AliasDef =
-        Dict.empty
+        CoreTypes.aliases
         >> List.for __ allModules fn mod, zz:
             Dict.for zz mod.aliasDefs fn name, aliasDef, d:
                 Dict.insert aliasDef.usr aliasDef d
@@ -2444,6 +2425,10 @@ solveOneEquality as fn Equality, ERState: ERState =
                         >> list_forWithIndex2 __ 0 pars1 pars2 (compareParTypes head __ __ __ __)
 
 
+                , TA.TypeUnion ext1 cbn1 & TA.TypeUnion ext2 cbn2:
+                    solveUnionEquation head ext1 cbn1 ext2 cbn2 state
+
+
                 , TA.TypeRecord Nothing attrs1 & TA.TypeRecord Nothing attrs2:
                     only1 & both & only2 =
                         Dict.onlyBothOnly attrs1 attrs2
@@ -2488,6 +2473,68 @@ solveOneEquality as fn Equality, ERState: ERState =
                 , _:
                     state
                     >> addErError head "types are incompatible1" __
+
+
+
+
+solveUnionEquation as fn Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], Maybe TA.TyvarId, Dict Name [TA.RawType], ERState: ERState =
+    fn equality, ext1, cbn1, ext2, cbn2, state0:
+
+    Equality context pos why t1 t2 =
+        equality
+
+    only1 & both & only2 =
+        Dict.onlyBothOnly cbn1 cbn2
+
+
+    checkExtensibility as fn ERState: ERState =
+        List.for __ [ ext1 & only2, ext2 & only1 ] fn ext & only, s:
+            addErErrorIf (ext /= Nothing and only == Dict.empty) equality "TODO error message ext & only" s
+
+
+    compareConstructorArgs =
+        fn name, (args1 & args2), s:
+
+        l1 = List.length args1
+        l2 = List.length args2
+
+        if l1 /= l2 then
+            addErError equality ("constructor " .. name .. "wrong args number: " .. Text.fromNumber l1 .. " vs " .. Text.fromNumber l2) s
+        else
+            equalities =
+                List.indexedFor2 s.equalities args1 args2 fn index, a1, a2, eqs:
+                    [ Equality (Context_ConstructorArgument name index) pos why a1 a2, ...eqs]
+
+            { s with equalities }
+
+
+    solveExtensions as fn ERState: ERState =
+        fn s0:
+
+        exts =
+            List.filterMap identity [ ext1, ext2 ]
+
+        if exts == [] then
+            s0
+        else
+            maybeExt & s1 =
+                if ext1 == Nothing or ext2 == Nothing then
+                    Nothing & s0
+                else
+                    id = s0.lastUnificationVarId + 1
+                    Just id & { s0 with lastUnificationVarId = id }
+
+            newType =
+                TA.TypeUnion maybeExt (Dict.join cbn1 cbn2)
+
+            List.for s1 exts (replaceUnificationVariable equality __ newType __)
+
+
+    state0
+    >> checkExtensibility
+    >> Dict.for __ both compareConstructorArgs
+    >> solveExtensions
+
 
 
 solveRecordExt as fn Equality, Bool, TA.TyvarId, Dict Name TA.RawType, Dict Name TA.RawType, ERState: ERState =

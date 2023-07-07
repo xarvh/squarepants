@@ -155,7 +155,7 @@ listDef as CA.AliasDef =
 #
 
 
-allDefs as [CA.AliasDef] =
+aliases as ByUsr CA.AliasDef =
     [
     , noneDef
     , boolDef
@@ -163,4 +163,5 @@ allDefs as [CA.AliasDef] =
 #    , textDef
 #    , numberDef
     ]
+    >> List.indexBy (fn a: a.usr) __
 

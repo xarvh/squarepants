@@ -807,13 +807,24 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             >> translateExpression env __
             >> onOk fn caRef:
 
-            faArgs
-            >> translateArgumentsAndPlaceholders pos env __
-            >> onOk fn (caArgs & wrap):
+            try caRef as
+                , CA.Constructor n p []:
+                    faArgs
+                    >> translateExpressionsAndPlaceholders pos env __
+                    >> onOk fn (caExprs & wrap):
 
-            CA.Call pos caRef caArgs
-            >> wrap
-            >> Ok
+                    CA.Constructor n p caExprs
+                    >> wrap
+                    >> Ok
+
+                , _:
+                    faArgs
+                    >> translateArgumentsAndPlaceholders pos env __
+                    >> onOk fn (caArgs & wrap):
+
+                    CA.Call pos caRef caArgs
+                    >> wrap
+                    >> Ok
 
         , FA.If { condition, true, false }:
             translateExpression env condition >> onOk fn c:
@@ -877,7 +888,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                             translateExpression env faItem
                             >> onOk fn caItem:
 
-                            CA.Call pos (CA.Constructor pos CoreTypes.cons []) [CA.ArgumentExpression caItem, CA.ArgumentExpression acc]
+                            CA.Constructor pos CoreTypes.cons [caItem, acc]
                             >> Ok
 
         , FA.Try { value, patterns }:
@@ -908,6 +919,57 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         , _:
             error env pos [ "something's wrong here...", toHuman expr_ ]
+
+
+translateExpressionsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Expression] & (fn CA.Expression: CA.Expression)) =
+    fn pos, env, faArgs:
+
+    insertArg =
+        fn faArg, ({ caPars, caArgs, arity }):
+
+        FA.Expression pos faArg_ =
+            faArg
+
+        try faArg_ as
+
+            , FA.ArgumentPlaceholder:
+                name =
+                    Text.fromNumber arity
+
+                {
+                , caPars = [CA.ParameterPlaceholder name arity, ...caPars]
+                , caArgs = [CA.Variable pos (RefLocal name), ...caArgs]
+                , arity = arity + 1
+                }
+                >> Ok
+
+            , _:
+                translateExpression env faArg
+                >> onOk fn caArg:
+
+                {
+                , caPars = caPars
+                , caArgs = [caArg, ...caArgs]
+                , arity = arity + 1
+                }
+                >> Ok
+
+    {
+    , caPars = []
+    , caArgs = []
+    , arity = 0
+    }
+    >> List.forRes __ faArgs insertArg
+    >> onOk fn ({ caPars, caArgs, arity }):
+
+    wrap =
+        if caPars == [] then
+            identity
+        else
+            fn call: CA.Fn pos (List.reverse caPars) call
+
+    List.reverse caArgs & wrap
+    >> Ok
 
 
 translateArgumentsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Argument] & (fn CA.Expression: CA.Expression)) =
