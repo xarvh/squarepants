@@ -589,7 +589,6 @@ unions as Test =
             LetIn: Unpack immutable to immutable
             """
             """
-            union Z a = Z a
             scope =
                 x = Z 0
                 (Z y) = x
@@ -601,7 +600,6 @@ unions as Test =
             LetIn: Unpack unique to immutable
             """
             """
-            union Z a = Z a
             scope =
                 !x = Z 0
                 (Z y) = x
@@ -613,7 +611,6 @@ unions as Test =
             LetIn: Unpack unique to unique
             """
             """
-            union Z a = Z a
             scope =
                 !x = Z 0
                 #!(Z y) = x
@@ -626,7 +623,6 @@ unions as Test =
             LetIn: Unpack immutable to unique
             """
             """
-            union Z a = Z a
             scope =
                 x = Z 0
                 !(Z y) = x

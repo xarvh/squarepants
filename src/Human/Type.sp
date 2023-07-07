@@ -204,7 +204,18 @@ doRawType as fn Env, TA.RawType: TextTree =
 
     try raw as
         , TA.TypeUnion maybeExt cons:
-            Debug.toHuman cons
+            [
+            , "<"
+            , try maybeExt as
+                  , Nothing: ""
+                  , Just ext: Text.fromNumber ext .. " with"
+            , cons
+                >> Dict.toList
+                >> List.map (fn n & args: n .. (List.map Debug.toHuman args >> Text.join " " __)) __
+                >> Text.join ", " __
+            , ">"
+            ]
+            >> Text.join " " __
             >> text
 
         , TA.TypeOpaque usr pars:

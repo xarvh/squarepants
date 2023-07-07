@@ -1742,7 +1742,7 @@ checkPatternConstructor as fn Env, Pos, TA.FullType, Name, [CA.Pattern], @State:
                                 taArg & envX1 =
                                     checkPattern envX fullType actualArgument @state
 
-                                envX & [taArg, ...args]
+                                envX1 & [taArg, ...args]
 
 
                         # TODO check that args uni are the same or castable as expectedType.uni
@@ -2489,7 +2489,7 @@ solveUnionEquation as fn Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], May
 
     checkExtensibility as fn ERState: ERState =
         List.for __ [ ext1 & only2, ext2 & only1 ] fn ext & only, s:
-            addErErrorIf (ext /= Nothing and only == Dict.empty) equality "TODO error message ext & only" s
+            addErErrorIf (only /= Dict.empty and ext == Nothing) equality "TODO error message ext & only" s
 
 
     compareConstructorArgs =
