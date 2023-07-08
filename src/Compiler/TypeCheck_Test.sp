@@ -395,7 +395,7 @@ variableTypes as Test =
             "Annotated vars are instantiated when referenced"
             """
             q as [item] =
-              Core.Nil
+              Nil
 
             r as [Text] =
                   q
@@ -713,7 +713,7 @@ patterns as Test =
                 { freeTyvars = freeTyvars [1]
                 , type =
                     TH.taFunction
-                        [TH.taList (tyvar 1)]
+                        [ TH.taList (tyvar 1)]
                         (tyvar 1)
                 }
             )
@@ -757,10 +757,10 @@ patterns as Test =
             each as fn [a], (fn a: b): None =
                 fn ls, f:
                 try ls as
-                    , Core.Nil: None
+                    , Nil: None
 
             result =
-                1 :: Core.Nil = Core.Nil
+                1 :: Nil = Nil
             """
             (infer "result")
             #
