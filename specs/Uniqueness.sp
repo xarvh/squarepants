@@ -358,7 +358,7 @@ parentScope as Test =
                 The Array Test
                 """
                 """
-                union Array a = Meh
+                union Array a = ArrayShouldReallyBeOpaque a
 
                 array_push as fn a, @Array a: None = todo ""
 
