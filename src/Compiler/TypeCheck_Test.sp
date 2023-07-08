@@ -487,13 +487,13 @@ higherOrderTypes as Test =
             [reg] Named vars can't be refined?
             """
             """
-            union Wrap a = W a
+            union Wrap a = Zot a
 
             f as fn a: Wrap a =
                 fn a: a
             """
             (infer "f")
-            (Test.errorContains [ "Wrap"])
+            (Test.errorContains [ "Zot" ])
         ]
 
 
