@@ -1204,7 +1204,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                         TA.Error pos
                     else
                         fullExpectedArgTypes =
-                            List.map (fn raw: { raw, uni = Imm }) expectedArgTypes
+                            List.map (fn raw: { raw, uni = expectedType.uni }) expectedArgTypes
 
                         typedArgs =
                             List.map2 (checkExpression env __ __ @state) fullExpectedArgTypes actualArgs
