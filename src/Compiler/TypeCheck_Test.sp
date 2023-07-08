@@ -46,6 +46,10 @@ outToHuman as fn Out: Text =
     >> Text.join "\n" __
 
 
+unionCons as fn Int, Text: TA.RawType =
+    fn id, consName:
+    TA.TypeUnion (Just id) (Dict.ofOne consName [])
+
 
 tyvar as fn Int: TA.RawType =
     TH.taTyvar
@@ -201,7 +205,7 @@ functions as Test =
         , codeTest "Known function with wrong params"
             "a = add False 1"
             (infer "a")
-            (Test.errorContains [ "Bool" ])
+            (Test.errorContains [ "False" ])
         , codeTest
             "Function inference 1"
             "a = fn x: add x 1"
@@ -296,7 +300,7 @@ statements as Test =
               False
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = TH.taBool, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = unionCons 1 "False", freeTyvars = Dict.empty })
         , codeTest
             """
             Definition statement return type None
@@ -306,7 +310,7 @@ statements as Test =
               f = fn x: 3
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = TH.taNone, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = unionCons 1 "None", freeTyvars = Dict.empty })
         , codeTest
             """
             [reg] Definition statement with annotation return type None
@@ -423,8 +427,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     TH.taFunction
-                        [ TA.TypeOpaque (TH.localType "T") [ tyvar 1 ]]
-                        ( TA.TypeOpaque (TH.localType "T") [ tyvar 1 ])
+                        [ TA.TypeUnion Nothing (Dict.ofOne "T" [ tyvar 1 ])]
+                        ( TA.TypeUnion Nothing (Dict.ofOne "T" [ tyvar 1 ]))
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -434,16 +438,13 @@ higherOrderTypes as Test =
             """
             """
             union X a = L
-            l = L
+            l as X a = L
             """
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = freeTyvars [1]
-                , type =
-                    TA.TypeOpaque
-                        (TH.localType "X")
-                        [ tyvar 1 ]
+                , freeTyvars = freeTyvarsAnnotated [1 & "a"]
+                , type = TA.TypeUnion Nothing (Dict.ofOne "L" [])
                 }
             )
         , codeTest
@@ -806,14 +807,14 @@ try_as as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = Dict.empty
-                , type = TA.TypeFn [TH.taBool >> toImm >> TA.ParSp] (toUni TH.taNumber)
+                , type = TA.TypeFn [ unionCons 1 "True" >> toImm >> TA.ParSp ] (toUni TH.taNumber)
                 }
             )
 
         #
         , codeTest
             """
-            rejects non-matching patterns
+            SKIP rejects non-matching patterns
             """
             """
             x =
@@ -828,6 +829,21 @@ try_as as Test =
         #
         , codeTest
             """
+            rejects non-matching patterns
+            """
+            """
+            x =
+                fn q:
+                try q as
+                    , 1: 2
+                    , []: 3
+            """
+            (infer "x")
+            (Test.errorContains [ "Number", "Nil" ])
+
+        #
+        , codeTest
+            """
             rejects non-matching blocks
             """
             """
@@ -838,7 +854,7 @@ try_as as Test =
                     , False: False
             """
             (infer "x")
-            (Test.errorContains [ "Number", "Bool" ])
+            (Test.errorContains [ "Number", "False" ])
         , codeTest
             """
             [reg] actually infers blocks
@@ -891,7 +907,7 @@ if_else as Test =
                 else 2
             """
             (infer "x")
-            (Test.errorContains [ "Bool"])
+            (Test.errorContains [ "Number" ])
 
         #
         , codeTest
