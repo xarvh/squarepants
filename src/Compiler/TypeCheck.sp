@@ -2473,8 +2473,17 @@ solveOneEquality as fn Equality, ERState: ERState =
 
 
                 , TA.TypeRecursive usr1 args1 & TA.TypeRecursive usr2 args2:
-                    todo "resolve TypeRecursive"
-
+                    #
+                    # TODO THIS IS MAKING RECURSIVE TYPES NOMINAL INSTEAD OF STRUCTURAL
+                    #
+                    # We should probably replace the `usr` with the full, "fix"ed RawType, and unify that.
+                    #
+                    if usr1 /= usr2 then
+                        addErError head "TODO wrong TypeRecursive!?" state
+                    else
+                        newEqualities as [Equality] =
+                            List.indexedMap2 (fn index, a, b: Equality context pos (Why_TypeArgument usr1 index why) a b) args2 args1
+                        { state with equalities = List.append .equalities newEqualities }
 
                 , TA.TypeError & _:
                     state
