@@ -78,22 +78,23 @@ meta as Meta =
 
 #
 # Same as core types, but have Pos.T rather than Pos.N
+# (Why are they needed?)
 #
 caBool as CA.RawType =
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "Bool") []
+    CoreTypes.boolType #CA.TypeNamed Pos.T (Meta.spCoreUSR "Bool") []
 
 
 caNumber as CA.RawType =
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "Number") []
+    CoreTypes.numberType #CA.TypeNamed Pos.T (Meta.spCoreUSR "Number") []
 
 
 caNone as CA.RawType =
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "None") []
+    CoreTypes.noneType #CA.TypeNamed Pos.T (Meta.spCoreUSR "None") []
 
 
 caList as fn CA.RawType: CA.RawType =
     fn itemType:
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "List") [ itemType ]
+    CoreTypes.listType itemType #CA.TypeNamed Pos.T (Meta.spCoreUSR "List") [ itemType ]
 
 
 #

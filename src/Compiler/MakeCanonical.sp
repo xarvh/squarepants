@@ -1731,7 +1731,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                     , usr = USR ro.umr name
                     , pars = caPars
                     , type = CA.TypeUnion pos constructors
-                    , directTypeDeps = Set.remove usr allTypeDeps
+                    , directTypeDeps = allTypeDeps
                     }
 
                 Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }

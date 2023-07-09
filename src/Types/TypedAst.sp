@@ -9,7 +9,7 @@ union RawType =
     , TypeVar TyvarId
     , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
-    , TypeFix TyvarId RawType
+    , TypeRecursive USR [RawType]
     , TypeError
 
 

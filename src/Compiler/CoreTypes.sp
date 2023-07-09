@@ -146,7 +146,7 @@ listDef as CA.AliasDef =
     , usr = listUsr
     , pars = [ At p "item" ]
     , type = listType (CA.TypeAnnotationVariable p "item")
-    , directTypeDeps = Set.empty
+    , directTypeDeps = Set.ofOne listUsr
     }
 
 

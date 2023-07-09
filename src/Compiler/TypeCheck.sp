@@ -449,6 +449,10 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
             TA.TypeUnion Nothing (Dict.map (fn name, v: List.map rec v) consByName)
 
 
+        , CA.TypeRecursive pos usr args:
+            TA.TypeRecursive usr (List.map rec args)
+
+
         , CA.TypeAnnotationVariable pos name:
             try Dict.get name argsByName as
                 , Nothing:
