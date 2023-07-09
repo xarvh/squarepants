@@ -386,6 +386,9 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, @State, TA.RawType: TA.RawT
         , TA.TypeUnion maybeId consByName:
             TA.TypeUnion maybeId (Dict.map (fn k, v: List.map rec v) consByName)
 
+        , TA.TypeRecursive usr raw:
+            TA.TypeRecursive usr (List.map rec raw)
+
         , TA.TypeVar id:
             try Dict.get id tyvarIdsToType as
                 , Nothing: bug "this is not supposed to happen"
@@ -2468,6 +2471,11 @@ solveOneEquality as fn Equality, ERState: ERState =
                     >> replaceUnificationVariable head tyvar2 newType __
                     >> Dict.for __ both (fn name, (t1 & t2), s: { s with equalities = Equality (Context_AttributeName name context) pos why t1 t1 :: .equalities })
 
+
+                , TA.TypeRecursive usr1 args1 & TA.TypeRecursive usr2 args2:
+                    todo "resolve TypeRecursive"
+
+
                 , TA.TypeError & _:
                     state
 
@@ -2611,6 +2619,7 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         , TA.TypeOpaque usr args: List.any rec args
         , TA.TypeUnion _ consByName: Dict.any (fn k, v: List.any rec v) consByName
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
+        , TA.TypeRecursive usr args: False # It's recursive, so we can assume it was done already?
         , TA.TypeError: False
 
 
