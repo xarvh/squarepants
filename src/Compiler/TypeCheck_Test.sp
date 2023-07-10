@@ -4,6 +4,7 @@ tests as Test =
         [
         , functions
         , statements
+        , circularTypes
         , variableTypes
         , higherOrderTypes
         , records
@@ -12,7 +13,6 @@ tests as Test =
         , if_else
         , nonFunction
         , misc
-        #, zzzz
         ]
 
 
@@ -366,6 +366,29 @@ statements as Test =
             """
             (infer "x")
             (Test.errorContains [])
+        ]
+
+
+
+#
+# Circular types
+#
+
+
+circularTypes as Test =
+    Test.Group "Circular types"
+        [
+        , codeTest
+            """
+            Records cannot be recursive
+            """
+            """
+            alias A = { b as B }
+            alias B = { a as A }
+            a as A = todo ""
+            """
+            (infer "a")
+            (Test.errorContains [ "recursive types" ])
         ]
 
 
@@ -1024,7 +1047,7 @@ misc as Test =
         [
         , codeTest
             """
-            Placeholder work with unique args
+            Placeholder works with unique args
             """
             """
             stuff as fn !Number: Number = todo ""

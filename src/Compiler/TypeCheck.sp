@@ -2197,7 +2197,14 @@ tryToBreakCircular as fn [USR], ByUsr CA.AliasDef: Res (ByUsr CA.AliasDef) =
             Ok fixedAliases
 
         , Nothing:
-            todo "Err can't fix circular"
+            [
+            , Debug.toHuman "Cannot fix recursive types"
+            , ""
+            , Debug.toHuman circular
+            , ""
+            ]
+            >> Error.Raw
+            >> Err
 
 
 getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =

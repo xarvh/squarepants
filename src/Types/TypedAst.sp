@@ -215,7 +215,7 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 , Nothing: TypeUnion (Just id) (Dict.map (fn k, v: List.map rec v) attrs)
 
         , TypeRecursive usr args:
-            TypeOpaque usr (List.map rec args)
+            TypeRecursive usr (List.map rec args)
 
         , TypeError:
             TypeError
