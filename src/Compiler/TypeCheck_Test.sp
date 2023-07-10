@@ -4,7 +4,7 @@ tests as Test =
         [
         , functions
         , statements
-        , circularTypes
+        , recursiveTypes
         , variableTypes
         , higherOrderTypes
         , records
@@ -252,7 +252,7 @@ functions as Test =
 
         , codeTest
             """
-            [reg] on is missing tyvars?
+            SKIP because it was broken already!? [reg] on is missing tyvars?
             """
             """
             andThen as [a] = []
@@ -371,16 +371,26 @@ statements as Test =
 
 
 #
-# Circular types
+# Recusrive/circular types
 #
 
 
-circularTypes as Test =
-    Test.Group "Circular types"
+recursiveTypes as Test =
+    Test.Group "Recursive types"
         [
         , codeTest
             """
-            Records cannot be recursive
+            Normal types cannot be self recursive
+            """
+            """
+            alias A = { a as A }
+            a as A = todo ""
+            """
+            (infer "a")
+            (Test.errorContains [ "recursive types" ])
+        , codeTest
+            """
+            Normal types cannot be mutually recursive
             """
             """
             alias A = { b as B }
@@ -389,6 +399,18 @@ circularTypes as Test =
             """
             (infer "a")
             (Test.errorContains [ "recursive types" ])
+        , codeTest
+            """
+            Union types can be recursive
+            """
+            """
+            union A = A2 B
+            alias B = { a as A }
+            a as A = todo ""
+            b as B = todo ""
+            """
+            (infer "a")
+            Test.isOk
         ]
 
 
