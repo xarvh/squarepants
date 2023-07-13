@@ -219,11 +219,16 @@ union Why =
     , Why_TypeArgument USR Int Why
 
 
-# TODO turn this into a record
-# Also, make it obvious that the two types are not interchangeable, because one is "given", the other is "required"
+# TODO, make it obvious that the two types are not interchangeable, because of uniqueness
+# (but how do I describe it? "given" and "required"? I forgot already what they mean.
 # Also also: maybe context should follow each individual type, so we actually know what they refer to!?
-union Equality =
-    , Equality Context Pos Why TA.RawType TA.RawType
+alias Equality = {
+    , context as Context
+    , pos as Pos
+    , why as Why
+    , type1 as TA.RawType
+    , type2 as TA.RawType
+    }
 
 
 #
@@ -263,9 +268,9 @@ newRawType as fn @State: TA.RawType =
 
 
 addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
-    fn env, pos, why, t1, t2, @state:
+    fn { with context }, pos, why, type1, type2, @state:
 
-    Array.push @state.equalities __ << Equality env.context pos why t1 t2
+    Array.push @state.equalities { context, pos, why, type1, type2 }
 
 
 addError as fn Env, Pos, Error_, @State: None =
@@ -1952,7 +1957,7 @@ makeInferenceAndCheckError as fn Env, (Pos & Context & Error_): Error =
 
 
 makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
-    fn env, caModule, (Equality context pos why t1 t2 & message):
+    fn env, caModule, { context, pos, why, type1, type2 } & message:
 
     Error.Simple env.errorModule pos
         [
@@ -1960,9 +1965,9 @@ makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
         , Debug.toHuman context
         , Debug.toHuman why
         , "TYPE 1 -----------------------"
-        , typeToHuman env t1
+        , typeToHuman env type1
         , "TYPE 2 -----------------------"
-        , typeToHuman env t2
+        , typeToHuman env type2
         ]
 
 
@@ -2326,6 +2331,11 @@ solveUniquenessConstraints as fn Env, [UnivarEquality], @State, Dict UnivarId Un
 # Equalities resolution
 #
 #
+alias EREnv = {
+    , expandedRecursives as Set USR
+    }
+
+
 alias ERState =
     {
     , equalities as [Equality]
@@ -2339,14 +2349,14 @@ alias ERState =
 addErError as fn Equality, Text, ERState: ERState =
     fn equality, message, state:
 
-    { state with errors = (equality & message) :: .errors }
+    { state with errors = [equality & message, ...(.errors)] }
 
 
 addErErrorIf as fn Bool, Equality, Text, ERState: ERState =
     fn test, equality, message, state:
 
     if test then
-        { state with errors = (equality & message) :: .errors }
+        { state with errors = [equality & message, ...(.errors)] }
     else
         state
 
@@ -2354,30 +2364,30 @@ addErErrorIf as fn Bool, Equality, Text, ERState: ERState =
 compareParTypes as fn Equality, Int, TA.ParType, TA.ParType, ERState: ERState =
     fn currentEquality, index, p1, p2, state0:
 
-    Equality context pos why f1 f2 =
+    { with context, pos, why } =
         currentEquality
 
     try p1 & p2 as
         , TA.ParRe raw1 & TA.ParRe raw2:
             eq =
-                Equality context pos (Why_FunctionInput index why) raw1 raw2
+                { context, pos, why = Why_FunctionInput index why, type1 = raw1, type2 = raw2 }
 
-            { state0 with equalities = eq :: .equalities }
+            { state0 with equalities = [eq, ...(.equalities)] }
 
         , TA.ParSp full1 & TA.ParSp full2:
             eq =
-                Equality context pos (Why_FunctionInput index why) full1.raw full2.raw
+                { context, pos, why = Why_FunctionInput index why, type1 = full1.raw, type2 = full2.raw }
 
             state1 =
                 try uniCanBeCastTo { given = full1.uni, required = full2.uni } as
                     , CanBeCastYes: state0
                     , CanBeCastNo []: state0 >> addErError currentEquality ("Function call par " .. Text.fromNumber index .. " with wrong uniqueness") __
-                    , CanBeCastNo ((id & uni) :: tail): { state0 with univarEqualities = { pos, context, id, uni, why = "fn arg" } :: .univarEqualities }
+                    , CanBeCastNo [id & uni, ...tail]: { state0 with univarEqualities = [{ pos, context, id, uni, why = "fn arg" }, ...(.univarEqualities)] }
 
-            { state1 with equalities = eq :: .equalities }
+            { state1 with equalities = [eq, ...(.equalities)] }
 
         , _:
-            addErError (Equality context pos (Why_FunctionInput index why) f1 f2) "recycling does not match" state0
+            addErError { currentEquality with why = (Why_FunctionInput index why) } "recycling does not match" state0
 
 
 solveEqualities as fn ERState: ERState =
@@ -2387,7 +2397,7 @@ solveEqualities as fn ERState: ERState =
         , []:
             oldState
 
-        , head :: tail:
+        , [head, ...tail]:
             { oldState with equalities = tail }
             >> solveOneEquality head __
             >> solveEqualities
@@ -2396,10 +2406,10 @@ solveEqualities as fn ERState: ERState =
 solveOneEquality as fn Equality, ERState: ERState =
     fn head, state:
 
-              Equality context pos why raw1 raw2 =
-                head
+              { context, pos, why, type1, type2 } =
+                  head
 
-              try raw1 & raw2 as
+              try type1 & type2 as
 
                 , TA.TypeVar tyvarId & t2:
                     state
@@ -2414,7 +2424,7 @@ solveOneEquality as fn Equality, ERState: ERState =
                         addErError head "types are incompatible2" state
                     else
                         newEqualities as [Equality] =
-                            List.indexedMap2 (fn index, a, b: Equality context pos (Why_TypeArgument usr1 index why) a b) args2 args1
+                            List.indexedMap2 (fn index, a, b: { head with why = Why_TypeArgument usr1 index why, type1 = a, type2 = b }) args2 args1
 
                         { state with equalities = List.append .equalities newEqualities }
 
@@ -2426,7 +2436,7 @@ solveOneEquality as fn Equality, ERState: ERState =
 
                     else
                         outEquality as Equality =
-                            Equality context pos (Why_FunctionOutput why) out1.raw out2.raw
+                            { context, pos, why = Why_FunctionOutput why, type1 = out1.raw, type2 = out2.raw }
 
                         s1 =
                             # TODO there is not much guarantee which one is given and which one is required
@@ -2435,7 +2445,7 @@ solveOneEquality as fn Equality, ERState: ERState =
                                 , CanBeCastNo []: state >> addErError head "the function return type have different uniqueness" __
                                 , CanBeCastNo ((id & uni) :: tail): { state with univarEqualities = { pos, context, id, uni, why = "fn out" } :: .univarEqualities }
 
-                        { s1 with equalities = outEquality :: .equalities }
+                        { s1 with equalities = [ outEquality, ...(.equalities) ] }
                         >> list_forWithIndex2 __ 0 pars1 pars2 (compareParTypes head __ __ __ __)
 
 
@@ -2449,7 +2459,7 @@ solveOneEquality as fn Equality, ERState: ERState =
 
                     equalities as [Equality] =
                         state.equalities >> Dict.for __ both fn attrName, (attrType1 & attrType2), eqs:
-                              Equality context pos (Why_Attribute why) attrType1 attrType2 :: eqs
+                              [{ context, pos, why = Why_Attribute why, type1 = attrType1, type2 = attrType2}, ...eqs]
 
                     { state with equalities }
                     >> addErErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match" __
@@ -2476,8 +2486,14 @@ solveOneEquality as fn Equality, ERState: ERState =
                     { state with lastUnificationVarId = newTyvarId }
                     >> replaceUnificationVariable head tyvar1 newType __
                     >> replaceUnificationVariable head tyvar2 newType __
-                    >> Dict.for __ both (fn name, (t1 & t2), s: { s with equalities = Equality (Context_AttributeName name context) pos why t1 t1 :: .equalities })
+                    >> Dict.for __ both (fn name, (t1 & t2), s: { s with equalities = [ {context = Context_AttributeName name context, pos, why, type1 = t1, type2 = t1 }, ...(.equalities)] })
 
+
+#                , TA.TypeRecursive usr1 args1 & _:
+#                    todo ""
+#
+#                , _ & TA.TypeRecursive usr2 args2:
+#                    todo ""
 
                 , TA.TypeRecursive usr1 args1 & TA.TypeRecursive usr2 args2:
                     #
@@ -2489,7 +2505,8 @@ solveOneEquality as fn Equality, ERState: ERState =
                         addErError head "TODO wrong TypeRecursive!?" state
                     else
                         newEqualities as [Equality] =
-                            List.indexedMap2 (fn index, a, b: Equality context pos (Why_TypeArgument usr1 index why) a b) args2 args1
+                            List.indexedMap2 (fn index, a, b: { context, pos, why = Why_TypeArgument usr1 index why, type1 = a, type2 = b }) args2 args1
+
                         { state with equalities = List.append .equalities newEqualities }
 
                 , TA.TypeError & _:
@@ -2508,7 +2525,7 @@ solveOneEquality as fn Equality, ERState: ERState =
 solveUnionEquation as fn Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], Maybe TA.TyvarId, Dict Name [TA.RawType], ERState: ERState =
     fn equality, ext1, cbn1, ext2, cbn2, state0:
 
-    Equality context pos why t1 t2 =
+    { with context, pos, why } =
         equality
 
     only1 & both & only2 =
@@ -2531,7 +2548,7 @@ solveUnionEquation as fn Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], May
         else
             equalities =
                 List.indexedFor2 s.equalities args1 args2 fn index, a1, a2, eqs:
-                    [ Equality (Context_ConstructorArgument name index) pos why a1 a2, ...eqs]
+                    [ { context = Context_ConstructorArgument name index, pos, why, type1 = a1, type2 = a2 }, ...eqs]
 
             { s with equalities }
 
@@ -2576,7 +2593,7 @@ solveRecordExt as fn Equality, Bool, TA.TyvarId, Dict Name TA.RawType, Dict Name
     # =>    all of attrs1 must be in attrs2 and match
     #
 
-    Equality context pos why _ _ =
+    { with context, pos, why } =
         equality
 
     newState =
@@ -2586,7 +2603,16 @@ solveRecordExt as fn Equality, Bool, TA.TyvarId, Dict Name TA.RawType, Dict Name
                     state >> addErError equality ("missing attribute " .. name) __
                 , Just type2:
                     a & b = if swapEquality then type2 & type1 else type1 & type2
-                    { state with equalities = Equality (Context_AttributeName name context) pos why a b :: .equalities }
+                    { state with
+                    , equalities = [{
+                        , context = Context_AttributeName name context
+                        , pos
+                        , why
+                        , type1 = a
+                        , type2 = b
+                        }
+                        , ...(.equalities)]
+                    }
 
     replaceUnificationVariable equality tyvar1 (TA.TypeRecord Nothing attrs2) newState
 
@@ -2607,10 +2633,12 @@ replaceUnificationVariable as fn Equality, TA.TyvarId, TA.RawType, ERState: ERSt
     else if occurs tyvarId replacingType then
         addErError equality "circular!?" state
     else
-        zzz = fn (Equality context pos why t1 t2):
-                Equality context pos why
-                    (applySubstitutionToType tyvarId replacingType t1)
-                    (applySubstitutionToType tyvarId replacingType t2)
+        zzz =
+            fn eq:
+            { eq with
+            , type1 = applySubstitutionToType tyvarId replacingType .type1
+            , type2 = applySubstitutionToType tyvarId replacingType .type2
+            }
 
         equalities =
             List.map zzz state.equalities
