@@ -203,7 +203,7 @@ doRawType as fn Env, TA.RawType: TextTree =
     fn env, raw:
 
     try raw as
-        , TA.TypeRecursive usr args:
+        , TA.TypeRecursive usr r args:
             "$Rec: " .. Debug.toHuman usr .. "/" .. Debug.toHuman args .. "$" >> text
 
 

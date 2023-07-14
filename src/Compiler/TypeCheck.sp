@@ -228,6 +228,7 @@ alias Equality = {
     , why as Why
     , type1 as TA.RawType
     , type2 as TA.RawType
+    , expandedRecursives as Set USR
     }
 
 
@@ -270,7 +271,7 @@ newRawType as fn @State: TA.RawType =
 addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
     fn { with context }, pos, why, type1, type2, @state:
 
-    Array.push @state.equalities { context, pos, why, type1, type2 }
+    Array.push @state.equalities { context, pos, why, type1, type2, expandedRecursives = Set.empty }
 
 
 addError as fn Env, Pos, Error_, @State: None =
@@ -391,8 +392,8 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, @State, TA.RawType: TA.RawT
         , TA.TypeUnion maybeId consByName:
             TA.TypeUnion maybeId (Dict.map (fn k, v: List.map rec v) consByName)
 
-        , TA.TypeRecursive usr raw:
-            TA.TypeRecursive usr (List.map rec raw)
+        , TA.TypeRecursive usr raw args:
+            TA.TypeRecursive usr (rec raw) (List.map rec args)
 
         , TA.TypeVar id:
             try Dict.get id tyvarIdsToType as
@@ -457,8 +458,8 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
             TA.TypeUnion Nothing (Dict.map (fn name, v: List.map rec v) consByName)
 
 
-        , CA.TypeRecursive pos usr args:
-            TA.TypeRecursive usr (List.map rec args)
+        , CA.TypeRecursive pos aliasDef args:
+            TA.TypeRecursive aliasDef.usr (rec aliasDef.type) (List.map rec args)
 
 
         , CA.TypeAnnotationVariable pos name:
@@ -1957,7 +1958,7 @@ makeInferenceAndCheckError as fn Env, (Pos & Context & Error_): Error =
 
 
 makeResolutionError as fn Env, CA.Module, (Equality & Text): Error =
-    fn env, caModule, { context, pos, why, type1, type2 } & message:
+    fn env, caModule, { with context, pos, why, type1, type2 } & message:
 
     Error.Simple env.errorModule pos
         [
@@ -2115,14 +2116,14 @@ expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: 
 
 
 
-makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
-    fn allowRecursion, requiredUsr, requiringType:
+makeTypeRecursive as fn Bool, CA.AliasDef, CA.RawType: Result {} CA.RawType =
+    fn allowRecursion, requiredDef, requiringType:
 
     rec as fn CA.RawType: Result {} CA.RawType =
-        makeTypeRecursive allowRecursion requiredUsr __
+        makeTypeRecursive allowRecursion requiredDef __
 
     recAllow as fn CA.RawType: Result {} CA.RawType =
-        makeTypeRecursive True requiredUsr __
+        makeTypeRecursive True requiredDef __
 
     try requiringType as
         , CA.TypeNamed pos usr args:
@@ -2130,12 +2131,12 @@ makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
             List.mapRes rec args
             >> onOk fn fixedArgs:
 
-            if requiredUsr /= usr then
+            if requiredDef.usr /= usr then
                 CA.TypeNamed pos usr fixedArgs
                 >> Ok
 
             else if allowRecursion then
-                CA.TypeRecursive pos requiredUsr fixedArgs
+                CA.TypeRecursive pos requiredDef fixedArgs
                 >> Ok
 
             else
@@ -2172,16 +2173,20 @@ makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
 
 
 
-
 toFixedType as fn ByUsr CA.AliasDef, USR & USR: Maybe (ByUsr CA.AliasDef) =
     fn aliases, required & requiring:
+
+    requiredDef =
+        try Dict.get required aliases as
+            , Just a: a
+            , Nothing: bug "no required alias =("
 
     requiringDef =
         try Dict.get requiring aliases as
             , Just a: a
-            , Nothing: bug "no alias =("
+            , Nothing: bug "no requiring alias =("
 
-    try makeTypeRecursive False required requiringDef.type as
+    try makeTypeRecursive False requiredDef requiringDef.type as
         , Ok fixedType:
             aliases
             >> Dict.insert requiring { requiringDef with type = fixedType } __
@@ -2331,11 +2336,6 @@ solveUniquenessConstraints as fn Env, [UnivarEquality], @State, Dict UnivarId Un
 # Equalities resolution
 #
 #
-alias EREnv = {
-    , expandedRecursives as Set USR
-    }
-
-
 alias ERState =
     {
     , equalities as [Equality]
@@ -2364,19 +2364,19 @@ addErErrorIf as fn Bool, Equality, Text, ERState: ERState =
 compareParTypes as fn Equality, Int, TA.ParType, TA.ParType, ERState: ERState =
     fn currentEquality, index, p1, p2, state0:
 
-    { with context, pos, why } =
+    { with context, pos, why, expandedRecursives } =
         currentEquality
 
     try p1 & p2 as
         , TA.ParRe raw1 & TA.ParRe raw2:
             eq =
-                { context, pos, why = Why_FunctionInput index why, type1 = raw1, type2 = raw2 }
+                { expandedRecursives, context, pos, why = Why_FunctionInput index why, type1 = raw1, type2 = raw2 }
 
             { state0 with equalities = [eq, ...(.equalities)] }
 
         , TA.ParSp full1 & TA.ParSp full2:
             eq =
-                { context, pos, why = Why_FunctionInput index why, type1 = full1.raw, type2 = full2.raw }
+                { context, pos, why = Why_FunctionInput index why, type1 = full1.raw, type2 = full2.raw, expandedRecursives }
 
             state1 =
                 try uniCanBeCastTo { given = full1.uni, required = full2.uni } as
@@ -2406,7 +2406,7 @@ solveEqualities as fn ERState: ERState =
 solveOneEquality as fn Equality, ERState: ERState =
     fn head, state:
 
-              { context, pos, why, type1, type2 } =
+              { expandedRecursives, context, pos, why, type1, type2 } =
                   head
 
               try type1 & type2 as
@@ -2436,7 +2436,7 @@ solveOneEquality as fn Equality, ERState: ERState =
 
                     else
                         outEquality as Equality =
-                            { context, pos, why = Why_FunctionOutput why, type1 = out1.raw, type2 = out2.raw }
+                            { head with why = Why_FunctionOutput why, type1 = out1.raw, type2 = out2.raw }
 
                         s1 =
                             # TODO there is not much guarantee which one is given and which one is required
@@ -2459,7 +2459,7 @@ solveOneEquality as fn Equality, ERState: ERState =
 
                     equalities as [Equality] =
                         state.equalities >> Dict.for __ both fn attrName, (attrType1 & attrType2), eqs:
-                              [{ context, pos, why = Why_Attribute why, type1 = attrType1, type2 = attrType2}, ...eqs]
+                              [{ head with why = Why_Attribute why, type1 = attrType1, type2 = attrType2}, ...eqs]
 
                     { state with equalities }
                     >> addErErrorIf (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match" __
@@ -2486,28 +2486,31 @@ solveOneEquality as fn Equality, ERState: ERState =
                     { state with lastUnificationVarId = newTyvarId }
                     >> replaceUnificationVariable head tyvar1 newType __
                     >> replaceUnificationVariable head tyvar2 newType __
-                    >> Dict.for __ both (fn name, (t1 & t2), s: { s with equalities = [ {context = Context_AttributeName name context, pos, why, type1 = t1, type2 = t1 }, ...(.equalities)] })
+                    >> Dict.for __ both (fn name, (t1 & t2), s: { s with equalities = [ { expandedRecursives, context = Context_AttributeName name context, pos, why, type1 = t1, type2 = t1 }, ...(.equalities)] })
 
 
-#                , TA.TypeRecursive usr1 args1 & _:
-#                    todo ""
-#
-#                , _ & TA.TypeRecursive usr2 args2:
-#                    todo ""
-
-                , TA.TypeRecursive usr1 args1 & TA.TypeRecursive usr2 args2:
+                , TA.TypeRecursive usr1 raw1 args1 & TA.TypeRecursive usr2 raw2 args2:
                     #
-                    # TODO THIS IS MAKING RECURSIVE TYPES NOMINAL INSTEAD OF STRUCTURAL
-                    #
-                    # We should probably replace the `usr` with the full, "fix"ed RawType, and unify that.
+                    # NOTE: Recursion is nominal, not structural.
+                    # Fot the time being I hope I can get away with it.
                     #
                     if usr1 /= usr2 then
-                        addErError head "TODO wrong TypeRecursive!?" state
+                        addErError head "wrong TypeRecursive!?" state
                     else
+                        # TODO do I actually need to compare args? I don't have the brainpower to think about this now. T_T
                         newEqualities as [Equality] =
-                            List.indexedMap2 (fn index, a, b: { context, pos, why = Why_TypeArgument usr1 index why, type1 = a, type2 = b }) args2 args1
+                            List.indexedMap2 (fn index, a, b: { expandedRecursives, context, pos, why = Why_TypeArgument usr1 index why, type1 = a, type2 = b }) args2 args1
 
                         { state with equalities = List.append .equalities newEqualities }
+
+
+                , TA.TypeRecursive usr1 raw1 args1 & _:
+                    solveTypeRecursive head usr1 raw1 type2 state
+
+
+                , _ & TA.TypeRecursive usr2 raw2 args2:
+                    solveTypeRecursive head usr2 raw2 type1 state
+
 
                 , TA.TypeError & _:
                     state
@@ -2520,6 +2523,20 @@ solveOneEquality as fn Equality, ERState: ERState =
                     >> addErError head "types are incompatible1" __
 
 
+solveTypeRecursive as fn Equality, USR, TA.RawType, TA.RawType, ERState: ERState =
+    fn eq, recUsr, recType, otherType, state:
+
+    if Set.member recUsr eq.expandedRecursives then
+        addErError eq "(recursive) types are incompatible" state
+    else
+        newEq =
+            { eq with
+            , expandedRecursives = Set.insert recUsr .expandedRecursives
+            , type1 = recType
+            , type2 = otherType
+            }
+
+        { state with equalities = [ newEq, ...(.equalities) ] }
 
 
 solveUnionEquation as fn Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], Maybe TA.TyvarId, Dict Name [TA.RawType], ERState: ERState =
@@ -2548,7 +2565,7 @@ solveUnionEquation as fn Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], May
         else
             equalities =
                 List.indexedFor2 s.equalities args1 args2 fn index, a1, a2, eqs:
-                    [ { context = Context_ConstructorArgument name index, pos, why, type1 = a1, type2 = a2 }, ...eqs]
+                    [ { equality with context = Context_ConstructorArgument name index, type1 = a1, type2 = a2 }, ...eqs]
 
             { s with equalities }
 
@@ -2604,10 +2621,9 @@ solveRecordExt as fn Equality, Bool, TA.TyvarId, Dict Name TA.RawType, Dict Name
                 , Just type2:
                     a & b = if swapEquality then type2 & type1 else type1 & type2
                     { state with
-                    , equalities = [{
+                    , equalities = [
+                        { equality with
                         , context = Context_AttributeName name context
-                        , pos
-                        , why
                         , type1 = a
                         , type2 = b
                         }
@@ -2663,7 +2679,7 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         , TA.TypeOpaque usr args: List.any rec args
         , TA.TypeUnion _ consByName: Dict.any (fn k, v: List.any rec v) consByName
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
-        , TA.TypeRecursive usr args: False # It's recursive, so we can assume it was done already?
+        , TA.TypeRecursive usr raw args: False # It's recursive, so we can assume it was done already?
         , TA.TypeError: False
 
 
