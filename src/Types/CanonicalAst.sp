@@ -7,7 +7,7 @@ union RawType =
     , TypeRecord Pos (Dict Name RawType)
     , TypeAnnotationVariable Pos Name
     #
-    , TypeRecursive Pos AliasDef [RawType]
+    , TypeRecursive Pos USR [RawType]
     # This is used as a placeholder when there is an error and a type can't be determined
     # It's useful to avoid piling up errors (I think)
     , TypeError Pos

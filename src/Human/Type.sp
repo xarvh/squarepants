@@ -203,7 +203,7 @@ doRawType as fn Env, TA.RawType: TextTree =
     fn env, raw:
 
     try raw as
-        , TA.TypeRecursive usr r args:
+        , TA.TypeRecursive usr args:
             "$Rec: " .. Debug.toHuman usr .. "/" .. Debug.toHuman args .. "$" >> text
 
 
@@ -222,9 +222,8 @@ doRawType as fn Env, TA.RawType: TextTree =
             >> Text.join " " __
             >> text
 
-        , TA.TypeOpaque usr pars:
-            # TODO pars!!!
-            Debug.toHuman usr
+        , TA.TypeOpaque usr args:
+            Debug.toHuman usr .. " " .. (List.map Debug.toHuman args >> Text.join " " __)
             >> text
 
         , TA.TypeFn parTypes full:

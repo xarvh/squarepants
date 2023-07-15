@@ -9,7 +9,7 @@ union RawType =
     , TypeVar TyvarId
     , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
-    , TypeRecursive USR RawType [RawType]
+    , TypeRecursive USR [RawType]
     , TypeError
 
 
@@ -214,8 +214,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 , Just replacement: replacement
                 , Nothing: TypeUnion (Just id) (Dict.map (fn k, v: List.map rec v) attrs)
 
-        , TypeRecursive usr t args:
-            TypeRecursive usr (rec t) (List.map rec args)
+        , TypeRecursive usr args:
+            TypeRecursive usr (List.map rec args)
 
         , TypeError:
             TypeError
@@ -367,7 +367,7 @@ typeTyvars as fn RawType: Dict TyvarId None =
         , TypeRecord (Just id) attrs: Dict.ofOne id None >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         , TypeUnion Nothing consByName: addConsTyvars Dict.empty consByName
         , TypeUnion (Just id) consByName: addConsTyvars (Dict.ofOne id None) consByName
-        , TypeRecursive usr raw args: Dict.empty # It's recursive, so we can assume it was done already?
+        , TypeRecursive usr args: Dict.empty # It's recursive, so we can assume it was done already?
         , TypeError: Dict.empty
         , TypeFn ins out:
             typeTyvars out.raw
@@ -382,7 +382,7 @@ typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
         , TypeOpaque usr args: List.any (typeAllowsFunctions testId __) args
         , TypeUnion _ consByName: Dict.any (fn k, v: List.any (typeAllowsFunctions testId __) v) consByName
         , TypeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
-        , TypeRecursive _ _ _: False # It's recursive, so we can assume it was done already?
+        , TypeRecursive _ _: False # It's recursive, so we can assume it was done already?
         , TypeError: True
 
 
@@ -435,8 +435,8 @@ normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
         , TypeVar id:
             TypeVar (recId id)
 
-        , TypeRecursive usr raw args:
-            TypeRecursive usr (rec raw) (List.map rec args)
+        , TypeRecursive usr args:
+            TypeRecursive usr (List.map rec args)
 
         , TypeError:
             TypeError

@@ -392,8 +392,8 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, @State, TA.RawType: TA.RawT
         , TA.TypeUnion maybeId consByName:
             TA.TypeUnion maybeId (Dict.map (fn k, v: List.map rec v) consByName)
 
-        , TA.TypeRecursive usr raw args:
-            TA.TypeRecursive usr (rec raw) (List.map rec args)
+        , TA.TypeRecursive usr args:
+            TA.TypeRecursive usr (List.map rec args)
 
         , TA.TypeVar id:
             try Dict.get id tyvarIdsToType as
@@ -458,8 +458,8 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
             TA.TypeUnion Nothing (Dict.map (fn name, v: List.map rec v) consByName)
 
 
-        , CA.TypeRecursive pos aliasDef args:
-            TA.TypeRecursive aliasDef.usr (rec aliasDef.type) (List.map rec args)
+        , CA.TypeRecursive pos usr args:
+            TA.TypeRecursive usr (List.map rec args)
 
 
         , CA.TypeAnnotationVariable pos name:
@@ -1818,10 +1818,14 @@ doRootDefinition as fn @Int, @Array Error, CA.Module, Env, CA.ValueDef: TA.Value
         , lastUnificationVarId = cloneUni @state.lastUnificationVarId
         }
 
+    erEnv as EREnv = {
+        , expandedAliases = env.expandedAliases
+        }
+
     # Solve equality constraints (ie, tyvars)
     erStateF =
         erState0
-        >> solveEqualities
+        >> solveEqualities erEnv __
         >> fn st: List.for st st.equalities fn eq, s: addErError eq "unresolved" s
 
     Debug.benchStop "equalities resolution"
@@ -2116,14 +2120,14 @@ expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: 
 
 
 
-makeTypeRecursive as fn Bool, CA.AliasDef, CA.RawType: Result {} CA.RawType =
-    fn allowRecursion, requiredDef, requiringType:
+makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
+    fn allowRecursion, required, requiringType:
 
     rec as fn CA.RawType: Result {} CA.RawType =
-        makeTypeRecursive allowRecursion requiredDef __
+        makeTypeRecursive allowRecursion required __
 
     recAllow as fn CA.RawType: Result {} CA.RawType =
-        makeTypeRecursive True requiredDef __
+        makeTypeRecursive True required __
 
     try requiringType as
         , CA.TypeNamed pos usr args:
@@ -2131,12 +2135,12 @@ makeTypeRecursive as fn Bool, CA.AliasDef, CA.RawType: Result {} CA.RawType =
             List.mapRes rec args
             >> onOk fn fixedArgs:
 
-            if requiredDef.usr /= usr then
+            if required /= usr then
                 CA.TypeNamed pos usr fixedArgs
                 >> Ok
 
             else if allowRecursion then
-                CA.TypeRecursive pos requiredDef fixedArgs
+                CA.TypeRecursive pos required fixedArgs
                 >> Ok
 
             else
@@ -2176,17 +2180,12 @@ makeTypeRecursive as fn Bool, CA.AliasDef, CA.RawType: Result {} CA.RawType =
 toFixedType as fn ByUsr CA.AliasDef, USR & USR: Maybe (ByUsr CA.AliasDef) =
     fn aliases, required & requiring:
 
-    requiredDef =
-        try Dict.get required aliases as
-            , Just a: a
-            , Nothing: bug "no required alias =("
-
     requiringDef =
         try Dict.get requiring aliases as
             , Just a: a
             , Nothing: bug "no requiring alias =("
 
-    try makeTypeRecursive False requiredDef requiringDef.type as
+    try makeTypeRecursive False required requiringDef.type as
         , Ok fixedType:
             aliases
             >> Dict.insert requiring { requiringDef with type = fixedType } __
@@ -2336,6 +2335,11 @@ solveUniquenessConstraints as fn Env, [UnivarEquality], @State, Dict UnivarId Un
 # Equalities resolution
 #
 #
+alias EREnv = {
+    , expandedAliases as ByUsr ExpandedAlias
+    }
+
+
 alias ERState =
     {
     , equalities as [Equality]
@@ -2390,8 +2394,8 @@ compareParTypes as fn Equality, Int, TA.ParType, TA.ParType, ERState: ERState =
             addErError { currentEquality with why = (Why_FunctionInput index why) } "recycling does not match" state0
 
 
-solveEqualities as fn ERState: ERState =
-    fn oldState:
+solveEqualities as fn EREnv, ERState: ERState =
+    fn env, oldState:
 
     try oldState.equalities as
         , []:
@@ -2399,12 +2403,12 @@ solveEqualities as fn ERState: ERState =
 
         , [head, ...tail]:
             { oldState with equalities = tail }
-            >> solveOneEquality head __
-            >> solveEqualities
+            >> solveOneEquality env head __
+            >> solveEqualities env __
 
 
-solveOneEquality as fn Equality, ERState: ERState =
-    fn head, state:
+solveOneEquality as fn EREnv, Equality, ERState: ERState =
+    fn env, head, state:
 
               { expandedRecursives, context, pos, why, type1, type2 } =
                   head
@@ -2489,7 +2493,7 @@ solveOneEquality as fn Equality, ERState: ERState =
                     >> Dict.for __ both (fn name, (t1 & t2), s: { s with equalities = [ { expandedRecursives, context = Context_AttributeName name context, pos, why, type1 = t1, type2 = t1 }, ...(.equalities)] })
 
 
-                , TA.TypeRecursive usr1 raw1 args1 & TA.TypeRecursive usr2 raw2 args2:
+                , TA.TypeRecursive usr1 args1 & TA.TypeRecursive usr2 args2:
                     #
                     # NOTE: Recursion is nominal, not structural.
                     # Fot the time being I hope I can get away with it.
@@ -2504,31 +2508,49 @@ solveOneEquality as fn Equality, ERState: ERState =
                         { state with equalities = List.append .equalities newEqualities }
 
 
-                , TA.TypeRecursive usr1 raw1 args1 & _:
-                    solveTypeRecursive head usr1 raw1 type2 state
+                , TA.TypeRecursive usr1 args1 & _:
+                    solveTypeRecursive env head usr1 args1 type2 state
 
 
-                , _ & TA.TypeRecursive usr2 raw2 args2:
-                    solveTypeRecursive head usr2 raw2 type1 state
+                , _ & TA.TypeRecursive usr2 args2:
+                    solveTypeRecursive env head usr2 args2 type1 state
 
 
                 , TA.TypeError & _:
                     state
 
+
                 , _ & TA.TypeError:
                     state
 
+
                 , _:
-                    state
-                    >> addErError head "types are incompatible1" __
+                    addErError head "types are incompatible1" state
 
 
-solveTypeRecursive as fn Equality, USR, TA.RawType, TA.RawType, ERState: ERState =
-    fn eq, recUsr, recType, otherType, state:
+solveTypeRecursive as fn EREnv, Equality, USR, [TA.RawType], TA.RawType, ERState: ERState =
+    fn env, eq, recUsr, recArgs, otherType, state:
 
     if Set.member recUsr eq.expandedRecursives then
         addErError eq "(recursive) types are incompatible" state
     else
+
+        recAlias as ExpandedAlias =
+            try Dict.get recUsr env.expandedAliases as
+                , Nothing: bug "no expandedAlias!"
+                , Just a: a
+
+        argTypeByTyvarId =
+            List.for2 Dict.empty recAlias.pars recArgs Dict.insert
+
+        subsAsFn as TA.SubsAsFns = {
+            , ty = Dict.get __ argTypeByTyvarId
+            , uni = fn _: Nothing
+            }
+
+        recType =
+            TA.resolveRaw subsAsFn recAlias.type
+
         newEq =
             { eq with
             , expandedRecursives = Set.insert recUsr .expandedRecursives
@@ -2679,7 +2701,7 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         , TA.TypeOpaque usr args: List.any rec args
         , TA.TypeUnion _ consByName: Dict.any (fn k, v: List.any rec v) consByName
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
-        , TA.TypeRecursive usr raw args: False # It's recursive, so we can assume it was done already?
+        , TA.TypeRecursive usr args: False # It's recursive, so we can assume it was done already?
         , TA.TypeError: False
 
 
