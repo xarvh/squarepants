@@ -107,6 +107,12 @@ p as Pos =
     Pos.T
 
 
+# Same as core type, but has Pos.T rather than Pos.N
+# Needed because tests will produce Pos.T!
+caNumber as CA.RawType =
+    CA.TypeNamed Pos.T (Meta.spCoreUSR "Number") []
+
+
 valueDef as fn Name, CA.Expression: CA.ValueDef =
     fn name, body:
 
@@ -213,7 +219,7 @@ lists as Test =
                 , uni = Imm
                 , body = CA.Variable p (TH.rootLocal "l")
                 , native = False
-                , pattern = CA.PatternAny p { maybeName = Just "l", maybeAnnotation = (TH.caBool >> CoreTypes.listType >> Just) }
+                , pattern = CA.PatternAny p { maybeName = Just "l", maybeAnnotation = (CoreTypes.boolType >> CoreTypes.listType >> Just) }
                 , tyvars = Dict.empty
                 , univars = Dict.empty
 
@@ -280,8 +286,8 @@ tuples as Test =
                       , maybeName = Just "a"
                       , maybeAnnotation =
                          Dict.empty
-                            >> Dict.insert "first" TH.caNumber __
-                            >> Dict.insert "second" TH.caNumber __
+                            >> Dict.insert "first" caNumber __
+                            >> Dict.insert "second" caNumber __
                             >> CA.TypeRecord p __
                             >> Just
                       }
