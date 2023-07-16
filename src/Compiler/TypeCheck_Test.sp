@@ -51,6 +51,19 @@ tyvar as fn Int: TA.RawType =
     TH.taTyvar
 
 
+freeTyvars as fn [TA.TyvarId]: Dict TA.TyvarId TA.Tyvar =
+    fn ids:
+
+    List.for Dict.empty ids fn id, d:
+        Dict.insert id {
+            , originalName = ""
+            , allowFunctions = True
+            , generalizedAt = Pos.G
+            , generalizedFor = RefLocal ""
+            }
+            d
+
+
 freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
     Dict.empty
@@ -58,7 +71,6 @@ freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
         Dict.insert id
               {
               , originalName
-              #, annotatedAt = Pos.T
               , allowFunctions = True
               , generalizedAt = Pos.G
               , generalizedFor = RefLocal ""
@@ -217,7 +229,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = TA.TypeFn [tyvar 1 >> toImm >> TA.ParSp] (toUni TH.taNumber)
-                , freeTyvars = Dict.empty
+                , freeTyvars = freeTyvars [1]
                 }
             )
         , codeTest "[reg] Multiple arguments are correctly inferred"
@@ -246,10 +258,22 @@ functions as Test =
             (infer "on")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
-                , type = TH.taBool
+                , freeTyvars = freeTyvars [1]
+                , type = TH.taList (tyvar 1)
                 }
             )
+        , codeTest
+            # I don't know what's wrong here, but it's very wrong
+            """
+            [reg] Something's wrong with tyvars
+            """
+            """
+            listCons as fn item: item =
+                fn item:
+                []
+            """
+            (infer "listCons")
+            (Test.errorContains ["item"])
         ]
 
 
@@ -415,7 +439,7 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
+                , freeTyvars = freeTyvars [1]
                 , type =
                     TA.TypeExact
                         (TH.localType "X")
@@ -491,7 +515,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
+                , freeTyvars = freeTyvars [3]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord (Just 1)
@@ -510,6 +534,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
+                # TODO Should I have free tyvars 1 and 2 here?
                 , freeTyvars = Dict.empty
                 , type =
                     TA.TypeFn
@@ -562,7 +587,9 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber) >> fn re:
-                    { freeTyvars = Dict.empty
+                    {
+                    # TODO should I have free tyvars here?
+                    , freeTyvars = Dict.empty
                     , type = TH.taFunction [re] re
                     }
                 )
@@ -590,7 +617,8 @@ records as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "first" (tyvar 2)) >> fn re:
-                    { freeTyvars = Dict.empty
+                    # TODO tyvar 1 too?
+                    { freeTyvars = freeTyvars [2]
                     , type = TH.taFunction [re] (tyvar 2)
                     }
                 )
@@ -665,7 +693,7 @@ patterns as Test =
             """
             (infer "identityFunction")
             (Test.isOkAndEqualTo
-                { freeTyvars = Dict.empty
+                { freeTyvars = freeTyvars [1]
                 , type = TH.taFunction [tyvar 1] (tyvar 1)
                 }
             )
@@ -681,7 +709,7 @@ patterns as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                { freeTyvars = Dict.empty
+                { freeTyvars = freeTyvars [1]
                 , type =
                     TH.taFunction
                         [TH.taList (tyvar 1)]
@@ -701,7 +729,7 @@ patterns as Test =
             (infer "x")
             #
             (Test.isOkAndEqualTo
-                { freeTyvars = Dict.empty
+                { freeTyvars = freeTyvars [1]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord Nothing (Dict.fromList [ ( "first" & tyvar 1 ) ])]
