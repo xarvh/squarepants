@@ -161,7 +161,7 @@ list as fn { open as Text, separator as Text, close as Text, items as [TextTree]
         , _:
             [
             , [text open]
-            , items >> List.map (fn c: rowOrHead separator [c]) __
+            , List.map (fn c: rowOrHead separator [c]) items
             , [text << " " .. close]
             ]
             >> List.concat
@@ -182,12 +182,25 @@ tyvarIdToText as fn Env, TA.TyvarId: Text =
     Text.fromNumber id
 
 
-usrToText as fn Env, USR: Text =
-    fn env, usr:
+sourceToText as fn Meta.Source: Text =
+    fn source:
+    try source as
+        , Meta.Core: "core:"
+        , Meta.Posix: "posix:"
+        , Meta.Browser: "browser:"
+        , Meta.SourceDirId text: text .. ":"
 
-    USR umr name = usr
+
+umrToText as fn Env, UMR: Text =
+    fn env, UMR source modulePath:
+    sourceToText source .. modulePath
+
+
+usrToText as fn Env, USR: Text =
+    fn env, USR umr name:
+
     # TODO use display umr if name is not in modules.sp
-    name
+    umrToText env umr .. "." .. name
 
 
 uniToText as fn Env, Uniqueness: Text =
@@ -204,8 +217,12 @@ doRawType as fn Env, TA.RawType: TextTree =
 
     try raw as
         , TA.TypeRecursive usr args:
-            "$Rec: " .. Debug.toHuman usr .. "/" .. Debug.toHuman args .. "$" >> text
-
+            list {
+                , open = "$Rec: " .. usrToText env usr
+                , separator = ","
+                , close = "$"
+                , items = List.map (doRawType env __) args
+                }
 
         , TA.TypeUnion maybeExt cons:
             #
