@@ -252,7 +252,7 @@ functions as Test =
 
         , codeTest
             """
-            SKIP because it was broken already!? [reg] on is missing tyvars?
+            [reg] on is missing tyvars?
             """
             """
             andThen as [a] = []
@@ -269,7 +269,7 @@ functions as Test =
         , codeTest
             # I don't know what's wrong here, but it's very wrong
             """
-            [reg] Something's wrong with tyvars
+            [reg] free tyvar was compatible with constructor
             """
             """
             listCons as fn item: item =
@@ -277,7 +277,7 @@ functions as Test =
                 []
             """
             (infer "listCons")
-            (Test.errorContains ["item"])
+            (Test.errorContains ["Nil"])
         ]
 
 
