@@ -42,7 +42,7 @@ typeToHuman as fn Env, TA.RawType: Text =
 
     raw
     >> Human/Type.doRawType {} __
-    >> Human/Type.display "" __
+    >> TT.toText "" __
 
 
 
@@ -752,8 +752,9 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
                         fullTypeError
 
                     , Just var:
+#                        log "VARIABLE" { var }
                         t = generalize env pos ref var @state
-                        #log ("GEN---> " .. toHuman ref) { var, type = t }
+#                        log ("GEN---> " .. toHuman ref) { var, uni = t.uni, raw = typeToHuman env t.raw }
                         t
 
 

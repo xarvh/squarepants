@@ -41,7 +41,7 @@ outToHuman as fn Out: Text =
 
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
-    , "  type = " .. Human/Type.display "" (Human/Type.doRawType {} out.type)
+    , "  type = " .. TT.toText "" (Human/Type.doRawType {} out.type)
     ]
     >> Text.join "\n" __
 
@@ -251,22 +251,6 @@ functions as Test =
             (Test.errorContains ["RecyclingDoesNotMatch"])
 
         , codeTest
-            """
-            [reg] on is missing tyvars?
-            """
-            """
-            andThen as [a] = []
-
-            on = andThen
-            """
-            (infer "on")
-            (Test.isOkAndEqualTo
-                {
-                , freeTyvars = freeTyvars [1]
-                , type = TH.taList (tyvar 1)
-                }
-            )
-        , codeTest
             # I don't know what's wrong here, but it's very wrong
             """
             [reg] free tyvar was compatible with constructor
@@ -447,6 +431,22 @@ variableTypes as Test =
             """
             (infer "r")
             Test.isOk
+        , codeTest
+            """
+            [reg] on is missing tyvars
+            """
+            """
+            andThen as [a] = []
+
+            on = andThen
+            """
+            (infer "on")
+            (Test.isOkAndEqualTo
+                {
+                , freeTyvars = freeTyvars [1]
+                , type = TH.taList (tyvar 1)
+                }
+            )
         ]
 
 

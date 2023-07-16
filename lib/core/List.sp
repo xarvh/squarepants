@@ -447,3 +447,16 @@ circularPairs as fn [a]: [a & a] =
         , []: []
         , [head, ...tail]: rec head list []
 
+
+intersperse as fn a, [a], [a]: [a] =
+    fn separator, items, acc:
+
+    try items as
+        , []:
+            List.reverse acc
+
+        , [last]:
+            List.reverse (last :: acc)
+
+        , head :: tail:
+            intersperse separator tail (separator :: head :: acc)
