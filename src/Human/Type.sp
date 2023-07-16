@@ -84,8 +84,10 @@ doRawType as fn Env, TA.RawType: TextTree =
 
 
         , TA.TypeOpaque usr args:
-            Debug.toHuman usr .. " " .. (List.map Debug.toHuman args >> Text.join " " __)
-            >> TT.text
+            TT.rowOrIndented
+                (usrToText env usr)
+                (List.map (doRawType env __) args)
+
 
         , TA.TypeFn parTypes full:
             #
@@ -96,11 +98,16 @@ doRawType as fn Env, TA.RawType: TextTree =
             #     , B
             #     : C
             #
-            [
-            , TT.separatedBy "," (List.map (doParType env __) parTypes)
-            , TT.rowOrIndented ":" [doFullType env full]
-            ]
-            >> TT.rowOrIndented "fn" __
+            TT.rowOrIndented "" [
+                , TT.list {
+                    , open = "fn"
+                    , separator = ","
+                    , close = ":"
+                    , items = List.map (doParType env __) parTypes
+                    }
+                , doFullType env full
+                ]
+
 
         , TA.TypeVar tyvarId:
             tyvarId

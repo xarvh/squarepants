@@ -131,6 +131,7 @@ separatedBy as fn Text, [TextTree]: TextTree =
             >> Block NotIndented __
 
 
+# TODO The fact that I need this function is a code smell
 addSeparator as fn Text, TextTree: TextTree =
     fn separator, tree:
 
