@@ -128,17 +128,13 @@ cons as Name =
     "Cons"
 
 
-listCons as fn item: Dict Name [item] =
+listType as fn CA.RawType: CA.RawType =
     fn item:
 
     Dict.empty
     >> Dict.insert nil [] __
     >> Dict.insert cons [ item, CA.TypeNamed p listUsr [ item ] ] __
-
-
-listType as fn CA.RawType: CA.RawType =
-    fn item:
-    CA.TypeUnion p (listCons item)
+    >> CA.TypeUnion p __
 
 
 listDef as CA.AliasDef =
