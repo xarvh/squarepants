@@ -208,19 +208,32 @@ doRawType as fn Env, TA.RawType: TextTree =
 
 
         , TA.TypeUnion maybeExt cons:
-            [
-            , "<"
-            , try maybeExt as
-                  , Nothing: ""
-                  , Just ext: Text.fromNumber ext .. " with"
-            , cons
-                >> Dict.toList
-                >> List.map (fn n & args: n .. " " .. (List.map Debug.toHuman args >> Text.join " " __)) __
-                >> Text.join ", " __
-            , ">"
-            ]
-            >> Text.join " " __
-            >> text
+            #
+            #   < ext with A x y, B z, C >
+            #
+            #   < ext with
+            #   , A x y
+            #   , B z
+            #   , C
+            #   >
+            #
+            doCons as fn (Name & [TA.RawType]): TextTree =
+                fn (name & args):
+                rowOrHead name (List.map (doRawType env __) args)
+
+            open =
+                try maybeExt as
+                    , Just tyvarId: "< " .. tyvarIdToText env tyvarId .. " with"
+                    , Nothing: "<"
+
+            list
+                {
+                , open
+                , separator = ","
+                , close = ">"
+                , items = cons >> Dict.toList >> List.map doCons __
+                }
+
 
         , TA.TypeOpaque usr args:
             Debug.toHuman usr .. " " .. (List.map Debug.toHuman args >> Text.join " " __)
@@ -277,6 +290,9 @@ doRawType as fn Env, TA.RawType: TextTree =
 
         , TA.TypeError:
             text "???"
+
+        , wtf:
+            text << "###" .. Debug.toHuman wtf .. "###"
 
 
 doFullType as fn Env, TA.FullType: TextTree =
