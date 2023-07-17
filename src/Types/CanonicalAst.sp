@@ -62,12 +62,15 @@ union Parameter =
     , ParameterPlaceholder Name Int
 
 
+alias Annotation = {
+    , raw as RawType
+    , tyvars as Dict Name { allowFunctions as Bool }
+    , univars as Dict UnivarId None
+    }
+
+
 union Pattern =
-    , PatternAny Pos
-        {
-        , maybeName as Maybe Text
-        , maybeAnnotation as Maybe RawType
-        }
+    , PatternAny Pos (Maybe Name) (Maybe Annotation)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
     , PatternConstructor Pos Name [Pattern]
@@ -79,13 +82,6 @@ union PatternCompleteness =
     , Complete
 
 
-alias Tyvar =
-    {
-    #, annotatedAt as Pos
-    , allowFunctions as Bool
-    }
-
-
 alias ValueDef =
     {
     , uni as Uniqueness
@@ -94,9 +90,6 @@ alias ValueDef =
     # TODO: have maybeBody instead of native?
     , native as Bool
     , body as Expression
-
-    , tyvars as Dict Name Tyvar
-    , univars as Dict UnivarId None
 
     # Do we need these here?
     , directTypeDeps as TypeDeps
@@ -207,7 +200,7 @@ typeUnivars as fn RawType: Dict UnivarId None =
 patternPos as fn Pattern: Pos =
     fn pa:
     try pa as
-        , PatternAny p _: p
+        , PatternAny p _ _: p
         , PatternLiteralText p _: p
         , PatternLiteralNumber p _: p
         , PatternConstructor p _ _: p
@@ -217,19 +210,19 @@ patternPos as fn Pattern: Pos =
 patternTyvars as fn Pattern: Dict Name Pos =
     fn pa:
     try pa as
-        , PatternAny _ { maybeName = _, maybeAnnotation = Just t }: typeTyvars t
-        , PatternAny _ { maybeName = _, maybeAnnotation = Nothing }: Dict.empty
+        , PatternAny _ _ (Just ann): typeTyvars ann.raw
+        , PatternAny _ _ Nothing: Dict.empty
         , PatternLiteralText _ _: Dict.empty
         , PatternLiteralNumber _ _: Dict.empty
         , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
         , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
 
 
-patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe RawType } =
+patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe Annotation } =
     fn p:
     try p as
-        , PatternAny pos { maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
-        , PatternAny pos { maybeName = Just n, maybeAnnotation }: Dict.ofOne n { pos, maybeAnnotation }
+        , PatternAny pos Nothing _: Dict.empty
+        , PatternAny pos (Just n) maybeAnnotation: Dict.ofOne n { pos, maybeAnnotation }
         , PatternLiteralNumber pos _: Dict.empty
         , PatternLiteralText pos _: Dict.empty
         , PatternConstructor pos name ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join a __)

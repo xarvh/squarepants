@@ -619,6 +619,8 @@ inferUni as fn Uniqueness, Uniqueness: Uniqueness =
 doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     fn nameToRef, env, def, @state:
 
+    log "DEf" def
+
     (freeUnivars as Dict UnivarId TA.Univar) & (annotatedUnivarsByOriginalId as Dict UnivarId UnivarId) =
         Dict.empty & env.annotatedUnivarsByOriginalId
         >> Dict.for __ def.univars fn originalId, _, (fus & aus):
@@ -946,6 +948,8 @@ inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & T
         List.indexedFor env caPars fn index, par, envX:
             typedPar & parType & envX1 =
                 inferParam envX index par @state
+
+            log "PAR" { typedPar , parType  }
 
             Array.push @typedPars typedPar
             Array.push @parTypes parType

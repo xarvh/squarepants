@@ -227,7 +227,7 @@ functions as Test =
                 }
             )
         , codeTest
-            "[reg] fn had type None"
+            "ONLY [reg] fn had type None"
             "a = fn x: 1"
             (infer "a")
             (Test.isOkAndEqualTo

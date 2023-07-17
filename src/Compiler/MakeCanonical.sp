@@ -19,7 +19,7 @@ alias Env =
     # This keeps track of values that are declared within the
     # scope of a function, so they don't need to be expanded with the module name.
     #
-    , nonRootValues as Dict Text { pos as Pos, maybeAnnotation as Maybe CA.RawType }
+    , nonRootValues as Dict Text { pos as Pos, maybeAnnotation as Maybe CA.Annotation }
     #
     # TODO This is used to tell the user that definitions must be in order
     #
@@ -179,10 +179,10 @@ patternDeps as fn CA.Pattern, Deps: Deps =
         , CA.PatternRecord _ completeness ps:
             Dict.for deps ps (fn k, v, a: patternDeps v a)
 
-        , CA.PatternAny _ { maybeName = _, maybeAnnotation = Just type }:
-            { deps with types = typeDeps type .types }
+        , CA.PatternAny _ _ (Just ann):
+            { deps with types = typeDeps ann.raw .types }
 
-        , CA.PatternAny _ { maybeName = _, maybeAnnotation = Nothing }:
+        , CA.PatternAny _ _ Nothing:
             deps
 
         , CA.PatternLiteralNumber _ _:
@@ -274,14 +274,6 @@ parameterDeps as fn CA.Parameter, Deps: Deps =
 #
 
 
-addUnivarId as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
-    fn uni, acc:
-
-    try uni as
-        , Depends id: Dict.insert id None acc
-        , _: acc
-
-
 addPar as fn CA.ParType, Dict UnivarId None: Dict UnivarId None =
     fn parType, acc:
 
@@ -309,36 +301,48 @@ addRawTypeUnivars as fn CA.RawType, Dict UnivarId None: Dict UnivarId None =
             >> List.for __ pars addPar
 
 
+[#
+addUnivarId as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
+    fn uni, acc:
+
+    try uni as
+        , Depends id: Dict.insert id None acc
+        , _: acc
+
+
 addPatternUnivars as fn CA.Pattern, Dict UnivarId None: Dict UnivarId None =
     fn pattern, acc:
 
     try pattern as
         , CA.PatternConstructor _ _ args: List.for acc args addPatternUnivars
         , CA.PatternRecord _ _ attrs: Dict.for acc attrs (fn k, v, a: addPatternUnivars v a)
-        , CA.PatternAny _ { maybeName, maybeAnnotation = Just rawType }: addRawTypeUnivars rawType acc
+        , CA.PatternAny _ _ (Just ann): addRawTypeUnivars ann.raw acc
         , _: acc
+#]
 
 
 translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     fn isRoot, env, fa:
 
-    fa.pattern
-    >> translateFullPattern env __
-    >> onOk fn (uni & pattern):
-
     fa.nonFn
     >> List.mapRes (translateTypeParameter env.ro __) __
     >> onOk fn nonFn:
 
+    fa.pattern
+    >> translateFullPattern env (Set.fromList nonFn) __
+    >> onOk fn (uni & pattern):
+
     univars as Dict UnivarId None =
-        Dict.empty
-        >> addUnivarId uni __
-        >> addPatternUnivars pattern __
+        todo ""
+#        Dict.empty
+#        >> addUnivarId uni __
+#        >> addPatternUnivars pattern __
 
     tyvars as Dict Name CA.Tyvar =
-        pattern
-        >> CA.patternTyvars
-        >> Dict.map (fn tyvarName, pos: { allowFunctions = List.all (fn (At _ name): name /= tyvarName) nonFn }) __
+        todo ""
+#        pattern
+#        >> CA.patternTyvars
+#        >> Dict.map (fn tyvarName, pos: { allowFunctions = List.all (fn (At _ name): name /= tyvarName) nonFn }) __
 
     # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv
 
@@ -369,8 +373,8 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     {
     , uni
     , pattern
-    , tyvars
-    , univars
+#    , tyvars
+#    , univars
     , native = False
     , body
     #
@@ -432,13 +436,12 @@ translatePatternAny as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Patt
     else
         resultMaybeRaw as Res (Maybe CA.RawType) =
             try maybeFaType as
-                , Just faType:
-                    faType
-                    >> translateRawType env.ro __
-                    >> Result.map Just __
-
                 , Nothing:
                     Ok Nothing
+
+                , Just faType:
+                    translateAnnotation env.ro faType
+                    >> Result.map Just __
 
         resultMaybeRaw
         >> onOk fn maybeRaw:
@@ -446,7 +449,7 @@ translatePatternAny as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Patt
         maybeName =
             if word.name == "_" then Nothing else Just word.name
 
-        Ok << CA.PatternAny pos { maybeName, maybeAnnotation = maybeRaw }
+        Ok << CA.PatternAny pos maybeName maybeRaw
 
 
 insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
@@ -472,7 +475,7 @@ insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict N
                 >> onOk fn caType:
 
                 caAttrs
-                >> Dict.insert caName (CA.PatternAny pos { maybeName = Just caName, maybeAnnotation = Just caType }) __
+                >> Dict.insert caName (CA.PatternAny pos (Just caName) (Just caType)) __
                 >> Ok
 
             , Just faPattern & Nothing:
@@ -486,7 +489,7 @@ insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict N
 
              , Nothing & Nothing:
                 caAttrs
-                >> Dict.insert caName (CA.PatternAny pos { maybeName = Just caName, maybeAnnotation = Nothing }) __
+                >> Dict.insert caName (CA.PatternAny pos (Just caName) Nothing) __
                 >> Ok
 
 
@@ -711,7 +714,7 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
             caDef as CA.ValueDef =
                 {
                 , uni = Imm
-                , pattern = CA.PatternAny Pos.G { maybeName = Nothing, maybeAnnotation = Nothing }
+                , pattern = CA.PatternAny Pos.G Nothing Nothing
                 , native = False
                 , body = caExpr
                 , tyvars = Dict.empty
@@ -1161,7 +1164,7 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
                 {
                 # TODO ----> This desugaring needs to be done by TypeCheck, because MakeCanonical can't infer its uniqueness
                 , uni = Imm
-                , pattern = CA.PatternAny Pos.G { maybeName = Just varName, maybeAnnotation = Nothing }
+                , pattern = CA.PatternAny Pos.G (Just varName) Nothing
                 , native = False
                 , body = caExt
                 , tyvars = Dict.empty
