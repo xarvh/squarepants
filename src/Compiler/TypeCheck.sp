@@ -934,19 +934,21 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
 inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, caPars, body, @state:
 
+    [# TODO
+        Urgh. This is gross.
+        Do I really want to enable mixing imm and mut this way?
+        Is there really an advantage?
+    #]
     !typedPars = Array.fromList []
     !parTypes = Array.fromList []
-    # TODO use typedPars length instead?
-    !parIndex = 0
 
     newEnv as Env =
-        List.for env caPars fn par, envX:
+        List.indexedFor env caPars fn index, par, envX:
             typedPar & parType & envX1 =
-                inferParam envX (cloneUni @parIndex) par @state
+                inferParam envX index par @state
 
             Array.push @typedPars typedPar
             Array.push @parTypes parType
-            @parIndex += 1
             envX1
 
     typedBody & bodyType =
