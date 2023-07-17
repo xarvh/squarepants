@@ -28,7 +28,7 @@ alias Env =
     #
     , ro as ReadOnly
 
-    , nonFn as Set Text
+    , nonFn as Dict Name Pos
     }
 
 
@@ -274,6 +274,8 @@ parameterDeps as fn CA.Parameter, Deps: Deps =
 #
 
 
+
+[#
 addPar as fn CA.ParType, Dict UnivarId None: Dict UnivarId None =
     fn parType, acc:
 
@@ -301,7 +303,6 @@ addRawTypeUnivars as fn CA.RawType, Dict UnivarId None: Dict UnivarId None =
             >> List.for __ pars addPar
 
 
-[#
 addUnivarId as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
     fn uni, acc:
 
@@ -329,20 +330,8 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     >> onOk fn nonFn:
 
     fa.pattern
-    >> translateFullPattern env (Set.fromList nonFn) __
+    >> translateFullPattern { env with nonFn = Dict.fromList nonFn } __
     >> onOk fn (uni & pattern):
-
-    univars as Dict UnivarId None =
-        todo ""
-#        Dict.empty
-#        >> addUnivarId uni __
-#        >> addPatternUnivars pattern __
-
-    tyvars as Dict Name CA.Tyvar =
-        todo ""
-#        pattern
-#        >> CA.patternTyvars
-#        >> Dict.map (fn tyvarName, pos: { allowFunctions = List.all (fn (At _ name): name /= tyvarName) nonFn }) __
 
     # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv
 
@@ -373,8 +362,6 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     {
     , uni
     , pattern
-#    , tyvars
-#    , univars
     , native = False
     , body
     #
@@ -434,25 +421,36 @@ translatePatternAny as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Patt
     else if word.maybeModule /= Nothing then
         error env pos [ "You can't access modules here..." ]
     else
-        resultMaybeRaw as Res (Maybe CA.RawType) =
-            try maybeFaType as
-                , Nothing:
-                    Ok Nothing
-
-                , Just faType:
-                    translateAnnotation env.ro faType
-                    >> Result.map Just __
-
-        resultMaybeRaw
-        >> onOk fn maybeRaw:
+        translateMaybeAnnotation env maybeFaType
+        >> onOk fn maybeAnnotation:
 
         maybeName =
             if word.name == "_" then Nothing else Just word.name
 
-        Ok << CA.PatternAny pos maybeName maybeRaw
+        Ok << CA.PatternAny pos maybeName maybeAnnotation
 
 
-insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
+translateMaybeAnnotation as fn Env, Maybe FA.Expression: Res (Maybe CA.Annotation) =
+    fn env, maybeFaType:
+
+    try maybeFaType as
+        , Nothing:
+            Ok Nothing
+
+        , Just faType:
+            translateRawType env.ro faType
+            >> onOk fn raw:
+
+            tyvars =
+                CA.typeTyvars raw
+                >> Dict.map (fn tyvarName, pos: { nonFn = Dict.get tyvarName env.nonFn }) __
+
+            { raw, tyvars, univars = CA.typeUnivars raw }
+            >> Just
+            >> Ok
+
+
+insertPatternRecordAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
     fn env, attr, caAttrs:
 
     # { x }
@@ -471,12 +469,13 @@ insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict N
                 error env typePos [ "if you want to annotate the attribute, use { x = y as TheType }" ]
 
             , Nothing & Just faType:
-                translateRawType env.ro faType
-                >> onOk fn caType:
-
-                caAttrs
-                >> Dict.insert caName (CA.PatternAny pos (Just caName) (Just caType)) __
-                >> Ok
+                todo "annotating record attributes needs a bit more of design" #:Not yet implemented
+#                translateRawType env.ro faType
+#                >> onOk fn caType:
+#
+#                caAttrs
+#                >> Dict.insert caName (CA.PatternAny pos (Just caName) (Just caType)) __
+#                >> Ok
 
             , Just faPattern & Nothing:
                 faPattern
@@ -513,7 +512,7 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [{ name as F
     >> onOk fn completeness:
 
     Dict.empty
-    >> List.forRes __ attrs (insertAttribute env __ __)
+    >> List.forRes __ attrs (insertPatternRecordAttribute env __ __)
     >> Result.map (fn x: CA.PatternRecord pos completeness x) __
 
 
@@ -717,8 +716,6 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
                 , pattern = CA.PatternAny Pos.G Nothing Nothing
                 , native = False
                 , body = caExpr
-                , tyvars = Dict.empty
-                , univars = Dict.empty
 
                 # TODO Do we need these here?
                 , directTypeDeps = Dict.empty
@@ -1167,8 +1164,6 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
                 , pattern = CA.PatternAny Pos.G (Just varName) Nothing
                 , native = False
                 , body = caExt
-                , tyvars = Dict.empty
-                , univars = Dict.empty
 
                 # TODO populate deps?
                 , directTypeDeps = Dict.empty
@@ -1615,7 +1610,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 
 
 
-translateTypeParameter as fn ReadOnly, At Token.Word: Res (At Name) =
+translateTypeParameter as fn ReadOnly, At Token.Word: Res (Name & Pos) =
     fn ro, (At pos word):
 
     if word.modifier /= Token.NameNoModifier then
@@ -1627,7 +1622,7 @@ translateTypeParameter as fn ReadOnly, At Token.Word: Res (At Name) =
     else if word.attrPath /= [] then
         erroro ro pos [ "why attrs here?" ]
     else
-        Ok (At pos word.name)
+        Ok (word.name & pos)
 
 
 translateTypeName as fn ReadOnly, At Token.Word: Res Name =
@@ -1695,7 +1690,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                 aliasDef as CA.AliasDef =
                     {
                     , usr = USR ro.umr name
-                    , pars = caPars
+                    , pars = List.map (fn n & p: At p n) caPars
                     , type
                     , directTypeDeps = typeDeps type Set.empty
                     }
@@ -1732,7 +1727,7 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                 aliasDef as CA.AliasDef =
                     {
                     , usr = USR ro.umr name
-                    , pars = caPars
+                    , pars = List.map (fn n & p: At p n) caPars
                     , type = CA.TypeUnion pos constructors
                     , directTypeDeps = allTypeDeps
                     }

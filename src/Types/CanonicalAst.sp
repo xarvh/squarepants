@@ -64,7 +64,7 @@ union Parameter =
 
 alias Annotation = {
     , raw as RawType
-    , tyvars as Dict Name { allowFunctions as Bool }
+    , tyvars as Dict Name { nonFn as Maybe Pos }
     , univars as Dict UnivarId None
     }
 
