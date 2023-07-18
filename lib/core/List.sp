@@ -383,6 +383,23 @@ each as fn [a], (fn a: b): None =
             each tail f
 
 
+indexedEach2 as fn [a], [b], (fn Int, a, b: None): None =
+
+    rec as fn Int, [a], [b], (fn Int, a, b: None): None =
+        fn index, aa, bb, f:
+
+        try aa & bb as
+            , (a :: at) & (b :: bt):
+                f index a b
+                list_eachWithIndex2 (index + 1) at bt f
+            , _:
+                None
+
+    rec 0 __ __ __
+
+
+
+
 reverse as fn [a]: [a] =
     fn aList:
     for [] aList Core.Cons
@@ -460,3 +477,4 @@ intersperse as fn a, [a], [a]: [a] =
 
         , head :: tail:
             intersperse separator tail (separator :: head :: acc)
+
