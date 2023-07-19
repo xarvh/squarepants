@@ -162,7 +162,7 @@ e as fn FA.Expr_: FA.Expression =
 tuple as fn FA.Expression, FA.Expression: FA.Expression =
     fn a, b:
 
-    e << FA.Binop Op.Tuple (a & [Prelude.tuple & b])
+    e << FA.BinopChain Op.precedence_tuple (a & [Prelude.tuple & b])
 
 
 word as fn Name: Token.Word =
@@ -301,7 +301,7 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                e << FA.Binop Op.Pipe __ <<
+                e << FA.BinopChain Op.precedence_pipe __ <<
                     variable "value" &
                         [
                         , Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn [variable "x"] (variable "blah")])
@@ -363,8 +363,8 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo << e <<
-                FA.Binop Op.Mutop __ <<
-                    (e << FA.Unop Op.UnopRecycle __ << variable "b")
+                FA.BinopChain Op.precedence_mutop __ <<
+                    (e << FA.UnopCall Op.UnopRecycle __ << variable "b")
                     &
                     [ Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
             )
@@ -877,11 +877,11 @@ patterns as Test =
 binops as Test =
 
     sendBtoC =
-        e << FA.Binop Op.Pipe __ <<
+        e << FA.BinopChain Op.precedence_pipe __ <<
             variable "b" & [ Prelude.sendRight & variable "c" ]
 
     sendBtoCtoD =
-        e << FA.Binop Op.Pipe __ <<
+        e << FA.BinopChain Op.precedence_pipe __ <<
             variable "b" & [ Prelude.sendRight & variable "c", Prelude.sendRight & variable "d" ]
 
     Test.Group "Binops"
@@ -924,6 +924,45 @@ binops as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo sendBtoCtoD)
+        , codeTest
+            """
+            no indent
+            """
+            """
+            x =
+                b
+                >>
+                c
+            """
+            firstEvaluationOfDefinition
+            (Test.isOkAndEqualTo sendBtoC)
+        , codeTest
+            """
+            SKIP (I'm tired) Starting
+            """
+            """
+            x = >> c
+            """
+            firstEvaluationOfDefinition
+            (Test.errorContains ["TODO"])
+        , codeTest
+            """
+            SKIP (I'm tired) Double
+            """
+            """
+            x = a >> >> c
+            """
+            firstEvaluationOfDefinition
+            (Test.errorContains ["TODO"])
+        , codeTest
+            """
+            SKIP (I'm tired) Ending
+            """
+            """
+            x = a >>
+            """
+            firstEvaluationOfDefinition
+            (Test.errorContains ["TODO"])
         ]
 
 
@@ -944,7 +983,7 @@ unops as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo
-                (e << FA.Unop Op.UnopMinus
+                (e << FA.UnopCall Op.UnopMinus
                     ( e << FA.Call
                         (variable "a")
                         [variable "b"]
@@ -962,7 +1001,7 @@ unops as Test =
             (Test.isOkAndEqualTo
                 (e << FA.Call
                     (variable "a")
-                    [e << FA.Unop Op.UnopMinus (variable "b")]
+                    [e << FA.UnopCall Op.UnopMinus (variable "b")]
                 )
             )
         , codeTest
@@ -977,7 +1016,7 @@ unops as Test =
                 (e << FA.Call
                     (variable "a")
                     [
-                    , e << FA.Unop Op.UnopMinus (variable "b")
+                    , e << FA.UnopCall Op.UnopMinus (variable "b")
                     , variable "c"
                     ]
                 )
