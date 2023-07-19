@@ -661,8 +661,8 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     Come calcolo freeTyvars e freeUnivars?
     Per saperle devo risolvere le equazioni, ma devo saperle prima di usarle, perche' potrei doverle generalizzare!?
 
-    ---> posso risolvere le equazioni man mano che le aggiungo?
-    (Ovvio che si', ma quali sono le conseguenze?)
+
+    ^ Infer Pattern deve sistemare tutto
 #]
 
 
@@ -681,10 +681,10 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         else
             try patternOut.maybeFullAnnotation as
                 , Just annotation:
-                    todo "add free tyvars & free univars to env?"
                     raw = translateAnnotationType envWithContext @state annotation.raw
                     full = { uni, raw }
                     checkExpression envWithContext full def.body @state & full
+
                 , Nothing:
                     typed & inferredType = inferExpression envWithContext def.body @state
                     pos = CA.patternPos def.pattern
@@ -698,8 +698,8 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         , definedAt = pos
         , type
         # TODO: remove tyvars and univars that do not appear in the type
-        , freeTyvars = todo "freevars"
-        , freeUnivars = todo "univars"
+        , freeTyvars = TA.typeTyvars type
+        , freeUnivars = TA.typeUnivars type
         }
 
     type =
