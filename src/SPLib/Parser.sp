@@ -200,7 +200,11 @@ breakCircularDefinition as fn (fn None: Parser t o): Parser t o =
 
 <https://stackoverflow.com/a/4165483>
 
-#]
+
+TODO this actually make the parsing super slow.
+Should get the trail (Pratt?) parsing in here instead.
+
+
 expression as fn Parser t o, [fn Parser t o: Parser t o]: Parser t o =
     fn term, ops:
     try ops as
@@ -209,6 +213,7 @@ expression as fn Parser t o, [fn Parser t o: Parser t o]: Parser t o =
 
         , op :: rest:
             expression (op term) rest
+#]
 
 
 higherOr as fn Parser t o: fn Parser t o: Parser t o =

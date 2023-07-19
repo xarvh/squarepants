@@ -89,13 +89,19 @@ union Expr_ =
 
     , Fn [Expression] Expression
 
+    # This is only an intermediate value, always replaced by UnopCall in the output
+    , Unop Op.UnopId
+
+    , UnopCall Op.UnopId Expression
+
+    # This is only an intermediate value, always replaced by BinopChain in the output
+    , Binop Op.Binop
+
+    , BinopChain Int (SepList Op.Binop Expression)
+
     , Call Expression [Expression]
 
     , Poly Text Expression
-
-    , Binop Op.Precedence (SepList Op.Binop Expression)
-
-    , Unop Op.UnopId Expression
 
     , If
         {

@@ -111,7 +111,7 @@ binopsBySymbol as Dict Text Op.Binop =
 and_ as Op.Binop = {
     , usr = coreUsr "and_"
     , symbol = "and"
-    , precedence = Op.Logical
+    , precedence = Op.precedence_logical
     , associativity = Op.Right
     , type = typeBinopUnique CoreTypes.bool
     , nonFn = []
@@ -121,7 +121,7 @@ and_ as Op.Binop = {
 or_ as Op.Binop = {
     , usr = coreUsr "or_"
     , symbol = "or"
-    , precedence = Op.Logical
+    , precedence = Op.precedence_logical
     , associativity = Op.Right
     , type = typeBinopUnique CoreTypes.bool
     , nonFn = []
@@ -131,7 +131,7 @@ or_ as Op.Binop = {
 textConcat as Op.Binop = {
     , usr = textUsr "concat"
     , symbol = ".."
-    , precedence = Op.Addittive
+    , precedence = Op.precedence_addittive
     , associativity = Op.Right
     , type = typeBinopUnique CoreTypes.text
     , nonFn = []
@@ -145,7 +145,7 @@ listCons as Op.Binop =
     {
     , usr = listUsr "stack"
     , symbol = "::"
-    , precedence = Op.Cons
+    , precedence = Op.precedence_cons
     , associativity = Op.Right
     , type = typeBinop item (CoreTypes.list item) (CoreTypes.list item)
     , nonFn = []
@@ -156,7 +156,7 @@ tuple as Op.Binop = {
     # TODO Add a flag to ensure that these syntactic sugar ops are never added to the module
     , usr = tupleUsr ""
     , symbol = "&"
-    , precedence = Op.Tuple
+    , precedence = Op.precedence_tuple
     , associativity = Op.NonAssociative
     , type =
         Dict.empty
@@ -175,7 +175,7 @@ tuple as Op.Binop = {
 add as Op.Binop = {
     , usr = numberUsr "add"
     , symbol = "+"
-    , precedence = Op.Addittive
+    , precedence = Op.precedence_addittive
     , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
     , nonFn = []
@@ -185,7 +185,7 @@ add as Op.Binop = {
 subtract as Op.Binop = {
     , usr = numberUsr "subtract"
     , symbol = "-"
-    , precedence = Op.Addittive
+    , precedence = Op.precedence_addittive
     , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
     , nonFn = []
@@ -195,7 +195,7 @@ subtract as Op.Binop = {
 multiply as Op.Binop = {
     , usr = numberUsr "multiply"
     , symbol = "*"
-    , precedence = Op.Multiplicative
+    , precedence = Op.precedence_multiplicative
     , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
     , nonFn = []
@@ -205,7 +205,7 @@ multiply as Op.Binop = {
 divide as Op.Binop = {
     , usr = numberUsr "divide"
     , symbol = "/"
-    , precedence = Op.Multiplicative
+    , precedence = Op.precedence_multiplicative
     , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
     , nonFn = []
@@ -219,7 +219,7 @@ mutableAssign as Op.Binop =
     {
     , usr = coreUsr "mutableAssign"
     , symbol = ":="
-    , precedence = Op.Mutop
+    , precedence = Op.precedence_mutop
     , associativity = Op.Left
     , type = CA.TypeFn Pos.N [ CA.ParRe (tyVar "a"), CA.ParSp { uni = Uni, raw = (tyVar "a") }] { uni = Imm, raw = CoreTypes.none }
     , nonFn = []
@@ -230,7 +230,7 @@ mutableAdd as Op.Binop =
     {
     , usr = numberUsr "mutableAdd"
     , symbol = "+="
-    , precedence = Op.Mutop
+    , precedence = Op.precedence_mutop
     , associativity = Op.NonAssociative
     , type = CA.TypeFn Pos.N [ CA.ParRe CoreTypes.number, CA.ParSp { uni = Imm, raw = CoreTypes.number }] { uni = Imm, raw = CoreTypes.none }
     , nonFn = []
@@ -241,7 +241,7 @@ mutableSubtract as Op.Binop =
     {
     , usr = numberUsr "mutableSubtract"
     , symbol = "-="
-    , precedence = Op.Mutop
+    , precedence = Op.precedence_mutop
     , associativity = Op.NonAssociative
     , type = CA.TypeFn Pos.N [ CA.ParRe CoreTypes.number, CA.ParSp { uni = Imm, raw = CoreTypes.number }] { uni = Imm, raw = CoreTypes.none }
     , nonFn = []
@@ -254,7 +254,7 @@ mutableSubtract as Op.Binop =
 equal as Op.Binop = {
     , usr = coreUsr "equal"
     , symbol = "=="
-    , precedence = Op.Comparison
+    , precedence = Op.precedence_comparison
     , associativity = Op.Left
     , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
@@ -264,7 +264,7 @@ equal as Op.Binop = {
 notEqual as Op.Binop = {
     , usr = coreUsr "notEqual"
     , symbol = "/="
-    , precedence = Op.Comparison
+    , precedence = Op.precedence_comparison
     , associativity = Op.Left
     , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
@@ -274,7 +274,7 @@ notEqual as Op.Binop = {
 lesserThan as Op.Binop = {
     , usr = coreUsr "lesserThan"
     , symbol = "<"
-    , precedence = Op.Comparison
+    , precedence = Op.precedence_comparison
     , associativity = Op.Left
     , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
@@ -284,7 +284,7 @@ lesserThan as Op.Binop = {
 greaterThan as Op.Binop = {
     , usr = coreUsr "greaterThan"
     , symbol = ">"
-    , precedence = Op.Comparison
+    , precedence = Op.precedence_comparison
     , associativity = Op.Left
     , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
@@ -294,7 +294,7 @@ greaterThan as Op.Binop = {
 lesserOrEqualThan as Op.Binop = {
     , usr = coreUsr "lesserOrEqualThan"
     , symbol = "<="
-    , precedence = Op.Comparison
+    , precedence = Op.precedence_comparison
     , associativity = Op.Left
     , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
@@ -304,7 +304,7 @@ lesserOrEqualThan as Op.Binop = {
 greaterOrEqualThan as Op.Binop = {
     , usr = coreUsr "greaterOrEqualThan"
     , symbol = ">="
-    , precedence = Op.Comparison
+    , precedence = Op.precedence_comparison
     , associativity = Op.Left
     , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
     , nonFn = [ "a" ]
@@ -318,7 +318,7 @@ greaterOrEqualThan as Op.Binop = {
 sendRight as Op.Binop = {
     , usr = coreUsr "sendRight"
     , symbol = ">>"
-    , precedence = Op.Pipe
+    , precedence = Op.precedence_pipe
     , associativity = Op.Left
     , type =
         typeBinop
@@ -332,7 +332,7 @@ sendRight as Op.Binop = {
 sendLeft as Op.Binop = {
     , usr = coreUsr "sendLeft"
     , symbol = "<<"
-    , precedence = Op.Pipe
+    , precedence = Op.precedence_pipe
     , associativity = Op.Right
     , type =
         typeBinop

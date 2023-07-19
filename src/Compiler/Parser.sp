@@ -422,6 +422,35 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
             >> FA.Try
             >> ok
 
+        , Token.Unop op:
+            FA.Unop op
+            >> ok
+
+        , Token.Binop op:
+            FA.Binop op
+            >> ok
+
+        [# TODO this is a horrid workaround necessary to support the edge case of an op being used inside an attr def:
+
+            {
+            , attr =
+                a
+                >> b
+            }
+
+          Would be nice to reorganize the parser so that it is not needed.
+        #]
+        , Token.NewSiblingLine:
+            oneToken >> on fn (Token c  s e k):
+            try k as
+                , Token.Binop op:
+                  maybe (kind Token.NewSiblingLine) >> on fn _:
+                  FA.Binop op
+                  >> ok
+
+                , _:
+                  Parser.reject
+
         , _:
             Parser.reject
 
@@ -430,56 +459,16 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
 expr as fn Env: Parser FA.Expression =
     fn env:
 
-    expressionWithLeftDelimiter as Parser FA.Expression =
+    higher as Parser FA.Expression =
         oneToken >> on fn (Token comment start end k):
         exprWithLeftDelimiter env k >> on fn expr_:
         FA.Expression (pos env start end) expr_ >> ok
 
-    Parser.expression
-        expressionWithLeftDelimiter
-        # the `Or` stands for `Or higher priority parser`
-        [
-        , functionApplicationOr env __
-        , unopsOr env __
-        , binopsOr env Op.Exponential
-        , binopsOr env Op.Multiplicative
-        , binopsOr env Op.Addittive
-
-        # Compops can collapse (ie, `1 < x < 10` => `1 < x && x < 10`)
-        , binopsOr env Op.Comparison
-        , binopsOr env Op.Logical
-
-        # Tuples are chained (ie, `a & b & c` makes a tuple3)
-        , binopsOr env Op.Tuple
-
-        #
-        , binopsOr env Op.Cons
-
-        # TODO pipes can't actually be mixed
-        , binopsOr env Op.Pipe
-        , binopsOr env Op.Mutop
-        ]
-
-
-recInlineOrIndentedOrBelow as fn Parser FA.Expression, [FA.Expression]: Parser [FA.Expression] =
-    fn higher, accum:
-    higher >> on fn h:
-
-    r =
-        h :: accum
-
-    maybeWithDefault r __ << inlineOrBelowOrIndented (recInlineOrIndentedOrBelow higher r)
-
-
-functionApplicationOr as fn Env, Parser FA.Expression: Parser FA.Expression =
-    fn env, higher:
 
     recInlineOrIndented as fn [FA.Expression]: Parser [FA.Expression] =
         fn accum:
 
-        p = if accum == [] then higher else unopsOr env higher
-
-        p >> on fn h:
+        higher >> on fn h:
 
         r =
             h :: accum
@@ -494,43 +483,190 @@ functionApplicationOr as fn Env, Parser FA.Expression: Parser FA.Expression =
     here >> on fn start:
     recInlineOrIndented [] >> on fn reversedArgs:
     here >> on fn end:
-    try List.reverse reversedArgs as
-        , []:
-            Parser.reject
 
-        , [ fnExpression ]:
-            ok fnExpression
+    # TODO Why is functionApplicationOr being called twice?
+    #log "===========================================" { start, end }
 
-        , fnExpression :: args:
-            FA.Expression (pos env start end) (FA.Call fnExpression args) >> ok
-
+    reversedArgs
+    >> List.reverse
+    >> breakByPrecedence
+    >> ok
 
 
+recInlineOrIndentedOrBelow as fn Parser FA.Expression, [FA.Expression]: Parser [FA.Expression] =
+    fn higher, accum:
+    higher >> on fn h:
 
-unopsOr as fn Env, Parser FA.Expression: Parser FA.Expression =
-    fn env, higher:
+    r =
+        h :: accum
 
-    Parser.maybe unaryOperator >> on fn maybeUnary:
-    higher >> on fn right:
-    here >> on fn end:
-    try maybeUnary as
-        , Just ( op & Token _ start _ _ ):
-            FA.Unop op right
-            >> FA.Expression (pos env start end) __
-            >> ok
-
-        , Nothing:
-            ok right
+    maybeWithDefault r __ << inlineOrBelowOrIndented (recInlineOrIndentedOrBelow higher r)
 
 
-unaryOperator as Parser ( Op.UnopId & Token ) =
-    oneToken >> on fn token:
-    try token as
-        , Token c s e (Token.Unop op):
-            Parser.accept ( op & token )
+
+
+
+findLowestPrecedence as fn [FA.Expression]: Int =
+
+    rec as fn Int, [FA.Expression]: Int =
+        fn lowest, exprs:
+        try exprs as
+            , []: lowest
+            , [ FA.Expression pos head, ...tail ]:
+                try head as
+                    , FA.Binop op: rec (min lowest op.precedence) tail
+                    , _: rec lowest tail
+
+    rec 1000 __
+
+
+# TODO Properly manage errors
+# TODO Properly set positions
+breakByPrecedence as fn [FA.Expression]: FA.Expression =
+    fn rawExpressions:
+
+    try findLowestPrecedence rawExpressions as
+        , 1000:
+            headUnops & exprs1 =
+                eatAllUnops rawExpressions
+
+            applyHeadUnops =
+                List.for __ headUnops fn pos & op, exp: FA.Expression pos (FA.UnopCall op exp)
+
+            try breakByUnops exprs1 as
+                , []: todo "bug: breakByPrecedence empty?"
+                , [ one ]: applyHeadUnops one
+                , [ head, ...tail ]: applyHeadUnops (FA.Expression Pos.T (FA.Call head tail))
+
+        , lowestPrecedence:
+            rawExpressions
+            >> splitOnOpWithPrecedence lowestPrecedence __
+            >> FA.BinopChain lowestPrecedence __
+            >> FA.Expression Pos.T __
+
+
+
+
+# TODO use an ad-hoc variant type instead of Result
+exprOrTargetOp as fn Int, FA.Expression: Result Op.Binop FA.Expression =
+    fn precedence, head:
+
+    try head as
+        , FA.Expression pos (FA.Binop op):
+            if op.precedence == precedence then
+                Err op
+            else
+                Ok head
 
         , _:
-            Parser.reject
+            Ok head
+
+
+readExprs as fn Int, [FA.Expression]: [FA.Expression] & [FA.Expression] =
+    fn targetOpPrecedence, rawExpressions:
+
+    rec =
+        fn acc, remainder:
+        try remainder as
+            , [ head, ...tail ]:
+                try exprOrTargetOp targetOpPrecedence head as
+                    , Ok expr:
+                        rec [expr, ...acc] tail
+
+                    , Err op:
+                        List.reverse acc & remainder
+
+            , []:
+                List.reverse acc & remainder
+
+    rec [] rawExpressions
+
+
+readOpsAndExprs as fn Int, [Op.Binop & FA.Expression], [FA.Expression]: [Op.Binop & FA.Expression] =
+    fn targetOpPrecedence, acc, remainder:
+
+    try remainder as
+        , []:
+            List.reverse acc
+
+        , [ head, ...tail ]:
+            try exprOrTargetOp targetOpPrecedence head as
+
+                , Err op:
+                    exprs & newRemainder =
+                        readExprs targetOpPrecedence tail
+
+                    readOpsAndExprs targetOpPrecedence [ op & breakByPrecedence exprs, ...acc ] newRemainder
+
+                , Ok exprs:
+                    todo "bug: readOpsAndExprs spurious exp"
+
+
+splitOnOpWithPrecedence as fn Int, [FA.Expression]: FA.SepList Op.Binop FA.Expression =
+    fn targetOpPrecedence, rawExpressions:
+
+    first & remainder =
+        readExprs targetOpPrecedence rawExpressions
+
+    opsAndExpressions as [ Op.Binop & FA.Expression ]=
+        readOpsAndExprs targetOpPrecedence [] remainder
+
+    breakByPrecedence first & opsAndExpressions
+
+
+
+getOneUnopExpr as fn [FA.Expression]: FA.Expression & [FA.Expression] =
+
+    rec as fn (fn FA.Expression: FA.Expression), [FA.Expression]: FA.Expression & [FA.Expression] =
+        fn accF, remainder:
+
+        try remainder as
+            , FA.Expression pos (FA.Unop op) :: tail:
+                rec (fn e: FA.Expression pos (FA.UnopCall op e) >> accF) tail
+
+            , head :: tail:
+                accF head & tail
+
+            , []:
+                todo "bug: FA.Error & []"
+
+    rec identity __
+
+
+
+
+
+eatAllUnops as fn [FA.Expression]: [Pos & Op.UnopId] & [FA.Expression] =
+    rec as fn [Pos & Op.UnopId], [FA.Expression]: [Pos & Op.UnopId] & [FA.Expression] =
+        fn unops, exprs:
+        try exprs as
+            , FA.Expression pos (FA.Unop op) :: tail:
+                rec [pos & op, ...unops] tail
+
+            , _:
+                unops & exprs
+
+    rec [] __
+
+
+breakByUnops as fn [FA.Expression]: [FA.Expression] =
+    rec as fn [FA.Expression], [FA.Expression]: [FA.Expression] =
+        fn acc, exprs:
+
+        try exprs as
+            , []: List.reverse acc
+
+            , _:
+              expr & remainder = getOneUnopExpr exprs
+              rec (expr :: acc) remainder
+
+    rec [] __
+
+
+
+
+
+
 
 
 
@@ -602,39 +738,6 @@ typeAnnotation as fn Env: Parser FA.Expression =
     discardFirst
         (kind Token.As)
         (inlineOrBelowOrIndented (expr env))
-
-
-#
-# Binops
-#
-
-
-binopsOr as fn Env, Op.Precedence: fn Parser FA.Expression: Parser FA.Expression =
-    fn env, group: fn higher:
-    here >> on fn start:
-    sepList (binaryOperators group) higher >> on fn ( head & sepTail ):
-    here >> on fn end:
-    if sepTail == [] then
-        ok head
-
-    else
-        FA.Expression (pos env start end) (FA.Binop group ( head & sepTail )) >> ok
-
-
-binaryOperators as fn Op.Precedence: Parser Op.Binop =
-    fn group:
-    oneToken >> on fn (Token c s e k):
-    try k as
-        , Token.Binop op:
-            if op.precedence == group then
-                ok op
-
-            else
-                Parser.reject
-
-        , _:
-            Parser.reject
-
 
 
 #
@@ -714,7 +817,7 @@ textToFormattableModule as fn Env: Res FA.Module =
         >> List.mapRes (parse env __) __
         >> Result.map (List.filterMap identity __) __
 
-    Debug.benchStop "parse"
+    Debug.benchStop "parseTrail"
 
     result
 

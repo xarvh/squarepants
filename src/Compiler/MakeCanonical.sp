@@ -641,30 +641,34 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
         , FA.Record { maybeExtension, attrs }:
             translatePatternRecord env pos maybeExtension attrs
 
-        , FA.Binop Op.Tuple sepList:
-            sepList
-            >> translateTuple env.ro (translateRawPattern env __) __
-            >> onOk fn recordAttrs:
+        , FA.Binop op:
+            error env pos [ "compiler bug, Binop should not be here" ]
 
-            CA.PatternRecord pos CA.Complete recordAttrs
-            >> Ok
+        , FA.BinopChain precedence sepList:
 
-        , FA.Binop Op.Cons sepList:
-            sepList
-            >> FA.sepToList
-            >> List.mapRes (translateRawPattern env __) __
-            >> onOk fn caPas:
-            try List.reverse caPas as
-                , last :: rest:
-                    last
-                    >> List.for __ rest (fn item, list: CA.PatternConstructor pos CoreTypes.cons [ item, list ])
-                    >> Ok
+            if precedence == Op.precedence_tuple then
+                sepList
+                >> translateTuple env.ro (translateRawPattern env __) __
+                >> onOk fn recordAttrs:
 
-                , []:
-                    error env pos [ "should not happen: empty cons pattern" ]
+                CA.PatternRecord pos CA.Complete recordAttrs
+                >> Ok
+            else if precedence == Op.precedence_cons then
+                sepList
+                >> FA.sepToList
+                >> List.mapRes (translateRawPattern env __) __
+                >> onOk fn caPas:
+                try List.reverse caPas as
+                    , last :: rest:
+                        last
+                        >> List.for __ rest (fn item, list: CA.PatternConstructor pos CoreTypes.cons [ item, list ])
+                        >> Ok
 
-        , FA.Binop opPrecedence sepList:
-            error env pos [ "This binop can't be used in pattern matching" ]
+                    , []:
+                        error env pos [ "should not happen: empty cons pattern" ]
+            else
+                error env pos [ "This binop can't be used in pattern matching" ]
+
 
         , FA.LiteralText l:
             Ok << CA.PatternLiteralText pos l
@@ -680,7 +684,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
         , FA.Fn args body:
             error env pos [ "Can't pattern match on functions. =(" ]
 
-        , FA.Unop unop expr:
+        , FA.UnopCall unop expr:
             error env pos [ "This op can't be used in pattern matching" ]
 
         , FA.If _:
@@ -830,7 +834,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             >> CA.If pos __
             >> Ok
 
-        , FA.Unop opId faOperand:
+        , FA.UnopCall opId faOperand:
             try opId as
                 , Op.UnopUnique: error env pos [ "can't use ! here because REASONS" ]
                 , Op.UnopRecycle: error env pos [ "can recycle only in function calls!" ]
@@ -843,7 +847,10 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                     CA.Call pos (CA.Variable pos (RefGlobal Prelude.unaryMinus.usr)) [CA.ArgumentExpression caOperand]
                     >> Ok
 
-        , FA.Binop group sepList:
+        , FA.Binop op:
+            error env pos [ "compiler bug: FA.Binop should not be here" ]
+
+        , FA.BinopChain group sepList:
             translateBinops env pos group sepList
 
         , FA.Record { maybeExtension, attrs }:
@@ -1012,7 +1019,7 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
 
     maybeRecycle =
         try faExpr as
-            , FA.Unop Op.UnopRecycle (FA.Expression p faOperand):
+            , FA.UnopCall Op.UnopRecycle (FA.Expression p faOperand):
                 try faOperand as
                     , FA.Variable { maybeType = Nothing, word }:
                         Ok (Just word)
@@ -1141,7 +1148,7 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
     fn env, faExpr:
 
     try faExpr as
-        , FA.Expression _ (FA.Unop Op.UnopRecycle (FA.Expression pos faOperand)):
+        , FA.Expression _ (FA.UnopCall Op.UnopRecycle (FA.Expression pos faOperand)):
             try faOperand as
                 , FA.Variable { maybeType, word }:
                     if maybeType /= Nothing then
@@ -1168,15 +1175,14 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
             >> Ok
 
 
-translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+translateBinops as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
     fn env, pos, group, ( firstItem & firstTail ):
     try firstTail as
         , []:
             translateExpression env firstItem
 
         , (firstSep & secondItem) :: []:
-            try group as
-                , Op.Tuple:
+            if group == Op.precedence_tuple then
                     translateExpression env firstItem >> onOk fn first:
                     translateExpression env secondItem >> onOk fn second:
                     Dict.empty
@@ -1184,8 +1190,7 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
                         >> Dict.insert "second" second __
                         >> CA.Record pos Nothing __
                         >> Ok
-
-                , _:
+            else
                     translateSimpleBinop env pos firstItem firstSep secondItem
 
         , (firstSep & secondItem) :: (secondSep & thirdItem) :: thirdTail:
@@ -1193,8 +1198,7 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
             secondTail as [Op.Binop & FA.Expression] =
                 (secondSep & thirdItem) :: thirdTail
 
-            try group as
-                , Op.Comparison:
+            if group == Op.precedence_comparison then
                     if notAllSeparators (sameDirectionAs firstSep __) secondTail then
                         # TODO actually list the seps
                         error env pos [ "can't mix comparison ops with different direction" ]
@@ -1203,14 +1207,14 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
                         # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
                         error env pos [ "NI compops expansion" ]
 
-                , Op.Logical:
+            else if group == Op.precedence_logical then
                     if notAllSeparators (fn x: x == firstSep) secondTail then
                         error env pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
 
                     else
                         translateBinopSepList_rightAssociative env pos firstItem firstTail
 
-                , Op.Tuple:
+            else if group == Op.precedence_tuple then
                     if thirdTail /= [] then
                         error env pos [ "Tuples can't have more than 3 items, use a record instead." ]
 
@@ -1225,7 +1229,7 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
                              >> CA.Record pos Nothing __
                              >> Ok
 
-                , Op.Pipe:
+            else if group == Op.precedence_pipe then
                     if notAllSeparators (fn x: x == firstSep) secondTail then
                         error env pos [ "Mixing pipes is ambigous. Use parens." ]
 
@@ -1235,10 +1239,10 @@ translateBinops as fn Env, Pos, Op.Precedence, FA.SepList Op.Binop FA.Expression
                     else
                         translateBinopSepList_leftAssociative env pos firstItem firstTail
 
-                , Op.Mutop:
+            else if group == Op.precedence_mutop then
                     error env pos [ "mutops can't be chained" ]
 
-                , _:
+            else
                     translateBinopSepList_rightAssociative env pos firstItem firstTail
 
 
@@ -1419,7 +1423,7 @@ translateTypeFunctionParameter as fn ReadOnly, FA.Expression: Res CA.ParType =
         expression
 
     try expr_ as
-        , FA.Unop Op.UnopRecycle faOperand:
+        , FA.UnopCall Op.UnopRecycle faOperand:
             faOperand
             >> translateRawType ro __
             >> Result.map CA.ParRe __
@@ -1437,7 +1441,7 @@ translatePoly as fn ReadOnly, FA.Expression: Res (Uniqueness & FA.Expression) =
 
     try expr_ as
 
-        , FA.Unop Op.UnopUnique e:
+        , FA.UnopCall Op.UnopUnique e:
             Uni & e
             >> Ok
 
@@ -1537,13 +1541,17 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
             CA.TypeFn pos caParams caReturn
             >> Ok
 
-        , FA.Binop Op.Tuple sepList:
-            sepList
-            >> translateTuple ro (translateRawType ro __) __
-            >> onOk fn recordAttrs:
+        , FA.BinopChain precedence sepList:
 
-            CA.TypeRecord pos recordAttrs
-            >> Ok
+            if precedence == Op.precedence_tuple then
+                sepList
+                >> translateTuple ro (translateRawType ro __) __
+                >> onOk fn recordAttrs:
+
+                CA.TypeRecord pos recordAttrs
+                >> Ok
+            else
+                erroro ro pos [ "This operator can't be used in type definitions", toHuman expr_ ]
 
         , _:
             # TODO: do all other constructors explicitly
