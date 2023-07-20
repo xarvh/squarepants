@@ -2,18 +2,18 @@
 tests as Test =
     Test.Group "Parser"
         [
-#        , values
-#        , parens
-#        , functions
-#        , annotations
-#        , unionDefs
-#        , lists
-#        , records
-#        , ifs
-#        , tries
-#        , patterns
-#        , binops
-#        , unops
+        , values
+        , parens
+        , functions
+        , annotations
+        , unionDefs
+        , lists
+        , records
+        , ifs
+        , tries
+        , patterns
+        , binops
+        , unops
         ]
 
 
@@ -25,8 +25,6 @@ codeTest as fn Text, Text, (fn Text: Result Text z), Test.CodeExpectation z: Tes
     Test.codeTest toHuman __ __ __ __
 
 
-zot as Number = 1
-[#
 asDefinition as fn FA.Statement: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
     fn s:
     try s as
@@ -56,14 +54,15 @@ firstStatement as fn Text: Result Text FA.Statement =
             , []: Err "Test says: no statements"
             , head :: tail: Ok head
 
-    code
-    >> Compiler/Parser.textToFormattableModule
-        {
-        , stripLocations = True
-        , moduleName = "Test"
+    {
+    , stripLocations = True
+    , errorModule = {
+        , fsPath = "Test"
+        , content = code
         }
-        __
-    >> TH.resErrorToStrippedText code __
+    }
+    >> Compiler/Parser.textToFormattableModule
+    >> TH.resErrorToStrippedText
     >> onOk grabFirst
 
 
@@ -214,7 +213,7 @@ functions as Test =
                     , variable "a"
                     , variable "b"
                     ]
-                    ( e << FA.LiteralNumber "3" )
+                    ( e << FA.LiteralNumber False "3" )
             )
         , codeTest
             """
@@ -228,7 +227,7 @@ functions as Test =
             (Test.isOkAndEqualTo <<
                 e << FA.Fn
                     [ variable "a" ]
-                    ( e << FA.LiteralNumber "3" )
+                    ( e << FA.LiteralNumber False "3" )
             )
         , codeTest
             """
@@ -246,7 +245,7 @@ functions as Test =
                     [ variable "a" ]
                     (e << FA.Fn
                         [ variable "b" ]
-                        ( e << FA.LiteralNumber "3" )
+                        ( e << FA.LiteralNumber False "3" )
                     )
             )
         , codeTest
@@ -349,7 +348,7 @@ functions as Test =
                         [ variable "x" ]
                         ( e << FA.Statements
                             [
-                            , FA.ValueDef { pattern = variable "y", nonFn = [], body = e << FA.LiteralNumber "1" }
+                            , FA.ValueDef { pattern = variable "y", nonFn = [], body = e << FA.LiteralNumber False "1" }
                             , FA.Evaluation << variable "x"
                             ]
                         )
@@ -367,7 +366,7 @@ functions as Test =
                 FA.Binop Op.Mutop __ <<
                     (e << FA.Unop Op.UnopRecycle __ << variable "b")
                     &
-                    [ Prelude.mutableAdd & (e << FA.LiteralNumber "1") ]
+                    [ Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
             )
         ]
 
@@ -984,4 +983,3 @@ unops as Test =
                 )
             )
         ]
-#]
