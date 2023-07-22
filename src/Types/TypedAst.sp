@@ -84,16 +84,15 @@ union Parameter =
 alias Tyvar =
     {
     #, annotatedAt as Pos
-    , generalizedAt as Pos
-    , generalizedFor as Ref
-    , originalName as Name
-    , allowFunctions as Bool
+    #, generalizedAt as Pos
+    #, generalizedFor as Ref
+    , maybeAnnotated as Maybe { name as Name, allowFunctions as Bool }
     }
 
 
 alias Univar =
     {
-    , originalId as UnivarId
+    , annotatedId as UnivarId
     }
 
 

@@ -106,13 +106,12 @@ alias Env =
     {
     , errorModule as Error.Module
     , context as Context
-    , constructors as ByUsr Instance
     , variables as Dict Ref Instance
 
     , expandedAliases as ByUsr ExpandedAlias
 
     , annotatedTyvarsByName as Dict Name TA.TyvarId
-    , annotatedUnivarsByOriginalId as Dict UnivarId UnivarId
+    , univarIdByAnnotatedId as Dict UnivarId UnivarId
     }
 
 
@@ -120,11 +119,10 @@ initEnv as Env =
     {
     , errorModule = { fsPath = "<internal>", content = "" }
     , context = Context_Global
-    , constructors = Dict.empty
     , variables = Dict.empty
     , expandedAliases = Dict.empty
     , annotatedTyvarsByName = Dict.empty
-    , annotatedUnivarsByOriginalId = Dict.empty
+    , univarIdByAnnotatedId = Dict.empty
     }
 
 
@@ -485,7 +483,7 @@ translateAnnotationType as fn Env, @State, CA.RawType: TA.RawType =
     nameToType =
         Dict.map (fn k, v: TA.TypeVar v) env.annotatedTyvarsByName
 
-    translateRawType env nameToType env.annotatedUnivarsByOriginalId @state ca
+    translateRawType env nameToType env.univarIdByAnnotatedId @state ca
 
 
 
@@ -609,10 +607,10 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
 
 #    log "DEf" def
 #
-#    (freeUnivars as Dict UnivarId TA.Univar) & (annotatedUnivarsByOriginalId as Dict UnivarId UnivarId) =
-#        Dict.empty & env.annotatedUnivarsByOriginalId
+#    (freeUnivars as Dict UnivarId TA.Univar) & (univarIdByAnnotatedId as Dict UnivarId UnivarId) =
+#        Dict.empty & env.univarIdByAnnotatedId
 #        >> Dict.for __ def.univars fn originalId, _, (fus & aus):
-#            try Dict.get originalId env.annotatedUnivarsByOriginalId as
+#            try Dict.get originalId env.univarIdByAnnotatedId as
 #
 #                , Just _:
 #                    fus & aus
@@ -651,12 +649,12 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
 #
 #
 #    patternOut =
-#        inferPattern { env with annotatedTyvarsByName, annotatedUnivarsByOriginalId } uni def.pattern @state
+#        inferPattern { env with annotatedTyvarsByName, univarIdByAnnotatedId } uni def.pattern @state
 
 
 
 [#
-    TODO inferPattern deve aggiornare annotatedTyvarsByName e annotatedUnivarsByOriginalId in env
+    TODO inferPattern deve aggiornare annotatedTyvarsByName e univarIdByAnnotatedId in env
 
     Come calcolo freeTyvars e freeUnivars?
     Per saperle devo risolvere le equazioni, ma devo saperle prima di usarle, perche' potrei doverle generalizzare!?
@@ -705,24 +703,20 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         >> List.filterMap (fn entry: entry.maybeAnnotation) __
         >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
         >> Dict.for Dict.empty __ fn originalId, None, acc:
-            try Dict.get originalId localEnv.annotatedUnivarsByOriginalId as
+            try Dict.get originalId localEnv.univarIdByAnnotatedId as
                 , Nothing: acc
                 , Just newId: Dict.insert newId { originalId } acc
 
 
 
+    freeTyvars as Dict TyvarId TA.Tyvar =
+        defType
+        >> TA.typeTyvars
+        >> Dict.map fn tyvarId, None:
+            try Dict.get tyvarId tyvarAnnotatedNameByTyvarId as
+                , Nothing: { maybeAnnotated = Nothing }
+                , Just ann: { maybeAnnotated = Just todo "ann" }
 
-
-
-    
-
-
-
-
-
-
-    isFullyAnnotated =
-        patternOut.maybeFullAnnotation /= Nothing
 
     instance as fn Name, ({ pos as Pos, type as TA.FullType }): Instance =
         fn name, ({ pos, type }):
@@ -730,9 +724,14 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         , definedAt = pos
         , type
         # TODO: remove tyvars and univars that do not appear in the type
-        , freeTyvars = TA.typeTyvars type
+        , freeTyvars
         , freeUnivars
         }
+
+    variables =
+        patternOut.env.variables
+        >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn name, stuff, vars:
+            Dict.insert (nameToRef name) (instance name stuff) vars
 
     {
     , type = defType
@@ -742,18 +741,10 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     , native = def.native
     , body = typedBody
     , directValueDeps = def.directValueDeps
-    , isFullyAnnotated
+    , isFullyAnnotated = patternOut.maybeFullAnnotation /= Nothing
     }
     &
-    { patternOut.env with
-    # Restore annotated tyvars, which were messed up in patternOut.env
-    , annotatedTyvarsByName = baseEnv.annotatedTyvarsByName
-    , annotatedUnivarsByOriginalId = baseEnv.annotatedUnivarsByOriginalId
-    #
-    , variables = .variables
-        >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn name, stuff, vars:
-            Dict.insert (nameToRef name) (instance name stuff) vars
-    }
+    { baseEnv with variables }
 
 
 
@@ -1156,7 +1147,7 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
                         { uni = Uni, raw = o.patternType } & (o.typedPattern & o.env)
 
                     , TA.ParSp full:
-                        uni = translateUni env.annotatedUnivarsByOriginalId originalUni
+                        uni = translateUni env.univarIdByAnnotatedId originalUni
                         addErrorIf (uni /= full.uni) env (CA.patternPos pa) (ErrorUniquenessDoesNotMatchParameter uni full) @state
                         full & checkPattern env full pa @state
 

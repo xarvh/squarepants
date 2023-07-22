@@ -25,13 +25,12 @@ exposedValueToUsrAndInstance as fn USR & Self.Self: USR & Compiler/TypeCheck.Ins
         exposed
 
     makeTyvar as fn TA.TyvarId, None: TA.Tyvar =
-        fn tyvarId, None:
-        {
-        , generalizedAt = Pos.N
-        , generalizedFor = RefGlobal usr
-        , originalName = ""
-        , allowFunctions = True # TODO not (List.member tyvarId exposed.nonFn)
-        }
+        fn tyvarId, None: { maybeAnnotated = Nothing }
+#        , generalizedAt = Pos.N
+#        , generalizedFor = RefGlobal usr
+#        , originalName = ""
+#        , allowFunctions = True # TODO not (List.member tyvarId exposed.nonFn)
+#        }
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
         raw
@@ -136,8 +135,8 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     findMainType pars.entryModule modulesWithDestruction
     >> onOk fn type:
 
-    constructors as [ USR & TA.FullType ] =
-        Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
+#    constructors as [ USR & TA.FullType ] =
+#        Dict.toList (Dict.map (fn k, v: v.type) typeCheckGlobalEnv.constructors)
 
     !externalValues as Array { usr as USR, self as Self.Self } =
         Array.fromList []
@@ -145,5 +144,5 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
     List.each pars.exposedValues fn (usr & self):
         Array.push @externalValues { usr, self }
 
-    Ok { constructors, entryUsr, type, externalValues, defs }
+    Ok { entryUsr, type, externalValues, defs }
 
