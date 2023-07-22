@@ -7,6 +7,7 @@ union RawType =
     , TypeOpaque USR [RawType]
     , TypeFn [ParType] FullType
     , TypeVar TyvarId
+    # TODO Rename to TypeVariant
     , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
     , TypeRecursive USR [RawType]

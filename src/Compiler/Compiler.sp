@@ -105,9 +105,14 @@ compileModules as fn CompileModulesPars: Res Self.LoadPars =
                 }
             }
 
-    pars.modules
-    >> List.mapRes loadModule __
-    >> onOk fn userModules:
+    x as Res [CA.Module] =
+        pars.modules
+        >> List.mapRes loadModule __
+
+    x
+    >> onOk fn u:
+
+    userModules as [CA.Module] = u
 
     log "Type checking..." ""
     userModules

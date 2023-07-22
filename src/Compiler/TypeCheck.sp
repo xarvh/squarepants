@@ -269,12 +269,6 @@ addErrorIf as fn Bool, Env, Pos, Error_, @State: None =
     if test then addError env pos error @state else None
 
 
-getConstructorByUsr as fn USR, Env: Maybe Instance =
-    fn usr, env:
-
-    Dict.get usr env.constructors
-
-
 getVariableByRef as fn Ref, Env: Maybe Instance =
     fn ref, env:
 
@@ -305,7 +299,7 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
                 newTyvarId @state
 
             # The new tyvar has the same typeclasses as the original!
-            Hash.insert @state.tyvarsById generalizedTyvarId { tyvar with generalizedAt = pos, generalizedFor = ref }
+            Hash.insert @state.tyvarsById generalizedTyvarId tyvar #{ tyvar with generalizedAt = pos, generalizedFor = ref }
 
             applySubstitutionToType originalTyvarId (TA.TypeVar (generalizedTyvarId)) a
 
@@ -702,20 +696,20 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         >> Dict.values
         >> List.filterMap (fn entry: entry.maybeAnnotation) __
         >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
-        >> Dict.for Dict.empty __ fn originalId, None, acc:
-            try Dict.get originalId localEnv.univarIdByAnnotatedId as
+        >> Dict.for Dict.empty __ fn annotatedId, None, acc:
+            try Dict.get annotatedId localEnv.univarIdByAnnotatedId as
                 , Nothing: acc
-                , Just newId: Dict.insert newId { originalId } acc
+                , Just newId: Dict.insert newId { annotatedId } acc
 
 
 
-    freeTyvars as Dict TyvarId TA.Tyvar =
+    freeTyvars as Dict TA.TyvarId TA.Tyvar =
         defType
         >> TA.typeTyvars
         >> Dict.map fn tyvarId, None:
             try Dict.get tyvarId tyvarAnnotatedNameByTyvarId as
                 , Nothing: { maybeAnnotated = Nothing }
-                , Just ann: { maybeAnnotated = Just todo "ann" }
+                , Just ann: { maybeAnnotated = Just (todo "ann") }
 
 
     instance as fn Name, ({ pos as Pos, type as TA.FullType }): Instance =
@@ -2026,11 +2020,11 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
         zzzz =
             fn name, ({ allowFunctions }):
             newTyvarId @state & {
-                , originalName = name
+                #, originalName = name
                 #, annotatedAt
-                , generalizedAt = Pos.G
-                , generalizedFor = RefLocal ""
-                , allowFunctions
+                #, generalizedAt = Pos.G
+                #, generalizedFor = RefLocal ""
+                , maybeAnnotated = { name, allowFunctions }
                 }
 
         Dict.map zzzz (todo "def.tyvars")
