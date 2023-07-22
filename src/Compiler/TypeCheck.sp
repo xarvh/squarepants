@@ -602,7 +602,7 @@ inferUni as fn Uniqueness, Uniqueness: Uniqueness =
 #
 #
 doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
-    fn nameToRef, env, def, @state:
+    fn nameToRef, baseEnv, def, @state:
 
     { with uni } =
         def
@@ -667,9 +667,9 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
 
 
     patternOut =
-        inferPattern env uni def.pattern @state
+        inferPattern baseEnv uni def.pattern @state
 
-    envWithContext =
+    localEnv =
         { patternOut.env with
         , context = Context_LetInBody (TA.patternNames patternOut.typedPattern >> Dict.keys)
         }
@@ -681,16 +681,48 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         else
             try patternOut.maybeFullAnnotation as
                 , Just annotation:
-                    raw = translateAnnotationType envWithContext @state annotation.raw
+                    raw = translateAnnotationType localEnv @state annotation.raw
                     full = { uni, raw }
-                    checkExpression envWithContext full def.body @state & full
+                    checkExpression localEnv full def.body @state & full
 
                 , Nothing:
-                    typed & inferredType = inferExpression envWithContext def.body @state
+                    typed & inferredType = inferExpression localEnv def.body @state
                     pos = CA.patternPos def.pattern
-                    addEquality envWithContext pos Why_LetIn patternOut.patternType inferredType.raw @state
-                    checkUni envWithContext pos { fix = uni, mut = inferredType.uni } @state
+                    addEquality localEnv pos Why_LetIn patternOut.patternType inferredType.raw @state
+                    checkUni localEnv pos { fix = uni, mut = inferredType.uni } @state
                     typed & inferredType
+
+    defType =
+        { bodyType with uni = def.uni }
+
+
+    # Univars are not inferred.
+    # If they are not annotated, they are not there.
+    freeUnivars as Dict UnivarId TA.Univar =
+        def.pattern
+        >> CA.patternNames
+        >> Dict.values
+        >> List.filterMap (fn entry: entry.maybeAnnotation) __
+        >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
+        >> Dict.for Dict.empty __ fn originalId, None, acc:
+            try Dict.get originalId localEnv.annotatedUnivarsByOriginalId as
+                , Nothing: acc
+                , Just newId: Dict.insert newId { originalId } acc
+
+
+
+
+
+
+    
+
+
+
+
+
+
+    isFullyAnnotated =
+        patternOut.maybeFullAnnotation /= Nothing
 
     instance as fn Name, ({ pos as Pos, type as TA.FullType }): Instance =
         fn name, ({ pos, type }):
@@ -699,27 +731,24 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         , type
         # TODO: remove tyvars and univars that do not appear in the type
         , freeTyvars = TA.typeTyvars type
-        , freeUnivars = TA.typeUnivars type
+        , freeUnivars
         }
 
-    type =
-        { bodyType with uni = def.uni }
-
     {
-    , type
+    , type = defType
     , freeTyvars = todo "freevars"
     , freeUnivars = todo "freeUnivars"
     , pattern = patternOut.typedPattern
     , native = def.native
     , body = typedBody
     , directValueDeps = def.directValueDeps
-    , isFullyAnnotated = patternOut.maybeFullAnnotation /= Nothing
+    , isFullyAnnotated
     }
     &
     { patternOut.env with
     # Restore annotated tyvars, which were messed up in patternOut.env
-    , annotatedTyvarsByName = env.annotatedTyvarsByName
-    , annotatedUnivarsByOriginalId = env.annotatedUnivarsByOriginalId
+    , annotatedTyvarsByName = baseEnv.annotatedTyvarsByName
+    , annotatedUnivarsByOriginalId = baseEnv.annotatedUnivarsByOriginalId
     #
     , variables = .variables
         >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn name, stuff, vars:
