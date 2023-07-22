@@ -684,7 +684,7 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
                     checkUni localEnv pos { fix = uni, mut = inferredType.uni } @state
                     typed & inferredType
 
-    defType =
+    defType as TA.FullType =
         { bodyType with uni = def.uni }
 
 
@@ -702,14 +702,21 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
                 , Just newId: Dict.insert newId { annotatedId } acc
 
 
+    tyvarAnnotatedNameByTyvarId =
+        Dict.for Dict.empty localEnv.annotatedTyvarsByName fn name, tyvarId, acc: Dict.insert tyvarId name acc
+
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
-        defType
-        >> TA.typeTyvars
-        >> Dict.map fn tyvarId, None:
+        qqqq =
+            fn tyvarId, None:
             try Dict.get tyvarId tyvarAnnotatedNameByTyvarId as
                 , Nothing: { maybeAnnotated = Nothing }
-                , Just ann: { maybeAnnotated = Just (todo "ann") }
+                # TODO: actually set allowFunctions!!!
+                , Just name: { maybeAnnotated = Just { name, allowFunctions = True } }
+
+        defType.raw
+        >> TA.typeTyvars
+        >> Dict.map qqqq __
 
 
     instance as fn Name, ({ pos as Pos, type as TA.FullType }): Instance =
@@ -2018,16 +2025,20 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
     #
     nameToIdAndClasses as Dict Name (TA.TyvarId & TA.Tyvar) =
         zzzz =
-            fn name, ({ allowFunctions }):
-            newTyvarId @state & {
-                #, originalName = name
-                #, annotatedAt
-                #, generalizedAt = Pos.G
-                #, generalizedFor = RefLocal ""
-                , maybeAnnotated = { name, allowFunctions }
-                }
+            fn tyvarName, { nonFn }:
+            newTyvarId @state
+            &
+            {
+            #, originalName = name
+            #, annotatedAt
+            #, generalizedAt = Pos.G
+            #, generalizedFor = RefLocal ""
+            , maybeAnnotated = Just { name = tyvarName, allowFunctions = nonFn == Nothing }
+            }
 
-        Dict.map zzzz (todo "def.tyvars")
+        def.pattern
+        >> CA.patternTyvars
+        >> Dict.map zzzz __
 
     nameToType as Dict Name TA.RawType =
         Dict.map (fn k, (id & classes): TA.TypeVar id) nameToIdAndClasses
@@ -2041,12 +2052,13 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
     # Univars
     #
     originalIdToNewIdAndUnivar as Dict UnivarId (UnivarId & TA.Univar) =
-        todo "def.univars"
-        >> Dict.map (fn originalId, None: newTyvarId @state & { originalId }) __
+        def.pattern
+        >> CA.patternUnivars
+        >> Dict.map (fn annotatedId, None: newTyvarId @state & { annotatedId }) __
 
     originalIdToUniqueness as Dict UnivarId UnivarId =
         originalIdToNewIdAndUnivar
-        >> Dict.map (fn originalId, (newId & univar): newId) __
+        >> Dict.map (fn annotatedId, (newId & univar): newId) __
 
     freeUnivars as Dict UnivarId TA.Univar =
         originalIdToNewIdAndUnivar
@@ -2062,6 +2074,8 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
                 envX
 
             , Just annotation:
+
+                log "ANNOTATION" annotation
 
                 raw =
                     translateRawType env nameToType originalIdToUniqueness @state annotation

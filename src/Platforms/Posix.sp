@@ -50,7 +50,7 @@ makeExecutable as fn Self.LoadPars: Text =
         jaStatements =
             Targets/Javascript/EmittableToJs.translateAll
                 {
-                , constructors = out.constructors
+                , constructors = []
                 , eaDefs = out.defs
                 , platformOverrides = overrides
                 }

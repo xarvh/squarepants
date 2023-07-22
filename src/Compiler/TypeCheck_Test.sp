@@ -60,10 +60,11 @@ freeTyvars as fn [TA.TyvarId]: Dict TA.TyvarId TA.Tyvar =
 
     List.for Dict.empty ids fn id, d:
         Dict.insert id {
-            , originalName = ""
-            , allowFunctions = True
-            , generalizedAt = Pos.G
-            , generalizedFor = RefLocal ""
+            , maybeAnnotated = Nothing
+#            , originalName = ""
+#            , allowFunctions = True
+#            , generalizedAt = Pos.G
+#            , generalizedFor = RefLocal ""
             }
             d
 
@@ -71,13 +72,14 @@ freeTyvars as fn [TA.TyvarId]: Dict TA.TyvarId TA.Tyvar =
 freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
     Dict.empty
-    >> List.for __ ids fn (id & originalName), d:
+    >> List.for __ ids fn (id & name), d:
         Dict.insert id
               {
-              , originalName
-              , allowFunctions = True
-              , generalizedAt = Pos.G
-              , generalizedFor = RefLocal ""
+              , maybeAnnotated = Just { name, allowFunctions = True }
+#              , originalName
+#              , 
+#              , generalizedAt = Pos.G
+#              , generalizedFor = RefLocal ""
               }
               d
 
@@ -145,7 +147,7 @@ infer as fn Text: fn Text: Result Text Out =
         fn (pattern & def):
 
         try pattern as
-            , CA.PatternAny _ { maybeAnnotation, maybeName = Just name }:
+            , CA.PatternAny _ (Just name) maybeAnnotation:
                 if name == targetName then Just def else Nothing
             , _:
                 Nothing

@@ -207,15 +207,26 @@ patternPos as fn Pattern: Pos =
         , PatternRecord p _ _: p
 
 
-patternTyvars as fn Pattern: Dict Name Pos =
+patternTyvars as fn Pattern: Dict Name { nonFn as Maybe Pos } =
     fn pa:
     try pa as
-        , PatternAny _ _ (Just ann): typeTyvars ann.raw
+        , PatternAny _ _ (Just ann): ann.tyvars
         , PatternAny _ _ Nothing: Dict.empty
         , PatternLiteralText _ _: Dict.empty
         , PatternLiteralNumber _ _: Dict.empty
         , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
         , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
+
+
+patternUnivars as fn Pattern: Dict UnivarId None =
+    fn pa:
+    try pa as
+        , PatternAny _ _ (Just ann): ann.univars
+        , PatternAny _ _ Nothing: Dict.empty
+        , PatternLiteralText _ _: Dict.empty
+        , PatternLiteralNumber _ _: Dict.empty
+        , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternUnivars arg))
+        , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternUnivars arg))
 
 
 patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe Annotation } =

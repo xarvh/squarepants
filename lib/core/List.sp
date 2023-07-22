@@ -391,7 +391,7 @@ indexedEach2 as fn [a], [b], (fn Int, a, b: None): None =
         try aa & bb as
             , (a :: at) & (b :: bt):
                 f index a b
-                list_eachWithIndex2 (index + 1) at bt f
+                rec (index + 1) at bt f
             , _:
                 None
 
