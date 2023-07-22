@@ -521,7 +521,6 @@ findLowestPrecedence as fn [FA.Expression]: Int =
 
 
 # TODO Properly manage errors
-# TODO Properly set positions
 breakByPrecedence as fn [FA.Expression]: FA.Expression =
     fn rawExpressions:
 
@@ -536,14 +535,24 @@ breakByPrecedence as fn [FA.Expression]: FA.Expression =
             try breakByUnops exprs1 as
                 , []: todo "bug: breakByPrecedence empty?"
                 , [ one ]: applyHeadUnops one
-                , [ head, ...tail ]: applyHeadUnops (FA.Expression Pos.T (FA.Call head tail))
+                , [ head, ...tail ]: applyHeadUnops (FA.Expression (posRange rawExpressions) (FA.Call head tail))
 
         , lowestPrecedence:
             rawExpressions
             >> splitOnOpWithPrecedence lowestPrecedence __
             >> FA.BinopChain lowestPrecedence __
-            >> FA.Expression Pos.T __
+            >> FA.Expression (posRange rawExpressions) __
 
+
+posRange as fn [FA.Expression]: Pos =
+    fn exprs:
+
+    try exprs as
+        , []: Pos.G
+        , [ FA.Expression start _, ...tail]:
+            try List.last tail as
+                , Just (FA.Expression end _): Pos.range start end
+                , Nothing: start
 
 
 

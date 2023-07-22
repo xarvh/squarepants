@@ -5946,7 +5946,7 @@ const $sd1$Compiler$Parser$makeError = (($env, $readState, $message) => {
         const $rest = ($readState)[2];
         return ($sd1$Types$Pos$P)($start, $end);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 770:8', (sp_toHuman)($readState))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 780:8', (sp_toHuman)($readState))));
   return ($sd1$Compiler$Error$res)($env.errorModule, $p, ($core$Core$Cons)($message, $core$Core$Nil));
 });
 
@@ -6074,7 +6074,7 @@ const $sd1$Compiler$Parser$getOneUnopExpr = ((() => {
         }))()
         : ((($remainder)[0] === "Nil")
           ? (sp_todo)("bug: FA.Error & []")
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 623:8', (sp_toHuman)($remainder)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 633:8', (sp_toHuman)($remainder)))));
   });
   return (($1) => {
     return ($rec)($core$Basics$identity, $1);
@@ -6092,7 +6092,7 @@ const $sd1$Compiler$Parser$breakByUnops = ((() => {
           const $expr = $3.first;
           return ($rec)((sp_cons)($expr, $acc), $remainder);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 656:8', (sp_toHuman)($exprs))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 666:8', (sp_toHuman)($exprs))));
   });
   return (($1) => {
     return ($rec)($core$Core$Nil, $1);
@@ -6116,7 +6116,7 @@ const $sd1$Compiler$Parser$eatAllUnops = ((() => {
           first: $unops,
           second: $exprs,
         })
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 642:8', (sp_toHuman)($exprs))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 652:8', (sp_toHuman)($exprs))));
   });
   return (($1) => {
     return ($rec)($core$Core$Nil, $1);
@@ -6148,6 +6148,46 @@ const $sd1$Compiler$Parser$findLowestPrecedence = ((() => {
   });
 }))();
 
+const $sd1$Types$Pos$range = (($a, $b) => {
+  const $3 = ({
+    first: $a,
+    second: $b,
+  });
+  return (((($3.first)[0] === "P") && (($3.second)[0] === "P"))
+    ? ((() => {
+      const $sa = ($3.first)[1];
+      const $ea = ($3.first)[2];
+      const $sb = ($3.second)[1];
+      const $eb = ($3.second)[2];
+      return ($sd1$Types$Pos$P)(($core$Basics$min)($sa, $sb), ($core$Basics$max)($ea, $eb));
+    }))()
+    : ((($3.first)[0] === "P")
+      ? $a
+      : (true
+        ? $b
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/Pos.sp 45:4', (sp_toHuman)($3)))));
+});
+
+const $sd1$Compiler$Parser$posRange = (($exprs) => {
+  return ((($exprs)[0] === "Nil")
+    ? $sd1$Types$Pos$G
+    : (((($exprs)[0] === "Cons") && ((($exprs)[1])[0] === "Expression"))
+      ? ((() => {
+        const $start = (($exprs)[1])[1];
+        const $tail = ($exprs)[2];
+        const $2 = ($core$List$last)($tail);
+        return (((($2)[0] === "Just") && ((($2)[1])[0] === "Expression"))
+          ? ((() => {
+            const $end = (($2)[1])[1];
+            return ($sd1$Types$Pos$range)($start, $end);
+          }))()
+          : ((($2)[0] === "Nothing")
+            ? $start
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 554:12', (sp_toHuman)($2))));
+      }))()
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 551:4', (sp_toHuman)($exprs))));
+});
+
 const $sd1$Compiler$Parser$exprOrTargetOp = (($precedence, $head) => {
   return (((($head)[0] === "Expression") && ((($head)[2])[0] === "Binop"))
     ? ((() => {
@@ -6159,7 +6199,7 @@ const $sd1$Compiler$Parser$exprOrTargetOp = (($precedence, $head) => {
     }))()
     : (true
       ? ($core$Result$Ok)($head)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 554:4', (sp_toHuman)($head))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 564:4', (sp_toHuman)($head))));
 });
 
 const $sd1$Compiler$Parser$readExprs = (($targetOpPrecedence, $rawExpressions) => {
@@ -6182,14 +6222,14 @@ const $sd1$Compiler$Parser$readExprs = (($targetOpPrecedence, $rawExpressions) =
                 second: $remainder,
               });
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 572:16', (sp_toHuman)($5))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 582:16', (sp_toHuman)($5))));
       }))()
       : ((($remainder)[0] === "Nil")
         ? ({
           first: ($core$List$reverse)($acc),
           second: $remainder,
         })
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 570:8', (sp_toHuman)($remainder))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 580:8', (sp_toHuman)($remainder))));
   });
   return ($rec)($core$Core$Nil, $rawExpressions);
 });
@@ -6218,9 +6258,9 @@ const $sd1$Compiler$Parser$readOpsAndExprs = (($targetOpPrecedence, $acc, $remai
               const $exprs = ($4)[1];
               return (sp_todo)("bug: readOpsAndExprs spurious exp");
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 593:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 603:12', (sp_toHuman)($4))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 588:4', (sp_toHuman)($remainder))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 598:4', (sp_toHuman)($remainder))));
 });
 
 const $sd1$Compiler$Parser$splitOnOpWithPrecedence = (($targetOpPrecedence, $rawExpressions) => {
@@ -6260,7 +6300,7 @@ const $sd1$Compiler$Parser$breakByPrecedence = (($rawExpressions) => {
             ? ((() => {
               const $head = ($4)[1];
               const $tail = ($4)[2];
-              return ($applyHeadUnops)(($sd1$Types$FormattableAst$Expression)($sd1$Types$Pos$T, ($sd1$Types$FormattableAst$Call)($head, $tail)));
+              return ($applyHeadUnops)(($sd1$Types$FormattableAst$Expression)(($sd1$Compiler$Parser$posRange)($rawExpressions), ($sd1$Types$FormattableAst$Call)($head, $tail)));
             }))()
             : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 536:12', (sp_toHuman)($4)))));
     }))()
@@ -6268,7 +6308,7 @@ const $sd1$Compiler$Parser$breakByPrecedence = (($rawExpressions) => {
       ? ((() => {
         const $lowestPrecedence = $2;
         return ((($1) => {
-          return ($sd1$Types$FormattableAst$Expression)($sd1$Types$Pos$T, $1);
+          return ($sd1$Types$FormattableAst$Expression)(($sd1$Compiler$Parser$posRange)($rawExpressions), $1);
         }))(((($1) => {
           return ($sd1$Types$FormattableAst$BinopChain)($lowestPrecedence, $1);
         }))(((($1) => {
@@ -6823,10 +6863,10 @@ const $sd1$Compiler$Parser$parse = (($env, $tokens) => {
             ? "I got to the end of the statement and I can't make sense of it. =("
             : (true
               ? "I got stuck parsing here. =("
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 798:16', (sp_toHuman)($readState))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 808:16', (sp_toHuman)($readState))));
           return ($sd1$Compiler$Parser$makeError)($env, $readState, $message);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 783:4', (sp_toHuman)($outcome)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 793:4', (sp_toHuman)($outcome)))));
 });
 
 const $sd1$Compiler$Parser$textToFormattableModule = (($env) => {
@@ -7566,26 +7606,6 @@ const $sd1$Types$FormattableAst$sepToList = (($1) => {
   const $head = $1.first;
   const $tuples = $1.second;
   return (sp_cons)($head, ($core$List$map)($core$Tuple$second, $tuples));
-});
-
-const $sd1$Types$Pos$range = (($a, $b) => {
-  const $3 = ({
-    first: $a,
-    second: $b,
-  });
-  return (((($3.first)[0] === "P") && (($3.second)[0] === "P"))
-    ? ((() => {
-      const $sa = ($3.first)[1];
-      const $ea = ($3.first)[2];
-      const $sb = ($3.second)[1];
-      const $eb = ($3.second)[2];
-      return ($sd1$Types$Pos$P)(($core$Basics$min)($sa, $sb), ($core$Basics$max)($ea, $eb));
-    }))()
-    : ((($3.first)[0] === "P")
-      ? $a
-      : (true
-        ? $b
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/Pos.sp 45:4', (sp_toHuman)($3)))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateTuple = (($ro, $translate, $sepList) => {
@@ -16029,6 +16049,12 @@ const $sd1$Compiler$Parser_Test$firstEvaluation = (($code) => {
   return (($core$Result$onOk)($sd1$Compiler$Parser_Test$asEvaluation))(($sd1$Compiler$Parser_Test$firstStatement)($code));
 });
 
+const $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition = (($code) => {
+  return (($core$Result$onOk)((($def) => {
+    return ($core$Result$Ok)($def.body);
+  })))((($core$Result$onOk)($sd1$Compiler$Parser_Test$asDefinition))(($sd1$Compiler$Parser_Test$firstStatement)($code)));
+});
+
 const $sd1$Compiler$Parser_Test$binops = ((() => {
   const $sendBtoC = ($sd1$Compiler$Parser_Test$e)(((($1) => {
     return ($sd1$Types$FormattableAst$BinopChain)($sd1$Types$Op$precedence_pipe, $1);
@@ -16051,14 +16077,8 @@ const $sd1$Compiler$Parser_Test$binops = ((() => {
       second: ($sd1$Compiler$Parser_Test$variable)("d"),
     }), $core$Core$Nil)),
   })));
-  return ($sd1$Test$Group)("Binops", ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("no indent", "b >> c", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoC)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("pipe indent 1", "b\n  >> c", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoC)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("pipe indent 2", "b\n  >> c\n  >> d", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoCtoD)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("pyramid indent", "b\n  >> c\n    >> d", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoCtoD)), $core$Core$Nil)))));
+  return ($sd1$Test$Group)("Binops", ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("no indent", "b >> c", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoC)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("pipe indent 1", "b\n  >> c", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoC)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("pipe indent 2", "b\n  >> c\n  >> d", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoCtoD)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("pyramid indent", "b\n  >> c\n    >> d", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)($sendBtoCtoD)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("no indent", "x =\n    b\n    >>\n    c", $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition, ($sd1$Test$isOkAndEqualTo)($sendBtoC)), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("SKIP (I'm tired) Starting", "x = >> c", $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition, ($sd1$Test$errorContains)(($core$Core$Cons)("TODO", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("SKIP (I'm tired) Double", "x = a >> >> c", $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition, ($sd1$Test$errorContains)(($core$Core$Cons)("TODO", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("SKIP (I'm tired) Ending", "x = a >>", $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition, ($sd1$Test$errorContains)(($core$Core$Cons)("TODO", $core$Core$Nil))), $core$Core$Nil)))))))));
 }))();
-
-const $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition = (($code) => {
-  return (($core$Result$onOk)((($def) => {
-    return ($core$Result$Ok)($def.body);
-  })))((($core$Result$onOk)($sd1$Compiler$Parser_Test$asDefinition))(($sd1$Compiler$Parser_Test$firstStatement)($code)));
-});
 
 const $sd1$Compiler$Parser_Test$functions = ($sd1$Test$Group)("functions", ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("Inline body", "fn a, b: 3", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("a"), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("b"), $core$Core$Nil)), ($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$LiteralNumber)(false, "3")))))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("Indented body", "fn a:\n    3", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("a"), $core$Core$Nil), ($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$LiteralNumber)(false, "3")))))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("Sibling nesting", "z =\n  fn a:\n  fn b:\n  3", $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("a"), $core$Core$Nil), ($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("b"), $core$Core$Nil), ($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$LiteralNumber)(false, "3")))))))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("Tuple vs lambda precedence", "fn a & b: a", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$tuple)(($sd1$Compiler$Parser_Test$variable)("a"), ($sd1$Compiler$Parser_Test$variable)("b")), $core$Core$Nil), ($sd1$Compiler$Parser_Test$variable)("a"))))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("[reg] Pass to function without parens", "xxx fn y: y", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Call)(($sd1$Compiler$Parser_Test$variable)("xxx"), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("y"), $core$Core$Nil), ($sd1$Compiler$Parser_Test$variable)("y"))), $core$Core$Nil))))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("Pass to function without parens, below", "z =\n  xxx fn y:\n  y", $sd1$Compiler$Parser_Test$firstEvaluationOfDefinition, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Call)(($sd1$Compiler$Parser_Test$variable)("xxx"), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$e)(($sd1$Types$FormattableAst$Fn)(($core$Core$Cons)(($sd1$Compiler$Parser_Test$variable)("y"), $core$Core$Nil), ($sd1$Compiler$Parser_Test$variable)("y"))), $core$Core$Nil))))), ($core$Core$Cons)(($sd1$Compiler$Parser_Test$codeTest)("SKIP Function should not swallow pipeline", "value\n>> map fn x: blah\n>> sblorp", $sd1$Compiler$Parser_Test$firstEvaluation, ($sd1$Test$isOkAndEqualTo)(($sd1$Compiler$Parser_Test$e)(((($1) => {
   return ($sd1$Types$FormattableAst$BinopChain)($sd1$Types$Op$precedence_pipe, $1);
