@@ -148,7 +148,7 @@ union Error_ =
     , ErrorWrongNumberOfConstructorArguments
     , ErrorNotEnoughArguments
     , ErrorIncompatibleRecycling
-    , ErrorUniquenessDoesNotMatch { fix as Uniqueness, mut as Uniqueness }
+    , ErrorUniquenessDoesNotMatch { required as Uniqueness, given as Uniqueness }
     , ErrorUniquenessDoesNotMatchArgument
     , ErrorUniquenessDoesNotMatchParameter Uniqueness TA.FullType
     , ErrorRecyclingDoesNotMatch
@@ -519,16 +519,15 @@ uniCanBeCastTo as fn { given as Uniqueness, required as Uniqueness }: CanBeCast 
             CanBeCastNo [b & Imm]
 
 
-# TODO rename mut and fix to given and required
-checkUni as fn Env, Pos, { fix as Uniqueness, mut as Uniqueness }, @State: None =
-    fn env, pos, ({ fix, mut }), @state:
+checkUni as fn Env, Pos, { required as Uniqueness, given as Uniqueness }, @State: None =
+    fn env, pos, { required, given }, @state:
 
-    try uniCanBeCastTo { given = mut, required = fix } as
+    try uniCanBeCastTo { given, required } as
         , CanBeCastYes:
             None
 
         , CanBeCastNo []:
-            addError env pos (ErrorUniquenessDoesNotMatch { fix, mut }) @state
+            addError env pos (ErrorUniquenessDoesNotMatch { required, given }) @state
 
         , CanBeCastNo ((univarId & uni) :: tail):
             addConstraint env pos univarId uni @state
@@ -681,7 +680,7 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
                     typed & inferredType = inferExpression localEnv def.body @state
                     pos = CA.patternPos def.pattern
                     addEquality localEnv pos Why_LetIn patternOut.patternType inferredType.raw @state
-                    checkUni localEnv pos { fix = uni, mut = inferredType.uni } @state
+                    checkUni localEnv pos { required = uni, given = inferredType.uni } @state
                     typed & inferredType
 
     defType as TA.FullType =
@@ -874,7 +873,7 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [Uniqueness & CA.Pattern & CA.E
                 inferPattern env u pa @state
 
             addEquality env pos Why_TryPattern patternOut.patternType valueType.raw @state
-            checkUni env pos { fix = u, mut = valueType.uni } @state
+            checkUni env pos { required = u, given = valueType.uni } @state
 
             newEnv =
                 { patternOut.env with
@@ -1227,7 +1226,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
                     , Just var:
                         full = generalize env pos ref var @state
-                        checkUni env pos { fix = expectedType.uni, mut = full.uni } @state
+                        checkUni env pos { required = expectedType.uni, given = full.uni } @state
                         addEquality env pos Why_Annotation full.raw expectedType.raw @state
 
             TA.Variable pos ref
@@ -1348,7 +1347,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                 >> TA.TypeRecord (Just newId) __
 
             addEquality env pos Why_RecordAccess expressionType.raw requiredType @state
-            checkUni env pos { fix = expectedType.uni, mut = expressionType.uni } @state
+            checkUni env pos { required = expectedType.uni, given = expressionType.uni } @state
 
             TA.RecordAccess pos attrName typedExpression
 
@@ -1388,7 +1387,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             typedExp & fullType =
                 doTry env pos expectedType.raw value patternsAndExpressions @state
 
-            checkUni env pos { fix = expectedType.uni, mut = fullType.uni } @state
+            checkUni env pos { required = expectedType.uni, given = fullType.uni } @state
 
             typedExp
 
@@ -1445,7 +1444,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [CA.Argument], @State: 
                                         addEquality env pos (Why_Argument index) givenRaw inferredRaw @state
 
                             , TA.ArgumentExpression givenFull expr & TA.ParSp inferredFull:
-                                checkUni env pos { fix = inferredFull.uni, mut = givenFull.uni } @state
+                                checkUni env pos { required = inferredFull.uni, given = givenFull.uni } @state
                                 # TODO The order [inferredFull.raw, givenFull.raw] is important if the raw contains a function!!!
                                 # This is **SUPER** brittle (there are probably bugs caused by the inversion of the two comparison terms at some point...)
                                 addEquality env pos (Why_Argument index) inferredFull.raw givenFull.raw @state
@@ -1456,7 +1455,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [CA.Argument], @State: 
                     try maybeExpectedType as
                         , Nothing: outType
                         , Just e:
-                            checkUni env pos { fix = e.uni, mut = outType.uni } @state
+                            checkUni env pos { required = e.uni, given = outType.uni } @state
                             addEquality env pos Why_Annotation outType.raw e.raw @state
                             e
 
@@ -1923,9 +1922,9 @@ doRootDefinition as fn @Int, @Array Error, CA.Module, Env, CA.ValueDef: TA.Value
     @lastUnificationVarId := cloneUni @state.lastUnificationVarId
 
 #    # Add errors
-#    Array.each @state.errors fn err:
-#        Array.push @errors (makeInferenceAndCheckError env err)
-#
+    Array.each @state.errors fn err:
+        Array.push @errors err #(makeInferenceAndCheckError env err)
+
 #    List.each erStateF.errors fn err:
 #        Array.push @errors (makeResolutionError env module err)
 
