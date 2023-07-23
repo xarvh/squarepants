@@ -736,8 +736,8 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
 
     {
     , type = defType
-    , freeTyvars = todo "freevars"
-    , freeUnivars = todo "freeUnivars"
+    , freeTyvars
+    , freeUnivars
     , pattern = patternOut.typedPattern
     , native = def.native
     , body = typedBody
@@ -972,7 +972,7 @@ inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & T
             typedPar & parType & envX1 =
                 inferParam envX index par @state
 
-            log "PAR" { typedPar , parType  }
+            #log "PAR" { typedPar , parType  }
 
             Array.push @typedPars typedPar
             Array.push @parTypes parType
@@ -2075,10 +2075,8 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
 
             , Just annotation:
 
-                log "ANNOTATION" annotation
-
                 raw =
-                    translateRawType env nameToType originalIdToUniqueness @state annotation
+                    translateRawType env nameToType originalIdToUniqueness @state annotation.raw
 
                 instance as Instance =
                     {
@@ -2642,25 +2640,14 @@ replaceUnificationVariable as fn Env, Equality, TA.TyvarId, TA.RawType, @State: 
     else if occurs tyvarId replacingType then
         addErError env equality "circular!?" @state
     else
-        todo "ZZZZZOT"
-        [#
-        zzz =
-            fn eq:
-            { eq with
-            , type1 = applySubstitutionToType tyvarId replacingType .type1
-            , type2 = applySubstitutionToType tyvarId replacingType .type2
-            }
+        !new = Hash.fromList []
 
-        equalities =
-            List.map zzz state.equalities
+        Hash.each @state.tyvarSubs fn tId, rawType:
+            Hash.insert @new tId (applySubstitutionToType tyvarId replacingType rawType)
 
-        substitutions =
-            state.substitutions
-            >> Dict.map (fn _, type: applySubstitutionToType tyvarId replacingType type) __
-            >> Dict.insert tyvarId replacingType __
+        Hash.insert @new tyvarId replacingType
 
-        { state with substitutions, equalities }
-        #]
+        @state.tyvarSubs := new
 
 
 occurs as fn TA.TyvarId, TA.RawType: Bool =
