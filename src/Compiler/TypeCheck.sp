@@ -1609,17 +1609,34 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
 
 
 inferPatternAny as fn Env, Pos, Uniqueness, Maybe Name, Maybe CA.Annotation, @State: PatternOut =
-    fn env, pos, uni, maybeName, maybeAnnotation, @state:
+    fn baseEnv, pos, uni, maybeName, maybeAnnotation, @state:
 
-    raw as TA.RawType =
+    (raw as TA.RawType) & (envWithAnnotations as Env) =
         try maybeAnnotation as
             , Nothing:
-                newRawType @state
+                newRawType @state & baseEnv
 
             , Just annotation:
+
+                annotatedTyvarsByName =
+                    Dict.for baseEnv.annotatedTyvarsByName annotation.tyvars fn name, { nonFn }, acc:
+                        if Dict.member name acc then
+                            acc
+                        else
+                            Dict.insert name (newTyvarId @state) acc
+
+                univarIdByAnnotatedId =
+                    Dict.for baseEnv.univarIdByAnnotatedId annotation.univars fn id, _, acc:
+                        if Dict.member id acc then
+                            acc
+                        else
+                            Dict.insert id (newTyvarId @state) acc
+
+
                 # TODO should we test annotation uni vs the pattern uni (which is not available in this fn?)
-                todo "add annotation vars/unis to env"
-                translateAnnotationType env @state annotation.raw
+                newEnv = { baseEnv with annotatedTyvarsByName, univarIdByAnnotatedId }
+
+                translateAnnotationType newEnv @state annotation.raw & newEnv
 
     type as TA.FullType =
         { raw, uni }
@@ -1627,7 +1644,7 @@ inferPatternAny as fn Env, Pos, Uniqueness, Maybe Name, Maybe CA.Annotation, @St
     envWithVariable as Env =
         try maybeName as
             , Nothing:
-                env
+                envWithAnnotations
 
             , Just name:
                 variable as Instance =
@@ -1639,7 +1656,7 @@ inferPatternAny as fn Env, Pos, Uniqueness, Maybe Name, Maybe CA.Annotation, @St
                     }
 
                 # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                { env with
+                { envWithAnnotations with
                 , variables = Dict.insert (RefLocal name) variable .variables
                 }
 
@@ -2295,16 +2312,21 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
 addSub as fn UnivarId, Uniqueness, @Hash UnivarId Uniqueness: None =
     fn newId, newUni, @subs:
 
-    todo "addSub"
-#    replace =
-#        fn id, uni:
-#        try uni as
-#            , Depends blah: if blah == newId then newUni else uni
-#            , _: uni
-#
-#    subs
-#    >> Dict.map replace __
-#    >> Dict.insert newId newUni __
+    !newSubs as Hash UnivarId Uniqueness =
+        Hash.fromList []
+
+    replace =
+        fn uni:
+        try uni as
+            , Depends id: if id == newId then newUni else uni
+            , _: uni
+
+    Hash.each @subs fn univarId, uniqueness:
+        Hash.insert @newSubs univarId (replace uniqueness)
+
+    Hash.insert @newSubs newId newUni
+
+    @subs := newSubs
 
 
 solveUniquenessConstraint as fn Env, UnivarEquality, @State: None =

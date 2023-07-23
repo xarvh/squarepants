@@ -454,6 +454,9 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
         uniOutInit expression
 
     try expression as
+        , TA.Error pos:
+            re
+
         , TA.LiteralText pos l:
             re
 
