@@ -75,6 +75,17 @@ meta as Meta =
         , Ok m:
             m
 
+#
+# CA Types
+#
+# these are necessary because some tests will expect Pos T instead of N
+#
+caBool as CA.RawType =
+    CA.TypeUnion Pos.T CoreTypes.boolCons
+
+caNumber as CA.RawType =
+    CA.TypeNamed Pos.T CoreTypes.numberUsr []
+
 
 #
 # TA Types
@@ -97,6 +108,7 @@ taNone as TA.RawType =
 
 taBool as TA.RawType =
     TA.TypeUnion Nothing CoreTypes.boolCons
+
 
 
 taList as fn TA.RawType: TA.RawType =

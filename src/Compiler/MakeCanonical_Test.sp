@@ -204,9 +204,12 @@ lists as Test =
         """
         Lists
         """
-        [ codeTest "list type sugar"
+        [ codeTest
             """
-            l as [ Bool ] =
+            list type sugar
+            """
+            """
+            l as [ Number ] =
               l
             """
             firstDefinitionStripDeps
@@ -216,7 +219,7 @@ lists as Test =
                 , body = CA.Variable p (TH.rootLocal "l")
                 , native = False
                 , pattern = CA.PatternAny p (Just "l") (Just {
-                    , raw = CoreTypes.listType CoreTypes.boolType
+                    , raw = CoreTypes.listType TH.caNumber
                     , tyvars = Dict.empty
                     , univars = Dict.empty
                     })
