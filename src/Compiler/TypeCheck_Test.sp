@@ -286,17 +286,17 @@ statements as Test =
               False
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = unionCons 1 "False", freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = unionCons 1 "False", freeTyvars = freeTyvars [1] })
         , codeTest
             """
-            Definition statement return type None
+            Definition statements return type None
             """
             """
             a =
               f = fn x: 3
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = unionCons 1 "None", freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = unionCons 1 "None", freeTyvars = freeTyvars [1] })
         , codeTest
             """
             [reg] Definition statement with annotation return type None
@@ -852,8 +852,8 @@ try_as as Test =
                     , _: 3
             """
             (infer "x")
-            (Test.isOkAndEqualTo
-                { freeTyvars = Dict.empty
+            (Test.isOkAndEqualTo {
+                , freeTyvars = freeTyvars [1]
                 , type = TA.TypeFn [ unionCons 1 "True" >> toImm >> TA.ParSp ] (toUni TH.taNumber)
                 }
             )

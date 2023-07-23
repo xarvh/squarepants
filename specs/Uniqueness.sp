@@ -131,7 +131,7 @@ uniquenessTyping as Test =
                     @x += 1
                 """
                 (infer "a")
-                (Test.errorContains ["ErrorShouldBeUnique"])
+                (Test.errorContains ["x is immutable, but you are trying to mutate it"])
             , codeTest
                 """
                 Uniques can be implicitly transformed in immutables
@@ -505,7 +505,7 @@ polymorphism as Test =
             (infer "na")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
+                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
                 , type = TA.TypeFn [TA.ParSp { uni = Depends 0, raw = TA.TypeVar 1}] { uni = Depends 0, raw = TA.TypeVar 1}
                 }
             )
@@ -557,7 +557,7 @@ unions as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
+                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
                 , type = TA.TypeUnion (Just 1) (Dict.ofOne "Z" [ TH.taNumber ])
                 }
             )
