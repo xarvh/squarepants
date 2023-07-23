@@ -247,9 +247,17 @@ newRawType as fn @State: TA.RawType =
 
 
 addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
-    fn env, pos, why, type1, type2, @state:
+    fn env, pos, why, t1, t2, @state:
 
-    solveEquality env { context = env.context, pos, why, type1, type2, expandedRecursives = Set.empty } @state
+    solveEquality env {
+        , context = env.context
+        , pos
+        , why
+        , type1 = applyAllSubs @state t1
+        , type2 = applyAllSubs @state t2
+        , expandedRecursives = Set.empty
+        }
+        @state
 
 
 addError as fn Env, Pos, Error_, @State: None =
@@ -683,9 +691,10 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
                     checkUni localEnv pos { required = uni, given = inferredType.uni } @state
                     typed & inferredType
 
-    defType as TA.FullType =
-        { bodyType with uni = def.uni }
-
+    defType as TA.FullType = {
+        , raw = applyAllSubs @state bodyType.raw
+        , uni = def.uni
+        }
 
     # Univars are not inferred.
     # If they are not annotated, they are not there.
@@ -1921,12 +1930,12 @@ doRootDefinition as fn @Int, @Array Error, CA.Module, Env, CA.ValueDef: TA.Value
     # TODO we can make this safer once we have a 'reassign' op?
     @lastUnificationVarId := cloneUni @state.lastUnificationVarId
 
-#    # Add errors
+    # Add errors
+    # TODO No need to do this, just set
+    #   @state.errors := errors
+    # and set @error back at the end
     Array.each @state.errors fn err:
         Array.push @errors err #(makeInferenceAndCheckError env err)
-
-#    List.each erStateF.errors fn err:
-#        Array.push @errors (makeResolutionError env module err)
 
     resolvedValueDef & envF
 
@@ -2697,4 +2706,16 @@ applySubstitutionToType as fn TA.TyvarId, TA.RawType, TA.RawType: TA.RawType =
         }
 
     TA.resolveRaw subsAsFns originalType
+
+
+applyAllSubs as fn @State, TA.RawType: TA.RawType =
+    fn @state, raw:
+
+    subsAsFns as TA.SubsAsFns =
+        {
+        , ty = fn id: Hash.get @state.tyvarSubs id
+        , uni = fn id: Hash.get @state.univarSubs id
+        }
+
+    TA.resolveRaw subsAsFns raw
 

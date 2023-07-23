@@ -19,6 +19,10 @@ get as fn @Hash k v, k: Maybe v with k NonFunction =
     todo "native"
 
 
+for_ as fn a, @Hash k v, (fn k, v, a: a): a with k NonFunction =
+    fn a, @h, f:
+    for @h f a
+
 for as fn @Hash k v, (fn k, v, a: a), a: a with k NonFunction =
     fn @h, f, a:
     todo "native"

@@ -131,7 +131,7 @@ uniquenessTyping as Test =
                     @x += 1
                 """
                 (infer "a")
-                (Test.errorContains ["x is immutable, but you are trying to mutate it"])
+                (Test.errorContains ["ErrorShouldBeUnique"])
             , codeTest
                 """
                 Uniques can be implicitly transformed in immutables

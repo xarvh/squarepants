@@ -490,7 +490,7 @@ higherOrderTypes as Test =
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = freeTyvarsAnnotated [1 & "a"]
+                , freeTyvars = Dict.empty
                 , type = TA.TypeUnion Nothing (Dict.ofOne "L" [])
                 }
             )
@@ -563,7 +563,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = freeTyvars [3]
+                , freeTyvars = freeTyvars [1, 2, 3]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord (Just 1)
@@ -582,8 +582,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                # TODO Should I have free tyvars 1 and 2 here?
-                , freeTyvars = Dict.empty
+                , freeTyvars = freeTyvars [1, 2]
                 , type =
                     TA.TypeFn
                         [ TA.ParRe << TA.TypeRecord (Just 1)
@@ -636,8 +635,7 @@ records as Test =
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber) >> fn re:
                     {
-                    # TODO should I have free tyvars here?
-                    , freeTyvars = Dict.empty
+                    , freeTyvars = freeTyvars [1]
                     , type = TH.taFunction [re] re
                     }
                 )
@@ -665,8 +663,7 @@ records as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "first" (tyvar 2)) >> fn re:
-                    # TODO tyvar 1 too?
-                    { freeTyvars = freeTyvars [2]
+                    { freeTyvars = freeTyvars [1, 2]
                     , type = TH.taFunction [re] (tyvar 2)
                     }
                 )
@@ -777,11 +774,11 @@ patterns as Test =
             (infer "x")
             #
             (Test.isOkAndEqualTo
-                { freeTyvars = freeTyvars [1]
+                { freeTyvars = freeTyvars [1, 2]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord Nothing (Dict.fromList [ ( "first" & tyvar 1 ) ])]
-                        (tyvar 1)
+                        (tyvar 2)
                 }
             )
          [# TODO
