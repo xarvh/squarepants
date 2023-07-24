@@ -606,65 +606,6 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     { with uni } =
         def
 
-#    log "DEf" def
-#
-#    (freeUnivars as Dict UnivarId TA.Univar) & (univarIdByAnnotatedId as Dict UnivarId UnivarId) =
-#        Dict.empty & env.univarIdByAnnotatedId
-#        >> Dict.for __ def.univars fn originalId, _, (fus & aus):
-#            try Dict.get originalId env.univarIdByAnnotatedId as
-#
-#                , Just _:
-#                    fus & aus
-#
-#                , Nothing:
-#                    univarId =
-#                        newTyvarId @state
-#
-#                    univar as TA.Univar = { originalId }
-#
-#                    Dict.insert univarId univar fus & Dict.insert originalId univarId aus
-#
-#    (freeTyvars as Dict TA.TyvarId TA.Tyvar) & (annotatedTyvarsByName as Dict Name TA.TyvarId) =
-#        Dict.empty & env.annotatedTyvarsByName
-#        >> Dict.for __ def.tyvars fn tyvarName, caTyvar, (ftById & atByName):
-#            try Dict.get tyvarName env.annotatedTyvarsByName as
-#
-#                , Just _:
-#                    # TODO ensure that this definition is not adding flags to tyvars defined in the parent
-#                    ftById & atByName
-#
-#                , Nothing:
-#                    tyvarId =
-#                        newTyvarId @state
-#
-#                    tyvar as TA.Tyvar =
-#                        {
-#                        #, annotatedAt = caTyvar.annotatedAt
-#                        , allowFunctions = caTyvar.allowFunctions
-#                        , originalName = tyvarName
-#                        , generalizedAt = Pos.G
-#                        , generalizedFor = RefLocal ""
-#                        }
-#
-#                    Dict.insert tyvarId tyvar ftById & Dict.insert tyvarName tyvarId atByName
-#
-#
-#    patternOut =
-#        inferPattern { env with annotatedTyvarsByName, univarIdByAnnotatedId } uni def.pattern @state
-
-
-
-[#
-    TODO inferPattern deve aggiornare annotatedTyvarsByName e univarIdByAnnotatedId in env
-
-    Come calcolo freeTyvars e freeUnivars?
-    Per saperle devo risolvere le equazioni, ma devo saperle prima di usarle, perche' potrei doverle generalizzare!?
-
-
-    ^ Infer Pattern deve sistemare tutto
-#]
-
-
     patternOut =
         inferPattern baseEnv uni def.pattern @state
 

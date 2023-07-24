@@ -646,7 +646,7 @@ polymorphicUniques as Test =
                         , pattern = CA.PatternAny p (Just "f") (Just {
                             , raw = CA.TypeAnnotationVariable p "a"
                             , tyvars = Dict.ofOne "a" { nonFn = Nothing }
-                            , univars = Set.ofOne 1
+                            , univars = Dict.empty
                             })
                         , directTypeDeps = Dict.empty
                         , directValueDeps = Dict.empty
