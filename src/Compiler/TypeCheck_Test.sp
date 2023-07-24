@@ -1141,5 +1141,51 @@ misc as Test =
             """
             (infer "z")
             Test.isOk
+        [#
+            I can reproduce the error only in a test file, not in the codeTest environment.
+            Need to refine it once the error is better understood and the code is further reduced.
+
+        , codeTest
+            """
+            [reg] ????
+            """
+            """
+            union RawType =
+                , TypeError Text
+
+            union Dict k v =
+                , Dict k v
+
+            alias Annotation = {
+                , raw as RawType
+                }
+
+            tranz as fn RawType: None =
+                todo ""
+
+            pas as fn None: Dict Name { pos as Text, maybeAnnotation as Maybe Annotation } =
+                todo ""
+
+            for as fn b, Dict k v, (fn k, v, b: b): b =
+                todo ""
+
+            addzzz as fn {}: {} =
+                fn env:
+
+                for env (pas None) fn valueName, valueStuff, envX:
+                    try valueStuff.maybeAnnotation as
+                        , Just annotation:
+
+                            # This is wrong, should be annotation.raw
+                            raw = tranz annotation
+
+                            # Commenting this is enough to make the typecheck actually see the error
+                            definedAt = valueStuff.pos
+
+                            envX
+            """
+            (infer "addzzz")
+            (Test.errorContains ["raw"])
+            #]
         ]
 
