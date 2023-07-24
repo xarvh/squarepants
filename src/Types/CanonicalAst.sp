@@ -182,8 +182,11 @@ typeUnivars as fn RawType: Dict UnivarId None =
     parUnivars as fn ParType, Dict UnivarId None: Dict UnivarId None =
         fn par, acc:
         try par as
-            , ParSp full: insertUni full.uni (typeUnivars full.raw)
             , ParRe _: acc
+            , ParSp full:
+                acc
+                >> Dict.join __ (typeUnivars full.raw)
+                >> insertUni full.uni __
 
     try raw as
         , TypeNamed _ _ args: fromList args
