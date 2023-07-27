@@ -61,6 +61,32 @@ alias State =
 
     , tyvarSubs as Hash TA.TyvarId TA.RawType
     , univarSubs as Hash UnivarId Uniqueness
+    [#
+       Every time we use a value in an expression, we must re-instantiate its free variables, because each time they can be used in a different way.
+
+       Because of this each Definition has a `freeTypeVariables` field.
+
+       To figure out `freeTypeVariables` we can't simply take all tyvars we find in the definition's type, because:
+
+       1) a tyvar that is free in a parent definition should not be considered free in children definitions:
+
+         parent as List a =
+
+           child as fn a: a =
+             ...
+
+           ...
+
+       2) the placeholder tyvar of an argument should not be considered free while we infer the type of a function, otherwise we keep reinstantitiating it and we never figure out anything.
+
+         f =
+           fn x:
+           { first } = x
+           first
+
+       By keeping track of which tyvars should NOT be considered free, we can figure out the correct `freeTypeVariables` field for each child definition.
+    #]
+    , boundTyvars as Hash TA.TyvarId Pos
     }
 
 
@@ -83,6 +109,7 @@ initState as fn !Int: !State =
     , univarsById = Hash.fromList []
     , tyvarSubs = Hash.fromList []
     , univarSubs = Hash.fromList []
+    , boundTyvars = Hash.fromList []
     }
 
 

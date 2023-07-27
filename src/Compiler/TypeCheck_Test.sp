@@ -264,6 +264,16 @@ functions as Test =
             """
             (infer "listCons")
             (Test.errorContains ["Nil"])
+        , codeTest
+            """
+            Annotations that are too general should be rejected
+            """
+            """
+            f as fn a: b =
+                fn a: a
+            """
+            (infer "f")
+            (Test.errorContains [])
         ]
 
 
@@ -749,12 +759,31 @@ patterns as Test =
             """
             x =
                fn q:
-               [ first, second ] = q
+               [first, second] = q
                first
             """
             (infer "x")
             (Test.isOkAndEqualTo
                 { freeTyvars = freeTyvars [1]
+                , type =
+                    TH.taFunction
+                        [ TH.taList (tyvar 1)]
+                        (tyvar 1)
+                }
+            )
+        , codeTest
+            """
+            Cons unpacking
+            """
+            """
+            x =
+               fn q:
+               Cons first Nil = q
+               first
+            """
+            (infer "x")
+            (Test.isOkAndEqualTo
+                { freeTyvars = freeTyvars [1, 2, 3]
                 , type =
                     TH.taFunction
                         [ TH.taList (tyvar 1)]
