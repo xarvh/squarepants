@@ -420,7 +420,9 @@ variableTypes as Test =
     Test.Group "Variable types"
         [
         , codeTest
-            "Identity"
+            """
+            Identity, annotated
+            """
             """
             id as fn a: a =
               fn a: a
@@ -431,7 +433,20 @@ variableTypes as Test =
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
-
+        , codeTest
+            """
+            Identity, inferred
+            """
+            """
+            id =
+              fn a: a
+            """
+            (infer "id")
+            (Test.isOkAndEqualTo
+                { type = TH.taFunction [tyvar 1] (tyvar 1)
+                , freeTyvars = freeTyvars [1]
+                }
+            )
         , codeTest
             "Annotated vars are instantiated when referenced"
             """
