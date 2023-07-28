@@ -86,7 +86,7 @@ alias State =
 
        By keeping track of which tyvars should NOT be considered free, we can figure out the correct `freeTypeVariables` field for each child definition.
     #]
-    , boundTyvars as Hash TA.TyvarId Pos
+    , boundTyvars as Hash TA.TyvarId None
     }
 
 
@@ -633,6 +633,10 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     { with uni } =
         def
 
+    # TODO explain why we need this...
+    !parentBoundTyvars =
+        cloneUni @state.boundTyvars
+
     patternOut =
         inferPattern baseEnv uni def.pattern @state
 
@@ -665,7 +669,7 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         }
 
     # Univars are not inferred.
-    # If they are not annotated, they are not there.
+    # If they are not annotated, values are assumed to be immutable
     freeUnivars as Dict UnivarId TA.Univar =
         def.pattern
         >> CA.patternNames
@@ -678,21 +682,41 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
                 , Just newId: Dict.insert newId { annotatedId } acc
 
 
-    tyvarAnnotatedNameByTyvarId =
-        Dict.for Dict.empty localEnv.annotatedTyvarsByName fn name, tyvarId, acc: Dict.insert tyvarId name acc
 
-
+    # TODO explain what is happening here
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
-        qqqq =
-            fn tyvarId, None:
-            try Dict.get tyvarId tyvarAnnotatedNameByTyvarId as
-                , Nothing: { maybeAnnotated = Nothing }
-                # TODO: actually set allowFunctions!!!
-                , Just name: { maybeAnnotated = Just { name, allowFunctions = True } }
+
+        # TODO: not all tyvars are bindable.
+        # for example, in `fn a: a` a would be free unless it also appears somewhere else?
+        allBindableTyvarsIn as fn TA.TyvarId: Set TA.TyvarId =
+            fn tyvarId:
+            try Hash.get @state.tyvarSubs tyvarId as
+                , Nothing: Set.empty
+                , Just raw: Dict.map (fn k, v: None) (TA.typeTyvars raw)
+
+        resolvedParentBoundTyvars as Set TA.TyvarId =
+            Hash.for_ Set.empty @parentBoundTyvars fn parentTyvar, _, set:
+                set
+                >> Set.insert parentTyvar __
+                >> Set.for __ (allBindableTyvarsIn parentTyvar) Set.insert
+        tyvarAnnotatedNameByTyvarId =
+            Dict.for Dict.empty localEnv.annotatedTyvarsByName fn name, tyvarId, acc: Dict.insert tyvarId name acc
 
         defType.raw
         >> TA.typeTyvars
-        >> Dict.map qqqq __
+        >> Dict.for Dict.empty __ fn id, _, acc:
+            if Set.member id resolvedParentBoundTyvars then
+              acc
+            else
+                try Dict.get id tyvarAnnotatedNameByTyvarId as
+                    , Nothing: { maybeAnnotated = Nothing }
+                    # TODO: actually set allowFunctions!!!
+                    , Just name: { maybeAnnotated = Just { name, allowFunctions = True } }
+                >> Dict.insert id __ acc
+
+
+    # TODO ----> check that annotation is not too general?
+
 
 
     instance as fn Name, ({ pos as Pos, type as TA.FullType }): Instance =
@@ -700,7 +724,7 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
         {
         , definedAt = pos
         , type
-        # TODO: remove tyvars and univars that do not appear in the type
+        # TODO filter with the specific tyvars/univars in type
         , freeTyvars
         , freeUnivars
         }
@@ -878,8 +902,14 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
     try par as
         , CA.ParameterRecycle pos name:
             # TODO check name already in env? Is it MakeCanonical resp?
+
+            tyvarId =
+                newTyvarId @state
+
+            Hash.insert @state.boundTyvars tyvarId None
+
             raw =
-                TA.TypeVar (newTyvarId @state)
+                TA.TypeVar tyvarId
 
             instance as Instance =
                 {
@@ -899,6 +929,9 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             out =
                 inferPattern env uni pa @state
 
+            Dict.each (TA.typeTyvars out.patternType) fn tyvarId, _:
+                Hash.insert @state.boundTyvars tyvarId None
+
             full =
                 { raw = out.patternType, uni }
 
@@ -906,11 +939,16 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
 
 
         , CA.ParameterPlaceholder name num:
-            univarId =
+            tyvarId =
                 newTyvarId @state
 
+            Hash.insert @state.boundTyvars tyvarId None
+
             raw =
-                newRawType @state
+                TA.TypeVar tyvarId
+
+            univarId =
+                newTyvarId @state
 
             type =
                 { raw, uni = Depends univarId }
@@ -934,6 +972,21 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
 
 inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, caPars, body, @state:
+
+
+    [#
+        - get all tyvars in the param types
+        - inside the function body, all these tyvars are bound
+        - outside the function body, the resolved tyvars are free, unless already bound in the parent scope
+
+            ----> at the end of a definition I can take the type tyvars, see which ones are free, then resolve them?
+
+
+
+
+    #]
+
+
 
     [# TODO
         Urgh. This is gross.
