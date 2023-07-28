@@ -2200,6 +2200,13 @@ makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
             else
                 Err {}
 
+        , CA.TypeRecursive pos usr args:
+              if usr == required then
+                  Ok requiringType
+              else
+                  log "CA.TypeRecursive" { usr, required }
+                  Err {}
+
         , CA.TypeUnion pos consByName:
             consByName
             >> Dict.mapRes (fn name, cons: List.mapRes recAllow cons) __

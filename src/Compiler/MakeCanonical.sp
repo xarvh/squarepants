@@ -404,8 +404,8 @@ translatePatternConstructor as fn Env, Pos, Token.Word, [CA.Pattern]: Res CA.Pat
         error env pos [ "Constructor names cannot have modifiers" ]
     else if word.attrPath /= [] then
         error env pos [ "Constructors don't have attributes" ]
-    else if word.maybeModule /= Nothing then
-        error env pos [ "Constructors don't need a module name" ]
+#    else if word.maybeModule /= Nothing then
+#        error env pos [ "Constructors don't need a module name" ]
     else
         CA.PatternConstructor pos word.name args
         >> Ok
@@ -1048,8 +1048,8 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
             if word.isUpper then
                 if word.attrPath /= [] then
                     error env pos [ "something's wrong with the lexer?" ]
-                else if word.maybeModule /= Nothing then
-                    error env pos [ "Constructors don't need module names" ]
+#                else if word.maybeModule /= Nothing then
+#                    error env pos [ "Constructors don't need module names" ]
                 else
                     CA.Constructor pos word.name []
                     >> Ok
