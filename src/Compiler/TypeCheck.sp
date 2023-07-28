@@ -962,7 +962,7 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
                 }
 
             newEnv as Env =
-                { env with variables = Dict.insert (RefLocal name) instance .variables } 
+                { env with variables = Dict.insert (RefLocal name) instance .variables }
 
             pa as TA.Pattern =
                 TA.PatternAny Pos.G { maybeName = Just name, type }
@@ -980,10 +980,6 @@ inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & T
         - outside the function body, the resolved tyvars are free, unless already bound in the parent scope
 
             ----> at the end of a definition I can take the type tyvars, see which ones are free, then resolve them?
-
-
-
-
     #]
 
 

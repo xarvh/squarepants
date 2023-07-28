@@ -801,13 +801,13 @@ patterns as Test =
                 { freeTyvars = freeTyvars [1, 2, 3]
                 , type =
                     TH.taFunction
-                        [ TH.taList (tyvar 1)]
-                        (tyvar 1)
+                        [ TA.TypeUnion (Just 3) (Dict.ofOne "Cons" [ tyvar 2, TA.TypeUnion (Just 1) (Dict.ofOne "Nil" [])] )]
+                        (tyvar 2)
                 }
             )
         , codeTest
             """
-            Records are correctly unpacked
+            Complete records are correctly unpacked
             """
             """
             x =
@@ -818,11 +818,31 @@ patterns as Test =
             (infer "x")
             #
             (Test.isOkAndEqualTo
-                { freeTyvars = freeTyvars [1, 2]
+                { freeTyvars = freeTyvars [1]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord Nothing (Dict.fromList [ ( "first" & tyvar 1 ) ])]
-                        (tyvar 2)
+                        (tyvar 1)
+                }
+            )
+        , codeTest
+            """
+            Incomplete records are correctly unpacked
+            """
+            """
+            x =
+                fn q:
+                { with first } = q
+                first
+            """
+            (infer "x")
+            #
+            (Test.isOkAndEqualTo
+                { freeTyvars = freeTyvars [1, 2]
+                , type =
+                    TH.taFunction
+                        [ TA.TypeRecord (Just 2) (Dict.fromList [ ( "first" & tyvar 1 ) ])]
+                        (tyvar 1)
                 }
             )
          [# TODO
