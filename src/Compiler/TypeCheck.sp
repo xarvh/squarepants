@@ -1229,6 +1229,12 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
     try caExpression & expectedType.raw as
 
+        , _ & TA.TypeRecursive usr args:
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # TODO this will cause an infinite recursion with `alias A = A`
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            checkExpression env { expectedType with raw = expandRecursiveType env usr args } caExpression @state
+
         , CA.LiteralNumber pos n & TA.TypeOpaque typeUsr []:
             addErrorIf (typeUsr /= CoreTypes.numberUsr)
                 env pos (ErrorIncompatibleTypes caExpression expectedType) @state
@@ -2527,32 +2533,41 @@ solveEquality as fn Env, Equality, @State: None =
 solveTypeRecursive as fn Env, Equality, USR, [TA.RawType], TA.RawType, @State: None =
     fn env, eq, recUsr, recArgs, otherType, @state:
 
-    if Set.member recUsr eq.expandedRecursives then
-        addErError env eq "(recursive) types are incompatible" @state
-    else
-
-        recAlias as ExpandedAlias =
-            try Dict.get recUsr env.expandedAliases as
-                , Nothing: bug "no expandedAlias!"
-                , Just a: a
-
-        argTypeByTyvarId =
-            List.for2 Dict.empty recAlias.pars recArgs Dict.insert
-
-        subsAsFn as TA.SubsAsFns = {
-            , ty = Dict.get __ argTypeByTyvarId
-            , uni = fn _: Nothing
-            }
-
-        recType =
-            TA.resolveRaw subsAsFn recAlias.type
+# TODO need to keep track of nominal expansion on each of the two types separately
+#
+#    if Set.member recUsr eq.expandedRecursives then
+#        addErError env eq "(recursive) types are incompatible" @state
+#        todo "CRASH"
+#    else
 
         { eq with
         , expandedRecursives = Set.insert recUsr .expandedRecursives
-        , type1 = recType
+        , type1 = expandRecursiveType env recUsr recArgs
         , type2 = otherType
         }
         >> solveEquality env __ @state
+
+
+expandRecursiveType as fn Env, USR, [TA.RawType]: TA.RawType =
+    fn env, recUsr, recArgs:
+
+    recAlias as ExpandedAlias =
+        try Dict.get recUsr env.expandedAliases as
+            , Nothing: bug "no expandedAlias!"
+            , Just a: a
+
+    argTypeByTyvarId =
+        List.for2 Dict.empty recAlias.pars recArgs Dict.insert
+
+    subsAsFn as TA.SubsAsFns = {
+        , ty = Dict.get __ argTypeByTyvarId
+        , uni = fn _: Nothing
+        }
+
+    TA.resolveRaw subsAsFn recAlias.type
+
+
+
 
 
 solveUnionEquation as fn Env, Equality, Maybe TA.TyvarId, Dict Name [TA.RawType], Maybe TA.TyvarId, Dict Name [TA.RawType], @State: None =
@@ -2667,9 +2682,9 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         , TA.TypeFn ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
         , TA.TypeVar id: id == tyvarId
         , TA.TypeOpaque usr args: List.any rec args
+        , TA.TypeRecursive usr args: List.any rec args
         , TA.TypeUnion _ consByName: Dict.any (fn k, v: List.any rec v) consByName
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
-        , TA.TypeRecursive usr args: False # It's recursive, so we can assume it was done already?
         , TA.TypeError: False
 
 
