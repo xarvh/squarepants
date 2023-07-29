@@ -40,7 +40,7 @@ mapRes as fn (fn a: Result e b), Maybe a: Result e (Maybe b) =
             Ok Nothing
 
         , Just a:
-            Result.map Just (f a)
+            Result.map (Just __) (f a)
 
 
 withDefault as fn a, Maybe a: a =

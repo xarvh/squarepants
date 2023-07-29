@@ -1226,6 +1226,30 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
             >> Ok
 
 
+translateCall as fn Env, Pos, FA.Expression, [FA.Expression]: Res CA.Expression =
+    fn env, pos, faRef, faArgs:
+
+    faRef
+    >> translateExpression env __
+    >> onOk fn caRef:
+
+    try caRef as
+        , CA.Constructor pos usr []:
+            faArgs
+            >> List.mapRes (translateExpression env __) __
+            >> onOk fn caArgs:
+
+            CA.Constructor pos usr caArgs
+            >> Ok
+
+        , _:
+            List.mapRes (translateArgument env __) faArgs
+            >> onOk fn caArgs:
+
+            CA.Call pos caRef caArgs
+            >> Ok
+
+
 translateBinops as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
     fn env, pos, group, ( firstItem & firstTail ):
     try firstTail as
@@ -1241,6 +1265,11 @@ translateBinops as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.E
                         >> Dict.insert "second" second __
                         >> CA.Record pos Nothing __
                         >> Ok
+            else if group == Op.precedence_pipe then
+                if firstSep.usr == Prelude.sendRight.usr then
+                    translateCall env pos secondItem [firstItem]
+                else
+                    translateCall env pos firstItem [secondItem]
             else
                     translateSimpleBinop env pos firstItem firstSep secondItem
 

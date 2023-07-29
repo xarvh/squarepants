@@ -234,7 +234,7 @@ append as fn [a], [a]: [a] =
   fn xs, ys:
   try ys as
     , []: xs
-    , _: forReversed ys xs Core.Cons
+    , _: forReversed ys xs (Core.Cons __ __)
 
 
 concat as fn [[a]]: [a] =
@@ -296,7 +296,7 @@ takeFast as fn Int, Int, [a]: [a] =
           [ x, y, z ]
 
         , _ & [x, y, z, w, ...tl]:
-          cons = Core.Cons
+          cons = Core.Cons __ __
           if ctr > 1000 then
             cons x (cons y (cons z (cons w (takeTailRec (n - 4) tl))))
           else
@@ -402,7 +402,7 @@ indexedEach2 as fn [a], [b], (fn Int, a, b: None): None =
 
 reverse as fn [a]: [a] =
     fn aList:
-    for [] aList Core.Cons
+    for [] aList (Core.Cons __ __)
 
 
 repeat as fn Int, a: [ a ] =
@@ -453,12 +453,12 @@ circularPairs as fn [a]: [a & a] =
 
     rec =
         fn zero, tt, acc:
-            try tt as
-                , []: acc
-                , [first, ...tail]:
-                    try tail as
-                        , []: [zero & first, ...acc]
-                        , [second, ...moar]: rec zero tail [second & first, ...acc]
+        try tt as
+            , []: acc
+            , [first, ...tail]:
+                try tail as
+                    , []: [zero & first, ...acc]
+                    , [second, ...moar]: rec zero tail [second & first, ...acc]
 
     try list as
         , []: []

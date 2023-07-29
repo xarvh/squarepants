@@ -2683,7 +2683,8 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         , TA.TypeVar id: id == tyvarId
         , TA.TypeOpaque usr args: List.any rec args
         , TA.TypeRecursive usr args: List.any rec args
-        , TA.TypeUnion _ consByName: Dict.any (fn k, v: List.any rec v) consByName
+        , TA.TypeUnion (Just id) consByName: id == tyvarId #???? Dict.any (fn k, v: List.any rec v) consByName
+        , TA.TypeUnion Nothing consByName: False
         , TA.TypeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
         , TA.TypeError: False
 
