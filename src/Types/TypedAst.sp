@@ -5,12 +5,13 @@ alias TyvarId =
 
 union RawType =
     , TypeOpaque USR [RawType]
+    , TypeRecursive USR [RawType]
     , TypeFn [ParType] FullType
     , TypeVar TyvarId
     # TODO Rename to TypeVariant
     , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
-    , TypeRecursive USR [RawType]
+    # This makes the type nominal instead than structural
     , TypeError
 
 
@@ -362,12 +363,12 @@ typeTyvars as fn RawType: Dict TyvarId None =
 
     try type as
         , TypeOpaque usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
+        , TypeRecursive usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
         , TypeVar id: Dict.ofOne id None
         , TypeRecord Nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         , TypeRecord (Just id) attrs: Dict.ofOne id None >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         , TypeUnion Nothing consByName: addConsTyvars Dict.empty consByName
         , TypeUnion (Just id) consByName: addConsTyvars (Dict.ofOne id None) consByName
-        , TypeRecursive usr args: Dict.empty # It's recursive, so we can assume it was done already?
         , TypeError: Dict.empty
         , TypeFn ins out:
             typeTyvars out.raw
@@ -377,12 +378,12 @@ typeTyvars as fn RawType: Dict TyvarId None =
 typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
     fn testId, type:
     try type as
-        , TypeFn ins out: True
+        , TypeFn _ _: True
         , TypeVar id: testId id
-        , TypeOpaque usr args: List.any (typeAllowsFunctions testId __) args
+        , TypeOpaque _ args: List.any (typeAllowsFunctions testId __) args
+        , TypeRecursive _ args: List.any (typeAllowsFunctions testId __) args
         , TypeUnion _ consByName: Dict.any (fn k, v: List.any (typeAllowsFunctions testId __) v) consByName
         , TypeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
-        , TypeRecursive _ _: False # It's recursive, so we can assume it was done already?
         , TypeError: True
 
 

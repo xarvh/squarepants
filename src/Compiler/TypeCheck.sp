@@ -2174,107 +2174,61 @@ expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: 
 
 
 
-makeTypeRecursive as fn Bool, USR, CA.RawType: Result {} CA.RawType =
-    fn allowRecursion, required, requiringType:
+makeNominal as fn USR, CA.RawType: CA.RawType =
+    fn required, requiringType:
 
-    rec as fn CA.RawType: Result {} CA.RawType =
-        makeTypeRecursive allowRecursion required __
-
-    recAllow as fn CA.RawType: Result {} CA.RawType =
-        makeTypeRecursive True required __
+    rec as fn CA.RawType: CA.RawType =
+        makeNominal required __
 
     try requiringType as
+
         , CA.TypeNamed pos usr args:
 
-            List.mapRes rec args
-            >> onOk fn fixedArgs:
+            fixedArgs =
+                List.map rec args
 
             if required /= usr then
                 CA.TypeNamed pos usr fixedArgs
-                >> Ok
-
-            else if allowRecursion then
-                CA.TypeRecursive pos required fixedArgs
-                >> Ok
 
             else
-                Err {}
+                CA.TypeRecursive pos required fixedArgs
 
         , CA.TypeRecursive pos usr args:
-              if usr == required then
-                  Ok requiringType
-              else
-                  log "CA.TypeRecursive" { usr, required }
-                  Err {}
+            CA.TypeRecursive pos usr (List.map rec args)
 
         , CA.TypeUnion pos consByName:
             consByName
-            >> Dict.mapRes (fn name, cons: List.mapRes recAllow cons) __
-            >> Result.map (CA.TypeUnion pos __) __
+            >> Dict.map (fn name, cons: List.map rec cons) __
+            >> CA.TypeUnion pos __
 
         , CA.TypeAnnotationVariable pos name:
-            Ok requiringType
+            requiringType
 
         , CA.TypeRecord pos attrs:
             attrs
-            >> Dict.mapRes (fn k, v: rec v) __
-            >> Result.map (CA.TypeRecord pos __) __
+            >> Dict.map (fn k, v: rec v) __
+            >> CA.TypeRecord pos __
 
         , CA.TypeFn pos ins out:
             mapPar =
                 fn par:
                 try par as
-                    , CA.ParRe raw: Result.map CA.ParRe (rec raw)
-                    , CA.ParSp full: Result.map (fn raw: CA.ParSp { full with raw }) (rec full.raw)
+                    , CA.ParRe raw: CA.ParRe (rec raw)
+                    , CA.ParSp full: CA.ParSp { full with raw = rec .raw }
 
-            List.mapRes mapPar ins
-            >> onOk fn fixedIns:
-
-            rec out.raw
-            >> onOk fn fixedOutRaw:
-
-            CA.TypeFn pos fixedIns { out with raw = fixedOutRaw }
-            >> Ok
+            CA.TypeFn pos (List.map mapPar ins) { out with raw = rec .raw }
 
 
+breakCircular as fn [USR], ByUsr CA.AliasDef: ByUsr CA.AliasDef =
+    fn circular, aliases0:
 
-toFixedType as fn ByUsr CA.AliasDef, USR & USR: Maybe (ByUsr CA.AliasDef) =
-    fn aliases, required & requiring:
-
-    requiringDef =
-        try Dict.get requiring aliases as
-            , Just a: a
-            , Nothing: bug "no requiring alias =("
-
-    try makeTypeRecursive False required requiringDef.type as
-        , Ok fixedType:
-            aliases
-            >> Dict.insert requiring { requiringDef with type = fixedType } __
-            >> Just
-
-        , Err {}: Nothing
-
-
-
-tryToBreakCircular as fn [USR], ByUsr CA.AliasDef: Res (ByUsr CA.AliasDef) =
-    fn circular, aliases:
-
-    pairs =
-        List.circularPairs circular
-
-    try List.findMap (toFixedType aliases __) pairs as
-        , Just fixedAliases:
-            Ok fixedAliases
-
-        , Nothing:
-            [
-            , Debug.toHuman "Cannot fix recursive types"
-            , ""
-            , Debug.toHuman circular
-            , ""
-            ]
-            >> Error.Raw
-            >> Err
+    circular
+    >> List.circularPairs
+    >> List.for aliases0 __ fn requiredUsr & requiringUsr, aliasesX:
+          try Dict.get requiringUsr aliasesX as
+              , Nothing: bug "no requiring alias =("
+              , Just def:
+                  Dict.insert requiringUsr { def with type = makeNominal requiredUsr .type } aliasesX
 
 
 getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
@@ -2301,9 +2255,8 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
     circulars & orderedAliases =
         RefHierarchy.reorder (getAliasDependencies rawAliases __) rawAliases
 
-    rawAliases
-    >> List.forRes __ circulars tryToBreakCircular
-    >> onOk fn fixedAliases:
+    fixedAliases =
+        List.for rawAliases circulars breakCircular
 
     !state =
         initState 0
