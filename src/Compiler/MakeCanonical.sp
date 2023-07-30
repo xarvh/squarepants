@@ -1340,16 +1340,21 @@ translateTupleExpression as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res 
 
 
 translateComparison as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
-    fn env, pos, first & sepTail:
-    error env pos [ "comp ops not implemented" ]
+    fn env, pos, opChain:
 
-#    if notAllSeparators (sameDirectionAs firstSep __) secondTail then
-#        # TODO actually list the seps
-#        error env pos [ "can't mix comparison ops with different direction" ]
-#
-#    else
-#        # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
-#        error env pos [ "NI compops expansion" ]
+    try opChain.second as
+        , []: translateExpression env opChain.first
+
+        , [ sep & second ]: translateRightAssociativeBinopChain env pos opChain
+
+        , [ firstSep & second, ...moar]:
+            if FA.sepList_allSeps (sameDirectionAs firstSep __) opChain then
+                # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
+                error env pos [ "TODO: not (yet) implemented: compops expansion" ]
+
+            else
+                # TODO actually list the seps
+                error env pos [ "can't mix comparison ops with different direction" ]
 
 
 translateLogical as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
