@@ -855,7 +855,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "compiler bug: FA.Binop should not be here" ]
 
         , FA.BinopChain group sepList:
-            translateBinops env pos group sepList
+            translateBinopChain env pos group sepList
 
         , FA.Record { maybeExtension, attrs }:
             translateRecord env pos maybeExtension attrs
@@ -1226,6 +1226,29 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
             >> Ok
 
 
+translateBinopChain as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, group, opChain:
+    if group == Op.precedence_pipe then
+        resolvePipe env pos opChain
+        >> onOk (translateExpression env __)
+
+    else if group == Op.precedence_tuple then
+        translateTupleExpression env pos opChain
+
+    else if group == Op.precedence_comparison then
+        translateComparison env pos opChain
+
+    else if group == Op.precedence_logical then
+        translateLogical env pos opChain
+
+    else if group == Op.precedence_mutop then
+        translateMutop env pos opChain
+
+    else
+        translateRightAssociativeBinopChain env pos opChain
+
+
+# TODO use this one!!!
 translateCall as fn Env, Pos, FA.Expression, [FA.Expression]: Res CA.Expression =
     fn env, pos, faRef, faArgs:
 
@@ -1233,111 +1256,134 @@ translateCall as fn Env, Pos, FA.Expression, [FA.Expression]: Res CA.Expression 
     >> translateExpression env __
     >> onOk fn caRef:
 
-    try caRef as
-        , CA.Constructor pos usr []:
-            faArgs
-            >> List.mapRes (translateExpression env __) __
-            >> onOk fn caArgs:
+    if faArgs == [] then
+        Ok caRef
 
-            CA.Constructor pos usr caArgs
-            >> Ok
+    else
+        try caRef as
+            , CA.Constructor pos usr []:
+                faArgs
+                >> List.mapRes (translateExpression env __) __
+                >> onOk fn caArgs:
+
+                CA.Constructor pos usr caArgs
+                >> Ok
+
+            , _:
+                List.mapRes (translateArgument env __) faArgs
+                >> onOk fn caArgs:
+
+                CA.Call pos caRef caArgs
+                >> Ok
+
+
+resolvePipe as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res FA.Expression =
+    fn env, pos, opChain:
+
+    if FA.sepList_allSeps (fn sep: sep.usr == Prelude.sendRight.usr) opChain then
+        #
+        #   head >> b >> c >> d    --->   d (c (b head))
+        #
+        head & sepTail =
+            opChain
+
+        List.for head sepTail fn sep & faExp, acc:
+            (FA.Expression p _) = faExp
+            FA.Expression p (FA.Call faExp [acc])
+        >> Ok
+
+    else if FA.sepList_allSeps (fn sep: sep.usr == Prelude.sendLeft.usr) opChain then
+        #
+        #   head << b << c << d    --->   head (b (c d))
+        #
+        last & body =
+            FA.sepList_reverse opChain
+
+        List.for last body fn sep & faExp, acc:
+            (FA.Expression p _) = faExp
+            FA.Expression p (FA.Call faExp [acc])
+        >> Ok
+
+    else
+        error env pos [ "Mixing `>>` and `<<` is ambiguous. Use parens!" ]
+
+
+translateTupleExpression as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, one & sepTail:
+
+    try sepTail as
+        , []:
+            translateExpression env one
+
+        , [_ & two]:
+            translateExpression env one >> onOk fn first:
+            translateExpression env two >> onOk fn second:
+            Dict.empty
+                >> Dict.insert "first" first __
+                >> Dict.insert "second" second __
+                >> CA.Record pos Nothing __
+                >> Ok
+
+        , [_ & two, _ & three]:
+             translateExpression env one >> onOk fn first:
+             translateExpression env two >> onOk fn second:
+             translateExpression env three >> onOk fn third:
+             Dict.empty
+                 >> Dict.insert "first" first __
+                 >> Dict.insert "second" second __
+                 >> Dict.insert "third" third __
+                 >> CA.Record pos Nothing __
+                 >> Ok
 
         , _:
-            List.mapRes (translateArgument env __) faArgs
-            >> onOk fn caArgs:
-
-            CA.Call pos caRef caArgs
-            >> Ok
+            error env pos [ "Tuples can't have more than 3 items, use a record instead." ]
 
 
-translateBinops as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
-    fn env, pos, group, ( firstItem & firstTail ):
-    try firstTail as
+translateComparison as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, first & sepTail:
+    error env pos [ "comp ops not implemented" ]
+
+#    if notAllSeparators (sameDirectionAs firstSep __) secondTail then
+#        # TODO actually list the seps
+#        error env pos [ "can't mix comparison ops with different direction" ]
+#
+#    else
+#        # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
+#        error env pos [ "NI compops expansion" ]
+
+
+translateLogical as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, opChain:
+
+    allSame =
+        FA.sepList_allSeps (fn sep: sep.usr == Prelude.and_.usr) opChain
+        or
+        FA.sepList_allSeps (fn sep: sep.usr == Prelude.or_.usr) opChain
+
+    if allSame then
+        translateRightAssociativeBinopChain env pos opChain
+    else
+        error env pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
+
+
+translateMutop as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, left & sepTail:
+    try sepTail as
+
         , []:
-            translateExpression env firstItem
+            translateExpression env left
 
-        , (firstSep & secondItem) :: []:
-            if group == Op.precedence_tuple then
-                    translateExpression env firstItem >> onOk fn first:
-                    translateExpression env secondItem >> onOk fn second:
-                    Dict.empty
-                        >> Dict.insert "first" first __
-                        >> Dict.insert "second" second __
-                        >> CA.Record pos Nothing __
-                        >> Ok
-            else if group == Op.precedence_pipe then
-                if firstSep.usr == Prelude.sendRight.usr then
-                    translateCall env pos secondItem [firstItem]
-                else
-                    translateCall env pos firstItem [secondItem]
-            else
-                    translateSimpleBinop env pos firstItem firstSep secondItem
+        , [op & right]:
+            translateArgument env left
+            >> onOk fn l:
 
-        , (firstSep & secondItem) :: (secondSep & thirdItem) :: thirdTail:
+            translateArgument env right
+            >> onOk fn r:
 
-            secondTail as [Op.Binop & FA.Expression] =
-                (secondSep & thirdItem) :: thirdTail
+            makeBinop env.ro pos l op r
 
-            if group == Op.precedence_comparison then
-                    if notAllSeparators (sameDirectionAs firstSep __) secondTail then
-                        # TODO actually list the seps
-                        error env pos [ "can't mix comparison ops with different direction" ]
-
-                    else
-                        # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
-                        error env pos [ "NI compops expansion" ]
-
-            else if group == Op.precedence_logical then
-                    if notAllSeparators (fn x: x == firstSep) secondTail then
-                        error env pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
-
-                    else
-                        translateBinopSepList_rightAssociative env pos firstItem firstTail
-
-            else if group == Op.precedence_tuple then
-                    if thirdTail /= [] then
-                        error env pos [ "Tuples can't have more than 3 items, use a record instead." ]
-
-                    else
-                         translateExpression env firstItem >> onOk fn first:
-                         translateExpression env secondItem >> onOk fn second:
-                         translateExpression env thirdItem >> onOk fn third:
-                         Dict.empty
-                             >> Dict.insert "first" first __
-                             >> Dict.insert "second" second __
-                             >> Dict.insert "third" third __
-                             >> CA.Record pos Nothing __
-                             >> Ok
-
-            else if group == Op.precedence_pipe then
-                    if notAllSeparators (fn x: x == firstSep) secondTail then
-                        error env pos [ "Mixing pipes is ambigous. Use parens." ]
-
-                    else if firstSep.associativity == Op.Right then
-                        translateBinopSepList_rightAssociative env pos firstItem firstTail
-
-                    else
-                        translateBinopSepList_leftAssociative env pos firstItem firstTail
-
-            else if group == Op.precedence_mutop then
-                    error env pos [ "mutops can't be chained" ]
-
-            else
-                    translateBinopSepList_rightAssociative env pos firstItem firstTail
-
-
-notAllSeparators as fn (fn sep: Bool), [ sep & item]: Bool =
-    fn f, ls:
-    try ls as
-        , []:
-            False
-
-        , (sep & item) :: tail:
-            if f sep then
-                notAllSeparators f tail
-
-            else
-                True
+        , _:
+            error env pos [ "mutops can't be chained" ]
 
 
 sameDirectionAs as fn Op.Binop, Op.Binop: Bool =
@@ -1363,43 +1409,30 @@ sameDirectionAs as fn Op.Binop, Op.Binop: Bool =
                 False
 
 
-translateBinopSepList_rightAssociative as fn Env, Pos, FA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
-    fn env, pos, left, opsAndRight:
-    translateExpression env left >> onOk fn caLeft:
+translateRightAssociativeBinopChain as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, left & opsAndRight:
+    translateExpression env left
+    >> onOk fn caLeft:
+
     try opsAndRight as
         , []:
             Ok caLeft
 
-        , (op & right) :: tail:
-            translateBinopSepList_rightAssociative env pos right tail
+        , [op & right, ...tail]:
+            translateRightAssociativeBinopChain env pos (right & tail)
             >> onOk fn caRight:
 
             makeBinop env.ro pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
 
 
-translateBinopSepList_leftAssociative as fn Env, Pos, FA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
-    fn env, pos, leftAccum, opsAndRight:
-
-    translateExpression env leftAccum >> onOk fn caLeftAccum:
-    translateBinopSepListRec env pos caLeftAccum opsAndRight
-
-
-translateBinopSepListRec as fn Env, Pos, CA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
-    fn env, pos, leftAccum, opsAndRight:
-    try opsAndRight as
-        , []:
-            Ok leftAccum
-
-        , (op & faRight) :: tail:
-            translateArgument env faRight >> onOk fn caRight:
-            makeBinop env.ro pos (CA.ArgumentExpression leftAccum) op caRight
-            >> onOk fn binop:
-            translateBinopSepListRec env pos binop tail
-
-
 [# Unlike other ML languages, the left operand is the _second_ argument
 
 `a + b` == `((+) b) a`
+
+      !!!!
+      TODO just make this rewrite as a FA.Call and then call translateExpression
+      !!!!
+
 
 #]
 makeBinop as fn ReadOnly, Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expression =
@@ -1428,13 +1461,6 @@ makeBinop as fn ReadOnly, Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expres
     else
         CA.Call pos (CA.Variable pos (RefGlobal op.usr)) [left, right]
         >> Ok
-
-
-translateSimpleBinop as fn Env, Pos, FA.Expression, Op.Binop, FA.Expression: Res CA.Expression =
-    fn env, pos, left, op, right:
-    translateArgument env left >> onOk fn l:
-    translateArgument env right >> onOk fn r:
-    makeBinop env.ro pos l op r
 
 
 #
