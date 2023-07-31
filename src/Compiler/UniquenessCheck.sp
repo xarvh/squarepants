@@ -641,7 +641,7 @@ doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
 
                     , Just extending:
                         doExpression env @state extending
-                        >> uniOutMap Just __
+                        >> uniOutMap (Just __) __
 
             doneAttrs as UniOut (Dict Name TA.Expression) =
                 uniOutInit Dict.empty

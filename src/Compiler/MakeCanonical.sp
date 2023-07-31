@@ -670,7 +670,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
             Ok << CA.PatternLiteralText pos l
 
         , FA.LiteralNumber isPercent l:
-            translateNumber env.ro isPercent CA.PatternLiteralNumber pos l
+            translateNumber env.ro isPercent (CA.PatternLiteralNumber __ __) pos l
 
         # Stuff that's not valid for patterns
 
@@ -761,7 +761,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
     try expr_ as
         , FA.LiteralNumber isPercent str:
-            translateNumber env.ro isPercent CA.LiteralNumber pos str
+            translateNumber env.ro isPercent (CA.LiteralNumber __ __) pos str
 
         , FA.LiteralText v:
             Ok << CA.LiteralText pos v
@@ -1124,7 +1124,7 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
 
     zzz as Res (Maybe CA.Expression) =
         try maybeMaybeExtension as
-            , Just (Just ext): translateExpression env ext >> Result.map Just __
+            , Just (Just ext): translateExpression env ext >> Result.map (Just __) __
             , Just Nothing: error env pos [ "I need to know what record you are updating" ]
             , Nothing: Ok Nothing
 
@@ -1537,12 +1537,12 @@ translateTypeFunctionParameter as fn ReadOnly, FA.Expression: Res CA.ParType =
         , FA.UnopCall Op.UnopRecycle faOperand:
             faOperand
             >> translateRawType ro __
-            >> Result.map CA.ParRe __
+            >> Result.map (CA.ParRe __) __
 
         , _:
             expression
             >> translateFullType ro __
-            >> Result.map CA.ParSp __
+            >> Result.map (CA.ParSp __) __
 
 
 translatePoly as fn ReadOnly, FA.Expression: Res (Uniqueness & FA.Expression) =

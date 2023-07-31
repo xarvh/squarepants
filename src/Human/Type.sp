@@ -85,7 +85,7 @@ doRawType as fn Env, TA.RawType: TextTree =
 
         , TA.TypeOpaque usr args:
             TT.rowOrIndented
-                (usrToText env usr)
+                ("opaque:" .. usrToText env usr)
                 (List.map (doRawType env __) args)
 
 

@@ -491,6 +491,12 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
 
             try Dict.get usr env.expandedAliases as
                 , Nothing:
+#                    (USR umr name) = usr
+#                    if name /= "Number" and name /= "Text" then
+#                        log "OPAQUE" usr
+#                        todo "blah"
+#                    else
+#                        None
                     TA.TypeOpaque usr expandedPars
 
                 , Just expandedAlias:
@@ -812,7 +818,7 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
         , CA.LetIn def rest:
 
             typedDef & defEnv =
-                doDefinition RefLocal env def @state
+                doDefinition (RefLocal __) env def @state
 
             typedRest & restType =
                 inferExpression defEnv rest @state
@@ -1387,7 +1393,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
         , CA.LetIn def rest & _:
 
             typedDef & defEnv =
-                doDefinition RefLocal env def @state
+                doDefinition (RefLocal __) env def @state
 
             typedRest =
                 checkExpression defEnv expectedType rest @state
@@ -2173,8 +2179,16 @@ expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: 
         # TODO ----> We should probably do something with these
         Dict.empty
 
+    expandedAliases =
+        # Insert the type itself, so it it's recursive it will be found and not flagged as opaque
+        Dict.insert usr { pars, type = TA.TypeRecursive usr (List.map (TA.TypeVar __) pars) } aliasAccum
+
     type as TA.RawType =
-        translateRawType { initEnv with expandedAliases = aliasAccum } typeByName originalIdToNewId @state aliasDef.type
+        translateRawType { initEnv with expandedAliases } typeByName originalIdToNewId @state aliasDef.type
+
+#    log "**********" usr
+#    log "pars" pars
+#    log "type" type
 
     Dict.insert usr { pars, type } aliasAccum
 
@@ -2234,7 +2248,8 @@ breakCircular as fn [USR], ByUsr CA.AliasDef: ByUsr CA.AliasDef =
           try Dict.get requiringUsr aliasesX as
               , Nothing: bug "no requiring alias =("
               , Just def:
-                  Dict.insert requiringUsr { def with type = makeNominal requiredUsr .type } aliasesX
+                  fixed = { def with type = makeNominal requiredUsr .type, directTypeDeps = Set.remove requiredUsr .directTypeDeps  }
+                  Dict.insert requiringUsr fixed aliasesX
 
 
 getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
@@ -2258,11 +2273,17 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
             Dict.for zz mod.aliasDefs fn name, aliasDef, d:
                 Dict.insert aliasDef.usr aliasDef d
 
-    circulars & orderedAliases =
+    circulars & orderedAliases0 =
         RefHierarchy.reorder (getAliasDependencies rawAliases __) rawAliases
 
     fixedAliases =
         List.for rawAliases circulars breakCircular
+
+    # TODO rewrite RefHierarchy so that we don't need to reorder the whole thing again!
+    cir & orderedAliases =
+        RefHierarchy.reorder (getAliasDependencies fixedAliases __) fixedAliases
+
+    log "CIR" cir
 
     !state =
         initState 0

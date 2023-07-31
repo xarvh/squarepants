@@ -198,7 +198,8 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             valueExpression & wrapWithLetIn & newEnv =
                 try value & valueType.uni as
                     , TA.Variable _ ref & Imm:
-                        EA.Variable ref & identity & env
+                        x = EA.Variable ref
+                        x & (fn 1?s: s) & env
 
                     , _:
                         tryName & newEnv =
