@@ -4,10 +4,14 @@ alias TyvarId =
 
 
 union RawType =
-    , TypeExact USR [RawType]
+    , TypeOpaque USR [RawType]
+    , TypeRecursive USR [RawType]
     , TypeFn [ParType] FullType
     , TypeVar TyvarId
+    # TODO Rename to TypeVariant
+    , TypeUnion (Maybe TyvarId) (Dict Name [RawType])
     , TypeRecord (Maybe TyvarId) (Dict Name RawType)
+    # This makes the type nominal instead than structural
     , TypeError
 
 
@@ -28,7 +32,7 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
-    , Constructor Pos USR
+    , Constructor Pos Name [Expression]
     , Fn Pos [Parameter] Expression FullType
     , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -65,7 +69,7 @@ union Pattern =
         }
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos USR [Pattern]
+    , PatternConstructor Pos Name [Pattern]
     , PatternRecord Pos (Dict Name (Pattern & RawType))
 
 
@@ -82,16 +86,15 @@ union Parameter =
 alias Tyvar =
     {
     #, annotatedAt as Pos
-    , generalizedAt as Pos
-    , generalizedFor as Ref
-    , originalName as Name
-    , allowFunctions as Bool
+    #, generalizedAt as Pos
+    #, generalizedFor as Ref
+    , maybeAnnotated as Maybe { name as Name, allowFunctions as Bool }
     }
 
 
 alias Univar =
     {
-    , originalId as UnivarId
+    , annotatedId as UnivarId
     }
 
 
@@ -188,8 +191,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 , Nothing: raw
                 , Just replacement: replacement
 
-        , TypeExact usr pars:
-            TypeExact usr (List.map rec pars)
+        , TypeOpaque usr pars:
+            TypeOpaque usr (List.map rec pars)
 
         , TypeFn pars out:
             TypeFn
@@ -203,6 +206,17 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
             try saf.ty id as
                 , Just replacement: replacement
                 , Nothing: TypeRecord (Just id) (Dict.map (fn k, v: rec v) attrs)
+
+        , TypeUnion Nothing attrs:
+            TypeUnion Nothing (Dict.map (fn k, v: List.map rec v) attrs)
+
+        , TypeUnion (Just id) attrs:
+            try saf.ty id as
+                , Just replacement: replacement
+                , Nothing: TypeUnion (Just id) (Dict.map (fn k, v: List.map rec v) attrs)
+
+        , TypeRecursive usr args:
+            TypeRecursive usr (List.map rec args)
 
         , TypeError:
             TypeError
@@ -237,7 +251,9 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         , LiteralNumber _ _: expression
         , LiteralText _ _: expression
         , Variable _ _: expression
-        , Constructor _ _: expression
+
+        , Constructor p name args:
+            Constructor p name (List.map (resolveExpression saf __) args)
 
         , Fn p pars body bodyType:
             Fn p (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
@@ -339,11 +355,20 @@ patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
 
 typeTyvars as fn RawType: Dict TyvarId None =
     fn type:
+
+    addConsTyvars =
+        Dict.for __ __ fn consName, consArgs, acc0:
+            List.for acc0 consArgs fn argType, acc1:
+                Dict.join (typeTyvars argType) acc1
+
     try type as
-        , TypeExact usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
+        , TypeOpaque usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
+        , TypeRecursive usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
         , TypeVar id: Dict.ofOne id None
         , TypeRecord Nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         , TypeRecord (Just id) attrs: Dict.ofOne id None >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
+        , TypeUnion Nothing consByName: addConsTyvars Dict.empty consByName
+        , TypeUnion (Just id) consByName: addConsTyvars (Dict.ofOne id None) consByName
         , TypeError: Dict.empty
         , TypeFn ins out:
             typeTyvars out.raw
@@ -353,9 +378,11 @@ typeTyvars as fn RawType: Dict TyvarId None =
 typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
     fn testId, type:
     try type as
-        , TypeFn ins out: True
+        , TypeFn _ _: True
         , TypeVar id: testId id
-        , TypeExact usr args: List.any (typeAllowsFunctions testId __) args
+        , TypeOpaque _ args: List.any (typeAllowsFunctions testId __) args
+        , TypeRecursive _ args: List.any (typeAllowsFunctions testId __) args
+        , TypeUnion _ consByName: Dict.any (fn k, v: List.any (typeAllowsFunctions testId __) v) consByName
         , TypeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
         , TypeError: True
 
@@ -381,25 +408,36 @@ normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
 normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     fn @hash, type:
 
+    rec =
+        normalizeType @hash __
+
+    recId =
+        normalizeTyvarId @hash __
+
     try type as
-        , TypeExact usr args:
-            TypeExact usr (List.map (normalizeType @hash __) args)
+        , TypeOpaque usr args:
+            TypeOpaque usr (List.map rec args)
 
         , TypeFn pars out:
             TypeFn
-                (mapPars (normalizeType @hash __) pars)
-                { out with raw = normalizeType @hash .raw }
+                (mapPars rec pars)
+                { out with raw = rec .raw }
 
-        , TypeRecord Nothing attrs:
-            TypeRecord Nothing (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
-
-        , TypeRecord (Just id) attrs:
+        , TypeRecord maybeId attrs:
             TypeRecord
-                (Just << normalizeTyvarId @hash id)
-                (Dict.map (fn k, v: (normalizeType @hash v)) attrs)
+                (Maybe.map recId maybeId)
+                (Dict.map (fn k, v: rec v) attrs)
+
+        , TypeUnion maybeId consByName:
+            TypeUnion
+                (Maybe.map recId maybeId)
+                (Dict.map (fn k, v: List.map rec v) consByName)
 
         , TypeVar id:
-            TypeVar (normalizeTyvarId @hash id)
+            TypeVar (recId id)
+
+        , TypeRecursive usr args:
+            TypeRecursive usr (List.map rec args)
 
         , TypeError:
             TypeError

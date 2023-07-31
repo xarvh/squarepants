@@ -45,9 +45,10 @@ coreOverrides as fn None: Dict USR Override =
     , Prelude.or_.usr & binop "||"
     , Prelude.and_.usr & binop "&&"
     #
-    , CoreTypes.true & constructor "true"
-    , CoreTypes.false & constructor "false"
-    , CoreTypes.noneValue & constructor "null"
+    , todo "if type is whatever, then override???"
+#    , CoreTypes.true & constructor "true"
+#    , CoreTypes.false & constructor "false"
+#    , CoreTypes.noneValue & constructor "null"
     #
     , Prelude.divide.usr & function  "sp_divide"
     , Prelude.listCons.usr & function  "sp_cons"
@@ -562,8 +563,8 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> accessArrayIndex index __
             >> Inline
 
-        , EA.Constructor usr:
-            maybeOverrideUsr env usr
+        , EA.Constructor name:
+            todo "maybeOverrideUsr env usr"
             >> Inline
 
         , EA.ConstructorAccess argIndex value:

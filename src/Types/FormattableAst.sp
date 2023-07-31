@@ -47,11 +47,6 @@ union Statement =
     , UnionDef UnionDef
 
 
-# expr op expr op expr op...
-alias SepList sep item =
-    item & [ sep & item ]
-
-
 # TODO
 #
 # alias Expression = At Expr_ ?
@@ -123,9 +118,40 @@ alias RecordAttribute =
     }
 
 
+# expr op expr op expr op...
+alias SepList sep item =
+    item & [ sep & item ]
+
+
+# TODO rename to sepList_items
 sepToList as fn SepList sep item: [item] =
     fn (head & tuples):
     head :: List.map Tuple.second tuples
+
+
+sepList_reverse as fn SepList sep item: SepList sep item =
+
+    rec as fn [sep & item], SepList sep item: SepList sep item =
+        fn acc, oddItem & remainder:
+        try remainder as
+            , []: oddItem & acc
+            , [sep & item, ...tail]: rec [sep & oddItem, ...acc] (item & tail)
+
+    rec [] __
+
+
+sepList_allSeps as fn (fn sep: Bool), SepList sep item: Bool =
+    fn f, ls:
+    try ls.second as
+        , []:
+            True
+
+        , [sep & item, ...tail]:
+            if f sep then
+                sepList_allSeps f (sep & tail)
+
+            else
+                False
 
 
 statementPos as fn Statement: Pos =

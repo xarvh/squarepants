@@ -1,10 +1,13 @@
 
 union RawType =
-    # alias, opaque or union
+    # alias, opaque
     , TypeNamed Pos USR [RawType]
     , TypeFn Pos [ParType] FullType
+    , TypeUnion Pos (Dict Name [RawType])
     , TypeRecord Pos (Dict Name RawType)
     , TypeAnnotationVariable Pos Name
+    #
+    , TypeRecursive Pos USR [RawType]
     # This is used as a placeholder when there is an error and a type can't be determined
     # It's useful to avoid piling up errors (I think)
     , TypeError Pos
@@ -26,7 +29,7 @@ union Expression =
     , LiteralNumber Pos Number
     , LiteralText Pos Text
     , Variable Pos Ref
-    , Constructor Pos USR
+    , Constructor Pos Name [Expression]
     , Fn Pos [Parameter] Expression
     , Call Pos Expression [Argument]
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -59,28 +62,24 @@ union Parameter =
     , ParameterPlaceholder Name Int
 
 
+alias Annotation = {
+    , raw as RawType
+    , tyvars as Dict Name { nonFn as Maybe Pos }
+    , univars as Dict UnivarId None
+    }
+
+
 union Pattern =
-    , PatternAny Pos
-        {
-        , maybeName as Maybe Text
-        , maybeAnnotation as Maybe RawType
-        }
+    , PatternAny Pos (Maybe Name) (Maybe Annotation)
     , PatternLiteralText Pos Text
     , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos USR [Pattern]
+    , PatternConstructor Pos Name [Pattern]
     , PatternRecord Pos PatternCompleteness (Dict Name Pattern)
 
 
 union PatternCompleteness =
     , Partial
     , Complete
-
-
-alias Tyvar =
-    {
-    #, annotatedAt as Pos
-    , allowFunctions as Bool
-    }
 
 
 alias ValueDef =
@@ -92,12 +91,8 @@ alias ValueDef =
     , native as Bool
     , body as Expression
 
-    , tyvars as Dict Name Tyvar
-    , univars as Dict UnivarId None
-
     # Do we need these here?
     , directTypeDeps as TypeDeps
-    , directConsDeps as Set USR
     , directValueDeps as Set USR
     }
 
@@ -120,24 +115,6 @@ alias AliasDef =
     }
 
 
-alias UnionDef =
-    {
-    , usr as USR
-    , pars as [At Name]
-    , constructors as Dict Name Constructor
-    , directTypeDeps as TypeDeps
-    }
-
-
-alias Constructor =
-    {
-    , pos as Pos
-    , typeUsr as USR
-    , ins as [RawType]
-    , out as RawType
-    }
-
-
 alias Module =
     {
     , fsPath as Text
@@ -145,7 +122,6 @@ alias Module =
     , asText as Text
 
     , aliasDefs as Dict Name AliasDef
-    , unionDefs as Dict Name UnionDef
     , valueDefs as Dict Pattern ValueDef
     }
 
@@ -157,7 +133,6 @@ initModule as fn Text, UMR, Text: Module =
     , fsPath
     , asText
     , aliasDefs = Dict.empty
-    , unionDefs = Dict.empty
     , valueDefs = Dict.empty
     }
 
@@ -185,6 +160,7 @@ typeTyvars as fn RawType: Dict Name Pos =
     try raw as
         , TypeNamed _ _ args: fromList args
         , TypeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
+        , TypeUnion _ argsByCons: fromList << List.concat << Dict.values argsByCons
         , TypeRecord _ attrs: fromList (Dict.values attrs)
         , TypeAnnotationVariable pos name: Dict.ofOne name pos
         , TypeError _: Dict.empty
@@ -206,11 +182,15 @@ typeUnivars as fn RawType: Dict UnivarId None =
     parUnivars as fn ParType, Dict UnivarId None: Dict UnivarId None =
         fn par, acc:
         try par as
-            , ParSp full: insertUni full.uni (typeUnivars full.raw)
             , ParRe _: acc
+            , ParSp full:
+                acc
+                >> Dict.join __ (typeUnivars full.raw)
+                >> insertUni full.uni __
 
     try raw as
         , TypeNamed _ _ args: fromList args
+        , TypeUnion _ argsByCons: fromList << List.concat << Dict.values argsByCons
         , TypeRecord _ attrs: fromList (Dict.values attrs)
         , TypeAnnotationVariable pos name: Dict.empty
         , TypeError _: Dict.empty
@@ -223,32 +203,43 @@ typeUnivars as fn RawType: Dict UnivarId None =
 patternPos as fn Pattern: Pos =
     fn pa:
     try pa as
-        , PatternAny p _: p
+        , PatternAny p _ _: p
         , PatternLiteralText p _: p
         , PatternLiteralNumber p _: p
         , PatternConstructor p _ _: p
         , PatternRecord p _ _: p
 
 
-patternTyvars as fn Pattern: Dict Name Pos =
+patternTyvars as fn Pattern: Dict Name { nonFn as Maybe Pos } =
     fn pa:
     try pa as
-        , PatternAny _ { maybeName = _, maybeAnnotation = Just t }: typeTyvars t
-        , PatternAny _ { maybeName = _, maybeAnnotation = Nothing }: Dict.empty
+        , PatternAny _ _ (Just ann): ann.tyvars
+        , PatternAny _ _ Nothing: Dict.empty
         , PatternLiteralText _ _: Dict.empty
         , PatternLiteralNumber _ _: Dict.empty
         , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
         , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
 
 
-patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe RawType } =
+patternUnivars as fn Pattern: Dict UnivarId None =
+    fn pa:
+    try pa as
+        , PatternAny _ _ (Just ann): ann.univars
+        , PatternAny _ _ Nothing: Dict.empty
+        , PatternLiteralText _ _: Dict.empty
+        , PatternLiteralNumber _ _: Dict.empty
+        , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternUnivars arg))
+        , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternUnivars arg))
+
+
+patternNames as fn Pattern: Dict Name { pos as Pos, maybeAnnotation as Maybe Annotation } =
     fn p:
     try p as
-        , PatternAny pos { maybeName = Nothing, maybeAnnotation = _ }: Dict.empty
-        , PatternAny pos { maybeName = Just n, maybeAnnotation }: Dict.ofOne n { pos, maybeAnnotation }
+        , PatternAny pos Nothing _: Dict.empty
+        , PatternAny pos (Just n) maybeAnnotation: Dict.ofOne n { pos, maybeAnnotation }
         , PatternLiteralNumber pos _: Dict.empty
         , PatternLiteralText pos _: Dict.empty
-        , PatternConstructor pos path ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join a __)
+        , PatternConstructor pos name ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join a __)
         , PatternRecord pos _ ps: Dict.for Dict.empty ps (fn k, v, a: v >> patternNames >> Dict.join a __)
 
 
@@ -258,7 +249,7 @@ expressionPos as fn Expression: Pos =
         , LiteralNumber p _: p
         , LiteralText p _: p
         , Variable p _: p
-        , Constructor p _: p
+        , Constructor p _ _: p
         , Fn p _ _: p
         , Call p _ _: p
         , Record p _ _: p

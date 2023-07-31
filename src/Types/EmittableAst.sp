@@ -31,7 +31,7 @@ union Expression =
         }
     , LiteralArray [Expression]
     , ArrayAccess Int Expression
-    , Constructor USR
+    , Constructor Name
     , ConstructorAccess Int Expression
     , IsConstructor Name Expression
     , LiteralRecord (Maybe Expression) [AttrName & Expression]

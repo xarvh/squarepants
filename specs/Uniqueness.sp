@@ -358,7 +358,7 @@ parentScope as Test =
                 The Array Test
                 """
                 """
-                union Array a = Meh
+                union Array a = ArrayShouldReallyBeOpaque a
 
                 array_push as fn a, @Array a: None = todo ""
 
@@ -505,7 +505,7 @@ polymorphism as Test =
             (infer "na")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
+                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
                 , type = TA.TypeFn [TA.ParSp { uni = Depends 0, raw = TA.TypeVar 1}] { uni = Depends 0, raw = TA.TypeVar 1}
                 }
             )
@@ -552,17 +552,13 @@ unions as Test =
             Uniques inside immutables are converted to immutables
             """
             """
-            union Z a = Z a
             x = Z 0
             """
             (infer "x")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
-                , type =
-                    TA.TypeExact
-                        (TH.localType "Z")
-                        [ TH.taNumber ]
+                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
+                , type = TA.TypeUnion (Just 1) (Dict.ofOne "Z" [ TH.taNumber ])
                 }
             )
 
@@ -582,7 +578,7 @@ unions as Test =
             [reg] solveOneEquality can receive switched given/required when evaluating a cast?
             """
             """
-            z as [fn None: None] = (fn None: None) :: []
+            z as [fn None: None] = [fn None: None, ...[]]
             """
             (infer "z")
             Test.isOk
@@ -593,7 +589,6 @@ unions as Test =
             LetIn: Unpack immutable to immutable
             """
             """
-            union Z a = Z a
             scope =
                 x = Z 0
                 (Z y) = x
@@ -605,7 +600,6 @@ unions as Test =
             LetIn: Unpack unique to immutable
             """
             """
-            union Z a = Z a
             scope =
                 !x = Z 0
                 (Z y) = x
@@ -617,7 +611,6 @@ unions as Test =
             LetIn: Unpack unique to unique
             """
             """
-            union Z a = Z a
             scope =
                 !x = Z 0
                 #!(Z y) = x
@@ -630,7 +623,6 @@ unions as Test =
             LetIn: Unpack immutable to unique
             """
             """
-            union Z a = Z a
             scope =
                 x = Z 0
                 !(Z y) = x

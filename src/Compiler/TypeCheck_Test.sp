@@ -4,6 +4,7 @@ tests as Test =
         [
         , functions
         , statements
+        , recursiveTypes
         , variableTypes
         , higherOrderTypes
         , records
@@ -12,7 +13,6 @@ tests as Test =
         , if_else
         , nonFunction
         , misc
-        #, zzzz
         ]
 
 
@@ -41,10 +41,14 @@ outToHuman as fn Out: Text =
 
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
-    , "  type = " .. Human/Type.display "" (Human/Type.doRawType {} out.type)
+    , "  type = " .. TT.toText "" (Human/Type.doRawType {} out.type)
     ]
     >> Text.join "\n" __
 
+
+unionCons as fn Int, Text: TA.RawType =
+    fn id, consName:
+    TA.TypeUnion (Just id) (Dict.ofOne consName [])
 
 
 tyvar as fn Int: TA.RawType =
@@ -56,10 +60,11 @@ freeTyvars as fn [TA.TyvarId]: Dict TA.TyvarId TA.Tyvar =
 
     List.for Dict.empty ids fn id, d:
         Dict.insert id {
-            , originalName = ""
-            , allowFunctions = True
-            , generalizedAt = Pos.G
-            , generalizedFor = RefLocal ""
+            , maybeAnnotated = Nothing
+#            , originalName = ""
+#            , allowFunctions = True
+#            , generalizedAt = Pos.G
+#            , generalizedFor = RefLocal ""
             }
             d
 
@@ -67,13 +72,14 @@ freeTyvars as fn [TA.TyvarId]: Dict TA.TyvarId TA.Tyvar =
 freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
     Dict.empty
-    >> List.for __ ids fn (id & originalName), d:
+    >> List.for __ ids fn (id & name), d:
         Dict.insert id
               {
-              , originalName
-              , allowFunctions = True
-              , generalizedAt = Pos.G
-              , generalizedFor = RefLocal ""
+              , maybeAnnotated = Just { name, allowFunctions = True }
+#              , originalName
+#              , 
+#              , generalizedAt = Pos.G
+#              , generalizedFor = RefLocal ""
               }
               d
 
@@ -141,7 +147,7 @@ infer as fn Text: fn Text: Result Text Out =
         fn (pattern & def):
 
         try pattern as
-            , CA.PatternAny _ { maybeAnnotation, maybeName = Just name }:
+            , CA.PatternAny _ (Just name) maybeAnnotation:
                 if name == targetName then Just def else Nothing
             , _:
                 Nothing
@@ -201,7 +207,7 @@ functions as Test =
         , codeTest "Known function with wrong params"
             "a = add False 1"
             (infer "a")
-            (Test.errorContains [ "Bool" ])
+            (Test.errorContains [ "False" ])
         , codeTest
             "Function inference 1"
             "a = fn x: add x 1"
@@ -247,25 +253,9 @@ functions as Test =
             (Test.errorContains ["RecyclingDoesNotMatch"])
 
         , codeTest
-            """
-            [reg] on is missing tyvars?
-            """
-            """
-            andThen as [a] = []
-
-            on = andThen
-            """
-            (infer "on")
-            (Test.isOkAndEqualTo
-                {
-                , freeTyvars = freeTyvars [1]
-                , type = TH.taList (tyvar 1)
-                }
-            )
-        , codeTest
             # I don't know what's wrong here, but it's very wrong
             """
-            [reg] Something's wrong with tyvars
+            [reg] free tyvar was compatible with constructor
             """
             """
             listCons as fn item: item =
@@ -273,7 +263,17 @@ functions as Test =
                 []
             """
             (infer "listCons")
-            (Test.errorContains ["item"])
+            (Test.errorContains ["Nil"])
+        , codeTest
+            """
+            Annotations that are too general should be rejected
+            """
+            """
+            f as fn a: b =
+                fn a: a
+            """
+            (infer "f")
+            (Test.errorContains [])
         ]
 
 
@@ -296,17 +296,17 @@ statements as Test =
               False
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = TH.taBool, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = unionCons 1 "False", freeTyvars = freeTyvars [1] })
         , codeTest
             """
-            Definition statement return type None
+            Definition statements return type None
             """
             """
             a =
               f = fn x: 3
             """
             (infer "a")
-            (Test.isOkAndEqualTo { type = TH.taNone, freeTyvars = Dict.empty })
+            (Test.isOkAndEqualTo { type = unionCons 1 "None", freeTyvars = freeTyvars [1] })
         , codeTest
             """
             [reg] Definition statement with annotation return type None
@@ -367,6 +367,51 @@ statements as Test =
 
 
 #
+# Recusrive/circular types
+#
+
+
+recursiveTypes as Test =
+    Test.Group "Recursive types"
+        [
+        , codeTest
+            """
+            Normal types cannot be self recursive
+            """
+            """
+            alias A = { a as A }
+            a as A = todo ""
+            """
+            (infer "a")
+            (Test.errorContains [ "recursive types" ])
+        , codeTest
+            """
+            Normal types cannot be mutually recursive
+            """
+            """
+            alias A = { b as B }
+            alias B = { a as A }
+            a as A = todo ""
+            """
+            (infer "a")
+            (Test.errorContains [ "recursive types" ])
+        , codeTest
+            """
+            Union types can be recursive
+            """
+            """
+            union A = A2 B
+            alias B = { a as A }
+            a as A = todo ""
+            b as B = todo ""
+            """
+            (infer "a")
+            Test.isOk
+        ]
+
+
+
+#
 # Variable types
 #
 
@@ -375,7 +420,9 @@ variableTypes as Test =
     Test.Group "Variable types"
         [
         , codeTest
-            "Identity"
+            """
+            Identity, annotated
+            """
             """
             id as fn a: a =
               fn a: a
@@ -386,18 +433,48 @@ variableTypes as Test =
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
-
+        , codeTest
+            """
+            Identity, inferred
+            """
+            """
+            id =
+              fn a: a
+            """
+            (infer "id")
+            (Test.isOkAndEqualTo
+                { type = TH.taFunction [tyvar 1] (tyvar 1)
+                , freeTyvars = freeTyvars [1]
+                }
+            )
         , codeTest
             "Annotated vars are instantiated when referenced"
             """
             q as [item] =
-              Core.Nil
+              Nil
 
             r as [Text] =
                   q
             """
             (infer "r")
             Test.isOk
+        , codeTest
+            """
+            [reg] on is missing tyvars
+            """
+            """
+            andThen as [a] = []
+
+            on = andThen
+            """
+            (infer "on")
+            (Test.isOkAndEqualTo
+                {
+                , freeTyvars = freeTyvars [1]
+                # TODO this is kind of ugly, the recursive List type should be somehow normalized...?
+                , type = TA.TypeUnion Nothing (Dict.fromList ["Nil" & [], "Cons" & [tyvar 1, TH.taList (tyvar 1)]])
+                }
+            )
         ]
 
 
@@ -423,8 +500,8 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                 { type =
                     TH.taFunction
-                        [ TA.TypeExact (TH.localType "T") [ tyvar 1 ]]
-                        ( TA.TypeExact (TH.localType "T") [ tyvar 1 ])
+                        [ TA.TypeUnion Nothing (Dict.ofOne "T" [ tyvar 1 ])]
+                        ( TA.TypeUnion Nothing (Dict.ofOne "T" [ tyvar 1 ]))
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
@@ -434,16 +511,13 @@ higherOrderTypes as Test =
             """
             """
             union X a = L
-            l = L
+            l as X a = L
             """
             (infer "l")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = freeTyvars [1]
-                , type =
-                    TA.TypeExact
-                        (TH.localType "X")
-                        [ tyvar 1 ]
+                , freeTyvars = Dict.empty
+                , type = TA.TypeUnion Nothing (Dict.ofOne "L" [])
                 }
             )
         , codeTest
@@ -486,13 +560,13 @@ higherOrderTypes as Test =
             [reg] Named vars can't be refined?
             """
             """
-            union Wrap a = W a
+            union Wrap a = Zot a
 
             f as fn a: Wrap a =
                 fn a: a
             """
             (infer "f")
-            (Test.errorContains [ "Wrap"])
+            (Test.errorContains [ "Zot" ])
         ]
 
 
@@ -515,7 +589,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = freeTyvars [3]
+                , freeTyvars = freeTyvars [1, 2, 3]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord (Just 1)
@@ -534,8 +608,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                # TODO Should I have free tyvars 1 and 2 here?
-                , freeTyvars = Dict.empty
+                , freeTyvars = freeTyvars [1, 2]
                 , type =
                     TA.TypeFn
                         [ TA.ParRe << TA.TypeRecord (Just 1)
@@ -588,8 +661,7 @@ records as Test =
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber) >> fn re:
                     {
-                    # TODO should I have free tyvars here?
-                    , freeTyvars = Dict.empty
+                    , freeTyvars = freeTyvars [1]
                     , type = TH.taFunction [re] re
                     }
                 )
@@ -617,8 +689,7 @@ records as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "first" (tyvar 2)) >> fn re:
-                    # TODO tyvar 1 too?
-                    { freeTyvars = freeTyvars [2]
+                    { freeTyvars = freeTyvars [1, 2]
                     , type = TH.taFunction [re] (tyvar 2)
                     }
                 )
@@ -699,12 +770,12 @@ patterns as Test =
             )
         , codeTest
             """
-            List unpacking
+            SKIP (Lists should unpack to the closed union <Cons a List a, Nil>?) List unpacking
             """
             """
             x =
                fn q:
-               [ first, second ] = q
+               [first, second] = q
                first
             """
             (infer "x")
@@ -712,13 +783,32 @@ patterns as Test =
                 { freeTyvars = freeTyvars [1]
                 , type =
                     TH.taFunction
-                        [TH.taList (tyvar 1)]
+                        [ TH.taList (tyvar 1)]
                         (tyvar 1)
                 }
             )
         , codeTest
             """
-            Records are correctly unpacked
+            Cons unpacking
+            """
+            """
+            x =
+               fn q:
+               Cons first Nil = q
+               first
+            """
+            (infer "x")
+            (Test.isOkAndEqualTo
+                { freeTyvars = freeTyvars [1, 2, 3]
+                , type =
+                    TH.taFunction
+                        [ TA.TypeUnion (Just 3) (Dict.ofOne "Cons" [ tyvar 2, TA.TypeUnion (Just 1) (Dict.ofOne "Nil" [])] )]
+                        (tyvar 2)
+                }
+            )
+        , codeTest
+            """
+            Complete records are correctly unpacked
             """
             """
             x =
@@ -733,6 +823,26 @@ patterns as Test =
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord Nothing (Dict.fromList [ ( "first" & tyvar 1 ) ])]
+                        (tyvar 1)
+                }
+            )
+        , codeTest
+            """
+            Incomplete records are correctly unpacked
+            """
+            """
+            x =
+                fn q:
+                { with first } = q
+                first
+            """
+            (infer "x")
+            #
+            (Test.isOkAndEqualTo
+                { freeTyvars = freeTyvars [1, 2]
+                , type =
+                    TH.taFunction
+                        [ TA.TypeRecord (Just 2) (Dict.fromList [ ( "first" & tyvar 1 ) ])]
                         (tyvar 1)
                 }
             )
@@ -756,10 +866,10 @@ patterns as Test =
             each as fn [a], (fn a: b): None =
                 fn ls, f:
                 try ls as
-                    , Core.Nil: None
+                    , Nil: None
 
             result =
-                1 :: Core.Nil = Core.Nil
+                1 :: Nil = Nil
             """
             (infer "result")
             #
@@ -804,16 +914,16 @@ try_as as Test =
                     , _: 3
             """
             (infer "x")
-            (Test.isOkAndEqualTo
-                { freeTyvars = Dict.empty
-                , type = TA.TypeFn [TH.taBool >> toImm >> TA.ParSp] (toUni TH.taNumber)
+            (Test.isOkAndEqualTo {
+                , freeTyvars = freeTyvars [1]
+                , type = TA.TypeFn [ unionCons 1 "True" >> toImm >> TA.ParSp ] (toUni TH.taNumber)
                 }
             )
 
         #
         , codeTest
             """
-            rejects non-matching patterns
+            SKIP rejects non-matching patterns
             """
             """
             x =
@@ -828,6 +938,21 @@ try_as as Test =
         #
         , codeTest
             """
+            rejects non-matching patterns
+            """
+            """
+            x =
+                fn q:
+                try q as
+                    , 1: 2
+                    , []: 3
+            """
+            (infer "x")
+            (Test.errorContains [ "Number", "Nil" ])
+
+        #
+        , codeTest
+            """
             rejects non-matching blocks
             """
             """
@@ -838,7 +963,7 @@ try_as as Test =
                     , False: False
             """
             (infer "x")
-            (Test.errorContains [ "Number", "Bool" ])
+            (Test.errorContains [ "Number", "False" ])
         , codeTest
             """
             [reg] actually infers blocks
@@ -891,7 +1016,7 @@ if_else as Test =
                 else 2
             """
             (infer "x")
-            (Test.errorContains [ "Bool"])
+            (Test.errorContains [ "Number" ])
 
         #
         , codeTest
@@ -1008,7 +1133,7 @@ misc as Test =
         [
         , codeTest
             """
-            Placeholder work with unique args
+            Placeholder works with unique args
             """
             """
             stuff as fn !Number: Number = todo ""
@@ -1081,5 +1206,51 @@ misc as Test =
             """
             (infer "z")
             Test.isOk
+        [#
+            I can reproduce the error only in a test file, not in the codeTest environment.
+            Need to refine it once the error is better understood and the code is further reduced.
+
+        , codeTest
+            """
+            [reg] ????
+            """
+            """
+            union RawType =
+                , TypeError Text
+
+            union Dict k v =
+                , Dict k v
+
+            alias Annotation = {
+                , raw as RawType
+                }
+
+            tranz as fn RawType: None =
+                todo ""
+
+            pas as fn None: Dict Name { pos as Text, maybeAnnotation as Maybe Annotation } =
+                todo ""
+
+            for as fn b, Dict k v, (fn k, v, b: b): b =
+                todo ""
+
+            addzzz as fn {}: {} =
+                fn env:
+
+                for env (pas None) fn valueName, valueStuff, envX:
+                    try valueStuff.maybeAnnotation as
+                        , Just annotation:
+
+                            # This is wrong, should be annotation.raw
+                            raw = tranz annotation
+
+                            # Commenting this is enough to make the typecheck actually see the error
+                            definedAt = valueStuff.pos
+
+                            envX
+            """
+            (infer "addzzz")
+            (Test.errorContains ["raw"])
+            #]
         ]
 

@@ -75,25 +75,16 @@ meta as Meta =
         , Ok m:
             m
 
-
 #
-# Same as core types, but have Pos.T rather than Pos.N
+# CA Types
+#
+# these are necessary because some tests will expect Pos T instead of N
 #
 caBool as CA.RawType =
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "Bool") []
-
+    CA.TypeUnion Pos.T CoreTypes.boolCons
 
 caNumber as CA.RawType =
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "Number") []
-
-
-caNone as CA.RawType =
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "None") []
-
-
-caList as fn CA.RawType: CA.RawType =
-    fn itemType:
-    CA.TypeNamed Pos.T (Meta.spCoreUSR "List") [ itemType ]
+    CA.TypeNamed Pos.T CoreTypes.numberUsr []
 
 
 #
@@ -108,20 +99,25 @@ taTyvarImm as fn Int: TA.RawType =
 
 
 taNumber as TA.RawType =
-    TA.TypeExact ("Number" >> Meta.spCoreUSR) []
+    TA.TypeOpaque CoreTypes.numberUsr []
 
 
 taNone as TA.RawType =
-    TA.TypeExact ("None" >> Meta.spCoreUSR) []
+    TA.TypeUnion Nothing CoreTypes.noneCons
 
 
 taBool as TA.RawType =
-    TA.TypeExact ("Bool" >> Meta.spCoreUSR) []
+    TA.TypeUnion Nothing CoreTypes.boolCons
+
 
 
 taList as fn TA.RawType: TA.RawType =
     fn item:
-    TA.TypeExact ("List" >> Meta.spCoreUSR) [item]
+
+    Dict.empty
+    >> Dict.insert CoreTypes.nil [] __
+    >> Dict.insert CoreTypes.cons [ item, TA.TypeRecursive CoreTypes.listUsr [ item ] ] __
+    >> TA.TypeUnion Nothing __
 
 
 taFunction as fn [TA.RawType], TA.RawType: TA.RawType =

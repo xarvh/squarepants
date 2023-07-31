@@ -30,6 +30,16 @@ find as fn (fn a: Bool), [a]: Maybe a =
                 find test t
 
 
+findMap as fn (fn a: Maybe b), [a]: Maybe b =
+    fn f, list:
+    try list as
+        , []: Nothing
+        , [h, ...t]:
+            try f h as
+                , Just r: Just r
+                , Nothing: findMap f t
+
+
 member as fn a, [a]: Bool = # TODO with a NonFunction =
     fn a, list:
     try list as
@@ -52,9 +62,9 @@ sortBy as fn (fn a: b), [a]: [a] = # TODO with b NonFunction =
     todo "implemented natively"
 
 
-#indexBy as fn (fn a: key), [a]: Dict key a with key NonFunction =
-#    fn getIndex, list:
-#    for list (fn i: Dict.insert (getIndex i) i) Dict.empty
+indexBy as fn (fn a: key), [a]: Dict key a with key NonFunction =
+    fn getIndex, list:
+    for Dict.empty list fn i, a: Dict.insert (getIndex i) i a
 
 
 for as fn state, [item], (fn item, state: state): state =
@@ -67,9 +77,28 @@ for as fn state, [item], (fn item, state: state): state =
           for (function h init) tail function
 
 
+for2 as fn state, [a], [b], (fn a, b, state: state): state =
+    fn init, aList, bList, function:
+    try aList & bList as
+      , [] & _:
+          init
+
+      , _ & []:
+          init
+
+      , [headA, ...tailA] & [headB, ...tailB]:
+          for2 (function headA headB init) tailA tailB function
+
+
 indexedFor as fn state, [item], (fn Int, item, state: state): state =
     fn init, aList, function:
     for (0 & init) aList (fn item, (index & accum): index + 1 & function index item accum)
+    >> Tuple.second
+
+
+indexedFor2 as fn state, [a], [b], (fn Int, a, b, state: state): state =
+    fn init, aList, bList, function:
+    for2 (0 & init) aList bList (fn a, b, (index & accum): index + 1 & function index a b accum)
     >> Tuple.second
 
 
@@ -106,6 +135,13 @@ forReversed as fn state, [item], (fn item, state: state): state =
 
                                           f a (f b (f c (f d res)))
     foldrHelper init 0 list
+
+
+forReversed2 as fn state, [a], [b], (fn a, b, state: state): state =
+    fn init, listA, listB, f:
+
+    # TODO optimize
+    for2 init (reverse listA) (reverse listB) f
 
 
 length as fn [a]: Int =
@@ -198,7 +234,7 @@ append as fn [a], [a]: [a] =
   fn xs, ys:
   try ys as
     , []: xs
-    , _: forReversed ys xs Core.Cons
+    , _: forReversed ys xs (Core.Cons __ __)
 
 
 concat as fn [[a]]: [a] =
@@ -260,7 +296,7 @@ takeFast as fn Int, Int, [a]: [a] =
           [ x, y, z ]
 
         , _ & [x, y, z, w, ...tl]:
-          cons = Core.Cons
+          cons = Core.Cons __ __
           if ctr > 1000 then
             cons x (cons y (cons z (cons w (takeTailRec (n - 4) tl))))
           else
@@ -347,9 +383,26 @@ each as fn [a], (fn a: b): None =
             each tail f
 
 
+indexedEach2 as fn [a], [b], (fn Int, a, b: None): None =
+
+    rec as fn Int, [a], [b], (fn Int, a, b: None): None =
+        fn index, aa, bb, f:
+
+        try aa & bb as
+            , (a :: at) & (b :: bt):
+                f index a b
+                rec (index + 1) at bt f
+            , _:
+                None
+
+    rec 0 __ __ __
+
+
+
+
 reverse as fn [a]: [a] =
     fn aList:
-    for [] aList Core.Cons
+    for [] aList (Core.Cons __ __)
 
 
 repeat as fn Int, a: [ a ] =
@@ -393,4 +446,35 @@ maximum as fn [Number]: Maybe Number =
 
       , _:
         Nothing
+
+
+circularPairs as fn [a]: [a & a] =
+    fn list:
+
+    rec =
+        fn zero, tt, acc:
+        try tt as
+            , []: acc
+            , [first, ...tail]:
+                try tail as
+                    , []: [zero & first, ...acc]
+                    , [second, ...moar]: rec zero tail [second & first, ...acc]
+
+    try list as
+        , []: []
+        , [head, ...tail]: rec head list []
+
+
+intersperse as fn a, [a], [a]: [a] =
+    fn separator, items, acc:
+
+    try items as
+        , []:
+            List.reverse acc
+
+        , [last]:
+            List.reverse (last :: acc)
+
+        , head :: tail:
+            intersperse separator tail (separator :: head :: acc)
 

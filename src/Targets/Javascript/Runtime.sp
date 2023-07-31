@@ -243,7 +243,7 @@ const id = (n) => '    '.repeat(n);
 const sp_toHuman = (a, l = 0) => {
 
   if (Array.isArray(a))
-    return sp_toHumanAsList([], a, l) || sp_toHumanAsUnion(a, l);
+    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);
 
   if (typeof a === 'function') {
     return '<fn ' + a.length + '>';
@@ -291,6 +291,14 @@ const sp_toHumanAsList = (arrayAccum, list, l) => {
 
   if (list[0] === '""" .. listNil .. """')
     return '[' + arrayAccum.join(', ') + ']';
+
+  return false;
+}
+
+const sp_toHumanAsDict = (dict, l) => {
+  if (dict[0] === 'RBNode_elm_builtin') {
+      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);
+  }
 
   return false;
 }
