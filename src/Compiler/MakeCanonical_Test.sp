@@ -112,12 +112,9 @@ valueDef as fn Name, CA.Expression: CA.ValueDef =
 
     {
     , uni = Imm
-    , pattern = CA.PatternAny Pos.G { maybeName = Just name, maybeAnnotation = Nothing }
+    , pattern = CA.PatternAny Pos.G (Just name) Nothing
     , native = False
     , body
-
-    , tyvars = Dict.empty
-    , univars = Dict.empty
 
     , directTypeDeps = Dict.empty
     , directConsDeps = Dict.empty
@@ -214,9 +211,11 @@ lists as Test =
                 , uni = Imm
                 , body = CA.Variable p (TH.rootLocal "l")
                 , native = False
-                , pattern = CA.PatternAny p { maybeName = Just "l", maybeAnnotation = (TH.caBool >> CoreTypes.list >> Just) }
-                , tyvars = Dict.empty
-                , univars = Dict.empty
+                , pattern = CA.PatternAny p (Just "l") (Just {
+                    , raw = CoreTypes.list TH.caBool
+                    , tyvars = Dict.empty
+                    , univars = Dict.empty
+                    })
 
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
@@ -267,7 +266,10 @@ tuples as Test =
             "a = 1 & 2 & 3 & 4"
             (firstEvaluation "a")
             (Test.errorContains ["use a record"])
-        , codeTest "tuple2 type"
+        , codeTest
+            """
+            Tuple2 type
+            """
             """
             a as Number & Number =
               a
@@ -277,19 +279,16 @@ tuples as Test =
                 { body = CA.Variable p (TH.rootLocal "a")
                 , uni = Imm
                 , pattern =
-                    CA.PatternAny p
-                      {
-                      , maybeName = Just "a"
-                      , maybeAnnotation =
-                         Dict.empty
-                            >> Dict.insert "first" TH.caNumber __
-                            >> Dict.insert "second" TH.caNumber __
-                            >> CA.TypeRecord p __
-                            >> Just
-                      }
+                    CA.PatternAny p (Just "a") (Just {
+                         , raw =
+                              Dict.empty
+                              >> Dict.insert "first" TH.caNumber __
+                              >> Dict.insert "second" TH.caNumber __
+                              >> CA.TypeRecord p __
+                          , tyvars = Dict.empty
+                          , univars = Dict.empty
+                    })
                 , native = False
-                , tyvars = Dict.empty
-                , univars = Dict.empty
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
@@ -518,7 +517,7 @@ functions as Test =
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
                 (CA.Fn p
-                    [CA.ParameterPattern Imm (CA.PatternAny p { maybeAnnotation = Nothing, maybeName = Just "x"})]
+                    [CA.ParameterPattern Imm (CA.PatternAny p (Just "x") Nothing)]
                     (CA.Call p
                         (CA.Variable p (TH.rootLocal "add"))
                         [
@@ -537,8 +536,8 @@ functions as Test =
             (Test.isOkAndEqualTo
                 (CA.Fn p
                     [
-                    , CA.ParameterPattern Imm (CA.PatternAny p { maybeAnnotation = Nothing, maybeName = Just "a"})
-                    , CA.ParameterPattern Imm (CA.PatternAny p { maybeAnnotation = Nothing, maybeName = Just "b"})
+                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "a") Nothing)
+                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "b") Nothing)
                     ]
                     (CA.LiteralNumber p 1)
                 )
@@ -562,9 +561,12 @@ nonFunction as Test =
                 { body = CA.LiteralNumber p 1
                 , uni = Imm
                 , native = False
-                , pattern = CA.PatternAny p { maybeName = Just "funz", maybeAnnotation = CA.TypeAnnotationVariable p "a" >> Just }
-                , tyvars = Dict.ofOne "a" { allowFunctions = False }
-                , univars = Dict.empty
+                , pattern =
+                    CA.PatternAny p (Just "funz") (Just {
+                        , raw = CA.TypeAnnotationVariable p "a"
+                        , tyvars = Dict.ofOne "a" { nonFn = Just Pos.T }
+                        , univars = Dict.empty
+                        })
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
@@ -591,9 +593,7 @@ argumentPlaceholders as Test =
                 {
                 , native = False
                 , uni = Imm
-                , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Nothing }
-                , tyvars = Dict.empty
-                , univars = Dict.empty
+                , pattern = CA.PatternAny p (Just "f") Nothing
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
@@ -614,6 +614,7 @@ argumentPlaceholders as Test =
             )
         ]
 
+
 polymorphicUniques as Test =
     Test.Group
         """
@@ -625,34 +626,37 @@ polymorphicUniques as Test =
             In pattern
             """
             """
-            scope =
-                1?f as a = meh
+            f =
+                fn 1?a:
+                1?b = a
+                b
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                 {
                 , native = False
                 , uni = Imm
-                , pattern = CA.PatternAny p { maybeName = Just "scope", maybeAnnotation = Nothing }
-                , tyvars = Dict.empty
-                , univars = Dict.empty
+                , pattern = CA.PatternAny p (Just "f") Nothing
                 , directConsDeps = Dict.empty
                 , directTypeDeps = Dict.empty
                 , directValueDeps = Dict.empty
                 , body =
-                    CA.LetIn
-                        {
-                        , native = False
-                        , uni = Depends 1
-                        , pattern = CA.PatternAny p { maybeName = Just "f", maybeAnnotation = Just (CA.TypeAnnotationVariable p "a") }
-                        , tyvars = Dict.ofOne "a" { allowFunctions = True }
-                        , univars = Dict.ofOne 1 None
-                        , directConsDeps = Dict.empty
-                        , directTypeDeps = Dict.empty
-                        , directValueDeps = Dict.empty
-                        , body = CA.Variable p (TH.rootLocal "meh")
-                        }
-                        (CA.Constructor Pos.G CoreTypes.noneValue)
+                    CA.Fn p
+                        [
+                        , CA.ParameterPattern (Depends 1) (CA.PatternAny p (Just "a") Nothing)
+                        ]
+                        (CA.LetIn
+                            {
+                            , native = False
+                            , uni = Depends 1
+                            , pattern = CA.PatternAny p (Just "b") Nothing
+                            , directConsDeps = Dict.empty
+                            , directTypeDeps = Dict.empty
+                            , directValueDeps = Dict.empty
+                            , body = CA.Variable p (RefLocal "a")
+                            }
+                            (CA.Variable p (RefLocal "b"))
+                        )
                 }
             )
         , codeTest
@@ -662,8 +666,15 @@ polymorphicUniques as Test =
             """
             isOk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = meh
             """
-            (fn t: firstDefinitionStripDeps t >> Result.map (fn x: x.univars) __)
-            (Test.isOkAndEqualTo << Dict.fromList [1 & None, 2 & None])
+            (fn t:
+                t
+                >> firstDefinitionStripDeps
+                >> onOk fn def:
+                try def.pattern as
+                    , CA.PatternAny _ _ (Just ann): Ok ann.univars
+                    , _: Err "no pattern any"
+            )
+            (Test.isOkAndEqualTo << Set.fromList [1, 2])
         ]
 
 

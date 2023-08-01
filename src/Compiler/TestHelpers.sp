@@ -77,7 +77,9 @@ meta as Meta =
 
 
 #
-# Same as core types, but have Pos.T rather than Pos.N
+# CA Types
+#
+# These are necessary because some tests will expect Pos T instead of N
 #
 caBool as CA.RawType =
     CA.TypeNamed Pos.T (Meta.spCoreUSR "Bool") []

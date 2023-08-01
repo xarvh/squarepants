@@ -49,6 +49,11 @@ map as fn (fn a: b), Set a: Set b with a NonFunction =
     Dict.for empty set (fn k, _, d: Dict.insert (f k) None d)
 
 
+for as fn a, Set b, (fn b, a: a): a =
+    fn init, set, f:
+    Dict.for init set (fn k, _, d: f k d)
+
+
 toList as fn Set a: [a] with a NonFunction =
     Dict.keys
 

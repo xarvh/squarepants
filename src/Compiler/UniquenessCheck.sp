@@ -83,7 +83,7 @@ uniOutMap as fn (fn a: b), UniOut a: UniOut b =
 
 
 
-addError as fn Env, Pos, @state, [Text]: None =
+addError as fn Env, Pos, @State, [Text]: None =
     fn env, pos, @state, messageConstructor:
 
     Array.push @state.errors (Error.Simple env.errorModule pos messageConstructor)
@@ -120,7 +120,7 @@ errorTaintedCallRecyclesFunctions as fn Env, Pos, Name, Dict Name { usedAt as Po
         ]
 
 
-errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { usedAt as Pos, fnPos as Pos }, @state: None =
+errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { usedAt as Pos, fnPos as Pos }, @State: None =
     fn env, name, ({ usedAt, fnPos }), @state:
 
 
@@ -138,7 +138,7 @@ errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { 
         ]
 
 
-errorUniqueHasImmType as fn Env, Name, Pos, TA.FullType, @state: None =
+errorUniqueHasImmType as fn Env, Name, Pos, TA.FullType, @State: None =
     fn env, name, pos, type, @state:
 
     addError env pos @state
@@ -149,7 +149,7 @@ errorUniqueHasImmType as fn Env, Name, Pos, TA.FullType, @state: None =
 
 
 
-errorReferencingConsumedVariable as fn Env, Text, Pos, Pos, @state: None =
+errorReferencingConsumedVariable as fn Env, Text, Pos, Pos, @State: None =
     fn env, name, pos, consumedPos, @state:
 
     { location, block } =
@@ -165,7 +165,7 @@ errorReferencingConsumedVariable as fn Env, Text, Pos, Pos, @state: None =
         ]
 
 
-errorConsumingRecycledParameters as fn env, Pos, Dict Name Pos, @state: None =
+errorConsumingRecycledParameters as fn Env, Pos, Dict Name Pos, @State: None =
     fn env, pos, spentThatShouldHaveBeenRecycled, @state:
 
     addError env pos @state
@@ -175,7 +175,7 @@ errorConsumingRecycledParameters as fn env, Pos, Dict Name Pos, @state: None =
         ]
 
 
-errorUndefinedVariable as fn Env, Pos, Text, @state: None =
+errorUndefinedVariable as fn Env, Pos, Text, @State: None =
     fn env, p, name, @state:
 
     addError env p @state
@@ -184,7 +184,7 @@ errorUndefinedVariable as fn Env, Pos, Text, @state: None =
         ]
 
 
-errorMutatingAnImmutable as fn Env, Text, Pos, @state: None =
+errorMutatingAnImmutable as fn Env, Text, Pos, @State: None =
     fn env, name, p, @state:
 
     addError env p @state [
@@ -192,7 +192,7 @@ errorMutatingAnImmutable as fn Env, Text, Pos, @state: None =
         ]
 
 
-errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @state: None =
+errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @State: None =
     fn env, functionPos, spentFromParent, @state:
 
     zzz =
@@ -216,7 +216,7 @@ errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @state: 
     >> addError env functionPos @state __
 
 
-errorConsumingRecycledParameter as fn Env, Text, Pos, @state: None =
+errorConsumingRecycledParameter as fn Env, Text, Pos, @State: None =
     fn env, name, pos, @state:
 
     addError env pos @state [
@@ -224,7 +224,7 @@ errorConsumingRecycledParameter as fn Env, Text, Pos, @state: None =
         ]
 
 
-errorMutatingAConsumed as fn Env, Text, Pos, Pos, @state: None =
+errorMutatingAConsumed as fn Env, Text, Pos, Pos, @State: None =
     fn env, name, p2, p1, @state:
 
     { location, block } =
@@ -241,7 +241,7 @@ errorMutatingAConsumed as fn Env, Text, Pos, Pos, @state: None =
         ]
 
 
-errorMutatingTwice as fn Env, Text, Pos, Pos, @state: None =
+errorMutatingTwice as fn Env, Text, Pos, Pos, @State: None =
     fn env, name, p1, p2, @state:
 
 
@@ -278,7 +278,7 @@ requireInEnv as fn [Name], Required, Env: Env =
     }
 
 
-addPatternToEnv as fn @state, TA.Pattern, Env: [Name] & Dict Name Pos & Env =
+addPatternToEnv as fn @State, TA.Pattern, Env: [Name] & Dict Name Pos & Env =
     fn @state, pattern, env:
 
     names =
@@ -312,7 +312,7 @@ addPatternToEnv as fn @state, TA.Pattern, Env: [Name] & Dict Name Pos & Env =
     Dict.keys names & uniques & localEnv
 
 
-doCall as fn Env, @state, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expression =
+doCall as fn Env, @State, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expression =
     fn env, @state, pos, reference, arguments:
 
     doneReference =
@@ -355,7 +355,7 @@ doCall as fn Env, @state, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expressio
     }
 
 
-doArgument as fn Env, @state, Pos, UniOut TA.Argument: UniOut TA.Argument =
+doArgument as fn Env, @State, Pos, UniOut TA.Argument: UniOut TA.Argument =
     #
     # NOTE! doArgument does not return only the stuff relevant to the given argument, but rather *accumulates* the result
     #
@@ -415,7 +415,7 @@ alias ParsAcc =
     }
 
 
-doParameter as fn @state, TA.Parameter, ParsAcc: ParsAcc =
+doParameter as fn @State, TA.Parameter, ParsAcc: ParsAcc =
     fn @state, par, acc:
 
     # TODO provide new param with resolved type
@@ -447,7 +447,7 @@ doParameter as fn @state, TA.Parameter, ParsAcc: ParsAcc =
             }
 
 
-doExpression as fn Env, @state, TA.Expression: UniOut TA.Expression =
+doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
     fn env, @state, expression:
 
     re =

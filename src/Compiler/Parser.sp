@@ -91,7 +91,7 @@ surroundStrict as fn Token.Kind, Token.Kind, Parser a: Parser a =
     Parser.surroundWith (kind left) (kind right) p
 
 
-surroundMultiline as fn Token.Kind, Token.Kind, Parser a: Parser ap =
+surroundMultiline as fn Token.Kind, Token.Kind, Parser a: Parser a =
     fn left, right, content:
     discardFirst
         (kind left)

@@ -9,6 +9,11 @@ sourceDir =
     path = "src"
 
     module =
+        path = Human/TextTree
+        importAs = TT
+        globalTypes = TextTree
+
+    module =
        path = Test
        importAs = Test
        globalTypes = Test
@@ -58,7 +63,7 @@ sourceDir =
        importAs = FA
 
     module =
-       path = Types/JavascriptAst
+       path = Targets/Javascript/Ast
        importAs = JA
 
     module =

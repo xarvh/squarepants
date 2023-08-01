@@ -4,6 +4,7 @@ tests as Test =
         [
         , functions
         , statements
+        , recursiveTypes
         , variableTypes
         , higherOrderTypes
         , records
@@ -12,7 +13,6 @@ tests as Test =
         , if_else
         , nonFunction
         , misc
-        #, zzzz
         ]
 
 
@@ -41,7 +41,7 @@ outToHuman as fn Out: Text =
 
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
-    , "  type = " .. Human/Type.display "" (Human/Type.doRawType {} out.type)
+    , "  type = " .. TT.toText "" (Human/Type.doRawType {} out.type)
     ]
     >> Text.join "\n" __
 
@@ -55,27 +55,15 @@ freeTyvars as fn [TA.TyvarId]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
 
     List.for Dict.empty ids fn id, d:
-        Dict.insert id {
-            , originalName = ""
-            , allowFunctions = True
-            , generalizedAt = Pos.G
-            , generalizedFor = RefLocal ""
-            }
-            d
+        Dict.insert id { maybeAnnotated = Nothing } d
 
 
 freeTyvarsAnnotated as fn [TA.TyvarId & Name]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
+
     Dict.empty
-    >> List.for __ ids fn (id & originalName), d:
-        Dict.insert id
-              {
-              , originalName
-              , allowFunctions = True
-              , generalizedAt = Pos.G
-              , generalizedFor = RefLocal ""
-              }
-              d
+    >> List.for __ ids fn (id & name), d:
+        Dict.insert id { maybeAnnotated = Just { name, allowFunctions = True } } d
 
 
 #
@@ -141,7 +129,7 @@ infer as fn Text: fn Text: Result Text Out =
         fn (pattern & def):
 
         try pattern as
-            , CA.PatternAny _ { maybeAnnotation, maybeName = Just name }:
+            , CA.PatternAny _ (Just name) maybeAnnotation:
                 if name == targetName then Just def else Nothing
             , _:
                 Nothing
@@ -248,24 +236,7 @@ functions as Test =
 
         , codeTest
             """
-            [reg] on is missing tyvars?
-            """
-            """
-            andThen as [a] = []
-
-            on = andThen
-            """
-            (infer "on")
-            (Test.isOkAndEqualTo
-                {
-                , freeTyvars = freeTyvars [1]
-                , type = TH.taList (tyvar 1)
-                }
-            )
-        , codeTest
-            # I don't know what's wrong here, but it's very wrong
-            """
-            [reg] Something's wrong with tyvars
+            [reg] Free tyvar should not be compatible with constructor
             """
             """
             listCons as fn item: item =
@@ -273,7 +244,18 @@ functions as Test =
                 []
             """
             (infer "listCons")
-            (Test.errorContains ["item"])
+            (Test.errorContains ["Incompatible"])
+
+        , codeTest
+            """
+            Annotations that are too general should be rejected
+            """
+            """
+            f as fn a: b =
+                fn a: a
+            """
+            (infer "f")
+            (Test.errorContains [])
         ]
 
 
@@ -299,7 +281,7 @@ statements as Test =
             (Test.isOkAndEqualTo { type = TH.taBool, freeTyvars = Dict.empty })
         , codeTest
             """
-            Definition statement return type None
+            Definition statements return type None
             """
             """
             a =
@@ -365,6 +347,49 @@ statements as Test =
         ]
 
 
+#
+# Recusrive/circular types
+#
+
+
+recursiveTypes as Test =
+    Test.Group "Recursive types"
+        [
+        , codeTest
+            """
+            Normal types cannot be self recursive
+            """
+            """
+            alias A = { a as A }
+            a as A = todo ""
+            """
+            (infer "a")
+            (Test.errorContains [ "Circular" ])
+        , codeTest
+            """
+            Normal types cannot be mutually recursive
+            """
+            """
+            alias A = { b as B }
+            alias B = { a as A }
+            a as A = todo ""
+            """
+            (infer "a")
+            (Test.errorContains [ "Circular" ])
+        , codeTest
+            """
+            Union types can be recursive
+            """
+            """
+            union A = A2 B
+            alias B = { a as A }
+            a as A = todo ""
+            b as B = todo ""
+            """
+            (infer "a")
+            Test.isOk
+        ]
+
 
 #
 # Variable types
@@ -375,7 +400,9 @@ variableTypes as Test =
     Test.Group "Variable types"
         [
         , codeTest
-            "Identity"
+            """
+            Identity, annotated
+            """
             """
             id as fn a: a =
               fn a: a
@@ -386,9 +413,24 @@ variableTypes as Test =
                 , freeTyvars = freeTyvarsAnnotated [1 & "a"]
                 }
             )
-
         , codeTest
-            "Annotated vars are instantiated when referenced"
+            """
+            Identity, inferred
+            """
+            """
+            id =
+              fn a: a
+            """
+            (infer "id")
+            (Test.isOkAndEqualTo
+                { type = TH.taFunction [tyvar 1] (tyvar 1)
+                , freeTyvars = freeTyvars [1]
+                }
+            )
+        , codeTest
+            """
+            Annotated vars are instantiated when referenced
+            """
             """
             q as [item] =
               Core.Nil
@@ -398,6 +440,39 @@ variableTypes as Test =
             """
             (infer "r")
             Test.isOk
+
+        , codeTest
+            """
+            [reg] on is missing tyvars
+            """
+            """
+            andThen as [a] = []
+
+            on = andThen
+            """
+            (infer "on")
+            (Test.isOkAndEqualTo
+                {
+                , freeTyvars = freeTyvars [1]
+                , type = TH.taList (tyvar 1)
+                }
+            )
+
+        , codeTest
+            """
+            [reg] Unifying functions does not unfiy their args
+            """
+            """
+            dict_member as fn k, Dict_ k v: Bool = todo ""
+            dict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = todo ""
+
+            freeTyvars as Dict_ Number {} = todo ""
+            typeTyvars as Dict_ Number None = todo ""
+
+            x = dict_filter (fn k, v: dict_member v typeTyvars) freeTyvars
+            """
+            (infer "x")
+            (Test.errorContains ["{}", "Number"])
         ]
 
 
@@ -515,7 +590,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = freeTyvars [3]
+                , freeTyvars = freeTyvars [1, 2, 3]
                 , type =
                     TH.taFunction
                         [ TA.TypeRecord (Just 1)
@@ -534,8 +609,7 @@ records as Test =
             (infer "a")
             (Test.isOkAndEqualTo
                 {
-                # TODO Should I have free tyvars 1 and 2 here?
-                , freeTyvars = Dict.empty
+                , freeTyvars = freeTyvars [1, 2]
                 , type =
                     TA.TypeFn
                         [ TA.ParRe << TA.TypeRecord (Just 1)
@@ -588,8 +662,7 @@ records as Test =
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber) >> fn re:
                     {
-                    # TODO should I have free tyvars here?
-                    , freeTyvars = Dict.empty
+                    , freeTyvars = freeTyvars [1]
                     , type = TH.taFunction [re] re
                     }
                 )
@@ -617,8 +690,7 @@ records as Test =
             (infer "x")
             (Test.isOkAndEqualTo
                 (TA.TypeRecord (Just 1) (Dict.ofOne "first" (tyvar 2)) >> fn re:
-                    # TODO tyvar 1 too?
-                    { freeTyvars = freeTyvars [2]
+                    { freeTyvars = freeTyvars [1, 2]
                     , type = TH.taFunction [re] (tyvar 2)
                     }
                 )
@@ -718,7 +790,7 @@ patterns as Test =
             )
         , codeTest
             """
-            Records are correctly unpacked
+            Complete records are correctly unpacked
             """
             """
             x =
@@ -736,6 +808,27 @@ patterns as Test =
                         (tyvar 1)
                 }
             )
+        , codeTest
+            """
+            Incomplete records are correctly unpacked
+            """
+            """
+            x =
+                fn q:
+                { with first } = q
+                first
+            """
+            (infer "x")
+            #
+            (Test.isOkAndEqualTo
+                { freeTyvars = freeTyvars [1, 2]
+                , type =
+                    TH.taFunction
+                        [ TA.TypeRecord (Just 2) (Dict.fromList [ ( "first" & tyvar 1 ) ])]
+                        (tyvar 1)
+                }
+            )
+
          [# TODO
              I can't reproduce this error in the unit tests.
              Even if I copy all code verbatim here, the error does not appear.
@@ -962,13 +1055,7 @@ nonFunction as Test =
             (Test.isOkAndEqualTo
                 {
                 , type = TH.taNumber
-                , freeTyvars = Dict.ofOne 1
-                        {
-                        , originalName = ""
-                        , allowFunctions = False
-                        , generalizedAt = Pos.G
-                        , generalizedFor = RefLocal ""
-                        }
+                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
                 }
             )
 
@@ -1008,7 +1095,7 @@ misc as Test =
         [
         , codeTest
             """
-            Placeholder work with unique args
+            Placeholder works with unique args
             """
             """
             stuff as fn !Number: Number = todo ""

@@ -166,7 +166,7 @@ listDef as CA.UnionDef =
 
     {
     , usr
-    , pars = [ At Pos.G "item" ]
+    , pars = [ "item" & Pos.N ]
     , constructors =
         Dict.empty
         >> Dict.insert "Nil" nilDef __
