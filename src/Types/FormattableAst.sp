@@ -15,8 +15,7 @@ alias Module =
     [Statement]
 
 
-alias ValueDef =
-    {
+alias ValueDef = {
     , pattern as Expression
     , nonFn as [At Token.Word]
     , body as Expression
@@ -45,11 +44,6 @@ union Statement =
     , ValueDef ValueDef
     , AliasDef AliasDef
     , UnionDef UnionDef
-
-
-# expr op expr op expr op...
-alias SepList sep item =
-    item & [ sep & item ]
 
 
 # TODO
@@ -116,16 +110,49 @@ union Expr_ =
         , patterns as [ Expression & Expression ]
         }
 
-alias RecordAttribute =
-    {
+
+alias RecordAttribute = {
     , name as Expression
     , maybeExpr as Maybe Expression
     }
 
 
+# expr op expr op expr op...
+alias SepList sep item =
+    item & [ sep & item ]
+
+
+# TODO rename to sepList_items
 sepToList as fn SepList sep item: [item] =
     fn (head & tuples):
     head :: List.map Tuple.second tuples
+
+
+sepList_reverse as fn SepList sep item: SepList sep item =
+
+    rec as fn [sep & item], SepList sep item: SepList sep item =
+        fn acc, oddItem & remainder:
+        try remainder as
+            , []: oddItem & acc
+            , [sep & item, ...tail]: rec [sep & oddItem, ...acc] (item & tail)
+
+    rec [] __
+
+
+sepList_allSeps as fn (fn sep: Bool), SepList sep item: Bool =
+    fn f, ls:
+    try ls.second as
+        , []:
+            True
+
+        , [sep & item, ...tail]:
+            if f sep then
+                sepList_allSeps f (item & tail)
+
+            else
+                False
+
+
 
 
 statementPos as fn Statement: Pos =

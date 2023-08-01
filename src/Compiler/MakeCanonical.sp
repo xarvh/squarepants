@@ -19,7 +19,7 @@ alias Env =
     # This keeps track of values that are declared within the
     # scope of a function, so they don't need to be expanded with the module name.
     #
-    , nonRootValues as Dict Text { pos as Pos, maybeAnnotation as Maybe CA.RawType }
+    , nonRootValues as Dict Text { pos as Pos, maybeAnnotation as Maybe CA.Annotation }
     #
     # TODO This is used to tell the user that definitions must be in order
     #
@@ -28,7 +28,7 @@ alias Env =
     #
     , ro as ReadOnly
 
-    , nonFn as Set Text
+    , nonFn as Dict Name Pos
     }
 
 
@@ -184,10 +184,10 @@ patternDeps as fn CA.Pattern, Deps: Deps =
         , CA.PatternRecord _ completeness ps:
             Dict.for deps ps (fn k, v, a: patternDeps v a)
 
-        , CA.PatternAny _ { maybeName = _, maybeAnnotation = Just type }:
-            { deps with types = typeDeps type .types }
+        , CA.PatternAny _ _ (Just annotation):
+            { deps with types = typeDeps annotation.raw .types }
 
-        , CA.PatternAny _ { maybeName = _, maybeAnnotation = Nothing }:
+        , CA.PatternAny _ _ Nothing:
             deps
 
         , CA.PatternLiteralNumber _ _:
@@ -279,70 +279,16 @@ parameterDeps as fn CA.Parameter, Deps: Deps =
 #
 
 
-addUnivarId as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
-    fn uni, acc:
-
-    try uni as
-        , Depends id: Dict.insert id None acc
-        , _: acc
-
-
-addPar as fn CA.ParType, Dict UnivarId None: Dict UnivarId None =
-    fn parType, acc:
-
-    try parType as
-        , CA.ParRe raw: addRawTypeUnivars raw acc
-        , CA.ParSp full:
-            acc
-            >> addUnivarId full.uni __
-            >> addRawTypeUnivars full.raw __
-
-
-addRawTypeUnivars as fn CA.RawType, Dict UnivarId None: Dict UnivarId None =
-    fn raw, acc:
-
-    try raw as
-        , CA.TypeNamed _ _ args: List.for acc args addRawTypeUnivars
-        , CA.TypeRecord _ attrs: Dict.for acc attrs (fn k, v, a: addRawTypeUnivars v a)
-        , CA.TypeAnnotationVariable _ _: acc
-        , CA.TypeError _: acc
-        , CA.TypeFn _ pars out:
-            acc
-            >> addUnivarId out.uni __
-            >> addRawTypeUnivars out.raw __
-            >> List.for __ pars addPar
-
-
-addPatternUnivars as fn CA.Pattern, Dict UnivarId None: Dict UnivarId None =
-    fn pattern, acc:
-
-    try pattern as
-        , CA.PatternConstructor _ _ args: List.for acc args addPatternUnivars
-        , CA.PatternRecord _ _ attrs: Dict.for acc attrs (fn k, v, a: addPatternUnivars v a)
-        , CA.PatternAny _ { maybeName, maybeAnnotation = Just rawType }: addRawTypeUnivars rawType acc
-        , _: acc
-
-
 translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     fn isRoot, env, fa:
-
-    fa.pattern
-    >> translateFullPattern env __
-    >> onOk fn (uni & pattern):
 
     fa.nonFn
     >> List.mapRes (translateTypeParameter env.ro __) __
     >> onOk fn nonFn:
 
-    univars as Dict UnivarId None =
-        Dict.empty
-        >> addUnivarId uni __
-        >> addPatternUnivars pattern __
-
-    tyvars as Dict Name CA.Tyvar =
-        pattern
-        >> CA.patternTyvars
-        >> Dict.map (fn tyvarName, pos: { allowFunctions = List.all (fn (At _ name): name /= tyvarName) nonFn }) __
+    fa.pattern
+    >> translateFullPattern { env with nonFn = Dict.fromList nonFn } __
+    >> onOk fn (uni & pattern):
 
     # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv
 
@@ -373,8 +319,6 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
     {
     , uni
     , pattern
-    , tyvars
-    , univars
     , native = False
     , body
     #
@@ -436,26 +380,36 @@ translatePatternAny as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Patt
     else if word.maybeModule /= Nothing then
         error env pos [ "You can't access modules here..." ]
     else
-        resultMaybeRaw as Res (Maybe CA.RawType) =
-            try maybeFaType as
-                , Just faType:
-                    faType
-                    >> translateRawType env.ro __
-                    >> Result.map Just __
-
-                , Nothing:
-                    Ok Nothing
-
-        resultMaybeRaw
-        >> onOk fn maybeRaw:
+        translateMaybeAnnotation env maybeFaType
+        >> onOk fn maybeAnnotation:
 
         maybeName =
             if word.name == "_" then Nothing else Just word.name
 
-        Ok << CA.PatternAny pos { maybeName, maybeAnnotation = maybeRaw }
+        Ok << CA.PatternAny pos maybeName maybeAnnotation
 
 
-insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
+translateMaybeAnnotation as fn Env, Maybe FA.Expression: Res (Maybe CA.Annotation) =
+    fn env, maybeFaType:
+
+    try maybeFaType as
+        , Nothing:
+            Ok Nothing
+
+        , Just faType:
+            translateRawType env.ro faType
+            >> onOk fn raw:
+
+            tyvars =
+                CA.typeTyvars raw
+                >> Dict.map (fn tyvarName, pos: { nonFn = Dict.get tyvarName env.nonFn }) __
+
+            { raw, tyvars, univars = CA.typeUnivars raw }
+            >> Just
+            >> Ok
+
+
+insertPatternRecordAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
     fn env, attr, caAttrs:
 
     # { x }
@@ -474,12 +428,13 @@ insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict N
                 error env typePos [ "if you want to annotate the attribute, use { x = y as TheType }" ]
 
             , Nothing & Just faType:
-                translateRawType env.ro faType
-                >> onOk fn caType:
-
-                caAttrs
-                >> Dict.insert caName (CA.PatternAny pos { maybeName = Just caName, maybeAnnotation = Just caType }) __
-                >> Ok
+                error env pos [ "TODO annotating record attributes needs more thinking" ]
+#                translateRawType env.ro faType
+#                >> onOk fn caType:
+#
+#                caAttrs
+#                >> Dict.insert caName (CA.PatternAny pos { maybeName = Just caName, maybeAnnotation = Just caType }) __
+#                >> Ok
 
             , Just faPattern & Nothing:
                 faPattern
@@ -492,7 +447,7 @@ insertAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict N
 
              , Nothing & Nothing:
                 caAttrs
-                >> Dict.insert caName (CA.PatternAny pos { maybeName = Just caName, maybeAnnotation = Nothing }) __
+                >> Dict.insert caName (CA.PatternAny pos (Just caName) Nothing) __
                 >> Ok
 
 
@@ -516,7 +471,7 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [{ name as F
     >> onOk fn completeness:
 
     Dict.empty
-    >> List.forRes __ attrs (insertAttribute env __ __)
+    >> List.forRes __ attrs (insertPatternRecordAttribute env __ __)
     >> Result.map (fn x: CA.PatternRecord pos completeness x) __
 
 
@@ -717,11 +672,9 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
             caDef as CA.ValueDef =
                 {
                 , uni = Imm
-                , pattern = CA.PatternAny Pos.G { maybeName = Nothing, maybeAnnotation = Nothing }
+                , pattern = CA.PatternAny Pos.G Nothing Nothing
                 , native = False
                 , body = caExpr
-                , tyvars = Dict.empty
-                , univars = Dict.empty
 
                 # TODO Do we need these here?
                 , directTypeDeps = Dict.empty
@@ -851,7 +804,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "compiler bug: FA.Binop should not be here" ]
 
         , FA.BinopChain group sepList:
-            translateBinops env pos group sepList
+            translateBinopChain env pos group sepList
 
         , FA.Record { maybeExtension, attrs }:
             translateRecord env pos maybeExtension attrs
@@ -1107,11 +1060,9 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [FA.RecordAttribute
                 {
                 # TODO ----> This desugaring needs to be done by TypeCheck, because MakeCanonical can't infer its uniqueness
                 , uni = Imm
-                , pattern = CA.PatternAny Pos.G { maybeName = Just varName, maybeAnnotation = Nothing }
+                , pattern = CA.PatternAny Pos.G (Just varName) Nothing
                 , native = False
                 , body = caExt
-                , tyvars = Dict.empty
-                , univars = Dict.empty
 
                 # TODO populate deps?
                 , directTypeDeps = Dict.empty
@@ -1175,89 +1126,159 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
             >> Ok
 
 
-translateBinops as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
-    fn env, pos, group, ( firstItem & firstTail ):
-    try firstTail as
+translateBinopChain as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, group, opChain:
+    if group == Op.precedence_pipe then
+        resolvePipe env pos opChain
+        >> onOk (translateExpression env __)
+
+    else if group == Op.precedence_tuple then
+        translateTupleExpression env pos opChain
+
+    else if group == Op.precedence_comparison then
+        translateComparison env pos opChain
+
+    else if group == Op.precedence_logical then
+        translateLogical env pos opChain
+
+    else if group == Op.precedence_mutop then
+        translateMutop env pos opChain
+
+    else
+        translateRightAssociativeBinopChain env pos opChain
+
+
+# TODO use this one!!!
+translateCall as fn Env, Pos, FA.Expression, [FA.Expression]: Res CA.Expression =
+    fn env, pos, faRef, faArgs:
+
+    faRef
+    >> translateExpression env __
+    >> onOk fn caRef:
+
+    if faArgs == [] then
+        Ok caRef
+
+    else
+        List.mapRes (translateArgument env __) faArgs
+        >> onOk fn caArgs:
+
+        CA.Call pos caRef caArgs
+        >> Ok
+
+
+resolvePipe as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res FA.Expression =
+    fn env, pos, opChain:
+
+    if FA.sepList_allSeps (fn sep: sep.usr == Prelude.sendRight.usr) opChain then
+        #
+        #   head >> b >> c >> d    --->   d (c (b head))
+        #
+        head & sepTail =
+            opChain
+
+        List.for head sepTail fn sep & faExp, acc:
+            (FA.Expression p _) = faExp
+            FA.Expression p (FA.Call faExp [acc])
+        >> Ok
+
+    else if FA.sepList_allSeps (fn sep: sep.usr == Prelude.sendLeft.usr) opChain then
+        #
+        #   head << b << c << d    --->   head (b (c d))
+        #
+        last & body =
+            FA.sepList_reverse opChain
+
+        List.for last body fn sep & faExp, acc:
+            (FA.Expression p _) = faExp
+            FA.Expression p (FA.Call faExp [acc])
+        >> Ok
+
+    else
+        error env pos [ "Mixing `>>` and `<<` is ambiguous. Use parens!" ]
+
+
+translateTupleExpression as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, one & sepTail:
+
+    try sepTail as
         , []:
-            translateExpression env firstItem
+            translateExpression env one
 
-        , (firstSep & secondItem) :: []:
-            if group == Op.precedence_tuple then
-                    translateExpression env firstItem >> onOk fn first:
-                    translateExpression env secondItem >> onOk fn second:
-                    Dict.empty
-                        >> Dict.insert "first" first __
-                        >> Dict.insert "second" second __
-                        >> CA.Record pos Nothing __
-                        >> Ok
-            else
-                    translateSimpleBinop env pos firstItem firstSep secondItem
+        , [_ & two]:
+            translateExpression env one >> onOk fn first:
+            translateExpression env two >> onOk fn second:
+            Dict.empty
+                >> Dict.insert "first" first __
+                >> Dict.insert "second" second __
+                >> CA.Record pos Nothing __
+                >> Ok
 
-        , (firstSep & secondItem) :: (secondSep & thirdItem) :: thirdTail:
+        , [_ & two, _ & three]:
+             translateExpression env one >> onOk fn first:
+             translateExpression env two >> onOk fn second:
+             translateExpression env three >> onOk fn third:
+             Dict.empty
+                 >> Dict.insert "first" first __
+                 >> Dict.insert "second" second __
+                 >> Dict.insert "third" third __
+                 >> CA.Record pos Nothing __
+                 >> Ok
 
-            secondTail as [Op.Binop & FA.Expression] =
-                (secondSep & thirdItem) :: thirdTail
+        , _:
+            error env pos [ "Tuples can't have more than 3 items, use a record instead." ]
 
-            if group == Op.precedence_comparison then
-                    if notAllSeparators (sameDirectionAs firstSep __) secondTail then
-                        # TODO actually list the seps
-                        error env pos [ "can't mix comparison ops with different direction" ]
 
-                    else
-                        # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
-                        error env pos [ "NI compops expansion" ]
+translateComparison as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, opChain:
 
-            else if group == Op.precedence_logical then
-                    if notAllSeparators (fn x: x == firstSep) secondTail then
-                        error env pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
+    try opChain.second as
+        , []: translateExpression env opChain.first
 
-                    else
-                        translateBinopSepList_rightAssociative env pos firstItem firstTail
+        , [ sep & second ]: translateRightAssociativeBinopChain env pos opChain
 
-            else if group == Op.precedence_tuple then
-                    if thirdTail /= [] then
-                        error env pos [ "Tuples can't have more than 3 items, use a record instead." ]
-
-                    else
-                         translateExpression env firstItem >> onOk fn first:
-                         translateExpression env secondItem >> onOk fn second:
-                         translateExpression env thirdItem >> onOk fn third:
-                         Dict.empty
-                             >> Dict.insert "first" first __
-                             >> Dict.insert "second" second __
-                             >> Dict.insert "third" third __
-                             >> CA.Record pos Nothing __
-                             >> Ok
-
-            else if group == Op.precedence_pipe then
-                    if notAllSeparators (fn x: x == firstSep) secondTail then
-                        error env pos [ "Mixing pipes is ambigous. Use parens." ]
-
-                    else if firstSep.associativity == Op.Right then
-                        translateBinopSepList_rightAssociative env pos firstItem firstTail
-
-                    else
-                        translateBinopSepList_leftAssociative env pos firstItem firstTail
-
-            else if group == Op.precedence_mutop then
-                    error env pos [ "mutops can't be chained" ]
+        , [ firstSep & second, ...moar]:
+            if FA.sepList_allSeps (sameDirectionAs firstSep __) opChain then
+                # TODO expand `a < b < c` to `a < b and b < c` without calculating b twice
+                error env pos [ "TODO: not (yet) implemented: compops expansion" ]
 
             else
-                    translateBinopSepList_rightAssociative env pos firstItem firstTail
+                # TODO actually list the seps
+                error env pos [ "can't mix comparison ops with different direction" ]
 
 
-notAllSeparators as fn (fn sep: Bool), [ sep & item]: Bool =
-    fn f, ls:
-    try ls as
+translateLogical as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, opChain:
+
+    allSame =
+        FA.sepList_allSeps (fn sep: sep.usr == Prelude.and_.usr) opChain
+        or
+        FA.sepList_allSeps (fn sep: sep.usr == Prelude.or_.usr) opChain
+
+    if allSame then
+        translateRightAssociativeBinopChain env pos opChain
+    else
+        error env pos [ "Mixing `and` and `or` is ambiguous. Use parens!" ]
+
+
+translateMutop as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, left & sepTail:
+    try sepTail as
+
         , []:
-            False
+            translateExpression env left
 
-        , (sep & item) :: tail:
-            if f sep then
-                notAllSeparators f tail
+        , [op & right]:
+            translateArgument env left
+            >> onOk fn l:
 
-            else
-                True
+            translateArgument env right
+            >> onOk fn r:
+
+            makeBinop env.ro pos l op r
+
+        , _:
+            error env pos [ "mutops can't be chained" ]
 
 
 sameDirectionAs as fn Op.Binop, Op.Binop: Bool =
@@ -1283,17 +1304,19 @@ sameDirectionAs as fn Op.Binop, Op.Binop: Bool =
                 False
 
 
-translateBinopSepList_rightAssociative as fn Env, Pos, FA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
-    fn env, pos, left, opsAndRight:
-    translateExpression env left >> onOk fn caLeft:
+translateRightAssociativeBinopChain as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
+    fn env, pos, left & opsAndRight:
+
+    translateExpression env left
+    >> onOk fn caLeft:
+
     try opsAndRight as
         , []:
             Ok caLeft
 
-        , (op & right) :: tail:
-            translateBinopSepList_rightAssociative env pos right tail
+        , [op & right, ...tail]:
+            translateRightAssociativeBinopChain env pos (right & tail)
             >> onOk fn caRight:
-
             makeBinop env.ro pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
 
 
@@ -1317,7 +1340,14 @@ translateBinopSepListRec as fn Env, Pos, CA.Expression, [ Op.Binop & FA.Expressi
             translateBinopSepListRec env pos binop tail
 
 
-[# Unlike other ML languages, the left operand is the _second_ argument
+[#
+
+      !!!!
+      TODO just make this rewrite as a FA.Call and then call translateExpression
+      !!!!
+
+
+ Unlike other ML languages, the left operand is the _second_ argument
 
 `a + b` == `((+) b) a`
 
@@ -1614,7 +1644,7 @@ translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name C
         >> Ok
 
 
-translateTypeParameter as fn ReadOnly, At Token.Word: Res (At Name) =
+translateTypeParameter as fn ReadOnly, At Token.Word: Res (Name & Pos) =
     fn ro, (At pos word):
 
     if word.modifier /= Token.NameNoModifier then
@@ -1626,7 +1656,7 @@ translateTypeParameter as fn ReadOnly, At Token.Word: Res (At Name) =
     else if word.attrPath /= [] then
         erroro ro pos [ "why attrs here?" ]
     else
-        Ok (At pos word.name)
+        Ok (word.name & pos)
 
 
 translateTypeName as fn ReadOnly, At Token.Word: Res Name =
@@ -1722,15 +1752,14 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
 
                 type =
                     caPars
-                    >> List.map (fn (At p n): CA.TypeAnnotationVariable p n) __
+                    >> List.map (fn n & p: CA.TypeAnnotationVariable p n) __
                     >> CA.TypeNamed pos usr __
 
                 Dict.empty
                 >> List.forRes __ fa.constructors (translateConstructor ro type usr __ __)
                 >> onOk fn constructors:
 
-                unionDef as CA.UnionDef =
-                    {
+                unionDef as CA.UnionDef = {
                     , usr
                     , pars = caPars
                     , constructors

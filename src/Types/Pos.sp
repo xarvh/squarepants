@@ -22,6 +22,7 @@ union Pos =
     , G
 
 
+# TODO this was not super useful, remove it
 union At a =
     At Pos a
 

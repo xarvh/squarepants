@@ -25,13 +25,12 @@ exposedValueToUsrAndInstance as fn USR & Self.Self: USR & Compiler/TypeCheck.Ins
         exposed
 
     makeTyvar as fn TA.TyvarId, None: TA.Tyvar =
-        fn tyvarId, None:
-        {
-        , generalizedAt = Pos.N
-        , generalizedFor = RefGlobal usr
-        , originalName = ""
-        , allowFunctions = True # TODO not (List.member tyvarId exposed.nonFn)
-        }
+        fn tyvarId, None: { maybeAnnotated = Nothing }
+#        , generalizedAt = Pos.N
+#        , generalizedFor = RefGlobal usr
+#        , originalName = ""
+#        , allowFunctions = True # TODO not (List.member tyvarId exposed.nonFn)
+#        }
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
         raw

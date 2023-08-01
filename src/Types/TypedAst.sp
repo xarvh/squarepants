@@ -79,19 +79,13 @@ union Parameter =
     , ParameterRecycle Pos RawType Name
 
 
-alias Tyvar =
-    {
-    #, annotatedAt as Pos
-    , generalizedAt as Pos
-    , generalizedFor as Ref
-    , originalName as Name
-    , allowFunctions as Bool
+alias Tyvar = {
+    , maybeAnnotated as Maybe { name as Name, allowFunctions as Bool }
     }
 
 
-alias Univar =
-    {
-    , originalId as UnivarId
+alias Univar = {
+    , annotatedId as UnivarId
     }
 
 
@@ -325,6 +319,7 @@ mapPars as fn (fn RawType: RawType), [ParType]: [ParType] =
             , ParSp full: ParSp { full with raw = f .raw }
 
     List.map zzz pars
+
 
 patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
     fn p:

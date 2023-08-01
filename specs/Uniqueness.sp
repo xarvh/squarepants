@@ -505,7 +505,7 @@ polymorphism as Test =
             (infer "na")
             (Test.isOkAndEqualTo
                 {
-                , freeTyvars = Dict.empty
+                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
                 , type = TA.TypeFn [TA.ParSp { uni = Depends 0, raw = TA.TypeVar 1}] { uni = Depends 0, raw = TA.TypeVar 1}
                 }
             )
