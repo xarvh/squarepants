@@ -126,7 +126,8 @@ unaryMinus as Override =
         try arguments as
             , [ EA.ArgumentSpend fullType arg ]:
                 # Num.unaryMinus n == -n
-                JA.Unop "-" (translateExpressionToExpression env arg)
+                # The || is necessary to turn `-0` in an actual 0, because JS hates humanity.
+                JA.Binop "||" (JA.Unop "-" (translateExpressionToExpression env arg)) (JA.Literal "0")
 
             , _:
                 todo "compiler bug: wrong number of arguments for unop"

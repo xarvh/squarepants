@@ -2353,7 +2353,7 @@ const $core$Array_Test$tests = ($sd1$Test$Group)("Array", ($core$Core$Cons)(($co
 }))), ($core$Core$Cons)(($core$Array_Test$valueTest)("sortBy", ((_0) => {
   let $a = (array_fromList)(($core$Core$Cons)(55, ($core$Core$Cons)(99, ($core$Core$Cons)(22, $core$Core$Nil))));
   ((__re__ = (array_sortBy)($a, (($x) => {
-    return -($x);
+    return (-($x) || 0);
   }))), ($a = (__re__)[1]), (__re__)[0]);
   return ((__re__ = (array_toList)($a)), ($a = (__re__)[1]), (__re__)[0]);
 }), ($sd1$Test$isOkAndEqualTo)(($core$Core$Cons)(99, ($core$Core$Cons)(55, ($core$Core$Cons)(22, $core$Core$Nil))))), $core$Core$Nil)))))))));
@@ -4000,7 +4000,7 @@ const $core$Text$contains = (($sub, $str) => {
 
 const $core$Text$dropRight = (($n, $s) => {
   return (($n > 0)
-    ? (text_slice)(0, -($n), $s)
+    ? (text_slice)(0, (-($n) || 0), $s)
     : $s);
 });
 
@@ -5742,7 +5742,7 @@ const $sd1$Compiler$Lexer$lexOne = (($buffer, $char, $state) => {
                           : ((() => {
                             ($state.tokenStart = (((__re__ = ($sd1$Compiler$Lexer$getPos)($state)), ($state = (__re__)[1]), (__re__)[0]) - 1));
                             ((__re__ = ($sd1$Compiler$Lexer$setMode)(($sd1$Compiler$Lexer$SingleQuote)(({
-                              lastEscape: -(1),
+                              lastEscape: (-(1) || 0),
                             })), $state)), ($state = (__re__)[1]), (__re__)[0]);
                             return ((__re__ = ($sd1$Compiler$Lexer$lexOne)($buffer, $char, $state)), ($state = (__re__)[1]), (__re__)[0]);
                           }))()))
@@ -5752,7 +5752,7 @@ const $sd1$Compiler$Lexer$lexOne = (($buffer, $char, $state) => {
                             ($state.tokenStart = (((__re__ = ($sd1$Compiler$Lexer$getPos)($state)), ($state = (__re__)[1]), (__re__)[0]) - 2));
                             return ((__re__ = ($sd1$Compiler$Lexer$setMode)(($sd1$Compiler$Lexer$TripleQuote)(({
                               closingQuotes: 0,
-                              lastEscape: -(1),
+                              lastEscape: (-(1) || 0),
                             })), $state)), ($state = (__re__)[1]), (__re__)[0]);
                           }))()
                           : ((() => {
@@ -5946,7 +5946,7 @@ const $sd1$Compiler$Parser$makeError = (($env, $readState, $message) => {
         const $rest = ($readState)[2];
         return ($sd1$Types$Pos$P)($start, $end);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 780:8', (sp_toHuman)($readState))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 779:8', (sp_toHuman)($readState))));
   return ($sd1$Compiler$Error$res)($env.errorModule, $p, ($core$Core$Cons)($message, $core$Core$Nil));
 });
 
@@ -6074,7 +6074,7 @@ const $sd1$Compiler$Parser$getOneUnopExpr = ((() => {
         }))()
         : ((($remainder)[0] === "Nil")
           ? (sp_todo)("bug: FA.Error & []")
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 633:8', (sp_toHuman)($remainder)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 632:8', (sp_toHuman)($remainder)))));
   });
   return (($1) => {
     return ($rec)($core$Basics$identity, $1);
@@ -6092,7 +6092,7 @@ const $sd1$Compiler$Parser$breakByUnops = ((() => {
           const $expr = $3.first;
           return ($rec)((sp_cons)($expr, $acc), $remainder);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 666:8', (sp_toHuman)($exprs))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 665:8', (sp_toHuman)($exprs))));
   });
   return (($1) => {
     return ($rec)($core$Core$Nil, $1);
@@ -6116,7 +6116,7 @@ const $sd1$Compiler$Parser$eatAllUnops = ((() => {
           first: $unops,
           second: $exprs,
         })
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 652:8', (sp_toHuman)($exprs))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 651:8', (sp_toHuman)($exprs))));
   });
   return (($1) => {
     return ($rec)($core$Core$Nil, $1);
@@ -6183,9 +6183,9 @@ const $sd1$Compiler$Parser$posRange = (($exprs) => {
           }))()
           : ((($2)[0] === "Nothing")
             ? $start
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 554:12', (sp_toHuman)($2))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 553:12', (sp_toHuman)($2))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 551:4', (sp_toHuman)($exprs))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 550:4', (sp_toHuman)($exprs))));
 });
 
 const $sd1$Compiler$Parser$exprOrTargetOp = (($precedence, $head) => {
@@ -6199,7 +6199,7 @@ const $sd1$Compiler$Parser$exprOrTargetOp = (($precedence, $head) => {
     }))()
     : (true
       ? ($core$Result$Ok)($head)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 564:4', (sp_toHuman)($head))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 563:4', (sp_toHuman)($head))));
 });
 
 const $sd1$Compiler$Parser$readExprs = (($targetOpPrecedence, $rawExpressions) => {
@@ -6222,14 +6222,14 @@ const $sd1$Compiler$Parser$readExprs = (($targetOpPrecedence, $rawExpressions) =
                 second: $remainder,
               });
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 582:16', (sp_toHuman)($5))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 581:16', (sp_toHuman)($5))));
       }))()
       : ((($remainder)[0] === "Nil")
         ? ({
           first: ($core$List$reverse)($acc),
           second: $remainder,
         })
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 580:8', (sp_toHuman)($remainder))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 579:8', (sp_toHuman)($remainder))));
   });
   return ($rec)($core$Core$Nil, $rawExpressions);
 });
@@ -6258,9 +6258,9 @@ const $sd1$Compiler$Parser$readOpsAndExprs = (($targetOpPrecedence, $acc, $remai
               const $exprs = ($4)[1];
               return (sp_todo)("bug: readOpsAndExprs spurious exp");
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 603:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 602:12', (sp_toHuman)($4))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 598:4', (sp_toHuman)($remainder))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 597:4', (sp_toHuman)($remainder))));
 });
 
 const $sd1$Compiler$Parser$splitOnOpWithPrecedence = (($targetOpPrecedence, $rawExpressions) => {
@@ -6302,7 +6302,7 @@ const $sd1$Compiler$Parser$breakByPrecedence = (($rawExpressions) => {
               const $tail = ($4)[2];
               return ($applyHeadUnops)(($sd1$Types$FormattableAst$Expression)(($sd1$Compiler$Parser$posRange)($rawExpressions), ($sd1$Types$FormattableAst$Call)($head, $tail)));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 536:12', (sp_toHuman)($4)))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 535:12', (sp_toHuman)($4)))));
     }))()
     : (true
       ? ((() => {
@@ -6315,7 +6315,7 @@ const $sd1$Compiler$Parser$breakByPrecedence = (($rawExpressions) => {
           return ($sd1$Compiler$Parser$splitOnOpWithPrecedence)($lowestPrecedence, $1);
         }))($rawExpressions)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 528:4', (sp_toHuman)($2))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 527:4', (sp_toHuman)($2))));
 });
 
 const $sd1$Compiler$Parser$discardFirst = (($a, $b) => {
@@ -6863,10 +6863,10 @@ const $sd1$Compiler$Parser$parse = (($env, $tokens) => {
             ? "I got to the end of the statement and I can't make sense of it. =("
             : (true
               ? "I got stuck parsing here. =("
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 808:16', (sp_toHuman)($readState))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 807:16', (sp_toHuman)($readState))));
           return ($sd1$Compiler$Parser$makeError)($env, $readState, $message);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 793:4', (sp_toHuman)($outcome)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 792:4', (sp_toHuman)($outcome)))));
 });
 
 const $sd1$Compiler$Parser$textToFormattableModule = (($env) => {
@@ -13932,7 +13932,7 @@ const $sd1$Compiler$TypeCheck$addUnionTypeAndConstructorsToGlobalEnv = (($state,
       const $name = ($6)[2];
       return ({
         first: $name,
-        second: ($sd1$Types$TypedAst$TypeVar)(-($index)),
+        second: ($sd1$Types$TypedAst$TypeVar)((-($index) || 0)),
       });
     }), $1);
   }))($caUnionDef.pars));
@@ -13940,7 +13940,7 @@ const $sd1$Compiler$TypeCheck$addUnionTypeAndConstructorsToGlobalEnv = (($state,
     const $pos = ($5)[1];
     const $name = ($5)[2];
     return ({
-      first: -($index),
+      first: (-($index) || 0),
       second: ({
         allowFunctions: true,
         generalizedAt: $sd1$Types$Pos$G,
@@ -13984,7 +13984,7 @@ const $sd1$Compiler$TypeCheck$initEnv = ({
 const $sd1$Compiler$TypeCheck$namedParsToIdParsAndDict = (($atPars) => {
   const $idPars = ((($1) => {
     return ($core$List$indexedMap)((($index, $atName) => {
-      return -($index);
+      return (-($index) || 0);
     }), $1);
   }))($atPars);
   const $typeByName = ($core$Dict$fromList)(((($1) => {
@@ -13993,7 +13993,7 @@ const $sd1$Compiler$TypeCheck$namedParsToIdParsAndDict = (($atPars) => {
       const $name = ($3)[2];
       return ({
         first: $name,
-        second: ($sd1$Types$TypedAst$TypeVar)(-($index)),
+        second: ($sd1$Types$TypedAst$TypeVar)((-($index) || 0)),
       });
     }), $1);
   }))($atPars));
@@ -16759,7 +16759,7 @@ const $sd1$Targets$Javascript$EmittableToJs$makeCall = (($env, $jaRef, $args) =>
             return ($sd1$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, $1);
           }))(($sd1$Types$JavascriptAst$Var)(($sd1$Targets$Javascript$EmittableToJs$translateName)($name))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 376:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 377:8', (sp_toHuman)($arg))));
   });
   const $recycledArgs = ($core$List$filterMap)($asRecycled, $args);
   return ((sp_equal)($recycledArgs, $core$Core$Nil)
@@ -16787,7 +16787,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateSource = (($src) => {
             const $id = ($src)[1];
             return $id;
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 673:4', (sp_toHuman)($src))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 674:4', (sp_toHuman)($src))))));
 });
 
 const $sd1$Targets$Javascript$EmittableToJs$translateUsr = (($1) => {
@@ -16807,7 +16807,7 @@ const $sd1$Targets$Javascript$EmittableToJs$maybeOverrideUsr = (($env, $usr) => 
     }))()
     : ((($3)[0] === "Nothing")
       ? ($sd1$Types$JavascriptAst$Var)(($sd1$Targets$Javascript$EmittableToJs$translateUsr)($usr))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 259:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 260:4', (sp_toHuman)($3))));
 });
 
 const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpression) => {
@@ -16832,7 +16832,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
             }))()
             : (true
               ? $core$Maybe$Nothing
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 439:16', (sp_toHuman)($ref))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 440:16', (sp_toHuman)($ref))));
           return (((($maybeNativeOverride)[0] === "Just") && ((($maybeNativeOverride)[1])[0] === "Override"))
             ? ((() => {
               const $call = (($maybeNativeOverride)[1])[1].call;
@@ -16840,7 +16840,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
             }))()
             : ((($maybeNativeOverride)[0] === "Nothing")
               ? ($sd1$Targets$Javascript$EmittableToJs$Inline)(($sd1$Targets$Javascript$EmittableToJs$makeCall)($env, ($sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $ref), $args))
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 443:12', (sp_toHuman)($maybeNativeOverride))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 444:12', (sp_toHuman)($maybeNativeOverride))));
         }))()
         : ((($eaExpression)[0] === "Fn")
           ? ((() => {
@@ -16863,7 +16863,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                       first: $re,
                       second: ("_" + (text_fromNumber)($index)),
                     })
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 457:20', (sp_toHuman)($maybeName))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 458:20', (sp_toHuman)($maybeName))));
               });
               return ($core$List$indexedMap)($zzz, $eaArgs);
             }))();
@@ -16887,7 +16887,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                     const $block = ($3)[1];
                     return $block;
                   }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 469:16', (sp_toHuman)($3))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 470:16', (sp_toHuman)($3))));
             }))();
             const $statementsFinal = ((sp_equal)($recycledPars, $core$Core$Nil)
               ? $statementsRaw
@@ -16900,7 +16900,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                     }))()
                     : (true
                       ? $stat
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 483:24', (sp_toHuman)($stat))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 484:24', (sp_toHuman)($stat))));
                 });
                 return ($core$List$map)($addRecycled, $statementsRaw);
               }))());
@@ -16924,7 +16924,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                       const $jaExpression = ($3)[1];
                       return ($core$Core$Cons)(($sd1$Types$JavascriptAst$Return)($jaExpression), $core$Core$Nil);
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 495:16', (sp_toHuman)($3))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 496:16', (sp_toHuman)($3))));
               }))();
               return ((($maybeName)[0] === "Nothing")
                 ? ((() => {
@@ -16939,7 +16939,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                         const $stats = ($3)[1];
                         return ($sd1$Targets$Javascript$EmittableToJs$Block)(($core$List$concat)(($core$Core$Cons)($stats, ($core$Core$Cons)($inStatements, $core$Core$Nil))));
                       }))()
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 501:20', (sp_toHuman)($3))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 502:20', (sp_toHuman)($3))));
                 }))()
                 : ((($maybeName)[0] === "Just")
                   ? ((() => {
@@ -16951,7 +16951,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                     }))($letExpression));
                     return ($sd1$Targets$Javascript$EmittableToJs$Block)((sp_cons)($letStatement, $inStatements));
                   }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 499:12', (sp_toHuman)($maybeName))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 500:12', (sp_toHuman)($maybeName))));
             }))()
             : ((($eaExpression)[0] === "LiteralText")
               ? ((() => {
@@ -16989,7 +16989,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                               }));
                             }))($head));
                           }))()
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 537:12', (sp_toHuman)($3))));
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 538:12', (sp_toHuman)($3))));
                     }))()
                     : ((($eaExpression)[0] === "ShallowEqual")
                       ? ((() => {
@@ -17038,7 +17038,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                                       ? ($sd1$Types$JavascriptAst$Unop)("!", $jaValue)
                                       : (true
                                         ? ($sd1$Types$JavascriptAst$Binop)("===", ($sd1$Targets$Javascript$EmittableToJs$accessArrayIndex)(0, $jaValue), ($sd1$Targets$Javascript$EmittableToJs$literalString)($name))
-                                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 579:16', (sp_toHuman)($name)))));
+                                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 580:16', (sp_toHuman)($name)))));
                                   return ($sd1$Targets$Javascript$EmittableToJs$Inline)($jaExpr);
                                 }))()
                                 : ((($eaExpression)[0] === "LiteralRecord")
@@ -17059,7 +17059,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                                           const $extend = ($maybeExtend)[1];
                                           return ($sd1$Targets$Javascript$EmittableToJs$Inline)(($sd1$Types$JavascriptAst$Call)(($sd1$Types$JavascriptAst$Var)("Object.assign"), ($core$Core$Cons)(($sd1$Types$JavascriptAst$Record)($core$Dict$empty), ($core$Core$Cons)(($sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $extend), ($core$Core$Cons)($obj, $core$Core$Nil)))));
                                         }))()
-                                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 599:12', (sp_toHuman)($maybeExtend))));
+                                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 600:12', (sp_toHuman)($maybeExtend))));
                                   }))()
                                   : ((($eaExpression)[0] === "RecordAccess")
                                     ? ((() => {
@@ -17075,7 +17075,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExp
                                           return ($sd1$Types$JavascriptAst$Call)(($sd1$Types$JavascriptAst$Literal)("sp_throw"), $1);
                                         }))(($core$Core$Cons)(($sd1$Types$JavascriptAst$Literal)("'Missing pattern in try..as'"), ($core$Core$Cons)(($sd1$Types$JavascriptAst$Literal)(("'" + ($location + "'"))), ($core$Core$Cons)(($sd1$Types$JavascriptAst$Call)(($sd1$Types$JavascriptAst$Literal)("sp_toHuman"), ($core$Core$Cons)(($sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $value), $core$Core$Nil)), $core$Core$Nil)))));
                                       }))()
-                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 426:4', (sp_toHuman)($eaExpression))))))))))))))))))));
+                                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 427:4', (sp_toHuman)($eaExpression))))))))))))))))))));
 });
 
 const $sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression = (($env, $expr) => {
@@ -17090,7 +17090,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression = ((
         const $block = ($3)[1];
         return ($sd1$Types$JavascriptAst$Call)(($sd1$Types$JavascriptAst$BlockLambda)($core$Core$Nil, $block), $core$Core$Nil);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 358:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 359:4', (sp_toHuman)($3))));
 });
 
 const $sd1$Targets$Javascript$EmittableToJs$translateArg = (($stuff, $env, $eaExpression) => {
@@ -17107,7 +17107,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateArg = (($stuff, $env, $eaEx
         const $name = ($eaExpression)[3];
         return ($sd1$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, ($sd1$Types$JavascriptAst$Var)(($sd1$Targets$Javascript$EmittableToJs$translateName)($name)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 275:4', (sp_toHuman)($eaExpression))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 276:4', (sp_toHuman)($eaExpression))));
 });
 
 const $sd1$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
@@ -17128,7 +17128,7 @@ const $sd1$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
             arguments: $arguments,
             jsOp: $jsOp,
           }))))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 143:8', (sp_toHuman)($arguments))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 144:8', (sp_toHuman)($arguments))));
     }),
     value: (($env) => {
       return (sp_todo)(("binop " + ($jsOp + " has no raw value")));
@@ -17184,7 +17184,7 @@ const $sd1$Targets$Javascript$EmittableToJs$introspectOverride = ((() => {
       }))()
       : (true
         ? (sp_todo)("introspectOverride BUG?!")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 184:8', (sp_toHuman)($eaArgs))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 185:8', (sp_toHuman)($eaArgs))));
   });
   return ($sd1$Targets$Javascript$EmittableToJs$Override)(({
     call: $call,
@@ -17212,7 +17212,7 @@ const $sd1$Targets$Javascript$EmittableToJs$loadOverride = ((() => {
       }))()
       : (true
         ? (sp_todo)("loadOverride BUG?!")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 232:12', (sp_toHuman)($eaArgs))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 233:12', (sp_toHuman)($eaArgs))));
     return ($sd1$Types$JavascriptAst$Call)(($sd1$Types$JavascriptAst$Var)("self_load"), ($core$Core$Cons)($requestedTypeHumanized, $jaArgs));
   });
   return ($sd1$Targets$Javascript$EmittableToJs$Override)(({
@@ -17229,7 +17229,7 @@ const $sd1$Targets$Javascript$EmittableToJs$unaryMinus = ($sd1$Targets$Javascrip
       ? ((() => {
         const $fullType = (($arguments)[1])[1];
         const $arg = (($arguments)[1])[2];
-        return ($sd1$Types$JavascriptAst$Unop)("-", ($sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $arg));
+        return ($sd1$Types$JavascriptAst$Binop)("||", ($sd1$Types$JavascriptAst$Unop)("-", ($sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $arg)), ($sd1$Types$JavascriptAst$Literal)("0"));
       }))()
       : (true
         ? (sp_todo)("compiler bug: wrong number of arguments for unop")
@@ -17473,7 +17473,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateConstructor = (($1) => {
     }))()
     : (true
       ? ($sd1$Types$JavascriptAst$Array)(($core$Core$Cons)($arrayHead, $core$Core$Nil))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 639:8', (sp_toHuman)($taType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 640:8', (sp_toHuman)($taType))));
   const $usrAsText = ($sd1$Targets$Javascript$EmittableToJs$translateUsr)($usr);
   return ($sd1$Types$JavascriptAst$Define)(false, $usrAsText, $definitionBody);
 });
@@ -17484,7 +17484,7 @@ const $sd1$Targets$Javascript$EmittableToJs$translateDef = (($env, $def) => {
     ? $core$Maybe$Nothing
     : ((($3)[0] === "Nothing")
       ? ($core$Maybe$Just)(($sd1$Types$JavascriptAst$Define)(false, ($sd1$Targets$Javascript$EmittableToJs$translateUsr)($def.usr), ($sd1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $def.expr)))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 661:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Targets/Javascript/EmittableToJs.sp 662:4', (sp_toHuman)($3))));
 });
 
 const $sd1$Targets$Javascript$EmittableToJs$translateAll = (($pars) => {
@@ -18198,7 +18198,7 @@ const $sd1$Test$errorsFirst = (($outcome) => {
   return ((($outcome)[0] === "Error")
     ? ((() => {
       const $e = ($outcome)[1];
-      return -(1);
+      return (-(1) || 0);
     }))()
     : ((($outcome)[0] === "Skipped")
       ? 0
