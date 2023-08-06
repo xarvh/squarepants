@@ -739,6 +739,19 @@ records as Test =
             """
             (infer "rec")
             Test.isOk
+        , codeTest
+            """
+            [reg] Record missing attributes
+            """
+            """
+            alias R = { x as Number, y as Number }
+
+            r as R = {
+              , x = 3
+              }
+            """
+            (infer "r")
+            (Test.errorContains ["Missing"])
         ]
 
 
@@ -1093,6 +1106,16 @@ misc as Test =
     Test.Group
         "Misc"
         [
+        , codeTest
+            """
+            [reg] Undefined types should be rejected
+            """
+            """
+            v as ThisTypeIsNotDefined = todo ""
+            """
+            (infer "v")
+            (Test.errorContains [ "ThisTypeIsNotDefined" ])
+
         , codeTest
             """
             Placeholder works with unique args

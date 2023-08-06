@@ -5,6 +5,7 @@ allTests as [ Test ] =
     , Compiler/Parser_Test.tests
     , Compiler/MakeCanonical_Test.tests
     , Compiler/TypeCheck_Test.tests
+    , Targets/Emitted_Test.tests
     , Hash_Test.tests
     , Array_Test.tests
     , List_Test.tests
