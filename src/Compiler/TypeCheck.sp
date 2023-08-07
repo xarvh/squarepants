@@ -150,6 +150,7 @@ initEnv as Env =
 
 # TODO: once we have proper error messages, there won't be much point in using these instead than error functions directly
 union Error_ =
+    , ErrorTypeNotFound USR
     , ErrorTyvarNotIndependent Name
     , ErrorUnresolvableUniqueness UnivarEquality Uniqueness
     , ErrorShouldBeUnique
@@ -486,7 +487,12 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @State
 
             try Dict.get usr env.expandedAliases as
                 , Nothing:
-                    TA.TypeExact usr expandedPars
+                    try Dict.get usr env.exactTypes as
+                        , Just exact:
+                            TA.TypeExact usr expandedPars
+                        , Nothing:
+                            addError env pos (ErrorTypeNotFound usr) @state
+                            TA.TypeError
 
                 , Just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
@@ -2160,7 +2166,7 @@ addConstructorToGlobalEnv as fn @State, Dict Name TA.RawType, Dict TA.TyvarId TA
     { env with constructors = Dict.insert (USR umr name) taConstructor .constructors }
 
 
-addUnionTypeAndConstructorsToGlobalEnv as fn @State, a, CA.UnionDef, Env: Env =
+addUnionConstructorsToGlobalEnv as fn @State, a, CA.UnionDef, Env: Env =
     fn @state, _, caUnionDef, env:
 
     paramsByName as Dict Name TA.RawType =
@@ -2177,8 +2183,7 @@ addUnionTypeAndConstructorsToGlobalEnv as fn @State, a, CA.UnionDef, Env: Env =
         >> List.indexedMap makeTyvar __
         >> Dict.fromList
 
-    { env with exactTypes = Dict.insert caUnionDef.usr caUnionDef.pars .exactTypes }
-    >> Dict.for __ caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName freeTyvars __ __ __)
+    Dict.for env caUnionDef.constructors (addConstructorToGlobalEnv @state paramsByName freeTyvars __ __ __)
 
 
 
@@ -2196,8 +2201,8 @@ namedParsToIdParsAndDict as fn [Name & Pos]: [TA.TyvarId] & Dict Name TA.RawType
     idPars & typeByName
 
 
-expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: ByUsr ExpandedAlias =
-    fn @state, allAliases, usr, aliasAccum:
+expandAndInsertAlias as fn @State, Env, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: ByUsr ExpandedAlias =
+    fn @state, env, allAliases, usr, aliasAccum:
 
     aliasDef =
         try Dict.get usr allAliases as
@@ -2212,7 +2217,7 @@ expandAndInsertAlias as fn @State, ByUsr CA.AliasDef, USR, ByUsr ExpandedAlias: 
         Dict.empty
 
     type as TA.RawType =
-        translateRawType { initEnv with expandedAliases = aliasAccum } typeByName originalIdToNewId @state aliasDef.type
+        translateRawType { env with expandedAliases = aliasAccum } typeByName originalIdToNewId @state aliasDef.type
 
     Dict.insert usr { pars, type } aliasAccum
 
@@ -2251,22 +2256,32 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
         >> Err
 
     else
+        addUnionTypesToGlobalEnv as fn CA.UnionDef, Env: Env =
+            fn caUnionDef, e:
+            { e with exactTypes = Dict.insert caUnionDef.usr caUnionDef.pars .exactTypes }
+
+        baseEnv as Env =
+            initEnv
+            >> List.for __ CoreTypes.allDefs addUnionTypesToGlobalEnv
+            >> List.for __ CoreTypes.allDefs (addUnionConstructorsToGlobalEnv @state None __ __)
+            >> List.for __ allModules fn caModule, e:
+                Dict.for e caModule.unionDefs fn k, caUnionDef, e_:
+                    addUnionTypesToGlobalEnv caUnionDef e_
 
         # Expand all aliases
         expandedAliases as ByUsr ExpandedAlias =
-            Dict.empty >> List.for __ orderedAliases (expandAndInsertAlias @state allAliases __ __)
+            List.for Dict.empty orderedAliases (expandAndInsertAlias @state baseEnv allAliases __ __)
 
         doStuff as fn CA.Module, Env: Env =
             fn caModule, env:
             env
-            >> Dict.for __ caModule.unionDefs (addUnionTypeAndConstructorsToGlobalEnv @state __ __ __)
+            >> Dict.for __ caModule.unionDefs (addUnionConstructorsToGlobalEnv @state __ __ __)
             >> Dict.for __ caModule.valueDefs (fn pattern, v, a: addValueToGlobalEnv @state caModule.umr v a)
 
         env =
-            { initEnv with
+            { baseEnv with
             , expandedAliases
             }
-            >> List.for __ CoreTypes.allDefs (addUnionTypeAndConstructorsToGlobalEnv @state None __ __)
             >> List.for __ Prelude.allCoreValues (addCoreValueToCoreEnv @state __ __)
             >> List.for __ externalValues (fn (usr & instance), e: { e with variables = Dict.insert (RefGlobal usr) instance .variables })
             >> List.for __ allModules doStuff

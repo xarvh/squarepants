@@ -362,13 +362,13 @@ parentScope as Test =
 
                 array_push as fn a, @Array a: None = todo ""
 
-                addFunctions as fn @Array (fn Int: Int): None =
+                addFunctions as fn @Array (fn Number: Number): None =
                     fn @functions:
 
                     !x =
                         1
 
-                    f as fn Int: Int =
+                    f as fn Number: Number =
                         fn n:
                         @x += 1
                         n
