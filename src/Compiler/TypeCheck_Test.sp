@@ -463,6 +463,7 @@ variableTypes as Test =
             [reg] Unifying functions does not unfiy their args
             """
             """
+            union Dict_ k v = Empty
             dict_member as fn k, Dict_ k v: Bool = todo ""
             dict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = todo ""
 
