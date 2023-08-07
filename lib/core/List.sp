@@ -333,9 +333,9 @@ takeWhile as fn (fn item: Bool), [item]: [item] =
           , []:
             reverse accum
 
-          , head :: tail:
-              if test head then
-                rec (head :: accum) tail
+          , h :: tail:
+              if test h then
+                rec (h :: accum) tail
               else
                 reverse accum
 
@@ -462,7 +462,7 @@ circularPairs as fn [a]: [a & a] =
 
     try list as
         , []: []
-        , [head, ...tail]: rec head list []
+        , [h, ...tail]: rec h list []
 
 
 intersperse as fn a, [a], [a]: [a] =
@@ -472,9 +472,9 @@ intersperse as fn a, [a], [a]: [a] =
         , []:
             List.reverse acc
 
-        , [last]:
-            List.reverse (last :: acc)
+        , [last_]:
+            List.reverse (last_ :: acc)
 
-        , head :: tail:
-            intersperse separator tail (separator :: head :: acc)
+        , h :: tail:
+            intersperse separator tail (separator :: h :: acc)
 

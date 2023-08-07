@@ -174,8 +174,8 @@ rawList as fn Parser a: Parser [a] =
 word as fn Env: Parser (At Token.Word) =
     fn env:
 
-    oneToken >> on fn (Token comment start end kind):
-    try kind as
+    oneToken >> on fn (Token comment start end k):
+    try k as
         , Token.Word w: ok (At (pos env start end) w)
         , _: Parser.reject
 
@@ -332,12 +332,12 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
     fn env, tokenKind:
 
     try tokenKind as
-        , Token.Word word:
+        , Token.Word w:
             Parser.oneOf
               [
               , discardFirst (kind Token.As) (expr env) >> on fn t:
-                 FA.Variable { maybeType = Just t, word } >> ok
-              , FA.Variable { maybeType = Nothing, word } >> ok
+                 FA.Variable { maybeType = Just t, word = w } >> ok
+              , FA.Variable { maybeType = Nothing, word = w } >> ok
               ]
 
         , Token.ArgumentPlaceholder:
@@ -355,7 +355,7 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
             FA.LiteralText s >> ok
 
         , Token.RoundParen Token.Open:
-            inlineOrBelowOrIndented (expr env) >> on fn (FA.Expression pos expr_):
+            inlineOrBelowOrIndented (expr env) >> on fn (FA.Expression p expr_):
             inlineOrBelowOrIndented (kind (Token.RoundParen Token.Closed)) >> on fn _:
             ok expr_
 
@@ -512,7 +512,7 @@ findLowestPrecedence as fn [FA.Expression]: Int =
         fn lowest, exprs:
         try exprs as
             , []: lowest
-            , [ FA.Expression pos head, ...tail ]:
+            , [ FA.Expression _ head, ...tail ]:
                 try head as
                     , FA.Binop op: rec (min lowest op.precedence) tail
                     , _: rec lowest tail
@@ -530,7 +530,7 @@ breakByPrecedence as fn [FA.Expression]: FA.Expression =
                 eatAllUnops rawExpressions
 
             applyHeadUnops =
-                List.for __ headUnops fn pos & op, exp: FA.Expression pos (FA.UnopCall op exp)
+                List.for __ headUnops fn p & op, exp: FA.Expression p (FA.UnopCall op exp)
 
             try breakByUnops exprs1 as
                 , []: todo "bug: breakByPrecedence empty?"
@@ -561,7 +561,7 @@ exprOrTargetOp as fn Int, FA.Expression: Result Op.Binop FA.Expression =
     fn precedence, head:
 
     try head as
-        , FA.Expression pos (FA.Binop op):
+        , FA.Expression _ (FA.Binop op):
             if op.precedence == precedence then
                 Err op
             else
@@ -579,8 +579,8 @@ readExprs as fn Int, [FA.Expression]: [FA.Expression] & [FA.Expression] =
         try remainder as
             , [ head, ...tail ]:
                 try exprOrTargetOp targetOpPrecedence head as
-                    , Ok expr:
-                        rec [expr, ...acc] tail
+                    , Ok e:
+                        rec [e, ...acc] tail
 
                     , Err op:
                         List.reverse acc & remainder
@@ -630,8 +630,8 @@ getOneUnopExpr as fn [FA.Expression]: FA.Expression & [FA.Expression] =
         fn accF, remainder:
 
         try remainder as
-            , FA.Expression pos (FA.Unop op) :: tail:
-                rec (fn e: FA.Expression pos (FA.UnopCall op e) >> accF) tail
+            , FA.Expression p (FA.Unop op) :: tail:
+                rec (fn e: FA.Expression p (FA.UnopCall op e) >> accF) tail
 
             , head :: tail:
                 accF head & tail
@@ -649,8 +649,8 @@ eatAllUnops as fn [FA.Expression]: [Pos & Op.UnopId] & [FA.Expression] =
     rec as fn [Pos & Op.UnopId], [FA.Expression]: [Pos & Op.UnopId] & [FA.Expression] =
         fn unops, exprs:
         try exprs as
-            , FA.Expression pos (FA.Unop op) :: tail:
-                rec [pos & op, ...unops] tail
+            , FA.Expression p (FA.Unop op) :: tail:
+                rec [p & op, ...unops] tail
 
             , _:
                 unops & exprs
@@ -666,8 +666,8 @@ breakByUnops as fn [FA.Expression]: [FA.Expression] =
             , []: List.reverse acc
 
             , _:
-              expr & remainder = getOneUnopExpr exprs
-              rec (expr :: acc) remainder
+              e & remainder = getOneUnopExpr exprs
+              rec (e :: acc) remainder
 
     rec [] __
 

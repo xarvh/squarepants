@@ -16,10 +16,9 @@ alias Env =
     , maybeShorthandTarget as Maybe CA.Expression
     , nextGeneratedVariableName as Int
     #
-    # This keeps track of values that are declared within the
-    # scope of a function, so they don't need to be expanded with the module name.
+    # Non-root values don't need to be expanded with the module name.
     #
-    , nonRootValues as Dict Text { pos as Pos, maybeAnnotation as Maybe CA.Annotation }
+    , values as Dict Name { pos as Pos, isRoot as Bool }
     #
     # TODO This is used to tell the user that definitions must be in order
     #
@@ -45,7 +44,7 @@ initEnv as fn ReadOnly: Env =
     {
     , maybeShorthandTarget = Nothing
     , nextGeneratedVariableName = 0
-    , nonRootValues = Dict.empty
+    , values = Dict.empty
     #, futureNonRootValues = Dict.empty
     , ro = ro
     , nonFn = Dict.empty
@@ -106,7 +105,7 @@ resolveToUsr as fn (fn Meta: Dict Text USR), ReadOnly, Pos, Maybe Name, Name: Re
 
 
 resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
-    fn ro, pos, declaredInsideFunction, maybeModule, name:
+    fn ro, pos, isRoot, maybeModule, name:
 
     # TODO use Result.map?
     try maybeForeignUsr (fn m: m.globalValues) ro pos maybeModule name as
@@ -118,13 +117,13 @@ resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
             >> Ok
 
         , Ok Nothing:
-            if declaredInsideFunction then
-                RefLocal name
+            if isRoot then
+                USR ro.umr name
+                >> RefGlobal
                 >> Ok
 
             else
-                USR ro.umr name
-                >> RefGlobal
+                RefLocal name
                 >> Ok
 
 
@@ -279,7 +278,7 @@ parameterDeps as fn CA.Parameter, Deps: Deps =
 #
 
 
-translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
+translateDefinition as fn Bool, Env, FA.ValueDef: Res (Env & CA.ValueDef) =
     fn isRoot, env, fa:
 
     fa.nonFn
@@ -294,20 +293,12 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
 
     # TODO: check that nonFn contains only names actually used in the annotation?
 
-    nonRootValues1 =
-        if isRoot then
-            env.nonRootValues
-
-        else
-            Dict.join (CA.patternNames pattern) env.nonRootValues
-
-    localEnv0 =
-        { env with
-        , nonRootValues = nonRootValues1
-        }
+    env
+    >> insertPatternNames isRoot pattern __
+    >> onOk fn localEnv:
 
     fa.body
-    >> translateExpression localEnv0 __
+    >> translateExpression localEnv __
     >> onOk fn body:
 
     deps =
@@ -316,6 +307,8 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res CA.ValueDef =
         else
             deps_init
 
+    localEnv
+    &
     {
     , uni
     , pattern
@@ -535,21 +528,21 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
             else
                 translatePatternAny env pos maybeType word
 
-        , FA.Call (FA.Expression pos ref) faArgs:
+        , FA.Call (FA.Expression p ref) faArgs:
             try ref as
                 , FA.Variable { maybeType, word }:
                     if not word.isUpper then
-                        error env pos [ "I need an uppercase constructor name here" ]
+                        error env p [ "I need an uppercase constructor name here" ]
                     else if maybeType /= Nothing then
-                        error env pos [ "Constructors can't be annotated (yet? would it make sense?)" ]
+                        error env p [ "Constructors can't be annotated (yet? would it make sense?)" ]
                     else
                         faArgs
                         >> List.mapRes (translateRawPattern env __) __
                         >> onOk fn caPars:
-                        translatePatternConstructor env pos word caPars
+                        translatePatternConstructor env p word caPars
 
                 , _:
-                    error env pos [ "I was expecting a constructor name here" ]
+                    error env p [ "I was expecting a constructor name here" ]
 
         , FA.List faItems:
 
@@ -565,16 +558,16 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                     CA.PatternConstructor pos CoreTypes.nil []
                     >> Ok
 
-                , [lastHasDots & FA.Expression pos lastFaExpr, ...reversedFaRest]:
+                , [lastHasDots & FA.Expression p lastFaExpr, ...reversedFaRest]:
                     if List.any Tuple.first reversedFaRest then
-                        error env pos [ "only the last item in a list can have ... triple dots" ]
+                        error env p [ "only the last item in a list can have ... triple dots" ]
 
                     else if not lastHasDots then
                         reversedFaItems
                         >> List.mapRes (fn (hasDots & expr): translateRawPattern env expr) __
                         >> onOk fn reversedCaItems:
 
-                        List.for (CA.PatternConstructor pos CoreTypes.nil []) reversedCaItems pushItem
+                        List.for (CA.PatternConstructor p CoreTypes.nil []) reversedCaItems pushItem
                         >> Ok
 
                     else
@@ -584,14 +577,14 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
                         try lastFaExpr as
                             , FA.Variable { maybeType, word }:
-                                translatePatternAny env pos maybeType word
+                                translatePatternAny env p maybeType word
                                 >> onOk fn caInit:
 
                                 List.for caInit reversedCaRest pushItem
                                 >> Ok
 
                             , _:
-                                error env pos [ "sorry, I don't understand the dots here..." ]
+                                error env p [ "sorry, I don't understand the dots here..." ]
 
         , FA.Record { maybeExtension, attrs }:
             translatePatternRecord env pos maybeExtension attrs
@@ -692,10 +685,7 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
         , FA.ValueDef fa :: tail:
             fa
             >> translateDefinition False env __
-            >> onOk fn caDef:
-
-            newEnv as Env =
-                { env with nonRootValues = Dict.join (CA.patternNames caDef.pattern) .nonRootValues }
+            >> onOk fn newEnv & caDef:
 
             tail
             >> translateStatements newEnv __
@@ -737,22 +727,13 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             >> List.mapRes (translateParameter env __) __
             >> onOk fn caParams:
 
-            zzz as Res Env =
-                env >> List.forRes __ caParams fn par, envX:
-                    names =
-                        try par as
-                            , CA.ParameterPattern uni pa: CA.patternNames pa
-                            , CA.ParameterRecycle _ name: Dict.ofOne name { pos, maybeAnnotation = Nothing }
+            env
+            >> List.forRes __ caParams fn par, envX:
+                try par as
+                    , CA.ParameterPattern uni pa: pa
+                    , CA.ParameterRecycle p name: CA.PatternAny p (Just name) Nothing
+                >> insertPatternNames False __ envX
 
-                    duplicates =
-                        Dict.intersect names envX.nonRootValues >> Dict.keys
-
-                    if duplicates /= [] then
-                        error env pos [ "parameters shadows these values: " .. Text.join "," duplicates ]
-                    else
-                        Ok { envX with nonRootValues = Dict.join names .nonRootValues }
-
-            zzz
             >> onOk fn localEnv:
 
             faBody
@@ -849,8 +830,12 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                 >> translateFullPattern env __
                 >> onOk fn (uni & caPattern):
 
+                env
+                >> insertPatternNames False caPattern __
+                >> onOk fn localEnv:
+
                 faExpression
-                >> translateExpression { env with nonRootValues = Dict.join (CA.patternNames caPattern) env.nonRootValues } __
+                >> translateExpression localEnv __
                 >> onOk fn block:
 
                 uni & caPattern & block
@@ -870,13 +855,44 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "something's wrong here...", toHuman expr_ ]
 
 
+insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
+    fn isRoot, pattern, env:
+
+    List.forRes env.values (CA.patternNames pattern) fn paName, vs:
+        try Dict.get paName.name vs as
+            , Just duplicateName:
+                error env paName.pos [
+                    , "A variable named `" .. paName.name .. "` has already been defined."
+                    # TODO display earlier location
+                    , "You need to find a less ambiguous name."
+                    ]
+
+            , Nothing:
+                isUnique =
+                    try Dict.get paName.name env.ro.meta.globalValues as
+                        , Nothing: True
+                        , Just globalUsr: isRoot and globalUsr == USR env.ro.umr paName.name
+
+                if isUnique then
+                    Dict.insert paName.name { pos = paName.pos, isRoot } vs
+                    >> Ok
+                else
+                    error env paName.pos [
+                        , "There is already a global variable named `" .. paName.name .. "`."
+                        , "You need to find a different name, or modify modules.sp"
+                        ]
+
+    >> onOk fn values:
+    Ok { env with values }
+
+
 translateArgumentsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Argument] & (fn CA.Expression: CA.Expression)) =
     fn pos, env, faArgs:
 
     insertArg =
         fn faArg, ({ caPars, caArgs, arity }):
 
-        FA.Expression pos faArg_ =
+        FA.Expression p faArg_ =
             faArg
 
         try faArg_ as
@@ -887,7 +903,7 @@ translateArgumentsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Argu
 
                 {
                 , caPars = CA.ParameterPlaceholder name arity :: caPars
-                , caArgs = CA.ArgumentExpression (CA.Variable pos (RefLocal name)) :: caArgs
+                , caArgs = CA.ArgumentExpression (CA.Variable p (RefLocal name)) :: caArgs
                 , arity = arity + 1
                 }
                 >> Ok
@@ -954,10 +970,12 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
                     >> Ok
 
             else
-                declaredInsideFunction =
-                    Dict.member word.name env.nonRootValues
+                isRoot =
+                    try Dict.get word.name env.values as
+                        , Nothing: True
+                        , Just paName: paName.isRoot
 
-                resolveToValueRef env.ro pos declaredInsideFunction word.maybeModule word.name
+                resolveToValueRef env.ro pos isRoot word.maybeModule word.name
                 >> onOk fn usr:
 
                 CA.Variable pos usr
@@ -1593,8 +1611,8 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 #
 
 
-translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name CA.Constructor: Res (Dict Name CA.Constructor) =
-    fn ro, unionType, unionUsr, (FA.Expression pos expr_), constructors:
+translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Constructor & Env: Res (Dict Name CA.Constructor & Env) =
+    fn unionType, unionUsr, (FA.Expression pos expr_), constructors & env:
 
     zzz =
         try expr_ as
@@ -1605,7 +1623,7 @@ translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name C
                 var & pars >> Ok
 
             , _:
-                erroro ro pos [ "I was expecting a constructor name here" ]
+                error env pos [ "I was expecting a constructor name here" ]
 
     zzz
     >> onOk fn ({ maybeType, word } & faPars):
@@ -1620,27 +1638,29 @@ translateConstructor as fn ReadOnly, CA.RawType, USR, FA.Expression, Dict Name C
       word.attrPath == []
 
     if not isValidName then
-        erroro ro pos [ "I need just an Uppercase word here" ]
+        error env pos [ "I need just an Uppercase word here" ]
 
     else if Dict.member word.name constructors then
         # TODO "union $whatever has two constructors with the same name!"
-        erroro ro pos [ "constructor " .. word.name .. " is duplicate" ]
+        error env pos [ "constructor " .. word.name .. " is duplicate" ]
 
     else
         faPars
-        >> List.mapRes (translateRawType ro __) __
+        >> List.mapRes (translateRawType env.ro __) __
         >> onOk fn ins:
 
-        c as CA.Constructor =
-            {
+        env
+        >> insertPatternNames True (CA.PatternAny pos (Just word.name) Nothing) __
+        >> onOk fn newEnv:
+
+        c as CA.Constructor = {
             , pos
             , typeUsr = unionUsr
             , ins
             , out = unionType
             }
 
-        constructors
-        >> Dict.insert word.name c __
+        Dict.insert word.name c constructors & newEnv
         >> Ok
 
 
@@ -1679,85 +1699,83 @@ translateTypeName as fn ReadOnly, At Token.Word: Res Name =
 #
 
 
-insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
-    fn ro, faStatement, caModule:
+insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
+    fn faStatement, caModule & env:
 
     try faStatement as
         , FA.Evaluation (FA.Expression pos _):
-            erroro ro pos [ "Root Evaluations don't really do much =|" ]
+            error env pos [ "Root Evaluations don't really do much =|" ]
 
         , FA.ValueDef d:
             d
-            >> translateDefinition True (initEnv ro) __
-            >> onOk fn def:
+            >> translateDefinition True env __
+            >> onOk fn newEnv & def:
 
             if def.uni /= Imm then
-                erroro ro (CA.patternPos def.pattern) [ "Unique values can be declared only inside functions." ]
-
-
-            # TODO check duplicates!!!!
+                error env (CA.patternPos def.pattern) [ "Unique values can be declared only inside functions." ]
 
             else
                 # Patterns contain position, so they are unique and don't need to be checked for duplication
-                # Names duplication will be checked when rootValuesAndConstructors is populated
-                Ok { caModule with valueDefs = Dict.insert def.pattern def .valueDefs }
+                { caModule with valueDefs = Dict.insert def.pattern def .valueDefs } & newEnv
+                >> Ok
 
         , FA.AliasDef fa:
-            translateTypeName ro fa.name
+            translateTypeName env.ro fa.name
             >> onOk fn name:
 
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
                 At pos _ = fa.name
-                erroro ro pos [ name .. " declared twice!" ]
+                error env pos [ name .. " declared twice!" ]
 
             else
                 fa.args
-                >> List.mapRes (translateTypeParameter ro __) __
+                >> List.mapRes (translateTypeParameter env.ro __) __
                 >> onOk fn caPars:
 
                 # TODO check that args are not duplicate
 
                 fa.type
-                >> translateRawType ro __
+                >> translateRawType env.ro __
                 >> onOk fn type:
 
                 aliasDef as CA.AliasDef =
                     {
-                    , usr = USR ro.umr name
+                    , usr = USR env.ro.umr name
                     , pars = caPars
                     , type
                     , directTypeDeps = typeDeps type Set.empty
                     }
 
-                Ok { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs }
+                { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs } & env
+                >> Ok
 
         , FA.UnionDef fa:
             At pos _ = fa.name
 
-            translateTypeName ro fa.name
+            translateTypeName env.ro fa.name
             >> onOk fn name:
 
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-                erroro ro pos [ name .. " declared twice!" ]
+                error env pos [ name .. " declared twice!" ]
 
             else
                 fa.args
-                >> List.mapRes (translateTypeParameter ro __) __
+                >> List.mapRes (translateTypeParameter env.ro __) __
                 >> onOk fn caPars:
 
                 # TODO check that args are not duplicate
 
                 usr =
-                    USR ro.umr name
+                    USR env.ro.umr name
 
                 type =
                     caPars
                     >> List.map (fn n & p: CA.TypeAnnotationVariable p n) __
                     >> CA.TypeNamed pos usr __
 
-                Dict.empty
-                >> List.forRes __ fa.constructors (translateConstructor ro type usr __ __)
-                >> onOk fn constructors:
+                Dict.empty & env
+                >> List.forRes __ fa.constructors (translateConstructor type usr __ __)
+                >> onOk fn constructors & newEnv:
 
                 unionDef as CA.UnionDef = {
                     , usr
@@ -1767,7 +1785,8 @@ insertRootStatement as fn ReadOnly, FA.Statement, CA.Module: Res (CA.Module) =
                     , directTypeDeps = Dict.for Set.empty constructors (fn k, c, z: List.for z c.ins typeDeps)
                     }
 
-                Ok { caModule with unionDefs = Dict.insert name unionDef .unionDefs }
+                { caModule with unionDefs = Dict.insert name unionDef .unionDefs } & newEnv
+                >> Ok
 
 
 translateModule as fn ReadOnly, FA.Module: Res CA.Module =
@@ -1779,8 +1798,9 @@ translateModule as fn ReadOnly, FA.Module: Res CA.Module =
         CA.initModule ro.errorModule.fsPath ro.umr ro.errorModule.content
 
     # Add all definitions
-    module
-    >> List.forRes __ faModule (insertRootStatement ro __ __)
+    module & initEnv ro
+    >> List.forRes __ faModule (insertRootStatement __ __)
+    >> Result.map Tuple.first __
     >> btw Debug.benchStop "translateModule" __
 
 

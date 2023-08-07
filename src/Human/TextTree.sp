@@ -73,9 +73,9 @@ union TextTree =
 
 
 text as fn Text: TextTree =
-    fn text:
+    fn t:
 
-    Span (Text.length text) text
+    Span (Text.length t) t
 
 
 stack as fn [TextTree]: TextTree =
@@ -136,8 +136,8 @@ addSeparator as fn Text, TextTree: TextTree =
     fn separator, tree:
 
     try tree as
-        , Span complexity text:
-            Span complexity (separator .. " " .. text)
+        , Span complexity t:
+            Span complexity (separator .. " " .. t)
 
         , Block (IndentedWithHeader header) rows:
             Block (IndentedWithHeader (separator .. " " .. header)) rows

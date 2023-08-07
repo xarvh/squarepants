@@ -210,9 +210,9 @@ parseCli as fn [Text]: CliOptions =
 #
 
 main as IO.Program =
-    fn env, args:
+    fn env, rawArgs:
 
-    try parseArguments cliOptions args cliDefaults as
+    try parseArguments cliOptions rawArgs cliDefaults as
         , Err message:
             IO.fail message
 

@@ -200,7 +200,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.Variable ref & identity & env
 
                     , _:
-                        tryName & newEnv =
+                        tryName & env_ =
                             generateName env
 
                         wrap =
@@ -208,12 +208,12 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                             EA.LetIn
                                 {
                                 , maybeName = Just tryName
-                                , letExpression = translateExpression newEnv value
+                                , letExpression = translateExpression env_ value
                                 , inExpression = tryExpression
                                 , type = valueType
                                 }
 
-                        EA.Variable (RefLocal tryName) & wrap & newEnv
+                        EA.Variable (RefLocal tryName) & wrap & env_
 
 
             # 2. if-elses

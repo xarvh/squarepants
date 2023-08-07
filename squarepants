@@ -3431,9 +3431,9 @@ const $core$List$circularPairs = (($list) => {
     ? $core$Core$Nil
     : ((($list)[0] === "Cons")
       ? ((() => {
-        const $head = ($list)[1];
+        const $h = ($list)[1];
         const $tail = ($list)[2];
-        return ($rec)($head, $list, $core$Core$Nil);
+        return ($rec)($h, $list, $core$Core$Nil);
       }))()
       : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 463:4', (sp_toHuman)($list))));
 });
@@ -3685,14 +3685,14 @@ const $core$List$intersperse = (($separator, $items, $acc) => {
     ? ($core$List$reverse)($acc)
     : (((($items)[0] === "Cons") && ((($items)[2])[0] === "Nil"))
       ? ((() => {
-        const $last = ($items)[1];
-        return ($core$List$reverse)((sp_cons)($last, $acc));
+        const $last_ = ($items)[1];
+        return ($core$List$reverse)((sp_cons)($last_, $acc));
       }))()
       : ((($items)[0] === "Cons")
         ? ((() => {
-          const $head = ($items)[1];
+          const $h = ($items)[1];
           const $tail = ($items)[2];
-          return ($core$List$intersperse)($separator, $tail, (sp_cons)($separator, (sp_cons)($head, $acc)));
+          return ($core$List$intersperse)($separator, $tail, (sp_cons)($separator, (sp_cons)($h, $acc)));
         }))()
         : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 471:4', (sp_toHuman)($items)))));
 });
@@ -3929,10 +3929,10 @@ const $core$List$takeWhile = (($test, $its) => {
       ? ($core$List$reverse)($accum)
       : ((($list)[0] === "Cons")
         ? ((() => {
-          const $head = ($list)[1];
+          const $h = ($list)[1];
           const $tail = ($list)[2];
-          return (($test)($head)
-            ? ($rec)((sp_cons)($head, $accum), $tail)
+          return (($test)($h)
+            ? ($rec)((sp_cons)($h, $accum), $tail)
             : ($core$List$reverse)($accum));
         }))()
         : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 332:6', (sp_toHuman)($list))));
@@ -4807,9 +4807,9 @@ const $sd1$SPON$word = (($statements) => {
   return (((($statements)[0] === "Cons") && (((($statements)[1])[0] === "Evaluation") && ((((($statements)[1])[1])[0] === "Expression") && ((((($statements)[1])[1])[2])[0] === "Variable"))))
     ? ((() => {
       const $maybeType = (((($statements)[1])[1])[2])[1].maybeType;
-      const $word = (((($statements)[1])[1])[2])[1].word;
+      const $w = (((($statements)[1])[1])[2])[1].word;
       const $tail = ($statements)[2];
-      return ($sd1$SPON$Accepted)($tail, $word);
+      return ($sd1$SPON$Accepted)($tail, $w);
     }))()
     : (((($statements)[0] === "Cons") && ((($statements)[2])[0] === "Nil"))
       ? ((() => {
@@ -6221,11 +6221,11 @@ const $sd1$Compiler$Parser$getOneUnopExpr = ((() => {
   const $rec = (($accF, $remainder) => {
     return (((($remainder)[0] === "Cons") && (((($remainder)[1])[0] === "Expression") && (((($remainder)[1])[2])[0] === "Unop")))
       ? ((() => {
-        const $pos = (($remainder)[1])[1];
+        const $p = (($remainder)[1])[1];
         const $op = ((($remainder)[1])[2])[1];
         const $tail = ($remainder)[2];
         return ($rec)((($e) => {
-          return ($accF)(($sd1$Types$FormattableAst$Expression)($pos, ($sd1$Types$FormattableAst$UnopCall)($op, $e)));
+          return ($accF)(($sd1$Types$FormattableAst$Expression)($p, ($sd1$Types$FormattableAst$UnopCall)($op, $e)));
         }), $tail);
       }))()
       : ((($remainder)[0] === "Cons")
@@ -6254,8 +6254,8 @@ const $sd1$Compiler$Parser$breakByUnops = ((() => {
         ? ((() => {
           const $3 = ($sd1$Compiler$Parser$getOneUnopExpr)($exprs);
           const $remainder = $3.second;
-          const $expr = $3.first;
-          return ($rec)((sp_cons)($expr, $acc), $remainder);
+          const $e = $3.first;
+          return ($rec)((sp_cons)($e, $acc), $remainder);
         }))()
         : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 665:8', (sp_toHuman)($exprs))));
   });
@@ -6268,11 +6268,11 @@ const $sd1$Compiler$Parser$eatAllUnops = ((() => {
   const $rec = (($unops, $exprs) => {
     return (((($exprs)[0] === "Cons") && (((($exprs)[1])[0] === "Expression") && (((($exprs)[1])[2])[0] === "Unop")))
       ? ((() => {
-        const $pos = (($exprs)[1])[1];
+        const $p = (($exprs)[1])[1];
         const $op = ((($exprs)[1])[2])[1];
         const $tail = ($exprs)[2];
         return ($rec)(($core$Core$Cons)(({
-          first: $pos,
+          first: $p,
           second: $op,
         }), $unops), $tail);
       }))()
@@ -6294,7 +6294,6 @@ const $sd1$Compiler$Parser$findLowestPrecedence = ((() => {
       ? $lowest
       : (((($exprs)[0] === "Cons") && ((($exprs)[1])[0] === "Expression"))
         ? ((() => {
-          const $pos = (($exprs)[1])[1];
           const $head = (($exprs)[1])[2];
           const $tail = ($exprs)[2];
           return ((($head)[0] === "Binop")
@@ -6356,7 +6355,6 @@ const $sd1$Compiler$Parser$posRange = (($exprs) => {
 const $sd1$Compiler$Parser$exprOrTargetOp = (($precedence, $head) => {
   return (((($head)[0] === "Expression") && ((($head)[2])[0] === "Binop"))
     ? ((() => {
-      const $pos = ($head)[1];
       const $op = (($head)[2])[1];
       return ((sp_equal)($op.precedence, $precedence)
         ? ($core$Result$Err)($op)
@@ -6376,8 +6374,8 @@ const $sd1$Compiler$Parser$readExprs = (($targetOpPrecedence, $rawExpressions) =
         const $5 = ($sd1$Compiler$Parser$exprOrTargetOp)($targetOpPrecedence, $head);
         return ((($5)[0] === "Ok")
           ? ((() => {
-            const $expr = ($5)[1];
-            return ($rec)(($core$Core$Cons)($expr, $acc), $tail);
+            const $e = ($5)[1];
+            return ($rec)(($core$Core$Cons)($e, $acc), $tail);
           }))()
           : ((($5)[0] === "Err")
             ? ((() => {
@@ -6448,9 +6446,9 @@ const $sd1$Compiler$Parser$breakByPrecedence = (($rawExpressions) => {
       const $headUnops = $3.first;
       const $applyHeadUnops = (($0) => {
         return ($core$List$for)($0, $headUnops, (($6, $exp) => {
-          const $pos = $6.first;
+          const $p = $6.first;
           const $op = $6.second;
-          return ($sd1$Types$FormattableAst$Expression)($pos, ($sd1$Types$FormattableAst$UnopCall)($op, $exp));
+          return ($sd1$Types$FormattableAst$Expression)($p, ($sd1$Types$FormattableAst$UnopCall)($op, $exp));
         }));
       });
       const $4 = ($sd1$Compiler$Parser$breakByUnops)($exprs1);
@@ -6656,15 +6654,15 @@ const $sd1$Compiler$Parser$rawList = (($item) => {
 const $sd1$Compiler$Parser$exprWithLeftDelimiter = (($env, $tokenKind) => {
   return ((($tokenKind)[0] === "Word")
     ? ((() => {
-      const $word = ($tokenKind)[1];
+      const $w = ($tokenKind)[1];
       return ($sd1$SPLib$Parser$oneOf)(($core$Core$Cons)((($sd1$Compiler$Parser$on)((($t) => {
         return ($sd1$Compiler$Parser$ok)(($sd1$Types$FormattableAst$Variable)(({
           maybeType: ($core$Maybe$Just)($t),
-          word: $word,
+          word: $w,
         })));
       })))(($sd1$Compiler$Parser$discardFirst)(($sd1$Compiler$Parser$kind)($sd1$Types$Token$As), ($sd1$Compiler$Parser$expr)($env))), ($core$Core$Cons)(($sd1$Compiler$Parser$ok)(($sd1$Types$FormattableAst$Variable)(({
         maybeType: $core$Maybe$Nothing,
-        word: $word,
+        word: $w,
       }))), $core$Core$Nil)));
     }))()
     : ((($tokenKind)[0] === "ArgumentPlaceholder")
@@ -6684,7 +6682,7 @@ const $sd1$Compiler$Parser$exprWithLeftDelimiter = (($env, $tokenKind) => {
           }))()
           : (((($tokenKind)[0] === "RoundParen") && ((($tokenKind)[1])[0] === "Open"))
             ? (($sd1$Compiler$Parser$on)((($3) => {
-              const $pos = ($3)[1];
+              const $p = ($3)[1];
               const $expr_ = ($3)[2];
               return (($sd1$Compiler$Parser$on)(((_0) => {
                 return ($sd1$Compiler$Parser$ok)($expr_);
@@ -6857,15 +6855,15 @@ const $sd1$Compiler$Parser$word = (($env) => {
     const $comment = ($2)[1];
     const $start = ($2)[2];
     const $end = ($2)[3];
-    const $kind = ($2)[4];
-    return ((($kind)[0] === "Word")
+    const $k = ($2)[4];
+    return ((($k)[0] === "Word")
       ? ((() => {
-        const $w = ($kind)[1];
+        const $w = ($k)[1];
         return ($sd1$Compiler$Parser$ok)(($sd1$Types$Pos$At)(($sd1$Compiler$Parser$pos)($env, $start, $end), $w));
       }))()
       : (true
         ? $sd1$SPLib$Parser$reject
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 178:4', (sp_toHuman)($kind))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Parser.sp 178:4', (sp_toHuman)($k))));
   })))($sd1$Compiler$Parser$oneToken);
 });
 
@@ -7603,18 +7601,22 @@ const $sd1$Compiler$Compiler$findMainType = (($umr, $modules) => {
       : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/Compiler.sp 53:4', (sp_toHuman)($3))));
 });
 
-const $sd1$Compiler$MakeCanonical$erroro = (($ro, $pos, $msg) => {
-  return ($sd1$Compiler$Error$res)($ro.errorModule, $pos, $msg);
-});
-
 const $sd1$Compiler$MakeCanonical$initEnv = (($ro) => {
   return ({
     maybeShorthandTarget: $core$Maybe$Nothing,
     nextGeneratedVariableName: 0,
     nonFn: $core$Dict$empty,
-    nonRootValues: $core$Dict$empty,
     ro: $ro,
+    values: $core$Dict$empty,
   });
+});
+
+const $sd1$Compiler$MakeCanonical$error = (($env, $pos, $msg) => {
+  return ($sd1$Compiler$Error$res)($env.ro.errorModule, $pos, $msg);
+});
+
+const $sd1$Compiler$MakeCanonical$erroro = (($ro, $pos, $msg) => {
+  return ($sd1$Compiler$Error$res)($ro.errorModule, $pos, $msg);
 });
 
 const $sd1$Compiler$MakeCanonical$translateAttributeName = (($ro, $1) => {
@@ -7640,7 +7642,7 @@ const $sd1$Compiler$MakeCanonical$translateAttributeName = (($ro, $1) => {
     }))()
     : (true
       ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("Expecting an attribute name here", $core$Core$Nil))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 340:4', (sp_toHuman)($expr_))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 333:4', (sp_toHuman)($expr_))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateAndInsertRecordAttributeType = (($ro, $faAttr, $caAttrs) => {
@@ -7665,7 +7667,7 @@ const $sd1$Compiler$MakeCanonical$translateAndInsertRecordAttributeType = (($ro,
               return ($sd1$Compiler$MakeCanonical$translateRawType)($ro, $1);
             }))($faType));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1404:8', (sp_toHuman)($maybeFaType)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1422:8', (sp_toHuman)($maybeFaType)))));
   })))(($sd1$Compiler$MakeCanonical$translateAttributeName)($ro, $faAttr.name));
 });
 
@@ -7696,14 +7698,14 @@ const $sd1$Compiler$MakeCanonical$translatePoly = (($ro, $expr) => {
                 second: $e,
               }));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1479:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1497:12', (sp_toHuman)($4))));
       }))()
       : (true
         ? ($core$Result$Ok)(({
           first: $sd1$Types$Ast$Imm,
           second: $expr,
         }))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1472:4', (sp_toHuman)($expr_)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1490:4', (sp_toHuman)($expr_)))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateFullType = (($ro, $expr) => {
@@ -7735,9 +7737,9 @@ const $sd1$Compiler$MakeCanonical$maybeForeignUsr = (($getter, $ro, $pos, $maybe
           }))()
           : ((($6)[0] === "Nothing")
             ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)(("I can't find the module `" + ($moduleName + "`")), $core$Core$Nil))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 82:12', (sp_toHuman)($6))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 81:12', (sp_toHuman)($6))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 76:4', (sp_toHuman)($maybeModule))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 75:4', (sp_toHuman)($maybeModule))));
 });
 
 const $sd1$Compiler$MakeCanonical$resolveToUsr = (($getter, $ro, $pos, $maybeModule, $name) => {
@@ -7802,7 +7804,7 @@ const $sd1$Compiler$MakeCanonical$translateTuple = (($ro, $translate, $sepList) 
         }))()
         : (true
           ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("tuples can be only of size 2 or 3, use a record instead", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 491:4', (sp_toHuman)($items)))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 484:4', (sp_toHuman)($items)))));
   })))(((($1) => {
     return ($core$List$mapRes)($translate, $1);
   }))($faExpressions));
@@ -7826,7 +7828,7 @@ const $sd1$Compiler$MakeCanonical$translateTypeFunctionParameter = (($ro, $expre
       }))(((($1) => {
         return ($sd1$Compiler$MakeCanonical$translateFullType)($ro, $1);
       }))($expression))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1455:4', (sp_toHuman)($expr_))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1473:4', (sp_toHuman)($expr_))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateTypeVariable = (($ro, $pos, $word) => {
@@ -7872,7 +7874,7 @@ const $sd1$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
           }))()
           : (true
             ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $refPos, ($core$Core$Cons)("I was expecting a named type here", $core$Core$Nil))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1520:12', (sp_toHuman)($ref))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1538:12', (sp_toHuman)($ref))));
       }))()
       : ((($expr_)[0] === "List")
         ? ((() => {
@@ -7891,7 +7893,7 @@ const $sd1$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
               }))()
               : (true
                 ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("List items must all have the same type, so you can specify only one type", $core$Core$Nil))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1532:12', (sp_toHuman)($dotsAndItems)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1550:12', (sp_toHuman)($dotsAndItems)))));
         }))()
         : ((($expr_)[0] === "Record")
           ? ((() => {
@@ -7941,7 +7943,7 @@ const $sd1$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
               }))()
               : (true
                 ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("Not sure what's up with this type =|", ($core$Core$Cons)((sp_toHuman)($expr_), $core$Core$Nil)))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1506:4', (sp_toHuman)($expr_)))))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1524:4', (sp_toHuman)($expr_)))))))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateConstructor = (($ro, $unionType, $unionUsr, $2, $constructors) => {
@@ -7966,7 +7968,7 @@ const $sd1$Compiler$MakeCanonical$translateConstructor = (($ro, $unionType, $uni
       }))()
       : (true
         ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("I was expecting a constructor name here", $core$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1600:8', (sp_toHuman)($expr_)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1618:8', (sp_toHuman)($expr_)))));
   return (($core$Result$onOk)((($6) => {
     const $maybeType = $6.first.maybeType;
     const $word = $6.first.word;
@@ -8008,7 +8010,7 @@ const $sd1$Compiler$MakeCanonical$argumentDeps = (($arg, $deps) => {
     }))()
     : ((($arg)[0] === "ArgumentRecycle")
       ? $deps
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 264:4', (sp_toHuman)($arg))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 263:4', (sp_toHuman)($arg))));
 });
 
 const $sd1$Compiler$MakeCanonical$typeDeps = (($type, $acc) => {
@@ -8049,13 +8051,13 @@ const $sd1$Compiler$MakeCanonical$typeDeps = (($type, $acc) => {
                         const $full = ($par)[1];
                         return ($sd1$Compiler$MakeCanonical$typeDeps)($full.raw, $z);
                       }))()
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 155:16', (sp_toHuman)($par))));
+                      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 154:16', (sp_toHuman)($par))));
                 }));
               }))(((($1) => {
                 return ($sd1$Compiler$MakeCanonical$typeDeps)($to.raw, $1);
               }))($acc));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 146:4', (sp_toHuman)($type)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 145:4', (sp_toHuman)($type)))))));
 });
 
 const $sd1$Compiler$MakeCanonical$patternDeps = (($pattern, $deps) => {
@@ -8092,7 +8094,7 @@ const $sd1$Compiler$MakeCanonical$patternDeps = (($pattern, $deps) => {
             ? $deps
             : ((($pattern)[0] === "PatternLiteralText")
               ? $deps
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 179:4', (sp_toHuman)($pattern))))))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 178:4', (sp_toHuman)($pattern))))))));
 });
 
 const $sd1$Compiler$MakeCanonical$parameterDeps = (($par, $deps) => {
@@ -8103,7 +8105,7 @@ const $sd1$Compiler$MakeCanonical$parameterDeps = (($par, $deps) => {
     }))()
     : (true
       ? $deps
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 272:4', (sp_toHuman)($par))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 271:4', (sp_toHuman)($par))));
 });
 
 const $sd1$Compiler$MakeCanonical$expressionDeps = (($expression, $deps) => {
@@ -8222,16 +8224,101 @@ const $sd1$Compiler$MakeCanonical$expressionDeps = (($expression, $deps) => {
                                   return ($sd1$Compiler$MakeCanonical$patternDeps)($valueDef.pattern, $1);
                                 }))($deps)));
                               }))()
-                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 203:4', (sp_toHuman)($expression))))))))))))))));
+                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 202:4', (sp_toHuman)($expression))))))))))))))));
+});
+
+const $sd1$Types$CanonicalAst$patternNames = ((() => {
+  const $rec = (($p, $acc) => {
+    return (((($p)[0] === "PatternAny") && ((($p)[2])[0] === "Nothing"))
+      ? ((() => {
+        const $pos = ($p)[1];
+        return $acc;
+      }))()
+      : (((($p)[0] === "PatternAny") && ((($p)[2])[0] === "Just"))
+        ? ((() => {
+          const $pos = ($p)[1];
+          const $name = (($p)[2])[1];
+          const $maybeAnnotation = ($p)[3];
+          return ($core$Core$Cons)(({
+            maybeAnnotation: $maybeAnnotation,
+            name: $name,
+            pos: $pos,
+          }), $acc);
+        }))()
+        : ((($p)[0] === "PatternLiteralNumber")
+          ? ((() => {
+            const $pos = ($p)[1];
+            return $acc;
+          }))()
+          : ((($p)[0] === "PatternLiteralText")
+            ? ((() => {
+              const $pos = ($p)[1];
+              return $acc;
+            }))()
+            : ((($p)[0] === "PatternConstructor")
+              ? ((() => {
+                const $pos = ($p)[1];
+                const $path = ($p)[2];
+                const $ps = ($p)[3];
+                return ($core$List$for)($acc, $ps, $rec);
+              }))()
+              : ((($p)[0] === "PatternRecord")
+                ? ((() => {
+                  const $pos = ($p)[1];
+                  const $ps = ($p)[3];
+                  return ($core$Dict$for)($acc, $ps, (($k, $v, $a) => {
+                    return ($rec)($v, $a);
+                  }));
+                }))()
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/CanonicalAst.sp 254:8', (sp_toHuman)($p))))))));
+  });
+  return (($0) => {
+    return ($rec)($0, $core$Core$Nil);
+  });
+}))();
+
+const $sd1$Compiler$MakeCanonical$insertPatternNames = (($isRoot, $pattern, $env) => {
+  return (($core$Result$onOk)((($values) => {
+    return ($core$Result$Ok)(((() => {
+      const $0 = $env;
+      return (Object.assign)({}, $0, ({
+        values: $values,
+      }));
+    }))());
+  })))(($core$List$forRes)($env.values, ($sd1$Types$CanonicalAst$patternNames)($pattern), (($paName, $vs) => {
+    const $6 = ($core$Dict$get)($paName.name, $vs);
+    return ((($6)[0] === "Just")
+      ? ((() => {
+        const $duplicateName = ($6)[1];
+        return ($sd1$Compiler$MakeCanonical$error)($env, $paName.pos, ($core$Core$Cons)(("A variable named `" + ($paName.name + "` has already been defined.")), ($core$Core$Cons)("You need to find a less ambiguous name.", $core$Core$Nil)));
+      }))()
+      : ((($6)[0] === "Nothing")
+        ? ((() => {
+          const $isUnique = ((() => {
+            const $7 = ($core$Dict$get)($paName.name, $env.ro.meta.globalValues);
+            return ((($7)[0] === "Nothing")
+              ? true
+              : ((($7)[0] === "Just")
+                ? ((() => {
+                  const $globalUsr = ($7)[1];
+                  return ($isRoot && (sp_equal)($globalUsr, ($sd1$Types$Meta$USR)($env.ro.umr, $paName.name)));
+                }))()
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 872:20', (sp_toHuman)($7))));
+          }))();
+          return ($isUnique
+            ? ($core$Result$Ok)(($core$Dict$insert)($paName.name, ({
+              isRoot: $isRoot,
+              pos: $paName.pos,
+            }), $vs))
+            : ($sd1$Compiler$MakeCanonical$error)($env, $paName.pos, ($core$Core$Cons)(("There is already a global variable named `" + ($paName.name + "`.")), ($core$Core$Cons)("You need to find a different name, or modify modules.sp", $core$Core$Nil))));
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 862:8', (sp_toHuman)($6))));
+  })));
 });
 
 const $sd1$Compiler$CoreTypes$cons = ($sd1$Compiler$CoreTypes$makeUsr)("Cons");
 
 const $sd1$Compiler$CoreTypes$nil = ($sd1$Compiler$CoreTypes$makeUsr)("Nil");
-
-const $sd1$Compiler$MakeCanonical$error = (($env, $pos, $msg) => {
-  return ($sd1$Compiler$Error$res)($env.ro.errorModule, $pos, $msg);
-});
 
 const $sd1$Compiler$MakeCanonical$translateArgument = (($env, $faExpr) => {
   return (((($faExpr)[0] === "Expression") && (((($faExpr)[2])[0] === "UnopCall") && ((((($faExpr)[2])[1])[0] === "UnopRecycle") && (((($faExpr)[2])[2])[0] === "Expression"))))
@@ -8254,7 +8341,7 @@ const $sd1$Compiler$MakeCanonical$translateArgument = (($env, $faExpr) => {
         }))()
         : (true
           ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("I can recycle only variables!", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1103:12', (sp_toHuman)($faOperand))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1121:12', (sp_toHuman)($faOperand))));
     }))()
     : (true
       ? (($core$Result$onOk)((($caExpr) => {
@@ -8262,7 +8349,7 @@ const $sd1$Compiler$MakeCanonical$translateArgument = (($env, $faExpr) => {
       })))(((($1) => {
         return ($sd1$Compiler$MakeCanonical$translateExpression)($env, $1);
       }))($faExpr))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1101:4', (sp_toHuman)($faExpr))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1119:4', (sp_toHuman)($faExpr))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateArgumentsAndPlaceholders = (($pos, $env, $faArgs) => {
@@ -8272,13 +8359,13 @@ const $sd1$Compiler$MakeCanonical$translateArgumentsAndPlaceholders = (($pos, $e
     const $caPars = $4.caPars;
     const $6 = $faArg;
     const $faArg_ = ($6)[2];
-    const $pos = ($6)[1];
+    const $p = ($6)[1];
     return ((($faArg_)[0] === "ArgumentPlaceholder")
       ? ((() => {
         const $name = (text_fromNumber)($arity);
         return ($core$Result$Ok)(({
           arity: ($arity + 1),
-          caArgs: (sp_cons)(($sd1$Types$CanonicalAst$ArgumentExpression)(($sd1$Types$CanonicalAst$Variable)($pos, ($sd1$Types$Ast$RefLocal)($name))), $caArgs),
+          caArgs: (sp_cons)(($sd1$Types$CanonicalAst$ArgumentExpression)(($sd1$Types$CanonicalAst$Variable)($p, ($sd1$Types$Ast$RefLocal)($name))), $caArgs),
           caPars: (sp_cons)(($sd1$Types$CanonicalAst$ParameterPlaceholder)($name, $arity), $caPars),
         }));
       }))()
@@ -8290,7 +8377,7 @@ const $sd1$Compiler$MakeCanonical$translateArgumentsAndPlaceholders = (($pos, $e
             caPars: $caPars,
           }));
         })))(($sd1$Compiler$MakeCanonical$translateArgument)($env, $faArg))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 882:8', (sp_toHuman)($faArg_))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 898:8', (sp_toHuman)($faArg_))));
   });
   return (($core$Result$onOk)((($4) => {
     const $arity = $4.arity;
@@ -8411,7 +8498,7 @@ const $sd1$Compiler$MakeCanonical$sameDirectionAs = (($a, $b) => {
               ? (sp_equal)($b.symbol, "<")
               : (true
                 ? false
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1290:8', (sp_toHuman)($3)))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1308:8', (sp_toHuman)($3)))))));
     }))());
 });
 
@@ -8424,7 +8511,7 @@ const $sd1$Compiler$MakeCanonical$makeBinop = (($ro, $pos, $left, $op, $right) =
       }))()
       : ((($right)[0] === "ArgumentRecycle")
         ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("Can't >> to a recyclable", $core$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1360:8', (sp_toHuman)($right))))
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1378:8', (sp_toHuman)($right))))
     : ((sp_equal)($op.symbol, $sd1$Prelude$sendLeft.symbol)
       ? ((($left)[0] === "ArgumentExpression")
         ? ((() => {
@@ -8433,7 +8520,7 @@ const $sd1$Compiler$MakeCanonical$makeBinop = (($ro, $pos, $left, $op, $right) =
         }))()
         : ((($left)[0] === "ArgumentRecycle")
           ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("Can't << to a recyclable", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1370:8', (sp_toHuman)($left))))
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1388:8', (sp_toHuman)($left))))
       : ($core$Result$Ok)(($sd1$Types$CanonicalAst$Call)($pos, ($sd1$Types$CanonicalAst$Variable)($pos, ($sd1$Types$Ast$RefGlobal)($op.usr)), ($core$Core$Cons)($left, ($core$Core$Cons)($right, $core$Core$Nil))))));
 });
 
@@ -8455,7 +8542,7 @@ const $sd1$Compiler$MakeCanonical$translateRightAssociativeBinopChain = (($env, 
             second: $tail,
           })));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1313:4', (sp_toHuman)($opsAndRight))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1331:4', (sp_toHuman)($opsAndRight))));
   })))(($sd1$Compiler$MakeCanonical$translateExpression)($env, $left));
 });
 
@@ -8480,7 +8567,7 @@ const $sd1$Compiler$MakeCanonical$translateComparison = (($env, $pos, $opChain) 
             ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("TODO: not (yet) implemented: compops expansion", $core$Core$Nil))
             : ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("can't mix comparison ops with different direction", $core$Core$Nil)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1235:4', (sp_toHuman)($4)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1253:4', (sp_toHuman)($4)))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateLogical = (($env, $pos, $opChain) => {
@@ -8511,7 +8598,7 @@ const $sd1$Compiler$MakeCanonical$translateMutop = (($env, $pos, $1) => {
       }))()
       : (true
         ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("mutops can't be chained", $core$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1266:4', (sp_toHuman)($sepTail)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1284:4', (sp_toHuman)($sepTail)))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateTupleExpression = (($env, $pos, $1) => {
@@ -8556,7 +8643,7 @@ const $sd1$Compiler$MakeCanonical$translateTupleExpression = (($env, $pos, $1) =
         }))()
         : (true
           ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("Tuples can't have more than 3 items, use a record instead.", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1204:4', (sp_toHuman)($sepTail))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1222:4', (sp_toHuman)($sepTail))))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateBinopChain = (($env, $pos, $group, $opChain) => {
@@ -8586,7 +8673,7 @@ const $sd1$Compiler$MakeCanonical$translateNumber = (($ro, $isPercent, $construc
           ? (sp_divide)($n, 100)
           : $n)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1009:4', (sp_toHuman)($6))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1027:4', (sp_toHuman)($6))));
 });
 
 const $sd1$Types$CanonicalAst$parTypeToRaw = (($p) => {
@@ -8718,7 +8805,7 @@ const $sd1$Compiler$MakeCanonical$translateMaybeAnnotation = (($env, $maybeFaTyp
           })));
         })))(($sd1$Compiler$MakeCanonical$translateRawType)($env.ro, $faType));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 395:4', (sp_toHuman)($maybeFaType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 388:4', (sp_toHuman)($maybeFaType))));
 });
 
 const $sd1$Compiler$MakeCanonical$translatePatternAny = (($env, $pos, $maybeFaType, $word) => {
@@ -8789,7 +8876,7 @@ const $sd1$Compiler$MakeCanonical$insertPatternRecordAttribute = (($env, $attr, 
                 ? ($core$Result$Ok)(((($2) => {
                   return ($core$Dict$insert)($caName, ($sd1$Types$CanonicalAst$PatternAny)($pos, ($core$Maybe$Just)($caName), $core$Maybe$Nothing), $2);
                 }))($caAttrs))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 426:8', (sp_toHuman)($5))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 419:8', (sp_toHuman)($5))))));
       }))());
   })))(($sd1$Compiler$MakeCanonical$translateAttributeName)($env.ro, $attr.name));
 });
@@ -8805,7 +8892,7 @@ const $sd1$Compiler$MakeCanonical$translatePatternRecord = (($env, $pos, $maybeM
       ? ($core$Result$Ok)($sd1$Types$CanonicalAst$Partial)
       : ((($maybeMaybeExt)[0] === "Nothing")
         ? ($core$Result$Ok)($sd1$Types$CanonicalAst$Complete)
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 458:8', (sp_toHuman)($maybeMaybeExt)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 451:8', (sp_toHuman)($maybeMaybeExt)))));
   return (($core$Result$onOk)((($completeness) => {
     return ((($1) => {
       return ($core$Result$map)((($x) => {
@@ -8863,7 +8950,7 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
     }))()
     : (((($expr_)[0] === "Call") && ((($expr_)[1])[0] === "Expression"))
       ? ((() => {
-        const $pos = (($expr_)[1])[1];
+        const $p = (($expr_)[1])[1];
         const $ref = (($expr_)[1])[2];
         const $faArgs = ($expr_)[2];
         return ((($ref)[0] === "Variable")
@@ -8871,11 +8958,11 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
             const $maybeType = ($ref)[1].maybeType;
             const $word = ($ref)[1].word;
             return (($core$Basics$not)($word.isUpper)
-              ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("I need an uppercase constructor name here", $core$Core$Nil))
+              ? ($sd1$Compiler$MakeCanonical$error)($env, $p, ($core$Core$Cons)("I need an uppercase constructor name here", $core$Core$Nil))
               : ((sp_not_equal)($maybeType, $core$Maybe$Nothing)
-                ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("Constructors can't be annotated (yet? would it make sense?)", $core$Core$Nil))
+                ? ($sd1$Compiler$MakeCanonical$error)($env, $p, ($core$Core$Cons)("Constructors can't be annotated (yet? would it make sense?)", $core$Core$Nil))
                 : (($core$Result$onOk)((($caPars) => {
-                  return ($sd1$Compiler$MakeCanonical$translatePatternConstructor)($env, $pos, $word, $caPars);
+                  return ($sd1$Compiler$MakeCanonical$translatePatternConstructor)($env, $p, $word, $caPars);
                 })))(((($1) => {
                   return ($core$List$mapRes)((($1) => {
                     return ($sd1$Compiler$MakeCanonical$translateRawPattern)($env, $1);
@@ -8883,8 +8970,8 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
                 }))($faArgs))));
           }))()
           : (true
-            ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("I was expecting a constructor name here", $core$Core$Nil))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 539:12', (sp_toHuman)($ref))));
+            ? ($sd1$Compiler$MakeCanonical$error)($env, $p, ($core$Core$Cons)("I was expecting a constructor name here", $core$Core$Nil))
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 532:12', (sp_toHuman)($ref))));
       }))()
       : ((($expr_)[0] === "List")
         ? ((() => {
@@ -8898,14 +8985,14 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
             : (((($reversedFaItems)[0] === "Cons") && ((($reversedFaItems)[1].second)[0] === "Expression"))
               ? ((() => {
                 const $lastHasDots = ($reversedFaItems)[1].first;
-                const $pos = (($reversedFaItems)[1].second)[1];
+                const $p = (($reversedFaItems)[1].second)[1];
                 const $lastFaExpr = (($reversedFaItems)[1].second)[2];
                 const $reversedFaRest = ($reversedFaItems)[2];
                 return (($core$List$any)($core$Tuple$first, $reversedFaRest)
-                  ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("only the last item in a list can have ... triple dots", $core$Core$Nil))
+                  ? ($sd1$Compiler$MakeCanonical$error)($env, $p, ($core$Core$Cons)("only the last item in a list can have ... triple dots", $core$Core$Nil))
                   : (($core$Basics$not)($lastHasDots)
                     ? (($core$Result$onOk)((($reversedCaItems) => {
-                      return ($core$Result$Ok)(($core$List$for)(($sd1$Types$CanonicalAst$PatternConstructor)($pos, $sd1$Compiler$CoreTypes$nil, $core$Core$Nil), $reversedCaItems, $pushItem));
+                      return ($core$Result$Ok)(($core$List$for)(($sd1$Types$CanonicalAst$PatternConstructor)($p, $sd1$Compiler$CoreTypes$nil, $core$Core$Nil), $reversedCaItems, $pushItem));
                     })))(((($1) => {
                       return ($core$List$mapRes)((($4) => {
                         const $hasDots = $4.first;
@@ -8920,11 +9007,11 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
                           const $word = ($lastFaExpr)[1].word;
                           return (($core$Result$onOk)((($caInit) => {
                             return ($core$Result$Ok)(($core$List$for)($caInit, $reversedCaRest, $pushItem));
-                          })))(($sd1$Compiler$MakeCanonical$translatePatternAny)($env, $pos, $maybeType, $word));
+                          })))(($sd1$Compiler$MakeCanonical$translatePatternAny)($env, $p, $maybeType, $word));
                         }))()
                         : (true
-                          ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("sorry, I don't understand the dots here...", $core$Core$Nil))
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 585:24', (sp_toHuman)($lastFaExpr))));
+                          ? ($sd1$Compiler$MakeCanonical$error)($env, $p, ($core$Core$Cons)("sorry, I don't understand the dots here...", $core$Core$Nil))
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 578:24', (sp_toHuman)($lastFaExpr))));
                     })))(((($1) => {
                       return ($core$List$mapRes)((($4) => {
                         const $hasDots = $4.first;
@@ -8933,7 +9020,7 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
                       }), $1);
                     }))($reversedFaRest))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 563:12', (sp_toHuman)($reversedFaItems))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 556:12', (sp_toHuman)($reversedFaItems))));
         }))()
         : ((($expr_)[0] === "Record")
           ? ((() => {
@@ -8973,7 +9060,7 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
                         }))()
                         : ((($4)[0] === "Nil")
                           ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("should not happen: empty cons pattern", $core$Core$Nil))
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 616:16', (sp_toHuman)($4))));
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 609:16', (sp_toHuman)($4))));
                     })))(((($1) => {
                       return ($core$List$mapRes)((($1) => {
                         return ($sd1$Compiler$MakeCanonical$translateRawPattern)($env, $1);
@@ -9013,7 +9100,7 @@ const $sd1$Compiler$MakeCanonical$translateRawPattern = (($env, $1) => {
                           ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("if..then can't be used in pattern matching", $core$Core$Nil))
                           : ((($expr_)[0] === "Try")
                             ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("try..as can't be used in pattern matching", $core$Core$Nil))
-                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 526:4', (sp_toHuman)($expr_)))))))))))))));
+                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 519:4', (sp_toHuman)($expr_)))))))))))))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateFullPattern = (($env, $expr) => {
@@ -9046,11 +9133,11 @@ const $sd1$Compiler$MakeCanonical$translateParameter = (($env, $fa) => {
         }))()
         : (true
           ? ($sd1$Compiler$MakeCanonical$error)($env, $p, ($core$Core$Cons)("@ should be followed by a variable name to recycle!", $core$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 976:16', (sp_toHuman)($faOperand))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 994:16', (sp_toHuman)($faOperand))));
     }))()
     : (true
       ? ($core$Result$Ok)($core$Maybe$Nothing)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 974:8', (sp_toHuman)($faExpr))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 992:8', (sp_toHuman)($faExpr))));
   return (($core$Result$onOk)((($maybeWord) => {
     return ((($maybeWord)[0] === "Just")
       ? ((() => {
@@ -9066,7 +9153,7 @@ const $sd1$Compiler$MakeCanonical$translateParameter = (($env, $fa) => {
           const $ca = $5.second;
           return ($core$Result$Ok)(($sd1$Types$CanonicalAst$ParameterPattern)($uni, $ca));
         })))(($sd1$Compiler$MakeCanonical$translateFullPattern)($env, $fa))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 988:4', (sp_toHuman)($maybeWord))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1006:4', (sp_toHuman)($maybeWord))));
   })))($maybeRecycle);
 });
 
@@ -9101,7 +9188,7 @@ const $sd1$Compiler$MakeCanonical$translateRecord = (($env, $pos, $maybeMaybeExt
       ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("I need to know what record you are updating", $core$Core$Nil))
       : ((($maybeMaybeExtension)[0] === "Nothing")
         ? ($core$Result$Ok)($core$Maybe$Nothing)
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1025:8', (sp_toHuman)($maybeMaybeExtension)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1043:8', (sp_toHuman)($maybeMaybeExtension)))));
   return (($core$Result$onOk)((($maybeCaExt) => {
     return ((($maybeCaExt)[0] === "Nothing")
       ? (($core$Result$onOk)((($caAttrs) => {
@@ -9149,61 +9236,11 @@ const $sd1$Compiler$MakeCanonical$translateRecord = (($env, $pos, $maybeMaybeExt
             }));
           }))($core$Dict$empty));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1033:4', (sp_toHuman)($maybeCaExt))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1051:4', (sp_toHuman)($maybeCaExt))));
   })))($zzz);
 });
 
 const $sd1$Compiler$CoreTypes$noneValue = ($sd1$Compiler$CoreTypes$makeUsr)($sd1$Compiler$CoreTypes$noneName);
-
-const $sd1$Types$CanonicalAst$patternNames = (($p) => {
-  return (((($p)[0] === "PatternAny") && ((($p)[2])[0] === "Nothing"))
-    ? ((() => {
-      const $pos = ($p)[1];
-      return $core$Dict$empty;
-    }))()
-    : (((($p)[0] === "PatternAny") && ((($p)[2])[0] === "Just"))
-      ? ((() => {
-        const $pos = ($p)[1];
-        const $n = (($p)[2])[1];
-        const $maybeAnnotation = ($p)[3];
-        return ($core$Dict$ofOne)($n, ({
-          maybeAnnotation: $maybeAnnotation,
-          pos: $pos,
-        }));
-      }))()
-      : ((($p)[0] === "PatternLiteralNumber")
-        ? ((() => {
-          const $pos = ($p)[1];
-          return $core$Dict$empty;
-        }))()
-        : ((($p)[0] === "PatternLiteralText")
-          ? ((() => {
-            const $pos = ($p)[1];
-            return $core$Dict$empty;
-          }))()
-          : ((($p)[0] === "PatternConstructor")
-            ? ((() => {
-              const $pos = ($p)[1];
-              const $path = ($p)[2];
-              const $ps = ($p)[3];
-              return ($core$List$for)($core$Dict$empty, $ps, (($x, $a) => {
-                return ((($1) => {
-                  return ($core$Dict$join)($a, $1);
-                }))(($sd1$Types$CanonicalAst$patternNames)($x));
-              }));
-            }))()
-            : ((($p)[0] === "PatternRecord")
-              ? ((() => {
-                const $pos = ($p)[1];
-                const $ps = ($p)[3];
-                return ($core$Dict$for)($core$Dict$empty, $ps, (($k, $v, $a) => {
-                  return ((($1) => {
-                    return ($core$Dict$join)($a, $1);
-                  }))(($sd1$Types$CanonicalAst$patternNames)($v));
-                }));
-              }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/CanonicalAst.sp 253:4', (sp_toHuman)($p))))))));
-});
 
 const $sd1$Compiler$MakeCanonical$translateStatements = (($env, $stats) => {
   return ((($stats)[0] === "Nil")
@@ -9242,13 +9279,9 @@ const $sd1$Compiler$MakeCanonical$translateStatements = (($env, $stats) => {
           ? ((() => {
             const $fa = (($stats)[1])[1];
             const $tail = ($stats)[2];
-            return (($core$Result$onOk)((($caDef) => {
-              const $newEnv = ((() => {
-                const $0 = $env;
-                return (Object.assign)({}, $0, ({
-                  nonRootValues: ($core$Dict$join)(($sd1$Types$CanonicalAst$patternNames)($caDef.pattern), $0.nonRootValues),
-                }));
-              }))();
+            return (($core$Result$onOk)((($3) => {
+              const $newEnv = $3.first;
+              const $caDef = $3.second;
               return (($core$Result$onOk)((($acc) => {
                 return ($core$Result$Ok)(($sd1$Types$CanonicalAst$LetIn)($caDef, $acc));
               })))(((($1) => {
@@ -9274,10 +9307,10 @@ const $sd1$Compiler$MakeCanonical$translateStatements = (($env, $stats) => {
                 const $pos = ($3)[1];
                 return ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("Types can be declared only in the root scope", $core$Core$Nil));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 658:4', (sp_toHuman)($stats))))))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 651:4', (sp_toHuman)($stats))))))));
 });
 
-const $sd1$Compiler$MakeCanonical$resolveToValueRef = (($ro, $pos, $declaredInsideFunction, $maybeModule, $name) => {
+const $sd1$Compiler$MakeCanonical$resolveToValueRef = (($ro, $pos, $isRoot, $maybeModule, $name) => {
   const $6 = ($sd1$Compiler$MakeCanonical$maybeForeignUsr)((($m) => {
     return $m.globalValues;
   }), $ro, $pos, $maybeModule, $name);
@@ -9292,10 +9325,10 @@ const $sd1$Compiler$MakeCanonical$resolveToValueRef = (($ro, $pos, $declaredInsi
         return ($core$Result$Ok)(($sd1$Types$Ast$RefGlobal)($usr));
       }))()
       : (((($6)[0] === "Ok") && ((($6)[1])[0] === "Nothing"))
-        ? ($declaredInsideFunction
-          ? ($core$Result$Ok)(($sd1$Types$Ast$RefLocal)($name))
-          : ($core$Result$Ok)(($sd1$Types$Ast$RefGlobal)(($sd1$Types$Meta$USR)($ro.umr, $name))))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 112:4', (sp_toHuman)($6)))));
+        ? ($isRoot
+          ? ($core$Result$Ok)(($sd1$Types$Ast$RefGlobal)(($sd1$Types$Meta$USR)($ro.umr, $name)))
+          : ($core$Result$Ok)(($sd1$Types$Ast$RefLocal)($name)))
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 111:4', (sp_toHuman)($6)))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateVariable = (($env, $pos, $maybeType, $word) => {
@@ -9316,7 +9349,7 @@ const $sd1$Compiler$MakeCanonical$translateVariable = (($env, $pos, $maybeType, 
                 }));
               }))($shorthandTarget));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 932:16', (sp_toHuman)($6))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 948:16', (sp_toHuman)($6))));
       }))())
     : ((($5)[0] === "NameNoModifier")
       ? ($word.isUpper
@@ -9326,16 +9359,26 @@ const $sd1$Compiler$MakeCanonical$translateVariable = (($env, $pos, $maybeType, 
             return ($core$Result$Ok)(($sd1$Types$CanonicalAst$Constructor)($pos, $usr));
           })))(($sd1$Compiler$MakeCanonical$resolveToConstructorUsr)($env.ro, $pos, $word.maybeModule, $word.name)))
         : ((() => {
-          const $declaredInsideFunction = ($core$Dict$member)($word.name, $env.nonRootValues);
+          const $isRoot = ((() => {
+            const $6 = ($core$Dict$get)($word.name, $env.values);
+            return ((($6)[0] === "Nothing")
+              ? true
+              : ((($6)[0] === "Just")
+                ? ((() => {
+                  const $paName = ($6)[1];
+                  return $paName.isRoot;
+                }))()
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 974:20', (sp_toHuman)($6))));
+          }))();
           return (($core$Result$onOk)((($usr) => {
             return ($core$Result$Ok)(((($0) => {
               return ($core$List$for)($0, $word.attrPath, (($1, $2) => {
                 return ($sd1$Types$CanonicalAst$RecordAccess)($pos, $1, $2);
               }));
             }))(($sd1$Types$CanonicalAst$Variable)($pos, $usr)));
-          })))(($sd1$Compiler$MakeCanonical$resolveToValueRef)($env.ro, $pos, $declaredInsideFunction, $word.maybeModule, $word.name));
+          })))(($sd1$Compiler$MakeCanonical$resolveToValueRef)($env.ro, $pos, $isRoot, $word.maybeModule, $word.name));
         }))())
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 927:4', (sp_toHuman)($5))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 943:4', (sp_toHuman)($5))));
 });
 
 const $sd1$Prelude$unaryMinus = ({
@@ -9374,41 +9417,31 @@ const $sd1$Compiler$MakeCanonical$translateExpression = (($env, $1) => {
               const $faParams = ($expr_)[1];
               const $faBody = ($expr_)[2];
               return (($core$Result$onOk)((($caParams) => {
-                const $zzz = ((($0) => {
-                  return ($core$List$forRes)($0, $caParams, (($par, $envX) => {
-                    const $names = ((($par)[0] === "ParameterPattern")
-                      ? ((() => {
-                        const $uni = ($par)[1];
-                        const $pa = ($par)[2];
-                        return ($sd1$Types$CanonicalAst$patternNames)($pa);
-                      }))()
-                      : ((($par)[0] === "ParameterRecycle")
-                        ? ((() => {
-                          const $name = ($par)[2];
-                          return ($core$Dict$ofOne)($name, ({
-                            maybeAnnotation: $core$Maybe$Nothing,
-                            pos: $pos,
-                          }));
-                        }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 743:24', (sp_toHuman)($par))));
-                    const $duplicates = ($core$Dict$keys)(($core$Dict$intersect)($names, $envX.nonRootValues));
-                    return ((sp_not_equal)($duplicates, $core$Core$Nil)
-                      ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)(("parameters shadows these values: " + ($core$Text$join)(",", $duplicates)), $core$Core$Nil))
-                      : ($core$Result$Ok)(((() => {
-                        const $0 = $envX;
-                        return (Object.assign)({}, $0, ({
-                          nonRootValues: ($core$Dict$join)($names, $0.nonRootValues),
-                        }));
-                      }))()));
-                  }));
-                }))($env);
                 return (($core$Result$onOk)((($localEnv) => {
                   return (($core$Result$onOk)((($caBody) => {
                     return ($core$Result$Ok)(($sd1$Types$CanonicalAst$Fn)($pos, $caParams, $caBody));
                   })))(((($1) => {
                     return ($sd1$Compiler$MakeCanonical$translateExpression)($localEnv, $1);
                   }))($faBody));
-                })))($zzz);
+                })))(((($0) => {
+                  return ($core$List$forRes)($0, $caParams, (($par, $envX) => {
+                    return ((($1) => {
+                      return ($sd1$Compiler$MakeCanonical$insertPatternNames)(false, $1, $envX);
+                    }))(((($par)[0] === "ParameterPattern")
+                      ? ((() => {
+                        const $uni = ($par)[1];
+                        const $pa = ($par)[2];
+                        return $pa;
+                      }))()
+                      : ((($par)[0] === "ParameterRecycle")
+                        ? ((() => {
+                          const $p = ($par)[1];
+                          const $name = ($par)[2];
+                          return ($sd1$Types$CanonicalAst$PatternAny)($p, ($core$Maybe$Just)($name), $core$Maybe$Nothing);
+                        }))()
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 732:16', (sp_toHuman)($par)))));
+                  }));
+                }))($env));
               })))(((($1) => {
                 return ($core$List$mapRes)((($1) => {
                   return ($sd1$Compiler$MakeCanonical$translateParameter)($env, $1);
@@ -9466,7 +9499,7 @@ const $sd1$Compiler$MakeCanonical$translateExpression = (($env, $1) => {
                             })))(((($1) => {
                               return ($sd1$Compiler$MakeCanonical$translateExpression)($env, $1);
                             }))($faOperand))
-                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 791:12', (sp_toHuman)($opId))))));
+                            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 772:12', (sp_toHuman)($opId))))));
                   }))()
                   : ((($expr_)[0] === "Binop")
                     ? ((() => {
@@ -9522,7 +9555,7 @@ const $sd1$Compiler$MakeCanonical$translateExpression = (($env, $1) => {
                                       })))(($sd1$Compiler$MakeCanonical$translateExpression)($env, $init));
                                     }))());
                                 }))()
-                                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 817:12', (sp_toHuman)($rev))));
+                                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 798:12', (sp_toHuman)($rev))));
                           }))()
                           : ((($expr_)[0] === "Try")
                             ? ((() => {
@@ -9534,20 +9567,19 @@ const $sd1$Compiler$MakeCanonical$translateExpression = (($env, $1) => {
                                 return (($core$Result$onOk)((($4) => {
                                   const $uni = $4.first;
                                   const $caPattern = $4.second;
-                                  return (($core$Result$onOk)((($block) => {
-                                    return ($core$Result$Ok)(({
-                                      first: $uni,
-                                      second: $caPattern,
-                                      third: $block,
-                                    }));
-                                  })))(((($1) => {
-                                    return ($sd1$Compiler$MakeCanonical$translateExpression)(((() => {
-                                      const $0 = $env;
-                                      return (Object.assign)({}, $0, ({
-                                        nonRootValues: ($core$Dict$join)(($sd1$Types$CanonicalAst$patternNames)($caPattern), $env.nonRootValues),
+                                  return (($core$Result$onOk)((($localEnv) => {
+                                    return (($core$Result$onOk)((($block) => {
+                                      return ($core$Result$Ok)(({
+                                        first: $uni,
+                                        second: $caPattern,
+                                        third: $block,
                                       }));
-                                    }))(), $1);
-                                  }))($faExpression));
+                                    })))(((($1) => {
+                                      return ($sd1$Compiler$MakeCanonical$translateExpression)($localEnv, $1);
+                                    }))($faExpression));
+                                  })))(((($2) => {
+                                    return ($sd1$Compiler$MakeCanonical$insertPatternNames)(false, $caPattern, $2);
+                                  }))($env));
                                 })))(((($1) => {
                                   return ($sd1$Compiler$MakeCanonical$translateFullPattern)($env, $1);
                                 }))($faPattern));
@@ -9565,7 +9597,7 @@ const $sd1$Compiler$MakeCanonical$translateExpression = (($env, $1) => {
                             }))()
                             : (true
                               ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("something's wrong here...", ($core$Core$Cons)((sp_toHuman)($expr_), $core$Core$Nil)))
-                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 722:4', (sp_toHuman)($expr_))))))))))))))));
+                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 712:4', (sp_toHuman)($expr_))))))))))))))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateTypeParameter = (($ro, $1) => {
@@ -9590,35 +9622,33 @@ const $sd1$Compiler$MakeCanonical$translateDefinition = (($isRoot, $env, $fa) =>
     return (($core$Result$onOk)((($5) => {
       const $uni = $5.first;
       const $pattern = $5.second;
-      const $nonRootValues1 = ($isRoot
-        ? $env.nonRootValues
-        : ($core$Dict$join)(($sd1$Types$CanonicalAst$patternNames)($pattern), $env.nonRootValues));
-      const $localEnv0 = ((() => {
-        const $0 = $env;
-        return (Object.assign)({}, $0, ({
-          nonRootValues: $nonRootValues1,
-        }));
-      }))();
-      return (($core$Result$onOk)((($body) => {
-        const $deps = ($isRoot
-          ? ((($1) => {
-            return ($sd1$Compiler$MakeCanonical$expressionDeps)($body, $1);
-          }))(((($1) => {
-            return ($sd1$Compiler$MakeCanonical$patternDeps)($pattern, $1);
-          }))($sd1$Compiler$MakeCanonical$deps_init))
-          : $sd1$Compiler$MakeCanonical$deps_init);
-        return ($core$Result$Ok)(({
-          body: $body,
-          directConsDeps: $deps.cons,
-          directTypeDeps: $deps.types,
-          directValueDeps: $deps.values,
-          native: false,
-          pattern: $pattern,
-          uni: $uni,
-        }));
-      })))(((($1) => {
-        return ($sd1$Compiler$MakeCanonical$translateExpression)($localEnv0, $1);
-      }))($fa.body));
+      return (($core$Result$onOk)((($localEnv) => {
+        return (($core$Result$onOk)((($body) => {
+          const $deps = ($isRoot
+            ? ((($1) => {
+              return ($sd1$Compiler$MakeCanonical$expressionDeps)($body, $1);
+            }))(((($1) => {
+              return ($sd1$Compiler$MakeCanonical$patternDeps)($pattern, $1);
+            }))($sd1$Compiler$MakeCanonical$deps_init))
+            : $sd1$Compiler$MakeCanonical$deps_init);
+          return ($core$Result$Ok)(({
+            first: $localEnv,
+            second: ({
+              body: $body,
+              directConsDeps: $deps.cons,
+              directTypeDeps: $deps.types,
+              directValueDeps: $deps.values,
+              native: false,
+              pattern: $pattern,
+              uni: $uni,
+            }),
+          }));
+        })))(((($1) => {
+          return ($sd1$Compiler$MakeCanonical$translateExpression)($localEnv, $1);
+        }))($fa.body));
+      })))(((($2) => {
+        return ($sd1$Compiler$MakeCanonical$insertPatternNames)($isRoot, $pattern, $2);
+      }))($env));
     })))(((($1) => {
       return ($sd1$Compiler$MakeCanonical$translateFullPattern)(((() => {
         const $0 = $env;
@@ -9648,26 +9678,33 @@ const $sd1$Compiler$MakeCanonical$translateTypeName = (($ro, $1) => {
           : ($core$Result$Ok)($word.name)))));
 });
 
-const $sd1$Compiler$MakeCanonical$insertRootStatement = (($ro, $faStatement, $caModule) => {
+const $sd1$Compiler$MakeCanonical$insertRootStatement = (($faStatement, $1) => {
+  const $caModule = $1.first;
+  const $env = $1.second;
   return (((($faStatement)[0] === "Evaluation") && ((($faStatement)[1])[0] === "Expression"))
     ? ((() => {
       const $pos = (($faStatement)[1])[1];
-      return ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)("Root Evaluations don't really do much =|", $core$Core$Nil));
+      return ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)("Root Evaluations don't really do much =|", $core$Core$Nil));
     }))()
     : ((($faStatement)[0] === "ValueDef")
       ? ((() => {
         const $d = ($faStatement)[1];
-        return (($core$Result$onOk)((($def) => {
+        return (($core$Result$onOk)((($3) => {
+          const $newEnv = $3.first;
+          const $def = $3.second;
           return ((sp_not_equal)($def.uni, $sd1$Types$Ast$Imm)
-            ? ($sd1$Compiler$MakeCanonical$erroro)($ro, ($sd1$Types$CanonicalAst$patternPos)($def.pattern), ($core$Core$Cons)("Unique values can be declared only inside functions.", $core$Core$Nil))
-            : ($core$Result$Ok)(((() => {
-              const $0 = $caModule;
-              return (Object.assign)({}, $0, ({
-                valueDefs: ($core$Dict$insert)($def.pattern, $def, $0.valueDefs),
-              }));
-            }))()));
+            ? ($sd1$Compiler$MakeCanonical$error)($env, ($sd1$Types$CanonicalAst$patternPos)($def.pattern), ($core$Core$Cons)("Unique values can be declared only inside functions.", $core$Core$Nil))
+            : ($core$Result$Ok)(({
+              first: ((() => {
+                const $0 = $caModule;
+                return (Object.assign)({}, $0, ({
+                  valueDefs: ($core$Dict$insert)($def.pattern, $def, $0.valueDefs),
+                }));
+              }))(),
+              second: $newEnv,
+            })));
         })))(((($2) => {
-          return ($sd1$Compiler$MakeCanonical$translateDefinition)(true, ($sd1$Compiler$MakeCanonical$initEnv)($ro), $2);
+          return ($sd1$Compiler$MakeCanonical$translateDefinition)(true, $env, $2);
         }))($d));
       }))()
       : ((($faStatement)[0] === "AliasDef")
@@ -9676,9 +9713,9 @@ const $sd1$Compiler$MakeCanonical$insertRootStatement = (($ro, $faStatement, $ca
           return (($core$Result$onOk)((($name) => {
             return ((($core$Dict$member)($name, $caModule.aliasDefs) || ($core$Dict$member)($name, $caModule.unionDefs))
               ? ((() => {
-                const $5 = $fa.name;
-                const $pos = ($5)[1];
-                return ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)(($name + " declared twice!"), $core$Core$Nil));
+                const $4 = $fa.name;
+                const $pos = ($4)[1];
+                return ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)(($name + " declared twice!"), $core$Core$Nil));
               }))()
               : (($core$Result$onOk)((($caPars) => {
                 return (($core$Result$onOk)((($type) => {
@@ -9686,40 +9723,43 @@ const $sd1$Compiler$MakeCanonical$insertRootStatement = (($ro, $faStatement, $ca
                     directTypeDeps: ($sd1$Compiler$MakeCanonical$typeDeps)($type, $core$Set$empty),
                     pars: $caPars,
                     type: $type,
-                    usr: ($sd1$Types$Meta$USR)($ro.umr, $name),
+                    usr: ($sd1$Types$Meta$USR)($env.ro.umr, $name),
                   });
-                  return ($core$Result$Ok)(((() => {
-                    const $0 = $caModule;
-                    return (Object.assign)({}, $0, ({
-                      aliasDefs: ($core$Dict$insert)($name, $aliasDef, $0.aliasDefs),
-                    }));
-                  }))());
+                  return ($core$Result$Ok)(({
+                    first: ((() => {
+                      const $0 = $caModule;
+                      return (Object.assign)({}, $0, ({
+                        aliasDefs: ($core$Dict$insert)($name, $aliasDef, $0.aliasDefs),
+                      }));
+                    }))(),
+                    second: $env,
+                  }));
                 })))(((($1) => {
-                  return ($sd1$Compiler$MakeCanonical$translateRawType)($ro, $1);
+                  return ($sd1$Compiler$MakeCanonical$translateRawType)($env.ro, $1);
                 }))($fa.type));
               })))(((($1) => {
                 return ($core$List$mapRes)((($1) => {
-                  return ($sd1$Compiler$MakeCanonical$translateTypeParameter)($ro, $1);
+                  return ($sd1$Compiler$MakeCanonical$translateTypeParameter)($env.ro, $1);
                 }), $1);
               }))($fa.args)));
-          })))(($sd1$Compiler$MakeCanonical$translateTypeName)($ro, $fa.name));
+          })))(($sd1$Compiler$MakeCanonical$translateTypeName)($env.ro, $fa.name));
         }))()
         : ((($faStatement)[0] === "UnionDef")
           ? ((() => {
             const $fa = ($faStatement)[1];
-            const $4 = $fa.name;
-            const $pos = ($4)[1];
+            const $3 = $fa.name;
+            const $pos = ($3)[1];
             return (($core$Result$onOk)((($name) => {
               return ((($core$Dict$member)($name, $caModule.aliasDefs) || ($core$Dict$member)($name, $caModule.unionDefs))
-                ? ($sd1$Compiler$MakeCanonical$erroro)($ro, $pos, ($core$Core$Cons)(($name + " declared twice!"), $core$Core$Nil))
+                ? ($sd1$Compiler$MakeCanonical$error)($env, $pos, ($core$Core$Cons)(($name + " declared twice!"), $core$Core$Nil))
                 : (($core$Result$onOk)((($caPars) => {
-                  const $usr = ($sd1$Types$Meta$USR)($ro.umr, $name);
+                  const $usr = ($sd1$Types$Meta$USR)($env.ro.umr, $name);
                   const $type = ((($2) => {
                     return ($sd1$Types$CanonicalAst$TypeNamed)($pos, $usr, $2);
                   }))(((($1) => {
-                    return ($core$List$map)((($8) => {
-                      const $n = $8.first;
-                      const $p = $8.second;
+                    return ($core$List$map)((($7) => {
+                      const $n = $7.first;
+                      const $p = $7.second;
                       return ($sd1$Types$CanonicalAst$TypeAnnotationVariable)($p, $n);
                     }), $1);
                   }))($caPars));
@@ -9732,25 +9772,28 @@ const $sd1$Compiler$MakeCanonical$insertRootStatement = (($ro, $faStatement, $ca
                       pars: $caPars,
                       usr: $usr,
                     });
-                    return ($core$Result$Ok)(((() => {
-                      const $0 = $caModule;
-                      return (Object.assign)({}, $0, ({
-                        unionDefs: ($core$Dict$insert)($name, $unionDef, $0.unionDefs),
-                      }));
-                    }))());
+                    return ($core$Result$Ok)(({
+                      first: ((() => {
+                        const $0 = $caModule;
+                        return (Object.assign)({}, $0, ({
+                          unionDefs: ($core$Dict$insert)($name, $unionDef, $0.unionDefs),
+                        }));
+                      }))(),
+                      second: $env,
+                    }));
                   })))(((($0) => {
                     return ($core$List$forRes)($0, $fa.constructors, (($3, $4) => {
-                      return ($sd1$Compiler$MakeCanonical$translateConstructor)($ro, $type, $usr, $3, $4);
+                      return ($sd1$Compiler$MakeCanonical$translateConstructor)($env.ro, $type, $usr, $3, $4);
                     }));
                   }))($core$Dict$empty));
                 })))(((($1) => {
                   return ($core$List$mapRes)((($1) => {
-                    return ($sd1$Compiler$MakeCanonical$translateTypeParameter)($ro, $1);
+                    return ($sd1$Compiler$MakeCanonical$translateTypeParameter)($env.ro, $1);
                   }), $1);
                 }))($fa.args)));
-            })))(($sd1$Compiler$MakeCanonical$translateTypeName)($ro, $fa.name));
+            })))(($sd1$Compiler$MakeCanonical$translateTypeName)($env.ro, $fa.name));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1685:4', (sp_toHuman)($faStatement))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1703:4', (sp_toHuman)($faStatement))))));
 });
 
 const $sd1$Types$CanonicalAst$initModule = (($fsPath, $umr, $asText) => {
@@ -9769,11 +9812,16 @@ const $sd1$Compiler$MakeCanonical$translateModule = (($ro, $faModule) => {
   const $module = ($sd1$Types$CanonicalAst$initModule)($ro.errorModule.fsPath, $ro.umr, $ro.errorModule.content);
   return ((($2) => {
     return ($core$Basics$btw)(sp_benchStop, "translateModule", $2);
+  }))(((($1) => {
+    return ($core$Result$map)($core$Tuple$first, $1);
   }))(((($0) => {
-    return ($core$List$forRes)($0, $faModule, (($1, $2) => {
-      return ($sd1$Compiler$MakeCanonical$insertRootStatement)($ro, $1, $2);
+    return ($core$List$forRes)($0, $faModule, (($0, $1) => {
+      return ($sd1$Compiler$MakeCanonical$insertRootStatement)($0, $1);
     }));
-  }))($module));
+  }))(({
+    first: $module,
+    second: ($sd1$Compiler$MakeCanonical$initEnv)($ro),
+  }))));
 });
 
 const $sd1$Compiler$MakeCanonical$textToCanonicalModule = (($stripLocations, $ro) => {
@@ -10130,12 +10178,12 @@ const $sd1$Compiler$MakeEmittable$translateExpression = (($env, $expression) => 
                             : (true
                               ? ((() => {
                                 const $5 = ($sd1$Compiler$MakeEmittable$generateName)($env);
-                                const $newEnv = $5.second;
+                                const $env_ = $5.second;
                                 const $tryName = $5.first;
                                 const $wrap = (($tryExpression) => {
                                   return ($sd1$Types$EmittableAst$LetIn)(({
                                     inExpression: $tryExpression,
-                                    letExpression: ($sd1$Compiler$MakeEmittable$translateExpression)($newEnv, $value),
+                                    letExpression: ($sd1$Compiler$MakeEmittable$translateExpression)($env_, $value),
                                     maybeName: ($core$Maybe$Just)($tryName),
                                     type: $valueType,
                                   }));
@@ -10143,7 +10191,7 @@ const $sd1$Compiler$MakeEmittable$translateExpression = (($env, $expression) => 
                                 return ({
                                   first: ($sd1$Types$EmittableAst$Variable)(($sd1$Types$Ast$RefLocal)($tryName)),
                                   second: $wrap,
-                                  third: $newEnv,
+                                  third: $env_,
                                 });
                               }))()
                               : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeEmittable.sp 198:16', (sp_toHuman)($4))));
@@ -10537,8 +10585,8 @@ const $sd1$Human$TextTree$addSeparator = (($separator, $tree) => {
   return ((($tree)[0] === "Span")
     ? ((() => {
       const $complexity = ($tree)[1];
-      const $text = ($tree)[2];
-      return ($sd1$Human$TextTree$Span)($complexity, ($separator + (" " + $text)));
+      const $t = ($tree)[2];
+      return ($sd1$Human$TextTree$Span)($complexity, ($separator + (" " + $t)));
     }))()
     : (((($tree)[0] === "Block") && ((($tree)[1])[0] === "IndentedWithHeader"))
       ? ((() => {
@@ -10578,8 +10626,8 @@ const $sd1$Human$TextTree$maybeSpan = (($complexityAcc, $textAcc, $content) => {
           : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/TextTree.sp 179:6', (sp_toHuman)($content))))));
 });
 
-const $sd1$Human$TextTree$text = (($text) => {
-  return ($sd1$Human$TextTree$Span)((text_length)($text), $text);
+const $sd1$Human$TextTree$text = (($t) => {
+  return ($sd1$Human$TextTree$Span)((text_length)($t), $t);
 });
 
 const $sd1$Human$TextTree$list = (($1) => {
@@ -10806,7 +10854,7 @@ const $sd1$Compiler$TypeCheck$addSub = (($newId, $newUni, $subs) => {
       }))()
       : (true
         ? $uni
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2314:8', (sp_toHuman)($uni))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2313:8', (sp_toHuman)($uni))));
   });
   ((__re__ = (hash_each)($subs, (($univarId, $uniqueness) => {
     return ((__re__ = (hash_insert)($newSubs, $univarId, ($replace)($uniqueness))), ($newSubs = (__re__)[1]), (__re__)[0]);
@@ -10845,10 +10893,10 @@ const $sd1$Compiler$TypeCheck$solveUniquenessConstraint = (($env, $eq, $state) =
                   }))()
                   : (true
                     ? ((__re__ = ($sd1$Compiler$TypeCheck$addError)($env, $eq.pos, ($sd1$Compiler$TypeCheck$ErrorUnresolvableUniqueness)($eq, $subUni), $state)), ($state = (__re__)[1]), (__re__)[0])
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2338:16', (sp_toHuman)($5)))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2337:16', (sp_toHuman)($5)))));
             }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2329:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2328:4', (sp_toHuman)($4)))),
     $state,
   ]);
 });
@@ -10960,7 +11008,7 @@ const $sd1$Compiler$TypeCheck$compareParTypes = (($env, $currentEquality, $index
                     why: "fn arg",
                   }), $state)), ($state = (__re__)[1]), (__re__)[0]);
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2401:12', (sp_toHuman)($9)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2400:12', (sp_toHuman)($9)))));
           return null;
         }))()
         : (true
@@ -10970,7 +11018,7 @@ const $sd1$Compiler$TypeCheck$compareParTypes = (($env, $currentEquality, $index
               why: ($sd1$Compiler$TypeCheck$Why_FunctionInput)($index, $why),
             }));
           }))(), "recycling does not match", $state)), ($state = (__re__)[1]), (__re__)[0])
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2384:4', (sp_toHuman)($8))))),
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2383:4', (sp_toHuman)($8))))),
     $state,
   ]);
 });
@@ -11029,7 +11077,7 @@ const $sd1$Compiler$TypeCheck$occurs = (($tyvarId, $type) => {
           }))()
           : ((($type)[0] === "TypeError")
             ? false
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2575:4', (sp_toHuman)($type)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2574:4', (sp_toHuman)($type)))))));
 });
 
 const $sd1$Compiler$TypeCheck$replaceUnificationVariable = (($env, $equality, $tyvarId, $replacingType, $state) => {
@@ -11040,7 +11088,7 @@ const $sd1$Compiler$TypeCheck$replaceUnificationVariable = (($env, $equality, $t
     }))()
     : (true
       ? false
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2547:8', (sp_toHuman)($replacingType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2546:8', (sp_toHuman)($replacingType))));
   return ([
     ($isSame
       ? null
@@ -11092,7 +11140,7 @@ const $sd1$Compiler$TypeCheck$solveRecordExt = (($env, $equality, $swapEquality,
             }));
           }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2526:8', (sp_toHuman)($11))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2525:8', (sp_toHuman)($11))));
   }));
   return ([
     ((__re__ = ($sd1$Compiler$TypeCheck$replaceUnificationVariable)($env, $equality, $tyvar1, ($sd1$Types$TypedAst$TypeRecord)($core$Maybe$Nothing, $attrs2), $state)), ($state = (__re__)[1]), (__re__)[0]),
@@ -11188,7 +11236,7 @@ const $sd1$Compiler$TypeCheck$solveEquality = (($env, $head, $state) => {
                               why: "fn out",
                             }), $state)), ($state = (__re__)[1]), (__re__)[0]);
                           }))()
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2454:21', (sp_toHuman)($6)))));
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2453:21', (sp_toHuman)($6)))));
                   }))();
                   return ($core$List$indexedEach2)($pars1, $pars2, (($2, $3, $4) => {
                     return ((__re__ = ($sd1$Compiler$TypeCheck$compareParTypes)($env, $head, $2, $3, $4, $state)), ($state = (__re__)[1]), (__re__)[0]);
@@ -11264,7 +11312,7 @@ const $sd1$Compiler$TypeCheck$solveEquality = (($env, $head, $state) => {
                         ? null
                         : (true
                           ? ((__re__ = ($sd1$Compiler$TypeCheck$addErError)($env, $head, "types are incompatible1", $state)), ($state = (__re__)[1]), (__re__)[0])
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2422:4', (sp_toHuman)($5))))))))))))),
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2421:4', (sp_toHuman)($5))))))))))))),
     $state,
   ]);
 });
@@ -12356,7 +12404,7 @@ const $sd1$Types$CanonicalAst$expressionPos = (($exp) => {
                         }))()
                         : ((($exp)[0] === "DestroyIn")
                           ? $sd1$Types$Pos$G
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/CanonicalAst.sp 264:4', (sp_toHuman)($exp))))))))))))));
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Types/CanonicalAst.sp 267:4', (sp_toHuman)($exp))))))))))))));
 });
 
 const $sd1$Compiler$TypeCheck$doTry = (($env, $pos, $expectedRaw, $value, $caPatternsAndExpressions, $state) => {
@@ -13401,7 +13449,7 @@ const $sd1$Compiler$TypeCheck$doDefinition = (($nameToRef, $baseEnv, $def, $stat
               annotatedId: $annotatedId,
             }), $acc);
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 689:12', (sp_toHuman)($10))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 688:12', (sp_toHuman)($10))));
     }));
   }))(((($1) => {
     return ($core$List$for)($core$Dict$empty, $1, (($annotation, $acc) => {
@@ -13411,7 +13459,7 @@ const $sd1$Compiler$TypeCheck$doDefinition = (($nameToRef, $baseEnv, $def, $stat
     return ($core$List$filterMap)((($entry) => {
       return $entry.maybeAnnotation;
     }), $1);
-  }))(($core$Dict$values)(($sd1$Types$CanonicalAst$patternNames)($def.pattern)))));
+  }))(($sd1$Types$CanonicalAst$patternNames)($def.pattern))));
   const $freeTyvars = ((() => {
     const $allBindableTyvarsIn = (($tyvarId) => {
       const $7 = ((__re__ = (hash_get)($state.tyvarSubs, $tyvarId)), ($state.tyvarSubs = (__re__)[1]), (__re__)[0]);
@@ -13424,7 +13472,7 @@ const $sd1$Compiler$TypeCheck$doDefinition = (($nameToRef, $baseEnv, $def, $stat
               return null;
             }), ($sd1$Types$TypedAst$typeTyvars)($raw));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 701:12', (sp_toHuman)($7))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 700:12', (sp_toHuman)($7))));
     });
     const $resolvedParentBoundTyvars = ((__re__ = ($core$Hash$for_)($core$Set$empty, $parentBoundTyvars, (($parentTyvar, _1, $set) => {
       return ((($0) => {
@@ -13458,12 +13506,16 @@ const $sd1$Compiler$TypeCheck$doDefinition = (($nameToRef, $baseEnv, $def, $stat
                     })),
                   });
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 720:16', (sp_toHuman)($10))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 719:16', (sp_toHuman)($10))));
           }))()));
       }));
     }))(($sd1$Types$TypedAst$typeTyvars)($defType.raw));
   }))();
-  const $caNames = ($sd1$Types$CanonicalAst$patternNames)($def.pattern);
+  const $caNames = ((($1) => {
+    return ($core$List$indexBy)((($e) => {
+      return $e.name;
+    }), $1);
+  }))(($sd1$Types$CanonicalAst$patternNames)($def.pattern));
   const $instance = (($name, $6) => {
     const $pos = $6.pos;
     const $unresolvedType = $6.type;
@@ -13482,8 +13534,8 @@ const $sd1$Compiler$TypeCheck$doDefinition = (($nameToRef, $baseEnv, $def, $stat
       return (((($8)[0] === "Just") && ((($8)[1].maybeAnnotation)[0] === "Just"))
         ? ((() => {
           const $annotation = (($8)[1].maybeAnnotation)[1];
-          const $pos = ($8)[1].pos;
-          return ((__re__ = ($sd1$Compiler$TypeCheck$addErrorIf)((($core$Dict$size)($annotation.tyvars) > ($core$Dict$size)($actualTyvars)), $localEnv, $pos, ($sd1$Compiler$TypeCheck$ErrorTyvarNotIndependent)($name), $state)), ($state = (__re__)[1]), (__re__)[0]);
+          const $p = ($8)[1].pos;
+          return ((__re__ = ($sd1$Compiler$TypeCheck$addErrorIf)((($core$Dict$size)($annotation.tyvars) > ($core$Dict$size)($actualTyvars)), $localEnv, $p, ($sd1$Compiler$TypeCheck$ErrorTyvarNotIndependent)($name), $state)), ($state = (__re__)[1]), (__re__)[0]);
         }))()
         : (true
           ? null
@@ -13765,7 +13817,7 @@ const $sd1$Compiler$TypeCheck$insertAnnotatedAndNonAnnotated = (($pa, $def, $1) 
     return ($core$List$all)((($stuff) => {
       return (sp_not_equal)($stuff.maybeAnnotation, $core$Maybe$Nothing);
     }), $1);
-  }))(($core$Dict$values)(($sd1$Types$CanonicalAst$patternNames)($pa)));
+  }))(($sd1$Types$CanonicalAst$patternNames)($pa));
   return ($isFullyAnnotated
     ? ({
       first: (sp_cons)($def, $ann),
@@ -13979,16 +14031,16 @@ const $sd1$Compiler$TypeCheck$addValueToGlobalEnv = (($state, $umr, $def, $env) 
   }))($originalIdToNewIdAndUnivar);
   const $freeUnivars = ($core$Dict$fromList)(($core$Dict$values)($originalIdToNewIdAndUnivar));
   return ([
-    ($core$Dict$for)($env, ($sd1$Types$CanonicalAst$patternNames)($def.pattern), (($valueName, $valueStuff, $envX) => {
-      const $8 = $valueStuff.maybeAnnotation;
-      return ((($8)[0] === "Nothing")
+    ($core$List$for)($env, ($sd1$Types$CanonicalAst$patternNames)($def.pattern), (($paName, $envX) => {
+      const $7 = $paName.maybeAnnotation;
+      return ((($7)[0] === "Nothing")
         ? $envX
-        : ((($8)[0] === "Just")
+        : ((($7)[0] === "Just")
           ? ((() => {
-            const $annotation = ($8)[1];
+            const $annotation = ($7)[1];
             const $raw = ((__re__ = ($sd1$Compiler$TypeCheck$translateRawType)($env, $nameToType, $originalIdToUniqueness, $state, $annotation.raw)), ($state = (__re__)[1]), (__re__)[0]);
             const $instance = ({
-              definedAt: $valueStuff.pos,
+              definedAt: $paName.pos,
               freeTyvars: ($core$Dict$intersect)($tyvarIdToClasses, ($sd1$Types$TypedAst$typeTyvars)($raw)),
               freeUnivars: $freeUnivars,
               type: ({
@@ -13998,13 +14050,13 @@ const $sd1$Compiler$TypeCheck$addValueToGlobalEnv = (($state, $umr, $def, $env) 
             });
             const $ref = ($sd1$Types$Ast$RefGlobal)(((($1) => {
               return ($sd1$Types$Meta$USR)($umr, $1);
-            }))($valueName));
+            }))($paName.name));
             const $0 = $envX;
             return (Object.assign)({}, $0, ({
               variables: ($core$Dict$insert)($ref, $instance, $0.variables),
             }));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2110:8', (sp_toHuman)($8))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2109:8', (sp_toHuman)($7))));
     })),
     $state,
   ]);
@@ -14153,7 +14205,7 @@ const $sd1$Compiler$TypeCheck$expandAndInsertAlias = (($state, $env, $allAliases
       }))()
       : ((($6)[0] === "Nothing")
         ? ($sd1$Compiler$TypeCheck$bug)("alias not found")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2208:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2207:8', (sp_toHuman)($6))));
   }))();
   const $6 = ($sd1$Compiler$TypeCheck$namedParsToIdParsAndDict)($aliasDef.pars);
   const $typeByName = $6.second;
@@ -14371,7 +14423,7 @@ const $sd1$Compiler$TypeCheck$initStateAndGlobalEnv = (($externalValues, $allMod
             const $list = $4;
             return ($core$Result$Err)(($sd1$Compiler$Error$Nested)($list));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2289:8', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck.sp 2288:8', (sp_toHuman)($4))));
     }))());
 });
 
@@ -15717,7 +15769,7 @@ const $sd1$Compiler$MakeCanonical$translateBinopSepListRec = (($env, $pos, $left
           })))(($sd1$Compiler$MakeCanonical$makeBinop)($env.ro, $pos, ($sd1$Types$CanonicalAst$ArgumentExpression)($leftAccum), $op, $caRight));
         })))(($sd1$Compiler$MakeCanonical$translateArgument)($env, $faRight));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1332:4', (sp_toHuman)($opsAndRight))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical.sp 1350:4', (sp_toHuman)($opsAndRight))));
 });
 
 const $sd1$Compiler$MakeCanonical$translateBinopSepList_leftAssociative = (($env, $pos, $leftAccum, $opsAndRight) => {
@@ -15907,7 +15959,7 @@ const $sd1$Compiler$MakeCanonical_Test$transformAB = (($code) => {
       }))()
       : (true
         ? $core$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical_Test.sp 82:8', (sp_toHuman)($3))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical_Test.sp 83:8', (sp_toHuman)($3))));
   });
   return (($core$Result$onOk)((($x) => {
     return ((($1) => {
@@ -16010,7 +16062,7 @@ const $sd1$Compiler$MakeCanonical_Test$polymorphicUniques = ($sd1$Test$Group)("P
       }))()
       : (true
         ? ($core$Result$Err)("no pattern any")
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical_Test.sp 673:16', (sp_toHuman)($3))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/MakeCanonical_Test.sp 674:16', (sp_toHuman)($3))));
   })))(($sd1$Compiler$MakeCanonical_Test$firstDefinitionStripDeps)($t));
 }), ($sd1$Test$isOkAndEqualTo)(($core$Set$fromList)(($core$Core$Cons)(1, ($core$Core$Cons)(2, $core$Core$Nil))))), $core$Core$Nil)));
 
@@ -16036,6 +16088,8 @@ const $sd1$Compiler$MakeCanonical_Test$records = ($sd1$Test$Group)("Records", ($
   first: "y",
   second: ($sd1$Types$CanonicalAst$RecordAccess)($sd1$Compiler$MakeCanonical_Test$p, "x", ($sd1$Types$CanonicalAst$Variable)($sd1$Types$Pos$G, ($sd1$Types$Ast$RefLocal)("0"))),
 }), $core$Core$Nil)))))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("annotation, extensible", "a as { b with x as Bool } =\n  a", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("a"), ($sd1$Test$errorContains)(($core$Core$Cons)("disabled", $core$Core$Nil))), $core$Core$Nil))));
+
+const $sd1$Compiler$MakeCanonical_Test$shadowing = ($sd1$Test$Group)("Shadowing", ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("Root", "a = 0\na = 0", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("a"), ($sd1$Test$errorContains)(($core$Core$Cons)("`a`", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("Local", "a = 0\nb =\n    a = 0\n    a + a", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("b"), ($sd1$Test$errorContains)(($core$Core$Cons)("`a`", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("Function parameter", "a = 0\nb = fn a: a + a", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("b"), ($sd1$Test$errorContains)(($core$Core$Cons)("`a`", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("try..as", "a = 0\nb = try x as , a: 0", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("b"), ($sd1$Test$errorContains)(($core$Core$Cons)("`a`", ($core$Core$Cons)("already been defined", $core$Core$Nil)))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("Types", "union X = Meh\nalias X = {}\nb = 0", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("b"), ($sd1$Test$errorContains)(($core$Core$Cons)("X", ($core$Core$Cons)("twice", $core$Core$Nil)))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("Constructors", "union A = Meh\nunion B = Meh\nb = 0", ($sd1$Compiler$MakeCanonical_Test$firstEvaluation)("b"), ($sd1$Test$errorContains)(($core$Core$Cons)("X", ($core$Core$Cons)("twice", $core$Core$Nil)))), $core$Core$Nil)))))));
 
 const $sd1$Compiler$TestHelpers$caNumber = ($sd1$Types$CanonicalAst$TypeNamed)($sd1$Types$Pos$T, ($sd1$Types$Meta$spCoreUSR)("Number"), $core$Core$Nil);
 
@@ -16076,7 +16130,7 @@ const $sd1$Compiler$MakeCanonical_Test$tuples = ($sd1$Test$Group)("Tuples", ($co
 
 const $sd1$Compiler$MakeCanonical_Test$unionTypes = ($sd1$Test$Group)("Union types", ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("tuples op precedence", "union A = X Bool & Bool", $sd1$Compiler$MakeCanonical_Test$textToModule, ($sd1$Test$errorContains)(($core$Core$Cons)("expecting a constructor", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("Tuples op precedence works with parens", "union A = X (Bool & Bool)", $sd1$Compiler$MakeCanonical_Test$textToModule, $sd1$Test$isOk), ($core$Core$Cons)(($sd1$Compiler$MakeCanonical_Test$codeTest)("[reg] Should reject uppercase arg name", "union Outcome Token output = A", $sd1$Compiler$MakeCanonical_Test$textToModule, ($sd1$Test$errorContains)(($core$Core$Cons)("must start with a lowercase", $core$Core$Nil))), $core$Core$Nil))));
 
-const $sd1$Compiler$MakeCanonical_Test$tests = ($sd1$Test$Group)("MakeCanonical", ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$unionTypes, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$binops, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$tuples, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$lists, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$moduleAndAttributePaths, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$records, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$patterns, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$annotations, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$pipes, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$functions, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$nonFunction, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$argumentPlaceholders, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$polymorphicUniques, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$numbers, $core$Core$Nil)))))))))))))));
+const $sd1$Compiler$MakeCanonical_Test$tests = ($sd1$Test$Group)("MakeCanonical", ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$unionTypes, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$binops, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$tuples, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$lists, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$moduleAndAttributePaths, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$records, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$patterns, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$annotations, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$pipes, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$functions, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$nonFunction, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$argumentPlaceholders, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$polymorphicUniques, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$numbers, ($core$Core$Cons)($sd1$Compiler$MakeCanonical_Test$shadowing, $core$Core$Nil))))))))))))))));
 
 const $sd1$Compiler$Parser$sepListAtSep = (($sep, $item) => {
   return (($sd1$Compiler$Parser$on)((($sep0) => {
@@ -18228,8 +18282,8 @@ const $sd1$Main$selftestMain = ((_0) => {
   }))(($sd1$Test$flattenAndRun)($sd1$Main$allTests)))));
 });
 
-const $sd1$Main$main = (($env, $args) => {
-  const $3 = ($sd1$Main$parseArguments)($sd1$Main$cliOptions, $args, $sd1$Main$cliDefaults);
+const $sd1$Main$main = (($env, $rawArgs) => {
+  const $3 = ($sd1$Main$parseArguments)($sd1$Main$cliOptions, $rawArgs, $sd1$Main$cliDefaults);
   return ((($3)[0] === "Err")
     ? ((() => {
       const $message = ($3)[1];
