@@ -23,6 +23,7 @@ tests as Test =
         , argumentPlaceholders
         , polymorphicUniques
         , numbers
+        , shadowing
         ]
 
 
@@ -694,4 +695,77 @@ numbers as Test =
             "a = 1_000_000"
             (firstEvaluation "a")
             (Test.isOkAndEqualTo << CA.LiteralNumber p (1000 * 1000))
+        ]
+
+
+shadowing as Test =
+    Test.Group
+        """
+        Shadowing
+        """
+        [
+        , codeTest
+            """
+            Root
+            """
+            """
+            a = 0
+            a = 0
+            """
+            (firstEvaluation "a")
+            (Test.errorContains ["`a`"])
+        , codeTest
+            """
+            Local
+            """
+            """
+            a = 0
+            b =
+                a = 0
+                a + a
+            """
+            (firstEvaluation "b")
+            (Test.errorContains ["`a`"])
+        , codeTest
+            """
+            Function parameter
+            """
+            """
+            a = 0
+            b = fn a: a + a
+            """
+            (firstEvaluation "b")
+            (Test.errorContains ["`a`"])
+        , codeTest
+            """
+            try..as
+            """
+            """
+            a = 0
+            b = try x as , a: 0
+            """
+            (firstEvaluation "b")
+            (Test.errorContains [ "`a`", "already been defined" ])
+        , codeTest
+            """
+            Types
+            """
+            """
+            union X = Meh
+            alias X = {}
+            b = 0
+            """
+            (firstEvaluation "b")
+            (Test.errorContains [ "X", "twice" ])
+        , codeTest
+            """
+            Constructors
+            """
+            """
+            union A = Meh
+            union B = Meh
+            b = 0
+            """
+            (firstEvaluation "b")
+            (Test.errorContains [ "Meh", "already been defined" ])
         ]

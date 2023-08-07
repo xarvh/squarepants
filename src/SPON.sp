@@ -107,8 +107,8 @@ text as Reader Text =
 word as Reader Token.Word =
     fn statements:
     try statements as
-        , FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word })) :: tail:
-            Accepted tail word
+        , FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word = w })) :: tail:
+            Accepted tail w
 
         , [ s ]:
             Rejected << At (FA.statementPos s) "expecting an Uppercase name"

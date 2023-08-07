@@ -682,7 +682,6 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     freeUnivars as Dict UnivarId TA.Univar =
         def.pattern
         >> CA.patternNames
-        >> Dict.values
         >> List.filterMap (fn entry: entry.maybeAnnotation) __
         >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
         >> Dict.for Dict.empty __ fn annotatedId, None, acc:
@@ -729,6 +728,7 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
     #
     caNames =
         CA.patternNames def.pattern
+        >> List.indexBy (fn e: e.name) __
 
     instance as fn Name, { pos as Pos, type as TA.FullType }: Instance =
         fn name, { pos, type = unresolvedType }:
@@ -744,8 +744,8 @@ doDefinition as fn (fn Name: Ref), Env, CA.ValueDef, @State: TA.ValueDef & Env =
 
         tryAsStillBreaksIfUsedImperatively =
             try Dict.get name caNames as
-                , Just { pos, maybeAnnotation = Just annotation }:
-                    addErrorIf (Dict.size annotation.tyvars > Dict.size actualTyvars) localEnv pos (ErrorTyvarNotIndependent name) @state
+                , Just { with pos = p, maybeAnnotation = Just annotation }:
+                    addErrorIf (Dict.size annotation.tyvars > Dict.size actualTyvars) localEnv p (ErrorTyvarNotIndependent name) @state
                 , _:
                     None
 
@@ -1890,7 +1890,6 @@ insertAnnotatedAndNonAnnotated as fn CA.Pattern, CA.ValueDef, [CA.ValueDef] & [C
     isFullyAnnotated =
         pa
         >> CA.patternNames
-        >> Dict.values
         >> List.all (fn stuff: stuff.maybeAnnotation /= Nothing) __
 
     if isFullyAnnotated then
@@ -2106,8 +2105,8 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
     #
     # Env
     #
-    Dict.for env (CA.patternNames def.pattern) fn valueName, valueStuff, envX:
-        try valueStuff.maybeAnnotation as
+    List.for env (CA.patternNames def.pattern) fn paName, envX:
+        try paName.maybeAnnotation as
             , Nothing:
                 envX
 
@@ -2118,7 +2117,7 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
 
                 instance as Instance =
                     {
-                    , definedAt = valueStuff.pos
+                    , definedAt = paName.pos
                     , type = { raw, uni = Imm }
                     , freeTyvars = Dict.intersect tyvarIdToClasses (TA.typeTyvars raw)
 
@@ -2127,7 +2126,7 @@ addValueToGlobalEnv as fn @State, UMR, CA.ValueDef, Env: Env =
                     }
 
                 ref as Ref =
-                    valueName
+                    paName.name
                     >> USR umr __
                     >> RefGlobal
 
