@@ -166,7 +166,8 @@ binops as Test =
         """
         Binops
         """
-        [ codeTest "left associativity"
+        [
+        , codeTest "left associativity"
             """
             a = v >> f >> g
             b = (v >> f) >> g
@@ -187,6 +188,48 @@ binops as Test =
             """
             transformAB
             (shouldHaveSameAB fn x: x.body)
+        , codeTest
+            """
+            SKIP (burned out) Pipe optimization
+            """
+            """
+            a = b >> a __
+            b = a b
+            """
+            transformAB
+            (shouldHaveSameAB fn x: x.body)
+        , codeTest
+            """
+            Op chain definition and optimization
+            """
+            """
+            a = __ + __ + 3 + __
+            """
+            (firstEvaluation "a")
+            (Test.isOkAndEqualTo (
+                (CA.Fn p [
+                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "0") Nothing)
+                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "1") Nothing)
+                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "2") Nothing)
+                    ]
+                    (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
+                        , CA.ArgumentExpression (CA.Variable p (RefLocal "0"))
+                        , CA.ArgumentExpression
+
+                            (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
+                                , CA.ArgumentExpression (CA.Variable p (RefLocal "1"))
+                                , CA.ArgumentExpression
+                                    (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
+                                        , CA.ArgumentExpression (CA.LiteralNumber p 3)
+                                        , CA.ArgumentExpression (CA.Variable p (RefLocal "2"))
+                                        ]
+                                    )
+                                ]
+                            )
+                        ]
+                    )
+                )
+            ))
         ]
 
 
