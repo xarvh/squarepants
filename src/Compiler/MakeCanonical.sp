@@ -743,6 +743,23 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             CA.Fn pos caParams caBody
             >> Ok
 
+        [# TODO
+        , FA.Call (FA.Expression p (FA.Fn faPars faBody)) faArgs:
+
+            - check that args and pairs are the same length
+
+            - for any arg
+                if non-trivial
+                    and
+                    contains a recyclable or is used in faBody more than once (watch out for shadowing!!!)
+                then
+                    set a let-in
+                else
+                    use as-is
+
+            - inline the args inside faBody
+        #]
+
         , FA.Call faRef faArgs:
             faRef
             >> translateExpression env __

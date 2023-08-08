@@ -190,11 +190,21 @@ binops as Test =
             (shouldHaveSameAB fn x: x.body)
         , codeTest
             """
-            SKIP (burned out) Pipe optimization
+            SKIP (burned out) Pipe optimization 1
             """
             """
             a = b >> a __
             b = a b
+            """
+            transformAB
+            (shouldHaveSameAB fn x: x.body)
+        , codeTest
+            """
+            SKIP (burned out) Pipe optimization 2
+            """
+            """
+            a = (__ >> __ >> __) a b c
+            b = a >> b >> c
             """
             transformAB
             (shouldHaveSameAB fn x: x.body)
