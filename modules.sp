@@ -55,6 +55,14 @@ sourceDir =
        importAs = CA
 
     module =
+       path = Targets/Wgsl/Deno
+       importAs = Deno
+
+    module =
+       path = Targets/Wgsl/Ast
+       importAs = WA
+
+    module =
        path = Types/EmittableAst
        importAs = EA
 

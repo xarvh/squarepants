@@ -29,10 +29,15 @@ union Expression =
     , Constructor Pos USR
     , Fn Pos [Parameter] Expression
     , Call Pos Expression [Argument]
+      #
       # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
+      #
+      # Also, attribute values could be Blocks
+      #
     , Record Pos (Maybe Expression) (Dict Name Expression)
     , RecordAccess Pos Name Expression
+    # TODO remove this once we implement Blocks
     , LetIn ValueDef Expression
     , If Pos
         {
