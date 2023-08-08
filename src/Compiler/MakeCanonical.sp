@@ -782,7 +782,8 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                     >> Ok
 
         , FA.Binop op:
-            error env pos [ "compiler bug: FA.Binop should not be here" ]
+            CA.Variable pos (RefGlobal op.usr)
+            >> Ok
 
         , FA.BinopChain group sepList:
             translateBinopChain env pos group sepList
@@ -1166,25 +1167,6 @@ translateBinopChain as fn Env, Pos, Int, FA.SepList Op.Binop FA.Expression: Res 
         translateRightAssociativeBinopChain env pos opChain
 
 
-# TODO use this one!!!
-translateCall as fn Env, Pos, FA.Expression, [FA.Expression]: Res CA.Expression =
-    fn env, pos, faRef, faArgs:
-
-    faRef
-    >> translateExpression env __
-    >> onOk fn caRef:
-
-    if faArgs == [] then
-        Ok caRef
-
-    else
-        List.mapRes (translateArgument env __) faArgs
-        >> onOk fn caArgs:
-
-        CA.Call pos caRef caArgs
-        >> Ok
-
-
 resolvePipe as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res FA.Expression =
     fn env, pos, opChain:
 
@@ -1287,13 +1269,7 @@ translateMutop as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Express
             translateExpression env left
 
         , [op & right]:
-            translateArgument env left
-            >> onOk fn l:
-
-            translateArgument env right
-            >> onOk fn r:
-
-            makeBinop env.ro pos l op r
+            translateExpression env (makeBinop pos left op right)
 
         , _:
             error env pos [ "mutops can't be chained" ]
@@ -1323,86 +1299,65 @@ sameDirectionAs as fn Op.Binop, Op.Binop: Bool =
 
 
 translateRightAssociativeBinopChain as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res CA.Expression =
-    fn env, pos, left & opsAndRight:
+    fn env, pos, opChain:
 
-    translateExpression env left
-    >> onOk fn caLeft:
+    intToVariable as fn Pos, Int: FA.Expression =
+        fn p, n:
+        {
+        , maybeType = Nothing
+        , word = {
+            , modifier = Token.NameNoModifier
+            , isUpper = False
+            , maybeModule = Nothing
+            , name = Text.fromNumber n
+            , attrPath = []
+            }
+        }
+        >> FA.Variable
+        >> FA.Expression p __
 
-    try opsAndRight as
-        , []:
-            Ok caLeft
+    rec as fn Int, FA.SepList Op.Binop FA.Expression: Int & FA.Expression =
+        fn placeholdersCount, rawLeft & opsAndRight:
 
-        , [op & right, ...tail]:
-            translateRightAssociativeBinopChain env pos (right & tail)
-            >> onOk fn caRight:
-            makeBinop env.ro pos (CA.ArgumentExpression caLeft) op (CA.ArgumentExpression caRight)
+        count & left =
+            try rawLeft as
+                , FA.Expression p FA.ArgumentPlaceholder:
+                    placeholdersCount + 1 & intToVariable p placeholdersCount
 
+                , _:
+                    placeholdersCount & rawLeft
 
-translateBinopSepList_leftAssociative as fn Env, Pos, FA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
-    fn env, pos, leftAccum, opsAndRight:
+        try opsAndRight as
+            , []:
+                count & left
 
-    translateExpression env leftAccum >> onOk fn caLeftAccum:
-    translateBinopSepListRec env pos caLeftAccum opsAndRight
+            , [op & right, ...tail]:
+                newCount & newRight =
+                    rec count (right & tail)
 
+                # TODO this pos is wrong, we need the op's pos
+                newCount & makeBinop pos left op newRight
 
-translateBinopSepListRec as fn Env, Pos, CA.Expression, [ Op.Binop & FA.Expression ]: Res CA.Expression =
-    fn env, pos, leftAccum, opsAndRight:
-    try opsAndRight as
-        , []:
-            Ok leftAccum
+    cnt & expr =
+        rec 0 opChain
 
-        , (op & faRight) :: tail:
-            translateArgument env faRight >> onOk fn caRight:
-            makeBinop env.ro pos (CA.ArgumentExpression leftAccum) op caRight
-            >> onOk fn binop:
-            translateBinopSepListRec env pos binop tail
-
-
-[#
-
-      !!!!
-      TODO just make this rewrite as a FA.Call and then call translateExpression
-      !!!!
-
-
- Unlike other ML languages, the left operand is the _second_ argument
-
-`a + b` == `((+) b) a`
-
-#]
-makeBinop as fn ReadOnly, Pos, CA.Argument, Op.Binop, CA.Argument: Res CA.Expression =
-    fn ro, pos, left, op, right:
-
-    if op.symbol == Prelude.sendRight.symbol then
-        # arg3 >> fun arg1 arg2
-        try right as
-            , CA.ArgumentExpression ref:
-                CA.Call pos ref [left]
-                >> Ok
-
-            , CA.ArgumentRecycle _ _ _:
-                erroro ro pos [ "Can't >> to a recyclable" ]
-
-    else if op.symbol == Prelude.sendLeft.symbol then
-        # arg3 >> fun arg1 arg2
-        try left as
-            , CA.ArgumentExpression ref:
-                CA.Call pos ref [right]
-                >> Ok
-
-            , CA.ArgumentRecycle _ _ _:
-                erroro ro pos [ "Can't << to a recyclable" ]
-
+    if cnt == 0 then
+        expr
     else
-        CA.Call pos (CA.Variable pos (RefGlobal op.usr)) [left, right]
-        >> Ok
+        cnt - 1
+        >> List.range 0 __
+        >> List.map (intToVariable pos __) __
+        >> FA.Fn __ expr
+        >> FA.Expression pos __
+
+    >> translateExpression env __
 
 
-translateSimpleBinop as fn Env, Pos, FA.Expression, Op.Binop, FA.Expression: Res CA.Expression =
-    fn env, pos, left, op, right:
-    translateArgument env left >> onOk fn l:
-    translateArgument env right >> onOk fn r:
-    makeBinop env.ro pos l op r
+makeBinop as fn Pos, FA.Expression, Op.Binop, FA.Expression: FA.Expression =
+    fn pos, left, op, right:
+
+    FA.Expression pos (FA.Call (FA.Expression pos (FA.Binop op)) [left, right])
+
 
 
 #
