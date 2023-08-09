@@ -1,17 +1,62 @@
 
-alias Env =
-    {
+alias Env = {
     , errorModule as Error.Module
     , stripLocations as Bool
     }
 
 
-#
-#
-#
+alias ReadState = {
+    # All comments are forced into statements
+    # If we wanted the formatter to support also inline comments, I imagine we'd add a `commentInlines as [FA.Comment]`?
+    , commentsReversed as [FA.Comment]
+    , tokens as [Token]
+    }
+
 
 alias Parser a =
-    Parser.Parser Token a
+    Parser.Parser ReadState a
+
+
+eatComments as fn ReadState: ReadState =
+    fn readState:
+
+    try readState.tokens as
+        , [Token start end (Token.Comment { indent, isBlock, isFollowedByBlank }) , ...tail]:
+            {
+            , tokens = tail
+            , commentsReversed = [
+                , { start, end, indent, isBlock, isFollowedByBlank }
+                , ...readState.commentsReversed
+                ]
+            }
+            >> eatComments
+
+        , _:
+            readState
+
+
+
+oneToken as Parser Token =
+    fn rejections, rs:
+
+    readState = eatComments rs
+
+    try readState.tokens as
+        , []:
+            [readState, ...rejections] & Parser.Rejected
+
+        , [token, ...tail]:
+            rejections & Parser.Accepted { readState with tokens = tail } token
+
+
+
+pullCommentsReversed as Parser [FA.Comment] =
+    fn rejections, rs:
+
+    readState =
+        eatComments rs
+
+    rejections & Parser.Accepted { readState with commentsReversed = [] } readState.commentsReversed
 
 
 #
@@ -30,17 +75,15 @@ maybe as fn Parser a: Parser (Maybe a) =
 
 
 here as Parser Int =
-    Parser.here >> on fn tokens:
-    ok
-        (try tokens as
-            , Token c mod start end :: rest:
-                start
+    Parser.here >> on fn readState:
 
-            , []:
-                0
-        )
+    try readState.tokens as
+        , [Token start end _, ...rest]: start
+        , []: 0
+    >> ok
 
 
+# TODO rename to mkpos?
 pos as fn Env, Int, Int: Pos =
     fn env, start, end:
 
@@ -50,18 +93,30 @@ pos as fn Env, Int, Int: Pos =
         Pos.P start end
 
 
+mkLine as fn Env, Int: Int =
+    fn env, line:
+
+    if env.stripLocations then
+        -1
+    else
+        line
+
+
 #
 # Utility
 #
-oneToken as Parser Token =
-    Parser.consumeOne
+forZeroOrMore as fn o, (fn o: Parser o): Parser o =
+    fn init, getParser:
+
+    getParser init
+    >> Parser.thenWithDefault (ok init) (forZeroOrMore __ getParser)
 
 
 # TODO rename to "exact"?
 kind as fn Token.Kind: Parser Token =
     fn targetKind:
     oneToken >> on fn token:
-    (Token _ _ _ k) = token
+    (Token _ _ k) = token
     if targetKind == k then
         ok token
 
@@ -124,7 +179,7 @@ sepListAtSep as fn Parser sep, Parser item: Parser [sep & item] =
 
 
 
-sepListAtItem as fn Parser sep, Parser item: Parser (FA.SepList sep item) =
+sepListAtItem as fn Parser sep, Parser item: Parser (item & [sep & item]) =
     fn sep, item:
     item >> on fn item0:
     theParserStillSucks =
@@ -138,13 +193,11 @@ sepListAtItem as fn Parser sep, Parser item: Parser (FA.SepList sep item) =
     ok ( item0 & sepsAndItems )
 
 
-sepList as fn Parser sep, Parser item: Parser (FA.SepList sep item) =
+sepList as fn Parser sep, Parser item: Parser (item & [sep & item]) =
     sepListAtItem
 
 
 [#| TODO make it more flexible
-
-also, note whether it is multiline or not, so that formatting can preserve it
 
     x = [ a ]
     x = [, a ]
@@ -171,12 +224,12 @@ rawList as fn Parser a: Parser [a] =
     discardFirst (Parser.maybe sibsep) (oomSeparatedBy sibsep item)
 
 
-word as fn Env: Parser (At Token.Word) =
+word as fn Env: Parser FA.Word =
     fn env:
 
-    oneToken >> on fn (Token comment start end k):
+    oneToken >> on fn (Token start end k):
     try k as
-        , Token.Word w: ok (At (pos env start end) w)
+        , Token.Word w: ok (FA.Word (pos env start end) w)
         , _: Parser.reject
 
 
@@ -233,39 +286,45 @@ siblingStatements as fn Env: Parser FA.Expression =
   here
   >> on fn start:
 
-  oomSeparatedBy (kind Token.NewSiblingLine) (statement env)
-  >> on fn stats:
+  statementParser env []
+  >> on fn acc:
+
+  forZeroOrMore acc (fn a: discardFirst (kind Token.NewSiblingLine) (statementParser env a))
+  >> on fn reversedStatements:
 
   here
   >> on fn end:
 
-  # Is this optimization really necessary?
-  try stats as
-      , [ FA.Evaluation expr ]:
-          ok expr
+  try reversedStatements as
+      , [ FA.Evaluation e ]:
+          ok e
 
       , many:
-          FA.Expression (pos env start end) (FA.Statements stats) >> ok
+          many
+          >> List.reverse
+          >> FA.Statements
+          >> FA.Expression [] (pos env start end) __
+          >> ok
 
 
 indentedOrInlineStatements as fn Env: Parser FA.Expression =
     fn env:
 
-    Parser.oneOf
-        [
-        , block (siblingStatements env)
-        , expr env
-        ]
+    [
+    , block (siblingStatements env)
+    , expr env
+    ]
+    >> Parser.oneOf
 
 
-alignedOrInlineStatements as fn Env: Parser FA.Expression =
+alignedOrInlineStatements as fn Env: Parser (Bool & FA.Expression) =
     fn env:
 
     Parser.oneOf
         [
-        , block (siblingStatements env)
-        , sib (siblingStatements env)
-        , expr env
+        , block (siblingStatements env) >> on fn e: ok (True & e)
+        , sib (siblingStatements env) >> on fn e: ok (True & e)
+        , expr env >> on fn e: ok (False & e)
         ]
 
 
@@ -275,8 +334,7 @@ alignedOrInlineStatements as fn Env: Parser FA.Expression =
 aliasDef as fn Env: Parser FA.Statement =
     fn env:
 
-    aliasWord as Token.Word =
-        {
+    aliasWord as Token.Word = {
         , modifier = Token.NameNoModifier
         , isUpper = False
         , maybeModule = Nothing
@@ -328,48 +386,90 @@ unionDef as fn Env: Parser FA.Statement =
 #
 # Expression
 #
-exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
-    fn env, tokenKind:
 
-    try tokenKind as
-        , Token.Word w:
-            Parser.oneOf
-              [
-              , discardFirst (kind Token.As) (expr env) >> on fn t:
-                 FA.Variable { maybeType = Just t, word = w } >> ok
-              , FA.Variable { maybeType = Nothing, word = w } >> ok
+union Ee = E_full FA.Expression, E_under FA.Expr_
+
+
+
+
+expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
+    fn env:
+
+    pullCommentsReversed
+    >> on fn commentsReversed:
+
+    oneToken
+    >> on fn Token start end kk:
+
+    expressionOk as fn FA.Expr_: Parser Ee =
+      fn e: e >> E_under >> ok
+
+    b =
+      # We try all tokens that unambiguously mark the start of an expression
+      try kk as
+        , Token.Word tokenWord:
+
+            variableOk =
+                fn maybeType: {
+                    , maybeType
+                    , tokenWord
+                    }
+                    >> FA.Variable
+                    >> expressionOk
+
+            Parser.oneOf [
+              , discardFirst (kind Token.As) (expr env)
+                >> on fn t:
+                variableOk (Just t)
+              , variableOk Nothing
               ]
 
         , Token.ArgumentPlaceholder:
-            FA.ArgumentPlaceholder >> ok
+            FA.ArgumentPlaceholder
+            >> expressionOk
 
         , Token.NumberLiteral isPercent s:
-            Parser.oneOf
-              [
-              , discardFirst (kind Token.UniquenessPolymorphismBinop) (expr env) >> on fn e:
-                 FA.Poly s e >> ok
-              , FA.LiteralNumber isPercent s >> ok
+            Parser.oneOf [
+
+              , discardFirst (kind Token.UniquenessPolymorphismBinop) (expr env)
+                >> on fn e:
+                FA.Poly s e
+                >> expressionOk
+
+              , FA.LiteralNumber isPercent s
+                >> expressionOk
               ]
 
         , Token.TextLiteral s:
-            FA.LiteralText s >> ok
+            FA.LiteralText s
+            >> expressionOk
 
         , Token.RoundParen Token.Open:
-            inlineOrBelowOrIndented (expr env) >> on fn (FA.Expression p expr_):
-            inlineOrBelowOrIndented (kind (Token.RoundParen Token.Closed)) >> on fn _:
-            ok expr_
+            discardSecond
+                (inlineOrBelowOrIndented (expr env))
+                (inlineOrBelowOrIndented (kind (Token.RoundParen Token.Closed)))
+            >> on fn e:
+            ok (E_full e)
 
-        , Token.SquareBracket Token.Open:
+
+        , Token.SquareBracket openRow Token.Open:
             item as Parser (Bool & FA.Expression) =
                 maybe (kind Token.ThreeDots) >> on fn maybeDots:
                 expr env >> on fn exp:
                 ok (maybeDots /= Nothing & exp)
 
-            inlineOrBelowOrIndented (maybe << rawList item) >> on fn exps:
-            inlineOrBelowOrIndented (kind (Token.SquareBracket Token.Closed)) >> on fn _:
-            FA.List (Maybe.withDefault [] exps) >> ok
+            closeBracket as Parser Int =
+                oneToken >> on fn Token _ _ k:
+                try k as
+                    , Token.SquareBracket line Token.Closed: ok line
+                    , _: Parser.reject
 
-        , Token.CurlyBrace Token.Open:
+            inlineOrBelowOrIndented (maybe << rawList item) >> on fn exps:
+            inlineOrBelowOrIndented (closeBracket) >> on fn closeRow:
+            FA.List (closeRow > openRow) (Maybe.withDefault [] exps)
+            >> expressionOk
+
+        , Token.CurlyBrace openRow Token.Open:
             extension as Parser (Maybe FA.Expression) =
                 discardSecond
                     (maybe (expr env))
@@ -381,24 +481,45 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
                 maybe (discardFirst (kind Token.Defop) (inlineOrBelowOrIndented (expr env))) >> on fn maybeExpr:
                 ok { name, maybeExpr }
 
+            closeBrace as Parser Int =
+                oneToken >> on fn Token _ _ k:
+                try k as
+                    , Token.CurlyBrace line Token.Closed: ok line
+                    , _: Parser.reject
+
             inlineOrBelowOrIndented (maybe extension) >> on fn maybeExtension:
             inlineOrBelowOrIndented (maybe (rawList attribute)) >> on fn attrs:
-            inlineOrBelowOrIndented (kind (Token.CurlyBrace Token.Closed)) >> on fn _:
-            FA.Record { maybeExtension, attrs = Maybe.withDefault [] attrs } >> ok
+            inlineOrBelowOrIndented (closeBrace) >> on fn closeRow:
+            {
+            , maybeExtension
+            , attrs = Maybe.withDefault [] attrs
+            , isMultiline = closeRow > openRow
+            }
+            >> FA.Record
+            >> expressionOk
 
         , Token.Fn:
             rawList (expr env) >> on fn args:
             kind Token.Colon >> on fn _:
-            alignedOrInlineStatements env >> on fn body:
-            FA.Fn args body >> ok
+            alignedOrInlineStatements env >> on fn isMultiline & body:
+            FA.Fn isMultiline args body
+            >> expressionOk
 
-        , Token.If:
+        , Token.If ifLine:
+
+            elseParser as Parser Int =
+                oneToken >> on fn Token _ _ k:
+                try k as
+                  , Token.Else line: ok line
+                  , _: Parser.reject
+
             expr env >> on fn condition:
             inlineOrBelowOrIndented (kind Token.Then) >> on fn _:
-            alignedOrInlineStatements env >> on fn true:
-            inlineOrBelowOrIndented (kind Token.Else) >> on fn _:
-            alignedOrInlineStatements env >> on fn false:
-            FA.If { condition, true, false } >> ok
+            alignedOrInlineStatements env >> on fn _ & true:
+            inlineOrBelowOrIndented elseParser >> on fn elseLine:
+            alignedOrInlineStatements env >> on fn _ & false:
+            FA.If { isMultiline = elseLine > ifLine, condition, true, false }
+            >> expressionOk
 
         , Token.Try:
             maybeNewLineKind as fn Token.Kind: Parser Token =
@@ -414,133 +535,273 @@ exprWithLeftDelimiter as fn Env, Token.Kind: Parser FA.Expr_ =
             inlineOrBelowOrIndented (expr env) >> on fn value:
             inlineOrBelowOrIndented (kind Token.As) >> on fn _:
             inlineOrBelowOrIndented (rawList patternAndValue) >> on fn patterns:
-            here >> on fn end:
             {
-            , value = value
-            , patterns = patterns
+            , value
+            , patterns
             }
             >> FA.Try
-            >> ok
+            >> expressionOk
 
         , Token.Unop op:
-            FA.Unop op
-            >> ok
+            expressionWithUnambiguousStart env
+            >> on fn e:
 
-        , Token.Binop op:
-            FA.Binop op
-            >> ok
-
-        [# TODO this is a horrid workaround necessary to support the edge case of an op being used inside an attr def:
-
-            {
-            , attr =
-                a
-                >> b
-            }
-
-          Would be nice to reorganize the parser so that it is not needed.
-        #]
-        , Token.NewSiblingLine:
-            oneToken >> on fn (Token c  s e k):
-            try k as
-                , Token.Binop op:
-                  maybe (kind Token.NewSiblingLine) >> on fn _:
-                  FA.Binop op
-                  >> ok
-
-                , _:
-                  Parser.reject
+            FA.UnopCall op e
+            >> expressionOk
 
         , _:
             Parser.reject
+
+
+    b >> on fn ee:
+
+    try ee as
+        , E_under expr_:
+
+          FA.Expression (List.reverse commentsReversed) (pos env start end) expr_
+          >> ok
+
+        , E_full expression:
+          if commentsReversed == [] then
+            ok expression
+          else
+                [FA.Evaluation expression] #:: List.map FA.CommentStatement commentsReversed
+                #>> List.reverse
+                >> FA.Statements
+                >> FA.Expression (List.reverse commentsReversed) (pos env start end) __
+                >> ok
+
+
+[#
+
+    ref args
+
+    ref a1
+        a2
+
+    ref
+        a1 a2
+
+    ref
+        a1
+        a2
+
+    ref
+        a1
+          a2
+
+#]
+functionApplication as fn Env: Parser FA.Expression =
+    fn env:
+
+    e =
+        expressionWithUnambiguousStart env
+
+    # First we need one "term".
+    e
+    >> on fn ref:
+
+    # Then we need another, indented or inline.
+    # Directly below is not allowed.
+    [
+    , block e
+    , e
+    ]
+    >> Parser.oneOf
+    >> maybe
+    >> on fn maybeFirstArgument:
+
+    try maybeFirstArgument as
+        , Nothing:
+            # No application
+            ok ref
+
+        , Just argsHead:
+            # There might be more arguments.
+            # These are allowed to be directly below
+
+            e
+            >> inlineOrBelowOrIndented
+            >> Parser.zeroOrMore
+            >> on fn argsTail:
+
+            p =
+                posRange [ref, argsHead, ...argsTail]
+
+            # `@Array a` must parse as `@(Array a)`
+            # `atan2 -a b` must parse as `atan2 (-a) b`
+            # AVOID: `atan2 -a b` parsing as `atan2 -(a b)`!!!
+            #
+            # TODO: this is ugly because it loses information: `(-a) b c` cannot be distinguished by `-(a b c)`
+            # which is not something that will ever happen with the current unops because none of them applies to
+            # actual functions, but still...
+            #
+            # TODO: more importantly, this should handle multiple nested unops
+            #
+            # TODO: should this live here? Isn't this something we can do in MakeCanonical instead?
+            try ref as
+                , FA.Expression comments p1 (FA.UnopCall op unoped):
+                    FA.Call unoped (argsHead :: argsTail)
+                    >> FA.Expression [] p __
+                    >> FA.UnopCall op __
+                    >> FA.Expression comments p1 __
+                    >> ok
+
+                , _:
+                    FA.Call ref (argsHead :: argsTail)
+                    >> FA.Expression [] p __
+                    >> ok
+
+
+
+binop as fn Env: Parser FA.Binop =
+    fn env:
+
+    oneToken
+    >> on fn (Token start end k):
+
+    try k as
+        , Token.Binop line { with usr, symbol, precedence }:
+
+            pullCommentsReversed
+            >> on fn commentsReversed:
+
+            {
+            , comments = List.reverse commentsReversed
+            , usr
+            , symbol
+            , precedence
+            , pos = pos env start end
+            , line = mkLine env line
+            }
+            >> ok
+
+        , _:
+            Parser.reject
+
+
+binopChain as fn Env: Parser FA.BinopChain =
+    fn env:
+
+    app =
+        functionApplication env
+
+    app
+    >> on fn left:
+
+    binopAndApp as Parser (FA.Binop & FA.Expression) =
+        inlineOrBelowOrIndented (binop env)
+        >> on fn b:
+
+        inlineOrBelowOrIndented app
+        >> on fn a:
+
+        ok (b & a)
+
+    Parser.zeroOrMore binopAndApp
+    >> on fn rights:
+
+    ok (left & rights)
 
 
 
 expr as fn Env: Parser FA.Expression =
     fn env:
 
-    higher as Parser FA.Expression =
-        oneToken >> on fn (Token comment start end k):
-        exprWithLeftDelimiter env k >> on fn expr_:
-        FA.Expression (pos env start end) expr_ >> ok
+    binopChain env
+    >> on fn x:
+
+    reorderAccordingToBinopPrecedence x
+    >> ok
 
 
-    recInlineOrIndented as fn [FA.Expression]: Parser [FA.Expression] =
-        fn accum:
 
-        higher >> on fn h:
-
-        r =
-            h :: accum
-
-        Parser.oneOf
-            # after at least one indented block, allow arguments to appear also as siblings (ie, right below)
-            [ block (recInlineOrIndentedOrBelow higher r)
-            , recInlineOrIndented r
-            , ok r
-            ]
-
-    here >> on fn start:
-    recInlineOrIndented [] >> on fn reversedArgs:
-    here >> on fn end:
-
-    try reversedArgs >> List.reverse >> breakByPrecedence as
-        , Err text: Parser.reject
-        , Ok e: ok e
-
-
-recInlineOrIndentedOrBelow as fn Parser FA.Expression, [FA.Expression]: Parser [FA.Expression] =
-    fn higher, accum:
-    higher >> on fn h:
-
-    r =
-        h :: accum
-
-    maybeWithDefault r __ << inlineOrBelowOrIndented (recInlineOrIndentedOrBelow higher r)
+#recInlineOrIndentedOrBelow as fn Parser FA.Expression, [FA.Expression]: Parser [FA.Expression] =
+#    fn higher, accum:
+#    higher >> on fn h:
+#
+#    r =
+#        h :: accum
+#
+#    maybeWithDefault r __ << inlineOrBelowOrIndented (recInlineOrIndentedOrBelow higher r)
 
 
 
 
+#
+# Reorder binop chain according to binop precedence
+#
 
-findLowestPrecedence as fn [FA.Expression]: Int =
 
-    rec as fn Int, [FA.Expression]: Int =
+findLowestPrecedence as fn FA.BinopChain: Int =
+
+    rec as fn Int, [FA.Binop & expression]: Int =
         fn lowest, exprs:
         try exprs as
             , []: lowest
-            , [ FA.Expression _ head, ...tail ]:
-                try head as
-                    , FA.Binop op: rec (min lowest op.precedence) tail
-                    , _: rec lowest tail
+            , [ b & _ , ...tail ]:
+                rec (min lowest b.precedence) tail
 
-    rec 1000 __
+    fn chain:
+    rec 1000 chain.second
 
 
-breakByPrecedence as fn [FA.Expression]: Result Text FA.Expression =
-    fn rawExpressions:
+chain_append as fn FA.Binop & FA.Expression, FA.BinopChain: FA.BinopChain =
+    fn binopAndExpr, left & rights:
 
-    try findLowestPrecedence rawExpressions as
+    left & List.reverse (binopAndExpr :: (List.reverse rights))
+
+
+blah as fn Int, FA.BinopChain, FA.BinopChain, FA.Binop: FA.Expression =
+    fn lowestPrecedence, remainingChain, accChain, accOp:
+
+    abovePrecedence & rest =
+        List.partitionWhile (fn op & exp: op.precedence > lowestPrecedence) remainingChain.second
+
+    ee =
+        reorderAccordingToBinopPrecedence (remainingChain.first & abovePrecedence)
+
+    updatedChain =
+        chain_append (accOp & ee) accChain
+
+    try rest as
+        , []:
+            p =
+                updatedChain.first :: List.map (fn x: x.second) updatedChain.second
+                >> posRange
+
+            updatedChain
+            >> FA.BinopChain lowestPrecedence __
+            >> FA.Expression [] p __
+
+        # We are guaranteed that this op is at lowestPrecedence
+        , [op & e, ...rem]:
+              blah lowestPrecedence (e & rem) updatedChain op
+
+
+# TODO this needs to be cleaned up?
+reorderAccordingToBinopPrecedence as fn FA.BinopChain: FA.Expression =
+    fn chain:
+
+    try findLowestPrecedence chain as
         , 1000:
-            headUnops & exprs1 =
-                eatAllUnops rawExpressions
-
-            applyHeadUnops =
-                List.for __ headUnops fn p & op, exp: FA.Expression p (FA.UnopCall op exp)
-
-            try breakByUnops exprs1 as
-                , []: Err "breakByPrecedence got []"
-                , [ one ]: Ok << applyHeadUnops one
-                , [ head, ...tail ]: Ok << applyHeadUnops (FA.Expression (posRange rawExpressions) (FA.Call head tail))
+            chain.first
 
         , lowestPrecedence:
-            rawExpressions
-            >> splitOnOpWithPrecedence lowestPrecedence __
-            >> onOk fn s:
 
-            s
-            >> FA.BinopChain lowestPrecedence __
-            >> FA.Expression (posRange rawExpressions) __
-            >> Ok
+              abovePrecedence & rest =
+                  List.partitionWhile (fn op & exp: op.precedence > lowestPrecedence) chain.second
+
+              # This is going to be the "left" part of our final chain
+              left =
+                  reorderAccordingToBinopPrecedence (chain.first & abovePrecedence)
+
+              try rest as
+                  , []:
+                      left
+
+                  , [op & ee, ...tail]:
+                      blah lowestPrecedence (ee & tail) (left & []) op
 
 
 posRange as fn [FA.Expression]: Pos =
@@ -548,143 +809,10 @@ posRange as fn [FA.Expression]: Pos =
 
     try exprs as
         , []: Pos.G
-        , [ FA.Expression start _, ...tail]:
+        , [ FA.Expression _ start _, ...tail]:
             try List.last tail as
-                , Just (FA.Expression end _): Pos.range start end
+                , Just (FA.Expression _ end _): Pos.range start end
                 , Nothing: start
-
-
-
-union BinopOrExpression = Binop Op.Binop , Expression FA.Expression
-
-exprOrTargetOp as fn Int, FA.Expression: BinopOrExpression =
-    fn precedence, head:
-
-    try head as
-        , FA.Expression _ (FA.Binop op):
-            if op.precedence == precedence then
-                Binop op
-            else
-                Expression head
-
-        , _:
-            Expression head
-
-
-readExprs as fn Int, [FA.Expression]: [FA.Expression] & [FA.Expression] =
-    fn targetOpPrecedence, rawExpressions:
-
-    rec =
-        fn acc, remainder:
-        try remainder as
-            , [ head, ...tail ]:
-                try exprOrTargetOp targetOpPrecedence head as
-                    , Expression e:
-                        rec [e, ...acc] tail
-
-                    , Binop op:
-                        List.reverse acc & remainder
-
-            , []:
-                List.reverse acc & remainder
-
-    rec [] rawExpressions
-
-
-readOpsAndExprs as fn Int, [Op.Binop & FA.Expression], [FA.Expression]: Result Text [Op.Binop & FA.Expression] =
-    fn targetOpPrecedence, acc, remainder:
-
-    try remainder as
-        , []:
-            List.reverse acc
-            >> Ok
-
-        , [ head, ...tail ]:
-            try exprOrTargetOp targetOpPrecedence head as
-
-                , Binop op:
-                    exprs & newRemainder =
-                        readExprs targetOpPrecedence tail
-
-                    breakByPrecedence exprs
-                    >> onOk fn es:
-
-                    readOpsAndExprs targetOpPrecedence [ op & es, ...acc ] newRemainder
-
-                , Expression exprs:
-                    Err "readOpsAndExprs got a spurious exp"
-
-
-splitOnOpWithPrecedence as fn Int, [FA.Expression]: Result Text (FA.SepList Op.Binop FA.Expression) =
-    fn targetOpPrecedence, rawExpressions:
-
-    first & remainder =
-        readExprs targetOpPrecedence rawExpressions
-
-    readOpsAndExprs targetOpPrecedence [] remainder
-    >> onOk fn opsAndExpressions: # as [ Op.Binop & FA.Expression ] =
-
-    breakByPrecedence first
-    >> onOk fn f:
-
-    f & opsAndExpressions
-    >> Ok
-
-
-
-getOneUnopExpr as fn [FA.Expression]: FA.Expression & [FA.Expression] =
-
-    rec as fn (fn FA.Expression: FA.Expression), [FA.Expression]: FA.Expression & [FA.Expression] =
-        fn accF, remainder:
-
-        try remainder as
-            , FA.Expression p (FA.Unop op) :: tail:
-                rec (fn e: FA.Expression p (FA.UnopCall op e) >> accF) tail
-
-            , head :: tail:
-                accF head & tail
-
-            , []:
-                todo "bug: FA.Error & []"
-
-    rec identity __
-
-
-
-
-
-eatAllUnops as fn [FA.Expression]: [Pos & Op.UnopId] & [FA.Expression] =
-    rec as fn [Pos & Op.UnopId], [FA.Expression]: [Pos & Op.UnopId] & [FA.Expression] =
-        fn unops, exprs:
-        try exprs as
-            , FA.Expression p (FA.Unop op) :: tail:
-                rec [p & op, ...unops] tail
-
-            , _:
-                unops & exprs
-
-    rec [] __
-
-
-breakByUnops as fn [FA.Expression]: [FA.Expression] =
-    rec as fn [FA.Expression], [FA.Expression]: [FA.Expression] =
-        fn acc, exprs:
-
-        try exprs as
-            , []: List.reverse acc
-
-            , _:
-              e & remainder = getOneUnopExpr exprs
-              rec (e :: acc) remainder
-
-    rec [] __
-
-
-
-
-
-
-
 
 
 
@@ -693,40 +821,56 @@ breakByUnops as fn [FA.Expression]: [FA.Expression] =
 #
 
 
-statement as fn Env: Parser FA.Statement =
-    fn env:
+stackCommentsReversedAsStatements as fn [FA.Comment], [FA.Statement]: [FA.Statement] =
+    fn comments, acc:
+    List.forReversed acc comments fn comment, accN:
+        FA.CommentStatement comment :: accN
+
+
+
+
+statementParser as fn Env, [FA.Statement]: Parser [FA.Statement] =
+    fn env, acc0:
+
     Parser.breakCircularDefinition fn _:
-    # This is here because inline comments might be followed by NewSiblingLine
-    # and I am not sure it's a responsibility of the lexer to deal with it.
-    Parser.maybe (kind Token.NewSiblingLine) >> on fn _:
-    Parser.oneOf
-        [ aliasDef env
-        , unionDef env
-        , definition env
-        , expr env >> on fn e:
-          FA.Evaluation e >> ok
-        ]
+
+    Parser.zeroOrMore (kind Token.NewSiblingLine)
+    >> on fn _:
+
+    pullCommentsReversed
+    >> on fn commentsReversed:
+
+    [
+    , aliasDef env
+    , unionDef env
+    , definition env
+    , expr env >> on fn e: e >> FA.Evaluation >> ok
+    ]
+    >> Parser.oneOf
+    >> on fn statement:
+
+    [ statement, ...stackCommentsReversedAsStatements commentsReversed acc0]
+    >> ok
 
 
 definition as fn Env: Parser FA.Statement =
     fn env:
-    here >> on fn start:
-    expr env >> on fn p:
-    Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> on fn nf:
-    inlineOrBelowOrIndented (kind Token.Defop) >> on fn defModifier:
-    indentedOrInlineStatements env >> on fn body:
 
-#    end =
-#        body
-#            >> List.reverse
-#            >> List.head
-#            >> Maybe.map getpos
-#            >> Maybe.withDefault Pos.T
-#            >> Pos.end
+    expr env
+    >> on fn p:
 
-    here >> on fn end:
-    { pattern = p
-    , body = body
+    Parser.maybe (inlineOrBelowOrIndented (nonFunction env))
+    >> on fn nf:
+
+    inlineOrBelowOrIndented (kind Token.Defop)
+    >> on fn _:
+
+    indentedOrInlineStatements env
+    >> on fn body:
+
+    {
+    , pattern = p
+    , body
     , nonFn = Maybe.withDefault [] nf
     }
     >> FA.ValueDef
@@ -738,11 +882,11 @@ definition as fn Env: Parser FA.Statement =
 #
 
 
-nonFunction as fn Env: Parser [At Token.Word] =
+nonFunction as fn Env: Parser [FA.Word] =
     fn env:
     kind Token.With >> on fn _:
     rawList (word env) >> on fn names:
-    word env >> on fn (At _ literal):
+    word env >> on fn (FA.Word _ literal):
     if literal.name /= "NonFunction" then
         Parser.abort "Only NonFunction is supported for now"
     else
@@ -757,66 +901,88 @@ typeAnnotation as fn Env: Parser FA.Expression =
         (inlineOrBelowOrIndented (expr env))
 
 
+
+
+
+
 #
 # Module
 #
-rootStatement as fn Env: Parser (Maybe FA.Statement) =
-    fn env:
+rootStatement as fn Env, [FA.Statement]: Parser [FA.Statement] =
+    fn env, acc0:
 
-    fillers =
-        Parser.oneOf
-            [ kind Token.BlockEnd
-            , kind Token.NewSiblingLine
-            ]
+    forZeroOrMore acc0 (statementParser env __)
+    >> on fn acc1:
 
-    Parser.zeroOrMore (kind Token.NewSiblingLine) >> on fn _:
-    Parser.maybe (statement env) >> on fn maybeStatement:
-    Parser.zeroOrMore fillers >> on fn _:
-    Parser.end >> on fn _:
+    # TODO I don't remember why this happens, but sometimes we are missing the BlockStart tokens!?
+    Parser.zeroOrMore (kind Token.BlockEnd)
+    >> on fn _:
 
-    Parser.accept maybeStatement
+    Parser.here
+    >> on fn rs:
+
+    readState =
+        eatComments rs
+
+    if readState.tokens == [] then
+        acc1
+        >> stackCommentsReversedAsStatements readState.commentsReversed __
+        >> ok
+    else
+        Parser.reject
 
 
 #
 # Main
 #
 makeError as fn Env, [Token], Text: Res a =
-    fn env, readState, message:
+    fn env, farthestParsed, message:
 
-    p =
-        try readState as
-            , []: Pos.P 0 1
-            , Token comment start end k :: rest: Pos.P start end
-
-    Error.res env.errorModule p [ message ]
+    try farthestParsed as
+        , []: Pos.P 0 1
+        , [Token start end k, ...rest]: Pos.P start end
+    >> Error.res env.errorModule __ [ message ]
 
 
-parse as fn Env, [Token]: Res (Maybe FA.Statement) =
-    fn env, tokens:
+parse as fn Env, [Token], [FA.Statement]: Res [FA.Statement] =
+    fn env, allTokens, acc:
 
-    (failureStates as [[Token]]) & (outcome as Parser.Outcome Token (Maybe FA.Statement)) =
-        Parser.runParser (rootStatement env) tokens
+    log "PARSE ===================================================" env.errorModule.fsPath
+#    List.each allTokens fn t: log "*" t
+
+    initState as ReadState = {
+        , commentsReversed = []
+        , tokens = allTokens
+        }
+
+    (failureStates as [ReadState]) & (outcome as Parser.Outcome ReadState [FA.Statement]) =
+        Parser.runParser (rootStatement env acc) initState
 
     try outcome as
         , Parser.Accepted readState output:
             Ok output
 
         , Parser.Aborted readState message:
-            makeError env readState message
+            makeError env readState.tokens message
 
         , Parser.Rejected:
-            findMin = fn readState, best:
-                if List.length readState < List.length best then readState else best
+            findMin =
+                fn { with tokens }, best:
+                if List.length tokens < List.length best then tokens else best
 
-            readState as [Token] =
-                List.for tokens failureStates findMin
+            farthestParsed as [Token] =
+                List.for allTokens failureStates findMin
 
-            message =
-                try readState as
-                    , []: "I got to the end of the statement and I can't make sense of it. =("
-                    , _: "I got stuck parsing here. =("
+            try farthestParsed & allTokens as
+                , [Token start end _, ...rest] & _:
+                    Error.res env.errorModule (Pos.P start end) [ "I got stuck parsing here. =(" ]
 
-            makeError env readState message
+                , [] & [Token start end0 _, ...rest]:
+                    end = List.for end0 rest fn Token _ endX _, _: endX
+                    Error.res env.errorModule (Pos.P start end) [ "I got to the end of the statement and I can't make sense of it. =(" ]
+
+                , [] & []:
+                    Ok []
 
 
 textToFormattableModule as fn Env: Res FA.Module =
@@ -826,15 +992,25 @@ textToFormattableModule as fn Env: Res FA.Module =
         Compiler/Lexer.lexer env.errorModule
 
     tokensResult
-    >> onOk fn rootStatements:
+    >> onOk fn tokenChunks:
 
     Debug.benchStart None
-    result =
-        rootStatements
-        >> List.mapRes (parse env __) __
-        >> Result.map (List.filterMap identity __) __
+
+    errors & reversedStatements =
+        List.for ([] & []) tokenChunks fn tokens, es & revStats:
+            try parse env tokens revStats as
+                , Ok newReversedStatements: es & newReversedStatements
+                , Err e: [e, ...es] & revStats
 
     Debug.benchStop "parseTrail"
 
-    result
+    if errors /= [] then
+        errors
+        >> Error.Nested
+        >> Err
+
+    else
+      reversedStatements
+      >> List.reverse
+      >> Ok
 

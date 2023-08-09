@@ -654,8 +654,8 @@ argumentPlaceholders as Test =
                 , body =
                     CA.Fn p
                         [
-                        , CA.ParameterPlaceholder "0" 0
-                        , CA.ParameterPlaceholder "1" 1
+                        , CA.ParameterPlaceholder 0
+                        , CA.ParameterPlaceholder 1
                         ]
                         ( CA.Call p
                             (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "f")))

@@ -23,6 +23,7 @@ union Associativity =
 alias Binop =
     {
     , precedence as Int
+    # TODO: we don't use this at all. Do we still need it? Are ops associated correctly?
     , associativity as Op.Associativity
     , symbol as Text
     , type as CA.RawType

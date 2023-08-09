@@ -15,8 +15,8 @@ union Mode =
     , Squiggles
     , SingleQuote { lastEscape as Int }
     , TripleQuote { lastEscape as Int, closingQuotes as Int }
-    , LineComment
-    , BlockComment { nesting as Int, previous as Text }
+    , LineComment { start as Int, column as Int }
+    , BlockComment { start as Int, column as Int, nesting as Int, previous as Text }
 
 
 union TabsOrSpaces =
@@ -55,11 +55,14 @@ alias ReadState = {
     # accumulator
     , sections as Array [Token]
     , tokens as Array Token
+
+    # config
+    , keepComments as Bool
     }
 
 
-readStateInit as fn Text: !ReadState =
-    fn moduleCode:
+readStateInit as fn Bool: !ReadState =
+    fn keepComments:
     {
     , nextPos = 0
 
@@ -78,6 +81,8 @@ readStateInit as fn Text: !ReadState =
     , tabsOrSpaces = NoTabsOrSpacesYet
     , sections = Array.fromList []
     , tokens = Array.fromList []
+
+    , keepComments = cloneImm keepComments
     }
 
 
@@ -110,7 +115,7 @@ setMode as fn Mode, @ReadState: None =
 
 addIndentToken as fn Int, Token.Kind, @ReadState: None =
     fn pos, kind, @state:
-    Array.push @state.tokens (Token Token.N pos pos kind)
+    Array.push @state.tokens (Token pos pos kind)
 
 
 updateIndent as fn Int, Int, Token.Kind, @ReadState: None =
@@ -170,8 +175,7 @@ updateIndent as fn Int, Int, Token.Kind, @ReadState: None =
             manageIndent { indent = 0, isBlock = True }
 
 
-# TODO Rename to addContentToken
-absAddToken as fn Int, Int, Token.Kind, @ReadState: None =
+addContentTokenAbs as fn Int, Int, Token.Kind, @ReadState: None =
     fn start, end, kind, @state:
 
     if cloneUni @state.soFarThereAreNoTokensInThisLine then
@@ -184,29 +188,39 @@ absAddToken as fn Int, Int, Token.Kind, @ReadState: None =
         try kind as
             # maybe start block after these
             , Token.Then: True
-            , Token.Else: True
+            , Token.Else _: True
             , Token.As: True
             , Token.Colon: True
-#            Token.ConsumingColon: True
             , Token.Defop: True
-#            Token.Comment: state.indentStartsABlock
             , _: False
 
     @state.indentStartsABlock := indentStartsABlock
-    Array.push @state.tokens (Token Token.N start end kind)
+
+    Array.push @state.tokens (Token start end kind)
     @state.tokenStart := cloneImm end
 
 
-relAddToken as fn Int, Int, Token.Kind, @ReadState: None =
+addCommentTokenAbs as fn Int, Int, Token.Kind, @ReadState: None =
+    fn start, end, kind, @state:
+
+    if cloneUni @state.keepComments then
+        Array.push @state.tokens (Token start end kind)
+    else
+        None
+
+    @state.tokenStart := cloneImm end
+
+
+addContentTokenRel as fn Int, Int, Token.Kind, @ReadState: None =
     fn ds, de, kind, @state:
     pos = getPos @state
-    absAddToken (pos + ds) (pos + de) kind @state
+    addContentTokenAbs (pos + ds) (pos + de) kind @state
 
 
 addOneIndentToken as fn Token.Kind, @ReadState: None =
     fn kind, @state:
     pos = getPos @state
-    Array.push @state.tokens (Token Token.N pos pos kind)
+    Array.push @state.tokens (Token pos pos kind)
 
 
 getChunk as fn Text, @ReadState: Int & Int & Text =
@@ -299,13 +313,10 @@ addLowerOrUpperWord as fn Int, Int, Token.NameModifier, Text, @ReadState: None =
                     , attrPath = []
                     }
 
-                absAddToken start end (Token.Word word) @state
+                addContentTokenAbs start end (Token.Word word) @state
 
             , Token.NameStartsWithDot:
                 addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
-
-#            Token.NameMutable:
-#                absAddToken start end (Token.UpperName maybeModule name) @state
 
     lowerName =
         fn maybeModule, name, attrs:
@@ -323,7 +334,7 @@ addLowerOrUpperWord as fn Int, Int, Token.NameModifier, Text, @ReadState: None =
                     , name
                     , attrPath = attrs
                     }
-                absAddToken start end (Token.Word word) @state
+                addContentTokenAbs start end (Token.Word word) @state
 
     snips =
         Text.split "." chunk
@@ -389,20 +400,20 @@ addWordToken as fn Text, Token.NameModifier, @ReadState: None =
     maybeKeywordKind =
         try chunk as
             , "fn": Just << Token.Fn
-            , "if": Just << Token.If
+            , "if": Just << Token.If (cloneUni @state.line)
             , "then": Just << Token.Then
-            , "else": Just << Token.Else
+            , "else": Just << Token.Else (cloneUni @state.line)
             , "try": Just << Token.Try
             , "as": Just << Token.As
             , "with": Just << Token.With
-            , "and": Just << Token.Binop Prelude.and_
-            , "or": Just << Token.Binop Prelude.or_
+            , "and": Just << Token.Binop (cloneUni @state.line) Prelude.and_
+            , "or": Just << Token.Binop (cloneUni @state.line) Prelude.or_
             , "__": Just << Token.ArgumentPlaceholder
             , _: Nothing
 
     try maybeKeywordKind & modifier as
         , Just kind & Token.NameNoModifier:
-            absAddToken start end kind @state
+            addContentTokenAbs start end kind @state
 
         , Just kind & _:
             addError (chunk .. " as a keyword, you can't really use it this way") @state
@@ -434,7 +445,7 @@ addNumberToken as fn Bool, Text, @ReadState: None =
 
     # TODO what about exponential notation?
 
-    absAddToken start end (Token.NumberLiteral isPercent chunk) @state
+    addContentTokenAbs start end (Token.NumberLiteral isPercent chunk) @state
 
 
 #
@@ -467,7 +478,7 @@ addSquiggleToken as fn Text, Bool, @ReadState: None =
         getChunk buffer @state
 
     add =
-        absAddToken start end __ @state
+        addContentTokenAbs start end __ @state
 
     try chunk as
         , ":": add << Token.Colon
@@ -475,12 +486,12 @@ addSquiggleToken as fn Text, Bool, @ReadState: None =
         , "?": add << Token.UniquenessPolymorphismBinop
         , "!": add << Token.Unop Op.UnopUnique
         , "@": add << Token.Unop Op.UnopRecycle
-        , "-": add << (if nextIsSpace then Token.Binop Prelude.subtract else Token.Unop Op.UnopMinus)
-        , "+": add << (if nextIsSpace then Token.Binop Prelude.add else Token.Unop Op.UnopPlus)
+        , "-": add << (if nextIsSpace then Token.Binop (cloneUni @state.line) Prelude.subtract else Token.Unop Op.UnopMinus)
+        , "+": add << (if nextIsSpace then Token.Binop (cloneUni @state.line) Prelude.add else Token.Unop Op.UnopPlus)
         , op:
             try Dict.get chunk Prelude.binopsBySymbol as
                 , Just binop:
-                    add << Token.Binop binop
+                    add << Token.Binop (cloneUni @state.line) binop
                 , Nothing:
                     addError ("Invalid operator: `" .. chunk .. "`") @state
 
@@ -492,15 +503,18 @@ addParenOrCommaToken as fn Text, @ReadState: None =
     fn char, @state:
 
     add =
-        relAddToken 0 1 __ @state
+        addContentTokenRel 0 1 __ @state
+
+    line =
+        cloneUni @state.line
 
     try char as
         , "(": add << Token.RoundParen Token.Open
         , ")": add << Token.RoundParen Token.Closed
-        , "[": add << Token.SquareBracket Token.Open
-        , "]": add << Token.SquareBracket Token.Closed
-        , "{": add << Token.CurlyBrace Token.Open
-        , "}": add << Token.CurlyBrace Token.Closed
+        , "[": add << Token.SquareBracket line Token.Open
+        , "]": add << Token.SquareBracket line Token.Closed
+        , "{": add << Token.CurlyBrace line Token.Open
+        , "}": add << Token.CurlyBrace line Token.Closed
         , ",": add << Token.Comma
 
         # This shuld never happen?
@@ -512,8 +526,6 @@ addParenOrCommaToken as fn Text, @ReadState: None =
 #
 lexOne as fn Text, Text, @ReadState: None =
     fn buffer, char, @state:
-
-    # TODO rewrite the whole thing with ReadState mutable?
 
     # position of char
     pos =
@@ -553,7 +565,9 @@ lexOne as fn Text, Text, @ReadState: None =
 #                setMode Mutable @state
 
             , "#":
-                setMode LineComment @state
+                start = getPos @state
+                column = cloneUni @state.column
+                setMode (LineComment { start, column }) @state
 
             , "[":
                 setMode ContentOpeningBlockComment @state
@@ -596,11 +610,11 @@ lexOne as fn Text, Text, @ReadState: None =
 
         , Dot_Two:
           if char == "." then
-              relAddToken (0 - 1) 1 Token.ThreeDots @state
+              addContentTokenRel -1 1 Token.ThreeDots @state
               setMode Default @state
 
           else
-              relAddToken (0 - 1) 1 (Token.Binop Prelude.textConcat) @state
+              addContentTokenRel -1 1 (Token.Binop (cloneUni @state.line) Prelude.textConcat) @state
               setMode Default @state
               lexOne buffer char @state
 
@@ -659,8 +673,7 @@ lexOne as fn Text, Text, @ReadState: None =
               @state.tokenStart := getPos @state - 2
               setMode (TripleQuote { lastEscape = -1, closingQuotes = 0 }) @state
           else
-              # TODO replace with unary `-` once it works
-              relAddToken (0 - 2) 0 (Token.TextLiteral "") @state
+              addContentTokenRel -2 0 (Token.TextLiteral "") @state
               setMode Default @state
               lexOne buffer char @state
 
@@ -686,7 +699,7 @@ lexOne as fn Text, Text, @ReadState: None =
                       >> Text.slice (start + 1) (end - 1) __
                       >> Text.replace "\\\"" "\"" __
 
-                  absAddToken start end (Token.TextLiteral value) @state
+                  addContentTokenAbs start end (Token.TextLiteral value) @state
                   setMode Default @state
 
               , "\\":
@@ -728,7 +741,7 @@ lexOne as fn Text, Text, @ReadState: None =
                         >> Text.slice (start + 3) (end - 3) __
                         >> unindent
 
-                    absAddToken start end (Token.TextLiteral value) @state
+                    addContentTokenAbs start end (Token.TextLiteral value) @state
                     setMode Default @state
                   else
                     setMode (TripleQuote { lastEscape, closingQuotes = closingQuotes + 1 }) @state
@@ -740,8 +753,17 @@ lexOne as fn Text, Text, @ReadState: None =
                     setMode (TripleQuote { lastEscape, closingQuotes = 0 }) @state
 
 
-        , LineComment:
+        , LineComment { start, column }:
           if char == "\n" or char == "" then
+
+              {
+              , isBlock = False
+              , indent = column
+              , isFollowedByBlank = thereIsABlankAhead 0 buffer @state
+              }
+              >> Token.Comment
+              >> addCommentTokenAbs start (getPos @state) __ @state
+
               setMode Default @state
               lexOne buffer char @state
           else
@@ -750,17 +772,18 @@ lexOne as fn Text, Text, @ReadState: None =
 
         , ContentOpeningBlockComment:
           if char == "#" then
-              setMode (BlockComment { nesting = 1, previous = "" }) @state
+              start = getPos @state - 1
+              column = cloneUni @state.column - 1
+              setMode (BlockComment { start, column, nesting = 1, previous = "" }) @state
           else
-              # TODO replace with -1 once it as supported
-              relAddToken (0 - 1) 0 (Token.SquareBracket Token.Open) @state
+              addContentTokenRel -1 0 (Token.SquareBracket (cloneUni @state.line) Token.Open) @state
               setMode Default @state
               lexOne buffer char @state
 
-        , BlockComment { nesting, previous }:
+        , BlockComment { start, column, nesting, previous }:
           continueWithDeltaNesting =
               fn dn:
-              setMode (BlockComment { nesting = nesting + dn, previous = char }) @state
+              setMode (BlockComment { start, column, nesting = nesting + dn, previous = char }) @state
 
           try previous & char as
             , "[" & "#":
@@ -768,8 +791,16 @@ lexOne as fn Text, Text, @ReadState: None =
 
             , "#" & "]":
                 if nesting > 1 then
-                    continueWithDeltaNesting (0 - 1)
+                    continueWithDeltaNesting -1
                 else
+                    {
+                    , isBlock = True
+                    , indent = column
+                    , isFollowedByBlank = thereIsABlankAhead 1 buffer @state
+                    }
+                    >> Token.Comment
+                    >> addCommentTokenAbs start (getPos @state + 1) __ @state
+
                     setMode Default @state
 
             , _ & "":
@@ -777,6 +808,21 @@ lexOne as fn Text, Text, @ReadState: None =
 
             , _:
                 continueWithDeltaNesting 0
+
+
+thereIsABlankAhead as fn Int, Text, @ReadState: Bool =
+    fn offset, buffer, @state:
+
+    # This is so bad.... XD
+    start = cloneUni @state.nextPos + offset >> Text.fromNumber
+
+    regex = ".{" .. start .. "}\n[ ]*(\n|$)"
+
+#    log "BUFFER" buffer
+#    log "REGEX" regex
+
+    (Text.startsWithRegex regex) buffer /= ""
+
 
 
 tryIndent as fn Text, Text, Text, @ReadState: None =
@@ -794,7 +840,9 @@ tryIndent as fn Text, Text, Text, @ReadState: None =
         setMode Indent @state
 
     else if char == "#" then
-        setMode LineComment @state
+        start = getPos @state
+        column = cloneUni @state.column
+        setMode (LineComment { start, column }) @state
     else
         @state.lineIndent := cloneUni @state.column
         setMode Default @state
@@ -810,7 +858,7 @@ closeOpenBlocks as fn @ReadState: None =
     s = Array.toList @state.indentStack
 
     List.each s fn _:
-        Array.push @state.tokens (Token Token.N pos pos Token.BlockEnd)
+        Array.push @state.tokens (Token pos pos Token.BlockEnd)
 
     Array.push @state.sections (Array.toList @state.tokens)
 
@@ -823,7 +871,7 @@ lexer as fn Error.Module: Res [[Token]] =
     moduleCode =
         module.content
 
-    !state = readStateInit moduleCode
+    !state = readStateInit False
 
     Text.forEach moduleCode fn char:
         lexOne moduleCode char @state
@@ -844,6 +892,7 @@ lexer as fn Error.Module: Res [[Token]] =
     try Array.toList @state.errors as
         , []:
             closeOpenBlocks @state
+
             Array.toList @state.sections
             >> Ok
 

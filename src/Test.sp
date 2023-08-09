@@ -36,7 +36,7 @@ valueTest as fn (fn a: Text), Text, (fn None: a), CodeExpectation a: Test =
         ce
 
     Single title "" fn _:
-      None
+        None
         >> generateValue
         >> Ok
         >> toMaybeError toText __

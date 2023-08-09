@@ -94,7 +94,7 @@ logHead as Reader None =
 text as Reader Text =
     fn statements:
     try statements as
-        , [ FA.Evaluation (FA.Expression _ (FA.LiteralText t)) ]:
+        , [ FA.Evaluation (FA.Expression _ _ (FA.LiteralText t)) ]:
             Accepted [] t
 
         , [ s ]:
@@ -107,7 +107,7 @@ text as Reader Text =
 word as Reader Token.Word =
     fn statements:
     try statements as
-        , FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word = w })) :: tail:
+        , FA.Evaluation (FA.Expression _ _ (FA.Variable { maybeType, tokenWord = w })) :: tail:
             Accepted tail w
 
         , [ s ]:
@@ -213,8 +213,8 @@ maybe as fn Reader a: Reader (Maybe a) =
 expressionToStatements as fn FA.Expression: [FA.Statement] =
     fn e:
     try e as
-      , FA.Expression _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
-      , FA.Expression _ (FA.Statements stats): stats
+      , FA.Expression _ _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
+      , FA.Expression _ _ (FA.Statements stats): stats
       , _: [FA.Evaluation e]
 
 
@@ -228,11 +228,11 @@ field as fn Text, Reader a: Reader a =
             , body
             , nonFn
             , pattern =
-                FA.Expression pos
+                FA.Expression _ pos
                     (FA.Variable
                         {
                         , maybeType = Nothing
-                        , word =
+                        , tokenWord =
                             {
                             , modifier = Token.NameNoModifier
                             , isUpper = _

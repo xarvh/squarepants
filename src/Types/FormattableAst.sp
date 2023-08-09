@@ -11,48 +11,68 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 #]
 
 
+union Word =
+    , Word Pos Token.Word
+
+
+alias Binop = {
+    , comments as [Comment]
+    , usr as USR
+    , symbol as Text
+    , precedence as Int
+    , pos as Pos
+    , line as Int
+    }
+
+
 alias Module =
     [Statement]
 
 
 alias ValueDef = {
     , pattern as Expression
-    , nonFn as [At Token.Word]
+    , nonFn as [Word]
     , body as Expression
     }
 
 
 alias AliasDef =
     {
-    , name as At Token.Word
+    , name as Word
     # TODO rename to pars
-    , args as [At Token.Word]
+    , args as [Word]
     , type as Expression
     }
 
 
 alias UnionDef =
     {
-    , name as At Token.Word
-    , args as [At Token.Word]
+    , name as Word
+    , args as [Word]
     , constructors as [Expression]
     }
 
 
+alias Comment = {
+    , start as Int
+    , end as Int
+    , indent as Int
+    , isBlock as Bool
+    , isFollowedByBlank as Bool
+    }
+
+
 union Statement =
+    , CommentStatement Comment
     , Evaluation Expression
     , ValueDef ValueDef
     , AliasDef AliasDef
     , UnionDef UnionDef
 
 
-# TODO
-#
-# alias Expression = At Expr_ ?
-# alias AtExpression = At Expression ?
-#
 union Expression =
-    Expression Pos Expr_
+    Expression [Comment] Pos Expr_
+
 
 union Expr_ =
     , LiteralText Text
@@ -61,37 +81,29 @@ union Expr_ =
 
     , Statements [Statement]
 
-    # The Bool is for whether there's a leading `...`
-    , List [Bool & Expression]
+    # List isMultiline [isUnpacked & item]
+    , List Bool [Bool & Expression]
 
-    #
-    , Record
-        {
+    # NOTE: `{ name as Type = value }` is valid
+    , Record {
         # no extension: { attr1, ... }
         # pattern extension: { with attr1, ... }
         # expression extension: { expt with attr1, ... }
         , maybeExtension as Maybe (Maybe Expression)
         , attrs as [RecordAttribute]
+        , isMultiline as Bool
         }
 
-    , Variable
-        {
+    , Variable {
         , maybeType as Maybe Expression
-        # TODO rename to atWord
-        , word as Token.Word
+        , tokenWord as Token.Word
         }
 
-    , Fn [Expression] Expression
-
-    # This is only an intermediate value, always replaced by UnopCall in the output
-    , Unop Op.UnopId
+    , Fn Bool [Expression] Expression
 
     , UnopCall Op.UnopId Expression
 
-    # This is only an intermediate value, always replaced by BinopChain in the output
-    , Binop Op.Binop
-
-    , BinopChain Int (SepList Op.Binop Expression)
+    , BinopChain Int BinopChain
 
     , Call Expression [Expression]
 
@@ -99,6 +111,7 @@ union Expr_ =
 
     , If
         {
+        , isMultiline as Bool
         , condition as Expression
         , true as Expression
         , false as Expression
@@ -112,25 +125,25 @@ union Expr_ =
 
 
 alias RecordAttribute = {
+    # `name` can also contain the type as an annotation
     , name as Expression
     , maybeExpr as Maybe Expression
     }
 
 
 # expr op expr op expr op...
-alias SepList sep item =
-    item & [ sep & item ]
+alias BinopChain =
+    Expression & [ Binop & Expression ]
 
 
-# TODO rename to sepList_items
-sepToList as fn SepList sep item: [item] =
+binopChainExpressions as fn BinopChain: [Expression] =
     fn (head & tuples):
     head :: List.map Tuple.second tuples
 
 
-sepList_reverse as fn SepList sep item: SepList sep item =
+binopChainReverse as fn BinopChain: BinopChain =
 
-    rec as fn [sep & item], SepList sep item: SepList sep item =
+    rec as fn [Binop & Expression], BinopChain: BinopChain =
         fn acc, oddItem & remainder:
         try remainder as
             , []: oddItem & acc
@@ -139,7 +152,7 @@ sepList_reverse as fn SepList sep item: SepList sep item =
     rec [] __
 
 
-sepList_allSeps as fn (fn sep: Bool), SepList sep item: Bool =
+binopChainAllBinops as fn (fn Binop: Bool), BinopChain: Bool =
     fn f, ls:
     try ls.second as
         , []:
@@ -147,20 +160,19 @@ sepList_allSeps as fn (fn sep: Bool), SepList sep item: Bool =
 
         , [sep & item, ...tail]:
             if f sep then
-                sepList_allSeps f (item & tail)
+                binopChainAllBinops f (item & tail)
 
             else
                 False
 
 
-
-
 statementPos as fn Statement: Pos =
     fn statement:
     try statement as
-        , Evaluation (Expression pos expr_): pos
+        , CommentStatement { with start, end }: Pos.P start end
+        , Evaluation (Expression _ pos expr_): pos
         # TODO: the position should encompass the WHOLE definition, not just its start
-        , ValueDef { pattern = Expression pos expr_, nonFn, body }: pos
-        , AliasDef { name = At pos _, args, type }: pos
-        , UnionDef { name = At pos _, args, constructors }: pos
+        , ValueDef { pattern = Expression _ pos expr_, nonFn, body }: pos
+        , AliasDef { name = Word pos _, args, type }: pos
+        , UnionDef { name = Word pos _, args, constructors }: pos
 

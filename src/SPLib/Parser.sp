@@ -9,20 +9,22 @@ Arguments:
   1. readstate: the current reading state
 
 #]
-alias Parser token output =
-    fn [[token]], [token]: [[token]] & Outcome token output
+alias Parser state output =
+    fn Rejections state, state: Rejections state & Outcome state output
 
 
-#alias State token = [token]
-#alias Rejections token = [State token]
+alias Rejections state =
+    [state]
 
-union Outcome token output =
-    , Accepted [token] output
+
+union Outcome state output =
+    , Accepted state output
     , Rejected
-    , Aborted [token] Text
+    # `Text` should be a variable `error`
+    , Aborted state Text
 
 
-runParser as fn Parser token output, [token]: [[token]] & Outcome token output =
+runParser as fn Parser state output, state: Rejections state & Outcome state output =
     fn parser, readState:
     parser [ readState ] readState
 
@@ -40,7 +42,7 @@ runParser as fn Parser token output, [token]: [[token]] & Outcome token output =
 Use as little as possible, ideally the parser should always accept.
 
 #]
-abort as fn Text: Parser token output =
+abort as fn Text: Parser state output =
     fn error:
     fn rejections, readState:
     rejections & Aborted readState error
@@ -49,29 +51,17 @@ abort as fn Text: Parser token output =
 [#| Reject a read state
 #]
 # TODO can take one more function to actually put together the rejected states, and maybe merge it with the error type?
-reject as Parser token output =
+reject as Parser state output =
     fn rejections, readState:
     (readState :: rejections) & Rejected
 
 
 [#| Accept the read state, without consuming any input
 #]
-accept as fn a: Parser token a =
+accept as fn a: Parser state a =
     fn a:
     fn rejections, readState:
         rejections & Accepted readState a
-
-
-[#| Consume and return the next token
-#]
-consumeOne as Parser token token =
-    fn rejections, readState:
-    try readState as
-        , []:
-            (readState :: rejections) & Rejected
-
-        , token :: nextState:
-            rejections & Accepted nextState token
 
 
 [#| Parse something and if accepted, use the result to produce another parser.
@@ -112,7 +102,7 @@ thenWithDefault as fn Parser t b, (fn a: Parser t b): fn Parser t a: Parser t b 
 
 [#| Pulls out the current state
 #]
-here as Parser t [t] =
+here as Parser t t =
     fn rejections, readState:
         rejections & Accepted readState readState
 
@@ -122,7 +112,7 @@ here as Parser t [t] =
 #
 
 
-map as fn (fn a: b), Parser token a: Parser token b =
+map as fn (fn a: b), Parser state a: Parser state b =
     fn f, p:
     p >> andThen fn b:
     accept (f b)
@@ -132,10 +122,6 @@ without as fn Parser t o: Parser t None =
     fn p:
     p >> thenWithDefault (accept None) fn _:
     reject
-
-
-end as Parser t None =
-    without consumeOne
 
 
 oneOf as fn [Parser t o]: Parser t o =
@@ -213,12 +199,12 @@ expression as fn Parser t o, [fn Parser t o: Parser t o]: Parser t o =
 
         , op :: rest:
             expression (op term) rest
-#]
 
 
 higherOr as fn Parser t o: fn Parser t o: Parser t o =
     fn parser: fn higher:
     oneOf [ higher, parser ]
+#]
 
 
 surroundWith as fn Parser t ignoredOutput1, Parser t ignoredOutput2, Parser t output: Parser t output =

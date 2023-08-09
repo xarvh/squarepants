@@ -465,6 +465,7 @@ circularPairs as fn [a]: [a & a] =
         , [h, ...tail]: rec h list []
 
 
+# TODO remove the acc parameter
 intersperse as fn a, [a], [a]: [a] =
     fn separator, items, acc:
 
@@ -477,4 +478,22 @@ intersperse as fn a, [a], [a]: [a] =
 
         , h :: tail:
             intersperse separator tail (separator :: h :: acc)
+
+partitionWhile as fn (fn item: Bool), [item]: [item] & [item] =
+    fn f, xs:
+
+    rec =
+        fn acc, rest:
+        try rest as
+            , []:
+                xs & []
+
+            , h :: tail:
+
+              if f h then
+                  rec (h :: acc) tail
+              else
+                  List.reverse acc & rest
+
+    rec [] xs
 

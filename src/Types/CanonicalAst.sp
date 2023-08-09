@@ -56,7 +56,7 @@ union Argument =
 union Parameter =
     , ParameterPattern Uniqueness Pattern
     , ParameterRecycle Pos Name
-    , ParameterPlaceholder Name Int
+    , ParameterPlaceholder Int
 
 
 alias Annotation = {

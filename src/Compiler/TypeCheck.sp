@@ -976,7 +976,8 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             TA.ParameterPattern full out.typedPattern & TA.ParSp full & out.env
 
 
-        , CA.ParameterPlaceholder name num:
+        , CA.ParameterPlaceholder num:
+            name = Text.fromNumber num
             tyvarId =
                 newTyvarId @state
 
@@ -1198,7 +1199,8 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
             TA.ParameterPattern fullType typedPa & env1
 
 
-        , CA.ParameterPlaceholder name num:
+        , CA.ParameterPlaceholder num:
+            name = Text.fromNumber num
             try expectedParType as
                 , TA.ParRe _: todo "TA.ParRe"
                 , TA.ParSp type:
