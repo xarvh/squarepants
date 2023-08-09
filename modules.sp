@@ -40,6 +40,7 @@ sourceDir =
        globalValues =
           RefLocal
           RefGlobal
+          RefPlaceholder
           Uni
           Imm
           toImm
@@ -106,6 +107,10 @@ sourceDir =
     module =
        path = SPLib/Parser
        importAs = Parser
+
+    module =
+       path = SPLib/Format
+       importAs = Fmt
 
 
 # This will be transformed into a platform

@@ -4,7 +4,7 @@ union Maybe a =
     , Just a
 
 
-andThen as fn (fn a: Maybe b): fn Maybe a: Maybe b =
+onJust as fn (fn a: Maybe b): fn Maybe a: Maybe b =
     fn f: fn ma:
     try ma as
         , Nothing: Nothing
@@ -31,6 +31,13 @@ map as fn (fn a: b), Maybe a: Maybe b =
 #    mb >> andThen fn b:
 #    mc >> andThen fn c:
 #    Just (f a b c)
+
+
+toResult as fn e, Maybe a: Result e a =
+    fn e, maybeA:
+    try maybeA as
+        , Just a: Ok a
+        , Nothing: Err e
 
 
 mapRes as fn (fn a: Result e b), Maybe a: Result e (Maybe b) =

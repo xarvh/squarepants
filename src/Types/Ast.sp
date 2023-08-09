@@ -17,6 +17,8 @@ union Ref =
     , RefLocal Name
     # This is for stuff defined at root level
     , RefGlobal USR
+    # This is for generated function argument placeholders
+    , RefPlaceholder Int
 
 
 union Uniqueness =

@@ -36,5 +36,14 @@ javascript as Test =
                 "abc"
             )
             (Test.isOkAndEqualTo "abc")
+        , valueTest
+            """
+            SKIP (it breaks everything) [reg] Pattern matching fails on None
+            """
+            (fn _:
+                try None as
+                    , None: 1
+            )
+            (Test.isOkAndEqualTo 1)
         ]
 

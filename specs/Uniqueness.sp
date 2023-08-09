@@ -620,8 +620,8 @@ unions as Test =
             union Z a = Z a
             scope =
                 !x = Z 0
-                #!(Z y) = x
-                #@y += 1
+                !(Z y) = x
+                @y += 1
             """
             (infer "scope")
             Test.isOk

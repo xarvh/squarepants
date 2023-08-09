@@ -95,7 +95,8 @@ replace as fn Text, Text, Text: Text =
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
 startsWithRegex as fn Text: fn Text: Text =
-    fn regex: fn s:
+    fn regex:
+    fn s:
     todo "native"
 
 

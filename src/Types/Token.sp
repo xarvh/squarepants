@@ -1,17 +1,10 @@
 
-union Comment =
-    # No comment
-    , N
-    # Before, start, end
-    , Be Int Int
-    # After, start, end
-    , Af Int Int
-    # The idea is to determine whether to attach a comment to the previous token or to the next by deciding which one is closer
-    # in terms of col or row distance
+alias LineNumber =
+    Int
 
 
 union Token =
-    Token Comment Int Int Kind
+    Token Int Int Kind
 
 
 union NameModifier =
@@ -35,6 +28,7 @@ union OpenOrClosed =
 
 
 union Kind =
+    , Comment { isBlock as Bool, indent as Int, isFollowedByBlank as Bool }
     # Structure
     , NewSiblingLine
     , BlockStart
@@ -48,9 +42,9 @@ union Kind =
     , UniquenessPolymorphismBinop
     # Keywords
     , Fn
-    , If
+    , If LineNumber
     , Then
-    , Else
+    , Else LineNumber
     , Try
     , As
     , With
@@ -61,9 +55,9 @@ union Kind =
     # Ops
     , Defop
     , Unop Op.UnopId
-    , Binop Op.Binop
+    , Binop LineNumber Op.Binop
     # Parens
     , RoundParen OpenOrClosed
-    , SquareBracket OpenOrClosed
-    , CurlyBrace OpenOrClosed
+    , SquareBracket LineNumber OpenOrClosed
+    , CurlyBrace LineNumber OpenOrClosed
 
