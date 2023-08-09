@@ -10,7 +10,7 @@ union Mode =
     , Dot_One
     , Dot_Two
     , Mutable
-    , Word Token.NameModifier
+    , Word
     , NumberLiteral
     , Squiggles
     , SingleQuote { lastEscape as Int }
@@ -105,6 +105,11 @@ addError as fn Text, @ReadState: None =
 
     Array.push @state.errors error
     @state.tokenStart := cloneImm end
+
+
+addErrorIf as fn Bool, @ReadState, Text: None =
+    fn isError, @state, message:
+    if isError then addError message @state else None
 
 
 setMode as fn Mode, @ReadState: None =
@@ -276,14 +281,14 @@ unindent as fn Text: Text =
 # Words (names, keywords, logical ops)
 #
 isWordStart as fn Text: Bool =
-    re = Text.startsWithRegex "[a-zA-Z._]"
+    re = Text.startsWithRegex "[a-zA-Z._']"
 
     fn char:
     re char /= ""
 
 
 isWordBody as fn Text: Bool =
-    re = Text.startsWithRegex "[a-zA-Z./_0-9]"
+    re = Text.startsWithRegex "[a-zA-Z./_0-9']"
 
     fn char:
     re char /= ""
@@ -298,105 +303,115 @@ startsWithUpperChar as fn Text: Bool =
         , _: True
 
 
-addLowerOrUpperWord as fn Int, Int, Token.NameModifier, Text, @ReadState: None =
-    fn start, end, modifier, chunk, @state:
+parseNameToWord as fn Text, @ReadState: Token.Word =
+    fn text, @state:
 
-    upperName =
-        fn maybeModule, name:
-        try modifier as
-            , Token.NameNoModifier:
-                word as Token.Word =
-                    {
-                    , modifier
-                    , isUpper = True
-                    , maybeModule
-                    , name
-                    , attrPath = []
-                    }
+    try Text.split "'" text as
+        , [ "", name ]:
+              addErrorIf (startsWithUpperChar name) @state "constructors should start with a lowercase letter"
 
-                addContentTokenAbs start end (Token.Word word) @state
+              {
+              , type = Token.Constructor
+              , maybeModule = Nothing
+              , name
+              , attrPath = []
+              }
 
-            , Token.NameStartsWithDot:
-                addError ("Types or constructors can't start with `.` and attribute names can't start with an uppercase letter. =|") @state
+        , [ name ]:
+              {
+              , type = if startsWithUpperChar name then Token.TypeOrModule else Token.Variable
+              , maybeModule = Nothing
+              , name
+              , attrPath = []
+              }
 
-    lowerName =
-        fn maybeModule, name, attrs:
-        if List.any startsWithUpperChar attrs then
-            addError "attribute names must start with a lowercase letter" @state
-        else
-            if maybeModule /= Nothing and modifier /= Token.NameNoModifier then
-                addError "can't use . or @ modifier on an imported value" @state
-            else
-                word as Token.Word =
-                    {
-                    , modifier
-                    , isUpper = False
-                    , maybeModule
-                    , name
-                    , attrPath = attrs
-                    }
-                addContentTokenAbs start end (Token.Word word) @state
+        , _:
+              addError "apostrophes can be used only at the beginning of a constructor name" @state
+              {
+              , type = Token.Constructor
+              , maybeModule = Nothing
+              , name = text
+              , attrPath = []
+              }
+
+
+parseModule as fn Text, @ReadState: Text =
+    fn text, @state:
+    "TODO"
+
+
+parseAttr as fn Text, @ReadState: Text =
+    fn text, @state:
+    "TODO"
+
+
+addWord as fn Int, Int, Text, @ReadState: None =
+    fn start, end, chunk, @state:
 
     snips =
         Text.split "." chunk
 
-    if List.any (fn s: s == "") snips then
-        addError "use spaces around `..` to concatenate Text" @state
-    else
-      try snips as
-        , []:
-            todo "should not happen"
+    addErrorIf (List.any (fn s: s == "") snips) @state
+        "use spaces around `..` to concatenate Text"
 
-        , [ one ]:
-            # value
-            # Type
-            # Constructor
-            if startsWithUpperChar one then
-                upperName Nothing one
-            else
-                lowerName Nothing one []
+    word as Token.Word =
+        try snips as
+            , []:
+                { type = Token.Variable, maybeModule = Nothing, name = "THIS IS NOT SUPPOSED TO HAPPEN", attrPath = [] }
 
-        , [first, second, ...more]:
-            # value.attr1
-            # value.attr1.attr2
-            # Module.value
-            # Module.Type
-            # Module.Constructor
-            try startsWithUpperChar first & startsWithUpperChar second as
-                # value.attr1
-                # value.attr1.attr2
-                , False & False:
-                    lowerName Nothing first (second :: more)
+            , [ name ]:
+                # value
+                # Module or Type
+                # 'constructor
+                parseNameToWord name @state
 
-                # Module.value
-                # Module.value.attr
-                # Module.value.attr1.attr2
-                , True & False:
-                    lowerName (Just first) second more
+            , [ "", two, ...rest ]:
+                    # .attr1
+                    # .attr1.attr2
+                    {
+                    , type = Token.RecordShorthand
+                    , maybeModule = Nothing
+                    , name = parseAttr two @state
+                    , attrPath = List.map (parseAttr __ @state) rest
+                    }
 
-                , True & True:
+            , [ one, two, ...rest ]:
+                if startsWithUpperChar one then
+                    # Module.value
+                    # Module.value.attr1
+                    # Module.value.attr1.attr2
                     # Module.Type
-                    # Module.Constructor
-                    if more /= [] then
-                        addError ("Types and constructors can't have .attributes") @state
-                    else
-                        upperName (Just first) second
+                    # Module.'constructor
+                    { parseNameToWord two @state with
+                    , maybeModule = Just (parseModule one @state)
+                    , attrPath = List.map (parseAttr __ @state) rest
+                    }
 
-                , False & True:
-                    # something.Something
-                    addError "Something wrong with uppercases?" @state
+                else
+                    # value.attr1
+                    # value.attr1.attr2
+                    w =
+                        parseNameToWord one @state
+
+                    addErrorIf (word.type == Token.Constructor) @state "Constructors cannot have attributes"
+                    addErrorIf (word.type == Token.TypeOrModule) @state "Type names cannot have attributes"
+
+                    { w with
+                    , maybeModule = Nothing
+                    , attrPath = List.map (parseAttr __ @state) [ two, ...rest ]
+                    }
+
+    addContentTokenAbs start end (Token.Word word) @state
 
 
-addWordToken as fn Text, Token.NameModifier, @ReadState: None =
-    fn buffer, modifier, @state:
+addWordToken as fn Text, @ReadState: None =
+    fn buffer, @state:
 
     start = cloneUni @state.tokenStart
 
     end = getPos @state
 
-    ds = (if modifier == Token.NameNoModifier then 0 else 1)
-
-    chunk = Text.slice (start + ds) end buffer
+    chunk = Text.slice (start) end buffer
 
     maybeKeywordKind =
         try chunk as
@@ -412,15 +427,12 @@ addWordToken as fn Text, Token.NameModifier, @ReadState: None =
             , "__": Just << Token.ArgumentPlaceholder
             , _: Nothing
 
-    try maybeKeywordKind & modifier as
-        , Just kind & Token.NameNoModifier:
+    try maybeKeywordKind as
+        , Just kind:
             addContentTokenAbs start end kind @state
 
-        , Just kind & _:
-            addError (chunk .. " as a keyword, you can't really use it this way") @state
-
         , _:
-            addLowerOrUpperWord start end modifier chunk @state
+            addWord start end chunk @state
 
 
 #
@@ -587,7 +599,7 @@ lexOne as fn Text, Text, @ReadState: None =
             , _:
                 @state.tokenStart := getPos @state
                 if isWordStart char then
-                    setMode (Word Token.NameNoModifier) @state
+                    setMode (Word) @state
 
                 else if isNumber char then
                     setMode NumberLiteral @state
@@ -603,7 +615,7 @@ lexOne as fn Text, Text, @ReadState: None =
               setMode Dot_Two @state
           else if isWordStart char then
               @state.tokenStart := getPos @state - 1
-              setMode (Word Token.NameStartsWithDot) @state
+              setMode  Word @state
 
           else if isNumber char then
               setMode NumberLiteral @state
@@ -630,12 +642,12 @@ lexOne as fn Text, Text, @ReadState: None =
             else
                 addError "no idea what this is" @state
 
-        , Word modifier:
+        , Word:
             if isWordBody char then
               None
 
             else
-                  addWordToken buffer modifier @state
+                  addWordToken buffer @state
                   setMode Default @state
                   lexOne buffer char @state
 

@@ -7,15 +7,15 @@ union Token =
     Token Int Int Kind
 
 
-union NameModifier =
-    , NameNoModifier
-    , NameStartsWithDot
+union WordType =
+    , Variable
+    , Constructor
+    , TypeOrModule
+    , RecordShorthand
 
 
-alias Word =
-    {
-    , modifier as NameModifier
-    , isUpper as Bool
+alias Word = {
+    , type as WordType
     , maybeModule as Maybe Name
     , name as Name
     , attrPath as [Name]
@@ -53,6 +53,8 @@ union Kind =
     , Try
     , As
     , With
+    , IntrospectValue
+    , IntrospectType
     # Separators
     , Comma
     , Colon
