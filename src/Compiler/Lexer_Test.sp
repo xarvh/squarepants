@@ -1,6 +1,7 @@
 tests as Test =
     Test.Group "Lexer"
         [
+        , names
         , ops
         , unaryAddittiveOps
         , indentation
@@ -91,27 +92,12 @@ lexTokensAndDrop as fn Int: fn Text: Result Text [[Token]] =
 
 lowerName as fn Text: Token.Kind =
     fn name:
-    {
-    , modifier = Token.NameNoModifier
-    , isUpper = False
-    , maybeModule = Nothing
-    , name
-    , attrPath = []
-    }
-    >> Token.Word
-
+    Token.Lowercase { name, attrPath = [], maybeModule = Nothing }
 
 
 upperName as fn Text: Token.Kind =
     fn name:
-    {
-    , modifier = Token.NameNoModifier
-    , isUpper = True
-    , maybeModule = Nothing
-    , name
-    , attrPath = []
-    }
-    >> Token.Word
+    Token.Uppercase { name, maybeModule = Nothing }
 
 
 #
@@ -119,6 +105,37 @@ upperName as fn Text: Token.Kind =
 # Tests
 #
 #
+
+
+names as Test =
+    Test.Group
+        """
+        Names
+        """
+        [
+        , codeTest
+            """
+            [reg] Simple record access
+            """
+            "a.b"
+            (lexTokensAndDrop 1)
+            (Test.isOkAndEqualTo
+                [[
+                , Token 0 3 __ << Token.Lowercase { maybeModule = Nothing, name = "a", attrPath = ["b"] }
+                ]]
+            )
+        , codeTest
+            """
+            [reg] Nested record access
+            """
+            "a.b.c"
+            (lexTokensAndDrop 1)
+            (Test.isOkAndEqualTo
+                [[
+                , Token 0 5 __ << Token.Lowercase { maybeModule = Nothing, name = "a", attrPath = ["b", "c" ] }
+                ]]
+            )
+        ]
 
 
 ops as Test =
@@ -530,7 +547,7 @@ recordLiterals as Test =
             (lexTokensAndDrop 3)
             (Test.isOkAndEqualTo [[
               , Token 6 6 Token.BlockStart
-              , Token 6 8 __ << Token.Word { attrPath = [], isUpper = False, maybeModule = Nothing, modifier = Token.NameStartsWithDot, name = "b" }
+              , Token 6 8 __ << Token.RecordShorthand { name = "b", attrPath = [] }
               , Token 8 8 Token.BlockEnd
             ]])
         ]

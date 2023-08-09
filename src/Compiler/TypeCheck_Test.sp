@@ -1,6 +1,8 @@
 tests as Test =
     Test.Group
-        "TypeCheck"
+        """
+        TypeCheck
+        """
         [
         , functions
         , statements
@@ -177,8 +179,8 @@ functions as Test =
                  , type = TH.taNumber
                  }
             )
-        , codeTest "Known function with wrong *number* of args" "a = add False" (infer "a") (Test.errorContains [ "Number", "Arguments" ])
-        , codeTest "Known function with wrong params" "a = add False 1" (infer "a") (Test.errorContains [ "Bool" ])
+        , codeTest "Known function with wrong *number* of args" "a = add 'false" (infer "a") (Test.errorContains [ "Number", "Arguments" ])
+        , codeTest "Known function with wrong params" "a = add 'false 1" (infer "a") (Test.errorContains [ "Bool" ])
         , codeTest
             "Function inference 1"
             "a = fn x: add x 1"
@@ -263,7 +265,7 @@ statements as Test =
             """
             a =
               3
-              False
+              'false
             """
             (infer "a")
             (Test.isOkAndEqualTo { freeTyvars = Dict.empty, type = TH.taBool })
@@ -348,7 +350,7 @@ recursiveTypes as Test =
             Normal types cannot be self recursive
             """
             """
-            alias A = { a as A }
+            A = { a as A }
             a as A = todo ""
             """
             (infer "a")
@@ -358,19 +360,19 @@ recursiveTypes as Test =
             Normal types cannot be mutually recursive
             """
             """
-            alias A = { b as B }
-            alias B = { a as A }
+            A = { b as B }
+            B = { a as A }
             a as A = todo ""
             """
             (infer "a")
             (Test.errorContains [ "Circular" ])
         , codeTest
             """
-            Union types can be recursive
+            Variant types can be recursive
             """
             """
-            union A = A2 B
-            alias B = { a as A }
+            var A = 'a2 B
+            B = { a as A }
             a as A = todo ""
             b as B = todo ""
             """
@@ -423,7 +425,7 @@ variableTypes as Test =
             """
             """
             q as [item] =
-              Core.Nil
+              Core.'nil
 
             r as [Text] =
                   q
@@ -451,7 +453,7 @@ variableTypes as Test =
             [reg] Unifying functions does not unfiy their args
             """
             """
-            union Dict_ k v = Empty
+            var Dict_ k v = 'empty
             dict_member as fn k, Dict_ k v: Bool = todo ""
             dict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = todo ""
 
@@ -478,7 +480,7 @@ higherOrderTypes as Test =
             Parse precedence
             """
             """
-            union T a = T a
+            var T a = 't a
 
             a as fn T a: T a =
                 fn l: l
@@ -492,11 +494,11 @@ higherOrderTypes as Test =
             )
         , codeTest
             """
-            Union type constructors
+            Variant type constructors
             """
             """
-            union X a = L
-            l = L
+            var X a = 'l
+            l = 'l
             """
             (infer "l")
             (Test.isOkAndEqualTo
@@ -507,10 +509,10 @@ higherOrderTypes as Test =
             )
         , codeTest
             """
-            [reg] type check mistakes a union type with free tyvars for a free tyvar?
+            [reg] type check mistakes a variant type with free tyvars for a free tyvar?
             """
             """
-            union O r e o = O r e o
+            var O r e o = 'o r e o
 
             run as fn (fn r: O r e o), r: O r e o =
                fn rToOreo, r:
@@ -523,10 +525,10 @@ higherOrderTypes as Test =
             [reg] Wrong should be Text
             """
             """
-            union O o = O Text o
+            var O o = 'o Text o
 
             fun as Number: Text: O wrong = _: a:
-                O a a
+                'o a a
             """
             (infer "fun")
             (Test.errorContains [ "wrong" ])
@@ -535,7 +537,7 @@ higherOrderTypes as Test =
             [reg] Should complain about undefined type argument
             """
             """
-            union O a = O Text output
+            var O a = 'o Text output
             x = 1
             """
             (infer "x")
@@ -545,7 +547,7 @@ higherOrderTypes as Test =
             [reg] Named vars can't be refined?
             """
             """
-            union Wrap a = W a
+            var Wrap a = 'w a
 
             f as fn a: Wrap a =
                 fn a: a
@@ -607,7 +609,7 @@ records as Test =
             """
             """
             x =
-                !a = 3 & False & 2
+                !a = 3 & 'false & 2
 
                 @a.third += 1
             """
@@ -686,7 +688,7 @@ records as Test =
             [reg] refineType when the record has a non-extensible alias
             """
             """
-            alias A = { c as Number, d as Number }
+            A = { c as Number, d as Number }
 
             upd as fn A: A = fn a:
               { a with c = .c + 1 }
@@ -698,13 +700,13 @@ records as Test =
             [reg] infinite recursion on addSubstitution/unify_
             """
             """
-            alias B = { l as [Text] }
+            B = { l as [Text] }
 
             readOne as fn B: (Text & B) =
                 fn b:
                 try b.l as
-                    , []: "" & b
-                    , [h, ...t]: h & { b with l = t }
+                     []: "" & b
+                     [h, ...t]: h & { b with l = t }
             """
             (infer "readOne")
             Test.isOk
@@ -713,12 +715,12 @@ records as Test =
             [reg] unifyToNonExtensibleRecord correctly substitutes the record extension
             """
             """
-            alias R = { x as Number, y as Number }
+            R = { x as Number, y as Number }
 
             rec as fn R: R =
                 fn s:
 
-                if True then
+                if 'true then
                     { s with y = .y }
                 else
                     rec { s with y = .y }
@@ -730,7 +732,7 @@ records as Test =
             [reg] Record missing attributes
             """
             """
-            alias R = { x as Number, y as Number }
+            R = { x as Number, y as Number }
 
             r as R = {
               , x = 3
@@ -754,11 +756,11 @@ patterns as Test =
             Constructor unpacking
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
 
             identityFunction =
                fn a:
-               Z b = Z a
+               'z b = 'z a
                b
             """
             (infer "identityFunction")
@@ -841,10 +843,10 @@ patterns as Test =
             each as fn [a], (fn a: b): None =
                 fn ls, f:
                 try ls as
-                    , Core.Nil: None
+                     Core.'nil: 'none
 
             result =
-                1 :: Core.Nil = Core.Nil
+                1 :: Core.'nil = Core.'nil
             """
             (infer "result")
             #
@@ -884,8 +886,8 @@ try_as as Test =
             x =
                 fn q:
                 try q as
-                    , True: 2
-                    , _: 3
+                     'true: 2
+                     _: 3
             """
             (infer "x")
             (Test.isOkAndEqualTo
@@ -903,8 +905,8 @@ try_as as Test =
             x =
                 fn q:
                 try q as
-                    , True: 2
-                    , []: 3
+                     'true: 2
+                     []: 3
             """
             (infer "x")
             (Test.errorContains [ "List", "Bool" ])
@@ -917,8 +919,8 @@ try_as as Test =
             x =
                 fn q:
                 try q as
-                    , True: 2
-                    , False: False
+                     'true: 2
+                     'false: 'false
             """
             (infer "x")
             (Test.errorContains [ "Number", "Bool" ])
@@ -929,7 +931,7 @@ try_as as Test =
             """
             x as Number =
                 try "" as
-                    , "": y
+                     "": y
             """
             (infer "x")
             (Test.errorContains [ "y" ])
@@ -983,7 +985,7 @@ if_else as Test =
             x =
                 fn q:
                 if q then 2
-                else False
+                else 'false
             """
             (infer "x")
             (Test.errorContains [ "Number" ])
@@ -1104,11 +1106,11 @@ misc as Test =
             [reg] named tyvars should not "bleed" to other definitions
             """
             """
-            union DD q =
-                , RBEmpty_elm_builtin
+            var DD q =
+                , 'RBEmpty_elm_builtin
 
             empty as DD key =
-                RBEmpty_elm_builtin
+                'RBEmpty_elm_builtin
 
             merge as fn (fn key, b, res: res), res: res =
               fn rightStep, initialResult:
@@ -1116,7 +1118,7 @@ misc as Test =
               stepState as fn key, b, [key & a] & res: [key & a] & res =
                 fn rKey, rValue, q:
                 try q.first as
-                  , []: q
+                   []: q
 
               initialResult
             """
@@ -1127,19 +1129,19 @@ misc as Test =
             [reg] Constructors not being generalized led to tyvar bleed
             """
             """
-            union DD a b = Blah
+            var DD a b = 'Blah
 
             ddget as fn a, DD a b: DD a b =
                 fn a, b:
-                Blah
+                'Blah
 
             formatSnippet as Text =
                 try [""] as
-                    , ["emphasys", s]: s
+                     ["emphasys", s]: s
 
             fmtBlock as Text =
-                try ddget 1 Blah as
-                    , Blah:
+                try ddget 1 'Blah as
+                     'Blah:
                         ""
             """
             (infer "formatSnippet")

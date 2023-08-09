@@ -112,11 +112,16 @@ union RootEntry =
     , Dir SourceDir
 
 
+globalValue as SPON.Reader Text =
+    SPON.oneOf [ SPON.lowerName, SPON.constructor ]
+
+
+
 moduleReader as SPON.Reader Module =
     SPON.field "path" SPON.upperName >> SPON.onAcc fn path:
     SPON.maybe (SPON.field "importAs" SPON.upperName) >> SPON.onAcc fn visibleAs:
     SPON.maybe (SPON.field "globalTypes" (SPON.many SPON.upperName)) >> SPON.onAcc fn globalTypes:
-    SPON.maybe (SPON.field "globalValues" (SPON.many SPON.lowerOrUpperName)) >> SPON.onAcc fn globalValues:
+    SPON.maybe (SPON.field "globalValues" (SPON.many globalValue)) >> SPON.onAcc fn globalValues:
     SPON.return
         { path = path
         , visibleAs = Maybe.withDefault path visibleAs

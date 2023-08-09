@@ -467,11 +467,11 @@ definitions as Test =
             Unions 1
             """
             """
-            union Meh = Meh z
+            var Meh = 'meh z
             """
             """
-            union Meh =
-                , Meh z
+            var Meh =
+                , 'meh z
 
             """
         , formatTest
@@ -479,12 +479,12 @@ definitions as Test =
             Unions 2
             """
             """
-            union Meh a b = Blah, Meh x y z
+            var Meh a b = 'blah, 'meh x y z
             """
             """
-            union Meh a b =
-                , Blah
-                , Meh x y z
+            var Meh a b =
+                , 'blah
+                , 'meh x y z
 
             """
         , formatTest
@@ -773,14 +773,14 @@ tryAs as Test =
             """
             """
             x = try blah as
-              , Just a: a
-              , Nothing:  b
+              Just a: a
+              Nothing:  b
             """
             """
             x =
                 try blah as
-                    , Just a: a
-                    , Nothing: b
+                    Just a: a
+                    Nothing: b
 
             """
         , formatTest
@@ -789,22 +789,22 @@ tryAs as Test =
             """
             """
             x = try blah as
-              , Just a:
+              Just a:
                     b = 1
                     b + a
-              , Nothing:  b
+              Nothing:  b
             """
             """
             x =
                 try blah as
 
-                    , Just a:
+                    Just a:
                         b =
                             1
 
                         b + a
 
-                    , Nothing:
+                    Nothing:
                         b
 
             """
@@ -814,15 +814,15 @@ tryAs as Test =
             """
             """
             try e  as
-                , T: 9
+                T: 9
                 # comment
-                , _:  10
+                _:  10
             """
             """
             try e as
-                , T: 9
+                T: 9
                 # comment
-                , _: 10
+                _: 10
 
             """
         , formatTest
@@ -832,20 +832,20 @@ tryAs as Test =
             """
             try e as
                 # AAA
-                , T:
+                T:
                 # BBB
                     9
-                , _: 10
+                _: 10
             """
             """
             try e as
 
                 # AAA
-                , T:
+                T:
                     # BBB
                     9
 
-                , _:
+                _:
                     10
 
             """
@@ -856,20 +856,20 @@ tryAs as Test =
             """
             try e as
                 [# AAA #]
-                , T:
+                T:
                 [# BBB #]
                     9
-                , _: 10
+                _: 10
             """
             """
             try e as
 
                 [# AAA #]
-                , T:
+                T:
                     [# BBB #]
                     9
 
-                , _:
+                _:
                     10
 
             """
@@ -880,12 +880,12 @@ tryAs as Test =
             """
             x =
                       try char as
-                        , "":
+                        "":
                             None
 
             #            "@":
 
-                        , "#":
+                        "#":
                             start
 
             """
@@ -893,12 +893,12 @@ tryAs as Test =
             x =
                 try char as
 
-                    , "":
+                    "":
                         None
 
             #            "@":
 
-                    , "#":
+                    "#":
                         start
 
             """
@@ -908,25 +908,25 @@ tryAs as Test =
             """
             """
             try char as
-              , a: b
+              a: b
 
               [#
               comment
               #]
 
-              , d: c
+              d: c
             """
             """
             try char as
 
-                , a:
+                a:
                     b
 
                 [#
                 comment
                 #]
 
-                , d:
+                d:
                     c
 
             """
@@ -938,14 +938,14 @@ tryAs as Test =
             try value as
 
                 # TODO restore `None` here once it doesn't break JS any more
-                , Err _:
+                Err _:
                     formatIndented
             """
             """
             try value as
 
                 # TODO restore `None` here once it doesn't break JS any more
-                , Err _:
+                Err _:
                     formatIndented
 
             """
