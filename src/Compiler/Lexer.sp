@@ -15,8 +15,8 @@ union Mode =
     , Squiggles
     , SingleQuote { lastEscape as Int }
     , TripleQuote { lastEscape as Int, closingQuotes as Int }
-    , LineComment
-    , BlockComment { nesting as Int, previous as Text }
+    , LineComment { start as Int }
+    , BlockComment { start as Int, nesting as Int, previous as Text }
 
 
 union TabsOrSpaces =
@@ -41,6 +41,7 @@ alias ReadState = {
     , lineIndent as Int
 
     , errors as Array (fn Error.Module: Error)
+    , pendingComments as Array Text
 
     # indent / block stuff
     , soFarThereAreNoTokensInThisLine as Bool
@@ -68,6 +69,7 @@ readStateInit as fn Text: !ReadState =
     , lineIndent = 0
 
     , errors = Array.fromList []
+    , pendingComments = Array.fromList []
 
     , soFarThereAreNoTokensInThisLine = True
     , indentStack = Array.fromList []
@@ -108,9 +110,17 @@ setMode as fn Mode, @ReadState: None =
     @state.mode := cloneImm mode
 
 
+addPendingComment as fn Int, Text, @ReadState: None =
+    fn start, buffer, @state:
+
+    end = getPos @state - 1
+    content = Text.slice start end buffer
+    Array.push @state.pendingComments content
+
+
 addIndentToken as fn Int, Token.Kind, @ReadState: None =
     fn pos, kind, @state:
-    Array.push @state.tokens (Token Token.N pos pos kind)
+    Array.push @state.tokens (Token [] pos pos kind)
 
 
 updateIndent as fn Int, Int, Token.Kind, @ReadState: None =
@@ -193,7 +203,7 @@ absAddToken as fn Int, Int, Token.Kind, @ReadState: None =
             , _: False
 
     @state.indentStartsABlock := indentStartsABlock
-    Array.push @state.tokens (Token Token.N start end kind)
+    Array.push @state.tokens (Token [] start end kind)
     @state.tokenStart := cloneImm end
 
 
@@ -206,7 +216,7 @@ relAddToken as fn Int, Int, Token.Kind, @ReadState: None =
 addOneIndentToken as fn Token.Kind, @ReadState: None =
     fn kind, @state:
     pos = getPos @state
-    Array.push @state.tokens (Token Token.N pos pos kind)
+    Array.push @state.tokens (Token [] pos pos kind)
 
 
 getChunk as fn Text, @ReadState: Int & Int & Text =
@@ -553,7 +563,8 @@ lexOne as fn Text, Text, @ReadState: None =
 #                setMode Mutable @state
 
             , "#":
-                setMode LineComment @state
+                start = getPos @state + 1
+                setMode (LineComment { start }) @state
 
             , "[":
                 setMode ContentOpeningBlockComment @state
@@ -740,8 +751,9 @@ lexOne as fn Text, Text, @ReadState: None =
                     setMode (TripleQuote { lastEscape, closingQuotes = 0 }) @state
 
 
-        , LineComment:
+        , LineComment { start }:
           if char == "\n" or char == "" then
+              addPendingComment start buffer @state
               setMode Default @state
               lexOne buffer char @state
           else
@@ -750,17 +762,18 @@ lexOne as fn Text, Text, @ReadState: None =
 
         , ContentOpeningBlockComment:
           if char == "#" then
-              setMode (BlockComment { nesting = 1, previous = "" }) @state
+              start = getPos @state + 1
+              setMode (BlockComment { start, nesting = 1, previous = "" }) @state
           else
               # TODO replace with -1 once it as supported
               relAddToken (0 - 1) 0 (Token.SquareBracket Token.Open) @state
               setMode Default @state
               lexOne buffer char @state
 
-        , BlockComment { nesting, previous }:
+        , BlockComment { start, nesting, previous }:
           continueWithDeltaNesting =
               fn dn:
-              setMode (BlockComment { nesting = nesting + dn, previous = char }) @state
+              setMode (BlockComment { start, nesting = nesting + dn, previous = char }) @state
 
           try previous & char as
             , "[" & "#":
@@ -768,8 +781,9 @@ lexOne as fn Text, Text, @ReadState: None =
 
             , "#" & "]":
                 if nesting > 1 then
-                    continueWithDeltaNesting (0 - 1)
+                    continueWithDeltaNesting -1
                 else
+                    addPendingComment start buffer @state
                     setMode Default @state
 
             , _ & "":
@@ -794,7 +808,8 @@ tryIndent as fn Text, Text, Text, @ReadState: None =
         setMode Indent @state
 
     else if char == "#" then
-        setMode LineComment @state
+        start = getPos @state + 1
+        setMode (LineComment { start }) @state
     else
         @state.lineIndent := cloneUni @state.column
         setMode Default @state
@@ -810,7 +825,7 @@ closeOpenBlocks as fn @ReadState: None =
     s = Array.toList @state.indentStack
 
     List.each s fn _:
-        Array.push @state.tokens (Token Token.N pos pos Token.BlockEnd)
+        Array.push @state.tokens (Token [] pos pos Token.BlockEnd)
 
     Array.push @state.sections (Array.toList @state.tokens)
 

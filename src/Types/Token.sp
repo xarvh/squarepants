@@ -1,17 +1,18 @@
 
 union Comment =
+    #
+    # Let's start simple, and support only comments that do NOT share the line with actual code
+    # If that works, then we can add "section" comments?
+    #
     # No comment
     , N
-    # Before, start, end
-    , Be Int Int
-    # After, start, end
-    , Af Int Int
-    # The idea is to determine whether to attach a comment to the previous token or to the next by deciding which one is closer
-    # in terms of col or row distance
+    # Multiline comment with start row and end row
+    # Precedes the token.
+    , M Text
 
 
 union Token =
-    Token Comment Int Int Kind
+    Token [Comment] Int Int Kind
 
 
 union NameModifier =

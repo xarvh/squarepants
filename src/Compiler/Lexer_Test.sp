@@ -65,7 +65,7 @@ tests as Test =
 #]
 
 
-n = Token.N
+n = []
 
 codeTest as fn Text, Text, (fn Text: Result Text ok), Test.CodeExpectation ok: Test =
     Test.codeTest toHuman __ __ __ __
