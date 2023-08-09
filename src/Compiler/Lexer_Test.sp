@@ -317,19 +317,15 @@ indentation as Test =
                 , Token n (121) (121) (Token.NewSiblingLine )
                 , Token n (121) (122) (lowerName "a")
                 , Token n (123) (124) (Token.Binop Prelude.add)
-#                , Token n (129) (146) (Token.Comment )
-                , Token n (155) (156) (lowerName "b")
-#                , Token n (159) (171) (Token.Comment )
-                , Token n (180) (181) (lowerName "c")
+                , Token [" no block start!"] (155) (156) (lowerName "b")
+                , Token [" no sibling"] (180) (181) (lowerName "c")
                 , Token n (186) (186) (Token.NewSiblingLine )
                 , Token n (186) (187) (lowerName "d")
                 , Token n (188) (189) (Token.Defop )
-#                , Token n (194) (207) (Token.Comment )
                 , Token n (216) (216) (Token.BlockStart )
-                , Token n (216) (217) (lowerName "e")
-#                , Token n (220) (230) (Token.Comment )
+                , Token [" block start"] (216) (217) (lowerName "e")
                 , Token n (239) (239) (Token.NewSiblingLine )
-                , Token n (239) (240) (lowerName "f")
+                , Token [" sibling!"] (239) (240) (lowerName "f")
                 , Token n (245) (245) (Token.BlockEnd )
                 , Token n (245) (245) (Token.NewSiblingLine )
                 , Token n (245) (246) (lowerName "g")
@@ -351,9 +347,8 @@ comments as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-#                , Token n 1 2 << Token.Comment
                 , Token n 3 3 __ << Token.NewSiblingLine
-                , Token n 3 4 __ << lowerName "a"
+                , Token [""] 3 4 __ << lowerName "a"
                 , Token n 5 6 __ << Token.Defop
                 , Token n 7 8 __ << Token.NumberLiteral False "1"
                 ]]
@@ -363,9 +358,8 @@ comments as Test =
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-#                , Token n 1 8 << Token.Comment
                 , Token n 10 10 __ << Token.NewSiblingLine
-                , Token n 10 11 __ << lowerName "a"
+                , Token ["[##]"] 10 11 __ << lowerName "a"
                 , Token n 12 13 __ << Token.Defop
                 , Token n 14 15 __ << Token.NumberLiteral False "1"
                 ]]
@@ -373,12 +367,15 @@ comments as Test =
         , codeTest "Single line"
             "# hello"
             lexTokens
-            (Test.isOkAndEqualTo
-                [[
-#                , Token n 0 7 <<  Token.Comment
-                ]]
+            (Test.isOkAndEqualTo [
+                , []
+                , [ Token [" hello"] 7 7 Token.NewSiblingLine ]
+                ]
             )
-        , codeTest "Multi line"
+        , codeTest
+            """
+            Multi line
+            """
             """
 [# single line #]
 
@@ -391,17 +388,15 @@ a [# inline #] = 1
 [# [# nested #] #]
 """
             lexTokens
-            (Test.isOkAndEqualTo
-                [[
-#                , Token n 0 16 << Token.Comment
-                , Token n 19 19 __ << Token.NewSiblingLine
-                , Token n 19 20 __ << lowerName "a"
-#                , Token n 21 32 << Token.Comment
-                , Token n 34 35 __ << Token.Defop
-                , Token n 36 37 __ << Token.NumberLiteral False "1"
-#                , Token n 39 58 << Token.Comment
-#                , Token n 61 78 << Token.Comment
-                ]]
+            (Test.isOkAndEqualTo [
+                , [
+                    , Token n 19 19 __ << Token.NewSiblingLine
+                    , Token [" single line "] 19 20 __ << lowerName "a"
+                    , Token [" inline "] 34 35 __ << Token.Defop
+                    , Token n 36 37 __ << Token.NumberLiteral False "1"
+                    ]
+                , [ Token ["\n    multi line\n", " [# nested #] "] 79 79 Token.NewSiblingLine ]
+                ]
             )
         , codeTest
             "brackets"
@@ -434,8 +429,7 @@ a [# inline #] = 1
                 , Token n 11 12 __ << Token.SquareBracket Token.Open
                 , Token n 17 18 __ << Token.Comma
                 , Token n 19 20 __ << lowerName "a"
-#                , Token n 21 22 __ << Token.Comment
-                , Token n 27 28 __ << Token.SquareBracket Token.Closed
+                , Token [""] 27 28 __ << Token.SquareBracket Token.Closed
                 , Token n 28 28 __ << Token.BlockEnd
                 ]]
             )
