@@ -107,6 +107,10 @@ sourceDir =
        path = SPLib/Parser
        importAs = Parser
 
+    module =
+       path = SPLib/Format
+       importAs = Fmt
+
 
 # This will be transformed into a platform
 library =

@@ -12,6 +12,7 @@ allTests as [ Test ] =
     , Dict_Test.tests
     , RefHierarchy_Test.tests
     , Uniqueness.specs
+    , SPLib/Format_Test.tests
     ]
 
 
