@@ -402,6 +402,7 @@ stripEnd as fn Line: Line =
       , Blank: Blank
 
 # | Adds the given suffix to then end of the last line of the @Block@.
+# TODO: rename to `suffix`?
 addSuffix as fn Line, Block: Block =
     fn suffix, block:
     mapLastLine (indent_map (Row __ suffix) __) block

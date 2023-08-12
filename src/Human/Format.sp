@@ -1,4 +1,16 @@
 
+
+
+
+groupWithBlankLines as fn Fmt.Block, Text, Text, Bool, [Fmt.Block]: Fmt.Block =
+    fn open, sep, close, bool, blocks:
+
+    todo ""
+
+
+
+
+
 #blah =
 #    """ blah "a" """
 #    >> formatLiteralText
@@ -30,31 +42,31 @@ formatExpression as fn FA.Expression: Fmt.Block =
             formatRecord maybeExtension attrs
 
         , FA.Variable { maybeType, word }:
-            Fmt.textToBlock ""
+            formatVariable maybeType word
 
         , FA.Fn pars body:
-            Fmt.textToBlock ""
+            formatFunction pars body
 
         , FA.Unop unopId:
-            Fmt.textToBlock ""
+            formatUnop unopId
 
         , FA.UnopCall unopId expr:
-            Fmt.textToBlock ""
+            formatUnopCall unopId expr
 
         , FA.Binop binop:
-            Fmt.textToBlock ""
+            Fmt.textToBlock binop.symbol
 
-        , FA.BinopChain int binopChain:
-            Fmt.textToBlock ""
+        , FA.BinopChain priority binopChain:
+            formatBinopChain priority binopChain
 
         , FA.Call ref args:
-            Fmt.textToBlock ""
+            formatCall ref args
 
         , FA.Poly text expression:
-            Fmt.textToBlock ""
+            Fmt.textToBlock "TODO: Poly"
 
         , FA.If { condition, true, false }:
-            Fmt.textToBlock ""
+            formatIf condition true false
 
         , FA.Try { value, patterns }:
             Fmt.textToBlock ""
@@ -64,9 +76,11 @@ formatExpression as fn FA.Expression: Fmt.Block =
 
 formatLiteralText as fn Text: Fmt.Block =
 
-    singleQuote = "\""
+    singleQuote =
+        "\""
 
-    tripleQuote = Fmt.textToBlock "\"\"\""
+    tripleQuote =
+        Fmt.textToBlock "\"\"\""
 
     matchNewlinesOrQuotes =
         Text.startsWithRegex """.*([^\]["])|\n"""
@@ -116,15 +130,15 @@ formatLiteralNumber as fn Bool, Text: Fmt.Block =
         Fmt.textToBlock numberAsText
 
 
-formatStatements as fn [FA.Statements]: Fmt.Block =
+formatStatements as fn [FA.Statement]: Fmt.Block =
     fn stats:
     stats
     >> List.map formatStatement __
-    >> List.intersperse Fmt.blankLine __
+    >> List.intersperse Fmt.blankLine __ []
     >> Fmt.stack
 
 
-formatStatement as fn FA.Statements: Fmt.Block =
+formatStatement as fn FA.Statement: Fmt.Block =
     fn stat:
     try stat as
         , FA.Evaluation expression: formatExpression expression
@@ -137,13 +151,18 @@ formatValueDef as fn FA.ValueDef: Fmt.Block =
     fn { pattern, nonFn, body }:
 
     Fmt.stack [
-        , spaceSeparatedOrIndent [
-            , formatPattern pattern
+        , Fmt.spaceSeparatedOrIndent [
+            , formatExpression pattern
             , formatNonFn nonFn
             , Fmt.textToBlock "="
             ]
         , Fmt.indent (formatExpression body)
         ]
+
+
+formatNonFn as fn [At Token.Word]: Fmt.Block =
+    fn atWords:
+    todo "formatNonFn"
 
 
 formatList as fn [Bool & FA.Expression]: Fmt.Block =
@@ -155,14 +174,13 @@ formatList as fn [Bool & FA.Expression]: Fmt.Block =
         if isUnpacked then
             expr
             >> formatExpression
-            >> exprParensProtectSpaces
-            >> Fmt.prefix 3 (Fmt.textToBlock "...") __
+            >> Fmt.prefix 3 (Fmt.Text_ "...") __
         else
-            formatExpr expr
+            formatExpression expr
 
     unpacksAndExprs
     >> List.map formatListItem __
-    >> groupWithBlankLines '[' ',' ']' True __
+    >> groupWithBlankLines (Fmt.textToBlock "[") "," "]" True __
 
 
 formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block =
@@ -170,13 +188,13 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
 
     open =
         try maybeMaybeExt as
-            Nothing: Fmt.textToBlock "{"
-            Just Nothing: Fmt.textToBlock "{ with"
-            Just (Just ext):
+            , Nothing: Fmt.textToBlock "{"
+            , Just Nothing: Fmt.textToBlock "{ with"
+            , Just (Just ext):
                 ext
                 >> formatExpression
-                >> Fmt.prefix 1 (Fmt.textToBlock "{") __
-                >> Fmt.suffix 4 (Fmt.textToBlock "with") __
+                >> Fmt.prefix 1 (Fmt.Text_ "{") __
+                >> Fmt.addSuffix (Fmt.Text_ "with") __
 
     formatRecordAttribute =
         fn { name, maybeExpr }:
@@ -184,13 +202,13 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
         try maybeExpr as
             , Nothing: formatExpression name
             , Just expr: [
-              , spaceSeparatedOrIndent [
+              , Fmt.spaceSeparatedOrIndent [
                   , formatExpression name
                   , Fmt.textToBlock "="
                   ]
               , formatExpression expr
               ]
-              >> rowOrIndent Nothing __
+              >> Fmt.rowOrIndent Nothing __
 
     attrs
     # TODO sort by attribute name
@@ -198,9 +216,99 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
     >> groupWithBlankLines open "," "}" True __
 
 
+formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
+    fn maybeType, { modifier, isUpper, maybeModule, name, attrPath }:
+
+    word as Fmt.Block =
+        [
+        , try modifier as
+            , Token.NameNoModifier: []
+            , Token.NameStartsWithDot: [ "." ]
+
+        , try maybeModule as
+            , Nothing: []
+            , Just module: [ module, "." ]
+
+        , [ name ]
+
+        , List.map (fn p: "." .. p) attrPath
+        ]
+        >> List.concat
+        >> Text.join "" __
+        >> Fmt.textToBlock
+
+    try maybeType as
+        , Nothing:
+            word
+
+        , Just type:
+            [
+            , word
+            , Fmt.textToBlock "as"
+            , formatExpression type
+            ]
+            >> Fmt.rowOrIndent Nothing __
 
 
+formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
+    fn pars, body:
+
+    [
+    , pars
+      >> List.map formatExpression __
+      >> groupWithBlankLines (Fmt.textToBlock "fn") "," ":" True __
+    , formatExpression body
+    ]
+    >> Fmt.rowOrIndent Nothing __
 
 
+unopToText as fn Op.UnopId: Text =
+    fn unopId:
+    try unopId as
+        , Op.UnopPlus: "+"
+        , Op.UnopMinus: "-"
+        , Op.UnopUnique: "!"
+        , Op.UnopRecycle: "@"
+
+
+formatUnop as fn Op.UnopId: Fmt.Block =
+    fn unopId:
+    unopId >> unopToText >> Fmt.textToBlock
+
+
+formatUnopCall as fn Op.UnopId, FA.Expression: Fmt.Block =
+    fn unopId, expr:
+
+    unop =
+        unopToText unopId
+
+    expr
+    >> formatExpression
+    >> Fmt.prefix (Text.length unop) (Fmt.Text_ unop) __
+
+
+formatBinopChain as fn Int, FA.SepList Op.Binop FA.Expression: Fmt.Block =
+    fn priority, left & opsAndRights:
+
+    formatOpAndRight =
+        fn binop & expr:
+        [ Fmt.textToBlock binop.symbol, formatExpression expr ]
+
+    formatExpression left :: List.concatMap formatOpAndRight opsAndRights
+    >> Fmt.rowOrIndent Nothing __
+
+
+formatCall as fn FA.Expression, [FA.Expression]: Fmt.Block =
+    fn ref, args:
+
+    ref :: args
+    >> List.map formatExpression __
+    >> Fmt.rowOrIndent Nothing __
+
+
+formatIf as fn FA.Expression, FA.Expression, FA.Expression: Fmt.Block =
+    fn condition, true, false:
+
+    todo "if"
 
 

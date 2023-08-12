@@ -465,6 +465,7 @@ circularPairs as fn [a]: [a & a] =
         , [h, ...tail]: rec h list []
 
 
+# TODO remove the acc parameter
 intersperse as fn a, [a], [a]: [a] =
     fn separator, items, acc:
 
