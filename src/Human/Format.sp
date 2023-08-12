@@ -23,10 +23,11 @@ formatExpression as fn FA.Expression: Fmt.Block =
             formatStatements stats
 
         , FA.List unpacksAndExprs:
-            Fmt.textToBlock ""
+            formatList unpacksAndExprs
 
         , FA.Record { maybeExtension, attrs }:
-            Fmt.textToBlock ""
+            # TODO Missing info on whether we have `as` or `=`
+            formatRecord maybeExtension attrs
 
         , FA.Variable { maybeType, word }:
             Fmt.textToBlock ""
@@ -116,25 +117,90 @@ formatLiteralNumber as fn Bool, Text: Fmt.Block =
 
 
 formatStatements as fn [FA.Statements]: Fmt.Block =
-    List.map formatStatement stats
+    fn stats:
+    stats
+    >> List.map formatStatement __
+    >> List.intersperse Fmt.blankLine __
     >> Fmt.stack
 
 
 formatStatement as fn FA.Statements: Fmt.Block =
     fn stat:
     try stat as
-
-        , FA.Evaluation expression:
-            formatExpression expression
-
-        , FA.ValueDef valueDef:
-            formatValueDef valueDef
-
-        , FA.AliasDef aliasDef: Fmt.textToBlock "TODO"
-        , FA.UnionDef unionDef: Fmt.textToBlock "TODO"
+        , FA.Evaluation expression: formatExpression expression
+        , FA.ValueDef valueDef: formatValueDef valueDef
+        , FA.AliasDef aliasDef: Fmt.textToBlock "TODO alias"
+        , FA.UnionDef unionDef: Fmt.textToBlock "TODO union"
 
 
 formatValueDef as fn FA.ValueDef: Fmt.Block =
-    fn def:
-    ...
+    fn { pattern, nonFn, body }:
+
+    Fmt.stack [
+        , spaceSeparatedOrIndent [
+            , formatPattern pattern
+            , formatNonFn nonFn
+            , Fmt.textToBlock "="
+            ]
+        , Fmt.indent (formatExpression body)
+        ]
+
+
+formatList as fn [Bool & FA.Expression]: Fmt.Block =
+    fn unpacksAndExprs:
+
+    formatListItem =
+        fn isUnpacked & expr:
+
+        if isUnpacked then
+            expr
+            >> formatExpression
+            >> exprParensProtectSpaces
+            >> Fmt.prefix 3 (Fmt.textToBlock "...") __
+        else
+            formatExpr expr
+
+    unpacksAndExprs
+    >> List.map formatListItem __
+    >> groupWithBlankLines '[' ',' ']' True __
+
+
+formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block =
+    fn maybeMaybeExt, attrs:
+
+    open =
+        try maybeMaybeExt as
+            Nothing: Fmt.textToBlock "{"
+            Just Nothing: Fmt.textToBlock "{ with"
+            Just (Just ext):
+                ext
+                >> formatExpression
+                >> Fmt.prefix 1 (Fmt.textToBlock "{") __
+                >> Fmt.suffix 4 (Fmt.textToBlock "with") __
+
+    formatRecordAttribute =
+        fn { name, maybeExpr }:
+
+        try maybeExpr as
+            , Nothing: formatExpression name
+            , Just expr: [
+              , spaceSeparatedOrIndent [
+                  , formatExpression name
+                  , Fmt.textToBlock "="
+                  ]
+              , formatExpression expr
+              ]
+              >> rowOrIndent Nothing __
+
+    attrs
+    # TODO sort by attribute name
+    >> List.map formatRecordAttribute __
+    >> groupWithBlankLines open "," "}" True __
+
+
+
+
+
+
+
 
