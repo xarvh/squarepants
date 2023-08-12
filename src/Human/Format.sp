@@ -9,15 +9,6 @@ groupWithBlankLines as fn Fmt.Block, Text, Text, Bool, [Fmt.Block]: Fmt.Block =
 
 
 
-
-
-#blah =
-#    """ blah "a" """
-#    >> formatLiteralText
-#    >> Fmt.render
-#    >> log __ "###"
-
-
 formatExpression as fn FA.Expression: Fmt.Block =
     fn FA.Expression pos e_:
     try e_ as

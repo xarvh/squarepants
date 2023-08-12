@@ -103,6 +103,35 @@ selftestMain as fn None: IO Int =
     >> IO.writeStdout
 
 
+formatMain as fn [Text]: IO Int =
+    fn targets:
+
+    formatFile =
+        fn name:
+        IO.readFile name
+        >> IO.onSuccess fn moduleAsText:
+
+        Compiler/Parser.textToFormattableModule {
+             , errorModule = {
+                , fsPath = name
+                , content = moduleAsText
+              }
+              , stripLocations = False
+        }
+        >> Compile.onResSuccess fn formattable:
+
+        formattable
+        >> Human/Format.formatStatements
+        >> Fmt.render
+        >> IO.writeFile (name .. ".fmt.sp") __
+
+    targets
+    >> List.map formatFile __
+    >> IO.parallel
+
+    >> IO.onSuccess fn _:
+    IO.writeStdout "done"
+
 
 [# Command line options:
 
@@ -121,14 +150,15 @@ selftestMain as fn None: IO Int =
 
 #]
 
-union CliOptions =
-    , Help
-    , Selftest
-    , Compile {
-        , self as Text
-        , mainModulePath as Text
-        , maybeOutputPath as Maybe Text
-        }
+#union CliOptions =
+#    , Help
+#    , Selftest
+#    , Format [Text]
+#    , Compile {
+#        , self as Text
+#        , mainModulePath as Text
+#        , maybeOutputPath as Maybe Text
+#        }
 
 
 alias CliState =
@@ -174,7 +204,6 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
                     Ok { cliState with platform }
 
 
-
 cliOptions as [Option CliState] = [
   , {
     , name = "--platform"
@@ -182,28 +211,6 @@ cliOptions as [Option CliState] = [
     , parser = parsePlatformName
     }
     ]
-
-
-
-parseCli as fn [Text]: CliOptions =
-    fn args:
-
-
-    try args as
-        , self :: "selftest" :: tail:
-            Selftest
-
-        , self :: head :: tail:
-            #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
-            {
-            , self
-            , mainModulePath = head
-            , maybeOutputPath = List.head tail
-            }
-            >> Compile
-
-        , _:
-            Help
 
 
 #
@@ -221,6 +228,9 @@ main as IO.Program =
             try args as
                 , self :: "selftest" :: tail:
                     selftestMain None
+
+                , self :: "format" :: tail:
+                    formatMain tail
 
                 , self :: head :: tail:
                     #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
