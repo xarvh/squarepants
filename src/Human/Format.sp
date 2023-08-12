@@ -3,9 +3,42 @@
 
 
 groupWithBlankLines as fn Fmt.Block, Text, Text, Bool, [Fmt.Block]: Fmt.Block =
-    fn open, sep, close, bool, blocks:
+    fn open, sep, close, forceMultiline, blocks:
 
-    todo ""
+    if blocks == [] then
+        [ open, close ]
+
+    else
+        formatEntry =
+          fn char, blankLines & entry:
+          if blankLines == 0 then
+              Block.prefix 2 (Block.char7 char <> Block.space) entry
+          else
+            Block.stack <<
+              NonEmpty.prependList (replicate blankLines Block.blankLine) <<
+                NonEmpty.singleton <<
+                  Block.prefix 2 (Block.char7 char <> Block.space) entry
+
+        spaceSeparatedOrStackForce forceMultiline
+          [
+          , 
+              formatEntry open (0 & first) :: fmap (formatEntry sep) rest
+              >> Block.rowOrStackForce forceMultiline Nothing
+
+          , Fmt.textToBlock close
+          ]
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -153,7 +186,7 @@ formatValueDef as fn FA.ValueDef: Fmt.Block =
 
 formatNonFn as fn [At Token.Word]: Fmt.Block =
     fn atWords:
-    todo "formatNonFn"
+    Fmt.textToBlock "--> TODO formatNonFn <--"
 
 
 formatList as fn [Bool & FA.Expression]: Fmt.Block =
@@ -300,6 +333,6 @@ formatCall as fn FA.Expression, [FA.Expression]: Fmt.Block =
 formatIf as fn FA.Expression, FA.Expression, FA.Expression: Fmt.Block =
     fn condition, true, false:
 
-    todo "if"
+    Fmt.textToBlock "-> TODO if <-"
 
 
