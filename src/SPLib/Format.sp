@@ -266,18 +266,18 @@ rowOrStackForce as fn Bool, Maybe Line, [Block]: Block =
         , [single]:
            single
         , _:
-            try maybeAllSingleLines blocks as
-                , Just (lines & mkLine):
-                    if forceMultiline then
-                      stack blocks
-                    else
-                       try joiner as
-                            , Nothing: for1 lines Row
-                            , Just j: for1 (List.intersperse j lines []) Row
-                       >> mkLine
+            if forceMultiline then
+              stack blocks
+            else
+                try maybeAllSingleLines blocks as
+                    , Just (lines & mkLine):
+                         try joiner as
+                              , Nothing: for1 lines Row
+                              , Just j: for1 (List.intersperse j lines []) Row
+                         >> mkLine
 
-                , _:
-                  stack blocks
+                    , _:
+                      stack blocks
 
 
 # | Same as `rowOrIndentForce` @False@.
@@ -313,6 +313,7 @@ rowOrIndentForce as fn Bool, Maybe Line, [Block]: Block =
                   stack (b1 :: (List.map indent rest))
 
 
+# TODO this outputs the lines in reverse order, it shouldn't!
 maybeAllSingleLines as fn [Block]: Maybe ([Line] & fn Line: Block ) =
 
     rec as fn [Block], [Line]: Maybe ([Line] & fn Line: Block) =

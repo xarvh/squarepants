@@ -1,42 +1,41 @@
 
 
+commaSeparatedList as fn Fmt.Block, Text, [Fmt.Block]: Fmt.Block =
+    fn open, close, items:
+
+    try Fmt.maybeAllSingleLines (open :: items) as
+
+        , Just ([open_,...items_] & mkLine):
+            [#
+                $open item1, item2, item3 $close
+            #]
 
 
-groupWithBlankLines as fn Fmt.Block, Text, Text, Bool, [Fmt.Block]: Fmt.Block =
-    fn open, sep, close, forceMultiline, blocks:
-
-    if blocks == [] then
-        [ open, close ]
-
-    else
-        formatEntry =
-          fn char, blankLines & entry:
-          if blankLines == 0 then
-              Block.prefix 2 (Block.char7 char <> Block.space) entry
-          else
-            Block.stack <<
-              NonEmpty.prependList (replicate blankLines Block.blankLine) <<
-                NonEmpty.singleton <<
-                  Block.prefix 2 (Block.char7 char <> Block.space) entry
-
-        spaceSeparatedOrStackForce forceMultiline
-          [
-          , 
-              formatEntry open (0 & first) :: fmap (formatEntry sep) rest
-              >> Block.rowOrStackForce forceMultiline Nothing
-
-          , Fmt.textToBlock close
-          ]
+            l = (List.intersperse (Fmt.Text_ ", ") items_ []) >> log "IN" __
 
 
+            Fmt.for1 l fn item, acc:
+#                log "-" item
+                Fmt.Row acc item
 
+            >> mkLine
+            >> Fmt.addSuffix (Fmt.Text_ close) __
 
+        , Nothing:
+            [#
+                $open
+                , item1
+                , item2
+                $close
+            #]
 
-
-
-
-
-
+            [
+            , [ open ]
+            , List.map (Fmt.prefix 2 (Fmt.Text_ ", ") __) items
+            , [ Fmt.textToBlock close ]
+            ]
+            >> List.concat
+            >> Fmt.stack
 
 
 
@@ -204,7 +203,7 @@ formatList as fn [Bool & FA.Expression]: Fmt.Block =
 
     unpacksAndExprs
     >> List.map formatListItem __
-    >> groupWithBlankLines (Fmt.textToBlock "[") "," "]" True __
+    >> commaSeparatedList (Fmt.textToBlock "[") "]" __
 
 
 formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block =
@@ -237,7 +236,7 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
     attrs
     # TODO sort by attribute name
     >> List.map formatRecordAttribute __
-    >> groupWithBlankLines open "," "}" True __
+    >> commaSeparatedList open "}" __
 
 
 formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
@@ -267,11 +266,10 @@ formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
 
         , Just type:
             [
-            , word
-            , Fmt.textToBlock "as"
+            , Fmt.addSuffix (Fmt.Text_ " as") word
             , formatExpression type
             ]
-            >> Fmt.rowOrIndent Nothing __
+            >> Fmt.spaceSeparatedOrIndent __
 
 
 formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
@@ -280,10 +278,10 @@ formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
     [
     , pars
       >> List.map formatExpression __
-      >> groupWithBlankLines (Fmt.textToBlock "fn") "," ":" True __
-    , formatExpression body
+      >> commaSeparatedList (Fmt.textToBlock "fn") (":") __
+#    , formatExpression body
     ]
-    >> Fmt.rowOrIndent Nothing __
+    >> Fmt.spaceSeparatedOrIndent __
 
 
 unopToText as fn Op.UnopId: Text =
