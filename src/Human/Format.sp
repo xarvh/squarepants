@@ -1,7 +1,7 @@
 
 
-commaSeparatedList as fn Fmt.Block, Text, [Fmt.Block]: Fmt.Block =
-    fn open, close, items:
+commaSeparatedList as fn Fmt.Block, Text, Bool, [Fmt.Block]: Fmt.Block =
+    fn open, close, closeHasAPrecedingSpace, items:
 
     z =
         open :: items
@@ -10,17 +10,20 @@ commaSeparatedList as fn Fmt.Block, Text, [Fmt.Block]: Fmt.Block =
 
     try z as
 
-        , Just ([open_,...items_] & mkLine):
+        , Just ([openLine, ...itemLines] & mkLine):
             [#
                 $open item1, item2, item3 $close
             #]
-            items_
+            closeLine =
+                if closeHasAPrecedingSpace then
+                    Fmt.Row Fmt.Space (Fmt.Text_ close)
+                else
+                    Fmt.Text_ close
+            itemLines
             >> List.intersperse (Fmt.Text_ ", ") __ []
-            >> List.reverse
-            >> Fmt.for1 __ Fmt.Row
-            >> Fmt.Row (Fmt.Row open_ Fmt.Space) __
+            >> List.for (Fmt.Row openLine Fmt.Space) __ (fn a, b: Fmt.Row b a)
             >> mkLine
-            >> Fmt.addSuffix (Fmt.Text_ close) __
+            >> Fmt.addSuffix closeLine __
 
         , Nothing:
             [#
@@ -29,7 +32,6 @@ commaSeparatedList as fn Fmt.Block, Text, [Fmt.Block]: Fmt.Block =
                 , item2
                 $close
             #]
-
             [
             , [ open ]
             , List.map (Fmt.prefix 2 (Fmt.Text_ ", ") __) items
@@ -204,7 +206,7 @@ formatList as fn [Bool & FA.Expression]: Fmt.Block =
 
     unpacksAndExprs
     >> List.map formatListItem __
-    >> commaSeparatedList (Fmt.textToBlock "[") "]" __
+    >> commaSeparatedList (Fmt.textToBlock "[") "]" True __
 
 
 formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block =
@@ -237,7 +239,7 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
     attrs
     # TODO sort by attribute name
     >> List.map formatRecordAttribute __
-    >> commaSeparatedList open "}" __
+    >> commaSeparatedList open "}" True __
 
 
 formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
@@ -279,7 +281,7 @@ formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
     [
     , pars
       >> List.map formatExpression __
-      >> commaSeparatedList (Fmt.textToBlock "fn") (":") __
+      >> commaSeparatedList (Fmt.textToBlock "fn") ":" False __
     , formatExpression body
     ]
     >> Fmt.spaceSeparatedOrIndent __
