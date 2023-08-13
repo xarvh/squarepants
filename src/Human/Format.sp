@@ -176,19 +176,25 @@ formatStatement as fn FA.Statement: Fmt.Block =
 formatValueDef as fn FA.ValueDef: Fmt.Block =
     fn { pattern, nonFn, body }:
 
-    Fmt.stack [
-        , Fmt.spaceSeparatedOrIndent [
-            , formatExpression pattern
-            , formatNonFn nonFn
-            , Fmt.textToBlock "="
+        [
+        , [
+            , [formatExpression pattern]
+            , if nonFn == [] then [] else [ formatNonFn nonFn ]
+            , [Fmt.textToBlock "="]
             ]
+            >> List.concat
+            >> Fmt.spaceSeparatedOrIndent
         , Fmt.indent (formatExpression body)
         ]
+        >> Fmt.stack
 
 
 formatNonFn as fn [At Token.Word]: Fmt.Block =
     fn atWords:
-    Fmt.textToBlock "--> TODO formatNonFn <--"
+
+    atWords
+    >> List.map (fn x: x >> Pos.drop >> formatWord) __
+    >> commaSeparatedList (Fmt.textToBlock "with") "NonFunction" True __
 
 
 formatList as fn [Bool & FA.Expression]: Fmt.Block =
@@ -242,34 +248,37 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
     >> commaSeparatedList open "}" True __
 
 
+formatWord as fn Token.Word: Fmt.Block =
+    fn { modifier, isUpper, maybeModule, name, attrPath }:
+
+    [
+    , try modifier as
+        , Token.NameNoModifier: []
+        , Token.NameStartsWithDot: [ "." ]
+
+    , try maybeModule as
+        , Nothing: []
+        , Just module: [ module, "." ]
+
+    , [ name ]
+
+    , List.map (fn p: "." .. p) attrPath
+    ]
+    >> List.concat
+    >> Text.join "" __
+    >> Fmt.textToBlock
+
+
 formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
-    fn maybeType, { modifier, isUpper, maybeModule, name, attrPath }:
-
-    word as Fmt.Block =
-        [
-        , try modifier as
-            , Token.NameNoModifier: []
-            , Token.NameStartsWithDot: [ "." ]
-
-        , try maybeModule as
-            , Nothing: []
-            , Just module: [ module, "." ]
-
-        , [ name ]
-
-        , List.map (fn p: "." .. p) attrPath
-        ]
-        >> List.concat
-        >> Text.join "" __
-        >> Fmt.textToBlock
+    fn maybeType, word:
 
     try maybeType as
         , Nothing:
-            word
+            formatWord word
 
         , Just type:
             [
-            , Fmt.addSuffix (Fmt.Text_ " as") word
+            , Fmt.addSuffix (Fmt.Text_ " as") (formatWord word)
             , formatExpression type
             ]
             >> Fmt.spaceSeparatedOrIndent __
@@ -284,7 +293,7 @@ formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
       >> commaSeparatedList (Fmt.textToBlock "fn") ":" False __
     , formatExpression body
     ]
-    >> Fmt.spaceSeparatedOrIndent __
+    >> Fmt.rowOrStack Nothing __
 
 
 unopToText as fn Op.UnopId: Text =
