@@ -280,7 +280,7 @@ formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
     , pars
       >> List.map formatExpression __
       >> commaSeparatedList (Fmt.textToBlock "fn") (":") __
-#    , formatExpression body
+    , formatExpression body
     ]
     >> Fmt.spaceSeparatedOrIndent __
 
