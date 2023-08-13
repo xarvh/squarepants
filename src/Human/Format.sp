@@ -3,21 +3,22 @@
 commaSeparatedList as fn Fmt.Block, Text, [Fmt.Block]: Fmt.Block =
     fn open, close, items:
 
-    try Fmt.maybeAllSingleLines (open :: items) as
+    z =
+        open :: items
+        >> Fmt.maybeAllSingleLines
+        >> Maybe.map (Tuple.mapFirst List.reverse __ ) __
+
+    try z as
 
         , Just ([open_,...items_] & mkLine):
             [#
                 $open item1, item2, item3 $close
             #]
-
-
-            l = (List.intersperse (Fmt.Text_ ", ") items_ []) >> log "IN" __
-
-
-            Fmt.for1 l fn item, acc:
-#                log "-" item
-                Fmt.Row acc item
-
+            items_
+            >> List.intersperse (Fmt.Text_ ", ") __ []
+            >> List.reverse
+            >> Fmt.for1 __ Fmt.Row
+            >> Fmt.Row (Fmt.Row open_ Fmt.Space) __
             >> mkLine
             >> Fmt.addSuffix (Fmt.Text_ close) __
 
