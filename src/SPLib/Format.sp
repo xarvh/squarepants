@@ -65,14 +65,21 @@ indent_width as fn Indent: Int =
 
 indent_combine as fn Int, Int: Int =
   fn pos, i:
+  pos + i
+
+  # TODO: Squarepants does not have a strategy to deal with Tabs vs Spaces, it just rejects them.
+  # This needs to be cleared up with a proper strategy to deal with everything.
+  # Maybe just allowing a command to transform a module from spaces to tabs and vice versa
+
+  [#
   if i < spacesInTab then
     # The right side starts with spaces (and no TABs),
     # so just add everything together.
-    pos + i
   else
     # The right side starts with at least one TAB,
     # so remove the trailing spaces from the left.
     pos - (modBy spacesInTab pos) + i
+  #]
 
 
 
