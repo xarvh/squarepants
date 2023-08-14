@@ -159,9 +159,9 @@ sepList_allSeps as fn (fn sep: Bool), SepList sep item: Bool =
 statementPos as fn Statement: Pos =
     fn statement:
     try statement as
-        , Evaluation (Expression pos expr_): pos
+        , Evaluation (Expression _ pos _ _): pos
         # TODO: the position should encompass the WHOLE definition, not just its start
-        , ValueDef { pattern = Expression pos expr_, nonFn, body }: pos
-        , AliasDef { name = At pos _, args, type }: pos
-        , UnionDef { name = At pos _, args, constructors }: pos
+        , ValueDef { pattern = Expression _ pos _ expr_, nonFn, body }: pos
+        , AliasDef { name = Word _ pos _, args, type }: pos
+        , UnionDef { name = Word _ pos _, args, constructors }: pos
 

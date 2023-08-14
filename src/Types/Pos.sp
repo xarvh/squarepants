@@ -22,11 +22,6 @@ union Pos =
     , G
 
 
-# TODO this was not super useful, remove it
-union At a =
-    At Pos a
-
-
 start as fn Pos: Int =
     fn pos:
     try pos as
@@ -52,10 +47,4 @@ range as fn Pos, Pos: Pos =
 
         , _:
             b
-
-
-drop as fn At a: a =
-    fn x:
-    At pos a = x
-    a
 

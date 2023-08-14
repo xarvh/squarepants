@@ -60,7 +60,7 @@ parens as fn Fmt.Block: Fmt.Block =
 
 
 expressionPrecedence as fn FA.Expression: Int =
-    fn FA.Expression pos e_:
+    fn FA.Expression _ pos _ e_:
 
     try e_ as
 
@@ -100,15 +100,37 @@ formatExpressionAndMaybeAddParens as fn Int, FA.Expression: Fmt.Block =
 
 
 
+formatComment as fn Text: Fmt.Block =
+    fn content:
 
+    if Text.contains "\n" content then
+      "[#" .. content .. "#]"
+    else
+      "#" .. content
 
+    >> Fmt.textToBlock
 
 
 
 formatExpression as fn FA.Expression: Fmt.Block =
-    fn FA.Expression pos e_:
+    fn FA.Expression commentsBefore _ commentsAfter ex:
 
-    try e_ as
+    if commentsBefore == [] and commentsAfter == [] then
+        formatExpr_ ex
+    else
+        [
+        , List.map formatComment commentsBefore
+        , [ formatExpr_ ex ]
+        , List.map formatComment commentsAfter
+        ]
+        >> List.concat
+        >> Fmt.stack
+
+
+
+formatExpr_ as fn FA.Expr_: Fmt.Block =
+    fn ex:
+    try ex as
 
         , FA.LiteralText text:
             formatLiteralText text
@@ -249,11 +271,11 @@ formatValueDef as fn FA.ValueDef: Fmt.Block =
         >> Fmt.stack
 
 
-formatNonFn as fn [At Token.Word]: Fmt.Block =
+formatNonFn as fn [FA.Word]: Fmt.Block =
     fn atWords:
 
     atWords
-    >> List.map (fn x: x >> Pos.drop >> formatWord) __
+    >> List.map formatWord __
     >> commaSeparatedList (Fmt.textToBlock "with") "NonFunction" True __
 
 
@@ -308,8 +330,10 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
     >> commaSeparatedList open "}" True __
 
 
-formatWord as fn Token.Word: Fmt.Block =
-    fn { modifier, isUpper, maybeModule, name, attrPath }:
+formatWord as fn FA.Word: Fmt.Block =
+    fn FA.Word comments _ { modifier, isUpper, maybeModule, name, attrPath }:
+
+    # TODO add comments!!!
 
     [
     , try modifier as
@@ -329,7 +353,7 @@ formatWord as fn Token.Word: Fmt.Block =
     >> Fmt.textToBlock
 
 
-formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
+formatVariable as fn Maybe FA.Expression, FA.Word: Fmt.Block =
     fn maybeType, word:
 
     try maybeType as

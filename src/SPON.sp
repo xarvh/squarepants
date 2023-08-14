@@ -1,8 +1,8 @@
 
 union Outcome a =
     , Accepted [FA.Statement] a
-    , Rejected (At Text)
-    , Failed (At Text)
+    , Rejected (Pos & Text)
+    , Failed (Pos & Text)
 
 
 alias Reader a =
@@ -41,7 +41,7 @@ getPos as fn [FA.Statement]: Pos =
 reject as fn Text: Reader any =
     fn message:
     fn statements:
-    Rejected << At (getPos statements) message
+    Rejected << getPos statements & message
 
 
 #
@@ -56,10 +56,10 @@ run as fn Reader a, Error.Module, [FA.Statement]: Res a =
         , Accepted (head :: tail) a:
             Error.res errorModule (FA.statementPos head) [ "unread statements" ]
 
-        , Rejected (At pos r):
+        , Rejected (pos & r):
             Error.res errorModule pos [ r ]
 
-        , Failed (At pos r):
+        , Failed (pos & r):
             Error.res errorModule pos [ r ]
 
 
@@ -94,27 +94,27 @@ logHead as Reader None =
 text as Reader Text =
     fn statements:
     try statements as
-        , [ FA.Evaluation (FA.Expression _ (FA.LiteralText t)) ]:
+        , [ FA.Evaluation (FA.Expression _ _ _ (FA.LiteralText t)) ]:
             Accepted [] t
 
         , [ s ]:
-            Rejected << At (FA.statementPos s) "expecting a text literal"
+            Rejected << FA.statementPos s & "expecting a text literal"
 
         , _:
-            Failed << At Pos.End "expecting a single statement"
+            Failed << Pos.End & "expecting a single statement"
 
 
 word as Reader Token.Word =
     fn statements:
     try statements as
-        , FA.Evaluation (FA.Expression _ (FA.Variable { maybeType, word = w })) :: tail:
+        , FA.Evaluation (FA.Expression _ _ _ (FA.Variable { maybeType, word = FA.Word _ _ w })) :: tail:
             Accepted tail w
 
         , [ s ]:
-            Rejected << At (FA.statementPos s) "expecting an Uppercase name"
+            Rejected << FA.statementPos s & "expecting an Uppercase name"
 
         , _:
-            Failed << At Pos.End "expecting a statement"
+            Failed << Pos.End & "expecting a statement"
 
 
 upperName as Reader Text =
@@ -153,7 +153,7 @@ oneOf as fn [Reader a]: Reader a =
                     , head :: _: FA.statementPos head
                     , _: Pos.End
 
-            Rejected << At pos "options exhausted"
+            Rejected << pos & "options exhausted"
 
         , headReader :: tail:
             try headReader statements as
@@ -213,8 +213,8 @@ maybe as fn Reader a: Reader (Maybe a) =
 expressionToStatements as fn FA.Expression: [FA.Statement] =
     fn e:
     try e as
-      , FA.Expression _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
-      , FA.Expression _ (FA.Statements stats): stats
+      , FA.Expression _ _ _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
+      , FA.Expression _ _ _ (FA.Statements stats): stats
       , _: [FA.Evaluation e]
 
 
@@ -228,18 +228,18 @@ field as fn Text, Reader a: Reader a =
             , body
             , nonFn
             , pattern =
-                FA.Expression pos
+                FA.Expression _ pos _
                     (FA.Variable
                         {
                         , maybeType = Nothing
                         , word =
-                            {
-                            , modifier = Token.NameNoModifier
-                            , isUpper = _
-                            , maybeModule = Nothing
-                            , name
-                            , attrPath = []
-                            }
+                            FA.Word _ _ {
+                              , modifier = Token.NameNoModifier
+                              , isUpper = _
+                              , maybeModule = Nothing
+                              , name
+                              , attrPath = []
+                              }
                         }
                     )
             } :: tail:
@@ -251,16 +251,17 @@ field as fn Text, Reader a: Reader a =
                                     Accepted tail a
 
                                 , head :: _:
-                                    Failed << At (FA.statementPos head) __ << "Could not make sense of all the statements in field `" .. fieldName .. "`."
+                                    Failed << (FA.statementPos head) & "Could not make sense of all the statements in field `" .. fieldName .. "`."
 
                         , otherwise:
                             otherwise
 
                 else
-                    Rejected << At pos __ << "expecting `" .. fieldName .. " =`"
+                    Rejected << pos & "expecting `" .. fieldName .. " =`"
 
         , head :: tail:
-            Rejected << At (FA.statementPos head) "missing a simple assignment (ie `something = `)"
+            Rejected << FA.statementPos head & "missing a simple assignment (ie `something = `)"
 
         , []:
-            Rejected << At Pos.End "unexpected end of file"
+            Rejected << Pos.End & "unexpected end of file"
+
