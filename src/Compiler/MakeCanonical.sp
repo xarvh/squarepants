@@ -328,24 +328,25 @@ translateDefinition as fn Bool, Env, FA.ValueDef: Res (Env & CA.ValueDef) =
 # Pattern
 #
 translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA.Expression) =
-    fn ro, (FA.Expression pos expr_):
+    fn ro, (FA.Expression _ expressionPos _ expr_):
 
     try expr_ as
-        , FA.Variable { maybeType, word }:
+        , FA.Variable { maybeType, word = FA.Word _ wordPos word }:
 
             if word.modifier /= Token.NameNoModifier then
-                erroro ro pos [ "attribute names can't start with a dot" ]
+                erroro ro wordPos [ "attribute names can't start with a dot" ]
             else if word.isUpper then
-                erroro ro pos [ "attribute names must be lower case" ]
+                erroro ro wordPos [ "attribute names must be lower case" ]
             else if word.maybeModule /= Nothing then
-                erroro ro pos [ "attribute names must be single words" ]
+                erroro ro wordPos [ "attribute names must be single words" ]
             else if word.attrPath /= [] then
-                erroro ro pos [ "attribute names can't contain dots" ]
+                erroro ro wordPos [ "attribute names can't contain dots" ]
             else
-                pos & word.name & maybeType >> Ok
+                wordPos & word.name & maybeType
+                >> Ok
 
         , _:
-            erroro ro pos [ "Expecting an attribute name here" ]
+            erroro ro expressionPos [ "Expecting an attribute name here" ]
 
 
 translatePatternConstructor as fn Env, Pos, Token.Word, [CA.Pattern]: Res CA.Pattern =
@@ -417,7 +418,7 @@ insertPatternRecordAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern
 
     else
         try attr.maybeExpr & maybeFaType as
-            , Just _ & Just (FA.Expression typePos _):
+            , Just _ & Just (FA.Expression _ typePos _ _):
                 error env typePos [ "if you want to annotate the attribute, use { x = y as TheType }" ]
 
             , Nothing & Just faType:
@@ -449,7 +450,7 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [{ name as F
 
     zzz =
         try maybeMaybeExt as
-            , Just (Just (FA.Expression p expr_)):
+            , Just (Just (FA.Expression _ p _ expr_)):
                 error env p [ "Can't extend patterns" ]
 
             , Just Nothing:
@@ -479,7 +480,7 @@ translateTuple as fn ReadOnly, (fn FA.Expression: Res ca), FA.SepList Op.Binop F
     >> onOk fn items:
 
     pos as Pos =
-        List.for Pos.G faExpressions (fn (FA.Expression p _), z: Pos.range p z)
+        List.for Pos.G faExpressions (fn (FA.Expression _ p _ _), z: Pos.range p z)
 
     try items as
         , [ ca1, ca2 ]:
@@ -514,32 +515,32 @@ translateFullPattern as fn Env, FA.Expression: Res (Uniqueness & CA.Pattern) =
 
 
 translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
-    fn env, (FA.Expression pos expr_):
+    fn env, FA.Expression _ expressionPos _ expr_:
 
     try expr_ as
 
-        , FA.Variable { maybeType, word }:
+        , FA.Variable { maybeType, word = FA.Word _ wordPos word }:
 
             if word.isUpper then
                 if maybeType /= Nothing then
-                    error env pos [ "Pattern constructors can't have type annotations" ]
+                    error env wordPos [ "Pattern constructors can't have type annotations" ]
                 else
-                    translatePatternConstructor env pos word []
+                    translatePatternConstructor env wordPos word []
             else
-                translatePatternAny env pos maybeType word
+                translatePatternAny env wordPos maybeType word
 
-        , FA.Call (FA.Expression p ref) faArgs:
+        , FA.Call (FA.Expression _ p _ ref) faArgs:
             try ref as
-                , FA.Variable { maybeType, word }:
+                , FA.Variable { maybeType, word = FA.Word _ wordPos word }:
                     if not word.isUpper then
-                        error env p [ "I need an uppercase constructor name here" ]
+                        error env wordPos [ "I need an uppercase constructor name here" ]
                     else if maybeType /= Nothing then
-                        error env p [ "Constructors can't be annotated (yet? would it make sense?)" ]
+                        error env wordPos [ "Constructors can't be annotated (yet? would it make sense?)" ]
                     else
                         faArgs
                         >> List.mapRes (translateRawPattern env __) __
                         >> onOk fn caPars:
-                        translatePatternConstructor env p word caPars
+                        translatePatternConstructor env wordPos word caPars
 
                 , _:
                     error env p [ "I was expecting a constructor name here" ]
@@ -555,10 +556,10 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
             try reversedFaItems as
                 , []:
-                    CA.PatternConstructor pos CoreTypes.nil []
+                    CA.PatternConstructor expressionPos CoreTypes.nil []
                     >> Ok
 
-                , [lastHasDots & FA.Expression p lastFaExpr, ...reversedFaRest]:
+                , [lastHasDots & FA.Expression _ p _ lastFaExpr, ...reversedFaRest]:
                     if List.any Tuple.first reversedFaRest then
                         error env p [ "only the last item in a list can have ... triple dots" ]
 
@@ -576,8 +577,8 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                         >> onOk fn reversedCaRest:
 
                         try lastFaExpr as
-                            , FA.Variable { maybeType, word }:
-                                translatePatternAny env p maybeType word
+                            , FA.Variable { maybeType, word = FA.Word _ wordPos word }:
+                                translatePatternAny env wordPos maybeType word
                                 >> onOk fn caInit:
 
                                 List.for caInit reversedCaRest pushItem
@@ -587,10 +588,10 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                                 error env p [ "sorry, I don't understand the dots here..." ]
 
         , FA.Record { maybeExtension, attrs }:
-            translatePatternRecord env pos maybeExtension attrs
+            translatePatternRecord env expressionPos maybeExtension attrs
 
         , FA.Binop op:
-            error env pos [ "compiler bug, Binop should not be here" ]
+            error env expressionPos [ "compiler bug, Binop should not be here" ]
 
         , FA.BinopChain precedence sepList:
 
@@ -599,7 +600,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                 >> translateTuple env.ro (translateRawPattern env __) __
                 >> onOk fn recordAttrs:
 
-                CA.PatternRecord pos CA.Complete recordAttrs
+                CA.PatternRecord expressionPos CA.Complete recordAttrs
                 >> Ok
             else if precedence == Op.precedence_cons then
                 sepList
@@ -609,37 +610,37 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                 try List.reverse caPas as
                     , last :: rest:
                         last
-                        >> List.for __ rest (fn item, list: CA.PatternConstructor pos CoreTypes.cons [ item, list ])
+                        >> List.for __ rest (fn item, list: CA.PatternConstructor expressionPos CoreTypes.cons [ item, list ])
                         >> Ok
 
                     , []:
-                        error env pos [ "should not happen: empty cons pattern" ]
+                        error env expressionPos [ "should not happen: empty cons pattern" ]
             else
-                error env pos [ "This binop can't be used in pattern matching" ]
+                error env expressionPos [ "This binop can't be used in pattern matching" ]
 
 
         , FA.LiteralText l:
-            Ok << CA.PatternLiteralText pos l
+            Ok << CA.PatternLiteralText expressionPos l
 
         , FA.LiteralNumber isPercent l:
-            translateNumber env.ro isPercent CA.PatternLiteralNumber pos l
+            translateNumber env.ro isPercent CA.PatternLiteralNumber expressionPos l
 
         # Stuff that's not valid for patterns
 
         , FA.Statements stats:
-            error env pos [ "WAT" ]
+            error env expressionPos [ "WAT" ]
 
         , FA.Fn args body:
-            error env pos [ "Can't pattern match on functions. =(" ]
+            error env expressionPos [ "Can't pattern match on functions. =(" ]
 
         , FA.UnopCall unop expr:
-            error env pos [ "This op can't be used in pattern matching" ]
+            error env expressionPos [ "This op can't be used in pattern matching" ]
 
         , FA.If _:
-            error env pos [ "if..then can't be used in pattern matching" ]
+            error env expressionPos [ "if..then can't be used in pattern matching" ]
 
         , FA.Try _:
-            error env pos [ "try..as can't be used in pattern matching" ]
+            error env expressionPos [ "try..as can't be used in pattern matching" ]
 
 
 #
@@ -695,11 +696,11 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
             >> Ok
 
         , FA.AliasDef fa :: tail:
-            At pos _ = fa.name
+            FA.Word _ pos _ = fa.name
             error env pos [ "Aliases can be declared only in the root scope" ]
 
         , FA.UnionDef fa :: tail:
-            At pos _ = fa.name
+            FA.Word _ pos _ = fa.name
             error env pos [ "Types can be declared only in the root scope" ]
 
 
@@ -707,7 +708,7 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
 #- Expression
 #
 translateExpression as fn Env, FA.Expression: Res CA.Expression =
-    fn env, (FA.Expression pos expr_):
+    fn env, (FA.Expression _ pos _ expr_):
 
     try expr_ as
         , FA.LiteralNumber isPercent str:
@@ -719,7 +720,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
         , FA.Statements stats:
             translateStatements env stats
 
-        , FA.Variable { maybeType, word }:
+        , FA.Variable { maybeType, word = FA.Word _ _ word }:
             translateVariable env pos maybeType word
 
         , FA.Fn faParams faBody:
@@ -827,7 +828,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                             if hasDots then
                                 head & rest
                             else
-                                FA.Expression pos (FA.List []) & rev
+                                FA.Expression [] pos [] (FA.List []) & rev
 
                         translateExpression env init
                         >> onOk fn caInit:
@@ -910,7 +911,7 @@ translateArgumentsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Argu
     insertArg =
         fn faArg, ({ caPars, caArgs, arity }):
 
-        FA.Expression p faArg_ =
+        FA.Expression _ p _ faArg_ =
             faArg
 
         try faArg_ as
@@ -1004,13 +1005,13 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
 translateParameter as fn Env, FA.Expression: Res CA.Parameter =
     fn env, fa:
 
-    FA.Expression pos faExpr = fa
+    FA.Expression _ pos _ faExpr = fa
 
     maybeRecycle =
         try faExpr as
-            , FA.UnopCall Op.UnopRecycle (FA.Expression p faOperand):
+            , FA.UnopCall Op.UnopRecycle (FA.Expression _ p _ faOperand):
                 try faOperand as
-                    , FA.Variable { maybeType = Nothing, word }:
+                    , FA.Variable { maybeType = Nothing, word = FA.Word _ _ word }:
                         Ok (Just word)
                     , _:
                         error env p [ "@ should be followed by a variable name to recycle!" ]
@@ -1135,19 +1136,19 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
     fn env, faExpr:
 
     try faExpr as
-        , FA.Expression _ (FA.UnopCall Op.UnopRecycle (FA.Expression pos faOperand)):
+        , FA.Expression _ _ _ (FA.UnopCall Op.UnopRecycle (FA.Expression _ pos _ faOperand)):
             try faOperand as
-                , FA.Variable { maybeType, word }:
+                , FA.Variable { maybeType, word = FA.Word _ wordPos word }:
                     if maybeType /= Nothing then
-                        error env pos [ "Sorry, at least for now annotations are not supported here" ]
+                        error env wordPos [ "Sorry, at least for now annotations are not supported here" ]
                     else if word.maybeModule /= Nothing then
-                        error env pos [ "Only values declared inside a function scope can be mutated!" ]
+                        error env wordPos [ "Only values declared inside a function scope can be mutated!" ]
                     else if word.modifier /= Token.NameNoModifier then
-                        error env pos [ "This can't start with ." ]
+                        error env wordPos [ "This can't start with ." ]
                     else if word.isUpper then
-                        error env pos [ "Can't recycle constructors" ]
+                        error env wordPos [ "Can't recycle constructors" ]
                     else
-                        CA.ArgumentRecycle pos word.name word.attrPath
+                        CA.ArgumentRecycle wordPos word.name word.attrPath
                         >> Ok
 
                 , _:
@@ -1195,8 +1196,8 @@ resolvePipe as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res FA.Expression
             opChain
 
         List.for head sepTail fn sep & faExp, acc:
-            (FA.Expression p _) = faExp
-            FA.Expression p (FA.Call faExp [acc])
+            (FA.Expression commentBefore p commentAfter _) = faExp
+            FA.Expression commentBefore p commentAfter (FA.Call faExp [acc])
         >> Ok
 
     else if FA.sepList_allSeps (fn sep: sep.usr == Prelude.sendLeft.usr) opChain then
@@ -1207,8 +1208,8 @@ resolvePipe as fn Env, Pos, FA.SepList Op.Binop FA.Expression: Res FA.Expression
             FA.sepList_reverse opChain
 
         List.for last body fn sep & faExp, acc:
-            (FA.Expression p _) = faExp
-            FA.Expression p (FA.Call faExp [acc])
+            (FA.Expression commentBefore p commentAfter _) = faExp
+            FA.Expression commentBefore p commentAfter (FA.Call faExp [acc])
         >> Ok
 
     else
@@ -1322,23 +1323,24 @@ translateRightAssociativeBinopChain as fn Env, Pos, FA.SepList Op.Binop FA.Expre
         fn p, n:
         {
         , maybeType = Nothing
-        , word = {
-            , modifier = Token.NameNoModifier
-            , isUpper = False
-            , maybeModule = Nothing
-            , name = Text.fromNumber n
-            , attrPath = []
-            }
+        , word =
+            FA.Word [] p {
+              , modifier = Token.NameNoModifier
+              , isUpper = False
+              , maybeModule = Nothing
+              , name = Text.fromNumber n
+              , attrPath = []
+              }
         }
         >> FA.Variable
-        >> FA.Expression p __
+        >> FA.Expression [] p [] __
 
     rec as fn Int, FA.SepList Op.Binop FA.Expression: Int & FA.Expression =
         fn placeholdersCount, rawLeft & opsAndRight:
 
         count & left =
             try rawLeft as
-                , FA.Expression p FA.ArgumentPlaceholder:
+                , FA.Expression _ p _ FA.ArgumentPlaceholder:
                     placeholdersCount + 1 & intToVariable p placeholdersCount
 
                 , _:
@@ -1365,7 +1367,7 @@ translateRightAssociativeBinopChain as fn Env, Pos, FA.SepList Op.Binop FA.Expre
         >> List.range 0 __
         >> List.map (intToVariable pos __) __
         >> FA.Fn __ expr
-        >> FA.Expression pos __
+        >> FA.Expression [] pos [] __
 
     >> translateExpression env __
 
@@ -1373,7 +1375,7 @@ translateRightAssociativeBinopChain as fn Env, Pos, FA.SepList Op.Binop FA.Expre
 makeBinop as fn Pos, FA.Expression, Op.Binop, FA.Expression: FA.Expression =
     fn pos, left, op, right:
 
-    FA.Expression pos (FA.Call (FA.Expression pos (FA.Binop op)) [left, right])
+    FA.Expression [] pos [] (FA.Call (FA.Expression [] pos [] (FA.Binop op)) [left, right])
 
 
 
@@ -1439,7 +1441,7 @@ translateTypeVariable as fn ReadOnly, Pos, Token.Word: Res Name =
 translateTypeFunctionParameter as fn ReadOnly, FA.Expression: Res CA.ParType =
     fn ro, expression:
 
-    FA.Expression _ expr_ =
+    FA.Expression _ _ _ expr_ =
         expression
 
     try expr_ as
@@ -1457,7 +1459,7 @@ translateTypeFunctionParameter as fn ReadOnly, FA.Expression: Res CA.ParType =
 translatePoly as fn ReadOnly, FA.Expression: Res (Uniqueness & FA.Expression) =
     fn ro, expr:
 
-    FA.Expression pos expr_ = expr
+    FA.Expression _ pos _ expr_ = expr
 
     try expr_ as
 
@@ -1491,29 +1493,29 @@ translateFullType as fn ReadOnly, FA.Expression: Res CA.FullType =
 
 
 translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
-    fn ro, (FA.Expression pos expr_):
+    fn ro, (FA.Expression _ pos _ expr_):
 
     try expr_ as
-        , FA.Variable { maybeType, word }:
+        , FA.Variable { maybeType, word = FA.Word _ wordPos word }:
             if maybeType /= Nothing then
-                erroro ro pos [ "Can't really specify the type of a type." ]
+                erroro ro wordPos [ "Can't really specify the type of a type." ]
             else if word.isUpper then
-                translateNamedType ro pos word []
+                translateNamedType ro wordPos word []
             else
-                translateTypeVariable ro pos word
+                translateTypeVariable ro wordPos word
                 >> onOk fn tyvarName:
 
-                CA.TypeAnnotationVariable pos tyvarName
+                CA.TypeAnnotationVariable wordPos tyvarName
                 >> Ok
 
-        , FA.Call (FA.Expression refPos ref) faArgs:
+        , FA.Call (FA.Expression _ refPos _ ref) faArgs:
             try ref as
-                , FA.Variable { maybeType = Nothing, word }:
+                , FA.Variable { maybeType = Nothing, word = FA.Word _ wordPos word }:
                     faArgs
                     >> List.mapRes (translateRawType ro __) __
                     >> onOk fn caArgs:
 
-                    translateNamedType ro refPos word caArgs
+                    translateNamedType ro wordPos word caArgs
 
                 , _:
                     erroro ro refPos [ "I was expecting a named type here" ]
@@ -1584,21 +1586,21 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 
 
 translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Constructor & Env: Res (Dict Name CA.Constructor & Env) =
-    fn unionType, unionUsr, (FA.Expression pos expr_), constructors & env:
+    fn unionType, unionUsr, (FA.Expression _ pos _ expr_), constructors & env:
 
     zzz =
         try expr_ as
             , FA.Variable var:
                 var & [] >> Ok
 
-            , FA.Call (FA.Expression _ (FA.Variable var)) pars:
+            , FA.Call (FA.Expression _ _ _ (FA.Variable var)) pars:
                 var & pars >> Ok
 
             , _:
                 error env pos [ "I was expecting a constructor name here" ]
 
     zzz
-    >> onOk fn ({ maybeType, word } & faPars):
+    >> onOk fn ({ maybeType, word = FA.Word _ wordPos word } & faPars):
 
     isValidName =
       word.modifier == Token.NameNoModifier
@@ -1610,11 +1612,11 @@ translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Construc
       word.attrPath == []
 
     if not isValidName then
-        error env pos [ "I need just an Uppercase word here" ]
+        error env wordPos [ "I need just an Uppercase word here" ]
 
     else if Dict.member word.name constructors then
         # TODO "union $whatever has two constructors with the same name!"
-        error env pos [ "constructor " .. word.name .. " is duplicate" ]
+        error env wordPos [ "constructor " .. word.name .. " is duplicate" ]
 
     else
         faPars
@@ -1622,11 +1624,11 @@ translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Construc
         >> onOk fn ins:
 
         env
-        >> insertPatternNames True (CA.PatternAny pos (Just word.name) Nothing) __
+        >> insertPatternNames True (CA.PatternAny wordPos (Just word.name) Nothing) __
         >> onOk fn newEnv:
 
         c as CA.Constructor = {
-            , pos
+            , pos = wordPos
             , typeUsr = unionUsr
             , ins
             , out = unionType
@@ -1636,8 +1638,8 @@ translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Construc
         >> Ok
 
 
-translateTypeParameter as fn ReadOnly, At Token.Word: Res (Name & Pos) =
-    fn ro, (At pos word):
+translateTypeParameter as fn ReadOnly, FA.Word: Res (Name & Pos) =
+    fn ro, (FA.Word comment pos word):
 
     if word.modifier /= Token.NameNoModifier then
         erroro ro pos [ "Can't start with ." ]
@@ -1651,8 +1653,8 @@ translateTypeParameter as fn ReadOnly, At Token.Word: Res (Name & Pos) =
         Ok (word.name & pos)
 
 
-translateTypeName as fn ReadOnly, At Token.Word: Res Name =
-    fn ro, (At pos word):
+translateTypeName as fn ReadOnly, FA.Word: Res Name =
+    fn ro, FA.Word comment pos word:
 
     if word.modifier /= Token.NameNoModifier then
         erroro ro pos [ "Can't start with ." ]
@@ -1675,7 +1677,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
     fn faStatement, caModule & env:
 
     try faStatement as
-        , FA.Evaluation (FA.Expression pos _):
+        , FA.Evaluation (FA.Expression _ pos _ _):
             error env pos [ "Root Evaluations don't really do much =|" ]
 
         , FA.ValueDef d:
@@ -1696,7 +1698,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
             >> onOk fn name:
 
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-                At pos _ = fa.name
+                FA.Word _ pos _ = fa.name
                 error env pos [ name .. " declared twice!" ]
 
             else
@@ -1722,7 +1724,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 >> Ok
 
         , FA.UnionDef fa:
-            At pos _ = fa.name
+            FA.Word _ pos _ = fa.name
 
             translateTypeName env.ro fa.name
             >> onOk fn name:

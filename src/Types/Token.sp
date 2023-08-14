@@ -1,7 +1,7 @@
 
 
 union Token =
-    Token [Text] Int Int Kind
+    , Token Int Int Kind
 
 
 union NameModifier =
@@ -25,6 +25,7 @@ union OpenOrClosed =
 
 
 union Kind =
+    , Comment Text
     # Structure
     , NewSiblingLine
     , BlockStart

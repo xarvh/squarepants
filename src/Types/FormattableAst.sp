@@ -15,26 +15,32 @@ alias Module =
     [Statement]
 
 
+alias InlineComments =
+    [Text]
+
+
+union Word =
+    , Word InlineComments Pos Token.Word
+
+
 alias ValueDef = {
     , pattern as Expression
-    , nonFn as [At Token.Word]
+    , nonFn as [Word]
     , body as Expression
     }
 
 
-alias AliasDef =
-    {
-    , name as At Token.Word
+alias AliasDef = {
+    , name as Word
     # TODO rename to pars
-    , args as [At Token.Word]
+    , args as [Word]
     , type as Expression
     }
 
 
-alias UnionDef =
-    {
-    , name as At Token.Word
-    , args as [At Token.Word]
+alias UnionDef = {
+    , name as Word
+    , args as [Word]
     , constructors as [Expression]
     }
 
@@ -46,13 +52,9 @@ union Statement =
     , UnionDef UnionDef
 
 
-# TODO
-#
-# alias Expression = At Expr_ ?
-# alias AtExpression = At Expression ?
-#
 union Expression =
-    Expression Pos Expr_
+    Expression InlineComments Pos InlineComments Expr_
+
 
 union Expr_ =
     , LiteralText Text
@@ -77,8 +79,7 @@ union Expr_ =
     , Variable
         {
         , maybeType as Maybe Expression
-        # TODO rename to atWord
-        , word as Token.Word
+        , word as Word
         }
 
     , Fn [Expression] Expression

@@ -25,7 +25,7 @@ codeTest as fn Text, Text, (fn Text: Result Text z), Test.CodeExpectation z: Tes
     Test.codeTest toHuman __ __ __ __
 
 
-asDefinition as fn FA.Statement: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
+asDefinition as fn FA.Statement: Result Text { pattern as FA.Expression, nonFn as [FA.Word], body as FA.Expression } =
     fn s:
     try s as
         , FA.ValueDef a:
@@ -71,7 +71,7 @@ firstEvaluation as fn Text: Result Text FA.Expression =
     code >> firstStatement >> onOk asEvaluation
 
 
-firstDefinition as fn Text: Result Text { pattern as FA.Expression, nonFn as [At Token.Word], body as FA.Expression } =
+firstDefinition as fn Text: Result Text { pattern as FA.Expression, nonFn as [FA.Word], body as FA.Expression } =
     fn code:
     code >> firstStatement >> onOk asDefinition
 
@@ -156,7 +156,7 @@ parens as Test =
 #
 
 e as fn FA.Expr_: FA.Expression =
-    FA.Expression p __
+    FA.Expression [] p [] __
 
 
 tuple as fn FA.Expression, FA.Expression: FA.Expression =
@@ -165,15 +165,15 @@ tuple as fn FA.Expression, FA.Expression: FA.Expression =
     e << FA.BinopChain Op.precedence_tuple (a & [Prelude.tuple & b])
 
 
-word as fn Name: Token.Word =
+word as fn Name: FA.Word =
     fn name:
-    {
-    , modifier = Token.NameNoModifier
-    , isUpper = False
-    , maybeModule = Nothing
-    , name
-    , attrPath = []
-    }
+    FA.Word [] p {
+        , modifier = Token.NameNoModifier
+        , isUpper = False
+        , maybeModule = Nothing
+        , name
+        , attrPath = []
+        }
 
 
 variable as fn Name: FA.Expression =
@@ -437,8 +437,8 @@ unionDefs as Test =
             firstTypeDef
             (Test.isOkAndEqualTo
                 {
-                , name = At p (word "a")
-                , args = [ At p (word "b"), At p (word "c") ]
+                , name = word "a"
+                , args = [ word "b", (word "c") ]
                 , constructors =
                     [
                     , e << FA.Call (variable "v1") [ variable "b" ]
@@ -462,8 +462,8 @@ unionDefs as Test =
             firstTypeDef
             (Test.isOkAndEqualTo
                 {
-                , name = At p (word "a")
-                , args = [ At p (word "b"), At p (word "c") ]
+                , name = (word "a")
+                , args = [ (word "b"), (word "c") ]
                 , constructors =
                     [
                     , e << FA.Call (variable "v1") [ variable "b" ]
@@ -478,7 +478,7 @@ unionDefs as Test =
             firstTypeDef
             (Test.isOkAndEqualTo
                 {
-                , name = At p (word "a")
+                , name = (word "a")
                 , args = []
                 , constructors = [ e << FA.Call (variable "a") [ e << FA.List [ False & variable "int" ] ]]
                 }
