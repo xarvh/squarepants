@@ -49,7 +49,6 @@ chainPrecedence as fn [Op.Binop & a]: Int =
         , [op & _, ..._]: op.precedence
 
 
-
 parens as fn Fmt.Block: Fmt.Block =
     fn block:
 
@@ -60,69 +59,105 @@ parens as fn Fmt.Block: Fmt.Block =
     >> Fmt.rowOrStack Nothing __
 
 
-
-formatExpressionNoPrecedence as fn FA.Expression: Fmt.Block =
-    fn x: formatExpression x >> Tuple.second
-
-
-formatExpression as fn FA.Expression: Int & Fmt.Block =
+expressionPrecedence as fn FA.Expression: Int =
     fn FA.Expression pos e_:
 
-    noParensNeeded = 10
+    try e_ as
+
+        , FA.Statements stats:
+            0
+
+        , FA.Fn pars body:
+            0
+
+        , FA.BinopChain priority binopChain:
+            chainPrecedence binopChain.second
+
+        , FA.Poly text expression:
+            9
+
+        , FA.If { condition, true, false }:
+            9
+
+        , FA.Try { value, patterns }:
+            9
+
+        , _:
+            # No parens needed
+            10
+
+
+formatExpressionAndMaybeAddParens as fn Int, FA.Expression: Fmt.Block =
+    fn binopPrecedence, expression:
+
+    block =
+        formatExpression expression
+
+    if expressionPrecedence expression > binopPrecedence then
+        block
+      else
+        parens block
+
+
+
+
+
+
+
+
+formatExpression as fn FA.Expression: Fmt.Block =
+    fn FA.Expression pos e_:
 
     try e_ as
 
         , FA.LiteralText text:
-            noParensNeeded & formatLiteralText text
+            formatLiteralText text
 
         , FA.LiteralNumber hasPercentage text:
-            noParensNeeded & formatLiteralNumber hasPercentage text
+            formatLiteralNumber hasPercentage text
 
         , FA.ArgumentPlaceholder:
-            noParensNeeded & Fmt.textToBlock "__"
+            Fmt.textToBlock "__"
 
         , FA.Statements stats:
-            0 & formatStatements stats
+            formatStatements stats
 
         , FA.List unpacksAndExprs:
-            noParensNeeded & formatList unpacksAndExprs
+            formatList unpacksAndExprs
 
         , FA.Record { maybeExtension, attrs }:
             # TODO Missing info on whether we have `as` or `=`
-            noParensNeeded & formatRecord maybeExtension attrs
+            formatRecord maybeExtension attrs
 
         , FA.Variable { maybeType, word }:
-            noParensNeeded & formatVariable maybeType word
+            formatVariable maybeType word
 
         , FA.Fn pars body:
-            0 & formatFunction pars body
+            formatFunction pars body
 
         , FA.Unop unopId:
-            noParensNeeded & formatUnop unopId
+            formatUnop unopId
 
         , FA.UnopCall unopId expr:
-            noParensNeeded & formatUnopCall unopId expr
+            formatUnopCall unopId expr
 
         , FA.Binop binop:
-            noParensNeeded & Fmt.textToBlock binop.symbol
+            Fmt.textToBlock binop.symbol
 
         , FA.BinopChain priority binopChain:
-            chainPrecedence binopChain.second & formatBinopChain priority binopChain
+            formatBinopChain priority binopChain
 
         , FA.Call ref args:
-            noParensNeeded & formatCall ref args
+            formatCall ref args
 
         , FA.Poly text expression:
-            9 & Fmt.textToBlock "TODO: Poly"
+            Fmt.textToBlock "TODO: Poly"
 
         , FA.If { condition, true, false }:
-            9 & formatIf condition true false
+            formatIf condition true false
 
         , FA.Try { value, patterns }:
-            9 & Fmt.textToBlock ""
-
-
-
+            Fmt.textToBlock ""
 
 
 formatLiteralText as fn Text: Fmt.Block =
@@ -192,7 +227,7 @@ formatStatements as fn [FA.Statement]: Fmt.Block =
 formatStatement as fn FA.Statement: Fmt.Block =
     fn stat:
     try stat as
-        , FA.Evaluation expression: formatExpressionNoPrecedence expression
+        , FA.Evaluation expression: formatExpression expression
         , FA.ValueDef valueDef: formatValueDef valueDef
         , FA.AliasDef aliasDef: Fmt.textToBlock "TODO alias"
         , FA.UnionDef unionDef: Fmt.textToBlock "TODO union"
@@ -203,13 +238,13 @@ formatValueDef as fn FA.ValueDef: Fmt.Block =
 
         [
         , [
-            , [formatExpressionNoPrecedence pattern]
+            , [formatExpression pattern]
             , if nonFn == [] then [] else [ formatNonFn nonFn ]
             , [Fmt.textToBlock "="]
             ]
             >> List.concat
             >> Fmt.spaceSeparatedOrIndent
-        , Fmt.indent (formatExpressionNoPrecedence body)
+        , Fmt.indent (formatExpression body)
         ]
         >> Fmt.stack
 
@@ -230,10 +265,10 @@ formatList as fn [Bool & FA.Expression]: Fmt.Block =
 
         if isUnpacked then
             expr
-            >> formatExpressionNoPrecedence
+            >> formatExpression
             >> Fmt.prefix 3 (Fmt.Text_ "...") __
         else
-            formatExpressionNoPrecedence expr
+            formatExpression expr
 
     unpacksAndExprs
     >> List.map formatListItem __
@@ -249,7 +284,7 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
             , Just Nothing: Fmt.textToBlock "{ with"
             , Just (Just ext):
                 ext
-                >> formatExpressionNoPrecedence
+                >> formatExpression
                 >> Fmt.prefix 1 (Fmt.Text_ "{") __
                 >> Fmt.addSuffix (Fmt.Text_ "with") __
 
@@ -257,13 +292,13 @@ formatRecord as fn Maybe (Maybe FA.Expression), [FA.RecordAttribute]: Fmt.Block 
         fn { name, maybeExpr }:
 
         try maybeExpr as
-            , Nothing: formatExpressionNoPrecedence name
+            , Nothing: formatExpression name
             , Just expr: [
               , Fmt.spaceSeparatedOrIndent [
-                  , formatExpressionNoPrecedence name
+                  , formatExpression name
                   , Fmt.textToBlock "="
                   ]
-              , formatExpressionNoPrecedence expr
+              , formatExpression expr
               ]
               >> Fmt.rowOrIndent Nothing __
 
@@ -304,7 +339,7 @@ formatVariable as fn Maybe FA.Expression, Token.Word: Fmt.Block =
         , Just type:
             [
             , Fmt.addSuffix (Fmt.Text_ " as") (formatWord word)
-            , formatExpressionNoPrecedence type
+            , formatExpression type
             ]
             >> Fmt.spaceSeparatedOrIndent __
 
@@ -314,9 +349,9 @@ formatFunction as fn [FA.Expression], FA.Expression: Fmt.Block =
 
     [
     , pars
-      >> List.map formatExpressionNoPrecedence __
+      >> List.map formatExpression __
       >> commaSeparatedList (Fmt.textToBlock "fn") ":" False __
-    , formatExpressionNoPrecedence body
+    , formatExpression body
     ]
     >> Fmt.rowOrStack Nothing __
 
@@ -342,7 +377,7 @@ formatUnopCall as fn Op.UnopId, FA.Expression: Fmt.Block =
         unopToText unopId
 
     expr
-    >> formatExpressionNoPrecedence
+    >> formatExpression
     >> Fmt.prefix (Text.length unop) (Fmt.Text_ unop) __
 
 
@@ -351,29 +386,17 @@ formatBinopChain as fn Int, FA.SepList Op.Binop FA.Expression: Fmt.Block =
 
     formatOpAndRight =
         fn binop & expr:
-            precedence & block =
+            block =
                 formatExpression expr
             [
             , Fmt.textToBlock binop.symbol
-            , if precedence > binop.precedence then
-                block
-              else
-                parens block
+            , formatExpressionAndMaybeAddParens binop.precedence expr
             ]
 
     binopPrecedence =
         chainPrecedence opsAndRights
 
-    expPrecedence & leftBlockRaw =
-        formatExpression left
-
-    leftBlock =
-      if expPrecedence > binopPrecedence then
-        leftBlockRaw
-      else
-        parens leftBlockRaw
-
-    leftBlock :: List.concatMap formatOpAndRight opsAndRights
+    formatExpressionAndMaybeAddParens (chainPrecedence opsAndRights) left :: List.concatMap formatOpAndRight opsAndRights
     >> Fmt.rowOrIndent Nothing __
 
 
@@ -381,7 +404,7 @@ formatCall as fn FA.Expression, [FA.Expression]: Fmt.Block =
     fn ref, args:
 
     ref :: args
-    >> List.map formatExpressionNoPrecedence __
+    >> List.map formatExpression __
     >> Fmt.rowOrIndent Nothing __
 
 
