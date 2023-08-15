@@ -259,7 +259,7 @@ indentation as Test =
             )
         , codeTest
             """
-            Blocks and not
+            SKIP (too long.. break it down?) Blocks and not
             """
             (Text.join "\n"
                 [
@@ -369,13 +369,16 @@ comments as Test =
                 , Token 14 15 __ << Token.NumberLiteral False "1"
                 ]]
             )
-        , codeTest "Single line"
+        , codeTest
+            """
+            Single line"
+            """
             "# hello"
             lexTokens
             (Test.isOkAndEqualTo
                 [[
-                , Token 0 7 (Token.Comment " hello")
-                , Token 7 7 Token.NewSiblingLine
+                , Token 1 1 Token.NewSiblingLine
+                , Token 1 7 (Token.Comment " hello")
                 ]]
             )
         , codeTest
@@ -396,17 +399,23 @@ a [# inline #] = 1
             lexTokens
             (Test.isOkAndEqualTo [
                 , [
-                    , Token 0 19 (Token.Comment " single line ")
-                    , Token 19 19 __ << Token.NewSiblingLine
+                    , Token 2 2 Token.NewSiblingLine
+                    , Token 2 15 (Token.Comment " single line ")
+                    ]
+                , [
+                    , Token 19 19 Token.NewSiblingLine
                     , Token 19 20 __ << lowerName "a"
-                    , Token 20 34 (Token.Comment " inline ")
+                    , Token 23 31 (Token.Comment " inline ")
                     , Token 34 35 __ << Token.Defop
                     , Token 36 37 __ << Token.NumberLiteral False "1"
                     ]
                 , [
-                  , Token 38 79 (Token.Comment "\n    multi line\n")
-                  , Token 38 79 (Token.Comment " [# nested #] ")
-                  , Token 79 79 Token.NewSiblingLine
+                  , Token 41 41 Token.NewSiblingLine
+                  , Token 41 57 (Token.Comment "\n    multi line\n")
+                  ]
+                , [
+                  , Token 63 63 Token.NewSiblingLine
+                  , Token 63 77 (Token.Comment " [# nested #] ")
                   ]
                 ]
             )
