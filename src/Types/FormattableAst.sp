@@ -46,6 +46,7 @@ alias UnionDef = {
 
 
 union Statement =
+    , Comment Text
     , Evaluation Expression
     , ValueDef ValueDef
     , AliasDef AliasDef

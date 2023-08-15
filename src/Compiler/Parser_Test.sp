@@ -89,7 +89,7 @@ values as Test =
         [
         , codeTest
             """
-            [reg] deal with spurious NewSiblingLine introduced by inline comments
+            ONLY [reg] deal with spurious NewSiblingLine introduced by inline comments
             """
             """
             library =

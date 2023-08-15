@@ -658,6 +658,9 @@ translateStatements as fn Env, [FA.Statement]: Res CA.Expression =
         , [ FA.Evaluation faExpression ]:
             translateExpression env faExpression
 
+        , FA.Comment _ :: tail:
+            translateStatements env tail
+
         , FA.Evaluation faExpr :: tail:
             faExpr
             >> translateExpression env __

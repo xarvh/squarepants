@@ -460,14 +460,15 @@ exprWithLeftDelimiter as fn Env, Pos, Token.Kind: Parser FA.Expr_ =
             Parser.reject
 
 
-commentsParser as Parser [Text] =
-    comment as Parser Text =
-        oneToken >> on fn Token start end k:
-        try k as
-            , Token.Comment content: ok content
-            , _: Parser.reject
+commentParser as Parser Text =
+    oneToken >> on fn Token start end k:
+    try k as
+        , Token.Comment content: ok content
+        , _: Parser.reject
 
-    Parser.zeroOrMore comment
+
+commentsParser as Parser [Text] =
+    Parser.zeroOrMore commentParser
 
 
 expr as fn Env: Parser FA.Expression =
@@ -707,8 +708,10 @@ statement as fn Env: Parser FA.Statement =
     # This is here because inline comments might be followed by NewSiblingLine
     # and I am not sure it's a responsibility of the lexer to deal with it.
     Parser.maybe (kind Token.NewSiblingLine) >> on fn _:
-    Parser.oneOf
-        [ aliasDef env
+    Parser.oneOf [
+        , commentParser >> on fn c:
+          FA.Comment c >> ok
+        , aliasDef env
         , unionDef env
         , definition env
         , expr env >> on fn e:
@@ -835,6 +838,8 @@ textToFormattableModule as fn Env: Res FA.Module =
 
     tokensResult
     >> onOk fn rootStatements:
+
+    log "==============" rootStatements
 
     Debug.benchStart None
     result =

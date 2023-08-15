@@ -735,11 +735,13 @@ lexOne as fn Text, Text, @ReadState: None =
 
         , LineComment { start }:
           if char == "\n" or char == "" then
-              end = getPos @state
+              end =
+                  getPos @state
 
               Text.slice start end buffer
               >> Token.Comment
-              >> addContentTokenAbs start end __ @state
+              >> Token start end __
+              >> Array.push @state.tokens __
 
               setMode Default @state
 
@@ -770,11 +772,12 @@ lexOne as fn Text, Text, @ReadState: None =
                 if nesting > 1 then
                     continueWithDeltaNesting -1
                 else
-                    end = getPos @state - 1
-
+                    end =
+                        getPos @state - 1
                     Text.slice start end buffer
                     >> Token.Comment
-                    >> addContentTokenAbs start end __ @state
+                    >> Token start end __
+                    >> Array.push @state.tokens __
 
                     setMode Default @state
 
