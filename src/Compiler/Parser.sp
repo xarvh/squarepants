@@ -90,18 +90,6 @@ surroundStrict as fn Token.Kind, Token.Kind, Parser a: Parser a =
     Parser.surroundWith (kind left) (kind right) p
 
 
-surroundMultiline as fn Token.Kind, Token.Kind, Parser a: Parser a =
-    fn left, right, content:
-    discardFirst
-        (kind left)
-        (inlineOrBelowOrIndented
-            (discardSecond
-                content
-                (inlineOrBelowOrIndented (kind right))
-            )
-        )
-
-
 oomSeparatedBy as fn Parser a, Parser b: Parser [b] =
     fn sep, pa:
     pa >> on fn head:
@@ -201,8 +189,10 @@ word as fn Env: Parser FA.Word =
         >> c
 
 #]
-block as fn Parser a: Parser a =
-    surroundStrict Token.BlockStart Token.BlockEnd __
+block as fn (fn [Text]: Parser a): Parser a =
+    fn f:
+    commentsParser >> on fn comments:
+    surroundStrict Token.BlockStart Token.BlockEnd (f comments)
 
 
 sib as fn Parser a: Parser a =
@@ -213,13 +203,13 @@ maybeNewLine as fn Parser a: Parser a =
     discardFirst (Parser.maybe (kind Token.NewSiblingLine)) __
 
 
-inlineOrBelowOrIndented as fn Parser a: Parser a =
+inlineOrBelowOrIndented as fn (fn [Text]: Parser a): Parser a =
     fn p:
     Parser.oneOf
         [
         , block p
-        , sib p
-        , p
+        , sib (p [])
+        , p []
         ]
 
 
@@ -721,7 +711,7 @@ statement as fn Env: Parser FA.Statement =
 
 definition as fn Env: Parser FA.Statement =
     fn env:
-    here >> on fn start:
+#    here >> on fn start:
     expr env >> on fn p:
     Parser.maybe (inlineOrBelowOrIndented (nonFunction env)) >> on fn nf:
     inlineOrBelowOrIndented (kind Token.Defop) >> on fn defModifier:
@@ -737,7 +727,7 @@ definition as fn Env: Parser FA.Statement =
 
     here >> on fn end:
     { pattern = p
-    , body = body
+    , body
     , nonFn = Maybe.withDefault [] nf
     }
     >> FA.ValueDef
