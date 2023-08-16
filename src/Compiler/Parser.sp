@@ -484,13 +484,9 @@ expr as fn Env: Parser FA.Expression =
     recInlineOrIndented [] >> on fn reversedArgs:
     here >> on fn end:
 
-    # TODO Why is functionApplicationOr being called twice?
-    #log "===========================================" { start, end }
-
-    reversedArgs
-    >> List.reverse
-    >> breakByPrecedence
-    >> ok
+    try reversedArgs >> List.reverse >> breakByPrecedence as
+        , Err text: Parser.reject
+        , Ok e: ok e
 
 
 recInlineOrIndentedOrBelow as fn Parser FA.Expression, [FA.Expression]: Parser [FA.Expression] =
@@ -520,8 +516,7 @@ findLowestPrecedence as fn [FA.Expression]: Int =
     rec 1000 __
 
 
-# TODO Properly manage errors
-breakByPrecedence as fn [FA.Expression]: FA.Expression =
+breakByPrecedence as fn [FA.Expression]: Result Text FA.Expression =
     fn rawExpressions:
 
     try findLowestPrecedence rawExpressions as
@@ -533,15 +528,19 @@ breakByPrecedence as fn [FA.Expression]: FA.Expression =
                 List.for __ headUnops fn p & op, exp: FA.Expression p (FA.UnopCall op exp)
 
             try breakByUnops exprs1 as
-                , []: todo "bug: breakByPrecedence empty?"
-                , [ one ]: applyHeadUnops one
-                , [ head, ...tail ]: applyHeadUnops (FA.Expression (posRange rawExpressions) (FA.Call head tail))
+                , []: Err "breakByPrecedence got []"
+                , [ one ]: Ok << applyHeadUnops one
+                , [ head, ...tail ]: Ok << applyHeadUnops (FA.Expression (posRange rawExpressions) (FA.Call head tail))
 
         , lowestPrecedence:
             rawExpressions
             >> splitOnOpWithPrecedence lowestPrecedence __
+            >> onOk fn s:
+
+            s
             >> FA.BinopChain lowestPrecedence __
             >> FA.Expression (posRange rawExpressions) __
+            >> Ok
 
 
 posRange as fn [FA.Expression]: Pos =
@@ -556,19 +555,20 @@ posRange as fn [FA.Expression]: Pos =
 
 
 
-# TODO use an ad-hoc variant type instead of Result
-exprOrTargetOp as fn Int, FA.Expression: Result Op.Binop FA.Expression =
+union BinopOrExpression = Binop Op.Binop , Expression FA.Expression
+
+exprOrTargetOp as fn Int, FA.Expression: BinopOrExpression =
     fn precedence, head:
 
     try head as
         , FA.Expression _ (FA.Binop op):
             if op.precedence == precedence then
-                Err op
+                Binop op
             else
-                Ok head
+                Expression head
 
         , _:
-            Ok head
+            Expression head
 
 
 readExprs as fn Int, [FA.Expression]: [FA.Expression] & [FA.Expression] =
@@ -579,10 +579,10 @@ readExprs as fn Int, [FA.Expression]: [FA.Expression] & [FA.Expression] =
         try remainder as
             , [ head, ...tail ]:
                 try exprOrTargetOp targetOpPrecedence head as
-                    , Ok e:
+                    , Expression e:
                         rec [e, ...acc] tail
 
-                    , Err op:
+                    , Binop op:
                         List.reverse acc & remainder
 
             , []:
@@ -591,36 +591,44 @@ readExprs as fn Int, [FA.Expression]: [FA.Expression] & [FA.Expression] =
     rec [] rawExpressions
 
 
-readOpsAndExprs as fn Int, [Op.Binop & FA.Expression], [FA.Expression]: [Op.Binop & FA.Expression] =
+readOpsAndExprs as fn Int, [Op.Binop & FA.Expression], [FA.Expression]: Result Text [Op.Binop & FA.Expression] =
     fn targetOpPrecedence, acc, remainder:
 
     try remainder as
         , []:
             List.reverse acc
+            >> Ok
 
         , [ head, ...tail ]:
             try exprOrTargetOp targetOpPrecedence head as
 
-                , Err op:
+                , Binop op:
                     exprs & newRemainder =
                         readExprs targetOpPrecedence tail
 
-                    readOpsAndExprs targetOpPrecedence [ op & breakByPrecedence exprs, ...acc ] newRemainder
+                    breakByPrecedence exprs
+                    >> onOk fn es:
 
-                , Ok exprs:
-                    todo "bug: readOpsAndExprs spurious exp"
+                    readOpsAndExprs targetOpPrecedence [ op & es, ...acc ] newRemainder
+
+                , Expression exprs:
+                    Err "readOpsAndExprs got a spurious exp"
 
 
-splitOnOpWithPrecedence as fn Int, [FA.Expression]: FA.SepList Op.Binop FA.Expression =
+splitOnOpWithPrecedence as fn Int, [FA.Expression]: Result Text (FA.SepList Op.Binop FA.Expression) =
     fn targetOpPrecedence, rawExpressions:
 
     first & remainder =
         readExprs targetOpPrecedence rawExpressions
 
-    opsAndExpressions as [ Op.Binop & FA.Expression ]=
-        readOpsAndExprs targetOpPrecedence [] remainder
+    readOpsAndExprs targetOpPrecedence [] remainder
+    >> onOk fn opsAndExpressions: # as [ Op.Binop & FA.Expression ] =
 
-    breakByPrecedence first & opsAndExpressions
+    breakByPrecedence first
+    >> onOk fn f:
+
+    f & opsAndExpressions
+    >> Ok
 
 
 
