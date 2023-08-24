@@ -323,7 +323,7 @@ const text_startsWith = (sub, s) => s.startsWith(sub);
 const text_startsWithRegex = (regex) => {
   let re;
   try {
-    re = new RegExp('^' + regex);
+    re = new RegExp('^' + regex, 's');
   } catch (e) {
     return () => ""
   }
@@ -4024,19 +4024,6 @@ const $core$List_Test$sortBy = ($sd1$Test$Group)("sortBy", ($core$Core$Cons)(($c
 
 const $core$List_Test$tests = ($sd1$Test$Group)("List", ($core$Core$Cons)($core$List_Test$sortBy, ($core$Core$Cons)($core$List_Test$concat, $core$Core$Nil)));
 
-const $core$Maybe$andThen = (($f) => {
-  return (($ma) => {
-    return ((($ma)[0] === "Nothing")
-      ? $core$Maybe$Nothing
-      : ((($ma)[0] === "Just")
-        ? ((() => {
-          const $a = ($ma)[1];
-          return ($f)($a);
-        }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 9:4', (sp_toHuman)($ma))));
-  });
-});
-
 const $core$Maybe$map = (($f, $m) => {
   return ((($m)[0] === "Nothing")
     ? $core$Maybe$Nothing
@@ -4056,7 +4043,31 @@ const $core$Maybe$mapRes = (($f, $m) => {
         const $a = ($m)[1];
         return ($core$Result$map)($core$Maybe$Just, ($f)($a));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 38:4', (sp_toHuman)($m))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 45:4', (sp_toHuman)($m))));
+});
+
+const $core$Maybe$onJust = (($f) => {
+  return (($ma) => {
+    return ((($ma)[0] === "Nothing")
+      ? $core$Maybe$Nothing
+      : ((($ma)[0] === "Just")
+        ? ((() => {
+          const $a = ($ma)[1];
+          return ($f)($a);
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 9:4', (sp_toHuman)($ma))));
+  });
+});
+
+const $core$Maybe$toResult = (($e, $maybeA) => {
+  return ((($maybeA)[0] === "Just")
+    ? ((() => {
+      const $a = ($maybeA)[1];
+      return ($core$Result$Ok)($a);
+    }))()
+    : ((($maybeA)[0] === "Nothing")
+      ? ($core$Result$Err)($e)
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 38:4', (sp_toHuman)($maybeA))));
 });
 
 const $core$Maybe$withDefault = (($default, $maybe) => {
@@ -4067,7 +4078,7 @@ const $core$Maybe$withDefault = (($default, $maybe) => {
     }))()
     : ((($maybe)[0] === "Nothing")
       ? $default
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 48:4', (sp_toHuman)($maybe))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/lib/core/Maybe.sp 55:4', (sp_toHuman)($maybe))));
 });
 
 const $core$Result$fromMaybe = (($err, $maybe) => {
@@ -10927,7 +10938,7 @@ const $sd1$Compiler$TypeCheck$addSub = (($newId, $newUni, $subs) => {
       }))()
       : (true
         ? $uni
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2315:8', (sp_toHuman)($uni))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2322:8', (sp_toHuman)($uni))));
   });
   ((__re__ = (hash_each)($subs, (($univarId, $uniqueness) => {
     return ((__re__ = (hash_insert)($newSubs, $univarId, ($replace)($uniqueness))), ($newSubs = (__re__)[1]), (__re__)[0]);
@@ -10966,10 +10977,10 @@ const $sd1$Compiler$TypeCheck$solveUniquenessConstraint = (($env, $eq, $state) =
                   }))()
                   : (true
                     ? ((__re__ = ($sd1$Compiler$TypeCheck$addError)($env, $eq.pos, ($sd1$Compiler$TypeCheck$ErrorUnresolvableUniqueness)($eq, $subUni), $state)), ($state = (__re__)[1]), (__re__)[0])
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2339:16', (sp_toHuman)($5)))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2346:16', (sp_toHuman)($5)))));
             }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2330:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2337:4', (sp_toHuman)($4)))),
     $state,
   ]);
 });
@@ -11081,7 +11092,7 @@ const $sd1$Compiler$TypeCheck$compareParTypes = (($env, $currentEquality, $index
                     why: "fn arg",
                   }), $state)), ($state = (__re__)[1]), (__re__)[0]);
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2402:12', (sp_toHuman)($9)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2409:12', (sp_toHuman)($9)))));
           return null;
         }))()
         : (true
@@ -11091,7 +11102,7 @@ const $sd1$Compiler$TypeCheck$compareParTypes = (($env, $currentEquality, $index
               why: ($sd1$Compiler$TypeCheck$Why_FunctionInput)($index, $why),
             }));
           }))(), "recycling does not match", $state)), ($state = (__re__)[1]), (__re__)[0])
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2385:4', (sp_toHuman)($8))))),
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2392:4', (sp_toHuman)($8))))),
     $state,
   ]);
 });
@@ -11150,7 +11161,7 @@ const $sd1$Compiler$TypeCheck$occurs = (($tyvarId, $type) => {
           }))()
           : ((($type)[0] === "TypeError")
             ? false
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2576:4', (sp_toHuman)($type)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2583:4', (sp_toHuman)($type)))))));
 });
 
 const $sd1$Compiler$TypeCheck$replaceUnificationVariable = (($env, $equality, $tyvarId, $replacingType, $state) => {
@@ -11161,7 +11172,7 @@ const $sd1$Compiler$TypeCheck$replaceUnificationVariable = (($env, $equality, $t
     }))()
     : (true
       ? false
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2548:8', (sp_toHuman)($replacingType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2555:8', (sp_toHuman)($replacingType))));
   return ([
     ($isSame
       ? null
@@ -11213,7 +11224,7 @@ const $sd1$Compiler$TypeCheck$solveRecordExt = (($env, $equality, $swapEquality,
             }));
           }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2527:8', (sp_toHuman)($11))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2534:8', (sp_toHuman)($11))));
   }));
   return ([
     ((__re__ = ($sd1$Compiler$TypeCheck$replaceUnificationVariable)($env, $equality, $tyvar1, ($sd1$Types$TypedAst$TypeRecord)($core$Maybe$Nothing, $attrs2), $state)), ($state = (__re__)[1]), (__re__)[0]),
@@ -11309,7 +11320,7 @@ const $sd1$Compiler$TypeCheck$solveEquality = (($env, $head, $state) => {
                               why: "fn out",
                             }), $state)), ($state = (__re__)[1]), (__re__)[0]);
                           }))()
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2455:21', (sp_toHuman)($6)))));
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2462:21', (sp_toHuman)($6)))));
                   }))();
                   return ($core$List$indexedEach2)($pars1, $pars2, (($2, $3, $4) => {
                     return ((__re__ = ($sd1$Compiler$TypeCheck$compareParTypes)($env, $head, $2, $3, $4, $state)), ($state = (__re__)[1]), (__re__)[0]);
@@ -11385,7 +11396,7 @@ const $sd1$Compiler$TypeCheck$solveEquality = (($env, $head, $state) => {
                         ? null
                         : (true
                           ? ((__re__ = ($sd1$Compiler$TypeCheck$addErError)($env, $head, "types are incompatible1", $state)), ($state = (__re__)[1]), (__re__)[0])
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2423:4', (sp_toHuman)($5))))))))))))),
+                          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2430:4', (sp_toHuman)($5))))))))))))),
     $state,
   ]);
 });
@@ -14325,6 +14336,19 @@ const $sd1$Compiler$TypeCheck$initEnv = ({
   variables: $core$Dict$empty,
 });
 
+const $sd1$Compiler$TypeCheck$withCaModule = (($2, $env) => {
+  const $asText = $2.asText;
+  const $fsPath = $2.fsPath;
+  const $errorModule = ({
+    content: $asText,
+    fsPath: $fsPath,
+  });
+  const $0 = $env;
+  return (Object.assign)({}, $0, ({
+    errorModule: $errorModule,
+  }));
+});
+
 const $sd1$Prelude$compare = ({
   nonFn: ($core$Core$Cons)("a", $core$Core$Nil),
   type: ($sd1$Prelude$tyFn)(($core$Core$Cons)(($sd1$Prelude$tyVar)("a"), ($core$Core$Cons)(($sd1$Prelude$tyVar)("a"), $core$Core$Nil)), $sd1$Compiler$CoreTypes$number),
@@ -14439,7 +14463,7 @@ const $sd1$Compiler$TypeCheck$initStateAndGlobalEnv = (($externalValues, $allMod
       });
       const $baseEnv = ((($0) => {
         return ($core$List$for)($0, $allModules, (($caModule, $e) => {
-          return ($core$Dict$for)($e, $caModule.unionDefs, (($k, $caUnionDef, $e_) => {
+          return ($core$Dict$for)(($sd1$Compiler$TypeCheck$withCaModule)($caModule, $e), $caModule.unionDefs, (($k, $caUnionDef, $e_) => {
             return ($addUnionTypesToGlobalEnv)($caUnionDef, $e_);
           }));
         }));
@@ -14462,7 +14486,9 @@ const $sd1$Compiler$TypeCheck$initStateAndGlobalEnv = (($externalValues, $allMod
           return ($core$Dict$for)($0, $caModule.unionDefs, (($1, $2, $3) => {
             return ((__re__ = ($sd1$Compiler$TypeCheck$addUnionConstructorsToGlobalEnv)($state, $1, $2, $3)), ($state = (__re__)[1]), (__re__)[0]);
           }));
-        }))($env));
+        }))(((($1) => {
+          return ($sd1$Compiler$TypeCheck$withCaModule)($caModule, $1);
+        }))($env)));
       });
       const $env = ((($0) => {
         return ($core$List$for)($0, $allModules, $doStuff);
@@ -14496,7 +14522,7 @@ const $sd1$Compiler$TypeCheck$initStateAndGlobalEnv = (($externalValues, $allMod
             const $list = $4;
             return ($core$Result$Err)(($sd1$Compiler$Error$Nested)($list));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2290:8', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/stable/src/Compiler/TypeCheck.sp 2297:8', (sp_toHuman)($4))));
     }))());
 });
 
@@ -17997,7 +18023,7 @@ const $sd1$Targets$Javascript$Runtime$listCons = "Cons";
 
 const $sd1$Targets$Javascript$Runtime$listNil = "Nil";
 
-const $sd1$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex);\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd1$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd1$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd1$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n//\n// Dynamic loading\n//\nconst self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n    const actualTypeHumanized = sp_toHuman(pars.type);\n    if (actualTypeHumanized !== requestedTypeHumanized) {\n        return [ 'Err', pars.type ];\n    }\n\n    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n    const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n    const js = $sd1$Platforms$Browser$compile(pars);\n\n    //   { name1, name2, name3, ... } = externals;\n    const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n    const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n    const arg = {};\n    pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n    return [ 'Ok', variantConstructor(Function('externs', body)(arg)) ];\n};\n    "))))))))))))));
+const $sd1$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex, 's');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd1$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd1$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd1$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n//\n// Dynamic loading\n//\nconst self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n    const actualTypeHumanized = sp_toHuman(pars.type);\n    if (actualTypeHumanized !== requestedTypeHumanized) {\n        return [ 'Err', pars.type ];\n    }\n\n    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n    const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n    const js = $sd1$Platforms$Browser$compile(pars);\n\n    //   { name1, name2, name3, ... } = externals;\n    const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n    const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n    const arg = {};\n    pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n    return [ 'Ok', variantConstructor(Function('externs', body)(arg)) ];\n};\n    "))))))))))))));
 
 const $sd1$Platforms$Browser$makeExecutable = (($out) => {
   const $compiledStatements = ($sd1$Platforms$Browser$compile)($out);

@@ -328,7 +328,7 @@ const text_startsWith = (sub, s) => s.startsWith(sub);
 const text_startsWithRegex = (regex) => {
   let re;
   try {
-    re = new RegExp('^' + regex);
+    re = new RegExp('^' + regex, 's');
   } catch (e) {
     return () => ""
   }

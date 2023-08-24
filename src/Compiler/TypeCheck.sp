@@ -2234,6 +2234,12 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: Set USR =
     >> Dict.map (fn k, v: None) __
 
 
+withCaModule as fn CA.Module, Env: Env =
+    fn { with fsPath, asText }, env:
+    errorModule = { fsPath, content = asText }
+    { env with errorModule }
+
+
 initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env) =
     fn externalValues, allModules:
 
@@ -2266,7 +2272,7 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
             >> List.for __ CoreTypes.allDefs addUnionTypesToGlobalEnv
             >> List.for __ CoreTypes.allDefs (addUnionConstructorsToGlobalEnv @state None __ __)
             >> List.for __ allModules fn caModule, e:
-                Dict.for e caModule.unionDefs fn k, caUnionDef, e_:
+                Dict.for (withCaModule caModule e) caModule.unionDefs fn k, caUnionDef, e_:
                     addUnionTypesToGlobalEnv caUnionDef e_
 
         # Expand all aliases
@@ -2276,6 +2282,7 @@ initStateAndGlobalEnv as fn [USR & Instance], [CA.Module]: Res (TA.TyvarId & Env
         doStuff as fn CA.Module, Env: Env =
             fn caModule, env:
             env
+            >> withCaModule caModule __
             >> Dict.for __ caModule.unionDefs (addUnionConstructorsToGlobalEnv @state __ __ __)
             >> Dict.for __ caModule.valueDefs (fn pattern, v, a: addValueToGlobalEnv @state caModule.umr v a)
 
