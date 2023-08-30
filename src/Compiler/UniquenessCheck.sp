@@ -430,6 +430,16 @@ doParameter as fn @State, TA.Parameter, ParsAcc: ParsAcc =
             , localEnv
             }
 
+        , TA.ParameterPlaceholder fullType n:
+            pa = TA.PatternAny Pos.G { maybeName = Just (Text.fromNumber n), type = fullType }
+            addedVars & uniques & localEnv =
+                addPatternToEnv @state pa acc.localEnv
+
+            { acc with
+            , parsToBeSpent = Dict.join uniques .parsToBeSpent
+            , localEnv
+            }
+
         , TA.ParameterRecycle pos rawType name:
 
             var as Variable =
@@ -464,37 +474,10 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
             re
 
         , TA.Variable pos (RefLocal name):
-            try Dict.get name env.variables as
-                , Nothing:
-                    errorUndefinedVariable env pos name @state
-                    re
+            doVariable env @state pos name expression
 
-                , Just variable:
-                    try variable.mode as
-                        , Immutable:
-                            {
-                            , recycled = Dict.empty
-                            , required = variable.required
-                            , spent = Dict.empty
-                            , resolved = expression
-                            }
-
-                        , Unique Available:
-                            {
-                            , recycled = Dict.empty
-                            , required = variable.required
-                            , spent = Dict.ofOne name pos
-                            , resolved = expression
-                            }
-
-                        , Unique (ConsumedAt consumedPos):
-                            errorReferencingConsumedVariable env name pos consumedPos @state
-                            {
-                            , recycled = Dict.empty
-                            , required = variable.required
-                            , spent = Dict.ofOne name pos
-                            , resolved = expression
-                            }
+        , TA.Variable pos (RefPlaceholder n):
+            doVariable env @state pos (Text.fromNumber n) expression
 
         , TA.Constructor pos usr:
             re
@@ -712,6 +695,46 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
             , spent
             , resolved = finalExpression
             }
+
+
+
+doVariable as fn Env, @State, Pos, Name, e: UniOut e =
+    fn env, @state, pos, name, e:
+
+    try Dict.get name env.variables as
+        , Nothing:
+            errorUndefinedVariable env pos name @state
+            uniOutInit e
+
+        , Just variable:
+            try variable.mode as
+                , Immutable:
+                    {
+                    , recycled = Dict.empty
+                    , required = variable.required
+                    , spent = Dict.empty
+                    , resolved = e
+                    }
+
+                , Unique Available:
+                    {
+                    , recycled = Dict.empty
+                    , required = variable.required
+                    , spent = Dict.ofOne name pos
+                    , resolved = e
+                    }
+
+                , Unique (ConsumedAt consumedPos):
+                    errorReferencingConsumedVariable env name pos consumedPos @state
+                    {
+                    , recycled = Dict.empty
+                    , required = variable.required
+                    , spent = Dict.ofOne name pos
+                    , resolved = e
+                    }
+
+
+
 
 
 doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut TA.Expression =

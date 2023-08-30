@@ -124,6 +124,24 @@ without as fn Parser t o: Parser t None =
     reject
 
 
+[# DOC
+
+`oneOf` can become very inefficient; consider:
+
+    evaluation: expr
+    definition: expr '=' expr
+
+    statement = oneOf [ evaluation, definition ]
+
+The `statement` parser will parse the first `expr` twice!
+
+It is much faster to have:
+
+    expr ('=' expr)?
+
+and then decide whether it is an evaluation or a definition depending on whether the second chunk is there or not.
+
+#]
 oneOf as fn [Parser t o]: Parser t o =
     fn ps:
     fn rejections, readState:

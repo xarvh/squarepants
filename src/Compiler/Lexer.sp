@@ -863,15 +863,15 @@ closeOpenBlocks as fn @ReadState: None =
     Array.push @state.sections (Array.toList @state.tokens)
 
 
-lexer as fn Error.Module: Res [[Token]] =
-    fn module:
+lexer as fn Bool, Error.Module: Res [[Token]] =
+    fn keepComments, module:
 
     Debug.benchStart None
 
     moduleCode =
         module.content
 
-    !state = readStateInit False
+    !state = readStateInit keepComments
 
     Text.forEach moduleCode fn char:
         lexOne moduleCode char @state

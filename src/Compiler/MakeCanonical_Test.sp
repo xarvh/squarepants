@@ -218,20 +218,20 @@ binops as Test =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo (
                 (CA.Fn p [
-                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "0") Nothing)
-                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "1") Nothing)
-                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "2") Nothing)
+                    , CA.ParameterPlaceholder 0
+                    , CA.ParameterPlaceholder 1
+                    , CA.ParameterPlaceholder 2
                     ]
                     (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
-                        , CA.ArgumentExpression (CA.Variable p (RefLocal "0"))
+                        , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
                         , CA.ArgumentExpression
 
                             (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
-                                , CA.ArgumentExpression (CA.Variable p (RefLocal "1"))
+                                , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
                                 , CA.ArgumentExpression
                                     (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
                                         , CA.ArgumentExpression (CA.LiteralNumber p 3)
-                                        , CA.ArgumentExpression (CA.Variable p (RefLocal "2"))
+                                        , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 2))
                                         ]
                                     )
                                 ]
@@ -660,8 +660,8 @@ argumentPlaceholders as Test =
                         ( CA.Call p
                             (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "f")))
                             [
-                            , CA.ArgumentExpression (CA.Variable p (RefLocal "0"))
-                            , CA.ArgumentExpression (CA.Variable p (RefLocal "1"))
+                            , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
+                            , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
                             ]
                         )
                 }

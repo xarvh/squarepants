@@ -57,6 +57,7 @@ firstStatement as fn Text: Result Text FA.Statement =
 
     {
     , stripLocations = True
+    , keepComments = True
     , errorModule = {
         , fsPath = "Test"
         , content = code
@@ -396,6 +397,17 @@ functions as Test =
                     &
                     [ faBinop Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
             )
+        , codeTest
+            """
+            [reg] multiple lines, compact
+            """
+            """
+            x =
+                a = pop a
+                b = 1
+            """
+            firstDefinition
+            Test.isOk
         ]
 
 

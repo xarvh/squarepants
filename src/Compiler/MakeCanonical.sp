@@ -1784,6 +1784,7 @@ textToCanonicalModule as fn Bool, ReadOnly: Res CA.Module =
     {
     , errorModule = ro.errorModule
     , stripLocations
+    , keepComments = False
     }
     >> Compiler/Parser.textToFormattableModule
     >> Result.onOk fn faModule:

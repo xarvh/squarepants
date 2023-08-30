@@ -118,6 +118,7 @@ formatMain as fn [Text]: IO Int =
                 , content = moduleAsText
               }
               , stripLocations = False
+              , keepComments = True
         }
         >> Compile.onResSuccess fn formattable:
 

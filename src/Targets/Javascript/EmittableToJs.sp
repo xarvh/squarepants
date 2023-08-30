@@ -430,6 +430,13 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> JA.Var
             >> Inline
 
+        , EA.Variable (RefPlaceholder n):
+            n
+            >> Text.fromNumber
+            >> translateName
+            >> JA.Var
+            >> Inline
+
         , EA.Variable (RefGlobal usr):
             maybeOverrideUsr env usr
             >> Inline

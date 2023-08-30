@@ -195,21 +195,8 @@ formatExpression as fn Env, FA.Expression: Fmt.Block =
         , FA.Fn bodyIsBelow pars body:
             formatFunction env bodyIsBelow pars body
 
-        , FA.Unop unopId:
-            formatUnop unopId
-
         , FA.UnopCall unopId expr:
             formatUnopCall env unopId expr
-
-#        , FA.Binop binop:
-#            if binop.comments == [] then
-#                Fmt.textToBlock binop.symbol
-#            else
-#                [ List.map (formatComment env __) binop.comments
-#                , [ Fmt.textToBlock binop.symbol ]
-#                ]
-#                >> List.concat
-#                >> Fmt.stack
 
         , FA.BinopChain priority binopChain:
             formatBinopChain env priority binopChain

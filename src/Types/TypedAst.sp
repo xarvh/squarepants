@@ -77,6 +77,7 @@ union Argument =
 union Parameter =
     , ParameterPattern FullType Pattern
     , ParameterRecycle Pos RawType Name
+    , ParameterPlaceholder FullType Int
 
 
 alias Tyvar = {
@@ -217,6 +218,9 @@ resolvePar as fn SubsAsFns, Parameter: Parameter =
     try par as
         , ParameterPattern full pa:
             ParameterPattern (resolveFull saf full) (resolvePattern saf pa)
+
+        , ParameterPlaceholder full n:
+            ParameterPlaceholder (resolveFull saf full) n
 
         , ParameterRecycle p raw name:
             ParameterRecycle p (resolveRaw saf raw) name

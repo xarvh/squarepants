@@ -5,6 +5,7 @@ tests as Test =
         , definitions
         , operators
         , functions
+        , calls
         , lists
         , records
         , comments
@@ -24,6 +25,7 @@ format as fn Text: Result Text Text =
             , content = input
           }
           , stripLocations = False
+          , keepComments = True
     }
     >> Result.mapError toHuman __
     >> onOk fn faStatements:
@@ -105,7 +107,7 @@ operators as Test =
             """
         , formatTest
             """
-            [reg] Preserve comment?
+            [reg] Preserve comment
             """
             """
             escape =
@@ -120,6 +122,7 @@ operators as Test =
                 # comment
                 >> replace
                 >> replace
+
             """
         ]
 
@@ -331,9 +334,15 @@ functions as Test =
                         b
                     (assert blah)
             """
+        ]
+
+
+calls as Test =
+    Test.Group "Calls"
+        [
         , formatTest
             """
-            Call
+            Arguments indentation
             """
             """
             a =
@@ -353,6 +362,7 @@ functions as Test =
 
             """
         ]
+
 
 
 definitions as Test =

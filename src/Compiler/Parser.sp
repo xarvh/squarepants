@@ -2,6 +2,7 @@
 alias Env = {
     , errorModule as Error.Module
     , stripLocations as Bool
+    , keepComments as Bool
     }
 
 
@@ -136,11 +137,6 @@ discardSecond as fn Parser a, Parser b: Parser a =
     ok aa
 
 
-maybeWithDefault as fn a, Parser a: Parser a =
-    fn a, p:
-    Parser.oneOf [ p, ok a ]
-
-
 surroundStrict as fn Token.Kind, Token.Kind, Parser a: Parser a =
     fn left, right, p:
     Parser.surroundWith (kind left) (kind right) p
@@ -163,38 +159,6 @@ oomSeparatedBy as fn Parser a, Parser b: Parser [b] =
     pa >> on fn head:
     Parser.zeroOrMore (discardFirst sep pa) >> on fn tail:
     ok << head :: tail
-
-
-sepListAtSep as fn Parser sep, Parser item: Parser [sep & item] =
-    fn sep, item:
-    sep >> on fn sep0:
-    theParserStillSucks =
-        Parser.oneOf
-            [ block (sepListAtItem sep item)
-            , sib (sepListAtItem sep item)
-            , sepListAtItem sep item
-            ]
-    theParserStillSucks >> on fn ( item0 & tail ):
-    ok << sep0 & item0 :: tail
-
-
-
-sepListAtItem as fn Parser sep, Parser item: Parser (item & [sep & item]) =
-    fn sep, item:
-    item >> on fn item0:
-    theParserStillSucks =
-        Parser.oneOf
-            [ block (sepListAtSep sep item)
-            , sib (sepListAtSep sep item)
-            , sepListAtSep sep item
-            , ok []
-            ]
-    theParserStillSucks >> on fn sepsAndItems:
-    ok ( item0 & sepsAndItems )
-
-
-sepList as fn Parser sep, Parser item: Parser (item & [sep & item]) =
-    sepListAtItem
 
 
 [#| TODO make it more flexible
@@ -276,6 +240,27 @@ inlineOrBelowOrIndented as fn Parser a: Parser a =
         ]
 
 
+indentedOrInlineStatements as fn Env: Parser FA.Expression =
+    fn env:
+
+    [
+    , block (siblingStatements env)
+    , expr env
+    ]
+    >> Parser.oneOf
+
+
+alignedOrInlineStatements as fn Env: Parser (Bool & FA.Expression) =
+    fn env:
+
+    Parser.oneOf
+        [
+        , block (siblingStatements env) >> on fn e: ok (True & e)
+        , sib (siblingStatements env) >> on fn e: ok (True & e)
+        , expr env >> on fn e: ok (False & e)
+        ]
+
+
 #
 # Statement blocks
 #
@@ -305,27 +290,6 @@ siblingStatements as fn Env: Parser FA.Expression =
           >> FA.Statements
           >> FA.Expression [] (pos env start end) __
           >> ok
-
-
-indentedOrInlineStatements as fn Env: Parser FA.Expression =
-    fn env:
-
-    [
-    , block (siblingStatements env)
-    , expr env
-    ]
-    >> Parser.oneOf
-
-
-alignedOrInlineStatements as fn Env: Parser (Bool & FA.Expression) =
-    fn env:
-
-    Parser.oneOf
-        [
-        , block (siblingStatements env) >> on fn e: ok (True & e)
-        , sib (siblingStatements env) >> on fn e: ok (True & e)
-        , expr env >> on fn e: ok (False & e)
-        ]
 
 
 #
@@ -407,42 +371,43 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
     b =
       # We try all tokens that unambiguously mark the start of an expression
       try kk as
+
         , Token.Word tokenWord:
 
-            variableOk =
-                fn maybeType: {
-                    , maybeType
-                    , tokenWord
-                    }
-                    >> FA.Variable
-                    >> expressionOk
+            maybe (discardFirst (kind Token.As) (expr env))
+            >> on fn maybeType:
 
-            Parser.oneOf [
-              , discardFirst (kind Token.As) (expr env)
-                >> on fn t:
-                variableOk (Just t)
-              , variableOk Nothing
-              ]
+            {
+            , maybeType
+            , tokenWord
+            }
+            >> FA.Variable
+            >> expressionOk
+
 
         , Token.ArgumentPlaceholder:
             FA.ArgumentPlaceholder
             >> expressionOk
 
+
         , Token.NumberLiteral isPercent s:
-            Parser.oneOf [
 
-              , discardFirst (kind Token.UniquenessPolymorphismBinop) (expr env)
-                >> on fn e:
-                FA.Poly s e
-                >> expressionOk
+            maybe (discardFirst (kind Token.UniquenessPolymorphismBinop) (expr env))
+            >> on fn maybeUniPoly:
 
-              , FA.LiteralNumber isPercent s
-                >> expressionOk
-              ]
+            try maybeUniPoly as
+                , Nothing: FA.LiteralNumber isPercent s
+                , Just exp: FA.Poly s exp
+
+            # TODO FA.Poly should reject if isPercent!
+
+            >> expressionOk
+
 
         , Token.TextLiteral s:
             FA.LiteralText s
             >> expressionOk
+
 
         , Token.RoundParen Token.Open:
             discardSecond
@@ -594,63 +559,69 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
 functionApplication as fn Env: Parser FA.Expression =
     fn env:
 
-    e =
+    # it is "term" in the sense that we are sure we won't need backtracking?
+    # TODO need to think more about this and clarify it better.
+    # I have it in my head, I understand it intuitively, but I cannot explain it properly.
+    term =
         expressionWithUnambiguousStart env
 
-    # First we need one "term".
-    e
+    # First we need at least one "term".
+    term
     >> on fn ref:
 
-    # Then we need another, indented or inline.
-    # Directly below is not allowed.
-    [
-    , block e
-    , e
-    ]
-    >> Parser.oneOf
-    >> maybe
-    >> on fn maybeFirstArgument:
+    # Then let's check for inline arguments: `ref a1 a2 a3...`
+    term
+    >> Parser.zeroOrMore
+    >> on fn inlineArgs:
 
-    try maybeFirstArgument as
-        , Nothing:
-            # No application
-            ok ref
+    # Then we can see if there's indented arguments
+    # After the first indentation we allow arguments to be stacked directly below each other
+    #
+    #   ref a1 a2 a3
+    #       a4
+    #       a5
+    #       a6
+    #       ...
+    #
+    term
+    >> inlineOrBelowOrIndented
+    >> Parser.zeroOrMore
+    >> block
+    >> Parser.maybe
+    >> on fn indentedArgs:
 
-        , Just argsHead:
-            # There might be more arguments.
-            # These are allowed to be directly below
+    args = List.concat [ inlineArgs, Maybe.withDefault [] indentedArgs ]
 
-            e
-            >> inlineOrBelowOrIndented
-            >> Parser.zeroOrMore
-            >> on fn argsTail:
+    if args == [] then
+        # No application
+        ok ref
+    else
+        p =
+            posRange [ref, ...args]
 
-            p =
-                posRange [ref, argsHead, ...argsTail]
+        # `@Array a` must parse as `@(Array a)`
+        # `atan2 -a b` must parse as `atan2 (-a) b`
+        # AVOID: `atan2 -a b` parsing as `atan2 -(a b)`!!!
+        #
+        # TODO: this is ugly because it loses information: `(-a) b c` cannot be distinguished by `-(a b c)`
+        # which is not something that will ever happen with the current unops because none of them applies to
+        # actual functions, but still...
+        #
+        # TODO: more importantly, this should handle multiple nested unops
+        #
+        # TODO: should this live here? Isn't this something we can do in MakeCanonical instead?
+        try ref as
+            , FA.Expression comments p1 (FA.UnopCall op unoped):
+                FA.Call unoped args
+                >> FA.Expression [] p __
+                >> FA.UnopCall op __
+                >> FA.Expression comments p1 __
+                >> ok
 
-            # `@Array a` must parse as `@(Array a)`
-            # `atan2 -a b` must parse as `atan2 (-a) b`
-            # AVOID: `atan2 -a b` parsing as `atan2 -(a b)`!!!
-            #
-            # TODO: this is ugly because it loses information: `(-a) b c` cannot be distinguished by `-(a b c)`
-            # which is not something that will ever happen with the current unops because none of them applies to
-            # actual functions, but still...
-            #
-            # TODO: more importantly, this should handle multiple nested unops
-            #
-            # TODO: should this live here? Isn't this something we can do in MakeCanonical instead?
-            try ref as
-                , FA.Expression comments p1 (FA.UnopCall op unoped):
-                    FA.Call unoped (argsHead :: argsTail)
-                    >> FA.Expression [] p __
-                    >> FA.UnopCall op __
-                    >> FA.Expression comments p1 __
-                    >> ok
-
-                , _:
-                    FA.Call ref (argsHead :: argsTail)
-                    >> FA.Expression [] p __
-                    >> ok
+            , _:
+                FA.Call ref args
+                >> FA.Expression [] p __
+                >> ok
 
 
 
@@ -713,18 +684,6 @@ expr as fn Env: Parser FA.Expression =
 
     reorderAccordingToBinopPrecedence x
     >> ok
-
-
-
-#recInlineOrIndentedOrBelow as fn Parser FA.Expression, [FA.Expression]: Parser [FA.Expression] =
-#    fn higher, accum:
-#    higher >> on fn h:
-#
-#    r =
-#        h :: accum
-#
-#    maybeWithDefault r __ << inlineOrBelowOrIndented (recInlineOrIndentedOrBelow higher r)
-
 
 
 
@@ -828,7 +787,6 @@ stackCommentsReversedAsStatements as fn [FA.Comment], [FA.Statement]: [FA.Statem
 
 
 
-
 statementParser as fn Env, [FA.Statement]: Parser [FA.Statement] =
     fn env, acc0:
 
@@ -843,8 +801,7 @@ statementParser as fn Env, [FA.Statement]: Parser [FA.Statement] =
     [
     , aliasDef env
     , unionDef env
-    , definition env
-    , expr env >> on fn e: e >> FA.Evaluation >> ok
+    , definitionOrEvaluation env
     ]
     >> Parser.oneOf
     >> on fn statement:
@@ -853,33 +810,44 @@ statementParser as fn Env, [FA.Statement]: Parser [FA.Statement] =
     >> ok
 
 
-definition as fn Env: Parser FA.Statement =
+
+definitionOrEvaluation as fn Env: Parser FA.Statement =
     fn env:
 
+    # This one is needed by both definitions and evaluations
     expr env
-    >> on fn p:
+    >> on fn ex:
 
-    Parser.maybe (inlineOrBelowOrIndented (nonFunction env))
-    >> on fn nf:
+    # This is the part that definitions have and evaluations don't have
+    definitionTail =
+        maybe (inlineOrBelowOrIndented (nonFunction env))
+        >> on fn maybeNf:
 
-    inlineOrBelowOrIndented (kind Token.Defop)
-    >> on fn _:
+        inlineOrBelowOrIndented (kind Token.Defop)
+        >> on fn _:
 
-    indentedOrInlineStatements env
-    >> on fn body:
+        indentedOrInlineStatements env
+        >> on fn body:
 
-    {
-    , pattern = p
-    , body
-    , nonFn = Maybe.withDefault [] nf
-    }
-    >> FA.ValueDef
+        maybeNf & body
+        >> ok
+
+    maybe definitionTail
+    >> on fn maybeDefTail:
+
+    try maybeDefTail as
+        , Nothing:
+            FA.Evaluation ex
+
+        , Just (maybeNf & body):
+            {
+            , pattern = ex
+            , body
+            , nonFn = Maybe.withDefault [] maybeNf
+            }
+            >> FA.ValueDef
     >> ok
 
-
-#
-# Types
-#
 
 
 nonFunction as fn Env: Parser [FA.Word] =
@@ -891,17 +859,6 @@ nonFunction as fn Env: Parser [FA.Word] =
         Parser.abort "Only NonFunction is supported for now"
     else
         ok names
-
-
-typeAnnotation as fn Env: Parser FA.Expression =
-    fn env:
-
-    discardFirst
-        (kind Token.As)
-        (inlineOrBelowOrIndented (expr env))
-
-
-
 
 
 
@@ -947,7 +904,7 @@ makeError as fn Env, [Token], Text: Res a =
 parse as fn Env, [Token], [FA.Statement]: Res [FA.Statement] =
     fn env, allTokens, acc:
 
-    log "PARSE ===================================================" env.errorModule.fsPath
+#    log "PARSE ===================================================" env.errorModule.fsPath
 #    List.each allTokens fn t: log "*" t
 
     initState as ReadState = {
@@ -989,7 +946,7 @@ textToFormattableModule as fn Env: Res FA.Module =
     fn env:
 
     tokensResult as Res [[Token]] =
-        Compiler/Lexer.lexer env.errorModule
+        Compiler/Lexer.lexer env.keepComments env.errorModule
 
     tokensResult
     >> onOk fn tokenChunks:
