@@ -977,7 +977,6 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
 
 
         , CA.ParameterPlaceholder num:
-            name = Text.fromNumber num
             tyvarId =
                 newTyvarId @state
 
@@ -1001,12 +1000,9 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
                 }
 
             newEnv as Env =
-                { env with variables = Dict.insert (RefLocal name) instance .variables }
+                { env with variables = Dict.insert (RefPlaceholder num) instance .variables }
 
-            pa as TA.Pattern =
-                TA.PatternAny Pos.G { maybeName = Just name, type }
-
-            TA.ParameterPattern type pa & TA.ParSp type & newEnv
+            TA.ParameterPlaceholder type num & TA.ParSp type & newEnv
 
 
 inferFn as fn Env, Pos, [CA.Parameter], CA.Expression, @State: TA.Expression & TA.FullType =
@@ -1200,13 +1196,9 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
 
 
         , CA.ParameterPlaceholder num:
-            name = Text.fromNumber num
             try expectedParType as
                 , TA.ParRe _: todo "TA.ParRe"
                 , TA.ParSp type:
-
-                    pa as TA.Pattern =
-                        TA.PatternAny Pos.G { maybeName = Just name, type }
 
                     variable as Instance =
                         {
@@ -1216,7 +1208,7 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
                         , freeUnivars = Dict.empty
                         }
 
-                    TA.ParameterPattern type pa & { env with variables = Dict.insert (RefLocal name) variable .variables }
+                    TA.ParameterPlaceholder type num & { env with variables = Dict.insert (RefPlaceholder num) variable .variables }
 
 
         , CA.ParameterRecycle pos name:

@@ -101,6 +101,9 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
         , TA.ParameterRecycle pos rawType name:
             bodyAcc & (True & Just name)
 
+        , TA.ParameterPlaceholder fullType n:
+            bodyAcc & (False & Just (Text.fromNumber n))
+
         , TA.ParameterPattern fullType pa:
             try pickMainName pa as
                 , NoNamedVariables:

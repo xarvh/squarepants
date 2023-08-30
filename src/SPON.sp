@@ -69,7 +69,7 @@ read as fn Reader a, Text, Text: Res a =
     errorModule as Error.Module =
         { content, fsPath }
 
-    { errorModule, stripLocations = False }
+    { errorModule, stripLocations = False, keepComments = False }
     >> Compiler/Parser.textToFormattableModule
     >> onOk (run reader errorModule __)
 
