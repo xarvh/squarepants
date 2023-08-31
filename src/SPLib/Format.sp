@@ -98,7 +98,8 @@ indent_combine as fn Int, Int: Int =
 # - `Row` joins multiple elements onto one line.
 union Line =
   , Text_ Text
-  , NoIndent Text
+  , CommentWithIndent Text
+  , CommentIgnoreIndent Text
   , Row Line Line
   , Space
   , Blank
@@ -426,9 +427,8 @@ stripEnd as fn Line: Line =
         try stripEnd r2 as
           , Blank: stripEnd r1
           , r2_: Row r1 r2_
-      , Text_ t: Text_ t
-      , NoIndent t: NoIndent t
-      , Blank: Blank
+      , _:
+            l
 
 # | Adds the given suffix to then end of the last line of the @Block@.
 # TODO: rename to `suffix`?
@@ -439,7 +439,12 @@ addSuffix as fn Line, Block: Block =
 
 renderIndentedLine as fn Indented Line: Text =
   fn (Indented i line_):
-  renderLine i (stripEnd line_) .. "\n"
+
+  line_
+  >> stripEnd
+  >> renderLine i __
+  >> Text.trimRight
+  >> __ .. "\n"
 
 
 spaces as fn Int: Text =
@@ -451,7 +456,9 @@ renderLine as fn Indent, Line: Text =
   try l as
       , Text_ text:
           spaces (indent_width i) .. text
-      , NoIndent text:
+      , CommentWithIndent text:
+          spaces (indent_width i) .. text
+      , CommentIgnoreIndent text:
           text
       , Space:
           spaces (1 + indent_width i)

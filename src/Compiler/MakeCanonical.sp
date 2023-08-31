@@ -614,8 +614,11 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                 error env pos [ "This binop can't be used in pattern matching" ]
 
 
-        , FA.LiteralText l:
-            Ok << CA.PatternLiteralText pos l
+        , FA.LiteralText singleOrTriple l:
+            l
+            >> escapeLiteralText singleOrTriple __
+            >> CA.PatternLiteralText pos __
+            >> Ok
 
         , FA.LiteralNumber isPercent l:
             translateNumber env.ro isPercent CA.PatternLiteralNumber pos l
@@ -636,6 +639,20 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
         , FA.Try _:
             error env pos [ "try..as can't be used in pattern matching" ]
+
+
+
+
+escapeLiteralText as fn Token.SingleOrTriple, Text: Text =
+    fn singleOrTriple, l:
+            try singleOrTriple as
+              , Token.SingleQuote:
+                  l
+              , Token.TripleQuote:
+                  l
+                  >> Text.replace "\"" "\\\"" __
+                  >> Text.replace "\n" "\\n" __
+
 
 
 #
@@ -712,8 +729,11 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
         , FA.LiteralNumber isPercent str:
             translateNumber env.ro isPercent CA.LiteralNumber pos str
 
-        , FA.LiteralText v:
-            Ok << CA.LiteralText pos v
+        , FA.LiteralText singleOrTriple l:
+            l
+            >> escapeLiteralText singleOrTriple __
+            >> CA.LiteralText pos __
+            >> Ok
 
         , FA.Statements stats:
             translateStatements env stats

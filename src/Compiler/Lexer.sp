@@ -158,6 +158,10 @@ updateIndent as fn Int, Int, Token.Kind, @ReadState: None =
 
 
     try Array.pop @state.indentStack as
+
+        , Nothing:
+            manageIndent { indent = 0, isBlock = True }
+
         , Just head:
             if cloneUni @state.lineIndent < head.indent then
                 if head.isBlock then
@@ -170,9 +174,6 @@ updateIndent as fn Int, Int, Token.Kind, @ReadState: None =
                 # Ugly... Would probably be better to get the last element instead without popping it
                 Array.push @state.indentStack head
                 manageIndent head
-
-        , Nothing:
-            manageIndent { indent = 0, isBlock = True }
 
 
 addContentTokenAbs as fn Int, Int, Token.Kind, @ReadState: None =
@@ -601,6 +602,7 @@ lexOne as fn Text, Text, @ReadState: None =
           if char == "." then
               setMode Dot_Two @state
           else if isWordStart char then
+              @state.tokenStart := getPos @state - 1
               setMode (Word Token.NameStartsWithDot) @state
 
           else if isNumber char then
@@ -673,7 +675,7 @@ lexOne as fn Text, Text, @ReadState: None =
               @state.tokenStart := getPos @state - 2
               setMode (TripleQuote { lastEscape = -1, closingQuotes = 0 }) @state
           else
-              addContentTokenRel -2 0 (Token.TextLiteral "") @state
+              addContentTokenRel -2 0 (Token.TextLiteral Token.SingleQuote "") @state
               setMode Default @state
               lexOne buffer char @state
 
@@ -697,9 +699,9 @@ lexOne as fn Text, Text, @ReadState: None =
                   value =
                       buffer
                       >> Text.slice (start + 1) (end - 1) __
-                      >> Text.replace "\\\"" "\"" __
+#                      >> Text.replace "\\\"" "\"" __
 
-                  addContentTokenAbs start end (Token.TextLiteral value) @state
+                  addContentTokenAbs start end (Token.TextLiteral Token.SingleQuote value) @state
                   setMode Default @state
 
               , "\\":
@@ -736,12 +738,12 @@ lexOne as fn Text, Text, @ReadState: None =
                     start = cloneUni @state.tokenStart
                     end = pos + 1
 
-                    value =
-                        buffer
-                        >> Text.slice (start + 3) (end - 3) __
-                        >> unindent
+                    buffer
+                    >> Text.slice (start + 3) (end - 3) __
+                    >> unindent
+                    >> Token.TextLiteral Token.TripleQuote __
+                    >> addContentTokenAbs start end __ @state
 
-                    addContentTokenAbs start end (Token.TextLiteral value) @state
                     setMode Default @state
                   else
                     setMode (TripleQuote { lastEscape, closingQuotes = closingQuotes + 1 }) @state

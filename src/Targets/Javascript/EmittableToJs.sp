@@ -337,8 +337,8 @@ literalString as fn Text: JA.Expr =
     fn str:
     escaped =
         str
-            >> Text.replace "\n" "\\n" __
-            >> Text.replace "\"" "\\\"" __
+#            >> Text.replace "\n" "\\n" __
+#            >> Text.replace "\"" "\\\"" __
 
     "\"" .. escaped .. "\""
     >> JA.Literal

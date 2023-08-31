@@ -94,7 +94,7 @@ logHead as Reader None =
 text as Reader Text =
     fn statements:
     try statements as
-        , [ FA.Evaluation (FA.Expression _ _ (FA.LiteralText t)) ]:
+        , [ FA.Evaluation (FA.Expression _ _ (FA.LiteralText _ t)) ]:
             Accepted [] t
 
         , [ s ]:

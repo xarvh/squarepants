@@ -38,6 +38,11 @@ trimLeft as fn Text: Text =
     todo "native"
 
 
+trimRight as fn Text: Text =
+    re = replaceRegex "[ ]*$"
+    re "" __
+
+
 dropLeft as fn Int, Text: Text =
     fn n, s:
     todo "native"
