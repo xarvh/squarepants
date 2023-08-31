@@ -14,11 +14,6 @@ sourceDir =
         globalTypes = TextTree
 
     module =
-       path = Test
-       importAs = Test
-       globalTypes = Test
-
-    module =
        path = Compiler/Error
        importAs = Error
        globalTypes =
@@ -105,12 +100,25 @@ sourceDir =
             Token
 
     module =
+       path = SPLib/Format
+       importAs = Fmt
+
+    module =
        path = SPLib/Parser
        importAs = Parser
 
     module =
-       path = SPLib/Format
-       importAs = Fmt
+       path = SPLib/RefHierarchy
+       importAs = RefHierarchy
+
+    module =
+       path = SPLib/SPON
+       importAs = SPON
+
+    module =
+       path = SPLib/Test
+       importAs = Test
+       globalTypes = Test
 
 
 # This will be transformed into a platform
