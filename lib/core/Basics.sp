@@ -14,6 +14,11 @@ not as fn Bool: Bool =
     if b then False else True
 
 
+applyIf as fn Bool, (fn a: a): fn a: a =
+    fn condition, f:
+    if condition then f else identity
+
+
 # Am I actually using this?
 btw as fn (fn a: b), a, c: c =
     fn f, a, c:

@@ -184,6 +184,7 @@ library =
             cloneUni
             identity
             not
+            applyIf
             modBy
             min
             max
