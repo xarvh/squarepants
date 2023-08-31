@@ -125,7 +125,8 @@ formatMain as fn [Text]: IO Int =
         formattable
         >> Human/Format.formatStatements { isRoot = True, originalContent = moduleAsText } __
         >> Fmt.render
-        >> IO.writeFile (name .. ".fmt.sp") __
+        #>> IO.writeFile (name .. ".fmt.sp") __
+        >> IO.writeFile name __
 
     targets
     >> List.map formatFile __

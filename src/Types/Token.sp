@@ -27,6 +27,11 @@ union OpenOrClosed =
     , Closed
 
 
+union SingleOrTriple =
+    , SingleQuote
+    , TripleQuote
+
+
 union Kind =
     , Comment { isBlock as Bool, indent as Int, isFollowedByBlank as Bool }
     # Structure
@@ -35,7 +40,7 @@ union Kind =
     , BlockEnd
     , BadIndent
     # Terms
-    , TextLiteral Text
+    , TextLiteral SingleOrTriple Text
     , NumberLiteral Bool Text
     , Word Word
     , ArgumentPlaceholder

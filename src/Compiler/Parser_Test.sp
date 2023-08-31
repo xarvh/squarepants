@@ -237,7 +237,7 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                e << FA.Fn False
+                e << FA.Fn FA.Inline
                     [
                     , variable "a"
                     , variable "b"
@@ -254,7 +254,7 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                e << FA.Fn True
+                e << FA.Fn FA.Indented
                     [ variable "a" ]
                     ( e << FA.LiteralNumber False "3" )
             )
@@ -270,9 +270,9 @@ functions as Test =
             """
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo <<
-                e << FA.Fn True
+                e << FA.Fn FA.Aligned
                     [ variable "a" ]
-                    (e << FA.Fn True
+                    (e << FA.Fn FA.Aligned
                         [ variable "b" ]
                         ( e << FA.LiteralNumber False "3" )
                     )
@@ -286,7 +286,7 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                e << FA.Fn False
+                e << FA.Fn FA.Inline
                     [ tuple (variable "a") (variable "b") ]
                     ( variable "a" )
             )
@@ -301,7 +301,7 @@ functions as Test =
             (Test.isOkAndEqualTo <<
                 e << FA.Call
                     ( variable "xxx" )
-                    [ e << FA.Fn False [ variable "y" ] (variable "y") ]
+                    [ e << FA.Fn FA.Inline [ variable "y" ] (variable "y") ]
             )
         , codeTest
             """
@@ -316,7 +316,7 @@ functions as Test =
             (Test.isOkAndEqualTo <<
                 e << FA.Call
                     ( variable "xxx" )
-                    [ e << FA.Fn True [ variable "y" ] (variable "y") ]
+                    [ e << FA.Fn FA.Aligned [ variable "y" ] (variable "y") ]
             )
 
         , codeTest
@@ -333,7 +333,7 @@ functions as Test =
                 e << FA.BinopChain Op.precedence_pipe __ <<
                     variable "value" &
                         [
-                        , faBinop Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn False [variable "x"] (variable "blah")])
+                        , faBinop Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn FA.Aligned [variable "x"] (variable "blah")])
                         , faBinop Prelude.sendRight & variable "sblorp"
                         ]
             )
@@ -348,7 +348,7 @@ functions as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo <<
-                e << FA.Fn True
+                e << FA.Fn FA.Indented
                     [ variable "x" ]
                     ( e << FA.Statements
                         [
@@ -373,7 +373,7 @@ functions as Test =
                 , pattern = variable "a"
                 , nonFn = []
                 , body =
-                    e << FA.Fn True
+                    e << FA.Fn FA.Aligned
                         [ variable "x" ]
                         ( e << FA.Statements
                             [
@@ -437,7 +437,7 @@ annotations as Test =
                 {
                 , pattern =
                     annotatedVariable "a"
-                        (e << FA.Fn False
+                        (e << FA.Fn FA.Inline
                             [tuple (variable "int") (variable "int")]
                             (variable "bool")
                         )
@@ -907,7 +907,7 @@ patterns as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo << e <<
-                FA.Fn True
+                FA.Fn FA.Indented
                     [ e << FA.Record
                         {
                         , maybeExtension = Just Nothing

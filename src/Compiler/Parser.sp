@@ -250,14 +250,14 @@ indentedOrInlineStatements as fn Env: Parser FA.Expression =
     >> Parser.oneOf
 
 
-alignedOrInlineStatements as fn Env: Parser (Bool & FA.Expression) =
+alignedOrInlineStatements as fn Env: Parser (FA.Layout & FA.Expression) =
     fn env:
 
     Parser.oneOf
         [
-        , block (siblingStatements env) >> on fn e: ok (True & e)
-        , sib (siblingStatements env) >> on fn e: ok (True & e)
-        , expr env >> on fn e: ok (False & e)
+        , block (siblingStatements env) >> on fn e: ok (FA.Indented & e)
+        , sib (siblingStatements env) >> on fn e: ok (FA.Aligned & e)
+        , expr env >> on fn e: ok (FA.Inline & e)
         ]
 
 
@@ -404,8 +404,8 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
             >> expressionOk
 
 
-        , Token.TextLiteral s:
-            FA.LiteralText s
+        , Token.TextLiteral singleOrTriple s:
+            FA.LiteralText singleOrTriple s
             >> expressionOk
 
 

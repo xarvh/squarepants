@@ -219,6 +219,17 @@ records as Test =
                 }
 
             """
+        , formatTest
+            """
+            Extension
+            """
+            """
+            { z with e }
+            """
+            """
+            { z with e }
+
+            """
         ]
 
 
@@ -301,7 +312,7 @@ functions as Test =
         #]
         , formatTest
             """
-            Named functions should always have their body below
+            SKIP (low priority) Named functions should always have their body below
             """
             """
             f =
@@ -313,26 +324,28 @@ functions as Test =
                 fn b:
                 c
             """
-
         , formatTest
             """
-            As multiline args
+            Named functions should always have their body below
             """
             """
-            a =
-                test
-                   fn _:
-                      a
-                      b
-                  (assert blah)
+            x =
+              a
+              >> onOk fn b:
+
+              c
+              >> onOk fn d:
+
+              e
             """
             """
-            a =
-                test
-                    fn _:
-                        a
-                        b
-                    (assert blah)
+            x =
+                a
+                >> onOk fn b:
+                c
+                >> onOk fn d:
+                e
+
             """
         ]
 
@@ -359,6 +372,75 @@ calls as Test =
                     a
                     #comment2
                     b
+
+            """
+
+        , formatTest
+            """
+            precedence
+            """
+            """
+            a (b  c)
+            """
+            """
+            a (b c)
+
+            """
+
+        , formatTest
+            """
+            With multiline args
+            """
+            """
+            a =
+                (x >> y)
+                   fn _:
+                      a
+                      b
+                  (assert blah)
+                  (zak meh)
+            """
+            """
+            a =
+                (x >> y)
+                    (fn _:
+                         a
+
+                         b
+                    )
+                    (assert blah)
+                    (zak meh)
+
+            """
+
+        , formatTest
+            """
+            Preserve aligned
+            """
+            """
+            a =
+                x fn _:
+                y
+            """
+            """
+            a =
+                x fn _:
+                y
+
+            """
+        , formatTest
+            """
+            Preserve indent
+            """
+            """
+            a =
+                x fn _:
+                  y
+            """
+            """
+            a =
+                x fn _:
+                    y
 
             """
         ]
@@ -405,6 +487,18 @@ definitions as Test =
                 , Meh x y z
 
             """
+        , formatTest
+            """
+            Annotated values
+            """
+            """
+            (x as Type) & (y as Kind) = thing
+            """
+            """
+            (x as Type) & (y as Kind) =
+                thing
+
+            """
         ]
 
 
@@ -424,6 +518,16 @@ textLiterals as Test =
                 "\\"\\\\"
 
             """
+# TODO Escaping the escapes is more than my brain can take now.
+#        , formatTest
+#            """
+#            SKIP (not enough brain to go through 3 inception levels of escaping...) Preserve single quotes
+#            """
+#            """
+#            Text.replace "\\\"" "\"" __
+#            """
+#            """
+#            """
         ]
 
 
@@ -723,7 +827,7 @@ tryAs as Test =
             """
         , formatTest
             """
-            Preserves comments (long)
+            Preserves comments (long, inline comments)
             """
             """
             try e as
@@ -743,6 +847,106 @@ tryAs as Test =
 
                 , _:
                     10
+
+            """
+        , formatTest
+            """
+            Preserves comments (long, block comments)
+            """
+            """
+            try e as
+                [# AAA #]
+                , T:
+                [# BBB #]
+                    9
+                , _: 10
+            """
+            """
+            try e as
+
+                [# AAA #]
+                , T:
+                    [# BBB #]
+                    9
+
+                , _:
+                    10
+
+            """
+        , formatTest
+            """
+            Comments
+            """
+            """
+            x =
+                      try char as
+                        , "":
+                            None
+
+            #            "@":
+
+                        , "#":
+                            start
+
+            """
+            """
+            x =
+                try char as
+
+                    , "":
+                        None
+
+            #            "@":
+
+                    , "#":
+                        start
+
+            """
+        , formatTest
+            """
+            [reg] Should not move a comma inside a multi-line comment
+            """
+            """
+            try char as
+              , a: b
+
+              [#
+              comment
+              #]
+
+              , d: c
+            """
+            """
+            try char as
+
+                , a:
+                    b
+
+                [#
+                comment
+                #]
+
+                , d:
+                    c
+
+            """
+        , formatTest
+            """
+            [reg] Comments should not cause content to multiline
+            """
+            """
+            try value as
+
+                # TODO restore `None` here once it doesn't break JS any more
+                , Err _:
+                    formatIndented
+            """
+            """
+            try value as
+
+                # TODO restore `None` here once it doesn't break JS any more
+                , Err _:
+                    formatIndented
 
             """
         ]

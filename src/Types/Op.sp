@@ -32,7 +32,8 @@ alias Binop =
     }
 
 
-precedence_exponential as Int = 9
+precedence_function as Int = 0
+precedence_application as Int = 9
 precedence_multiplicative as Int = 8
 precedence_addittive as Int = 7
 precedence_comparison as Int = 6

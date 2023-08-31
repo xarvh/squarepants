@@ -62,6 +62,12 @@ alias Comment = {
     }
 
 
+union Layout =
+    , Inline
+    , Aligned
+    , Indented
+
+
 union Statement =
     , CommentStatement Comment
     , Evaluation Expression
@@ -75,7 +81,7 @@ union Expression =
 
 
 union Expr_ =
-    , LiteralText Text
+    , LiteralText Token.SingleOrTriple Text
     , LiteralNumber Bool Text
     , ArgumentPlaceholder
 
@@ -99,7 +105,7 @@ union Expr_ =
         , tokenWord as Token.Word
         }
 
-    , Fn Bool [Expression] Expression
+    , Fn Layout [Expression] Expression
 
     , UnopCall Op.UnopId Expression
 
