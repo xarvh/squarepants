@@ -3772,22 +3772,27 @@ const $core$List$indexedMap2 = (($f, $aaa, $bbb) => {
   return ($rec)($core$Core$Nil, 0, $aaa, $bbb);
 });
 
-const $core$List$intersperse = (($separator, $items, $acc) => {
-  return ((($items)[0] === "Nil")
-    ? ($core$List$reverse)($acc)
-    : (((($items)[0] === "Cons") && ((($items)[2])[0] === "Nil"))
-      ? ((() => {
-        const $last_ = ($items)[1];
-        return ($core$List$reverse)((sp_cons)($last_, $acc));
-      }))()
-      : ((($items)[0] === "Cons")
+const $core$List$intersperse = ((() => {
+  const $rec = (($separator, $items, $acc) => {
+    return ((($items)[0] === "Nil")
+      ? ($core$List$reverse)($acc)
+      : (((($items)[0] === "Cons") && ((($items)[2])[0] === "Nil"))
         ? ((() => {
-          const $h = ($items)[1];
-          const $tail = ($items)[2];
-          return ($core$List$intersperse)($separator, $tail, (sp_cons)($separator, (sp_cons)($h, $acc)));
+          const $last_ = ($items)[1];
+          return ($core$List$reverse)((sp_cons)($last_, $acc));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 472:4', (sp_toHuman)($items)))));
-});
+        : ((($items)[0] === "Cons")
+          ? ((() => {
+            const $h = ($items)[1];
+            const $tail = ($items)[2];
+            return ($rec)($separator, $tail, (sp_cons)($separator, (sp_cons)($h, $acc)));
+          }))()
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 474:8', (sp_toHuman)($items)))));
+  });
+  return (($0, $1) => {
+    return ($rec)($0, $1, $core$Core$Nil);
+  });
+}))();
 
 const $core$List$last = (($list) => {
   return ((($list)[0] === "Nil")
@@ -3952,7 +3957,7 @@ const $core$List$partitionWhile = (($f, $xs) => {
               second: $rest,
             }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 487:8', (sp_toHuman)($rest))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/List.sp 492:8', (sp_toHuman)($rest))));
   });
   return ($rec)($core$Core$Nil, $xs);
 });
@@ -11020,7 +11025,7 @@ const $sd1$Human$TextTree$list = (($1) => {
   return ((sp_equal)($items, $core$Core$Nil)
     ? ($sd1$Human$TextTree$text)(($open + $close))
     : ((() => {
-      const $2 = ($sd1$Human$TextTree$maybeSpan)($zero, ($core$Core$Cons)(($open + " "), $core$Core$Nil), ($core$List$intersperse)(($sd1$Human$TextTree$text)(($separator + " ")), $items, $core$Core$Nil));
+      const $2 = ($sd1$Human$TextTree$maybeSpan)($zero, ($core$Core$Cons)(($open + " "), $core$Core$Nil), ($core$List$intersperse)(($sd1$Human$TextTree$text)(($separator + " ")), $items));
       return (((($2)[0] === "Just") && ((($2)[1])[0] === "Span"))
         ? ((() => {
           const $com = (($2)[1])[1];
@@ -15962,19 +15967,89 @@ const $sd1$Compiler$Lexer_Test$lowerName = (($name) => {
   }));
 });
 
-const $sd1$Compiler$Lexer_Test$n = $core$Core$Nil;
-
-const $sd1$Compiler$Lexer_Test$recordLiterals = ($sd1$SPLib$Test$Group)("Record literals", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] .shorthand should work on its own line", "x =\n  .b", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(3), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(($sd1$Types$Token$Token)(6, 6, $sd1$Types$Token$BlockStart), ($core$Core$Cons)(((($2) => {
-  return ($sd1$Types$Token$Token)(6, 8, $2);
-}))(($sd1$Types$Token$Word)(({
-  attrPath: $core$Core$Nil,
-  isUpper: false,
-  maybeModule: $core$Maybe$Nothing,
-  modifier: $sd1$Types$Token$NameStartsWithDot,
-  name: "b",
-}))), ($core$Core$Cons)(($sd1$Types$Token$Token)(8, 8, $sd1$Types$Token$BlockEnd), $core$Core$Nil))), $core$Core$Nil))), $core$Core$Nil));
-
-const $sd1$Compiler$Lexer_Test$tests = ($sd1$SPLib$Test$Group)("Lexer", ($core$Core$Cons)($sd1$Compiler$Lexer_Test$recordLiterals, $core$Core$Nil));
+const $sd1$Compiler$Lexer_Test$comments = ($sd1$SPLib$Test$Group)("Comments", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] statement after comment", "\n#\na = 1\n", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)($core$Core$Nil, ($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(3, 4, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(5, 6, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(7, 8, $2);
+}))(($sd1$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil))), $core$Core$Nil)))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] nested comments allow a spurious newline?", "\n[#[##]#]\na = 1\n", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 9, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 0,
+  isBlock: true,
+  isFollowedByBlank: false,
+}))), $core$Core$Nil), ($core$Core$Cons)(($core$Core$Cons)(($sd1$Types$Token$Token)(10, 10, $sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(10, 11, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(12, 13, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(14, 15, $2);
+}))(($sd1$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil)))), $core$Core$Nil)))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("Single line", "# hello", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 7, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 0,
+  isBlock: false,
+  isFollowedByBlank: false,
+}))), $core$Core$Nil), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("Multi line", "[# single line #]\n\na [# inline #] = 1\n\n[#\n    multi line\n#]\n\n[# [# nested #] #]", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 17, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 0,
+  isBlock: true,
+  isFollowedByBlank: true,
+}))), $core$Core$Nil), ($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(19, 19, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(19, 20, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(21, 33, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 2,
+  isBlock: true,
+  isFollowedByBlank: false,
+}))), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(34, 35, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(36, 37, $2);
+}))(($sd1$Types$Token$NumberLiteral)(false, "1")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(39, 59, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 0,
+  isBlock: true,
+  isFollowedByBlank: true,
+}))), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(61, 79, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 0,
+  isBlock: true,
+  isFollowedByBlank: false,
+}))), $core$Core$Nil))))))), $core$Core$Nil)))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("brackets", "[]", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 1, $2);
+}))(($sd1$Types$Token$SquareBracket)(0, $sd1$Types$Token$Open)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 2, $2);
+}))(($sd1$Types$Token$SquareBracket)(0, $sd1$Types$Token$Closed)), $core$Core$Nil)), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] Inline comments should not break a block", "allTests = [\n    , a\n#\n    ]", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 0, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 8, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("allTests")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(9, 10, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(11, 12, $2);
+}))(($sd1$Types$Token$SquareBracket)(0, $sd1$Types$Token$Open)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(17, 18, $2);
+}))($sd1$Types$Token$Comma), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(19, 20, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(21, 22, $2);
+}))(($sd1$Types$Token$Comment)(({
+  indent: 0,
+  isBlock: false,
+  isFollowedByBlank: false,
+}))), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(27, 28, $2);
+}))(($sd1$Types$Token$SquareBracket)(3, $sd1$Types$Token$Closed)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(28, 28, $2);
+}))($sd1$Types$Token$BlockEnd), $core$Core$Nil))))))))), $core$Core$Nil))), $core$Core$Nil)))))));
 
 const $sd1$Compiler$Lexer_Test$upperName = (($name) => {
   return ($sd1$Types$Token$Word)(({
@@ -15986,9 +16061,173 @@ const $sd1$Compiler$Lexer_Test$upperName = (($name) => {
   }));
 });
 
+const $sd1$Compiler$Lexer_Test$indentation = ($sd1$SPLib$Test$Group)("Blocks, sibling lines, indentation", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("1", "\na =\n 1\nb = 1", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 1, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 2, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(3, 4, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(6, 6, $2);
+}))($sd1$Types$Token$BlockStart), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(6, 7, $2);
+}))(($sd1$Types$Token$NumberLiteral)(false, "1")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(8, 8, $2);
+}))($sd1$Types$Token$BlockEnd), $core$Core$Nil)))))), ($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(8, 8, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(8, 9, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("b")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(10, 11, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(12, 13, $2);
+}))(($sd1$Types$Token$NumberLiteral)(false, "1")), $core$Core$Nil)))), $core$Core$Nil)))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] spurious spaces in front of field name", "module =\n   importAs =\n      SPCore\n   globalTypes =\n      None", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 0, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 6, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("module")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(7, 8, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(12, 12, $2);
+}))($sd1$Types$Token$BlockStart), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(12, 20, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("importAs")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(21, 22, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(29, 29, $2);
+}))($sd1$Types$Token$BlockStart), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(29, 35, $2);
+}))(($sd1$Compiler$Lexer_Test$upperName)("SPCore")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(39, 39, $2);
+}))($sd1$Types$Token$BlockEnd), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(39, 39, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(39, 50, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("globalTypes")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(51, 52, $2);
+}))($sd1$Types$Token$Defop), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(59, 59, $2);
+}))($sd1$Types$Token$BlockStart), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(59, 63, $2);
+}))(($sd1$Compiler$Lexer_Test$upperName)("None")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(63, 63, $2);
+}))($sd1$Types$Token$BlockEnd), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(63, 63, $2);
+}))($sd1$Types$Token$BlockEnd), $core$Core$Nil)))))))))))))))), $core$Core$Nil))), $core$Core$Nil)));
+
+const $sd1$Compiler$Lexer_Test$numberLiterals = ($sd1$SPLib$Test$Group)("Number literals", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("Percent", "10%", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 2, $2);
+}))(($sd1$Types$Token$NumberLiteral)(true, "10")), $core$Core$Nil), $core$Core$Nil))), $core$Core$Nil));
+
+const $sd1$Compiler$Lexer_Test$ops = ($sd1$SPLib$Test$Group)("Operators", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] .. set Default", ".. []", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 3, $2);
+}))(($sd1$Types$Token$Binop)(0, $sd1$Prelude$textConcat)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(3, 4, $2);
+}))(($sd1$Types$Token$SquareBracket)(0, $sd1$Types$Token$Open)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(4, 5, $2);
+}))(($sd1$Types$Token$SquareBracket)(0, $sd1$Types$Token$Closed)), $core$Core$Nil))), $core$Core$Nil))), $core$Core$Nil));
+
+const $sd1$SPLib$Test$errorContains = (($snippets) => {
+  return ($sd1$SPLib$Test$CodeExpectation)((($toText, $result) => {
+    return ((($result)[0] === "Ok")
+      ? ((() => {
+        const $ok = ($result)[1];
+        return ($core$Maybe$Just)(("I was expecting an error, but got: Ok " + ($toText)($ok)));
+      }))()
+      : ((($result)[0] === "Err")
+        ? ((() => {
+          const $e = ($result)[1];
+          const $missing = ((($1) => {
+            return ($core$List$filter)((($sn) => {
+              return ($core$Basics$not)(($core$Text$contains)($sn, $e));
+            }), $1);
+          }))($snippets);
+          return ((sp_equal)($missing, $core$Core$Nil)
+            ? $core$Maybe$Nothing
+            : ((() => {
+              const $indentedError = ((($1) => {
+                return ($core$Text$join)("\n", $1);
+              }))(((($1) => {
+                return ($core$List$map)((($l) => {
+                  return ("    " + $l);
+                }), $1);
+              }))(((($1) => {
+                return (text_split)("\n", $1);
+              }))($e)));
+              return ($core$Maybe$Just)(("Error message:\n\n" + ($indentedError + ("\n\nis missing snippets: " + ($core$Text$join)(", ", $missing)))));
+            }))());
+        }))()
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Test.sp 103:6', (sp_toHuman)($result))));
+  }));
+});
+
+const $sd1$Compiler$Lexer_Test$position = ($sd1$SPLib$Test$Group)("Position", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] ops position", "blah <>", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$errorContains)(($core$Core$Cons)("blah <>", $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] ops position, with newline", "blah <>\n", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$errorContains)(($core$Core$Cons)("blah <>", $core$Core$Nil))), $core$Core$Nil)));
+
+const $sd1$Compiler$Lexer_Test$recordLiterals = ($sd1$SPLib$Test$Group)("Record literals", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("[reg] .shorthand should work on its own line", "x =\n  .b", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(3), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(($sd1$Types$Token$Token)(6, 6, $sd1$Types$Token$BlockStart), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(6, 8, $2);
+}))(($sd1$Types$Token$Word)(({
+  attrPath: $core$Core$Nil,
+  isUpper: false,
+  maybeModule: $core$Maybe$Nothing,
+  modifier: $sd1$Types$Token$NameStartsWithDot,
+  name: "b",
+}))), ($core$Core$Cons)(($sd1$Types$Token$Token)(8, 8, $sd1$Types$Token$BlockEnd), $core$Core$Nil))), $core$Core$Nil))), $core$Core$Nil));
+
 const $sd1$Compiler$Lexer_Test$valueTest = (($1, $2, $3) => {
   return ($sd1$SPLib$Test$valueTest)(sp_toHuman, $1, $2, $3);
 });
+
+const $sd1$Compiler$Lexer_Test$textLiterals = ($sd1$SPLib$Test$Group)("Text literals", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("Empty Text", "\"\"", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 0, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 2, $2);
+}))(($sd1$Types$Token$TextLiteral)($sd1$Types$Token$SingleQuote, "")), $core$Core$Nil)), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("Followed by colon", "\"n\":\n", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 0, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 3, $2);
+}))(($sd1$Types$Token$TextLiteral)($sd1$Types$Token$SingleQuote, "n")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(3, 4, $2);
+}))($sd1$Types$Token$Colon), $core$Core$Nil))), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$valueTest)("Unindent function", ((_0) => {
+  return ((($0) => {
+    return ($sd1$Compiler$Lexer$unindent)($0);
+  }))(((($1) => {
+    return ($core$Text$join)("", $1);
+  }))(($core$Core$Cons)("\n", ($core$Core$Cons)("  a\n", ($core$Core$Cons)("      \n", ($core$Core$Cons)("\n", ($core$Core$Cons)("  b\n", ($core$Core$Cons)("  ", $core$Core$Nil))))))));
+}), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Text$join)("", ($core$Core$Cons)("a\n", ($core$Core$Cons)("    \n", ($core$Core$Cons)("\n", ($core$Core$Cons)("b", $core$Core$Nil))))))), $core$Core$Nil))));
+
+const $sd1$Compiler$Lexer_Test$unaryAddittiveOps = ($sd1$SPLib$Test$Group)("Unary addittive ops", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("-a", "-a", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 1, $2);
+}))(($sd1$Types$Token$Unop)($sd1$Types$Op$UnopMinus)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 2, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), $core$Core$Nil)), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("a - -a", "a - -a", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 1, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(2, 3, $2);
+}))(($sd1$Types$Token$Binop)(0, $sd1$Prelude$subtract)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(4, 5, $2);
+}))(($sd1$Types$Token$Unop)($sd1$Types$Op$UnopMinus)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(5, 6, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), $core$Core$Nil)))), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("SKIP a-a", "a-a", $sd1$Compiler$Lexer_Test$lexTokens, ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 0, $2);
+}))($sd1$Types$Token$NewSiblingLine), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 1, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(1, 2, $2);
+}))(($sd1$Types$Token$Binop)(1, $sd1$Prelude$subtract)), ($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(2, 3, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("a")), $core$Core$Nil)))), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("-=", "-=", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 2, $2);
+}))(($sd1$Types$Token$Binop)(0, $sd1$Prelude$mutableSubtract)), $core$Core$Nil), $core$Core$Nil))), $core$Core$Nil)))));
+
+const $sd1$Compiler$Lexer_Test$underscores = ($sd1$SPLib$Test$Group)("Underscores", ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("'_' as a Name", "_", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 1, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("_")), $core$Core$Nil), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("'_10_20' as a Name", "_10_20", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 6, $2);
+}))(($sd1$Compiler$Lexer_Test$lowerName)("_10_20")), $core$Core$Nil), $core$Core$Nil))), ($core$Core$Cons)(($sd1$Compiler$Lexer_Test$codeTest)("'10_20' as a Number", "10_20", ($sd1$Compiler$Lexer_Test$lexTokensAndDrop)(1), ($sd1$SPLib$Test$isOkAndEqualTo)(($core$Core$Cons)(($core$Core$Cons)(((($2) => {
+  return ($sd1$Types$Token$Token)(0, 5, $2);
+}))(($sd1$Types$Token$NumberLiteral)(false, "10_20")), $core$Core$Nil), $core$Core$Nil))), $core$Core$Nil))));
+
+const $sd1$Compiler$Lexer_Test$tests = ($sd1$SPLib$Test$Group)("Lexer", ($core$Core$Cons)($sd1$Compiler$Lexer_Test$ops, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$unaryAddittiveOps, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$indentation, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$comments, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$underscores, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$position, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$textLiterals, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$numberLiterals, ($core$Core$Cons)($sd1$Compiler$Lexer_Test$recordLiterals, $core$Core$Nil))))))))));
 
 const $sd1$Compiler$MakeCanonical_Test$codeTest = (($1, $2, $3, $4) => {
   return ($sd1$SPLib$Test$codeTest)(sp_toHuman, $1, $2, $3, $4);
@@ -16197,40 +16436,6 @@ const $sd1$Compiler$MakeCanonical_Test$lists = ($sd1$SPLib$Test$Group)("Lists", 
   }))),
   uni: $sd1$Types$Ast$Imm,
 }))), $core$Core$Nil));
-
-const $sd1$SPLib$Test$errorContains = (($snippets) => {
-  return ($sd1$SPLib$Test$CodeExpectation)((($toText, $result) => {
-    return ((($result)[0] === "Ok")
-      ? ((() => {
-        const $ok = ($result)[1];
-        return ($core$Maybe$Just)(("I was expecting an error, but got: Ok " + ($toText)($ok)));
-      }))()
-      : ((($result)[0] === "Err")
-        ? ((() => {
-          const $e = ($result)[1];
-          const $missing = ((($1) => {
-            return ($core$List$filter)((($sn) => {
-              return ($core$Basics$not)(($core$Text$contains)($sn, $e));
-            }), $1);
-          }))($snippets);
-          return ((sp_equal)($missing, $core$Core$Nil)
-            ? $core$Maybe$Nothing
-            : ((() => {
-              const $indentedError = ((($1) => {
-                return ($core$Text$join)("\n", $1);
-              }))(((($1) => {
-                return ($core$List$map)((($l) => {
-                  return ("    " + $l);
-                }), $1);
-              }))(((($1) => {
-                return (text_split)("\n", $1);
-              }))($e)));
-              return ($core$Maybe$Just)(("Error message:\n\n" + ($indentedError + ("\n\nis missing snippets: " + ($core$Text$join)(", ", $missing)))));
-            }))());
-        }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Test.sp 103:6', (sp_toHuman)($result))));
-  }));
-});
 
 const $sd1$Compiler$MakeCanonical_Test$moduleAndAttributePaths = ((() => {
   const $accept = (($s) => {
@@ -17349,7 +17554,7 @@ const $sd1$Human$Format$commaSeparatedList = (($forceMultiline, $open, $close, $
               return ($sd1$SPLib$Format$Row)($b, $a);
             }));
           }))(((($1) => {
-            return ($core$List$intersperse)(($sd1$SPLib$Format$Text_)(", "), $1, $core$Core$Nil);
+            return ($core$List$intersperse)(($sd1$SPLib$Format$Text_)(", "), $1);
           }))($itemLines))));
         }))()
         : ((($z)[0] === "Nothing")
@@ -17410,6 +17615,54 @@ const $sd1$Human$Format$extractComments = (($1) => {
   });
 });
 
+const $sd1$SPLib$Format$rowOrStackForce = (($forceMultiline, $joiner, $blocks) => {
+  return (((($blocks)[0] === "Cons") && ((($blocks)[2])[0] === "Nil"))
+    ? ((() => {
+      const $single = ($blocks)[1];
+      return $single;
+    }))()
+    : (true
+      ? ($forceMultiline
+        ? ($sd1$SPLib$Format$stack)($blocks)
+        : ((() => {
+          const $4 = ($sd1$SPLib$Format$maybeAllSingleLines)($blocks);
+          return ((($4)[0] === "Just")
+            ? ((() => {
+              const $lines = ($4)[1].first;
+              const $mkLine = ($4)[1].second;
+              return ($mkLine)(((($joiner)[0] === "Nothing")
+                ? ($sd1$SPLib$Format$for1)($lines, $sd1$SPLib$Format$Row)
+                : ((($joiner)[0] === "Just")
+                  ? ((() => {
+                    const $j = ($joiner)[1];
+                    return ($sd1$SPLib$Format$for1)(($core$List$intersperse)($j, $lines), $sd1$SPLib$Format$Row);
+                  }))()
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 302:25', (sp_toHuman)($joiner)))));
+            }))()
+            : (true
+              ? ($sd1$SPLib$Format$stack)($blocks)
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 300:16', (sp_toHuman)($4))));
+        }))())
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 293:4', (sp_toHuman)($blocks))));
+});
+
+const $sd1$SPLib$Format$rowOrStack = (($1, $2) => {
+  return ($sd1$SPLib$Format$rowOrStackForce)(false, $1, $2);
+});
+
+const $sd1$Human$Format$parens = (($block) => {
+  return ((($1) => {
+    return ($sd1$SPLib$Format$rowOrStack)($core$Maybe$Nothing, $1);
+  }))(($core$Core$Cons)(($sd1$SPLib$Format$prefix)(1, ($sd1$SPLib$Format$Text_)("("), $block), ($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)(")"), $core$Core$Nil)));
+});
+
+const $sd1$Human$Format$formatExpressionAndMaybeAddParens = (($env, $binopPrecedence, $expression) => {
+  const $block = ($sd1$Human$Format$formatExpression)($env, $expression);
+  return ((($sd1$Human$Format$expressionPrecedence)($expression) > $binopPrecedence)
+    ? $block
+    : ($sd1$Human$Format$parens)($block));
+});
+
 const $sd1$Human$Format$lineIsNonEmpty = (($s) => {
   return (sp_not_equal)((text_trimLeft)($s), "");
 });
@@ -17437,7 +17690,7 @@ const $sd1$Human$Format$unindentBlockComment = (($indent, $content) => {
           return (text_dropLeft)($minLead, $1);
         }), $tail));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 249:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 243:4', (sp_toHuman)($3))));
 });
 
 const $sd1$SPLib$Format$blankLine = ($sd1$SPLib$Format$lineToBlock)($sd1$SPLib$Format$Blank);
@@ -17474,52 +17727,18 @@ const $sd1$Human$Format$formatComment = (($env, $1) => {
     : $comment);
 });
 
-const $sd1$SPLib$Format$rowOrStackForce = (($forceMultiline, $joiner, $blocks) => {
-  return (((($blocks)[0] === "Cons") && ((($blocks)[2])[0] === "Nil"))
-    ? ((() => {
-      const $single = ($blocks)[1];
-      return $single;
-    }))()
-    : (true
-      ? ($forceMultiline
-        ? ($sd1$SPLib$Format$stack)($blocks)
-        : ((() => {
-          const $4 = ($sd1$SPLib$Format$maybeAllSingleLines)($blocks);
-          return ((($4)[0] === "Just")
-            ? ((() => {
-              const $lines = ($4)[1].first;
-              const $mkLine = ($4)[1].second;
-              return ($mkLine)(((($joiner)[0] === "Nothing")
-                ? ($sd1$SPLib$Format$for1)($lines, $sd1$SPLib$Format$Row)
-                : ((($joiner)[0] === "Just")
-                  ? ((() => {
-                    const $j = ($joiner)[1];
-                    return ($sd1$SPLib$Format$for1)(($core$List$intersperse)($j, $lines, $core$Core$Nil), $sd1$SPLib$Format$Row);
-                  }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 302:25', (sp_toHuman)($joiner)))));
-            }))()
-            : (true
-              ? ($sd1$SPLib$Format$stack)($blocks)
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 300:16', (sp_toHuman)($4))));
-        }))())
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 293:4', (sp_toHuman)($blocks))));
+const $sd1$Human$Format$formatComments = (($env, $comments) => {
+  return ($sd1$SPLib$Format$stack)(((($1) => {
+    return ($core$List$map)((($1) => {
+      return ($sd1$Human$Format$formatComment)($env, $1);
+    }), $1);
+  }))($comments));
 });
 
-const $sd1$SPLib$Format$rowOrStack = (($1, $2) => {
-  return ($sd1$SPLib$Format$rowOrStackForce)(false, $1, $2);
-});
-
-const $sd1$Human$Format$parens = (($block) => {
-  return ((($1) => {
-    return ($sd1$SPLib$Format$rowOrStack)($core$Maybe$Nothing, $1);
-  }))(($core$Core$Cons)(($sd1$SPLib$Format$prefix)(1, ($sd1$SPLib$Format$Text_)("("), $block), ($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)(")"), $core$Core$Nil)));
-});
-
-const $sd1$Human$Format$formatExpressionAndMaybeAddParens = (($env, $binopPrecedence, $expression) => {
-  const $block = ($sd1$Human$Format$formatExpression)($env, $expression);
-  return ((($sd1$Human$Format$expressionPrecedence)($expression) > $binopPrecedence)
+const $sd1$Human$Format$stackWithComments = (($env, $comments, $block) => {
+  return ((sp_equal)($comments, $core$Core$Nil)
     ? $block
-    : ($sd1$Human$Format$parens)($block));
+    : ($sd1$SPLib$Format$stack)(($core$Core$Cons)(($sd1$Human$Format$formatComments)($env, $comments), ($core$Core$Cons)($block, $core$Core$Nil))));
 });
 
 const $sd1$SPLib$Format$space = $sd1$SPLib$Format$Space;
@@ -17534,14 +17753,11 @@ const $sd1$Human$Format$formatBinopChain = (($env, $priority, $1) => {
   const $formatOpAndRight = (($4) => {
     const $binop = $4.first;
     const $expr = $4.second;
-    const $e = ((($2) => {
+    return ((($2) => {
+      return ($sd1$Human$Format$stackWithComments)($env, $binop.comments, $2);
+    }))(((($2) => {
       return ($sd1$SPLib$Format$prefix)(0, ($sd1$SPLib$Format$Text_)(($binop.symbol + " ")), $2);
-    }))(($sd1$Human$Format$formatExpressionAndMaybeAddParens)($env, $binop.precedence, $expr));
-    return ((sp_equal)($binop.comments, $core$Core$Nil)
-      ? $e
-      : ($sd1$SPLib$Format$stack)(($core$List$concat)(($core$Core$Cons)(($core$List$map)((($1) => {
-        return ($sd1$Human$Format$formatComment)($env, $1);
-      }), $binop.comments), ($core$Core$Cons)(($core$Core$Cons)($e, $core$Core$Nil), $core$Core$Nil)))));
+    }))(($sd1$Human$Format$formatExpressionAndMaybeAddParens)($env, $binop.precedence, $expr)));
   });
   const $forceMultiline = ((($opsAndRights)[0] === "Nil")
     ? false
@@ -17555,7 +17771,7 @@ const $sd1$Human$Format$formatBinopChain = (($env, $priority, $1) => {
         }));
         return ($last.line > $first.line);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 631:8', (sp_toHuman)($opsAndRights))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 643:8', (sp_toHuman)($opsAndRights))));
   return ((($1) => {
     return ($sd1$SPLib$Format$spaceSeparatedOrStackForce)($forceMultiline, $1);
   }))(($core$Core$Cons)(($sd1$Human$Format$formatExpressionAndMaybeAddParens)($env, ($sd1$Human$Format$chainPrecedence)($opsAndRights), $left), ($core$List$map)($formatOpAndRight, $opsAndRights)));
@@ -17569,16 +17785,6 @@ const $sd1$Human$Format$formatFunctionHeader = (($env, $pars) => {
       return ($sd1$Human$Format$formatExpression)($env, $1);
     }), $1);
   }))($pars));
-});
-
-const $sd1$Human$Format$stackWithComments = (($env, $comments, $block) => {
-  return ((sp_equal)($comments, $core$Core$Nil)
-    ? $block
-    : ($sd1$SPLib$Format$stack)(($core$Core$Cons)(($sd1$SPLib$Format$stack)(((($1) => {
-      return ($core$List$map)((($1) => {
-        return ($sd1$Human$Format$formatComment)($env, $1);
-      }), $1);
-    }))($comments)), ($core$Core$Cons)($block, $core$Core$Nil))));
 });
 
 const $sd1$SPLib$Format$spacesInTab = 4;
@@ -17621,7 +17827,7 @@ const $sd1$SPLib$Format$rowOrIndentForce = (($forceMultiline, $joiner, $blocks) 
                   : ((($joiner)[0] === "Just")
                     ? ((() => {
                       const $j = ($joiner)[1];
-                      return ($sd1$SPLib$Format$for1)(($core$List$intersperse)($j, $reversedLines, $core$Core$Nil), $sd1$SPLib$Format$Row);
+                      return ($sd1$SPLib$Format$for1)(($core$List$intersperse)($j, $reversedLines), $sd1$SPLib$Format$Row);
                     }))()
                     : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/SPLib/Format.sp 335:24', (sp_toHuman)($joiner))))));
             }))()
@@ -17658,7 +17864,7 @@ const $sd1$Human$Format$formatCall = (($env, $ref, $args) => {
       }))()
       : (true
         ? $core$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 654:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 666:8', (sp_toHuman)($arg))));
   });
   const $formatArgument = (($index, $arg) => {
     let $6 = ($asContinuingFn)($index, $arg);
@@ -17671,7 +17877,7 @@ const $sd1$Human$Format$formatCall = (($env, $ref, $args) => {
           const $body = ($6)[1].third;
           return ($sd1$Human$Format$formatFunctionHeader)($env, $params);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 666:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 678:8', (sp_toHuman)($6))));
   });
   const $maybeContinuing = (($core$Maybe$onJust)((($1) => {
     return ($asContinuingFn)($lastIndex, $1);
@@ -17691,7 +17897,7 @@ const $sd1$Human$Format$formatCall = (($env, $ref, $args) => {
         const $body = ($maybeContinuing)[1].third;
         return ($sd1$SPLib$Format$stack)(($core$Core$Cons)($call, ($core$Core$Cons)((($core$Basics$applyIf)((sp_equal)($layout, $sd1$Types$FormattableAst$Indented), $sd1$SPLib$Format$indent))(($sd1$Human$Format$formatExpression)($env, $body)), $core$Core$Nil)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 685:4', (sp_toHuman)($maybeContinuing)))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 697:4', (sp_toHuman)($maybeContinuing)))));
 });
 
 const $sd1$Human$Format$formatFunction = (($env, $layout, $pars, $body) => {
@@ -17722,10 +17928,10 @@ const $sd1$Human$Format$formatIf = (($env, $isMultiline, $expr) => {
   const $conditionsAndValues = $4.first;
   const $maybeSingleLine = ($isMultiline
     ? $core$Maybe$Nothing
-    : (((($conditionsAndValues)[0] === "Cons") && ((($conditionsAndValues)[2])[0] === "Nil"))
+    : (((($conditionsAndValues)[0] === "Cons") && (((($conditionsAndValues)[1].first)[0] === "Nil") && ((($conditionsAndValues)[2])[0] === "Nil")))
       ? ((() => {
-        const $condition = ($conditionsAndValues)[1].first;
-        const $valueIfTrue = ($conditionsAndValues)[1].second;
+        const $condition = ($conditionsAndValues)[1].second;
+        const $valueIfTrue = ($conditionsAndValues)[1].third;
         const $l = $sd1$SPLib$Format$blockAsLine;
         const $5 = ({
           first: ($l)($condition),
@@ -17745,11 +17951,11 @@ const $sd1$Human$Format$formatIf = (($env, $isMultiline, $expr) => {
           }))()
           : (true
             ? $core$Maybe$Nothing
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 750:20', (sp_toHuman)($5))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 738:20', (sp_toHuman)($5))));
       }))()
       : (true
         ? $core$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 747:12', (sp_toHuman)($conditionsAndValues)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 735:12', (sp_toHuman)($conditionsAndValues)))));
   return ((($maybeSingleLine)[0] === "Just")
     ? ((() => {
       const $conditionLine = ($maybeSingleLine)[1].first;
@@ -17760,23 +17966,26 @@ const $sd1$Human$Format$formatIf = (($env, $isMultiline, $expr) => {
           return ($sd1$SPLib$Format$Row)($acc, $item);
         }));
       }))(((($1) => {
-        return ($core$List$intersperse)($sd1$SPLib$Format$Space, $1, $core$Core$Nil);
+        return ($core$List$intersperse)($sd1$SPLib$Format$Space, $1);
       }))(($core$Core$Cons)(($sd1$SPLib$Format$Text_)("if"), ($core$Core$Cons)($conditionLine, ($core$Core$Cons)(($sd1$SPLib$Format$Text_)("then"), ($core$Core$Cons)($trueLine, ($core$Core$Cons)(($sd1$SPLib$Format$Text_)("else"), ($core$Core$Cons)($falseLine, $core$Core$Nil)))))))));
     }))()
     : ((($maybeSingleLine)[0] === "Nothing")
       ? ((() => {
         const $formatCAndV = (($index, $5) => {
-          const $condition = $5.first;
-          const $value = $5.second;
-          return ($sd1$SPLib$Format$stack)(($core$Core$Cons)(($sd1$SPLib$Format$spaceSeparatedOrStack)(($core$Core$Cons)(((sp_equal)($index, 0)
+          const $comments = $5.first;
+          const $condition = $5.second;
+          const $value = $5.third;
+          return ($sd1$SPLib$Format$stack)(($core$Core$Cons)(((($2) => {
+            return ($sd1$Human$Format$stackWithComments)($env, $comments, $2);
+          }))(($sd1$SPLib$Format$spaceSeparatedOrStack)(($core$Core$Cons)(((sp_equal)($index, 0)
             ? ($sd1$SPLib$Format$textToBlock)("if")
-            : ($sd1$SPLib$Format$textToBlock)("else if")), ($core$Core$Cons)($condition, ($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)("then"), $core$Core$Nil)))), ($core$Core$Cons)(($sd1$SPLib$Format$indent)($value), $core$Core$Nil)));
+            : ($sd1$SPLib$Format$textToBlock)("else if")), ($core$Core$Cons)($condition, ($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)("then"), $core$Core$Nil))))), ($core$Core$Cons)(($sd1$SPLib$Format$indent)($value), $core$Core$Nil)));
         });
         return ($sd1$SPLib$Format$stack)(($core$Core$Cons)(($sd1$SPLib$Format$stack)(((($1) => {
           return ($core$List$indexedMap)($formatCAndV, $1);
         }))($conditionsAndValues)), ($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)("else"), ($core$Core$Cons)(($sd1$SPLib$Format$indent)($default), $core$Core$Nil))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 759:4', (sp_toHuman)($maybeSingleLine))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 747:4', (sp_toHuman)($maybeSingleLine))));
 });
 
 const $sd1$Human$Format$formatList = (($env, $isMultiline, $unpacksAndExprs) => {
@@ -17819,7 +18028,7 @@ const $sd1$Human$Format$formatLiteralText = ((() => {
           }))($text));
           return ($sd1$SPLib$Format$stack)(($core$List$concat)(($core$Core$Cons)(($core$Core$Cons)($tripleQuote, $core$Core$Nil), ($core$Core$Cons)($rows, ($core$Core$Cons)(($core$Core$Cons)($tripleQuote, $core$Core$Nil), $core$Core$Nil)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 319:4', (sp_toHuman)($singleOrTriple))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 339:4', (sp_toHuman)($singleOrTriple))));
   });
 }))();
 
@@ -17839,7 +18048,7 @@ const $sd1$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $at
             return ($sd1$Human$Format$formatExpression)($env, $1);
           }))($ext)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 487:8', (sp_toHuman)($maybeMaybeExt)))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 507:8', (sp_toHuman)($maybeMaybeExt)))));
   const $formatRecordAttribute = (($5) => {
     const $maybeExpr = $5.maybeExpr;
     const $name = $5.name;
@@ -17854,7 +18063,7 @@ const $sd1$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $at
             return ($sd1$SPLib$Format$addSuffix)(($sd1$SPLib$Format$Text_)(" ="), $1);
           }))(($sd1$Human$Format$formatExpression)($env, $name)), ($core$Core$Cons)(($sd1$Human$Format$formatExpression)($env, $expr), $core$Core$Nil)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 499:8', (sp_toHuman)($maybeExpr))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 519:8', (sp_toHuman)($maybeExpr))));
   });
   const $attributeName = (($nameExpr) => {
     const $6 = $nameExpr.name;
@@ -17865,7 +18074,7 @@ const $sd1$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $at
       }))()
       : (true
         ? ""
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 513:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 533:8', (sp_toHuman)($6))));
   });
   return ((($4) => {
     return ($sd1$Human$Format$commaSeparatedList)($isMultiline, $open, "}", true, $4);
@@ -17888,14 +18097,14 @@ const $sd1$Human$Format$formatTokenWord = (($1) => {
     ? $core$Core$Nil
     : ((($modifier)[0] === "NameStartsWithDot")
       ? ($core$Core$Cons)(".", $core$Core$Nil)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 530:6', (sp_toHuman)($modifier)))), ($core$Core$Cons)(((($maybeModule)[0] === "Nothing")
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 550:6', (sp_toHuman)($modifier)))), ($core$Core$Cons)(((($maybeModule)[0] === "Nothing")
     ? $core$Core$Nil
     : ((($maybeModule)[0] === "Just")
       ? ((() => {
         const $module = ($maybeModule)[1];
         return ($core$Core$Cons)($module, ($core$Core$Cons)(".", $core$Core$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 534:6', (sp_toHuman)($maybeModule)))), ($core$Core$Cons)(($core$Core$Cons)($name, $core$Core$Nil), ($core$Core$Cons)(($core$List$map)((($p) => {
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 554:6', (sp_toHuman)($maybeModule)))), ($core$Core$Cons)(($core$Core$Cons)($name, $core$Core$Nil), ($core$Core$Cons)(($core$List$map)((($p) => {
     return ("." + $p);
   }), $attrPath), $core$Core$Nil)))))));
 });
@@ -17977,7 +18186,7 @@ const $sd1$Human$Format$formatStatement = (($env, $stat) => {
               const $unionDef = ($stat)[1];
               return ($sd1$Human$Format$formatUnionDef)($env, $unionDef);
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 387:4', (sp_toHuman)($stat)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 407:4', (sp_toHuman)($stat)))))));
 });
 
 const $sd1$Human$Format$formatStatements = (($env, $sss) => {
@@ -18005,9 +18214,9 @@ const $sd1$Human$Format$formatStatements = (($env, $sss) => {
                 ? ($env.isRoot
                   ? (sp_cons)($sd1$SPLib$Format$blankLine, (sp_cons)($sd1$SPLib$Format$blankLine, $acc))
                   : (sp_cons)($sd1$SPLib$Format$blankLine, $acc))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 370:16', (sp_toHuman)($maybePrevious)))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 390:16', (sp_toHuman)($maybePrevious)))))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 367:8', (sp_toHuman)($stats))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 387:8', (sp_toHuman)($stats))));
   });
   return ($sd1$SPLib$Format$stack)(($rec)($core$Maybe$Nothing, $sss, $core$Core$Nil));
 });
@@ -18060,7 +18269,7 @@ const $sd1$Human$Format$formatTry = (($env, $value, $patterns) => {
           });
           return ($core$List$map)($formatIndented, $formatted);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 821:8', (sp_toHuman)($4))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 810:8', (sp_toHuman)($4))));
   }))();
   return ($sd1$SPLib$Format$stack)(($core$Core$Cons)(($sd1$SPLib$Format$spaceSeparatedOrIndent)(($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)("try"), ($core$Core$Cons)(($sd1$Human$Format$formatExpression)($env, $value), ($core$Core$Cons)(($sd1$SPLib$Format$textToBlock)("as"), $core$Core$Nil)))), ($core$Core$Cons)(($sd1$SPLib$Format$indent)(($sd1$SPLib$Format$stack)($blocks)), $core$Core$Nil)));
 });
@@ -18074,7 +18283,7 @@ const $sd1$Human$Format$unopToText = (($unopId) => {
         ? "!"
         : ((($unopId)[0] === "UnopRecycle")
           ? "@"
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 588:4', (sp_toHuman)($unopId))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 608:4', (sp_toHuman)($unopId))))));
 });
 
 const $sd1$Human$Format$formatUnopCall = (($env, $unopId, $expr) => {
@@ -18096,14 +18305,16 @@ const $sd1$Human$Format$formatVariable = (($env, $maybeType, $word) => {
           return ($sd1$SPLib$Format$spaceSeparatedOrIndent)($0);
         }))(($core$Core$Cons)(($sd1$SPLib$Format$addSuffix)(($sd1$SPLib$Format$Text_)(" as"), ($sd1$Human$Format$formatTokenWord)($word)), ($core$Core$Cons)(($sd1$Human$Format$formatExpression)($env, $type), $core$Core$Nil)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 554:4', (sp_toHuman)($maybeType))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 574:4', (sp_toHuman)($maybeType))));
 });
 
 const $sd1$Human$Format$formatExpression = (($env, $faExpression) => {
   const $3 = $faExpression;
   const $e_ = ($3)[3];
   const $comments = ($3)[1];
-  const $b = ((($e_)[0] === "LiteralText")
+  return ((($2) => {
+    return ($sd1$Human$Format$stackWithComments)($env, $comments, $2);
+  }))(((($e_)[0] === "LiteralText")
     ? ((() => {
       const $singleOrTriple = ($e_)[1];
       const $text = ($e_)[2];
@@ -18191,12 +18402,7 @@ const $sd1$Human$Format$formatExpression = (($env, $faExpression) => {
                                 const $value = ($e_)[1].value;
                                 return ($sd1$Human$Format$formatTry)($env, $value, $patterns);
                               }))()
-                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 181:6', (sp_toHuman)($e_))))))))))))))));
-  return ((sp_equal)($comments, $core$Core$Nil)
-    ? $b
-    : ($sd1$SPLib$Format$stack)(($core$List$concat)(($core$Core$Cons)(($core$List$map)((($1) => {
-      return ($sd1$Human$Format$formatComment)($env, $1);
-    }), $comments), ($core$Core$Cons)(($core$Core$Cons)($b, $core$Core$Nil), $core$Core$Nil)))));
+                              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 180:4', (sp_toHuman)($e_)))))))))))))))));
 });
 
 const $sd1$Human$Format$extractIfElses = (($env, $x) => {
@@ -18206,8 +18412,9 @@ const $sd1$Human$Format$extractIfElses = (($env, $x) => {
         const $comments = ($expr)[1];
         const $args = (($expr)[3])[1];
         return ($rec)(($core$Core$Cons)(({
-          first: ($sd1$Human$Format$formatExpression)($env, $args.condition),
-          second: ($sd1$Human$Format$formatExpression)($env, $args.true),
+          first: $comments,
+          second: ($sd1$Human$Format$formatExpression)($env, $args.condition),
+          third: ($sd1$Human$Format$formatExpression)($env, $args.true),
         }), $acc), $args.false);
       }))()
       : (true
@@ -18215,7 +18422,7 @@ const $sd1$Human$Format$extractIfElses = (($env, $x) => {
           first: ($core$List$reverse)($acc),
           second: ($sd1$Human$Format$formatExpression)($env, $expr),
         })
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 726:8', (sp_toHuman)($expr))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Human/Format.sp 715:8', (sp_toHuman)($expr))));
   });
   return ($rec)($core$Core$Nil, $x);
 });
@@ -18355,7 +18562,7 @@ const $sd1$Human$Format_Test$uniqueness = ($sd1$SPLib$Test$Group)("Uniqueness", 
 const $sd1$Human$Format_Test$tests = ($sd1$SPLib$Test$Group)("Formatter", ($core$Core$Cons)($sd1$Human$Format_Test$definitions, ($core$Core$Cons)($sd1$Human$Format_Test$operators, ($core$Core$Cons)($sd1$Human$Format_Test$functions, ($core$Core$Cons)($sd1$Human$Format_Test$calls, ($core$Core$Cons)($sd1$Human$Format_Test$lists, ($core$Core$Cons)($sd1$Human$Format_Test$records, ($core$Core$Cons)($sd1$Human$Format_Test$comments, ($core$Core$Cons)($sd1$Human$Format_Test$textLiterals, ($core$Core$Cons)($sd1$Human$Format_Test$uniqueness, ($core$Core$Cons)($sd1$Human$Format_Test$tryAs, ($core$Core$Cons)($sd1$Human$Format_Test$ifs, $core$Core$Nil))))))))))));
 
 const $sd1$Human$TextTree$separatedBy = (($separator, $content) => {
-  const $3 = ($sd1$Human$TextTree$maybeSpan)(0, $core$Core$Nil, ($core$List$intersperse)(($sd1$Human$TextTree$text)($separator), $content, $core$Core$Nil));
+  const $3 = ($sd1$Human$TextTree$maybeSpan)(0, $core$Core$Nil, ($core$List$intersperse)(($sd1$Human$TextTree$text)($separator), $content));
   return ((($3)[0] === "Just")
     ? ((() => {
       const $span = ($3)[1];

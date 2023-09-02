@@ -301,7 +301,7 @@ rowOrStackForce as fn Bool, Maybe Line, [Block]: Block =
                     , Just (lines & mkLine):
                          try joiner as
                               , Nothing: for1 lines Row
-                              , Just j: for1 (List.intersperse j lines []) Row
+                              , Just j: for1 (List.intersperse j lines) Row
                          >> mkLine
 
                     , _:
@@ -334,7 +334,7 @@ rowOrIndentForce as fn Bool, Maybe Line, [Block]: Block =
                         # TODO this seems to be repeated above.
                         try joiner as
                             , Nothing: for1 reversedLines Row
-                            , Just j: for1 (List.intersperse j reversedLines []) Row
+                            , Just j: for1 (List.intersperse j reversedLines) Row
                         >> mkLine
 
                 , _:
