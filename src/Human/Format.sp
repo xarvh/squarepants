@@ -86,7 +86,7 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [Fmt.Block]: Fmt.Block =
                     else
                         Fmt.Text_ close
                 itemLines
-                >> List.intersperse (Fmt.Text_ ", ") __ []
+                >> List.intersperse (Fmt.Text_ ", ") __
                 >> List.for (Fmt.Row openLine Fmt.Space) __ (fn a, b: Fmt.Row b a)
                 >> mkLine
                 >> Fmt.addSuffix closeLine __
@@ -754,7 +754,7 @@ formatIf as fn Env, Bool, FA.Expression: Fmt.Block =
             , Fmt.Text_ "else"
             , falseLine
             ]
-            >> List.intersperse Fmt.Space __ []
+            >> List.intersperse Fmt.Space __
             >> Fmt.for1 __ (fn item, acc: Fmt.Row acc item)
             >> Fmt.lineToBlock
 

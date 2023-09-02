@@ -466,18 +466,23 @@ circularPairs as fn [a]: [a & a] =
 
 
 # TODO remove the acc parameter
-intersperse as fn a, [a], [a]: [a] =
-    fn separator, items, acc:
+intersperse as fn a, [a]: [a] =
 
-    try items as
-        , []:
-            List.reverse acc
+    rec as fn a, [a], [a]: [a] =
+        fn separator, items, acc:
 
-        , [last_]:
-            List.reverse (last_ :: acc)
+        try items as
+            , []:
+                List.reverse acc
 
-        , h :: tail:
-            intersperse separator tail (separator :: h :: acc)
+            , [last_]:
+                List.reverse (last_ :: acc)
+
+            , h :: tail:
+                rec separator tail (separator :: h :: acc)
+
+    rec __ __ []
+
 
 partitionWhile as fn (fn item: Bool), [item]: [item] & [item] =
     fn f, xs:

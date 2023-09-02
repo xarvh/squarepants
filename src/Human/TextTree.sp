@@ -121,7 +121,7 @@ rowOrHead as fn Text, [TextTree]: TextTree =
 separatedBy as fn Text, [TextTree]: TextTree =
     fn separator, content:
 
-    try maybeSpan 0 [] (List.intersperse (text separator) content []) as
+    try maybeSpan 0 [] (List.intersperse (text separator) content) as
         , Just span:
             span
 
@@ -157,7 +157,7 @@ list as fn { open as Text, separator as Text, close as Text, items as [TextTree]
     if items == [] then
         text (open .. close)
     else
-        try maybeSpan zero [open .. " "] (List.intersperse (text (separator .. " ")) items []) as
+        try maybeSpan zero [open .. " "] (List.intersperse (text (separator .. " ")) items) as
             , Just (Span com t):
                 Span com (t .. " " .. close)
 
