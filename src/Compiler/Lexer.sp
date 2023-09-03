@@ -868,7 +868,7 @@ closeOpenBlocks as fn @ReadState: None =
 lexer as fn Bool, Error.Module: Res [[Token]] =
     fn keepComments, module:
 
-    Debug.benchStart None
+    #Debug.benchStart None
 
     moduleCode =
         module.content
@@ -889,7 +889,7 @@ lexer as fn Bool, Error.Module: Res [[Token]] =
 
     lexOne moduleCode "" @state
 
-    Debug.benchStop "lexer"
+    #Debug.benchStop "lexer"
 
     try Array.toList @state.errors as
         , []:

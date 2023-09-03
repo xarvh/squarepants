@@ -107,33 +107,47 @@ selftestMain as fn None: IO Int =
 formatMain as fn [Text]: IO Int =
     fn targets:
 
-    formatFile =
+    formatText as fn Text, Text: Res Text =
+        fn fsPath, content:
+
+        Compiler/Parser.textToFormattableModule {
+              , errorModule = { fsPath, content }
+              , stripLocations = False
+              , keepComments = True
+        }
+        >> onOk fn formattableAst:
+
+        formattableAst
+        >> Human/Format.formatStatements { isRoot = True, originalContent = content } __
+        >> Fmt.render
+        >> Ok
+
+    formatFile as fn Text: IO Int=
         fn name:
         IO.readFile name
         >> IO.onSuccess fn moduleAsText:
 
-        Compiler/Parser.textToFormattableModule {
-             , errorModule = {
-                , fsPath = name
-                , content = moduleAsText
-              }
-              , stripLocations = False
-              , keepComments = True
-        }
-        >> Compile.onResSuccess fn formattable:
+        formatText name moduleAsText
+        >> Compile.onResSuccess fn formatted:
 
-        formattable
-        >> Human/Format.formatStatements { isRoot = True, originalContent = moduleAsText } __
-        >> Fmt.render
-        #>> IO.writeFile (name .. ".fmt.sp") __
-        >> IO.writeFile name __
+        IO.writeFile name formatted
 
-    targets
-    >> List.map formatFile __
-    >> IO.parallel
+    if targets == [] then
+        IO.readStdin
+        >> IO.onSuccess fn moduleAsText:
 
-    >> IO.onSuccess fn _:
-    IO.writeStdout "done"
+        formatText "<stdin>" moduleAsText
+        >> Compile.onResSuccess fn formatted:
+
+        IO.writeStdout formatted
+
+    else
+        targets
+        >> List.map formatFile __
+        >> IO.parallel
+
+        >> IO.onSuccess fn _:
+        IO.succeed 0
 
 
 [# Command line options:

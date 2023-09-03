@@ -87,6 +87,7 @@ overrides as [USR & Text] =
     , ioModule "readDir" & "io_readDir"
     , ioModule "readFile" & "io_readFile"
     , ioModule "writeFile" & "io_writeFile"
+    , ioModule "readStdin" & "io_readStdin"
     , ioModule "writeStdout" & "io_writeStdout"
     , ioModule "writeStderr" & "io_writeStderr"
     , pathModule "dirname" & "path_dirname"
@@ -169,10 +170,26 @@ const io_writeFile = (path, content) => io_wrap((never) => {
 });
 
 
+const io_readStdin = io_wrap((never) => {
+    // as IO Text
+
+    try {
+        return $core$Result$Ok(fs.readFileSync(0, 'utf8'));
+    } catch (e) {
+        return $core$Result$Err(e.message);
+    }
+});
+
+
 const io_writeStdout = (content) => io_wrap((never) => {
     // as Text: IO Int
 
-    console.info(content);
+    try {
+        fs.writeFileSync(1, content);
+    } catch (e) {
+        return $core$Result$Err(e.message);
+    }
+
     return $core$Result$Ok(0);
 });
 
