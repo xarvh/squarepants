@@ -72,6 +72,10 @@ readFile as fn Text: IO Text =
     todo "io.readFile"
 
 
+readStdin as IO Text =
+    succeed "compiler error, IO.readStdin not overridden"
+
+
 writeFile as fn Text, Text: IO Int =
     fn _, _:
     todo "io.writeFile"

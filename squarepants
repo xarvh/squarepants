@@ -180,11 +180,11 @@ Start was at:${debug_benchStartStack}`);
 
     const ks = Object.keys(debug_benchEntries);
     if (ks.length) {
-        console.info("");
-        console.info("Benchmark results:");
+        console.error("");
+        console.error("Benchmark results:");
         ks.sort().forEach(k => {
             const entry = debug_benchEntries[k];
-            console.info(
+            console.error(
                     'TotalTime:', pad(10, fmt(entry.dt )) + 's',
                     '   ',
                     'Runs:', pad(6, '' + entry.n),
@@ -588,10 +588,26 @@ const io_writeFile = (path, content) => io_wrap((never) => {
 });
 
 
+const io_readStdin = io_wrap((never) => {
+    // as IO Text
+
+    try {
+        return $core$Result$Ok(fs.readFileSync(0, 'utf8'));
+    } catch (e) {
+        return $core$Result$Err(e.message);
+    }
+});
+
+
 const io_writeStdout = (content) => io_wrap((never) => {
     // as Text: IO Int
 
-    console.info(content);
+    try {
+        fs.writeFileSync(1, content);
+    } catch (e) {
+        return $core$Result$Err(e.message);
+    }
+
     return $core$Result$Ok(0);
 });
 
@@ -6275,7 +6291,6 @@ const $sd1$Compiler$Lexer$readStateInit = (($keepComments) => {
 });
 
 const $sd1$Compiler$Lexer$lexer = (($keepComments, $module) => {
-  (sp_benchStart)(null);
   const $moduleCode = $module.content;
   let $state = ($sd1$Compiler$Lexer$readStateInit)($keepComments);
   (text_forEach)($moduleCode, (($char) => {
@@ -6289,7 +6304,6 @@ const $sd1$Compiler$Lexer$lexer = (($keepComments, $module) => {
       : ($state.column += 1));
   }));
   ((__re__ = ($sd1$Compiler$Lexer$lexOne)($moduleCode, "", $state)), ($state = (__re__)[1]), (__re__)[0]);
-  (sp_benchStop)("lexer");
   const $3 = ((__re__ = (array_toList)($state.errors)), ($state.errors = (__re__)[1]), (__re__)[0]);
   return ((($3)[0] === "Nil")
     ? ((() => {
@@ -7344,7 +7358,6 @@ const $sd1$Compiler$Parser$parse = (($env, $allTokens, $acc) => {
 const $sd1$Compiler$Parser$textToFormattableModule = (($env) => {
   const $tokensResult = ($sd1$Compiler$Lexer$lexer)($env.keepComments, $env.errorModule);
   return (($core$Result$onOk)((($tokenChunks) => {
-    (sp_benchStart)(null);
     const $3 = ($core$List$for)(({
       first: $core$Core$Nil,
       second: $core$Core$Nil,
@@ -7372,7 +7385,6 @@ const $sd1$Compiler$Parser$textToFormattableModule = (($env) => {
     }));
     const $reversedStatements = $3.second;
     const $errors = $3.first;
-    (sp_benchStop)("parseTrail");
     return ((sp_not_equal)($errors, $core$Core$Nil)
       ? ($core$Result$Err)(($sd1$Compiler$Error$Nested)($errors))
       : ($core$Result$Ok)(($core$List$reverse)($reversedStatements)));
@@ -19844,7 +19856,7 @@ const $sd1$Targets$Javascript$Runtime$listCons = "Cons";
 
 const $sd1$Targets$Javascript$Runtime$listNil = "Nil";
 
-const $sd1$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.info(\"\");\n        console.info(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.info(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex, 's');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd1$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd1$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd1$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n//\n// Dynamic loading\n//\nconst self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n    const actualTypeHumanized = sp_toHuman(pars.type);\n    if (actualTypeHumanized !== requestedTypeHumanized) {\n        return [ 'Err', pars.type ];\n    }\n\n    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n    const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n    const js = $sd1$Platforms$Browser$compile(pars);\n\n    //   { name1, name2, name3, ... } = externals;\n    const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n    const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n    const arg = {};\n    pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n    return [ 'Ok', variantConstructor(Function('externs', body)(arg)) ];\n};\n    "))))))))))))));
+const $sd1$Targets$Javascript$Runtime$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n/*  HACK\n\n    TODO this is super brittle\n    once we have a proper Platform system in place, the platform can probably\n    use its internal Meta to figure out the proper constructor\n\n*/\nconst maybe_nothing = [ \"Nothing\" ];\nconst maybe_just = (a) => [ \"Just\", a ];\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listCons + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? maybe_nothing : maybe_just(n);\n}\n\nconst text_split = (separator, target) => arrayToListLow(target.split(separator));\n\nconst text_length = (s) => s.length;\n\nconst text_slice = (start, end, s) => s.slice(start, end);\n\nconst text_startsWith = (sub, s) => s.startsWith(sub);\n\nconst text_startsWithRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp('^' + regex, 's');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (s) => {\n    let m = s.match(re);\n    return m ? m[0] : \"\";\n  }\n}\n\nconst text_replaceRegex = (regex) => {\n  let re;\n  try {\n    re = new RegExp(regex, 'g');\n  } catch (e) {\n    return () => \"\"\n  }\n\n  return (replacer, s) => s.replace(re, replacer);\n}\n\nconst text_trimLeft = (s) => s.trimLeft();\n\nconst text_dropLeft = (n, s) => s.slice(n);\n\nconst text_forEach = (s, f) => {\n  for (let i of s) f(i);\n  return null;\n}\n\n\n//\n// Hashes\n//\n\nconst hash_fromList = (list) => {\n  const hash = {};\n\n  // TODO iteration instead of recursion\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return hash;\n\n    const { first, second } = ls[1];\n\n    hash[JSON.stringify(first)] = [first, second];\n\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\n\nconst hash_insert = (hash, key, value) => {\n    hash[JSON.stringify(key)] = [key, value];\n    return [null, hash];\n}\n\n\nconst hash_remove = (hash, key) => {\n    delete hash[JSON.stringify(key)];\n    return [null, hash];\n}\n\n\nconst hash_get = (hash, key) => {\n    const r = hash[JSON.stringify(key)];\n    return [r === undefined ? maybe_nothing : maybe_just(r[1]), hash];\n}\n\n\nconst hash_for = (hash, f, acc) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        acc = f(kv[0], kv[1], acc);\n    }\n    return [acc, hash];\n}\n\n\nconst hash_each = (hash, f) => {\n    for (let k in hash) {\n        const kv = hash[k];\n        f(kv[0], kv[1]);\n    }\n    return [null, hash];\n}\n\n\n//\n// Arrays\n//\n\nconst array_each = (array, f) => {\n    array.forEach(f);\n    return [null, array];\n}\n\nconst array_push = (array, item) => {\n    array.push(item);\n    return [null, array];\n}\n\nconst array_pop = (a) => {\n    return [a.length ? maybe_just(a.pop()) : maybe_nothing, a];\n}\n\nconst array_get = (array, index) => {\n    const r = array[index];\n    return [r === undefined ? maybe_nothing : maybe_just(r), array];\n}\n\nconst array_set = (a, index, item) => {\n    if (index < 0) return false;\n    if (index >= a.length) return [false, a];\n    a[index] = item;\n    return [true, a];\n}\n\nconst array_sortBy = (arr, f) => {\n    arr.sort((a, b) => basics_compare(f(a), f(b)));\n    return [null, arr];\n}\n\nconst arrayToListLow = (arr) => {\n  const length = arr.length;\n  let list = [ '" + ($sd1$Targets$Javascript$Runtime$listNil + ("' ];\n  for (let i = length - 1; i >= 0; i--) {\n      list = [ '" + ($sd1$Targets$Javascript$Runtime$listCons + ("', arr[i], list ];\n  }\n  return list;\n}\n\nconst array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\nconst arrayFromListLow = (list) => {\n  const array = [];\n  const rec = (ls) => {\n    if (ls[0] === '" + ($sd1$Targets$Javascript$Runtime$listNil + ("')\n      return array;\n\n    array.push(ls[1]);\n    return rec(ls[2]);\n  };\n\n  return rec(list);\n}\n\nconst array_fromList = arrayFromListLow;\n\n\n//\n// Lists\n//\n\n\nconst sp_cons = (item, list) => {\n  return [ '" + ($sd1$Targets$Javascript$Runtime$listCons + "', item, list];\n}\n\nconst list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n//\n// Dynamic loading\n//\nconst self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n    const actualTypeHumanized = sp_toHuman(pars.type);\n    if (actualTypeHumanized !== requestedTypeHumanized) {\n        return [ 'Err', pars.type ];\n    }\n\n    // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n    // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n    const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n    const js = $sd1$Platforms$Browser$compile(pars);\n\n    //   { name1, name2, name3, ... } = externals;\n    const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n    const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n    const arg = {};\n    pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n    return [ 'Ok', variantConstructor(Function('externs', body)(arg)) ];\n};\n    "))))))))))))));
 
 const $sd1$Platforms$Browser$makeExecutable = (($out) => {
   const $compiledStatements = ($sd1$Platforms$Browser$compile)($out);
@@ -19883,6 +19895,9 @@ const $sd1$Platforms$Posix$overrides = ((() => {
     first: ($ioModule)("writeFile"),
     second: "io_writeFile",
   }), ($core$Core$Cons)(({
+    first: ($ioModule)("readStdin"),
+    second: "io_readStdin",
+  }), ($core$Core$Cons)(({
     first: ($ioModule)("writeStdout"),
     second: "io_writeStdout",
   }), ($core$Core$Cons)(({
@@ -19894,10 +19909,10 @@ const $sd1$Platforms$Posix$overrides = ((() => {
   }), ($core$Core$Cons)(({
     first: ($pathModule)("resolve"),
     second: "path_resolve",
-  }), $core$Core$Nil))))))));
+  }), $core$Core$Nil)))))))));
 }))();
 
-const $sd1$Platforms$Posix$runtime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = arrayFromListLow(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(arrayToListLow(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path, content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.info(content);\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n\nconst path_dirname = path.dirname;\n";
+const $sd1$Platforms$Posix$runtime = "\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_wrap = (f) => [ \"IO.IO\", f ];\n\nconst io_parallel = (iosAsList) => io_wrap((never) => {\n    // as [IO a]: IO [a]\n\n    const ios = arrayFromListLow(iosAsList);\n\n    // TODO actually run them in parallel!\n\n    let arr = [];\n    for (let io of ios) {\n        const r = io[1](never);\n        if (r[0] === \"Ok\")\n            arr.push(r[1]);\n        else\n            return $core$Result$Err(r[1]);\n    }\n\n    return $core$Result$Ok(arrayToListLow(arr));\n});\n\n\nconst io_readDir = (dirPath) => io_wrap((never) => {\n    // as Text: IO [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({\n        first: dirent.isDirectory(),\n        second: dirent.name,\n    }))));\n});\n\n\nconst io_readFile = (path) => io_wrap((never) => {\n    // as Text: IO Text\n\n    var content;\n    try {\n        content = fs.readFileSync(path, 'utf8');\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(content);\n});\n\n\nconst io_writeFile = (path, content) => io_wrap((never) => {\n    // as Text: Text: IO Int\n\n    try {\n        fs.writeFileSync(path, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_readStdin = io_wrap((never) => {\n    // as IO Text\n\n    try {\n        return $core$Result$Ok(fs.readFileSync(0, 'utf8'));\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n});\n\n\nconst io_writeStdout = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    try {\n        fs.writeFileSync(1, content);\n    } catch (e) {\n        return $core$Result$Err(e.message);\n    }\n\n    return $core$Result$Ok(0);\n});\n\n\nconst io_writeStderr = (content) => io_wrap((never) => {\n    // as Text: IO Int\n\n    console.error(content);\n    return $core$Result$Ok(-1);\n});\n\n\nconst path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n\nconst path_dirname = path.dirname;\n";
 
 const $sd1$Platforms$Posix$makeExecutable = (($out) => {
   const $entryName = ($sd1$Targets$Javascript$EmittableToJs$translateUsr)($out.entryUsr);
@@ -19962,9 +19977,9 @@ const $sd1$Main$parsePlatformName = (($maybeValue, $cliState) => {
                 }));
               }))());
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 194:12', (sp_toHuman)($3))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 208:12', (sp_toHuman)($3))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 189:4', (sp_toHuman)($maybeValue))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 203:4', (sp_toHuman)($maybeValue))));
 });
 
 const $sd1$Main$cliOptions = ($core$Core$Cons)(({
@@ -19974,32 +19989,41 @@ const $sd1$Main$cliOptions = ($core$Core$Cons)(({
 }), $core$Core$Nil);
 
 const $sd1$Main$formatMain = (($targets) => {
+  const $formatText = (($fsPath, $content) => {
+    return (($core$Result$onOk)((($formattableAst) => {
+      return ($core$Result$Ok)(($sd1$SPLib$Format$render)(((($1) => {
+        return ($sd1$Human$Format$formatStatements)(({
+          isRoot: true,
+          originalContent: $content,
+        }), $1);
+      }))($formattableAst)));
+    })))(($sd1$Compiler$Parser$textToFormattableModule)(({
+      errorModule: ({
+        content: $content,
+        fsPath: $fsPath,
+      }),
+      keepComments: true,
+      stripLocations: false,
+    })));
+  });
   const $formatFile = (($name) => {
     return (($posix$IO$onSuccess)((($moduleAsText) => {
-      return (($sd1$Compile$onResSuccess)((($formattable) => {
-        return ((($1) => {
-          return (io_writeFile)($name, $1);
-        }))(($sd1$SPLib$Format$render)(((($1) => {
-          return ($sd1$Human$Format$formatStatements)(({
-            isRoot: true,
-            originalContent: $moduleAsText,
-          }), $1);
-        }))($formattable)));
-      })))(($sd1$Compiler$Parser$textToFormattableModule)(({
-        errorModule: ({
-          content: $moduleAsText,
-          fsPath: $name,
-        }),
-        keepComments: true,
-        stripLocations: false,
-      })));
+      return (($sd1$Compile$onResSuccess)((($formatted) => {
+        return (io_writeFile)($name, $formatted);
+      })))(($formatText)($name, $moduleAsText));
     })))((io_readFile)($name));
   });
-  return (($posix$IO$onSuccess)(((_0) => {
-    return (io_writeStdout)("done");
-  })))((io_parallel)(((($1) => {
-    return ($core$List$map)($formatFile, $1);
-  }))($targets)));
+  return ((sp_equal)($targets, $core$Core$Nil)
+    ? (($posix$IO$onSuccess)((($moduleAsText) => {
+      return (($sd1$Compile$onResSuccess)((($formatted) => {
+        return (io_writeStdout)($formatted);
+      })))(($formatText)("<stdin>", $moduleAsText));
+    })))(io_readStdin)
+    : (($posix$IO$onSuccess)(((_0) => {
+      return ($posix$IO$succeed)(0);
+    })))((io_parallel)(((($1) => {
+      return ($core$List$map)($formatFile, $1);
+    }))($targets))));
 });
 
 const $sd1$Main$indent = (($s) => {
@@ -20230,9 +20254,9 @@ const $sd1$Main$main = (($env, $rawArgs) => {
               }))()
               : (true
                 ? (io_writeStdout)("\nHi! This is the Squarepants compiler!\n\nTo compile something, write:\n\n    squarepants pathToMainModule.sp\n")
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 231:12', (sp_toHuman)($args))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 245:12', (sp_toHuman)($args))))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 226:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Main.sp 240:4', (sp_toHuman)($3))));
 });
 
 const $sd1$SPLib$Parser$map = (($f, $p) => {

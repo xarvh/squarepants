@@ -188,11 +188,11 @@ typeof process !== 'undefined' && process.on('beforeExit', (code) => {
 
     const ks = Object.keys(debug_benchEntries);
     if (ks.length) {
-        console.info("");
-        console.info("Benchmark results:");
+        console.error("");
+        console.error("Benchmark results:");
         ks.sort().forEach(k => {
             const entry = debug_benchEntries[k];
-            console.info(
+            console.error(
                     'TotalTime:', pad(10, fmt(entry.dt )) + 's',
                     '   ',
                     'Runs:', pad(6, '' + entry.n),

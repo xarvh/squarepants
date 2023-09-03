@@ -951,7 +951,7 @@ textToFormattableModule as fn Env: Res FA.Module =
     tokensResult
     >> onOk fn tokenChunks:
 
-    Debug.benchStart None
+    #Debug.benchStart None
 
     errors & reversedStatements =
         List.for ([] & []) tokenChunks fn tokens, es & revStats:
@@ -959,7 +959,7 @@ textToFormattableModule as fn Env: Res FA.Module =
                 , Ok newReversedStatements: es & newReversedStatements
                 , Err e: [e, ...es] & revStats
 
-    Debug.benchStop "parseTrail"
+    #Debug.benchStop "parseTrail"
 
     if errors /= [] then
         errors
