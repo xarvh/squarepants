@@ -31,6 +31,7 @@ codeTest =
 
 alias Out =
     {
+    # TODO this needs to contain also an Env, otherwise I can't print it properly
     , type as TA.RawType
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     }
@@ -39,9 +40,15 @@ alias Out =
 outToHuman as fn Out: Text =
     fn out:
 
+    type =
+            out.type
+            >> Human/Type.doRawType Compiler/TypeCheck.initEnv __
+            >> Human/Format.formatExpression { isRoot = True, originalContent = "" } __
+            >> Fmt.render
+
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
-    , "  type = " .. TT.toText "" (Human/Type.doRawType {} out.type)
+    , "  type = " .. type
     ]
     >> Text.join "\n" __
 

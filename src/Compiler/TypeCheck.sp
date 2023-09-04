@@ -41,8 +41,9 @@ typeToHuman as fn Env, TA.RawType: Text =
     fn env, raw:
 
     raw
-    >> Human/Type.doRawType {} __
-    >> TT.toText "" __
+    >> Human/Type.doRawType env __
+    >> Human/Format.formatExpression { isRoot = True, originalContent = "" } __
+    >> Fmt.render
 
 
 

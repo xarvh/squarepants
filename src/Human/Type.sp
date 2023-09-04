@@ -1,17 +1,11 @@
-
-
 # TODO this should allow us to use the aliases and globals defined in modules.sp
 alias Env =
-    {
-    }
+    Compiler/TypeCheck.Env
 
 
-tyvarIdToText as fn Env, TA.TyvarId: Text =
-    fn env, id:
-
-    # TODO translate to original tyvar name?
-    Text.fromNumber id
-
+#
+# Meta
+#
 
 sourceToText as fn Meta.Source: Text =
     fn source:
@@ -29,142 +23,132 @@ umrToText as fn Env, UMR: Text =
 
 usrToText as fn Env, USR: Text =
     fn env, USR umr name:
-
     # TODO use display umr if name is not in modules.sp
     umrToText env umr .. "." .. name
 
 
+doUsr as fn Env, USR: FA.Expression =
+    fn env, usr:
+    {
+    , maybeType = Nothing
+    , tokenWord =
+        {
+        , attrPath = []
+        , isUpper = True
+        , maybeModule = Nothing
+        , modifier = Token.NameNoModifier
+        , name = usrToText env usr
+        }
+    }
+    >> FA.Variable
+    >> toExpression
+
+
+#
+#
+#
+
 uniToText as fn Env, Uniqueness: Text =
     fn env, uni:
-
     try uni as
         , Imm: ""
         , Uni: "!"
         , Depends n: Text.fromNumber n .. "?"
 
 
-doRawType as fn Env, TA.RawType: TextTree =
-    fn env, raw:
+#
+# Raw
+#
+toExpression as fn FA.Expr_: FA.Expression =
+    FA.Expression [] Pos.G __
 
-    try raw as
-        [#
-        , TA.TypeRecursive usr args:
-            TT.list {
-                , open = "$Rec: " .. usrToText env usr
-                , separator = ","
-                , close = "$"
-                , items = List.map (doRawType env __) args
-                }
 
-        , TA.TypeUnion maybeExt cons:
-            #
-            #   < ext with A x y, B z, C >
-            #
-            #   < ext with
-            #   , A x y
-            #   , B z
-            #   , C
-            #   >
-            #
-            doCons as fn (Name & [TA.RawType]): TextTree =
-                fn (name & args):
-                TT.rowOrHead name (List.map (doRawType env __) args)
-
-            open =
-                try maybeExt as
-                    , Just tyvarId: "< " .. tyvarIdToText env tyvarId .. " with"
-                    , Nothing: "<"
-
-            TT.list
-                {
-                , open
-                , separator = ","
-                , close = ">"
-                , items = cons >> Dict.toList >> List.map doCons __
-                }
-            #]
-
+doRawType as fn Env, TA.RawType: FA.Expression =
+    fn env, rawType:
+    try rawType as
 
         , TA.TypeExact usr args:
-            TT.rowOrIndented
-                (usrToText env usr)
-                (List.map (doRawType env __) args)
-
+            FA.Call (doUsr env usr) (List.map (doRawType env __) args)
 
         , TA.TypeFn parTypes full:
-            #
-            #   fn A, B: C
-            #
-            #   fn
-            #     , A
-            #     , B
-            #     : C
-            #
-            TT.rowOrIndented "" [
-                , TT.list {
-                    , open = "fn"
-                    , separator = ","
-                    , close = ":"
-                    , items = List.map (doParType env __) parTypes
-                    }
-                , doFullType env full
-                ]
-
+            FA.Fn FA.Inline (List.map (doParType env __) parTypes) (doFullType env full)
 
         , TA.TypeVar tyvarId:
-            tyvarId
-            >> Text.fromNumber
-            >> TT.text
+            doTyvarId env tyvarId
 
-        , TA.TypeRecord maybeExtId attrs:
-            #
-            #   { ext with x as X, y as Y }
-            #
-            #   { ext with
-            #   , x as X
-            #   , y as Y
-            #   }
-            #
-            # TODO tuple
-            #
-            doAttr as fn (Name & TA.RawType): TextTree =
-                fn (name & r):
-                TT.rowOrHead (name .. " as") [doRawType env r]
-
-            open =
+        , TA.TypeRecord maybeExtId taAttrs:
+            maybeExtension =
                 try maybeExtId as
-                    , Just tyvarId: "{ " .. tyvarIdToText env tyvarId .. " with"
-                    , Nothing: "{"
+                    , Nothing: Nothing
+                    , Just id: doTyvarId env id >> toExpression >> Just >> Just
 
-            TT.list
-                {
-                , open
-                , separator = ","
-                , close = "}"
-                , items = attrs >> Dict.toList >> List.map doAttr __
-                }
+            attrs =
+                taAttrs
+                >> Dict.toList
+                >> List.sortBy Tuple.first __
+                >> List.map (fn name & raw: { maybeExpr = Just (doRawType env raw), name = doName env name }) __
 
+            # TODO display tuples as tuples!
+
+            FA.Record { attrs, isMultiline = False, maybeExtension }
 
         , TA.TypeError:
-            TT.text "???"
+            todo "TypeError"
 
         , wtf:
-            TT.text << "###" .. Debug.toHuman wtf .. "###"
+            todo "bug: this should not be a type"
+    >> toExpression
 
 
-doFullType as fn Env, TA.FullType: TextTree =
-    fn env, ({ uni, raw }):
+doTyvarId as fn Env, TA.TyvarId: FA.Expr_ =
+    fn env, tyvarId:
+    {
+    , maybeType = Nothing
+    , tokenWord =
+        {
+        , attrPath = []
+        , isUpper = False
+        , maybeModule = Nothing
+        , modifier = Token.NameNoModifier
+        # TODO use Env to get original name!
+        , name =
+            Text.fromNumber tyvarId
+        }
+    }
+    >> FA.Variable
 
-    # TODO try to keep it in a row
-    TT.rowOrIndented (uniToText env uni) [doRawType env raw]
+
+doName as fn Env, Name: FA.Expression =
+    fn env, name:
+    {
+    , maybeType = Nothing
+    , tokenWord =
+        {
+        , attrPath = []
+        , isUpper = False
+        , maybeModule = Nothing
+        , modifier = Token.NameNoModifier
+        , name
+        }
+    }
+    >> FA.Variable
+    >> toExpression
 
 
-doParType as fn Env, TA.ParType: TextTree =
+doFullType as fn Env, TA.FullType: FA.Expression =
+    fn env, { raw, uni }:
+    FA.Poly (uniToText env uni) (doRawType env raw) >> toExpression
+
+
+doParType as fn Env, TA.ParType: FA.Expression =
     fn env, parType:
-
     try parType as
-        , TA.ParSp full: doFullType env full
 
-        # TODO try to keep it in a row
-        , TA.ParRe raw: TT.rowOrHead "@" [doRawType env raw]
+        , TA.ParSp full:
+            doFullType env full
 
+        , TA.ParRe raw:
+            raw
+            >> doRawType env __
+            >> FA.UnopCall Op.UnopRecycle __
+            >> toExpression
