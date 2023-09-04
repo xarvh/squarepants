@@ -93,7 +93,8 @@ doRawType as fn Env, TA.RawType: FA.Expression =
             FA.Record { attrs, isMultiline = False, maybeExtension }
 
         , TA.TypeError:
-            todo "TypeError"
+            # TODO remove quotes?
+            FA.LiteralText Token.SingleQuote "???"
 
         , wtf:
             todo "bug: this should not be a type"
