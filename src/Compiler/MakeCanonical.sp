@@ -750,6 +750,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             >> List.forRes __ caParams fn par, envX:
                 try par as
                     , CA.ParameterPattern uni pa: pa
+                    , CA.ParameterPlaceholder n: CA.PatternAny pos (Just (Text.fromNumber n)) Nothing
                     , CA.ParameterRecycle p name: CA.PatternAny p (Just name) Nothing
                 >> insertPatternNames False __ envX
 
@@ -779,18 +780,36 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             - inline the args inside faBody
         #]
 
-        , FA.Call faRef faArgs:
-            faRef
-            >> translateExpression env __
-            >> onOk fn caRef:
-
-            faArgs
-            >> translateArgumentsAndPlaceholders pos env __
-            >> onOk fn (caArgs & wrap):
-
-            CA.Call pos caRef caArgs
-            >> wrap
+        , FA.ResolvedArgumentPlaceholder n:
+            CA.Variable pos (RefPlaceholder n)
             >> Ok
+
+        , FA.Call faRef faArgs:
+
+              placeholdersCount & reversedArgs =
+                  List.for (0 & []) faArgs fn exp, cnt & rev:
+                      if isPlaceholder exp then
+                          FA.Expression c p _ = exp
+                          cnt + 1 & [ FA.Expression c p (FA.ResolvedArgumentPlaceholder cnt), ...rev]
+                      else
+                          cnt & [exp, ...rev]
+
+              if placeholdersCount > 0 then
+                  FA.Call faRef (List.reverse reversedArgs)
+                  >> makePartiallyAppliedFunction env pos placeholdersCount __
+
+              else
+
+                  faRef
+                  >> translateExpression env __
+                  >> onOk fn caRef:
+
+                  faArgs
+                  >> List.mapRes (translateArgument env __) __
+                  >> onOk fn caArgs:
+
+                  CA.Call pos caRef caArgs
+                  >> Ok
 
         , FA.If { with condition, true, false }:
             translateExpression env condition >> onOk fn c:
@@ -888,6 +907,19 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "something's wrong here...", toHuman expr_ ]
 
 
+makePartiallyAppliedFunction as fn Env, Pos, Int, FA.Expr_: Res CA.Expression =
+    fn env, pos, placeholdersCount, body:
+
+    ex =
+        FA.Expression [] pos __
+
+    List.range 0 (placeholdersCount - 1)
+    >> List.map (fn x: x >> FA.ResolvedArgumentPlaceholder >> ex) __
+    >> FA.Fn FA.Inline __ (ex body)
+    >> ex
+    >> translateExpression env __
+
+
 insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
     fn isRoot, pattern, env:
 
@@ -917,54 +949,6 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
 
     >> onOk fn values:
     Ok { env with values }
-
-
-translateArgumentsAndPlaceholders as fn Pos, Env, [FA.Expression]: Res ([CA.Argument] & (fn CA.Expression: CA.Expression)) =
-    fn pos, env, faArgs:
-
-    insertArg =
-        fn faArg, { caPars, caArgs, arity }:
-
-        FA.Expression _ p faArg_ =
-            faArg
-
-        try faArg_ as
-
-            , FA.ArgumentPlaceholder:
-                {
-                , caPars = CA.ParameterPlaceholder arity :: caPars
-                , caArgs = CA.ArgumentExpression (CA.Variable p (RefPlaceholder arity)) :: caArgs
-                , arity = arity + 1
-                }
-                >> Ok
-
-            , _:
-                translateArgument env faArg
-                >> onOk fn caArg:
-
-                {
-                , caPars = caPars
-                , caArgs = caArg :: caArgs
-                , arity = arity + 1
-                }
-                >> Ok
-
-    {
-    , caPars = []
-    , caArgs = []
-    , arity = 0
-    }
-    >> List.forRes __ faArgs insertArg
-    >> onOk fn ({ caPars, caArgs, arity }):
-
-    wrap =
-        if caPars == [] then
-            identity
-        else
-            fn call: CA.Fn pos (List.reverse caPars) call
-
-    List.reverse caArgs & wrap
-    >> Ok
 
 
 translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expression =
@@ -1016,39 +1000,39 @@ translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expres
 translateParameter as fn Env, FA.Expression: Res CA.Parameter =
     fn env, fa:
 
-    FA.Expression _ pos faExpr = fa
+    FA.Expression _ pos faExpr =
+        fa
 
-    maybeRecycle =
-        try faExpr as
-            , FA.UnopCall Op.UnopRecycle (FA.Expression _ p faOperand):
-                try faOperand as
-                    , FA.Variable { maybeType = Nothing, tokenWord = word }:
-                        Ok (Just word)
-                    , _:
-                        error env p [ "@ should be followed by a variable name to recycle!" ]
+    try faExpr as
+        , FA.UnopCall Op.UnopRecycle (FA.Expression _ p faOperand):
 
-            , _:
-                Ok Nothing
+            try faOperand as
+                , FA.Variable { maybeType = Nothing, tokenWord = word }:
+                    isValid =
+                         word.modifier == Token.NameNoModifier and not word.isUpper and word.maybeModule == Nothing and word.attrPath == []
 
-    maybeRecycle
-    >> onOk fn maybeWord:
+                    if not isValid then
+                        error env pos [ "I was expecting a local variable name here... =|" ]
+                    else
+                        CA.ParameterRecycle pos word.name
+                        >> Ok
 
-    try maybeWord as
-        , Just word:
-            isValid = word.modifier == Token.NameNoModifier and not word.isUpper and word.maybeModule == Nothing and word.attrPath == []
+                , _:
+                    error env p [ "@ should be followed by a variable name to recycle!" ]
 
-            if not isValid then
-                error env pos [ "I was expecting a local variable name here... =|" ]
-            else
-                CA.ParameterRecycle pos word.name
-                >> Ok
 
-        , Nothing:
+        , FA.ResolvedArgumentPlaceholder n:
+            CA.ParameterPlaceholder n
+            >> Ok
+
+
+        , _:
             translateFullPattern env fa
             >> onOk fn (uni & ca):
 
             CA.ParameterPattern uni ca
             >> Ok
+
 
 
 translateNumber as fn ReadOnly, Bool, (fn Pos, Number: a), Pos, Text: Res a =
@@ -1144,10 +1128,13 @@ translateAndInsertRecordAttribute as fn Env, FA.RecordAttribute, Dict Text CA.Ex
 
 
 translateArgument as fn Env, FA.Expression: Res CA.Argument =
-    fn env, faExpr:
+    fn env, faExpression:
 
-    try faExpr as
-        , FA.Expression _ _ (FA.UnopCall Op.UnopRecycle (FA.Expression _ pos faOperand)):
+    FA.Expression _ pos expr =
+        faExpression
+
+    try expr as
+        , FA.UnopCall Op.UnopRecycle (FA.Expression _ _ faOperand):
             try faOperand as
                 , FA.Variable { maybeType, tokenWord = word }:
                     if maybeType /= Nothing then
@@ -1165,8 +1152,16 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
                 , _:
                     error env pos [ "I can recycle only variables!" ]
 
+
+        , FA.ArgumentPlaceholder:
+            error env pos [ "compiler error: this should have been eliminated already" ]
+
+        , FA.ResolvedArgumentPlaceholder n:
+            CA.ArgumentExpression (CA.Variable pos (RefPlaceholder n))
+            >> Ok
+
         , _:
-            faExpr
+            faExpression
             >> translateExpression env __
             >> onOk fn caExpr:
 
@@ -1174,9 +1169,38 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
             >> Ok
 
 
+isPlaceholder as fn FA.Expression: Bool =
+    fn FA.Expression _ _ expr:
+    try expr as
+        , FA.ArgumentPlaceholder: True
+        , _: False
+
+
 translateBinopChain as fn Env, Pos, Int, FA.BinopChain: Res CA.Expression =
     fn env, pos, group, opChain:
-    if group == Op.precedence_pipe then
+
+    toExpression as fn FA.Expr_: FA.Expression =
+        FA.Expression [] pos __
+
+    cnt0 & head =
+        if isPlaceholder opChain.first then
+            1 & toExpression (FA.ResolvedArgumentPlaceholder 0)
+        else
+            0 & opChain.first
+
+    (placeholdersCount as Int) & (reversedChainTail as [FA.Binop & FA.Expression]) =
+        List.for (cnt0 & []) opChain.second fn op & exp, cnt & rev:
+            if isPlaceholder exp then
+                FA.Expression c p _ = exp
+                cnt + 1 & [ op & FA.Expression c p (FA.ResolvedArgumentPlaceholder cnt), ...rev]
+            else
+                cnt & [op & exp, ...rev]
+
+    if placeholdersCount > 0 then
+        FA.BinopChain group (head & List.reverse reversedChainTail)
+        >> makePartiallyAppliedFunction env pos placeholdersCount __
+
+    else if group == Op.precedence_pipe then
         resolvePipe env pos opChain
         >> onOk (translateExpression env __)
 
@@ -1303,11 +1327,10 @@ translateMutop as fn Env, Pos, FA.BinopChain: Res CA.Expression =
                CA.Variable op.pos (RefGlobal op.usr)
 
             [ left, right ]
-            >> translateArgumentsAndPlaceholders pos env __
-            >> onOk fn (caArgs & wrap):
+            >> List.mapRes (translateArgument env __) __
+            >> onOk fn caArgs:
 
             CA.Call pos caRef caArgs
-            >> wrap
             >> Ok
 
         , _:
@@ -1337,67 +1360,26 @@ sameDirectionAs as fn FA.Binop, FA.Binop: Bool =
                 False
 
 
-
-translateBinopArg as fn Env, @Int, FA.Expression: Res CA.Expression =
-    fn env, @placeholdersCount, faExpr:
-    try faExpr as
-        , FA.Expression _ p FA.ArgumentPlaceholder:
-            n =
-               cloneUni @placeholdersCount
-
-            @placeholdersCount += 1
-
-            n
-            >> RefPlaceholder
-            >> CA.Variable p __
-            >> Ok
-
-        , _:
-            translateExpression env faExpr
-
-
-translateRightAssociativeChainLink as fn Env, Pos, @Int, FA.BinopChain: Res CA.Expression =
-    fn env, pos, @placeholdersCount, faLeft & faOpsAndRight:
+translateRightAssociativeBinopChain as fn Env, Pos, FA.BinopChain: Res CA.Expression =
+    fn env, pos, faLeft & faOpsAndRight:
 
     try faOpsAndRight as
         , []:
-            translateBinopArg env @placeholdersCount faLeft
+            translateExpression env faLeft
 
         , [op & faRight, ...faTail]:
 
-            translateBinopArg env @placeholdersCount faLeft
+            translateArgument env faLeft
             >> onOk fn caLeft:
 
-            translateRightAssociativeChainLink env pos @placeholdersCount (faRight & faTail)
+            translateRightAssociativeBinopChain env pos (faRight & faTail)
             >> onOk fn caRight:
 
             caRef =
                CA.Variable op.pos (RefGlobal op.usr)
 
-            CA.Call pos caRef [CA.ArgumentExpression caLeft, CA.ArgumentExpression caRight]
+            CA.Call pos caRef [caLeft, CA.ArgumentExpression caRight]
             >> Ok
-
-
-translateRightAssociativeBinopChain as fn Env, Pos, FA.BinopChain: Res CA.Expression =
-    fn env, pos, opChain:
-
-    !placeholdersCount =
-         0
-
-    translateRightAssociativeChainLink env pos @placeholdersCount opChain
-    >> onOk fn expr:
-
-    cnt =
-       cloneUni @placeholdersCount
-
-    if cnt == 0 then
-        Ok expr
-    else
-        cnt - 1
-        >> List.range 0 __
-        >> List.map CA.ParameterPlaceholder __
-        >> CA.Fn pos __ expr
-        >> Ok
 
 
 

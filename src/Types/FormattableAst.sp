@@ -85,6 +85,9 @@ union Expr_ =
     , LiteralNumber Bool Text
     , ArgumentPlaceholder
 
+    # This is used only when translating from FA to CA
+    , ResolvedArgumentPlaceholder Int
+
     , Statements [Statement]
 
     # List isMultiline [isUnpacked & item]

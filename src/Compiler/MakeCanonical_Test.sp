@@ -2,7 +2,6 @@
 # Tests
 #
 
-
 tests as Test =
     Test.Group
         """
@@ -34,9 +33,9 @@ tests as Test =
 params as fn Error.Module: Compiler/MakeCanonical.ReadOnly =
     fn errorModule:
     {
+    , errorModule
     , meta = TH.meta
     , umr = TH.moduleUmr
-    , errorModule
     }
 
 
@@ -49,59 +48,61 @@ textToModule as fn Text: Result Text CA.Module =
     >> TH.resErrorToStrippedText
 
 
-codeTest as fn Text, Text, (fn Text: Result Text ok), Test.CodeExpectation ok: Test =
+codeTest as fn Text, Text, fn Text: Result Text ok, Test.CodeExpectation ok: Test =
     Test.codeTest toHuman __ __ __ __
 
 
 firstDefinition as fn Text: Result Text CA.ValueDef =
     fn code:
     code
-        >> textToModule
-        >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail" __)
+    >> textToModule
+    >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail" __)
 
 
 firstDefinitionStripDeps as fn Text: Result Text CA.ValueDef =
     fn code:
     code
-        >> firstDefinition
-        >> Result.map (fn v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty }) __
+    >> firstDefinition
+    >> Result.map (fn v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty }) __
 
 
 firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
-    fn name: fn code:
+    fn name:
+    fn code:
     code
     >> firstDefinition
     >> onOk (fn def: Ok def.body)
 
 
 # TODO move this to Helpers?
-transformAB as fn Text: Result Text ( CA.ValueDef & CA.ValueDef ) =
+transformAB as fn Text: Result Text (CA.ValueDef & CA.ValueDef) =
     fn code:
-
     findAB =
         fn mod:
         try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.pattern) __ as
-            , [a, b]: Just (a & b)
+            , [ a, b ]: Just (a & b)
             , _: Nothing
 
     code
-        >> textToModule
-        >> onOk (fn x: x >> findAB >> Result.fromMaybe "findAB fail" __)
+    >> textToModule
+    >> onOk (fn x: x >> findAB >> Result.fromMaybe "findAB fail" __)
 
 
-shouldHaveSameAB as fn (fn ab: c): Test.CodeExpectation ( ab & ab ) =
+shouldHaveSameAB as fn fn ab: c: Test.CodeExpectation (ab & ab) =
     fn getter:
-    Test.freeform << fn ( a & b ):
-    if getter a == getter b then
-        Nothing
-
-    else
-        [ "The two don't match:"
-        , toHuman (getter a)
-        , toHuman (getter b)
-        ]
-        >> Text.join "\n" __
-        >> Just
+    Test.freeform
+    << (fn a & b:
+         if getter a == getter b then
+             Nothing
+         else
+             [
+             , "The two don't match:"
+             , toHuman (getter a)
+             , toHuman (getter b)
+             ]
+             >> Text.join "\n" __
+             >> Just
+    )
 
 
 p as Pos =
@@ -110,24 +111,20 @@ p as Pos =
 
 valueDef as fn Name, CA.Expression: CA.ValueDef =
     fn name, body:
-
     {
-    , uni = Imm
-    , pattern = CA.PatternAny Pos.G (Just name) Nothing
-    , native = False
     , body
-
-    , directTypeDeps = Dict.empty
     , directConsDeps = Dict.empty
+    , directTypeDeps = Dict.empty
     , directValueDeps = Dict.empty
+    , native = False
+    , pattern = CA.PatternAny Pos.G (Just name) Nothing
+    , uni = Imm
     }
-
 
 
 #
 # Union Types
 #
-
 
 unionTypes as Test =
     Test.Group
@@ -135,11 +132,7 @@ unionTypes as Test =
         Union types
         """
         [
-        , codeTest
-            "tuples op precedence"
-            "union A = X Bool & Bool"
-            textToModule
-            (Test.errorContains ["expecting a constructor"])
+        , codeTest "tuples op precedence" "union A = X Bool & Bool" textToModule (Test.errorContains [ "expecting a constructor" ])
         , codeTest
             """
             Tuples op precedence works with parens
@@ -157,7 +150,7 @@ unionTypes as Test =
             union Outcome Token output = A
             """
             textToModule
-            (Test.errorContains ["must start with a lowercase"])
+            (Test.errorContains [ "must start with a lowercase" ])
         ]
 
 
@@ -167,27 +160,30 @@ binops as Test =
         Binops
         """
         [
-        , codeTest "left associativity"
+        , codeTest
+            "left associativity"
             """
             a = v >> f >> g
             b = (v >> f) >> g
             """
             transformAB
-            (shouldHaveSameAB fn x: x.body)
-        , codeTest "right associativity"
+            (shouldHaveSameAB (fn x: x.body))
+        , codeTest
+            "right associativity"
             """
             a = v :: f :: g
             b = v :: (f :: g)
             """
             transformAB
-            (shouldHaveSameAB fn x: x.body)
-        , codeTest "precedence"
+            (shouldHaveSameAB (fn x: x.body))
+        , codeTest
+            "precedence"
             """
             a = 1 + 2 * 3 + 4
             b = 1 + (2 * 3) + 4
             """
             transformAB
-            (shouldHaveSameAB fn x: x.body)
+            (shouldHaveSameAB (fn x: x.body))
         , codeTest
             """
             SKIP (burned out) Pipe optimization 1
@@ -197,7 +193,7 @@ binops as Test =
             b = a b
             """
             transformAB
-            (shouldHaveSameAB fn x: x.body)
+            (shouldHaveSameAB (fn x: x.body))
         , codeTest
             """
             SKIP (burned out) Pipe optimization 2
@@ -207,7 +203,7 @@ binops as Test =
             b = a >> b >> c
             """
             transformAB
-            (shouldHaveSameAB fn x: x.body)
+            (shouldHaveSameAB (fn x: x.body))
         , codeTest
             """
             Op chain definition and optimization
@@ -216,110 +212,126 @@ binops as Test =
             a = __ + __ + 3 + __
             """
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo (
-                (CA.Fn p [
-                    , CA.ParameterPlaceholder 0
-                    , CA.ParameterPlaceholder 1
-                    , CA.ParameterPlaceholder 2
-                    ]
-                    (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
-                        , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
-                        , CA.ArgumentExpression
-
-                            (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
-                                , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
-                                , CA.ArgumentExpression
-                                    (CA.Call p (CA.Variable p (RefGlobal Prelude.add.usr)) [
-                                        , CA.ArgumentExpression (CA.LiteralNumber p 3)
-                                        , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 2))
-                                        ]
-                                    )
-                                ]
-                            )
-                        ]
-                    )
-                )
-            ))
+            (Test.isOkAndEqualTo
+                 (CA.Fn
+                      p
+                      [
+                      , CA.ParameterPlaceholder 0
+                      , CA.ParameterPlaceholder 1
+                      , CA.ParameterPlaceholder 2
+                      ]
+                      (CA.Call
+                           p
+                           (CA.Variable p (RefGlobal Prelude.add.usr))
+                           [
+                           , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
+                           , CA.ArgumentExpression
+                               (CA.Call
+                                    p
+                                    (CA.Variable p (RefGlobal Prelude.add.usr))
+                                    [
+                                    , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
+                                    , CA.ArgumentExpression
+                                        (CA.Call
+                                             p
+                                             (CA.Variable p (RefGlobal Prelude.add.usr))
+                                             [
+                                             , CA.ArgumentExpression (CA.LiteralNumber p 3)
+                                             , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 2))
+                                             ]
+                                        )
+                                    ]
+                               )
+                           ]
+                      )
+                 )
+            )
         ]
-
 
 
 #
 # Lists
 #
 
-
 lists as Test =
     Test.Group
         """
         Lists
         """
-        [ codeTest "list type sugar"
+        [
+        , codeTest
+            "list type sugar"
             """
             l as [ Bool ] =
               l
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                {
-                , uni = Imm
-                , body = CA.Variable p (TH.rootLocal "l")
-                , native = False
-                , pattern = CA.PatternAny p (Just "l") (Just {
-                    , raw = CoreTypes.list TH.caBool
-                    , tyvars = Dict.empty
-                    , univars = Dict.empty
-                    })
-
-                , directConsDeps = Dict.empty
-                , directTypeDeps = Dict.empty
-                , directValueDeps = Dict.empty
-                }
+                 {
+                 , body = CA.Variable p (TH.rootLocal "l")
+                 , directConsDeps = Dict.empty
+                 , directTypeDeps = Dict.empty
+                 , directValueDeps = Dict.empty
+                 , native = False
+                 , pattern =
+                     CA.PatternAny
+                         p
+                         (Just "l")
+                         (Just
+                              {
+                              , raw = CoreTypes.list TH.caBool
+                              , tyvars = Dict.empty
+                              , univars = Dict.empty
+                              }
+                         )
+                 , uni = Imm
+                 }
             )
         ]
-
 
 
 #
 # Tuples
 #
 
-
 tuples as Test =
     Test.Group
         """
         Tuples
         """
-        [ codeTest "tuple2"
+        [
+        , codeTest
+            "tuple2"
             "a = 1 & 2"
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.Record p
-                    Nothing
-                    (Dict.fromList
-                        [ ( "first" & CA.LiteralNumber p 1 )
-                        , ( "second" & CA.LiteralNumber p 2 )
-                        ]
-                    )
-            )
-        , codeTest "tuple3"
-            "a = 1 & 2 & 3"
-            (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.Record p
-                    Nothing
-                    (Dict.fromList
-                        [ ( "first" & CA.LiteralNumber p 1 )
-                        , ( "second" & CA.LiteralNumber p 2 )
-                        , ( "third" & CA.LiteralNumber p 3 )
-                        ]
-                    )
+            (Test.isOkAndEqualTo
+             << CA.Record
+                 p
+                 Nothing
+                 (Dict.fromList
+                      [
+                      , "first" & CA.LiteralNumber p 1
+                      , "second" & CA.LiteralNumber p 2
+                      ]
+                 )
             )
         , codeTest
-            "tuple4"
-            "a = 1 & 2 & 3 & 4"
+            "tuple3"
+            "a = 1 & 2 & 3"
             (firstEvaluation "a")
-            (Test.errorContains ["use a record"])
+            (Test.isOkAndEqualTo
+             << CA.Record
+                 p
+                 Nothing
+                 (Dict.fromList
+                      [
+                      , "first" & CA.LiteralNumber p 1
+                      , "second" & CA.LiteralNumber p 2
+                      , "third" & CA.LiteralNumber p 3
+                      ]
+                 )
+            )
+        , codeTest "tuple4" "a = 1 & 2 & 3 & 4" (firstEvaluation "a") (Test.errorContains [ "use a record" ])
         , codeTest
             """
             Tuple2 type
@@ -330,23 +342,29 @@ tuples as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = CA.Variable p (TH.rootLocal "a")
-                , uni = Imm
-                , pattern =
-                    CA.PatternAny p (Just "a") (Just {
-                         , raw =
-                              Dict.empty
-                              >> Dict.insert "first" TH.caNumber __
-                              >> Dict.insert "second" TH.caNumber __
-                              >> CA.TypeRecord p __
-                          , tyvars = Dict.empty
-                          , univars = Dict.empty
-                    })
-                , native = False
-                , directConsDeps = Dict.empty
-                , directTypeDeps = Dict.empty
-                , directValueDeps = Dict.empty
-                }
+                 {
+                 , body = CA.Variable p (TH.rootLocal "a")
+                 , directConsDeps = Dict.empty
+                 , directTypeDeps = Dict.empty
+                 , directValueDeps = Dict.empty
+                 , native = False
+                 , pattern =
+                     CA.PatternAny
+                         p
+                         (Just "a")
+                         (Just
+                              {
+                              , raw =
+                                  Dict.empty
+                                  >> Dict.insert "first" TH.caNumber __
+                                  >> Dict.insert "second" TH.caNumber __
+                                  >> CA.TypeRecord p __
+                              , tyvars = Dict.empty
+                              , univars = Dict.empty
+                              }
+                         )
+                 , uni = Imm
+                 }
             )
         , codeTest
             "tuple4, type"
@@ -355,34 +373,29 @@ tuples as Test =
               a
             """
             firstDefinition
-            (Test.errorContains ["use a record"])
+            (Test.errorContains [ "use a record" ])
         ]
-
 
 
 #
 # Module and Attribute Paths
 #
 
-
 moduleAndAttributePaths as Test =
-    accept = fn s:
-        codeTest s
-            ("a = " .. s)
-            firstDefinition
-            Test.isOk
+    accept =
+        fn s:
+            codeTest s ("a = " .. s) firstDefinition Test.isOk
 
-    reject = fn s, m:
-        codeTest s
-            ("a = " .. s)
-            firstDefinition
-            (Test.errorContains [m])
+    reject =
+        fn s, m:
+            codeTest s ("a = " .. s) firstDefinition (Test.errorContains [ m ])
 
     Test.Group
         """
         Module and Attribute Paths
         """
-        [ accept "blah.blah.blah"
+        [
+        , accept "blah.blah.blah"
         , reject "Blah.Blah.blah" "constructor"
         , reject "blah.Blah.blah" "case"
         , reject "List.blah.Blah" "lower"
@@ -395,11 +408,9 @@ moduleAndAttributePaths as Test =
         ]
 
 
-
 #
 # Records
 #
-
 
 records as Test =
     Test.Group
@@ -407,52 +418,55 @@ records as Test =
         Records
         """
         [
-        , codeTest "functional update"
+        , codeTest
+            "functional update"
             "a = { m with b, c = 1 }"
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.LetIn
-                    (valueDef "0" (CA.Variable p (TH.rootLocal "m" )))
-                    (CA.Record p
-                        (Just (CA.Variable Pos.G (RefLocal "0" )))
-                        (Dict.fromList
-                            [
-                            , "c" & CA.LiteralNumber p 1
-                            , "b" & CA.Variable p (TH.rootLocal "b")
-                            ]
-                        )
-                    )
+            (Test.isOkAndEqualTo
+             << CA.LetIn
+                 (valueDef "0" (CA.Variable p (TH.rootLocal "m")))
+                 (CA.Record
+                      p
+                      (Just (CA.Variable Pos.G (RefLocal "0")))
+                      (Dict.fromList
+                           [
+                           , "c" & CA.LiteralNumber p 1
+                           , "b" & CA.Variable p (TH.rootLocal "b")
+                           ]
+                      )
+                 )
             )
-        , codeTest "update shorthand"
+        , codeTest
+            "update shorthand"
             "b = { a with y = .x }"
             (firstEvaluation "b")
-            (Test.isOkAndEqualTo <<
-                CA.LetIn
-                    (valueDef "0" (CA.Variable p (TH.rootLocal "a" )))
-                    (CA.Record p
-                        (Just (CA.Variable Pos.G (RefLocal "0" )))
-                        (Dict.fromList
-                            [
-                            , "y" & (CA.RecordAccess p "x" (CA.Variable Pos.G (RefLocal "0" )))
-                            ]
-                        )
-                    )
+            (Test.isOkAndEqualTo
+             << CA.LetIn
+                 (valueDef "0" (CA.Variable p (TH.rootLocal "a")))
+                 (CA.Record
+                      p
+                      (Just (CA.Variable Pos.G (RefLocal "0")))
+                      (Dict.fromList
+                           [
+                           , "y" & CA.RecordAccess p "x" (CA.Variable Pos.G (RefLocal "0"))
+                           ]
+                      )
+                 )
             )
-        , codeTest "annotation, extensible"
+        , codeTest
+            "annotation, extensible"
             """
             a as { b with x as Bool } =
               a
             """
             (firstEvaluation "a")
-            (Test.errorContains ["disabled"])
+            (Test.errorContains [ "disabled" ])
         ]
-
 
 
 #
 # Pattern
 #
-
 
 patterns as Test =
     Test.Group
@@ -460,28 +474,28 @@ patterns as Test =
         Patterns
         """
         [
-        , codeTest "Record patterns can be partial"
+        , codeTest
+            "Record patterns can be partial"
             """
             a =
               { with c } = d
             """
             (firstEvaluation "a")
             Test.isOk
-        , codeTest "[reg] record patterns are NOT extensible"
+        , codeTest
+            "[reg] record patterns are NOT extensible"
             """
             a =
               { b with c } = d
             """
             (firstEvaluation "a")
-            (Test.errorContains ["extend pattern"])
+            (Test.errorContains [ "extend pattern" ])
         ]
-
 
 
 #
 # Annotations
 #
-
 
 annotations as Test =
     Test.Group
@@ -489,7 +503,8 @@ annotations as Test =
         Annotations
         """
         [
-        , codeTest "annotation on unique value"
+        , codeTest
+            "annotation on unique value"
             """
             x =
               !a as Number =
@@ -498,15 +513,16 @@ annotations as Test =
             """
             firstDefinition
             Test.isOk
-
-        , codeTest "annotation on immutable value"
+        , codeTest
+            "annotation on immutable value"
             """
             b as Number =
               3
             """
             (firstEvaluation "b")
             Test.isOk
-        , codeTest "annotation of recycling function"
+        , codeTest
+            "annotation of recycling function"
             """
             b as fn @Result e a: !Result e a =
               3
@@ -516,45 +532,36 @@ annotations as Test =
         ]
 
 
-
 #
 # Pipes
 #
-
 
 pipes as Test =
     Test.Group
         """
         Pipes
         """
-        [ codeTest "sendLeft is inlined"
+        [
+        , codeTest
+            "sendLeft is inlined"
             """
             a = thing >> function
             """
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.Call p
-                    (CA.Variable p (TH.rootLocal "function"))
-                    [CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing"))]
-            )
-        , codeTest "sendRight is inlined"
+            (Test.isOkAndEqualTo << CA.Call p (CA.Variable p (TH.rootLocal "function")) [ CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing")) ])
+        , codeTest
+            "sendRight is inlined"
             """
             a = function << thing
             """
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo <<
-                CA.Call p
-                    (CA.Variable p (TH.rootLocal "function"))
-                    [CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing"))]
-            )
+            (Test.isOkAndEqualTo << CA.Call p (CA.Variable p (TH.rootLocal "function")) [ CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing")) ])
         ]
-
 
 
 #
 # Functions
 #
-
 
 functions as Test =
     Test.Group
@@ -562,7 +569,8 @@ functions as Test =
         Functions
         """
         [
-        , codeTest "[rec] function with call"
+        , codeTest
+            "[rec] function with call"
             """
             a =
                 fn x:
@@ -570,31 +578,35 @@ functions as Test =
             """
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                (CA.Fn p
-                    [CA.ParameterPattern Imm (CA.PatternAny p (Just "x") Nothing)]
-                    (CA.Call p
-                        (CA.Variable p (TH.rootLocal "add"))
-                        [
-                        , CA.ArgumentExpression (CA.Variable p (RefLocal "x"))
-                        , CA.ArgumentExpression (CA.LiteralNumber p 1)
-                        ]
-                    )
-                )
+                 (CA.Fn
+                      p
+                      [ CA.ParameterPattern Imm (CA.PatternAny p (Just "x") Nothing) ]
+                      (CA.Call
+                           p
+                           (CA.Variable p (TH.rootLocal "add"))
+                           [
+                           , CA.ArgumentExpression (CA.Variable p (RefLocal "x"))
+                           , CA.ArgumentExpression (CA.LiteralNumber p 1)
+                           ]
+                      )
+                 )
             )
-        , codeTest "[rec] function with two arguments"
+        , codeTest
+            "[rec] function with two arguments"
             """
             f =
               fn a, b: 1
             """
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                (CA.Fn p
-                    [
-                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "a") Nothing)
-                    , CA.ParameterPattern Imm (CA.PatternAny p (Just "b") Nothing)
-                    ]
-                    (CA.LiteralNumber p 1)
-                )
+                 (CA.Fn
+                      p
+                      [
+                      , CA.ParameterPattern Imm (CA.PatternAny p (Just "a") Nothing)
+                      , CA.ParameterPattern Imm (CA.PatternAny p (Just "b") Nothing)
+                      ]
+                      (CA.LiteralNumber p 1)
+                 )
             )
         ]
 
@@ -605,26 +617,33 @@ nonFunction as Test =
         NonFunction
         """
         [
-        , codeTest "one"
+        , codeTest
+            "one"
             """
             funz as a with a NonFunction =
                 1
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                { body = CA.LiteralNumber p 1
-                , uni = Imm
-                , native = False
-                , pattern =
-                    CA.PatternAny p (Just "funz") (Just {
-                        , raw = CA.TypeAnnotationVariable p "a"
-                        , tyvars = Dict.ofOne "a" { nonFn = Just Pos.T }
-                        , univars = Dict.empty
-                        })
-                , directConsDeps = Dict.empty
-                , directTypeDeps = Dict.empty
-                , directValueDeps = Dict.empty
-                }
+                 {
+                 , body = CA.LiteralNumber p 1
+                 , directConsDeps = Dict.empty
+                 , directTypeDeps = Dict.empty
+                 , directValueDeps = Dict.empty
+                 , native = False
+                 , pattern =
+                     CA.PatternAny
+                         p
+                         (Just "funz")
+                         (Just
+                              {
+                              , raw = CA.TypeAnnotationVariable p "a"
+                              , tyvars = Dict.ofOne "a" { nonFn = Just Pos.T }
+                              , univars = Dict.empty
+                              }
+                         )
+                 , uni = Imm
+                 }
             )
         ]
 
@@ -644,27 +663,65 @@ argumentPlaceholders as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                {
-                , native = False
-                , uni = Imm
-                , pattern = CA.PatternAny p (Just "f") Nothing
-                , directConsDeps = Dict.empty
-                , directTypeDeps = Dict.empty
-                , directValueDeps = Dict.empty
-                , body =
-                    CA.Fn p
-                        [
-                        , CA.ParameterPlaceholder 0
-                        , CA.ParameterPlaceholder 1
-                        ]
-                        ( CA.Call p
-                            (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "f")))
-                            [
-                            , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
-                            , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
-                            ]
-                        )
-                }
+                 {
+                 , body =
+                     CA.Fn
+                         p
+                         [
+                         , CA.ParameterPlaceholder 0
+                         , CA.ParameterPlaceholder 1
+                         ]
+                         (CA.Call
+                              p
+                              (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "f")))
+                              [
+                              , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
+                              , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
+                              ]
+                         )
+                 , directConsDeps = Dict.empty
+                 , directTypeDeps = Dict.empty
+                 , directValueDeps = Dict.empty
+                 , native = False
+                 , pattern = CA.PatternAny p (Just "f") Nothing
+                 , uni = Imm
+                 }
+            )
+        , codeTest
+            """
+            Pipelines work with placeholders
+            """
+            """
+            f = __ >> a >> b
+            """
+            firstDefinitionStripDeps
+            (Test.isOkAndEqualTo
+                 {
+                 , body =
+                     CA.Fn
+                         p
+                         [ CA.ParameterPlaceholder 0 ]
+                         (CA.Call
+                              p
+                              (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "b")))
+                              [
+                              , CA.ArgumentExpression
+                                  (CA.Call
+                                       p
+                                       (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "a")))
+                                       [
+                                       , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
+                                       ]
+                                  )
+                              ]
+                         )
+                 , directConsDeps = Dict.empty
+                 , directTypeDeps = Dict.empty
+                 , directValueDeps = Dict.empty
+                 , native = False
+                 , pattern = CA.PatternAny p (Just "f") Nothing
+                 , uni = Imm
+                 }
             )
         ]
 
@@ -687,31 +744,32 @@ polymorphicUniques as Test =
             """
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
-                {
-                , native = False
-                , uni = Imm
-                , pattern = CA.PatternAny p (Just "f") Nothing
-                , directConsDeps = Dict.empty
-                , directTypeDeps = Dict.empty
-                , directValueDeps = Dict.empty
-                , body =
-                    CA.Fn p
-                        [
-                        , CA.ParameterPattern (Depends 1) (CA.PatternAny p (Just "a") Nothing)
-                        ]
-                        (CA.LetIn
-                            {
-                            , native = False
-                            , uni = Depends 1
-                            , pattern = CA.PatternAny p (Just "b") Nothing
-                            , directConsDeps = Dict.empty
-                            , directTypeDeps = Dict.empty
-                            , directValueDeps = Dict.empty
-                            , body = CA.Variable p (RefLocal "a")
-                            }
-                            (CA.Variable p (RefLocal "b"))
-                        )
-                }
+                 {
+                 , body =
+                     CA.Fn
+                         p
+                         [
+                         , CA.ParameterPattern (Depends 1) (CA.PatternAny p (Just "a") Nothing)
+                         ]
+                         (CA.LetIn
+                              {
+                              , body = CA.Variable p (RefLocal "a")
+                              , directConsDeps = Dict.empty
+                              , directTypeDeps = Dict.empty
+                              , directValueDeps = Dict.empty
+                              , native = False
+                              , pattern = CA.PatternAny p (Just "b") Nothing
+                              , uni = Depends 1
+                              }
+                              (CA.Variable p (RefLocal "b"))
+                         )
+                 , directConsDeps = Dict.empty
+                 , directTypeDeps = Dict.empty
+                 , directValueDeps = Dict.empty
+                 , native = False
+                 , pattern = CA.PatternAny p (Just "f") Nothing
+                 , uni = Imm
+                 }
             )
         , codeTest
             """
@@ -721,14 +779,14 @@ polymorphicUniques as Test =
             isOk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = meh
             """
             (fn t:
-                t
-                >> firstDefinitionStripDeps
-                >> onOk fn def:
-                try def.pattern as
-                    , CA.PatternAny _ _ (Just ann): Ok ann.univars
-                    , _: Err "no pattern any"
+                 t
+                 >> firstDefinitionStripDeps
+                 >> onOk fn def:
+                 try def.pattern as
+                     , CA.PatternAny _ _ (Just ann): Ok ann.univars
+                     , _: Err "no pattern any"
             )
-            (Test.isOkAndEqualTo << Set.fromList [1, 2])
+            (Test.isOkAndEqualTo << Set.fromList [ 1, 2 ])
         ]
 
 
@@ -738,16 +796,8 @@ numbers as Test =
         Numbers
         """
         [
-        , codeTest
-            "Percent"
-            "a = 1%"
-            (firstEvaluation "a")
-            (Test.isOkAndEqualTo << CA.LiteralNumber p 0.01)
-        , codeTest
-            "Underscore"
-            "a = 1_000_000"
-            (firstEvaluation "a")
-            (Test.isOkAndEqualTo << CA.LiteralNumber p (1000 * 1000))
+        , codeTest "Percent" "a = 1%" (firstEvaluation "a") (Test.isOkAndEqualTo << CA.LiteralNumber p 0.01)
+        , codeTest "Underscore" "a = 1_000_000" (firstEvaluation "a") (Test.isOkAndEqualTo << CA.LiteralNumber p (1000 * 1000))
         ]
 
 
@@ -766,7 +816,7 @@ shadowing as Test =
             a = 0
             """
             (firstEvaluation "a")
-            (Test.errorContains ["`a`"])
+            (Test.errorContains [ "`a`" ])
         , codeTest
             """
             Local
@@ -778,7 +828,7 @@ shadowing as Test =
                 a + a
             """
             (firstEvaluation "b")
-            (Test.errorContains ["`a`"])
+            (Test.errorContains [ "`a`" ])
         , codeTest
             """
             Function parameter
@@ -788,7 +838,7 @@ shadowing as Test =
             b = fn a: a + a
             """
             (firstEvaluation "b")
-            (Test.errorContains ["`a`"])
+            (Test.errorContains [ "`a`" ])
         , codeTest
             """
             try..as
