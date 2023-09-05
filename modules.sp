@@ -9,11 +9,6 @@ sourceDir =
     path = "src"
 
     module =
-        path = Human/TextTree
-        importAs = TT
-        globalTypes = TextTree
-
-    module =
        path = Compiler/Error
        importAs = Error
        globalTypes =
