@@ -694,34 +694,45 @@ argumentPlaceholders as Test =
             """
             f = __ >> a >> b
             """
-            firstDefinitionStripDeps
+            (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                 {
-                 , body =
-                     CA.Fn
-                         p
-                         [ CA.ParameterPlaceholder 0 ]
-                         (CA.Call
-                              p
-                              (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "b")))
-                              [
-                              , CA.ArgumentExpression
-                                  (CA.Call
-                                       p
-                                       (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "a")))
-                                       [
-                                       , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
-                                       ]
-                                  )
-                              ]
-                         )
-                 , directConsDeps = Dict.empty
-                 , directTypeDeps = Dict.empty
-                 , directValueDeps = Dict.empty
-                 , native = False
-                 , pattern = CA.PatternAny p (Just "f") Nothing
-                 , uni = Imm
-                 }
+                 (CA.Fn
+                      p
+                      [ CA.ParameterPlaceholder 0 ]
+                      (CA.Call
+                           p
+                           (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "b")))
+                           [
+                           , CA.ArgumentExpression
+                               (CA.Call
+                                    p
+                                    (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "a")))
+                                    [
+                                    , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
+                                    ]
+                               )
+                           ]
+                      )
+                 )
+            )
+        , codeTest
+            """
+            try..as
+            """
+            """
+            f = try __ as "": 1
+            """
+            (firstEvaluation "f")
+            (Test.isOkAndEqualTo
+                 (CA.Fn
+                      p
+                      [ CA.ParameterPlaceholder 0 ]
+                      (CA.Try p {
+                          , value = CA.Variable p (RefPlaceholder 0)
+                          , patternsAndExpressions = [ Imm & CA.PatternLiteralText p "" & CA.LiteralNumber p 1 ]
+                          }
+                      )
+                 )
             )
         ]
 

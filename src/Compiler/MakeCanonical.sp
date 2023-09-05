@@ -749,10 +749,16 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             env
             >> List.forRes __ caParams fn par, envX:
                 try par as
-                    , CA.ParameterPattern uni pa: pa
-                    , CA.ParameterPlaceholder n: CA.PatternAny pos (Just (Text.fromNumber n)) Nothing
-                    , CA.ParameterRecycle p name: CA.PatternAny p (Just name) Nothing
-                >> insertPatternNames False __ envX
+                    , CA.ParameterPattern uni pa:
+                          insertPatternNames False pa envX
+
+                    , CA.ParameterRecycle p name:
+                           CA.PatternAny p (Just name) Nothing
+                           >> insertPatternNames False __ envX
+
+                    , CA.ParameterPlaceholder n:
+                        { envX with values = Dict.insert (Text.fromNumber n) { pos, isRoot = False } .values }
+                        >> Ok
 
             >> onOk fn localEnv:
 
@@ -875,6 +881,11 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         , FA.Try { value, patterns }:
 
+          if isPlaceholder value then
+              FA.Try { value = FA.Expression [] pos (FA.ResolvedArgumentPlaceholder 0), patterns }
+              >> makePartiallyAppliedFunction env pos 1 __
+
+          else
             translatePatternAndStatements as fn (FA.Expression & FA.Expression): Res (Uniqueness & CA.Pattern & CA.Expression) =
                 fn ( faPattern & faExpression ):
 
