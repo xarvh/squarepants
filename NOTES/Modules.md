@@ -57,28 +57,26 @@ library =
     source = "http://www.github.com/xarvh/spcore#master"
 
     module =
-        original = SPCore/Maybe
+        path = SPCore/Maybe
         importAs = Maybe
-        globalTypes =
+        globals =
             Maybe
-        globalValues =
-            Just
-            Nothing
+            'just
+            'nothing
 
     module =
-        original = SPCore/Basics
-        # importAs, globalTypes and globalValues can be omitted
-        globalTypes =
+        path = SPCore/Basics
+        # importAs and globals can be omitted
+        globals =
             Bool
-        globalValues =
-            True
-            False
+            'true
+            'false
             identity
 
     module =
-        original = SPCore/Dict
+        path = SPCore/Dict
         importAs = Dict
-        globalTypes = Dict
+        globals = Dict
 
 
 library =
@@ -87,7 +85,7 @@ library =
 
     module =
         # importAs allows libraries with clashing names (or even different versions of the same library) to coexist
-        original = Dict
+        path = Dict
         importAs = FastDict
         globals = []
 
@@ -100,7 +98,7 @@ sourceDir =
 
     # Exceptions can be defined inside the [[module]] blocks below
     module =
-        original = Types/CanonicalAst
+        path = Types/CanonicalAst
         importAs = CA
         globalTypes = [ Expr ]
 
@@ -132,6 +130,23 @@ library =
 
 * Libraries can be local directories or remote packages or whatever.
   The modules they expose must be listed in their modules.sp (format to be defined).
+
+
+Library definiton
+=================
+
+A library source should provide a `library.sp` file, which describes which part of the library are visible to the outside.
+
+```
+module =
+    path = "Maybe"
+    exposing =
+        # This automatically exposes all of Maybe's constructors?
+        Maybe [ transparent ]
+        map
+        onJust
+        defaulTo
+```
 
 
 Hoped Advantages

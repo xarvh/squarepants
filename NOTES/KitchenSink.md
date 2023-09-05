@@ -17,3 +17,6 @@ Shaders: https://www.reddit.com/r/ProgrammingLanguages/comments/xmpb8r/vinci_a_t
 Concurrency: https://codemachete.com/2022/06/23/survey-of-built-in-concurrency-in-programming-languages/
 
 No need for special syntax for terminating functions, libraries semver can just check, but maybe we need a syntax for *requiring* a terminating function as argument?
+
+
+https://www.vidarholen.net/~vidar/An_Empirical_Investigation_into_Programming_Language_Syntax.pdf
