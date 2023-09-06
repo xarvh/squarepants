@@ -303,45 +303,35 @@ startsWithUpperChar as fn Text: Bool =
         , _: True
 
 
-parseNameToWord as fn Text, @ReadState: Token.Word =
-    fn text, @state:
+parseNameToWord as fn @ReadState, { main as Name, maybeModule as Maybe Name, attrPath as [Name] }: Token.Word =
+    fn @state, { main, maybeModule, attrPath }:
 
-    try Text.split "'" text as
+    try Text.split "'" main as
         , [ "", name ]:
-              addErrorIf (startsWithUpperChar name) @state "constructors should start with a lowercase letter"
+              addErrorIf (startsWithUpperChar name) @state "Constructors should start with a lowercase letter"
+              addErrorIf (attrPath /= []) @state "Constructors don't have any attribute to access"
 
-              {
-              , type = Token.Constructor
-              , maybeModule = Nothing
-              , name
-              , attrPath = []
-              }
+              Token.Constructor { name, maybeModule }
 
         , [ name ]:
-              {
-              , type = if startsWithUpperChar name then Token.TypeOrModule else Token.Variable
-              , maybeModule = Nothing
-              , name
-              , attrPath = []
-              }
+              if startsWithUpperChar name then
+                  addErrorIf (attrPath /= []) @state "WAT... Isn't this a normal qualified value!?"
+                  Token.TypeOrModule { name, maybeModule }
+              else
+                  Token.VariableOrAttribute { name, maybeModule, attrPath }
 
         , _:
               addError "apostrophes can be used only at the beginning of a constructor name" @state
-              {
-              , type = Token.Constructor
-              , maybeModule = Nothing
-              , name = text
-              , attrPath = []
-              }
+              Token.Constructor { name = main, maybeModule = Nothing }
 
 
-parseModule as fn Text, @ReadState: Text =
-    fn text, @state:
+parseModule as fn @ReadState, Text: Text =
+    fn @state, text:
     "TODO"
 
 
-parseAttr as fn Text, @ReadState: Text =
-    fn text, @state:
+parseAttr as fn @ReadState, Text: Text =
+    fn @state, text:
     "TODO"
 
 
@@ -357,23 +347,21 @@ addWord as fn Int, Int, Text, @ReadState: None =
     word as Token.Word =
         try snips as
             , []:
-                { type = Token.Variable, maybeModule = Nothing, name = "THIS IS NOT SUPPOSED TO HAPPEN", attrPath = [] }
+                Token.VariableOrAttribute { maybeModule = Nothing, name = "THIS IS NOT SUPPOSED TO HAPPEN", attrPath = [] }
 
-            , [ name ]:
-                # value
+            , [ main ]:
+                # value or attribute
                 # Module or Type
                 # 'constructor
-                parseNameToWord name @state
+                parseNameToWord @state { main, maybeModule = Nothing, attrPath = [] }
 
             , [ "", two, ...rest ]:
                     # .attr1
                     # .attr1.attr2
-                    {
-                    , type = Token.RecordShorthand
-                    , maybeModule = Nothing
-                    , name = parseAttr two @state
-                    , attrPath = List.map (parseAttr __ @state) rest
-                    }
+                    Token.RecordShorthand {
+                        , name = parseAttr @state two
+                        , attrPath = List.map (parseAttr @state __) rest
+                        }
 
             , [ one, two, ...rest ]:
                 if startsWithUpperChar one then
@@ -382,24 +370,20 @@ addWord as fn Int, Int, Text, @ReadState: None =
                     # Module.value.attr1.attr2
                     # Module.Type
                     # Module.'constructor
-                    { parseNameToWord two @state with
-                    , maybeModule = Just (parseModule one @state)
-                    , attrPath = List.map (parseAttr __ @state) rest
-                    }
+                    parseNameToWord @state {
+                        , main = two
+                        , maybeModule = Just << parseModule @state one
+                        , attrPath = List.map (parseAttr @state __) rest
+                        }
 
                 else
                     # value.attr1
                     # value.attr1.attr2
-                    w =
-                        parseNameToWord one @state
-
-                    addErrorIf (word.type == Token.Constructor) @state "Constructors cannot have attributes"
-                    addErrorIf (word.type == Token.TypeOrModule) @state "Type names cannot have attributes"
-
-                    { w with
-                    , maybeModule = Nothing
-                    , attrPath = List.map (parseAttr __ @state) [ two, ...rest ]
-                    }
+                    parseNameToWord @state {
+                        , main = one
+                        , maybeModule = Nothing
+                        , attrPath = List.map (parseAttr @state __) rest
+                        }
 
     addContentTokenAbs start end (Token.Word word) @state
 
