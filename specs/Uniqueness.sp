@@ -111,7 +111,7 @@ uniquenessTyping as Test =
             , codeTest "Number"  "f as fn a: !Number = fn _: 1" (infer "f") Test.isOk
             , codeTest "Text"    """f as fn a: !Text = fn _: "meh" """ (infer "f") Test.isOk
             , codeTest "Record"  "f as fn a: !{} = fn _: {}" (infer "f") Test.isOk
-            , codeTest "Constructor 1"  "f as fn a: !Bool = fn _: True" (infer "f") Test.isOk
+            , codeTest "Constructor 1"  "f as fn a: !Bool = fn _: 'true" (infer "f") Test.isOk
             # TODO: Constructor with pars
             ]
 
@@ -229,7 +229,7 @@ mutation as Test =
                     @x += 2
 
                     x == 3
-                (Test.isOkAndEqualTo True)
+                (Test.isOkAndEqualTo 'true)
             #]
             , codeTest
                 """
@@ -321,7 +321,7 @@ parentScope as Test =
                     f =
                         fn n:
                         @x += n
-                        None
+                        'none
 
                     f
                 """
@@ -336,7 +336,7 @@ parentScope as Test =
                     fn !x:
                     fn n:
                     @x += n
-                    None
+                    'none
                 """
                 (infer "f")
                 (Test.errorContains ["x", "from outside"])
@@ -349,7 +349,7 @@ parentScope as Test =
                     fn @x:
                     fn n:
                     @x += n
-                    None
+                    'none
                 """
                 (infer "f")
                 (Test.errorContains ["x", "from outside"])
@@ -358,7 +358,7 @@ parentScope as Test =
                 The Array Test
                 """
                 """
-                union Array a = Meh
+                var Array a = 'meh
 
                 array_push as fn a, @Array a: None = todo ""
 
@@ -374,7 +374,7 @@ parentScope as Test =
                         n
 
                     array_push f @functions
-                    None
+                    'none
                 """
                 (infer "addFunctions")
                 (Test.errorContains ["x", "outside"])
@@ -445,9 +445,9 @@ polymorphism as Test =
             """
             """
             meh as fn (fn None: Number): Number =
-                fn f: f None
+                fn f: f 'none
 
-            blah = meh (fn None: 1)
+            blah = meh (fn 'none: 1)
             """
             (infer "blah")
             Test.isOk
@@ -458,11 +458,11 @@ polymorphism as Test =
             """
             """
             meh as fn (fn None: !Number): !Number =
-                fn f: f None
+                fn f: f 'none
 
             x as Number = 1
 
-            blah = meh (fn None: x)
+            blah = meh (fn 'none: x)
             """
             (infer "blah")
             (Test.errorContains [ "return", "uniqueness" ])
@@ -473,11 +473,11 @@ polymorphism as Test =
             a Uni, b Uni
             """
             """
-            union Re error payload = Er error, Okk payload
+            var Re error payload = 'er error, 'okk payload
             isOkk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = todo ""
 
             scope =
-                !v = isOkk (fn !a: Okk 0) (Okk 0)
+                !v = isOkk (fn !a: 'okk 0) ('okk 0)
             """
             (infer "scope")
             Test.isOk
@@ -487,11 +487,11 @@ polymorphism as Test =
             a Uni, b Imm
             """
             """
-            union Result_ error payload = Err_ error, Ok_ payload
+            var Result_ error payload = 'err_ error, 'ok_ payload
             isOk_ as fn (fn 1?a: 2?Result_ error b), 1?Result_ error a: 2?Result_ error b = todo ""
             immB as Number = 1
 
-            v = isOk_ (fn !a: Ok_ immB) (Ok_ 0)
+            v = isOk_ (fn !a: 'ok_ immB) ('ok_ 0)
             """
             (infer "v")
             Test.isOk
@@ -552,8 +552,8 @@ unions as Test =
             Uniques inside immutables are converted to immutables
             """
             """
-            union Z a = Z a
-            x = Z 0
+            var Z a = 'z a
+            x = 'z 0
             """
             (infer "x")
             (Test.isOkAndEqualTo
@@ -582,7 +582,7 @@ unions as Test =
             [reg] solveOneEquality can receive switched given/required when evaluating a cast?
             """
             """
-            z as [fn None: None] = (fn None: None) :: []
+            z as [fn None: None] = (fn 'none: 'none) :: []
             """
             (infer "z")
             Test.isOk
@@ -593,10 +593,10 @@ unions as Test =
             LetIn: Unpack immutable to immutable
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             scope =
-                x = Z 0
-                (Z y) = x
+                x = 'z 0
+                ('z y) = x
             """
             (infer "scope")
             Test.isOk
@@ -605,10 +605,10 @@ unions as Test =
             LetIn: Unpack unique to immutable
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             scope =
-                !x = Z 0
-                (Z y) = x
+                !x = 'z 0
+                ('z y) = x
             """
             (infer "scope")
             Test.isOk
@@ -617,10 +617,10 @@ unions as Test =
             LetIn: Unpack unique to unique
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             scope =
-                !x = Z 0
-                !(Z y) = x
+                !x = 'z 0
+                !('z y) = x
                 @y += 1
             """
             (infer "scope")
@@ -630,10 +630,10 @@ unions as Test =
             LetIn: Unpack immutable to unique
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             scope =
-                x = Z 0
-                !(Z y) = x
+                x = 'z 0
+                !('z y) = x
             """
             (infer "scope")
             (Test.errorContains [ "y", "Unique" ])
@@ -643,9 +643,9 @@ unions as Test =
             Fn: Unpack immutable to immutable
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             f as fn Z a: Z a =
-                 fn Z a: Z a
+                 fn 'z a: 'z a
             """
             (infer "f")
             Test.isOk
@@ -654,9 +654,9 @@ unions as Test =
             Fn: Unpack unique to immutable
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             f as fn !(Z a): Z a =
-                 fn !(Z a): Z a
+                 fn !('z a): 'z a
             """
             (infer "f")
             Test.isOk
@@ -665,9 +665,9 @@ unions as Test =
             Fn: Unpack unique to unique
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             f as fn !(Z a): !(Z a) =
-                 fn !(Z a): Z a
+                 fn !('z a): 'z a
             """
             (infer "f")
             Test.isOk
@@ -676,9 +676,9 @@ unions as Test =
             Fn: Unpack immutable to unique
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
             f as fn Z a: !(Z a) =
-                 fn Z a: Z a
+                 fn 'z a: 'z a
             """
             (infer "f")
             (Test.errorContains [ "Unique" ])

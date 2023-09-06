@@ -307,11 +307,11 @@ parseNameToWord as fn @ReadState, { main as Name, maybeModule as Maybe Name, att
     fn @state, { main, maybeModule, attrPath }:
 
     try Text.split "'" main as
-        , [ "", name ]:
-              addErrorIf (startsWithUpperChar name) @state "Constructors should start with a lowercase letter"
+        , [ "", raw ]:
+              addErrorIf (startsWithUpperChar raw) @state "Constructors should start with a lowercase letter"
               addErrorIf (attrPath /= []) @state "Constructors don't have any attribute to access"
 
-              Token.Constructor { name, maybeModule }
+              Token.Constructor { name = main, maybeModule }
 
         , [ name ]:
               if startsWithUpperChar name then

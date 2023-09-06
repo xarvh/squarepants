@@ -14,9 +14,9 @@ library =
             Text
             Number
         globalValues =
-            None
-            True
-            False
+            'none
+            'true
+            'false
             mut
 
     module =
@@ -29,8 +29,8 @@ library =
         globalTypes =
             Maybe
         globalValues =
-           Just
-           Nothing
+           'just
+           'nothing
 
     module =
         path = Text
@@ -74,6 +74,6 @@ library =
         importAs = Result
         globalTypes = Result
         globalValues =
-            Ok
-            Err
+            'ok
+            'err
 """

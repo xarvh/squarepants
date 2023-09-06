@@ -366,10 +366,10 @@ recursiveTypes as Test =
             (Test.errorContains [ "Circular" ])
         , codeTest
             """
-            Union types can be recursive
+            Variant types can be recursive
             """
             """
-            union A = A2 B
+            var A = 'a2 B
             alias B = { a as A }
             a as A = todo ""
             b as B = todo ""
@@ -451,7 +451,7 @@ variableTypes as Test =
             [reg] Unifying functions does not unfiy their args
             """
             """
-            union Dict_ k v = Empty
+            var Dict_ k v = 'empty
             dict_member as fn k, Dict_ k v: Bool = todo ""
             dict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = todo ""
 
@@ -478,7 +478,7 @@ higherOrderTypes as Test =
             Parse precedence
             """
             """
-            union T a = T a
+            var T a = 't a
 
             a as fn T a: T a =
                 fn l: l
@@ -492,11 +492,11 @@ higherOrderTypes as Test =
             )
         , codeTest
             """
-            Union type constructors
+            Variant type constructors
             """
             """
-            union X a = L
-            l = L
+            var X a = 'l
+            l = 'l
             """
             (infer "l")
             (Test.isOkAndEqualTo
@@ -507,10 +507,10 @@ higherOrderTypes as Test =
             )
         , codeTest
             """
-            [reg] type check mistakes a union type with free tyvars for a free tyvar?
+            [reg] type check mistakes a variant type with free tyvars for a free tyvar?
             """
             """
-            union O r e o = O r e o
+            var O r e o = 'o r e o
 
             run as fn (fn r: O r e o), r: O r e o =
                fn rToOreo, r:
@@ -523,10 +523,10 @@ higherOrderTypes as Test =
             [reg] Wrong should be Text
             """
             """
-            union O o = O Text o
+            var O o = 'o Text o
 
             fun as Number: Text: O wrong = _: a:
-                O a a
+                'o a a
             """
             (infer "fun")
             (Test.errorContains [ "wrong" ])
@@ -535,7 +535,7 @@ higherOrderTypes as Test =
             [reg] Should complain about undefined type argument
             """
             """
-            union O a = O Text output
+            var O a = 'o Text output
             x = 1
             """
             (infer "x")
@@ -545,7 +545,7 @@ higherOrderTypes as Test =
             [reg] Named vars can't be refined?
             """
             """
-            union Wrap a = W a
+            var Wrap a = 'w a
 
             f as fn a: Wrap a =
                 fn a: a
@@ -754,11 +754,11 @@ patterns as Test =
             Constructor unpacking
             """
             """
-            union Z a = Z a
+            var Z a = 'z a
 
             identityFunction =
                fn a:
-               Z b = Z a
+               'z b = 'z a
                b
             """
             (infer "identityFunction")
@@ -1104,11 +1104,11 @@ misc as Test =
             [reg] named tyvars should not "bleed" to other definitions
             """
             """
-            union DD q =
-                , RBEmpty_elm_builtin
+            var DD q =
+                , 'RBEmpty_elm_builtin
 
             empty as DD key =
-                RBEmpty_elm_builtin
+                'RBEmpty_elm_builtin
 
             merge as fn (fn key, b, res: res), res: res =
               fn rightStep, initialResult:
@@ -1127,19 +1127,19 @@ misc as Test =
             [reg] Constructors not being generalized led to tyvar bleed
             """
             """
-            union DD a b = Blah
+            var DD a b = 'Blah
 
             ddget as fn a, DD a b: DD a b =
                 fn a, b:
-                Blah
+                'Blah
 
             formatSnippet as Text =
                 try [""] as
                     , ["emphasys", s]: s
 
             fmtBlock as Text =
-                try ddget 1 Blah as
-                    , Blah:
+                try ddget 1 'Blah as
+                    , 'Blah:
                         ""
             """
             (infer "formatSnippet")

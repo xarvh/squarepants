@@ -72,23 +72,19 @@ number as CA.RawType =
 #
 
 
-noneName =
-    "None"
-
-
 none as CA.RawType =
-    nameToType noneName []
+    nameToType "None" []
 
 noneValue as USR =
-    makeUsr noneName
+    makeUsr "'none"
 
 
 noneDef as CA.UnionDef =
-    usr = makeUsr noneName
+    usr = makeUsr "None"
     {
     , usr
     , pars = []
-    , constructors = Dict.ofOne noneName { pos = p, ins = [], out = none, typeUsr = usr }
+    , constructors = Dict.ofOne "'none" { pos = p, ins = [], out = none, typeUsr = usr }
     , directTypeDeps = Set.empty
     }
 
@@ -99,11 +95,11 @@ noneDef as CA.UnionDef =
 
 
 true as USR =
-    makeUsr "True"
+    makeUsr "'true"
 
 
 false as USR =
-    makeUsr "False"
+    makeUsr "'false"
 
 
 bool as CA.RawType =
@@ -117,8 +113,8 @@ boolDef as CA.UnionDef =
     , pars = []
     , constructors =
         Dict.empty
-        >> Dict.insert "True" { pos = p, ins = [], out = bool, typeUsr = usr } __
-        >> Dict.insert "False" { pos = p, ins = [], out = bool, typeUsr = usr } __
+        >> Dict.insert "'true" { pos = p, ins = [], out = bool, typeUsr = usr } __
+        >> Dict.insert "'false" { pos = p, ins = [], out = bool, typeUsr = usr } __
     , directTypeDeps = Set.empty
     }
 
@@ -129,11 +125,11 @@ boolDef as CA.UnionDef =
 
 
 nil as USR =
-    makeUsr "Nil"
+    makeUsr "'nil"
 
 
 cons as USR =
-    makeUsr "Cons"
+    makeUsr "'cons"
 
 
 list as fn CA.RawType: CA.RawType =
@@ -169,8 +165,8 @@ listDef as CA.UnionDef =
     , pars = [ "item" & Pos.N ]
     , constructors =
         Dict.empty
-        >> Dict.insert "Nil" nilDef __
-        >> Dict.insert "Cons" consDef __
+        >> Dict.insert "'nil" nilDef __
+        >> Dict.insert "'cons" consDef __
     , directTypeDeps = Set.empty
     }
 

@@ -329,12 +329,10 @@ translatePatternConstructor as fn Env, Pos, Maybe Name, Name, [ CA.Pattern ]: Re
     CA.PatternConstructor pos usr args >> Ok
 
 
-# TODO use named arguments
+# TODO too many functions args, use named arguments
 translatePatternAny as fn Env, Pos, Maybe FA.Expression, Maybe Name, Name, [ Name ]: Res CA.Pattern =
     fn env, pos, maybeType, maybeModule, name, attrPath:
-        if maybeType /= Nothing then
-            error env pos [ "pattern names can't have type annotations" ]
-        else if attrPath /= [] then
+        if attrPath /= [] then
             error env pos [ "pattern names can't have type attributes" ]
         else
             translateMaybeAnnotation env maybeType
@@ -557,6 +555,9 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
             translateNumber env.ro isPercent CA.PatternLiteralNumber pos l
 
         # Stuff that's not valid for patterns
+
+        , FA.Uppercase _:
+            error env pos [ "WUT" ]
 
         , FA.Statements stats:
             error env pos [ "WAT" ]
