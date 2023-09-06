@@ -177,8 +177,8 @@ functions as Test =
                  , type = TH.taNumber
                  }
             )
-        , codeTest "Known function with wrong *number* of args" "a = add False" (infer "a") (Test.errorContains [ "Number", "Arguments" ])
-        , codeTest "Known function with wrong params" "a = add False 1" (infer "a") (Test.errorContains [ "Bool" ])
+        , codeTest "Known function with wrong *number* of args" "a = add 'false" (infer "a") (Test.errorContains [ "Number", "Arguments" ])
+        , codeTest "Known function with wrong params" "a = add 'false 1" (infer "a") (Test.errorContains [ "Bool" ])
         , codeTest
             "Function inference 1"
             "a = fn x: add x 1"
@@ -263,7 +263,7 @@ statements as Test =
             """
             a =
               3
-              False
+              'false
             """
             (infer "a")
             (Test.isOkAndEqualTo { freeTyvars = Dict.empty, type = TH.taBool })
@@ -423,7 +423,7 @@ variableTypes as Test =
             """
             """
             q as [item] =
-              Core.Nil
+              Core.'nil
 
             r as [Text] =
                   q
@@ -607,7 +607,7 @@ records as Test =
             """
             """
             x =
-                !a = 3 & False & 2
+                !a = 3 & 'false & 2
 
                 @a.third += 1
             """
@@ -718,7 +718,7 @@ records as Test =
             rec as fn R: R =
                 fn s:
 
-                if True then
+                if 'true then
                     { s with y = .y }
                 else
                     rec { s with y = .y }
@@ -841,10 +841,10 @@ patterns as Test =
             each as fn [a], (fn a: b): None =
                 fn ls, f:
                 try ls as
-                    , Core.Nil: None
+                    , Core.'nil: 'none
 
             result =
-                1 :: Core.Nil = Core.Nil
+                1 :: Core.'nil = Core.'nil
             """
             (infer "result")
             #
@@ -884,7 +884,7 @@ try_as as Test =
             x =
                 fn q:
                 try q as
-                    , True: 2
+                    , 'true: 2
                     , _: 3
             """
             (infer "x")
@@ -903,7 +903,7 @@ try_as as Test =
             x =
                 fn q:
                 try q as
-                    , True: 2
+                    , 'true: 2
                     , []: 3
             """
             (infer "x")
@@ -917,8 +917,8 @@ try_as as Test =
             x =
                 fn q:
                 try q as
-                    , True: 2
-                    , False: False
+                    , 'true: 2
+                    , 'false: 'false
             """
             (infer "x")
             (Test.errorContains [ "Number", "Bool" ])
@@ -983,7 +983,7 @@ if_else as Test =
             x =
                 fn q:
                 if q then 2
-                else False
+                else 'false
             """
             (infer "x")
             (Test.errorContains [ "Number" ])
