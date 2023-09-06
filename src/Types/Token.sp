@@ -1,25 +1,9 @@
-
 alias LineNumber =
     Int
 
 
 union Token =
-    Token Int Int Kind
-
-
-union WordType =
-    , Variable
-    , Constructor
-    , TypeOrModule
-    , RecordShorthand
-
-
-alias Word = {
-    , type as WordType
-    , maybeModule as Maybe Name
-    , name as Name
-    , attrPath as [Name]
-    }
+    , Token Int Int Kind
 
 
 union OpenOrClosed =
@@ -33,20 +17,27 @@ union SingleOrTriple =
 
 
 union Kind =
-    , Comment { isBlock as Bool, indent as Int, isFollowedByBlank as Bool }
-    # Structure
-    , NewSiblingLine
+    , Comment { indent as Int, isBlock as Bool, isFollowedByBlank as Bool }
+    , # Structure
+      NewSiblingLine
     , BlockStart
     , BlockEnd
     , BadIndent
-    # Terms
-    , TextLiteral SingleOrTriple Text
+    , # Terms
+      TextLiteral SingleOrTriple Text
     , NumberLiteral Bool Text
-    , Word Word
+    , # variable names, record attribute names
+      # Record attributes will never have a module or an attrPath
+      # However, the lexer can't distinguish between variable and attribute, we need to wait the parser
+      Lowercase { attrPath as [ Name ], maybeModule as Maybe Name, name as Name }
+    , Constructor { maybeModule as Maybe Name, name as Name }
+    , # Named Types
+      Uppercase { maybeModule as Maybe Name, name as Name }
+    , RecordShorthand { attrPath as [ Name ], name as Name }
     , ArgumentPlaceholder
     , UniquenessPolymorphismBinop
-    # Keywords
-    , Fn
+    , # Keywords
+      Fn
     , If LineNumber
     , Then
     , Else LineNumber
@@ -55,16 +46,15 @@ union Kind =
     , With
     , IntrospectValue
     , IntrospectType
-    # Separators
-    , Comma
+    , # Separators
+      Comma
     , Colon
     , ThreeDots
-    # Ops
-    , Defop
+    , # Ops
+      Defop
     , Unop Op.UnopId
     , Binop LineNumber Op.Binop
-    # Parens
-    , RoundParen OpenOrClosed
+    , # Parens
+      RoundParen OpenOrClosed
     , SquareBracket LineNumber OpenOrClosed
     , CurlyBrace LineNumber OpenOrClosed
-

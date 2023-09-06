@@ -264,11 +264,13 @@ parameterDeps as fn CA.Parameter, Deps: Deps =
 
 translateDefinition as fn Bool, Env, FA.ValueDef: Res (Env & CA.ValueDef) =
     fn isRoot, env, fa:
-    fa.nonFn
-    >> List.mapRes (translateTypeParameter env.ro __) __
-    >> onOk fn nonFn:
+    nonFn =
+        fa.nonFn
+        >> List.map (fn pos & name: name & pos) __
+        >> Dict.fromList
+
     fa.pattern
-    >> translateFullPattern { env with nonFn = Dict.fromList nonFn } __
+    >> translateFullPattern { env with nonFn } __
     >> onOk fn uni & pattern:
     # TODO: todo: check that the typeclasses are consistent with those declared in parentEnv
 
@@ -308,7 +310,7 @@ translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA
     fn ro, FA.Expression _ pos expr_:
     try expr_ as
 
-        , FA.Variable { maybeType, tokenWord = Token.VariableOrAttribute { attrPath, maybeModule, name } }:
+        , FA.Lowercase { attrPath, maybeModule, maybeType, name }:
             if maybeModule /= Nothing then
                 erroro ro pos [ "Attribute names must be single words" ]
             else if attrPath /= [] then
@@ -466,26 +468,20 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
     fn env, FA.Expression _ pos expr_:
     try expr_ as
 
-        , FA.Variable { maybeType, tokenWord = Token.Constructor { maybeModule, name } }:
-            if maybeType /= Nothing then
-                error env pos [ "Pattern constructors can't have type annotations" ]
-            else
-                translatePatternConstructor env pos maybeModule name []
+        , FA.Constructor { maybeModule, name }:
+            translatePatternConstructor env pos maybeModule name []
 
-        , FA.Variable { maybeType, tokenWord = Token.VariableOrAttribute { attrPath, maybeModule, name } }:
+        , FA.Lowercase { attrPath, maybeModule, maybeType, name }:
             translatePatternAny env pos maybeType maybeModule name attrPath
 
         , FA.Call (FA.Expression _ p ref) faArgs:
             try ref as
 
-                , FA.Variable { maybeType, tokenWord = Token.Constructor { maybeModule, name } }:
-                    if maybeType /= Nothing then
-                        error env pos [ "Constructors can't be annotated (yet? would it make sense?)" ]
-                    else
-                        faArgs
-                        >> List.mapRes (translateRawPattern env __) __
-                        >> onOk fn caPars:
-                        translatePatternConstructor env pos maybeModule name caPars
+                , FA.Constructor { maybeModule, name }:
+                    faArgs
+                    >> List.mapRes (translateRawPattern env __) __
+                    >> onOk fn caPars:
+                    translatePatternConstructor env pos maybeModule name caPars
 
                 , _:
                     error env p [ "I was expecting a constructor name here" ]
@@ -517,7 +513,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                         >> onOk fn reversedCaRest:
                         try lastFaExpr as
 
-                            , FA.Variable { maybeType, tokenWord = Token.VariableOrAttribute { attrPath, maybeModule, name } }:
+                            , FA.Lowercase { attrPath, maybeModule, maybeType, name }:
                                 translatePatternAny env pos maybeType maybeModule name attrPath
                                 >> onOk fn caInit:
                                 List.for caInit reversedCaRest pushItem >> Ok
@@ -641,16 +637,10 @@ translateStatements as fn Env, [ FA.Statement ]: Res CA.Expression =
             CA.LetIn caDef acc >> Ok
 
         , FA.AliasDef fa :: tail:
-            FA.Word pos _ =
-                fa.name
-
-            error env pos [ "Aliases can be declared only in the root scope" ]
+            error env fa.name.first [ "Aliases can be declared only in the root scope" ]
 
         , FA.UnionDef fa :: tail:
-            FA.Word pos _ =
-                fa.name
-
-            error env pos [ "Types can be declared only in the root scope" ]
+            error env fa.name.first [ "Types can be declared only in the root scope" ]
 
 
 ##
@@ -672,8 +662,16 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
         , FA.Statements stats:
             translateStatements env stats
 
-        , FA.Variable { maybeType, tokenWord = word }:
-            translateVariable env pos maybeType word
+        , FA.Lowercase pas:
+            translateLowercase env pos pas
+
+        , FA.Uppercase _:
+            error env pos [ "Can't reference a type or module here...?" ]
+
+        , FA.Constructor { maybeModule, name }:
+            resolveToConstructorUsr env.ro pos maybeModule name
+            >> onOk fn usr:
+            CA.Constructor pos usr >> Ok
 
         , FA.Fn _ faParams faBody:
             faParams
@@ -874,47 +872,41 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
     Ok { env with values }
 
 
-translateVariable as fn Env, Pos, Maybe FA.Expression, Token.Word: Res CA.Expression =
-    fn env, pos, maybeType, word:
-    try word as
+translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe Name, maybeType as Maybe FA.Expression, name as Name }: Res CA.Expression =
+    fn env, pos, { attrPath, maybeModule, maybeType, name }:
+    if maybeType /= Nothing then
+        error env pos [ "no annotations on var reference" ]
+    else
+        isRoot =
+            try Dict.get name env.values as
+                , Nothing: True
+                , Just paName: paName.isRoot
 
-        , Token.VariableOrAttribute { attrPath, maybeModule, name }:
-            isRoot =
-                try Dict.get name env.values as
-                    , Nothing: True
-                    , Just paName: paName.isRoot
+        resolveToValueRef env.ro pos isRoot maybeModule name
+        >> onOk fn usr:
+        CA.Variable pos usr
+        >> List.for __ attrPath (CA.RecordAccess pos __ __)
+        >> Ok
 
-            resolveToValueRef env.ro pos isRoot maybeModule name
-            >> onOk fn usr:
-            CA.Variable pos usr
-            >> List.for __ attrPath (CA.RecordAccess pos __ __)
-            >> Ok
 
-        , Token.Constructor { maybeModule, name }:
-            resolveToConstructorUsr env.ro pos maybeModule name
-            >> onOk fn usr:
-            CA.Constructor pos usr >> Ok
+translateRecordShorthand as fn Env, Pos, [ Name ], Name: Res CA.Expression =
+    fn env, pos, attrPath, name:
+        try env.maybeShorthandTarget as
 
-        , Token.TypeOrModule { maybeModule, name }:
-            error env pos [ "Can't reference a type or module here...?" ]
+            , Nothing:
+                error
+                    env
+                    pos
+                    [
+                    , "Record update shorthands must be used inside a record update such as"
+                    , "    { aRecord with anAttribute = doSomethingWith ." .. Text.join "." attrPath .. " }"
+                    , "but we are not inside a record update!"
+                    ]
 
-        , Token.RecordShorthand { attrPath, name }:
-            try env.maybeShorthandTarget as
-
-                , Nothing:
-                    error
-                        env
-                        pos
-                        [
-                        , "Record update shorthands must be used inside a record update such as"
-                        , "    { aRecord with anAttribute = doSomethingWith ." .. Text.join "." attrPath .. " }"
-                        , "but we are not inside a record update!"
-                        ]
-
-                , Just shorthandTarget:
-                    shorthandTarget
-                    >> List.for __ (name :: attrPath) (fn attrName, expr: CA.RecordAccess pos attrName expr)
-                    >> Ok
+            , Just shorthandTarget:
+                shorthandTarget
+                >> List.for __ (name :: attrPath) (fn attrName, expr: CA.RecordAccess pos attrName expr)
+                >> Ok
 
 
 translateParameter as fn Env, FA.Expression: Res CA.Parameter =
@@ -927,7 +919,7 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
         , FA.UnopCall Op.UnopRecycle (FA.Expression _ p faOperand):
             try faOperand as
 
-                , FA.Variable { maybeType = Nothing, tokenWord = Token.VariableOrAttribute { attrPath, maybeModule, name } }:
+                , FA.Lowercase { attrPath, maybeModule, maybeType = Nothing, name }:
                     if maybeModule /= Nothing or attrPath /= [] then
                         error env pos [ "I was expecting a local variable name here... =|" ]
                     else
@@ -1043,7 +1035,7 @@ translateArgument as fn Env, FA.Expression: Res CA.Argument =
         , FA.UnopCall Op.UnopRecycle (FA.Expression _ _ faOperand):
             try faOperand as
 
-                , FA.Variable { maybeType, tokenWord = Token.VariableOrAttribute { attrPath, maybeModule, name } }:
+                , FA.Lowercase { attrPath, maybeModule, maybeType, name }:
                     if maybeType /= Nothing then
                         error env pos [ "Sorry, at least for now annotations are not supported here" ]
                     else if maybeModule /= Nothing then
@@ -1339,15 +1331,12 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
     fn ro, FA.Expression _ pos expr_:
     try expr_ as
 
-        , FA.Variable { maybeType, tokenWord = Token.TypeOrModule { maybeModule, name } }:
-            if maybeType /= Nothing then
-                erroro ro pos [ "Can't really specify the type of a type." ]
-            else
-                resolveToTypeUsr ro pos maybeModule name
-                >> onOk fn usr:
-                CA.TypeNamed pos usr [] >> Ok
+        , FA.Uppercase { maybeModule, name }:
+            resolveToTypeUsr ro pos maybeModule name
+            >> onOk fn usr:
+            CA.TypeNamed pos usr [] >> Ok
 
-        , FA.Variable { maybeType, tokenWord = Token.VariableOrAttribute { attrPath, maybeModule, name } }:
+        , FA.Lowercase { attrPath, maybeModule, maybeType, name }:
             if maybeType /= Nothing then
                 erroro ro pos [ "Can't really specify the type of a type." ]
             else if maybeModule /= Nothing then
@@ -1360,7 +1349,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
         , FA.Call (FA.Expression _ refPos ref) faArgs:
             try ref as
 
-                , FA.Variable { maybeType = Nothing, tokenWord = Token.TypeOrModule { maybeModule, name } }:
+                , FA.Uppercase { maybeModule, name }:
                     faArgs
                     >> List.mapRes (translateRawType ro __) __
                     >> onOk fn caArgs:
@@ -1429,20 +1418,30 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Constructor & Env: Res (Dict Name CA.Constructor & Env) =
     fn unionType, unionUsr, FA.Expression _ pos expr_, constructors & env:
     try expr_ as
-        , FA.Variable var: var & [] >> Ok
-        , FA.Call (FA.Expression _ _ (FA.Variable var)) pars: var & pars >> Ok
-        , _: error env pos [ "I was expecting a constructor name here" ]
-    >> onOk fn { maybeType, tokenWord = word } & faPars:
 
-    if Dict.member word.name constructors then
+        , FA.Constructor { maybeModule = Nothing, name }:
+            name & [] >> Ok
+
+        , FA.Call (FA.Expression _ _ (FA.Constructor { maybeModule = Nothing, name })) pars:
+            name & pars >> Ok
+
+        , _:
+            error
+                env
+                pos
+                [
+                , "I was expecting a 'constructor name here!"
+                ]
+    >> onOk fn name & faPars:
+    if Dict.member name constructors then
         # TODO "union $whatever has two constructors with the same name!"
-        error env pos [ "constructor " .. word.name .. " is duplicate" ]
+        error env pos [ "constructor " .. name .. " is duplicate" ]
     else
         faPars
         >> List.mapRes (translateRawType env.ro __) __
         >> onOk fn ins:
         env
-        >> insertPatternNames True (CA.PatternAny pos (Just word.name) Nothing) __
+        >> insertPatternNames True (CA.PatternAny pos (Just name) Nothing) __
         >> onOk fn newEnv:
         c as CA.Constructor =
             {
@@ -1452,35 +1451,7 @@ translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Construc
             , typeUsr = unionUsr
             }
 
-        Dict.insert word.name c constructors & newEnv >> Ok
-
-
-translateTypeParameter as fn ReadOnly, FA.Word: Res (Name & Pos) =
-    fn ro, FA.Word pos word:
-    if word.modifier /= Token.NameNoModifier then
-        erroro ro pos [ "Can't start with ." ]
-    else if word.isUpper then
-        erroro ro pos [ "type params must start with a lowercase letter" ]
-    else if word.maybeModule /= Nothing then
-        erroro ro pos [ "why modules here?" ]
-    else if word.attrPath /= [] then
-        erroro ro pos [ "why attrs here?" ]
-    else
-        Ok (word.name & pos)
-
-
-translateTypeName as fn ReadOnly, FA.Word: Res Name =
-    fn ro, FA.Word pos word:
-    if word.modifier /= Token.NameNoModifier then
-        erroro ro pos [ "Can't start with ." ]
-    else if not word.isUpper then
-        erroro ro pos [ "type names must start with Uppercase letter" ]
-    else if word.maybeModule /= Nothing then
-        erroro ro pos [ "why modules here?" ]
-    else if word.attrPath /= [] then
-        erroro ro pos [ "why attrs here?" ]
-    else
-        Ok word.name
+        Dict.insert name c constructors & newEnv >> Ok
 
 
 #
@@ -1505,17 +1476,12 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 { caModule with valueDefs = Dict.insert def.pattern def .valueDefs } & newEnv >> Ok
 
         , FA.AliasDef fa:
-            translateTypeName env.ro fa.name
-            >> onOk fn name:
-            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
-                FA.Word pos _ =
-                    fa.name
+            pos & name =
+                fa.name
 
-                error env pos [ name .. " declared twice!" ]
+            if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
+                error env fa.name.first [ name .. " declared twice!" ]
             else
-                fa.args
-                >> List.mapRes (translateTypeParameter env.ro __) __
-                >> onOk fn caPars:
                 # TODO check that args are not duplicate
 
                 fa.type
@@ -1524,7 +1490,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 aliasDef as CA.AliasDef =
                     {
                     , directTypeDeps = typeDeps type Set.empty
-                    , pars = caPars
+                    , pars = List.map (fn p & n: n & p) fa.args
                     , type
                     , usr = USR env.ro.umr name
                     }
@@ -1532,18 +1498,15 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs } & env >> Ok
 
         , FA.UnionDef fa:
-            FA.Word pos _ =
+            pos & name =
                 fa.name
 
-            translateTypeName env.ro fa.name
-            >> onOk fn name:
             if Dict.member name caModule.aliasDefs or Dict.member name caModule.unionDefs then
                 error env pos [ name .. " declared twice!" ]
             else
-                fa.args
-                >> List.mapRes (translateTypeParameter env.ro __) __
-                >> onOk fn caPars:
                 # TODO check that args are not duplicate
+                caPars =
+                    List.map (fn p & n: n & p) fa.args
 
                 usr =
                     USR env.ro.umr name

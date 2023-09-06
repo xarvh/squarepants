@@ -1,6 +1,6 @@
-
 tests as Test =
-    Test.Group "Parser"
+    Test.Group
+        "Parser"
         [
         , values
         , parens
@@ -18,37 +18,30 @@ tests as Test =
         ]
 
 
-p as Pos =
-    Pos.T
+word as fn Text: Pos & Name =
+    fn name:
+    Pos.T & name
 
-
-codeTest as fn Text, Text, (fn Text: Result Text z), Test.CodeExpectation z: Test =
+codeTest as fn Text, Text, fn Text: Result Text z, Test.CodeExpectation z: Test =
     Test.codeTest toHuman __ __ __ __
 
 
-asDefinition as fn FA.Statement: Result Text { pattern as FA.Expression, nonFn as [FA.Word], body as FA.Expression } =
+asDefinition as fn FA.Statement: Result Text { body as FA.Expression, nonFn as [ Pos & Name ], pattern as FA.Expression } =
     fn s:
     try s as
-        , FA.ValueDef a:
-            Ok a
-
-        , _:
-            Err "Test says: no def"
+        , FA.ValueDef a: Ok a
+        , _: Err "Test says: no def"
 
 
 asEvaluation as fn FA.Statement: Result Text FA.Expression =
     fn s:
     try s as
-        , FA.Evaluation a:
-            Ok a
-
-        , _:
-            Err "Test says: no eval"
+        , FA.Evaluation a: Ok a
+        , _: Err "Test says: no eval"
 
 
 firstStatement as fn Text: Result Text FA.Statement =
     fn code:
-
     grabFirst =
         fn stats:
         try stats as
@@ -56,12 +49,13 @@ firstStatement as fn Text: Result Text FA.Statement =
             , head :: tail: Ok head
 
     {
-    , stripLocations = True
-    , keepComments = True
-    , errorModule = {
-        , fsPath = "Test"
+    , errorModule =
+        {
         , content = code
+        , fsPath = "Test"
         }
+    , keepComments = True
+    , stripLocations = True
     }
     >> Compiler/Parser.textToFormattableModule
     >> TH.resErrorToStrippedText
@@ -73,7 +67,7 @@ firstEvaluation as fn Text: Result Text FA.Expression =
     code >> firstStatement >> onOk asEvaluation
 
 
-firstDefinition as fn Text: Result Text { pattern as FA.Expression, nonFn as [FA.Word], body as FA.Expression } =
+firstDefinition as fn Text: Result Text { body as FA.Expression, nonFn as [ Pos & Name ], pattern as FA.Expression } =
     fn code:
     code >> firstStatement >> onOk asDefinition
 
@@ -86,8 +80,12 @@ firstEvaluationOfDefinition as fn Text: Result Text FA.Expression =
     >> onOk (fn def: Ok def.body)
 
 
+
+
+
 values as Test =
-    Test.Group "Values"
+    Test.Group
+        "Values"
         [
         , codeTest
             """
@@ -99,7 +97,6 @@ values as Test =
             """
             firstStatement
             Test.isOk
-
         , codeTest
             """
             [reg] deal with spurious NewSiblingLine introduced by inline comments
@@ -111,7 +108,6 @@ values as Test =
             """
             firstDefinition
             Test.isOk
-
         , codeTest
             """
             [reg] SPON
@@ -133,9 +129,9 @@ values as Test =
 #
 #
 
-
 parens as Test =
-    Test.Group "Parens"
+    Test.Group
+        "Parens"
         [
         , codeTest
             """
@@ -163,70 +159,53 @@ parens as Test =
         ]
 
 
-
 #
 #
 #
 
 e as fn FA.Expr_: FA.Expression =
-    FA.Expression [] p __
+    FA.Expression [] Pos.T __
 
 
 faBinop as fn Op.Binop: FA.Binop =
-    fn op: {
-      , comments = []
-      , usr = op.usr
-      , symbol = op.symbol
-      , precedence = op.precedence
-      , pos = p
-      , line = -1
-      }
-
-tuple as fn FA.Expression, FA.Expression: FA.Expression =
-    fn a, b:
-
-    FA.BinopChain Op.precedence_tuple (a & [faBinop Prelude.tuple & b])
-    >> e
-
-
-tokenWord as fn Name: Token.Word =
-    fn name:
+    fn op:
     {
-    , modifier = Token.NameNoModifier
-    , isUpper = False
-    , maybeModule = Nothing
-    , name
-    , attrPath = []
+    , comments = []
+    , line = -1
+    , pos = Pos.T
+    , precedence = op.precedence
+    , symbol = op.symbol
+    , usr = op.usr
     }
 
 
-word as fn Name: FA.Word =
-    fn name:
-    FA.Word p (tokenWord name)
+tuple as fn FA.Expression, FA.Expression: FA.Expression =
+    fn a, b:
+    FA.BinopChain Op.precedence_tuple (a & [ faBinop Prelude.tuple & b ]) >> e
 
 
 variable as fn Name: FA.Expression =
     fn name:
-    {
-    , maybeType = Nothing
-    , tokenWord = tokenWord name
-    }
-    >> FA.Variable
+    { attrPath = [], maybeModule = Nothing, maybeType = Nothing, name }
+    >> FA.Lowercase
     >> e
 
 
 annotatedVariable as fn Name, FA.Expression: FA.Expression =
     fn name, type:
     {
+    , attrPath = []
+    , maybeModule = Nothing
     , maybeType = Just type
-    , tokenWord = tokenWord name
+    , name
     }
-    >> FA.Variable
+    >> FA.Lowercase
     >> e
 
 
 functions as Test =
-    Test.Group "functions"
+    Test.Group
+        "functions"
         [
         , codeTest
             """
@@ -236,13 +215,15 @@ functions as Test =
             fn a, b: 3
             """
             firstEvaluation
-            (Test.isOkAndEqualTo <<
-                e << FA.Fn FA.Inline
-                    [
-                    , variable "a"
-                    , variable "b"
-                    ]
-                    ( e << FA.LiteralNumber False "3" )
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Fn
+                 FA.Inline
+                 [
+                 , variable "a"
+                 , variable "b"
+                 ]
+                 (e << FA.LiteralNumber False "3")
             )
         , codeTest
             """
@@ -253,10 +234,9 @@ functions as Test =
                 3
             """
             firstEvaluation
-            (Test.isOkAndEqualTo <<
-                e << FA.Fn FA.Indented
-                    [ variable "a" ]
-                    ( e << FA.LiteralNumber False "3" )
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Fn FA.Indented [ variable "a" ] (e << FA.LiteralNumber False "3")
             )
         , codeTest
             """
@@ -269,13 +249,9 @@ functions as Test =
               3
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo <<
-                e << FA.Fn FA.Aligned
-                    [ variable "a" ]
-                    (e << FA.Fn FA.Aligned
-                        [ variable "b" ]
-                        ( e << FA.LiteralNumber False "3" )
-                    )
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Fn FA.Aligned [ variable "a" ] (e << FA.Fn FA.Aligned [ variable "b" ] (e << FA.LiteralNumber False "3"))
             )
         , codeTest
             """
@@ -285,10 +261,9 @@ functions as Test =
             fn a & b: a
             """
             firstEvaluation
-            (Test.isOkAndEqualTo <<
-                e << FA.Fn FA.Inline
-                    [ tuple (variable "a") (variable "b") ]
-                    ( variable "a" )
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Fn FA.Inline [ tuple (variable "a") (variable "b") ] (variable "a")
             )
         , codeTest
             """
@@ -298,10 +273,9 @@ functions as Test =
             xxx fn y: y
             """
             firstEvaluation
-            (Test.isOkAndEqualTo <<
-                e << FA.Call
-                    ( variable "xxx" )
-                    [ e << FA.Fn FA.Inline [ variable "y" ] (variable "y") ]
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Call (variable "xxx") [ e << FA.Fn FA.Inline [ variable "y" ] (variable "y") ]
             )
         , codeTest
             """
@@ -313,12 +287,10 @@ functions as Test =
               y
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo <<
-                e << FA.Call
-                    ( variable "xxx" )
-                    [ e << FA.Fn FA.Aligned [ variable "y" ] (variable "y") ]
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Call (variable "xxx") [ e << FA.Fn FA.Aligned [ variable "y" ] (variable "y") ]
             )
-
         , codeTest
             """
             SKIP Function should not swallow pipeline
@@ -329,13 +301,14 @@ functions as Test =
             >> sblorp
             """
             firstEvaluation
-            (Test.isOkAndEqualTo <<
-                e << FA.BinopChain Op.precedence_pipe __ <<
-                    variable "value" &
-                        [
-                        , faBinop Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn FA.Aligned [variable "x"] (variable "blah")])
-                        , faBinop Prelude.sendRight & variable "sblorp"
-                        ]
+            (Test.isOkAndEqualTo
+             << e
+             << FA.BinopChain Op.precedence_pipe __
+             << variable "value"
+             & [
+             , faBinop Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn FA.Aligned [ variable "x" ] (variable "blah") ])
+             , faBinop Prelude.sendRight & variable "sblorp"
+             ]
             )
         , codeTest
             """
@@ -347,15 +320,18 @@ functions as Test =
               x
             """
             firstEvaluation
-            (Test.isOkAndEqualTo <<
-                e << FA.Fn FA.Indented
-                    [ variable "x" ]
-                    ( e << FA.Statements
-                        [
-                        , FA.Evaluation << variable "x"
-                        , FA.Evaluation << variable "x"
-                        ]
-                    )
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Fn
+                 FA.Indented
+                 [ variable "x" ]
+                 (e
+                  << FA.Statements
+                      [
+                      , FA.Evaluation << variable "x"
+                      , FA.Evaluation << variable "x"
+                      ]
+                 )
             )
         , codeTest
             """
@@ -368,20 +344,23 @@ functions as Test =
                 x
             """
             firstDefinition
-            (Test.isOkAndEqualTo <<
-                {
-                , pattern = variable "a"
-                , nonFn = []
-                , body =
-                    e << FA.Fn FA.Aligned
-                        [ variable "x" ]
-                        ( e << FA.Statements
-                            [
-                            , FA.ValueDef { pattern = variable "y", nonFn = [], body = e << FA.LiteralNumber False "1" }
-                            , FA.Evaluation << variable "x"
-                            ]
-                        )
-                }
+            (Test.isOkAndEqualTo
+             << {
+             , body =
+                 e
+                 << FA.Fn
+                     FA.Aligned
+                     [ variable "x" ]
+                     (e
+                      << FA.Statements
+                          [
+                          , FA.ValueDef { body = e << FA.LiteralNumber False "1", nonFn = [], pattern = variable "y" }
+                          , FA.Evaluation << variable "x"
+                          ]
+                     )
+             , nonFn = []
+             , pattern = variable "a"
+             }
             )
         , codeTest
             """
@@ -391,11 +370,10 @@ functions as Test =
             @b += 1
             """
             firstEvaluation
-            (Test.isOkAndEqualTo << e <<
-                FA.BinopChain Op.precedence_mutop __ <<
-                    (e << FA.UnopCall Op.UnopRecycle __ << variable "b")
-                    &
-                    [ faBinop Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
+            (Test.isOkAndEqualTo
+             << e
+             << FA.BinopChain Op.precedence_mutop __
+             << (e << FA.UnopCall Op.UnopRecycle __ << variable "b") & [ faBinop Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
             )
         , codeTest
             """
@@ -412,52 +390,46 @@ functions as Test =
 
 
 annotations as Test =
-    Test.Group "Annotations"
+    Test.Group
+        "Annotations"
         [
-        , codeTest "Trivial case"
+        , codeTest
+            "Trivial case"
             """
             a as b =
                 z
             """
             firstDefinition
             (Test.isOkAndEqualTo
-                {
-                , pattern = annotatedVariable "a" (variable "b")
-                , nonFn = []
-                , body = variable "z"
-                }
+                 {
+                 , body = variable "z"
+                 , nonFn = []
+                 , pattern = annotatedVariable "a" (variable "b")
+                 }
             )
-        , codeTest "Tuple precedence"
+        , codeTest
+            "Tuple precedence"
             """
             a as fn int & int: bool =
                 b
             """
             firstDefinition
             (Test.isOkAndEqualTo
-                {
-                , pattern =
-                    annotatedVariable "a"
-                        (e << FA.Fn FA.Inline
-                            [tuple (variable "int") (variable "int")]
-                            (variable "bool")
-                        )
-                , nonFn = []
-                , body = variable "b"
-                }
+                 {
+                 , body = variable "b"
+                 , nonFn = []
+                 , pattern = annotatedVariable "a" (e << FA.Fn FA.Inline [ tuple (variable "int") (variable "int") ] (variable "bool"))
+                 }
             )
         ]
 
 
 unionDefs as Test =
-
     asTypeDef =
         fn s:
         try s as
-            , FA.UnionDef a:
-                Ok a
-
-            , _:
-                Err "no type def"
+            , FA.UnionDef a: Ok a
+            , _: Err "no type def"
 
     firstTypeDef =
         fn x: x >> firstStatement >> onOk asTypeDef
@@ -472,21 +444,21 @@ unionDefs as Test =
             Parse inline def
             """
             """
-            union a b c = v1 b, v2 c, v3, v4 b c
+            var a b c = v1 b, v2 c, v3, v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
-                {
-                , name = (word "a")
-                , args = [ (word "b"), (word "c") ]
-                , constructors =
-                    [
-                    , e << FA.Call (variable "v1") [ variable "b" ]
-                    , e << FA.Call (variable "v2") [ variable "c" ]
-                    , variable "v3"
-                    , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
-                    ]
-                }
+                 {
+                 , args = [ word "b", word "c" ]
+                 , constructors =
+                     [
+                     , e << FA.Call (variable "v1") [ variable "b" ]
+                     , e << FA.Call (variable "v2") [ variable "c" ]
+                     , variable "v3"
+                     , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
+                     ]
+                 , name = word "a"
+                 }
             )
         , codeTest
             """
@@ -501,33 +473,35 @@ unionDefs as Test =
             """
             firstTypeDef
             (Test.isOkAndEqualTo
-                {
-                , name = (word "a")
-                , args = [ (word "b"), (word "c") ]
-                , constructors =
-                    [
-                    , e << FA.Call (variable "v1") [ variable "b" ]
-                    , e << FA.Call (variable "v2") [ variable "c" ]
-                    , variable "v3"
-                    , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
-                    ]
-                }
+                 {
+                 , args = [ word "b", word "c" ]
+                 , constructors =
+                     [
+                     , e << FA.Call (variable "v1") [ variable "b" ]
+                     , e << FA.Call (variable "v2") [ variable "c" ]
+                     , variable "v3"
+                     , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
+                     ]
+                 , name = word "a"
+                 }
             )
-        , codeTest "list argument"
+        , codeTest
+            "list argument"
             "union a = a [int]"
             firstTypeDef
             (Test.isOkAndEqualTo
-                {
-                , name = (word "a")
-                , args = []
-                , constructors = [ e << FA.Call (variable "a") [ e << FA.List False [ False & variable "int" ] ]]
-                }
+                 {
+                 , args = []
+                 , constructors = [ e << FA.Call (variable "a") [ e << FA.List False [ False & variable "int" ] ] ]
+                 , name = word "a"
+                 }
             )
         ]
 
 
 lists as Test =
-    Test.Group "Lists"
+    Test.Group
+        "Lists"
         [
         , codeTest
             """
@@ -535,18 +509,14 @@ lists as Test =
             """
             "[]"
             firstEvaluation
-            (Test.isOkAndEqualTo
-              (e << FA.List False [])
-            )
+            (Test.isOkAndEqualTo (e << FA.List False []))
         , codeTest
             """
             Inline
             """
             "[a, b]"
             firstEvaluation
-            (Test.isOkAndEqualTo
-              (e << FA.List False [ False & variable "a", False & variable "b" ])
-            )
+            (Test.isOkAndEqualTo (e << FA.List False [ False & variable "a", False & variable "b" ]))
         , codeTest
             """
             Multiline
@@ -559,9 +529,7 @@ lists as Test =
               ]
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo
-              (e << FA.List True [ False & variable "a", False & variable "b" ])
-            )
+            (Test.isOkAndEqualTo (e << FA.List True [ False & variable "a", False & variable "b" ]))
         , codeTest
             """
             Ancient egyptian
@@ -574,23 +542,20 @@ lists as Test =
               ]
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo
-              (e << FA.Call (variable "blah") [e << FA.List True [ False & variable "a", False & variable "b" ]])
-            )
+            (Test.isOkAndEqualTo (e << FA.Call (variable "blah") [ e << FA.List True [ False & variable "a", False & variable "b" ] ]))
         , codeTest
             """
             Dots
             """
             "[...a, b, ...c]"
             firstEvaluation
-            (Test.isOkAndEqualTo
-              (e << FA.List False [ True & variable "a", False & variable "b", True & variable "c" ])
-            )
+            (Test.isOkAndEqualTo (e << FA.List False [ True & variable "a", False & variable "b", True & variable "c" ]))
         ]
 
 
 records as Test =
-    Test.Group "Records"
+    Test.Group
+        "Records"
         [
         , codeTest
             """
@@ -598,26 +563,29 @@ records as Test =
             """
             "{}"
             firstEvaluation
-            (Test.isOkAndEqualTo
-              (e << FA.Record { maybeExtension = Nothing, attrs = [], isMultiline = False })
-            )
-        , codeTest "Inline"
+            (Test.isOkAndEqualTo (e << FA.Record { attrs = [], isMultiline = False, maybeExtension = Nothing }))
+        , codeTest
+            "Inline"
             "{ x = b }"
             firstEvaluation
             (Test.isOkAndEqualTo
-              (e << FA.Record
-                  {
-                  , maybeExtension = Nothing
-                  , attrs =
-                      [{
-                      , name = variable "x"
-                      , maybeExpr = Just << variable "b"
-                      }]
-                  , isMultiline = False
-                  }
-              )
+                 (e
+                  << FA.Record
+                      {
+                      , attrs =
+                          [
+                          , {
+                          , maybeExpr = Just << variable "b"
+                          , name = variable "x"
+                          }
+                          ]
+                      , isMultiline = False
+                      , maybeExtension = Nothing
+                      }
+                 )
             )
-        , codeTest "Multiline"
+        , codeTest
+            "Multiline"
             """
             z =
               {
@@ -627,25 +595,27 @@ records as Test =
             """
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
-              (e << FA.Record
-                  {
-                  , maybeExtension = Nothing
-                  , attrs =
-                      [
-                      , {
-                        , name = variable "x"
-                        , maybeExpr = Just << variable "a"
-                        }
-                      , {
-                        , name = variable "y"
-                        , maybeExpr = Just << variable "b"
-                        }
-                      ]
-                  , isMultiline = True
-                  }
-              )
+                 (e
+                  << FA.Record
+                      {
+                      , attrs =
+                          [
+                          , {
+                          , maybeExpr = Just << variable "a"
+                          , name = variable "x"
+                          }
+                          , {
+                          , maybeExpr = Just << variable "b"
+                          , name = variable "y"
+                          }
+                          ]
+                      , isMultiline = True
+                      , maybeExtension = Nothing
+                      }
+                 )
             )
-        , codeTest "Pattern extension"
+        , codeTest
+            "Pattern extension"
             """
             z =
               { with
@@ -654,15 +624,17 @@ records as Test =
             """
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
-              (e << FA.Record
-                  {
-                  , maybeExtension = Just Nothing
-                  , attrs = [ { name = variable "x", maybeExpr = Just << variable "a" } ]
-                  , isMultiline = True
-                  }
-              )
+                 (e
+                  << FA.Record
+                      {
+                      , attrs = [ { maybeExpr = Just << variable "a", name = variable "x" } ]
+                      , isMultiline = True
+                      , maybeExtension = Just Nothing
+                      }
+                 )
             )
-        , codeTest "Expression extension"
+        , codeTest
+            "Expression extension"
             """
             q =
               { z with
@@ -671,13 +643,14 @@ records as Test =
             """
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
-              (e << FA.Record
-                  {
-                  , maybeExtension = Just (Just (variable "z"))
-                  , attrs = [ { name = variable "x", maybeExpr = Just << variable "a" } ]
-                  , isMultiline = True
-                  }
-              )
+                 (e
+                  << FA.Record
+                      {
+                      , attrs = [ { maybeExpr = Just << variable "a", name = variable "x" } ]
+                      , isMultiline = True
+                      , maybeExtension = Just (Just (variable "z"))
+                      }
+                 )
             )
         , codeTest
             """
@@ -688,13 +661,14 @@ records as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo
-              (e << FA.Record
-                  {
-                  , maybeExtension = Nothing
-                  , attrs = [ { name = annotatedVariable "x" (variable "bool"), maybeExpr = Nothing } ]
-                  , isMultiline = False
-                  }
-              )
+                 (e
+                  << FA.Record
+                      {
+                      , attrs = [ { maybeExpr = Nothing, name = annotatedVariable "x" (variable "bool") } ]
+                      , isMultiline = False
+                      , maybeExtension = Nothing
+                      }
+                 )
             )
         , codeTest
             """
@@ -705,15 +679,17 @@ records as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo
-              (e << FA.Record
-                  {
-                  , maybeExtension = Nothing
-                  , attrs = [ { name = annotatedVariable "x" (variable "bool"), maybeExpr = Just << variable "y" } ]
-                  , isMultiline = False
-                  }
-              )
+                 (e
+                  << FA.Record
+                      {
+                      , attrs = [ { maybeExpr = Just << variable "y", name = annotatedVariable "x" (variable "bool") } ]
+                      , isMultiline = False
+                      , maybeExtension = Nothing
+                      }
+                 )
             )
-        , codeTest "[reg] real-world use"
+        , codeTest
+            "[reg] real-world use"
             """
             a =
               { state with
@@ -735,8 +711,10 @@ records as Test =
 
 
 ifs as Test =
-    Test.Group "Ifs"
-        [ codeTest
+    Test.Group
+        "Ifs"
+        [
+        , codeTest
             """
             Inline
             """
@@ -744,14 +722,15 @@ ifs as Test =
             if a then b else c
             """
             firstEvaluation
-            (Test.isOkAndEqualTo << e <<
-                FA.If
-                    {
-                    , isMultiline = False
-                    , condition = variable "a"
-                    , true = variable "b"
-                    , false = variable "c"
-                    }
+            (Test.isOkAndEqualTo
+             << e
+             << FA.If
+                 {
+                 , condition = variable "a"
+                 , false = variable "c"
+                 , isMultiline = False
+                 , true = variable "b"
+                 }
             )
         , codeTest
             """
@@ -765,14 +744,15 @@ ifs as Test =
                   c
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << e <<
-                FA.If
-                    {
-                    , isMultiline = True
-                    , condition = variable "a"
-                    , true = variable "b"
-                    , false = variable "c"
-                    }
+            (Test.isOkAndEqualTo
+             << e
+             << FA.If
+                 {
+                 , condition = variable "a"
+                 , false = variable "c"
+                 , isMultiline = True
+                 , true = variable "b"
+                 }
             )
         , codeTest
             """
@@ -784,20 +764,22 @@ ifs as Test =
               else c
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo << e <<
-                FA.If
-                    {
-                    , isMultiline = True
-                    , condition = variable "a"
-                    , true = variable "b"
-                    , false = variable "c"
-                    }
+            (Test.isOkAndEqualTo
+             << e
+             << FA.If
+                 {
+                 , condition = variable "a"
+                 , false = variable "c"
+                 , isMultiline = True
+                 , true = variable "b"
+                 }
             )
         ]
 
 
 tries as Test =
-    Test.Group "Try"
+    Test.Group
+        "Try"
         [
         , codeTest
             """
@@ -811,16 +793,17 @@ tries as Test =
                 e
             """
             firstEvaluation
-            (Test.isOkAndEqualTo << e <<
-                FA.Try
-                    {
-                    , value = variable "a"
-                    , patterns =
-                        [
-                        , variable "b" & variable "c"
-                        , variable "d" & variable "e"
-                        ]
-                    }
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Try
+                 {
+                 , patterns =
+                     [
+                     , variable "b" & variable "c"
+                     , variable "d" & variable "e"
+                     ]
+                 , value = variable "a"
+                 }
             )
         , codeTest
             """
@@ -832,16 +815,17 @@ tries as Test =
               , d: e
             """
             firstEvaluation
-            (Test.isOkAndEqualTo << e <<
-                FA.Try
-                    {
-                    , value = variable "a"
-                    , patterns =
-                        [
-                        , variable "b" & variable "c"
-                        , variable "d" & variable "e"
-                        ]
-                    }
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Try
+                 {
+                 , patterns =
+                     [
+                     , variable "b" & variable "c"
+                     , variable "d" & variable "e"
+                     ]
+                 , value = variable "a"
+                 }
             )
         , codeTest
             """
@@ -857,28 +841,31 @@ tries as Test =
                 e
             """
             firstEvaluation
-            (Test.isOkAndEqualTo << e <<
-                FA.Try
-                    {
-                    , value = variable "a"
-                    , patterns =
-                        [
-                        , variable "b" &
-                            (e << FA.Try
-                                {
-                                , value = variable "c"
-                                , patterns = [ variable "q" & variable "q" ]
-                                }
-                            )
-                        , variable "d" & variable "e"
-                        ]
-                    }
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Try
+                 {
+                 , patterns =
+                     [
+                     , variable "b"
+                     & (e
+                      << FA.Try
+                          {
+                          , patterns = [ variable "q" & variable "q" ]
+                          , value = variable "c"
+                          }
+                     )
+                     , variable "d" & variable "e"
+                     ]
+                 , value = variable "a"
+                 }
             )
         ]
 
 
 patterns as Test =
-    Test.Group "Patterns"
+    Test.Group
+        "Patterns"
         [
         , codeTest
             """
@@ -887,15 +874,18 @@ patterns as Test =
             "[a as int, b] = x"
             firstDefinition
             (Test.isOkAndEqualTo
-                { pattern = e <<
-                    FA.List False
-                        [
-                        , False & annotatedVariable "a" (variable "int")
-                        , False & variable "b"
-                        ]
-                , nonFn = []
-                , body = variable "x"
-                }
+                 {
+                 , body = variable "x"
+                 , nonFn = []
+                 , pattern =
+                     e
+                     << FA.List
+                         False
+                         [
+                         , False & annotatedVariable "a" (variable "int")
+                         , False & variable "b"
+                         ]
+                 }
             )
         , codeTest
             """
@@ -906,38 +896,40 @@ patterns as Test =
               x
             """
             firstEvaluation
-            (Test.isOkAndEqualTo << e <<
-                FA.Fn FA.Indented
-                    [ e << FA.Record
-                        {
-                        , maybeExtension = Just Nothing
-                        , attrs =
-                            [
-                            , { name = variable "a", maybeExpr = Nothing }
-                            , { name = variable "b", maybeExpr = Nothing }
-
-                            ]
-                        , isMultiline = False
-                        }
-                    ]
-                    (variable "x")
+            (Test.isOkAndEqualTo
+             << e
+             << FA.Fn
+                 FA.Indented
+                 [
+                 , e
+                 << FA.Record
+                     {
+                     , attrs =
+                         [
+                         , { maybeExpr = Nothing, name = variable "a" }
+                         , { maybeExpr = Nothing, name = variable "b" }
+                         ]
+                     , isMultiline = False
+                     , maybeExtension = Just Nothing
+                     }
+                 ]
+                 (variable "x")
             )
         ]
 
 
 binops as Test =
-
     sendBtoC =
-        e << FA.BinopChain Op.precedence_pipe __ <<
-            variable "b" & [ faBinop Prelude.sendRight & variable "c" ]
+        e << FA.BinopChain Op.precedence_pipe __ << variable "b" & [ faBinop Prelude.sendRight & variable "c" ]
 
     sendBtoCtoD =
-        e << FA.BinopChain Op.precedence_pipe __ <<
-            variable "b" & [ faBinop Prelude.sendRight & variable "c", faBinop Prelude.sendRight & variable "d" ]
+        e << FA.BinopChain Op.precedence_pipe __ << variable "b" & [ faBinop Prelude.sendRight & variable "c", faBinop Prelude.sendRight & variable "d" ]
 
-    Test.Group "Binops"
+    Test.Group
+        "Binops"
         [
-        , codeTest "no indent"
+        , codeTest
+            "no indent"
             """
             b >> c
             """
@@ -995,7 +987,7 @@ binops as Test =
             x = >> c
             """
             firstEvaluationOfDefinition
-            (Test.errorContains ["TODO"])
+            (Test.errorContains [ "TODO" ])
         , codeTest
             """
             SKIP (I'm tired) Double
@@ -1004,7 +996,7 @@ binops as Test =
             x = a >> >> c
             """
             firstEvaluationOfDefinition
-            (Test.errorContains ["TODO"])
+            (Test.errorContains [ "TODO" ])
         , codeTest
             """
             SKIP (I'm tired) Ending
@@ -1013,18 +1005,15 @@ binops as Test =
             x = a >>
             """
             firstEvaluationOfDefinition
-            (Test.errorContains ["TODO"])
+            (Test.errorContains [ "TODO" ])
         ]
 
 
 unops as Test =
-    Test.Group "Unops"
+    Test.Group
+        "Unops"
         [
-        , codeTest
-            "[reg] Unop"
-            "a = f -n"
-            firstDefinition
-            Test.isOk
+        , codeTest "[reg] Unop" "a = f -n" firstDefinition Test.isOk
         , codeTest
             """
             Precedence 1
@@ -1033,14 +1022,7 @@ unops as Test =
             -a b
             """
             firstEvaluation
-            (Test.isOkAndEqualTo
-                (e << FA.UnopCall Op.UnopMinus
-                    ( e << FA.Call
-                        (variable "a")
-                        [variable "b"]
-                    )
-                )
-            )
+            (Test.isOkAndEqualTo (e << FA.UnopCall Op.UnopMinus (e << FA.Call (variable "a") [ variable "b" ])))
         , codeTest
             """
             Precedence 2
@@ -1049,12 +1031,7 @@ unops as Test =
             a -b
             """
             firstEvaluation
-            (Test.isOkAndEqualTo
-                (e << FA.Call
-                    (variable "a")
-                    [e << FA.UnopCall Op.UnopMinus (variable "b")]
-                )
-            )
+            (Test.isOkAndEqualTo (e << FA.Call (variable "a") [ e << FA.UnopCall Op.UnopMinus (variable "b") ]))
         , codeTest
             """
             Precedence 3
@@ -1064,19 +1041,21 @@ unops as Test =
             """
             firstEvaluation
             (Test.isOkAndEqualTo
-                (e << FA.Call
-                    (variable "a")
-                    [
-                    , e << FA.UnopCall Op.UnopMinus (variable "b")
-                    , variable "c"
-                    ]
-                )
+                 (e
+                  << FA.Call
+                      (variable "a")
+                      [
+                      , e << FA.UnopCall Op.UnopMinus (variable "b")
+                      , variable "c"
+                      ]
+                 )
             )
         ]
 
 
 comments as Test =
-    Test.Group "Comments"
+    Test.Group
+        "Comments"
         [
         , codeTest
             """

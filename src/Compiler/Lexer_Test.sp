@@ -91,12 +91,12 @@ lexTokensAndDrop as fn Int: fn Text: Result Text [[Token]] =
 
 lowerName as fn Text: Token.Kind =
     fn name:
-    Token.Word << Token.VariableOrAttribute { name, attrPath = [], maybeModule = Nothing }
+    Token.Lowercase { name, attrPath = [], maybeModule = Nothing }
 
 
 upperName as fn Text: Token.Kind =
     fn name:
-    Token.Word << Token.TypeOrModule { name, maybeModule = Nothing }
+    Token.Uppercase { name, maybeModule = Nothing }
 
 
 #
@@ -515,7 +515,7 @@ recordLiterals as Test =
             (lexTokensAndDrop 3)
             (Test.isOkAndEqualTo [[
               , Token 6 6 Token.BlockStart
-              , Token 6 8 __ << Token.Word << Token.RecordShorthand { name = "b", attrPath = [] }
+              , Token 6 8 __ << Token.RecordShorthand { name = "b", attrPath = [] }
               , Token 8 8 Token.BlockEnd
             ]])
         ]

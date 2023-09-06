@@ -303,7 +303,7 @@ startsWithUpperChar as fn Text: Bool =
         , _: True
 
 
-parseNameToWord as fn @ReadState, { main as Name, maybeModule as Maybe Name, attrPath as [Name] }: Token.Word =
+parseNameToWord as fn @ReadState, { main as Name, maybeModule as Maybe Name, attrPath as [Name] }: Token.Kind =
     fn @state, { main, maybeModule, attrPath }:
 
     try Text.split "'" main as
@@ -316,9 +316,9 @@ parseNameToWord as fn @ReadState, { main as Name, maybeModule as Maybe Name, att
         , [ name ]:
               if startsWithUpperChar name then
                   addErrorIf (attrPath /= []) @state "WAT... Isn't this a normal qualified value!?"
-                  Token.TypeOrModule { name, maybeModule }
+                  Token.Uppercase { name, maybeModule }
               else
-                  Token.VariableOrAttribute { name, maybeModule, attrPath }
+                  Token.Lowercase { name, maybeModule, attrPath }
 
         , _:
               addError "apostrophes can be used only at the beginning of a constructor name" @state
@@ -344,48 +344,50 @@ addWord as fn Int, Int, Text, @ReadState: None =
     addErrorIf (List.any (fn s: s == "") snips) @state
         "use spaces around `..` to concatenate Text"
 
-    word as Token.Word =
-        try snips as
-            , []:
-                Token.VariableOrAttribute { maybeModule = Nothing, name = "THIS IS NOT SUPPOSED TO HAPPEN", attrPath = [] }
+    try snips as
+        , []:
+            Token.Lowercase { maybeModule = Nothing, name = "THIS IS NOT SUPPOSED TO HAPPEN", attrPath = [] }
 
-            , [ main ]:
-                # value or attribute
-                # Module or Type
-                # 'constructor
-                parseNameToWord @state { main, maybeModule = Nothing, attrPath = [] }
+        , [ main ]:
+            # value or attribute
+            # Module or Type
+            # 'constructor
+            parseNameToWord @state { main, maybeModule = Nothing, attrPath = [] }
 
-            , [ "", two, ...rest ]:
-                    # .attr1
-                    # .attr1.attr2
-                    Token.RecordShorthand {
-                        , name = parseAttr @state two
-                        , attrPath = List.map (parseAttr @state __) rest
-                        }
+        , [ "", two, ...rest ]:
+                # .attr1
+                # .attr1.attr2
+                Token.RecordShorthand {
+                    , name = parseAttr @state two
+                    , attrPath = List.map (parseAttr @state __) rest
+                    }
 
-            , [ one, two, ...rest ]:
-                if startsWithUpperChar one then
-                    # Module.value
-                    # Module.value.attr1
-                    # Module.value.attr1.attr2
-                    # Module.Type
-                    # Module.'constructor
-                    parseNameToWord @state {
-                        , main = two
-                        , maybeModule = Just << parseModule @state one
-                        , attrPath = List.map (parseAttr @state __) rest
-                        }
+        , [ one, two, ...rest ]:
+            if startsWithUpperChar one then
+                # Module.value
+                # Module.value.attr1
+                # Module.value.attr1.attr2
+                # Module.Type
+                # Module.'constructor
+                module = parseModule @state one
+                attrPath = List.map (parseAttr @state __) rest
+                parseNameToWord @state {
+                    , main = two
+                    , maybeModule = Just module
+                    , attrPath
+                    }
 
-                else
-                    # value.attr1
-                    # value.attr1.attr2
-                    parseNameToWord @state {
-                        , main = one
-                        , maybeModule = Nothing
-                        , attrPath = List.map (parseAttr @state __) rest
-                        }
+            else
+                # value.attr1
+                # value.attr1.attr2
+                attrPath = List.map (parseAttr @state __) rest
+                parseNameToWord @state {
+                    , main = one
+                    , maybeModule = Nothing
+                    , attrPath
+                    }
 
-    addContentTokenAbs start end (Token.Word word) @state
+    >> addContentTokenAbs start end __ @state
 
 
 addWordToken as fn Text, @ReadState: None =

@@ -30,17 +30,10 @@ usrToText as fn Env, USR: Text =
 doUsr as fn Env, USR: FA.Expression =
     fn env, usr:
     {
-    , maybeType = Nothing
-    , tokenWord =
-        {
-        , attrPath = []
-        , isUpper = True
-        , maybeModule = Nothing
-        , modifier = Token.NameNoModifier
-        , name = usrToText env usr
-        }
+    , maybeModule = Nothing
+    , name = usrToText env usr
     }
-    >> FA.Variable
+    >> FA.Uppercase
     >> toExpression
 
 
@@ -86,7 +79,7 @@ doRawType as fn Env, TA.RawType: FA.Expression =
                 taAttrs
                 >> Dict.toList
                 >> List.sortBy Tuple.first __
-                >> List.map (fn name & raw: { maybeExpr = Just (doRawType env raw), name = doName env name }) __
+                >> List.map (fn name & raw: { maybeExpr = Just (doRawType env raw), name = doLowercase env name }) __
 
             # TODO display tuples as tuples!
 
@@ -104,35 +97,25 @@ doRawType as fn Env, TA.RawType: FA.Expression =
 doTyvarId as fn Env, TA.TyvarId: FA.Expr_ =
     fn env, tyvarId:
     {
+    , attrPath = []
+    , maybeModule = Nothing
     , maybeType = Nothing
-    , tokenWord =
-        {
-        , attrPath = []
-        , isUpper = False
-        , maybeModule = Nothing
-        , modifier = Token.NameNoModifier
-        # TODO use Env to get original name!
-        , name =
-            Text.fromNumber tyvarId
-        }
+    # TODO use Env to get original name!
+    , name =
+        Text.fromNumber tyvarId
     }
-    >> FA.Variable
+    >> FA.Lowercase
 
 
-doName as fn Env, Name: FA.Expression =
+doLowercase as fn Env, Name: FA.Expression =
     fn env, name:
     {
+    , attrPath = []
+    , maybeModule = Nothing
     , maybeType = Nothing
-    , tokenWord =
-        {
-        , attrPath = []
-        , isUpper = False
-        , maybeModule = Nothing
-        , modifier = Token.NameNoModifier
-        , name
-        }
+    , name
     }
-    >> FA.Variable
+    >> FA.Lowercase
     >> toExpression
 
 
