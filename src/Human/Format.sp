@@ -463,7 +463,7 @@ formatAliasDef as fn Env, FA.AliasDef: Fmt.Block =
 formatUnionDef as fn Env, FA.UnionDef: Fmt.Block =
     fn env, { args, constructors, name }:
     [
-    , formatDef "union" name args
+    , formatDef "var" name args
     , constructors
     >> List.map (fn c: Fmt.prefix 2 (Fmt.Text_ ", ") (formatExpression env c)) __
     >> Fmt.stack
@@ -597,7 +597,7 @@ formatConstructor as fn Env, Maybe Name, Name: Fmt.Block =
         , try maybeModule as
             , Nothing: []
             , Just module: [ module, "." ]
-        , [ "'", name ]
+        , [ name ]
         ]
         >> List.concat
         >> Text.join "" __

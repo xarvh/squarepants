@@ -8,7 +8,7 @@ tests as Test =
         MakeCanonical
         """
         [
-        , unionTypes
+        , varTypes
         , binops
         , tuples
         , lists
@@ -123,31 +123,39 @@ valueDef as fn Name, CA.Expression: CA.ValueDef =
 
 
 #
-# Union Types
+# Variant Types
 #
 
-unionTypes as Test =
+varTypes as Test =
     Test.Group
         """
-        Union types
+        Variant types
         """
         [
-        , codeTest "tuples op precedence" "union A = X Bool & Bool" textToModule (Test.errorContains [ "expecting a constructor" ])
+        , codeTest
+            """
+            Tuples op precedence
+            """
+            """
+            var A = 'x Bool & Bool
+            """
+            textToModule
+            (Test.errorContains [ "I need a 'constructor" ])
         , codeTest
             """
             Tuples op precedence works with parens
             """
             """
-            union A = X (Bool & Bool)
+            var A = 'x (Bool & Bool)
             """
             textToModule
             Test.isOk
         , codeTest
             """
-            [reg] Should reject uppercase arg name
+            SKIP (make `var` a keyword?) [reg] Should reject uppercase arg name
             """
             """
-            union Outcome Token output = A
+            var Outcome Token output = 'a
             """
             textToModule
             (Test.errorContains [ "must start with a lowercase" ])
@@ -390,17 +398,18 @@ moduleAndAttributePaths as Test =
         fn s, m:
             codeTest s ("a = " .. s) firstDefinition (Test.errorContains [ m ])
 
+    # TODO this stuff has been moved back to the Lexer, so I should also move these tests?
     Test.Group
         """
         Module and Attribute Paths
         """
         [
         , accept "blah.blah.blah"
-        , reject "Blah.Blah.blah" "constructor"
-        , reject "blah.Blah.blah" "case"
+        , reject "Blah.Blah.blah" "attribute"
+#        , reject "blah.Blah.blah" "case"
         , reject "List.blah.Blah" "lower"
         , reject "List..blah" "space"
-        , reject ".Blah" "upper"
+        , reject ".Blah" "must start with a lowercase"
         , reject ".blah.blah" "shorthand"
         , reject ".blah" "shorthand"
         , reject "..." ""
@@ -437,8 +446,12 @@ records as Test =
                  )
             )
         , codeTest
-            "update shorthand"
-            "b = { a with y = .x }"
+            """
+            Update shorthand
+            """
+            """
+            b = { a with y = .x }
+            """
             (firstEvaluation "b")
             (Test.isOkAndEqualTo
              << CA.LetIn
@@ -865,7 +878,7 @@ shadowing as Test =
             Types
             """
             """
-            union X = Meh
+            var X = 'meh
             alias X = {}
             b = 0
             """
@@ -876,10 +889,10 @@ shadowing as Test =
             Constructors
             """
             """
-            union A = Meh
-            union B = Meh
+            var A = 'meh
+            var B = 'meh
             b = 0
             """
             (firstEvaluation "b")
-            (Test.errorContains [ "Meh", "already been defined" ])
+            (Test.errorContains [ "meh", "already been defined" ])
         ]

@@ -1,6 +1,7 @@
 tests as Test =
     Test.Group "Lexer"
         [
+        , names
         , ops
         , unaryAddittiveOps
         , indentation
@@ -104,6 +105,37 @@ upperName as fn Text: Token.Kind =
 # Tests
 #
 #
+
+
+names as Test =
+    Test.Group
+        """
+        Names
+        """
+        [
+        , codeTest
+            """
+            [reg] Simple record access
+            """
+            "a.b"
+            (lexTokensAndDrop 1)
+            (Test.isOkAndEqualTo
+                [[
+                , Token 0 3 __ << Token.Lowercase { maybeModule = Nothing, name = "a", attrPath = ["b"] }
+                ]]
+            )
+        , codeTest
+            """
+            [reg] Nested record access
+            """
+            "a.b.c"
+            (lexTokensAndDrop 1)
+            (Test.isOkAndEqualTo
+                [[
+                , Token 0 5 __ << Token.Lowercase { maybeModule = Nothing, name = "a", attrPath = ["b", "c" ] }
+                ]]
+            )
+        ]
 
 
 ops as Test =

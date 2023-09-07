@@ -101,6 +101,7 @@ selftestMain as fn None: IO Int =
     >> List.sortBy (fn x: order x.outcome & x.name) __
     >> List.map (fn x: testOutcomeToText x.name x.code x.outcome) __
     >> Text.join "\n" __
+    >> __ .. "\n"
     >> IO.writeStdout
 
 

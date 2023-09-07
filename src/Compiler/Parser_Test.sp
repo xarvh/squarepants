@@ -22,6 +22,7 @@ word as fn Text: Pos & Name =
     fn name:
     Pos.T & name
 
+
 codeTest as fn Text, Text, fn Text: Result Text z, Test.CodeExpectation z: Test =
     Test.codeTest toHuman __ __ __ __
 
@@ -78,9 +79,6 @@ firstEvaluationOfDefinition as fn Text: Result Text FA.Expression =
     >> firstStatement
     >> onOk asDefinition
     >> onOk (fn def: Ok def.body)
-
-
-
 
 
 values as Test =
@@ -184,10 +182,24 @@ tuple as fn FA.Expression, FA.Expression: FA.Expression =
     FA.BinopChain Op.precedence_tuple (a & [ faBinop Prelude.tuple & b ]) >> e
 
 
-variable as fn Name: FA.Expression =
+lowercase as fn Name: FA.Expression =
     fn name:
     { attrPath = [], maybeModule = Nothing, maybeType = Nothing, name }
     >> FA.Lowercase
+    >> e
+
+
+uppercase as fn Name: FA.Expression =
+    fn name:
+    { maybeModule = Nothing, name }
+    >> FA.Uppercase
+    >> e
+
+
+constructor as fn Name: FA.Expression =
+    fn name:
+    { maybeModule = Nothing, name }
+    >> FA.Constructor
     >> e
 
 
@@ -220,8 +232,8 @@ functions as Test =
              << FA.Fn
                  FA.Inline
                  [
-                 , variable "a"
-                 , variable "b"
+                 , lowercase "a"
+                 , lowercase "b"
                  ]
                  (e << FA.LiteralNumber False "3")
             )
@@ -236,7 +248,7 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn FA.Indented [ variable "a" ] (e << FA.LiteralNumber False "3")
+             << FA.Fn FA.Indented [ lowercase "a" ] (e << FA.LiteralNumber False "3")
             )
         , codeTest
             """
@@ -251,7 +263,7 @@ functions as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn FA.Aligned [ variable "a" ] (e << FA.Fn FA.Aligned [ variable "b" ] (e << FA.LiteralNumber False "3"))
+             << FA.Fn FA.Aligned [ lowercase "a" ] (e << FA.Fn FA.Aligned [ lowercase "b" ] (e << FA.LiteralNumber False "3"))
             )
         , codeTest
             """
@@ -263,7 +275,7 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn FA.Inline [ tuple (variable "a") (variable "b") ] (variable "a")
+             << FA.Fn FA.Inline [ tuple (lowercase "a") (lowercase "b") ] (lowercase "a")
             )
         , codeTest
             """
@@ -275,7 +287,7 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Call (variable "xxx") [ e << FA.Fn FA.Inline [ variable "y" ] (variable "y") ]
+             << FA.Call (lowercase "xxx") [ e << FA.Fn FA.Inline [ lowercase "y" ] (lowercase "y") ]
             )
         , codeTest
             """
@@ -289,7 +301,7 @@ functions as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
              << e
-             << FA.Call (variable "xxx") [ e << FA.Fn FA.Aligned [ variable "y" ] (variable "y") ]
+             << FA.Call (lowercase "xxx") [ e << FA.Fn FA.Aligned [ lowercase "y" ] (lowercase "y") ]
             )
         , codeTest
             """
@@ -304,10 +316,10 @@ functions as Test =
             (Test.isOkAndEqualTo
              << e
              << FA.BinopChain Op.precedence_pipe __
-             << variable "value"
+             << lowercase "value"
              & [
-             , faBinop Prelude.sendRight & e (FA.Call (variable "map") [ e << FA.Fn FA.Aligned [ variable "x" ] (variable "blah") ])
-             , faBinop Prelude.sendRight & variable "sblorp"
+             , faBinop Prelude.sendRight & e (FA.Call (lowercase "map") [ e << FA.Fn FA.Aligned [ lowercase "x" ] (lowercase "blah") ])
+             , faBinop Prelude.sendRight & lowercase "sblorp"
              ]
             )
         , codeTest
@@ -324,12 +336,12 @@ functions as Test =
              << e
              << FA.Fn
                  FA.Indented
-                 [ variable "x" ]
+                 [ lowercase "x" ]
                  (e
                   << FA.Statements
                       [
-                      , FA.Evaluation << variable "x"
-                      , FA.Evaluation << variable "x"
+                      , FA.Evaluation << lowercase "x"
+                      , FA.Evaluation << lowercase "x"
                       ]
                  )
             )
@@ -350,16 +362,16 @@ functions as Test =
                  e
                  << FA.Fn
                      FA.Aligned
-                     [ variable "x" ]
+                     [ lowercase "x" ]
                      (e
                       << FA.Statements
                           [
-                          , FA.ValueDef { body = e << FA.LiteralNumber False "1", nonFn = [], pattern = variable "y" }
-                          , FA.Evaluation << variable "x"
+                          , FA.ValueDef { body = e << FA.LiteralNumber False "1", nonFn = [], pattern = lowercase "y" }
+                          , FA.Evaluation << lowercase "x"
                           ]
                      )
              , nonFn = []
-             , pattern = variable "a"
+             , pattern = lowercase "a"
              }
             )
         , codeTest
@@ -373,7 +385,7 @@ functions as Test =
             (Test.isOkAndEqualTo
              << e
              << FA.BinopChain Op.precedence_mutop __
-             << (e << FA.UnopCall Op.UnopRecycle __ << variable "b") & [ faBinop Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
+             << (e << FA.UnopCall Op.UnopRecycle __ << lowercase "b") & [ faBinop Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
             )
         , codeTest
             """
@@ -402,9 +414,9 @@ annotations as Test =
             firstDefinition
             (Test.isOkAndEqualTo
                  {
-                 , body = variable "z"
+                 , body = lowercase "z"
                  , nonFn = []
-                 , pattern = annotatedVariable "a" (variable "b")
+                 , pattern = annotatedVariable "a" (lowercase "b")
                  }
             )
         , codeTest
@@ -416,9 +428,9 @@ annotations as Test =
             firstDefinition
             (Test.isOkAndEqualTo
                  {
-                 , body = variable "b"
+                 , body = lowercase "b"
                  , nonFn = []
-                 , pattern = annotatedVariable "a" (e << FA.Fn FA.Inline [ tuple (variable "int") (variable "int") ] (variable "bool"))
+                 , pattern = annotatedVariable "a" (e << FA.Fn FA.Inline [ tuple (lowercase "int") (lowercase "int") ] (lowercase "bool"))
                  }
             )
         ]
@@ -444,7 +456,7 @@ unionDefs as Test =
             Parse inline def
             """
             """
-            var a b c = v1 b, v2 c, v3, v4 b c
+            var A b c = 'v1 b, 'v2 c, 'v3, 'v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
@@ -452,12 +464,12 @@ unionDefs as Test =
                  , args = [ word "b", word "c" ]
                  , constructors =
                      [
-                     , e << FA.Call (variable "v1") [ variable "b" ]
-                     , e << FA.Call (variable "v2") [ variable "c" ]
-                     , variable "v3"
-                     , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
+                     , e << FA.Call (constructor "'v1") [ lowercase "b" ]
+                     , e << FA.Call (constructor "'v2") [ lowercase "c" ]
+                     , constructor "'v3"
+                     , e << FA.Call (constructor "'v4") [ lowercase "b", lowercase "c" ]
                      ]
-                 , name = word "a"
+                 , name = word "A"
                  }
             )
         , codeTest
@@ -465,11 +477,11 @@ unionDefs as Test =
             Parse multiline def
             """
             """
-            union a b c =
-                , v1 b
-                , v2 c
-                , v3
-                , v4 b c
+            var A b c =
+                , 'v1 b
+                , 'v2 c
+                , 'v3
+                , 'v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
@@ -477,23 +489,31 @@ unionDefs as Test =
                  , args = [ word "b", word "c" ]
                  , constructors =
                      [
-                     , e << FA.Call (variable "v1") [ variable "b" ]
-                     , e << FA.Call (variable "v2") [ variable "c" ]
-                     , variable "v3"
-                     , e << FA.Call (variable "v4") [ variable "b", variable "c" ]
+                     , e << FA.Call (constructor "'v1") [ lowercase "b" ]
+                     , e << FA.Call (constructor "'v2") [ lowercase "c" ]
+                     , constructor "'v3"
+                     , e << FA.Call (constructor "'v4") [ lowercase "b", lowercase "c" ]
                      ]
-                 , name = word "a"
+                 , name = word "A"
                  }
             )
         , codeTest
-            "list argument"
-            "union a = a [int]"
+            "List argument"
+            "var A = 'a [Int]"
             firstTypeDef
             (Test.isOkAndEqualTo
                  {
                  , args = []
-                 , constructors = [ e << FA.Call (variable "a") [ e << FA.List False [ False & variable "int" ] ] ]
-                 , name = word "a"
+                 , constructors =
+                     [
+                     , e
+                     << FA.Call
+                         (constructor "'a")
+                         [
+                         , e << FA.List False [ False & (uppercase "Int" ) ]
+                         ]
+                     ]
+                 , name = word "A"
                  }
             )
         ]
@@ -516,7 +536,7 @@ lists as Test =
             """
             "[a, b]"
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.List False [ False & variable "a", False & variable "b" ]))
+            (Test.isOkAndEqualTo (e << FA.List False [ False & lowercase "a", False & lowercase "b" ]))
         , codeTest
             """
             Multiline
@@ -529,7 +549,7 @@ lists as Test =
               ]
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo (e << FA.List True [ False & variable "a", False & variable "b" ]))
+            (Test.isOkAndEqualTo (e << FA.List True [ False & lowercase "a", False & lowercase "b" ]))
         , codeTest
             """
             Ancient egyptian
@@ -542,14 +562,14 @@ lists as Test =
               ]
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo (e << FA.Call (variable "blah") [ e << FA.List True [ False & variable "a", False & variable "b" ] ]))
+            (Test.isOkAndEqualTo (e << FA.Call (lowercase "blah") [ e << FA.List True [ False & lowercase "a", False & lowercase "b" ] ]))
         , codeTest
             """
             Dots
             """
             "[...a, b, ...c]"
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.List False [ True & variable "a", False & variable "b", True & variable "c" ]))
+            (Test.isOkAndEqualTo (e << FA.List False [ True & lowercase "a", False & lowercase "b", True & lowercase "c" ]))
         ]
 
 
@@ -575,8 +595,8 @@ records as Test =
                       , attrs =
                           [
                           , {
-                          , maybeExpr = Just << variable "b"
-                          , name = variable "x"
+                          , maybeExpr = Just << lowercase "b"
+                          , name = lowercase "x"
                           }
                           ]
                       , isMultiline = False
@@ -601,12 +621,12 @@ records as Test =
                       , attrs =
                           [
                           , {
-                          , maybeExpr = Just << variable "a"
-                          , name = variable "x"
+                          , maybeExpr = Just << lowercase "a"
+                          , name = lowercase "x"
                           }
                           , {
-                          , maybeExpr = Just << variable "b"
-                          , name = variable "y"
+                          , maybeExpr = Just << lowercase "b"
+                          , name = lowercase "y"
                           }
                           ]
                       , isMultiline = True
@@ -627,7 +647,7 @@ records as Test =
                  (e
                   << FA.Record
                       {
-                      , attrs = [ { maybeExpr = Just << variable "a", name = variable "x" } ]
+                      , attrs = [ { maybeExpr = Just << lowercase "a", name = lowercase "x" } ]
                       , isMultiline = True
                       , maybeExtension = Just Nothing
                       }
@@ -646,9 +666,9 @@ records as Test =
                  (e
                   << FA.Record
                       {
-                      , attrs = [ { maybeExpr = Just << variable "a", name = variable "x" } ]
+                      , attrs = [ { maybeExpr = Just << lowercase "a", name = lowercase "x" } ]
                       , isMultiline = True
-                      , maybeExtension = Just (Just (variable "z"))
+                      , maybeExtension = Just (Just (lowercase "z"))
                       }
                  )
             )
@@ -657,14 +677,14 @@ records as Test =
             Type or annotated implicit value
             """
             """
-            { x as bool }
+            { x as Bool }
             """
             firstEvaluation
             (Test.isOkAndEqualTo
                  (e
                   << FA.Record
                       {
-                      , attrs = [ { maybeExpr = Nothing, name = annotatedVariable "x" (variable "bool") } ]
+                      , attrs = [ { maybeExpr = Nothing, name = annotatedVariable "x" (uppercase "Bool") } ]
                       , isMultiline = False
                       , maybeExtension = Nothing
                       }
@@ -675,14 +695,14 @@ records as Test =
             Type or annotated explicit value
             """
             """
-            { x as bool = y }
+            { x as Bool = y }
             """
             firstEvaluation
             (Test.isOkAndEqualTo
                  (e
                   << FA.Record
                       {
-                      , attrs = [ { maybeExpr = Just << variable "y", name = annotatedVariable "x" (variable "bool") } ]
+                      , attrs = [ { maybeExpr = Just << lowercase "y", name = annotatedVariable "x" (uppercase "Bool") } ]
                       , isMultiline = False
                       , maybeExtension = Nothing
                       }
@@ -726,10 +746,10 @@ ifs as Test =
              << e
              << FA.If
                  {
-                 , condition = variable "a"
-                 , false = variable "c"
+                 , condition = lowercase "a"
+                 , false = lowercase "c"
                  , isMultiline = False
-                 , true = variable "b"
+                 , true = lowercase "b"
                  }
             )
         , codeTest
@@ -748,10 +768,10 @@ ifs as Test =
              << e
              << FA.If
                  {
-                 , condition = variable "a"
-                 , false = variable "c"
+                 , condition = lowercase "a"
+                 , false = lowercase "c"
                  , isMultiline = True
-                 , true = variable "b"
+                 , true = lowercase "b"
                  }
             )
         , codeTest
@@ -768,10 +788,10 @@ ifs as Test =
              << e
              << FA.If
                  {
-                 , condition = variable "a"
-                 , false = variable "c"
+                 , condition = lowercase "a"
+                 , false = lowercase "c"
                  , isMultiline = True
-                 , true = variable "b"
+                 , true = lowercase "b"
                  }
             )
         ]
@@ -799,10 +819,10 @@ tries as Test =
                  {
                  , patterns =
                      [
-                     , variable "b" & variable "c"
-                     , variable "d" & variable "e"
+                     , lowercase "b" & lowercase "c"
+                     , lowercase "d" & lowercase "e"
                      ]
-                 , value = variable "a"
+                 , value = lowercase "a"
                  }
             )
         , codeTest
@@ -821,10 +841,10 @@ tries as Test =
                  {
                  , patterns =
                      [
-                     , variable "b" & variable "c"
-                     , variable "d" & variable "e"
+                     , lowercase "b" & lowercase "c"
+                     , lowercase "d" & lowercase "e"
                      ]
-                 , value = variable "a"
+                 , value = lowercase "a"
                  }
             )
         , codeTest
@@ -847,17 +867,17 @@ tries as Test =
                  {
                  , patterns =
                      [
-                     , variable "b"
+                     , lowercase "b"
                      & (e
                       << FA.Try
                           {
-                          , patterns = [ variable "q" & variable "q" ]
-                          , value = variable "c"
+                          , patterns = [ lowercase "q" & lowercase "q" ]
+                          , value = lowercase "c"
                           }
                      )
-                     , variable "d" & variable "e"
+                     , lowercase "d" & lowercase "e"
                      ]
-                 , value = variable "a"
+                 , value = lowercase "a"
                  }
             )
         ]
@@ -871,19 +891,19 @@ patterns as Test =
             """
             List unpacking
             """
-            "[a as int, b] = x"
+            "[a as Int, b] = x"
             firstDefinition
             (Test.isOkAndEqualTo
                  {
-                 , body = variable "x"
+                 , body = lowercase "x"
                  , nonFn = []
                  , pattern =
                      e
                      << FA.List
                          False
                          [
-                         , False & annotatedVariable "a" (variable "int")
-                         , False & variable "b"
+                         , False & annotatedVariable "a" (uppercase "Int")
+                         , False & lowercase "b"
                          ]
                  }
             )
@@ -906,24 +926,24 @@ patterns as Test =
                      {
                      , attrs =
                          [
-                         , { maybeExpr = Nothing, name = variable "a" }
-                         , { maybeExpr = Nothing, name = variable "b" }
+                         , { maybeExpr = Nothing, name = lowercase "a" }
+                         , { maybeExpr = Nothing, name = lowercase "b" }
                          ]
                      , isMultiline = False
                      , maybeExtension = Just Nothing
                      }
                  ]
-                 (variable "x")
+                 (lowercase "x")
             )
         ]
 
 
 binops as Test =
     sendBtoC =
-        e << FA.BinopChain Op.precedence_pipe __ << variable "b" & [ faBinop Prelude.sendRight & variable "c" ]
+        e << FA.BinopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c" ]
 
     sendBtoCtoD =
-        e << FA.BinopChain Op.precedence_pipe __ << variable "b" & [ faBinop Prelude.sendRight & variable "c", faBinop Prelude.sendRight & variable "d" ]
+        e << FA.BinopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c", faBinop Prelude.sendRight & lowercase "d" ]
 
     Test.Group
         "Binops"
@@ -1022,7 +1042,7 @@ unops as Test =
             -a b
             """
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.UnopCall Op.UnopMinus (e << FA.Call (variable "a") [ variable "b" ])))
+            (Test.isOkAndEqualTo (e << FA.UnopCall Op.UnopMinus (e << FA.Call (lowercase "a") [ lowercase "b" ])))
         , codeTest
             """
             Precedence 2
@@ -1031,7 +1051,7 @@ unops as Test =
             a -b
             """
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.Call (variable "a") [ e << FA.UnopCall Op.UnopMinus (variable "b") ]))
+            (Test.isOkAndEqualTo (e << FA.Call (lowercase "a") [ e << FA.UnopCall Op.UnopMinus (lowercase "b") ]))
         , codeTest
             """
             Precedence 3
@@ -1043,10 +1063,10 @@ unops as Test =
             (Test.isOkAndEqualTo
                  (e
                   << FA.Call
-                      (variable "a")
+                      (lowercase "a")
                       [
-                      , e << FA.UnopCall Op.UnopMinus (variable "b")
-                      , variable "c"
+                      , e << FA.UnopCall Op.UnopMinus (lowercase "b")
+                      , lowercase "c"
                       ]
                  )
             )

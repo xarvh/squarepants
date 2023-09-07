@@ -319,7 +319,7 @@ translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA
                 pos & name & maybeType >> Ok
 
         , _:
-            erroro ro pos [ "Expecting an attribute name here" ]
+            erroro ro pos [ "I need a lowercase attribute name here" ]
 
 
 translatePatternConstructor as fn Env, Pos, Maybe Name, Name, [ CA.Pattern ]: Res CA.Pattern =
@@ -482,7 +482,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                     translatePatternConstructor env pos maybeModule name caPars
 
                 , _:
-                    error env p [ "I was expecting a constructor name here" ]
+                    error env p [ "I need 'constructor name here" ]
 
         , FA.List _ faItems:
             reversedFaItems =
@@ -771,6 +771,9 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
         , FA.Record { with  attrs, maybeExtension }:
             translateRecord env pos maybeExtension attrs
 
+        , FA.RecordShorthand { name, attrPath }:
+            translateRecordShorthand env pos attrPath name
+
         , FA.List _ faDotsAndItems:
             rev =
                 List.reverse faDotsAndItems
@@ -922,7 +925,7 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
 
                 , FA.Lowercase { attrPath, maybeModule, maybeType = Nothing, name }:
                     if maybeModule /= Nothing or attrPath /= [] then
-                        error env pos [ "I was expecting a local variable name here... =|" ]
+                        error env pos [ "I need a lowercase local variable name here... =|" ]
                     else
                         CA.ParameterRecycle pos name >> Ok
 
@@ -1274,7 +1277,7 @@ translateAndInsertRecordAttributeType as fn ReadOnly, FA.RecordAttribute, Dict N
                 >> translateRawType ro __
                 >> onOk fn caType:
                 if faAttr.maybeExpr /= Nothing then
-                    erroro ro pos [ "I'm expecting a type here; `=` is for assignign values" ]
+                    erroro ro pos [ "I need a type here; `=` is for assignign values" ]
                 else
                     caAttrs
                     >> Dict.insert name caType __
@@ -1359,7 +1362,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                     CA.TypeNamed pos usr caArgs >> Ok
 
                 , _:
-                    erroro ro refPos [ "I was expecting a named type here" ]
+                    erroro ro refPos [ "I need an Uppercase type name here" ]
 
         , FA.List _ dotsAndItems:
             try dotsAndItems as
@@ -1431,7 +1434,7 @@ translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Construc
                 env
                 pos
                 [
-                , "I was expecting a 'constructor name here!"
+                , "I need a 'constructor name here!"
                 ]
     >> onOk fn name & faPars:
     if Dict.member name constructors then

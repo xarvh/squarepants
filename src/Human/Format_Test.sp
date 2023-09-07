@@ -467,11 +467,11 @@ definitions as Test =
             Unions 1
             """
             """
-            union Meh = Meh z
+            var Meh = 'meh z
             """
             """
-            union Meh =
-                , Meh z
+            var Meh =
+                , 'meh z
 
             """
         , formatTest
@@ -479,12 +479,12 @@ definitions as Test =
             Unions 2
             """
             """
-            union Meh a b = Blah, Meh x y z
+            var Meh a b = 'blah, 'meh x y z
             """
             """
-            union Meh a b =
-                , Blah
-                , Meh x y z
+            var Meh a b =
+                , 'blah
+                , 'meh x y z
 
             """
         , formatTest

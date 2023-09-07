@@ -1,6 +1,8 @@
 tests as Test =
     Test.Group
-        "TypeCheck"
+        """
+        TypeCheck
+        """
         [
         , functions
         , statements
