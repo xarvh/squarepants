@@ -23,6 +23,18 @@ word as fn Text: Pos & Name =
     Pos.T & name
 
 
+makeConstructor as fn Name, [FA.Expression]: FA.Constructor =
+    fn name, pars:
+
+    {
+    , name = word name
+    , comments = []
+    , pars
+    }
+
+
+
+
 codeTest as fn Text, Text, fn Text: Result Text z, Test.CodeExpectation z: Test =
     Test.codeTest toHuman __ __ __ __
 
@@ -456,7 +468,7 @@ unionDefs as Test =
             Parse inline def
             """
             """
-            var A b c = 'v1 b, 'v2 c, 'v3, 'v4 b c
+            var A b c = 'v1 b or 'v2 c or 'v3 or 'v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
@@ -464,10 +476,10 @@ unionDefs as Test =
                  , args = [ word "b", word "c" ]
                  , constructors =
                      [
-                     , e << FA.Call (constructor "'v1") [ lowercase "b" ]
-                     , e << FA.Call (constructor "'v2") [ lowercase "c" ]
-                     , constructor "'v3"
-                     , e << FA.Call (constructor "'v4") [ lowercase "b", lowercase "c" ]
+                     , makeConstructor "'v1" [ lowercase "b" ]
+                     , makeConstructor "'v2" [ lowercase "c" ]
+                     , makeConstructor "'v3" []
+                     , makeConstructor "'v4" [ lowercase "b", lowercase "c" ]
                      ]
                  , name = word "A"
                  }
@@ -478,10 +490,10 @@ unionDefs as Test =
             """
             """
             var A b c =
-                , 'v1 b
-                , 'v2 c
-                , 'v3
-                , 'v4 b c
+                or 'v1 b
+                or 'v2 c
+                or 'v3
+                or 'v4 b c
             """
             firstTypeDef
             (Test.isOkAndEqualTo
@@ -489,10 +501,10 @@ unionDefs as Test =
                  , args = [ word "b", word "c" ]
                  , constructors =
                      [
-                     , e << FA.Call (constructor "'v1") [ lowercase "b" ]
-                     , e << FA.Call (constructor "'v2") [ lowercase "c" ]
-                     , constructor "'v3"
-                     , e << FA.Call (constructor "'v4") [ lowercase "b", lowercase "c" ]
+                     , makeConstructor "'v1" [ lowercase "b" ]
+                     , makeConstructor "'v2" [ lowercase "c" ]
+                     , makeConstructor "'v3" []
+                     , makeConstructor "'v4" [ lowercase "b", lowercase "c" ]
                      ]
                  , name = word "A"
                  }
@@ -504,15 +516,7 @@ unionDefs as Test =
             (Test.isOkAndEqualTo
                  {
                  , args = []
-                 , constructors =
-                     [
-                     , e
-                     << FA.Call
-                         (constructor "'a")
-                         [
-                         , e << FA.List False [ False & (uppercase "Int" ) ]
-                         ]
-                     ]
+                 , constructors = [ makeConstructor "'a" [ e << FA.List False [ False & (uppercase "Int" ) ] ] ]
                  , name = word "A"
                  }
             )

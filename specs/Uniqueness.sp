@@ -473,7 +473,7 @@ polymorphism as Test =
             a Uni, b Uni
             """
             """
-            var Re error payload = 'er error, 'okk payload
+            var Re error payload = 'er error or 'okk payload
             isOkk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = todo ""
 
             scope =
@@ -487,7 +487,7 @@ polymorphism as Test =
             a Uni, b Imm
             """
             """
-            var Result_ error payload = 'err_ error, 'ok_ payload
+            var Result_ error payload = 'err_ error or 'ok_ payload
             isOk_ as fn (fn 1?a: 2?Result_ error b), 1?Result_ error a: 2?Result_ error b = todo ""
             immB as Number = 1
 

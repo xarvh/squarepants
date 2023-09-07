@@ -336,7 +336,7 @@ unionDef as fn Env: Parser FA.Statement =
     >> on fn args:
     kind Token.Defop
     >> on fn _:
-    inlineOrBelowOrIndented (rawList (expr env))
+    discardFirst (Parser.maybe literalOr) (oomSeparatedBy literalOr (constructorDef env))
     >> on fn constructors:
     {
     , args
@@ -345,6 +345,42 @@ unionDef as fn Env: Parser FA.Statement =
     }
     >> FA.UnionDef
     >> ok
+
+
+literalOr as Parser None =
+    oneToken
+    >> on fn Token start end k:
+    try k as
+        , Token.Binop _ { with  symbol = "or" }: ok None
+        , _: Parser.reject
+    >> inlineOrBelowOrIndented
+
+
+constructorDef as fn Env: Parser FA.Constructor =
+    fn env:
+    oneToken
+    >> on fn Token start end k:
+    try k as
+
+        , Token.Constructor { maybeModule = Nothing, name }:
+            p =
+                pos env start end
+
+            pullCommentsReversed
+            >> on fn commentsReversed:
+            expr env
+            >> rawList
+            >> maybe
+            >> on fn maybePars:
+            {
+            , comments = List.reverse commentsReversed
+            , name = p & name
+            , pars = Maybe.withDefault [] maybePars
+            }
+            >> ok
+
+        , _:
+            Parser.abort "I need just a 'constructor name here!"
 
 
 #

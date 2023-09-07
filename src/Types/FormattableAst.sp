@@ -46,8 +46,15 @@ alias AliasDef =
 alias UnionDef =
     {
     , args as [ Pos & Name ]
-    , constructors as [ Expression ]
+    , constructors as [ Constructor ]
     , name as Pos & Name
+    }
+
+alias Constructor =
+    {
+    , comments as [Comment]
+    , name as Pos & Name
+    , pars as [Expression]
     }
 
 

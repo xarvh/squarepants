@@ -465,11 +465,23 @@ formatUnionDef as fn Env, FA.UnionDef: Fmt.Block =
     [
     , formatDef "var" name args
     , constructors
-    >> List.map (fn c: Fmt.prefix 2 (Fmt.Text_ ", ") (formatExpression env c)) __
+    >> List.map (fn c: Fmt.prefix 3 (Fmt.Text_ "or ") (formatConstructorDef env c)) __
     >> Fmt.stack
     >> Fmt.indent
     ]
     >> Fmt.stack
+
+
+formatConstructorDef as fn Env, FA.Constructor: Fmt.Block =
+    fn env, constructor:
+    [
+    , Fmt.textToBlock constructor.name.second
+    , constructor.pars
+    >> List.map (formatExpression env __) __
+    >> commaSeparatedList False (Fmt.textToBlock "") "" False __
+    ]
+    >> Fmt.rowOrIndent Nothing __
+    >> stackWithComments env constructor.comments __
 
 
 formatList as fn Env, Bool, [ Bool & FA.Expression ]: Fmt.Block =
@@ -522,7 +534,7 @@ formatRecord as fn Env, Bool, Maybe (Maybe FA.Expression), [ FA.RecordAttribute 
     attributeName =
         fn nameExpr:
         try nameExpr.name as
-            , FA.Expression _ _ (FA.Lowercase { with name }): name
+            , FA.Expression _ _ (FA.Lowercase { with  name }): name
             , _: ""
 
     attrs

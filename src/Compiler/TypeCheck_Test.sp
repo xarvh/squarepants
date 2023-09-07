@@ -1107,7 +1107,7 @@ misc as Test =
             """
             """
             var DD q =
-                , 'RBEmpty_elm_builtin
+                or 'RBEmpty_elm_builtin
 
             empty as DD key =
                 'RBEmpty_elm_builtin

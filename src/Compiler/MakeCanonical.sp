@@ -1419,43 +1419,32 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 # Union constructor
 #
 
-translateConstructor as fn CA.RawType, USR, FA.Expression, Dict Name CA.Constructor & Env: Res (Dict Name CA.Constructor & Env) =
-    fn unionType, unionUsr, FA.Expression _ pos expr_, constructors & env:
-    try expr_ as
+translateConstructor as fn CA.RawType, USR, FA.Constructor, Dict Name CA.Constructor & Env: Res (Dict Name CA.Constructor & Env) =
+    fn unionType, unionUsr, faConstructor, constructors & env:
 
-        , FA.Constructor { maybeModule = Nothing, name }:
-            name & [] >> Ok
+    faConstructor.pars
+    >> List.mapRes (translateRawType env.ro __) __
+    >> onOk fn caPars:
 
-        , FA.Call (FA.Expression _ _ (FA.Constructor { maybeModule = Nothing, name })) pars:
-            name & pars >> Ok
+    pos & name = faConstructor.name
 
-        , _:
-            error
-                env
-                pos
-                [
-                , "I need a 'constructor name here!"
-                ]
-    >> onOk fn name & faPars:
     if Dict.member name constructors then
         # TODO "union $whatever has two constructors with the same name!"
         error env pos [ "constructor " .. name .. " is duplicate" ]
     else
-        faPars
-        >> List.mapRes (translateRawType env.ro __) __
-        >> onOk fn ins:
         env
         >> insertPatternNames True (CA.PatternAny pos (Just name) Nothing) __
         >> onOk fn newEnv:
         c as CA.Constructor =
             {
-            , ins
+            , ins = caPars
             , out = unionType
             , pos
             , typeUsr = unionUsr
             }
 
-        Dict.insert name c constructors & newEnv >> Ok
+        Dict.insert name c constructors & newEnv
+        >> Ok
 
 
 #
