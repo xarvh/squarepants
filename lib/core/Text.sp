@@ -123,6 +123,12 @@ contains as fn Text, Text: Bool =
       , [ _ ]: False
       , _: True
 
+
+toLowercase as fn Text: Text =
+    fn t:
+    todo "native"
+
+
 #
 # Non native functions
 #

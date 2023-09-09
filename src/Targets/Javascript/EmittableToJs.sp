@@ -65,6 +65,7 @@ coreOverrides as fn None: Dict USR Override =
     , Prelude.debugBenchStop.usr & function "sp_benchStop"
     , Prelude.compare.usr & function "basics_compare"
     #
+    , corelib "Text" "toLowercase" & function  "text_toLowercase"
     , corelib "Text" "fromNumber" & function  "text_fromNumber"
     , corelib "Text" "toNumber" & function  "text_toNumber"
     , corelib "Text" "split" & function  "text_split"

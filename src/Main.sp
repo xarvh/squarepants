@@ -118,7 +118,8 @@ formatMain as fn [Text]: IO Int =
         >> onOk fn formattableAst:
 
         formattableAst
-        >> Human/Format.formatStatements { isRoot = True, originalContent = content } __
+        >> List.map Translate/Translate.translateStatement __
+        >> Translate/Format.formatStatements { isRoot = True, originalContent = content } __
         >> Fmt.render
         >> Ok
 

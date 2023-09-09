@@ -54,6 +54,10 @@ sourceDir =
        importAs = FA
 
     module =
+       path = Translate/FormattableAst
+       importAs = FN
+
+    module =
        path = Targets/Javascript/Ast
        importAs = JA
 

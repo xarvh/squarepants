@@ -309,6 +309,8 @@ const sp_toHumanAsDict = (dict, l) => {
 //
 
 
+const text_toLowercase = (s) => s.toLowerCase();
+
 const text_fromNumber = (n) => '' + n;
 
 const text_toNumber = (t) => {
