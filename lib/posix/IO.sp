@@ -1,90 +1,56 @@
-Env =
-    {
-    , vars as Dict Text Text
-    }
-
-
 Program =
-    fn Env, [ Text ]: IO Int
+    fn @IO, @Hash Text Text, [ Text ]: Int
 
 
-var Never =
-    , 'never Never
+# TODO This should be Res
+Re b =
+    Result Text b
 
 
-var IO a =
-    , 'IO (fn Never: Result Text a)
-
-
-succeed as fn a: IO a =
-    fn a:
-    'IO (fn never: 'ok a)
-
-
-fail as fn Text: IO a =
-    fn message:
-    'IO (fn never: 'err message)
-
-
-_run as fn Never, IO a: Result Text a =
-    fn never, r:
-    'IO neverToResult =
-        r
-
-    neverToResult never
-
-
-onSuccess as fn fn a: IO b: fn IO a: IO b =
-    fn f:
-    fn m:
-    'IO fn never:
-        try _run never m as
-            'ok a: _run never (f a)
-            'err e: 'err e
-
-
-onResult as fn fn Result Text a: IO b: fn IO a: IO b =
-    fn f:
-    fn m:
-    'IO fn never:
-        m
-        >> _run never __
-        >> f
-        >> _run never __
+var IO =
+    , 'never IO
 
 
 #
 # Posix
 #
-parallel as fn [ IO a ]: IO [ a ] =
-    fn _:
-    todo "io.parallel"
+reToStderr as fn @IO, Re a: Int =
+    fn @io, re:
+    try re as
+
+        'ok _:
+            0
+
+        'err error:
+            writeStderr @io error
+
+            1
 
 
-readDir as fn Text: IO [ Bool & Text ] =
-    fn _:
+readDir as fn @IO, Text: Re [ Bool & Text ] =
+    fn @_, _:
     todo "io.readDir"
 
 
-readFile as fn Text: IO Text =
-    fn _:
+readFile as fn @IO, Text: Re Text =
+    fn @_, _:
     todo "io.readFile"
 
 
-readStdin as IO Text =
-    succeed "compiler error, IO.readStdin not overridden"
+readStdin as fn @IO: Re Text =
+    todo "compiler error, IO.readStdin not overridden"
 
 
-writeFile as fn Text, Text: IO Int =
-    fn _, _:
+writeFile as fn @IO, Text, Text: Re None =
+    fn @_, _, _:
     todo "io.writeFile"
 
 
-writeStdout as fn Text: IO Int =
-    fn _:
+writeStdout as fn @IO, Text: Re None =
+    fn @_, _:
     todo "io.writeStdout"
 
 
-writeStderr as fn Text: IO Int =
-    fn _:
+writeStderr as fn @IO, Text: Re None =
+    fn @_, _:
     todo "io.writeStderr"

@@ -179,7 +179,7 @@ faBinop as fn Op.Binop: FA.Binop =
 
 tuple as fn FA.Expression, FA.Expression: FA.Expression =
     fn a, b:
-    FA.'binopChain Op.precedence_tuple (a & [ faBinop Prelude.tuple & b ]) >> e
+    FA.'binopChain Op.precedence_tuple (a & [ faBinop CoreDefs.tuple & b ]) >> e
 
 
 lowercase as fn Name: FA.Expression =
@@ -318,8 +318,8 @@ functions as Test =
              << FA.'binopChain Op.precedence_pipe __
              << lowercase "value"
              & [
-             , faBinop Prelude.sendRight & e (FA.'call (lowercase "map") [ e << FA.'fn FA.'aligned [ lowercase "x" ] (lowercase "blah") ])
-             , faBinop Prelude.sendRight & lowercase "sblorp"
+             , faBinop CoreDefs.sendRight & e (FA.'call (lowercase "map") [ e << FA.'fn FA.'aligned [ lowercase "x" ] (lowercase "blah") ])
+             , faBinop CoreDefs.sendRight & lowercase "sblorp"
              ]
             )
         , codeTest
@@ -385,7 +385,7 @@ functions as Test =
             (Test.isOkAndEqualTo
              << e
              << FA.'binopChain Op.precedence_mutop __
-             << (e << FA.'unopCall Op.'unopRecycle __ << lowercase "b") & [ faBinop Prelude.mutableAdd & (e << FA.'literalNumber 'false "1") ]
+             << (e << FA.'unopCall Op.'unopRecycle __ << lowercase "b") & [ faBinop CoreDefs.mutableAdd & (e << FA.'literalNumber 'false "1") ]
             )
         , codeTest
             """
@@ -940,10 +940,10 @@ patterns as Test =
 
 binops as Test =
     sendBtoC =
-        e << FA.'binopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c" ]
+        e << FA.'binopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop CoreDefs.sendRight & lowercase "c" ]
 
     sendBtoCtoD =
-        e << FA.'binopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c", faBinop Prelude.sendRight & lowercase "d" ]
+        e << FA.'binopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop CoreDefs.sendRight & lowercase "c", faBinop CoreDefs.sendRight & lowercase "d" ]
 
     Test.'group
         "Binops"

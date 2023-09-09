@@ -35,7 +35,7 @@ canonicalJsTest as Test =
         """
         [reg] THIS SHOULD BE IN CANONICALTOJS
         """
-        (fn _: Core.compare 'none 'none)
+        (fn _: Basics.compare 'none 'none)
         (Test.isOkAndEqualTo 0)
 
 

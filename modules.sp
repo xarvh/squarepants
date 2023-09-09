@@ -9,6 +9,11 @@ sourceDir =
     path = "src"
 
     module =
+        path = Human/Type
+        globalValues =
+            usrToText
+
+    module =
        path = Compiler/Error
        importAs = Error
        globalTypes =
@@ -16,83 +21,9 @@ sourceDir =
           Res
 
     module =
-       path = Compiler/CoreTypes
-       importAs = CoreTypes
+       path = Compiler/CoreDefs
+       importAs = CoreDefs
 
-    module =
-       path = Types/Ast
-       importAs = Ast
-       globalTypes =
-          Name
-          Ref
-          UnivarId
-          Uniqueness
-       globalValues =
-          'refLocal
-          'refGlobal
-          'refPlaceholder
-          'uni
-          'imm
-          'depends
-          toImm
-          toUni
-
-    module =
-       path = Types/TypedAst
-       importAs = TA
-
-    module =
-       path = Types/CanonicalAst
-       importAs = CA
-
-    module =
-       path = Types/EmittableAst
-       importAs = EA
-
-    module =
-       path = Types/FormattableAst
-       importAs = FA
-
-    module =
-       path = Targets/Javascript/Ast
-       importAs = JA
-
-    module =
-       path = Compiler/TestHelpers
-       importAs = TH
-
-    module =
-        path = Types/Meta
-        importAs = Meta
-        globalTypes =
-            Meta
-            ByUsr
-            USR
-            UMR
-        globalValues =
-            'USR
-            'UMR
-
-    module =
-        path = Types/Op
-        importAs = Op
-
-    module =
-       path = Types/Pos
-       importAs = Pos
-       globalTypes =
-            Pos
-            At
-       globalValues =
-            'at
-
-    module =
-        path = Types/Token
-        importAs = Token
-        globalTypes =
-            Token
-        globalValues =
-            'token
 
     module =
        path = SPLib/Format
@@ -114,6 +45,14 @@ sourceDir =
        path = SPLib/Test
        importAs = Test
        globalTypes = Test
+
+    module =
+       path = Targets/Javascript/Ast
+       importAs = JA
+
+    module =
+       path = Compiler/TestHelpers
+       importAs = TH
 
 
 # This will be transformed into a platform
@@ -220,3 +159,82 @@ library =
 
     module =
         path = Self
+
+    module =
+       path = Compiler/Ast
+       importAs = Ast
+       globalTypes =
+          Name
+          Ref
+          UnivarId
+          Uniqueness
+       globalValues =
+          'refLocal
+          'refGlobal
+          'refPlaceholder
+          'uni
+          'imm
+          'depends
+          toImm
+          toUni
+
+    module =
+       path = Compiler/TypedAst
+       importAs = TA
+
+    module =
+       path = Compiler/Platform
+       importAs = Platform
+       globalTypes =
+          Platform
+
+    module =
+       path = Compiler/CanonicalAst
+       importAs = CA
+
+    module =
+       path = Compiler/EmittableAst
+       importAs = EA
+
+    module =
+       path = Compiler/FormattableAst
+       importAs = FA
+
+    module =
+        path = Compiler/Meta
+        importAs = Meta
+        globalTypes =
+            Meta
+            ByUsr
+            USR
+            UMR
+            LibrarySource
+            DependencyType
+        globalValues =
+            'USR
+            'UMR
+            'valueDependency
+            'constructorDependency
+            'typeDependency
+
+    module =
+        path = Compiler/Op
+        importAs = Op
+
+    module =
+       path = Compiler/Pos
+       importAs = Pos
+       globalTypes =
+            Pos
+            At
+       globalValues =
+            'at
+
+    module =
+        path = Compiler/Token
+        importAs = Token
+        globalTypes =
+            Token
+        globalValues =
+            'token
+

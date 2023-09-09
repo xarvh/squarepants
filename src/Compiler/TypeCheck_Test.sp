@@ -39,9 +39,12 @@ Out =
 
 outToHuman as fn Out: Text =
     fn out:
+    env =
+        Compiler/TypeCheck.initEnv Dict.empty
+
     type =
         out.type
-        >> Human/Type.doRawType Compiler/TypeCheck.initEnv __
+        >> Human/Type.doRawType env __
         >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
         >> Fmt.render
 
@@ -72,6 +75,38 @@ freeTyvarsAnnotated as fn [ TA.TyvarId & Name ]: Dict TA.TyvarId TA.Tyvar =
 #
 #
 #
+add as CA.ValueDef =
+    {
+    , directDeps = Dict.empty
+    , maybeAnnotation =
+        'just
+            {
+            , raw = TH.caFunction [ TH.caNumber, TH.caNumber ] TH.caNumber
+            , tyvars = Dict.empty
+            , univars = Dict.empty
+            }
+    , maybeBody = 'nothing
+    , name = "add"
+    , namePos = Pos.'t
+    }
+
+
+reset as CA.ValueDef =
+    {
+    , directDeps = Dict.empty
+    , maybeAnnotation =
+        'just
+            {
+            , raw = TH.caFunction [ TH.caNumber ] TH.caNone
+            , tyvars = Dict.empty
+            , univars = Dict.empty
+            }
+    , maybeBody = 'nothing
+    , name = "reset"
+    , namePos = Pos.'t
+    }
+
+
 infer as fn Text: fn Text: Result Text Out =
     fn targetName:
     fn code:
@@ -85,80 +120,62 @@ infer as fn Text: fn Text: Result Text Out =
     params
     >> Compiler/MakeCanonical.textToCanonicalModule 'true __
     >> TH.resErrorToStrippedText
-    >> onOk fn caModule:
-    [ caModule ]
-    >> Compiler/TypeCheck.initStateAndGlobalEnv [] __
-    >> TH.resErrorToStrippedText
-    >> onOk fn luv & typeCheckGlobalEnv_:
-    typeCheckGlobalEnv as Compiler/TypeCheck.Env =
-        { typeCheckGlobalEnv_ with
-        , variables =
-            .variables
-            >> Dict.insert
-                ('refGlobal << 'USR TH.moduleUmr "add")
-                {
-                , definedAt = Pos.'t
-                , freeTyvars = Dict.empty
-                , freeUnivars = Dict.empty
-                , type = toImm << TH.taFunction [ TH.taNumber, TH.taNumber ] TH.taNumber
-                }
-                __
-            >> Dict.insert
-                ('refGlobal << 'USR TH.moduleUmr "reset")
-                {
-                , definedAt = Pos.'t
-                , freeTyvars = Dict.empty
-                , freeUnivars = Dict.empty
-                , type = toImm << TH.taFunction [ TH.taNumber ] TH.taNone
-                }
-                __
+    >> onOk fn caModuleRaw:
+    caModule as CA.Module =
+        { caModuleRaw with
+        , valueDefs =
+            .valueDefs
+            >> Dict.insert "add" add __
+            >> Dict.insert "reset" reset __
         }
 
-    !lastUnificationVarId =
-        cloneImm luv
+    keysToUsrs =
+        __
+        >> Dict.keys
+        >> List.map ('USR TH.moduleUmr __) __
 
-    caModule
-    >> Compiler/TypeCheck.doModule @lastUnificationVarId typeCheckGlobalEnv __
-    >> TH.resErrorToStrippedText
-    >> onOk fn taModule:
-    taModule
-    >> Compiler/UniquenessCheck.doModule
-    >> TH.resErrorToStrippedText
-    >> onOk fn moduleWithDestroy:
-    toMatch as fn CA.Pattern & TA.ValueDef: Maybe TA.ValueDef =
-        fn pattern & def:
-        try pattern as
-            CA.'patternAny _ ('just name) maybeAnnotation: if name == targetName then 'just def else 'nothing
-            _: 'nothing
+    requiredUsrs as [ USR ] =
+        [
+        , keysToUsrs caModule.valueDefs
+        , keysToUsrs caModule.constructorDefs
+        , keysToUsrs caModule.variantTypeDefs
+        , keysToUsrs caModule.aliasDefs
+        ]
+        >> List.concat
 
-    matches =
-        moduleWithDestroy.valueDefs
-        >> Dict.toList
-        >> List.filterMap toMatch __
+    errorToError as fn Error: Text =
+        TH.errorToStrippedText
 
-    try matches as
+    loadCaModule as fn UMR: Result Text CA.Module =
+        fn umr:
+        if umr == TH.moduleUmr then
+            'ok caModule
+        else if umr == 'UMR Meta.'core "Core" then
+            'ok CoreDefs.coreModule
+        else
+            'err << "no module " .. toHuman umr
 
-        []:
-            'err "dict fail"
-
-        def :: tail:
-            {
-            , freeTyvars = def.freeTyvars
-            , type = def.type.raw
-            }
-            >> normalizeOut
-            >> 'ok
-
-
-normalizeOut as fn Out: Out =
-    fn out:
+    {
+    , errorToError
+    , loadCaModule
+    , requiredUsrs
+    }
+    >> Compiler/LazyBuild.build
+    >> onOk fn { constructors, rootValues }:
+    try List.find (fn rv: rv.usr == 'USR TH.moduleUmr targetName) rootValues as
+        'nothing: 'err "find fail"
+        'just def: 'ok def
+    >> onOk fn def:
     !hash =
         Hash.fromList []
 
-    {
-    , freeTyvars = Dict.for Dict.empty out.freeTyvars (fn id, tc, d: Dict.insert (TA.normalizeTyvarId @hash id) tc d)
-    , type = TA.normalizeType @hash out.type
-    }
+    ft as Dict TA.TyvarId TA.Tyvar =
+        Dict.for Dict.empty def.freeTyvars (fn id, tc, d: Dict.insert (TA.normalizeTyvarId @hash id) tc d)
+
+    type =
+        TA.normalizeType @hash def.type
+
+    'ok { freeTyvars = ft, type }
 
 
 #
@@ -351,7 +368,7 @@ recursiveTypes as Test =
             """
             """
             A = { a as A }
-            a as A = todo ""
+            a as A = this_is_sp_native
             """
             (infer "a")
             (Test.errorContains [ "Circular" ])
@@ -362,7 +379,7 @@ recursiveTypes as Test =
             """
             A = { b as B }
             B = { a as A }
-            a as A = todo ""
+            a as A = this_is_sp_native
             """
             (infer "a")
             (Test.errorContains [ "Circular" ])
@@ -373,8 +390,8 @@ recursiveTypes as Test =
             """
             var A = 'a2 B
             B = { a as A }
-            a as A = todo ""
-            b as B = todo ""
+            a as A = this_is_sp_native
+            b as B = this_is_sp_native
             """
             (infer "a")
             Test.isOk
@@ -454,11 +471,11 @@ variableTypes as Test =
             """
             """
             var Dict_ k v = 'empty
-            dict_member as fn k, Dict_ k v: Bool = todo ""
-            dict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = todo ""
+            dict_member as fn k, Dict_ k v: Bool = this_is_sp_native
+            dict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = this_is_sp_native
 
-            freeTyvars as Dict_ Number {} = todo ""
-            typeTyvars as Dict_ Number None = todo ""
+            freeTyvars as Dict_ Number {} = this_is_sp_native
+            typeTyvars as Dict_ Number None = this_is_sp_native
 
             x = dict_filter (fn k, v: dict_member v typeTyvars) freeTyvars
             """
@@ -1062,7 +1079,7 @@ nonFunction as Test =
 
             sortBy as fn (fn a: b), [a]: [a] with b NonFunction =
                 fn function, list:
-                todo "implemented natively"
+                this_is_sp_native
             """
             (infer "sort")
             (Test.isOk)
@@ -1081,7 +1098,7 @@ misc as Test =
             [reg] Undefined types should be rejected
             """
             """
-            v as ThisTypeIsNotDefined = todo ""
+            v as ThisTypeIsNotDefined = this_is_sp_native
             """
             (infer "v")
             (Test.errorContains [ "ThisTypeIsNotDefined" ])
@@ -1090,7 +1107,7 @@ misc as Test =
             Placeholder works with unique args
             """
             """
-            stuff as fn !Number: Number = todo ""
+            stuff as fn !Number: Number = this_is_sp_native
             v =
                 1 >> stuff __
             """

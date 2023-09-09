@@ -450,9 +450,10 @@ addWordToken as fn Text, @ReadState: None =
             "try": 'just << Token.'try
             "as": 'just << Token.'as
             "with": 'just << Token.'with
-            "and": 'just << Token.'binop (cloneUni @state.line) Prelude.and_
-            "or": 'just << Token.'binop (cloneUni @state.line) Prelude.or_
+            "and": 'just << Token.'binop (cloneUni @state.line) CoreDefs.and_
+            "or": 'just << Token.'binop (cloneUni @state.line) CoreDefs.or_
             "__": 'just << Token.'argumentPlaceholder
+            "this_is_sp_native": 'just Token.'native
             _: 'nothing
 
     try maybeKeywordKind as
@@ -535,13 +536,13 @@ addSquiggleToken as fn Text, Bool, @ReadState: None =
             add << Token.'unop Op.'unopRecycle
 
         "-":
-            add << if nextIsSpace then Token.'binop (cloneUni @state.line) Prelude.subtract else Token.'unop Op.'unopMinus
+            add << if nextIsSpace then Token.'binop (cloneUni @state.line) CoreDefs.subtract else Token.'unop Op.'unopMinus
 
         "+":
-            add << if nextIsSpace then Token.'binop (cloneUni @state.line) Prelude.add else Token.'unop Op.'unopPlus
+            add << if nextIsSpace then Token.'binop (cloneUni @state.line) CoreDefs.add else Token.'unop Op.'unopPlus
 
         op:
-            try Dict.get chunk Prelude.binopsBySymbol as
+            try Dict.get chunk CoreDefs.binopsBySymbol as
                 'just binop: add << Token.'binop (cloneUni @state.line) binop
                 'nothing: addError ("Invalid operator: `" .. chunk .. "`") @state
 
@@ -689,7 +690,7 @@ lexOne as fn Text, Text, @ReadState: None =
 
                 setMode 'default @state
             else
-                addContentTokenRel -1 1 (Token.'binop (cloneUni @state.line) Prelude.textConcat) @state
+                addContentTokenRel -1 1 (Token.'binop (cloneUni @state.line) CoreDefs.textConcat) @state
 
                 setMode 'default @state
 

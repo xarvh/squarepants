@@ -42,7 +42,7 @@ AliasDef =
     }
 
 
-UnionDef =
+VariantTypeDef =
     {
     , args as [ Pos & Name ]
     , constructors as [ Expression ]
@@ -71,7 +71,7 @@ var Statement =
     , 'evaluation Expression
     , 'valueDef ValueDef
     , 'aliasDef AliasDef
-    , 'unionDef UnionDef
+    , 'unionDef VariantTypeDef
 
 
 var Expression =
@@ -136,6 +136,7 @@ var Expr_ =
           , patterns as [ Expression & Expression ]
           , value as Expression
           }
+    , 'native
 
 
 RecordAttribute =

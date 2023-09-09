@@ -96,7 +96,7 @@ Univar =
 ValueDef =
     {
     , body as Expression
-    , directValueDeps as Set USR
+    , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
     , isFullyAnnotated as Bool
@@ -121,7 +121,7 @@ Module =
     , asText as Text
     , fsPath as Text
     , umr as UMR
-    , valueDefs as Dict CA.Pattern ValueDef
+    , valueDefs as Dict Name ValueDef
     }
 
 

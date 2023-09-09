@@ -517,6 +517,9 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 >> on fn e:
                 FA.'unopCall op e >> expressionOk
 
+            Token.'native:
+                FA.'native >> expressionOk
+
             _:
                 Parser.reject
 

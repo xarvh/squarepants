@@ -151,7 +151,7 @@ ops as Test =
             (Test.isOkAndEqualTo
                  [
                  , [
-                 , 'token 1 3 __ << Token.'binop 0 Prelude.textConcat
+                 , 'token 1 3 __ << Token.'binop 0 CoreDefs.textConcat
                  , 'token 3 4 __ << Token.'squareBracket 0 Token.'open
                  , 'token 4 5 __ << Token.'squareBracket 0 Token.'closed
                  ]
@@ -184,7 +184,7 @@ unaryAddittiveOps as Test =
                  [
                  , [
                  , 'token 0 1 __ << lowerName "a"
-                 , 'token 2 3 __ << Token.'binop 0 Prelude.subtract
+                 , 'token 2 3 __ << Token.'binop 0 CoreDefs.subtract
                  , 'token 4 5 __ << Token.'unop Op.'unopMinus
                  , 'token 5 6 __ << lowerName "a"
                  ]
@@ -199,7 +199,7 @@ unaryAddittiveOps as Test =
                  , [
                  , 'token 0 0 __ << Token.'newSiblingLine
                  , 'token 0 1 __ << lowerName "a"
-                 , 'token 1 2 __ << Token.'binop 1 Prelude.subtract
+                 , 'token 1 2 __ << Token.'binop 1 CoreDefs.subtract
                  , 'token 2 3 __ << lowerName "a"
                  ]
                  ]
@@ -211,7 +211,7 @@ unaryAddittiveOps as Test =
             (Test.isOkAndEqualTo
                  [
                  , [
-                 , 'token 0 2 __ << Token.'binop 0 Prelude.mutableSubtract
+                 , 'token 0 2 __ << Token.'binop 0 CoreDefs.mutableSubtract
                  ]
                  ]
             )
@@ -322,9 +322,9 @@ indentation as Test =
         , Token (14) (15) (Token.Defop)
         , Token (24) (24) (Token.BlockStart )
         , Token (24) (25) (lowerName "j")
-        , Token (38) (40) (Token.Binop Prelude.sendRight)
+        , Token (38) (40) (Token.Binop CoreDefs.sendRight)
         , Token (41) (42) (lowerName "k")
-        , Token (55) (57) (Token.Binop Prelude.sendRight)
+        , Token (55) (57) (Token.Binop CoreDefs.sendRight)
         , Token (58) (59) (lowerName "s")
         , Token (64) (64) (Token.BlockEnd )
         , Token (64) (64) (Token.NewSiblingLine )
@@ -341,7 +341,7 @@ indentation as Test =
         , Token (121) (121) (Token.BlockEnd )
         , Token (121) (121) (Token.NewSiblingLine )
         , Token (121) (122) (lowerName "a")
-        , Token (123) (124) (Token.Binop Prelude.add)
+        , Token (123) (124) (Token.Binop CoreDefs.add)
         , Token [ fl " no block start!"] (155) (156) (lowerName "b")
         , Token [ fl " no sibling"] (180) (181) (lowerName "c")
         , Token (186) (186) (Token.NewSiblingLine )

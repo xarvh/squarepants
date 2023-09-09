@@ -1,9 +1,6 @@
 #
 # Introspection & dynamic loading
 #
-# TODO this makes core dependent on an external lib
-# Might need to move all of Compiler into core
-#
 
 var Value =
     , 'value Value
@@ -19,13 +16,11 @@ Self =
 
 
 introspect as fn a: Self =
-    fn a:
-    todo "native: introspect"
+    this_is_sp_native
 
 
 internalRepresentation as fn a: Text with a NonFunction =
-    fn a:
-    todo "native: internalRepresentation"
+    this_is_sp_native
 
 
 # If this type was in Compiler/Compiler we'd run the risk of changing it
@@ -33,14 +28,12 @@ internalRepresentation as fn a: Text with a NonFunction =
 # not protected by the type check.
 LoadPars =
     {
-    , constructors as [ USR & TA.FullType ]
+    , constructors as [ USR & TA.RawType ]
     , defs as [ EA.GlobalDefinition ]
     , entryUsr as USR
-    , externalValues as Array { self as Self.Self, usr as USR }
     , type as TA.RawType
     }
 
 
 load as fn LoadPars, fn specific: general: Result TA.RawType general =
-    fn a, b:
-    todo "native: load"
+    this_is_sp_native

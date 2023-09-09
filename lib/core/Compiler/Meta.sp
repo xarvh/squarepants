@@ -1,3 +1,9 @@
+var DependencyType =
+    , 'valueDependency
+    , 'constructorDependency
+    , 'typeDependency
+
+
 #
 # This tells us where a module comes from.
 #
@@ -9,11 +15,16 @@
 #
 var Source =
     , 'core
-    , 'posix
+    , # This one is a HACK, until we have proper platform management
+      'posix
     , # This one is a HACK, until we have proper platform management
       'browser
-    , # This one is a HACK, until we have proper platform management
-      'sourceDirId Text
+    , 'library LibrarySource
+    , 'sourceDirId Text
+
+
+LibrarySource =
+    Text
 
 
 #
@@ -71,7 +82,7 @@ init as Meta =
 
 
 spCoreUmr as UMR =
-    'UMR Meta.'core "Core"
+    'UMR 'core "Core"
 
 
 spCoreUSR as fn Name: USR =
