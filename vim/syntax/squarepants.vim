@@ -4,7 +4,7 @@ syn keyword spKeywords fn try as var with else if then :
 
 " Operators
 syn keyword spOperator and or
-syn match spOperator contained "\([-!%&\*\+./<=>\?@\\^:]\|\<_\>\)"
+syn match spOperator "\([-!%&\*\+./<=>\?@\\^:]\|\<_\>\)"
 
 syn match spType "\<[A-Z][0-9A-Za-z_]*"
 syn match spConstructor "['][0-9A-Za-z_]*"
@@ -36,7 +36,7 @@ syn match spFloat "\(\<\d\+\.\d\+\>\)"
 
 hi def link spKeywords      PreProc
 
-hi def link spOperator      Operator
+hi def link spOperator      Statement
 hi def link spType          Type
 hi def link spConstructor   Identifier
 hi def link spDelimiter     Delimiter

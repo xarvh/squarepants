@@ -33,7 +33,7 @@ var Expression =
     , 'arrayAccess Int Expression
     , 'constructor USR
     , 'constructorAccess Int Expression
-    , 'isConstructor Name Expression
+    , 'isConstructor USR Expression
     , 'literalRecord (Maybe Expression) [ AttrName & Expression ]
     , 'recordAccess AttrName Expression
     , 'missingPattern Text Expression

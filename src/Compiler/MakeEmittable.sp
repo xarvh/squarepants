@@ -84,8 +84,8 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
         TA.'patternLiteralNumber _ num:
             EA.'shallowEqual (EA.'literalNumber num) valueToTest :: accum
 
-        TA.'patternConstructor _ ('USR umr name) pas:
-            EA.'isConstructor name valueToTest :: accum
+        TA.'patternConstructor _ usr pas:
+            EA.'isConstructor usr valueToTest :: accum
             >> List.indexedFor __ pas fn index, argPattern, a:
                 testPattern argPattern (EA.'constructorAccess index valueToTest) a
 

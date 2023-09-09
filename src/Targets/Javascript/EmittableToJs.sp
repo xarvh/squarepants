@@ -1,4 +1,3 @@
-
 Env =
     {
     , overrides as Dict USR Override
@@ -42,7 +41,8 @@ coreOverrides as fn None: Dict USR Override =
     , Prelude.or_.usr & binop "||"
     , Prelude.and_.usr & binop "&&"
     #
-    , CoreTypes.trueUsr & constructor "true"
+    , CoreTypes.trueUsr
+    & constructor "true"
     , CoreTypes.falseUsr & constructor "false"
     , CoreTypes.noneConsUsr & constructor "null"
     #
@@ -64,7 +64,8 @@ coreOverrides as fn None: Dict USR Override =
     , Prelude.debugBenchStop.usr & function "sp_benchStop"
     , Prelude.compare.usr & function "basics_compare"
     #
-    , corelib "Text" "fromNumber" & function "text_fromNumber"
+    , corelib "Text" "fromNumber"
+    & function "text_fromNumber"
     , corelib "Text" "toLower" & function "text_toLower"
     , corelib "Text" "toUpper" & function "text_toUpper"
     , corelib "Text" "toNumber" & function "text_toNumber"
@@ -192,9 +193,8 @@ introspectOverride as Override =
                     >> JA.'literal
 
                 nonFn as JA.Expr =
+                    # TODO!!!
                     JA.'array []
-
-                # TODO!!!
 
                 value as JA.Expr =
                     translateExpressionToExpression env e
@@ -254,15 +254,17 @@ loadOverride as Override =
 #
 translateConstructorName as fn Text: Text =
     fn x:
+    head =
+        Text.slice 1 2 x
 
-    head = Text.slice 1 2 x
-    rest = Text.slice 2 9999 x
+    rest =
+        Text.slice 2 9999 x
+
     Text.toUpper head .. rest
 
 
 translateConstructorUsr as fn USR: Text =
     fn 'USR umr raw:
-
     raw
     >> translateConstructorName
     >> 'USR umr __
@@ -566,7 +568,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
         EA.'constructorAccess argIndex value:
             accessArrayIndex (argIndex + 1) (translateExpressionToExpression env value) >> 'inline
 
-        EA.'isConstructor name eaValue:
+        EA.'isConstructor usr eaValue:
             jaValue =
                 translateExpressionToExpression env eaValue
 
