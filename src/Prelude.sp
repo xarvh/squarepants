@@ -1,30 +1,29 @@
-
-alias Int =
+Int =
     Number
 
 
 coreUsr as fn Text: USR =
-    USR (UMR Meta.Core "Core") __
+    'USR ('UMR Meta.'core "Core") __
 
 
 listUsr as fn Text: USR =
-    USR (UMR Meta.Core "List") __
+    'USR ('UMR Meta.'core "List") __
 
 
 textUsr as fn Text: USR =
-    USR (UMR Meta.Core "Text") __
+    'USR ('UMR Meta.'core "Text") __
 
 
 numberUsr as fn Text: USR =
-    USR (UMR Meta.Core "Number") __
+    'USR ('UMR Meta.'core "Number") __
 
 
 debugUsr as fn Text: USR =
-    USR (UMR Meta.Core "Debug") __
+    'USR ('UMR Meta.'core "Debug") __
 
 
 tupleUsr as fn Text: USR =
-    USR (UMR Meta.Core "Tuple") __
+    'USR ('UMR Meta.'core "Tuple") __
 
 
 #
@@ -33,47 +32,48 @@ tupleUsr as fn Text: USR =
 
 tyVar as fn Name: CA.RawType =
     fn name:
-    CA.TypeAnnotationVariable Pos.N name
+    CA.'typeAnnotationVariable Pos.'n name
 
 
-tyFn as fn [CA.RawType], CA.RawType: CA.RawType =
+tyFn as fn [ CA.RawType ], CA.RawType: CA.RawType =
     fn pars, to:
-    CA.TypeFn Pos.N
-        (List.map (fn p: CA.ParSp (toImm p)) pars)
-        (toImm to)
+    CA.'typeFn Pos.'n (List.map (fn p: CA.'parSp (toImm p)) pars) (toImm to)
 
 
 typeBinop as fn CA.RawType, CA.RawType, CA.RawType: CA.RawType =
     fn left, right, return:
-    tyFn [left, right] return
+    tyFn [ left, right ] return
 
 
 typeBinopUnique as fn CA.RawType: CA.RawType =
     fn ty:
-    CA.TypeFn Pos.N [ CA.ParSp (toImm ty), CA.ParSp (toImm ty)] (toUni ty)
+    CA.'typeFn Pos.'n [ CA.'parSp (toImm ty), CA.'parSp (toImm ty) ] (toUni ty)
 
 
 #
 # Unops
 #
-unaryPlus as Op.Unop = {
-    , usr = numberUsr "unaryPlus"
+unaryPlus as Op.Unop =
+    {
     , symbol = "0 +"
-    , type = tyFn [CoreTypes.number] CoreTypes.number
+    , type = tyFn [ CoreTypes.number ] CoreTypes.number
+    , usr = numberUsr "unaryPlus"
     }
 
 
-unaryMinus as Op.Unop = {
-    , usr = numberUsr "unaryMinus"
+unaryMinus as Op.Unop =
+    {
     , symbol = "0 -"
-    , type = tyFn [CoreTypes.number] CoreTypes.number
+    , type = tyFn [ CoreTypes.number ] CoreTypes.number
+    , usr = numberUsr "unaryMinus"
     }
 
 
 #
 # Binops
 #
-binops as [Op.Binop] = [
+binops as [ Op.Binop ] =
+    [
     , and_
     , or_
     , textConcat
@@ -108,33 +108,36 @@ binopsBySymbol as Dict Text Op.Binop =
 #
 # Core types ops
 #
-and_ as Op.Binop = {
-    , usr = coreUsr "and_"
+and_ as Op.Binop =
+    {
+    , associativity = Op.'right
+    , nonFn = []
+    , precedence = Op.precedence_logical
     , symbol = "and"
-    , precedence = Op.precedence_logical
-    , associativity = Op.Right
-    , type = typeBinopUnique CoreTypes.bool
-    , nonFn = []
+    , type = typeBinopUnique CoreTypes.boolType
+    , usr = coreUsr "and_"
     }
 
 
-or_ as Op.Binop = {
-    , usr = coreUsr "or_"
+or_ as Op.Binop =
+    {
+    , associativity = Op.'right
+    , nonFn = []
+    , precedence = Op.precedence_logical
     , symbol = "or"
-    , precedence = Op.precedence_logical
-    , associativity = Op.Right
-    , type = typeBinopUnique CoreTypes.bool
-    , nonFn = []
+    , type = typeBinopUnique CoreTypes.boolType
+    , usr = coreUsr "or_"
     }
 
 
-textConcat as Op.Binop = {
-    , usr = textUsr "concat"
-    , symbol = ".."
-    , precedence = Op.precedence_addittive
-    , associativity = Op.Right
-    , type = typeBinopUnique CoreTypes.text
+textConcat as Op.Binop =
+    {
+    , associativity = Op.'right
     , nonFn = []
+    , precedence = Op.precedence_addittive
+    , symbol = ".."
+    , type = typeBinopUnique CoreTypes.text
+    , usr = textUsr "concat"
     }
 
 
@@ -143,72 +146,77 @@ listCons as Op.Binop =
         tyVar "item"
 
     {
-    , usr = listUsr "stack"
-    , symbol = "::"
-    , precedence = Op.precedence_cons
-    , associativity = Op.Right
-    , type = typeBinop item (CoreTypes.list item) (CoreTypes.list item)
+    , associativity = Op.'right
     , nonFn = []
+    , precedence = Op.precedence_cons
+    , symbol = "::"
+    , type = typeBinop item (CoreTypes.listType item) (CoreTypes.listType item)
+    , usr = listUsr "stack"
     }
 
 
-tuple as Op.Binop = {
-    # TODO Add a flag to ensure that these syntactic sugar ops are never added to the module
-    , usr = tupleUsr ""
-    , symbol = "&"
+tuple as Op.Binop =
+    {
+    , associativity = Op.'nonAssociative
+    , nonFn = []
     , precedence = Op.precedence_tuple
-    , associativity = Op.NonAssociative
+    , symbol = "&"
     , type =
         Dict.empty
         >> Dict.insert "first" (tyVar "a") __
         >> Dict.insert "second" (tyVar "b") __
-        >> CA.TypeRecord Pos.N __
+        >> CA.'typeRecord Pos.'n __
         >> typeBinop (tyVar "a") (tyVar "b") __
-    , nonFn = []
+    # TODO Add a flag to ensure that these syntactic sugar ops are never added to the module
+    , usr =
+        tupleUsr ""
     }
-
 
 
 #
 # Arithmetic ops
 #
-add as Op.Binop = {
-    , usr = numberUsr "add"
+add as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = []
+    , precedence = Op.precedence_addittive
     , symbol = "+"
-    , precedence = Op.precedence_addittive
-    , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
-    , nonFn = []
+    , usr = numberUsr "add"
     }
 
 
-subtract as Op.Binop = {
-    , usr = numberUsr "subtract"
+subtract as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = []
+    , precedence = Op.precedence_addittive
     , symbol = "-"
-    , precedence = Op.precedence_addittive
-    , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
-    , nonFn = []
+    , usr = numberUsr "subtract"
     }
 
 
-multiply as Op.Binop = {
-    , usr = numberUsr "multiply"
+multiply as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = []
+    , precedence = Op.precedence_multiplicative
     , symbol = "*"
-    , precedence = Op.precedence_multiplicative
-    , associativity = Op.Left
     , type = typeBinopUnique CoreTypes.number
-    , nonFn = []
+    , usr = numberUsr "multiply"
     }
 
 
-divide as Op.Binop = {
-    , usr = numberUsr "divide"
-    , symbol = "/"
-    , precedence = Op.precedence_multiplicative
-    , associativity = Op.Left
-    , type = typeBinopUnique CoreTypes.number
+divide as Op.Binop =
+    {
+    , associativity = Op.'left
     , nonFn = []
+    , precedence = Op.precedence_multiplicative
+    , symbol = "/"
+    , type = typeBinopUnique CoreTypes.number
+    , usr = numberUsr "divide"
     }
 
 
@@ -217,129 +225,128 @@ divide as Op.Binop = {
 #
 mutableAssign as Op.Binop =
     {
-    , usr = coreUsr "mutableAssign"
-    , symbol = ":="
-    , precedence = Op.precedence_mutop
-    , associativity = Op.Left
-    , type = CA.TypeFn Pos.N [ CA.ParRe (tyVar "a"), CA.ParSp { uni = Uni, raw = (tyVar "a") }] { uni = Imm, raw = CoreTypes.none }
+    , associativity = Op.'left
     , nonFn = []
+    , precedence = Op.precedence_mutop
+    , symbol = ":="
+    , type = CA.'typeFn Pos.'n [ CA.'parRe (tyVar "a"), CA.'parSp { raw = tyVar "a", uni = 'uni } ] { raw = CoreTypes.noneType, uni = 'imm }
+    , usr = coreUsr "mutableAssign"
     }
 
 
 mutableAdd as Op.Binop =
     {
-    , usr = numberUsr "mutableAdd"
-    , symbol = "+="
-    , precedence = Op.precedence_mutop
-    , associativity = Op.NonAssociative
-    , type = CA.TypeFn Pos.N [ CA.ParRe CoreTypes.number, CA.ParSp { uni = Imm, raw = CoreTypes.number }] { uni = Imm, raw = CoreTypes.none }
+    , associativity = Op.'nonAssociative
     , nonFn = []
+    , precedence = Op.precedence_mutop
+    , symbol = "+="
+    , type = CA.'typeFn Pos.'n [ CA.'parRe CoreTypes.number, CA.'parSp { raw = CoreTypes.number, uni = 'imm } ] { raw = CoreTypes.noneType, uni = 'imm }
+    , usr = numberUsr "mutableAdd"
     }
 
 
 mutableSubtract as Op.Binop =
     {
-    , usr = numberUsr "mutableSubtract"
-    , symbol = "-="
-    , precedence = Op.precedence_mutop
-    , associativity = Op.NonAssociative
-    , type = CA.TypeFn Pos.N [ CA.ParRe CoreTypes.number, CA.ParSp { uni = Imm, raw = CoreTypes.number }] { uni = Imm, raw = CoreTypes.none }
+    , associativity = Op.'nonAssociative
     , nonFn = []
+    , precedence = Op.precedence_mutop
+    , symbol = "-="
+    , type = CA.'typeFn Pos.'n [ CA.'parRe CoreTypes.number, CA.'parSp { raw = CoreTypes.number, uni = 'imm } ] { raw = CoreTypes.noneType, uni = 'imm }
+    , usr = numberUsr "mutableSubtract"
     }
 
 
 #
 # Comparison
 #
-equal as Op.Binop = {
-    , usr = coreUsr "equal"
+equal as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = [ "a" ]
+    , precedence = Op.precedence_comparison
     , symbol = "=="
-    , precedence = Op.precedence_comparison
-    , associativity = Op.Left
-    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
-    , nonFn = [ "a" ]
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.boolType
+    , usr = coreUsr "equal"
     }
 
 
-notEqual as Op.Binop = {
-    , usr = coreUsr "notEqual"
+notEqual as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = [ "a" ]
+    , precedence = Op.precedence_comparison
     , symbol = "/="
-    , precedence = Op.precedence_comparison
-    , associativity = Op.Left
-    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
-    , nonFn = [ "a" ]
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.boolType
+    , usr = coreUsr "notEqual"
     }
 
 
-lesserThan as Op.Binop = {
-    , usr = coreUsr "lesserThan"
+lesserThan as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = [ "a" ]
+    , precedence = Op.precedence_comparison
     , symbol = "<"
-    , precedence = Op.precedence_comparison
-    , associativity = Op.Left
-    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
-    , nonFn = [ "a" ]
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.boolType
+    , usr = coreUsr "lesserThan"
     }
 
 
-greaterThan as Op.Binop = {
-    , usr = coreUsr "greaterThan"
+greaterThan as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = [ "a" ]
+    , precedence = Op.precedence_comparison
     , symbol = ">"
-    , precedence = Op.precedence_comparison
-    , associativity = Op.Left
-    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
-    , nonFn = [ "a" ]
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.boolType
+    , usr = coreUsr "greaterThan"
     }
 
 
-lesserOrEqualThan as Op.Binop = {
-    , usr = coreUsr "lesserOrEqualThan"
+lesserOrEqualThan as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = [ "a" ]
+    , precedence = Op.precedence_comparison
     , symbol = "<="
-    , precedence = Op.precedence_comparison
-    , associativity = Op.Left
-    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
-    , nonFn = [ "a" ]
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.boolType
+    , usr = coreUsr "lesserOrEqualThan"
     }
 
 
-greaterOrEqualThan as Op.Binop = {
-    , usr = coreUsr "greaterOrEqualThan"
+greaterOrEqualThan as Op.Binop =
+    {
+    , associativity = Op.'left
+    , nonFn = [ "a" ]
+    , precedence = Op.precedence_comparison
     , symbol = ">="
-    , precedence = Op.precedence_comparison
-    , associativity = Op.Left
-    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.bool
-    , nonFn = [ "a" ]
+    , type = typeBinop (tyVar "a") (tyVar "a") CoreTypes.boolType
+    , usr = coreUsr "greaterOrEqualThan"
     }
-
 
 
 #
 # Send
 #
-sendRight as Op.Binop = {
-    , usr = coreUsr "sendRight"
-    , symbol = ">>"
-    , precedence = Op.precedence_pipe
-    , associativity = Op.Left
-    , type =
-        typeBinop
-            (tyVar "a")
-            (tyFn [tyVar "a"] (tyVar "b"))
-            (tyVar "b")
+sendRight as Op.Binop =
+    {
+    , associativity = Op.'left
     , nonFn = []
+    , precedence = Op.precedence_pipe
+    , symbol = ">>"
+    , type = typeBinop (tyVar "a") (tyFn [ tyVar "a" ] (tyVar "b")) (tyVar "b")
+    , usr = coreUsr "sendRight"
     }
 
 
-sendLeft as Op.Binop = {
-    , usr = coreUsr "sendLeft"
-    , symbol = "<<"
-    , precedence = Op.precedence_pipe
-    , associativity = Op.Right
-    , type =
-        typeBinop
-            (tyFn [tyVar "a"] (tyVar "b"))
-            (tyVar "a")
-            (tyVar "b")
+sendLeft as Op.Binop =
+    {
+    , associativity = Op.'right
     , nonFn = []
+    , precedence = Op.precedence_pipe
+    , symbol = "<<"
+    , type = typeBinop (tyFn [ tyVar "a" ] (tyVar "b")) (tyVar "a") (tyVar "b")
+    , usr = coreUsr "sendLeft"
     }
 
 
@@ -347,14 +354,16 @@ sendLeft as Op.Binop = {
 # Functions
 #
 
-alias Function = {
-    , usr as USR
+Function =
+    {
+    , nonFn as [ Text ]
     , type as CA.RawType
-    , nonFn as [Text]
+    , usr as USR
     }
 
 
-functions as [Function] = [
+functions as [ Function ] =
+    [
     # TODO with the new Platforms system, there is no real reasons for these functions to be here.
     , compare
     , debugTodo
@@ -365,86 +374,91 @@ functions as [Function] = [
     ]
 
 
-compare as Function = {
-    , usr = coreUsr "compare"
-    , type = tyFn [tyVar "a", (tyVar "a")] CoreTypes.number
+compare as Function =
+    {
     , nonFn = [ "a" ]
+    , type = tyFn [ tyVar "a", tyVar "a" ] CoreTypes.number
+    , usr = coreUsr "compare"
     }
 
 
-debugTodo as Function = {
+debugTodo as Function =
+    {
+    , nonFn = []
+    , type = CA.'typeFn Pos.'n [ CA.'parSp { raw = CoreTypes.text, uni = 'imm } ] { raw = CA.'typeAnnotationVariable Pos.'n "a", uni = 'uni }
     , usr = debugUsr "todo"
-    , type = CA.TypeFn Pos.N [CA.ParSp { uni = Imm, raw = CoreTypes.text }] { uni = Uni, raw = CA.TypeAnnotationVariable Pos.N "a" }
-    , nonFn = []
     }
 
 
-debugLog as Function = {
+debugLog as Function =
+    {
+    , nonFn = []
+    , type = tyFn [ CoreTypes.text, tyVar "a" ] (tyVar "a")
     , usr = debugUsr "log"
-    , type = tyFn [CoreTypes.text, (tyVar "a")] (tyVar "a")
-    , nonFn = []
     }
 
 
-debugToHuman as Function = {
+debugToHuman as Function =
+    {
+    , nonFn = []
+    , type = tyFn [ tyVar "a" ] CoreTypes.text
     , usr = debugUsr "toHuman"
-    , type = tyFn [tyVar "a"] CoreTypes.text
-    , nonFn = []
     }
 
 
-debugBenchStart as Function = {
+debugBenchStart as Function =
+    {
+    , nonFn = []
+    , type = tyFn [ CoreTypes.noneType ] CoreTypes.noneType
     , usr = debugUsr "benchStart"
-    , type = tyFn [CoreTypes.none] CoreTypes.none
-    , nonFn = []
     }
 
 
-debugBenchStop as Function = {
-    , usr = debugUsr "benchStop"
-    , type = tyFn [CoreTypes.text] CoreTypes.none
+debugBenchStop as Function =
+    {
     , nonFn = []
+    , type = tyFn [ CoreTypes.text ] CoreTypes.noneType
+    , usr = debugUsr "benchStop"
     }
 
 
 #
 # List of all core values, used by TypeCheck
 #
-alias CoreValue =
+CoreValue =
     {
-    , usr as USR
-    , raw as CA.RawType
     , nonFn as Dict Name None
+    , raw as CA.RawType
+    , usr as USR
     }
 
 
-insertInModule as fn USR, CA.RawType, [Name], [CoreValue]: [CoreValue] =
-  fn usr, raw, nonFnAsList, list:
+insertInModule as fn USR, CA.RawType, [ Name ], [ CoreValue ]: [ CoreValue ] =
+    fn usr, raw, nonFnAsList, list:
+    nonFn =
+        Set.fromList nonFnAsList
 
-  nonFn = Set.fromList nonFnAsList
-
-  [{ usr, raw, nonFn }, ...list]
+    [ { nonFn, raw, usr }, list... ]
 
 
-insertUnop as fn Op.Unop, [CoreValue]: [CoreValue] =
+insertUnop as fn Op.Unop, [ CoreValue ]: [ CoreValue ] =
     fn unop, m:
     insertInModule unop.usr unop.type [] m
 
 
-insertBinop as fn Op.Binop, [CoreValue]: [CoreValue] =
+insertBinop as fn Op.Binop, [ CoreValue ]: [ CoreValue ] =
     fn binop, m:
     insertInModule binop.usr binop.type binop.nonFn m
 
 
-insertFunction as fn Function, [CoreValue]: [CoreValue] =
+insertFunction as fn Function, [ CoreValue ]: [ CoreValue ] =
     fn function, m:
     insertInModule function.usr function.type function.nonFn m
 
 
-allCoreValues as [CoreValue] =
+allCoreValues as [ CoreValue ] =
     []
     >> insertUnop unaryPlus __
     >> insertUnop unaryMinus __
     >> List.for __ binops insertBinop
     >> List.for __ functions insertFunction
-

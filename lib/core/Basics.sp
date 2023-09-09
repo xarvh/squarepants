@@ -1,6 +1,4 @@
-
-
-alias Int =
+Int =
     Number
 
 
@@ -11,18 +9,19 @@ identity as fn a: a =
 
 not as fn Bool: Bool =
     fn b:
-    if b then False else True
+    if b then 'false else 'true
 
 
-applyIf as fn Bool, (fn a: a): fn a: a =
+applyIf as fn Bool, fn a: a: fn a: a =
     fn condition, f:
     if condition then f else identity
 
 
 # Am I actually using this?
-btw as fn (fn a: b), a, c: c =
+btw as fn fn a: b, a, c: c =
     fn f, a, c:
     f a
+
     c
 
 
@@ -52,9 +51,12 @@ min as fn Number, Number: Number =
 
 clamp as fn Number, Number, Number: Number =
     fn low, high, n:
-    if n < low then low
-    else if n > high then high
-    else n
+    if n < low then
+        low
+    else if n > high then
+        high
+    else
+        n
 
 
 round as fn Number: Int =
@@ -64,7 +66,5 @@ round as fn Number: Int =
 
 modBy as fn Int, Int: Int =
     fn a, b:
-
     # Native
     todo "modBy is native"
-

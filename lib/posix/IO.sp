@@ -1,53 +1,52 @@
-
-
-alias Env =
+Env =
     {
     , vars as Dict Text Text
     }
 
 
-alias Program =
-    fn Env, [Text]: IO Int
+Program =
+    fn Env, [ Text ]: IO Int
 
 
-union Never =
-    Never Never
+var Never =
+    , 'never Never
 
 
-union IO a =
-    IO (fn Never: Result Text a)
+var IO a =
+    , 'IO (fn Never: Result Text a)
 
 
 succeed as fn a: IO a =
     fn a:
-    IO (fn never: Ok a)
+    'IO (fn never: 'ok a)
 
 
 fail as fn Text: IO a =
     fn message:
-    IO (fn never: Err message)
+    'IO (fn never: 'err message)
 
 
 _run as fn Never, IO a: Result Text a =
     fn never, r:
-    IO neverToResult = r
+    'IO neverToResult =
+        r
+
     neverToResult never
 
 
-onSuccess as fn (fn a: IO b): fn IO a: IO b =
-    fn f: fn m:
-    IO fn never:
+onSuccess as fn fn a: IO b: fn IO a: IO b =
+    fn f:
+    fn m:
+    'IO fn never:
         try _run never m as
-            , Ok a:
-                _run never (f a)
-
-            , Err e:
-                Err e
+            'ok a: _run never (f a)
+            'err e: 'err e
 
 
-onResult as fn (fn Result Text a: IO b): fn IO a: IO b =
-    fn f: fn m:
-    IO fn never:
+onResult as fn fn Result Text a: IO b: fn IO a: IO b =
+    fn f:
+    fn m:
+    'IO fn never:
         m
         >> _run never __
         >> f
@@ -57,12 +56,12 @@ onResult as fn (fn Result Text a: IO b): fn IO a: IO b =
 #
 # Posix
 #
-parallel as fn [IO a]: IO [a] =
+parallel as fn [ IO a ]: IO [ a ] =
     fn _:
     todo "io.parallel"
 
 
-readDir as fn Text: IO [Bool & Text] =
+readDir as fn Text: IO [ Bool & Text ] =
     fn _:
     todo "io.readDir"
 
@@ -89,4 +88,3 @@ writeStdout as fn Text: IO Int =
 writeStderr as fn Text: IO Int =
     fn _:
     todo "io.writeStderr"
-

@@ -3,7 +3,7 @@
 #
 
 tests as Test =
-    Test.Group
+    Test.'group
         """
         MakeCanonical
         """
@@ -44,7 +44,7 @@ textToModule as fn Text: Result Text CA.Module =
     code
     >> TH.errorModule
     >> params
-    >> Compiler/MakeCanonical.textToCanonicalModule True __
+    >> Compiler/MakeCanonical.textToCanonicalModule 'true __
     >> TH.resErrorToStrippedText
 
 
@@ -71,7 +71,7 @@ firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
     fn code:
     code
     >> firstDefinition
-    >> onOk (fn def: Ok def.body)
+    >> onOk (fn def: 'ok def.body)
 
 
 # TODO move this to Helpers?
@@ -80,8 +80,8 @@ transformAB as fn Text: Result Text (CA.ValueDef & CA.ValueDef) =
     findAB =
         fn mod:
         try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.pattern) __ as
-            , [ a, b ]: Just (a & b)
-            , _: Nothing
+            [ a, b ]: 'just (a & b)
+            _: 'nothing
 
     code
     >> textToModule
@@ -93,7 +93,7 @@ shouldHaveSameAB as fn fn ab: c: Test.CodeExpectation (ab & ab) =
     Test.freeform
     << (fn a & b:
          if getter a == getter b then
-             Nothing
+             'nothing
          else
              [
              , "The two don't match:"
@@ -101,12 +101,12 @@ shouldHaveSameAB as fn fn ab: c: Test.CodeExpectation (ab & ab) =
              , toHuman (getter b)
              ]
              >> Text.join "\n" __
-             >> Just
+             >> 'just
     )
 
 
 p as Pos =
-    Pos.T
+    Pos.'t
 
 
 valueDef as fn Name, CA.Expression: CA.ValueDef =
@@ -116,9 +116,9 @@ valueDef as fn Name, CA.Expression: CA.ValueDef =
     , directConsDeps = Dict.empty
     , directTypeDeps = Dict.empty
     , directValueDeps = Dict.empty
-    , native = False
-    , pattern = CA.PatternAny Pos.G (Just name) Nothing
-    , uni = Imm
+    , native = 'false
+    , pattern = CA.'patternAny Pos.'g ('just name) 'nothing
+    , uni = 'imm
     }
 
 
@@ -127,7 +127,7 @@ valueDef as fn Name, CA.Expression: CA.ValueDef =
 #
 
 varTypes as Test =
-    Test.Group
+    Test.'group
         """
         Variant types
         """
@@ -163,7 +163,7 @@ varTypes as Test =
 
 
 binops as Test =
-    Test.Group
+    Test.'group
         """
         Binops
         """
@@ -221,31 +221,31 @@ binops as Test =
             """
             (firstEvaluation "a")
             (Test.isOkAndEqualTo
-                 (CA.Fn
+                 (CA.'fn
                       p
                       [
-                      , CA.ParameterPlaceholder 0
-                      , CA.ParameterPlaceholder 1
-                      , CA.ParameterPlaceholder 2
+                      , CA.'parameterPlaceholder 0
+                      , CA.'parameterPlaceholder 1
+                      , CA.'parameterPlaceholder 2
                       ]
-                      (CA.Call
+                      (CA.'call
                            p
-                           (CA.Variable p (RefGlobal Prelude.add.usr))
+                           (CA.'variable p ('refGlobal Prelude.add.usr))
                            [
-                           , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
-                           , CA.ArgumentExpression
-                               (CA.Call
+                           , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
+                           , CA.'argumentExpression
+                               (CA.'call
                                     p
-                                    (CA.Variable p (RefGlobal Prelude.add.usr))
+                                    (CA.'variable p ('refGlobal Prelude.add.usr))
                                     [
-                                    , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
-                                    , CA.ArgumentExpression
-                                        (CA.Call
+                                    , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
+                                    , CA.'argumentExpression
+                                        (CA.'call
                                              p
-                                             (CA.Variable p (RefGlobal Prelude.add.usr))
+                                             (CA.'variable p ('refGlobal Prelude.add.usr))
                                              [
-                                             , CA.ArgumentExpression (CA.LiteralNumber p 3)
-                                             , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 2))
+                                             , CA.'argumentExpression (CA.'literalNumber p 3)
+                                             , CA.'argumentExpression (CA.'variable p ('refPlaceholder 2))
                                              ]
                                         )
                                     ]
@@ -262,7 +262,7 @@ binops as Test =
 #
 
 lists as Test =
-    Test.Group
+    Test.'group
         """
         Lists
         """
@@ -276,23 +276,23 @@ lists as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body = CA.Variable p (TH.rootLocal "l")
+                 , body = CA.'variable p (TH.rootLocal "l")
                  , directConsDeps = Dict.empty
                  , directTypeDeps = Dict.empty
                  , directValueDeps = Dict.empty
-                 , native = False
+                 , native = 'false
                  , pattern =
-                     CA.PatternAny
+                     CA.'patternAny
                          p
-                         (Just "l")
-                         (Just
+                         ('just "l")
+                         ('just
                               {
-                              , raw = CoreTypes.list TH.caBool
+                              , raw = CoreTypes.listType TH.caBool
                               , tyvars = Dict.empty
                               , univars = Dict.empty
                               }
                          )
-                 , uni = Imm
+                 , uni = 'imm
                  }
             )
         ]
@@ -303,7 +303,7 @@ lists as Test =
 #
 
 tuples as Test =
-    Test.Group
+    Test.'group
         """
         Tuples
         """
@@ -313,13 +313,13 @@ tuples as Test =
             "a = 1 & 2"
             (firstEvaluation "a")
             (Test.isOkAndEqualTo
-             << CA.Record
+             << CA.'record
                  p
-                 Nothing
+                 'nothing
                  (Dict.fromList
                       [
-                      , "first" & CA.LiteralNumber p 1
-                      , "second" & CA.LiteralNumber p 2
+                      , "first" & CA.'literalNumber p 1
+                      , "second" & CA.'literalNumber p 2
                       ]
                  )
             )
@@ -328,14 +328,14 @@ tuples as Test =
             "a = 1 & 2 & 3"
             (firstEvaluation "a")
             (Test.isOkAndEqualTo
-             << CA.Record
+             << CA.'record
                  p
-                 Nothing
+                 'nothing
                  (Dict.fromList
                       [
-                      , "first" & CA.LiteralNumber p 1
-                      , "second" & CA.LiteralNumber p 2
-                      , "third" & CA.LiteralNumber p 3
+                      , "first" & CA.'literalNumber p 1
+                      , "second" & CA.'literalNumber p 2
+                      , "third" & CA.'literalNumber p 3
                       ]
                  )
             )
@@ -351,27 +351,27 @@ tuples as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body = CA.Variable p (TH.rootLocal "a")
+                 , body = CA.'variable p (TH.rootLocal "a")
                  , directConsDeps = Dict.empty
                  , directTypeDeps = Dict.empty
                  , directValueDeps = Dict.empty
-                 , native = False
+                 , native = 'false
                  , pattern =
-                     CA.PatternAny
+                     CA.'patternAny
                          p
-                         (Just "a")
-                         (Just
+                         ('just "a")
+                         ('just
                               {
                               , raw =
                                   Dict.empty
                                   >> Dict.insert "first" TH.caNumber __
                                   >> Dict.insert "second" TH.caNumber __
-                                  >> CA.TypeRecord p __
+                                  >> CA.'typeRecord p __
                               , tyvars = Dict.empty
                               , univars = Dict.empty
                               }
                          )
-                 , uni = Imm
+                 , uni = 'imm
                  }
             )
         , codeTest
@@ -399,7 +399,7 @@ moduleAndAttributePaths as Test =
             codeTest s ("a = " .. s) firstDefinition (Test.errorContains [ m ])
 
     # TODO this stuff has been moved back to the Lexer, so I should also move these tests?
-    Test.Group
+    Test.'group
         """
         Module and Attribute Paths
         """
@@ -422,7 +422,7 @@ moduleAndAttributePaths as Test =
 #
 
 records as Test =
-    Test.Group
+    Test.'group
         """
         Records
         """
@@ -432,15 +432,15 @@ records as Test =
             "a = { m with b, c = 1 }"
             (firstEvaluation "a")
             (Test.isOkAndEqualTo
-             << CA.LetIn
-                 (valueDef "0" (CA.Variable p (TH.rootLocal "m")))
-                 (CA.Record
+             << CA.'letIn
+                 (valueDef "0" (CA.'variable p (TH.rootLocal "m")))
+                 (CA.'record
                       p
-                      (Just (CA.Variable Pos.G (RefLocal "0")))
+                      ('just (CA.'variable Pos.'g ('refLocal "0")))
                       (Dict.fromList
                            [
-                           , "c" & CA.LiteralNumber p 1
-                           , "b" & CA.Variable p (TH.rootLocal "b")
+                           , "c" & CA.'literalNumber p 1
+                           , "b" & CA.'variable p (TH.rootLocal "b")
                            ]
                       )
                  )
@@ -454,14 +454,14 @@ records as Test =
             """
             (firstEvaluation "b")
             (Test.isOkAndEqualTo
-             << CA.LetIn
-                 (valueDef "0" (CA.Variable p (TH.rootLocal "a")))
-                 (CA.Record
+             << CA.'letIn
+                 (valueDef "0" (CA.'variable p (TH.rootLocal "a")))
+                 (CA.'record
                       p
-                      (Just (CA.Variable Pos.G (RefLocal "0")))
+                      ('just (CA.'variable Pos.'g ('refLocal "0")))
                       (Dict.fromList
                            [
-                           , "y" & CA.RecordAccess p "x" (CA.Variable Pos.G (RefLocal "0"))
+                           , "y" & CA.'recordAccess p "x" (CA.'variable Pos.'g ('refLocal "0"))
                            ]
                       )
                  )
@@ -482,7 +482,7 @@ records as Test =
 #
 
 patterns as Test =
-    Test.Group
+    Test.'group
         """
         Patterns
         """
@@ -511,7 +511,7 @@ patterns as Test =
 #
 
 annotations as Test =
-    Test.Group
+    Test.'group
         """
         Annotations
         """
@@ -550,7 +550,7 @@ annotations as Test =
 #
 
 pipes as Test =
-    Test.Group
+    Test.'group
         """
         Pipes
         """
@@ -561,14 +561,14 @@ pipes as Test =
             a = thing >> function
             """
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo << CA.Call p (CA.Variable p (TH.rootLocal "function")) [ CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing")) ])
+            (Test.isOkAndEqualTo << CA.'call p (CA.'variable p (TH.rootLocal "function")) [ CA.'argumentExpression (CA.'variable p (TH.rootLocal "thing")) ])
         , codeTest
             "sendRight is inlined"
             """
             a = function << thing
             """
             (firstEvaluation "a")
-            (Test.isOkAndEqualTo << CA.Call p (CA.Variable p (TH.rootLocal "function")) [ CA.ArgumentExpression (CA.Variable p (TH.rootLocal "thing")) ])
+            (Test.isOkAndEqualTo << CA.'call p (CA.'variable p (TH.rootLocal "function")) [ CA.'argumentExpression (CA.'variable p (TH.rootLocal "thing")) ])
         ]
 
 
@@ -577,7 +577,7 @@ pipes as Test =
 #
 
 functions as Test =
-    Test.Group
+    Test.'group
         """
         Functions
         """
@@ -591,15 +591,15 @@ functions as Test =
             """
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                 (CA.Fn
+                 (CA.'fn
                       p
-                      [ CA.ParameterPattern Imm (CA.PatternAny p (Just "x") Nothing) ]
-                      (CA.Call
+                      [ CA.'parameterPattern 'imm (CA.'patternAny p ('just "x") 'nothing) ]
+                      (CA.'call
                            p
-                           (CA.Variable p (TH.rootLocal "add"))
+                           (CA.'variable p (TH.rootLocal "add"))
                            [
-                           , CA.ArgumentExpression (CA.Variable p (RefLocal "x"))
-                           , CA.ArgumentExpression (CA.LiteralNumber p 1)
+                           , CA.'argumentExpression (CA.'variable p ('refLocal "x"))
+                           , CA.'argumentExpression (CA.'literalNumber p 1)
                            ]
                       )
                  )
@@ -612,20 +612,20 @@ functions as Test =
             """
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                 (CA.Fn
+                 (CA.'fn
                       p
                       [
-                      , CA.ParameterPattern Imm (CA.PatternAny p (Just "a") Nothing)
-                      , CA.ParameterPattern Imm (CA.PatternAny p (Just "b") Nothing)
+                      , CA.'parameterPattern 'imm (CA.'patternAny p ('just "a") 'nothing)
+                      , CA.'parameterPattern 'imm (CA.'patternAny p ('just "b") 'nothing)
                       ]
-                      (CA.LiteralNumber p 1)
+                      (CA.'literalNumber p 1)
                  )
             )
         ]
 
 
 nonFunction as Test =
-    Test.Group
+    Test.'group
         """
         NonFunction
         """
@@ -639,30 +639,30 @@ nonFunction as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body = CA.LiteralNumber p 1
+                 , body = CA.'literalNumber p 1
                  , directConsDeps = Dict.empty
                  , directTypeDeps = Dict.empty
                  , directValueDeps = Dict.empty
-                 , native = False
+                 , native = 'false
                  , pattern =
-                     CA.PatternAny
+                     CA.'patternAny
                          p
-                         (Just "funz")
-                         (Just
+                         ('just "funz")
+                         ('just
                               {
-                              , raw = CA.TypeAnnotationVariable p "a"
-                              , tyvars = Dict.ofOne "a" { nonFn = Just Pos.T }
+                              , raw = CA.'typeAnnotationVariable p "a"
+                              , tyvars = Dict.ofOne "a" { nonFn = 'just Pos.'t }
                               , univars = Dict.empty
                               }
                          )
-                 , uni = Imm
+                 , uni = 'imm
                  }
             )
         ]
 
 
 argumentPlaceholders as Test =
-    Test.Group
+    Test.'group
         """
         Argument placeholders
         """
@@ -678,26 +678,26 @@ argumentPlaceholders as Test =
             (Test.isOkAndEqualTo
                  {
                  , body =
-                     CA.Fn
+                     CA.'fn
                          p
                          [
-                         , CA.ParameterPlaceholder 0
-                         , CA.ParameterPlaceholder 1
+                         , CA.'parameterPlaceholder 0
+                         , CA.'parameterPlaceholder 1
                          ]
-                         (CA.Call
+                         (CA.'call
                               p
-                              (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "f")))
+                              (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "f")))
                               [
-                              , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
-                              , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 1))
+                              , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
+                              , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
                               ]
                          )
                  , directConsDeps = Dict.empty
                  , directTypeDeps = Dict.empty
                  , directValueDeps = Dict.empty
-                 , native = False
-                 , pattern = CA.PatternAny p (Just "f") Nothing
-                 , uni = Imm
+                 , native = 'false
+                 , pattern = CA.'patternAny p ('just "f") 'nothing
+                 , uni = 'imm
                  }
             )
         , codeTest
@@ -709,19 +709,19 @@ argumentPlaceholders as Test =
             """
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                 (CA.Fn
+                 (CA.'fn
                       p
-                      [ CA.ParameterPlaceholder 0 ]
-                      (CA.Call
+                      [ CA.'parameterPlaceholder 0 ]
+                      (CA.'call
                            p
-                           (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "b")))
+                           (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "b")))
                            [
-                           , CA.ArgumentExpression
-                               (CA.Call
+                           , CA.'argumentExpression
+                               (CA.'call
                                     p
-                                    (CA.Variable p (RefGlobal (USR (UMR (Meta.SourceDirId "<Test>") "(test)") "a")))
+                                    (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "a")))
                                     [
-                                    , CA.ArgumentExpression (CA.Variable p (RefPlaceholder 0))
+                                    , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                                     ]
                                )
                            ]
@@ -737,13 +737,15 @@ argumentPlaceholders as Test =
             """
             (firstEvaluation "f")
             (Test.isOkAndEqualTo
-                 (CA.Fn
+                 (CA.'fn
                       p
-                      [ CA.ParameterPlaceholder 0 ]
-                      (CA.Try p {
-                          , value = CA.Variable p (RefPlaceholder 0)
-                          , patternsAndExpressions = [ Imm & CA.PatternLiteralText p "" & CA.LiteralNumber p 1 ]
-                          }
+                      [ CA.'parameterPlaceholder 0 ]
+                      (CA.'try
+                           p
+                           {
+                           , patternsAndExpressions = [ 'imm & CA.'patternLiteralText p "" & CA.'literalNumber p 1 ]
+                           , value = CA.'variable p ('refPlaceholder 0)
+                           }
                       )
                  )
             )
@@ -751,7 +753,7 @@ argumentPlaceholders as Test =
 
 
 polymorphicUniques as Test =
-    Test.Group
+    Test.'group
         """
         Polymorphic Uniques
         """
@@ -770,29 +772,29 @@ polymorphicUniques as Test =
             (Test.isOkAndEqualTo
                  {
                  , body =
-                     CA.Fn
+                     CA.'fn
                          p
                          [
-                         , CA.ParameterPattern (Depends 1) (CA.PatternAny p (Just "a") Nothing)
+                         , CA.'parameterPattern ('depends 1) (CA.'patternAny p ('just "a") 'nothing)
                          ]
-                         (CA.LetIn
+                         (CA.'letIn
                               {
-                              , body = CA.Variable p (RefLocal "a")
+                              , body = CA.'variable p ('refLocal "a")
                               , directConsDeps = Dict.empty
                               , directTypeDeps = Dict.empty
                               , directValueDeps = Dict.empty
-                              , native = False
-                              , pattern = CA.PatternAny p (Just "b") Nothing
-                              , uni = Depends 1
+                              , native = 'false
+                              , pattern = CA.'patternAny p ('just "b") 'nothing
+                              , uni = 'depends 1
                               }
-                              (CA.Variable p (RefLocal "b"))
+                              (CA.'variable p ('refLocal "b"))
                          )
                  , directConsDeps = Dict.empty
                  , directTypeDeps = Dict.empty
                  , directValueDeps = Dict.empty
-                 , native = False
-                 , pattern = CA.PatternAny p (Just "f") Nothing
-                 , uni = Imm
+                 , native = 'false
+                 , pattern = CA.'patternAny p ('just "f") 'nothing
+                 , uni = 'imm
                  }
             )
         , codeTest
@@ -807,26 +809,26 @@ polymorphicUniques as Test =
                  >> firstDefinitionStripDeps
                  >> onOk fn def:
                  try def.pattern as
-                     , CA.PatternAny _ _ (Just ann): Ok ann.univars
-                     , _: Err "no pattern any"
+                     CA.'patternAny _ _ ('just ann): 'ok ann.univars
+                     _: 'err "no pattern any"
             )
             (Test.isOkAndEqualTo << Set.fromList [ 1, 2 ])
         ]
 
 
 numbers as Test =
-    Test.Group
+    Test.'group
         """
         Numbers
         """
         [
-        , codeTest "Percent" "a = 1%" (firstEvaluation "a") (Test.isOkAndEqualTo << CA.LiteralNumber p 0.01)
-        , codeTest "Underscore" "a = 1_000_000" (firstEvaluation "a") (Test.isOkAndEqualTo << CA.LiteralNumber p (1000 * 1000))
+        , codeTest "Percent" "a = 1%" (firstEvaluation "a") (Test.isOkAndEqualTo << CA.'literalNumber p 0.01)
+        , codeTest "Underscore" "a = 1_000_000" (firstEvaluation "a") (Test.isOkAndEqualTo << CA.'literalNumber p (1000 * 1000))
         ]
 
 
 shadowing as Test =
-    Test.Group
+    Test.'group
         """
         Shadowing
         """

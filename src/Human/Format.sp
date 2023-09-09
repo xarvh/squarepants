@@ -1,4 +1,4 @@
-alias Env =
+Env =
     {
     , isRoot as Bool
     , originalContent as Text
@@ -13,15 +13,15 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
     fn block:
     try block as
 
-        , Fmt.Empty:
+        Fmt.'empty:
             block
 
-        , Fmt.SingleLine _ _:
-            Fmt.prefix (Text.length prefix) (Fmt.Text_ prefix) block
+        Fmt.'singleLine _ _:
+            Fmt.prefix (Text.length prefix) (Fmt.'text_ prefix) block
 
-        , Fmt.Stack head tail:
+        Fmt.'stack head tail:
             !done =
-                False
+                'false
 
             doLine =
                 fn indentedLine:
@@ -30,45 +30,45 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
                 else
                     try indentedLine as
 
-                        , Fmt.Indented i line:
+                        Fmt.'indented i line:
                             # TODO rename to "should we prefix a comma here"?
                             isDecoration =
                                 try line as
-                                    , Fmt.CommentWithIndent _: True
-                                    , Fmt.CommentIgnoreIndent _: True
-                                    , Fmt.Blank: True
-                                    , _: False
+                                    Fmt.'commentWithIndent _: 'true
+                                    Fmt.'commentIgnoreIndent _: 'true
+                                    Fmt.'blank: 'true
+                                    _: 'false
 
                             if isDecoration then
                                 indentedLine
                             else
-                                @done := True
+                                @done := 'true
 
-                                Fmt.Row (Fmt.Text_ prefix) line >> Fmt.Indented i __
+                                Fmt.'row (Fmt.'text_ prefix) line >> Fmt.'indented i __
 
-                        , _:
+                        _:
                             indentedLine
 
             try head :: tail >> List.reverse >> List.map doLine __ >> List.reverse as
 
-                , []:
+                []:
                     block
 
-                , h :: t:
+                h :: t:
                     if cloneUni @done then
-                        Fmt.Stack h t
+                        Fmt.'stack h t
                     else
-                        Fmt.prefix (Text.length prefix) (Fmt.Text_ prefix) block
+                        Fmt.prefix (Text.length prefix) (Fmt.'text_ prefix) block
 
 
 commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
     fn forceMultiline, open, close, closeHasAPrecedingSpace, items:
     if items == [] then
-        Fmt.addSuffix (Fmt.Text_ close) open
+        Fmt.addSuffix (Fmt.'text_ close) open
     else
         z =
             if forceMultiline then
-                Nothing
+                'nothing
             else
                 open :: items
                 >> Fmt.maybeAllSingleLines
@@ -76,23 +76,23 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
 
         try z as
 
-            , Just ([ openLine, ...itemLines ] & mkLine):
+            'just ([ openLine, itemLines... ] & mkLine):
                 [#
                     $open item1, item2, item3 $close
                 #]
                 closeLine =
                     if closeHasAPrecedingSpace then
-                        Fmt.Row Fmt.Space (Fmt.Text_ close)
+                        Fmt.'row Fmt.'space (Fmt.'text_ close)
                     else
-                        Fmt.Text_ close
+                        Fmt.'text_ close
 
                 itemLines
-                >> List.intersperse (Fmt.Text_ ", ") __
-                >> List.for (Fmt.Row openLine Fmt.Space) __ (fn a, b: Fmt.Row b a)
+                >> List.intersperse (Fmt.'text_ ", ") __
+                >> List.for (Fmt.'row openLine Fmt.'space) __ (fn a, b: Fmt.'row b a)
                 >> mkLine
                 >> Fmt.addSuffix closeLine __
 
-            , Nothing:
+            'nothing:
                 [#
                     $open
                     , item1
@@ -111,48 +111,48 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
 chainPrecedence as fn [ FA.Binop & a ]: Int =
     fn ls:
     try ls as
-        , []: 0
-        , [ op & _, ..._ ]: op.precedence
+        []: 0
+        [ op & _, _... ]: op.precedence
 
 
 parens as fn Fmt.Block: Fmt.Block =
     fn block:
     [
-    , Fmt.prefix 1 (Fmt.Text_ "(") block
+    , Fmt.prefix 1 (Fmt.'text_ "(") block
     , Fmt.textToBlock ")"
     ]
-    >> Fmt.rowOrStack Nothing __
+    >> Fmt.rowOrStack 'nothing __
 
 
 expressionPrecedence as fn FA.Expression: Int =
-    fn FA.Expression _ _ e_:
+    fn FA.'expression _ _ e_:
     try e_ as
 
-        , FA.Statements stats:
+        FA.'statements stats:
             0
 
-        , FA.BinopChain priority binopChain:
+        FA.'binopChain priority binopChain:
             chainPrecedence binopChain.second
 
-        , FA.Poly text expression:
+        FA.'poly text expression:
             9
 
-        , FA.If _:
+        FA.'if _:
             9
 
-        , FA.Try _:
+        FA.'try _:
             9
 
-        , FA.Call _ _:
+        FA.'call _ _:
             Op.precedence_application
 
-        , FA.Fn _ pars body:
+        FA.'fn _ pars body:
             Op.precedence_function
 
-        , FA.Lowercase { with  maybeType = Just _ }:
+        FA.'lowercase { with  maybeType = 'just _ }:
             Op.precedence_tuple - 1
 
-        , _:
+        _:
             # No parens needed
             10
 
@@ -170,65 +170,65 @@ formatExpressionAndMaybeAddParens as fn Env, Int, FA.Expression: Fmt.Block =
 
 formatExpression as fn Env, FA.Expression: Fmt.Block =
     fn env, faExpression:
-    FA.Expression comments _ e_ =
+    FA.'expression comments _ e_ =
         faExpression
 
     try e_ as
 
-        , FA.LiteralText singleOrTriple text:
+        FA.'literalText singleOrTriple text:
             formatLiteralText singleOrTriple text
 
-        , FA.LiteralNumber hasPercentage text:
+        FA.'literalNumber hasPercentage text:
             formatLiteralNumber hasPercentage text
 
-        , FA.ArgumentPlaceholder:
+        FA.'argumentPlaceholder:
             Fmt.textToBlock "__"
 
-        , FA.Statements stats:
+        FA.'statements stats:
             formatStatements env stats
 
-        , FA.List isMultiline unpacksAndExprs:
+        FA.'list isMultiline unpacksAndExprs:
             formatList env isMultiline unpacksAndExprs
 
-        , FA.Record { attrs, isMultiline, maybeExtension }:
+        FA.'record { attrs, isMultiline, maybeExtension }:
             formatRecord env isMultiline maybeExtension attrs
 
-        , FA.Lowercase { attrPath, maybeModule, maybeType, name }:
+        FA.'lowercase { attrPath, maybeModule, maybeType, name }:
             formatLowercase env maybeType maybeModule name attrPath
 
-        , FA.Uppercase { maybeModule, name }:
+        FA.'uppercase { maybeModule, name }:
             formatUppercase env maybeModule name
 
-        , FA.Constructor { maybeModule, name }:
+        FA.'constructor { maybeModule, name }:
             formatConstructor env maybeModule name
 
-        , FA.RecordShorthand { attrPath, name }:
+        FA.'recordShorthand { attrPath, name }:
             formatRecordShorthand env name attrPath
 
-        , FA.Fn layout pars body:
+        FA.'fn layout pars body:
             formatFunction env layout pars body
 
-        , FA.UnopCall unopId expr:
+        FA.'unopCall unopId expr:
             formatUnopCall env unopId expr
 
-        , FA.BinopChain priority binopChain:
+        FA.'binopChain priority binopChain:
             formatBinopChain env priority binopChain
 
-        , FA.Call ref args:
+        FA.'call ref args:
             formatCall env ref args
 
-        , FA.Poly text expression:
+        FA.'poly text expression:
             prefix =
                 text .. "?"
 
             expression
             >> formatExpression env __
-            >> Fmt.prefix (Text.length prefix) (Fmt.Text_ prefix) __
+            >> Fmt.prefix (Text.length prefix) (Fmt.'text_ prefix) __
 
-        , FA.If { condition, false, isMultiline, true }:
+        FA.'if { condition, false, isMultiline, true }:
             formatIf env isMultiline faExpression
 
-        , FA.Try { patterns, value }:
+        FA.'try { patterns, value }:
             formatTry env value patterns
     >> stackWithComments env comments __
 
@@ -244,10 +244,10 @@ unindentBlockComment as fn Int, Text: [ Text ] =
     fn indent, content:
     try Text.split "\n" content as
 
-        , []:
+        []:
             []
 
-        , head :: tail:
+        head :: tail:
             getLeadingSpaces =
                 Text.startsWithRegex "[ ]*"
 
@@ -274,7 +274,7 @@ formatComment as fn Env, FA.Comment: Fmt.Block =
     blockOrBlank as fn Text: Fmt.Block =
         fn text:
         if lineIsNonEmpty text then
-            Fmt.CommentWithIndent text >> Fmt.lineToBlock
+            Fmt.'commentWithIndent text >> Fmt.lineToBlock
         else
             Fmt.blankLine
 
@@ -282,7 +282,7 @@ formatComment as fn Env, FA.Comment: Fmt.Block =
         if indent == 0 then
             content
             >> unindentBlockComment indent __
-            >> List.map (fn l: l >> Fmt.CommentIgnoreIndent >> Fmt.lineToBlock) __
+            >> List.map (fn l: l >> Fmt.'commentIgnoreIndent >> Fmt.lineToBlock) __
             >> Fmt.stack
         else if isBlock then
             content
@@ -290,7 +290,7 @@ formatComment as fn Env, FA.Comment: Fmt.Block =
             >> List.map blockOrBlank __
             >> Fmt.stack
         else
-            Fmt.CommentWithIndent content >> Fmt.lineToBlock
+            Fmt.'commentWithIndent content >> Fmt.lineToBlock
 
     if isFollowedByBlank then
         Fmt.stack [ comment, Fmt.blankLine ]
@@ -306,8 +306,8 @@ formatComments as fn Env, [ FA.Comment ]: Fmt.Block =
 
 
 extractComments as fn FA.Expression: FA.Expression & [ FA.Comment ] =
-    fn FA.Expression comments pos expr:
-    FA.Expression [] pos expr & comments
+    fn FA.'expression comments pos expr:
+    FA.'expression [] pos expr & comments
 
 
 stackWithComments as fn Env, [ FA.Comment ], Fmt.Block: Fmt.Block =
@@ -331,7 +331,7 @@ formatLiteralText as fn Token.SingleOrTriple, Text: Fmt.Block =
     fn singleOrTriple, text:
     try singleOrTriple as
 
-        , Token.SingleQuote:
+        Token.'singleQuote:
             [#
 
                 "text"
@@ -339,7 +339,7 @@ formatLiteralText as fn Token.SingleOrTriple, Text: Fmt.Block =
             #]
             singleQuote .. text .. singleQuote >> Fmt.textToBlock
 
-        , Token.TripleQuote:
+        Token.'tripleQuote:
             [# TODO we need a `multiline` flag to distinguish between these two?
 
                 """text"""
@@ -375,37 +375,37 @@ formatStatements as fn Env, [ FA.Statement ]: Fmt.Block =
         fn maybePrevious, stats, acc:
         try stats as
 
-            , []:
+            []:
                 List.reverse acc
 
-            , head :: tail:
+            head :: tail:
                 try maybePrevious as
 
-                    , Nothing:
+                    'nothing:
                         acc
 
-                    , Just (FA.CommentStatement _):
+                    'just (FA.'commentStatement _):
                         acc
 
-                    , Just _:
+                    'just _:
                         if env.isRoot then
                             Fmt.blankLine :: Fmt.blankLine :: acc
                         else
                             Fmt.blankLine :: acc
-                >> formatStatement { env with isRoot = False } head :: __
-                >> rec (Just head) tail __
+                >> formatStatement { env with isRoot = 'false } head :: __
+                >> rec ('just head) tail __
 
-    rec Nothing sss [] >> Fmt.stack
+    rec 'nothing sss [] >> Fmt.stack
 
 
 formatStatement as fn Env, FA.Statement: Fmt.Block =
     fn env, stat:
     try stat as
-        , FA.CommentStatement comment: formatComment env comment
-        , FA.Evaluation expression: formatExpression env expression
-        , FA.ValueDef valueDef: formatValueDef env valueDef
-        , FA.AliasDef aliasDef: formatAliasDef env aliasDef
-        , FA.UnionDef unionDef: formatUnionDef env unionDef
+        FA.'commentStatement comment: formatComment env comment
+        FA.'evaluation expression: formatExpression env expression
+        FA.'valueDef valueDef: formatValueDef env valueDef
+        FA.'aliasDef aliasDef: formatAliasDef env aliasDef
+        FA.'unionDef unionDef: formatUnionDef env unionDef
 
 
 formatValueDef as fn Env, FA.ValueDef: Fmt.Block =
@@ -427,25 +427,25 @@ formatNonFn as fn [ Pos & Name ]: Fmt.Block =
     fn words:
     words
     >> List.map (fn pos & name: Fmt.textToBlock name) __
-    >> commaSeparatedList False (Fmt.textToBlock "with") "NonFunction" True __
+    >> commaSeparatedList 'false (Fmt.textToBlock "with") "NonFunction" 'true __
 
 
-formatDef as fn Text, Pos & Name, [ Pos & Name ]: Fmt.Block =
-    fn keyword, name, args:
+formatDef as fn Maybe Text, Pos & Name, [ Pos & Name ]: Fmt.Block =
+    fn maybeKeyword, name, args:
     formattedArgs =
         if args == [] then
-            Nothing
+            'nothing
         else
             args
             >> List.map formatFaWord __
             >> Fmt.spaceSeparatedOrIndent
-            >> Just
+            >> 'just
 
     [
-    , Just << Fmt.textToBlock keyword
-    , Just << formatFaWord name
+    , Maybe.map Fmt.textToBlock maybeKeyword
+    , 'just << formatFaWord name
     , formattedArgs
-    , Just << Fmt.textToBlock "="
+    , 'just << Fmt.textToBlock "="
     ]
     >> List.filterMap identity __
     >> Fmt.spaceSeparatedOrIndent
@@ -454,7 +454,7 @@ formatDef as fn Text, Pos & Name, [ Pos & Name ]: Fmt.Block =
 formatAliasDef as fn Env, FA.AliasDef: Fmt.Block =
     fn env, { args, name, type }:
     [
-    , formatDef "alias" name args
+    , formatDef 'nothing name args
     , Fmt.indent (formatExpression env type)
     ]
     >> Fmt.stack
@@ -463,9 +463,9 @@ formatAliasDef as fn Env, FA.AliasDef: Fmt.Block =
 formatUnionDef as fn Env, FA.UnionDef: Fmt.Block =
     fn env, { args, constructors, name }:
     [
-    , formatDef "var" name args
+    , formatDef ('just "var") name args
     , constructors
-    >> List.map (fn c: Fmt.prefix 2 (Fmt.Text_ ", ") (formatExpression env c)) __
+    >> List.map (fn c: Fmt.prefix 2 (Fmt.'text_ ", ") (formatExpression env c)) __
     >> Fmt.stack
     >> Fmt.indent
     ]
@@ -479,13 +479,13 @@ formatList as fn Env, Bool, [ Bool & FA.Expression ]: Fmt.Block =
         if isUnpacked then
             expr
             >> formatExpression env __
-            >> Fmt.prefix 3 (Fmt.Text_ "...") __
+            >> Fmt.addSuffix (Fmt.'text_ "...") __
         else
             formatExpression env expr
 
     unpacksAndExprs
     >> List.map formatListItem __
-    >> commaSeparatedList isMultiline (Fmt.textToBlock "[") "]" True __
+    >> commaSeparatedList isMultiline (Fmt.textToBlock "[") "]" 'true __
 
 
 formatRecord as fn Env, Bool, Maybe (Maybe FA.Expression), [ FA.RecordAttribute ]: Fmt.Block =
@@ -493,42 +493,42 @@ formatRecord as fn Env, Bool, Maybe (Maybe FA.Expression), [ FA.RecordAttribute 
     open =
         try maybeMaybeExt as
 
-            , Nothing:
+            'nothing:
                 Fmt.textToBlock "{"
 
-            , Just Nothing:
+            'just 'nothing:
                 Fmt.textToBlock "{ with "
 
-            , Just (Just ext):
+            'just ('just ext):
                 ext
                 >> formatExpression env __
-                >> Fmt.prefix 1 (Fmt.Text_ "{ ") __
-                >> Fmt.addSuffix (Fmt.Text_ " with") __
+                >> Fmt.prefix 1 (Fmt.'text_ "{ ") __
+                >> Fmt.addSuffix (Fmt.'text_ " with") __
 
     formatRecordAttribute as fn FA.RecordAttribute: Fmt.Block =
         fn { maybeExpr, name }:
         try maybeExpr as
 
-            , Nothing:
+            'nothing:
                 formatExpression env name
 
-            , Just expr:
+            'just expr:
                 [
-                , formatExpression env name >> Fmt.addSuffix (Fmt.Text_ " =") __
+                , formatExpression env name >> Fmt.addSuffix (Fmt.'text_ " =") __
                 , formatExpression env expr
                 ]
-                >> Fmt.rowOrIndent (Just Fmt.Space) __
+                >> Fmt.rowOrIndent ('just Fmt.'space) __
 
     attributeName =
         fn nameExpr:
         try nameExpr.name as
-            , FA.Expression _ _ (FA.Lowercase { with name }): name
-            , _: ""
+            FA.'expression _ _ (FA.'lowercase { with  name }): name
+            _: ""
 
     attrs
     >> List.sortBy attributeName __
     >> List.map formatRecordAttribute __
-    >> commaSeparatedList isMultiline open "}" True __
+    >> commaSeparatedList isMultiline open "}" 'true __
 
 
 #formatTokenWord as fn Token.Word: Fmt.Block =
@@ -556,8 +556,8 @@ formatLowercase as fn Env, Maybe FA.Expression, Maybe Name, Name, [ Name ]: Fmt.
     word =
         [
         , try maybeModule as
-            , Nothing: []
-            , Just module: [ module, "." ]
+            'nothing: []
+            'just module: [ module, "." ]
         , [ name ]
         , List.map (fn p: "." .. p) attrPath
         ]
@@ -567,12 +567,12 @@ formatLowercase as fn Env, Maybe FA.Expression, Maybe Name, Name, [ Name ]: Fmt.
 
     try maybeType as
 
-        , Nothing:
+        'nothing:
             word
 
-        , Just type:
+        'just type:
             [
-            , Fmt.addSuffix (Fmt.Text_ " as") word
+            , Fmt.addSuffix (Fmt.'text_ " as") word
             , formatExpression env type
             ]
             >> Fmt.spaceSeparatedOrIndent __
@@ -582,8 +582,8 @@ formatUppercase as fn Env, Maybe Name, Name: Fmt.Block =
     fn env, maybeModule, name:
         [
         , try maybeModule as
-            , Nothing: []
-            , Just module: [ module, "." ]
+            'nothing: []
+            'just module: [ module, "." ]
         , [ name ]
         ]
         >> List.concat
@@ -595,8 +595,8 @@ formatConstructor as fn Env, Maybe Name, Name: Fmt.Block =
     fn env, maybeModule, name:
         [
         , try maybeModule as
-            , Nothing: []
-            , Just module: [ module, "." ]
+            'nothing: []
+            'just module: [ module, "." ]
         , [ name ]
         ]
         >> List.concat
@@ -606,7 +606,7 @@ formatConstructor as fn Env, Maybe Name, Name: Fmt.Block =
 
 formatRecordShorthand as fn Env, Name, [ Name ]: Fmt.Block =
     fn env, name, attrPath:
-        name :: List.map (fn p: "." .. p) attrPath
+        List.map (fn p: "." .. p) (name :: attrPath)
         >> Text.join "" __
         >> Fmt.textToBlock
 
@@ -615,17 +615,17 @@ formatFunctionHeader as fn Env, [ FA.Expression ]: Fmt.Block =
     fn env, pars:
     pars
     >> List.map (formatExpression env __) __
-    >> commaSeparatedList False (Fmt.textToBlock "fn") ":" False __
+    >> commaSeparatedList 'false (Fmt.textToBlock "fn") ":" 'false __
 
 
 formatFunction as fn Env, FA.Layout, [ FA.Expression ], FA.Expression: Fmt.Block =
     fn env, layout, pars, body:
     forceStack =
-        layout /= FA.Inline
+        layout /= FA.'inline
 
     [
     , formatFunctionHeader env pars
-    , formatExpression env body >> applyIf (layout == FA.Indented) Fmt.indent
+    , formatExpression env body >> applyIf (layout == FA.'indented) Fmt.indent
     ]
     >> Fmt.spaceSeparatedOrStackForce forceStack __
 
@@ -633,10 +633,10 @@ formatFunction as fn Env, FA.Layout, [ FA.Expression ], FA.Expression: Fmt.Block
 unopToText as fn Op.UnopId: Text =
     fn unopId:
     try unopId as
-        , Op.UnopPlus: "+"
-        , Op.UnopMinus: "-"
-        , Op.UnopUnique: "!"
-        , Op.UnopRecycle: "@"
+        Op.'unopPlus: "+"
+        Op.'unopMinus: "-"
+        Op.'unopUnique: "!"
+        Op.'unopRecycle: "@"
 
 
 formatUnop as fn Op.UnopId: Fmt.Block =
@@ -651,7 +651,7 @@ formatUnopCall as fn Env, Op.UnopId, FA.Expression: Fmt.Block =
 
     expr
     >> formatExpression env __
-    >> Fmt.prefix (Text.length unop) (Fmt.Text_ unop) __
+    >> Fmt.prefix (Text.length unop) (Fmt.'text_ unop) __
 
 
 formatBinopChain as fn Env, Int, FA.BinopChain: Fmt.Block =
@@ -659,16 +659,16 @@ formatBinopChain as fn Env, Int, FA.BinopChain: Fmt.Block =
     formatOpAndRight =
         fn binop & expr:
         formatExpressionAndMaybeAddParens env binop.precedence expr
-        >> Fmt.prefix 0 (Fmt.Text_ (binop.symbol .. " ")) __
+        >> Fmt.prefix 0 (Fmt.'text_ (binop.symbol .. " ")) __
         >> stackWithComments env binop.comments __
 
     forceMultiline =
         try opsAndRights as
 
-            , []:
-                False
+            []:
+                'false
 
-            , [ first & _, ...rest ]:
+            [ first & _, rest... ]:
                 # op.symbol == ">>"
                 last as FA.Binop =
                     List.for first rest (fn opX & _, acc: opX)
@@ -677,7 +677,7 @@ formatBinopChain as fn Env, Int, FA.BinopChain: Fmt.Block =
 
     [
     , formatExpressionAndMaybeAddParens env (chainPrecedence opsAndRights) left
-    , ...List.map formatOpAndRight opsAndRights
+    , List.map formatOpAndRight opsAndRights...
     ]
     >> Fmt.spaceSeparatedOrStackForce forceMultiline __
 
@@ -691,20 +691,20 @@ formatCall as fn Env, FA.Expression, [ FA.Expression ]: Fmt.Block =
         fn index, arg:
         try arg as
 
-            , FA.Expression _ _ (FA.Fn layout params body):
-                if index == lastIndex and layout /= FA.Inline then
-                    Just (layout & params & body)
+            FA.'expression _ _ (FA.'fn layout params body):
+                if index == lastIndex and layout /= FA.'inline then
+                    'just (layout & params & body)
                 else
-                    Nothing
+                    'nothing
 
-            , _:
-                Nothing
+            _:
+                'nothing
 
     formatArgument as fn Int, FA.Expression: Fmt.Block =
         fn index, arg:
         try asContinuingFn index arg as
-            , Nothing: formatExpressionAndMaybeAddParens env Op.precedence_application arg
-            , Just (layout & params & body): formatFunctionHeader env params
+            'nothing: formatExpressionAndMaybeAddParens env Op.precedence_application arg
+            'just (layout & params & body): formatFunctionHeader env params
 
     maybeContinuing =
         args
@@ -718,19 +718,19 @@ formatCall as fn Env, FA.Expression, [ FA.Expression ]: Fmt.Block =
         Fmt.spaceSeparatedOrIndent
             [
             , formatExpressionAndMaybeAddParens env Op.precedence_application refNoComments
-            , ...List.indexedMap formatArgument args
+            , List.indexedMap formatArgument args...
             ]
 
     try maybeContinuing as
 
-        , Nothing:
+        'nothing:
             call
 
-        , Just (layout & params & body):
+        'just (layout & params & body):
             Fmt.stack
                 [
                 , call
-                , formatExpression env body >> applyIf (layout == FA.Indented) Fmt.indent
+                , formatExpression env body >> applyIf (layout == FA.'indented) Fmt.indent
                 ]
     >> stackWithComments env refComments __
 
@@ -740,8 +740,8 @@ extractIfElses as fn Env, FA.Expression: [ [ FA.Comment ] & Fmt.Block & Fmt.Bloc
     rec =
         fn acc, expr:
         try expr as
-            , FA.Expression comments _ (FA.If args): rec [ comments & formatExpression env args.condition & formatExpression env args.true, ...acc ] args.false
-            , _: List.reverse acc & formatExpression env expr
+            FA.'expression comments _ (FA.'if args): rec [ comments & formatExpression env args.condition & formatExpression env args.true, acc... ] args.false
+            _: List.reverse acc & formatExpression env expr
 
     rec [] x
 
@@ -753,37 +753,37 @@ formatIf as fn Env, Bool, FA.Expression: Fmt.Block =
 
     maybeSingleLine =
         if isMultiline then
-            Nothing
+            'nothing
         else
             try conditionsAndValues as
 
-                , [ [] & condition & valueIfTrue ]:
+                [ [] & condition & valueIfTrue ]:
                     l =
                         Fmt.blockAsLine
 
                     try l condition & l valueIfTrue & l default as
-                        , Just conditionLine & Just trueLine & Just falseLine: Just (conditionLine & trueLine & falseLine)
-                        , _: Nothing
+                        'just conditionLine & 'just trueLine & 'just falseLine: 'just (conditionLine & trueLine & falseLine)
+                        _: 'nothing
 
-                , _:
-                    Nothing
+                _:
+                    'nothing
 
     try maybeSingleLine as
 
-        , Just (conditionLine & trueLine & falseLine):
+        'just (conditionLine & trueLine & falseLine):
             [
-            , Fmt.Text_ "if"
+            , Fmt.'text_ "if"
             , conditionLine
-            , Fmt.Text_ "then"
+            , Fmt.'text_ "then"
             , trueLine
-            , Fmt.Text_ "else"
+            , Fmt.'text_ "else"
             , falseLine
             ]
-            >> List.intersperse Fmt.Space __
-            >> Fmt.for1 __ (fn item, acc: Fmt.Row acc item)
+            >> List.intersperse Fmt.'space __
+            >> Fmt.for1 __ (fn item, acc: Fmt.'row acc item)
             >> Fmt.lineToBlock
 
-        , Nothing:
+        'nothing:
             formatCAndV as fn Int, [ FA.Comment ] & Fmt.Block & Fmt.Block: Fmt.Block =
                 fn index, comments & condition & value:
                 Fmt.stack
@@ -816,31 +816,30 @@ formatTry as fn Env, FA.Expression, [ FA.Expression & FA.Expression ]: Fmt.Block
     tryOneLine as fn Fmt.Block & Fmt.Block: Result None (Fmt.Line & Fmt.Line) =
         fn pa & bl:
         Fmt.blockAsLine pa
-        >> Maybe.toResult None __
+        >> Maybe.toResult 'none __
         >> onOk fn paLine:
         Fmt.blockAsLine bl
-        >> Maybe.toResult None __
+        >> Maybe.toResult 'none __
         >> onOk fn blockLine:
-        Ok (paLine & blockLine)
+        'ok (paLine & blockLine)
 
     blocks as [ Fmt.Block ] =
         try List.mapRes tryOneLine formatted as
 
-            , Ok lines:
+            'ok lines:
                 formatInline =
                     fn paLine & blockLine:
-                    Fmt.Row paLine (Fmt.Row (Fmt.Text_ ": ") blockLine) >> Fmt.lineToBlock
+                    Fmt.'row paLine (Fmt.'row (Fmt.'text_ ": ") blockLine) >> Fmt.lineToBlock
 
                 List.map formatInline lines
 
             # TODO restore `None` here once it doesn't break JS any more
-            , Err _:
+            'err _:
                 formatIndented =
                     fn paBlock & blockBlock:
                     [
                     , Fmt.blankLine
-                    , paBlock
-                    >> Fmt.addSuffix (Fmt.Text_ ":") __
+                    , paBlock >> Fmt.addSuffix (Fmt.'text_ ":") __
                     , Fmt.indent blockBlock
                     ]
                     >> Fmt.stack

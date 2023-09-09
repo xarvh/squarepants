@@ -10,8 +10,7 @@ Instead than errors at parse time, we can produce more meaningful errors when tr
 
 #]
 
-
-alias Binop =
+Binop =
     {
     , comments as [ Comment ]
     , line as Int
@@ -22,11 +21,11 @@ alias Binop =
     }
 
 
-alias Module =
+Module =
     [ Statement ]
 
 
-alias ValueDef =
+ValueDef =
     {
     , body as Expression
     , nonFn as [ Pos & Name ]
@@ -34,7 +33,7 @@ alias ValueDef =
     }
 
 
-alias AliasDef =
+AliasDef =
     {
     # TODO rename to pars
     , args as [ Pos & Name ]
@@ -43,7 +42,7 @@ alias AliasDef =
     }
 
 
-alias UnionDef =
+UnionDef =
     {
     , args as [ Pos & Name ]
     , constructors as [ Expression ]
@@ -51,7 +50,7 @@ alias UnionDef =
     }
 
 
-alias Comment =
+Comment =
     {
     , end as Int
     , indent as Int
@@ -61,35 +60,35 @@ alias Comment =
     }
 
 
-union Layout =
-    , Inline
-    , Aligned
-    , Indented
+var Layout =
+    , 'inline
+    , 'aligned
+    , 'indented
 
 
-union Statement =
-    , CommentStatement Comment
-    , Evaluation Expression
-    , ValueDef ValueDef
-    , AliasDef AliasDef
-    , UnionDef UnionDef
+var Statement =
+    , 'commentStatement Comment
+    , 'evaluation Expression
+    , 'valueDef ValueDef
+    , 'aliasDef AliasDef
+    , 'unionDef UnionDef
 
 
-union Expression =
-    , Expression [ Comment ] Pos Expr_
+var Expression =
+    , 'expression [ Comment ] Pos Expr_
 
 
-union Expr_ =
-    , LiteralText Token.SingleOrTriple Text
-    , LiteralNumber Bool Text
-    , ArgumentPlaceholder
+var Expr_ =
+    , 'literalText Token.SingleOrTriple Text
+    , 'literalNumber Bool Text
+    , 'argumentPlaceholder
     , # This is used only when translating from FA to CA
-      ResolvedArgumentPlaceholder Int
-    , Statements [ Statement ]
+      'resolvedArgumentPlaceholder Int
+    , 'statements [ Statement ]
     , # List isMultiline [isUnpacked & item]
-      List Bool [ Bool & Expression ]
+      'list Bool [ Bool & Expression ]
     , # NOTE: `{ name as Type = value }` is valid
-      Record
+      'record
           {
           , attrs as [ RecordAttribute ]
           , isMultiline as Bool
@@ -98,48 +97,48 @@ union Expr_ =
           # expression extension: { expt with attr1, ... }
           , maybeExtension as Maybe (Maybe Expression)
           }
-    , Lowercase
+    , 'lowercase
           {
           , attrPath as [ Name ]
           , maybeModule as Maybe Name
           , maybeType as Maybe Expression
           , name as Name
           }
-    , Uppercase
+    , 'uppercase
           {
           , maybeModule as Maybe Name
           , name as Name
           }
-    , Constructor
+    , 'constructor
           {
           , maybeModule as Maybe Name
           , name as Name
           }
-    , RecordShorthand
+    , 'recordShorthand
           {
           , attrPath as [ Name ]
           , name as Name
           }
-    , Fn Layout [ Expression ] Expression
-    , UnopCall Op.UnopId Expression
-    , BinopChain Int BinopChain
-    , Call Expression [ Expression ]
-    , Poly Text Expression
-    , If
+    , 'fn Layout [ Expression ] Expression
+    , 'unopCall Op.UnopId Expression
+    , 'binopChain Int BinopChain
+    , 'call Expression [ Expression ]
+    , 'poly Text Expression
+    , 'if
           {
           , condition as Expression
           , false as Expression
           , isMultiline as Bool
           , true as Expression
           }
-    , Try
+    , 'try
           {
           , patterns as [ Expression & Expression ]
           , value as Expression
           }
 
 
-alias RecordAttribute =
+RecordAttribute =
     {
     , maybeExpr as Maybe Expression
     # `name` can also contain the type as an annotation
@@ -148,7 +147,7 @@ alias RecordAttribute =
 
 
 # expr op expr op expr op...
-alias BinopChain =
+BinopChain =
     Expression & [ Binop & Expression ]
 
 
@@ -161,8 +160,8 @@ binopChainReverse as fn BinopChain: BinopChain =
     rec as fn [ Binop & Expression ], BinopChain: BinopChain =
         fn acc, oddItem & remainder:
         try remainder as
-            , []: oddItem & acc
-            , [ sep & item, ...tail ]: rec [ sep & oddItem, ...acc ] (item & tail)
+            []: oddItem & acc
+            [ sep & item, tail... ]: rec [ sep & oddItem, acc... ] (item & tail)
 
     rec [] __
 
@@ -171,33 +170,32 @@ binopChainAllBinops as fn fn Binop: Bool, BinopChain: Bool =
     fn f, ls:
     try ls.second as
 
-        , []:
-            True
+        []:
+            'true
 
-        , [ sep & item, ...tail ]:
+        [ sep & item, tail... ]:
             if f sep then
                 binopChainAllBinops f (item & tail)
             else
-                False
+                'false
 
 
 statementPos as fn Statement: Pos =
     fn statement:
     try statement as
 
-        , CommentStatement { with  end, start }:
-            Pos.P start end
+        'commentStatement { with  end, start }:
+            Pos.'p start end
 
-        , Evaluation (Expression _ pos expr_):
+        'evaluation ('expression _ pos expr_):
             pos
 
         # TODO: the position should encompass the WHOLE definition, not just its start
-        , ValueDef { body, nonFn, pattern = Expression _ pos expr_ }:
+        'valueDef { body, nonFn, pattern = 'expression _ pos expr_ }:
             pos
 
-        , AliasDef { args, name, type }:
+        'aliasDef { args, name, type }:
             name.first
 
-        , UnionDef { args, constructors, name }:
+        'unionDef { args, constructors, name }:
             name.first
-

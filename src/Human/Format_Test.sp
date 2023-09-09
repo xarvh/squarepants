@@ -1,7 +1,7 @@
-
-
 tests as Test =
-    Test.Group "Formatter" [
+    Test.'group
+        "Formatter"
+        [
         , definitions
         , operators
         , functions
@@ -18,39 +18,39 @@ tests as Test =
 
 format as fn Text: Result Text Text =
     fn input:
-
-    Compiler/Parser.textToFormattableModule {
-         , errorModule = {
-            , fsPath = "test"
+    Compiler/Parser.textToFormattableModule
+        {
+        , errorModule =
+            {
             , content = input
-          }
-          , stripLocations = False
-          , keepComments = True
-    }
+            , fsPath = "test"
+            }
+        , keepComments = 'true
+        , stripLocations = 'false
+        }
     >> Result.mapError toHuman __
     >> onOk fn faStatements:
-
-    env as Human/Format.Env = {
-        , isRoot = True
+    env as Human/Format.Env =
+        {
+        , isRoot = 'true
         , originalContent = input
         }
 
     faStatements
     >> Human/Format.formatStatements env __
     >> Fmt.render
-    >> Ok
+    >> 'ok
 
 
 formatTest as fn Text, Text, Text: Test =
     fn title, input, expectedOutput:
-
     quote =
         "```\n" .. __ .. "\n```"
 
-    Test.CodeExpectation toMaybeError =
+    Test.'codeExpectation toMaybeError =
         Test.isOkAndEqualTo expectedOutput
 
-    Test.Single title "" fn None:
+    Test.'single title "" fn 'none:
         input
         >> format
         >> toMaybeError quote __
@@ -58,7 +58,8 @@ formatTest as fn Text, Text, Text: Test =
 
 
 operators as Test =
-    Test.Group "Operators"
+    Test.'group
+        "Operators"
         [
         , formatTest
             """
@@ -127,9 +128,9 @@ operators as Test =
         ]
 
 
-
 lists as Test =
-    Test.Group "Lists"
+    Test.'group
+        "Lists"
         [
         , formatTest
             """
@@ -160,7 +161,6 @@ lists as Test =
                 ]
 
             """
-
         , formatTest
             """
             [reg] weird shit happening when a definition is preceded by a blank line?
@@ -174,11 +174,25 @@ lists as Test =
                 []
 
             """
+        , formatTest
+            """
+            Expansion
+            """
+            """
+
+            ll = [a..., b, fun arg..., (pas)...]
+            """
+            """
+            ll =
+                [ a..., b, fun arg..., pas... ]
+
+            """
         ]
 
 
 records as Test =
-    Test.Group "Records"
+    Test.'group
+        "Records"
         [
         , formatTest
             """
@@ -230,11 +244,24 @@ records as Test =
             { z with e }
 
             """
+        , formatTest
+            """
+            Shorthands
+            """
+            """
+            a = { b with c = .d }
+            """
+            """
+            a =
+                { b with c = .d }
+
+            """
         ]
 
 
 uniqueness as Test =
-    Test.Group "Uniqueness"
+    Test.'group
+        "Uniqueness"
         [
         , formatTest
             """
@@ -252,7 +279,8 @@ uniqueness as Test =
 
 
 functions as Test =
-    Test.Group "Functions"
+    Test.'group
+        "Functions"
         [
         [# Can these actually be done?
 
@@ -351,7 +379,8 @@ functions as Test =
 
 
 calls as Test =
-    Test.Group "Calls"
+    Test.'group
+        "Calls"
         [
         , formatTest
             """
@@ -374,7 +403,6 @@ calls as Test =
                     b
 
             """
-
         , formatTest
             """
             precedence
@@ -386,7 +414,6 @@ calls as Test =
             a (b c)
 
             """
-
         , formatTest
             """
             With multiline args
@@ -412,7 +439,6 @@ calls as Test =
                     (zak meh)
 
             """
-
         , formatTest
             """
             Preserve aligned
@@ -446,19 +472,19 @@ calls as Test =
         ]
 
 
-
 definitions as Test =
-    Test.Group "Definitions"
+    Test.'group
+        "Definitions"
         [
         , formatTest
             """
             Alias
             """
             """
-            alias Meh a b = Int
+            Meh a b = Int
             """
             """
-            alias Meh a b =
+            Meh a b =
                 Int
 
             """
@@ -502,9 +528,9 @@ definitions as Test =
         ]
 
 
-
 textLiterals as Test =
-    Test.Group "Text literals"
+    Test.'group
+        "Text literals"
         [
         , formatTest
             """
@@ -518,6 +544,9 @@ textLiterals as Test =
                 "\\"\\\\"
 
             """
+        ]
+
+
 # TODO Escaping the escapes is more than my brain can take now.
 #        , formatTest
 #            """
@@ -528,11 +557,9 @@ textLiterals as Test =
 #            """
 #            """
 #            """
-        ]
-
-
 comments as Test =
-    Test.Group "Comments"
+    Test.'group
+        "Comments"
         [
         , formatTest
             """
@@ -561,7 +588,6 @@ comments as Test =
                 c
 
             """
-
         , formatTest
             """
             Preserve whether a comment has a trailing blank, line
@@ -586,7 +612,6 @@ comments as Test =
                 1
 
             """
-
         , formatTest
             """
             Preserve whether a comment has a trailing blank, block
@@ -611,7 +636,6 @@ comments as Test =
                 1
 
             """
-
         , formatTest
             """
             Comment order is preserved
@@ -647,7 +671,6 @@ comments as Test =
                 ccccc
 
             """
-
         , formatTest
             """
             Normal comments get indented, line
@@ -740,7 +763,6 @@ comments as Test =
                     c
 
             """
-
         , formatTest
             """
             [reg] Block comment internal indent should remain consistent
@@ -763,9 +785,9 @@ comments as Test =
         ]
 
 
-
 tryAs as Test =
-    Test.Group "try..as"
+    Test.'group
+        "try..as"
         [
         , formatTest
             """
@@ -953,7 +975,8 @@ tryAs as Test =
 
 
 ifs as Test =
-    Test.Group "if..then"
+    Test.'group
+        "if..then"
         [
         , formatTest
             """
@@ -1024,4 +1047,3 @@ ifs as Test =
 
             """
         ]
-

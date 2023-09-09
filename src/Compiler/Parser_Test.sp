@@ -1,5 +1,5 @@
 tests as Test =
-    Test.Group
+    Test.'group
         "Parser"
         [
         , values
@@ -20,7 +20,7 @@ tests as Test =
 
 word as fn Text: Pos & Name =
     fn name:
-    Pos.T & name
+    Pos.'t & name
 
 
 codeTest as fn Text, Text, fn Text: Result Text z, Test.CodeExpectation z: Test =
@@ -30,15 +30,15 @@ codeTest as fn Text, Text, fn Text: Result Text z, Test.CodeExpectation z: Test 
 asDefinition as fn FA.Statement: Result Text { body as FA.Expression, nonFn as [ Pos & Name ], pattern as FA.Expression } =
     fn s:
     try s as
-        , FA.ValueDef a: Ok a
-        , _: Err "Test says: no def"
+        FA.'valueDef a: 'ok a
+        _: 'err "Test says: no def"
 
 
 asEvaluation as fn FA.Statement: Result Text FA.Expression =
     fn s:
     try s as
-        , FA.Evaluation a: Ok a
-        , _: Err "Test says: no eval"
+        FA.'evaluation a: 'ok a
+        _: 'err "Test says: no eval"
 
 
 firstStatement as fn Text: Result Text FA.Statement =
@@ -46,8 +46,8 @@ firstStatement as fn Text: Result Text FA.Statement =
     grabFirst =
         fn stats:
         try stats as
-            , []: Err "Test says: no statements"
-            , head :: tail: Ok head
+            []: 'err "Test says: no statements"
+            head :: tail: 'ok head
 
     {
     , errorModule =
@@ -55,8 +55,8 @@ firstStatement as fn Text: Result Text FA.Statement =
         , content = code
         , fsPath = "Test"
         }
-    , keepComments = True
-    , stripLocations = True
+    , keepComments = 'true
+    , stripLocations = 'true
     }
     >> Compiler/Parser.textToFormattableModule
     >> TH.resErrorToStrippedText
@@ -78,11 +78,11 @@ firstEvaluationOfDefinition as fn Text: Result Text FA.Expression =
     code
     >> firstStatement
     >> onOk asDefinition
-    >> onOk (fn def: Ok def.body)
+    >> onOk (fn def: 'ok def.body)
 
 
 values as Test =
-    Test.Group
+    Test.'group
         "Values"
         [
         , codeTest
@@ -128,7 +128,7 @@ values as Test =
 #
 
 parens as Test =
-    Test.Group
+    Test.'group
         "Parens"
         [
         , codeTest
@@ -162,7 +162,7 @@ parens as Test =
 #
 
 e as fn FA.Expr_: FA.Expression =
-    FA.Expression [] Pos.T __
+    FA.'expression [] Pos.'t __
 
 
 faBinop as fn Op.Binop: FA.Binop =
@@ -170,7 +170,7 @@ faBinop as fn Op.Binop: FA.Binop =
     {
     , comments = []
     , line = -1
-    , pos = Pos.T
+    , pos = Pos.'t
     , precedence = op.precedence
     , symbol = op.symbol
     , usr = op.usr
@@ -179,27 +179,27 @@ faBinop as fn Op.Binop: FA.Binop =
 
 tuple as fn FA.Expression, FA.Expression: FA.Expression =
     fn a, b:
-    FA.BinopChain Op.precedence_tuple (a & [ faBinop Prelude.tuple & b ]) >> e
+    FA.'binopChain Op.precedence_tuple (a & [ faBinop Prelude.tuple & b ]) >> e
 
 
 lowercase as fn Name: FA.Expression =
     fn name:
-    { attrPath = [], maybeModule = Nothing, maybeType = Nothing, name }
-    >> FA.Lowercase
+    { attrPath = [], maybeModule = 'nothing, maybeType = 'nothing, name }
+    >> FA.'lowercase
     >> e
 
 
 uppercase as fn Name: FA.Expression =
     fn name:
-    { maybeModule = Nothing, name }
-    >> FA.Uppercase
+    { maybeModule = 'nothing, name }
+    >> FA.'uppercase
     >> e
 
 
 constructor as fn Name: FA.Expression =
     fn name:
-    { maybeModule = Nothing, name }
-    >> FA.Constructor
+    { maybeModule = 'nothing, name }
+    >> FA.'constructor
     >> e
 
 
@@ -207,16 +207,16 @@ annotatedVariable as fn Name, FA.Expression: FA.Expression =
     fn name, type:
     {
     , attrPath = []
-    , maybeModule = Nothing
-    , maybeType = Just type
+    , maybeModule = 'nothing
+    , maybeType = 'just type
     , name
     }
-    >> FA.Lowercase
+    >> FA.'lowercase
     >> e
 
 
 functions as Test =
-    Test.Group
+    Test.'group
         "functions"
         [
         , codeTest
@@ -229,13 +229,13 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn
-                 FA.Inline
+             << FA.'fn
+                 FA.'inline
                  [
                  , lowercase "a"
                  , lowercase "b"
                  ]
-                 (e << FA.LiteralNumber False "3")
+                 (e << FA.'literalNumber 'false "3")
             )
         , codeTest
             """
@@ -248,7 +248,7 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn FA.Indented [ lowercase "a" ] (e << FA.LiteralNumber False "3")
+             << FA.'fn FA.'indented [ lowercase "a" ] (e << FA.'literalNumber 'false "3")
             )
         , codeTest
             """
@@ -263,7 +263,7 @@ functions as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn FA.Aligned [ lowercase "a" ] (e << FA.Fn FA.Aligned [ lowercase "b" ] (e << FA.LiteralNumber False "3"))
+             << FA.'fn FA.'aligned [ lowercase "a" ] (e << FA.'fn FA.'aligned [ lowercase "b" ] (e << FA.'literalNumber 'false "3"))
             )
         , codeTest
             """
@@ -275,7 +275,7 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn FA.Inline [ tuple (lowercase "a") (lowercase "b") ] (lowercase "a")
+             << FA.'fn FA.'inline [ tuple (lowercase "a") (lowercase "b") ] (lowercase "a")
             )
         , codeTest
             """
@@ -287,7 +287,7 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Call (lowercase "xxx") [ e << FA.Fn FA.Inline [ lowercase "y" ] (lowercase "y") ]
+             << FA.'call (lowercase "xxx") [ e << FA.'fn FA.'inline [ lowercase "y" ] (lowercase "y") ]
             )
         , codeTest
             """
@@ -301,7 +301,7 @@ functions as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
              << e
-             << FA.Call (lowercase "xxx") [ e << FA.Fn FA.Aligned [ lowercase "y" ] (lowercase "y") ]
+             << FA.'call (lowercase "xxx") [ e << FA.'fn FA.'aligned [ lowercase "y" ] (lowercase "y") ]
             )
         , codeTest
             """
@@ -315,10 +315,10 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.BinopChain Op.precedence_pipe __
+             << FA.'binopChain Op.precedence_pipe __
              << lowercase "value"
              & [
-             , faBinop Prelude.sendRight & e (FA.Call (lowercase "map") [ e << FA.Fn FA.Aligned [ lowercase "x" ] (lowercase "blah") ])
+             , faBinop Prelude.sendRight & e (FA.'call (lowercase "map") [ e << FA.'fn FA.'aligned [ lowercase "x" ] (lowercase "blah") ])
              , faBinop Prelude.sendRight & lowercase "sblorp"
              ]
             )
@@ -334,14 +334,14 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn
-                 FA.Indented
+             << FA.'fn
+                 FA.'indented
                  [ lowercase "x" ]
                  (e
-                  << FA.Statements
+                  << FA.'statements
                       [
-                      , FA.Evaluation << lowercase "x"
-                      , FA.Evaluation << lowercase "x"
+                      , FA.'evaluation << lowercase "x"
+                      , FA.'evaluation << lowercase "x"
                       ]
                  )
             )
@@ -360,14 +360,14 @@ functions as Test =
              << {
              , body =
                  e
-                 << FA.Fn
-                     FA.Aligned
+                 << FA.'fn
+                     FA.'aligned
                      [ lowercase "x" ]
                      (e
-                      << FA.Statements
+                      << FA.'statements
                           [
-                          , FA.ValueDef { body = e << FA.LiteralNumber False "1", nonFn = [], pattern = lowercase "y" }
-                          , FA.Evaluation << lowercase "x"
+                          , FA.'valueDef { body = e << FA.'literalNumber 'false "1", nonFn = [], pattern = lowercase "y" }
+                          , FA.'evaluation << lowercase "x"
                           ]
                      )
              , nonFn = []
@@ -384,8 +384,8 @@ functions as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.BinopChain Op.precedence_mutop __
-             << (e << FA.UnopCall Op.UnopRecycle __ << lowercase "b") & [ faBinop Prelude.mutableAdd & (e << FA.LiteralNumber False "1") ]
+             << FA.'binopChain Op.precedence_mutop __
+             << (e << FA.'unopCall Op.'unopRecycle __ << lowercase "b") & [ faBinop Prelude.mutableAdd & (e << FA.'literalNumber 'false "1") ]
             )
         , codeTest
             """
@@ -402,7 +402,7 @@ functions as Test =
 
 
 annotations as Test =
-    Test.Group
+    Test.'group
         "Annotations"
         [
         , codeTest
@@ -430,7 +430,7 @@ annotations as Test =
                  {
                  , body = lowercase "b"
                  , nonFn = []
-                 , pattern = annotatedVariable "a" (e << FA.Fn FA.Inline [ tuple (lowercase "int") (lowercase "int") ] (lowercase "bool"))
+                 , pattern = annotatedVariable "a" (e << FA.'fn FA.'inline [ tuple (lowercase "int") (lowercase "int") ] (lowercase "bool"))
                  }
             )
         ]
@@ -440,13 +440,13 @@ unionDefs as Test =
     asTypeDef =
         fn s:
         try s as
-            , FA.UnionDef a: Ok a
-            , _: Err "no type def"
+            FA.'unionDef a: 'ok a
+            _: 'err "no type def"
 
     firstTypeDef =
         fn x: x >> firstStatement >> onOk asTypeDef
 
-    Test.Group
+    Test.'group
         """
         Type Definitions
         """
@@ -464,10 +464,10 @@ unionDefs as Test =
                  , args = [ word "b", word "c" ]
                  , constructors =
                      [
-                     , e << FA.Call (constructor "'v1") [ lowercase "b" ]
-                     , e << FA.Call (constructor "'v2") [ lowercase "c" ]
+                     , e << FA.'call (constructor "'v1") [ lowercase "b" ]
+                     , e << FA.'call (constructor "'v2") [ lowercase "c" ]
                      , constructor "'v3"
-                     , e << FA.Call (constructor "'v4") [ lowercase "b", lowercase "c" ]
+                     , e << FA.'call (constructor "'v4") [ lowercase "b", lowercase "c" ]
                      ]
                  , name = word "A"
                  }
@@ -489,10 +489,10 @@ unionDefs as Test =
                  , args = [ word "b", word "c" ]
                  , constructors =
                      [
-                     , e << FA.Call (constructor "'v1") [ lowercase "b" ]
-                     , e << FA.Call (constructor "'v2") [ lowercase "c" ]
+                     , e << FA.'call (constructor "'v1") [ lowercase "b" ]
+                     , e << FA.'call (constructor "'v2") [ lowercase "c" ]
                      , constructor "'v3"
-                     , e << FA.Call (constructor "'v4") [ lowercase "b", lowercase "c" ]
+                     , e << FA.'call (constructor "'v4") [ lowercase "b", lowercase "c" ]
                      ]
                  , name = word "A"
                  }
@@ -507,10 +507,10 @@ unionDefs as Test =
                  , constructors =
                      [
                      , e
-                     << FA.Call
+                     << FA.'call
                          (constructor "'a")
                          [
-                         , e << FA.List False [ False & (uppercase "Int" ) ]
+                         , e << FA.'list 'false [ 'false & uppercase "Int" ]
                          ]
                      ]
                  , name = word "A"
@@ -520,7 +520,7 @@ unionDefs as Test =
 
 
 lists as Test =
-    Test.Group
+    Test.'group
         "Lists"
         [
         , codeTest
@@ -529,14 +529,14 @@ lists as Test =
             """
             "[]"
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.List False []))
+            (Test.isOkAndEqualTo (e << FA.'list 'false []))
         , codeTest
             """
             Inline
             """
             "[a, b]"
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.List False [ False & lowercase "a", False & lowercase "b" ]))
+            (Test.isOkAndEqualTo (e << FA.'list 'false [ 'false & lowercase "a", 'false & lowercase "b" ]))
         , codeTest
             """
             Multiline
@@ -549,7 +549,7 @@ lists as Test =
               ]
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo (e << FA.List True [ False & lowercase "a", False & lowercase "b" ]))
+            (Test.isOkAndEqualTo (e << FA.'list 'true [ 'false & lowercase "a", 'false & lowercase "b" ]))
         , codeTest
             """
             Ancient egyptian
@@ -562,19 +562,19 @@ lists as Test =
               ]
             """
             firstEvaluationOfDefinition
-            (Test.isOkAndEqualTo (e << FA.Call (lowercase "blah") [ e << FA.List True [ False & lowercase "a", False & lowercase "b" ] ]))
+            (Test.isOkAndEqualTo (e << FA.'call (lowercase "blah") [ e << FA.'list 'true [ 'false & lowercase "a", 'false & lowercase "b" ] ]))
         , codeTest
             """
             Dots
             """
-            "[...a, b, ...c]"
+            "[a..., b, c...]"
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.List False [ True & lowercase "a", False & lowercase "b", True & lowercase "c" ]))
+            (Test.isOkAndEqualTo (e << FA.'list 'false [ 'true & lowercase "a", 'false & lowercase "b", 'true & lowercase "c" ]))
         ]
 
 
 records as Test =
-    Test.Group
+    Test.'group
         "Records"
         [
         , codeTest
@@ -583,24 +583,24 @@ records as Test =
             """
             "{}"
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.Record { attrs = [], isMultiline = False, maybeExtension = Nothing }))
+            (Test.isOkAndEqualTo (e << FA.'record { attrs = [], isMultiline = 'false, maybeExtension = 'nothing }))
         , codeTest
             "Inline"
             "{ x = b }"
             firstEvaluation
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Record
+                  << FA.'record
                       {
                       , attrs =
                           [
                           , {
-                          , maybeExpr = Just << lowercase "b"
+                          , maybeExpr = 'just << lowercase "b"
                           , name = lowercase "x"
                           }
                           ]
-                      , isMultiline = False
-                      , maybeExtension = Nothing
+                      , isMultiline = 'false
+                      , maybeExtension = 'nothing
                       }
                  )
             )
@@ -616,21 +616,21 @@ records as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Record
+                  << FA.'record
                       {
                       , attrs =
                           [
                           , {
-                          , maybeExpr = Just << lowercase "a"
+                          , maybeExpr = 'just << lowercase "a"
                           , name = lowercase "x"
                           }
                           , {
-                          , maybeExpr = Just << lowercase "b"
+                          , maybeExpr = 'just << lowercase "b"
                           , name = lowercase "y"
                           }
                           ]
-                      , isMultiline = True
-                      , maybeExtension = Nothing
+                      , isMultiline = 'true
+                      , maybeExtension = 'nothing
                       }
                  )
             )
@@ -645,11 +645,11 @@ records as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Record
+                  << FA.'record
                       {
-                      , attrs = [ { maybeExpr = Just << lowercase "a", name = lowercase "x" } ]
-                      , isMultiline = True
-                      , maybeExtension = Just Nothing
+                      , attrs = [ { maybeExpr = 'just << lowercase "a", name = lowercase "x" } ]
+                      , isMultiline = 'true
+                      , maybeExtension = 'just 'nothing
                       }
                  )
             )
@@ -664,11 +664,11 @@ records as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Record
+                  << FA.'record
                       {
-                      , attrs = [ { maybeExpr = Just << lowercase "a", name = lowercase "x" } ]
-                      , isMultiline = True
-                      , maybeExtension = Just (Just (lowercase "z"))
+                      , attrs = [ { maybeExpr = 'just << lowercase "a", name = lowercase "x" } ]
+                      , isMultiline = 'true
+                      , maybeExtension = 'just ('just (lowercase "z"))
                       }
                  )
             )
@@ -682,11 +682,11 @@ records as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Record
+                  << FA.'record
                       {
-                      , attrs = [ { maybeExpr = Nothing, name = annotatedVariable "x" (uppercase "Bool") } ]
-                      , isMultiline = False
-                      , maybeExtension = Nothing
+                      , attrs = [ { maybeExpr = 'nothing, name = annotatedVariable "x" (uppercase "Bool") } ]
+                      , isMultiline = 'false
+                      , maybeExtension = 'nothing
                       }
                  )
             )
@@ -700,11 +700,11 @@ records as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Record
+                  << FA.'record
                       {
-                      , attrs = [ { maybeExpr = Just << lowercase "y", name = annotatedVariable "x" (uppercase "Bool") } ]
-                      , isMultiline = False
-                      , maybeExtension = Nothing
+                      , attrs = [ { maybeExpr = 'just << lowercase "y", name = annotatedVariable "x" (uppercase "Bool") } ]
+                      , isMultiline = 'false
+                      , maybeExtension = 'nothing
                       }
                  )
             )
@@ -721,7 +721,7 @@ records as Test =
                         , start = startPos
                         , end = endPos
                         }
-                      , ...state.accum
+                      , state.accum...
                       ]
               }
             """
@@ -731,7 +731,7 @@ records as Test =
 
 
 ifs as Test =
-    Test.Group
+    Test.'group
         "Ifs"
         [
         , codeTest
@@ -744,11 +744,11 @@ ifs as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.If
+             << FA.'if
                  {
                  , condition = lowercase "a"
                  , false = lowercase "c"
-                 , isMultiline = False
+                 , isMultiline = 'false
                  , true = lowercase "b"
                  }
             )
@@ -766,11 +766,11 @@ ifs as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
              << e
-             << FA.If
+             << FA.'if
                  {
                  , condition = lowercase "a"
                  , false = lowercase "c"
-                 , isMultiline = True
+                 , isMultiline = 'true
                  , true = lowercase "b"
                  }
             )
@@ -786,11 +786,11 @@ ifs as Test =
             firstEvaluationOfDefinition
             (Test.isOkAndEqualTo
              << e
-             << FA.If
+             << FA.'if
                  {
                  , condition = lowercase "a"
                  , false = lowercase "c"
-                 , isMultiline = True
+                 , isMultiline = 'true
                  , true = lowercase "b"
                  }
             )
@@ -798,7 +798,7 @@ ifs as Test =
 
 
 tries as Test =
-    Test.Group
+    Test.'group
         "Try"
         [
         , codeTest
@@ -815,7 +815,7 @@ tries as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Try
+             << FA.'try
                  {
                  , patterns =
                      [
@@ -837,7 +837,7 @@ tries as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Try
+             << FA.'try
                  {
                  , patterns =
                      [
@@ -863,13 +863,13 @@ tries as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Try
+             << FA.'try
                  {
                  , patterns =
                      [
                      , lowercase "b"
                      & (e
-                      << FA.Try
+                      << FA.'try
                           {
                           , patterns = [ lowercase "q" & lowercase "q" ]
                           , value = lowercase "c"
@@ -884,7 +884,7 @@ tries as Test =
 
 
 patterns as Test =
-    Test.Group
+    Test.'group
         "Patterns"
         [
         , codeTest
@@ -899,11 +899,11 @@ patterns as Test =
                  , nonFn = []
                  , pattern =
                      e
-                     << FA.List
-                         False
+                     << FA.'list
+                         'false
                          [
-                         , False & annotatedVariable "a" (uppercase "Int")
-                         , False & lowercase "b"
+                         , 'false & annotatedVariable "a" (uppercase "Int")
+                         , 'false & lowercase "b"
                          ]
                  }
             )
@@ -918,19 +918,19 @@ patterns as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
              << e
-             << FA.Fn
-                 FA.Indented
+             << FA.'fn
+                 FA.'indented
                  [
                  , e
-                 << FA.Record
+                 << FA.'record
                      {
                      , attrs =
                          [
-                         , { maybeExpr = Nothing, name = lowercase "a" }
-                         , { maybeExpr = Nothing, name = lowercase "b" }
+                         , { maybeExpr = 'nothing, name = lowercase "a" }
+                         , { maybeExpr = 'nothing, name = lowercase "b" }
                          ]
-                     , isMultiline = False
-                     , maybeExtension = Just Nothing
+                     , isMultiline = 'false
+                     , maybeExtension = 'just 'nothing
                      }
                  ]
                  (lowercase "x")
@@ -940,12 +940,12 @@ patterns as Test =
 
 binops as Test =
     sendBtoC =
-        e << FA.BinopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c" ]
+        e << FA.'binopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c" ]
 
     sendBtoCtoD =
-        e << FA.BinopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c", faBinop Prelude.sendRight & lowercase "d" ]
+        e << FA.'binopChain Op.precedence_pipe __ << lowercase "b" & [ faBinop Prelude.sendRight & lowercase "c", faBinop Prelude.sendRight & lowercase "d" ]
 
-    Test.Group
+    Test.'group
         "Binops"
         [
         , codeTest
@@ -1030,7 +1030,7 @@ binops as Test =
 
 
 unops as Test =
-    Test.Group
+    Test.'group
         "Unops"
         [
         , codeTest "[reg] Unop" "a = f -n" firstDefinition Test.isOk
@@ -1042,7 +1042,7 @@ unops as Test =
             -a b
             """
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.UnopCall Op.UnopMinus (e << FA.Call (lowercase "a") [ lowercase "b" ])))
+            (Test.isOkAndEqualTo (e << FA.'unopCall Op.'unopMinus (e << FA.'call (lowercase "a") [ lowercase "b" ])))
         , codeTest
             """
             Precedence 2
@@ -1051,7 +1051,7 @@ unops as Test =
             a -b
             """
             firstEvaluation
-            (Test.isOkAndEqualTo (e << FA.Call (lowercase "a") [ e << FA.UnopCall Op.UnopMinus (lowercase "b") ]))
+            (Test.isOkAndEqualTo (e << FA.'call (lowercase "a") [ e << FA.'unopCall Op.'unopMinus (lowercase "b") ]))
         , codeTest
             """
             Precedence 3
@@ -1062,10 +1062,10 @@ unops as Test =
             firstEvaluation
             (Test.isOkAndEqualTo
                  (e
-                  << FA.Call
+                  << FA.'call
                       (lowercase "a")
                       [
-                      , e << FA.UnopCall Op.UnopMinus (lowercase "b")
+                      , e << FA.'unopCall Op.'unopMinus (lowercase "b")
                       , lowercase "c"
                       ]
                  )
@@ -1074,7 +1074,7 @@ unops as Test =
 
 
 comments as Test =
-    Test.Group
+    Test.'group
         "Comments"
         [
         , codeTest

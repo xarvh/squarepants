@@ -2,8 +2,7 @@
 # Native functions
 #
 
-
-forEach as fn Text, (fn Text: None): None =
+forEach as fn Text, fn Text: None: None =
     fn text, f:
     todo "native"
 
@@ -39,8 +38,20 @@ trimLeft as fn Text: Text =
 
 
 trimRight as fn Text: Text =
-    re = replaceRegex "[ ]*$"
+    re =
+        replaceRegex "[ ]*$"
+
     re "" __
+
+
+toLower as fn Text: Text =
+    fn t:
+    todo "native"
+
+
+toUpper as fn Text: Text =
+    fn t:
+    todo "native"
 
 
 dropLeft as fn Int, Text: Text =
@@ -50,7 +61,6 @@ dropLeft as fn Int, Text: Text =
 
 dropRight as fn Int, Text: Text =
     fn n, s:
-
     if n > 0 then
         slice 0 -n s
     else
@@ -59,37 +69,39 @@ dropRight as fn Int, Text: Text =
 
 padLeft as fn Int, Text, Text: Text =
     fn minLength, pad, s:
-
-    textLength = Text.length s
+    textLength =
+        Text.length s
 
     if textLength < minLength then
-      times = (textLength - minLength) / Text.length pad
-      repeat times pad .. s
+        times =
+            (textLength - minLength) / Text.length pad
+
+        repeat times pad .. s
     else
-      s
+        s
 
 
 padRight as fn Int, Text, Text: Text =
     fn minLength, pad, s:
-
-    textLength = Text.length s
+    textLength =
+        Text.length s
 
     if textLength < minLength then
-      times = (textLength - minLength) / Text.length pad
-      s .. repeat times pad
+        times =
+            (textLength - minLength) / Text.length pad
+
+        s .. repeat times pad
     else
-      s
+        s
 
 
 repeat as fn Int, Text: Text =
     fn n, s:
-
     join "" (List.repeat n s)
 
 
 replace as fn Text, Text, Text: Text =
     fn toRemove, toPut, s:
-
     # TODO use a native
     s
     >> Text.split toRemove __
@@ -106,7 +118,8 @@ startsWithRegex as fn Text: fn Text: Text =
 
 
 replaceRegex as fn Text: fn Text, Text: Text =
-    fn regex: fn replaceWith, s:
+    fn regex:
+    fn replaceWith, s:
     todo "native"
 
 
@@ -117,33 +130,28 @@ split as fn Text, Text: [ Text ] =
 
 contains as fn Text, Text: Bool =
     fn sub, str:
-
     # TODO use a native
     try split sub str as
-      , [ _ ]: False
-      , _: True
+        [ _ ]: 'false
+        _: 'true
+
 
 #
 # Non native functions
 #
 
-
-join as fn Text, [Text]: Text =
+join as fn Text, [ Text ]: Text =
     fn sep, listOfText:
-
     try listOfText as
-        , Core.Nil:
-          ""
 
-        , Core.Cons head tail:
-          rec as fn [ Text ], Text: Text =
-            fn ls, acc:
+        Core.'nil:
+            ""
 
-            try ls as
-              , Core.Nil:
-                acc
-              , Core.Cons h t:
-                rec t (acc .. sep .. h)
+        Core.'cons head tail:
+            rec as fn [ Text ], Text: Text =
+                fn ls, acc:
+                try ls as
+                    Core.'nil: acc
+                    Core.'cons h t: rec t (acc .. sep .. h)
 
-          rec tail head
-
+            rec tail head

@@ -5,15 +5,15 @@
 # Might need to move all of Compiler into core
 #
 
-union Value =
-    Value Value
+var Value =
+    , 'value Value
 
 
-alias Self =
+Self =
     {
     , expression as EA.Expression
-    , raw as TA.RawType
     , nonFn as Array TA.TyvarId
+    , raw as TA.RawType
     , value as Value
     }
 
@@ -31,16 +31,16 @@ internalRepresentation as fn a: Text with a NonFunction =
 # If this type was in Compiler/Compiler we'd run the risk of changing it
 # forgetting to also change the native implementation of `load`, which is
 # not protected by the type check.
-alias LoadPars =
+LoadPars =
     {
+    , constructors as [ USR & TA.FullType ]
+    , defs as [ EA.GlobalDefinition ]
     , entryUsr as USR
+    , externalValues as Array { self as Self.Self, usr as USR }
     , type as TA.RawType
-    , defs as [EA.GlobalDefinition]
-    , constructors as [USR & TA.FullType]
-    , externalValues as Array { usr as USR, self as Self.Self }
     }
 
-load as fn LoadPars, (fn specific: general): Result TA.RawType general =
+
+load as fn LoadPars, fn specific: general: Result TA.RawType general =
     fn a, b:
     todo "native: load"
-

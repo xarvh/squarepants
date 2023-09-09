@@ -6,58 +6,56 @@
 # TODO records use Lists of tuples rather than Dicts
 #
 
-
-alias Name =
+Name =
     Text
 
 
-union Statement =
-    , Eval Expr
-    , Return Expr
-    , Define Bool Name Expr
-    , If Expr [Statement]
+var Statement =
+    , 'eval Expr
+    , 'return Expr
+    , 'define Bool Name Expr
+    , 'if Expr [ Statement ]
 
 
-union Expr =
-    , Literal Text
-      #
+var Expr =
+    , 'literal Text
+    , #
       # `name`
-    , Var Name
-      #
+      'var Name
+    , #
       # -a
       # !a
-    , Unop Text Expr
-      #
+      'unop Text Expr
+    , #
       # (a + b)
-    , Binop Text Expr Expr
-      #
+      'binop Text Expr Expr
+    , #
       # (a += b, null)
-    , Mutop Text Name Expr Expr
-      #
+      'mutop Text Name Expr Expr
+    , #
       # (someFunction)(a, b)
-    , Call Expr [Expr]
-      #
+      'call Expr [ Expr ]
+    , #
       # (a, b) => a + b + c
-    , SimpleLambda [Name] Expr
-      #
+      'simpleLambda [ Name ] Expr
+    , #
       # (a, b) => { blah; return meh; }
-    , BlockLambda [Name] [Statement]
-      #
+      'blockLambda [ Name ] [ Statement ]
+    , #
       # (p ? a : b)
-    , Conditional Expr Expr Expr
-      #
+      'conditional Expr Expr Expr
+    , #
       # { a: 1, b: 2 }
-    , Record (Dict Name Expr)
-      #
+      'record (Dict Name Expr)
+    , #
       # [a, b, c]
-    , Array [Expr]
-      #
+      'array [ Expr ]
+    , #
       # (expr or lvalue).attrName
-    , AccessWithDot Text Expr
-      #
+      'accessWithDot Text Expr
+    , #
       # (expr)[2]
-    , AccessWithBrackets Expr Expr
-      #
+      'accessWithBrackets Expr Expr
+    , #
       # (a, b, c)
-    , Comma [Expr]
-
+      'comma [ Expr ]

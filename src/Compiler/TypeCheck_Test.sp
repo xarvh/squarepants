@@ -1,5 +1,5 @@
 tests as Test =
-    Test.Group
+    Test.'group
         """
         TypeCheck
         """
@@ -29,7 +29,7 @@ codeTest =
     Test.codeTest outToHuman __ __ __ __
 
 
-alias Out =
+Out =
     {
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     # TODO this needs to contain also an Env, otherwise I can't print it properly
@@ -42,7 +42,7 @@ outToHuman as fn Out: Text =
     type =
         out.type
         >> Human/Type.doRawType Compiler/TypeCheck.initEnv __
-        >> Human/Format.formatExpression { isRoot = True, originalContent = "" } __
+        >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
         >> Fmt.render
 
     [
@@ -59,14 +59,14 @@ tyvar as fn Int: TA.RawType =
 freeTyvars as fn [ TA.TyvarId ]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
     List.for Dict.empty ids fn id, d:
-        Dict.insert id { maybeAnnotated = Nothing } d
+        Dict.insert id { maybeAnnotated = 'nothing } d
 
 
 freeTyvarsAnnotated as fn [ TA.TyvarId & Name ]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
     Dict.empty
     >> List.for __ ids fn id & name, d:
-        Dict.insert id { maybeAnnotated = Just { allowFunctions = True, name } } d
+        Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name } } d
 
 
 #
@@ -83,7 +83,7 @@ infer as fn Text: fn Text: Result Text Out =
         }
 
     params
-    >> Compiler/MakeCanonical.textToCanonicalModule True __
+    >> Compiler/MakeCanonical.textToCanonicalModule 'true __
     >> TH.resErrorToStrippedText
     >> onOk fn caModule:
     [ caModule ]
@@ -95,18 +95,18 @@ infer as fn Text: fn Text: Result Text Out =
         , variables =
             .variables
             >> Dict.insert
-                (RefGlobal << USR TH.moduleUmr "add")
+                ('refGlobal << 'USR TH.moduleUmr "add")
                 {
-                , definedAt = Pos.T
+                , definedAt = Pos.'t
                 , freeTyvars = Dict.empty
                 , freeUnivars = Dict.empty
                 , type = toImm << TH.taFunction [ TH.taNumber, TH.taNumber ] TH.taNumber
                 }
                 __
             >> Dict.insert
-                (RefGlobal << USR TH.moduleUmr "reset")
+                ('refGlobal << 'USR TH.moduleUmr "reset")
                 {
-                , definedAt = Pos.T
+                , definedAt = Pos.'t
                 , freeTyvars = Dict.empty
                 , freeUnivars = Dict.empty
                 , type = toImm << TH.taFunction [ TH.taNumber ] TH.taNone
@@ -128,8 +128,8 @@ infer as fn Text: fn Text: Result Text Out =
     toMatch as fn CA.Pattern & TA.ValueDef: Maybe TA.ValueDef =
         fn pattern & def:
         try pattern as
-            , CA.PatternAny _ (Just name) maybeAnnotation: if name == targetName then Just def else Nothing
-            , _: Nothing
+            CA.'patternAny _ ('just name) maybeAnnotation: if name == targetName then 'just def else 'nothing
+            _: 'nothing
 
     matches =
         moduleWithDestroy.valueDefs
@@ -138,16 +138,16 @@ infer as fn Text: fn Text: Result Text Out =
 
     try matches as
 
-        , []:
-            Err "dict fail"
+        []:
+            'err "dict fail"
 
-        , def :: tail:
+        def :: tail:
             {
             , freeTyvars = def.freeTyvars
             , type = def.type.raw
             }
             >> normalizeOut
-            >> Ok
+            >> 'ok
 
 
 normalizeOut as fn Out: Out =
@@ -166,7 +166,7 @@ normalizeOut as fn Out: Out =
 #
 
 functions as Test =
-    Test.Group
+    Test.'group
         "functions"
         [
         , codeTest
@@ -208,7 +208,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TA.TypeFn [ tyvar 1 >> toImm >> TA.ParSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn [ tyvar 1 >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         , codeTest
@@ -255,7 +255,7 @@ functions as Test =
 #
 
 statements as Test =
-    Test.Group
+    Test.'group
         "statements"
         [
         , codeTest
@@ -342,7 +342,7 @@ statements as Test =
 #
 
 recursiveTypes as Test =
-    Test.Group
+    Test.'group
         "Recursive types"
         [
         , codeTest
@@ -386,7 +386,7 @@ recursiveTypes as Test =
 #
 
 variableTypes as Test =
-    Test.Group
+    Test.'group
         "Variable types"
         [
         , codeTest
@@ -472,7 +472,7 @@ variableTypes as Test =
 #
 
 higherOrderTypes as Test =
-    Test.Group
+    Test.'group
         "higher order types"
         [
         , codeTest
@@ -489,7 +489,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction [ TA.TypeExact (TH.localType "T") [ tyvar 1 ] ] (TA.TypeExact (TH.localType "T") [ tyvar 1 ])
+                 , type = TH.taFunction [ TA.'typeExact (TH.localType "T") [ tyvar 1 ] ] (TA.'typeExact (TH.localType "T") [ tyvar 1 ])
                  }
             )
         , codeTest
@@ -504,7 +504,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TA.TypeExact (TH.localType "X") [ tyvar 1 ]
+                 , type = TA.'typeExact (TH.localType "X") [ tyvar 1 ]
                  }
             )
         , codeTest
@@ -562,7 +562,7 @@ higherOrderTypes as Test =
 #
 
 records as Test =
-    Test.Group
+    Test.'group
         "Records"
         [
         , codeTest
@@ -579,7 +579,7 @@ records as Test =
                  , type =
                      TH.taFunction
                          [
-                         , TA.TypeRecord (Just 1) (Dict.ofOne "meh" (TA.TypeRecord (Just 2) (Dict.ofOne "blah" (tyvar 3))))
+                         , TA.'typeRecord ('just 1) (Dict.ofOne "meh" (TA.'typeRecord ('just 2) (Dict.ofOne "blah" (tyvar 3))))
                          ]
                          (tyvar 3)
                  }
@@ -596,9 +596,9 @@ records as Test =
                  {
                  , freeTyvars = freeTyvars [ 1, 2 ]
                  , type =
-                     TA.TypeFn
+                     TA.'typeFn
                          [
-                         , TA.ParRe << TA.TypeRecord (Just 1) (Dict.ofOne "meh" (TA.TypeRecord (Just 2) (Dict.ofOne "blah" TH.taNumber)))
+                         , TA.'parRe << TA.'typeRecord ('just 1) (Dict.ofOne "meh" (TA.'typeRecord ('just 2) (Dict.ofOne "blah" TH.taNumber)))
                          ]
                          (toImm TH.taNone)
                  }
@@ -638,7 +638,7 @@ records as Test =
             """
             (infer "a")
             (Test.isOkAndEqualTo
-                 (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber)
+                 (TA.'typeRecord ('just 1) (Dict.ofOne "x" TH.taNumber)
                   >> (fn re:
                        {
                        , freeTyvars = freeTyvars [ 1 ]
@@ -655,7 +655,7 @@ records as Test =
             """
             (infer "c")
             (Test.isOkAndEqualTo
-                 (TA.TypeRecord (Just 1) (Dict.ofOne "x" TH.taNumber)
+                 (TA.'typeRecord ('just 1) (Dict.ofOne "x" TH.taNumber)
                   >> (fn re:
                        {
                        , freeTyvars = Dict.empty
@@ -674,7 +674,7 @@ records as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                 (TA.TypeRecord (Just 1) (Dict.ofOne "first" (tyvar 2))
+                 (TA.'typeRecord ('just 1) (Dict.ofOne "first" (tyvar 2))
                   >> (fn re:
                        {
                        , freeTyvars = freeTyvars [ 1, 2 ]
@@ -706,7 +706,7 @@ records as Test =
                 fn b:
                 try b.l as
                      []: "" & b
-                     [h, ...t]: h & { b with l = t }
+                     [h, t...]: h & { b with l = t }
             """
             (infer "readOne")
             Test.isOk
@@ -748,7 +748,7 @@ records as Test =
 #
 
 patterns as Test =
-    Test.Group
+    Test.'group
         "Patterns"
         [
         , codeTest
@@ -802,7 +802,7 @@ patterns as Test =
              Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction [ TA.TypeRecord Nothing (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
+                 , type = TH.taFunction [ TA.'typeRecord 'nothing (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
                  }
             )
         , codeTest
@@ -820,7 +820,7 @@ patterns as Test =
              Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1, 2 ]
-                 , type = TH.taFunction [ TA.TypeRecord (Just 2) (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
+                 , type = TH.taFunction [ TA.'typeRecord ('just 2) (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
                  }
             )
         [# TODO
@@ -875,7 +875,7 @@ patterns as Test =
 #
 
 try_as as Test =
-    Test.Group
+    Test.'group
         "try..as"
         [
         , codeTest
@@ -893,7 +893,7 @@ try_as as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.TypeFn [ TH.taBool >> toImm >> TA.ParSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         #
@@ -943,7 +943,7 @@ try_as as Test =
 #
 
 if_else as Test =
-    Test.Group
+    Test.'group
         "if..else"
         [
         , codeTest
@@ -960,7 +960,7 @@ if_else as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.TypeFn [ TH.taBool >> toImm >> TA.ParSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         #
@@ -997,7 +997,7 @@ if_else as Test =
 #
 
 nonFunction as Test =
-    Test.Group
+    Test.'group
         "NonFunction"
         [
         , codeTest
@@ -1042,7 +1042,7 @@ nonFunction as Test =
             (infer "meh")
             (Test.isOkAndEqualTo
                  {
-                 , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
+                 , freeTyvars = Dict.ofOne 1 { maybeAnnotated = 'nothing }
                  , type = TH.taNumber
                  }
             )
@@ -1073,7 +1073,7 @@ nonFunction as Test =
 #
 
 misc as Test =
-    Test.Group
+    Test.'group
         "Misc"
         [
         , codeTest

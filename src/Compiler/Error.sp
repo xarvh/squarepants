@@ -1,87 +1,88 @@
-
-
-alias Module =
+Module =
     {
-    , fsPath as Text
     , content as Text
+    , fsPath as Text
     }
 
 
-union Error =
-    , Raw [Text]
-    , Simple Module Pos [Text]
-    , Nested [ Error ]
+var Error =
+    , 'raw [ Text ]
+    , 'simple Module Pos [ Text ]
+    , 'nested [ Error ]
 
 
-alias Res a =
+Res a =
     Result Error a
 
 
-res as fn Module, Pos, [Text]: Res a =
+res as fn Module, Pos, [ Text ]: Res a =
     fn mod, pos, desc:
-    Err << Simple mod pos desc
+    'err << 'simple mod pos desc
 
 
 #
 # Formatted text
 #
-union FormattedText =
-    , FormattedText_Default Text
-    , FormattedText_Emphasys Text
-    , FormattedText_Warning Text
-    , FormattedText_Decoration Text
+var FormattedText =
+    , 'formattedText_Default Text
+    , 'formattedText_Emphasys Text
+    , 'formattedText_Warning Text
+    , 'formattedText_Decoration Text
 
 
-toFormattedText as fn Error: [FormattedText] =
+toFormattedText as fn Error: [ FormattedText ] =
     flatten __ []
 
 
-flatten as fn Error, [FormattedText]: [FormattedText] =
+flatten as fn Error, [ FormattedText ]: [ FormattedText ] =
     fn e, accum:
-
     try e as
-        , Simple mod pos desc:
-            List.concat [ accum, simpleToText mod pos desc ]
-
-        , Raw desc:
-            List.concat [ accum, rawToText desc ]
-
-        , Nested ls:
-            List.for accum ls flatten
+        'simple mod pos desc: List.concat [ accum, simpleToText mod pos desc ]
+        'raw desc: List.concat [ accum, rawToText desc ]
+        'nested ls: List.for accum ls flatten
 
 
 #
 # It would be more reliable to declare errors diectly in FormattedText, but I tried it and it was a pain.
 # So until I have a better idea, errors are declared as strings and we'll need to transform them back to FormattedText
 #
-formatSeparator as Text = "$|$|$"
-formatSuffix as Text = "$`$`$"
-formatWrap as fn Text, Text: Text = fn fmtName, text: formatSeparator .. fmtName .. formatSuffix .. text .. formatSeparator
+formatSeparator as Text =
+    "$|$|$"
 
-breakDownText as fn Text: [FormattedText] =
-  fn text:
 
-  formatSnippet as fn Int, Text: FormattedText =
-      fn index, snippet:
+formatSuffix as Text =
+    "$`$`$"
 
-      if modBy 2 index == 0 then
-          FormattedText_Default snippet
-      else
-          try Text.split formatSuffix snippet as
-              , ["emphasys", s]: FormattedText_Emphasys s
-              , ["warning", s]: FormattedText_Warning s
-              , ["decoration", s]: FormattedText_Decoration s
-              , _: FormattedText_Default snippet
 
-  text
-  >> Text.split formatSeparator __
-  >> List.indexedMap formatSnippet __
+formatWrap as fn Text, Text: Text =
+    fn fmtName, text: formatSeparator .. fmtName .. formatSuffix .. text .. formatSeparator
+
+
+breakDownText as fn Text: [ FormattedText ] =
+    fn text:
+    formatSnippet as fn Int, Text: FormattedText =
+        fn index, snippet:
+        if modBy 2 index == 0 then
+            'formattedText_Default snippet
+        else
+            try Text.split formatSuffix snippet as
+                [ "emphasys", s ]: 'formattedText_Emphasys s
+                [ "warning", s ]: 'formattedText_Warning s
+                [ "decoration", s ]: 'formattedText_Decoration s
+                _: 'formattedText_Default snippet
+
+    text
+    >> Text.split formatSeparator __
+    >> List.indexedMap formatSnippet __
+
 
 emph as fn Text: Text =
     formatWrap "emphasys" __
 
+
 warn as fn Text: Text =
     formatWrap "warning" __
+
 
 deco as fn Text: Text =
     formatWrap "decoration" __
@@ -91,25 +92,22 @@ deco as fn Text: Text =
 #
 #
 
-union Highlight =
-    , HighlightWord { line as Number, colStart as Number, colEnd as Number }
-    , HighlightBlock { lineStart as Number, lineEnd as Number }
-
+var Highlight =
+    , 'highlightWord { colEnd as Number, colStart as Number, line as Number }
+    , 'highlightBlock { lineEnd as Number, lineStart as Number }
 
 
 #
 # simpleToText
 #
 
-
-positionToLineAndColumn as fn Text, Int: { line as Int, col as Int } =
+positionToLineAndColumn as fn Text, Int: { col as Int, line as Int } =
     fn s, index:
-
     before =
         Text.slice 0 index s
 
     lines =
-       Text.split "\n" before
+        Text.split "\n" before
 
     lineNumber =
         List.length lines
@@ -120,38 +118,37 @@ positionToLineAndColumn as fn Text, Int: { line as Int, col as Int } =
         >> Maybe.map Text.length __
         >> Maybe.withDefault 0 __
 
-    { line = lineNumber, col = colNumber }
+    { col = colNumber, line = lineNumber }
 
 
-highlightSplit as fn Highlight, ( Dict Int ( Int & Int ) & Set Int ): ( Dict Int ( Int & Int ) & Set Int ) =
+highlightSplit as fn Highlight, Dict Int (Int & Int) & Set Int: Dict Int (Int & Int) & Set Int =
     fn h, x:
-    words & lines = x
+    words & lines =
+        x
+
     try h as
-        , HighlightWord { line, colStart, colEnd }:
-            ( Dict.insert line ( colStart & colEnd ) words & lines)
-
-        , HighlightBlock { lineStart, lineEnd }:
-            ( words & (List.for lines (List.range lineStart lineEnd) Set.insert))
+        'highlightWord { colEnd, colStart, line }: Dict.insert line (colStart & colEnd) words & lines
+        'highlightBlock { lineEnd, lineStart }: words & List.for lines (List.range lineStart lineEnd) Set.insert
 
 
-fmtBlock as fn Int, [Highlight], [Text]: Text =
+fmtBlock as fn Int, [ Highlight ], [ Text ]: Text =
     fn start, highlights, ls:
-
-    ( highlightedWords & highlightedLines ) =
-        List.for ( Dict.empty & Set.empty ) highlights highlightSplit
+    highlightedWords & highlightedLines =
+        List.for (Dict.empty & Set.empty) highlights highlightSplit
 
     pad =
-        (start + List.length ls)
+        start + List.length ls
         >> Text.fromNumber
         >> Text.length
 
     wordHighlight =
         fn lineNumber:
         try Dict.get lineNumber highlightedWords as
-            , Nothing:
+
+            'nothing:
                 ""
 
-            , Just ( s & e ):
+            'just (s & e):
                 "\n"
                 .. Text.repeat pad " "
                 .. "   "
@@ -162,13 +159,11 @@ fmtBlock as fn Int, [Highlight], [Text]: Text =
         fn lineIndex:
         if Set.member lineIndex highlightedLines then
             warn " > "
-
         else
             " | "
 
     fmtLine =
         fn i, line:
-
         index =
             i + start
 
@@ -188,19 +183,16 @@ fmtBlock as fn Int, [Highlight], [Text]: Text =
     >> (fn s: s .. "\n")
 
 
-showCodeBlock as fn Text, { line as Int, col as Int }, { line as Int, col as Int }: Text =
+showCodeBlock as fn Text, { col as Int, line as Int }, { col as Int, line as Int }: Text =
     fn code, start, end:
-
     if end.line < 0 then
         ""
-
     else
         highlight =
             if start.line /= end.line then
-                HighlightBlock { lineStart = start.line, lineEnd = end.line }
-
+                'highlightBlock { lineEnd = end.line, lineStart = start.line }
             else
-                HighlightWord { line = start.line, colStart = start.col, colEnd = end.col }
+                'highlightWord { colEnd = end.col, colStart = start.col, line = start.line }
 
         extraLines =
             2
@@ -226,69 +218,67 @@ showCodeBlock as fn Text, { line as Int, col as Int }, { line as Int, col as Int
         >> fmtBlock (startLine + 1) [ highlight ] __
 
 
-posToHuman as fn Module, Pos: { location as Text, block as Text } =
+posToHuman as fn Module, Pos: { block as Text, location as Text } =
     fn mod, pos:
-
     noBlock =
         fn loc:
-        { location = loc
+        {
         , block = ""
+        , location = loc
         }
 
     try pos as
-        , Pos.P startAsInt endAsInt:
 
+        Pos.'p startAsInt endAsInt:
             start =
                 positionToLineAndColumn mod.content startAsInt
 
             end =
                 positionToLineAndColumn mod.content endAsInt
 
-            { location = mod.fsPath .. " " .. Text.fromNumber start.line .. ":" .. Text.fromNumber start.col
+            {
             , block = showCodeBlock mod.content start end
+            , location = mod.fsPath .. " " .. Text.fromNumber start.line .. ":" .. Text.fromNumber start.col
             }
 
-
-        , Pos.End:
-
+        Pos.'end:
             end =
                 positionToLineAndColumn mod.content (Text.length mod.content - 1)
 
             start =
-                { line = end.line - 8
+                {
                 , col = 0
+                , line = end.line - 8
                 }
 
-            { location = mod.fsPath .. " " .. Text.fromNumber end.line .. ":0 (end of file)"
+            {
             , block = showCodeBlock mod.content start end
+            , location = mod.fsPath .. " " .. Text.fromNumber end.line .. ":0 (end of file)"
             }
 
-
-        , Pos.N:
+        Pos.'n:
             noBlock "<native code>"
 
-        , Pos.S:
+        Pos.'s:
             noBlock "<the location information has been stripped>"
 
-        , Pos.T:
+        Pos.'t:
             noBlock "<defined in test modules>"
 
-        , Pos.I n:
+        Pos.'i n:
             noBlock << "<inferred " .. Text.fromNumber n .. ">"
 
-        , Pos.G:
+        Pos.'g:
             noBlock "<generated>"
 
 
-
-simpleToText as fn Module, Pos, [Text]: [FormattedText] =
+simpleToText as fn Module, Pos, [ Text ]: [ FormattedText ] =
     fn mod, pos, desc:
-
-    { location, block } =
+    { block, location } =
         posToHuman mod pos
 
     description =
-        [block, ...desc]
+        [ block, desc... ]
         >> List.concatMap (Text.split "\n" __) __
         >> List.map (fn s: "  " .. s) __
         >> Text.join "\n" __
@@ -305,9 +295,8 @@ simpleToText as fn Module, Pos, [Text]: [FormattedText] =
     >> breakDownText
 
 
-rawToText as fn [Text]: [FormattedText] =
+rawToText as fn [ Text ]: [ FormattedText ] =
     fn desc:
-
     description =
         desc
         >> List.concatMap (Text.split "\n" __) __
@@ -322,4 +311,3 @@ rawToText as fn [Text]: [FormattedText] =
     ]
     >> Text.join "\n" __
     >> breakDownText
-

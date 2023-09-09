@@ -1,5 +1,3 @@
-
-
 id as fn Int: Text =
     fn level:
     Text.repeat level "  "
@@ -7,23 +5,25 @@ id as fn Int: Text =
 
 emitStatement as fn Int, JA.Statement: Text =
     fn l, stat:
-
     std =
         fn mid, expr:
         id l .. mid .. emitExpr l expr .. ";"
 
     try stat as
-        , JA.Eval e:
+
+        JA.'eval e:
             std "" e
 
-        , JA.Return e:
+        JA.'return e:
             std "return " e
 
-        , JA.Define isReassignable name e:
-            modifier = if isReassignable then "let" else "const"
+        JA.'define isReassignable name e:
+            modifier =
+                if isReassignable then "let" else "const"
+
             std (modifier .. " " .. name .. " = ") e
 
-        , JA.If condition block:
+        JA.'if condition block:
             id l .. "if (" .. emitExpr l condition .. ") " .. emitBlock l block
 
 
@@ -41,63 +41,61 @@ emitBlock as fn Int, List JA.Statement: Text =
 emitExpr as fn Int, JA.Expr: Text =
     fn l, expression:
     try expression as
-        , JA.Literal s:
+
+        JA.'literal s:
             s
 
-        , JA.Var n:
+        JA.'var n:
             n
 
-        , JA.Call ref args:
+        JA.'call ref args:
             "(" .. emitExpr l ref .. ")(" .. Text.join ", " (List.map (emitExpr l __) args) .. ")"
 
-        , JA.Unop op left:
+        JA.'unop op left:
             op .. "(" .. emitExpr l left .. ")"
 
-        , JA.Binop op left right:
+        JA.'binop op left right:
             "(" .. emitExpr l left .. " " .. op .. " " .. emitExpr l right .. ")"
 
-        , JA.Mutop op yield left right:
+        JA.'mutop op yield left right:
             "(" .. emitExpr l left .. " " .. op .. " " .. emitExpr l right .. ", " .. yield .. ")"
 
-        , JA.SimpleLambda params expr:
+        JA.'simpleLambda params expr:
             "((" .. Text.join ", " params .. ") => " .. emitExpr l expr .. ")"
 
-        , JA.BlockLambda params stats:
+        JA.'blockLambda params stats:
             "((" .. Text.join ", " params .. ") => " .. emitBlock l stats .. ")"
 
-        , JA.Record attrs:
+        JA.'record attrs:
             if attrs == Dict.empty then
                 "{}"
-
             else
                 attrs
                 >> Dict.toList
                 >> List.sortBy Tuple.first __
-                >> List.map (fn ( key & value ): id (l + 1) .. key .. ": " .. emitExpr (l + 1) value .. ",") __
+                >> List.map (fn key & value: id (l + 1) .. key .. ": " .. emitExpr (l + 1) value .. ",") __
                 >> (fn a: "({\n" .. Text.join "\n" a .. "\n" .. id l .. "})")
 
-        , JA.AccessWithDot name e:
+        JA.'accessWithDot name e:
             emitExpr l e .. "." .. name
 
-        , JA.AccessWithBrackets i expr:
+        JA.'accessWithBrackets i expr:
             "(" .. emitExpr l expr .. ")[" .. emitExpr l i .. "]"
 
-        , JA.Conditional p true false:
+        JA.'conditional p true false:
             ("(" .. emitExpr l p .. "\n")
-                .. (id (l + 1) .. "? " .. emitExpr (l + 1) true)
-                .. "\n"
-                .. (id (l + 1) .. ": " .. emitExpr (l + 1) false)
-                .. ")"
+            .. (id (l + 1) .. "? " .. emitExpr (l + 1) true)
+            .. "\n"
+            .. (id (l + 1) .. ": " .. emitExpr (l + 1) false)
+            .. ")"
 
-        , JA.Array items:
+        JA.'array items:
             if items == [] then
                 "[]"
-
             else
                 items
                 >> List.map (fn i: id (l + 1) .. emitExpr (l + 1) i .. ",") __
                 >> (fn a: "([\n" .. Text.join "\n" a .. "\n" .. id l .. "])") __
 
-        , JA.Comma expr:
+        JA.'comma expr:
             "(" .. Text.join ", " (List.map (emitExpr l __) expr) .. ")"
-

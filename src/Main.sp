@@ -1,4 +1,3 @@
-
 allTests as [ Test ] =
     [
     , Human/Format_Test.tests
@@ -17,40 +16,39 @@ allTests as [ Test ] =
     ]
 
 
-
-
-
 #
 # TODO would be nice to have an args library
 #
-alias Option state =
-  {
-  , name as Text
-  , info as Text
-  , parser as fn Maybe Text, state: Result Text state
-  }
+Option state =
+    {
+    , info as Text
+    , name as Text
+    , parser as fn Maybe Text, state: Result Text state
+    }
 
 
-parseArguments as fn [Option state], [Text], state: Result Text ([Text] & state) =
+parseArguments as fn [ Option state ], [ Text ], state: Result Text ([ Text ] & state) =
     fn options, args, initState:
-
     optionTexts & others =
         List.partition (Text.startsWith "--" __) args
 
     findOption as fn Text, state: Result Text state =
         fn optionText, state:
-
         try Text.split "=" optionText as
-            , []:
-                Ok state
 
-            , optionName :: rest:
+            []:
+                'ok state
+
+            optionName :: rest:
                 try List.find (fn o: o.name == optionName) options as
-                    , Nothing:
-                        Err << "Unknown option " .. optionName
 
-                    , Just option:
-                        value = if rest == [] then Nothing else Just (Text.join "=" rest)
+                    'nothing:
+                        'err << "Unknown option " .. optionName
+
+                    'just option:
+                        value =
+                            if rest == [] then 'nothing else 'just (Text.join "=" rest)
+
                         option.parser value state
 
     initState
@@ -58,11 +56,9 @@ parseArguments as fn [Option state], [Text], state: Result Text ([Text] & state)
     >> Result.map (Tuple.pair others __) __
 
 
-
 #
 # Errors
 #
-
 
 indent as fn Text: Text =
     fn s:
@@ -74,28 +70,22 @@ indent as fn Text: Text =
 
 testOutcomeToText as fn Text, Text, Test.TestOutcome: Text =
     fn name, code, outcome:
-
     try outcome as
-        , Test.Success:
-            Term.green << "* PASS: " .. name
-
-        , Test.Skipped:
-            Term.yellow << "* skip: " .. name
-
-        , Test.Error error:
-            (Term.red << "FAIL ! " .. name) .. "\n" .. indent code .. "\n" .. indent error
+        Test.'success: Term.green << "* PASS: " .. name
+        Test.'skipped: Term.yellow << "* skip: " .. name
+        Test.'error error: (Term.red << "FAIL ! " .. name) .. "\n" .. indent code .. "\n" .. indent error
 
 
 order as fn Test.TestOutcome: Int =
     fn outcome:
     try outcome as
-        , Test.Success: 0
-        , Test.Skipped: 1
-        , Test.Error _: 2
+        Test.'success: 0
+        Test.'skipped: 1
+        Test.'error _: 2
 
 
 selftestMain as fn None: IO Int =
-    fn None:
+    fn 'none:
     allTests
     >> Test.flattenAndRun
     >> List.sortBy (fn x: order x.outcome & x.name) __
@@ -105,48 +95,40 @@ selftestMain as fn None: IO Int =
     >> IO.writeStdout
 
 
-formatMain as fn [Text]: IO Int =
+formatMain as fn [ Text ]: IO Int =
     fn targets:
-
     formatText as fn Text, Text: Res Text =
         fn fsPath, content:
-
-        Compiler/Parser.textToFormattableModule {
-              , errorModule = { fsPath, content }
-              , stripLocations = False
-              , keepComments = True
-        }
+        Compiler/Parser.textToFormattableModule
+            {
+            , errorModule = { content, fsPath }
+            , keepComments = 'true
+            , stripLocations = 'false
+            }
         >> onOk fn formattableAst:
-
         formattableAst
-        >> Human/Format.formatStatements { isRoot = True, originalContent = content } __
+        >> Human/Format.formatStatements { isRoot = 'true, originalContent = content } __
         >> Fmt.render
-        >> Ok
+        >> 'ok
 
-    formatFile as fn Text: IO Int=
+    formatFile as fn Text: IO Int =
         fn name:
         IO.readFile name
         >> IO.onSuccess fn moduleAsText:
-
         formatText name moduleAsText
         >> Compile.onResSuccess fn formatted:
-
         IO.writeFile name formatted
 
     if targets == [] then
         IO.readStdin
         >> IO.onSuccess fn moduleAsText:
-
         formatText "<stdin>" moduleAsText
         >> Compile.onResSuccess fn formatted:
-
         IO.writeStdout formatted
-
     else
         targets
         >> List.map formatFile __
         >> IO.parallel
-
         >> IO.onSuccess fn _:
         IO.succeed 0
 
@@ -178,8 +160,7 @@ formatMain as fn [Text]: IO Int =
 #        , maybeOutputPath as Maybe Text
 #        }
 
-
-alias CliState =
+CliState =
     {
     , platform as Types/Platform.Platform
     }
@@ -191,7 +172,7 @@ cliDefaults as CliState =
     }
 
 
-availablePlatforms as [Types/Platform.Platform] =
+availablePlatforms as [ Types/Platform.Platform ] =
     [
     , Platforms/Posix.platform
     , Platforms/Browser.platform
@@ -200,32 +181,38 @@ availablePlatforms as [Types/Platform.Platform] =
 
 parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
     fn maybeValue, cliState:
-
     try maybeValue as
-        , Nothing:
-            Err "Please specify a platform name, for example: `--platform=posix`"
 
-        , Just value:
+        'nothing:
+            'err "Please specify a platform name, for example: `--platform=posix`"
+
+        'just value:
             try List.find (fn p: p.name == value) availablePlatforms as
-                , Nothing:
+
+                'nothing:
                     """
-                    I don't know this platform name: `""" .. value .. """`
+                    I don't know this platform name: `
+                    """
+                    .. value
+                    .. """
+                    `
 
-                    Valid platform names are:
+                                        Valid platform names are:
+
 
                     """
-                    ..
-                    (List.map (fn p: "    " .. p.name) availablePlatforms >> Text.join "\n" __)
-                    >> Err
+                    .. (List.map (fn p: "    " .. p.name) availablePlatforms >> Text.join "\n" __)
+                    >> 'err
 
-                , Just platform:
-                    Ok { cliState with platform }
+                'just platform:
+                    'ok { cliState with platform }
 
 
-cliOptions as [Option CliState] = [
-  , {
-    , name = "--platform"
+cliOptions as [ Option CliState ] =
+    [
+    , {
     , info = "select build platform"
+    , name = "--platform"
     , parser = parsePlatformName
     }
     ]
@@ -237,32 +224,38 @@ cliOptions as [Option CliState] = [
 
 main as IO.Program =
     fn env, rawArgs:
-
     try parseArguments cliOptions rawArgs cliDefaults as
-        , Err message:
+
+        'err message:
             IO.fail message
 
-        , Ok (args & cliState):
+        'ok (args & cliState):
             try args as
-                , self :: "selftest" :: tail:
-                    selftestMain None
 
-                , self :: "format" :: tail:
+                self :: "selftest" :: tail:
+                    selftestMain 'none
+
+                self :: "format" :: tail:
                     formatMain tail
 
-                , self :: head :: tail:
+                self :: head :: tail:
                     #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
-                    mainModulePath = head
-                    maybeOutputPath = List.head tail
-                    Compile.compileMain {
-                        , env
-                        , selfPath = self
+                    mainModulePath =
+                        head
+
+                    maybeOutputPath =
+                        List.head tail
+
+                    Compile.compileMain
+                        {
                         , entryModulePath = mainModulePath
+                        , env
                         , maybeOutputPath
                         , platform = cliState.platform
+                        , selfPath = self
                         }
 
-                , _:
+                _:
                     """
 
                     Hi! This is the Squarepants compiler!
@@ -273,4 +266,3 @@ main as IO.Program =
 
                     """
                     >> IO.writeStdout
-

@@ -1,21 +1,21 @@
+var Maybe a =
+    , 'nothing
+    , 'just a
 
-union Maybe a =
-    , Nothing
-    , Just a
 
-
-onJust as fn (fn a: Maybe b): fn Maybe a: Maybe b =
-    fn f: fn ma:
+onJust as fn fn a: Maybe b: fn Maybe a: Maybe b =
+    fn f:
+    fn ma:
     try ma as
-        , Nothing: Nothing
-        , Just a: f a
+        'nothing: 'nothing
+        'just a: f a
 
 
-map as fn (fn a: b), Maybe a: Maybe b =
+map as fn fn a: b, Maybe a: Maybe b =
     fn f, m:
     try m as
-        , Nothing: Nothing
-        , Just v: Just (f v)
+        'nothing: 'nothing
+        'just v: 'just (f v)
 
 
 #map2 as fn (fn a, b: c), Maybe a, Maybe b: Maybe c =
@@ -24,7 +24,6 @@ map as fn (fn a: b), Maybe a: Maybe b =
 #    mb >> andThen fn b:
 #    Just (f a b)
 
-
 #map3 as fn (fn a, b, c: d), Maybe a, Maybe b, Maybe c: Maybe d =
 #    fn f, ma, mb, mc:
 #    ma >> andThen fn a:
@@ -32,27 +31,22 @@ map as fn (fn a: b), Maybe a: Maybe b =
 #    mc >> andThen fn c:
 #    Just (f a b c)
 
-
 toResult as fn e, Maybe a: Result e a =
     fn e, maybeA:
     try maybeA as
-        , Just a: Ok a
-        , Nothing: Err e
+        'just a: 'ok a
+        'nothing: 'err e
 
 
-mapRes as fn (fn a: Result e b), Maybe a: Result e (Maybe b) =
+mapRes as fn fn a: Result e b, Maybe a: Result e (Maybe b) =
     fn f, m:
     try m as
-        , Nothing:
-            Ok Nothing
-
-        , Just a:
-            Result.map Just (f a)
+        'nothing: 'ok 'nothing
+        'just a: Result.map 'just (f a)
 
 
 withDefault as fn a, Maybe a: a =
     fn default, maybe:
     try maybe as
-        , Just v: v
-        , Nothing: default
-
+        'just v: v
+        'nothing: default

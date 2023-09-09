@@ -1,40 +1,38 @@
-
 platform as Types/Platform.Platform =
     {
-    , name = "browser"
     , defaultModules = DefaultModules.asText .. modules
-    , quickstart = "TODO"
     , defaultOutputPath = "index.js"
     , makeExecutable
+    , name = "browser"
+    , quickstart = "TODO"
     }
 
 
 modules as Text =
     """
 
-library =
-    source = "core:browser"
+    library =
+        source = "core:browser"
 
-    module =
-        path = Browser
+        module =
+            path = Browser
 
-    module =
-        path = Html
+        module =
+            path = Html
 
-    module =
-        path = VirtualDom
+        module =
+            path = VirtualDom
     """
 
 
 virtualDomModule as fn Text: USR =
-    USR (UMR Meta.Browser "VirtualDom") __
-
+    'USR ('UMR Meta.'browser "VirtualDom") __
 
 
 compile as fn Self.LoadPars: Text =
     fn out:
-
     log "Creating JS AST..." ""
+
     jaStatements =
         Targets/Javascript/EmittableToJs.translateAll
             {
@@ -44,15 +42,14 @@ compile as fn Self.LoadPars: Text =
             }
 
     log "Emitting JS..." ""
+
     jaStatements
     >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
     >> Text.join "\n\n" __
 
 
-
 makeExecutable as fn Self.LoadPars: Text =
     fn out:
-
     compiledStatements =
         compile out
 
@@ -61,7 +58,7 @@ makeExecutable as fn Self.LoadPars: Text =
     header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out.entryUsr
 
 
-overrides as [USR & Text] =
+overrides as [ USR & Text ] =
     [
     , virtualDomModule "jsCreateTextNode" & "virtualDom_jsCreateTextNode"
     , virtualDomModule "jsCreateElement" & "virtualDom_jsCreateElement"
@@ -87,7 +84,6 @@ header as Text =
 
 footer as fn USR: Text =
     fn mainUsr:
-
     mainName =
         Targets/Javascript/EmittableToJs.translateUsr mainUsr
 
@@ -107,158 +103,175 @@ footer as fn USR: Text =
 
             const msg = msgResult[1];
 
-            model = """ .. mainName .. """.update(effects, msg, model)[0];
+            model =
+    """
+    .. mainName
+    .. """
+    .update(effects, msg, model)[0];
 
-            // TODO set a flag and use requestAnimationFrame
-            updateDom();
-        } else {
-            console.log('rejecting msg: ', msgResult[1]);
+                // TODO set a flag and use requestAnimationFrame
+                updateDom();
+            } else {
+                console.log('rejecting msg: ', msgResult[1]);
+            }
         }
-    }
 
 
-    function updateDom() {
-        const e = win.document.getElementById(elementId);
+        function updateDom() {
+            const e = win.document.getElementById(elementId);
 
-        const newVirtualDom = """ .. mainName .. """.view(model);
-
-        """ .. updateDomNode .. """(newVirtualDom, oldVirtualDom, e.childNodes[0]);
-
-        oldVirtualDom = newVirtualDom;
-
-        effects.forEach((e) => e());
-        effects = [];
-    }
+            const newVirtualDom =
+    """
+    .. mainName
+    .. """
+    .view(model);
 
 
+    """
+    .. updateDomNode
+    .. """
+    (newVirtualDom, oldVirtualDom, e.childNodes[0]);
 
-    function main(eid) {
-        elementId = eid;
-        model = """ .. mainName .. """.init(effects)[0];
-        updateDom();
-    }
+            oldVirtualDom = newVirtualDom;
 
-
+            effects.forEach((e) => e());
+            effects = [];
+        }
 
 
 
-    win.Squarepants = {
-        main: main,
-    };
+        function main(eid) {
+            elementId = eid;
+            model =
+    """
+    .. mainName
+    .. """
+    .init(effects)[0];
+            updateDom();
+        }
 
-})(this);
+
+
+
+
+        win.Squarepants = {
+            main: main,
+        };
+
+    })(this);
+
     """
 
 
 runtime as Text =
     """
-const crawlObject = (path, type, object) => {
+    const crawlObject = (path, type, object) => {
 
-    while(path[0] === 'Cons') {
+        while(path[0] === 'Cons') {
 
-        const head = path[1];
-        const tail = path[2];
+            const head = path[1];
+            const tail = path[2];
 
-        const o = object[head];
+            const o = object[head];
 
-        if (o === undefined) {
-            return [ 'Err', 'no field named: ' + head ];
+            if (o === undefined) {
+                return [ 'Err', 'no field named: ' + head ];
+            }
+
+            object = o;
+            path = path[2];
         }
 
-        object = o;
-        path = path[2];
+        return typeof object === type
+            ? [ 'Ok', object ]
+            : [ 'Err', 'wrong type: ' + typeof object ]
+            ;
     }
 
-    return typeof object === type
-        ? [ 'Ok', object ]
-        : [ 'Err', 'wrong type: ' + typeof object ]
-        ;
-}
+
+    const virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);
+    const virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);
+
+    // TODO ensure that those who must return None actually return None (ie, null)
+    const virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);
+    const virtualDom_jsCreateElement = (tag) => document.createElement(tag);
+    const virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }
+    const virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);
+    const virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);
+    const virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);
+    const virtualDom_jsSetProperty = (name, value, node) => node[name] = value;
 
 
-const virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);
-const virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);
-
-// TODO ensure that those who must return None actually return None (ie, null)
-const virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);
-const virtualDom_jsCreateElement = (tag) => document.createElement(tag);
-const virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }
-const virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);
-const virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);
-const virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);
-const virtualDom_jsSetProperty = (name, value, node) => node[name] = value;
+    const virtualDom_setChild = (upd, index, parentNode) => {
+        const child = parentNode.childNodes[index];
+        child && upd(child);
+    };
 
 
-const virtualDom_setChild = (upd, index, parentNode) => {
-    const child = parentNode.childNodes[index];
-    child && upd(child);
-};
-
-
-const virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {
-    while(parentNode.childNodes[index]) {
-      parentNode.removeChild(parentNode.childNodes[index]);
-    }
-}
-
-
-// an EventHandler is a function that takes an Event and produces a msg
-const virtualDom_jsAddEventListener = (eventName, handler, node) => {
-
-    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};
-
-    if (node.squarepantsEventHandlers[eventName]) {
-      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);
+    const virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {
+        while(parentNode.childNodes[index]) {
+          parentNode.removeChild(parentNode.childNodes[index]);
+        }
     }
 
-    const onEvent = (event) => dispatch(handler(event));
-    node.squarepantsEventHandlers[eventName] = onEvent;
-    node.addEventListener(eventName, onEvent);
-};
 
-const virtualDom_jsRemoveEventListener = (eventName, handler, node) => {
-    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);
-    node.squarepantsEventHandlers[eventName] = undefined;
-}
+    // an EventHandler is a function that takes an Event and produces a msg
+    const virtualDom_jsAddEventListener = (eventName, handler, node) => {
 
+        node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};
 
-const virtualDom_setViewportOf = (id, top, left) => () => {
-    const e = document.getElementById(id);
-    if (!e) {
-        console.error('could not find element #' + id);
-        return
+        if (node.squarepantsEventHandlers[eventName]) {
+          node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);
+        }
+
+        const onEvent = (event) => dispatch(handler(event));
+        node.squarepantsEventHandlers[eventName] = onEvent;
+        node.addEventListener(eventName, onEvent);
+    };
+
+    const virtualDom_jsRemoveEventListener = (eventName, handler, node) => {
+        node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);
+        node.squarepantsEventHandlers[eventName] = undefined;
     }
 
-    e.scrollTop = top;
-    e.scrollLeft = left;
-}
 
+    const virtualDom_setViewportOf = (id, top, left) => () => {
+        const e = document.getElementById(id);
+        if (!e) {
+            console.error('could not find element #' + id);
+            return
+        }
 
-const virtualDom_drawCanvas = (canvasId, shaderFn) => () => {
-
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) {
-        console.error('could not find canvas', canvasId);
-        return
+        e.scrollTop = top;
+        e.scrollLeft = left;
     }
 
-    const w = canvas.width;
-    const h = canvas.height;
 
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.createImageData(w, h);
+    const virtualDom_drawCanvas = (canvasId, shaderFn) => () => {
 
-    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error('could not find canvas', canvasId);
+            return
+        }
 
-        const frag = shaderFn(x / (w - 1), 1 - y / (h - 1));
+        const w = canvas.width;
+        const h = canvas.height;
 
-        let j = (x + y * w) * 4;
-        imageData.data[j + 0] = frag.r * 255;
-        imageData.data[j + 1] = frag.g * 255;
-        imageData.data[j + 2] = frag.b * 255;
-        imageData.data[j + 3] = 255;
-    }
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(w, h);
 
-    ctx.putImageData(imageData, 0, 0);
-};
+        for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+
+            const frag = shaderFn(x / (w - 1), 1 - y / (h - 1));
+
+            let j = (x + y * w) * 4;
+            imageData.data[j + 0] = frag.r * 255;
+            imageData.data[j + 1] = frag.g * 255;
+            imageData.data[j + 2] = frag.b * 255;
+            imageData.data[j + 3] = 255;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+    };
     """

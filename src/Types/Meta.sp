@@ -7,11 +7,13 @@
 #
 # TODO: for the time being, this is just a placeholder
 #
-union Source =
-    , Core
-    , Posix # This one is a HACK, until we have proper platform management
-    , Browser # This one is a HACK, until we have proper platform management
-    , SourceDirId Text
+var Source =
+    , 'core
+    , 'posix
+    , # This one is a HACK, until we have proper platform management
+      'browser
+    , # This one is a HACK, until we have proper platform management
+      'sourceDirId Text
 
 
 #
@@ -21,39 +23,36 @@ union Source =
 #
 # ex: "Core/List"
 #
-alias ModulePath =
+ModulePath =
     Text
 
 
-union UMR =
-    UMR Source ModulePath
+var UMR =
+    , 'UMR Source ModulePath
 
 
 # TODO: have one for types, one for constructors and one for values?
-union USR =
-    USR UMR Name
+var USR =
+    , 'USR UMR Name
 
 
-alias ByUsr a =
+ByUsr a =
     Dict USR a
 
 
-alias Meta =
+Meta =
     {
+    , globalTypes as Dict Name USR
+    # These resolve global symbol names
+    , globalValues as Dict Name USR
+    # These resolve module names
+    , moduleVisibleAsToUmr as Dict Name UMR
+    , sourceDirIdCounter as Int
     # The sourceDirId is the one eventually used to produce an internal unique name for the variable.
     # There are two main reasons for this:
     # 1) We don't want local path references to enter in the compiled output
     # 2) We don't want to have to deal with weird characters when we generate the internal names
     , sourceDirIdToPath as Dict Text Text
-    , sourceDirIdCounter as Int
-
-    # These resolve global symbol names
-    , globalValues as Dict Name USR
-    , globalTypes as Dict Name USR
-
-    # These resolve module names
-    , moduleVisibleAsToUmr as Dict Name UMR
-
     # This is used by toHuman, to show symbols the same way the user would expect to read and write them
     # (only the main meta is used for this)
     , umrToModuleVisibleAs as Dict UMR Name
@@ -62,19 +61,18 @@ alias Meta =
 
 init as Meta =
     {
-    , sourceDirIdToPath = Dict.empty
-    , sourceDirIdCounter = 0
-    , globalValues = Dict.empty
     , globalTypes = Dict.empty
+    , globalValues = Dict.empty
     , moduleVisibleAsToUmr = Dict.empty
+    , sourceDirIdCounter = 0
+    , sourceDirIdToPath = Dict.empty
     , umrToModuleVisibleAs = Dict.empty
     }
 
 
 spCoreUmr as UMR =
-    UMR Meta.Core "Core"
+    'UMR Meta.'core "Core"
 
 
 spCoreUSR as fn Name: USR =
-    USR spCoreUmr __
-
+    'USR spCoreUmr __

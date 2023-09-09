@@ -2,7 +2,7 @@
 # These are regressions from specific targets, but it's probbaly good to run them on every target
 #
 tests as Test =
-    Test.Group
+    Test.'group
         """
         Emitted
         """
@@ -11,8 +11,7 @@ tests as Test =
         ]
 
 
-
-valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
     Test.valueTest toHuman __ __ __
 
 
@@ -20,7 +19,7 @@ valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
 # JavaScript
 #
 javascript as Test =
-    Test.Group
+    Test.'group
         """
         JavaScript
         """
@@ -29,11 +28,12 @@ javascript as Test =
             """
             [reg] Imperative try..as should not force the function to return prematurely
             """
-            (fn None:
-                try False as
-                    , False: 1
-                    , True: 2
-                "abc"
+            (fn 'none:
+                 try 'false as
+                     'false: 1
+                     'true: 2
+
+                 "abc"
             )
             (Test.isOkAndEqualTo "abc")
         , valueTest
@@ -41,9 +41,8 @@ javascript as Test =
             SKIP (it breaks everything) [reg] Pattern matching fails on None
             """
             (fn _:
-                try None as
-                    , None: 1
+                 try 'none as
+                     'none: 1
             )
             (Test.isOkAndEqualTo 1)
         ]
-

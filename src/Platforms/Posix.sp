@@ -1,33 +1,36 @@
-
-
 platform as Types/Platform.Platform =
     {
-    , name = "posix"
     , defaultModules = DefaultModules.asText .. posixModules
-    , quickstart = "TODO"
     , defaultOutputPath = "nodeExecutable.js"
     , makeExecutable
+    , name = "posix"
+    , quickstart = "TODO"
     }
 
 
 posixModules as Text =
     """
 
-library =
-    source = "core:posix"
+    library =
+        source = "core:posix"
 
-    module =
-        path = IO
-        globalTypes = IO
+        module =
+            path = IO
+            globalTypes = IO
 
-    module =
-        path = Path
+        module =
+            path = Path
     """
+
+
+ok as Text = "'Ok'"
+
+makeOk as Text = "$core$Result$Ok"
+makeErr as Text = "$core$Result$Err"
 
 
 makeExecutable as fn Self.LoadPars: Text =
     fn out:
-
     # TODO check that type is `IO Int`
 
     entryName =
@@ -36,17 +39,23 @@ makeExecutable as fn Self.LoadPars: Text =
     callMain =
         """
         const args = arrayToListLow(process.argv.slice(1));
-        const out = """ .. entryName .. """({}, args)[1]('never');
-        if (out[0] === 'Ok') {
-            process.exitCode = out[1];
-        } else {
-            console.error(out[1]);
-            process.exitCode = 1;
-        }
+        const out =
+        """
+        .. entryName
+        .. """
+        ({}, args)[1]('never');
+                if (out[0] === """ .. ok .. """) {
+                    process.exitCode = out[1];
+                } else {
+                    console.error(out[1]);
+                    process.exitCode = 1;
+                }
+
         """
 
     compiledStatements =
         log "Creating JS AST..." ""
+
         jaStatements =
             Targets/Javascript/EmittableToJs.translateAll
                 {
@@ -56,6 +65,7 @@ makeExecutable as fn Self.LoadPars: Text =
                 }
 
         log "Emitting JS..." ""
+
         jaStatements
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
         >> Text.join "\n\n" __
@@ -65,22 +75,23 @@ makeExecutable as fn Self.LoadPars: Text =
 
 header as Text =
     # HACK the stack size is needed because we don't yet have tail-call optimization. T_T
-    """#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096
+    """
+    #!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096
 
-//Error.stackTraceLimit = 100;
+    //Error.stackTraceLimit = 100;
 
-const { performance } = require('perf_hooks');
-
-"""
+    const { performance } = require('perf_hooks');
 
 
-overrides as [USR & Text] =
+    """
 
+
+overrides as [ USR & Text ] =
     ioModule =
-        USR (UMR Meta.Posix "IO") __
+        'USR ('UMR Meta.'posix "IO") __
 
     pathModule =
-        USR (UMR Meta.Posix "Path") __
+        'USR ('UMR Meta.'posix "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"
@@ -98,114 +109,113 @@ overrides as [USR & Text] =
 runtime as Text =
     """
 
-//
-// Platform: IO
-//
-const fs = require('fs');
-const path = require('path');
+    //
+    // Platform: IO
+    //
+    const fs = require('fs');
+    const path = require('path');
 
-const io_wrap = (f) => [ "IO.IO", f ];
+    const io_wrap = (f) => [ "IO.IO", f ];
 
-const io_parallel = (iosAsList) => io_wrap((never) => {
-    // as [IO a]: IO [a]
+    const io_parallel = (iosAsList) => io_wrap((never) => {
+        // as [IO a]: IO [a]
 
-    const ios = arrayFromListLow(iosAsList);
+        const ios = arrayFromListLow(iosAsList);
 
-    // TODO actually run them in parallel!
+        // TODO actually run them in parallel!
 
-    let arr = [];
-    for (let io of ios) {
-        const r = io[1](never);
-        if (r[0] === "Ok")
-            arr.push(r[1]);
-        else
-            return $core$Result$Err(r[1]);
-    }
+        let arr = [];
+        for (let io of ios) {
+            const r = io[1](never);
+            if (r[0] === """ .. ok .. """)
+                arr.push(r[1]);
+            else
+                return """ .. makeErr .. """(r[1]);
+        }
 
-    return $core$Result$Ok(arrayToListLow(arr));
-});
-
-
-const io_readDir = (dirPath) => io_wrap((never) => {
-    // as Text: IO [Bool & Text]
-
-    var entries;
-    try {
-        entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-
-    return $core$Result$Ok(arrayToListLow(entries.map((dirent) => ({
-        first: dirent.isDirectory(),
-        second: dirent.name,
-    }))));
-});
+        return """ .. makeOk .. """(arrayToListLow(arr));
+    });
 
 
-const io_readFile = (path) => io_wrap((never) => {
-    // as Text: IO Text
+    const io_readDir = (dirPath) => io_wrap((never) => {
+        // as Text: IO [Bool & Text]
 
-    var content;
-    try {
-        content = fs.readFileSync(path, 'utf8');
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
+        var entries;
+        try {
+            entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        } catch (e) {
+            return """ .. makeErr .. """(e.message);
+        }
 
-    return $core$Result$Ok(content);
-});
-
-
-const io_writeFile = (path, content) => io_wrap((never) => {
-    // as Text: Text: IO Int
-
-    try {
-        fs.writeFileSync(path, content);
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-
-    return $core$Result$Ok(0);
-});
+        return """ .. makeOk .. """(arrayToListLow(entries.map((dirent) => ({
+            first: dirent.isDirectory(),
+            second: dirent.name,
+        }))));
+    });
 
 
-const io_readStdin = io_wrap((never) => {
-    // as IO Text
+    const io_readFile = (path) => io_wrap((never) => {
+        // as Text: IO Text
 
-    try {
-        return $core$Result$Ok(fs.readFileSync(0, 'utf8'));
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-});
+        var content;
+        try {
+            content = fs.readFileSync(path, 'utf8');
+        } catch (e) {
+            return """ .. makeErr .. """(e.message);
+        }
 
-
-const io_writeStdout = (content) => io_wrap((never) => {
-    // as Text: IO Int
-
-    try {
-        fs.writeFileSync(1, content);
-    } catch (e) {
-        return $core$Result$Err(e.message);
-    }
-
-    return $core$Result$Ok(0);
-});
+        return """ .. makeOk .. """(content);
+    });
 
 
-const io_writeStderr = (content) => io_wrap((never) => {
-    // as Text: IO Int
+    const io_writeFile = (path, content) => io_wrap((never) => {
+        // as Text: Text: IO Int
 
-    console.error(content);
-    return $core$Result$Ok(-1);
-});
+        try {
+            fs.writeFileSync(path, content);
+        } catch (e) {
+            return """ .. makeErr .. """(e.message);
+        }
+
+        return """ .. makeOk .. """(0);
+    });
 
 
-const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
+    const io_readStdin = io_wrap((never) => {
+        // as IO Text
+
+        try {
+            return """ .. makeOk .. """(fs.readFileSync(0, 'utf8'));
+        } catch (e) {
+            return """ .. makeErr .. """(e.message);
+        }
+    });
 
 
-const path_dirname = path.dirname;
+    const io_writeStdout = (content) => io_wrap((never) => {
+        // as Text: IO Int
 
-"""
+        try {
+            fs.writeFileSync(1, content);
+        } catch (e) {
+            return """ .. makeErr .. """(e.message);
+        }
 
+        return """ .. makeOk .. """(0);
+    });
+
+
+    const io_writeStderr = (content) => io_wrap((never) => {
+        // as Text: IO Int
+
+        console.error(content);
+        return """ .. makeOk .. """(-1);
+    });
+
+
+    const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
+
+
+    const path_dirname = path.dirname;
+
+    """

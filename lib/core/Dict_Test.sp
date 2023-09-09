@@ -1,10 +1,10 @@
-
-valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
     Test.valueTest toHuman __ __ __
 
 
 tests as Test =
-    Test.Group "Dict"
+    Test.'group
+        "Dict"
         [
         , insertAndGet
         , lists
@@ -12,67 +12,72 @@ tests as Test =
 
 
 insertAndGet as Test =
-    Test.Group "insertAndGet"
+    Test.'group
+        "insertAndGet"
         [
         , valueTest
             """
             get, success
             """
-            fn _:
-                Dict.empty
-                    >> Dict.insert (Just "a") 1 __
-                    >> Dict.insert (Just "b") 2 __
-                    >> Dict.get (Just "a") __
-            (Test.isOkAndEqualTo << Just 1)
+            (fn _:
+                 Dict.empty
+                 >> Dict.insert ('just "a") 1 __
+                 >> Dict.insert ('just "b") 2 __
+                 >> Dict.get ('just "a") __
+            )
+            (Test.isOkAndEqualTo << 'just 1)
         , valueTest
             """
             get, fail
             """
-            fn _:
-                Dict.empty
-                    >> Dict.insert (Just "a") 1 __
-                    >> Dict.insert (Just "b") 2 __
-                    >> Dict.get (Just "c") __
-            (Test.isOkAndEqualTo << Nothing)
+            (fn _:
+                 Dict.empty
+                 >> Dict.insert ('just "a") 1 __
+                 >> Dict.insert ('just "b") 2 __
+                 >> Dict.get ('just "c") __
+            )
+            (Test.isOkAndEqualTo << 'nothing)
         ]
 
 
 lists as Test =
-    Test.Group "lists"
+    Test.'group
+        "lists"
         [
         , valueTest
             """
             keys
             """
-            fn _:
-                Dict.empty
-                    >> Dict.insert (Just "a") 1 __
-                    >> Dict.insert (Just "b") 2 __
-                    >> Dict.insert Nothing 2 __
-                    >> Dict.keys
-                    >> List.sortBy identity __
+            (fn _:
+                 Dict.empty
+                 >> Dict.insert ('just "a") 1 __
+                 >> Dict.insert ('just "b") 2 __
+                 >> Dict.insert 'nothing 2 __
+                 >> Dict.keys
+                 >> List.sortBy identity __
+            )
             (Test.isOkAndEqualTo
-                [
-                , Just "a"
-                , Just "b"
-                , Nothing
-                ]
+                 [
+                 , 'just "a"
+                 , 'just "b"
+                 , 'nothing
+                 ]
             )
         , valueTest
             """
             values
             """
-            fn _:
-                Dict.empty
-                    >> Dict.insert (Just "a") { a = 1 } __
-                    >> Dict.insert (Just "b") { a = 3 } __
-                    >> Dict.values
-                    >> List.sortBy identity __
+            (fn _:
+                 Dict.empty
+                 >> Dict.insert ('just "a") { a = 1 } __
+                 >> Dict.insert ('just "b") { a = 3 } __
+                 >> Dict.values
+                 >> List.sortBy identity __
+            )
             (Test.isOkAndEqualTo
-                [
-                , { a = 1 }
-                , { a = 3 }
-                ]
+                 [
+                 , { a = 1 }
+                 , { a = 3 }
+                 ]
             )
         ]
-

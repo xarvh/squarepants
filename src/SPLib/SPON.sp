@@ -1,10 +1,10 @@
-union Outcome a =
-    , Accepted [ FA.Statement ] a
-    , Rejected (At Text)
-    , Failed (At Text)
+var Outcome a =
+    , 'accepted [ FA.Statement ] a
+    , 'rejected (At Text)
+    , 'failed (At Text)
 
 
-alias Reader a =
+Reader a =
     fn [ FA.Statement ]: Outcome a
 
 
@@ -16,28 +16,28 @@ onAcc as fn fn a: Reader b: fn Reader a: Reader b =
     fn readerA:
     fn statements:
     try readerA statements as
-        , Accepted newStatements a: (chainedReaderB a) newStatements
-        , Rejected reason: Rejected reason
-        , Failed reason: Failed reason
+        'accepted newStatements a: (chainedReaderB a) newStatements
+        'rejected reason: 'rejected reason
+        'failed reason: 'failed reason
 
 
 return as fn a: Reader a =
     fn a:
     fn statements:
-    Accepted statements a
+    'accepted statements a
 
 
 getPos as fn [ FA.Statement ]: Pos =
     fn statements:
     try statements as
-        , head :: tail: FA.statementPos head
-        , []: Pos.End
+        head :: tail: FA.statementPos head
+        []: Pos.'end
 
 
 reject as fn Text: Reader any =
     fn message:
     fn statements:
-    Rejected << At (getPos statements) message
+    'rejected << 'at (getPos statements) message
 
 
 #
@@ -46,10 +46,10 @@ reject as fn Text: Reader any =
 run as fn Reader a, Error.Module, [ FA.Statement ]: Res a =
     fn readerA, errorModule, statements:
     try readerA statements as
-        , Accepted [] a: Ok a
-        , Accepted (head :: tail) a: Error.res errorModule (FA.statementPos head) [ "unread statements" ]
-        , Rejected (At pos r): Error.res errorModule pos [ r ]
-        , Failed (At pos r): Error.res errorModule pos [ r ]
+        'accepted [] a: 'ok a
+        'accepted (head :: tail) a: Error.res errorModule (FA.statementPos head) [ "unread statements" ]
+        'rejected ('at pos r): Error.res errorModule pos [ r ]
+        'failed ('at pos r): Error.res errorModule pos [ r ]
 
 
 read as fn Reader a, Text, Text: Res a =
@@ -57,7 +57,7 @@ read as fn Reader a, Text, Text: Res a =
     errorModule as Error.Module =
         { content, fsPath }
 
-    { errorModule, keepComments = False, stripLocations = False }
+    { errorModule, keepComments = 'false, stripLocations = 'false }
     >> Compiler/Parser.textToFormattableModule
     >> onOk (run reader errorModule __)
 
@@ -66,15 +66,15 @@ logHead as Reader None =
     fn statements:
     try statements as
 
-        , head :: tail:
+        head :: tail:
             log "LOG" head
 
-            None
+            'none
 
-        , []:
-            log "LOG" None
+        []:
+            log "LOG" 'none
 
-    Accepted statements None
+    'accepted statements 'none
 
 
 #
@@ -85,51 +85,51 @@ expr as fn Text, fn FA.Expr_: Maybe a: Reader a =
     fn aWhat, getA:
     try __ as
 
-        , FA.Evaluation (FA.Expression _ p e) :: tail:
+        FA.'evaluation (FA.'expression _ p e) :: tail:
             try getA e as
 
-                , Just a:
-                    Accepted tail a
+                'just a:
+                    'accepted tail a
 
-                , Nothing:
+                'nothing:
                     "Expecting " .. aWhat
-                    >> At p __
-                    >> Rejected
+                    >> 'at p __
+                    >> 'rejected
 
-        , [ s ]:
+        [ s ]:
             "Expecting " .. aWhat
-            >> At (FA.statementPos s) __
-            >> Rejected
+            >> 'at (FA.statementPos s) __
+            >> 'rejected
 
-        , _:
-            Failed << At Pos.End "Expecting a statement"
+        _:
+            'failed << 'at Pos.'end "Expecting a statement"
 
 
 text as Reader Text =
     try __ as
-        , FA.LiteralText _ t: Just t
-        , _: Nothing
+        FA.'literalText _ t: 'just t
+        _: 'nothing
     >> expr "a text literal" __
 
 
 lowerName as Reader Text =
     try __ as
-        , FA.Lowercase { attrPath = [], maybeModule = Nothing, maybeType = Nothing, name }: Just name
-        , _: Nothing
+        FA.'lowercase { attrPath = [], maybeModule = 'nothing, maybeType = 'nothing, name }: 'just name
+        _: 'nothing
     >> expr "a simple lowercase name" __
 
 
 upperName as Reader Text =
     try __ as
-        , FA.Uppercase { maybeModule = Nothing, name }: Just name
-        , _: Nothing
+        FA.'uppercase { maybeModule = 'nothing, name }: 'just name
+        _: 'nothing
     >> expr "a simple Uppercase name" __
 
 
 constructor as Reader Text =
     try __ as
-        , FA.Constructor { maybeModule = Nothing, name }: Just name
-        , _: Nothing
+        FA.'constructor { maybeModule = 'nothing, name }: 'just name
+        _: 'nothing
     >> expr "a 'constructor name" __
 
 
@@ -142,18 +142,18 @@ oneOf as fn [ Reader a ]: Reader a =
     fn statements:
     try readers as
 
-        , []:
+        []:
             pos =
                 try statements as
-                    , head :: _: FA.statementPos head
-                    , _: Pos.End
+                    head :: _: FA.statementPos head
+                    _: Pos.'end
 
-            Rejected << At pos "options exhausted"
+            'rejected << 'at pos "options exhausted"
 
-        , headReader :: tail:
+        headReader :: tail:
             try headReader statements as
-                , Rejected _: (oneOf tail) statements
-                , otherwise: otherwise
+                'rejected _: (oneOf tail) statements
+                otherwise: otherwise
 
 
 many as fn Reader a: Reader [ a ] =
@@ -170,12 +170,12 @@ many as fn Reader a: Reader [ a ] =
                globalValues = Blah
 
             #]
-            Accepted [] (List.reverse accum)
+            'accepted [] (List.reverse accum)
         else
             try readerA statements as
-                , Accepted tail a: (rec (a :: accum)) tail
-                , Rejected e: Rejected e
-                , Failed e: Failed e
+                'accepted tail a: (rec (a :: accum)) tail
+                'rejected e: 'rejected e
+                'failed e: 'failed e
 
     rec []
 
@@ -184,37 +184,37 @@ maybe as fn Reader a: Reader (Maybe a) =
     fn readerA:
     fn statements:
     try readerA statements as
-        , Accepted tail a: Accepted tail (Just a)
-        , Rejected _: Accepted statements Nothing
-        , Failed r: Failed r
+        'accepted tail a: 'accepted tail ('just a)
+        'rejected _: 'accepted statements 'nothing
+        'failed r: 'failed r
 
 
 # HACK
 expressionToStatements as fn FA.Expression: [ FA.Statement ] =
     fn e:
     try e as
-        , FA.Expression _ _ (FA.Statements [ FA.Evaluation nested ]): expressionToStatements nested
-        , FA.Expression _ _ (FA.Statements stats): stats
-        , _: [ FA.Evaluation e ]
+        FA.'expression _ _ (FA.'statements [ FA.'evaluation nested ]): expressionToStatements nested
+        FA.'expression _ _ (FA.'statements stats): stats
+        _: [ FA.'evaluation e ]
 
 
 field as fn Text, Reader a: Reader a =
     fn fieldName, fieldReader:
     try __ as
 
-        , FA.ValueDef
+        FA.'valueDef
             {
             , body
             , nonFn
             , pattern =
-                FA.Expression
+                FA.'expression
                     _
                     pos
-                    (FA.Lowercase
+                    (FA.'lowercase
                          {
                          , attrPath = []
-                         , maybeModule = Nothing
-                         , maybeType = Nothing
+                         , maybeModule = 'nothing
+                         , maybeType = 'nothing
                          , name
                          }
                     )
@@ -223,18 +223,18 @@ field as fn Text, Reader a: Reader a =
             if name == fieldName then
                 try fieldReader (expressionToStatements body) as
 
-                    , Accepted unreadStatements a:
+                    'accepted unreadStatements a:
                         try unreadStatements as
-                            , []: Accepted tail a
-                            , head :: _: Failed << At (FA.statementPos head) __ << "Could not make sense of all the statements in field `" .. fieldName .. "`."
+                            []: 'accepted tail a
+                            head :: _: 'failed << 'at (FA.statementPos head) __ << "Could not make sense of all the statements in field `" .. fieldName .. "`."
 
-                    , otherwise:
+                    otherwise:
                         otherwise
             else
-                Rejected << At pos __ << "expecting `" .. fieldName .. " =`"
+                'rejected << 'at pos __ << "expecting `" .. fieldName .. " =`"
 
-        , head :: tail:
-            Rejected << At (FA.statementPos head) "missing a simple assignment (ie `something = `)"
+        head :: tail:
+            'rejected << 'at (FA.statementPos head) "missing a simple assignment (ie `something = `)"
 
-        , []:
-            Rejected << At Pos.End "unexpected end of file"
+        []:
+            'rejected << 'at Pos.'end "unexpected end of file"

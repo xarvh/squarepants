@@ -11,37 +11,38 @@ All the crunching is done at compile time, which means that, for unique values, 
 
 #]
 
-
 specs as Test =
-    Test.Group "Uniqueness"
-      [
-      , howDoesItLookLike
-      , uniquenessTyping
-      , mutation
-      , parentScope
-      , polymorphism
-      , unions
-      , records
-      ]
+    Test.'group
+        "Uniqueness"
+        [
+        , howDoesItLookLike
+        , uniquenessTyping
+        , mutation
+        , parentScope
+        , polymorphism
+        , unions
+        , records
+        ]
 
 
 #
 # Boilerplate code, not really needed to understand the system
 #
 
-valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
     Test.valueTest toHuman __ __ __
+
 
 codeTest =
     Test.codeTest Debug.toHuman __ __ __ __
+
 
 infer as fn Text: fn Text: Result Text Compiler/TypeCheck_Test.Out =
     Compiler/TypeCheck_Test.infer
 
 
-
 howDoesItLookLike as Test =
-    Test.Group
+    Test.'group
         #
         #
         #
@@ -73,7 +74,6 @@ howDoesItLookLike as Test =
             """
             (infer "average")
             Test.isOk
-
         , codeTest
             """
             SKIP (needs IO in the test env) Example: File IO
@@ -94,29 +94,32 @@ howDoesItLookLike as Test =
         ]
 
 
-
-
 uniquenessTyping as Test =
-    Test.Group
+    Test.'group
         """
         Uniqueness Typing
         """
         [
-        , Test.Group
+        , Test.'group
             """
             All literal expressions allow uniqueness
             """
             [
             , codeTest "failure" "f as fn Number: !Number = fn x: x" (infer "f") (Test.errorContains [ "ErrorUniquenessDoesNotMatch" ])
-            , codeTest "Number"  "f as fn a: !Number = fn _: 1" (infer "f") Test.isOk
-            , codeTest "Text"    """f as fn a: !Text = fn _: "meh" """ (infer "f") Test.isOk
-            , codeTest "Record"  "f as fn a: !{} = fn _: {}" (infer "f") Test.isOk
-            , codeTest "Constructor 1"  "f as fn a: !Bool = fn _: 'true" (infer "f") Test.isOk
-            # TODO: Constructor with pars
+            , codeTest "Number" "f as fn a: !Number = fn _: 1" (infer "f") Test.isOk
+            , codeTest
+                "Text"
+                """
+                f as fn a: !Text = fn _: "meh"
+                """
+                (infer "f")
+                Test.isOk
+            , codeTest "Record" "f as fn a: !{} = fn _: {}" (infer "f") Test.isOk
+            , codeTest "Constructor 1" "f as fn a: !Bool = fn _: 'true" (infer "f") Test.isOk
             ]
-
+        # TODO: Constructor with pars
         #
-        , Test.Group
+        , Test.'group
             """
             Conversions
             """
@@ -131,7 +134,7 @@ uniquenessTyping as Test =
                     @x += 1
                 """
                 (infer "a")
-                (Test.errorContains ["ErrorShouldBeUnique"])
+                (Test.errorContains [ "ErrorShouldBeUnique" ])
             , codeTest
                 """
                 Uniques can be implicitly transformed in immutables
@@ -142,12 +145,13 @@ uniquenessTyping as Test =
                 (infer "a")
                 Test.isOk
             ]
-        , Test.Group
+        , Test.'group
             """
             A variable with mutable type must be explicitly declared as mutable with `!`
             """
             [
-            , codeTest "1"
+            , codeTest
+                "1"
                 """
                 z =
                     !a as Number = 1
@@ -155,12 +159,13 @@ uniquenessTyping as Test =
                 (infer "z")
                 Test.isOk
             ]
-        , Test.Group
+        , Test.'group
             """
             Referencing a mutable variable "spends" it
             """
             [
-            , codeTest "base"
+            , codeTest
+                "base"
                 """
                 scope =
                     !x =
@@ -175,9 +180,9 @@ uniquenessTyping as Test =
                         x
                 """
                 (infer "scope")
-                (Test.errorContains ["used already here"])
-
-            , codeTest "tuple"
+                (Test.errorContains [ "used already here" ])
+            , codeTest
+                "tuple"
                 """
                 scope =
                     !x =
@@ -187,9 +192,9 @@ uniquenessTyping as Test =
                         x & x
                 """
                 (infer "scope")
-                (Test.errorContains ["used already here"])
+                (Test.errorContains [ "used already here" ])
             ]
-        , Test.Group
+        , Test.'group
             """
             A function cannot consume uniques outside its own scope.
             """
@@ -203,16 +208,17 @@ uniquenessTyping as Test =
                     !x = 1
                     fn z: x
                 """
-              (infer "scope")
-              (Test.errorContains [ "outside their body", "x" ])
+                (infer "scope")
+                (Test.errorContains [ "outside their body", "x" ])
             ]
         ]
 
 
 mutation as Test =
-    Test.Group "Mutation"
+    Test.'group
+        "Mutation"
         [
-        , Test.Group
+        , Test.'group
             """
             Uniques can be mutated in place
             """
@@ -254,9 +260,9 @@ mutation as Test =
                     @x += 1
                 """
                 (infer "scope")
-                (Test.errorContains ["used again here"])
+                (Test.errorContains [ "used again here" ])
             ]
-        , Test.Group
+        , Test.'group
             """
             A function can be defined to mutate its arguments
             """
@@ -278,7 +284,7 @@ mutation as Test =
                 (infer "scope")
                 Test.isOk
             ]
-        , Test.Group
+        , Test.'group
             """
             Calling a function that recycles a unique variable temporarily consumes the variable.
             """
@@ -299,12 +305,12 @@ mutation as Test =
 
 
 parentScope as Test =
-    Test.Group
+    Test.'group
         """
         Recycling a variable in the parent scope
         """
         [
-        , Test.Group
+        , Test.'group
             """
             A function that recycles any unique belonging to an ancestor scope "requires" that unique.
             """
@@ -326,7 +332,7 @@ parentScope as Test =
                     f
                 """
                 (infer "scope")
-                (Test.errorContains ["x", "from outside"])
+                (Test.errorContains [ "x", "from outside" ])
             , codeTest
                 """
                 Functions cannot return functions with UNIQUE requirements
@@ -339,7 +345,7 @@ parentScope as Test =
                     'none
                 """
                 (infer "f")
-                (Test.errorContains ["x", "from outside"])
+                (Test.errorContains [ "x", "from outside" ])
             , codeTest
                 """
                 Functions cannot return functions with RECYCLED requirements
@@ -352,7 +358,7 @@ parentScope as Test =
                     'none
                 """
                 (infer "f")
-                (Test.errorContains ["x", "from outside"])
+                (Test.errorContains [ "x", "from outside" ])
             , codeTest
                 """
                 The Array Test
@@ -377,19 +383,18 @@ parentScope as Test =
                     'none
                 """
                 (infer "addFunctions")
-                (Test.errorContains ["x", "outside"])
+                (Test.errorContains [ "x", "outside" ])
             ]
         ]
 
 
-
 records as Test =
-    Test.Group
+    Test.'group
         """
         Records
         """
         [
-        , Test.Group
+        , Test.'group
             """
             The attribute of a mutable record can be accessed as a mutable:
             """
@@ -421,7 +426,7 @@ records as Test =
 
 
 polymorphism as Test =
-    Test.Group
+    Test.'group
         """
         Polymorphism
         """
@@ -438,7 +443,6 @@ polymorphism as Test =
             """
             (infer "fun")
             Test.isOk
-
         , codeTest
             """
             A function that returns a Uni can be used in place of a function that returns an Imm
@@ -451,7 +455,6 @@ polymorphism as Test =
             """
             (infer "blah")
             Test.isOk
-
         , codeTest
             """
             A function that returns an Imm CANNOT be used in place of a function that returns an Uni
@@ -466,7 +469,6 @@ polymorphism as Test =
             """
             (infer "blah")
             (Test.errorContains [ "return", "uniqueness" ])
-
         # isOk
         , codeTest
             """
@@ -481,7 +483,6 @@ polymorphism as Test =
             """
             (infer "scope")
             Test.isOk
-
         , codeTest
             """
             a Uni, b Imm
@@ -504,10 +505,10 @@ polymorphism as Test =
             """
             (infer "na")
             (Test.isOkAndEqualTo
-                {
-                , freeTyvars = Dict.ofOne 1 { maybeAnnotated = Nothing }
-                , type = TA.TypeFn [TA.ParSp { uni = Depends 0, raw = TA.TypeVar 1}] { uni = Depends 0, raw = TA.TypeVar 1}
-                }
+                 {
+                 , freeTyvars = Dict.ofOne 1 { maybeAnnotated = 'nothing }
+                 , type = TA.'typeFn [ TA.'parSp { raw = TA.'typeVar 1, uni = 'depends 0 } ] { raw = TA.'typeVar 1, uni = 'depends 0 }
+                 }
             )
         , codeTest
             """
@@ -542,7 +543,7 @@ polymorphism as Test =
 
 
 unions as Test =
-    Test.Group
+    Test.'group
         """
         Unions
         """
@@ -557,15 +558,11 @@ unions as Test =
             """
             (infer "x")
             (Test.isOkAndEqualTo
-                {
-                , freeTyvars = Dict.empty
-                , type =
-                    TA.TypeExact
-                        (TH.localType "Z")
-                        [ TH.taNumber ]
-                }
+                 {
+                 , freeTyvars = Dict.empty
+                 , type = TA.'typeExact (TH.localType "Z") [ TH.taNumber ]
+                 }
             )
-
         , codeTest
             """
             [reg] Lists of immutables
@@ -576,7 +573,6 @@ unions as Test =
             """
             (infer "x")
             Test.isOk
-
         , codeTest
             """
             [reg] solveOneEquality can receive switched given/required when evaluating a cast?
@@ -586,7 +582,6 @@ unions as Test =
             """
             (infer "z")
             Test.isOk
-
         # LetIn
         , codeTest
             """

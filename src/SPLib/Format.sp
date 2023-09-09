@@ -3,27 +3,21 @@
 # (Both Block.hs and Indent.hs have been merged here)
 #
 
-
-
-
 # I'm too tired to use NonEmpty
-for1 as fn [a], (fn a, a: a): a =
+for1 as fn [ a ], fn a, a: a: a =
     fn items, f:
     try items as
-        , []: todo "for1 got an empty list...."
-        , [head, ...tail]: List.for head tail f
-
-
-
+        []: todo "for1 got an empty list...."
+        [ head, tail... ]: List.for head tail f
 
 
 #
 # Indent.hs
 #
 
-
 spacesInTab as Int =
     4
+
 
 # | `Indent` represents an indentation level,
 # and the operator `<>` can be used to combine two indentations side-by-side, accounting for the tab size.
@@ -44,19 +38,21 @@ spacesInTab as Int =
 #    [TAB].. <> [TAB]   ==  [TAB][TAB]
 #    .. <> .            ==  ...
 #    .. <> ..           ==  [TAB]
-alias Indent =
-    [Int]
+Indent =
+    [ Int ]
+
 
 #instance Eq Indent where
 #  a == b =
 #    width' a == width' b
 
 indent_tab as Indent =
-    [spacesInTab]
+    [ spacesInTab ]
+
 
 indent_spaces as fn Int: Indent =
     fn n:
-    [n]
+    [ n ]
 
 
 indent_width as fn Indent: Int =
@@ -64,30 +60,27 @@ indent_width as fn Indent: Int =
 
 
 indent_combine as fn Int, Int: Int =
-  fn pos, i:
-  pos + i
-
-  # TODO: Squarepants does not have a strategy to deal with Tabs vs Spaces, it just rejects them.
-  # This needs to be cleared up with a proper strategy to deal with everything.
-  # Maybe just allowing a command to transform a module from spaces to tabs and vice versa
-
-  [#
-  if i < spacesInTab then
-    # The right side starts with spaces (and no TABs),
-    # so just add everything together.
-  else
-    # The right side starts with at least one TAB,
-    # so remove the trailing spaces from the left.
-    pos - (modBy spacesInTab pos) + i
-  #]
+    fn pos, i:
+    pos + i
 
 
+# TODO: Squarepants does not have a strategy to deal with Tabs vs Spaces, it just rejects them.
+# This needs to be cleared up with a proper strategy to deal with everything.
+# Maybe just allowing a command to transform a module from spaces to tabs and vice versa
 
+[#
+if i < spacesInTab then
+  # The right side starts with spaces (and no TABs),
+  # so just add everything together.
+else
+  # The right side starts with at least one TAB,
+  # so remove the trailing spaces from the left.
+  pos - (modBy spacesInTab pos) + i
+#]
 
 #
 # Block.hs
 #
-
 
 # | A `Line` is ALWAYS just one single line of text,
 # and can always be combined horizontally with other `Line`s.
@@ -96,13 +89,13 @@ indent_combine as fn Int, Int: Int =
 # - `Blank` is a line with no content.
 # - `Text` brings any text into the data structure. (Uses `ByteString.Builder` for the possibility of optimal performance)
 # - `Row` joins multiple elements onto one line.
-union Line =
-  , Text_ Text
-  , CommentWithIndent Text
-  , CommentIgnoreIndent Text
-  , Row Line Line
-  , Space
-  , Blank
+var Line =
+    , 'text_ Text
+    , 'commentWithIndent Text
+    , 'commentIgnoreIndent Text
+    , 'row Line Line
+    , 'space
+    , 'blank
 
 
 # | Creates a @Line@ from the given @Char@.
@@ -121,20 +114,19 @@ union Line =
 #stringUtf8 as fn Text: Line =
 #    Text_
 
-
 # | A @Line@ containing a single space.  You **must** use this to create
 # space characters if the spaces will ever be at the start or end of a line that is joined in the context of indentation changes.
 space as Line =
-    Space
+    'space
 
 
-union Indented a =
-  , Indented Indent a
+var Indented a =
+    , 'indented Indent a
 
 
-indent_map as fn (fn Line: Line), Indented Line: Indented Line =
-    fn f, Indented indent l:
-    Indented indent (f l)
+indent_map as fn fn Line: Line, Indented Line: Indented Line =
+    fn f, 'indented indent l:
+    'indented indent (f l)
 
 
 # | `Block` contains Lines (at least one; it can't be empty).
@@ -155,238 +147,241 @@ indent_map as fn (fn Line: Line), Indented Line: Indented Line =
 #
 # Sometimes (see `prefix`) the first line of Stack
 #  gets different treatment than the other lines.
-union Block =
-  , SingleLine RequiredLineBreaks (Indented Line)
-  , Stack (Indented Line) [Indented Line]
-  , Empty
+var Block =
+    , 'singleLine RequiredLineBreaks (Indented Line)
+    , 'stack (Indented Line) [ Indented Line ]
+    , 'empty
 
-union RequiredLineBreaks =
-  , MustBreakAtEnd
-  , NoRequiredBreaks
 
+var RequiredLineBreaks =
+    , 'mustBreakAtEnd
+    , 'noRequiredBreaks
 
 
 blockAsLine as fn Block: Maybe Line =
     fn b:
     try b as
-        , SingleLine _ (Indented _ l): Just l
-        , _: Nothing
-
+        'singleLine _ ('indented _ l): 'just l
+        _: 'nothing
 
 
 # | A blank line (taking up one vertical space), with no text content.
 blankLine as Block =
-  lineToBlock Blank
+    lineToBlock 'blank
+
 
 # | Promote a @Line@ into a @Block@.
 lineToBlock as fn Line: Block =
-  fn x:
-  SingleLine NoRequiredBreaks (mkIndentedLine x)
+    fn x:
+    'singleLine 'noRequiredBreaks (mkIndentedLine x)
 
 
 textToBlock as fn Text: Fmt.Block =
-    fn f: f >> Text_ >> lineToBlock
+    fn f: f >> 'text_ >> lineToBlock
 
 
 # | Promote a @Line@ into a @Block@ that will always have a newline at the end of it,
 # meaning that this @Line@ will never have another @Line@ joined to its right side.
 mustBreak as fn Line: Block =
-  fn x:
-  SingleLine MustBreakAtEnd (mkIndentedLine x)
+    fn x:
+    'singleLine 'mustBreakAtEnd (mkIndentedLine x)
+
 
 mkIndentedLine as fn Line: Indented Line =
     fn l:
     try l as
-        , Space:
-            Indented (indent_spaces 1) Blank
-        , Row Space next:
-            Indented i rest_ = mkIndentedLine next
-            Indented (List.concat [indent_spaces 1, i]) rest_
-        , other:
-            Indented [] other
+
+        'space:
+            'indented (indent_spaces 1) 'blank
+
+        'row 'space next:
+            'indented i rest_ =
+                mkIndentedLine next
+
+            'indented (List.concat [ indent_spaces 1, i ]) rest_
+
+        other:
+            'indented [] other
 
 
 # | A vertical stack of @Block@s.  The left edges of all the @Block@s will be aligned.
-stack as fn [Block]: Block =
-
+stack as fn [ Block ]: Block =
     stackForce as fn Block, Block: Block =
         fn b1, b2:
-
-        toLines as fn Block: [Indented Line] =
+        toLines as fn Block: [ Indented Line ] =
             fn b:
             try b as
-              , Empty:
-                  []
 
-              , SingleLine _ l1:
-                  # We lose information about RequiredLineBreaks, but that's okay
-                  # since the result will always be a multiline stack,
-                  # which will never join with a single line
-                  [l1]
+                'empty:
+                    []
 
-              , Stack l1 rest:
-                  l1 :: rest
+                'singleLine _ l1:
+                    # We lose information about RequiredLineBreaks, but that's okay
+                    # since the result will always be a multiline stack,
+                    # which will never join with a single line
+                    [ l1 ]
+
+                'stack l1 rest:
+                    l1 :: rest
 
         try toLines b1 as
-            , []:
-                b2
-            , line1first :: line1rest:
-                Stack line1first (List.concat [ line1rest, toLines b2])
-
+            []: b2
+            line1first :: line1rest: 'stack line1first (List.concat [ line1rest, toLines b2 ])
 
     fn bs:
     if bs == [] then
-        Empty
+        'empty
     else
         for1 (List.reverse bs) stackForce
 
 
-
-mapLines as fn (fn Indented Line: Indented Line), Block: Block =
-  fn f, b:
-  mapFirstLine f f b
-
-
-mapFirstLine as fn (fn Indented Line: Indented Line), (fn Indented Line: Indented Line), Block: Block =
-  fn firstFn, restFn, b:
-  try b as
-    , Empty:
-        Empty
-    , SingleLine breaks l1:
-        SingleLine breaks (firstFn l1)
-    , Stack l1 ls:
-        Stack (firstFn l1) (List.map restFn ls)
+mapLines as fn fn Indented Line: Indented Line, Block: Block =
+    fn f, b:
+    mapFirstLine f f b
 
 
-mapLastLine as fn (fn Indented Line: Indented Line), Block: Block =
-  fn lastFn, b:
-  try b as
-    , Empty:
-        Empty
+mapFirstLine as fn fn Indented Line: Indented Line, fn Indented Line: Indented Line, Block: Block =
+    fn firstFn, restFn, b:
+    try b as
+        'empty: 'empty
+        'singleLine breaks l1: 'singleLine breaks (firstFn l1)
+        'stack l1 ls: 'stack (firstFn l1) (List.map restFn ls)
 
-    , SingleLine breaks l1:
-        SingleLine breaks (lastFn l1)
 
-    , Stack l1 ls:
-        try List.reverse ls as
-            , last :: init:
-                  Stack l1 __ << List.reverse [ lastFn last, ...init ]
-            , _:
-                todo "what"
+mapLastLine as fn fn Indented Line: Indented Line, Block: Block =
+    fn lastFn, b:
+    try b as
+
+        'empty:
+            'empty
+
+        'singleLine breaks l1:
+            'singleLine breaks (lastFn l1)
+
+        'stack l1 ls:
+            try List.reverse ls as
+                last :: init: 'stack l1 __ << List.reverse [ lastFn last, init... ]
+                _: todo "what"
 
 
 # | Makes a new @Block@ with the contents of the input @Block@ indented by one additional level.
 indent as fn Block: Block =
-  mapLines (fn Indented i l: Indented (List.concat [indent_tab, i]) l) __
+    mapLines (fn 'indented i l: 'indented (List.concat [ indent_tab, i ]) l) __
 
 
 # | This is the same as `rowOrStackForce` @False@.
-rowOrStack as fn Maybe Line, [Block]: Block =
-      rowOrStackForce False __ __
+rowOrStack as fn Maybe Line, [ Block ]: Block =
+    rowOrStackForce 'false __ __
+
 
 # | If all given @Block@s are single-line and the @Bool@ is @False@,
 # then makes a new single-line @Block@, with the @Maybe Line@ interspersed.
 # Otherwise, makes a vertical `stack` of the given @Block@s.
-rowOrStackForce as fn Bool, Maybe Line, [Block]: Block =
+rowOrStackForce as fn Bool, Maybe Line, [ Block ]: Block =
     fn forceMultiline, joiner, blocks:
-
     try blocks as
-        , [single]:
-           single
-        , _:
+
+        [ single ]:
+            single
+
+        _:
             if forceMultiline then
-              stack blocks
+                stack blocks
             else
                 try maybeAllSingleLines blocks as
-                    , Just (lines & mkLine):
-                         try joiner as
-                              , Nothing: for1 lines Row
-                              , Just j: for1 (List.intersperse j lines) Row
-                         >> mkLine
 
-                    , _:
-                      stack blocks
+                    'just (lines & mkLine):
+                        try joiner as
+                            'nothing: for1 lines 'row
+                            'just j: for1 (List.intersperse j lines) 'row
+                        >> mkLine
+
+                    _:
+                        stack blocks
 
 
 # | Same as `rowOrIndentForce` @False@.
-rowOrIndent as fn Maybe Line, [Block]: Block =
-    rowOrIndentForce False __ __
+rowOrIndent as fn Maybe Line, [ Block ]: Block =
+    rowOrIndentForce 'false __ __
 
 
 # | This is the same as `rowOrStackForce`, but all non-first lines in
 # the resulting block are indented one additional level.
-rowOrIndentForce as fn Bool, Maybe Line, [Block]: Block =
+rowOrIndentForce as fn Bool, Maybe Line, [ Block ]: Block =
     fn forceMultiline, joiner, blocks:
-
     try blocks as
-        , []:
+
+        []:
             todo "blocks is supposed to be NonEmpty"
 
-        , [single]:
+        [ single ]:
             single
 
-        , [b1, ...rest]:
+        [ b1, rest... ]:
             try maybeAllSingleLines blocks as
-                , Just (reversedLines & mkLine):
+
+                'just (reversedLines & mkLine):
                     if forceMultiline then
-                      stack (b1 :: (List.map indent rest))
+                        stack (b1 :: List.map indent rest)
                     else
                         # TODO this seems to be repeated above.
                         try joiner as
-                            , Nothing: for1 reversedLines Row
-                            , Just j: for1 (List.intersperse j reversedLines) Row
+                            'nothing: for1 reversedLines 'row
+                            'just j: for1 (List.intersperse j reversedLines) 'row
                         >> mkLine
 
-                , _:
-                  stack (b1 :: (List.map indent rest))
+                _:
+                    stack (b1 :: List.map indent rest)
 
 
 # TODO this outputs the lines in reverse order, it shouldn't!
-maybeAllSingleLines as fn [Block]: Maybe ([Line] & fn Line: Block ) =
-
-    rec as fn [Block], [Line]: Maybe ([Line] & fn Line: Block) =
+maybeAllSingleLines as fn [ Block ]: Maybe ([ Line ] & (fn Line: Block)) =
+    rec as fn [ Block ], [ Line ]: Maybe ([ Line ] & (fn Line: Block)) =
         fn blocks, reversedLines:
-
         try blocks as
-            , []:
-                reversedLines & lineToBlock
-                >> Just
 
-            , block :: rest:
+            []:
+                reversedLines & lineToBlock >> 'just
+
+            block :: rest:
                 try block as
-                    , SingleLine NoRequiredBreaks (Indented _ l):
+
+                    'singleLine 'noRequiredBreaks ('indented _ l):
                         rec rest (l :: reversedLines)
 
-                    , SingleLine MustBreakAtEnd (Indented _ l):
+                    'singleLine 'mustBreakAtEnd ('indented _ l):
                         if rest == [] then
-                            (l :: reversedLines) & mustBreak
-                            >> Just
+                            (l :: reversedLines) & mustBreak >> 'just
                         else
-                            Nothing
+                            'nothing
 
-                    , _:
-                        Nothing
+                    _:
+                        'nothing
 
     rec __ []
 
 
 # | A convenience alias for `rowOrStack (Just space)`.
-spaceSeparatedOrStack as fn [Block]: Block =
-    rowOrStack (Just space) __
+spaceSeparatedOrStack as fn [ Block ]: Block =
+    rowOrStack ('just space) __
+
 
 # | A convenience alias for `rowOrStackForce (Just space)`.
-spaceSeparatedOrStackForce as fn Bool, [Block]: Block =
+spaceSeparatedOrStackForce as fn Bool, [ Block ]: Block =
     fn force, blocks:
-    rowOrStackForce force (Just space) blocks
+    rowOrStackForce force ('just space) blocks
+
 
 # | A convenience alias for `rowOrIndentForce (Just space)`.
-spaceSeparatedOrIndent as fn [Block]: Block =
-   rowOrIndent (Just space) __
+spaceSeparatedOrIndent as fn [ Block ]: Block =
+    rowOrIndent ('just space) __
+
 
 # | A convenience alias for `rowOrIndentForce (Just space)`.
-spaceSeparatedOrIndentForce as fn Bool, [Block]: Block =
+spaceSeparatedOrIndentForce as fn Bool, [ Block ]: Block =
     fn force, blocks:
-    rowOrIndentForce force (Just space) blocks
+    rowOrIndentForce force ('just space) blocks
+
 
 # | Adds the prefix to the first line,
 # and pads the other lines with spaces of the given length.
@@ -404,47 +399,50 @@ spaceSeparatedOrIndentForce as fn Bool, [Block]: Block =
 #          xyz
 # @
 prefix as fn Int, Line, Block: Block =
-  fn prefixLength, pref, blocks:
+    fn prefixLength, pref, blocks:
+    padLineWithSpaces =
+        fn 'indented i l:
+        'indented (List.concat [ indent_spaces prefixLength, i ]) l
 
-  padLineWithSpaces =
-      fn Indented i l:
-      Indented (List.concat [indent_spaces prefixLength, i]) l
+    addPrefixToLine =
+        fn x:
+        try x as
+            'blank: stripEnd pref
+            l: 'row pref l
 
-  addPrefixToLine =
-      fn x:
-      try x as
-          , Blank: stripEnd pref
-          , l: Row pref l
-
-  mapFirstLine (indent_map addPrefixToLine __) padLineWithSpaces blocks
+    mapFirstLine (indent_map addPrefixToLine __) padLineWithSpaces blocks
 
 
 stripEnd as fn Line: Line =
     fn l:
     try l as
-      , Space: Blank
-      , Row r1 r2:
-        try stripEnd r2 as
-          , Blank: stripEnd r1
-          , r2_: Row r1 r2_
-      , _:
+
+        'space:
+            'blank
+
+        'row r1 r2:
+            try stripEnd r2 as
+                'blank: stripEnd r1
+                r2_: 'row r1 r2_
+
+        _:
             l
+
 
 # | Adds the given suffix to then end of the last line of the @Block@.
 # TODO: rename to `suffix`?
 addSuffix as fn Line, Block: Block =
     fn suffix, block:
-    mapLastLine (indent_map (Row __ suffix) __) block
+    mapLastLine (indent_map ('row __ suffix) __) block
 
 
 renderIndentedLine as fn Indented Line: Text =
-  fn (Indented i line_):
-
-  line_
-  >> stripEnd
-  >> renderLine i __
-  >> Text.trimRight
-  >> __ .. "\n"
+    fn 'indented i line_:
+    line_
+    >> stripEnd
+    >> renderLine i __
+    >> Text.trimRight
+    >> __ .. "\n"
 
 
 spaces as fn Int: Text =
@@ -452,20 +450,15 @@ spaces as fn Int: Text =
 
 
 renderLine as fn Indent, Line: Text =
-  fn i, l:
-  try l as
-      , Text_ text:
-          spaces (indent_width i) .. text
-      , CommentWithIndent text:
-          spaces (indent_width i) .. text
-      , CommentIgnoreIndent text:
-          text
-      , Space:
-          spaces (1 + indent_width i)
-      , Row left right:
-          renderLine i left .. renderLine [] right
-      , Blank:
-          ""
+    fn i, l:
+    try l as
+        'text_ text: spaces (indent_width i) .. text
+        'commentWithIndent text: spaces (indent_width i) .. text
+        'commentIgnoreIndent text: text
+        'space: spaces (1 + indent_width i)
+        'row left right: renderLine i left .. renderLine [] right
+        'blank: ""
+
 
 # | Converts a @Block@ into a `Data.ByteString.Builder.Builder`.
 #
@@ -474,12 +467,14 @@ renderLine as fn Indent, Line: Text =
 render as fn Block: Text =
     fn block:
     try block as
-        , Empty:
+
+        'empty:
             ""
-        , SingleLine _ line_:
+
+        'singleLine _ line_:
             renderIndentedLine line_
-        , Stack l1 rest:
-            [l1, ...rest]
+
+        'stack l1 rest:
+            [ l1, rest... ]
             >> List.map renderIndentedLine __
             >> Text.join "" __
-

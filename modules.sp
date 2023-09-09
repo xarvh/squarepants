@@ -28,14 +28,14 @@ sourceDir =
           UnivarId
           Uniqueness
        globalValues =
-          RefLocal
-          RefGlobal
-          RefPlaceholder
-          Uni
-          Imm
+          'refLocal
+          'refGlobal
+          'refPlaceholder
+          'uni
+          'imm
+          'depends
           toImm
           toUni
-          Depends
 
     module =
        path = Types/TypedAst
@@ -70,8 +70,8 @@ sourceDir =
             USR
             UMR
         globalValues =
-            USR
-            UMR
+            'USR
+            'UMR
 
     module =
         path = Types/Op
@@ -84,7 +84,7 @@ sourceDir =
             Pos
             At
        globalValues =
-            At
+            'at
 
     module =
         path = Types/Token
@@ -92,7 +92,7 @@ sourceDir =
         globalTypes =
             Token
         globalValues =
-            Token
+            'token
 
     module =
        path = SPLib/Format
@@ -150,9 +150,9 @@ library =
           List
           Number
        globalValues =
-          None
-          True
-          False
+          'none
+          'true
+          'false
 
     module =
        path = Debug
@@ -174,8 +174,8 @@ library =
         globalTypes =
             Maybe
         globalValues =
-            Just
-            Nothing
+            'just
+            'nothing
 
     module =
         path = Text
@@ -214,8 +214,8 @@ library =
         path = Result
         globalTypes = Result
         globalValues =
-          Ok
-          Err
+          'ok
+          'err
           onOk
 
     module =

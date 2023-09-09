@@ -5,51 +5,49 @@
 # modify this to better describe those.
 #
 
-alias Name =
+Name =
     Text
 
 
-alias AttrName =
+AttrName =
     Text
 
 
-union Expression =
-    , LiteralText Text
-    , LiteralNumber Number
-    , Variable Ref
-    , Call Expression [Argument]
-    , Fn [Bool & Maybe Name] Expression
-    , Conditional Expression Expression Expression
-    , And [Expression]
-    , ShallowEqual Expression Expression
-    , LetIn
-        {
-        , maybeName as Maybe Name
-        , type as TA.FullType
-        , letExpression as Expression
-        , inExpression as Expression
-        }
-    , LiteralArray [Expression]
-    , ArrayAccess Int Expression
-    , Constructor USR
-    , ConstructorAccess Int Expression
-    , IsConstructor Name Expression
-    , LiteralRecord (Maybe Expression) [AttrName & Expression]
-    , RecordAccess AttrName Expression
-    , MissingPattern Text Expression
+var Expression =
+    , 'literalText Text
+    , 'literalNumber Number
+    , 'variable Ref
+    , 'call Expression [ Argument ]
+    , 'fn [ Bool & Maybe Name ] Expression
+    , 'conditional Expression Expression Expression
+    , 'and [ Expression ]
+    , 'shallowEqual Expression Expression
+    , 'letIn
+          {
+          , inExpression as Expression
+          , letExpression as Expression
+          , maybeName as Maybe Name
+          , type as TA.FullType
+          }
+    , 'literalArray [ Expression ]
+    , 'arrayAccess Int Expression
+    , 'constructor USR
+    , 'constructorAccess Int Expression
+    , 'isConstructor Name Expression
+    , 'literalRecord (Maybe Expression) [ AttrName & Expression ]
+    , 'recordAccess AttrName Expression
+    , 'missingPattern Text Expression
 
 
-union Argument =
-    , ArgumentRecycle TA.RawType [Name] Name
-    , ArgumentSpend TA.FullType Expression
+var Argument =
+    , 'argumentRecycle TA.RawType [ Name ] Name
+    , 'argumentSpend TA.FullType Expression
 
 
-alias GlobalDefinition =
+GlobalDefinition =
     {
-    , usr as USR
-    , expr as Expression
-
     # We need these to be able to put defs in the right order
     , deps as Set USR
+    , expr as Expression
+    , usr as USR
     }
-

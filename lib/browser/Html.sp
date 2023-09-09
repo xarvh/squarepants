@@ -1,14 +1,12 @@
-
-
-alias Html msg =
+Html msg =
     VirtualDom.VirtualNode msg
 
 
-alias Attr msg =
+Attr msg =
     VirtualDom.Attr msg
 
 
-map as fn (fn a: b), Html a: Html b =
+map as fn fn a: b, Html a: Html b =
     VirtualDom.map
 
 
@@ -17,92 +15,117 @@ map as fn (fn a: b), Html a: Html b =
 #
 
 none as Html msg =
-    VirtualDom.TextNode ""
+    VirtualDom.'textNode ""
 
-a as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "a" __ __
 
-button as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "button" __ __
+a as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "a" __ __
 
-canvas as fn [Attr msg]: Html msg =
-    VirtualDom.ElementNode "canvas" __ []
 
-code as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "code" __ __
+button as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "button" __ __
 
-div as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "div" __ __
 
-h1 as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "h1" __ __
+canvas as fn [ Attr msg ]: Html msg =
+    VirtualDom.'elementNode "canvas" __ []
 
-img as fn [Attr msg]: Html msg =
-    VirtualDom.ElementNode "img" __ []
 
-input as fn [Attr msg]: Html msg =
-    VirtualDom.ElementNode "input" __ []
+code as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "code" __ __
 
-pre as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "pre" __ __
 
-span as fn [Attr msg], [Html msg]: Html msg =
-    VirtualDom.ElementNode "span" __ __
+div as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "div" __ __
+
+
+h1 as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "h1" __ __
+
+
+img as fn [ Attr msg ]: Html msg =
+    VirtualDom.'elementNode "img" __ []
+
+
+input as fn [ Attr msg ]: Html msg =
+    VirtualDom.'elementNode "input" __ []
+
+
+pre as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "pre" __ __
+
+
+span as fn [ Attr msg ], [ Html msg ]: Html msg =
+    VirtualDom.'elementNode "span" __ __
+
 
 text as fn Text: Html msg =
-    VirtualDom.TextNode __
+    VirtualDom.'textNode __
 
-textarea as fn [Attr msg], Text: Html msg =
+
+textarea as fn [ Attr msg ], Text: Html msg =
     fn attrs, content:
-    VirtualDom.ElementNode "textarea" attrs [ VirtualDom.TextNode content ]
+    VirtualDom.'elementNode "textarea" attrs [ VirtualDom.'textNode content ]
+
 
 #
 # Attributes
 #
 
 alt as fn Text: Attr msg =
-    VirtualDom.DomAttribute "alt" __
+    VirtualDom.'domAttribute "alt" __
+
 
 ariaHidden as fn Bool: Attr msg =
     fn s:
-    VirtualDom.DomAttribute "aria-hidden" (if s then "true" else "false")
+    VirtualDom.'domAttribute "aria-hidden" (if s then "true" else "false")
+
 
 id as fn Text: Attr msg =
-    VirtualDom.DomAttribute "id" __
+    VirtualDom.'domAttribute "id" __
+
 
 class as fn Text: Attr msg =
-    VirtualDom.CssClass
+    VirtualDom.'cssClass
+
 
 style as fn Text, Text: Attr msg =
-    VirtualDom.CssStyle
+    VirtualDom.'cssStyle
+
 
 href as fn Text: Attr msg =
-    VirtualDom.DomAttribute "href" __
+    VirtualDom.'domAttribute "href" __
+
 
 width as fn Text: Attr msg =
-    VirtualDom.DomAttribute "width" __
+    VirtualDom.'domAttribute "width" __
+
 
 height as fn Text: Attr msg =
-    VirtualDom.DomAttribute "height" __
+    VirtualDom.'domAttribute "height" __
+
 
 src as fn Text: Attr msg =
-    VirtualDom.DomAttribute "src" __
+    VirtualDom.'domAttribute "src" __
+
 
 value as fn Text: Attr msg =
-    VirtualDom.DomProperty "value" __
+    VirtualDom.'domProperty "value" __
+
 
 on as fn Text, VirtualDom.EventHandler msg: Attr msg =
-    VirtualDom.Listener __ __
+    VirtualDom.'listener __ __
+
 
 onClick as fn msg: Attr msg =
     fn msg:
-    on "click" (fn event: Ok msg)
+    on "click" (fn event: 'ok msg)
 
-onInput as fn (fn Text: msg): Attr msg =
+
+onInput as fn fn Text: msg: Attr msg =
     fn textToMsg:
-    on "input" (fn e: VirtualDom.eventToText ["target", "value"] e >> Result.map textToMsg __)
+    on "input" (fn e: VirtualDom.eventToText [ "target", "value" ] e >> Result.map textToMsg __)
+
 
 spellcheck as fn Bool: Attr msg =
     fn s:
-    VirtualDom.DomAttribute "spellcheck" (if s then "true" else "false")
-
+    VirtualDom.'domAttribute "spellcheck" (if s then "true" else "false")

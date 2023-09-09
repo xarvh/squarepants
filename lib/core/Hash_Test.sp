@@ -1,77 +1,90 @@
-
-
-valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
+valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
     Test.valueTest toHuman __ __ __
 
 
 tests as Test =
-    Test.Group "Hash"
+    Test.'group
+        "Hash"
         [
         , valueTest
             """
             insert
             """
-            fn _:
-                !h = Hash.fromList [1 & 2]
-                Hash.insert @h 2 3
-                h
+            (fn _:
+                 !h =
+                     Hash.fromList [ 1 & 2 ]
 
-            (Test.isOkAndEqualTo << Hash.fromList [1 & 2, 2 & 3])
+                 Hash.insert @h 2 3
+
+                 h
+            )
+            (Test.isOkAndEqualTo << Hash.fromList [ 1 & 2, 2 & 3 ])
         , valueTest
             """
             remove
             """
-            fn _:
-                !h = Hash.fromList [1 & 2, 3 & 4]
-                Hash.remove @h 1
-                h
+            (fn _:
+                 !h =
+                     Hash.fromList [ 1 & 2, 3 & 4 ]
 
-            (Test.isOkAndEqualTo << Hash.fromList [3 & 4])
+                 Hash.remove @h 1
+
+                 h
+            )
+            (Test.isOkAndEqualTo << Hash.fromList [ 3 & 4 ])
         , valueTest
             """
             get Just
             """
-            fn _:
-                !h = Hash.fromList [1 & 2, 3 & 4]
-                Hash.get @h 1
+            (fn _:
+                 !h =
+                     Hash.fromList [ 1 & 2, 3 & 4 ]
 
-            (Test.isOkAndEqualTo << Just 2)
+                 Hash.get @h 1
+            )
+            (Test.isOkAndEqualTo << 'just 2)
         , valueTest
             """
             get Nothing
             """
-            fn _:
-                !h = Hash.fromList [1 & 2, 3 & 4]
-                Hash.get @h 66
+            (fn _:
+                 !h =
+                     Hash.fromList [ 1 & 2, 3 & 4 ]
 
-            (Test.isOkAndEqualTo Nothing)
+                 Hash.get @h 66
+            )
+            (Test.isOkAndEqualTo 'nothing)
         , valueTest
             """
             for
             """
-            fn _:
-                !hash = Hash.fromList [Just True & 2, Nothing & 4]
+            (fn _:
+                 !hash =
+                     Hash.fromList [ 'just 'true & 2, 'nothing & 4 ]
 
-                []
-                >> Hash.for @hash (fn k, v, a: [v & k, ...a]) __
-                >> List.sortBy Tuple.first __
-
-            (Test.isOkAndEqualTo [2 & Just True, 4 & Nothing])
+                 []
+                 >> Hash.for @hash (fn k, v, a: [ v & k, a... ]) __
+                 >> List.sortBy Tuple.first __
+            )
+            (Test.isOkAndEqualTo [ 2 & 'just 'true, 4 & 'nothing ])
         , valueTest
             """
             each
             """
-            fn _:
-                !a = Array.fromList []
-                !hash = Hash.fromList [Just True & 2, Nothing & 1]
-                Hash.each @hash fn k, v:
-                    List.each (List.range 1 v) fn _:
-                        Array.push @a k
+            (fn _:
+                 !a =
+                     Array.fromList []
 
-                Array.sortBy @a identity
+                 !hash =
+                     Hash.fromList [ 'just 'true & 2, 'nothing & 1 ]
 
-                a
+                 Hash.each @hash fn k, v:
+                     List.each (List.range 1 v) fn _:
+                         Array.push @a k
 
-            (Test.isOkAndEqualTo << Array.fromList [Just True, Just True, Nothing])
+                 Array.sortBy @a identity
+
+                 a
+            )
+            (Test.isOkAndEqualTo << Array.fromList [ 'just 'true, 'just 'true, 'nothing ])
         ]
-

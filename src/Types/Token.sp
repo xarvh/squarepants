@@ -1,60 +1,60 @@
-alias LineNumber =
+LineNumber =
     Int
 
 
-union Token =
-    , Token Int Int Kind
+var Token =
+    , 'token Int Int Kind
 
 
-union OpenOrClosed =
-    , Open
-    , Closed
+var OpenOrClosed =
+    , 'open
+    , 'closed
 
 
-union SingleOrTriple =
-    , SingleQuote
-    , TripleQuote
+var SingleOrTriple =
+    , 'singleQuote
+    , 'tripleQuote
 
 
-union Kind =
-    , Comment { indent as Int, isBlock as Bool, isFollowedByBlank as Bool }
+var Kind =
+    , 'comment { indent as Int, isBlock as Bool, isFollowedByBlank as Bool }
     , # Structure
-      NewSiblingLine
-    , BlockStart
-    , BlockEnd
-    , BadIndent
+      'newSiblingLine
+    , 'blockStart
+    , 'blockEnd
+    , 'badIndent
     , # Terms
-      TextLiteral SingleOrTriple Text
-    , NumberLiteral Bool Text
+      'textLiteral SingleOrTriple Text
+    , 'numberLiteral Bool Text
     , # variable names, record attribute names
       # Record attributes will never have a module or an attrPath
       # However, the lexer can't distinguish between variable and attribute, we need to wait the parser
-      Lowercase { attrPath as [ Name ], maybeModule as Maybe Name, name as Name }
-    , Constructor { maybeModule as Maybe Name, name as Name }
+      'lowercase { attrPath as [ Name ], maybeModule as Maybe Name, name as Name }
+    , 'constructor { maybeModule as Maybe Name, name as Name }
     , # Named Types
-      Uppercase { maybeModule as Maybe Name, name as Name }
-    , RecordShorthand { attrPath as [ Name ], name as Name }
-    , ArgumentPlaceholder
-    , UniquenessPolymorphismBinop
+      'uppercase { maybeModule as Maybe Name, name as Name }
+    , 'recordShorthand { attrPath as [ Name ], name as Name }
+    , 'argumentPlaceholder
+    , 'uniquenessPolymorphismBinop
     , # Keywords
-      Fn
-    , If LineNumber
-    , Then
-    , Else LineNumber
-    , Try
-    , As
-    , With
-    , IntrospectValue
-    , IntrospectType
+      'fn
+    , 'if LineNumber
+    , 'then
+    , 'else LineNumber
+    , 'try
+    , 'as
+    , 'with
+    , 'introspectValue
+    , 'introspectType
     , # Separators
-      Comma
-    , Colon
-    , ThreeDots
+      'comma
+    , 'colon
+    , 'threeDots
     , # Ops
-      Defop
-    , Unop Op.UnopId
-    , Binop LineNumber Op.Binop
+      'defop
+    , 'unop Op.UnopId
+    , 'binop LineNumber Op.Binop
     , # Parens
-      RoundParen OpenOrClosed
-    , SquareBracket LineNumber OpenOrClosed
-    , CurlyBrace LineNumber OpenOrClosed
+      'roundParen OpenOrClosed
+    , 'squareBracket LineNumber OpenOrClosed
+    , 'curlyBrace LineNumber OpenOrClosed

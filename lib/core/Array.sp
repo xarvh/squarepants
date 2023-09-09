@@ -1,7 +1,5 @@
-
-
-union Array a =
-    Array__ (Array a)
+var Array a =
+    , 'array__ (Array a)
 
 
 push as fn @Array a, a: None =
@@ -24,22 +22,21 @@ set as fn @Array a, Int, a: Bool =
     todo "native"
 
 
-sortBy as fn @Array a, (fn a: b): None with b NonFunction =
+sortBy as fn @Array a, fn a: b: None with b NonFunction =
     fn @array, f:
     todo "native"
 
 
-fromList as fn [a]: !Array a =
+fromList as fn [ a ]: !Array a =
     fn list:
     todo "native"
 
 
-toList as fn @Array a: [a] =
+toList as fn @Array a: [ a ] =
     fn @array:
     todo "native"
 
 
-each as fn @Array a, (fn a: None): None =
+each as fn @Array a, fn a: None: None =
     fn @array, f:
     todo "native"
-

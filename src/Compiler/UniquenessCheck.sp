@@ -2,37 +2,38 @@
 # This module checks that all rules for uniquess typing is respected.
 #
 
-union UniqueAvailability =
-    , Available
-    , ConsumedAt Pos
+var UniqueAvailability =
+    , 'available
+    , 'consumedAt Pos
 
 
-union VariableMode =
-    , Immutable
-    , Unique UniqueAvailability
+var VariableMode =
+    , 'immutable
+    , 'unique UniqueAvailability
 
 
-alias Required = Dict Name { fnPos as Pos, usedAt as Pos }
+Required =
+    Dict Name { fnPos as Pos, usedAt as Pos }
 
 
-alias Variable =
+Variable =
     {
     , definedAt as Pos
-    , name as Name
     , mode as VariableMode
-    , type as TA.FullType
+    , name as Name
     , required as Required
+    , type as TA.FullType
     }
 
 
-alias Env =
+Env =
     {
     , errorModule as Error.Module
     , variables as Dict Name Variable
     }
 
 
-alias State =
+State =
     {
     , errors as Array Error
     }
@@ -41,24 +42,21 @@ alias State =
 #
 # This is used as output when evaluating various parts of an expression
 #
-alias UniOut o =
+UniOut o =
     {
     # These are uniques that get recycled by an expression
     , recycled as Dict Name Pos
-
     # If a function recycles uniques outside its scope, we say it "requires" those unique.
     # A function that requires some uniques cannot be returned outside the scope where those uniques are declared.
     , required as Required
-
-    # These are uniques that are spent by an expression
-    , spent as Dict Name Pos
-
     # This is whatever the output of the function needs to be.
     # It's called "resolved" because all the inferred types should have the type substitutions applied.
     #
     # TODO -------> We don't do this here any more, remove/rename it?
     #
     , resolved as o
+    # These are uniques that are spent by an expression
+    , spent as Dict Name Pos
     }
 
 
@@ -67,36 +65,32 @@ uniOutInit as fn a: UniOut a =
     {
     , recycled = Dict.empty
     , required = Dict.empty
-    , spent = Dict.empty
     , resolved = a
+    , spent = Dict.empty
     }
 
 
-uniOutMap as fn (fn a: b), UniOut a: UniOut b =
-    fn f, ({ recycled, required, spent, resolved }):
+uniOutMap as fn fn a: b, UniOut a: UniOut b =
+    fn f, { recycled, required, resolved, spent }:
     {
     , recycled
     , required
-    , spent
     , resolved = f resolved
+    , spent
     }
 
 
-
-addError as fn Env, Pos, @State, [Text]: None =
+addError as fn Env, Pos, @State, [ Text ]: None =
     fn env, pos, @state, messageConstructor:
-
-    Array.push @state.errors (Error.Simple env.errorModule pos messageConstructor)
+    Array.push @state.errors (Error.'simple env.errorModule pos messageConstructor)
 
 
 #
 # Errors
 #
 
-
-errorTaintedCallRecyclesFunctions as fn Env, Pos, Name, Dict Name { usedAt as Pos, fnPos as Pos }, @State: None =
+errorTaintedCallRecyclesFunctions as fn Env, Pos, Name, Dict Name { fnPos as Pos, usedAt as Pos }, @State: None =
     fn env, callPos, name, required, @state:
-
     #addFunctions as fn @Array (fn Int: Int): None =
     #      fn @functions:
     #
@@ -111,7 +105,10 @@ errorTaintedCallRecyclesFunctions as fn Env, Pos, Name, Dict Name { usedAt as Po
     #      array_push f @functions
     #      None
 
-    addError env callPos @state
+    addError
+        env
+        callPos
+        @state
         [
         , "This function call could allow some unique values (" .. (required >> Dict.keys >> Text.join ", " __) .. ")"
         , "to be recycled by a functions contained in the argument `" .. name .. "` outside of the scope where they were declared."
@@ -120,14 +117,15 @@ errorTaintedCallRecyclesFunctions as fn Env, Pos, Name, Dict Name { usedAt as Po
         ]
 
 
-errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { usedAt as Pos, fnPos as Pos }, @State: None =
-    fn env, name, ({ usedAt, fnPos }), @state:
-
-
-    { location, block } =
+errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { fnPos as Pos, usedAt as Pos }, @State: None =
+    fn env, name, { fnPos, usedAt }, @state:
+    { block, location } =
         Error.posToHuman env.errorModule usedAt
 
-    addError env fnPos @state
+    addError
+        env
+        fnPos
+        @state
         [
         , "This expression needs to access the unique variable `" .. name .. "` because it uses it here:"
         , ""
@@ -140,25 +138,28 @@ errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope as fn Env, Name, { 
 
 errorUniqueHasImmType as fn Env, Name, Pos, TA.FullType, @State: None =
     fn env, name, pos, type, @state:
-
-    addError env pos @state
+    addError
+        env
+        pos
+        @state
         [
         , "Variable `" .. name .. "` is unique, but its type is:"
         , toHuman type
         ]
 
 
-
 errorReferencingConsumedVariable as fn Env, Text, Pos, Pos, @State: None =
     fn env, name, pos, consumedPos, @state:
-
-    { location, block } =
+    { block, location } =
         Error.posToHuman env.errorModule pos
 
     cons =
         Error.posToHuman env.errorModule consumedPos
 
-    addError env pos @state
+    addError
+        env
+        pos
+        @state
         [
         , "You can't reference again the variable `" .. name .. "` because it was used already here:"
         , cons.block
@@ -167,8 +168,10 @@ errorReferencingConsumedVariable as fn Env, Text, Pos, Pos, @State: None =
 
 errorConsumingRecycledParameters as fn Env, Pos, Dict Name Pos, @State: None =
     fn env, pos, spentThatShouldHaveBeenRecycled, @state:
-
-    addError env pos @state
+    addError
+        env
+        pos
+        @state
         [
         , "errorConsumingRecycledParameters"
         , toHuman spentThatShouldHaveBeenRecycled
@@ -177,8 +180,10 @@ errorConsumingRecycledParameters as fn Env, Pos, Dict Name Pos, @State: None =
 
 errorUndefinedVariable as fn Env, Pos, Text, @State: None =
     fn env, p, name, @state:
-
-    addError env p @state
+    addError
+        env
+        p
+        @state
         [
         , "undefined variable: " .. name
         ]
@@ -186,25 +191,29 @@ errorUndefinedVariable as fn Env, Pos, Text, @State: None =
 
 errorMutatingAnImmutable as fn Env, Text, Pos, @State: None =
     fn env, name, p, @state:
-
-    addError env p @state [
+    addError
+        env
+        p
+        @state
+        [
         , name .. " is immutable, but you are trying to mutate it"
         ]
 
 
 errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @State: None =
     fn env, functionPos, spentFromParent, @state:
-
     zzz =
-        fn (name & spentPos):
-          { block, location } = Error.posToHuman env.errorModule spentPos
-          block .. "\n"
+        fn name & spentPos:
+            { block, location } =
+                Error.posToHuman env.errorModule spentPos
+
+            block .. "\n"
 
     blocks =
-      spentFromParent
-      >> Dict.toList
-      >> List.sortBy Tuple.second __
-      >> List.map zzz __
+        spentFromParent
+        >> Dict.toList
+        >> List.sortBy Tuple.second __
+        >> List.map zzz __
 
     [
     , [ "This function is spending the unique variable `" .. (Dict.keys spentFromParent >> Text.join "`, `" __) .. "`" ]
@@ -218,19 +227,24 @@ errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @State: 
 
 errorConsumingRecycledParameter as fn Env, Text, Pos, @State: None =
     fn env, name, pos, @state:
-
-    addError env pos @state [
+    addError
+        env
+        pos
+        @state
+        [
         , name .. " is passed as recycled, but the function wants to spend it"
         ]
 
 
 errorMutatingAConsumed as fn Env, Text, Pos, Pos, @State: None =
     fn env, name, p2, p1, @state:
-
-    { location, block } =
+    { block, location } =
         Error.posToHuman env.errorModule p2
 
-    addError env p1 @state
+    addError
+        env
+        p1
+        @state
         [
         , "This code spends the unique variable `" .. name .. "`, but `" .. name .. "` is being used again here:"
         , ""
@@ -243,12 +257,13 @@ errorMutatingAConsumed as fn Env, Text, Pos, Pos, @State: None =
 
 errorMutatingTwice as fn Env, Text, Pos, Pos, @State: None =
     fn env, name, p1, p2, @state:
-
-
-    { location, block } =
+    { block, location } =
         Error.posToHuman env.errorModule p2
 
-    addError env p1 @state
+    addError
+        env
+        p1
+        @state
         [
         , name .. " is already being mutated here: "
         , block
@@ -259,66 +274,63 @@ errorMutatingTwice as fn Env, Text, Pos, Pos, @State: None =
 
 consumeInEnv as fn Dict Name Pos, Env: Env =
     fn spent, env:
-
     translate =
         fn name, variable:
             try Dict.get name spent as
-                , Nothing: variable
-                , Just pos: { variable with mode = Unique << ConsumedAt pos }
+                'nothing: variable
+                'just pos: { variable with mode = 'unique << 'consumedAt pos }
 
     { env with variables = Dict.map translate .variables }
 
 
-requireInEnv as fn [Name], Required, Env: Env =
+requireInEnv as fn [ Name ], Required, Env: Env =
     fn varNames, required, env:
-
     { env with
-    , variables = .variables >> List.for __ varNames fn name, a:
-         Dict.update name (Maybe.map (fn var: { var with required }) __) a
+    , variables =
+        .variables
+        >> List.for __ varNames fn name, a:
+            Dict.update name (Maybe.map (fn var: { var with required }) __) a
     }
 
 
-addPatternToEnv as fn @State, TA.Pattern, Env: [Name] & Dict Name Pos & Env =
+addPatternToEnv as fn @State, TA.Pattern, Env: [ Name ] & Dict Name Pos & Env =
     fn @state, pattern, env:
-
     names =
         TA.patternNames pattern
 
     insertVariable =
-        fn name, ({ pos, type }), z:
-
-        mode = if type.uni == Imm then Immutable else Unique Available
+        fn name, { pos, type }, z:
+        mode =
+            if type.uni == 'imm then 'immutable else 'unique 'available
 
         variable as Variable =
             {
             , definedAt = pos
-            , name
             , mode
-            , type
+            , name
             , required = Dict.empty
+            , type
             }
 
         Dict.insert name variable z
-
 
     localEnv =
         { env with variables = Dict.for .variables names insertVariable }
 
     uniques =
         names
-        >> Dict.filter (fn n, s: s.type.uni /= Imm) __
+        >> Dict.filter (fn n, s: s.type.uni /= 'imm) __
         >> Dict.map (fn n, s: s.pos) __
 
     Dict.keys names & uniques & localEnv
 
 
-doCall as fn Env, @State, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expression =
+doCall as fn Env, @State, Pos, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
     fn env, @state, pos, reference, arguments:
-
     doneReference =
         doExpression env @state reference
 
-    doneArgs as UniOut [TA.Argument] =
+    doneArgs as UniOut [ TA.Argument ] =
         uniOutInit []
         >> List.forReversed __ arguments fn arg, acc:
             acc
@@ -329,29 +341,31 @@ doCall as fn Env, @State, Pos, TA.Expression, [TA.Argument]: UniOut TA.Expressio
     asRecyclingFunction as fn TA.Argument: Maybe Name =
         fn arg:
         try arg as
-            , TA.ArgumentRecycle p raw path name:
-                if TA.typeAllowsFunctions (fn tyvarId: False) raw then
-                    Just name
-                else
-                    Nothing
 
-            , TA.ArgumentExpression _ _:
-                Nothing
+            TA.'argumentRecycle p raw path name:
+                if TA.typeAllowsFunctions (fn tyvarId: 'false) raw then
+                    'just name
+                else
+                    'nothing
+
+            TA.'argumentExpression _ _:
+                'nothing
 
     if doneArgs.required /= Dict.empty or doneReference.required /= Dict.empty then
         List.each (List.filterMap asRecyclingFunction arguments) fn name:
             errorTaintedCallRecyclesFunctions env pos name (Dict.join doneArgs.required doneReference.required) @state
     else
-        None
+        'none
 
     {
     , recycled = Dict.join doneReference.recycled doneArgs.recycled
     #
     # ---> Since we are calling reference, we can discard doneReference.required!!! <---
     #
-    , required = doneArgs.required
+    , required =
+        doneArgs.required
+    , resolved = TA.'call pos doneReference.resolved doneArgs.resolved
     , spent = Dict.join doneReference.spent doneArgs.spent
-    , resolved = TA.Call pos doneReference.resolved doneArgs.resolved
     }
 
 
@@ -360,138 +374,137 @@ doArgument as fn Env, @State, Pos, UniOut TA.Argument: UniOut TA.Argument =
     # NOTE! doArgument does not return only the stuff relevant to the given argument, but rather *accumulates* the result
     #
     fn env, @state, pos, doneSoFar:
-
     # This is so badly named. This is the argument we want to do.
     # TODO rename 'resolved' to `payload'? Or just use something different for this function. Urgh.
     try doneSoFar.resolved as
 
-        , TA.ArgumentExpression fullType expr:
-
+        TA.'argumentExpression fullType expr:
             doneExpression =
                 doExpression env @state expr
 
             Dict.each doneExpression.spent fn name, p1:
                 try Dict.get name doneSoFar.spent as
-                    , Nothing: None
-                    , Just p2: errorReferencingConsumedVariable env name p1 p2 @state
+                    'nothing: 'none
+                    'just p2: errorReferencingConsumedVariable env name p1 p2 @state
 
             {
             # We don't count `recycled` in the arguments, because by the time we actually execute the call,
             # the argument evaluation is done.
-            , recycled = doneSoFar.recycled
+            , recycled =
+                doneSoFar.recycled
             , required = Dict.join doneExpression.required doneSoFar.required
+            , resolved = TA.'argumentExpression fullType doneExpression.resolved
             , spent = Dict.join doneExpression.spent doneSoFar.spent
-            , resolved = TA.ArgumentExpression fullType doneExpression.resolved
             }
 
-        , TA.ArgumentRecycle p1 rawType attrPath name:
-
+        TA.'argumentRecycle p1 rawType attrPath name:
             # TODO https://github.com/xarvh/squarepants/projects/1#card-85087726
             x =
-              try Dict.get name env.variables as
-                , Nothing: errorUndefinedVariable env p1 name @state
-                , Just variable:
-                    try variable.mode as
-                        , Unique Available: None
-                        , Immutable: errorMutatingAnImmutable env name p1 @state
-                        , Unique (ConsumedAt p2): errorMutatingAConsumed env name p1 p2 @state
+                try Dict.get name env.variables as
+
+                    'nothing:
+                        errorUndefinedVariable env p1 name @state
+
+                    'just variable:
+                        try variable.mode as
+                            'unique 'available: 'none
+                            'immutable: errorMutatingAnImmutable env name p1 @state
+                            'unique ('consumedAt p2): errorMutatingAConsumed env name p1 p2 @state
 
             y =
-              try Dict.get name doneSoFar.recycled as
-                , Nothing: None
-                , Just p2: errorMutatingTwice env name p1 p2 @state
+                try Dict.get name doneSoFar.recycled as
+                    'nothing: 'none
+                    'just p2: errorMutatingTwice env name p1 p2 @state
 
             { doneSoFar with
             , recycled = Dict.insert name p1 doneSoFar.recycled
-            , resolved = TA.ArgumentRecycle p1 rawType attrPath name
+            , resolved = TA.'argumentRecycle p1 rawType attrPath name
             }
 
 
-alias ParsAcc =
+ParsAcc =
     {
-    , parsToBeSpent as Dict Name Pos
-    , parsToBeRecycled as Dict Name Pos
     , localEnv as Env
+    , parsToBeRecycled as Dict Name Pos
+    , parsToBeSpent as Dict Name Pos
     }
 
 
 doParameter as fn @State, TA.Parameter, ParsAcc: ParsAcc =
     fn @state, par, acc:
-
     # TODO provide new param with resolved type
 
     try par as
-        , TA.ParameterPattern fullType pa:
+
+        TA.'parameterPattern fullType pa:
             addedVars & uniques & localEnv =
                 addPatternToEnv @state pa acc.localEnv
 
             { acc with
-            , parsToBeSpent = Dict.join uniques .parsToBeSpent
             , localEnv
+            , parsToBeSpent = Dict.join uniques .parsToBeSpent
             }
 
-        , TA.ParameterPlaceholder fullType n:
-            pa = TA.PatternAny Pos.G { maybeName = Just (Text.fromNumber n), type = fullType }
+        TA.'parameterPlaceholder fullType n:
+            pa =
+                TA.'patternAny Pos.'g { maybeName = 'just (Text.fromNumber n), type = fullType }
+
             addedVars & uniques & localEnv =
                 addPatternToEnv @state pa acc.localEnv
 
             { acc with
-            , parsToBeSpent = Dict.join uniques .parsToBeSpent
             , localEnv
+            , parsToBeSpent = Dict.join uniques .parsToBeSpent
             }
 
-        , TA.ParameterRecycle pos rawType name:
-
+        TA.'parameterRecycle pos rawType name:
             var as Variable =
                 {
                 , definedAt = pos
+                , mode = 'unique 'available
                 , name
-                , mode = Unique Available
-                , type = { uni = Uni, raw = rawType }
                 , required = Dict.empty
+                , type = { raw = rawType, uni = 'uni }
                 }
 
             { acc with
-            , parsToBeRecycled = Dict.insert name pos .parsToBeRecycled
             , localEnv = { acc.localEnv with variables = Dict.insert name var .variables }
+            , parsToBeRecycled = Dict.insert name pos .parsToBeRecycled
             }
 
 
 doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
     fn env, @state, expression:
-
     re =
         uniOutInit expression
 
     try expression as
-        , TA.LiteralText pos l:
+
+        TA.'literalText pos l:
             re
 
-        , TA.LiteralNumber pos l:
+        TA.'literalNumber pos l:
             re
 
-        , TA.Variable pos (RefGlobal _):
+        TA.'variable pos ('refGlobal _):
             re
 
-        , TA.Variable pos (RefLocal name):
+        TA.'variable pos ('refLocal name):
             doVariable env @state pos name expression
 
-        , TA.Variable pos (RefPlaceholder n):
+        TA.'variable pos ('refPlaceholder n):
             doVariable env @state pos (Text.fromNumber n) expression
 
-        , TA.Constructor pos usr:
+        TA.'constructor pos usr:
             re
 
-        , TA.Fn pos pars body bodyType:
+        TA.'fn pos pars body bodyType:
             doFn env pos @state pars body bodyType
 
-
-        , TA.Call pos reference arguments:
+        TA.'call pos reference arguments:
             doCall env @state pos reference arguments
 
-
-        , TA.If pos { condition, true, false }:
-
+        TA.'if pos { condition, false, true }:
             doneCondition =
                 doExpression env @state condition
 
@@ -506,38 +519,39 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
 
             finalTrueExpression =
                 # true should destroy all muts spent by false
-                doneTrue.resolved >> Dict.for __ doneFalse.spent fn name, _, exp:
+                doneTrue.resolved
+                >> Dict.for __ doneFalse.spent fn name, _, exp:
                     if Dict.member name doneTrue.spent then
                         exp
                     else
-                        TA.DestroyIn name exp
+                        TA.'destroyIn name exp
 
             finalFalseExpression =
                 # false should destroy all muts spent by true
-                doneFalse.resolved >> Dict.for __ doneTrue.spent fn name, _, exp:
+                doneFalse.resolved
+                >> Dict.for __ doneTrue.spent fn name, _, exp:
                     if Dict.member name doneFalse.spent then
                         exp
                     else
-                        TA.DestroyIn name exp
+                        TA.'destroyIn name exp
 
             finalExpression =
-                TA.If pos
+                TA.'if
+                    pos
                     {
                     , condition = doneCondition.resolved
-                    , true = finalTrueExpression
                     , false = finalFalseExpression
+                    , true = finalTrueExpression
                     }
 
             {
             , recycled = doneCondition.recycled >> Dict.join doneTrue.recycled __ >> Dict.join doneFalse.recycled __
             , required = doneCondition.required >> Dict.join doneTrue.required __ >> Dict.join doneFalse.required __
-            , spent = doneCondition.spent >> Dict.join doneTrue.spent __ >> Dict.join doneFalse.spent __
             , resolved = finalExpression
+            , spent = doneCondition.spent >> Dict.join doneTrue.spent __ >> Dict.join doneFalse.spent __
             }
 
-
-        , TA.Try pos { value, valueType, patternsAndExpressions }:
-
+        TA.'try pos { patternsAndExpressions, value, valueType }:
             doneValue =
                 doExpression env @state value
 
@@ -545,39 +559,39 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
                 consumeInEnv doneValue.spent env
 
             # Pass 1: collect all spent
-            zzz = fn (pattern & block):
-
+            zzz =
+                fn pattern & block:
                     addedVars & mutables_should_be_empty & env0 =
                         addPatternToEnv @state pattern newEnv
 
                     localEnv =
                         requireInEnv addedVars doneValue.required env0
 
-                    doExpression localEnv @state block
-                    >> uniOutMap (fn expr: pattern & expr) __
+                    doExpression localEnv @state block >> uniOutMap (fn expr: pattern & expr) __
 
             donePatternsAndBlocks =
                 patternsAndExpressions >> List.map zzz __
 
             allRecycled =
-                Dict.empty >> List.for __ donePatternsAndBlocks fn d, a: Dict.join d.recycled a
+                Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.recycled a)
 
             allRequired =
-                Dict.empty >> List.for __ donePatternsAndBlocks fn d, a: Dict.join d.required a
+                Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.required a)
 
             allSpent =
-                Dict.empty >> List.for __ donePatternsAndBlocks fn d, a: Dict.join d.spent a
+                Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.spent a)
 
             # Pass 2:
-            newPatternsAndBlocks as [TA.Pattern & TA.Expression]=
+            newPatternsAndBlocks as [ TA.Pattern & TA.Expression ] =
                 xxx =
-                    fn ({ recycled, required, spent, resolved = pattern & blockExpression }):
+                    fn { recycled, required, resolved = pattern & blockExpression, spent }:
                     finalBlock =
-                        blockExpression >> Dict.for __ allSpent fn name, _, exp:
+                        blockExpression
+                        >> Dict.for __ allSpent fn name, _, exp:
                             if Dict.member name spent then
                                 exp
                             else
-                                TA.DestroyIn name exp
+                                TA.'destroyIn name exp
 
                     pattern & finalBlock
 
@@ -586,56 +600,46 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
             {
             , recycled = allRecycled
             , required = allRequired
+            , resolved = TA.'try pos { patternsAndExpressions = newPatternsAndBlocks, value = doneValue.resolved, valueType }
             , spent = allSpent
-            , resolved = TA.Try pos { valueType, value = doneValue.resolved, patternsAndExpressions = newPatternsAndBlocks }
             }
 
-
-        , TA.Record pos maybeExtending attrValueByName:
-
+        TA.'record pos maybeExtending attrValueByName:
             doneExt as UniOut (Maybe TA.Expression) =
                 try maybeExtending as
-                    , Nothing:
-                        uniOutInit Nothing
-
-                    , Just extending:
-                        doExpression env @state extending
-                        >> uniOutMap Just __
+                    'nothing: uniOutInit 'nothing
+                    'just extending: doExpression env @state extending >> uniOutMap 'just __
 
             doneAttrs as UniOut (Dict Name TA.Expression) =
                 uniOutInit Dict.empty
                 >> Dict.for __ attrValueByName fn name, value, doneSoFar:
-                    { recycled, required, spent, resolved } =
+                    { recycled, required, resolved, spent } =
                         doExpression env @state value
 
                     consumedTwice =
                         Dict.merge (fn k, v, d: d) (fn k, a, b, d: Dict.insert k (a & b) d) (fn k, v, d: d) spent doneSoFar.spent Dict.empty
 
-                    Dict.each consumedTwice fn n, (p1 & p2):
+                    Dict.each consumedTwice fn n, p1 & p2:
                         errorReferencingConsumedVariable env n p1 p2 @state
 
                     {
                     , recycled = Dict.join recycled doneSoFar.recycled
                     , required = Dict.join required doneSoFar.required
-                    , spent = Dict.join spent doneSoFar.spent
                     , resolved = Dict.insert name resolved doneSoFar.resolved
+                    , spent = Dict.join spent doneSoFar.spent
                     }
 
             {
             , recycled = Dict.join doneExt.recycled doneAttrs.recycled
             , required = Dict.join doneExt.required doneAttrs.required
+            , resolved = TA.'record pos doneExt.resolved doneAttrs.resolved
             , spent = Dict.join doneExt.spent doneAttrs.spent
-            , resolved = TA.Record pos doneExt.resolved doneAttrs.resolved
             }
 
+        TA.'recordAccess pos name expr:
+            doExpression env @state expr >> uniOutMap (TA.'recordAccess pos name __) __
 
-        , TA.RecordAccess pos name expr:
-            doExpression env @state expr
-            >> uniOutMap (TA.RecordAccess pos name __) __
-
-
-        , TA.LetIn valueDef rest restType:
-
+        TA.'letIn valueDef rest restType:
             # TODO clean up these notes
             #
             #            !x = 0
@@ -649,7 +653,7 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
             #            so `f` will need to be in the env without its requirements properly registered
             #
             #            This is a problem only if f is mutually recursive, but this should not happen because you can't have non-root-level mutual recursion?
-            #            only problem: what if 
+            #            only problem: what if
 
             addedVars & uniques & env1 =
                 addPatternToEnv @state valueDef.pattern env
@@ -665,21 +669,20 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
             doneExpression =
                 doExpression localEnv @state rest
 
-            if TA.typeAllowsFunctions (fn tyvarId: False) restType.raw then
+            if TA.typeAllowsFunctions (fn tyvarId: 'false) restType.raw then
                 List.each addedVars fn varName:
                     try Dict.get varName doneExpression.required as
-                        , Nothing: None
-                        , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope env varName r @state
+                        'nothing: 'none
+                        'just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope env varName r @state
             else
-                None
+                'none
 
             finalExpression =
-                TA.LetIn { valueDef with body = doneDefBody.resolved } doneExpression.resolved restType
+                TA.'letIn { valueDef with body = doneDefBody.resolved } doneExpression.resolved restType
                 >> Dict.for __ uniques fn name, pos, exp:
                     try Dict.get name doneExpression.spent as
-                        , Just _: exp
-                        , Nothing:
-                            TA.DestroyIn name exp
+                        'just _: exp
+                        'nothing: TA.'destroyIn name exp
 
             spent =
                 doneExpression.spent
@@ -691,58 +694,56 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
             #
             # doneDefBody.required will enter this only indirectly, from the expression referencing any addedVars
             #
-            , required = doneExpression.required
-            , spent
+            , required =
+                doneExpression.required
             , resolved = finalExpression
+            , spent
             }
-
 
 
 doVariable as fn Env, @State, Pos, Name, e: UniOut e =
     fn env, @state, pos, name, e:
-
     try Dict.get name env.variables as
-        , Nothing:
+
+        'nothing:
             errorUndefinedVariable env pos name @state
+
             uniOutInit e
 
-        , Just variable:
+        'just variable:
             try variable.mode as
-                , Immutable:
+
+                'immutable:
                     {
                     , recycled = Dict.empty
                     , required = variable.required
+                    , resolved = e
                     , spent = Dict.empty
-                    , resolved = e
                     }
 
-                , Unique Available:
+                'unique 'available:
                     {
                     , recycled = Dict.empty
                     , required = variable.required
-                    , spent = Dict.ofOne name pos
                     , resolved = e
+                    , spent = Dict.ofOne name pos
                     }
 
-                , Unique (ConsumedAt consumedPos):
+                'unique ('consumedAt consumedPos):
                     errorReferencingConsumedVariable env name pos consumedPos @state
+
                     {
                     , recycled = Dict.empty
                     , required = variable.required
-                    , spent = Dict.ofOne name pos
                     , resolved = e
+                    , spent = Dict.ofOne name pos
                     }
 
 
-
-
-
-doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut TA.Expression =
+doFn as fn Env, Pos, @State, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
     fn env, pos, @state, pars, body, bodyType:
-
-    { parsToBeSpent, parsToBeRecycled, localEnv } =
-        { parsToBeSpent = Dict.empty, parsToBeRecycled = Dict.empty, localEnv = env }
-        >> List.for __ pars (doParameter @state __ __)
+    { localEnv, parsToBeRecycled, parsToBeSpent } =
+        { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter @state __ __)
 
     doneBody =
         doExpression localEnv @state body
@@ -751,11 +752,12 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
     # Variables that are not spent by the body need to be explicitly destroyed
     #
     exprWithDestruction =
-        doneBody.resolved >> Dict.for __ parsToBeSpent fn name, _, exp:
+        doneBody.resolved
+        >> Dict.for __ parsToBeSpent fn name, _, exp:
             if Dict.member name doneBody.spent then
                 exp
             else
-                TA.DestroyIn name exp
+                TA.'destroyIn name exp
 
     #
     # Ensure that the function does not spend any arg that should be recycled!
@@ -763,10 +765,10 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
     spentThatShouldHaveBeenRecycled =
         Dict.intersect doneBody.spent parsToBeRecycled
 
-    if spentThatShouldHaveBeenRecycled /= Dict.empty  then
+    if spentThatShouldHaveBeenRecycled /= Dict.empty then
         errorConsumingRecycledParameters env pos spentThatShouldHaveBeenRecycled @state
     else
-        None
+        'none
 
     #
     # Functions cannot spend variables from the parent scope
@@ -777,7 +779,7 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
     if spentThatShouldHaveBeenRecycled == Dict.empty and spentFromParent /= Dict.empty then
         errorFunctionsCannotConsumeParentUniques env pos spentFromParent @state
     else
-        None
+        'none
 
     #
     # Expressions "require" all variables from the parent scope that they recycle
@@ -785,30 +787,29 @@ doFn as fn Env, Pos, @State, [TA.Parameter], TA.Expression, TA.FullType: UniOut 
     #
     required as Required =
         doneBody.recycled
-        >> Dict.map (fn k, usedAt: { usedAt, fnPos = pos }) __
+        >> Dict.map (fn k, usedAt: { fnPos = pos, usedAt }) __
         >> Dict.join doneBody.required __
         >> Dict.diff __ parsToBeRecycled
 
-    if TA.typeAllowsFunctions (fn tyvarId: False) bodyType.raw then
+    if TA.typeAllowsFunctions (fn tyvarId: 'false) bodyType.raw then
         Dict.each (Dict.join parsToBeRecycled parsToBeSpent) fn varName, parPos:
             try Dict.get varName doneBody.required as
-                , Nothing: None
-                , Just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope env varName r @state
+                'nothing: 'none
+                'just r: errorReturnExpressionRequiresUniquesDefinedInTheCurrentScope env varName r @state
     else
-        None
+        'none
 
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
+    , resolved = TA.'fn pos pars exprWithDestruction bodyType
     , spent = Dict.empty
-    , resolved = TA.Fn pos pars exprWithDestruction bodyType
     }
 
 
 doModule as fn TA.Module: Res TA.Module =
     fn module:
-
-    Debug.benchStart None
+    Debug.benchStart 'none
 
     !state as State =
         {
@@ -817,13 +818,12 @@ doModule as fn TA.Module: Res TA.Module =
 
     env as Env =
         {
-        , errorModule = { fsPath = module.fsPath, content = module.asText }
+        , errorModule = { content = module.asText, fsPath = module.fsPath }
         , variables = Dict.empty
         }
 
     do as fn pa, TA.ValueDef: TA.ValueDef =
         fn _, def:
-
         doneExpression =
             doExpression env @state def.body
 
@@ -842,7 +842,6 @@ doModule as fn TA.Module: Res TA.Module =
     Debug.benchStop "uniqueness check"
 
     if errors == [] then
-        Ok newModule
+        'ok newModule
     else
-        Err (Error.Nested errors)
-
+        'err (Error.'nested errors)

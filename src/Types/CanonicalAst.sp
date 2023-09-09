@@ -1,143 +1,141 @@
-
-union RawType =
-    # alias, opaque or union
-    , TypeNamed Pos USR [RawType]
-    , TypeFn Pos [ParType] FullType
-    , TypeRecord Pos (Dict Name RawType)
-    , TypeAnnotationVariable Pos Name
-    # This is used as a placeholder when there is an error and a type can't be determined
-    # It's useful to avoid piling up errors (I think)
-    , TypeError Pos
-
-
-union ParType =
-    , ParRe RawType
-    , ParSp FullType
+var RawType =
+    , # alias, opaque or union
+      'typeNamed Pos USR [ RawType ]
+    , 'typeFn Pos [ ParType ] FullType
+    , 'typeRecord Pos (Dict Name RawType)
+    , 'typeAnnotationVariable Pos Name
+    , # This is used as a placeholder when there is an error and a type can't be determined
+      # It's useful to avoid piling up errors (I think)
+      'typeError Pos
 
 
-alias FullType =
+var ParType =
+    , 'parRe RawType
+    , 'parSp FullType
+
+
+FullType =
     {
-    , uni as Uniqueness
     , raw as RawType
+    , uni as Uniqueness
     }
 
 
-union Expression =
-    , LiteralNumber Pos Number
-    , LiteralText Pos Text
-    , Variable Pos Ref
-    , Constructor Pos USR
-    , Fn Pos [Parameter] Expression
-    , Call Pos Expression [Argument]
-      # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
+var Expression =
+    , 'literalNumber Pos Number
+    , 'literalText Pos Text
+    , 'variable Pos Ref
+    , 'constructor Pos USR
+    , 'fn Pos [ Parameter ] Expression
+    , 'call Pos Expression [ Argument ]
+    , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
-    , Record Pos (Maybe Expression) (Dict Name Expression)
-    , RecordAccess Pos Name Expression
-    , LetIn ValueDef Expression
-    , If Pos
-        {
-        , condition as Expression
-        , true as Expression
-        , false as Expression
-        }
-    , Try Pos
-        {
-        , value as Expression
-        , patternsAndExpressions as [Uniqueness & Pattern & Expression]
-        }
-    , DestroyIn Name Expression
+      'record Pos (Maybe Expression) (Dict Name Expression)
+    , 'recordAccess Pos Name Expression
+    , 'letIn ValueDef Expression
+    , 'if
+          Pos
+          {
+          , condition as Expression
+          , false as Expression
+          , true as Expression
+          }
+    , 'try
+          Pos
+          {
+          , patternsAndExpressions as [ Uniqueness & Pattern & Expression ]
+          , value as Expression
+          }
+    , 'destroyIn Name Expression
 
 
-union Argument =
-    , ArgumentExpression Expression
-    , ArgumentRecycle Pos Name [Name]
+var Argument =
+    , 'argumentExpression Expression
+    , 'argumentRecycle Pos Name [ Name ]
 
 
-union Parameter =
-    , ParameterPattern Uniqueness Pattern
-    , ParameterRecycle Pos Name
-    , ParameterPlaceholder Int
+var Parameter =
+    , 'parameterPattern Uniqueness Pattern
+    , 'parameterRecycle Pos Name
+    , 'parameterPlaceholder Int
 
 
-alias Annotation = {
+Annotation =
+    {
     , raw as RawType
     , tyvars as Dict Name { nonFn as Maybe Pos }
     , univars as Dict UnivarId None
     }
 
 
-union Pattern =
-    , PatternAny Pos (Maybe Name) (Maybe Annotation)
-    , PatternLiteralText Pos Text
-    , PatternLiteralNumber Pos Number
-    , PatternConstructor Pos USR [Pattern]
-    , PatternRecord Pos PatternCompleteness (Dict Name Pattern)
+var Pattern =
+    , 'patternAny Pos (Maybe Name) (Maybe Annotation)
+    , 'patternLiteralText Pos Text
+    , 'patternLiteralNumber Pos Number
+    , 'patternConstructor Pos USR [ Pattern ]
+    , 'patternRecord Pos PatternCompleteness (Dict Name Pattern)
 
 
-union PatternCompleteness =
-    , Partial
-    , Complete
+var PatternCompleteness =
+    , 'partial
+    , 'complete
 
 
-alias ValueDef =
+ValueDef =
     {
-    , uni as Uniqueness
-    , pattern as Pattern
-
-    # TODO: have maybeBody instead of native?
-    , native as Bool
     , body as Expression
-
+    , directConsDeps as Set USR
     # Do we need these here?
     , directTypeDeps as TypeDeps
-    , directConsDeps as Set USR
     , directValueDeps as Set USR
+    # TODO: have maybeBody instead of native?
+    , native as Bool
+    , pattern as Pattern
+    , uni as Uniqueness
     }
-
 
 
 #
 # Module
 #
 
-alias TypeDeps =
+TypeDeps =
     Set USR
 
 
-alias AliasDef =
+AliasDef =
     {
-    , usr as USR
-    , pars as [Name & Pos]
-    , type as RawType
     , directTypeDeps as TypeDeps
+    , pars as [ Name & Pos ]
+    , type as RawType
+    , usr as USR
     }
 
 
-alias UnionDef =
+UnionDef =
     {
-    , usr as USR
-    , pars as [Name & Pos]
     , constructors as Dict Name Constructor
     , directTypeDeps as TypeDeps
+    , pars as [ Name & Pos ]
+    , usr as USR
     }
 
 
-alias Constructor =
+Constructor =
     {
+    , ins as [ RawType ]
+    , out as RawType
     , pos as Pos
     , typeUsr as USR
-    , ins as [RawType]
-    , out as RawType
     }
 
 
-alias Module =
+Module =
     {
+    , aliasDefs as Dict Name AliasDef
+    , asText as Text
     , fsPath as Text
     , umr as UMR
-    , asText as Text
-
-    , aliasDefs as Dict Name AliasDef
     , unionDefs as Dict Name UnionDef
     , valueDefs as Dict Pattern ValueDef
     }
@@ -146,71 +144,79 @@ alias Module =
 initModule as fn Text, UMR, Text: Module =
     fn fsPath, umr, asText:
     {
-    , umr
-    , fsPath
-    , asText
     , aliasDefs = Dict.empty
+    , asText
+    , fsPath
+    , umr
     , unionDefs = Dict.empty
     , valueDefs = Dict.empty
     }
-
 
 
 #
 # helpers
 #
 
-
 parTypeToRaw as fn ParType: RawType =
     fn p:
     try p as
-        , ParRe raw: raw
-        , ParSp full: full.raw
+        'parRe raw: raw
+        'parSp full: full.raw
 
 
 typeTyvars as fn RawType: Dict Name Pos =
     fn raw:
-
-    fromList as fn [RawType]: Dict Name Pos =
+    fromList as fn [ RawType ]: Dict Name Pos =
         fn list:
         List.for Dict.empty list (fn item, acc: Dict.join acc (typeTyvars item))
 
     try raw as
-        , TypeNamed _ _ args: fromList args
-        , TypeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
-        , TypeRecord _ attrs: fromList (Dict.values attrs)
-        , TypeAnnotationVariable pos name: Dict.ofOne name pos
-        , TypeError _: Dict.empty
+        'typeNamed _ _ args: fromList args
+        'typeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
+        'typeRecord _ attrs: fromList (Dict.values attrs)
+        'typeAnnotationVariable pos name: Dict.ofOne name pos
+        'typeError _: Dict.empty
 
 
 typeUnivars as fn RawType: Dict UnivarId None =
     fn raw:
-
-    fromList as fn [RawType]: Dict UnivarId None =
+    fromList as fn [ RawType ]: Dict UnivarId None =
         fn list:
         List.for Dict.empty list (fn item, acc: Dict.join acc (typeUnivars item))
 
     insertUni as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
         fn uni, acc:
         try uni as
-            , Depends uid: Dict.insert uid None acc
-            , _: acc
+            'depends uid: Dict.insert uid 'none acc
+            _: acc
 
     parUnivars as fn ParType, Dict UnivarId None: Dict UnivarId None =
         fn par, acc:
         try par as
-            , ParRe _: acc
-            , ParSp full:
+
+            'parRe _:
+                acc
+
+            'parSp full:
                 acc
                 >> Dict.join __ (typeUnivars full.raw)
                 >> insertUni full.uni __
 
     try raw as
-        , TypeNamed _ _ args: fromList args
-        , TypeRecord _ attrs: fromList (Dict.values attrs)
-        , TypeAnnotationVariable pos name: Dict.empty
-        , TypeError _: Dict.empty
-        , TypeFn _ pars to:
+
+        'typeNamed _ _ args:
+            fromList args
+
+        'typeRecord _ attrs:
+            fromList (Dict.values attrs)
+
+        'typeAnnotationVariable pos name:
+            Dict.empty
+
+        'typeError _:
+            Dict.empty
+
+        'typeFn _ pars to:
             Dict.empty
             >> insertUni to.uni __
             >> List.for __ pars parUnivars
@@ -219,45 +225,45 @@ typeUnivars as fn RawType: Dict UnivarId None =
 patternPos as fn Pattern: Pos =
     fn pa:
     try pa as
-        , PatternAny p _ _: p
-        , PatternLiteralText p _: p
-        , PatternLiteralNumber p _: p
-        , PatternConstructor p _ _: p
-        , PatternRecord p _ _: p
+        'patternAny p _ _: p
+        'patternLiteralText p _: p
+        'patternLiteralNumber p _: p
+        'patternConstructor p _ _: p
+        'patternRecord p _ _: p
 
 
 patternTyvars as fn Pattern: Dict Name { nonFn as Maybe Pos } =
     fn pa:
     try pa as
-        , PatternAny _ _ (Just ann): ann.tyvars
-        , PatternAny _ _ Nothing: Dict.empty
-        , PatternLiteralText _ _: Dict.empty
-        , PatternLiteralNumber _ _: Dict.empty
-        , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
-        , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
+        'patternAny _ _ ('just ann): ann.tyvars
+        'patternAny _ _ 'nothing: Dict.empty
+        'patternLiteralText _ _: Dict.empty
+        'patternLiteralNumber _ _: Dict.empty
+        'patternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
+        'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
 
 
 patternUnivars as fn Pattern: Dict UnivarId None =
     fn pa:
     try pa as
-        , PatternAny _ _ (Just ann): ann.univars
-        , PatternAny _ _ Nothing: Dict.empty
-        , PatternLiteralText _ _: Dict.empty
-        , PatternLiteralNumber _ _: Dict.empty
-        , PatternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternUnivars arg))
-        , PatternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternUnivars arg))
+        'patternAny _ _ ('just ann): ann.univars
+        'patternAny _ _ 'nothing: Dict.empty
+        'patternLiteralText _ _: Dict.empty
+        'patternLiteralNumber _ _: Dict.empty
+        'patternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternUnivars arg))
+        'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternUnivars arg))
 
 
-patternNames as fn Pattern: [{ name as Name, pos as Pos, maybeAnnotation as Maybe Annotation }] =
+patternNames as fn Pattern: [ { maybeAnnotation as Maybe Annotation, name as Name, pos as Pos } ] =
     rec =
         fn p, acc:
         try p as
-            , PatternAny pos Nothing _: acc
-            , PatternAny pos (Just name) maybeAnnotation: [ { name, pos, maybeAnnotation }, ...acc]
-            , PatternLiteralNumber pos _: acc
-            , PatternLiteralText pos _: acc
-            , PatternConstructor pos path ps: List.for acc ps rec
-            , PatternRecord pos _ ps: Dict.for acc ps (fn k, v, a: rec v a)
+            'patternAny pos 'nothing _: acc
+            'patternAny pos ('just name) maybeAnnotation: [ { maybeAnnotation, name, pos }, acc... ]
+            'patternLiteralNumber pos _: acc
+            'patternLiteralText pos _: acc
+            'patternConstructor pos path ps: List.for acc ps rec
+            'patternRecord pos _ ps: Dict.for acc ps (fn k, v, a: rec v a)
 
     rec __ []
 
@@ -265,16 +271,15 @@ patternNames as fn Pattern: [{ name as Name, pos as Pos, maybeAnnotation as Mayb
 expressionPos as fn Expression: Pos =
     fn exp:
     try exp as
-        , LiteralNumber p _: p
-        , LiteralText p _: p
-        , Variable p _: p
-        , Constructor p _: p
-        , Fn p _ _: p
-        , Call p _ _: p
-        , Record p _ _: p
-        , RecordAccess p _ _: p
-        , LetIn def e: expressionPos e
-        , If p _: p
-        , Try p _: p
-        , DestroyIn _ _: Pos.G
-
+        'literalNumber p _: p
+        'literalText p _: p
+        'variable p _: p
+        'constructor p _: p
+        'fn p _ _: p
+        'call p _ _: p
+        'record p _ _: p
+        'recordAccess p _ _: p
+        'letIn def e: expressionPos e
+        'if p _: p
+        'try p _: p
+        'destroyIn _ _: Pos.'g

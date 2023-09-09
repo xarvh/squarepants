@@ -3,59 +3,55 @@
 #
 # The names are kept very short to keep them debug-output-friendly
 #
-union Pos =
-    # actual position: start, end
-    , P Int Int
-    # module-wide error
-    , M
-    # parsing reached the end of file
-    , End
-    # stripped
-    , S
-    # defined natively, usually in Core or Prelude
-    , N
-    # defined as test
-    , T
-    # inferred
-    , I Int
-    # generated
-    , G
+var Pos =
+    , # actual position: start, end
+      'p Int Int
+    , # module-wide error
+      'm
+    , # parsing reached the end of file
+      'end
+    , # stripped
+      's
+    , # defined natively, usually in Core or Prelude
+      'n
+    , # defined as test
+      't
+    , # inferred
+      'i Int
+    , # generated
+      'g
 
 
 # TODO this was not super useful, remove it
-union At a =
-    At Pos a
+var At a =
+    , 'at Pos a
 
 
 start as fn Pos: Int =
     fn pos:
     try pos as
-        , P s e: s
-        , _: 0
+        'p s e: s
+        _: 0
 
 
 end as fn Pos: Int =
     fn pos:
     try pos as
-        , P s e: e
-        , _: 0
+        'p s e: e
+        _: 0
 
 
 range as fn Pos, Pos: Pos =
     fn a, b:
     try a & b as
-        , P sa ea & P sb eb:
-            P (min sa sb) (max ea eb)
-
-        , P _ _ & _:
-            a
-
-        , _:
-            b
+        'p sa ea & 'p sb eb: 'p (min sa sb) (max ea eb)
+        'p _ _ & _: a
+        _: b
 
 
 drop as fn At a: a =
     fn x:
-    At pos a = x
-    a
+    'at pos a =
+        x
 
+    a
