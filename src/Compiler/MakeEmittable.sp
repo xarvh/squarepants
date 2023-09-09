@@ -1,7 +1,17 @@
 Env =
     {
     , genVarCounter as Int
-    , module as TA.Module
+    , module as CA.Module
+    }
+
+mkEnv as fn USR, Dict UMR CA.Module: Env =
+    fn 'USR umr name, modulesByUmr:
+
+    { genVarCounter = 0
+    , module =
+          try Dict.get umr modulesByUmr as
+              'just m: m
+              'nothing: todo ("compiler bug: no module for " .. name)
     }
 
 
@@ -299,112 +309,4 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             translateExpression env e
 
 
-translateRootValueDef as fn Env, TA.ValueDef, ByUsr EA.GlobalDefinition: ByUsr EA.GlobalDefinition =
-    fn env, def, accum:
-    deps =
-        def.directValueDeps
 
-    try pickMainName def.pattern as
-
-        'noNamedVariables:
-            accum
-
-        'trivialPattern name type:
-            usr =
-                'USR env.module.umr name
-
-            Dict.insert
-                usr
-                {
-                , deps
-                , expr = translateExpression env def.body
-                , usr
-                }
-                accum
-
-        'generateName:
-            mainName & newEnv =
-                generateName env
-
-            mainUsr =
-                'USR env.module.umr mainName
-
-            mainDef as EA.GlobalDefinition =
-                {
-                , deps
-                , expr = translateExpression newEnv def.body
-                , usr = mainUsr
-                }
-
-            accum
-            >> Dict.insert mainUsr mainDef __
-            >> List.for __ (translatePattern def.pattern (EA.'variable ('refGlobal mainUsr))) fn type & name & expr, z:
-                subUsr =
-                    'USR env.module.umr name
-
-                Dict.insert subUsr { deps = Set.ofOne mainUsr, expr, usr = subUsr } z
-
-
-#
-# Main
-#
-
-circularIsError as fn ByUsr EA.GlobalDefinition, [ USR ]: Bool =
-    fn globalDefsByName, usrs:
-    zzz =
-        fn usr:
-        try Dict.get usr globalDefsByName as
-
-            'nothing:
-                # native or some special stuff?
-                'false
-
-            'just globalDef:
-                try globalDef.expr as
-                    EA.'fn _ _: 'false
-                    _: 'true
-
-    List.any zzz usrs
-
-
-circularToError as fn [ USR ]: Error =
-    fn usrs:
-    Error.'raw
-        [
-        , "circular dependency: "
-        , List.map toHuman usrs...
-        ]
-
-
-translateAll as fn UMR, [ TA.Module ]: Res { defs as [ EA.GlobalDefinition ], entryUsr as USR } =
-    fn entryModule, modules:
-    Debug.benchStart 'none
-
-    globalDefsByName as ByUsr EA.GlobalDefinition =
-        Dict.empty
-        >> List.for __ modules fn module, d:
-            Dict.for d module.valueDefs fn _, def, a:
-                env =
-                    { genVarCounter = 0, module }
-
-                translateRootValueDef env def a
-
-    circulars & reorderedNames =
-        RefHierarchy.reorder (fn globalDef: globalDef.deps) globalDefsByName
-
-    Debug.benchStop "makeEmittable"
-
-    errors =
-        List.filter (circularIsError globalDefsByName __) circulars
-
-    if errors /= [] then
-        errors
-        >> List.map circularToError __
-        >> Error.'nested
-        >> 'err
-    else
-        {
-        , defs = List.filterMap (fn name: Dict.get name globalDefsByName) reorderedNames
-        , entryUsr = 'USR entryModule "main"
-        }
-        >> 'ok

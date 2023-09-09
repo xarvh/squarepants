@@ -55,6 +55,8 @@ howDoesItLookLike as Test =
             Example: maintaining mutable state
             """
             """
+            someFunction = this_is_sp_native
+
             average as fn [Number]: Number =
                 fn numbers:
 
@@ -65,7 +67,7 @@ howDoesItLookLike as Test =
                 !count as Number =
                     0
 
-                (todo "List.each") numbers fn number:
+                someFunction numbers fn number:
                     @total += number
                     @count += 1
 
@@ -254,9 +256,11 @@ mutation as Test =
                 Recycling requires the unique not to be spent
                 """
                 """
+                someFunction = this_is_sp_native
+
                 scope =
                     !x = 1
-                    (todo "consume") x
+                    someFunction x
                     @x += 1
                 """
                 (infer "scope")
@@ -294,9 +298,10 @@ mutation as Test =
                 base
                 """
                 """
+                someFunction = this_is_sp_native
                 scope =
                     !x = 0
-                    (todo "funz") @x @x
+                    someFunction @x @x
                 """
                 (infer "scope")
                 (Test.errorContains [ "twice" ])
@@ -364,11 +369,12 @@ parentScope as Test =
                 The Array Test
                 """
                 """
-                var Array a = 'meh
+                var Array_ a = 'meh
 
-                array_push as fn a, @Array a: None = todo ""
+                array_push as fn a, @Array_ a: None =
+                    this_is_sp_native
 
-                addFunctions as fn @Array (fn Number: Number): None =
+                addFunctions as fn @Array_ (fn Number: Number): None =
                     fn @functions:
 
                     !x =
@@ -415,9 +421,12 @@ records as Test =
                 Reject double reference
                 """
                 """
+                someFunction =
+                    this_is_sp_native
+
                 scope =
                     !record = { x = 0, y = 0 }
-                    (todo "") @record.x @record.y
+                    someFunction @record.x @record.y
                 """
                 (infer "scope")
                 (Test.errorContains [ "same unique twice in the same function call" ])
@@ -476,7 +485,7 @@ polymorphism as Test =
             """
             """
             var Re error payload = 'er error, 'okk payload
-            isOkk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = todo ""
+            isOkk as fn (fn 1?a: 2?Re error b), 1?Re error a: 2?Re error b = this_is_sp_native
 
             scope =
                 !v = isOkk (fn !a: 'okk 0) ('okk 0)
@@ -489,7 +498,7 @@ polymorphism as Test =
             """
             """
             var Result_ error payload = 'err_ error, 'ok_ payload
-            isOk_ as fn (fn 1?a: 2?Result_ error b), 1?Result_ error a: 2?Result_ error b = todo ""
+            isOk_ as fn (fn 1?a: 2?Result_ error b), 1?Result_ error a: 2?Result_ error b = this_is_sp_native
             immB as Number = 1
 
             v = isOk_ (fn !a: 'ok_ immB) ('ok_ 0)

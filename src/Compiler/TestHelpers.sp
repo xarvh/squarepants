@@ -45,15 +45,14 @@ formattedToStrippedText as fn [ Error.FormattedText ]: Text =
     >> Text.join "" __
 
 
-resErrorToStrippedText as fn Res a: Result Text a =
-    fn res:
-    errorToText =
-        fn e:
-        e
-        >> Error.toFormattedText
-        >> formattedToStrippedText
+errorToStrippedText as fn Error: Text =
+    __
+    >> Error.toFormattedText
+    >> formattedToStrippedText
 
-    Result.mapError errorToText res
+
+resErrorToStrippedText as fn Res a: Result Text a =
+    Result.mapError errorToStrippedText __
 
 
 #
@@ -96,6 +95,11 @@ caNone as CA.RawType =
 caList as fn CA.RawType: CA.RawType =
     fn itemType:
     CA.'typeNamed Pos.'t (Meta.spCoreUSR "List") [ itemType ]
+
+
+caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
+    fn from, to:
+    CA.'typeFn Pos.'t (List.map (fn t: CA.'parSp (toImm t)) from) (toImm to)
 
 
 #

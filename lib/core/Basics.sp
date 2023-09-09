@@ -2,6 +2,10 @@ Int =
     Number
 
 
+compare as fn a, a: Int with a NonFunction =
+    this_is_sp_native
+
+
 identity as fn a: a =
     fn a:
     a
@@ -26,13 +30,11 @@ btw as fn fn a: b, a, c: c =
 
 
 cloneUni as fn @a: !a =
-    fn @a:
-    todo "cloneUni"
+    this_is_sp_native
 
 
 cloneImm as fn a: !a =
-    fn a:
-    todo "cloneImm"
+    this_is_sp_native
 
 
 #

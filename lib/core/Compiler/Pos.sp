@@ -12,7 +12,7 @@ var Pos =
       'end
     , # stripped
       's
-    , # defined natively, usually in Core or Prelude
+    , # defined in Core
       'n
     , # defined as test
       't

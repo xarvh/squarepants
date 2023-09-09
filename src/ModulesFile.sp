@@ -97,10 +97,10 @@ insertModule as fn Meta.Source, Module, Meta: Meta =
         >> Dict.insert varName __ d
 
     { meta with
-    , globalTypes = List.for meta.globalTypes mod.globalTypes insertGlobal
-    , globalValues = List.for meta.globalValues mod.globalValues insertGlobal
-    , moduleVisibleAsToUmr = Dict.insert visibleAs umr meta.moduleVisibleAsToUmr
-    , umrToModuleVisibleAs = Dict.insert umr visibleAs meta.umrToModuleVisibleAs
+    , globalTypes = List.for .globalTypes mod.globalTypes insertGlobal
+    , globalValues = List.for .globalValues mod.globalValues insertGlobal
+    , moduleVisibleAsToUmr = Dict.insert visibleAs umr .moduleVisibleAsToUmr
+    , umrToModuleVisibleAs = Dict.insert umr visibleAs .umrToModuleVisibleAs
     }
 
 

@@ -60,10 +60,9 @@ firstDefinition as fn Text: Result Text CA.ValueDef =
 
 
 firstDefinitionStripDeps as fn Text: Result Text CA.ValueDef =
-    fn code:
-    code
+    __
     >> firstDefinition
-    >> Result.map (fn v: { v with directConsDeps = Dict.empty, directTypeDeps = Dict.empty, directValueDeps = Dict.empty }) __
+    >> Result.map (fn v: { v with directDeps = Dict.empty }) __
 
 
 firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
@@ -71,7 +70,7 @@ firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
     fn code:
     code
     >> firstDefinition
-    >> onOk (fn def: 'ok def.body)
+    >> onOk (fn def: Maybe.toResult "body is 'nothing" def.maybeBody)
 
 
 # TODO move this to Helpers?
@@ -109,14 +108,10 @@ p as Pos =
     Pos.'t
 
 
-valueDef as fn Name, CA.Expression: CA.ValueDef =
+localDef as fn Name, CA.Expression: CA.LocalDef =
     fn name, body:
     {
     , body
-    , directConsDeps = Dict.empty
-    , directTypeDeps = Dict.empty
-    , directValueDeps = Dict.empty
-    , native = 'false
     , pattern = CA.'patternAny Pos.'g ('just name) 'nothing
     , uni = 'imm
     }
@@ -175,7 +170,7 @@ binops as Test =
             b = (v >> f) >> g
             """
             transformAB
-            (shouldHaveSameAB (fn x: x.body))
+            (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
             "right associativity"
             """
@@ -183,7 +178,7 @@ binops as Test =
             b = v :: (f :: g)
             """
             transformAB
-            (shouldHaveSameAB (fn x: x.body))
+            (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
             "precedence"
             """
@@ -191,7 +186,7 @@ binops as Test =
             b = 1 + (2 * 3) + 4
             """
             transformAB
-            (shouldHaveSameAB (fn x: x.body))
+            (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
             """
             SKIP (burned out) Pipe optimization 1
@@ -201,7 +196,7 @@ binops as Test =
             b = a b
             """
             transformAB
-            (shouldHaveSameAB (fn x: x.body))
+            (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
             """
             SKIP (burned out) Pipe optimization 2
@@ -211,7 +206,7 @@ binops as Test =
             b = a >> b >> c
             """
             transformAB
-            (shouldHaveSameAB (fn x: x.body))
+            (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
             """
             Op chain definition and optimization
@@ -230,19 +225,19 @@ binops as Test =
                       ]
                       (CA.'call
                            p
-                           (CA.'variable p ('refGlobal Prelude.add.usr))
+                           (CA.'variable p ('refGlobal CoreDefs.add.usr))
                            [
                            , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                            , CA.'argumentExpression
                                (CA.'call
                                     p
-                                    (CA.'variable p ('refGlobal Prelude.add.usr))
+                                    (CA.'variable p ('refGlobal CoreDefs.add.usr))
                                     [
                                     , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
                                     , CA.'argumentExpression
                                         (CA.'call
                                              p
-                                             (CA.'variable p ('refGlobal Prelude.add.usr))
+                                             (CA.'variable p ('refGlobal CoreDefs.add.usr))
                                              [
                                              , CA.'argumentExpression (CA.'literalNumber p 3)
                                              , CA.'argumentExpression (CA.'variable p ('refPlaceholder 2))
@@ -276,23 +271,17 @@ lists as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body = CA.'variable p (TH.rootLocal "l")
-                 , directConsDeps = Dict.empty
-                 , directTypeDeps = Dict.empty
-                 , directValueDeps = Dict.empty
-                 , native = 'false
-                 , pattern =
-                     CA.'patternAny
-                         p
-                         ('just "l")
-                         ('just
-                              {
-                              , raw = CoreTypes.listType TH.caBool
-                              , tyvars = Dict.empty
-                              , univars = Dict.empty
-                              }
-                         )
-                 , uni = 'imm
+                 , directDeps = Dict.empty
+                 , maybeAnnotation =
+                     'just
+                         {
+                         , raw = CoreDefs.listType TH.caBool
+                         , tyvars = Dict.empty
+                         , univars = Dict.empty
+                         }
+                 , maybeBody = 'just << CA.'variable p (TH.rootLocal "l")
+                 , name = "l"
+                 , namePos = p
                  }
             )
         ]
@@ -351,27 +340,21 @@ tuples as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body = CA.'variable p (TH.rootLocal "a")
-                 , directConsDeps = Dict.empty
-                 , directTypeDeps = Dict.empty
-                 , directValueDeps = Dict.empty
-                 , native = 'false
-                 , pattern =
-                     CA.'patternAny
-                         p
-                         ('just "a")
-                         ('just
-                              {
-                              , raw =
-                                  Dict.empty
-                                  >> Dict.insert "first" TH.caNumber __
-                                  >> Dict.insert "second" TH.caNumber __
-                                  >> CA.'typeRecord p __
-                              , tyvars = Dict.empty
-                              , univars = Dict.empty
-                              }
-                         )
-                 , uni = 'imm
+                 , directDeps = Dict.empty
+                 , maybeAnnotation =
+                     'just
+                         {
+                         , raw =
+                             Dict.empty
+                             >> Dict.insert "first" TH.caNumber __
+                             >> Dict.insert "second" TH.caNumber __
+                             >> CA.'typeRecord p __
+                         , tyvars = Dict.empty
+                         , univars = Dict.empty
+                         }
+                 , maybeBody = 'just << CA.'variable p (TH.rootLocal "a")
+                 , name = "a"
+                 , namePos = p
                  }
             )
         , codeTest
@@ -433,7 +416,7 @@ records as Test =
             (firstEvaluation "a")
             (Test.isOkAndEqualTo
              << CA.'letIn
-                 (valueDef "0" (CA.'variable p (TH.rootLocal "m")))
+                 (localDef "0" (CA.'variable p (TH.rootLocal "m")))
                  (CA.'record
                       p
                       ('just (CA.'variable Pos.'g ('refLocal "0")))
@@ -455,7 +438,7 @@ records as Test =
             (firstEvaluation "b")
             (Test.isOkAndEqualTo
              << CA.'letIn
-                 (valueDef "0" (CA.'variable p (TH.rootLocal "a")))
+                 (localDef "0" (CA.'variable p (TH.rootLocal "a")))
                  (CA.'record
                       p
                       ('just (CA.'variable Pos.'g ('refLocal "0")))
@@ -639,23 +622,17 @@ nonFunction as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body = CA.'literalNumber p 1
-                 , directConsDeps = Dict.empty
-                 , directTypeDeps = Dict.empty
-                 , directValueDeps = Dict.empty
-                 , native = 'false
-                 , pattern =
-                     CA.'patternAny
-                         p
-                         ('just "funz")
-                         ('just
-                              {
-                              , raw = CA.'typeAnnotationVariable p "a"
-                              , tyvars = Dict.ofOne "a" { nonFn = 'just Pos.'t }
-                              , univars = Dict.empty
-                              }
-                         )
-                 , uni = 'imm
+                 , directDeps = Dict.empty
+                 , maybeAnnotation =
+                     'just
+                         {
+                         , raw = CA.'typeAnnotationVariable p "a"
+                         , tyvars = Dict.ofOne "a" { nonFn = 'just Pos.'t }
+                         , univars = Dict.empty
+                         }
+                 , maybeBody = 'just << CA.'literalNumber p 1
+                 , name = "funz"
+                 , namePos = p
                  }
             )
         ]
@@ -677,8 +654,11 @@ argumentPlaceholders as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body =
-                     CA.'fn
+                 , directDeps = Dict.empty
+                 , maybeAnnotation = 'nothing
+                 , maybeBody =
+                     'just
+                     << CA.'fn
                          p
                          [
                          , CA.'parameterPlaceholder 0
@@ -692,12 +672,8 @@ argumentPlaceholders as Test =
                               , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
                               ]
                          )
-                 , directConsDeps = Dict.empty
-                 , directTypeDeps = Dict.empty
-                 , directValueDeps = Dict.empty
-                 , native = 'false
-                 , pattern = CA.'patternAny p ('just "f") 'nothing
-                 , uni = 'imm
+                 , name = "f"
+                 , namePos = p
                  }
             )
         , codeTest
@@ -771,8 +747,11 @@ polymorphicUniques as Test =
             firstDefinitionStripDeps
             (Test.isOkAndEqualTo
                  {
-                 , body =
-                     CA.'fn
+                 , directDeps = Dict.empty
+                 , maybeAnnotation = 'nothing
+                 , maybeBody =
+                     'just
+                     << CA.'fn
                          p
                          [
                          , CA.'parameterPattern ('depends 1) (CA.'patternAny p ('just "a") 'nothing)
@@ -780,21 +759,13 @@ polymorphicUniques as Test =
                          (CA.'letIn
                               {
                               , body = CA.'variable p ('refLocal "a")
-                              , directConsDeps = Dict.empty
-                              , directTypeDeps = Dict.empty
-                              , directValueDeps = Dict.empty
-                              , native = 'false
                               , pattern = CA.'patternAny p ('just "b") 'nothing
                               , uni = 'depends 1
                               }
                               (CA.'variable p ('refLocal "b"))
                          )
-                 , directConsDeps = Dict.empty
-                 , directTypeDeps = Dict.empty
-                 , directValueDeps = Dict.empty
-                 , native = 'false
-                 , pattern = CA.'patternAny p ('just "f") 'nothing
-                 , uni = 'imm
+                 , name = "f"
+                 , namePos = p
                  }
             )
         , codeTest
@@ -808,9 +779,9 @@ polymorphicUniques as Test =
                  t
                  >> firstDefinitionStripDeps
                  >> onOk fn def:
-                 try def.pattern as
-                     CA.'patternAny _ _ ('just ann): 'ok ann.univars
-                     _: 'err "no pattern any"
+                 try def.maybeAnnotation as
+                     ('just ann): 'ok ann.univars
+                     _: 'err "no ann"
             )
             (Test.isOkAndEqualTo << Set.fromList [ 1, 2 ])
         ]

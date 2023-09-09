@@ -460,7 +460,7 @@ formatAliasDef as fn Env, FA.AliasDef: Fmt.Block =
     >> Fmt.stack
 
 
-formatUnionDef as fn Env, FA.UnionDef: Fmt.Block =
+formatUnionDef as fn Env, FA.VariantTypeDef: Fmt.Block =
     fn env, { args, constructors, name }:
     [
     , formatDef ('just "var") name args

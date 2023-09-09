@@ -1,5 +1,5 @@
 valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
-    Test.valueTest toHuman __ __ __
+    Test.valueTest Debug.toHuman __ __ __
 
 
 tests as Test =

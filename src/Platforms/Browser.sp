@@ -1,4 +1,4 @@
-platform as Types/Platform.Platform =
+platform as Platform =
     {
     , defaultModules = DefaultModules.asText .. modules
     , defaultOutputPath = "index.js"

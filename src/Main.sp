@@ -84,20 +84,20 @@ order as fn Test.TestOutcome: Int =
         Test.'error _: 2
 
 
-selftestMain as fn None: IO Int =
-    fn 'none:
+selftestMain as fn @IO: IO.Re None =
+    fn @io:
     allTests
     >> Test.flattenAndRun
     >> List.sortBy (fn x: order x.outcome & x.name) __
     >> List.map (fn x: testOutcomeToText x.name x.code x.outcome) __
     >> Text.join "\n" __
     >> __ .. "\n"
-    >> IO.writeStdout
+    >> IO.writeStdout @io __
 
 
-formatMain as fn [ Text ]: IO Int =
-    fn targets:
-    formatText as fn Text, Text: Res Text =
+formatMain as fn @IO, [ Text ]: IO.Re None =
+    fn @io, targets:
+    formatText as fn Text, Text: IO.Re Text =
         fn fsPath, content:
         Compiler/Parser.textToFormattableModule
             {
@@ -105,32 +105,31 @@ formatMain as fn [ Text ]: IO Int =
             , keepComments = 'true
             , stripLocations = 'false
             }
+        >> BuildMain.resToIo
         >> onOk fn formattableAst:
         formattableAst
         >> Human/Format.formatStatements { isRoot = 'true, originalContent = content } __
         >> Fmt.render
         >> 'ok
 
-    formatFile as fn Text: IO Int =
+    formatFile as fn Text: IO.Re None =
         fn name:
-        IO.readFile name
-        >> IO.onSuccess fn moduleAsText:
+        IO.readFile @io name
+        >> onOk fn moduleAsText:
         formatText name moduleAsText
-        >> Compile.onResSuccess fn formatted:
-        IO.writeFile name formatted
+        >> onOk fn formatted:
+        IO.writeFile @io name formatted
 
     if targets == [] then
-        IO.readStdin
-        >> IO.onSuccess fn moduleAsText:
+        IO.readStdin @io
+        >> onOk fn moduleAsText:
         formatText "<stdin>" moduleAsText
-        >> Compile.onResSuccess fn formatted:
-        IO.writeStdout formatted
+        >> onOk fn formatted:
+        IO.writeStdout @io formatted
     else
-        targets
-        >> List.map formatFile __
-        >> IO.parallel
-        >> IO.onSuccess fn _:
-        IO.succeed 0
+        List.mapRes formatFile targets
+        >> onOk fn _:
+        'ok 'none
 
 
 [# Command line options:
@@ -162,7 +161,7 @@ formatMain as fn [ Text ]: IO Int =
 
 CliState =
     {
-    , platform as Types/Platform.Platform
+    , platform as Platform.Platform
     }
 
 
@@ -172,7 +171,7 @@ cliDefaults as CliState =
     }
 
 
-availablePlatforms as [ Types/Platform.Platform ] =
+availablePlatforms as [ Platform.Platform ] =
     [
     , Platforms/Posix.platform
     , Platforms/Browser.platform
@@ -223,20 +222,20 @@ cliOptions as [ Option CliState ] =
 #
 
 main as IO.Program =
-    fn env, rawArgs:
+    fn @io, @env, rawArgs:
     try parseArguments cliOptions rawArgs cliDefaults as
 
         'err message:
-            IO.fail message
+            IO.writeStderr @io message
 
         'ok (args & cliState):
             try args as
 
                 self :: "selftest" :: tail:
-                    selftestMain 'none
+                    selftestMain @io
 
                 self :: "format" :: tail:
-                    formatMain tail
+                    formatMain @io tail
 
                 self :: head :: tail:
                     #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
@@ -246,10 +245,10 @@ main as IO.Program =
                     maybeOutputPath =
                         List.head tail
 
-                    Compile.compileMain
+                    BuildMain.compileMain
+                        @io
                         {
                         , entryModulePath = mainModulePath
-                        , env
                         , maybeOutputPath
                         , platform = cliState.platform
                         , selfPath = self
@@ -265,4 +264,5 @@ main as IO.Program =
                         squarepants pathToMainModule.sp
 
                     """
-                    >> IO.writeStdout
+                    >> IO.writeStdout @io __
+    >> IO.reToStderr @io __

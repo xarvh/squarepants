@@ -1,10 +1,10 @@
 
 listConsName as Text =
-    Targets/Javascript/EmittableToJs.translateConstructorName CoreTypes.consName
+    Targets/Javascript/EmittableToJs.translateConstructorName CoreDefs.consName
 
 
 listNilName as Text =
-    Targets/Javascript/EmittableToJs.translateConstructorName CoreTypes.nilName
+    Targets/Javascript/EmittableToJs.translateConstructorName CoreDefs.nilName
 
 
 nothingRef as Text =
@@ -368,6 +368,17 @@ nativeDefinitions as Text =
     //
     // Hashes
     //
+
+    const hash_pop = (hash) => {
+        for (let key in hash) {
+            const [actualKey, value] = hash[key];
+            delete hash[key];
+            return [ """ .. justRef .. """({ first: actualKey, second: value }), hash ];
+        }
+
+        return [ """ .. nothingRef .. """, hash ];
+    }
+
 
     const hash_fromList = (list) => {
       const hash = {};

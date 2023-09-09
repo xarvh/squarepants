@@ -22,7 +22,7 @@ get as fn key, Dict key v: Maybe v with key NonFunction =
             'nothing
 
         'RBNode_elm_builtin _ key value left right:
-            try Core.compare targetKey key as
+            try Basics.compare targetKey key as
                 1: get targetKey right
                 0: 'just value
                 _: get targetKey left
@@ -70,7 +70,7 @@ insertHelp as fn key, v, Dict key v: Dict key v with key NonFunction =
             'RBNode_elm_builtin 'red key value 'RBEmpty_elm_builtin 'RBEmpty_elm_builtin
 
         'RBNode_elm_builtin nColor nKey nValue nLeft nRight:
-            try Core.compare key nKey as
+            try Basics.compare key nKey as
                 1: balance nColor nKey nValue nLeft (insertHelp key value nRight)
                 0: 'RBNode_elm_builtin nColor nKey value nLeft nRight
                 _: balance nColor nKey nValue (insertHelp key value nLeft) nRight
@@ -107,7 +107,7 @@ removeHelp as fn key, Dict key v: Dict key v with key NonFunction =
             'RBEmpty_elm_builtin
 
         'RBNode_elm_builtin color key value left right:
-            if Core.compare targetKey key == 0 - 1 then
+            if Basics.compare targetKey key == 0 - 1 then
                 try left as
 
                     'RBNode_elm_builtin 'black _ _ lLeft _:
@@ -275,7 +275,7 @@ merge as fn fn key, a, res: res, fn key, a, b, res: res, fn key, b, res: res, Di
                 list & rightStep rKey rValue res
 
             [ lKey & lValue, rest... ]:
-                try Core.compare lKey rKey as
+                try Basics.compare lKey rKey as
                     1: list & rightStep rKey rValue res
                     0: rest & bothStep lKey lValue rValue res
                     _: stepState rKey rValue (rest & leftStep lKey lValue res)

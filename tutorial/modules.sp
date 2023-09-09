@@ -32,8 +32,8 @@ sourceDir =
           Res
 
     module =
-       path = Compiler/CoreTypes
-       importAs = CoreTypes
+       path = Compiler/CoreDefs
+       importAs = CoreDefs
 
     module =
        path = Types/Ast

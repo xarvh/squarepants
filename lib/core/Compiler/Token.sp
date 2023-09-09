@@ -58,3 +58,4 @@ var Kind =
       'roundParen OpenOrClosed
     , 'squareBracket LineNumber OpenOrClosed
     , 'curlyBrace LineNumber OpenOrClosed
+    , 'native

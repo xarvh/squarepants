@@ -1,5 +1,5 @@
 var RawType =
-    , # alias, opaque or union
+    , # alias, opaque or varType
       'typeNamed Pos USR [ RawType ]
     , 'typeFn Pos [ ParType ] FullType
     , 'typeRecord Pos (Dict Name RawType)
@@ -32,7 +32,7 @@ var Expression =
       # to nested RecordAccess? Maybe function calls too?
       'record Pos (Maybe Expression) (Dict Name Expression)
     , 'recordAccess Pos Name Expression
-    , 'letIn ValueDef Expression
+    , 'letIn LocalDef Expression
     , 'if
           Pos
           {
@@ -46,7 +46,7 @@ var Expression =
           , patternsAndExpressions as [ Uniqueness & Pattern & Expression ]
           , value as Expression
           }
-    , 'destroyIn Name Expression
+#    , 'destroyIn Name Expression
 
 
 var Argument =
@@ -81,52 +81,58 @@ var PatternCompleteness =
     , 'complete
 
 
-ValueDef =
+#
+# Module
+#
+
+Deps =
+    Dict USR DependencyType
+
+
+LocalDef =
     {
     , body as Expression
-    , directConsDeps as Set USR
-    # Do we need these here?
-    , directTypeDeps as TypeDeps
-    , directValueDeps as Set USR
-    # TODO: have maybeBody instead of native?
-    , native as Bool
     , pattern as Pattern
     , uni as Uniqueness
     }
 
 
-#
-# Module
-#
-
-TypeDeps =
-    Set USR
+ValueDef =
+    {
+    , directDeps as Dict USR DependencyType
+    , maybeBody as Maybe Expression
+    , name as Name
+    , maybeAnnotation as Maybe Annotation
+    , namePos as Pos
+    }
 
 
 AliasDef =
     {
-    , directTypeDeps as TypeDeps
+    , directDeps as Dict USR DependencyType
     , pars as [ Name & Pos ]
     , type as RawType
     , usr as USR
     }
 
 
-UnionDef =
+VariantTypeDef =
     {
-    , constructors as Dict Name Constructor
-    , directTypeDeps as TypeDeps
+    , constructors as Dict Name ConstructorDef
     , pars as [ Name & Pos ]
     , usr as USR
     }
 
 
-Constructor =
+ConstructorDef =
     {
+    , name as Name
+    , directDeps as Dict USR DependencyType
     , ins as [ RawType ]
     , out as RawType
     , pos as Pos
-    , typeUsr as USR
+    , variantTypeUsr as USR
+    , constructorUsr as USR
     }
 
 
@@ -134,10 +140,11 @@ Module =
     {
     , aliasDefs as Dict Name AliasDef
     , asText as Text
+    , constructorDefs as Dict Name ConstructorDef
     , fsPath as Text
     , umr as UMR
-    , unionDefs as Dict Name UnionDef
-    , valueDefs as Dict Pattern ValueDef
+    , valueDefs as Dict Name ValueDef
+    , variantTypeDefs as Dict Name VariantTypeDef
     }
 
 
@@ -146,10 +153,11 @@ initModule as fn Text, UMR, Text: Module =
     {
     , aliasDefs = Dict.empty
     , asText
+    , constructorDefs = Dict.empty
     , fsPath
     , umr
-    , unionDefs = Dict.empty
     , valueDefs = Dict.empty
+    , variantTypeDefs = Dict.empty
     }
 
 
@@ -282,4 +290,4 @@ expressionPos as fn Expression: Pos =
         'letIn def e: expressionPos e
         'if p _: p
         'try p _: p
-        'destroyIn _ _: Pos.'g
+#        'destroyIn _ _: Pos.'g

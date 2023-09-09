@@ -46,8 +46,12 @@ var Argument =
 
 GlobalDefinition =
     {
-    # We need these to be able to put defs in the right order
-    , deps as Set USR
+    # We need deps to be able to put defs in the right order
+    # TODO no we don't need them any more. =|
+    , deps as CA.Deps
     , expr as Expression
     , usr as USR
+    , type as TA.RawType
+    , freeTyvars as Dict TA.TyvarId TA.Tyvar
+    , freeUnivars as Dict UnivarId TA.Univar
     }

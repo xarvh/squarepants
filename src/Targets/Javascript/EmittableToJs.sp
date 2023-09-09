@@ -18,54 +18,51 @@ var Override =
 
 coreOverrides as fn None: Dict USR Override =
     fn 'none:
+
+    #
     corelib as fn Text, Text: USR =
         fn m, n:
         'USR ('UMR Meta.'core m) n
 
     [
-    , Prelude.unaryPlus.usr & unaryPlus
-    , Prelude.unaryMinus.usr & unaryMinus
+    , CoreDefs.unaryPlus.usr & unaryPlus
+    , CoreDefs.unaryMinus.usr & unaryMinus
     #
-    , Prelude.add.usr
-    & binop "+"
-    , Prelude.multiply.usr & binop "*"
-    , Prelude.subtract.usr & binop "-"
-    , Prelude.mutableAssign.usr & binop "="
-    , Prelude.mutableAdd.usr & binop "+="
-    , Prelude.mutableSubtract.usr & binop "-="
-    , Prelude.textConcat.usr & binop "+"
-    , Prelude.greaterThan.usr & binop ">"
-    , Prelude.lesserThan.usr & binop "<"
-    , Prelude.greaterOrEqualThan.usr & binop ">="
-    , Prelude.lesserOrEqualThan.usr & binop "<="
-    , Prelude.or_.usr & binop "||"
-    , Prelude.and_.usr & binop "&&"
+    , CoreDefs.add.usr & binop "+"
+    , CoreDefs.multiply.usr & binop "*"
+    , CoreDefs.subtract.usr & binop "-"
+    , CoreDefs.mutableAssign.usr & binop "="
+    , CoreDefs.mutableAdd.usr & binop "+="
+    , CoreDefs.mutableSubtract.usr & binop "-="
+    , CoreDefs.textConcat.usr & binop "+"
+    , CoreDefs.greaterThan.usr & binop ">"
+    , CoreDefs.lesserThan.usr & binop "<"
+    , CoreDefs.greaterOrEqualThan.usr & binop ">="
+    , CoreDefs.lesserOrEqualThan.usr & binop "<="
+    , CoreDefs.or_.usr & binop "||"
+    , CoreDefs.and_.usr & binop "&&"
     #
-    , CoreTypes.trueUsr
-    & constructor "true"
-    , CoreTypes.falseUsr & constructor "false"
-    , CoreTypes.noneConsUsr & constructor "null"
+    , CoreDefs.trueUsr & constructor "true"
+    , CoreDefs.falseUsr & constructor "false"
+    , CoreDefs.noneConsUsr & constructor "null"
     #
-    , Prelude.divide.usr
-    & function "sp_divide"
-    , Prelude.listCons.usr & function "sp_cons"
-    , Prelude.equal.usr & function "sp_equal"
-    , Prelude.notEqual.usr & function "sp_not_equal"
+    , CoreDefs.divide.usr & function "sp_divide"
+    , CoreDefs.listCons.usr & function "sp_cons"
+    , CoreDefs.equal.usr & function "sp_equal"
+    , CoreDefs.notEqual.usr & function "sp_not_equal"
     , corelib "Basics" "modBy" & function "basics_modBy"
     , corelib "Basics" "round" & function "Math.round"
     , corelib "Basics" "cloneImm" & function "basics_cloneImm"
     , corelib "Basics" "cloneUni" & function "basics_cloneUni"
+    , corelib "Basics" "compare" & function "basics_compare"
     #
-    , Prelude.debugLog.usr
-    & function "sp_log"
-    , Prelude.debugTodo.usr & function "sp_todo"
-    , Prelude.debugToHuman.usr & function "sp_toHuman"
-    , Prelude.debugBenchStart.usr & function "sp_benchStart"
-    , Prelude.debugBenchStop.usr & function "sp_benchStop"
-    , Prelude.compare.usr & function "basics_compare"
+    , corelib "Debug" "log" & function "sp_log"
+    , corelib "Debug" "todo" & function "sp_todo"
+    , corelib "Debug" "toHuman" & function "sp_toHuman"
+    , corelib "Debug" "benchStart" & function "sp_benchStart"
+    , corelib "Debug" "benchStop" & function "sp_benchStop"
     #
-    , corelib "Text" "fromNumber"
-    & function "text_fromNumber"
+    , corelib "Text" "fromNumber" & function "text_fromNumber"
     , corelib "Text" "toLower" & function "text_toLower"
     , corelib "Text" "toUpper" & function "text_toUpper"
     , corelib "Text" "toNumber" & function "text_toNumber"
@@ -79,16 +76,15 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Text" "dropLeft" & function "text_dropLeft"
     , corelib "Text" "forEach" & function "text_forEach"
     #
-    , corelib "Hash" "fromList"
-    & function "hash_fromList"
+    , corelib "Hash" "fromList" & function "hash_fromList"
     , corelib "Hash" "insert" & function "hash_insert"
     , corelib "Hash" "remove" & function "hash_remove"
     , corelib "Hash" "get" & function "hash_get"
     , corelib "Hash" "for" & function "hash_for"
     , corelib "Hash" "each" & function "hash_each"
+    , corelib "Hash" "pop" & function "hash_pop"
     #
-    , corelib "Array" "each"
-    & function "array_each"
+    , corelib "Array" "each" & function "array_each"
     , corelib "Array" "push" & function "array_push"
     , corelib "Array" "pop" & function "array_pop"
     , corelib "Array" "get" & function "array_get"
@@ -97,11 +93,9 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Array" "fromList" & function "array_fromList"
     , corelib "Array" "toList" & function "array_toList"
     #
-    , corelib "List" "sortBy"
-    & function "list_sortBy"
+    , corelib "List" "sortBy" & function "list_sortBy"
     #
-    , corelib "Self" "load"
-    & loadOverride
+    , corelib "Self" "load" & loadOverride
     , corelib "Self" "introspect" & introspectOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
@@ -572,11 +566,11 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             jaValue =
                 translateExpressionToExpression env eaValue
 
-            if usr == CoreTypes.noneConsUsr then
+            if usr == CoreDefs.noneConsUsr then
                 JA.'var "true" >> 'inline
-            else if usr == CoreTypes.trueUsr then
+            else if usr == CoreDefs.trueUsr then
                 jaValue >> 'inline
-            else if usr == CoreTypes.falseUsr then
+            else if usr == CoreDefs.falseUsr then
                 JA.'unop "!" jaValue >> 'inline
             else
                 'USR _ name =
@@ -623,10 +617,8 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
 
-translateConstructor as fn USR & TA.FullType: JA.Statement =
-    fn usr & full:
-    taType =
-        full.raw
+translateConstructor as fn USR & TA.RawType: JA.Statement =
+    fn usr & taType:
 
     'USR umr apoName =
         usr
@@ -686,7 +678,7 @@ translateName as fn Name: Text =
 
 TranslateAllPars =
     {
-    , constructors as [ USR & TA.FullType ]
+    , constructors as [ USR & TA.RawType ]
     , eaDefs as [ EA.GlobalDefinition ]
     , platformOverrides as [ USR & Text ]
     }

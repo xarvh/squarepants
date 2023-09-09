@@ -1,5 +1,5 @@
 valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
-    Test.valueTest toHuman __ __ __
+    Test.valueTest Debug.toHuman __ __ __
 
 
 tests as Test =
@@ -87,4 +87,46 @@ tests as Test =
                  a
             )
             (Test.isOkAndEqualTo << Array.fromList [ 'just 'true, 'just 'true, 'nothing ])
+        , valueTest
+            """
+            pop (empty)
+            """
+            (fn _:
+                 !h =
+                     Hash.fromList []
+
+                 r =
+                     Hash.pop @h
+
+                 r & h
+            )
+            (Test.isOkAndEqualTo << 'nothing & Hash.fromList [])
+        , valueTest
+            """
+            pop (one element)
+            """
+            (fn _:
+                 !h =
+                     Hash.fromList [ { b = 'nothing } & 2 ]
+
+                 r =
+                     Hash.pop @h
+
+                 r & h
+            )
+            (Test.isOkAndEqualTo << 'just ({ b = 'nothing } & 2) & Hash.fromList [])
+        , valueTest
+            """
+            pop (several element)
+            """
+            (fn _:
+                 !h =
+                     Hash.fromList [ { b = 'nothing } & 2, { b = 'just 4 } & 8 ]
+
+                 r =
+                     Hash.pop @h
+
+                 r & h
+            )
+            (Test.isOkAndEqualTo << 'just ({ b = 'nothing } & 2) & Hash.fromList [ { b = 'just 4 } & 8 ])
         ]
