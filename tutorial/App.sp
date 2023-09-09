@@ -1,5 +1,3 @@
-
-
 numberQuickExample as Text =
     """
     main =
@@ -16,109 +14,110 @@ textQuickExample as Text =
 
 htmlQuickExample as Text =
     """
-main =
-   Html.div
-      [ Html.class "col" ]
-      [
-      , Html.button
-           [ Html.onClick "Event:Apple" ]
-           [ Html.text "Apple" ]
+    main =
+       Html.div
+          [ Html.class "col" ]
+          [
+          , Html.button
+               [ Html.onClick "Event:Apple" ]
+               [ Html.text "Apple" ]
 
-      , Html.button
-           [ Html.onClick "Pear click!" ]
-           [ Html.text "Pear" ]
-      ]
+          , Html.button
+               [ Html.onClick "Pear click!" ]
+               [ Html.text "Pear" ]
+          ]
 
     """
 
 
 canvasQuickExample as Text =
     """
-alias N = Number
+    alias N = Number
 
-main as fn N, N: { r as N, g as N, b as N } =
-    fn x, y:
+    main as fn N, N: { r as N, g as N, b as N } =
+        fn x, y:
 
-    {
-    , r = if x < 50% then 10% else 60%
-    , g = 50%
-    , b = y
-    }
-"""
-
-
-union Msg =
-  , OnInput Text
-  , OnMouseMove Number Number
-  , OnMouseLeave
-  , OnEmbeddedInput Text
-  , OnScroll Number Number
+        {
+        , r = if x < 50% then 10% else 60%
+        , g = 50%
+        , b = y
+        }
+    """
 
 
-alias Model =
+var Msg =
+    , 'OnInput Text
+    , 'OnMouseMove Number Number
+    , 'OnMouseLeave
+    , 'OnEmbeddedInput Text
+    , 'OnScroll Number Number
+
+
+Model =
     {
     , code as Text
-    , maybePosition as Maybe { x as Number, y as Number }
-
+    , compiledCode as CompileText.CompiledCode
+    , embeddedInputs as [ Text ]
     # TODO don't put Html in the model
     , maybeError as Maybe (Html Msg)
-    , compiledCode as CompileText.CompiledCode
-    , embeddedInputs as [Text]
+    , maybePosition as Maybe { x as Number, y as Number }
     }
 
 
 init as fn @Array VirtualDom.Effect: Model =
     fn @effects:
-
-    code = htmlQuickExample
+    code =
+        htmlQuickExample
 
     maybeError & compiledCode =
         try CompileText.main code as
-            , Ok c: Nothing & c
-            , Err e: Just e & CompileText.CompiledText ""
+            'ok c: 'nothing & c
+            'err e: 'just e & CompileText.'CompiledText ""
 
     {
     , code
-    , maybePosition = Nothing
-    , maybeError
     , compiledCode
     , embeddedInputs = []
+    , maybeError
+    , maybePosition = 'nothing
     }
     >> maybeUpdateCanvas @effects __
 
 
 update as fn @Array VirtualDom.Effect, Msg, Model: Model =
     fn @effects, msg, model:
-
     try msg as
-        , OnEmbeddedInput text:
-            { model with embeddedInputs = List.take 10 [ text, ... .embeddedInputs ] }
 
-        , OnScroll top left:
+        'OnEmbeddedInput text:
+            { model with embeddedInputs = List.take 10 [ text, .embeddedInputs... ] }
+
+        'OnScroll top left:
             syncScroll @effects top left
+
             model
 
-        , OnInput code:
+        'OnInput code:
             try CompileText.main code as
-                , Err error:
+
+                'err error:
                     { model with
                     , code
-                    , maybeError = Just error
+                    , maybeError = 'just error
                     }
 
-                , Ok compiledCode:
+                'ok compiledCode:
                     { model with
                     , code
-                    , maybeError = Nothing
                     , compiledCode
+                    , maybeError = 'nothing
                     }
                     >> maybeUpdateCanvas @effects __
 
-        , OnMouseMove x y:
-            { model with maybePosition = Just { x, y } }
+        'OnMouseMove x y:
+            { model with maybePosition = 'just { x, y } }
 
-        , OnMouseLeave:
-            { model with maybePosition = Nothing }
+        'OnMouseLeave:
+            { model with maybePosition = 'nothing }
 
 
 syncScroll as fn @Array VirtualDom.Effect, Number, Number: None =
@@ -128,39 +127,43 @@ syncScroll as fn @Array VirtualDom.Effect, Number, Number: None =
 
 maybeUpdateCanvas as fn @Array VirtualDom.Effect, Model: Model =
     fn @effects, model:
-
     meh =
         try model.compiledCode as
-            , CompileText.CompiledShader shaderFn:
-                Array.push @effects (VirtualDom.drawCanvas "output" shaderFn)
-
-            , _:
-                None
+            CompileText.'CompiledShader shaderFn: Array.push @effects (VirtualDom.drawCanvas "output" shaderFn)
+            _: 'none
 
     model
 
 
 onMouseMove as VirtualDom.EventHandler Msg =
     fn event:
-
-    VirtualDom.eventToFloat [ "target", "clientWidth" ] event >> onOk fn clientWidth:
-    VirtualDom.eventToFloat [ "target", "clientHeight" ] event >> onOk fn clientHeight:
-    VirtualDom.eventToFloat [ "offsetX" ] event >> onOk fn offsetX:
-    VirtualDom.eventToFloat [ "offsetY" ] event >> onOk fn offsetY:
-
+    VirtualDom.eventToFloat [ "target", "clientWidth" ] event
+    >> onOk fn clientWidth:
+    VirtualDom.eventToFloat [ "target", "clientHeight" ] event
+    >> onOk fn clientHeight:
+    VirtualDom.eventToFloat [ "offsetX" ] event
+    >> onOk fn offsetX:
+    VirtualDom.eventToFloat [ "offsetY" ] event
+    >> onOk fn offsetY:
     # -1 because we want coordinates to be from 0 to 1 inclusive
-    w = clientWidth - 1
-    h = clientHeight - 1
-    x = offsetX / w
-    y = 1 - offsetY / h
+    w =
+        clientWidth - 1
 
-    Ok << OnMouseMove x y
+    h =
+        clientHeight - 1
+
+    x =
+        offsetX / w
+
+    y =
+        1 - offsetY / h
+
+    'ok << 'OnMouseMove x y
 
 
 #
 # View
 #
-
 
 floatToPercent as fn Number: Text =
     fn n:
@@ -169,53 +172,99 @@ floatToPercent as fn Number: Text =
 
 wordToClass as fn Token.Word: Text =
     fn word:
-
     try word.name as
-        , "alias": "keyword"
-        , "union": "keyword"
-        , _: if word.isUpper then "upper" else "lower"
+        "var": "keyword"
+        _: if word.isUpper then "upper" else "lower"
 
 
 tokenToClass as fn Token.Kind: Text =
     fn kind:
-
     try kind as
+
         # Structure
-        , Token.NewSiblingLine: ""
-        , Token.BlockStart: ""
-        , Token.BlockEnd: ""
-        , Token.BadIndent: ""
+        Token.'newSiblingLine:
+            ""
+
+        Token.'blockStart:
+            ""
+
+        Token.'blockEnd:
+            ""
+
+        Token.'badIndent:
+            ""
+
         # Terms
-        , Token.TextLiteral _: "literal"
-        , Token.NumberLiteral _ _: "literal"
-        , Token.Word w: wordToClass w
-        , Token.ArgumentPlaceholder: "keyword"
-        , Token.UniquenessPolymorphismBinop: "keyword"
+        Token.'textLiteral _:
+            "literal"
+
+        Token.'numberLiteral _ _:
+            "literal"
+
+        Token.'word w:
+            wordToClass w
+
+        Token.'argumentPlaceholder:
+            "keyword"
+
+        Token.'uniquenessPolymorphismBinop:
+            "keyword"
+
         # Keywords
-        , Token.Fn: "keyword"
-        , Token.If: "keyword"
-        , Token.Then: "keyword"
-        , Token.Else: "keyword"
-        , Token.Try: "keyword"
-        , Token.As: "keyword"
-        , Token.With: "keyword"
+        Token.'fn:
+            "keyword"
+
+        Token.'if:
+            "keyword"
+
+        Token.'then:
+            "keyword"
+
+        Token.'else:
+            "keyword"
+
+        Token.'try:
+            "keyword"
+
+        Token.'as:
+            "keyword"
+
+        Token.'with:
+            "keyword"
+
         # Separators
-        , Token.Comma: "paren"
-        , Token.Colon: "paren"
-        , Token.ThreeDots: "paren"
+        Token.'comma:
+            "paren"
+
+        Token.'colon:
+            "paren"
+
+        Token.'threeDots:
+            "paren"
+
         # Ops
-        , Token.Defop: "op"
-        , Token.Unop _: "op"
-        , Token.Binop _: "op"
+        Token.'defop:
+            "op"
+
+        Token.'unop _:
+            "op"
+
+        Token.'binop _:
+            "op"
+
         # Parens
-        , Token.RoundParen _: "paren"
-        , Token.SquareBracket _: "paren"
-        , Token.CurlyBrace _: "paren"
+        Token.'roundParen _:
+            "paren"
+
+        Token.'squareBracket _:
+            "paren"
+
+        Token.'curlyBrace _:
+            "paren"
 
 
-viewColorToken as fn Text, Token, (Int & [Html msg]): Int & [Html msg] =
-    fn code, (Token comment tStart tEnd kind), ( start & accum ):
-
+viewColorToken as fn Text, Token, Int & [ Html msg ]: Int & [ Html msg ] =
+    fn code, 'token comment tStart tEnd kind, start & accum:
     slice =
         Text.slice start tEnd code
 
@@ -224,13 +273,12 @@ viewColorToken as fn Text, Token, (Int & [Html msg]): Int & [Html msg] =
             [
             , Html.span [ Html.class (tokenToClass kind) ] [ Html.text << Text.dropLeft 1 slice ]
             , Html.span [] [ Html.text " " ]
-            , ...accum
+            , accum...
             ]
-
         else
             [
             , Html.span [ Html.class (tokenToClass kind) ] [ Html.text slice ]
-            , ...accum
+            , accum...
             ]
 
     tEnd & acc
@@ -238,31 +286,28 @@ viewColorToken as fn Text, Token, (Int & [Html msg]): Int & [Html msg] =
 
 onScrollEvent as VirtualDom.EventHandler Msg =
     fn event:
-
     VirtualDom.eventToFloat [ "target", "scrollTop" ] event
     >> onOk fn top:
     VirtualDom.eventToFloat [ "target", "scrollLeft" ] event
     >> onOk fn left:
-
-    OnScroll top left
-    >> Ok
+    'OnScroll top left >> 'ok
 
 
 viewEditor as fn Model: Html Msg =
     fn model:
-
     code =
         model.code
 
-    highlightedContent as [Html Msg] =
-        try Compiler/Lexer.lexer { fsPath = "", content = code } as
-            , Err _:
+    highlightedContent as [ Html Msg ] =
+        try Compiler/Lexer.lexer { content = code, fsPath = "" } as
+
+            'err _:
                 [ Html.text code ]
 
-            , Ok tokens:
+            'ok tokens:
                 tokens
                 >> List.concat
-                >> List.for ( 0 & [] ) __ (viewColorToken code __ __)
+                >> List.for (0 & []) __ (viewColorToken code __ __)
                 >> Tuple.second
                 >> List.reverse
 
@@ -277,10 +322,10 @@ viewEditor as fn Model: Html Msg =
         , Html.textarea
             [
             , Html.class "editing border"
-            , Html.onInput OnInput
+            , Html.onInput 'OnInput
             , Html.on "scroll" onScrollEvent
             # TODO onkeydown tab
-            , Html.spellcheck False
+            , Html.spellcheck 'false
             , Html.value code
             ]
             code
@@ -288,59 +333,53 @@ viewEditor as fn Model: Html Msg =
             [
             , Html.id "highlight"
             , Html.class "highlighting border"
-            , Html.ariaHidden True
+            , Html.ariaHidden 'true
             ]
             [
-            , Html.code
-              [ Html.class "highlighting-content" ]
-              highlightedContent
+            , Html.code [ Html.class "highlighting-content" ] highlightedContent
             ]
         , Html.div
-              [
-              , Html.style "position" "absolute"
-              , Html.style "top" "calc(50% - 12px)"
-              , Html.style "left" "calc(100% - 15px)"
-
-              , Html.style "width" "0"
-              , Html.style "height" "0"
-              , Html.style "border" "25px solid transparent"
-              , Html.style "border-left" "25px solid lightgrey"
-
-              , Html.class "align-center justify-center"
-              ]
-              ( if model.maybeError == Nothing then
-                  []
-                else
-                  [ Html.a
-                      [
-                      , Html.class "pulse"
-                      , Html.style "color" "red"
-                      , Html.style "font-size" "130px"
-                      , Html.style "position" "relative"
-                      , Html.style "left" "-15px"
-                      , Html.style "top" "-5px"
-                      , Html.style "z-index" "2"
-                      , Html.style "user-select" "none"
-                      , Html.style "text-decoration" "none"
-                      , Html.href "#error"
-                      ]
-                      [ Html.text "×" ]
-                  ]
-              )
-       ]
-
+            [
+            , Html.style "position" "absolute"
+            , Html.style "top" "calc(50% - 12px)"
+            , Html.style "left" "calc(100% - 15px)"
+            , Html.style "width" "0"
+            , Html.style "height" "0"
+            , Html.style "border" "25px solid transparent"
+            , Html.style "border-left" "25px solid lightgrey"
+            , Html.class "align-center justify-center"
+            ]
+            (if model.maybeError == 'nothing then
+                 []
+             else
+                 [
+                 , Html.a
+                     [
+                     , Html.class "pulse"
+                     , Html.style "color" "red"
+                     , Html.style "font-size" "130px"
+                     , Html.style "position" "relative"
+                     , Html.style "left" "-15px"
+                     , Html.style "top" "-5px"
+                     , Html.style "z-index" "2"
+                     , Html.style "user-select" "none"
+                     , Html.style "text-decoration" "none"
+                     , Html.href "#error"
+                     ]
+                     [ Html.text "×" ]
+                 ]
+            )
+        ]
 
 
-viewCompiledHtml as fn Model, Html Text: [Html Msg] =
+viewCompiledHtml as fn Model, Html Text: [ Html Msg ] =
     fn model, html:
-
     [
-    , Html.div
-        [ Html.class "h100 border" ]
-        [ Html.map OnEmbeddedInput html ]
+    , Html.div [ Html.class "h100 border" ] [ Html.map 'OnEmbeddedInput html ]
     , Html.div
         [ Html.class "h100 ml col" ]
-        [ Html.div [ Html.class "mb" ] [ Html.text "Last messages:" ]
+        [
+        , Html.div [ Html.class "mb" ] [ Html.text "Last messages:" ]
         , if model.embeddedInputs == [] then
             Html.div
                 [
@@ -348,83 +387,84 @@ viewCompiledHtml as fn Model, Html Text: [Html Msg] =
                 , Html.style "color" "gray"
                 ]
                 [ Html.text "(none yet)" ]
-          else
-            Html.code
-              [ Html.class "ml" ]
-              (List.map (fn i: Html.div [] [ Html.text i ]) model.embeddedInputs)
+        else
+            Html.code [ Html.class "ml" ] (List.map (fn i: Html.div [] [ Html.text i ]) model.embeddedInputs)
         ]
     ]
 
 
-
 viewCompiledOutput as fn Model: Html Msg =
     fn model:
-
     Html.div
-      [ Html.class "flex1 justify-center align-center h100 mt" ]
-      (try model.compiledCode as
-        , CompileText.CompiledHtml html:
-            viewCompiledHtml model html
+        [ Html.class "flex1 justify-center align-center h100 mt" ]
+        (try model.compiledCode as
 
-        , CompileText.CompiledNumber n:
-                [ Html.div
-                    [ Html.style "font-size" "400%" ]
-                    [ Html.text (Text.fromNumber n) ]
-                ]
+             CompileText.'CompiledHtml html:
+                 viewCompiledHtml model html
 
-        , CompileText.CompiledText t:
-                [ Html.div
-                    [ Html.style "font-size" "200%" ]
-                    [ Html.text t ]
-                ]
+             CompileText.'CompiledNumber n:
+                 [
+                 , Html.div [ Html.style "font-size" "400%" ] [ Html.text (Text.fromNumber n) ]
+                 ]
 
-        , CompileText.CompiledShader shaderFn:
-            [ Html.div
-                [ Html.class "row" ]
-                [
-                , Html.canvas
-                    [
-                    , Html.class "flex1"
-                    , Html.id "output"
-                    , Html.height "300"
-                    , Html.on "mousemove" onMouseMove
-                    , Html.on "mouseleave" (fn e: Ok OnMouseLeave)
-                    ]
-                , try model.maybePosition as
-                    , Nothing:
-                        # TODO replace with this with a layout that doesn't jump around... -_-
-                        div [ Html.class "ml", Html.style "visibility" "hidden" ] [ Html.text "Program output:" ]
+             CompileText.'CompiledText t:
+                 [
+                 , Html.div [ Html.style "font-size" "200%" ] [ Html.text t ]
+                 ]
 
-                    , Just { x, y }:
-                        out = shaderFn x y
-                        Html.div
-                            [ Html.class "ml" ]
-                            [
-                            , div [] [ Html.text "Program input:" ]
-                            , div [] [ Html.text << "x = " .. floatToPercent x ]
-                            , div [] [ Html.text << "y = " .. floatToPercent y ]
-                            , div [ Html.class "mt" ] [ Html.text "Program output:" ]
-                            , div [] [ Html.text << "r = " .. floatToPercent out.r ]
-                            , div [] [ Html.text << "g = " .. floatToPercent out.g ]
-                            , div [] [ Html.text << "b = " .. floatToPercent out.b ]
-                            ]
-                ]
-            ]
-      )
+             CompileText.'CompiledShader shaderFn:
+                 [
+                 , Html.div
+                     [ Html.class "row" ]
+                     [
+                     , Html.canvas
+                         [
+                         , Html.class "flex1"
+                         , Html.id "output"
+                         , Html.height "300"
+                         , Html.on "mousemove" onMouseMove
+                         , Html.on "mouseleave" (fn e: 'ok 'OnMouseLeave)
+                         ]
+                     , try model.maybePosition as
+
+                         'nothing:
+                             # TODO replace with this with a layout that doesn't jump around... -_-
+                             div [ Html.class "ml", Html.style "visibility" "hidden" ] [ Html.text "Program output:" ]
+
+                         'just { x, y }:
+                             out =
+                                 shaderFn x y
+
+                             Html.div
+                                 [ Html.class "ml" ]
+                                 [
+                                 , div [] [ Html.text "Program input:" ]
+                                 , div [] [ Html.text << "x = " .. floatToPercent x ]
+                                 , div [] [ Html.text << "y = " .. floatToPercent y ]
+                                 , div [ Html.class "mt" ] [ Html.text "Program output:" ]
+                                 , div [] [ Html.text << "r = " .. floatToPercent out.r ]
+                                 , div [] [ Html.text << "g = " .. floatToPercent out.g ]
+                                 , div [] [ Html.text << "b = " .. floatToPercent out.b ]
+                                 ]
+                     ]
+                 ]
+        )
 
 
 view as fn Model: Html Msg =
     fn model:
-
-    div [ Html.class "col page-width" ]
+    div
+        [ Html.class "col page-width" ]
         [
         #
         # Page "header"
         #
-        , Html.div [ Html.class "mb" ]
+        , Html.div
+            [ Html.class "mb" ]
             [
             # header
-            , Html.div [ Html.class "row align-center" ]
+            , Html.div
+                [ Html.class "row align-center" ]
                 [
                 , Html.img
                     [
@@ -432,14 +472,15 @@ view as fn Model: Html Msg =
                     , Html.alt "A stylized black Greek letter lambda, with square red pants, jumping happily"
                     , Html.style "width" "50px"
                     ]
-                , Html.h1 []
-                    [ Html.text "Squarepants "
+                , Html.h1
+                    []
+                    [
+                    , Html.text "Squarepants "
                     , Html.span [ Html.class "lineThrough" ] [ Html.text "tutorial" ]
                     , Html.text " demo"
                     ]
                 ]
             ]
-
         #
         # Page "payload"
         #
@@ -449,7 +490,6 @@ view as fn Model: Html Msg =
             , Html.a [ Html.href "https://github.com/xarvh/squarepants#readme" ] [ Html.text "Squarepants" ]
             , Html.text " is a small, scalable functional language for interactive apps, made for everyone."
             ]
-
         , Html.div
             [ Html.class "mb" ]
             [
@@ -462,18 +502,15 @@ view as fn Model: Html Msg =
             [
             , Html.text "(Also, both Squarepants and this page are under heavy development and are far from completed. Expect bugs.)"
             ]
-
-
         , Html.div
             [ Html.class "mt mb" ]
             [
             , Html.text "Try some quick examples: "
-            , Html.button [ Html.class "ml", Html.onClick << OnInput numberQuickExample ] [ Html.text "Numbers" ]
-            , Html.button [ Html.class "ml", Html.onClick << OnInput textQuickExample ] [ Html.text "Text" ]
-            , Html.button [ Html.class "ml", Html.onClick << OnInput htmlQuickExample ] [ Html.text "Html" ]
-            , Html.button [ Html.class "ml", Html.onClick << OnInput canvasQuickExample ] [ Html.text "Canvas" ]
+            , Html.button [ Html.class "ml", Html.onClick << 'OnInput numberQuickExample ] [ Html.text "Numbers" ]
+            , Html.button [ Html.class "ml", Html.onClick << 'OnInput textQuickExample ] [ Html.text "Text" ]
+            , Html.button [ Html.class "ml", Html.onClick << 'OnInput htmlQuickExample ] [ Html.text "Html" ]
+            , Html.button [ Html.class "ml", Html.onClick << 'OnInput canvasQuickExample ] [ Html.text "Canvas" ]
             ]
-
         # Main
         , Html.div
             [
@@ -487,18 +524,16 @@ view as fn Model: Html Msg =
             ]
         # Error
         , try model.maybeError as
-            , Nothing:
+
+            'nothing:
                 Html.none
-            , Just error:
+
+            'just error:
                 Html.div
                     [ Html.id "error" ]
                     [
-                    , Html.div
-                        [ Html.class "mt red pulse" ]
-                        [ Html.text "Error!" ]
-                    , Html.pre
-                        [ Html.style "margin-top" "0" ]
-                        [ error ]
+                    , Html.div [ Html.class "mt red pulse" ] [ Html.text "Error!" ]
+                    , Html.pre [ Html.style "margin-top" "0" ] [ error ]
                     ]
         ]
 
@@ -507,14 +542,14 @@ view as fn Model: Html Msg =
         , div [ Html.class "column" ]
             [
             , try model.maybePosition as
-                , Nothing:
+                , 'nothing:
                     div []
                         [
                         , div [] [ Html.text "This program is executed for every pixel of the image at the right." ]
                         , div [] [ Html.text "It takes the x and y coordinates of the pixel, and transforms it into a color." ]
                         ]
 
-                , Just { x, y }:
+                , 'just { x, y }:
                     div []
                         [
                         , div [] [ Html.text << "x = " .. floatToPercent x ]
@@ -533,16 +568,14 @@ view as fn Model: Html Msg =
             , Html.pre [ Html.class "error" ]
                 [
                 , try model.maybeError as
-                    , Just e:
+                    , 'just e:
                         Html.code [] [ Html.text  e ]
 
-                    , Nothing:
+                    , 'nothing:
                         Html.none
                 ]
             ]
 #]
 
-
 main as VirtualDom.App Msg Model =
     { init, update, view }
-

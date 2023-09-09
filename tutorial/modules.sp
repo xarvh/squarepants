@@ -25,11 +25,6 @@ sourceDir =
     path = "../src"
 
     module =
-       path = Test
-       importAs = Test
-       globalTypes = Test
-
-    module =
        path = Compiler/Error
        importAs = Error
        globalTypes =
@@ -49,13 +44,13 @@ sourceDir =
           UnivarId
           Uniqueness
        globalValues =
-          RefLocal
-          RefGlobal
-          Uni
-          Imm
+          'refLocal
+          'refGlobal
+          'uni
+          'imm
+          'depends
           toImm
           toUni
-          Depends
 
     module =
        path = Types/TypedAst
@@ -74,7 +69,7 @@ sourceDir =
        importAs = FA
 
     module =
-       path = Types/JavascriptAst
+       path = Targets/Javascript/Ast
        importAs = JA
 
     module =
@@ -90,8 +85,8 @@ sourceDir =
             USR
             UMR
         globalValues =
-            USR
-            UMR
+            'USR
+            'UMR
 
     module =
         path = Types/Op
@@ -104,7 +99,7 @@ sourceDir =
             Pos
             At
        globalValues =
-            At
+            'at
 
     module =
         path = Types/Token
@@ -112,7 +107,7 @@ sourceDir =
         globalTypes =
             Token
         globalValues =
-            Token
+            'token
 
     module =
        path = SPLib/Parser
@@ -137,16 +132,6 @@ library =
     module =
         path = Self
 
-    # unlike sourceDirs, libraries don't automatically expose all available modules
-    module =
-        path = Array_Test
-    module =
-        path = Dict_Test
-    module =
-        path = Hash_Test
-    module =
-        path = List_Test
-
     module =
        path = Core
        globalTypes =
@@ -156,9 +141,9 @@ library =
           List
           Number
        globalValues =
-          None
-          True
-          False
+          'none
+          'true
+          'false
 
     module =
        path = Debug
@@ -180,8 +165,8 @@ library =
         globalTypes =
             Maybe
         globalValues =
-            Just
-            Nothing
+            'just
+            'nothing
 
     module =
         path = Text
@@ -220,6 +205,6 @@ library =
         path = Result
         globalTypes = Result
         globalValues =
-          Ok
-          Err
+          'ok
+          'err
           onOk
