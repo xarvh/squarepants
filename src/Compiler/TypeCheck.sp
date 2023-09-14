@@ -152,12 +152,9 @@ var Error_ =
     , 'errorConstructorNotFound USR
     , 'errorNotCompatibleWithRecord
     , 'errorRecordDoesNotHaveAttribute Name
-    , [# TODO other attrs to give context? #]
-      'errorRecordHasAttributesNotInAnnotation
-    , # TODO which attrs?
-      'errorRecordIsMissingAttibutesInAnnotation
-    , # TODO which attrs?
-      'errorTryingToAccessAttributeOfNonRecord Name TA.RawType
+    , 'errorRecordHasAttributesNotInAnnotation [Name]
+    , 'errorRecordIsMissingAttibutesInAnnotation [Name]
+    , 'errorTryingToAccessAttributeOfNonRecord Name TA.RawType
     , 'errorIncompatibleTypes CA.Expression TA.FullType
     , 'errorIncompatiblePattern CA.Pattern TA.FullType
     , 'errorCallingANonFunction TA.RawType
@@ -1319,7 +1316,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                     try Dict.get attrName typeByName as
 
                         'nothing:
-                            addError env pos 'errorRecordHasAttributesNotInAnnotation @state
+                            addError env pos ('errorRecordHasAttributesNotInAnnotation [attrName]) @state
 
                             # This is not super clean, but since it's an error condition, it's probably fine
                             Tuple.first (inferExpression env attrExpr @state)
@@ -1341,9 +1338,9 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                 Dict.onlyBothOnly valueByName typeByName
 
             if aOnly /= Dict.empty then
-                addError env pos 'errorRecordHasAttributesNotInAnnotation @state
+                addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly))@state
             else if bOnly /= Dict.empty then
-                addError env pos 'errorRecordIsMissingAttibutesInAnnotation @state
+                addError env pos ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys bOnly)) @state
             else
                 'none
 
@@ -1788,14 +1785,14 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
             paOnly & both & typeOnly =
                 Dict.onlyBothOnly pas attrs
 
-            addErrorIf (paOnly /= Dict.empty) env pos 'errorRecordHasAttributesNotInAnnotation @state
+            addErrorIf (paOnly /= Dict.empty) env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys paOnly)) @state
 
             addErrorIf
                 (typeOnly /= Dict.empty and completeness == CA.'complete)
                 env
                 pos
                 # TODO "add `with` if you don't want to use all attrs"
-                'errorRecordIsMissingAttibutesInAnnotation
+                ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys typeOnly))
                 @state
 
             taPas & envF =
