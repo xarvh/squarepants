@@ -43,9 +43,9 @@ makeExecutable as fn Self.LoadPars: Text =
         """
         .. entryName
         .. """
-        ({}, args)[1]('never');
+        (null, {}, args);
                 if (out[0] === """ .. ok .. """) {
-                    process.exitCode = out[1];
+                    process.exitCode = 0;
                 } else {
                     console.error(out[1]);
                     process.exitCode = 1;
@@ -115,102 +115,85 @@ runtime as Text =
     const fs = require('fs');
     const path = require('path');
 
-    const io_wrap = (f) => [ "IO.IO", f ];
-
-    const io_parallel = (iosAsList) => io_wrap((never) => {
-        // as [IO a]: IO [a]
-
-        const ios = arrayFromListLow(iosAsList);
-
-        // TODO actually run them in parallel!
-
-        let arr = [];
-        for (let io of ios) {
-            const r = io[1](never);
-            if (r[0] === """ .. ok .. """)
-                arr.push(r[1]);
-            else
-                return """ .. makeErr .. """(r[1]);
-        }
-
-        return """ .. makeOk .. """(arrayToListLow(arr));
-    });
-
-
-    const io_readDir = (dirPath) => io_wrap((never) => {
-        // as Text: IO [Bool & Text]
+    const io_readDir = (io, dirPath) => {
+        // as @IO, Text: Re [Bool & Text]
 
         var entries;
         try {
             entries = fs.readdirSync(dirPath, { withFileTypes: true });
         } catch (e) {
-            return """ .. makeErr .. """(e.message);
+            return [""" .. makeErr .. """(e.message), null];
         }
 
-        return """ .. makeOk .. """(arrayToListLow(entries.map((dirent) => ({
+        return [""" .. makeOk .. """(arrayToListLow(entries.map((dirent) => ({
             first: dirent.isDirectory(),
             second: dirent.name,
-        }))));
-    });
+        })))), null];
+    };
 
 
-    const io_readFile = (path) => io_wrap((never) => {
-        // as Text: IO Text
+    const io_readFile = (io, path) => {
+        // as @IO, Text: Re Text
 
         var content;
         try {
             content = fs.readFileSync(path, 'utf8');
         } catch (e) {
-            return """ .. makeErr .. """(e.message);
+            return [""" .. makeErr .. """(e.message), null];
         }
 
-        return """ .. makeOk .. """(content);
-    });
+        return [""" .. makeOk .. """(content), null];
+    };
 
 
-    const io_writeFile = (path, content) => io_wrap((never) => {
-        // as Text: Text: IO Int
+    const io_writeFile = (io, path, content) => {
+        // as @IO, Text, Text: Re Int
 
         try {
             fs.writeFileSync(path, content);
         } catch (e) {
-            return """ .. makeErr .. """(e.message);
+            return [""" .. makeErr .. """(e.message), null];
         }
 
-        return """ .. makeOk .. """(0);
-    });
+        return [""" .. makeOk .. """(0), null];
+    };
 
 
-    const io_readStdin = io_wrap((never) => {
-        // as IO Text
+    const io_readStdin = (io) => {
+        // as @IO: Re Text
 
         try {
-            return """ .. makeOk .. """(fs.readFileSync(0, 'utf8'));
+            return [""" .. makeOk .. """(fs.readFileSync(0, 'utf8')), null];
         } catch (e) {
-            return """ .. makeErr .. """(e.message);
+            return [""" .. makeErr .. """(e.message), null];
         }
-    });
+    };
 
 
-    const io_writeStdout = (content) => io_wrap((never) => {
-        // as Text: IO Int
+    const io_writeStdout = (io, content) => {
+        // as @IO, Text: Re None
 
         try {
             fs.writeFileSync(1, content);
         } catch (e) {
-            return """ .. makeErr .. """(e.message);
+            return [""" .. makeErr .. """(e.message), null];
         }
 
-        return """ .. makeOk .. """(0);
-    });
+        return [""" .. makeOk .. """(null), null];
+    };
 
 
-    const io_writeStderr = (content) => io_wrap((never) => {
-        // as Text: IO Int
+    const io_writeStderr = (io, content) => {
+        // as @IO, Text: Re Int
 
-        console.error(content);
-        return """ .. makeOk .. """(-1);
-    });
+        try {
+            fs.writeFileSync(2, content);
+        } catch (e) {
+            return [""" .. makeErr .. """(e.message), null];
+        }
+
+        return [""" .. makeOk .. """(null), null];
+    };
 
 
     const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
