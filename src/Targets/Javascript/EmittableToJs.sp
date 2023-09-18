@@ -86,6 +86,7 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Hash" "get" & function "hash_get"
     , corelib "Hash" "for" & function "hash_for"
     , corelib "Hash" "each" & function "hash_each"
+    , corelib "Hash" "pop" & function "hash_pop"
     #
     , corelib "Array" "each"
     & function "array_each"

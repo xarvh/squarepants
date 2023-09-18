@@ -38,8 +38,9 @@ makeExecutable as fn Self.LoadPars: Text =
 
     callMain =
         """
+
         const args = arrayToListLow(process.argv.slice(1));
-        const out =
+        const [out] = 
         """
         .. entryName
         .. """
