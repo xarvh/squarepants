@@ -24,28 +24,6 @@ sourceDir =
        path = Compiler/CoreDefs
        importAs = CoreDefs
 
-
-    module =
-       path = SPLib/Format
-       importAs = Fmt
-
-    module =
-       path = SPLib/Parser
-       importAs = Parser
-
-    module =
-       path = SPLib/RefHierarchy
-       importAs = RefHierarchy
-
-    module =
-       path = SPLib/SPON
-       importAs = SPON
-
-    module =
-       path = SPLib/Test
-       importAs = Test
-       globalTypes = Test
-
     module =
        path = Targets/Javascript/Ast
        importAs = JA
@@ -237,4 +215,41 @@ library =
             Token
         globalValues =
             'token
+
+
+library =
+    source = "lib/format"
+
+    module =
+       path = Format
+       importAs = Fmt
+
+
+library =
+    source = "lib/parser"
+
+    module =
+       path = Parser
+
+
+library =
+    source = "lib/depsResolution"
+
+    module =
+       path = RefHierarchy
+
+
+library =
+    source = "lib/spon"
+
+    module =
+       path = SPON
+
+
+library =
+    source = "lib/test"
+
+    module =
+       path = Test
+       globalTypes = Test
 

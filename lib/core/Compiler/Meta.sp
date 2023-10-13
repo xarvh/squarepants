@@ -11,14 +11,8 @@ var DependencyType =
 #   1. It distinguishes two modules with the same name
 #   2. It tells us how to actually load the module
 #
-# TODO: for the time being, this is just a placeholder
-#
 var Source =
     , 'core
-    , # This one is a HACK, until we have proper platform management
-      'posix
-    , # This one is a HACK, until we have proper platform management
-      'browser
     , 'library LibrarySource
     , 'sourceDirId Text
 
