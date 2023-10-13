@@ -184,4 +184,11 @@ asText as Text =
            importAs = Test
            globalTypes = Test
 
+    # TODO remove this, should be used only internally by the browser platform
+    library =
+        source = "core:browser"
+
+        module =
+            path = VirtualDom
+
     """

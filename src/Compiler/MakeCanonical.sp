@@ -84,19 +84,13 @@ maybeForeignUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: R
                     >> 'ok
 
                 'nothing:
-                    ro.meta.moduleVisibleAsToUmr
-                    >> Dict.toList
-                    >> List.each __ (fn k & v: log "*" (Human/Type.umrToText (Compiler/TypeCheck.initEnv Dict.empty) v .. " -> " .. k))
+#                    ro.meta.moduleVisibleAsToUmr
+#                    >> Dict.toList
+#                    >> List.each __ (fn k & v: log "*" (Human/Type.umrToText (Compiler/TypeCheck.initEnv Dict.empty) v .. " -> " .. k))
 
                     # For now we're assuming that ro.meta.moduleVisibleAsToUmr contains *all* modules, aliased or not
                     erroro ro pos [ "I can't find the module `" .. moduleName .. "`" ]
 
-
-#                    (USR Meta.SourcePlaceholder moduleName name)
-#
-#                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
-#                        log "*" x
-#                    todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
 
 resolveToUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: Res USR =
     fn getter, ro, pos, maybeModule, name:
