@@ -31,7 +31,6 @@ makeErr as Text = "$core$Result$Err"
 
 makeExecutable as fn Self.LoadPars: Text =
     fn out:
-    # TODO check that type is `IO Int`
 
     entryName =
         Targets/Javascript/EmittableToJs.translateUsr out.entryUsr

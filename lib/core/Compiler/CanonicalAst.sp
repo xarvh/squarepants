@@ -46,7 +46,6 @@ var Expression =
           , patternsAndExpressions as [ Uniqueness & Pattern & Expression ]
           , value as Expression
           }
-#    , 'destroyIn Name Expression
 
 
 var Argument =
