@@ -2522,7 +2522,7 @@ const $core$Compiler$CanonicalAst$expressionPos = (($exp) => {
                           const $p = ($exp)[1];
                           return $p;
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 281:4', (sp_toHuman)($exp)))))))))))));
+                        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 280:4', (sp_toHuman)($exp)))))))))))));
 });
 
 const $core$Dict$empty = $core$Dict$RBEmpty_elm_builtin;
@@ -2550,7 +2550,7 @@ const $core$Compiler$CanonicalAst$parTypeToRaw = (($p) => {
         const $full = ($p)[1];
         return $full.raw;
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 170:4', (sp_toHuman)($p))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 169:4', (sp_toHuman)($p))));
 });
 
 const $core$Dict$for = (($acc, $dict, $func) => {
@@ -2622,7 +2622,7 @@ const $core$Compiler$CanonicalAst$patternNames = ((() => {
                     return ($rec)($v, $a);
                   }));
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 268:8', (sp_toHuman)($p))))))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 267:8', (sp_toHuman)($p))))))));
   });
   return (($0) => {
     return ($rec)($0, $core$Core$Nil);
@@ -2655,7 +2655,7 @@ const $core$Compiler$CanonicalAst$patternPos = (($pa) => {
               const $p = ($pa)[1];
               return $p;
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 235:4', (sp_toHuman)($pa)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 234:4', (sp_toHuman)($pa)))))));
 });
 
 const $core$Dict$balance = (($color, $key, $value, $left, $right) => {
@@ -2845,7 +2845,7 @@ const $core$Compiler$CanonicalAst$typeTyvars = (($raw) => {
           }))()
           : ((($raw)[0] === "TypeError")
             ? $core$Dict$empty
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 181:4', (sp_toHuman)($raw)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 180:4', (sp_toHuman)($raw)))))));
 });
 
 const $core$Compiler$CanonicalAst$typeUnivars = (($raw) => {
@@ -2862,7 +2862,7 @@ const $core$Compiler$CanonicalAst$typeUnivars = (($raw) => {
       }))()
       : (true
         ? $acc
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 197:8', (sp_toHuman)($uni))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 196:8', (sp_toHuman)($uni))));
   });
   const $parUnivars = (($par, $acc) => {
     return ((($par)[0] === "ParRe")
@@ -2876,7 +2876,7 @@ const $core$Compiler$CanonicalAst$typeUnivars = (($raw) => {
             return ($core$Dict$join)($0, ($core$Compiler$CanonicalAst$typeUnivars)($full.raw));
           }))($acc));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 203:8', (sp_toHuman)($par))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 202:8', (sp_toHuman)($par))));
   });
   return ((($raw)[0] === "TypeNamed")
     ? ((() => {
@@ -2906,7 +2906,7 @@ const $core$Compiler$CanonicalAst$typeUnivars = (($raw) => {
                 return ($insertUni)($to.uni, $0);
               }))($core$Dict$empty));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 213:4', (sp_toHuman)($raw)))))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/lib/core/Compiler/CanonicalAst.sp 212:4', (sp_toHuman)($raw)))))));
 });
 
 const $core$Compiler$FormattableAst$binopChainAllBinops = (($f, $ls) => {
@@ -5101,7 +5101,7 @@ const $sd1$BuildMain$formattedToConsoleColoredText = (($formattedText) => {
             const $t = ($formattedText)[1];
             return ($sd1$Term$blue)($t);
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 132:4', (sp_toHuman)($formattedText))))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 140:4', (sp_toHuman)($formattedText))))));
 });
 
 const $sd1$Compiler$Error$formatSeparator = "$|$|$";
@@ -5399,11 +5399,11 @@ const $sd1$BuildMain$getEntryUmr = (($projectMeta, $entryModulePath) => {
           }))()
           : ((($4)[0] === "Nothing")
             ? false
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 87:16', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 95:16', (sp_toHuman)($4))));
       }))()
       : (true
         ? false
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 84:8', (sp_toHuman)($source))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 92:8', (sp_toHuman)($source))));
   });
   const $allUmrs = ($core$Dict$values)($projectMeta.moduleVisibleAsToUmr);
   const $3 = ($core$List$find)($isEntryUmr, $allUmrs);
@@ -5414,7 +5414,7 @@ const $sd1$BuildMain$getEntryUmr = (($projectMeta, $entryModulePath) => {
     }))()
     : ((($3)[0] === "Nothing")
       ? ($core$Result$Err)(("Error: I can't find the module " + ($entryModulePath + " anywhere.")))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 102:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 110:4', (sp_toHuman)($3))));
 });
 
 const $sd1$BuildMain$coreDirName = "core";
@@ -5440,7 +5440,7 @@ const $sd1$BuildMain$getModuleMetaAndPath = (($io, $pars, $umr) => {
           })))(((() => {
             const $5 = ($core$Dict$get)($id, $pars.projectMeta.sourceDirIdToPath);
             return ((($5)[0] === "Nothing")
-              ? ($core$Result$Err)(("invalid sourceDirId " + ($id + " (this is a compiler bug!)")))
+              ? ($core$Result$Err)(($sd1$Compiler$Error$Raw)(($core$Core$Cons)(("invalid sourceDirId " + ($id + " (this is a compiler bug!)")), $core$Core$Nil)))
               : ((($5)[0] === "Just")
                 ? ((() => {
                   const $path = ($5)[1];
@@ -5504,7 +5504,7 @@ const $sd1$BuildMain$resToIo = (($res) => {
         const $e = ($res)[1];
         return ($core$Result$Err)(($sd1$BuildMain$errorToText)($e));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 148:4', (sp_toHuman)($res))));
+      : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 156:4', (sp_toHuman)($res))));
 });
 
 const $sd1$ModulesFile$initModulesFile = ({
@@ -8204,7 +8204,7 @@ const $sd1$BuildMain$loadModulesFile = (($io, $platform, $projectRoot) => {
             (sp_log)("Using default modules.sp", "");
             return $platform.defaultModules;
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 169:4', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 177:4', (sp_toHuman)($4))));
     }))())),
     $io,
   ]);
@@ -8229,7 +8229,7 @@ const $sd1$BuildMain$updateSourceDir = (($fileNames, $orig) => {
             }), $0.modules),
           }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 242:8', (sp_toHuman)($5))));
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 250:8', (sp_toHuman)($5))));
   });
   return ($core$List$for)($orig, $fileNames, $insertModuleName);
 });
@@ -10677,7 +10677,7 @@ const $sd1$BuildMain$loadModule = (($io, $meta, $umr, $fileName) => {
           });
           return ($sd1$BuildMain$resToIo)(($sd1$Compiler$MakeCanonical$textToCanonicalModule)(false, $params));
         })))(((__re__ = (io_readFile)($io, $fileName)), ($io = (__re__)[1]), (__re__)[0]))
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 109:4', (sp_toHuman)($umr)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 117:4', (sp_toHuman)($umr)))),
     $io,
   ]);
 });
@@ -10699,7 +10699,7 @@ const $sd1$BuildMain$searchAncestorDirectories = (($io, $isWantedFile, $searchDi
                 : ((__re__ = ($sd1$BuildMain$searchAncestorDirectories)($io, $isWantedFile, $parent)), ($io = (__re__)[1]), (__re__)[0]));
             }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 280:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 288:4', (sp_toHuman)($4)))),
     $io,
   ]);
 });
@@ -10737,9 +10737,9 @@ const $sd1$Compiler$LazyBuild$collectUsrDependencies = (($env, $state, $usr, $de
                       first: $sd1$Compiler$LazyBuild$MissingDef,
                       second: $core$Dict$empty,
                     })
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 83:24', (sp_toHuman)($9))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 78:24', (sp_toHuman)($9))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 77:16', (sp_toHuman)($8))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 72:16', (sp_toHuman)($8))));
         }))()
         : ((($depType)[0] === "ConstructorDependency")
           ? ((() => {
@@ -10757,7 +10757,7 @@ const $sd1$Compiler$LazyBuild$collectUsrDependencies = (($env, $state, $usr, $de
                   first: $sd1$Compiler$LazyBuild$MissingDef,
                   second: $core$Dict$empty,
                 })
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 93:16', (sp_toHuman)($8))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 88:16', (sp_toHuman)($8))));
           }))()
           : ((($depType)[0] === "ValueDependency")
             ? ((() => {
@@ -10775,9 +10775,9 @@ const $sd1$Compiler$LazyBuild$collectUsrDependencies = (($env, $state, $usr, $de
                     first: $sd1$Compiler$LazyBuild$MissingDef,
                     second: $core$Dict$empty,
                   })
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 98:16', (sp_toHuman)($8))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 93:16', (sp_toHuman)($8))));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 74:8', (sp_toHuman)($depType)))));
+            : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 69:8', (sp_toHuman)($depType)))));
       const $deps = $7.second;
       const $def = $7.first;
       ((__re__ = (hash_insert)($state.done, $usr, ({
@@ -10798,17 +10798,10 @@ const $sd1$Compiler$LazyBuild$collectUsrDependencies = (($env, $state, $usr, $de
           return ($core$Result$Ok)($caModule);
         }))()
         : ((($6)[0] === "Nothing")
-          ? ((() => {
-            const $eee = (($message) => {
-              return ("I need " + ((sp_toHuman)($usr) + (" but I could not load module " + ((sp_toHuman)($umr) + (":\n\n" + $message)))));
-            });
-            return (($core$Result$onOk)((($caModule) => {
-              ((__re__ = (hash_insert)($state.loadedModulesByUmr, $umr, $caModule)), ($state.loadedModulesByUmr = (__re__)[1]), (__re__)[0]);
-              return ($core$Result$Ok)($caModule);
-            })))(((($0) => {
-              return ($core$Result$mapError)($eee, $0);
-            }))(($env.loadCaModule)($umr)));
-          }))()
+          ? (($core$Result$onOk)((($caModule) => {
+            ((__re__ = (hash_insert)($state.loadedModulesByUmr, $umr, $caModule)), ($state.loadedModulesByUmr = (__re__)[1]), (__re__)[0]);
+            return ($core$Result$Ok)($caModule);
+          })))(($env.loadCaModule)($umr))
           : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 56:4', (sp_toHuman)($6))));
     }))()),
     $state,
@@ -10828,7 +10821,7 @@ const $sd1$Compiler$LazyBuild$collectRequiredUsrs = (($env, $state) => {
             return ((__re__ = ($sd1$Compiler$LazyBuild$collectRequiredUsrs)($env, $state)), ($state = (__re__)[1]), (__re__)[0]);
           })))(((__re__ = ($sd1$Compiler$LazyBuild$collectUsrDependencies)($env, $state, $usr, $depType)), ($state = (__re__)[1]), (__re__)[0]));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 115:4', (sp_toHuman)($3)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 110:4', (sp_toHuman)($3)))),
     $state,
   ]);
 });
@@ -11200,16 +11193,16 @@ const $sd1$Compiler$LazyBuild$evaluateCircularValues = (($state, $errors, $lastU
                         : ($core$Core$Cons)(("Value " + ($def.name + (" depends is mutually recursive with " + ((sp_toHuman)($circular) + " so I need it to be annotated.")))), $core$Core$Nil))));
                       return $envX;
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 181:32', (sp_toHuman)($9))));
+                    : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 176:32', (sp_toHuman)($9))));
               }))()
               : (true
                 ? $envX
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 178:24', (sp_toHuman)($8))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 173:24', (sp_toHuman)($8))));
           })));
       }))()
       : (true
         ? $env0
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 170:8', (sp_toHuman)($circular)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 165:8', (sp_toHuman)($circular)))),
     $state,
     $errors,
     $lastUnificationVarId,
@@ -11290,9 +11283,9 @@ const $sd1$Compiler$LazyBuild$expandAndInsertType = (($state, $errors, $usr, $en
               }))()
               : (true
                 ? $env0
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 136:12', (sp_toHuman)($def)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 131:12', (sp_toHuman)($def)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 130:4', (sp_toHuman)($5)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 125:4', (sp_toHuman)($5)))),
     $state,
     $errors,
   ]);
@@ -11326,9 +11319,9 @@ const $sd1$Compiler$LazyBuild$stopOnError = (($pars, $errors) => {
       : (true
         ? ((() => {
           const $errorsAsList = $3;
-          return ($core$Result$Err)(($pars.errorToError)(($sd1$Compiler$Error$Nested)($errorsAsList)));
+          return ($core$Result$Err)(($sd1$Compiler$Error$Nested)($errorsAsList));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 232:4', (sp_toHuman)($3)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 224:4', (sp_toHuman)($3)))),
     $errors,
   ]);
 });
@@ -15421,9 +15414,9 @@ const $sd1$Compiler$LazyBuild$typecheckDefinition = (($state, $errors, $lastUnif
               }))()
               : (true
                 ? $env0
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 160:12', (sp_toHuman)($def)))));
+                : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 155:12', (sp_toHuman)($def)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 154:4', (sp_toHuman)($6)))),
+        : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 149:4', (sp_toHuman)($6)))),
     $state,
     $errors,
     $lastUnificationVarId,
@@ -16827,7 +16820,7 @@ const $sd1$Compiler$LazyBuild$build = (($pars) => {
             const $deps = ($4)[1].deps;
             return $deps;
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 265:8', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 256:8', (sp_toHuman)($4))));
     });
     const $nodesById = ((__re__ = ($core$Hash$for_)($core$Dict$empty, $state.done, (($usr, _1, $dict) => {
       return ($core$Dict$insert)($usr, $usr, $dict);
@@ -16849,7 +16842,7 @@ const $sd1$Compiler$LazyBuild$build = (($pars) => {
         }))()
         : (true
           ? null
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 292:8', (sp_toHuman)($circular))));
+          : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/LazyBuild.sp 283:8', (sp_toHuman)($circular))));
     }));
     return (($core$Result$onOk)(((_0) => {
       const $modulesByUmr = ($core$Dict$fromList)(((__re__ = ($core$Hash$toList)($state.loadedModulesByUmr)), ($state.loadedModulesByUmr = (__re__)[1]), (__re__)[0]));
@@ -16986,7 +16979,11 @@ const $sd1$BuildMain$compileMain = (($io, $pars) => {
           });
           const $loadCaModule = (($umr) => {
             return (($core$Result$onOk)((($out) => {
-              return ((__re__ = ($sd1$BuildMain$loadModule)($io, $out.meta, $umr, $out.path)), ($io = (__re__)[1]), (__re__)[0]);
+              return ((($0) => {
+                return ($core$Result$mapError)((($err) => {
+                  return ($sd1$Compiler$Error$Raw)(($core$Core$Cons)($err, $core$Core$Nil));
+                }), $0);
+              }))(((__re__ = ($sd1$BuildMain$loadModule)($io, $out.meta, $umr, $out.path)), ($io = (__re__)[1]), (__re__)[0]));
             })))(((__re__ = ($sd1$BuildMain$getModuleMetaAndPath)($io, $getModuleMetaAndPathPars, $umr)), ($io = (__re__)[1]), (__re__)[0]));
           });
           return (($core$Result$onOk)((($6) => {
@@ -17004,7 +17001,7 @@ const $sd1$BuildMain$compileMain = (($io, $pars) => {
                 }))()
                 : ((($7)[0] === "Nothing")
                   ? (sp_todo)("no type!?")
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 378:8', (sp_toHuman)($7))));
+                  : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 387:8', (sp_toHuman)($7))));
             }))();
             return (($core$Result$onOk)(((_0) => {
               return ((($0) => {
@@ -17018,11 +17015,12 @@ const $sd1$BuildMain$compileMain = (($io, $pars) => {
               entryUsr: $entryUsr,
               type: $type,
             }))));
-          })))(($sd1$Compiler$LazyBuild$build)(({
-            errorToError: $sd1$BuildMain$errorToText,
+          })))(((($0) => {
+            return ($core$Result$mapError)($sd1$BuildMain$errorToText, $0);
+          }))(($sd1$Compiler$LazyBuild$build)(({
             loadCaModule: $loadCaModule,
             requiredUsrs: ($core$Core$Cons)($entryUsr, $core$Core$Nil),
-          })));
+          }))));
         })))(((($0) => {
           return ((($0)[0] === "Nothing")
             ? ($core$Result$Err)(("Error: I need a " + ($sd1$BuildMain$libDirectoryName + (" directory next to the squarepants executable " + ($pars.selfPath + " but I can't find it.")))))
@@ -17031,7 +17029,7 @@ const $sd1$BuildMain$compileMain = (($io, $pars) => {
                 const $p = ($0)[1];
                 return ($core$Result$Ok)((path_resolve)(($core$Core$Cons)($p, ($core$Core$Cons)($sd1$BuildMain$libDirectoryName, $core$Core$Nil))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 344:7', (sp_toHuman)($0))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/BuildMain.sp 352:7', (sp_toHuman)($0))));
         }))(((($0) => {
           return ((__re__ = ($sd1$BuildMain$searchAncestorDirectories)($io, (($6) => {
             const $isDirectory = $6.first;
@@ -18167,13 +18165,12 @@ const $sd1$Compiler$TypeCheck_Test$infer = (($targetName) => {
         }))(($core$Dict$keys)($0));
       });
       const $requiredUsrs = ($core$List$concat)(($core$Core$Cons)(($keysToUsrs)($caModule.valueDefs), ($core$Core$Cons)(($keysToUsrs)($caModule.constructorDefs), ($core$Core$Cons)(($keysToUsrs)($caModule.variantTypeDefs), ($core$Core$Cons)(($keysToUsrs)($caModule.aliasDefs), $core$Core$Nil)))));
-      const $errorToError = $sd1$Compiler$TestHelpers$errorToStrippedText;
       const $loadCaModule = (($umr) => {
         return ((sp_equal)($umr, $sd1$Compiler$TestHelpers$moduleUmr)
           ? ($core$Result$Ok)($caModule)
           : ((sp_equal)($umr, ($core$Compiler$Meta$UMR)($core$Compiler$Meta$Core, "Core"))
             ? ($core$Result$Ok)($sd1$Compiler$CoreDefs$coreModule)
-            : ($core$Result$Err)(("no module " + (sp_toHuman)($umr)))));
+            : ($core$Result$Err)(($sd1$Compiler$Error$Raw)(($core$Core$Cons)(("no module " + (sp_toHuman)($umr)), $core$Core$Nil)))));
       });
       return (($core$Result$onOk)((($4) => {
         const $constructors = $4.constructors;
@@ -18199,13 +18196,12 @@ const $sd1$Compiler$TypeCheck_Test$infer = (($targetName) => {
                 const $def = ($5)[1];
                 return ($core$Result$Ok)($def);
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck_Test.sp 165:4', (sp_toHuman)($5))));
+              : (sp_throw)('Missing pattern in try..as', '/home/nw/stuff/unstable/src/Compiler/TypeCheck_Test.sp 164:4', (sp_toHuman)($5))));
         }))());
-      })))(($sd1$Compiler$LazyBuild$build)(({
-        errorToError: $errorToError,
+      })))(($sd1$Compiler$TestHelpers$resErrorToStrippedText)(($sd1$Compiler$LazyBuild$build)(({
         loadCaModule: $loadCaModule,
         requiredUsrs: $requiredUsrs,
-      })));
+      }))));
     })))(($sd1$Compiler$TestHelpers$resErrorToStrippedText)(((($0) => {
       return ($sd1$Compiler$MakeCanonical$textToCanonicalModule)(true, $0);
     }))($params)));

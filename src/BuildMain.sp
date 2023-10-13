@@ -20,7 +20,7 @@ GetModuleMetaAndPathPars =
     }
 
 
-getModuleMetaAndPath as fn @IO, GetModuleMetaAndPathPars, UMR: IO.Re { meta as Meta, path as Text } =
+getModuleMetaAndPath as fn @IO, GetModuleMetaAndPathPars, UMR: Res { meta as Meta, path as Text } =
     fn @io, pars, umr:
     'UMR source name =
         umr
@@ -36,8 +36,16 @@ getModuleMetaAndPath as fn @IO, GetModuleMetaAndPathPars, UMR: IO.Re { meta as M
 
         Meta.'sourceDirId id:
             try Dict.get id pars.projectMeta.sourceDirIdToPath as
-                'nothing: "invalid sourceDirId " .. id .. " (this is a compiler bug!)" >> 'err
-                'just path: Path.resolve [ path, name .. ".sp" ] >> 'ok
+                'nothing:
+                      [ "invalid sourceDirId " .. id .. " (this is a compiler bug!)" ]
+                      >> Error.'raw
+                      >> 'err
+
+                'just path:
+                      [ path, name .. ".sp" ]
+                      >> Path.resolve
+                      >> 'ok
+
             >> onOk fn path:
             {
             , meta = pars.projectMeta
@@ -356,18 +364,19 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
         , projectMeta
         }
 
-    loadCaModule as fn UMR: IO.Re CA.Module =
+    loadCaModule as fn UMR: Res CA.Module =
         fn umr:
         getModuleMetaAndPath @io getModuleMetaAndPathPars umr
         >> onOk fn out:
         loadModule @io out.meta umr out.path
+        >> Result.mapError (fn err: Error.'raw [ err ]) __
 
     {
     , requiredUsrs = [ entryUsr ]
-    , errorToError = errorToText
     , loadCaModule
     }
     >> Compiler/LazyBuild.build
+    >> Result.mapError errorToText __
     >> onOk fn { constructors, rootValues }:
 
     outputFile =

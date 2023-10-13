@@ -47,7 +47,7 @@ initCollectDependenciesState as fn [ USR & DependencyType ]: !CollectDependencie
     }
 
 
-collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, DependencyType: Result Text None =
+collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, DependencyType: Res None =
     fn env, @state, usr, depType:
 #
     'USR umr name =
@@ -59,12 +59,7 @@ collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, Dependen
             'ok caModule
 
         'nothing:
-            eee as fn Text: Text =
-                fn message:
-                "I need " .. toHuman usr .. " but I could not load module " .. toHuman umr .. ":\n\n" .. message
-
             env.loadCaModule umr
-            >> Result.mapError eee __
             >> onOk fn caModule:
             Hash.insert @state.loadedModulesByUmr umr caModule
 
@@ -110,7 +105,7 @@ collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, Dependen
     'ok 'none
 
 
-collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Result Text None =
+collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Res None =
     fn env, @state:
     try Hash.pop @state.pending as
 
@@ -219,15 +214,12 @@ usrToDependencyType as fn USR: DependencyType =
 
 BuildPlan =
     {
-    , errorToError as fn Error: Text
-    # TODO should loadCaModule return `Res CA.Module` instead?
-    # It would make errors more consistent and remove the need of errorToError
-    , loadCaModule as fn UMR: Result Text CA.Module
+    , loadCaModule as fn UMR: Res CA.Module
     , requiredUsrs as [ USR ]
     }
 
 
-stopOnError as fn BuildPlan, @Array Error: Result Text None =
+stopOnError as fn BuildPlan, @Array Error: Res None =
     fn pars, @errors:
     try Array.toList @errors as
 
@@ -237,7 +229,6 @@ stopOnError as fn BuildPlan, @Array Error: Result Text None =
         errorsAsList:
             errorsAsList
             >> Error.'nested
-            >> pars.errorToError
             >> 'err
 
 
@@ -248,7 +239,7 @@ BuildOut =
     }
 
 
-build as fn BuildPlan: Result Text BuildOut =
+build as fn BuildPlan: Res BuildOut =
     fn pars:
     !state as CollectDependenciesState =
         pars.requiredUsrs

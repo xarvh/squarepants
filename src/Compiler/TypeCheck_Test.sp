@@ -143,24 +143,23 @@ infer as fn Text: fn Text: Result Text Out =
         ]
         >> List.concat
 
-    errorToError as fn Error: Text =
-        TH.errorToStrippedText
-
-    loadCaModule as fn UMR: Result Text CA.Module =
+    loadCaModule as fn UMR: Res CA.Module =
         fn umr:
         if umr == TH.moduleUmr then
             'ok caModule
         else if umr == 'UMR Meta.'core "Core" then
             'ok CoreDefs.coreModule
         else
-            'err << "no module " .. toHuman umr
+            [ "no module " .. toHuman umr ]
+            >> Error.'raw
+            >> 'err
 
     {
-    , errorToError
     , loadCaModule
     , requiredUsrs
     }
     >> Compiler/LazyBuild.build
+    >> TH.resErrorToStrippedText
     >> onOk fn { constructors, rootValues }:
     try List.find (fn rv: rv.usr == 'USR TH.moduleUmr targetName) rootValues as
         'nothing: 'err "find fail"
