@@ -80,10 +80,10 @@ header as Text =
 
 overrides as [ USR & Text ] =
     ioModule =
-        'USR ('UMR Meta.'posix "IO") __
+        'USR ('UMR Meta.'platform "IO") __
 
     pathModule =
-        'USR ('UMR Meta.'posix "Path") __
+        'USR ('UMR Meta.'platform "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"

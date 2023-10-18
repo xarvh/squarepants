@@ -1,4 +1,4 @@
-#TODO rename to BuildMain
+#TODO rename to MainMake
 
 modulesFileName as Text =
     "modules.sp"
@@ -22,8 +22,30 @@ GetModuleMetaAndPathPars =
 
 getModuleMetaAndPath as fn @IO, GetModuleMetaAndPathPars, UMR: Res { meta as Meta, path as Text } =
     fn @io, pars, umr:
-    'UMR source name =
+    'UMR sourceId name =
         umr
+
+    try Dict.get sourceId pars.projectMeta.sourceDirIdToPath as
+        'nothing:
+            [ "invalid sourceDirId " .. id .. " (this is a compiler bug!)" ]
+            >> Error.'raw
+            >> 'err
+
+        'just Meta.'core:
+            ...
+
+        'just Meta.'platform:
+            ...
+
+        'just (Meta.'sourceDirectory path):
+            ...
+
+        'just (Meta.'localLibrary path):
+            ...
+
+        'just (Meta.'installedLibrary path):
+            ...
+
 
     try source as
 
@@ -114,22 +136,21 @@ getEntryUmr as fn Meta, Text: IO.Re UMR =
 
 loadModule as fn @IO, Meta, UMR, Text: IO.Re CA.Module =
     fn @io, meta, umr, fileName:
-    try umr as
 
-        'UMR Meta.'core "Core":
-            'ok CoreDefs.coreModule
+    if umr == Meta.coreUmr then
+        'ok CoreDefs.coreModule
 
-        _:
-            IO.readFile @io fileName
-            >> onOk fn moduleAsText:
-                params as Compiler/MakeCanonical.ReadOnly =
-                    {
-                    , errorModule = { content = moduleAsText, fsPath = fileName }
-                    , meta
-                    , umr
-                    }
+    else
+        IO.readFile @io fileName
+        >> onOk fn moduleAsText:
+            params as Compiler/MakeCanonical.ReadOnly =
+                {
+                , errorModule = { content = moduleAsText, fsPath = fileName }
+                , meta
+                , umr
+                }
 
-                Compiler/MakeCanonical.textToCanonicalModule 'false params >> resToIo
+            Compiler/MakeCanonical.textToCanonicalModule 'false params >> resToIo
 
 
 #
@@ -280,7 +301,7 @@ loadMeta as fn @IO, Platform.Platform, Text, Text: IO.Re Meta =
 
     { modulesFile with sourceDirs = updatedSourceDirs }
     >> ModulesFile.toMeta
-    >> 'ok
+    >> resToIo
 
 
 searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =

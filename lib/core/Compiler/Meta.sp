@@ -5,30 +5,34 @@ var DependencyType =
 
 
 #
-# This tells us where a module comes from.
-#
-# It has two requirements:
-#   1. It distinguishes two modules with the same name
-#   2. It tells us how to actually load the module
-#
-# TODO: for the time being, this is just a placeholder
+# At worst, the output should depend only on the directory structure of the project's directory.
+# This type is designed to minimize the risk of including absolute paths in the output.
+# The output code should not be different because the project root is located in a different place!
 #
 var Source =
-    , 'core
-    , # This one is a HACK, until we have proper platform management
-      'posix
-    , # This one is a HACK, until we have proper platform management
-      'browser
-    , 'library LibrarySource
-    , 'sourceDirId Text
-
-
-LibrarySource =
-    Text
+    , # `Core` definitions and the core modules.
+      # They are the only ones (TODO for now?) who do not live in the current
+      # project directory, but rather, they are wherever the executable is installed.
+      'core
+    , # This is an alias for whatever Source the *selected* Platform has.
+      # This is needed because Platform must know its own Source in order to define overrides.
+      'platform
+    , # This is the bulk of an application's specific code
+      # All annotated definitions are publicly visible, and all modules use the project's Modules File.
+      # * The argument is the directory path, relative to the project's root.
+      'userSourceDir Text
+    , # This is for self-contained code developed specifically for the app.
+      # It exposes only selected definitions and has its own Modules File.
+      # * The argument is the directory path, relative to the project's root.
+      'userLibrary Text
+    , # This is for libraries installed and managed by the squarepants executable, most often third party libraries
+      # They live in installedLibraries/ under the project's root directory.
+      # * The argument is the directory path, relative to installedLibraries/.
+      'installedLibrary Text
 
 
 #
-# Uniqueliy identifies a module within a source.
+# Uniqueliy identifies a module **within a given source**.
 #
 # It is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
 #
@@ -38,11 +42,20 @@ ModulePath =
     Text
 
 
+#
+# Unique Module Reference
+#
+# Uniquely identifies a module **within the whole project**.
+#
 var UMR =
     , 'UMR Source ModulePath
 
 
-# TODO: have one for types, one for constructors and one for values?
+#
+# Unique Symbol Reference
+#
+# Uniquely identifies a value, constructor or type (whether alias or variant) within the whole project
+#
 var USR =
     , 'USR UMR Name
 
@@ -51,39 +64,36 @@ ByUsr a =
     Dict USR a
 
 
-Meta =
+ModuleEnvironment =
     {
-    , globalTypes as Dict Name USR
-    # These resolve global symbol names
-    , globalValues as Dict Name USR
-    # These resolve module names
-    , moduleVisibleAsToUmr as Dict Name UMR
-    , sourceDirIdCounter as Int
-    # The sourceDirId is the one eventually used to produce an internal unique name for the variable.
-    # There are two main reasons for this:
-    # 1) We don't want local path references to enter in the compiled output
-    # 2) We don't want to have to deal with weird characters when we generate the internal names
-    , sourceDirIdToPath as Dict Text Text
+    , globals as Dict Name USR
     # This is used by toHuman, to show symbols the same way the user would expect to read and write them
-    # (only the main meta is used for this)
-    , umrToModuleVisibleAs as Dict UMR Name
+    # (only the main ModuleEnvironment is used for this)
+    , umrToVisibleAs as Dict UMR Name
+    # These resolve module names
+    , visibleAsToUmr as Dict Name UMR
     }
 
 
-init as Meta =
+init as ModuleEnv =
     {
-    , globalTypes = Dict.empty
-    , globalValues = Dict.empty
-    , moduleVisibleAsToUmr = Dict.empty
-    , sourceDirIdCounter = 0
-    , sourceDirIdToPath = Dict.empty
-    , umrToModuleVisibleAs = Dict.empty
+    , globals = Dict.empty
+    , umrToVisibleAs = Dict.empty
+    , visibleAsToUmr = Dict.empty
     }
 
 
-spCoreUmr as UMR =
+ProjectEnvironment =
+    {
+    , libraryModuleEnvBySource as Dict Source ModuleEnv
+    , mainModuleEnv as ModuleEnv
+    , platformSource as Source
+    }
+
+
+coreUmr as UMR =
     'UMR 'core "Core"
 
 
-spCoreUSR as fn Name: USR =
+coreUsr as fn Name: USR =
     'USR spCoreUmr __

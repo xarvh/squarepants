@@ -666,7 +666,7 @@ argumentPlaceholders as Test =
                          ]
                          (CA.'call
                               p
-                              (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "f")))
+                              (CA.'variable p ('refGlobal (TH.moduleUsr "f")))
                               [
                               , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                               , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
@@ -690,12 +690,12 @@ argumentPlaceholders as Test =
                       [ CA.'parameterPlaceholder 0 ]
                       (CA.'call
                            p
-                           (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "b")))
+                           (CA.'variable p ('refGlobal (TH.moduleUsr "b")))
                            [
                            , CA.'argumentExpression
                                (CA.'call
                                     p
-                                    (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "a")))
+                                    (CA.'variable p ('refGlobal (TH.moduleUsr "a")))
                                     [
                                     , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                                     ]

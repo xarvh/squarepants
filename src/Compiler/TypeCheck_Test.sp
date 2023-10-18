@@ -147,7 +147,7 @@ infer as fn Text: fn Text: Result Text Out =
         fn umr:
         if umr == TH.moduleUmr then
             'ok caModule
-        else if umr == 'UMR Meta.'core "Core" then
+        else if umr == Meta.coreUmr then
             'ok CoreDefs.coreModule
         else
             [ "no module " .. toHuman umr ]
@@ -505,7 +505,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction [ TA.'typeExact (TH.localType "T") [ tyvar 1 ] ] (TA.'typeExact (TH.localType "T") [ tyvar 1 ])
+                 , type = TH.taFunction [ TA.'typeExact (TH.moduleUsr "T") [ tyvar 1 ] ] (TA.'typeExact (TH.moduleUsr "T") [ tyvar 1 ])
                  }
             )
         , codeTest
@@ -520,7 +520,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TA.'typeExact (TH.localType "X") [ tyvar 1 ]
+                 , type = TA.'typeExact (TH.moduleUsr "X") [ tyvar 1 ]
                  }
             )
         , codeTest

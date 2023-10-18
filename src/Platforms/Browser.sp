@@ -26,7 +26,7 @@ modules as Text =
 
 
 virtualDomModule as fn Text: USR =
-    'USR ('UMR Meta.'browser "VirtualDom") __
+    'USR ('UMR Meta.'platform "VirtualDom") __
 
 
 compile as fn Self.LoadPars: Text =

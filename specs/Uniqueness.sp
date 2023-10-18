@@ -569,7 +569,7 @@ unions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.'typeExact (TH.localType "Z") [ TH.taNumber ]
+                 , type = TA.'typeExact (TH.moduleUsr "Z") [ TH.taNumber ]
                  }
             )
         , codeTest

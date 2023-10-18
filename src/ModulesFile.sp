@@ -41,52 +41,18 @@ textToMeta as fn Text, Text: Res Meta =
     fn sponName, sponContent:
     sponContent
     >> textToModulesFile sponName __
-    >> Result.map toMeta __
+    >> onOk toMeta
 
 
-toMeta as fn ModulesFile: Meta =
-    fn mf:
-    Meta.init
-    >> List.for __ mf.libraries insertLibrary
-    >> List.for __ mf.sourceDirs insertModules
-
-
-insertLibrary as fn Library, Meta: Meta =
-    fn lib, meta:
-    umr =
-        try lib.source as
-            "core:prelude": Meta.'core
-            "core:browser": Meta.'browser
-            "core:posix": Meta.'posix
-            _: todo << "Library source `" .. lib.source .. "` is not supported."
-
-    List.for meta lib.modules (insertModule umr __ __)
-
-
-insertModules as fn SourceDir, Meta: Meta =
-    fn sd, m:
-    n =
-        m.sourceDirIdCounter + 1
-
-    id =
-        "sd" .. Text.fromNumber n
-
-    { m with
-    , sourceDirIdCounter = n
-    , sourceDirIdToPath = Dict.insert id sd.path .sourceDirIdToPath
-    }
-    >> List.for __ sd.modules (insertModule (Meta.'sourceDirId id) __ __)
-
-
-insertModule as fn Meta.Source, Module, Meta: Meta =
-    fn source, mod, meta:
+insertModule as fn @Array Text, Meta.SourceId, Module, Meta: Meta =
+    fn @errors, sourceId, mod, meta:
     visibleAs =
         # TODO fail if visibleAs is used already
         # TODO test that is well-formed
         mod.visibleAs
 
     umr =
-        'UMR source mod.path
+        'UMR sourceId mod.path
 
     insertGlobal =
         fn varName, d:
@@ -104,9 +70,79 @@ insertModule as fn Meta.Source, Module, Meta: Meta =
     }
 
 
+parseLibrarySource as fn Text: Result Text Meta.Source =
+    fn sourceAsText:
+    try Text.split ":" sourceAsText as
+
+        [ "core" ]:
+            'ok Meta.'core
+
+        [ "platform" ]:
+            'ok Meta.'platform
+
+        [ "local", path ]:
+            'ok << Meta.'localLibrary path
+
+        # TODO support non-local libraries
+        _:
+            'err << "invalid library source: " .. sourceAsText
+
+
+insertSource as fn @Array Text, [ Module ], Meta.Source, Meta: Meta =
+    fn @errors, modules, source, meta:
+    id =
+        meta.nextSourceId
+
+    { meta with
+    , nextSourceId = id + 1
+    , sourceIdToSource = Dict.insert id source .sourceIdToSource
+    }
+    >> List.for __ modules (insertModule @errors id __ __)
+
+
+toMeta as fn ModulesFile: Res Meta =
+    fn mf:
+
+    # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
+    !errors as Array Text =
+        Array.fromList []
+
+    insertLibrary as fn Library, Meta: Meta =
+        fn lib, meta:
+        try parseLibrarySource lib.source as
+
+            'err msg:
+                Array.push @errors msg
+
+                meta
+
+            'ok source:
+                insertSource @errors lib.modules source meta
+
+    insertSourceDir as fn SourceDir, Meta: Meta =
+        fn sourceDir, meta:
+        insertSource @errors sourceDir.modules (Meta.'sourceDirectory sourceDir.path) meta
+
+    meta =
+        Meta.init
+        >> List.for __ mf.libraries insertLibrary
+        >> List.for __ mf.sourceDirs insertSourceDir
+
+    errs =
+        Array.toList @errors
+        >> List.map (fn msg: Error.'raw [ msg ]) __
+
+    if errs == [] then
+        'ok meta
+    else
+        'err (Error.'nested errs)
+
+
 #
 # Reader
 #
+
+# TODO we need Pos otherwise we can't give proper errors!
 
 var RootEntry =
     , 'lib Library
