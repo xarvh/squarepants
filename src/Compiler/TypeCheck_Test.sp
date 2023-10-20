@@ -113,7 +113,7 @@ infer as fn Text: fn Text: Result Text Out =
     params as Compiler/MakeCanonical.ReadOnly =
         {
         , errorModule = TH.errorModule code
-        , meta = TH.meta
+        , meta = TH.imports
         , umr = TH.moduleUmr
         }
 

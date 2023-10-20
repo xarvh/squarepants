@@ -11,9 +11,6 @@ sourceToText as fn Meta.Source: Text =
     fn source:
     try source as
         Meta.'core: "core:"
-        Meta.'posix: "posix:"
-        Meta.'browser: "browser:"
-        Meta.'sourceDirId text: text .. ":"
 
 
 umrToText as fn Env, UMR: Text =

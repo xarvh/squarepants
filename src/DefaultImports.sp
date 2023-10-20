@@ -1,94 +1,91 @@
+defaultImportsFile as ImportsFile =
+    {
+    , libraries =
+        [
+        , {
+        , modules =
+            [
+            , mod
+                "Core"
+                [
+                , "None"
+                , "Bool"
+                , "Text"
+                , "Number"
+                , "'none"
+                , "'true"
+                , "'false"
+                , "mut"
+                ]
+            , mod
+                "Basics"
+                [
+                , "Int"
+                , "assert"
+                , "clamp"
+                , "identity"
+                , "modBy"
+                , "min"
+                , "max"
+                , "cloneImm"
+                , "cloneUni"
+                ]
+            , mod "Text" []
+            , mod "Tuple" []
+            , mod "Debug" [ "log", "todo" ]
+            , mod "Self" []
+            , mod "List" []
+            , mod "Dict" [ "Dict" ]
+            , mod "Array" [ "Array" ]
+            , mod "Hash" [ "Hash" ]
+            , mod "Set" [ "Set" ]
+            , mod "Maybe" [ "Maybe", "'just", "'nothing" ]
+            , mod "Result" [ "Result", "'ok", "'err" ]
+            ]
+        , source = "core"
+        }
+        ]
+    , sourceDirs =
+        [
+        , {
+        , modules = []
+        , path = "."
+        }
+        , {
+        , modules = []
+        , path = "src/"
+        }
+        ]
+    }
+
+
+mod as fn Text, [ Text ]: ImportsFile.Module =
+    fn path, globals:
+    {
+    , globals
+    , path
+    , visibleAs = path
+    }
+
+
+platformDefaultImportsFile as fn [ Text & [ Text ] ]: ImportsFile =
+    fn modules:
+    platform as ImportsFile.Library =
+        {
+        , modules = List.map (fn path & globals: mod path globals) modules
+        , source = "platform"
+        }
+
+    { defaultImportsFile with libraries = [ platform, .libraries... ] }
+
+
 # TODO using this also for Core libraries.
 # This is wrong, we should have a separate modules as defaul and one for Core.
-asText as Text =
+asText__ as Text =
     """
     library =
         source = "core:prelude"
 
-        module =
-            path = Core
-            importAs = Core
-            globalTypes =
-                None
-                Bool
-                Text
-                Number
-            globalValues =
-                'none
-                'true
-                'false
-                mut
-
-        module =
-            path = List
-            importAs = List
-
-        module =
-            path = Maybe
-            importAs = Maybe
-            globalTypes =
-                Maybe
-            globalValues =
-               'just
-               'nothing
-
-        module =
-            path = Text
-            importAs = Text
-
-        module =
-            path = Tuple
-            importAs = Tuple
-
-        module =
-            path = Debug
-            importAs = Debug
-            globalValues =
-                log
-                todo
-
-        module =
-            path = Basics
-            globalTypes =
-                Int
-            globalValues =
-                assert
-                clamp
-                identity
-                modBy
-                min
-                max
-                cloneImm
-                cloneUni
-
-        module =
-            path = Dict
-            importAs = Dict
-            globalTypes = Dict
-
-        module =
-            path = Self
-
-        module =
-            path = Array
-            globalTypes = Array
-
-        module =
-            path = Hash
-            globalTypes = Hash
-
-        module =
-            path = Set
-            importAs = Set
-            globalTypes = Set
-
-        module =
-            path = Result
-            importAs = Result
-            globalTypes = Result
-            globalValues =
-                'ok
-                'err
 
 
         #

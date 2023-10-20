@@ -32,7 +32,8 @@ Env =
 ReadOnly =
     {
     , errorModule as Error.Module
-    , meta as Meta
+    # TODO rename to `imports`
+    , meta as Imports
     , umr as UMR
     }
 
@@ -68,15 +69,15 @@ error as fn Env, Pos, [ Text ]: Res a =
 # Names resolution
 #
 
-maybeForeignUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: Res (Maybe USR) =
-    fn getter, ro, pos, maybeModule, name:
+maybeForeignUsr as fn ReadOnly, Pos, Maybe Name, Name: Res (Maybe USR) =
+    fn ro, pos, maybeModule, name:
     try maybeModule as
 
         'nothing:
-            Dict.get name (getter ro.meta) >> 'ok
+            Dict.get name ro.meta.globals >> 'ok
 
         'just moduleName:
-            try Dict.get moduleName ro.meta.moduleVisibleAsToUmr as
+            try Dict.get moduleName ro.meta.visibleAsToUmr as
 
                 'just umr:
                     'USR umr name
@@ -92,15 +93,15 @@ maybeForeignUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: R
                     erroro ro pos [ "I can't find the module `" .. moduleName .. "`" ]
 
 
-resolveToUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: Res USR =
-    fn getter, ro, pos, maybeModule, name:
-    maybeForeignUsr getter ro pos maybeModule name >> Result.map (Maybe.withDefault ('USR ro.umr name) __) __
+resolveToUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
+    fn ro, pos, maybeModule, name:
+    maybeForeignUsr ro pos maybeModule name >> Result.map (Maybe.withDefault ('USR ro.umr name) __) __
 
 
 resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
     fn ro, pos, isRoot, maybeModule, name:
     # TODO use Result.map?
-    try maybeForeignUsr (fn m: m.globalValues) ro pos maybeModule name as
+    try maybeForeignUsr ro pos maybeModule name as
 
         'err e:
             'err e
@@ -115,14 +116,6 @@ resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
                 >> 'ok
             else
                 'refLocal name >> 'ok
-
-
-resolveToTypeUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
-    resolveToUsr (fn m: m.globalTypes) __ __ __ __
-
-
-resolveToConstructorUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
-    resolveToUsr (fn m: m.globalValues) __ __ __ __
 
 
 #
@@ -233,7 +226,8 @@ expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
             addDeps =
                 fn u & p & b, d:
                 d >> patternDeps p __ >> expressionDeps b __
-                #d >> expressionDeps b __
+
+            #d >> expressionDeps b __
 
             deps
             >> expressionDeps value __
@@ -258,6 +252,7 @@ parameterDeps as fn CA.Parameter, CA.Deps: CA.Deps =
     try par as
         CA.'parameterPattern _ pa: patternDeps pa deps
         _: deps
+
 
 #
 # Definition
@@ -348,7 +343,7 @@ translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA
 
 translatePatternConstructor as fn Env, Pos, Maybe Name, Name, [ CA.Pattern ]: Res CA.Pattern =
     fn env, pos, maybeModule, name, args:
-    resolveToConstructorUsr env.ro pos maybeModule name
+    resolveToUsr env.ro pos maybeModule name
     >> onOk fn usr:
     CA.'patternConstructor pos usr args >> 'ok
 
@@ -688,7 +683,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "Can't reference a type or module here...?" ]
 
         FA.'constructor { maybeModule, name }:
-            resolveToConstructorUsr env.ro pos maybeModule name
+            resolveToUsr env.ro pos maybeModule name
             >> onOk fn usr:
             CA.'constructor pos usr >> 'ok
 
@@ -879,7 +874,7 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
 
             'nothing:
                 isUnique =
-                    try Dict.get paName.name env.ro.meta.globalValues as
+                    try Dict.get paName.name env.ro.meta.globals as
                         'nothing: 'true
                         'just globalUsr: isRoot and globalUsr == 'USR env.ro.umr paName.name
 
@@ -1351,7 +1346,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
     try expr_ as
 
         FA.'uppercase { maybeModule, name }:
-            resolveToTypeUsr ro pos maybeModule name
+            resolveToUsr ro pos maybeModule name
             >> onOk fn usr:
             CA.'typeNamed pos usr [] >> 'ok
 
@@ -1372,7 +1367,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                     faArgs
                     >> List.mapRes (translateRawType ro __) __
                     >> onOk fn caArgs:
-                    resolveToTypeUsr ro pos maybeModule name
+                    resolveToUsr ro pos maybeModule name
                     >> onOk fn usr:
                     CA.'typeNamed pos usr caArgs >> 'ok
 
@@ -1457,13 +1452,10 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
         error env pos [ "constructor " .. name .. " is duplicate" ]
     else
         'ok 'none
-
     >> onOk fn 'none:
-
     faPars
     >> List.mapRes (translateRawType env.ro __) __
     >> onOk fn ins:
-
     tyvars as Dict Name Pos =
         List.for Dict.empty ins (fn in, dict: Dict.join (CA.typeTyvars in) dict)
 
@@ -1473,19 +1465,16 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
     if undeclaredTyvars == Dict.empty then
         'ok 'none
     else
+        toError as fn Name & Pos: Error =
+            fn n & p:
+            Error.'simple env.ro.errorModule p [ "Undeclared type variable: " .. n ]
 
-      toError as fn Name & Pos: Error =
-        fn n & p:
-        Error.'simple env.ro.errorModule p [ "Undeclared type variable: " .. n ]
-
-      undeclaredTyvars
-      >> Dict.toList
-      >> List.map toError __
-      >> Error.'nested
-      >> 'err
-
+        undeclaredTyvars
+        >> Dict.toList
+        >> List.map toError __
+        >> Error.'nested
+        >> 'err
     >> onOk fn 'none:
-
     env
     >> insertPatternNames 'true (CA.'patternAny pos ('just name) 'nothing) __
     >> onOk fn newEnv:
@@ -1557,7 +1546,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 error env pos [ name .. " declared twice!" ]
             else
                 # TODO check that args are not duplicate
-                caPars as [Name & Pos] =
+                caPars as [ Name & Pos ] =
                     List.map (fn p & n: n & p) fa.args
 
                 usr =
@@ -1580,8 +1569,8 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
 
                 newModule =
                     { caModule with
-                    , variantTypeDefs = Dict.insert name varDef .variantTypeDefs
                     , constructorDefs = Dict.for .constructorDefs constructors Dict.insert
+                    , variantTypeDefs = Dict.insert name varDef .variantTypeDefs
                     }
 
                 newModule & newEnv >> 'ok

@@ -10,8 +10,8 @@ errorModule as fn Text: Error.Module =
     { content, fsPath = "<Test>" }
 
 
-source as Meta.SourceId =
-    2
+source as Meta.Source =
+    Meta.'platform "<tests>"
 
 
 moduleUmr as UMR =
@@ -58,18 +58,13 @@ resErrorToStrippedText as fn Res a: Result Text a =
 #
 # Meta
 #
-meta as Meta =
-    metaResult =
-        DefaultModules.asText
-        >> ModulesFile.textToMeta "DefaultModules" __
-        >> Result.mapError (fn e: e >> Error.toFormattedText >> formattedToStrippedText) __
-
-    try metaResult as
+imports as Imports =
+    try ImportsFile.toImports DefaultImports.defaultImportsFile as
 
         'err e:
-            log ("Error in DefaultModules.sp: " .. e) 'none
+            log "Error in DefaultImports.sp: " e
 
-            todo "error loading DefaultModules.sp"
+            todo "error loading DefaultImports.sp"
 
         'ok m:
             m

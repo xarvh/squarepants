@@ -1,3 +1,4 @@
+
 var DependencyType =
     , 'valueDependency
     , 'constructorDependency
@@ -5,9 +6,11 @@ var DependencyType =
 
 
 #
+# This type defines the possible directories where a module might be.
+#
+# It is designed to minimize the risk of including absolute paths in the output.
+# The output code should not be different because the project root is located in a different place.
 # At worst, the output should depend only on the directory structure of the project's directory.
-# This type is designed to minimize the risk of including absolute paths in the output.
-# The output code should not be different because the project root is located in a different place!
 #
 var Source =
     , # `Core` definitions and the core modules.
@@ -16,19 +19,23 @@ var Source =
       'core
     , # This is an alias for whatever Source the *selected* Platform has.
       # This is needed because Platform must know its own Source in order to define overrides.
-      'platform
+      # * The first argument is the userSourceDir path /within/ the library
+      'platform Text
     , # This is the bulk of an application's specific code
       # All annotated definitions are publicly visible, and all modules use the project's Modules File.
       # * The argument is the directory path, relative to the project's root.
       'userSourceDir Text
     , # This is for self-contained code developed specifically for the app.
       # It exposes only selected definitions and has its own Modules File.
-      # * The argument is the directory path, relative to the project's root.
-      'userLibrary Text
+      # * The first argument is the library path, relative to the project's root.
+      # * The second argument is the userSourceDir path /within/ the library
+      'userLibrary Text Text
     , # This is for libraries installed and managed by the squarepants executable, most often third party libraries
       # They live in installedLibraries/ under the project's root directory.
-      # * The argument is the directory path, relative to installedLibraries/.
-      'installedLibrary Text
+      # * The first argument is the library path, relative to installedLibraries/.
+      # * The second argument is the userSourceDir path /within/ the library
+      'installedLibrary Text Text
+
 
 
 #
@@ -64,18 +71,21 @@ ByUsr a =
     Dict USR a
 
 
-ModuleEnvironment =
+#
+# Every module uses exactly one ImportEnv that tells it how to translate module names and which globals are available.
+#
+Imports =
     {
     , globals as Dict Name USR
     # This is used by toHuman, to show symbols the same way the user would expect to read and write them
-    # (only the main ModuleEnvironment is used for this)
+    # (only the main ImportEnv is used for this)
     , umrToVisibleAs as Dict UMR Name
     # These resolve module names
     , visibleAsToUmr as Dict Name UMR
     }
 
 
-init as ModuleEnv =
+initImports as Imports =
     {
     , globals = Dict.empty
     , umrToVisibleAs = Dict.empty
@@ -85,8 +95,8 @@ init as ModuleEnv =
 
 ProjectEnvironment =
     {
-    , libraryModuleEnvBySource as Dict Source ModuleEnv
-    , mainModuleEnv as ModuleEnv
+    , libraryImportsBySource as Dict Source Imports
+    , mainImports as Imports
     , platformSource as Source
     }
 

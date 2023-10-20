@@ -9,6 +9,11 @@ sourceDir =
     path = "src"
 
     module =
+        path = ImportsFile
+        globalTypes =
+            ImportsFile
+
+    module =
         path = Human/Type
         globalValues =
             usrToText
@@ -53,6 +58,12 @@ sourceDir =
     module =
        path = Compiler/TestHelpers
        importAs = TH
+
+    module =
+       path = Platform
+       importAs = Platform
+       globalTypes =
+          Platform
 
 
 # This will be transformed into a platform
@@ -183,12 +194,6 @@ library =
        importAs = TA
 
     module =
-       path = Compiler/Platform
-       importAs = Platform
-       globalTypes =
-          Platform
-
-    module =
        path = Compiler/CanonicalAst
        importAs = CA
 
@@ -204,11 +209,11 @@ library =
         path = Compiler/Meta
         importAs = Meta
         globalTypes =
-            Meta
+            Imports
             ByUsr
             USR
             UMR
-            LibrarySource
+            Source
             DependencyType
         globalValues =
             'USR

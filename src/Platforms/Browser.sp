@@ -1,32 +1,24 @@
 platform as Platform =
     {
-    , defaultModules = DefaultModules.asText .. modules
-    , defaultOutputPath = "index.js"
+    , defaultImportsFile
+    , defaultOutputName = "index.js"
     , makeExecutable
     , name = "browser"
     , quickstart = "TODO"
     }
 
 
-modules as Text =
-    """
-
-    library =
-        source = "core:browser"
-
-        module =
-            path = Browser
-
-        module =
-            path = Html
-
-        module =
-            path = VirtualDom
-    """
+defaultImportsFile as ImportsFile =
+    DefaultImports.platformDefaultImportsFile
+        [
+        , "Browser" & [ ]
+        , "Html" & []
+        , "VirtualDom" & []
+        ]
 
 
 virtualDomModule as fn Text: USR =
-    'USR ('UMR Meta.'platform "VirtualDom") __
+    'USR ('UMR (Meta.'platform "src/") "VirtualDom") __
 
 
 compile as fn Self.LoadPars: Text =

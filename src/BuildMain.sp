@@ -1,7 +1,7 @@
 #TODO rename to MainMake
 
-modulesFileName as Text =
-    "modules.sp"
+importsFileName as Text =
+    "imports.sp"
 
 
 libDirectoryName as Text =
@@ -14,38 +14,17 @@ coreDirName as Text =
 
 GetModuleMetaAndPathPars =
     {
-    , coreLibraryMeta as Meta
     , coreLibraryPath as Text
-    , projectMeta as Meta
+    , platformSource as Source
+    , projectImports as Imports
+    , loadImports as fn Text: Res Imports
     }
 
 
-getModuleMetaAndPath as fn @IO, GetModuleMetaAndPathPars, UMR: Res { meta as Meta, path as Text } =
-    fn @io, pars, umr:
-    'UMR sourceId name =
+getModuleMetaAndPath as fn GetModuleMetaAndPathPars, UMR: Res { meta as Imports, path as Text } =
+    fn pars, umr:
+    'UMR source name =
         umr
-
-    try Dict.get sourceId pars.projectMeta.sourceDirIdToPath as
-        'nothing:
-            [ "invalid sourceDirId " .. id .. " (this is a compiler bug!)" ]
-            >> Error.'raw
-            >> 'err
-
-        'just Meta.'core:
-            ...
-
-        'just Meta.'platform:
-            ...
-
-        'just (Meta.'sourceDirectory path):
-            ...
-
-        'just (Meta.'localLibrary path):
-            ...
-
-        'just (Meta.'installedLibrary path):
-            ...
-
 
     try source as
 
@@ -56,90 +35,65 @@ getModuleMetaAndPath as fn @IO, GetModuleMetaAndPathPars, UMR: Res { meta as Met
             }
             >> 'ok
 
-        Meta.'sourceDirId id:
-            try Dict.get id pars.projectMeta.sourceDirIdToPath as
-                'nothing:
-                      [ "invalid sourceDirId " .. id .. " (this is a compiler bug!)" ]
-                      >> Error.'raw
-                      >> 'err
+        Meta.'platform:
+            getModuleMetaAndPath pars ('UMR pars.platformSource name)
 
-                'just path:
-                      [ path, name .. ".sp" ]
-                      >> Path.resolve
-                      >> 'ok
-
-            >> onOk fn path:
+        Meta.'userSourceDir path:
             {
             , meta = pars.projectMeta
-            , path
+            , path = Path.resolve [ path, name .. ".sp" ]
             }
             >> 'ok
 
-        [#
-        Meta.'library libSource id:
-            env.loadMetafile libSource
+        Meta.'userLibrary path:
+            [ path, "modules.sp" ]
+            >> Path.resolve
+            >> pars.loadModuleEnv
             >> onOk fn libraryMeta:
-            #TODO check that library exposes module
+            #TODO check that library actually exposes the module
 
             {
             , meta = libraryMeta
-            , path =
-                try Dict.get id libraryMeta.sourceDirIdToPath as
-                    'nothing: todo << "invalid sourceDirId " .. id .. " in library " .. libSource
-                    'just path: Path.resolve [ path, name .. ".sp" ]
-            }
-            >> 'ok
-        #]
-
-        # TODO posix and browser should be just replaced by a "platform" source
-        Meta.'posix:
-            {
-            , meta = pars.coreLibraryMeta
-            , path = Path.resolve [ pars.coreLibraryPath, "posix", Text.split "/" (name .. ".sp")... ]
+            , path = Path.resolve [ path, name .. "sp" ]
             }
             >> 'ok
 
-        Meta.'browser:
-            {
-            , meta = pars.coreLibraryMeta
-            , path = Path.resolve [ pars.coreLibraryPath, "browser", Text.split "/" (name .. ".sp")... ]
-            }
-            >> 'ok
+        Meta.'installedLibrary path:
+            todo "'installedLibrary not yet implemented =("
 
 
-getEntryUmr as fn Meta, Text: IO.Re UMR =
+getEntryUsr as fn Imports, Text: IO.Re USR =
     fn projectMeta, entryModulePath:
-    isEntryUmr =
-        fn 'UMR source name:
-        try source as
+    todo "getEntryUsr"
+#    isEntryUmr =
+#        fn 'UMR source name:
+#        try source as
+#
+#            Meta.'sourceDirId id:
+#                try Dict.get id projectMeta.sourceDirIdToPath as
+#
+#                    'just path:
+#                        # TODO this should match the expression in getModuleMetaAndPath
+#                        Path.resolve [ path, name .. ".sp" ] == entryModulePath
+#
+#                    'nothing:
+#                        'false
+#
+#            _:
+#                'false
+#
+#    allUmrs =
+#        Dict.values projectMeta.moduleVisibleAsToUmr
+#
+#    try List.find isEntryUmr allUmrs as
+#        'just umr: 'ok umr
+#        'nothing: "Error: I can't find the module " .. entryModulePath .. " anywhere." >> 'err
 
-            Meta.'sourceDirId id:
-                try Dict.get id projectMeta.sourceDirIdToPath as
 
-                    'just path:
-                        # TODO this should match the expression in getModuleMetaAndPath
-                        Path.resolve [ path, name .. ".sp" ] == entryModulePath
-
-                    'nothing:
-                        'false
-
-            _:
-                'false
-
-    allUmrs =
-        Dict.values projectMeta.moduleVisibleAsToUmr
-
-    try List.find isEntryUmr allUmrs as
-        'just umr: 'ok umr
-        'nothing: "Error: I can't find the module " .. entryModulePath .. " anywhere." >> 'err
-
-
-loadModule as fn @IO, Meta, UMR, Text: IO.Re CA.Module =
+loadModule as fn @IO, Imports, UMR, Text: IO.Re CA.Module =
     fn @io, meta, umr, fileName:
-
     if umr == Meta.coreUmr then
         'ok CoreDefs.coreModule
-
     else
         IO.readFile @io fileName
         >> onOk fn moduleAsText:
@@ -183,29 +137,6 @@ resToIo as fn Res a: IO.Re a =
             e
             >> errorToText
             >> 'err
-
-
-#
-# Load modules.sp
-#
-loadModulesFile as fn @IO, Platform.Platform, Text: IO.Re ModulesFile.ModulesFile =
-    fn @io, platform, projectRoot:
-    path =
-        [ projectRoot, modulesFileName ] >> Path.resolve
-
-    log "Metafile: " path
-
-    try IO.readFile @io path as
-
-        'ok f:
-            f
-
-        'err _:
-            log "Using default modules.sp" ""
-
-            platform.defaultModules
-    >> ModulesFile.textToModulesFile modulesFileName __
-    >> resToIo
 
 
 #
@@ -264,9 +195,9 @@ ModuleAndPath =
     }
 
 
-updateSourceDir as fn [ Text ], ModulesFile.SourceDir: ModulesFile.SourceDir =
+updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     fn fileNames, orig:
-    insertModuleName as fn Text, ModulesFile.SourceDir: ModulesFile.SourceDir =
+    insertModuleName as fn Text, ImportsFile.SourceDir: ImportsFile.SourceDir =
         fn name, sd:
         try List.find (fn m: m.path == name) sd.modules as
             'just _: sd
@@ -275,33 +206,36 @@ updateSourceDir as fn [ Text ], ModulesFile.SourceDir: ModulesFile.SourceDir =
     List.for orig fileNames insertModuleName
 
 
-loadMeta as fn @IO, Platform.Platform, Text, Text: IO.Re Meta =
-    fn @io, platform, entryModuleDir, projectRoot:
-    loadModulesFile @io platform projectRoot
-    >> onOk fn modulesFileRaw:
-    resolvedDirs =
-        modulesFileRaw.sourceDirs >> List.map (fn sd: { sd with path = Path.resolve [ projectRoot, .path ] }) __
-
-    allDirs =
-        if List.any (fn sd: sd.path == entryModuleDir) resolvedDirs then
-            resolvedDirs
-        else
-            { modules = [], path = entryModuleDir } :: resolvedDirs
-
-    modulesFile =
-        { modulesFileRaw with sourceDirs = allDirs }
+scanSourceDirs as fn @IO, ImportsFile: IO.Re Imports =
+    fn @io, importsFile:
 
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
-    # before building Meta we need to add those that are not mentioned.
-    modulesFile.sourceDirs
+    # before building Imports we need to add those that are not mentioned.
+    importsFile.sourceDirs
     >> List.mapRes (fn sd: listSourceDir @io sd.path "") __
     >> onOk fn allSourceDirLists:
-    updatedSourceDirs as [ ModulesFile.SourceDir ] =
-        List.map2 updateSourceDir allSourceDirLists modulesFile.sourceDirs
+    updatedSourceDirs as [ ImportsFile.SourceDir ] =
+        List.map2 updateSourceDir allSourceDirLists importsFile.sourceDirs
 
-    { modulesFile with sourceDirs = updatedSourceDirs }
-    >> ModulesFile.toMeta
+    { importsFile with sourceDirs = updatedSourceDirs }
+    >> ImportsFile.toImports
     >> resToIo
+
+
+loadImports as fn @IO, Text: (IO.Re Imports) =
+    fn @io, rootPath:
+
+    filePath =
+        Path.resolve [ rootPath, importsFileName ]
+
+    IO.readFile @io filePath
+    >> onOk fn fileContent:
+
+    ImportsFile.textToModulesFile filePath fileContent
+    >> resToIo
+    >> onOk fn importsFile:
+
+    scanSourceDirs @io importsFile
 
 
 searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
@@ -330,7 +264,7 @@ searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
 
 CompileMainPars =
     {
-    , entryModulePath as Text
+    , entryPoint as Text
     , maybeOutputPath as Maybe Text
     , platform as Platform.Platform
     , selfPath as Text
@@ -342,26 +276,32 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
     #
     # Figure out project root
     #
-    entryModulePath =
-        Path.resolve [ pars.entryModulePath ]
-
-    entryModuleDir =
-        Path.dirname entryModulePath
-
     projectRoot =
-        entryModuleDir
-        >> searchAncestorDirectories @io (fn isDirectory & fileName: not isDirectory and fileName == modulesFileName) __
-        >> Maybe.withDefault entryModuleDir __
+        # Either use the first ancestor that contains an imports file...
+        searchAncestorDirectories @io (fn isDirectory & fileName: not isDirectory and fileName == importsFileName) "."
+        # ...either use the current dir
+        >> Maybe.withDefault "." __
+
+    IO.writeStdout @io __ << "Project root is " .. Path.resolve [ projectRoot ]
 
     #
     # Load meta and figure out entry point's USR
     #
-    loadMeta @io pars.platform entryModuleDir projectRoot
-    >> onOk fn projectMeta:
-    getEntryUmr projectMeta entryModulePath
-    >> onOk fn entryUmr:
-    entryUsr =
-        'USR entryUmr "main"
+    try loadImports @io projectRoot as
+        'err msg:
+            # TODO This is not portable, need a better way to get IO errors
+            if Text.contains "ENOENT" msg then
+                IO.writeStdout @io __ << "No " .. importsFileName .. " found, using default."
+                scanSourceDirs @io pars.platform.defaultImportsFile
+            else
+                'err msg
+
+        'ok i:
+            'ok i
+
+    >> onOk fn projectImports:
+    getEntryUsr projectImports pars.entryPoint
+    >> onOk fn entryUsr:
 
     #
     # Figure out corelib's root
@@ -374,40 +314,39 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
         'nothing: "Error: I need a " .. libDirectoryName .. " directory next to the squarepants executable " .. pars.selfPath .. " but I can't find it." >> 'err
         'just p: Path.resolve [ p, libDirectoryName ] >> 'ok
     >> onOk fn coreLibraryPath:
+
     #
     # Compile!
     #
-
     getModuleMetaAndPathPars as GetModuleMetaAndPathPars =
         {
-        , coreLibraryMeta = TH.meta
         , coreLibraryPath
-        , projectMeta
+        , projectImports
+        , platformSource = todo "platformSource"
+        , loadImports = todo "loadImports"
         }
 
     loadCaModule as fn UMR: Res CA.Module =
         fn umr:
-        getModuleMetaAndPath @io getModuleMetaAndPathPars umr
+        getModuleMetaAndPath getModuleMetaAndPathPars umr
         >> onOk fn out:
-        loadModule @io out.meta umr out.path
-        >> Result.mapError (fn err: Error.'raw [ err ]) __
+        loadModule @io out.meta umr out.path >> Result.mapError (fn err: Error.'raw [ err ]) __
 
     {
-    , requiredUsrs = [ entryUsr ]
     , loadCaModule
+    , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build
-    >> Result.mapError errorToText __
+    >> resToIo
     >> onOk fn { constructors, rootValues }:
-
     outputFile =
-        Maybe.withDefault pars.platform.defaultOutputPath pars.maybeOutputPath
+        Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
 
     # Should be the last
     type =
         try List.find (fn rv: rv.usr == entryUsr) rootValues as
-          'just rv: rv.type
-          'nothing: todo "no type!?"
+            'just rv: rv.type
+            'nothing: todo "no type!?"
 
     {
     , constructors

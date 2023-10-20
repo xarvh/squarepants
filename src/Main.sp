@@ -237,10 +237,7 @@ main as IO.Program =
                 self :: "format" :: tail:
                     formatMain @io tail
 
-                self :: head :: tail:
-                    #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
-                    mainModulePath =
-                        head
+                self :: entryPoint :: tail:
 
                     maybeOutputPath =
                         List.head tail
@@ -248,7 +245,7 @@ main as IO.Program =
                     BuildMain.compileMain
                         @io
                         {
-                        , entryModulePath = mainModulePath
+                        , entryPoint
                         , maybeOutputPath
                         , platform = cliState.platform
                         , selfPath = self

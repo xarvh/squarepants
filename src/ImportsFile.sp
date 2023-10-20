@@ -1,12 +1,11 @@
-ModulesFile =
+ImportsFile =
     {
     , libraries as [ Library ]
     , sourceDirs as [ SourceDir ]
     }
 
 
-#, platform as ....?
-initModulesFile as ModulesFile =
+init as ImportsFile =
     {
     , libraries = []
     , sourceDirs = []
@@ -29,30 +28,22 @@ Library =
 
 Module =
     {
-    , globalTypes as [ Text ]
-    , globalValues as [ Text ]
+    , globals as [ Text ]
     , path as Text
     # TODO: renameTo?
     , visibleAs as Text
     }
 
 
-textToMeta as fn Text, Text: Res Meta =
-    fn sponName, sponContent:
-    sponContent
-    >> textToModulesFile sponName __
-    >> onOk toMeta
-
-
-insertModule as fn @Array Text, Meta.SourceId, Module, Meta: Meta =
-    fn @errors, sourceId, mod, meta:
+insertModule as fn @Array Text, Meta.Source, Module, Imports: Imports =
+    fn @errors, source, mod, meta:
     visibleAs =
         # TODO fail if visibleAs is used already
         # TODO test that is well-formed
         mod.visibleAs
 
     umr =
-        'UMR sourceId mod.path
+        'UMR source mod.path
 
     insertGlobal =
         fn varName, d:
@@ -77,8 +68,8 @@ parseLibrarySource as fn Text: Result Text Meta.Source =
         [ "core" ]:
             'ok Meta.'core
 
-        [ "platform" ]:
-            'ok Meta.'platform
+#        [ "platform" ]:
+#            'ok Meta.'platform
 
         [ "local", path ]:
             'ok << Meta.'localLibrary path
@@ -88,7 +79,7 @@ parseLibrarySource as fn Text: Result Text Meta.Source =
             'err << "invalid library source: " .. sourceAsText
 
 
-insertSource as fn @Array Text, [ Module ], Meta.Source, Meta: Meta =
+insertSource as fn @Array Text, [ Module ], Meta.Source, Imports: Imports =
     fn @errors, modules, source, meta:
     id =
         meta.nextSourceId
@@ -100,14 +91,14 @@ insertSource as fn @Array Text, [ Module ], Meta.Source, Meta: Meta =
     >> List.for __ modules (insertModule @errors id __ __)
 
 
-toMeta as fn ModulesFile: Res Meta =
+toImports as fn ImportsFile: Res Imports =
     fn mf:
 
     # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
     !errors as Array Text =
         Array.fromList []
 
-    insertLibrary as fn Library, Meta: Meta =
+    insertLibrary as fn Library, Imports: Imports =
         fn lib, meta:
         try parseLibrarySource lib.source as
 
@@ -119,12 +110,12 @@ toMeta as fn ModulesFile: Res Meta =
             'ok source:
                 insertSource @errors lib.modules source meta
 
-    insertSourceDir as fn SourceDir, Meta: Meta =
+    insertSourceDir as fn SourceDir, Imports: Imports =
         fn sourceDir, meta:
-        insertSource @errors sourceDir.modules (Meta.'sourceDirectory sourceDir.path) meta
+        insertSource @errors sourceDir.modules (Meta.'userSourceDir sourceDir.path) meta
 
     meta =
-        Meta.init
+        Meta.initImports
         >> List.for __ mf.libraries insertLibrary
         >> List.for __ mf.sourceDirs insertSourceDir
 
@@ -158,14 +149,11 @@ moduleReader as SPON.Reader Module =
     >> SPON.onAcc fn path:
     SPON.maybe (SPON.field "importAs" SPON.upperName)
     >> SPON.onAcc fn visibleAs:
-    SPON.maybe (SPON.field "globalTypes" (SPON.many SPON.upperName))
-    >> SPON.onAcc fn globalTypes:
-    SPON.maybe (SPON.field "globalValues" (SPON.many globalValue))
-    >> SPON.onAcc fn globalValues:
+    SPON.maybe (SPON.field "globals" (SPON.many SPON.name))
+    >> SPON.onAcc fn globals:
     SPON.return
         {
-        , globalTypes = Maybe.withDefault [] globalTypes
-        , globalValues = Maybe.withDefault [] globalValues
+        , globals = Maybe.withDefault [] globals
         , path = path
         , visibleAs = Maybe.withDefault path visibleAs
         }
@@ -204,9 +192,9 @@ modulesFileReader as SPON.Reader [ RootEntry ] =
     >> SPON.many
 
 
-textToModulesFile as fn Text, Text: Res ModulesFile =
+textToModulesFile as fn Text, Text: Res ImportsFile =
     fn sponName, sponContent:
-    insert as fn RootEntry, ModulesFile: ModulesFile =
+    insert as fn RootEntry, ImportsFile: ImportsFile =
         fn rootEntry, mf:
         try rootEntry as
             'lib lib: { mf with libraries = lib :: mf.libraries }
@@ -214,4 +202,4 @@ textToModulesFile as fn Text, Text: Res ModulesFile =
 
     sponContent
     >> SPON.read modulesFileReader sponName __
-    >> Result.map (fn rootEntries: List.for initModulesFile rootEntries insert) __
+    >> Result.map (List.for init __ insert) __

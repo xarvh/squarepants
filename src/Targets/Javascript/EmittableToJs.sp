@@ -659,11 +659,13 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
 
 translateSource as fn Meta.Source: Text =
     fn src:
-    try src as
-        Meta.'core: "core"
-        Meta.'posix: "posix"
-        Meta.'browser: "browser"
-        Meta.'sourceDirId id: id
+    todo "translateSource"
+#    try src as
+#        Meta.'core: "c"
+#        Meta.'platform subSrcPath: ""
+#        Meta.'userSourceDir srcPath: ""
+#        Meta.'userLibrary libPath subSrcPath: ""
+#        Meta.'installedLibrary libPath subSrcPath: ""
 
 
 translateUsr as fn USR: Text =
