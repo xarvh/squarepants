@@ -33,18 +33,6 @@ sourceDir =
        importAs = TH
 
 
-# This will be transformed into a platform
-library =
-    source = "core:posix"
-
-    module =
-       path = IO
-       globalTypes = IO
-
-    module =
-       path = Path
-
-
 library =
     source = "core:prelude"
 
@@ -217,8 +205,20 @@ library =
             'token
 
 
+# This will be transformed into a platform
 library =
-    source = "lib/format"
+    source = "local:lib/posix"
+
+    module =
+       path = IO
+       globalTypes = IO
+
+    module =
+       path = Path
+
+
+library =
+    source = "local:lib/format"
 
     module =
        path = Format
@@ -226,28 +226,28 @@ library =
 
 
 library =
-    source = "lib/parser"
+    source = "local:lib/parser"
 
     module =
        path = Parser
 
 
 library =
-    source = "lib/depsResolution"
+    source = "local:lib/depsResolution"
 
     module =
        path = RefHierarchy
 
 
 library =
-    source = "lib/spon"
+    source = "local:lib/spon"
 
     module =
        path = SPON
 
 
 library =
-    source = "lib/test"
+    source = "local:lib/test"
 
     module =
        path = Test
