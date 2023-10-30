@@ -133,6 +133,16 @@ constructor as Reader Text =
     >> expr "a 'constructor name" __
 
 
+anyName as Reader Text =
+    try __ as
+        FA.'lowercase { attrPath = [], maybeModule = 'nothing, maybeType = 'nothing, name }: 'just name
+        FA.'uppercase { maybeModule = 'nothing, name }: 'just name
+        FA.'constructor { maybeModule = 'nothing, name }: 'just name
+        _: 'nothing
+    >> expr "a name" __
+
+
+
 #
 # Higher rank
 #

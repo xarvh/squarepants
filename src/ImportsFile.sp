@@ -36,7 +36,7 @@ Module =
 
 
 insertModule as fn @Array Text, Meta.Source, Module, Imports: Imports =
-    fn @errors, source, mod, meta:
+    fn @errors, source, mod, imports:
     visibleAs =
         # TODO fail if visibleAs is used already
         # TODO test that is well-formed
@@ -53,11 +53,10 @@ insertModule as fn @Array Text, Meta.Source, Module, Imports: Imports =
         >> 'USR umr __
         >> Dict.insert varName __ d
 
-    { meta with
-    , globalTypes = List.for .globalTypes mod.globalTypes insertGlobal
-    , globalValues = List.for .globalValues mod.globalValues insertGlobal
-    , moduleVisibleAsToUmr = Dict.insert visibleAs umr .moduleVisibleAsToUmr
-    , umrToModuleVisibleAs = Dict.insert umr visibleAs .umrToModuleVisibleAs
+    { imports with
+    , globals = List.for .globals mod.globals insertGlobal
+    , visibleAsToUmr = Dict.insert visibleAs umr .moduleVisibleAsToUmr
+    , umrToVisibleAs = Dict.insert umr visibleAs .umrToModuleVisibleAs
     }
 
 
@@ -72,7 +71,7 @@ parseLibrarySource as fn Text: Result Text Meta.Source =
 #            'ok Meta.'platform
 
         [ "local", path ]:
-            'ok << Meta.'localLibrary path
+            'ok << Meta.'userLibrary path subSourceDir
 
         # TODO support non-local libraries
         _:
@@ -80,15 +79,9 @@ parseLibrarySource as fn Text: Result Text Meta.Source =
 
 
 insertSource as fn @Array Text, [ Module ], Meta.Source, Imports: Imports =
-    fn @errors, modules, source, meta:
-    id =
-        meta.nextSourceId
+    fn @errors, modules, source, imports:
 
-    { meta with
-    , nextSourceId = id + 1
-    , sourceIdToSource = Dict.insert id source .sourceIdToSource
-    }
-    >> List.for __ modules (insertModule @errors id __ __)
+    List.for imports modules (insertModule @errors source __ __)
 
 
 toImports as fn ImportsFile: Res Imports =
@@ -149,7 +142,7 @@ moduleReader as SPON.Reader Module =
     >> SPON.onAcc fn path:
     SPON.maybe (SPON.field "importAs" SPON.upperName)
     >> SPON.onAcc fn visibleAs:
-    SPON.maybe (SPON.field "globals" (SPON.many SPON.name))
+    SPON.maybe (SPON.field "globals" (SPON.many SPON.anyName))
     >> SPON.onAcc fn globals:
     SPON.return
         {
