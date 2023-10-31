@@ -88,7 +88,7 @@ var DirectoryPath =
 #
 # Uniquely identifies a module within the whole project.
 #
-UMR =
+var UMR =
     , 'UMR DirectoryPath ModulePath
 
 
@@ -111,6 +111,12 @@ ByUsr a =
 #
 # Every module uses exactly one Imports that tells it how to translate module names and which globals are available.
 #
+
+var ModuleLocation =
+    , 'moduleLocationSourceDirectory UMR
+    , 'moduleLocationLibrary DirectoryPath ModulePath
+
+
 Imports =
     {
     , directoryPath as DirectoryPath
@@ -119,7 +125,7 @@ Imports =
     , globalNameToModuleAlias as Dict Name Name
 
     # Translates from aliases to paths
-    , moduleAliasToDirOrLibrary as Dict Name DirOrLibrary
+    , moduleAliasToDirOrLibrary as Dict Name ModuleLocation
     #, modulePathToModuleAlias as Dict Name Name
     }
 
@@ -153,133 +159,6 @@ Pars =
     }
 
 
-
-
-
-[#
-
-
-
-ProjectImports
---------------
-      sourceDirectory =
-          path = src/
-
-          module =
-              path = Types/User
-              visibleAs = User
-
-
-      library =
-          source = libs/a/
-
-          module =
-              path = User
-              visibleAs = AUser
-
-
-      library =
-          source = core
-
-          module =
-              path = Result
-              visibleAs = Result
-              globals = onOk
-
-
-aLibImport
-----------
-
-      sourceDirectory =
-          path = src/
-
-          module =
-              path = Types/User
-              visibleAs = User
-
-
-      library =
-          source = git:somethingsomething.blah
-
-          module =
-              path = Blah
-              visibleAs = Blah
-              globals = meh
-
-
-      library =
-          source = core
-
-          module =
-              path = Result
-              visibleAs = Result
-              globals = onOk
-
-
-project root
-  /installedLibraries
-    /someLibrary
-      imports.sp
-      /libs
-        /someUserLibrary
-          imports.sp
-          /libs
-            ..ad infinitum
-
-
-
-
-
-
-project module
---------------
-
-
-      library =
-          source = libs/a/
-
-          module =
-              path = User
-              visibleAs = AUser
-
-
-
-        AUser ----> UMR?
-
-
-
-        {
-        , codeRoot =
-            if imports is from an installed library then
-                installed root
-            else
-                project root
-
-        , sourcePath =
-            if imports is from an installed library then
-                ...
-
-
-
-
-        # The modulePath is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
-        # ex: "Core/List"
-        , modulePath as Text
-        }
-
-
-
-
-
-
-#]
-
-
-
-
-
-
-
 resolveSymbol as fn Pars: Result [Text] USR =
     fn pars:
 
@@ -297,7 +176,7 @@ resolveSymbol as fn Pars: Result [Text] USR =
 
         'just referencedAlias:
 
-            try Dict.get referencedAlias currentImports.moduleAliasToSourceAndPath as
+            try Dict.get referencedAlias currentImports.moduleAliasToDirOrLibrary as
 
                 'nothing:
                     try pars.maybeReferencedModuleAlias as
@@ -315,12 +194,12 @@ resolveSymbol as fn Pars: Result [Text] USR =
                               >> 'err
 
 
-                'just ('sourceDirectory umr):
+                'just ('moduleLocationSourceDirectory umr):
                     'USR umr pars.referencedName
                     >> 'ok
 
 
-                'just ('library directoryPathOfLibrary modulePath):
+                'just ('moduleLocationLibrary directoryPathOfLibrary modulePath):
 
                     # We don't have the $sourceDirectory path within the library, so we need to load its imports.sp
                     #
@@ -348,12 +227,14 @@ resolveSymbol as fn Pars: Result [Text] USR =
                         'just exposedModule:
                             try Dict.get referencedName exposedModule.exposedUsrByName as
                                 'nothing:
-                                    'err "TODO"
+                                    [
+                                    , "imports.sp translates `$referencedAlias` as `$modulePath`"
+                                    , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
+                                    ]
+                                    >> 'err
 
                                 'just usr:
                                     'ok usr
-
-
 
 
 usrToFullPath as fn { coreLib as Text, project as Text, installed as Text }, USR: [Text] =
@@ -364,11 +245,3 @@ usrToFullPath as fn { coreLib as Text, project as Text, installed as Text }, USR
         'user sourcePath: [ basePath.project, sourcePath, modulePath, name ]
         'installed sourcePath: [ basePath.installed, sourcePath, modulePath, name ]
 
-
-
-#ProjectEnvironment =
-#    {
-#    , libraryImportsBySource as Dict Source Imports
-#    , mainImports as Imports
-#    , platformSource as Source
-#    }
