@@ -320,7 +320,7 @@ resolveSymbol as fn Pars: Result [Text] USR =
                     >> 'ok
 
 
-                'just ('library libraryPath modulePath):
+                'just ('library directoryPathOfLibrary modulePath):
 
                     # We don't have the $sourceDirectory path within the library, so we need to load its imports.sp
                     #
@@ -334,27 +334,24 @@ resolveSymbol as fn Pars: Result [Text] USR =
                     #
                     # Note that a library cannot export modules from its own libraries!
 
+                    pars.loadExports directoryPathOfLibrary
+                    >> onOk fn libraryExports:
 
-                    else this is a library, we need to know the sourceDirectory within the library, so we need to load the library's imports.sp
-                    also, we need to check the library's exports.sp
+                    try Dict.get modulePath libraryExports.exposedModulesByPath as
+                        'nothing:
+                              [
+                              , "imports.sp translates `$referencedAlias` as `$modulePath`"
+                              , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
+                              ]
+                              >> 'err
 
-                    'USR { pars.currentModule with modulePath } pars.referencedName
-                    >> 'ok
+                        'just exposedModule:
+                            try Dict.get referencedName exposedModule.exposedUsrByName as
+                                'nothing:
+                                    'err "TODO"
 
-
-#                'just ('library librarySource):
-#                    pars.loadImportsAndExports librarySource
-#                    >> onOk fn libraryImports & libraryExports:
-#
-#                    todo "ensure that libraryExports contains module and name"
-#
-#                    resolveSymbol
-#                        { pars with
-#                        , currentImports = libraryImports
-#                        , maybeReferencedModuleAlias = 'just referencedAlias
-#                        }
-
-
+                                'just usr:
+                                    'ok usr
 
 
 
