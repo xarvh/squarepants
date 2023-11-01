@@ -15,7 +15,7 @@ coreDirName as Text =
 GetModuleMetaAndPathPars =
     {
     , coreLibraryPath as Text
-    , platformSource as Source
+#    , platformSource as Source
     , projectImports as Imports
     , loadImports as fn Text: Res Imports
     }
@@ -23,6 +23,7 @@ GetModuleMetaAndPathPars =
 
 getModuleMetaAndPath as fn GetModuleMetaAndPathPars, UMR: Res { meta as Imports, path as Text } =
     fn pars, umr:
+
     'UMR source name =
         umr
 
