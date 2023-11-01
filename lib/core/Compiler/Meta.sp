@@ -141,17 +141,18 @@ var Exports =
 #
 # This function assumes that the symbol is root: it will NOT check for values defined inside closures!
 #
-Pars =
+ResolvePars =
     {
     , currentImports as Imports
     , currentModule as UMR
     , loadExports as fn CodeSource: Result Text (Imports & Exports)
+
     , maybeReferencedModuleAlias as Maybe Name
     , referencedName as Name
     }
 
 
-resolveSymbol as fn Pars: Result [ Text ] USR =
+resolveSymbol as fn Config, Maybe Name, Name: Result [ Text ] USR =
     fn pars:
     try pars.maybeReferencedModuleAlias as
         'just alias: 'just alias

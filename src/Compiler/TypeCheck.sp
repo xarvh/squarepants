@@ -137,7 +137,7 @@ initEnv as fn Dict UMR CA.Module: Env =
     , annotatedUnivarsByOriginalId = Dict.empty
     , constructors = Dict.empty
     , context = 'context_Global
-    , currentRootUsr = Meta.coreUsr "error"
+    , currentRootUsr = CoreDefs.usr "error"
     , exactTypes = Dict.empty
     , expandedAliases = Dict.empty
     , modulesByUmr

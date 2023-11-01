@@ -7,15 +7,15 @@ Env =
 # Meta
 #
 
-sourceToText as fn Meta.Source: Text =
-    fn source:
-    try source as
-        Meta.'core: "core:"
+#sourceToText as fn Meta.Source: Text =
+#    fn source:
+#    try source as
+#        Meta.'core: "core:"
 
 
 umrToText as fn Env, UMR: Text =
-    fn env, 'UMR source modulePath:
-    sourceToText source .. modulePath
+    fn env, umr: #'UMR source modulePath:
+    todo "sourceToText source .. modulePath"
 
 
 usrToText as fn Env, USR: Text =

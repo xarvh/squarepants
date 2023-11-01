@@ -6,13 +6,13 @@ umr as UMR =
     'UMR Meta.'core "Core"
 
 
-makeUsr as fn Name: USR =
+usr as fn Name: USR =
     'USR umr __
 
 
 nameToType as fn Text, [ CA.RawType ]: CA.RawType =
     fn name, args:
-    CA.'typeNamed Pos.'n (makeUsr name) args
+    CA.'typeNamed Pos.'n (usr name) args
 
 
 defToType as fn CA.VariantTypeDef, [ CA.RawType ]: CA.RawType =
@@ -30,7 +30,7 @@ usrToVariable as fn USR: CA.Expression =
 #
 
 textUsr as USR =
-    makeUsr "Text"
+    usr "Text"
 
 
 textDef as CA.VariantTypeDef =
@@ -50,7 +50,7 @@ text as CA.RawType =
 #
 
 numberUsr as USR =
-    makeUsr "Number"
+    usr "Number"
 
 
 numberDef as CA.VariantTypeDef =
@@ -82,11 +82,11 @@ noneType as CA.RawType =
 
 
 noneConsUsr as USR =
-    makeUsr noneConsName
+    usr noneConsName
 
 
 noneTypeUsr as USR =
-    makeUsr noneTypeName
+    usr noneTypeName
 
 
 noneConsDef as CA.ConstructorDef =
@@ -118,7 +118,7 @@ trueName as Text =
 
 
 trueUsr as USR =
-    makeUsr trueName
+    usr trueName
 
 
 falseName as Text =
@@ -126,7 +126,7 @@ falseName as Text =
 
 
 falseUsr as USR =
-    makeUsr falseName
+    usr falseName
 
 
 boolName as Text =
@@ -134,7 +134,7 @@ boolName as Text =
 
 
 boolUsr as USR =
-    makeUsr "Bool"
+    usr "Bool"
 
 
 boolType as CA.RawType =
@@ -185,7 +185,7 @@ nilName as Text =
 
 
 nilUsr as USR =
-    makeUsr nilName
+    usr nilName
 
 
 consName as Text =
@@ -193,7 +193,7 @@ consName as Text =
 
 
 consUsr as USR =
-    makeUsr consName
+    usr consName
 
 
 listName as Text =
@@ -206,7 +206,7 @@ listType as fn CA.RawType: CA.RawType =
 
 
 listUsr as USR =
-    makeUsr "List"
+    usr "List"
 
 
 listItem as CA.RawType =
@@ -280,7 +280,7 @@ unaryPlus as Op.Unop =
     {
     , symbol = "0 +"
     , type = tyFn [ number ] number
-    , usr = makeUsr "unaryPlus"
+    , usr = usr "unaryPlus"
     }
 
 
@@ -288,7 +288,7 @@ unaryMinus as Op.Unop =
     {
     , symbol = "0 -"
     , type = tyFn [ number ] number
-    , usr = makeUsr "unaryMinus"
+    , usr = usr "unaryMinus"
     }
 
 
@@ -338,7 +338,7 @@ and_ as Op.Binop =
     , precedence = Op.precedence_logical
     , symbol = "and"
     , type = typeBinopUnique boolType
-    , usr = makeUsr "and_"
+    , usr = usr "and_"
     }
 
 
@@ -349,7 +349,7 @@ or_ as Op.Binop =
     , precedence = Op.precedence_logical
     , symbol = "or"
     , type = typeBinopUnique boolType
-    , usr = makeUsr "or_"
+    , usr = usr "or_"
     }
 
 
@@ -360,7 +360,7 @@ textConcat as Op.Binop =
     , precedence = Op.precedence_addittive
     , symbol = ".."
     , type = typeBinopUnique text
-    , usr = makeUsr "concat"
+    , usr = usr "concat"
     }
 
 
@@ -374,7 +374,7 @@ listCons as Op.Binop =
     , precedence = Op.precedence_cons
     , symbol = "::"
     , type = typeBinop item (listType item) (listType item)
-    , usr = makeUsr "stack"
+    , usr = usr "stack"
     }
 
 
@@ -390,7 +390,7 @@ tuple as Op.Binop =
         >> Dict.insert "second" (tyVar "b") __
         >> CA.'typeRecord Pos.'n __
         >> typeBinop (tyVar "a") (tyVar "b") __
-    , usr = makeUsr "<& is just sugar>"
+    , usr = usr "<& is just sugar>"
     }
 
 
@@ -404,7 +404,7 @@ add as Op.Binop =
     , precedence = Op.precedence_addittive
     , symbol = "+"
     , type = typeBinopUnique number
-    , usr = makeUsr "add"
+    , usr = usr "add"
     }
 
 
@@ -415,7 +415,7 @@ subtract as Op.Binop =
     , precedence = Op.precedence_addittive
     , symbol = "-"
     , type = typeBinopUnique number
-    , usr = makeUsr "subtract"
+    , usr = usr "subtract"
     }
 
 
@@ -426,7 +426,7 @@ multiply as Op.Binop =
     , precedence = Op.precedence_multiplicative
     , symbol = "*"
     , type = typeBinopUnique number
-    , usr = makeUsr "multiply"
+    , usr = usr "multiply"
     }
 
 
@@ -437,7 +437,7 @@ divide as Op.Binop =
     , precedence = Op.precedence_multiplicative
     , symbol = "/"
     , type = typeBinopUnique number
-    , usr = makeUsr "divide"
+    , usr = usr "divide"
     }
 
 
@@ -451,7 +451,7 @@ mutableAssign as Op.Binop =
     , precedence = Op.precedence_mutop
     , symbol = ":="
     , type = CA.'typeFn Pos.'n [ CA.'parRe (tyVar "a"), CA.'parSp { raw = tyVar "a", uni = 'uni } ] { raw = noneType, uni = 'imm }
-    , usr = makeUsr "mutableAssign"
+    , usr = usr "mutableAssign"
     }
 
 
@@ -462,7 +462,7 @@ mutableAdd as Op.Binop =
     , precedence = Op.precedence_mutop
     , symbol = "+="
     , type = CA.'typeFn Pos.'n [ CA.'parRe number, CA.'parSp { raw = number, uni = 'imm } ] { raw = noneType, uni = 'imm }
-    , usr = makeUsr "mutableAdd"
+    , usr = usr "mutableAdd"
     }
 
 
@@ -473,7 +473,7 @@ mutableSubtract as Op.Binop =
     , precedence = Op.precedence_mutop
     , symbol = "-="
     , type = CA.'typeFn Pos.'n [ CA.'parRe number, CA.'parSp { raw = number, uni = 'imm } ] { raw = noneType, uni = 'imm }
-    , usr = makeUsr "mutableSubtract"
+    , usr = usr "mutableSubtract"
     }
 
 
@@ -487,7 +487,7 @@ equal as Op.Binop =
     , precedence = Op.precedence_comparison
     , symbol = "=="
     , type = typeBinop (tyVar "a") (tyVar "a") boolType
-    , usr = makeUsr "equal"
+    , usr = usr "equal"
     }
 
 
@@ -498,7 +498,7 @@ notEqual as Op.Binop =
     , precedence = Op.precedence_comparison
     , symbol = "/="
     , type = typeBinop (tyVar "a") (tyVar "a") boolType
-    , usr = makeUsr "notEqual"
+    , usr = usr "notEqual"
     }
 
 
@@ -509,7 +509,7 @@ lesserThan as Op.Binop =
     , precedence = Op.precedence_comparison
     , symbol = "<"
     , type = typeBinop (tyVar "a") (tyVar "a") boolType
-    , usr = makeUsr "lesserThan"
+    , usr = usr "lesserThan"
     }
 
 
@@ -520,7 +520,7 @@ greaterThan as Op.Binop =
     , precedence = Op.precedence_comparison
     , symbol = ">"
     , type = typeBinop (tyVar "a") (tyVar "a") boolType
-    , usr = makeUsr "greaterThan"
+    , usr = usr "greaterThan"
     }
 
 
@@ -531,7 +531,7 @@ lesserOrEqualThan as Op.Binop =
     , precedence = Op.precedence_comparison
     , symbol = "<="
     , type = typeBinop (tyVar "a") (tyVar "a") boolType
-    , usr = makeUsr "lesserOrEqualThan"
+    , usr = usr "lesserOrEqualThan"
     }
 
 
@@ -542,7 +542,7 @@ greaterOrEqualThan as Op.Binop =
     , precedence = Op.precedence_comparison
     , symbol = ">="
     , type = typeBinop (tyVar "a") (tyVar "a") boolType
-    , usr = makeUsr "greaterOrEqualThan"
+    , usr = usr "greaterOrEqualThan"
     }
 
 
@@ -556,7 +556,7 @@ sendRight as Op.Binop =
     , precedence = Op.precedence_pipe
     , symbol = ">>"
     , type = typeBinop (tyVar "a") (tyFn [ tyVar "a" ] (tyVar "b")) (tyVar "b")
-    , usr = makeUsr "sendRight"
+    , usr = usr "sendRight"
     }
 
 
@@ -567,7 +567,7 @@ sendLeft as Op.Binop =
     , precedence = Op.precedence_pipe
     , symbol = "<<"
     , type = typeBinop (tyFn [ tyVar "a" ] (tyVar "b")) (tyVar "a") (tyVar "b")
-    , usr = makeUsr "sendLeft"
+    , usr = usr "sendLeft"
     }
 
 

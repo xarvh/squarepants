@@ -76,14 +76,14 @@ header as Text =
 
 overrides as [ USR & Text ] =
 
-    source =
-        Meta.'platform "src/"
+#    source =
+#        Meta.'platform "src/"
 
     ioModule =
-        'USR ('UMR source "IO") __
+        todo """'USR ('UMR source "IO") __"""
 
     pathModule =
-        'USR ('UMR source "Path") __
+        todo """'USR ('UMR source "Path") __"""
 
     [
     , ioModule "parallel" & "io_parallel"

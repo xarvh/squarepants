@@ -93,7 +93,7 @@ getEntryUsr as fn Imports, Text: IO.Re USR =
 
 loadModule as fn @IO, Imports, UMR, Text: IO.Re CA.Module =
     fn @io, meta, umr, fileName:
-    if umr == Meta.coreUmr then
+    if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
     else
         IO.readFile @io fileName
@@ -323,7 +323,7 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
         {
         , coreLibraryPath
         , projectImports
-        , platformSource = todo "platformSource"
+#        , platformSource = todo "platformSource"
         , loadImports = todo "loadImports"
         }
 

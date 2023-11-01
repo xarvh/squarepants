@@ -32,8 +32,7 @@ Env =
 ReadOnly =
     {
     , errorModule as Error.Module
-    # TODO rename to `imports`
-    , meta as Imports
+    , resolvePars as Meta.ResolvePars
     , umr as UMR
     }
 
@@ -44,9 +43,7 @@ initEnv as fn ReadOnly: Env =
     , maybeShorthandTarget = 'nothing
     , nextGeneratedVariableName = 0
     , nonFn = Dict.empty
-    #, futureNonRootValues = Dict.empty
-    , ro =
-        ro
+    , ro
     , values = Dict.empty
     }
 
@@ -95,27 +92,38 @@ maybeForeignUsr as fn ReadOnly, Pos, Maybe Name, Name: Res (Maybe USR) =
 
 resolveToUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
     fn ro, pos, maybeModule, name:
-    maybeForeignUsr ro pos maybeModule name >> Result.map (Maybe.withDefault ('USR ro.umr name) __) __
+
+    Meta.resolve ro.resolvePars maybeModule name
+    >> Result.mapError (erroro ro pos __) __
+
 
 
 resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
     fn ro, pos, isRoot, maybeModule, name:
-    # TODO use Result.map?
-    try maybeForeignUsr ro pos maybeModule name as
 
-        'err e:
-            'err e
 
-        'ok ('just usr):
-            'refGlobal usr >> 'ok
+    Meta.resolve ro.resolvePars maybeModule name
+    >> Result.mapError (erroro ro pos __) __
 
-        'ok 'nothing:
-            if isRoot then
-                'USR ro.umr name
-                >> 'refGlobal
-                >> 'ok
-            else
-                'refLocal name >> 'ok
+    ....
+
+
+#    # TODO use Result.map?
+#    try maybeForeignUsr ro pos maybeModule name as
+#
+#        'err e:
+#            'err e
+#
+#        'ok ('just usr):
+#            'refGlobal usr >> 'ok
+#
+#        'ok 'nothing:
+#            if isRoot then
+#                'USR ro.umr name
+#                >> 'refGlobal
+#                >> 'ok
+#            else
+#                'refLocal name >> 'ok
 
 
 #

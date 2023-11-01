@@ -18,7 +18,7 @@ defaultImportsFile as ImportsFile =
 
 
 virtualDomModule as fn Text: USR =
-    'USR ('UMR (Meta.'platform "src/") "VirtualDom") __
+    todo """'USR ('UMR (Meta.'platform "src/") "VirtualDom") __"""
 
 
 compile as fn Self.LoadPars: Text =

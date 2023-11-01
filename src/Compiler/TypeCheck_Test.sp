@@ -147,7 +147,7 @@ infer as fn Text: fn Text: Result Text Out =
         fn umr:
         if umr == TH.moduleUmr then
             'ok caModule
-        else if umr == Meta.coreUmr then
+        else if umr == CoreDefs.umr then
             'ok CoreDefs.coreModule
         else
             [ "no module " .. toHuman umr ]

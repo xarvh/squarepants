@@ -22,7 +22,7 @@ coreOverrides as fn None: Dict USR Override =
     #
     corelib as fn Text, Text: USR =
         fn m, n:
-        'USR ('UMR Meta.'core m) n
+        todo """'USR ('UMR Meta.'core m) n"""
 
     [
     , CoreDefs.unaryPlus.usr & unaryPlus
@@ -669,8 +669,9 @@ translateSource as fn Meta.Source: Text =
 
 
 translateUsr as fn USR: Text =
-    fn 'USR ('UMR source modulePath) name:
-    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. "$" .. name
+    todo "translateUsr"
+#    fn 'USR ('UMR source modulePath) name:
+#    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. "$" .. name
 
 
 translateName as fn Name: Text =

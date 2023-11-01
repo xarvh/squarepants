@@ -10,12 +10,12 @@ errorModule as fn Text: Error.Module =
     { content, fsPath = "<Test>" }
 
 
-source as Meta.Source =
-    Meta.'platform "<tests>"
+#source as Meta.Source =
+#    todo """Meta.'platform "<tests>"""
 
 
 moduleUmr as UMR =
-    'UMR source moduleName
+    todo "'UMR source moduleName"
 
 
 moduleUsr as fn Name: USR =
@@ -76,20 +76,20 @@ imports as Imports =
 # These are necessary because some tests will expect Pos T instead of N
 #
 caBool as CA.RawType =
-    CA.'typeNamed Pos.'t (Meta.coreUsr "Bool") []
+    CA.'typeNamed Pos.'t (CoreDefs.usr "Bool") []
 
 
 caNumber as CA.RawType =
-    CA.'typeNamed Pos.'t (Meta.coreUsr "Number") []
+    CA.'typeNamed Pos.'t (CoreDefs.usr "Number") []
 
 
 caNone as CA.RawType =
-    CA.'typeNamed Pos.'t (Meta.coreUsr "None") []
+    CA.'typeNamed Pos.'t (CoreDefs.usr "None") []
 
 
 caList as fn CA.RawType: CA.RawType =
     fn itemType:
-    CA.'typeNamed Pos.'t (Meta.coreUsr "List") [ itemType ]
+    CA.'typeNamed Pos.'t (CoreDefs.usr "List") [ itemType ]
 
 
 caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
@@ -109,20 +109,20 @@ taTyvarImm as fn Int: TA.RawType =
 
 
 taNumber as TA.RawType =
-    TA.'typeExact (Meta.coreUsr "Number") []
+    TA.'typeExact (CoreDefs.usr "Number") []
 
 
 taNone as TA.RawType =
-    TA.'typeExact (Meta.coreUsr "None") []
+    TA.'typeExact (CoreDefs.usr "None") []
 
 
 taBool as TA.RawType =
-    TA.'typeExact (Meta.coreUsr "Bool") []
+    TA.'typeExact (CoreDefs.usr "Bool") []
 
 
 taList as fn TA.RawType: TA.RawType =
     fn item:
-    TA.'typeExact (Meta.coreUsr "List") [ item ]
+    TA.'typeExact (CoreDefs.usr "List") [ item ]
 
 
 taFunction as fn [ TA.RawType ], TA.RawType: TA.RawType =
