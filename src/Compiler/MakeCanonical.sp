@@ -65,65 +65,12 @@ error as fn Env, Pos, [ Text ]: Res a =
 #
 # Names resolution
 #
-
-maybeForeignUsr as fn ReadOnly, Pos, Maybe Name, Name: Res (Maybe USR) =
-    fn ro, pos, maybeModule, name:
-    try maybeModule as
-
-        'nothing:
-            Dict.get name ro.meta.globals >> 'ok
-
-        'just moduleName:
-            try Dict.get moduleName ro.meta.visibleAsToUmr as
-
-                'just umr:
-                    'USR umr name
-                    >> 'just
-                    >> 'ok
-
-                'nothing:
-#                    ro.meta.moduleVisibleAsToUmr
-#                    >> Dict.toList
-#                    >> List.each __ (fn k & v: log "*" (Human/Type.umrToText (Compiler/TypeCheck.initEnv Dict.empty) v .. " -> " .. k))
-
-                    # For now we're assuming that ro.meta.moduleVisibleAsToUmr contains *all* modules, aliased or not
-                    erroro ro pos [ "I can't find the module `" .. moduleName .. "`" ]
-
-
 resolveToUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
     fn ro, pos, maybeModule, name:
 
     Meta.resolve ro.resolvePars maybeModule name
-    >> Result.mapError (erroro ro pos __) __
+    >> Result.mapError (Error.'simple ro.errorModule pos __) __
 
-
-
-resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
-    fn ro, pos, isRoot, maybeModule, name:
-
-
-    Meta.resolve ro.resolvePars maybeModule name
-    >> Result.mapError (erroro ro pos __) __
-
-    ....
-
-
-#    # TODO use Result.map?
-#    try maybeForeignUsr ro pos maybeModule name as
-#
-#        'err e:
-#            'err e
-#
-#        'ok ('just usr):
-#            'refGlobal usr >> 'ok
-#
-#        'ok 'nothing:
-#            if isRoot then
-#                'USR ro.umr name
-#                >> 'refGlobal
-#                >> 'ok
-#            else
-#                'refLocal name >> 'ok
 
 
 #
@@ -882,9 +829,9 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
 
             'nothing:
                 isUnique =
-                    try Dict.get paName.name env.ro.meta.globals as
+                    try Dict.get paName.name env.ro.resolvePars.currentImports.globalNameToModuleAlias as
                         'nothing: 'true
-                        'just globalUsr: isRoot and globalUsr == 'USR env.ro.umr paName.name
+                        'just globalUsr: todo """isRoot and globalUsr == 'USR env.ro.umr paName.name"""
 
                 if isUnique then
                     Dict.insert paName.name { isRoot, pos = paName.pos } vs >> 'ok
@@ -905,14 +852,22 @@ translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe 
     if maybeType /= 'nothing then
         error env pos [ "no annotations on var reference" ]
     else
-        isRoot =
+        isLocal =
+            maybeModule == 'nothing
+            and
             try Dict.get name env.values as
-                'nothing: 'true
-                'just paName: paName.isRoot
+                'nothing: 'false
+                'just paName: not paName.isRoot
 
-        resolveToValueRef env.ro pos isRoot maybeModule name
-        >> onOk fn usr:
-        CA.'variable pos usr
+        if isLocal then
+            'refLocal name
+            >> 'ok
+        else
+            resolveToUsr env.ro pos maybeModule name
+            >> Result.map 'refGlobal __
+
+        >> onOk fn ref:
+        CA.'variable pos ref
         >> List.for __ attrPath (CA.'recordAccess pos __ __)
         >> 'ok
 

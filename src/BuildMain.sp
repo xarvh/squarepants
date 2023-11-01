@@ -92,7 +92,7 @@ getEntryUsr as fn Imports, Text: IO.Re USR =
 
 
 loadModule as fn @IO, Imports, UMR, Text: IO.Re CA.Module =
-    fn @io, meta, umr, fileName:
+    fn @io, imports, umr, fileName:
     if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
     else
@@ -101,7 +101,7 @@ loadModule as fn @IO, Imports, UMR, Text: IO.Re CA.Module =
             params as Compiler/MakeCanonical.ReadOnly =
                 {
                 , errorModule = { content = moduleAsText, fsPath = fileName }
-                , meta
+                , resolvePars = { currentImports = imports, currentModule = umr, loadExports = todo "loadExports" }
                 , umr
                 }
 

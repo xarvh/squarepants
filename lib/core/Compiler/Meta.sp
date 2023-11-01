@@ -145,32 +145,29 @@ ResolvePars =
     {
     , currentImports as Imports
     , currentModule as UMR
-    , loadExports as fn CodeSource: Result Text (Imports & Exports)
-
-    , maybeReferencedModuleAlias as Maybe Name
-    , referencedName as Name
+    , loadExports as fn ImportsDir: Result Text (Imports & Exports)
     }
 
 
-resolveSymbol as fn Config, Maybe Name, Name: Result [ Text ] USR =
-    fn pars:
-    try pars.maybeReferencedModuleAlias as
+resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
+    fn pars, maybeReferencedModuleAlias, referencedName:
+    try maybeReferencedModuleAlias as
         'just alias: 'just alias
-        'nothing: Dict.get pars.referencedName currentImports.globalNameToModuleAlias
+        'nothing: Dict.get referencedName currentImports.globalNameToModuleAlias
     >> try __ as
 
         'nothing:
-            'USR pars.currentModule pars.referencedName >> 'ok
+            'USR pars.currentModule referencedName >> 'ok
 
         'just referencedAlias:
             try Dict.get referencedAlias currentImports.moduleAliasToDirOrLibrary as
 
                 'nothing:
-                    try pars.maybeReferencedModuleAlias as
+                    try maybeReferencedModuleAlias as
 
                         'nothing:
                             [
-                            , "TODO currentImports" .. " says that `" .. pars.referencedName .. "` is a global from module `" .. referencedAlias
+                            , "TODO currentImports" .. " says that `" .. referencedName .. "` is a global from module `" .. referencedAlias
                             , "However I cannot find that module!"
                             ]
                             >> 'err
@@ -182,7 +179,7 @@ resolveSymbol as fn Config, Maybe Name, Name: Result [ Text ] USR =
                             >> 'err
 
                 'just ('moduleLocationSourceDirectory umr):
-                    'USR umr pars.referencedName >> 'ok
+                    'USR umr referencedName >> 'ok
 
                 'just ('moduleLocationLibrary importsDirOfLibrary modulePath):
                     # We are missing the $sourceDir part of the UMR; this information is in the Imports of the library,
