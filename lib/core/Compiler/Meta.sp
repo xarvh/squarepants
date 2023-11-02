@@ -75,8 +75,8 @@ var RootDirectory =
       'installed
 
 
-var ImportsDir =
-    , 'importsDir RootDirectory Text
+var ImportsPath =
+    , 'importsPath RootDirectory Text
 
 
 #
@@ -93,7 +93,7 @@ ModulePath =
 
 
 var UMR =
-    , 'UMR ImportsDir SourceDir ModulePath
+    , 'UMR ImportsPath SourceDir ModulePath
 
 
 #
@@ -113,16 +113,19 @@ ByUsr a =
 # Every module uses exactly one Imports that tells it how to translate module names and which globals are available.
 #
 
-var ModuleLocation =
-    , 'moduleLocationSourceDirectory UMR
-    , 'moduleLocationLibrary ImportsDir ModulePath
+var Location =
+    , # When something is in a source dir, we know already its exact UMR
+      'locationSourceDir UMR
+    , # When something is in a library, we do NOT have the "sourceDir" part of the UMR!
+      # We need to check the library's Imports to figure that out.
+      'locationLibrary ImportsPath ModulePath
 
 
 Imports =
     {
     # Tells us in which module a global is actually defined
-    , globalNameToModuleAlias as Dict Name Name
-    , moduleAliasToDirOrLibrary as Dict Name ModuleLocation
+    , globalNameToLocation as Dict Name Location
+    , moduleAliasToLocation as Dict Name Location
     }
 
 
@@ -145,78 +148,94 @@ ResolvePars =
     {
     , currentImports as Imports
     , currentModule as UMR
-    , loadExports as fn ImportsDir: Result Text (Imports & Exports)
+    , loadExports as fn ImportsPath: Result Text (Imports & Exports)
     }
 
 
 resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
     fn pars, maybeReferencedModuleAlias, referencedName:
     try maybeReferencedModuleAlias as
-        'just alias: 'just alias
-        'nothing: Dict.get referencedName currentImports.globalNameToModuleAlias
-    >> try __ as
+
+        'just alias:
+            try Dict.get alias currentImports.moduleAliasToLocation as
+
+                'nothing:
+                    [
+                    , "TODO currentImports" .. " says that `" .. referencedName .. "` is a global from module `" .. referencedAlias
+                    , "However I cannot find that module!"
+                    ]
+                    >> 'err
+
+                'just location:
+                    resolveLocation pars location name
 
         'nothing:
-            'USR pars.currentModule referencedName >> 'ok
+            try Dict.get referencedName currentImports.globalNameToLocation as
+                'nothing: 'USR pars.currentModule referencedName >> 'ok
+                'just location: resolveLocation pars location name
 
-        'just referencedAlias:
-            try Dict.get referencedAlias currentImports.moduleAliasToDirOrLibrary as
+
+resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] USR =
+    fn pars, location, maybeReferencedModuleAlias, referencedName:
+    try location as
+
+        'locationSourceDirectory umr:
+            'USR umr referencedName >> 'ok
+
+        'locationLibrary importsPath modulePath:
+            # We are missing the $sourceDir part of the UMR; this information is in the Imports of the library,
+            # but is integrated in the Exports when we load it.
+            #
+            #    $importsDirOfLibrary/
+            #        imports.sp
+            #        $sourceDir/         <---------- We need this
+            #            $modulePath
+
+            pars.loadExports importsPath
+            >> onOk fn libraryExports:
+            try Dict.get modulePath libraryExports.exposedModulesByPath as
 
                 'nothing:
                     try maybeReferencedModuleAlias as
 
-                        'nothing:
+                        'just referencedModuleAlias:
                             [
-                            , "TODO currentImports" .. " says that `" .. referencedName .. "` is a global from module `" .. referencedAlias
-                            , "However I cannot find that module!"
-                            ]
-                            >> 'err
-
-                        'just _:
-                            [
-                            , "Cannot find module `" .. referencedAlias .. "`"
-                            ]
-                            >> 'err
-
-                'just ('moduleLocationSourceDirectory umr):
-                    'USR umr referencedName >> 'ok
-
-                'just ('moduleLocationLibrary importsDirOfLibrary modulePath):
-                    # We are missing the $sourceDir part of the UMR; this information is in the Imports of the library,
-                    # but is integrated in the Exports when we load it.
-                    #
-                    #    $importsDirOfLibrary/
-                    #        imports.sp
-                    #        $sourceDir/
-                    #            $modulePath
-
-                    pars.loadExports importsDirOfLibrary
-                    >> onOk fn libraryExports:
-                    try Dict.get modulePath libraryExports.exposedModulesByPath as
-
-                        'nothing:
-                            [
-                            , "imports.sp translates `$referencedAlias` as `$modulePath`"
+                            , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
                             , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
                             ]
                             >> 'err
 
-                        'just exposedModule:
-                            try Dict.get referencedName exposedModule.exposedUsrByName as
+                        'nothing:
+                            [
+                            , "TODO ??????"
+                            ]
+                            >> 'err
 
-                                'nothing:
+                'just exposedModule:
+                    try Dict.get referencedName exposedModule.exposedUsrByName as
+
+                        'just usr:
+                            'ok usr
+
+                        'nothing:
+                            try maybeReferencedModuleAlias as
+
+                                'just referencedModuleAlias:
                                     [
                                     , "imports.sp translates `$referencedAlias` as `$modulePath`"
                                     , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
                                     ]
                                     >> 'err
 
-                                'just usr:
-                                    'ok usr
+                                'nothing:
+                                    [
+                                    , "TODO ?????!!!!"
+                                    ]
+                                    >> 'err
 
 
 usrToFullPath as fn { coreLib as Text, installed as Text, project as Text }, USR: [ Text ] =
-    fn { coreLib, installed, project }, 'USR ('UMR ('importsDir rootDir importsDir) sourceDir modulePath) name:
+    fn { coreLib, installed, project }, 'USR ('UMR ('importsPath rootDir importsDir) sourceDir modulePath) name:
     path =
         [ rootDir, importsDir, modulePath, name ]
 

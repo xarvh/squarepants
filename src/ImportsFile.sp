@@ -78,14 +78,14 @@ parseLibrarySource as fn Text: Result Text Meta.Source =
             'err << "invalid library source: " .. sourceAsText
 
 
-insertSource as fn @Array Text, [ Module ], Meta.Source, Imports: Imports =
-    fn @errors, modules, source, imports:
+insertSource as fn @Array Text, [ Module ], Meta.ImportsPath, Meta.Source, Imports: Imports =
+    fn @errors, modules, importsPath, source, imports:
 
     List.for imports modules (insertModule @errors source __ __)
 
 
-toImports as fn ImportsFile: Res Imports =
-    fn mf:
+toImports as fn Meta.ImportsPath, ImportsFile: Res Imports =
+    fn importsPath, mf:
 
     # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
     !errors as Array Text =
@@ -101,11 +101,11 @@ toImports as fn ImportsFile: Res Imports =
                 meta
 
             'ok source:
-                insertSource @errors lib.modules source meta
+                insertSource @errors lib.modules importsPath source meta
 
     insertSourceDir as fn SourceDir, Imports: Imports =
         fn sourceDir, meta:
-        insertSource @errors sourceDir.modules (Meta.'userSourceDir sourceDir.path) meta
+        insertSource @errors sourceDir.modules importsPath sourceDir.path meta
 
     meta =
         Meta.initImports

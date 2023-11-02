@@ -2,8 +2,12 @@
 # This module contains all the definitions that are necessary for the syntax.
 #
 
+importsPath as Meta.ImportsPath =
+    Meta.'importsPath Meta.'core ""
+
+
 umr as UMR =
-    'UMR Meta.'core "Core"
+    'UMR importsPath "src" "Core"
 
 
 usr as fn Name: USR =

@@ -828,12 +828,30 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                     ]
 
             'nothing:
-                isUnique =
-                    try Dict.get paName.name env.ro.resolvePars.currentImports.globalNameToModuleAlias as
-                        'nothing: 'true
-                        'just globalUsr: todo """isRoot and globalUsr == 'USR env.ro.umr paName.name"""
+                shadowsAGlobal =
+                    try Dict.get paName.name env.ro.resolvePars.currentImports.globalNameToLocation as
+                        # No global with this name, all good
+                        'nothing: 'false
 
-                if isUnique then
+                        # There IS a global with that name!!
+                        # If here we are defining exactly that global, all good!
+                        # Otherwise we have shadowing and we want to error on that.
+                        'just location:
+                            if not isRoot then
+                                # We are defining a local, so definitely not the global. Shadowing!
+                                'true
+                            else
+                                try Meta.resolve env.ro.resolvePars 'nothing paName.name as
+                                    'err _:
+                                        # There is a problem figuring out where the global is from.
+                                        # Because we're already reading this module, we can assume that the global is not from here
+                                        # So, shadowing.
+                                        'true
+
+                                    'ok ('USR umr name):
+                                        umr /= env.ro.umr
+
+                if not shadowsAGlobal then
                     Dict.insert paName.name { isRoot, pos = paName.pos } vs >> 'ok
                 else
                     error
@@ -841,7 +859,7 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                         paName.pos
                         [
                         , "There is already a global variable named `" .. paName.name .. "`."
-                        , "You need to find a different name, or modify modules.sp"
+                        , "You need to find a different name, or modify imports.sp"
                         ]
     >> onOk fn values:
     'ok { env with values }
