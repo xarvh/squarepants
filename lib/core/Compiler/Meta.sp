@@ -24,6 +24,9 @@ Let's assume we have this directory structure:
                     thisProject/
                         src/
                             Main.sp
+                        libs/
+                            identifiers/
+                                Id.sp
                         installedLibraries/
                             library1/
                                 libs/
@@ -48,6 +51,12 @@ Let's assume we have this directory structure:
       importsDir: ""
       sourceDir: "src"
       modulePath: "Main"
+
+  *) Id.sp:
+      root: 'user
+      importsDir: "libs/identifies"
+      sourceDir: ""
+      modulePath: "Id"
 
   *) Types/Person.sp:
       root: 'installed

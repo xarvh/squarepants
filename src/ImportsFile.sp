@@ -60,20 +60,26 @@ insertModule as fn @Array Text, Meta.Source, Module, Imports: Imports =
     }
 
 
-parseLibrarySource as fn Text: Result Text Meta.Source =
+
+var LibrarySource =
+    , 'core
+    , 'local Text
+    , 'installed { protocol as Text, address as Text }
+
+
+parseLibrarySource as fn Text: Result Text LibrarySource =
     fn sourceAsText:
     try Text.split ":" sourceAsText as
 
         [ "core" ]:
             'ok Meta.'core
 
-#        [ "platform" ]:
-#            'ok Meta.'platform
-
         [ "local", path ]:
             'ok << Meta.'userLibrary path subSourceDir
 
-        # TODO support non-local libraries
+        [ protocol, address... ]:
+            'ok << { protocol, address = Text.join ":" address }
+
         _:
             'err << "invalid library source: " .. sourceAsText
 
@@ -84,8 +90,57 @@ insertSource as fn @Array Text, [ Module ], Meta.ImportsPath, Meta.Source, Impor
     List.for imports modules (insertModule @errors source __ __)
 
 
+
+
+insertLibrary as fn Env, @Array Text, Library, Imports: Imports =
+    fn env, @errors, library, imports:
+
+    try parseLibrarySource library.source as
+
+        'err msg:
+            Array.push @errors msg
+
+            imports
+
+        'ok librarySource:
+
+            modulePathToLocation =
+                try librarySource as
+                    'core:
+                        'locationLibrary CoreDefs.importsPath __
+
+                    'local libraryDir:
+                        Meta.'importsPath rootDirectory currentImportsDir = env.importsPath
+
+                        importsDir = env.joinPath [ currentImportsDir, libraryDir ]
+                        'locationLibrary (Meta.'importsPath rootDirectory importsDir) __
+
+                    'installed { protocol, address }:
+                        # TODO ensure that `address` is file-system friendly
+                        importsDir = env.joinPath [ protocol, address ]
+                        'locationLibrary (Meta.'importsPath Meta.'installed importsDir) __
+
+
+            List.for imports library.modules fn module, imp:
+
+                location =
+                    modulePathToLocation module.path
+
+                # Insert module alias
+                moduleAliasToLocation = Dict.insert module.visibleAs location imp.moduleAliasToLocation
+
+                # Insert globals
+                globalNameToLocation =
+                    List.for imp.globalNameToLocation module.globals fn globalName, dict:
+                        # TODO check that there is no duplication
+                        Dict.insert globalName location dict
+
+
+
+
+
 toImports as fn Meta.ImportsPath, ImportsFile: Res Imports =
-    fn importsPath, mf:
+    fn importsPath, importsFile:
 
     # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
     !errors as Array Text =
@@ -109,8 +164,8 @@ toImports as fn Meta.ImportsPath, ImportsFile: Res Imports =
 
     meta =
         Meta.initImports
-        >> List.for __ mf.libraries insertLibrary
-        >> List.for __ mf.sourceDirs insertSourceDir
+        >> List.for __ mf.libraries (insertLibrary stuff)
+        #>> List.for __ mf.sourceDirs insertSourceDir
 
     errs =
         Array.toList @errors
