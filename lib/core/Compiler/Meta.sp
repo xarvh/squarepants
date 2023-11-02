@@ -188,7 +188,7 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
     fn pars, location, maybeReferencedModuleAlias, referencedName:
     try location as
 
-        'locationSourceDirectory umr:
+        'locationSourceDir umr:
             'USR umr referencedName >> 'ok
 
         'locationLibrary importsPath modulePath:

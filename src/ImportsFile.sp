@@ -55,46 +55,57 @@ insertModule as fn @Array Text, Meta.Source, Module, Imports: Imports =
 
     { imports with
     , globals = List.for .globals mod.globals insertGlobal
-    , visibleAsToUmr = Dict.insert visibleAs umr .moduleVisibleAsToUmr
     , umrToVisibleAs = Dict.insert umr visibleAs .umrToModuleVisibleAs
+    , visibleAsToUmr = Dict.insert visibleAs umr .moduleVisibleAsToUmr
     }
-
 
 
 var LibrarySource =
     , 'core
     , 'local Text
-    , 'installed { protocol as Text, address as Text }
+    , 'installed { address as Text, protocol as Text }
 
 
 parseLibrarySource as fn Text: Result Text LibrarySource =
     fn sourceAsText:
     try Text.split ":" sourceAsText as
-
-        [ "core" ]:
-            'ok Meta.'core
-
-        [ "local", path ]:
-            'ok << Meta.'userLibrary path subSourceDir
-
-        [ protocol, address... ]:
-            'ok << { protocol, address = Text.join ":" address }
-
-        _:
-            'err << "invalid library source: " .. sourceAsText
+        [ "core" ]: 'ok Meta.'core
+        [ "local", path ]: 'ok << Meta.'userLibrary path subSourceDir
+        [ protocol, address... ]: 'ok << { address = Text.join ":" address, protocol }
+        _: 'err << "invalid library source: " .. sourceAsText
 
 
-insertSource as fn @Array Text, [ Module ], Meta.ImportsPath, Meta.Source, Imports: Imports =
-    fn @errors, modules, importsPath, source, imports:
+insertModules as fn fn Text: Meta.Location, @Array Error, [ Module ], Imports: Imports =
+    fn modulePathToLocation, @errors, modules, imports:
+        List.for imports modules fn module, imp:
+            location =
+                modulePathToLocation module.path
 
-    List.for imports modules (insertModule @errors source __ __)
+            # Insert module alias
+            moduleAliasToLocation =
+                Dict.insert module.visibleAs location imp.moduleAliasToLocation
+
+            # Insert globals
+            globalNameToLocation =
+                List.for imp.globalNameToLocation module.globals fn globalName, dict:
+                    # TODO check that there is no duplication
+                    Dict.insert globalName location dict
+
+            { globalNameToLocation, moduleAliasToLocation }
 
 
+insertSourceDir as fn Env, @Array Text, SourceDir, Imports: Imports =
+    fn env, @errors, sourceDir, imports:
+    modulePathToLocation =
+        __
+        >> 'UMR env.importsPath sourceDir.path __
+        >> 'locationSourceDir
+
+    insertModules modulePathToLocation @errors sourceDir.modules imports
 
 
 insertLibrary as fn Env, @Array Text, Library, Imports: Imports =
     fn env, @errors, library, imports:
-
     try parseLibrarySource library.source as
 
         'err msg:
@@ -103,73 +114,42 @@ insertLibrary as fn Env, @Array Text, Library, Imports: Imports =
             imports
 
         'ok librarySource:
+            try librarySource as
 
-            modulePathToLocation =
-                try librarySource as
-                    'core:
-                        'locationLibrary CoreDefs.importsPath __
+                'core:
+                    'locationLibrary CoreDefs.importsPath __
 
-                    'local libraryDir:
-                        Meta.'importsPath rootDirectory currentImportsDir = env.importsPath
+                'local libraryDir:
+                    Meta.'importsPath rootDirectory currentImportsDir =
+                        env.importsPath
 
-                        importsDir = env.joinPath [ currentImportsDir, libraryDir ]
-                        'locationLibrary (Meta.'importsPath rootDirectory importsDir) __
+                    importsDir =
+                        env.joinPath [ currentImportsDir, libraryDir ]
 
-                    'installed { protocol, address }:
-                        # TODO ensure that `address` is file-system friendly
-                        importsDir = env.joinPath [ protocol, address ]
-                        'locationLibrary (Meta.'importsPath Meta.'installed importsDir) __
+                    'locationLibrary (Meta.'importsPath rootDirectory importsDir) __
 
+                'installed { address, protocol }:
+                    # TODO ensure that `address` is file-system friendly
+                    importsDir =
+                        env.joinPath [ protocol, address ]
 
-            List.for imports library.modules fn module, imp:
-
-                location =
-                    modulePathToLocation module.path
-
-                # Insert module alias
-                moduleAliasToLocation = Dict.insert module.visibleAs location imp.moduleAliasToLocation
-
-                # Insert globals
-                globalNameToLocation =
-                    List.for imp.globalNameToLocation module.globals fn globalName, dict:
-                        # TODO check that there is no duplication
-                        Dict.insert globalName location dict
-
-
-
+                    'locationLibrary (Meta.'importsPath Meta.'installed importsDir) __
+            >> insertModules __ @errors library.modules imports
 
 
 toImports as fn Meta.ImportsPath, ImportsFile: Res Imports =
     fn importsPath, importsFile:
-
     # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
     !errors as Array Text =
         Array.fromList []
 
-    insertLibrary as fn Library, Imports: Imports =
-        fn lib, meta:
-        try parseLibrarySource lib.source as
-
-            'err msg:
-                Array.push @errors msg
-
-                meta
-
-            'ok source:
-                insertSource @errors lib.modules importsPath source meta
-
-    insertSourceDir as fn SourceDir, Imports: Imports =
-        fn sourceDir, meta:
-        insertSource @errors sourceDir.modules importsPath sourceDir.path meta
-
     meta =
         Meta.initImports
         >> List.for __ mf.libraries (insertLibrary stuff)
-        #>> List.for __ mf.sourceDirs insertSourceDir
+        >> List.for __ mf.sourceDirs (insertSourceDir stuff)
 
     errs =
-        Array.toList @errors
-        >> List.map (fn msg: Error.'raw [ msg ]) __
+        Array.toList @errors >> List.map (fn msg: Error.'raw [ msg ]) __
 
     if errs == [] then
         'ok meta
