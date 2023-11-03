@@ -84,6 +84,22 @@ var RootDirectory =
       'installed
 
 
+RootPaths =
+    {
+    , core as Text
+    , installed as Text
+    , project as Text
+    }
+
+
+rootDirectoryToPath as fn RootPaths, RootDirectory: Text =
+    fn paths, rootDirectory:
+    try rootDirectory as
+        'core: paths.core
+        'user: paths.project
+        'installed: paths.installed
+
+
 var ImportsPath =
     , 'importsPath RootDirectory Text
 
@@ -241,14 +257,3 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
                                     , "TODO ?????!!!!"
                                     ]
                                     >> 'err
-
-
-usrToFullPath as fn { coreLib as Text, installed as Text, project as Text }, USR: [ Text ] =
-    fn { coreLib, installed, project }, 'USR ('UMR ('importsPath rootDir importsDir) sourceDir modulePath) name:
-    path =
-        [ rootDir, importsDir, modulePath, name ]
-
-    try rootDir as
-        'core: [ coreLib, path... ]
-        'user: [ project, path... ]
-        'installed: [ installed, path... ]

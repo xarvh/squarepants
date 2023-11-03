@@ -6,3 +6,8 @@ dirname as fn Text: Text =
 resolve as fn [ Text ]: Text =
     fn _:
     todo "Path.resolve"
+
+
+join as fn [ Text ]: Text =
+    fn _:
+    todo "Path.join"

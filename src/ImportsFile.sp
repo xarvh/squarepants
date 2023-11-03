@@ -35,31 +35,6 @@ Module =
     }
 
 
-insertModule as fn @Array Text, Meta.Source, Module, Imports: Imports =
-    fn @errors, source, mod, imports:
-    visibleAs =
-        # TODO fail if visibleAs is used already
-        # TODO test that is well-formed
-        mod.visibleAs
-
-    umr =
-        'UMR source mod.path
-
-    insertGlobal =
-        fn varName, d:
-        # TODO fail if varName is used already
-        varName
-        # TODO should probably split on module load instead
-        >> 'USR umr __
-        >> Dict.insert varName __ d
-
-    { imports with
-    , globals = List.for .globals mod.globals insertGlobal
-    , umrToVisibleAs = Dict.insert umr visibleAs .umrToModuleVisibleAs
-    , visibleAsToUmr = Dict.insert visibleAs umr .moduleVisibleAsToUmr
-    }
-
-
 var LibrarySource =
     , 'core
     , 'local Text
@@ -69,19 +44,31 @@ var LibrarySource =
 parseLibrarySource as fn Text: Result Text LibrarySource =
     fn sourceAsText:
     try Text.split ":" sourceAsText as
-        [ "core" ]: 'ok Meta.'core
-        [ "local", path ]: 'ok << Meta.'userLibrary path subSourceDir
-        [ protocol, address... ]: 'ok << { address = Text.join ":" address, protocol }
+        [ "core" ]: 'ok 'core
+        [ "local", path ]: 'ok << 'local path
+        [ protocol, address... ]: 'ok << 'installed { address = Text.join ":" address, protocol }
         _: 'err << "invalid library source: " .. sourceAsText
 
 
-insertModules as fn fn Text: Meta.Location, @Array Error, [ Module ], Imports: Imports =
+#
+# ImportsFile to Imports
+#
+
+ToImportsPars =
+    {
+    , importsPath as Meta.ImportsPath
+    , joinPath as fn [ Text ]: Text
+    }
+
+
+insertModules as fn fn Text: Meta.Location, @Array Text, [ Module ], Imports: Imports =
     fn modulePathToLocation, @errors, modules, imports:
         List.for imports modules fn module, imp:
             location =
                 modulePathToLocation module.path
 
             # Insert module alias
+            # TODO check that there is no duplication!
             moduleAliasToLocation =
                 Dict.insert module.visibleAs location imp.moduleAliasToLocation
 
@@ -94,18 +81,18 @@ insertModules as fn fn Text: Meta.Location, @Array Error, [ Module ], Imports: I
             { globalNameToLocation, moduleAliasToLocation }
 
 
-insertSourceDir as fn Env, @Array Text, SourceDir, Imports: Imports =
-    fn env, @errors, sourceDir, imports:
-    modulePathToLocation =
+insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
+    fn pars, @errors, sourceDir, imports:
+    modulePathToLocation as fn Text: Meta.Location =
         __
-        >> 'UMR env.importsPath sourceDir.path __
-        >> 'locationSourceDir
+        >> 'UMR pars.importsPath sourceDir.path __
+        >> Meta.'locationSourceDir
 
     insertModules modulePathToLocation @errors sourceDir.modules imports
 
 
-insertLibrary as fn Env, @Array Text, Library, Imports: Imports =
-    fn env, @errors, library, imports:
+insertLibrary as fn ToImportsPars, @Array Text, Library, Imports: Imports =
+    fn pars, @errors, library, imports:
     try parseLibrarySource library.source as
 
         'err msg:
@@ -117,36 +104,36 @@ insertLibrary as fn Env, @Array Text, Library, Imports: Imports =
             try librarySource as
 
                 'core:
-                    'locationLibrary CoreDefs.importsPath __
+                    Meta.'locationLibrary CoreDefs.importsPath __
 
                 'local libraryDir:
                     Meta.'importsPath rootDirectory currentImportsDir =
-                        env.importsPath
+                        pars.importsPath
 
                     importsDir =
-                        env.joinPath [ currentImportsDir, libraryDir ]
+                        pars.joinPath [ currentImportsDir, libraryDir ]
 
-                    'locationLibrary (Meta.'importsPath rootDirectory importsDir) __
+                    Meta.'locationLibrary (Meta.'importsPath rootDirectory importsDir) __
 
                 'installed { address, protocol }:
                     # TODO ensure that `address` is file-system friendly
                     importsDir =
-                        env.joinPath [ protocol, address ]
+                        pars.joinPath [ protocol, address ]
 
-                    'locationLibrary (Meta.'importsPath Meta.'installed importsDir) __
+                    Meta.'locationLibrary (Meta.'importsPath Meta.'installed importsDir) __
             >> insertModules __ @errors library.modules imports
 
 
-toImports as fn Meta.ImportsPath, ImportsFile: Res Imports =
-    fn importsPath, importsFile:
+toImports as fn ToImportsPars, ImportsFile: Res Imports =
+    fn pars, importsFile:
     # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
     !errors as Array Text =
         Array.fromList []
 
     meta =
         Meta.initImports
-        >> List.for __ mf.libraries (insertLibrary stuff)
-        >> List.for __ mf.sourceDirs (insertSourceDir stuff)
+        >> List.for __ importsFile.libraries (insertLibrary pars @errors __ __)
+        >> List.for __ importsFile.sourceDirs (insertSourceDir pars @errors __ __)
 
     errs =
         Array.toList @errors >> List.map (fn msg: Error.'raw [ msg ]) __
