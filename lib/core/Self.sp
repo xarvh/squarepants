@@ -31,6 +31,7 @@ LoadPars =
     , constructors as [ USR & TA.RawType ]
     , defs as [ EA.GlobalDefinition ]
     , entryUsr as USR
+    , importsPathOfPlatform as Meta.ImportsPath
     , type as TA.RawType
     }
 
