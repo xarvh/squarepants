@@ -9,23 +9,28 @@ var DependencyType =
 
 [#
 
-First, some terminology.
-Let's assume we have this directory structure:
+  To uniquely identify each module, we split its path in four parts.
+
+  Let's see an example first, and assume we have this directory structure:
 
     /
         usr/
             local/
                 squarepants/
                     corelib/
+                        # No imports.sp here, it's hard-coded in CoreDefs
                         Result.sp
         home/
             someUser/
                 myProjects/
                     thisProject/
+                        imports.sp
                         src/
                             Main.sp
                         libs/
                             identifiers/
+                                imports.sp
+                                exports.sp
                                 Id.sp
                         installedLibraries/
                             library1/
@@ -33,17 +38,18 @@ Let's assume we have this directory structure:
                                     library2/
                                         libs/
                                             library3/
+                                                imports.sp
+                                                exports.sp
                                                 src/
                                                     Types/
                                                         Person.sp
 
-  To uniquely identify each module, we define three values: root, importsDir, sourceDir, modulePath.
-  The three modules in the example above have:
+  The modules in the example above have:
 
   *) Result.sp:
       root: 'core
       importsDir: ""
-      sourceDir: "src"
+      sourceDir: ""
       modulePath: "Result"
 
   *) Main.sp:
@@ -64,8 +70,22 @@ Let's assume we have this directory structure:
       sourceDir: "src"
       modulePath: "Types/Person"
 
-   The modulePath is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
-   ex: "Core/List"
+
+  Now we can describe the four parts a bit more in the abstract:
+
+    1) Root
+          This is a variant type that tells us where to start.
+          We use it so that we don't have to include any information about the local file system in the output.
+
+    2) ImportsDir
+          This tells us where `imports.sp` is.
+
+    3) SourceDir
+          This refers to a specific sourceDir entry in `imports.sp`
+
+    4) ModulePath
+          The actual module, possibly with uppercased directory name
+          The modulePath is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
 
 #]
 
@@ -161,6 +181,15 @@ initImports as Imports =
     }
 
 
+# TODO find a better name for this one
+ExportOptions =
+    {
+    # isOpen is false for opaque types: aliases will hide their definition and varTypes will not expose their constructors
+    , isOpen as Bool
+    , usr as USR
+    }
+
+
 var Exports =
     , 'all
     , 'modulesByPath (Dict Name (Dict Name ExportOptions))
@@ -169,11 +198,14 @@ var Exports =
 #
 # This function assumes that the symbol is root: it will NOT check for values defined inside closures!
 #
+# The code is here because this resolution system is a core feature of the language and should be
+# consistent across platforms.
+#
 ResolvePars =
     {
     , currentImports as Imports
     , currentModule as UMR
-    , loadExports as fn ImportsPath: Result [Text] Exports
+    , loadExports as fn ImportsPath: Result [ Text ] Exports
     }
 
 
@@ -205,7 +237,8 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
     try location as
 
         'locationSourceDir umr:
-            'USR umr referencedName >> 'ok
+            'USR umr referencedName
+            >> 'ok
 
         'locationLibrary importsPath modulePath:
             # We are missing the $sourceDir part of the UMR; this information is in the Imports of the library,
@@ -213,7 +246,7 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
             #
             #    $importsDirOfLibrary/
             #        imports.sp
-            #        $sourceDir/         <---------- We need this
+            #        $sourceDir/         <---------- We need to find out this
             #            $modulePath
 
             pars.loadExports importsPath
@@ -245,8 +278,8 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
                         'just moduleUsrByName:
                             try Dict.get referencedName moduleUsrByName as
 
-                                'just usr:
-                                    'ok usr
+                                'just exportOptions:
+                                    'ok exportOptions.usr
 
                                 'nothing:
                                     try maybeReferencedModuleAlias as
