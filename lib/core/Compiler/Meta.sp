@@ -156,14 +156,14 @@ Imports =
 
 initImports as Imports =
     {
-    , globalNameToModuleAlias = Dict.empty
-    , moduleAliasToDirOrLibrary = Dict.empty
+    , globalNameToLocation = Dict.empty
+    , moduleAliasToLocation = Dict.empty
     }
 
 
 var Exports =
     , 'all
-    , 'modulesByAlias (Dict Name (Dict Name ExportOptions))
+    , 'modulesByPath (Dict Name (Dict Name ExportOptions))
 
 
 #
@@ -173,7 +173,7 @@ ResolvePars =
     {
     , currentImports as Imports
     , currentModule as UMR
-    , loadExports as fn ImportsPath: Result Text (Imports & Exports)
+    , loadExports as fn ImportsPath: Result [Text] Exports
     }
 
 
@@ -182,22 +182,22 @@ resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
     try maybeReferencedModuleAlias as
 
         'just alias:
-            try Dict.get alias currentImports.moduleAliasToLocation as
+            try Dict.get alias pars.currentImports.moduleAliasToLocation as
 
                 'nothing:
                     [
-                    , "TODO currentImports" .. " says that `" .. referencedName .. "` is a global from module `" .. referencedAlias
+                    , "TODO currentImports" .. " says that `" .. referencedName .. "` is a global from module `" .. alias
                     , "However I cannot find that module!"
                     ]
                     >> 'err
 
                 'just location:
-                    resolveLocation pars location name
+                    resolveLocation pars location maybeReferencedModuleAlias referencedName
 
         'nothing:
-            try Dict.get referencedName currentImports.globalNameToLocation as
+            try Dict.get referencedName pars.currentImports.globalNameToLocation as
                 'nothing: 'USR pars.currentModule referencedName >> 'ok
-                'just location: resolveLocation pars location name
+                'just location: resolveLocation pars location maybeReferencedModuleAlias referencedName
 
 
 resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] USR =
@@ -217,43 +217,49 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
             #            $modulePath
 
             pars.loadExports importsPath
-            >> onOk fn libraryExports:
-            try Dict.get modulePath libraryExports.exposedModulesByPath as
+            >> Result.onOk fn libraryExports:
+            try libraryExports as
 
-                'nothing:
-                    try maybeReferencedModuleAlias as
+                'all:
+                    todo "exporting `all` is not yet implemented. =("
 
-                        'just referencedModuleAlias:
-                            [
-                            , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
-                            , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
-                            ]
-                            >> 'err
-
-                        'nothing:
-                            [
-                            , "TODO ??????"
-                            ]
-                            >> 'err
-
-                'just exposedModule:
-                    try Dict.get referencedName exposedModule.exposedUsrByName as
-
-                        'just usr:
-                            'ok usr
+                'modulesByPath modulesByPath:
+                    try Dict.get modulePath modulesByPath as
 
                         'nothing:
                             try maybeReferencedModuleAlias as
 
                                 'just referencedModuleAlias:
                                     [
-                                    , "imports.sp translates `$referencedAlias` as `$modulePath`"
-                                    , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
+                                    , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
+                                    , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
                                     ]
                                     >> 'err
 
                                 'nothing:
                                     [
-                                    , "TODO ?????!!!!"
+                                    , "TODO ??????"
                                     ]
                                     >> 'err
+
+                        'just moduleUsrByName:
+                            try Dict.get referencedName moduleUsrByName as
+
+                                'just usr:
+                                    'ok usr
+
+                                'nothing:
+                                    try maybeReferencedModuleAlias as
+
+                                        'just referencedModuleAlias:
+                                            [
+                                            , "imports.sp translates `$referencedAlias` as `$modulePath`"
+                                            , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
+                                            ]
+                                            >> 'err
+
+                                        'nothing:
+                                            [
+                                            , "TODO ?????!!!!"
+                                            ]
+                                            >> 'err
