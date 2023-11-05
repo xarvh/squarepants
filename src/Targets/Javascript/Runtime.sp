@@ -8,11 +8,11 @@ listNilName as Text =
 
 
 nothingRef as Text =
-    todo """Targets/Javascript/EmittableToJs.translateConstructorUsr ('USR ('UMR Meta.'core "Maybe") "'nothing")"""
+    Targets/Javascript/EmittableToJs.translateConstructorUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
 
 
 justRef as Text =
-    todo """Targets/Javascript/EmittableToJs.translateConstructorUsr ('USR ('UMR Meta.'core "Maybe") "'just")"""
+    Targets/Javascript/EmittableToJs.translateConstructorUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
 
 
 nativeDefinitions as Text =

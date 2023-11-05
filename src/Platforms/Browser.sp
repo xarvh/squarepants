@@ -1,8 +1,9 @@
-platform as Platform =
+platform as fn Meta.ImportsPath: Platform =
+    fn platformImportsPath:
     {
     , defaultImportsFile
     , defaultOutputName = "index.js"
-    , makeExecutable
+    , makeExecutable = makeExecutable platformImportsPath
     , name = "browser"
     , quickstart = "TODO"
     }
@@ -17,12 +18,12 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-virtualDomUsr as fn Self.LoadPars: fn Name: USR =
-    fn loadPars:
-    'USR ('UMR loadPars.importsPathOfPlatform "src/" "VirtualDom") __
+virtualDomUsr as fn Meta.ImportsPath: fn Name: USR =
+    fn platformImportsPath:
+    'USR ('UMR platformImportsPath "src/" "VirtualDom") __
 
-compile as fn Self.LoadPars: Text =
-    fn out:
+compile as fn Meta.ImportsPath, Self.LoadPars: Text =
+    fn platformImportsPath, out:
     log "Creating JS AST..." ""
 
     jaStatements =
@@ -30,7 +31,7 @@ compile as fn Self.LoadPars: Text =
             {
             , constructors = out.constructors
             , eaDefs = out.defs
-            , platformOverrides = overrides (virtualDomUsr out)
+            , platformOverrides = overrides (virtualDomUsr platformImportsPath)
             }
 
     log "Emitting JS..." ""
@@ -40,14 +41,14 @@ compile as fn Self.LoadPars: Text =
     >> Text.join "\n\n" __
 
 
-makeExecutable as fn Self.LoadPars: Text =
-    fn out:
+makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
+    fn platformImportsPath: fn out:
     compiledStatements =
-        compile out
+        compile platformImportsPath out
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out
+    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer platformImportsPath out
 
 
 overrides as fn (fn Name: USR): [ USR & Text ] =
@@ -75,14 +76,14 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn Self.LoadPars: Text =
-    fn pars:
+footer as fn Meta.ImportsPath, Self.LoadPars: Text =
+    fn platformImportsPath, pars:
     mainName =
         Targets/Javascript/EmittableToJs.translateUsr pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
-        >> virtualDomUsr pars
+        >> virtualDomUsr platformImportsPath
         >> Targets/Javascript/EmittableToJs.translateUsr
 
     """

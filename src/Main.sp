@@ -173,8 +173,8 @@ cliDefaults as CliState =
 
 availablePlatforms as [ Platform.Platform ] =
     [
-    , Platforms/Posix.platform
-    , Platforms/Browser.platform
+    , Platforms/Posix.platform #(Meta.'importsPath Meta.'core "posix")
+    , Platforms/Browser.platform (Meta.'importsPath Meta.'core "browser")
     ]
 
 

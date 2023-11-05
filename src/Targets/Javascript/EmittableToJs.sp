@@ -657,26 +657,40 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
         'nothing: JA.'define 'false (translateUsr def.usr) (translateExpressionToExpression env def.expr) >> 'just
 
 
-translateSource as fn Meta.Source: Text =
-    fn src:
-    todo "translateSource"
-#    try src as
-#        Meta.'core: "c"
-#        Meta.'platform subSrcPath: ""
-#        Meta.'userSourceDir srcPath: ""
-#        Meta.'userLibrary libPath subSrcPath: ""
-#        Meta.'installedLibrary libPath subSrcPath: ""
+translateRoot as fn Meta.RootDirectory: Text =
+    try __ as
+        Meta.'core: "c"
+        Meta.'user: "u"
+        Meta.'installed: "i"
+
+
+sanitizePath as fn Text: Text =
+    fn path:
+
+    if (Text.startsWithRegex ".*[^A-Za-z_$/]?") path == "" then
+        Text.replace "/" "$" path
+    else
+        # TODO
+        "Invalid character in path: " .. path .. " (hopefully at some point this limit will be fixed)"
+        >> todo
 
 
 translateUsr as fn USR: Text =
-    todo "translateUsr"
-#    fn 'USR ('UMR source modulePath) name:
-#    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. "$" .. name
+    fn 'USR ('UMR (Meta.'importsPath root importsDir) sourceDir modulePath) name:
+
+    [
+    , ""
+    , translateRoot root
+    , sanitizePath importsDir
+    , sanitizePath sourceDir
+    , sanitizePath modulePath
+    , name
+    ]
+    >> Text.join "$" __
 
 
 translateName as fn Name: Text =
-    fn n:
-    "$" .. n
+    "$" .. __
 
 
 TranslateAllPars =

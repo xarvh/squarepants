@@ -111,6 +111,7 @@ replace as fn Text, Text, Text: Text =
 # HACK
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
+# TODO: also, why "startsWithRegex" rather than just "findRegex"?
 startsWithRegex as fn Text: fn Text: Text =
     fn regex:
     fn s:

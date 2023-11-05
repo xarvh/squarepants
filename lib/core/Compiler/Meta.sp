@@ -19,7 +19,8 @@ var DependencyType =
                 squarepants/
                     corelib/
                         # No imports.sp here, it's hard-coded in CoreDefs
-                        Result.sp
+                        src/
+                            Result.sp
         home/
             someUser/
                 myProjects/
@@ -49,7 +50,7 @@ var DependencyType =
   *) Result.sp:
       root: 'core
       importsDir: ""
-      sourceDir: ""
+      sourceDir: "src"
       modulePath: "Result"
 
   *) Main.sp:
