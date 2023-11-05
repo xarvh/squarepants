@@ -1,5 +1,7 @@
 allTests as [ Test ] =
-    [
+    []
+
+
 #    , Human/Format_Test.tests
 #    , Compiler/Lexer_Test.tests
 #    , Compiler/Parser_Test.tests
@@ -13,9 +15,6 @@ allTests as [ Test ] =
 #    , Uniqueness.specs
 #    , SPLib/Format_Test.tests
 #    , SPLib/RefHierarchy_Test.tests
-    ]
-
-
 #
 # TODO would be nice to have an args library
 #
@@ -159,6 +158,14 @@ formatMain as fn @IO, [ Text ]: IO.Re None =
 #        , maybeOutputPath as Maybe Text
 #        }
 
+platformPosix =
+    Platforms/Posix.platform (Meta.'importsPath Meta.'core "posix")
+
+
+platformBrowser =
+    Platforms/Posix.platform (Meta.'importsPath Meta.'core "browser")
+
+
 CliState =
     {
     , platform as Platform.Platform
@@ -167,14 +174,14 @@ CliState =
 
 cliDefaults as CliState =
     {
-    , platform = Platforms/Posix.platform
+    , platform = platformPosix
     }
 
 
 availablePlatforms as [ Platform.Platform ] =
     [
-    , Platforms/Posix.platform #(Meta.'importsPath Meta.'core "posix")
-    , Platforms/Browser.platform (Meta.'importsPath Meta.'core "browser")
+    , platformPosix
+    , platformBrowser
     ]
 
 
@@ -238,7 +245,6 @@ main as IO.Program =
                     formatMain @io tail
 
                 self :: entryPoint :: tail:
-
                     maybeOutputPath =
                         List.head tail
 
@@ -259,6 +265,7 @@ main as IO.Program =
                     To compile something, write:
 
                         squarepants pathToMainModule.sp
+
 
                     """
                     >> IO.writeStdout @io __

@@ -1,18 +1,18 @@
 
 listConsName as Text =
-    Targets/Javascript/EmittableToJs.translateConstructorName CoreDefs.consName
+    Targets/Javascript/EmittableToJs.translateName CoreDefs.consName
 
 
 listNilName as Text =
-    Targets/Javascript/EmittableToJs.translateConstructorName CoreDefs.nilName
+    Targets/Javascript/EmittableToJs.translateName CoreDefs.nilName
 
 
 nothingRef as Text =
-    Targets/Javascript/EmittableToJs.translateConstructorUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
+    Targets/Javascript/EmittableToJs.translateUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
 
 
 justRef as Text =
-    Targets/Javascript/EmittableToJs.translateConstructorUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
+    Targets/Javascript/EmittableToJs.translateUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
 
 
 nativeDefinitions as Text =

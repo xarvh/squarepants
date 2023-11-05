@@ -1,8 +1,9 @@
-platform as Platform =
+platform as fn Meta.ImportsPath: Platform =
+    fn platformImportsPath:
     {
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
-    , makeExecutable
+    , makeExecutable = makeExecutable platformImportsPath
     , name = "posix"
     , quickstart = "TODO"
     }
@@ -17,14 +18,15 @@ defaultImportsFile as ImportsFile =
 
 
 makeOk as Text =
-    "$core$Result$Ok"
+    'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr
 
 
 makeErr as Text =
-    "$core$Result$Err"
+    'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr
 
 
-makeExecutable as fn Self.LoadPars: Text =
+makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
+    fn platformImportsPath:
     fn out:
     entryName =
         Targets/Javascript/EmittableToJs.translateUsr out.entryUsr
@@ -49,7 +51,7 @@ makeExecutable as fn Self.LoadPars: Text =
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs
-                , platformOverrides = overrides
+                , platformOverrides = overrides platformImportsPath
                 }
 
         log "Emitting JS..." ""
@@ -74,16 +76,13 @@ header as Text =
     """
 
 
-overrides as [ USR & Text ] =
-
-#    source =
-#        Meta.'platform "src/"
-
+overrides as fn Meta.ImportsPath: [ USR & Text ] =
+    fn platformImportsPath:
     ioModule =
-        todo """'USR ('UMR source "IO") __"""
+        'USR ('UMR platformImportsPath "src" "IO") __
 
     pathModule =
-        todo """'USR ('UMR source "Path") __"""
+        'USR ('UMR platformImportsPath "src" "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"

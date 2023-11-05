@@ -246,25 +246,6 @@ loadOverride as Override =
 #
 # Translation
 #
-translateConstructorName as fn Text: Text =
-    fn x:
-    head =
-        Text.slice 1 2 x
-
-    rest =
-        Text.slice 2 9999 x
-
-    Text.toUpper head .. rest
-
-
-translateConstructorUsr as fn USR: Text =
-    fn 'USR umr raw:
-    raw
-    >> translateConstructorName
-    >> 'USR umr __
-    >> translateUsr
-
-
 maybeOverrideUsr as fn Env, USR: JA.Expr =
     fn env, usr:
     try Dict.get usr env.overrides as
@@ -281,7 +262,7 @@ maybeOverrideUsrForConstructor as fn Env, USR: JA.Expr =
 
         'nothing:
             usr
-            >> translateConstructorUsr
+            >> translateUsr
             >> JA.'var
 
 
@@ -577,7 +558,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                     usr
 
                 name
-                >> translateConstructorName
+                >> translateName
                 >> literalString
                 >> JA.'binop "===" (accessArrayIndex 0 jaValue) __
                 >> 'inline
@@ -624,7 +605,7 @@ translateConstructor as fn USR & TA.RawType: JA.Statement =
         usr
 
     slug =
-        translateConstructorName apoName
+        translateName apoName
 
     # `(($1, $2, $3) => [ "theConstructorName", $1, $2, $3, ... ])`
     arrayHead =
@@ -667,12 +648,12 @@ translateRoot as fn Meta.RootDirectory: Text =
 sanitizePath as fn Text: Text =
     fn path:
 
-    if (Text.startsWithRegex ".*[^A-Za-z_$/]?") path == "" then
-        Text.replace "/" "$" path
-    else
+    if path /= "" and (Text.startsWithRegex "[A-Za-z_$/]*$") path == "" then
         # TODO
         "Invalid character in path: " .. path .. " (hopefully at some point this limit will be fixed)"
         >> todo
+    else
+        Text.replace "/" "$" path
 
 
 translateUsr as fn USR: Text =
@@ -690,7 +671,20 @@ translateUsr as fn USR: Text =
 
 
 translateName as fn Name: Text =
-    "$" .. __
+    fn name:
+
+    if Text.startsWith "'" name then
+        head =
+            Text.slice 1 2 name
+
+        rest =
+            Text.slice 2 9999 name
+
+        "$" .. Text.toUpper head .. rest
+
+    else
+        "$" ..name
+
 
 
 TranslateAllPars =
