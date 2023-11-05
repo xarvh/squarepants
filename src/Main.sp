@@ -1,7 +1,5 @@
 allTests as [ Test ] =
-    []
-
-
+    [
 #    , Human/Format_Test.tests
 #    , Compiler/Lexer_Test.tests
 #    , Compiler/Parser_Test.tests
@@ -15,6 +13,8 @@ allTests as [ Test ] =
 #    , Uniqueness.specs
 #    , SPLib/Format_Test.tests
 #    , SPLib/RefHierarchy_Test.tests
+    ]
+
 #
 # TODO would be nice to have an args library
 #

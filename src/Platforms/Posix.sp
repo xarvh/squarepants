@@ -94,6 +94,7 @@ overrides as fn Meta.ImportsPath: [ USR & Text ] =
     , ioModule "writeStderr" & "io_writeStderr"
     , pathModule "dirname" & "path_dirname"
     , pathModule "resolve" & "path_resolve"
+    , pathModule "join" & "path_join"
     ]
 
 
@@ -237,6 +238,7 @@ runtime as Text =
 
         const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
 
+        const path_join = (p) => path.join(...arrayFromListLow(p));
 
         const path_dirname = path.dirname;
 

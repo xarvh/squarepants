@@ -13,33 +13,18 @@ installedDir as Text =
 
 
 getEntryUsr as fn Imports, Text: IO.Re USR =
-    fn projectMeta, entryModulePath:
-    todo "getEntryUsr"
+    fn projectImports, entryModule:
+    Meta.resolve
+        {
+        , currentImports = projectImports
+        # TODO: currentModule should be necessary only if we're not specifying the module in the second argument
+        , currentModule = CoreDefs.umr
+        , loadExports = fn importsPath: 'err [ "Entry point can't be in an installed library!" ]
+        }
+        ('just entryModule)
+        "main"
+    >> Result.mapError (Text.join "\n" __) __
 
-
-#    isEntryUmr =
-#        fn 'UMR source name:
-#        try source as
-#
-#            Meta.'sourceDirId id:
-#                try Dict.get id projectMeta.sourceDirIdToPath as
-#
-#                    'just path:
-#                        # TODO this should match the expression in getModuleMetaAndPath
-#                        Path.resolve [ path, name .. ".sp" ] == entryModulePath
-#
-#                    'nothing:
-#                        'false
-#
-#            _:
-#                'false
-#
-#    allUmrs =
-#        Dict.values projectMeta.moduleVisibleAsToUmr
-#
-#    try List.find isEntryUmr allUmrs as
-#        'just umr: 'ok umr
-#        'nothing: "Error: I can't find the module " .. entryModulePath .. " anywhere." >> 'err
 
 LoadCaModulePars =
     {
@@ -67,16 +52,15 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
         >> Path.join
         >> pars.loadImports
         >> onOk fn imports:
-
         fileName =
-          [
-          , rootPath
-          , importsDir
-          , sourceDir
-          , modulePath
-          ]
-          >> Path.join
-          >> __ .. ".sp"
+            [
+            , rootPath
+            , importsDir
+            , sourceDir
+            , modulePath
+            ]
+            >> Path.join
+            >> __ .. ".sp"
 
         fileName
         >> pars.readFile
@@ -267,7 +251,7 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
         # ...either use the current dir
         >> Maybe.withDefault "." __
 
-    IO.writeStdout @io __ << "Project root is " .. Path.resolve [ projectRoot ]
+    IO.writeStdout @io __ << "Project root is " .. Path.resolve [ projectRoot ] .. "\n"
 
     importsPath as Meta.ImportsPath =
         Meta.'importsPath Meta.'user ""
@@ -280,7 +264,7 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
         'err msg:
             # TODO This is not portable, need a better way to get IO errors
             if Text.contains "ENOENT" msg then
-                IO.writeStdout @io __ << "No " .. importsFileName .. " found, using default."
+                IO.writeStdout @io __ << "No " .. importsFileName .. " found, using default.\n"
 
                 scanSourceDirs @io importsPath pars.platform.defaultImportsFile
             else
