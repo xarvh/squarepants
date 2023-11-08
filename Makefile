@@ -6,7 +6,7 @@ default:
 
 with-unstable:
 	reset
-	/usr/bin/time --format=%E ./build/unstable src/Main.sp build/made-with-unstable || (xcowsay "spsp T_T"; exit 1)
+	/usr/bin/time --format=%E ./build/unstable Main build/made-with-unstable || (xcowsay "spsp T_T"; exit 1)
 	xcowsay "spsp Done"
 
 # https://nodejs.org/en/docs/guides/simple-profiling/

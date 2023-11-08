@@ -12,7 +12,12 @@ installedDir as Text =
     "installedLibraries"
 
 
-getEntryUsr as fn Imports, Text: IO.Re USR =
+
+ioToRes as fn IO.Re a: Res a =
+   Result.mapError (fn err: Error.'raw [ err ]) __
+
+
+getEntryUsr as fn Imports, Text: Res USR =
     fn projectImports, entryModule:
     Meta.resolve
         {
@@ -23,12 +28,12 @@ getEntryUsr as fn Imports, Text: IO.Re USR =
         }
         ('just entryModule)
         "main"
-    >> Result.mapError (Text.join "\n" __) __
+    >> Result.mapError Error.'raw __
 
 
 LoadCaModulePars =
     {
-    , loadImports as fn Text: Res Imports
+    , loadImports as fn Meta.ImportsPath, Text: Res Imports
     , readFile as fn Text: IO.Re Text
     , rootPaths as Meta.RootPaths
     }
@@ -39,8 +44,11 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
     if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
     else
-        'UMR (Meta.'importsPath rootDirectory importsDir) sourceDir modulePath =
+        'UMR importsPath sourceDir modulePath =
             umr
+
+        Meta.'importsPath rootDirectory importsDir =
+            importsPath
 
         rootPath =
             Meta.rootDirectoryToPath pars.rootPaths rootDirectory
@@ -50,7 +58,7 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
         , importsDir
         ]
         >> Path.join
-        >> pars.loadImports
+        >> pars.loadImports importsPath __
         >> onOk fn imports:
         fileName =
             [
@@ -64,7 +72,7 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
 
         fileName
         >> pars.readFile
-        >> Result.mapError (fn err: Error.'raw [ err ]) __
+        >> ioToRes
         >> onOk fn moduleAsText:
         params as Compiler/MakeCanonical.ReadOnly =
             {
@@ -74,38 +82,6 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
             }
 
         Compiler/MakeCanonical.textToCanonicalModule 'false params
-
-
-#
-# IO
-#
-formattedToConsoleColoredText as fn Error.FormattedText: Text =
-    fn formattedText:
-    try formattedText as
-        Error.'formattedText_Default t: t
-        Error.'formattedText_Emphasys t: Term.yellow t
-        Error.'formattedText_Warning t: Term.red t
-        Error.'formattedText_Decoration t: Term.blue t
-
-
-errorToText as fn Error: Text =
-    __
-    >> Error.toFormattedText
-    >> List.map formattedToConsoleColoredText __
-    >> Text.join "" __
-
-
-resToIo as fn Res a: IO.Re a =
-    fn res:
-    try res as
-
-        'ok a:
-            'ok a
-
-        'err e:
-            e
-            >> errorToText
-            >> 'err
 
 
 #
@@ -175,12 +151,13 @@ updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     List.for orig fileNames insertModuleName
 
 
-scanSourceDirs as fn @IO, Meta.ImportsPath, ImportsFile: IO.Re Imports =
+scanSourceDirs as fn @IO, Meta.ImportsPath, ImportsFile: Res Imports =
     fn @io, importsPath, importsFile:
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
     # before building Imports we need to add those that are not mentioned.
     importsFile.sourceDirs
     >> List.mapRes (fn sd: listSourceDir @io sd.path "") __
+    >> ioToRes
     >> onOk fn allSourceDirLists:
     updatedSourceDirs as [ ImportsFile.SourceDir ] =
         List.map2 updateSourceDir allSourceDirLists importsFile.sourceDirs
@@ -191,20 +168,19 @@ scanSourceDirs as fn @IO, Meta.ImportsPath, ImportsFile: IO.Re Imports =
         , joinPath = Path.join
         }
         { importsFile with sourceDirs = updatedSourceDirs }
-    >> resToIo
 
 
-loadImports as fn @IO, Meta.ImportsPath, Text: IO.Re Imports =
-    fn @io, importsPath, rootPath:
+loadImports as fn @IO, Meta.ImportsPath, Text: Res Imports =
+    fn @io, metaImportsPath, fsImportsPath:
     filePath =
-        Path.resolve [ rootPath, importsFileName ]
+        Path.resolve [ fsImportsPath, importsFileName ]
 
     IO.readFile @io filePath
+    >> ioToRes
     >> onOk fn fileContent:
     ImportsFile.textToModulesFile filePath fileContent
-    >> resToIo
     >> onOk fn importsFile:
-    scanSourceDirs @io importsPath importsFile
+    scanSourceDirs @io metaImportsPath importsFile
 
 
 searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
@@ -240,7 +216,7 @@ CompileMainPars =
     }
 
 
-compileMain as fn @IO, CompileMainPars: IO.Re None =
+compileMain as fn @IO, CompileMainPars: Res None =
     fn @io, pars:
     #
     # Figure out project root
@@ -259,19 +235,20 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
     #
     # Load meta and figure out entry point's USR
     #
-    try loadImports @io importsPath projectRoot as
-
-        'err msg:
-            # TODO This is not portable, need a better way to get IO errors
-            if Text.contains "ENOENT" msg then
-                IO.writeStdout @io __ << "No " .. importsFileName .. " found, using default.\n"
-
-                scanSourceDirs @io importsPath pars.platform.defaultImportsFile
-            else
-                'err msg
-
-        'ok i:
-            'ok i
+#    try loadImports @io importsPath projectRoot as
+#
+#        'err msg:
+#            # TODO This is not portable, need a better way to get IO errors
+#            if Text.contains "ENOENT" msg then
+#                IO.writeStdout @io __ << "No " .. importsFileName .. " found, using default.\n"
+#
+#                scanSourceDirs @io importsPath pars.platform.defaultImportsFile
+#            else
+#                'err msg
+#
+#        'ok i:
+#            'ok i
+    loadImports @io importsPath projectRoot
     >> onOk fn projectImports:
     getEntryUsr projectImports pars.entryPoint
     >> onOk fn entryUsr:
@@ -295,7 +272,7 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
 
     loadCaModulePars as LoadCaModulePars =
         {
-        , loadImports = todo "loadImports"
+        , loadImports = loadImports @io __ __
         , readFile = IO.readFile @io __
         , rootPaths
         }
@@ -305,7 +282,6 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
     , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build
-    >> resToIo
     >> onOk fn { constructors, rootValues }:
     outputFile =
         Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
@@ -324,5 +300,8 @@ compileMain as fn @IO, CompileMainPars: IO.Re None =
     }
     >> pars.platform.makeExecutable
     >> IO.writeFile @io outputFile __
+    >> ioToRes
     >> onOk fn _:
-    IO.writeStdout @io __ << "---> " .. outputFile .. " written. =)"
+
+    IO.writeStdout @io ("---> " .. outputFile .. " written. =)")
+    >> ioToRes

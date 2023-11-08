@@ -219,8 +219,7 @@ resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
 
                 'nothing:
                     [
-                    , "TODO currentImports" .. " says that `" .. referencedName .. "` is a global from module `" .. alias
-                    , "However I cannot find that module!"
+                    , "I cannot find the module: " .. alias
                     ]
                     >> 'err
 

@@ -22,7 +22,7 @@ reToStderr as fn @IO, Re a: Int =
             0
 
         'err error:
-            writeStderr @io error
+            writeStderr @io (error .. "\n")
 
             1
 

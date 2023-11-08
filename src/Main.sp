@@ -15,6 +15,41 @@ allTests as [ Test ] =
 #    , SPLib/RefHierarchy_Test.tests
     ]
 
+
+
+#
+# Res to IO.Re
+#
+formattedToConsoleColoredText as fn Error.FormattedText: Text =
+    fn formattedText:
+    try formattedText as
+        Error.'formattedText_Default t: t
+        Error.'formattedText_Emphasys t: Term.yellow t
+        Error.'formattedText_Warning t: Term.red t
+        Error.'formattedText_Decoration t: Term.blue t
+
+
+errorToText as fn Error: Text =
+    __
+    >> Error.toFormattedText
+    >> List.map formattedToConsoleColoredText __
+    >> Text.join "" __
+
+
+
+resToIo as fn Res a: IO.Re a =
+    fn res:
+    try res as
+
+        'ok a:
+            'ok a
+
+        'err e:
+            e
+            >> errorToText
+            >> 'err
+
+
 #
 # TODO would be nice to have an args library
 #
@@ -104,7 +139,7 @@ formatMain as fn @IO, [ Text ]: IO.Re None =
             , keepComments = 'true
             , stripLocations = 'false
             }
-        >> BuildMain.resToIo
+        >> resToIo
         >> onOk fn formattableAst:
         formattableAst
         >> Human/Format.formatStatements { isRoot = 'true, originalContent = content } __
@@ -233,7 +268,7 @@ main as IO.Program =
     try parseArguments cliOptions rawArgs cliDefaults as
 
         'err message:
-            IO.writeStderr @io message
+            IO.writeStderr @io (message .."\n")
 
         'ok (args & cliState):
             try args as
@@ -256,6 +291,7 @@ main as IO.Program =
                         , platform = cliState.platform
                         , selfPath = self
                         }
+                    >> resToIo
 
                 _:
                     """
