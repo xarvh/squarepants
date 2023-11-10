@@ -82,10 +82,10 @@ var DependencyType =
           This tells us where `imports.sp` is.
 
     3) SourceDir
-          This refers to a specific sourceDir entry in `imports.sp`
+          This refers to a specific sourceDir entry in `imports.sp`.
 
     4) ModulePath
-          The actual module, possibly with uppercased directory name
+          The actual module, possibly with uppercased directory name.
           The modulePath is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
 
 #]

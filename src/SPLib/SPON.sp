@@ -1,4 +1,6 @@
 var Outcome a =
+    # TODO we need to track Pos!!!
+    #, 'accepted [ FA.Statement ] (At a)
     , 'accepted [ FA.Statement ] a
     , 'rejected (At Text)
     , 'failed (At Text)
