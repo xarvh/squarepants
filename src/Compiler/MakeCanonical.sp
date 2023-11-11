@@ -32,7 +32,7 @@ Env =
 ReadOnly =
     {
     , errorModule as Error.Module
-    , resolvePars as Meta.ResolvePars
+    , resolvePars as fn Pos: Meta.ResolvePars Error
     , umr as UMR
     }
 
@@ -67,10 +67,7 @@ error as fn Env, Pos, [ Text ]: Res a =
 #
 resolveToUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
     fn ro, pos, maybeModule, name:
-
-    Meta.resolve ro.resolvePars maybeModule name
-    >> Result.mapError (Error.'simple ro.errorModule pos __) __
-
+    Meta.resolve (ro.resolvePars pos) maybeModule name
 
 
 #
@@ -828,10 +825,15 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                     ]
 
             'nothing:
+                resolvePars =
+                    env.ro.resolvePars paName.pos
+
                 shadowsAGlobal =
-                    try Dict.get paName.name env.ro.resolvePars.currentImports.globalNameToLocation as
+                    try Dict.get paName.name resolvePars.currentImports.globalNameToLocation as
+
                         # No global with this name, all good
-                        'nothing: 'false
+                        'nothing:
+                            'false
 
                         # There IS a global with that name!!
                         # If here we are defining exactly that global, all good!
@@ -841,7 +843,8 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                                 # We are defining a local, so definitely not the global. Shadowing!
                                 'true
                             else
-                                try Meta.resolve env.ro.resolvePars 'nothing paName.name as
+                                try Meta.resolve resolvePars 'nothing paName.name as
+
                                     'err _:
                                         # There is a problem figuring out where the global is from.
                                         # Because we're already reading this module, we can assume that the global is not from here
@@ -872,18 +875,14 @@ translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe 
     else
         isLocal =
             maybeModule == 'nothing
-            and
-            try Dict.get name env.values as
+            and try Dict.get name env.values as
                 'nothing: 'false
                 'just paName: not paName.isRoot
 
         if isLocal then
-            'refLocal name
-            >> 'ok
+            'refLocal name >> 'ok
         else
-            resolveToUsr env.ro pos maybeModule name
-            >> Result.map 'refGlobal __
-
+            resolveToUsr env.ro pos maybeModule name >> Result.map 'refGlobal __
         >> onOk fn ref:
         CA.'variable pos ref
         >> List.for __ attrPath (CA.'recordAccess pos __ __)

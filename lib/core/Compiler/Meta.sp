@@ -202,15 +202,16 @@ var Exports =
 # The code is here because this resolution system is a core feature of the language and should be
 # consistent across platforms.
 #
-ResolvePars =
+ResolvePars error =
     {
     , currentImports as Imports
     , currentModule as UMR
-    , loadExports as fn ImportsPath: Result [ Text ] Exports
+    , loadExports as fn ImportsPath: Result error Exports
+    , makeError as fn [ Text ]: error
     }
 
 
-resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
+resolve as fn ResolvePars error, Maybe Name, Name: Result error USR =
     fn pars, maybeReferencedModuleAlias, referencedName:
     try maybeReferencedModuleAlias as
 
@@ -221,6 +222,7 @@ resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
                     [
                     , "I cannot find the module: " .. alias
                     ]
+                    >> pars.makeError
                     >> 'err
 
                 'just location:
@@ -232,7 +234,7 @@ resolve as fn ResolvePars, Maybe Name, Name: Result [ Text ] USR =
                 'just location: resolveLocation pars location maybeReferencedModuleAlias referencedName
 
 
-resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] USR =
+resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result error USR =
     fn pars, location, maybeReferencedModuleAlias, referencedName:
     try location as
 
@@ -267,12 +269,14 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
                                     , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
                                     , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
                                     ]
+                                    >> pars.makeError
                                     >> 'err
 
                                 'nothing:
                                     [
                                     , "TODO ??????"
                                     ]
+                                    >> pars.makeError
                                     >> 'err
 
                         'just moduleUsrByName:
@@ -289,10 +293,12 @@ resolveLocation as fn ResolvePars, Location, Maybe Name, Name: Result [ Text ] U
                                             , "imports.sp translates `$referencedAlias` as `$modulePath`"
                                             , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
                                             ]
+                                            >> pars.makeError
                                             >> 'err
 
                                         'nothing:
                                             [
                                             , "TODO ?????!!!!"
                                             ]
+                                            >> pars.makeError
                                             >> 'err

@@ -28,11 +28,11 @@ getEntryUsr as fn Imports, Text: Res USR =
         # TODO: currentModule should be necessary only if we're not specifying the module in the second argument
         , currentModule =
             CoreDefs.umr
-        , loadExports = fn importsPath: 'err [ "Entry point can't be in an installed library!" ]
+        , loadExports = fn importsPath: 'err (Error.'raw [ "Entry point can't be in an installed library!" ])
+        , makeError = Error.'raw
         }
         ('just entryModule)
         "main"
-    >> Result.mapError Error.'raw __
 
 
 LoadCaModulePars =
@@ -57,7 +57,6 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
 
         pars.loadImports importsPath
         >> onOk fn imports:
-
         rootPath =
             Meta.rootDirectoryToPath pars.rootPaths rootDirectory
 
@@ -75,10 +74,22 @@ loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
         >> pars.readFile
         >> ioToRes
         >> onOk fn moduleAsText:
+        errorModule =
+            { content = moduleAsText, fsPath = fileName }
+
+        resolvePars =
+            fn pos:
+            {
+            , currentImports = imports
+            , currentModule = umr
+            , loadExports = pars.loadExports
+            , makeError = Error.'simple errorModule pos __
+            }
+
         params as Compiler/MakeCanonical.ReadOnly =
             {
-            , errorModule = { content = moduleAsText, fsPath = fileName }
-            , resolvePars = { currentImports = imports, currentModule = umr, loadExports = pars.loadExports }
+            , errorModule
+            , resolvePars
             , umr
             }
 
@@ -173,10 +184,8 @@ scanSourceDirs as fn @IO, Meta.ImportsPath, ImportsFile: Res Imports =
 
 loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Exports, Meta.RootPaths, Meta.ImportsPath: Res Exports =
     fn @io, @loadedImports, @loadedExports, rootPaths, importsPath:
-
     loadImports @io @loadedImports rootPaths importsPath
     >> onOk fn imports:
-
     Meta.'importsPath rootDirectory importsDir =
         importsPath
 
@@ -186,13 +195,10 @@ loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Ex
     IO.readFile @io filePath
     >> ioToRes
     >> onOk fn fileContent:
-
     ExportsFile.fromText filePath fileContent
     >> onOk fn exportsFile:
-
     ExportsFile.toExports imports exportsFile
     >> onOk fn exports:
-
     Hash.insert @loadedExports importsPath exports
 
     'ok exports
