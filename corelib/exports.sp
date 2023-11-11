@@ -22,6 +22,14 @@ module =
    path = Array
    exposes =
       Array
+      push
+      pop
+      get
+      set
+      sortBy
+      fromList
+      toList
+      each
 
 module =
    path = List
@@ -79,6 +87,12 @@ module =
         Maybe
         'just
         'nothing
+        onJust
+        map
+        toResult
+        mapRes
+        withDefault
+
 
 module =
     path = Text
@@ -107,33 +121,100 @@ module =
 
 module =
     path = Tuple
+    exposes =
+        first
+        second
+        mapFirst
+        mapSecond
+        mapBoth
+        pair
+
+
 
 module =
     path = Basics
     exposes =
         Int
-        clamp
-        cloneImm
-        cloneUni
+        compare
         identity
         not
         applyIf
-        modBy
-        min
-        max
         btw
+        cloneUni
+        cloneImm
+        max
+        min
+        clamp
+        round
+        modBy
 
 module =
     path = Hash
-    exposes = Hash
+    exposes =
+        Hash
+        insert
+        remove
+        get
+        for_
+        for
+        each
+        fromList
+        toList
+        pop
 
 module =
     path = Dict
-    exposes = Dict
+    exposes =
+        Dict
+        empty
+        get
+        member
+        size
+        insert
+        remove
+        update
+        ofOne
+
+        join
+        intersect
+        diff
+        merge
+        onlyBothOnly
+        map
+        mapRes
+        mapKeys
+        each
+        for
+        forRes
+        forReversed
+        filter
+        partition
+        any
+        keys
+        values
+        toList
+        fromList
 
 module =
     path = Set
-    exposes = Set
+    exposes =
+      Set
+      empty
+      member
+      size
+      isEmpty
+      insert
+      remove
+      ofOne
+      join
+      intersect
+      diff
+      map
+      for
+      toList
+      fromList
+
+
 
 module =
     path = Result
@@ -142,9 +223,21 @@ module =
       'ok
       'err
       onOk
+      onErr
+      map
+      mapError
+      fromMaybe
+      withDefault
 
 module =
     path = Self
+    exposes =
+        Value
+        Self
+        introspect
+        internalRepresentation
+        LoadPars
+        load
 
 module =
    path = Compiler/Ast

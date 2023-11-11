@@ -55,7 +55,10 @@ toExports as fn Imports, ExportsFile: Res Exports =
                 'nothing:
                     addError
                         [
-                        , "TODO exports refers to a module that is not in imports"
+                        , "TODO exports refers to a module with path " .. modulePath .. " but that is not in imports."
+                        , imports.modulePathToLocation
+                            >> Dict.keys
+                            >> Text.join ", " __
                         ]
 
                     d

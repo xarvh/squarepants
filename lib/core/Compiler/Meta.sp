@@ -260,8 +260,9 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
 
                             'just referencedModuleAlias:
                                 [
-                                , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
-                                , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
+                                # TODO display the first line only if referencedModuleAlias /= modulePath
+                                , "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
+                                , "However, library $directoryPathOfLibrary does not expose any " .. modulePath .. " module."
                                 ]
                                 >> pars.makeError
                                 >> 'err
@@ -284,8 +285,9 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
 
                                     'just referencedModuleAlias:
                                         [
-                                        , "imports.sp translates `$referencedAlias` as `$modulePath`"
-                                        , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
+                                        # TODO display the first line only if referencedModuleAlias /= modulePath
+                                        , "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
+                                        , "However, " .. modulePath .. " in library $directoryPathOfLibrary does not expose any `" .. referencedName .. "`."
                                         ]
                                         >> pars.makeError
                                         >> 'err

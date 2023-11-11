@@ -140,9 +140,10 @@ listSourceDir as fn @IO, Text, Text: IO.Re [ Text ] =
     >> List.filterMap asModuleDirectory __
     >> List.mapRes (fn subDir: listSourceDir @io sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/")) __
     >> onOk fn descendants:
-    [ directChildren, List.concat descendants ]
-    >> List.concat
-    >> 'ok
+    x =
+        [ directChildren, List.concat descendants ] >> List.concat
+
+    x >> 'ok
 
 
 ModuleAndPath =
@@ -163,12 +164,18 @@ updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     List.for orig fileNames insertModuleName
 
 
-scanSourceDirs as fn @IO, Meta.ImportsPath, ImportsFile: Res Imports =
-    fn @io, importsPath, importsFile:
+scanSourceDirs as fn @IO, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
+    fn @io, rootPaths, importsPath, importsFile:
+    Meta.'importsPath root importsDir =
+        importsPath
+
+    rootPath =
+        Meta.rootDirectoryToPath rootPaths root
+
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
     # before building Imports we need to add those that are not mentioned.
     importsFile.sourceDirs
-    >> List.mapRes (fn sd: listSourceDir @io sd.path "") __
+    >> List.mapRes (fn sd: listSourceDir @io (Path.join [ rootPath, importsDir, sd.path ]) "") __
     >> ioToRes
     >> onOk fn allSourceDirLists:
     updatedSourceDirs as [ ImportsFile.SourceDir ] =
@@ -223,7 +230,7 @@ loadImports as fn @IO, @Hash Meta.ImportsPath Imports, Meta.RootPaths, Meta.Impo
             >> onOk fn fileContent:
             ImportsFile.textToModulesFile filePath fileContent
             >> onOk fn importsFile:
-            scanSourceDirs @io importsPath importsFile
+            scanSourceDirs @io rootPaths importsPath importsFile
             >> onOk fn imports:
             Hash.insert @loadedImports importsPath imports
 
@@ -285,14 +292,17 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #
     corelibPath =
         try pars.corelib as
-          'just corelib: corelib
-          'nothing:
-            executablePath =
-                [ pars.selfPath ]
-                >> Path.resolve
-                >> Path.dirname
 
-            Path.join [ executablePath, defaultCorelibDir ]
+            'just corelib:
+                corelib
+
+            'nothing:
+                executablePath =
+                    [ pars.selfPath ]
+                    >> Path.resolve
+                    >> Path.dirname
+
+                Path.join [ executablePath, defaultCorelibDir ]
 
     rootPaths as Meta.RootPaths =
         {
