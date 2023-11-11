@@ -14,6 +14,11 @@ sourceDir =
             ImportsFile
 
     module =
+        path = ExportsFile
+        globals =
+            ExportsFile
+
+    module =
         path = Human/Type
         globals =
             usrToText
@@ -207,6 +212,7 @@ library =
         importAs = Meta
         globals =
             Imports
+            Exports
             ByUsr
             USR
             UMR

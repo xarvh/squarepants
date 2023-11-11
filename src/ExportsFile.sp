@@ -19,27 +19,70 @@ ExportsFile =
     Dict Name (Dict Name Bool)
 
 
+result_withAddError as fn (fn [error]: groupedErrors), (fn (fn error: None): payload): Result groupedErrors payload =
+
+    fn groupErrors, collectErrors:
+
+    !errors =
+        Array.fromList []
+
+    addError =
+        Array.push @errors __
+
+    payload =
+        collectErrors addError
+
+    errorList =
+        Array.toList @errors
+
+    if errorList == [] then
+        'ok payload
+    else
+        'err (groupErrors errorList)
+
+
 #
 # ImportsFile to Imports
 #
 
-toExports as fn Imports, ExportsFile: Result [ Text ] Exports =
+toExports as fn Imports, ExportsFile: Res Exports =
     fn imports, exportsFile:
-    todo ""
 
-    # TODO this should be an Array Error, but we don't have Pos annotation on ModulesFile/SPON!
-    !errors as Array Text =
-        Array.fromList []
+    result_withAddError Error.'nested fn addError_:
+        addError =
+            __ >> Error.'raw >> addError_
 
-    todo "...."
+        Dict.for Dict.empty exportsFile fn modulePath, exposedNames, d:
+            try Dict.get modulePath imports.moduleAliasToLocation as
 
-    errs =
-        Array.toList @errors >> List.map (fn msg: Error.'raw [ msg ]) __
+                'nothing:
+                    addError
+                        [
+                        , "TODO exports refers to a module that is not in imports"
+                        ]
+                    d
 
-    if errs == [] then
-        'ok meta
-    else
-        'err (Error.'nested errs)
+                'just (Meta.'locationLibrary importsPath modulePath_):
+                    addError
+                        [
+                        , "TODO you can't export modules from a library"
+                        ]
+                    d
+
+                'just (Meta.'locationSourceDir umr):
+                    Dict.for d exposedNames fn name, isOpen, dd:
+                        usr =
+                            'USR umr name
+
+                        addNameToModule as fn Maybe (Dict Name Meta.ExportOptions): Maybe (Dict Name Meta.ExportOptions) =
+                            __
+                            >> Maybe.withDefault Dict.empty __
+                            >> Dict.insert name { isOpen, usr } __
+                            >> 'just
+
+                        Dict.update modulePath addNameToModule dd
+
+        >> Meta.'modulesByPath
 
 
 #
@@ -47,7 +90,10 @@ toExports as fn Imports, ExportsFile: Result [ Text ] Exports =
 #
 
 exposesReader as SPON.Reader { name as Name, open as Bool } =
-    todo "...."
+    SPON.anyName
+    >> SPON.onAcc fn name:
+    # TODO
+    { name, open = 'true } >> SPON.return
 
 
 moduleReader as SPON.Reader { exposes as Dict Name Bool, path as Text } =
@@ -58,14 +104,14 @@ moduleReader as SPON.Reader { exposes as Dict Name Bool, path as Text } =
     SPON.return { exposes = List.for Dict.empty exposes (fn e, d: Dict.insert e.name e.open d), path }
 
 
-modulesFileReader as SPON.Reader ExportsFile =
+exportsFileReader as SPON.Reader ExportsFile =
     moduleReader
     >> SPON.many
     >> SPON.onAcc fn modules:
     List.for Dict.empty modules fn module, d:
-        Dict.insert module.name module.exposes d
+        Dict.insert module.path module.exposes d
     >> SPON.return
 
 
-fromText as fn Text, Text: Result [ Text ] ExportsFile =
+fromText as fn Text, Text: Res ExportsFile =
     SPON.read exportsFileReader __ __

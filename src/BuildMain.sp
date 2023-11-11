@@ -37,7 +37,7 @@ getEntryUsr as fn Imports, Text: Res USR =
 
 LoadCaModulePars =
     {
-    , loadExports as fn Meta.ImportsPath: Result [ Text ] Meta.Exports
+    , loadExports as fn Meta.ImportsPath: Res Exports
     , loadImports as fn Meta.ImportsPath: Res Imports
     , readFile as fn Text: IO.Re Text
     , rootPaths as Meta.RootPaths
@@ -171,7 +171,7 @@ scanSourceDirs as fn @IO, Meta.ImportsPath, ImportsFile: Res Imports =
         { importsFile with sourceDirs = updatedSourceDirs }
 
 
-loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Meta.Exports, Meta.RootPaths, Meta.ImportsPath: Result [ Text ] Meta.Exports =
+loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Exports, Meta.RootPaths, Meta.ImportsPath: Res Exports =
     fn @io, @loadedImports, @loadedExports, rootPaths, importsPath:
 
     loadImports @io @loadedImports rootPaths importsPath
@@ -184,7 +184,7 @@ loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Me
         Path.resolve [ Meta.rootDirectoryToPath rootPaths rootDirectory, importsDir, exportsFileName ]
 
     IO.readFile @io filePath
-    >> Result.mapError (fn x: [x]) __
+    >> ioToRes
     >> onOk fn fileContent:
 
     ExportsFile.fromText filePath fileContent
@@ -310,7 +310,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     !loadedImports as Hash Meta.ImportsPath Imports =
         Hash.fromList []
 
-    !loadedExports as Hash Meta.ImportsPath Meta.Exports =
+    !loadedExports as Hash Meta.ImportsPath Exports =
         Hash.fromList []
 
     loadImports @io @loadedImports rootPaths importsPath
