@@ -8,7 +8,7 @@ exportsFileName as Text =
     "exports.sp"
 
 
-corelibDir as Text =
+defaultCorelibDir as Text =
     "corelib"
 
 
@@ -256,6 +256,7 @@ searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
 
 CompileMainPars =
     {
+    , corelib as Maybe Text
     , entryPoint as Text
     , maybeOutputPath as Maybe Text
     , platform as Platform.Platform
@@ -282,14 +283,20 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #
     # Figure out corelib's root
     #
-    executablePath =
-        [ pars.selfPath ]
-        >> Path.resolve
-        >> Path.dirname
+    corelibPath =
+        try pars.corelib as
+          'just corelib: corelib
+          'nothing:
+            executablePath =
+                [ pars.selfPath ]
+                >> Path.resolve
+                >> Path.dirname
+
+            Path.join [ executablePath, defaultCorelibDir ]
 
     rootPaths as Meta.RootPaths =
         {
-        , core = Path.join [ executablePath, corelibDir ]
+        , core = corelibPath
         , installed = Path.join [ projectRoot, installedDir ]
         , project = projectRoot
         }

@@ -43,6 +43,7 @@ var LibrarySource =
 
 parseLibrarySource as fn Text: Result Text LibrarySource =
     fn sourceAsText:
+    log "sourceAsText" sourceAsText
     try Text.split ":" sourceAsText as
         [ "core" ]: 'ok 'core
         [ "local", path ]: 'ok << 'local path

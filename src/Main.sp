@@ -204,12 +204,14 @@ platformBrowser =
 CliState =
     {
     , platform as Platform.Platform
+    , corelib as Maybe Text
     }
 
 
 cliDefaults as CliState =
     {
     , platform = platformPosix
+    , corelib = 'nothing
     }
 
 
@@ -248,6 +250,15 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
                 'just platform:
                     'ok { cliState with platform }
 
+parseCorelibPath as fn Maybe Text, CliState: Result Text CliState =
+    fn maybeValue, cliState:
+    try maybeValue as
+        'nothing:
+            'err "Please specify the path where your corelib is."
+
+        'just value:
+            'ok { cliState with corelib = 'just value }
+
 
 cliOptions as [ Option CliState ] =
     [
@@ -255,6 +266,11 @@ cliOptions as [ Option CliState ] =
     , info = "select build platform"
     , name = "--platform"
     , parser = parsePlatformName
+    }
+    , {
+    , info = "specify the path for for the corelib"
+    , name = "--corelib"
+    , parser = parseCorelibPath
     }
     ]
 
@@ -290,6 +306,7 @@ main as IO.Program =
                         , maybeOutputPath
                         , platform = cliState.platform
                         , selfPath = self
+                        , corelib = cliState.corelib
                         }
                     >> resToIo
 
