@@ -172,6 +172,7 @@ Imports =
     # Tells us in which module a global is actually defined
     , globalNameToLocation as Dict Name Location
     , moduleAliasToLocation as Dict Name Location
+    , modulePathToLocation as Dict Name Location
     }
 
 
@@ -179,6 +180,7 @@ initImports as Imports =
     {
     , globalNameToLocation = Dict.empty
     , moduleAliasToLocation = Dict.empty
+    , modulePathToLocation = Dict.empty
     }
 
 
@@ -191,9 +193,8 @@ ExportOptions =
     }
 
 
-var Exports =
-    , 'all
-    , 'modulesByPath (Dict Name (Dict Name ExportOptions))
+Exports =
+    Dict Name (Dict Name ExportOptions)
 
 
 #
@@ -239,8 +240,7 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
     try location as
 
         'locationSourceDir umr:
-            'USR umr referencedName
-            >> 'ok
+            'USR umr referencedName >> 'ok
 
         'locationLibrary importsPath modulePath:
             # We are missing the $sourceDir part of the UMR; this information is in the Imports of the library,
@@ -252,53 +252,47 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
             #            $modulePath
 
             pars.loadExports importsPath
-            >> Result.onOk fn libraryExports:
-            try libraryExports as
+            >> Result.onOk fn modulesByPath:
+                try Dict.get modulePath modulesByPath as
 
-                'all:
-                    todo "exporting `all` is not yet implemented. =("
+                    'nothing:
+                        try maybeReferencedModuleAlias as
 
-                'modulesByPath modulesByPath:
-                    try Dict.get modulePath modulesByPath as
+                            'just referencedModuleAlias:
+                                [
+                                , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
+                                , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
+                                ]
+                                >> pars.makeError
+                                >> 'err
 
-                        'nothing:
-                            try maybeReferencedModuleAlias as
+                            'nothing:
+                                [
+                                , "TODO ??????"
+                                ]
+                                >> pars.makeError
+                                >> 'err
 
-                                'just referencedModuleAlias:
-                                    [
-                                    , "imports.sp translates `$referencedModuleAlias` as `$modulePath`"
-                                    , "However, library $directoryPathOfLibrary does not expose any $modulePath module"
-                                    ]
-                                    >> pars.makeError
-                                    >> 'err
+                    'just moduleUsrByName:
+                        try Dict.get referencedName moduleUsrByName as
 
-                                'nothing:
-                                    [
-                                    , "TODO ??????"
-                                    ]
-                                    >> pars.makeError
-                                    >> 'err
+                            'just exportOptions:
+                                'ok exportOptions.usr
 
-                        'just moduleUsrByName:
-                            try Dict.get referencedName moduleUsrByName as
+                            'nothing:
+                                try maybeReferencedModuleAlias as
 
-                                'just exportOptions:
-                                    'ok exportOptions.usr
+                                    'just referencedModuleAlias:
+                                        [
+                                        , "imports.sp translates `$referencedAlias` as `$modulePath`"
+                                        , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
+                                        ]
+                                        >> pars.makeError
+                                        >> 'err
 
-                                'nothing:
-                                    try maybeReferencedModuleAlias as
-
-                                        'just referencedModuleAlias:
-                                            [
-                                            , "imports.sp translates `$referencedAlias` as `$modulePath`"
-                                            , "However, $modulePath in library $directoryPathOfLibrary does not expose any $referencedName"
-                                            ]
-                                            >> pars.makeError
-                                            >> 'err
-
-                                        'nothing:
-                                            [
-                                            , "TODO ?????!!!!"
-                                            ]
-                                            >> pars.makeError
-                                            >> 'err
+                                    'nothing:
+                                        [
+                                        , "TODO ?????!!!!"
+                                        ]
+                                        >> pars.makeError
+                                        >> 'err

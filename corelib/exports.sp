@@ -1,7 +1,7 @@
 
 module =
    path = Core
-   expose =
+   exposes =
       None
       Bool
       Text
@@ -79,7 +79,6 @@ module =
 
 module =
    path = Compiler/Ast
-   importAs = Ast
    exposes =
       Name
       Ref
@@ -96,23 +95,18 @@ module =
 
 module =
    path = Compiler/TypedAst
-   importAs = TA
 
 module =
    path = Compiler/CanonicalAst
-   importAs = CA
 
 module =
    path = Compiler/EmittableAst
-   importAs = EA
 
 module =
    path = Compiler/FormattableAst
-   importAs = FA
 
 module =
     path = Compiler/Meta
-    importAs = Meta
     exposes =
         Imports
         Exports
@@ -129,11 +123,9 @@ module =
 
 module =
     path = Compiler/Op
-    importAs = Op
 
 module =
    path = Compiler/Pos
-   importAs = Pos
    exposes =
         Pos
         At
@@ -141,7 +133,6 @@ module =
 
 module =
     path = Compiler/Token
-    importAs = Token
     exposes =
         Token
         'token

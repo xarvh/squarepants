@@ -19,10 +19,8 @@ ExportsFile =
     Dict Name (Dict Name Bool)
 
 
-result_withAddError as fn (fn [error]: groupedErrors), (fn (fn error: None): payload): Result groupedErrors payload =
-
+result_withAddError as fn fn [ error ]: groupedErrors, fn fn error: None: payload: Result groupedErrors payload =
     fn groupErrors, collectErrors:
-
     !errors =
         Array.fromList []
 
@@ -47,19 +45,19 @@ result_withAddError as fn (fn [error]: groupedErrors), (fn (fn error: None): pay
 
 toExports as fn Imports, ExportsFile: Res Exports =
     fn imports, exportsFile:
-
     result_withAddError Error.'nested fn addError_:
         addError =
             __ >> Error.'raw >> addError_
 
         Dict.for Dict.empty exportsFile fn modulePath, exposedNames, d:
-            try Dict.get modulePath imports.moduleAliasToLocation as
+            try Dict.get modulePath imports.modulePathToLocation as
 
                 'nothing:
                     addError
                         [
                         , "TODO exports refers to a module that is not in imports"
                         ]
+
                     d
 
                 'just (Meta.'locationLibrary importsPath modulePath_):
@@ -67,6 +65,7 @@ toExports as fn Imports, ExportsFile: Res Exports =
                         [
                         , "TODO you can't export modules from a library"
                         ]
+
                     d
 
                 'just (Meta.'locationSourceDir umr):
@@ -82,8 +81,6 @@ toExports as fn Imports, ExportsFile: Res Exports =
 
                         Dict.update modulePath addNameToModule dd
 
-        >> Meta.'modulesByPath
-
 
 #
 # Reader
@@ -97,15 +94,15 @@ exposesReader as SPON.Reader { name as Name, open as Bool } =
 
 
 moduleReader as SPON.Reader { exposes as Dict Name Bool, path as Text } =
-    SPON.field "path" SPON.text
+    SPON.field "path" SPON.upperName
     >> SPON.onAcc fn path:
-    SPON.field "exposes" (SPON.many exposesReader)
-    >> SPON.onAcc fn exposes:
-    SPON.return { exposes = List.for Dict.empty exposes (fn e, d: Dict.insert e.name e.open d), path }
+    SPON.maybe (SPON.field "exposes" (SPON.many exposesReader))
+    >> SPON.onAcc fn maybeExposes:
+    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault [] maybeExposes) (fn e, d: Dict.insert e.name e.open d), path }
 
 
 exportsFileReader as SPON.Reader ExportsFile =
-    moduleReader
+    SPON.field "module" moduleReader
     >> SPON.many
     >> SPON.onAcc fn modules:
     List.for Dict.empty modules fn module, d:

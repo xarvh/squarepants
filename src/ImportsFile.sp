@@ -63,15 +63,18 @@ ToImportsPars =
 
 
 insertModules as fn fn Text: Meta.Location, @Array Text, [ Module ], Imports: Imports =
-    fn modulePathToLocation, @errors, modules, imports:
+    fn getModulePathToLocation, @errors, modules, imports:
         List.for imports modules fn module, imp:
             location =
-                modulePathToLocation module.path
+                getModulePathToLocation module.path
 
             # Insert module alias
             # TODO check that there is no duplication!
             moduleAliasToLocation =
                 Dict.insert module.visibleAs location imp.moduleAliasToLocation
+
+            modulePathToLocation =
+                Dict.insert module.path location imp.modulePathToLocation
 
             # Insert globals
             globalNameToLocation =
@@ -79,7 +82,7 @@ insertModules as fn fn Text: Meta.Location, @Array Text, [ Module ], Imports: Im
                     # TODO check that there is no duplication
                     Dict.insert globalName location dict
 
-            { globalNameToLocation, moduleAliasToLocation }
+            { globalNameToLocation, moduleAliasToLocation, modulePathToLocation }
 
 
 insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
