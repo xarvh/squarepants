@@ -43,11 +43,10 @@ var LibrarySource =
 
 parseLibrarySource as fn Text: Result Text LibrarySource =
     fn sourceAsText:
-    log "sourceAsText" sourceAsText
     try Text.split ":" sourceAsText as
         [ "core" ]: 'ok 'core
         [ "local", path ]: 'ok << 'local path
-        [ protocol, address... ]: 'ok << 'installed { address = Text.join ":" address, protocol }
+        [ protocol, address, more... ]: 'ok << 'installed { address = Text.join ":" [address, more...], protocol }
         _: 'err << "invalid library source: " .. sourceAsText
 
 

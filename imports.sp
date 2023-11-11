@@ -73,7 +73,7 @@ sourceDir =
 
 # This will be transformed into a platform
 library =
-    source = "core:posix"
+    source = "local:lib/posix"
 
     module =
        path = IO

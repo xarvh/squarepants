@@ -25,6 +25,53 @@ module =
 
 module =
    path = List
+   exposes =
+      any
+      all
+      find
+      findMap
+      member
+      sort
+      sortBy
+      indexBy
+      for
+      for2
+      indexedFor
+      indexedFor2
+      forReversed
+      forReversed2
+      length
+      map
+      map2
+      mapRes
+      forRes
+      range
+      indexedMap
+      indexedMap2
+      append
+      concat
+      concatMap
+      partition
+      head
+      last
+      take
+      takeFast
+      takeTailRec
+      takeReverse
+      takeWhile
+      filter
+      filterMap
+      mapFirst
+      each
+      indexedEach2
+      reverse
+      repeat
+      drop
+      minimum
+      maximum
+      circularPairs
+      intersperse
+      partitionWhile
 
 module =
     path = Maybe
@@ -35,6 +82,28 @@ module =
 
 module =
     path = Text
+    exposes =
+        forEach
+        length
+        slice
+        fromNumber
+        toNumber
+        startsWith
+        trimLeft
+        trimRight
+        toLower
+        toUpper
+        dropLeft
+        dropRight
+        padLeft
+        padRight
+        repeat
+        replace
+        startsWithRegex
+        replaceRegex
+        split
+        contains
+        join
 
 module =
     path = Tuple
