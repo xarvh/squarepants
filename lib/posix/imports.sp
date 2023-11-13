@@ -1,5 +1,5 @@
 sourceDir =
-    path = "."
+    path = ""
 
 
 library =

@@ -21,8 +21,8 @@ coreOverrides as fn None: Dict USR Override =
 
     #
     corelib as fn Text, Text: USR =
-        fn m, n:
-        todo """'USR ('UMR Meta.'core m) n"""
+        fn module, name:
+        'USR ('UMR CoreDefs.importsPath "src" module) name
 
     [
     , CoreDefs.unaryPlus.usr & unaryPlus
