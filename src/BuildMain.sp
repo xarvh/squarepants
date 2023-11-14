@@ -191,24 +191,30 @@ scanSourceDirs as fn @IO, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imp
 
 loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Exports, Meta.RootPaths, Meta.ImportsPath: Res Exports =
     fn @io, @loadedImports, @loadedExports, rootPaths, importsPath:
-    loadImports @io @loadedImports rootPaths importsPath
-    >> onOk fn imports:
-    Meta.'importsPath rootDirectory importsDir =
-        importsPath
 
-    filePath =
-        Path.resolve [ Meta.rootDirectoryToPath rootPaths rootDirectory, importsDir, exportsFileName ]
+    try Hash.get @loadedExports importsPath as
+        'just exports:
+            'ok exports
 
-    IO.readFile @io filePath
-    >> ioToRes
-    >> onOk fn fileContent:
-    ExportsFile.fromText filePath fileContent
-    >> onOk fn exportsFile:
-    ExportsFile.toExports imports exportsFile
-    >> onOk fn exports:
-    Hash.insert @loadedExports importsPath exports
+        'nothing:
+            loadImports @io @loadedImports rootPaths importsPath
+            >> onOk fn imports:
+            Meta.'importsPath rootDirectory importsDir =
+                importsPath
 
-    'ok exports
+            filePath =
+                Path.resolve [ Meta.rootDirectoryToPath rootPaths rootDirectory, importsDir, exportsFileName ]
+
+            IO.readFile @io filePath
+            >> ioToRes
+            >> onOk fn fileContent:
+            ExportsFile.fromText filePath fileContent
+            >> onOk fn exportsFile:
+            ExportsFile.toExports imports exportsFile
+            >> onOk fn exports:
+            Hash.insert @loadedExports importsPath exports
+
+            'ok exports
 
 
 loadImports as fn @IO, @Hash Meta.ImportsPath Imports, Meta.RootPaths, Meta.ImportsPath: Res Imports =
