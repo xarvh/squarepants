@@ -10,12 +10,12 @@ errorModule as fn Text: Error.Module =
     { content, fsPath = "<Test>" }
 
 
-#source as Meta.Source =
-#    todo """Meta.'platform "<tests>"""
+importsPath as Meta.ImportsPath =
+    Meta.'importsPath Meta.'user "<testImportsPath/>"
 
 
 moduleUmr as UMR =
-    todo "'UMR source moduleName"
+    'UMR importsPath "<testSourceDir/>" "<TestModulePath>"
 
 
 moduleUsr as fn Name: USR =
@@ -59,7 +59,13 @@ resErrorToStrippedText as fn Res a: Result Text a =
 # Meta
 #
 imports as Imports =
-    try ImportsFile.toImports DefaultImports.defaultImportsFile as
+    pars as ImportsFile.ToImportsPars =
+        {
+        , importsPath
+        , joinPath = Path.join
+        }
+
+    try ImportsFile.toImports pars DefaultImports.defaultImportsFile as
 
         'err e:
             log "Error in DefaultImports.sp: " e
@@ -68,6 +74,18 @@ imports as Imports =
 
         'ok m:
             m
+
+
+#
+# Resolve Pars
+#
+resolvePars as Meta.ResolvePars Error =
+    {
+    , currentImports = imports
+    , currentModule = moduleUmr
+    , loadExports = fn ip: 'err << Error.'raw [ "TestHelpers: trying to loadExports?" ]
+    , makeError = Error.'raw __
+    }
 
 
 #
