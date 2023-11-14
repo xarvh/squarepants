@@ -79,10 +79,10 @@ header as Text =
 overrides as fn Meta.ImportsPath: [ USR & Text ] =
     fn platformImportsPath:
     ioModule =
-        'USR ('UMR platformImportsPath "src" "IO") __
+        'USR ('UMR platformImportsPath "" "IO") __
 
     pathModule =
-        'USR ('UMR platformImportsPath "src" "Path") __
+        'USR ('UMR platformImportsPath "" "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"

@@ -598,18 +598,15 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
 
-translateConstructor as fn USR & TA.RawType: JA.Statement =
+translateConstructorDef as fn USR & TA.RawType: JA.Statement =
     fn usr & taType:
 
-    'USR umr apoName =
+    'USR umr nameWithApostrophe =
         usr
-
-    slug =
-        translateName apoName
 
     # `(($1, $2, $3) => [ "theConstructorName", $1, $2, $3, ... ])`
     arrayHead =
-        literalString slug
+        literalString (translateName nameWithApostrophe)
 
     definitionBody =
         try taType as
@@ -625,10 +622,7 @@ translateConstructor as fn USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    usrAsText =
-        translateUsr ('USR umr slug)
-
-    JA.'define 'false usrAsText definitionBody
+    JA.'define 'false (translateUsr usr) definitionBody
 
 
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
@@ -665,7 +659,7 @@ translateUsr as fn USR: Text =
     , sanitizePath importsDir
     , sanitizePath sourceDir
     , sanitizePath modulePath
-    , name
+    , translateName name
     ]
     >> Text.join "$" __
 
@@ -683,7 +677,7 @@ translateName as fn Name: Text =
         "$" .. Text.toUpper head .. rest
 
     else
-        "$" ..name
+        "$" .. name
 
 
 
@@ -701,7 +695,7 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         pars
 
     jaConstructors as [ JA.Statement ] =
-        List.map (translateConstructor __) constructors
+        List.map (translateConstructorDef __) constructors
 
     env as Env =
         {
