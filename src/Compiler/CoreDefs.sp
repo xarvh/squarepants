@@ -29,10 +29,6 @@ usrToVariable as fn USR: CA.Expression =
     CA.'variable Pos.'n ('refGlobal u)
 
 
-imports as Meta.Imports =
-    todo "core imports"
-
-
 #
 # Text
 #
