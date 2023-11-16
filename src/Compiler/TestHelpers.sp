@@ -79,11 +79,52 @@ imports as Imports =
 #
 # Resolve Pars
 #
+exports as Meta.Exports =
+    isOpen = 'false
+
+    [
+    , "None" & { isOpen = 'true, usr = CoreDefs.noneTypeUsr }
+    , "'none"  & { isOpen, usr = CoreDefs.noneConsUsr }
+    #
+    , "Bool" & { isOpen = 'true, usr = CoreDefs.boolUsr }
+    , "'true" & { isOpen, usr = CoreDefs.trueUsr }
+    , "'false" & { isOpen, usr = CoreDefs.falseUsr }
+    #
+    , "List" & { isOpen = 'true, usr = CoreDefs.listUsr }
+    , "'nil" & { isOpen, usr = CoreDefs.nilUsr }
+    , "'cons" & { isOpen, usr = CoreDefs.consUsr }
+    #
+    , "Text" & { isOpen, usr = CoreDefs.textUsr }
+    , "Number" & { isOpen, usr = CoreDefs.numberUsr }
+    ]
+    >> Dict.fromList
+    >> Dict.ofOne "Core" __
+
+
+
+loadExports as fn Meta.ImportsPath: Res Meta.Exports =
+    fn ip:
+
+    try ip as
+        Meta.'importsPath Meta.'core "":
+            'ok exports
+
+        _:
+            [
+            , "TestHelpers: trying to load an unknown export:"
+            , ""
+            , Debug.toHuman ip
+            , ""
+            ]
+            >> Error.'raw
+            >> 'err
+
+
 resolvePars as Meta.ResolvePars Error =
     {
     , currentImports = imports
     , currentModule = moduleUmr
-    , loadExports = fn ip: 'err << Error.'raw [ "TestHelpers: trying to loadExports?" ]
+    , loadExports
     , makeError = Error.'raw __
     }
 

@@ -260,16 +260,19 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
 
                             'just referencedModuleAlias:
                                 [
-                                # TODO display the first line only if referencedModuleAlias /= modulePath
-                                , "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
-                                , "However, library $directoryPathOfLibrary does not expose any " .. modulePath .. " module."
+                                , if referencedModuleAlias == modulePath then
+                                    'nothing
+                                else
+                                    'just << "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
+                                , 'just << "However, library $directoryPathOfLibrary does not expose any " .. modulePath .. " module."
                                 ]
+                                >> List.filterMap identity __
                                 >> pars.makeError
                                 >> 'err
 
                             'nothing:
                                 [
-                                , "TODO ??????"
+                                , "Library cannot find: " .. modulePath .. " which contains " .. referencedName
                                 ]
                                 >> pars.makeError
                                 >> 'err
@@ -286,7 +289,11 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
                                     'just referencedModuleAlias:
                                         [
                                         # TODO display the first line only if referencedModuleAlias /= modulePath
-                                        , "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
+                                        , "imports.sp translates `"
+                                        .. referencedModuleAlias
+                                        .. "` as `"
+                                        .. modulePath
+                                        .. "`"
                                         , "However, " .. modulePath .. " in library $directoryPathOfLibrary does not expose any `" .. referencedName .. "`."
                                         ]
                                         >> pars.makeError
@@ -294,7 +301,7 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
 
                                     'nothing:
                                         [
-                                        , "TODO ?????!!!!"
+                                        , referencedName .. " is not in " .. modulePath
                                         ]
                                         >> pars.makeError
                                         >> 'err
