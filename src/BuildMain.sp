@@ -234,7 +234,7 @@ loadImports as fn @IO, @Hash Meta.ImportsPath Imports, Meta.RootPaths, Meta.Impo
             IO.readFile @io filePath
             >> ioToRes
             >> onOk fn fileContent:
-            ImportsFile.textToModulesFile filePath fileContent
+            ImportsFile.fromText filePath fileContent
             >> onOk fn importsFile:
             scanSourceDirs @io rootPaths importsPath importsFile
             >> onOk fn imports:

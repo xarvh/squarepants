@@ -1,4 +1,4 @@
-# TODO this should allow us to use the aliases and globals defined in modules.sp
+# TODO this should allow us to use the aliases and globals defined in the project's Imports
 Env =
     Compiler/TypeCheck.Env
 
@@ -34,7 +34,7 @@ umrToText as fn Env, UMR: Text =
 
 usrToText as fn Env, USR: Text =
     fn env, 'USR umr name:
-    # TODO use display umr if name is not in modules.sp
+    # TODO use display umr if name is not in Imports
     umrToText env umr .. "." .. name
 
 

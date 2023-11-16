@@ -17315,7 +17315,7 @@ const $u$$src$SPLib$SPON$$read = (($reader, $fsPath, $content) => {
   })));
 });
 
-const $u$$src$ImportsFile$$textToModulesFile = (($sponName, $sponContent) => {
+const $u$$src$ImportsFile$$fromText = (($sponName, $sponContent) => {
   const $insert = (($rootEntry, $mf) => {
     return ((($rootEntry)[0] === "$Lib")
       ? ((() => {
@@ -17364,7 +17364,7 @@ const $u$$src$BuildMain$$loadImports = (($io, $loadedImports, $rootPaths, $impor
                 ((__re__ = (hash_insert)($loadedImports, $importsPath, $imports)), ($loadedImports = (__re__)[1]), (__re__)[0]);
                 return ($c$$src$Result$$Ok)($imports);
               })))(((__re__ = ($u$$src$BuildMain$$scanSourceDirs)($io, $rootPaths, $importsPath, $importsFile)), ($io = (__re__)[1]), (__re__)[0]));
-            })))(($u$$src$ImportsFile$$textToModulesFile)($filePath, $fileContent));
+            })))(($u$$src$ImportsFile$$fromText)($filePath, $fileContent));
           })))(($u$$src$BuildMain$$ioToRes)(((__re__ = (io_readFile)($io, $filePath)), ($io = (__re__)[1]), (__re__)[0])));
         }))()
         : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 222:4', (sp_toHuman)($5)))),

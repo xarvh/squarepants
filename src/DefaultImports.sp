@@ -79,20 +79,14 @@ platformDefaultImportsFile as fn [ Text & [ Text ] ]: ImportsFile =
     { defaultImportsFile with libraries = [ platform, .libraries... ] }
 
 
-# TODO using this also for Core libraries.
-# This is wrong, we should have a separate modules as defaul and one for Core.
 asText__ as Text =
     """
     library =
         source = "core:prelude"
 
-
-
         #
         # Compiler stuff
-        # TODO Really shouldn't be all here
         #
-
 
         module =
            path = Compiler/Ast
@@ -171,21 +165,5 @@ asText__ as Text =
                 Token
             globalValues =
                 'token
-
-    # TODO remove this, should be only for Core
-    sourceDir =
-        path = "src"
-
-        module =
-           path = SPLib/Test
-           importAs = Test
-           globalTypes = Test
-
-    # TODO remove this, should be used only internally by the browser platform
-    library =
-        source = "core:browser"
-
-        module =
-            path = VirtualDom
 
     """

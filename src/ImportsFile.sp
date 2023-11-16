@@ -196,8 +196,8 @@ sourceDirectoryReader as SPON.Reader SourceDir =
     >> SPON.onAcc fn modules:
     SPON.return
         {
-        , modules = modules
-        , path = path
+        , modules
+        , path
         }
 
 
@@ -210,7 +210,7 @@ modulesFileReader as SPON.Reader [ RootEntry ] =
     >> SPON.many
 
 
-textToModulesFile as fn Text, Text: Res ImportsFile =
+fromText as fn Text, Text: Res ImportsFile =
     fn sponName, sponContent:
     insert as fn RootEntry, ImportsFile: ImportsFile =
         fn rootEntry, mf:
