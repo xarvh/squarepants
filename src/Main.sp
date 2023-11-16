@@ -194,11 +194,11 @@ formatMain as fn @IO, [ Text ]: IO.Re None =
 #        }
 
 platformPosix =
-    Platforms/Posix.platform (Meta.'importsPath Meta.'user "lib/posix")
+    Platforms/Posix.platform (Meta.'importsPath Meta.'installed "posix")
 
 
 platformBrowser =
-    Platforms/Posix.platform (Meta.'importsPath Meta.'user "lib/browser")
+    Platforms/Posix.platform (Meta.'importsPath Meta.'installed "browser")
 
 
 CliState =

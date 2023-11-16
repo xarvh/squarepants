@@ -1,7 +1,5 @@
-
-
 sourceDir =
-    path = "src"
+    path = ""
 
 
 library =
@@ -84,21 +82,4 @@ library =
 
     module =
         path = Self
-
-    module =
-       path = Compiler/Ast
-       importAs = Ast
-       globals =
-          Name
-          Ref
-          UnivarId
-          Uniqueness
-          'refLocal
-          'refGlobal
-          'refPlaceholder
-          'uni
-          'imm
-          'depends
-          toImm
-          toUni
 

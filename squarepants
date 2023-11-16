@@ -2345,11 +2345,11 @@ const $c$$src$Text$$join = (($sep, $listOfText) => {
                 const $t = ($ls)[2];
                 return ($rec)($t, ($acc + ($sep + $h)));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Text.sp 154:16', (sp_toHuman)($ls))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 154:16', (sp_toHuman)($ls))));
         });
         return ($rec)($tail, $head);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Text.sp 146:4', (sp_toHuman)($listOfText))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 146:4', (sp_toHuman)($listOfText))));
 });
 
 const $i$test$$Test$$isOkAndEqualTo = (($expectedOk) => {
@@ -2550,7 +2550,7 @@ const $c$$src$Compiler$CanonicalAst$$expressionPos = (($exp) => {
                           const $p = ($exp)[1];
                           return $p;
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 280:4', (sp_toHuman)($exp)))))))))))));
+                        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 280:4', (sp_toHuman)($exp)))))))))))));
 });
 
 const $c$$src$Dict$$empty = $c$$src$Dict$$RBEmpty_elm_builtin;
@@ -2578,7 +2578,7 @@ const $c$$src$Compiler$CanonicalAst$$parTypeToRaw = (($p) => {
         const $full = ($p)[1];
         return $full.raw;
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 169:4', (sp_toHuman)($p))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 169:4', (sp_toHuman)($p))));
 });
 
 const $c$$src$Dict$$for = (($acc, $dict, $func) => {
@@ -2592,7 +2592,7 @@ const $c$$src$Dict$$for = (($acc, $dict, $func) => {
         const $right = ($dict)[5];
         return ($c$$src$Dict$$for)(($func)($key, $value, ($c$$src$Dict$$for)($acc, $left, $func)), $right, $func);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 361:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 361:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$List$$for = (($init, $aList, $function) => {
@@ -2604,7 +2604,7 @@ const $c$$src$List$$for = (($init, $aList, $function) => {
         const $tail = ($aList)[2];
         return ($c$$src$List$$for)(($function)($h, $init), $tail, $function);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 82:4', (sp_toHuman)($aList))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 82:4', (sp_toHuman)($aList))));
 });
 
 const $c$$src$Compiler$CanonicalAst$$patternNames = ((() => {
@@ -2650,7 +2650,7 @@ const $c$$src$Compiler$CanonicalAst$$patternNames = ((() => {
                     return ($rec)($v, $a);
                   }));
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 267:8', (sp_toHuman)($p))))))));
+                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 267:8', (sp_toHuman)($p))))))));
   });
   return (($0) => {
     return ($rec)($0, $c$$src$Core$$Nil);
@@ -2683,7 +2683,7 @@ const $c$$src$Compiler$CanonicalAst$$patternPos = (($pa) => {
               const $p = ($pa)[1];
               return $p;
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 234:4', (sp_toHuman)($pa)))))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 234:4', (sp_toHuman)($pa)))))));
 });
 
 const $c$$src$Dict$$balance = (($color, $key, $value, $left, $right) => {
@@ -2703,7 +2703,7 @@ const $c$$src$Dict$$balance = (($color, $key, $value, $left, $right) => {
         }))()
         : (true
           ? ($c$$src$Dict$$RBNode_elm_builtin)($color, $rK, $rV, ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $key, $value, $left, $rLeft), $rRight)
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 84:12', (sp_toHuman)($left))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 84:12', (sp_toHuman)($left))));
     }))()
     : (true
       ? (((($left)[0] === "$RBNode_elm_builtin") && (((($left)[1])[0] === "$Red") && (((($left)[4])[0] === "$RBNode_elm_builtin") && (((($left)[4])[1])[0] === "$Red"))))
@@ -2719,8 +2719,8 @@ const $c$$src$Dict$$balance = (($color, $key, $value, $left, $right) => {
         }))()
         : (true
           ? ($c$$src$Dict$$RBNode_elm_builtin)($color, $key, $value, $left, $right)
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 89:12', (sp_toHuman)($left))))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 81:4', (sp_toHuman)($right))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 89:12', (sp_toHuman)($left))))
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 81:4', (sp_toHuman)($right))));
 });
 
 const $c$$src$Dict$$insertHelp = (($key, $value, $dict) => {
@@ -2740,9 +2740,9 @@ const $c$$src$Dict$$insertHelp = (($key, $value, $dict) => {
             ? ($c$$src$Dict$$RBNode_elm_builtin)($nColor, $nKey, $value, $nLeft, $nRight)
             : (true
               ? ($c$$src$Dict$$balance)($nColor, $nKey, $nValue, ($c$$src$Dict$$insertHelp)($key, $value, $nLeft), $nRight)
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 73:12', (sp_toHuman)($4)))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 73:12', (sp_toHuman)($4)))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 65:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 65:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Dict$$insert = (($key, $value, $dict) => {
@@ -2760,7 +2760,7 @@ const $c$$src$Dict$$insert = (($key, $value, $dict) => {
         const $x = $4;
         return $x;
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 58:4', (sp_toHuman)($4))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 58:4', (sp_toHuman)($4))));
 });
 
 const $c$$src$Dict$$join = (($0, $1) => {
@@ -2782,7 +2782,7 @@ const $c$$src$Dict$$forReversed = (($acc, $t, $func) => {
         const $right = ($t)[5];
         return ($c$$src$Dict$$forReversed)(($func)($key, $value, ($c$$src$Dict$$forReversed)($acc, $right, $func)), $left, $func);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 383:4', (sp_toHuman)($t))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 383:4', (sp_toHuman)($t))));
 });
 
 const $c$$src$Dict$$values = (($0) => {
@@ -2826,13 +2826,13 @@ const $c$$src$List$$forReversed = (($init, $list, $f) => {
                               : ($foldrHelper)($acc, ($ctr + 1), $r4));
                             return ($f)($a, ($f)($b, ($f)($c, ($f)($d, $res))));
                           }))()
-                          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 127:32', (sp_toHuman)($r3))));
+                          : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 127:32', (sp_toHuman)($r3))));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 121:24', (sp_toHuman)($r2))));
+                    : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 121:24', (sp_toHuman)($r2))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 115:16', (sp_toHuman)($r1))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 115:16', (sp_toHuman)($r1))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 109:8', (sp_toHuman)($ls))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 109:8', (sp_toHuman)($ls))));
   });
   return ($foldrHelper)($init, 0, $list);
 });
@@ -2873,7 +2873,7 @@ const $c$$src$Compiler$CanonicalAst$$typeTyvars = (($raw) => {
           }))()
           : ((($raw)[0] === "$TypeError")
             ? $c$$src$Dict$$empty
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 180:4', (sp_toHuman)($raw)))))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 180:4', (sp_toHuman)($raw)))))));
 });
 
 const $c$$src$Compiler$CanonicalAst$$typeUnivars = (($raw) => {
@@ -2890,7 +2890,7 @@ const $c$$src$Compiler$CanonicalAst$$typeUnivars = (($raw) => {
       }))()
       : (true
         ? $acc
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 196:8', (sp_toHuman)($uni))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 196:8', (sp_toHuman)($uni))));
   });
   const $parUnivars = (($par, $acc) => {
     return ((($par)[0] === "$ParRe")
@@ -2904,7 +2904,7 @@ const $c$$src$Compiler$CanonicalAst$$typeUnivars = (($raw) => {
             return ($c$$src$Dict$$join)($0, ($c$$src$Compiler$CanonicalAst$$typeUnivars)($full.raw));
           }))($acc));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 202:8', (sp_toHuman)($par))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 202:8', (sp_toHuman)($par))));
   });
   return ((($raw)[0] === "$TypeNamed")
     ? ((() => {
@@ -2934,7 +2934,7 @@ const $c$$src$Compiler$CanonicalAst$$typeUnivars = (($raw) => {
                 return ($insertUni)($to.uni, $0);
               }))($c$$src$Dict$$empty));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/CanonicalAst.sp 212:4', (sp_toHuman)($raw)))))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 212:4', (sp_toHuman)($raw)))))));
 });
 
 const $c$$src$Compiler$FormattableAst$$binopChainAllBinops = (($f, $ls) => {
@@ -2953,7 +2953,7 @@ const $c$$src$Compiler$FormattableAst$$binopChainAllBinops = (($f, $ls) => {
           }))
           : false);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/FormattableAst.sp 172:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/FormattableAst.sp 172:4', (sp_toHuman)($3))));
 });
 
 const $c$$src$Tuple$$second = (($t) => {
@@ -2988,7 +2988,7 @@ const $c$$src$Compiler$FormattableAst$$binopChainReverse = ((() => {
             second: $tail,
           }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/FormattableAst.sp 163:8', (sp_toHuman)($remainder))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/FormattableAst.sp 163:8', (sp_toHuman)($remainder))));
   });
   return (($0) => {
     return ($rec)($c$$src$Core$$Nil, $0);
@@ -3030,7 +3030,7 @@ const $c$$src$Compiler$FormattableAst$$statementPos = (($statement) => {
               const $name = ($statement)[1].name;
               return $name.first;
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/FormattableAst.sp 186:4', (sp_toHuman)($statement)))))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/FormattableAst.sp 186:4', (sp_toHuman)($statement)))))));
 });
 
 const $c$$src$Compiler$Meta$$initImports = ({
@@ -3055,9 +3055,24 @@ const $c$$src$Dict$$get = (($targetKey, $dict) => {
             ? ($c$$src$Maybe$$Just)($value)
             : (true
               ? ($c$$src$Dict$$get)($targetKey, $left)
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 25:12', (sp_toHuman)($3)))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 25:12', (sp_toHuman)($3)))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 19:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 19:4', (sp_toHuman)($dict))));
+});
+
+const $c$$src$List$$filterMap = (($f, $la) => {
+  const $update = (($a, $acc) => {
+    const $5 = ($f)($a);
+    return ((($5)[0] === "$Just")
+      ? ((() => {
+        const $b = ($5)[1];
+        return (sp_cons)($b, $acc);
+      }))()
+      : ((($5)[0] === "$Nothing")
+        ? $acc
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 349:8', (sp_toHuman)($5))));
+  });
+  return ($c$$src$List$$forReversed)($c$$src$Core$$Nil, $la, $update);
 });
 
 const $c$$src$Result$$onOk = (($f) => {
@@ -3072,7 +3087,7 @@ const $c$$src$Result$$onOk = (($f) => {
           const $a = ($result)[1];
           return ($f)($a);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Result.sp 16:4', (sp_toHuman)($result))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Result.sp 16:4', (sp_toHuman)($result))));
   });
 });
 
@@ -3092,11 +3107,15 @@ const $c$$src$Compiler$Meta$$resolveLocation = (($pars, $location, $maybeReferen
             ? ((($maybeReferencedModuleAlias)[0] === "$Just")
               ? ((() => {
                 const $referencedModuleAlias = ($maybeReferencedModuleAlias)[1];
-                return ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))), ($c$$src$Core$$Cons)(("However, library $directoryPathOfLibrary does not expose any " + ($modulePath + " module.")), $c$$src$Core$$Nil))));
+                return ($c$$src$Result$$Err)(($pars.makeError)(((($0) => {
+                  return ($c$$src$List$$filterMap)($c$$src$Basics$$identity, $0);
+                }))(($c$$src$Core$$Cons)(((sp_equal)($referencedModuleAlias, $modulePath)
+                  ? $c$$src$Maybe$$Nothing
+                  : ($c$$src$Maybe$$Just)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))))), ($c$$src$Core$$Cons)(($c$$src$Maybe$$Just)(("However, library $directoryPathOfLibrary does not expose any " + ($modulePath + " module."))), $c$$src$Core$$Nil)))));
               }))()
               : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
-                ? ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)("TODO ??????", $c$$src$Core$$Nil)))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 259:24', (sp_toHuman)($maybeReferencedModuleAlias))))
+                ? ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)(("Library cannot find: " + ($modulePath + (" which contains " + $referencedName))), $c$$src$Core$$Nil)))
+                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 259:24', (sp_toHuman)($maybeReferencedModuleAlias))))
             : ((($6)[0] === "$Just")
               ? ((() => {
                 const $moduleUsrByName = ($6)[1];
@@ -3113,14 +3132,14 @@ const $c$$src$Compiler$Meta$$resolveLocation = (($pars, $location, $maybeReferen
                         return ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))), ($c$$src$Core$$Cons)(("However, " + ($modulePath + (" in library $directoryPathOfLibrary does not expose any `" + ($referencedName + "`.")))), $c$$src$Core$$Nil))));
                       }))()
                       : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
-                        ? ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)("TODO ?????!!!!", $c$$src$Core$$Nil)))
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 284:32', (sp_toHuman)($maybeReferencedModuleAlias))))
-                    : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 278:24', (sp_toHuman)($7))));
+                        ? ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)(($referencedName + (" is not in " + $modulePath)), $c$$src$Core$$Nil)))
+                        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 287:32', (sp_toHuman)($maybeReferencedModuleAlias))))
+                    : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 281:24', (sp_toHuman)($7))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 256:16', (sp_toHuman)($6))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 256:16', (sp_toHuman)($6))));
         })))(($pars.loadExports)($importsPath));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 240:4', (sp_toHuman)($location))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 240:4', (sp_toHuman)($location))));
 });
 
 const $c$$src$Compiler$Meta$$resolve = (($pars, $maybeReferencedModuleAlias, $referencedName) => {
@@ -3135,7 +3154,7 @@ const $c$$src$Compiler$Meta$$resolve = (($pars, $maybeReferencedModuleAlias, $re
             const $location = ($4)[1];
             return ($c$$src$Compiler$Meta$$resolveLocation)($pars, $location, $maybeReferencedModuleAlias, $referencedName);
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 220:12', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 220:12', (sp_toHuman)($4))));
     }))()
     : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
       ? ((() => {
@@ -3147,9 +3166,9 @@ const $c$$src$Compiler$Meta$$resolve = (($pars, $maybeReferencedModuleAlias, $re
               const $location = ($4)[1];
               return ($c$$src$Compiler$Meta$$resolveLocation)($pars, $location, $maybeReferencedModuleAlias, $referencedName);
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 233:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 233:12', (sp_toHuman)($4))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 217:4', (sp_toHuman)($maybeReferencedModuleAlias))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 217:4', (sp_toHuman)($maybeReferencedModuleAlias))));
 });
 
 const $c$$src$Compiler$Meta$$rootDirectoryToPath = (($paths, $rootDirectory) => {
@@ -3159,7 +3178,7 @@ const $c$$src$Compiler$Meta$$rootDirectoryToPath = (($paths, $rootDirectory) => 
       ? $paths.project
       : ((($rootDirectory)[0] === "$Installed")
         ? $paths.installed
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Meta.sp 118:4', (sp_toHuman)($rootDirectory)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 118:4', (sp_toHuman)($rootDirectory)))));
 });
 
 const $c$$src$Compiler$Op$$precedence_addittive = 7;
@@ -3199,7 +3218,7 @@ const $c$$src$Compiler$Pos$$range = (($a, $b) => {
       ? $a
       : (true
         ? $b
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/Pos.sp 46:4', (sp_toHuman)($3)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Pos.sp 46:4', (sp_toHuman)($3)))));
 });
 
 const $c$$src$Compiler$TypedAst$$mapPars = (($f, $pars) => {
@@ -3219,7 +3238,7 @@ const $c$$src$Compiler$TypedAst$$mapPars = (($f, $pars) => {
             }));
           }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 309:8', (sp_toHuman)($par))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 309:8', (sp_toHuman)($par))));
   });
   return ($c$$src$List$$map)($zzz, $pars);
 });
@@ -3244,7 +3263,7 @@ const $c$$src$Compiler$TypedAst$$normalizeTyvarId = (($hash, $id) => {
           ((__re__ = (hash_insert)($hash, $id, $nid)), ($hash = (__re__)[1]), (__re__)[0]);
           return $nid;
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 350:4', (sp_toHuman)($3)))),
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 350:4', (sp_toHuman)($3)))),
     $hash,
   ]);
 });
@@ -3261,7 +3280,7 @@ const $c$$src$Dict$$map = (($func, $dict) => {
         const $right = ($dict)[5];
         return ($c$$src$Dict$$RBNode_elm_builtin)($color, $key, ($func)($key, $value), ($c$$src$Dict$$map)($func, $left), ($c$$src$Dict$$map)($func, $right));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 317:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 317:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Compiler$TypedAst$$normalizeType = (($hash, $type) => {
@@ -3309,7 +3328,7 @@ const $c$$src$Compiler$TypedAst$$normalizeType = (($hash, $type) => {
               }))()
               : ((($type)[0] === "$TypeError")
                 ? $c$$src$Compiler$TypedAst$$TypeError
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 375:4', (sp_toHuman)($type)))))))),
+                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 375:4', (sp_toHuman)($type)))))))),
     $hash,
   ]);
 });
@@ -3363,7 +3382,7 @@ const $c$$src$Compiler$TypedAst$$patternNames = (($p) => {
                   }))(($c$$src$Compiler$TypedAst$$patternNames)($pa));
                 }));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 318:4', (sp_toHuman)($p))))))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 318:4', (sp_toHuman)($p))))))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolveParType = (($saf, $par) => {
@@ -3377,7 +3396,7 @@ const $c$$src$Compiler$TypedAst$$resolveParType = (($saf, $par) => {
         const $full = ($par)[1];
         return ($c$$src$Compiler$TypedAst$$ParSp)(($c$$src$Compiler$TypedAst$$resolveFull)($saf, $full));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 163:4', (sp_toHuman)($par))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 163:4', (sp_toHuman)($par))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolveRaw = (($saf, $raw) => {
@@ -3395,7 +3414,7 @@ const $c$$src$Compiler$TypedAst$$resolveRaw = (($saf, $raw) => {
             const $replacement = ($3)[1];
             return $replacement;
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 184:12', (sp_toHuman)($3))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 184:12', (sp_toHuman)($3))));
     }))()
     : ((($raw)[0] === "$TypeExact")
       ? ((() => {
@@ -3432,11 +3451,11 @@ const $c$$src$Compiler$TypedAst$$resolveRaw = (($saf, $raw) => {
                   ? ($c$$src$Compiler$TypedAst$$TypeRecord)(($c$$src$Maybe$$Just)($id), ($c$$src$Dict$$map)((($k, $v) => {
                     return ($rec)($v);
                   }), $attrs))
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 198:12', (sp_toHuman)($3))));
+                  : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 198:12', (sp_toHuman)($3))));
             }))()
             : ((($raw)[0] === "$TypeError")
               ? $c$$src$Compiler$TypedAst$$TypeError
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 181:4', (sp_toHuman)($raw))))))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 181:4', (sp_toHuman)($raw))))))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolveUni = (($uniSub, $uni) => {
@@ -3451,11 +3470,11 @@ const $c$$src$Compiler$TypedAst$$resolveUni = (($uniSub, $uni) => {
             const $u = ($3)[1];
             return $u;
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 153:12', (sp_toHuman)($3))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 153:12', (sp_toHuman)($3))));
     }))()
     : (true
       ? $uni
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 150:4', (sp_toHuman)($uni))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 150:4', (sp_toHuman)($uni))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolveFull = (($saf, $1) => {
@@ -3511,7 +3530,7 @@ const $c$$src$Compiler$TypedAst$$resolvePattern = (($saf, $pattern) => {
                 });
               }), $ps));
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 276:4', (sp_toHuman)($pattern)))))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 276:4', (sp_toHuman)($pattern)))))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolvePar = (($saf, $par) => {
@@ -3534,7 +3553,7 @@ const $c$$src$Compiler$TypedAst$$resolvePar = (($saf, $par) => {
           const $name = ($par)[3];
           return ($c$$src$Compiler$TypedAst$$ParameterRecycle)($p, ($c$$src$Compiler$TypedAst$$resolveRaw)($saf, $raw), $name);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 215:4', (sp_toHuman)($par)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 215:4', (sp_toHuman)($par)))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolveValueDef = (($saf, $def) => {
@@ -3554,7 +3573,7 @@ const $c$$src$Maybe$$map = (($f, $m) => {
         const $v = ($m)[1];
         return ($c$$src$Maybe$$Just)(($f)($v));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Maybe.sp 16:4', (sp_toHuman)($m))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Maybe.sp 16:4', (sp_toHuman)($m))));
 });
 
 const $c$$src$Tuple$$mapBoth = (($fa, $fb, $t) => {
@@ -3657,7 +3676,7 @@ const $c$$src$Compiler$TypedAst$$resolveExpression = (($saf, $expression) => {
                               const $p = ($expression)[1];
                               return $expression;
                             }))()
-                            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 226:4', (sp_toHuman)($expression)))))))))))))));
+                            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 226:4', (sp_toHuman)($expression)))))))))))))));
 });
 
 const $c$$src$Compiler$TypedAst$$resolveArg = (($saf, $arg) => {
@@ -3675,7 +3694,7 @@ const $c$$src$Compiler$TypedAst$$resolveArg = (($saf, $arg) => {
         const $name = ($arg)[4];
         return ($c$$src$Compiler$TypedAst$$ArgumentRecycle)($p, ($c$$src$Compiler$TypedAst$$resolveRaw)($saf, $raw), $attrPath, $name);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 208:4', (sp_toHuman)($arg))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 208:4', (sp_toHuman)($arg))));
 });
 
 const $c$$src$Compiler$TypedAst$$toRaw = (($par) => {
@@ -3689,7 +3708,7 @@ const $c$$src$Compiler$TypedAst$$toRaw = (($par) => {
         const $full = ($par)[1];
         return $full.raw;
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 300:4', (sp_toHuman)($par))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 300:4', (sp_toHuman)($par))));
 });
 
 const $c$$src$Dict$$any = (($f, $dict) => {
@@ -3706,7 +3725,7 @@ const $c$$src$Dict$$any = (($f, $dict) => {
     }))()
     : ((($dict)[0] === "$RBEmpty_elm_builtin")
       ? false
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 412:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 412:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$List$$any = (($fun, $list) => {
@@ -3720,7 +3739,7 @@ const $c$$src$List$$any = (($fun, $list) => {
           ? true
           : ($c$$src$List$$any)($fun, $t));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 3:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 3:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$Compiler$TypedAst$$typeAllowsFunctions = (($testId, $type) => {
@@ -3752,7 +3771,7 @@ const $c$$src$Compiler$TypedAst$$typeAllowsFunctions = (($testId, $type) => {
           }))()
           : ((($type)[0] === "$TypeError")
             ? true
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 340:4', (sp_toHuman)($type)))))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 340:4', (sp_toHuman)($type)))))));
 });
 
 const $c$$src$Compiler$TypedAst$$typeTyvars = (($type) => {
@@ -3798,7 +3817,7 @@ const $c$$src$Compiler$TypedAst$$typeTyvars = (($type) => {
                   }));
                 }))(($c$$src$Compiler$TypedAst$$typeTyvars)($out.raw));
               }))()
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Compiler/TypedAst.sp 329:4', (sp_toHuman)($type))))))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/TypedAst.sp 329:4', (sp_toHuman)($type))))))));
 });
 
 const $c$$src$Dict$$moveRedLeft = (($dict) => {
@@ -3841,11 +3860,11 @@ const $c$$src$Dict$$moveRedLeft = (($dict) => {
           ? ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Black, $k, $v, ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $lK, $lV, $lLeft, $lRight), ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $rK, $rV, $rLeft, $rRight))
           : ((($clr)[0] === "$Red")
             ? ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Black, $k, $v, ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $lK, $lV, $lLeft, $lRight), ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $rK, $rV, $rLeft, $rRight))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 212:12', (sp_toHuman)($clr))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 212:12', (sp_toHuman)($clr))));
       }))()
       : (true
         ? $dict
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 206:4', (sp_toHuman)($dict)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 206:4', (sp_toHuman)($dict)))));
 });
 
 const $c$$src$Dict$$getMin = (($dict) => {
@@ -3856,11 +3875,11 @@ const $c$$src$Dict$$getMin = (($dict) => {
         ? ($c$$src$Dict$$getMin)($left)
         : (true
           ? $dict
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 165:12', (sp_toHuman)($left))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 165:12', (sp_toHuman)($left))));
     }))()
     : (true
       ? $dict
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 162:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 162:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Dict$$removeMin = (($dict) => {
@@ -3892,20 +3911,20 @@ const $c$$src$Dict$$removeMin = (($dict) => {
                     }))()
                     : ((($2)[0] === "$RBEmpty_elm_builtin")
                       ? $c$$src$Dict$$RBEmpty_elm_builtin
-                      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 190:36', (sp_toHuman)($2))));
+                      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 190:36', (sp_toHuman)($2))));
                 }))()
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 184:28', (sp_toHuman)($lLeft))))
+                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 184:28', (sp_toHuman)($lLeft))))
             : (true
               ? ($c$$src$Dict$$RBNode_elm_builtin)($color, $key, $value, ($c$$src$Dict$$removeMin)($left), $right)
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 181:20', (sp_toHuman)($lColor))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 181:20', (sp_toHuman)($lColor))));
         }))()
         : (true
           ? $c$$src$Dict$$RBEmpty_elm_builtin
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 178:12', (sp_toHuman)($left))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 178:12', (sp_toHuman)($left))));
     }))()
     : (true
       ? $c$$src$Dict$$RBEmpty_elm_builtin
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 175:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 175:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Dict$$removeHelpEQGT = (($targetKey, $dict) => {
@@ -3927,13 +3946,13 @@ const $c$$src$Dict$$removeHelpEQGT = (($targetKey, $dict) => {
             }))()
             : ((($3)[0] === "$RBEmpty_elm_builtin")
               ? $c$$src$Dict$$RBEmpty_elm_builtin
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 150:16', (sp_toHuman)($3))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 150:16', (sp_toHuman)($3))));
         }))()
         : ($c$$src$Dict$$balance)($color, $key, $value, $left, ($c$$src$Dict$$removeHelp)($targetKey, $right)));
     }))()
     : ((($dict)[0] === "$RBEmpty_elm_builtin")
       ? $c$$src$Dict$$RBEmpty_elm_builtin
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 146:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 146:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Dict$$moveRedRight = (($dict) => {
@@ -3976,11 +3995,11 @@ const $c$$src$Dict$$moveRedRight = (($dict) => {
           ? ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Black, $k, $v, ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $lK, $lV, $lLeft, $lRight), ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $rK, $rV, $rLeft, $rRight))
           : ((($clr)[0] === "$Red")
             ? ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Black, $k, $v, ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $lK, $lV, $lLeft, $lRight), ($c$$src$Dict$$RBNode_elm_builtin)($c$$src$Dict$$Red, $rK, $rV, $rLeft, $rRight))
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 228:12', (sp_toHuman)($clr))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 228:12', (sp_toHuman)($clr))));
       }))()
       : (true
         ? $dict
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 222:4', (sp_toHuman)($dict)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 222:4', (sp_toHuman)($dict)))));
 });
 
 const $c$$src$Dict$$removeHelpPrepEQGT = (($targetKey, $dict, $color, $key, $value, $left, $right) => {
@@ -3999,8 +4018,8 @@ const $c$$src$Dict$$removeHelpPrepEQGT = (($targetKey, $dict, $color, $key, $val
           ? ($c$$src$Dict$$moveRedRight)($dict)
           : (true
             ? $dict
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 138:12', (sp_toHuman)($right)))))
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 132:4', (sp_toHuman)($left))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 138:12', (sp_toHuman)($right)))))
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 132:4', (sp_toHuman)($left))));
 });
 
 const $c$$src$Dict$$removeHelp = (($targetKey, $dict) => {
@@ -4033,16 +4052,16 @@ const $c$$src$Dict$$removeHelp = (($targetKey, $dict) => {
                       }))()
                       : ((($3)[0] === "$RBEmpty_elm_builtin")
                         ? $c$$src$Dict$$RBEmpty_elm_builtin
-                        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 120:32', (sp_toHuman)($3))));
+                        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 120:32', (sp_toHuman)($3))));
                   }))()
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 114:24', (sp_toHuman)($lLeft))));
+                  : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 114:24', (sp_toHuman)($lLeft))));
             }))()
             : (true
               ? ($c$$src$Dict$$RBNode_elm_builtin)($color, $key, $value, ($c$$src$Dict$$removeHelp)($targetKey, $left), $right)
-              : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 111:16', (sp_toHuman)($left))))
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 111:16', (sp_toHuman)($left))))
           : ($c$$src$Dict$$removeHelpEQGT)($targetKey, ($c$$src$Dict$$removeHelpPrepEQGT)($targetKey, $dict, $color, $key, $value, $left, $right)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 104:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 104:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Dict$$remove = (($key, $dict) => {
@@ -4060,7 +4079,7 @@ const $c$$src$Dict$$remove = (($key, $dict) => {
         const $x = $3;
         return $x;
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 97:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 97:4', (sp_toHuman)($3))));
 });
 
 const $c$$src$Dict$$diff = (($t1, $t2) => {
@@ -4082,7 +4101,7 @@ const $c$$src$Dict$$each = (($dict, $func) => {
         ($c$$src$Dict$$each)($left, $func);
         return ($c$$src$Dict$$each)($right, $func);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 346:4', (sp_toHuman)($dict))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 346:4', (sp_toHuman)($dict))));
 });
 
 const $c$$src$Dict$$filter = (($isGood, $dict) => {
@@ -4105,7 +4124,7 @@ const $c$$src$Dict$$member = (($key, $dict) => {
     ? true
     : ((($3)[0] === "$Nothing")
       ? false
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 33:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 33:4', (sp_toHuman)($3))));
 });
 
 const $c$$src$Dict$$intersect = (($t1, $t2) => {
@@ -4163,9 +4182,9 @@ const $c$$src$Dict$$merge = (($leftStep, $bothStep, $rightStep, $leftDict, $righ
                   first: $rest,
                   second: ($leftStep)($lKey, $lValue, $res),
                 }))
-                : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 278:16', (sp_toHuman)($11)))));
+                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 278:16', (sp_toHuman)($11)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 272:8', (sp_toHuman)($list))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 272:8', (sp_toHuman)($list))));
   });
   const $7 = ($c$$src$Dict$$for)(({
     first: ($c$$src$Dict$$toList)($leftDict),
@@ -4233,7 +4252,7 @@ const $c$$src$Dict$$size = ((() => {
           const $right = ($dict)[5];
           return ($sizeHelp)(($sizeHelp)(($n + 1), $right), $left);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 41:8', (sp_toHuman)($dict))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 41:8', (sp_toHuman)($dict))));
   });
   return (($0) => {
     return ($sizeHelp)(0, $0);
@@ -4249,7 +4268,7 @@ const $c$$src$Dict$$update = (($targetKey, $alter, $dictionary) => {
     }))()
     : ((($4)[0] === "$Nothing")
       ? ($c$$src$Dict$$remove)($targetKey, $dictionary)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Dict.sp 238:4', (sp_toHuman)($4))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 238:4', (sp_toHuman)($4))));
 });
 
 const $c$$src$Dict_Test$$valueTest = (($0, $1, $2) => {
@@ -4337,7 +4356,7 @@ const $c$$src$List$$each = (($ls, $f) => {
         ($f)($h);
         return ($c$$src$List$$each)($tail, $f);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 374:4', (sp_toHuman)($ls))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 374:4', (sp_toHuman)($ls))));
 });
 
 const $c$$src$List$$range = (($low, $high) => {
@@ -4506,7 +4525,7 @@ const $c$$src$List$$append = (($xs, $ys) => {
     ? $xs
     : (true
       ? ($c$$src$List$$forReversed)($ys, $xs, $c$$src$Core$$Cons)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 230:4', (sp_toHuman)($ys))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 230:4', (sp_toHuman)($ys))));
 });
 
 const $c$$src$List$$concat = (($lists) => {
@@ -4528,7 +4547,7 @@ const $c$$src$List$$drop = (($n, $ls) => {
           const $tail = ($ls)[2];
           return ($c$$src$List$$drop)(($n - 1), $tail);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 420:8', (sp_toHuman)($ls)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 420:8', (sp_toHuman)($ls)))));
 });
 
 const $c$$src$List$$filter = (($f, $ls) => {
@@ -4537,21 +4556,6 @@ const $c$$src$List$$filter = (($f, $ls) => {
       ? (sp_cons)($item, $acc)
       : $acc);
   }));
-});
-
-const $c$$src$List$$filterMap = (($f, $la) => {
-  const $update = (($a, $acc) => {
-    const $5 = ($f)($a);
-    return ((($5)[0] === "$Just")
-      ? ((() => {
-        const $b = ($5)[1];
-        return (sp_cons)($b, $acc);
-      }))()
-      : ((($5)[0] === "$Nothing")
-        ? $acc
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 349:8', (sp_toHuman)($5))));
-  });
-  return ($c$$src$List$$forReversed)($c$$src$Core$$Nil, $la, $update);
 });
 
 const $c$$src$List$$find = (($test, $list) => {
@@ -4565,7 +4569,7 @@ const $c$$src$List$$find = (($test, $list) => {
           ? ($c$$src$Maybe$$Just)($h)
           : ($c$$src$List$$find)($test, $t));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 24:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 24:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$List$$forRes = (($accum, $ls, $f) => {
@@ -4586,9 +4590,9 @@ const $c$$src$List$$forRes = (($accum, $ls, $f) => {
               const $newAccum = ($4)[1];
               return ($c$$src$List$$forRes)($newAccum, $t, $f);
             }))()
-            : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 187:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 187:12', (sp_toHuman)($4))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 181:4', (sp_toHuman)($ls))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 181:4', (sp_toHuman)($ls))));
 });
 
 const $c$$src$List$$head = (($list) => {
@@ -4600,7 +4604,7 @@ const $c$$src$List$$head = (($list) => {
         const $t = ($list)[2];
         return ($c$$src$Maybe$$Just)($h);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 257:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 257:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$List$$indexBy = (($getIndex, $list) => {
@@ -4626,7 +4630,7 @@ const $c$$src$List$$indexedEach2 = ((() => {
       }))()
       : (true
         ? null
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 388:8', (sp_toHuman)($5))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 388:8', (sp_toHuman)($5))));
   });
   return (($0, $1, $2) => {
     return ($rec)(0, $0, $1, $2);
@@ -4657,7 +4661,7 @@ const $c$$src$List$$indexedMap = (($f, $aa) => {
           const $t = ($list)[2];
           return ($rec)((sp_cons)(($f)($n, $h), $accum), ($n + 1), $t);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 210:8', (sp_toHuman)($list))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 210:8', (sp_toHuman)($list))));
   });
   return ($rec)($c$$src$Core$$Nil, 0, $aa);
 });
@@ -4677,7 +4681,7 @@ const $c$$src$List$$intersperse = ((() => {
             const $tail = ($items)[2];
             return ($rec)($separator, $tail, (sp_cons)($separator, (sp_cons)($h, $acc)));
           }))()
-          : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 462:8', (sp_toHuman)($items)))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 462:8', (sp_toHuman)($items)))));
   });
   return (($0, $1) => {
     return ($rec)($0, $1, $c$$src$Core$$Nil);
@@ -4698,7 +4702,7 @@ const $c$$src$List$$last = (($list) => {
           const $t = ($list)[2];
           return ($c$$src$List$$last)($t);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 264:4', (sp_toHuman)($list)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 264:4', (sp_toHuman)($list)))));
 });
 
 const $c$$src$List$$length = (($list) => {
@@ -4723,7 +4727,7 @@ const $c$$src$List$$map2 = (($f, $aa, $bb) => {
       }))()
       : (true
         ? ($c$$src$List$$reverse)($accum)
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 164:8', (sp_toHuman)($7))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 164:8', (sp_toHuman)($7))));
   });
   return ($rec)($c$$src$Core$$Nil, $aa, $bb);
 });
@@ -4739,7 +4743,7 @@ const $c$$src$Result$$map = (($f, $result) => {
         const $a = ($result)[1];
         return ($c$$src$Result$$Ok)(($f)($a));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Result.sp 8:4', (sp_toHuman)($result))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Result.sp 8:4', (sp_toHuman)($result))));
 });
 
 const $c$$src$List$$mapRes = (($f, $list) => {
@@ -4764,7 +4768,7 @@ const $c$$src$List$$member = (($a, $list) => {
           ? true
           : ($c$$src$List$$member)($a, $t));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 52:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 52:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$List$$minimum = (($list) => {
@@ -4776,7 +4780,7 @@ const $c$$src$List$$minimum = (($list) => {
     }))()
     : (true
       ? $c$$src$Maybe$$Nothing
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 427:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 427:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$List$$partition = (($f, $ls) => {
@@ -4818,7 +4822,7 @@ const $c$$src$List$$partitionWhile = (($f, $xs) => {
               second: $rest,
             }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 474:8', (sp_toHuman)($rest))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 474:8', (sp_toHuman)($rest))));
   });
   return ($rec)($c$$src$Core$$Nil, $xs);
 });
@@ -4843,7 +4847,7 @@ const $c$$src$List$$takeReverse = (($n, $list, $kept) => {
           const $xs = ($list)[2];
           return ($c$$src$List$$takeReverse)(($n - 1), $xs, ($c$$src$Core$$Cons)($x, $kept));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 317:8', (sp_toHuman)($list)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 317:8', (sp_toHuman)($list)))));
 });
 
 const $c$$src$List$$takeTailRec = (($n, $list) => {
@@ -4892,7 +4896,7 @@ const $c$$src$List$$takeFast = (($ctr, $n, $list) => {
                 }))()
                 : (true
                   ? $list
-                  : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 280:8', (sp_toHuman)($4))))))));
+                  : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 280:8', (sp_toHuman)($4))))))));
     }))());
 });
 
@@ -4912,7 +4916,7 @@ const $c$$src$List$$takeWhile = (($test, $its) => {
             ? ($rec)((sp_cons)($h, $accum), $tail)
             : ($c$$src$List$$reverse)($accum));
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/List.sp 326:8', (sp_toHuman)($list))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 326:8', (sp_toHuman)($list))));
   });
   return ($rec)($c$$src$Core$$Nil, $its);
 });
@@ -5000,7 +5004,7 @@ const $c$$src$Maybe$$onJust = (($f) => {
           const $a = ($ma)[1];
           return ($f)($a);
         }))()
-        : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Maybe.sp 9:4', (sp_toHuman)($ma))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Maybe.sp 9:4', (sp_toHuman)($ma))));
   });
 });
 
@@ -5012,7 +5016,7 @@ const $c$$src$Maybe$$toResult = (($e, $maybeA) => {
     }))()
     : ((($maybeA)[0] === "$Nothing")
       ? ($c$$src$Result$$Err)($e)
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Maybe.sp 36:4', (sp_toHuman)($maybeA))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Maybe.sp 36:4', (sp_toHuman)($maybeA))));
 });
 
 const $c$$src$Maybe$$withDefault = (($default, $maybe) => {
@@ -5023,7 +5027,7 @@ const $c$$src$Maybe$$withDefault = (($default, $maybe) => {
     }))()
     : ((($maybe)[0] === "$Nothing")
       ? $default
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Maybe.sp 50:4', (sp_toHuman)($maybe))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Maybe.sp 50:4', (sp_toHuman)($maybe))));
 });
 
 const $c$$src$Result$$fromMaybe = (($err, $maybe) => {
@@ -5034,7 +5038,7 @@ const $c$$src$Result$$fromMaybe = (($err, $maybe) => {
         const $a = ($maybe)[1];
         return ($c$$src$Result$$Ok)($a);
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Result.sp 38:4', (sp_toHuman)($maybe))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Result.sp 38:4', (sp_toHuman)($maybe))));
 });
 
 const $c$$src$Result$$mapError = (($f, $result) => {
@@ -5048,7 +5052,7 @@ const $c$$src$Result$$mapError = (($f, $result) => {
         const $e1 = ($result)[1];
         return ($c$$src$Result$$Err)(($f)($e1));
       }))()
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Result.sp 31:4', (sp_toHuman)($result))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Result.sp 31:4', (sp_toHuman)($result))));
 });
 
 const $c$$src$Set$$empty = $c$$src$Dict$$empty;
@@ -5075,7 +5079,7 @@ const $c$$src$Text$$contains = (($sub, $str) => {
     ? false
     : (true
       ? true
-      : (sp_throw)('Missing pattern in try..as', '/home/nw/squarepants/unstable/corelib/src/Text.sp 135:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 135:4', (sp_toHuman)($3))));
 });
 
 const $c$$src$Text$$repeat = (($n, $s) => {
@@ -5136,6 +5140,21 @@ const $c$$src$Tuple$$pair = (($a, $b) => {
     first: $a,
     second: $b,
   });
+});
+
+const $i$posix$$IO$$reToStderr = (($io, $re) => {
+  return ([
+    ((($re)[0] === "$Ok")
+      ? 0
+      : ((($re)[0] === "$Err")
+        ? ((() => {
+          const $error = ($re)[1];
+          ((__re__ = (io_writeStderr)($io, ($error + "\n"))), ($io = (__re__)[1]), (__re__)[0]);
+          return 1;
+        }))()
+        : (sp_throw)('Missing pattern in try..as', 'installedLibraries/posix/IO.sp 19:4', (sp_toHuman)($re)))),
+    $io,
+  ]);
 });
 
 const $i$test$$Test$$codeTest = (($toText, $title, $code, $functionToTest, $ce) => {
@@ -16561,12 +16580,85 @@ const $u$$src$Compiler$TestHelpers$$imports = ((() => {
       : (sp_throw)('Missing pattern in try..as', 'src/Compiler/TestHelpers.sp 68:4', (sp_toHuman)($1))));
 }))();
 
+const $u$$src$Compiler$TestHelpers$$exports = ((() => {
+  const $isOpen = false;
+  return ((($0) => {
+    return ($c$$src$Dict$$ofOne)("Core", $0);
+  }))(($c$$src$Dict$$fromList)(($c$$src$Core$$Cons)(({
+    first: "None",
+    second: ({
+      isOpen: true,
+      usr: $u$$src$Compiler$CoreDefs$$noneTypeUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "'none",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$noneConsUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "Bool",
+    second: ({
+      isOpen: true,
+      usr: $u$$src$Compiler$CoreDefs$$boolUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "'true",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$trueUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "'false",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$falseUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "List",
+    second: ({
+      isOpen: true,
+      usr: $u$$src$Compiler$CoreDefs$$listUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "'nil",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$nilUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "'cons",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$consUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "Text",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$textUsr,
+    }),
+  }), ($c$$src$Core$$Cons)(({
+    first: "Number",
+    second: ({
+      isOpen: $isOpen,
+      usr: $u$$src$Compiler$CoreDefs$$numberUsr,
+    }),
+  }), $c$$src$Core$$Nil))))))))))));
+}))();
+
+const $u$$src$Compiler$TestHelpers$$loadExports = (($ip) => {
+  return (((($ip)[0] === "$ImportsPath") && (((($ip)[1])[0] === "$Core") && ("" === ($ip)[2])))
+    ? ($c$$src$Result$$Ok)($u$$src$Compiler$TestHelpers$$exports)
+    : (true
+      ? ($c$$src$Result$$Err)(($u$$src$Compiler$Error$$Raw)(($c$$src$Core$$Cons)("TestHelpers: trying to load an unknown export:", ($c$$src$Core$$Cons)("", ($c$$src$Core$$Cons)((sp_toHuman)($ip), ($c$$src$Core$$Cons)("", $c$$src$Core$$Nil))))))
+      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/TestHelpers.sp 108:4', (sp_toHuman)($ip))));
+});
+
 const $u$$src$Compiler$TestHelpers$$resolvePars = ({
   currentImports: $u$$src$Compiler$TestHelpers$$imports,
   currentModule: $u$$src$Compiler$TestHelpers$$moduleUmr,
-  loadExports: (($ip) => {
-    return ($c$$src$Result$$Err)(($u$$src$Compiler$Error$$Raw)(($c$$src$Core$$Cons)("TestHelpers: trying to loadExports?", $c$$src$Core$$Nil)));
-  }),
+  loadExports: $u$$src$Compiler$TestHelpers$$loadExports,
   makeError: (($0) => {
     return ($u$$src$Compiler$Error$$Raw)($0);
   }),
@@ -19936,9 +20028,9 @@ const $u$$src$Platforms$Posix$$platform = (($platformImportsPath) => {
   });
 });
 
-const $u$$src$Main$$platformBrowser = ($u$$src$Platforms$Posix$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$User, "lib/browser"));
+const $u$$src$Main$$platformBrowser = ($u$$src$Platforms$Posix$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$Installed, "browser"));
 
-const $u$$src$Main$$platformPosix = ($u$$src$Platforms$Posix$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$User, "lib/posix"));
+const $u$$src$Main$$platformPosix = ($u$$src$Platforms$Posix$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$Installed, "posix"));
 
 const $u$$src$Main$$availablePlatforms = ($c$$src$Core$$Cons)($u$$src$Main$$platformPosix, ($c$$src$Core$$Cons)($u$$src$Main$$platformBrowser, $c$$src$Core$$Nil));
 
@@ -20201,25 +20293,10 @@ const $u$$src$Main$$selftestMain = (($io) => {
   ]);
 });
 
-const $u$lib$posix$$IO$$reToStderr = (($io, $re) => {
-  return ([
-    ((($re)[0] === "$Ok")
-      ? 0
-      : ((($re)[0] === "$Err")
-        ? ((() => {
-          const $error = ($re)[1];
-          ((__re__ = (io_writeStderr)($io, ($error + "\n"))), ($io = (__re__)[1]), (__re__)[0]);
-          return 1;
-        }))()
-        : (sp_throw)('Missing pattern in try..as', 'lib/posix/IO.sp 19:4', (sp_toHuman)($re)))),
-    $io,
-  ]);
-});
-
 const $u$$src$Main$$main = (($io, $env, $rawArgs) => {
   return ([
     ((($0) => {
-      return ((__re__ = ($u$lib$posix$$IO$$reToStderr)($io, $0)), ($io = (__re__)[1]), (__re__)[0]);
+      return ((__re__ = ($i$posix$$IO$$reToStderr)($io, $0)), ($io = (__re__)[1]), (__re__)[0]);
     }))(((() => {
       const $4 = ($u$$src$Main$$parseArguments)($u$$src$Main$$cliOptions, $rawArgs, $u$$src$Main$$cliDefaults);
       return ((($4)[0] === "$Err")
