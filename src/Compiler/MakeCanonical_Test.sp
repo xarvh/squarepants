@@ -520,7 +520,7 @@ annotations as Test =
         , codeTest
             "annotation of recycling function"
             """
-            b as fn @Result e a: !Result e a =
+            b as fn @List a: !List a =
               3
             """
             (firstEvaluation "b")
