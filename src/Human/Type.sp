@@ -13,9 +13,23 @@ Env =
 #        Meta.'core: "core:"
 
 
+rootToPath as fn Meta.RootDirectory: Text =
+    try __ as
+        Meta.'core: "core:"
+        Meta.'user: "user:"
+        Meta.'installed: "installed:"
+
+
+importsPathToText as fn Meta.ImportsPath: Text =
+    fn Meta.'importsPath root importsDir:
+
+    rootToPath root .. importsDir
+
+
 umrToText as fn Env, UMR: Text =
-    fn env, umr: #'UMR source modulePath:
-    todo "sourceToText source .. modulePath"
+    fn env, 'UMR importsPath sourceDir modulePath:
+
+    importsPathToText importsPath .. "/" .. sourceDir .. "/" .. modulePath
 
 
 usrToText as fn Env, USR: Text =

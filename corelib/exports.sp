@@ -11,6 +11,7 @@ module =
       'true
       'false
 
+
 module =
    path = Debug
    exposes =
@@ -19,6 +20,13 @@ module =
       toHuman
       benchStart
       benchStop
+
+
+module =
+    path = Array_Test
+    exposes =
+        tests
+
 
 module =
    path = Array
@@ -32,6 +40,13 @@ module =
       fromList
       toList
       each
+
+
+module =
+    path = List_Test
+    exposes =
+        tests
+
 
 module =
    path = List
@@ -150,6 +165,13 @@ module =
         round
         modBy
 
+
+module =
+    path = Hash_Test
+    exposes =
+        tests
+
+
 module =
     path = Hash
     exposes =
@@ -163,6 +185,13 @@ module =
         fromList
         toList
         pop
+
+
+module =
+    path = Dict_Test
+    exposes =
+        tests
+
 
 module =
     path = Dict

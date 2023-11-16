@@ -34,7 +34,7 @@ params as fn Error.Module: Compiler/MakeCanonical.ReadOnly =
     fn errorModule:
     {
     , errorModule
-    , meta = TH.imports
+    , resolvePars = fn pos: TH.resolvePars
     , umr = TH.moduleUmr
     }
 

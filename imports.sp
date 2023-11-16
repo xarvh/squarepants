@@ -52,11 +52,6 @@ sourceDir =
        importAs = SPON
 
     module =
-       path = SPLib/Test
-       importAs = Test
-       globals = Test
-
-    module =
        path = Targets/Javascript/Ast
        importAs = JA
 
@@ -81,6 +76,14 @@ library =
 
     module =
        path = Path
+
+
+library =
+    source = ":test"
+    module =
+       path = Test
+       importAs = Test
+       globals = Test
 
 
 library =

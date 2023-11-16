@@ -149,3 +149,11 @@ sourceDir =
             Token
             'token
 
+
+library =
+    source = ":test"
+    module =
+       path = Test
+       importAs = Test
+       globals = Test
+
