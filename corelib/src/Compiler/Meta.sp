@@ -287,15 +287,15 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
                                 try maybeReferencedModuleAlias as
 
                                     'just referencedModuleAlias:
-                                        [
-                                        # TODO display the first line only if referencedModuleAlias /= modulePath
-                                        , "imports.sp translates `"
-                                        .. referencedModuleAlias
-                                        .. "` as `"
-                                        .. modulePath
-                                        .. "`"
-                                        , "However, " .. modulePath .. " in library $directoryPathOfLibrary does not expose any `" .. referencedName .. "`."
-                                        ]
+                                        if referencedModuleAlias == modulePath then
+                                            [
+                                            , modulePath .. " in library $directoryPathOfLibrary does not expose any `" .. referencedName .. "`."
+                                            ]
+                                        else
+                                            [
+                                            , "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
+                                            , "However, " .. modulePath .. " in library $directoryPathOfLibrary does not expose any `" .. referencedName .. "`."
+                                            ]
                                         >> pars.makeError
                                         >> 'err
 

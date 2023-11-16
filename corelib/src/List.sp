@@ -66,10 +66,8 @@ sort as fn [ a ]: [ a ] =
     sortBy identity __
 
 
-sortBy as fn fn a: b, [ a ]: [ a ] =
-    # TODO with b NonFunction =
-    fn function, list:
-    todo "implemented natively"
+sortBy as fn fn a: b, [ a ]: [ a ] with b NonFunction =
+    this_is_sp_native
 
 
 indexBy as fn fn a: key, [ a ]: Dict key a with key NonFunction =

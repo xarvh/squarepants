@@ -1,13 +1,10 @@
 dirname as fn Text: Text =
-    fn _:
-    todo "Path.dirname"
+    this_is_sp_native
 
 
 resolve as fn [ Text ]: Text =
-    fn _:
-    todo "Path.resolve"
+    this_is_sp_native
 
 
 join as fn [ Text ]: Text =
-    fn _:
-    todo "Path.join"
+    this_is_sp_native

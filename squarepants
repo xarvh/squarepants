@@ -2345,11 +2345,11 @@ const $c$$src$Text$$join = (($sep, $listOfText) => {
                 const $t = ($ls)[2];
                 return ($rec)($t, ($acc + ($sep + $h)));
               }))()
-              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 154:16', (sp_toHuman)($ls))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 139:16', (sp_toHuman)($ls))));
         });
         return ($rec)($tail, $head);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 146:4', (sp_toHuman)($listOfText))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 131:4', (sp_toHuman)($listOfText))));
 });
 
 const $i$test$$Test$$isOkAndEqualTo = (($expectedOk) => {
@@ -2604,7 +2604,7 @@ const $c$$src$List$$for = (($init, $aList, $function) => {
         const $tail = ($aList)[2];
         return ($c$$src$List$$for)(($function)($h, $init), $tail, $function);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 82:4', (sp_toHuman)($aList))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 80:4', (sp_toHuman)($aList))));
 });
 
 const $c$$src$Compiler$CanonicalAst$$patternNames = ((() => {
@@ -2826,13 +2826,13 @@ const $c$$src$List$$forReversed = (($init, $list, $f) => {
                               : ($foldrHelper)($acc, ($ctr + 1), $r4));
                             return ($f)($a, ($f)($b, ($f)($c, ($f)($d, $res))));
                           }))()
-                          : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 127:32', (sp_toHuman)($r3))));
+                          : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 125:32', (sp_toHuman)($r3))));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 121:24', (sp_toHuman)($r2))));
+                    : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 119:24', (sp_toHuman)($r2))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 115:16', (sp_toHuman)($r1))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 113:16', (sp_toHuman)($r1))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 109:8', (sp_toHuman)($ls))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 107:8', (sp_toHuman)($ls))));
   });
   return ($foldrHelper)($init, 0, $list);
 });
@@ -3070,7 +3070,7 @@ const $c$$src$List$$filterMap = (($f, $la) => {
       }))()
       : ((($5)[0] === "$Nothing")
         ? $acc
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 349:8', (sp_toHuman)($5))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 347:8', (sp_toHuman)($5))));
   });
   return ($c$$src$List$$forReversed)($c$$src$Core$$Nil, $la, $update);
 });
@@ -3129,7 +3129,9 @@ const $c$$src$Compiler$Meta$$resolveLocation = (($pars, $location, $maybeReferen
                     ? ((($maybeReferencedModuleAlias)[0] === "$Just")
                       ? ((() => {
                         const $referencedModuleAlias = ($maybeReferencedModuleAlias)[1];
-                        return ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))), ($c$$src$Core$$Cons)(("However, " + ($modulePath + (" in library $directoryPathOfLibrary does not expose any `" + ($referencedName + "`.")))), $c$$src$Core$$Nil))));
+                        return ($c$$src$Result$$Err)(($pars.makeError)(((sp_equal)($referencedModuleAlias, $modulePath)
+                          ? ($c$$src$Core$$Cons)(($modulePath + (" in library $directoryPathOfLibrary does not expose any `" + ($referencedName + "`."))), $c$$src$Core$$Nil)
+                          : ($c$$src$Core$$Cons)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))), ($c$$src$Core$$Cons)(("However, " + ($modulePath + (" in library $directoryPathOfLibrary does not expose any `" + ($referencedName + "`.")))), $c$$src$Core$$Nil)))));
                       }))()
                       : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
                         ? ($c$$src$Result$$Err)(($pars.makeError)(($c$$src$Core$$Cons)(($referencedName + (" is not in " + $modulePath)), $c$$src$Core$$Nil)))
@@ -4356,7 +4358,7 @@ const $c$$src$List$$each = (($ls, $f) => {
         ($f)($h);
         return ($c$$src$List$$each)($tail, $f);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 374:4', (sp_toHuman)($ls))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 372:4', (sp_toHuman)($ls))));
 });
 
 const $c$$src$List$$range = (($low, $high) => {
@@ -4525,7 +4527,7 @@ const $c$$src$List$$append = (($xs, $ys) => {
     ? $xs
     : (true
       ? ($c$$src$List$$forReversed)($ys, $xs, $c$$src$Core$$Cons)
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 230:4', (sp_toHuman)($ys))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 228:4', (sp_toHuman)($ys))));
 });
 
 const $c$$src$List$$concat = (($lists) => {
@@ -4547,7 +4549,7 @@ const $c$$src$List$$drop = (($n, $ls) => {
           const $tail = ($ls)[2];
           return ($c$$src$List$$drop)(($n - 1), $tail);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 420:8', (sp_toHuman)($ls)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 418:8', (sp_toHuman)($ls)))));
 });
 
 const $c$$src$List$$filter = (($f, $ls) => {
@@ -4590,9 +4592,9 @@ const $c$$src$List$$forRes = (($accum, $ls, $f) => {
               const $newAccum = ($4)[1];
               return ($c$$src$List$$forRes)($newAccum, $t, $f);
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 187:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 185:12', (sp_toHuman)($4))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 181:4', (sp_toHuman)($ls))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 179:4', (sp_toHuman)($ls))));
 });
 
 const $c$$src$List$$head = (($list) => {
@@ -4604,7 +4606,7 @@ const $c$$src$List$$head = (($list) => {
         const $t = ($list)[2];
         return ($c$$src$Maybe$$Just)($h);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 257:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 255:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$List$$indexBy = (($getIndex, $list) => {
@@ -4630,7 +4632,7 @@ const $c$$src$List$$indexedEach2 = ((() => {
       }))()
       : (true
         ? null
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 388:8', (sp_toHuman)($5))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 386:8', (sp_toHuman)($5))));
   });
   return (($0, $1, $2) => {
     return ($rec)(0, $0, $1, $2);
@@ -4661,7 +4663,7 @@ const $c$$src$List$$indexedMap = (($f, $aa) => {
           const $t = ($list)[2];
           return ($rec)((sp_cons)(($f)($n, $h), $accum), ($n + 1), $t);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 210:8', (sp_toHuman)($list))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 208:8', (sp_toHuman)($list))));
   });
   return ($rec)($c$$src$Core$$Nil, 0, $aa);
 });
@@ -4681,7 +4683,7 @@ const $c$$src$List$$intersperse = ((() => {
             const $tail = ($items)[2];
             return ($rec)($separator, $tail, (sp_cons)($separator, (sp_cons)($h, $acc)));
           }))()
-          : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 462:8', (sp_toHuman)($items)))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 460:8', (sp_toHuman)($items)))));
   });
   return (($0, $1) => {
     return ($rec)($0, $1, $c$$src$Core$$Nil);
@@ -4702,7 +4704,7 @@ const $c$$src$List$$last = (($list) => {
           const $t = ($list)[2];
           return ($c$$src$List$$last)($t);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 264:4', (sp_toHuman)($list)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 262:4', (sp_toHuman)($list)))));
 });
 
 const $c$$src$List$$length = (($list) => {
@@ -4727,7 +4729,7 @@ const $c$$src$List$$map2 = (($f, $aa, $bb) => {
       }))()
       : (true
         ? ($c$$src$List$$reverse)($accum)
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 164:8', (sp_toHuman)($7))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 162:8', (sp_toHuman)($7))));
   });
   return ($rec)($c$$src$Core$$Nil, $aa, $bb);
 });
@@ -4780,7 +4782,7 @@ const $c$$src$List$$minimum = (($list) => {
     }))()
     : (true
       ? $c$$src$Maybe$$Nothing
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 427:4', (sp_toHuman)($list))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 425:4', (sp_toHuman)($list))));
 });
 
 const $c$$src$List$$partition = (($f, $ls) => {
@@ -4822,7 +4824,7 @@ const $c$$src$List$$partitionWhile = (($f, $xs) => {
               second: $rest,
             }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 474:8', (sp_toHuman)($rest))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 472:8', (sp_toHuman)($rest))));
   });
   return ($rec)($c$$src$Core$$Nil, $xs);
 });
@@ -4847,7 +4849,7 @@ const $c$$src$List$$takeReverse = (($n, $list, $kept) => {
           const $xs = ($list)[2];
           return ($c$$src$List$$takeReverse)(($n - 1), $xs, ($c$$src$Core$$Cons)($x, $kept));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 317:8', (sp_toHuman)($list)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 315:8', (sp_toHuman)($list)))));
 });
 
 const $c$$src$List$$takeTailRec = (($n, $list) => {
@@ -4896,7 +4898,7 @@ const $c$$src$List$$takeFast = (($ctr, $n, $list) => {
                 }))()
                 : (true
                   ? $list
-                  : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 280:8', (sp_toHuman)($4))))))));
+                  : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 278:8', (sp_toHuman)($4))))))));
     }))());
 });
 
@@ -4916,7 +4918,7 @@ const $c$$src$List$$takeWhile = (($test, $its) => {
             ? ($rec)((sp_cons)($h, $accum), $tail)
             : ($c$$src$List$$reverse)($accum));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 326:8', (sp_toHuman)($list))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/List.sp 324:8', (sp_toHuman)($list))));
   });
   return ($rec)($c$$src$Core$$Nil, $its);
 });
@@ -5079,7 +5081,7 @@ const $c$$src$Text$$contains = (($sub, $str) => {
     ? false
     : (true
       ? true
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 135:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 120:4', (sp_toHuman)($3))));
 });
 
 const $c$$src$Text$$repeat = (($n, $s) => {
@@ -17896,7 +17898,7 @@ const $u$$src$Compiler$MakeCanonical_Test$$firstEvaluation = (($name) => {
   });
 });
 
-const $u$$src$Compiler$MakeCanonical_Test$$annotations = ($i$test$$Test$$Group)("Annotations", ($c$$src$Core$$Cons)(($u$$src$Compiler$MakeCanonical_Test$$codeTest)("annotation on unique value", "x =\n  !a as Number =\n    3\n  a", $u$$src$Compiler$MakeCanonical_Test$$firstDefinition, $i$test$$Test$$isOk), ($c$$src$Core$$Cons)(($u$$src$Compiler$MakeCanonical_Test$$codeTest)("annotation on immutable value", "b as Number =\n  3", ($u$$src$Compiler$MakeCanonical_Test$$firstEvaluation)("b"), $i$test$$Test$$isOk), ($c$$src$Core$$Cons)(($u$$src$Compiler$MakeCanonical_Test$$codeTest)("annotation of recycling function", "b as fn @Result e a: !Result e a =\n  3", ($u$$src$Compiler$MakeCanonical_Test$$firstEvaluation)("b"), $i$test$$Test$$isOk), $c$$src$Core$$Nil))));
+const $u$$src$Compiler$MakeCanonical_Test$$annotations = ($i$test$$Test$$Group)("Annotations", ($c$$src$Core$$Cons)(($u$$src$Compiler$MakeCanonical_Test$$codeTest)("annotation on unique value", "x =\n  !a as Number =\n    3\n  a", $u$$src$Compiler$MakeCanonical_Test$$firstDefinition, $i$test$$Test$$isOk), ($c$$src$Core$$Cons)(($u$$src$Compiler$MakeCanonical_Test$$codeTest)("annotation on immutable value", "b as Number =\n  3", ($u$$src$Compiler$MakeCanonical_Test$$firstEvaluation)("b"), $i$test$$Test$$isOk), ($c$$src$Core$$Cons)(($u$$src$Compiler$MakeCanonical_Test$$codeTest)("annotation of recycling function", "b as fn @List a: !List a =\n  3", ($u$$src$Compiler$MakeCanonical_Test$$firstEvaluation)("b"), $i$test$$Test$$isOk), $c$$src$Core$$Nil))));
 
 const $u$$src$Compiler$MakeCanonical_Test$$firstDefinitionStripDeps = (($0) => {
   return ((($0) => {
