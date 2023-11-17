@@ -18935,98 +18935,71 @@ const $u$$src$Targets$Emitted_Test$$tests = ($i$test$$Test$$Group)("Emitted", ($
 
 const $u$$src$Main$$allTests = ($c$$src$Core$$Cons)($u$$src$Human$Format_Test$$tests, ($c$$src$Core$$Cons)($u$$src$Compiler$Lexer_Test$$tests, ($c$$src$Core$$Cons)($u$$src$Compiler$Parser_Test$$tests, ($c$$src$Core$$Cons)($u$$src$Compiler$MakeCanonical_Test$$tests, ($c$$src$Core$$Cons)($u$$src$Compiler$TypeCheck_Test$$tests, ($c$$src$Core$$Cons)($u$$src$Targets$Emitted_Test$$tests, ($c$$src$Core$$Cons)($c$$src$Hash_Test$$tests, ($c$$src$Core$$Cons)($c$$src$Array_Test$$tests, ($c$$src$Core$$Cons)($c$$src$List_Test$$tests, ($c$$src$Core$$Cons)($c$$src$Dict_Test$$tests, ($c$$src$Core$$Cons)($u$$specs$Uniqueness$$specs, ($c$$src$Core$$Cons)($u$$src$SPLib$Format_Test$$tests, ($c$$src$Core$$Cons)($u$$src$SPLib$RefHierarchy_Test$$tests, $c$$src$Core$$Nil)))))))))))));
 
-const $u$$src$Platforms$Posix$$defaultImportsFile = ($u$$src$DefaultImports$$platformDefaultImportsFile)(($c$$src$Core$$Cons)(({
-  first: "IO",
-  second: ($c$$src$Core$$Cons)("IO", $c$$src$Core$$Nil),
-}), ($c$$src$Core$$Cons)(({
-  first: "Path",
+const $u$$src$Platforms$Browser$$defaultImportsFile = ($u$$src$DefaultImports$$platformDefaultImportsFile)(($c$$src$Core$$Cons)(({
+  first: "Browser",
   second: $c$$src$Core$$Nil,
-}), $c$$src$Core$$Nil)));
+}), ($c$$src$Core$$Cons)(({
+  first: "Html",
+  second: $c$$src$Core$$Nil,
+}), ($c$$src$Core$$Cons)(({
+  first: "VirtualDom",
+  second: $c$$src$Core$$Nil,
+}), $c$$src$Core$$Nil))));
 
-const $u$$src$Platforms$Posix$$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
-
-const $u$$src$Platforms$Posix$$overrides = (($platformImportsPath) => {
-  const $ioModule = (($0) => {
-    return ($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($platformImportsPath, "", "IO"), $0);
-  });
-  const $pathModule = (($0) => {
-    return ($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($platformImportsPath, "", "Path"), $0);
-  });
+const $u$$src$Platforms$Browser$$overrides = (($usr) => {
   return ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("parallel"),
-    second: "io_parallel",
+    first: ($usr)("jsCreateTextNode"),
+    second: "virtualDom_jsCreateTextNode",
   }), ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("readDir"),
-    second: "io_readDir",
+    first: ($usr)("jsCreateElement"),
+    second: "virtualDom_jsCreateElement",
   }), ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("readFile"),
-    second: "io_readFile",
+    first: ($usr)("jsReplaceWith"),
+    second: "virtualDom_jsReplaceWith",
   }), ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("writeFile"),
-    second: "io_writeFile",
+    first: ($usr)("jsAppendChild"),
+    second: "virtualDom_jsAppendChild",
   }), ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("readStdin"),
-    second: "io_readStdin",
+    first: ($usr)("jsSetProperty"),
+    second: "virtualDom_jsSetProperty",
   }), ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("writeStdout"),
-    second: "io_writeStdout",
+    first: ($usr)("jsSetAttribute"),
+    second: "virtualDom_jsSetAttribute",
   }), ($c$$src$Core$$Cons)(({
-    first: ($ioModule)("writeStderr"),
-    second: "io_writeStderr",
+    first: ($usr)("jsRemoveAttribute"),
+    second: "virtualDom_jsRemoveAttribute",
   }), ($c$$src$Core$$Cons)(({
-    first: ($pathModule)("dirname"),
-    second: "path_dirname",
+    first: ($usr)("jsAddEventListener"),
+    second: "virtualDom_jsAddEventListener",
   }), ($c$$src$Core$$Cons)(({
-    first: ($pathModule)("resolve"),
-    second: "path_resolve",
+    first: ($usr)("jsRemoveEventListener"),
+    second: "virtualDom_jsRemoveEventListener",
   }), ($c$$src$Core$$Cons)(({
-    first: ($pathModule)("join"),
-    second: "path_join",
-  }), $c$$src$Core$$Nil))))))))));
+    first: ($usr)("eventToText"),
+    second: "virtualDom_eventToText",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($usr)("eventToFloat"),
+    second: "virtualDom_eventToFloat",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($usr)("setChild"),
+    second: "virtualDom_setChild",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($usr)("removeAllChildrenStartingFromIndex"),
+    second: "virtualDom_removeAllChildrenStartingFromIndex",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($usr)("drawCanvas"),
+    second: "virtualDom_drawCanvas",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($usr)("setViewportOf"),
+    second: "virtualDom_setViewportOf",
+  }), $c$$src$Core$$Nil)))))))))))))));
 });
 
-const $u$$src$Targets$Javascript$EmittableToJs$$sanitizePath = (($path) => {
-  return (((sp_not_equal)($path, "") && (sp_equal)(((text_startsWithRegex)("[A-Za-z_$/]*$"))($path), ""))
-    ? (sp_todo)(("Invalid character in path: " + ($path + " (hopefully at some point this limit will be fixed)")))
-    : ($c$$src$Text$$replace)("/", "$", $path));
+const $u$$src$Platforms$Browser$$virtualDomUsr = (($platformImportsPath) => {
+  return (($0) => {
+    return ($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($platformImportsPath, "src/", "VirtualDom"), $0);
+  });
 });
-
-const $u$$src$Targets$Javascript$EmittableToJs$$translateName = (($name) => {
-  return ((text_startsWith)("'", $name)
-    ? ((() => {
-      const $head = (text_slice)(1, 2, $name);
-      const $rest = (text_slice)(2, 9999, $name);
-      return ("$" + ((text_toUpper)($head) + $rest));
-    }))()
-    : ("$" + $name));
-});
-
-const $u$$src$Targets$Javascript$EmittableToJs$$translateRoot = (($0) => {
-  return ((($0)[0] === "$Core")
-    ? "c"
-    : ((($0)[0] === "$User")
-      ? "u"
-      : ((($0)[0] === "$Installed")
-        ? "i"
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 636:4', (sp_toHuman)($0)))));
-});
-
-const $u$$src$Targets$Javascript$EmittableToJs$$translateUsr = (($1) => {
-  const $root = ((($1)[1])[1])[1];
-  const $importsDir = ((($1)[1])[1])[2];
-  const $sourceDir = (($1)[1])[2];
-  const $modulePath = (($1)[1])[3];
-  const $name = ($1)[2];
-  return ((($0) => {
-    return ($c$$src$Text$$join)("$", $0);
-  }))(($c$$src$Core$$Cons)("", ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$translateRoot)($root), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$sanitizePath)($importsDir), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$sanitizePath)($sourceDir), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$sanitizePath)($modulePath), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$translateName)($name), $c$$src$Core$$Nil)))))));
-});
-
-const $u$$src$Platforms$Posix$$makeErr = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)(($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($u$$src$Compiler$CoreDefs$$importsPath, "src", "Result"), "'ok"));
-
-const $u$$src$Platforms$Posix$$makeOk = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)(($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($u$$src$Compiler$CoreDefs$$importsPath, "src", "Result"), "'ok"));
-
-const $u$$src$Platforms$Posix$$runtime = ("\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_readDir = (io, dirPath) => {\n    // as @IO, Text: Re [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(arrayToListLow(entries.map((dirent) => ({\n            first: dirent.isDirectory(),\n            second: dirent.name,\n        })))), null];\n    };\n\n\n    const io_readFile = (io, path) => {\n        // as @IO, Text: Re Text\n\n        var content;\n        try {\n            content = fs.readFileSync(path, 'utf8');\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(content), null];\n    };\n\n\n    const io_writeFile = (io, path, content) => {\n        // as @IO, Text, Text: Re Int\n\n        try {\n            fs.writeFileSync(path, content);\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(0), null];\n    };\n\n\n    const io_readStdin = (io) => {\n        // as @IO: Re Text\n\n        try {\n            return [" + ($u$$src$Platforms$Posix$$makeOk + ("(fs.readFileSync(0, 'utf8')), null];\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n    };\n\n\n    const io_writeStdout = (io, content) => {\n        // as @IO, Text: Re None\n\n        try {\n            fs.writeFileSync(1, content);\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(null), null];\n    };\n\n\n    const io_writeStderr = (io, content) => {\n        // as @IO, Text: Re Int\n\n        try {\n            fs.writeFileSync(2, content);\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + "(null), null];\n    };\n\n\n    const path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n    const path_join = (p) => path.join(...arrayFromListLow(p));\n\n    const path_dirname = path.dirname;\n\n"))))))))))))))))))))))));
 
 const $u$$src$Targets$Javascript$EmittableToJs$$accessAttrs = (($attrPath, $e) => {
   return ($c$$src$List$$for)($e, $attrPath, $u$$src$Targets$Javascript$Ast$$AccessWithDot);
@@ -19044,6 +19017,16 @@ const $u$$src$Targets$Javascript$EmittableToJs$$literalString = (($str) => {
 });
 
 const $u$$src$Targets$Javascript$EmittableToJs$$recycleTempVariable = ($u$$src$Targets$Javascript$Ast$$Var)("__re__");
+
+const $u$$src$Targets$Javascript$EmittableToJs$$translateName = (($name) => {
+  return ((text_startsWith)("'", $name)
+    ? ((() => {
+      const $head = (text_slice)(1, 2, $name);
+      const $rest = (text_slice)(2, 9999, $name);
+      return ("$" + ((text_toUpper)($head) + $rest));
+    }))()
+    : ("$" + $name));
+});
 
 const $u$$src$Targets$Javascript$EmittableToJs$$makeCall = (($env, $jaRef, $args) => {
   const $call = ((($0) => {
@@ -19081,6 +19064,33 @@ const $u$$src$Targets$Javascript$EmittableToJs$$makeCall = (($env, $jaRef, $args
         return ($c$$src$List$$indexedMap)($zzz, $0);
       }))($recycledArgs), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$Ast$$AccessWithBrackets)(($u$$src$Targets$Javascript$Ast$$Literal)("0"), $u$$src$Targets$Javascript$EmittableToJs$$recycleTempVariable), $c$$src$Core$$Nil), $c$$src$Core$$Nil)))));
     }))());
+});
+
+const $u$$src$Targets$Javascript$EmittableToJs$$sanitizePath = (($path) => {
+  return (((sp_not_equal)($path, "") && (sp_equal)(((text_startsWithRegex)("[A-Za-z_$/]*$"))($path), ""))
+    ? (sp_todo)(("Invalid character in path: " + ($path + " (hopefully at some point this limit will be fixed)")))
+    : ($c$$src$Text$$replace)("/", "$", $path));
+});
+
+const $u$$src$Targets$Javascript$EmittableToJs$$translateRoot = (($0) => {
+  return ((($0)[0] === "$Core")
+    ? "c"
+    : ((($0)[0] === "$User")
+      ? "u"
+      : ((($0)[0] === "$Installed")
+        ? "i"
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 636:4', (sp_toHuman)($0)))));
+});
+
+const $u$$src$Targets$Javascript$EmittableToJs$$translateUsr = (($1) => {
+  const $root = ((($1)[1])[1])[1];
+  const $importsDir = ((($1)[1])[1])[2];
+  const $sourceDir = (($1)[1])[2];
+  const $modulePath = (($1)[1])[3];
+  const $name = ($1)[2];
+  return ((($0) => {
+    return ($c$$src$Text$$join)("$", $0);
+  }))(($c$$src$Core$$Cons)("", ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$translateRoot)($root), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$sanitizePath)($importsDir), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$sanitizePath)($sourceDir), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$sanitizePath)($modulePath), ($c$$src$Core$$Cons)(($u$$src$Targets$Javascript$EmittableToJs$$translateName)($name), $c$$src$Core$$Nil)))))));
 });
 
 const $u$$src$Targets$Javascript$EmittableToJs$$maybeOverrideUsr = (($env, $usr) => {
@@ -19986,6 +19996,33 @@ const $u$$src$Targets$Javascript$JsToText$$emitStatement = (($l, $stat) => {
           : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/JsToText.sp 12:4', (sp_toHuman)($stat))))));
 });
 
+const $u$$src$Platforms$Browser$$compile = (($platformImportsPath, $out) => {
+  (sp_log)("Creating JS AST...", "");
+  const $jaStatements = ($u$$src$Targets$Javascript$EmittableToJs$$translateAll)(({
+    constructors: $out.constructors,
+    eaDefs: $out.defs,
+    platformOverrides: ($u$$src$Platforms$Browser$$overrides)(($u$$src$Platforms$Browser$$virtualDomUsr)($platformImportsPath)),
+  }));
+  (sp_log)("Emitting JS...", "");
+  return ((($0) => {
+    return ($c$$src$Text$$join)("\n\n", $0);
+  }))(((($0) => {
+    return ($c$$src$List$$map)((($0) => {
+      return ($u$$src$Targets$Javascript$JsToText$$emitStatement)(0, $0);
+    }), $0);
+  }))($jaStatements));
+});
+
+const $u$$src$Platforms$Browser$$footer = (($platformImportsPath, $pars) => {
+  const $mainName = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)($pars.entryUsr);
+  const $updateDomNode = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)((($u$$src$Platforms$Browser$$virtualDomUsr)($platformImportsPath))("updateDomNode"));
+  return ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet effects = [];\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model =" + ($mainName + (".update(effects, msg, model)[0];\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom =" + ($mainName + (".view(model);\n\n" + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n\n        effects.forEach((e) => e());\n        effects = [];\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model =" + ($mainName + ".init(effects)[0];\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n"))))))));
+});
+
+const $u$$src$Platforms$Browser$$header = "(function (win) {\n";
+
+const $u$$src$Platforms$Browser$$runtime = "const crawlObject = (path, type, object) => {\n\n    while(path[0] === 'Cons') {\n\n        const head = path[1];\n        const tail = path[2];\n\n        const o = object[head];\n\n        if (o === undefined) {\n            return [ 'Err', 'no field named: ' + head ];\n        }\n\n        object = o;\n        path = path[2];\n    }\n\n    return typeof object === type\n        ? [ 'Ok', object ]\n        : [ 'Err', 'wrong type: ' + typeof object ]\n        ;\n}\n\n\nconst virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);\nconst virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);\n\n// TODO ensure that those who must return None actually return None (ie, null)\nconst virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);\nconst virtualDom_jsCreateElement = (tag) => document.createElement(tag);\nconst virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }\nconst virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);\nconst virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);\nconst virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);\nconst virtualDom_jsSetProperty = (name, value, node) => node[name] = value;\n\n\nconst virtualDom_setChild = (upd, index, parentNode) => {\n    const child = parentNode.childNodes[index];\n    child && upd(child);\n};\n\n\nconst virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {\n    while(parentNode.childNodes[index]) {\n      parentNode.removeChild(parentNode.childNodes[index]);\n    }\n}\n\n\n// an EventHandler is a function that takes an Event and produces a msg\nconst virtualDom_jsAddEventListener = (eventName, handler, node) => {\n\n    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};\n\n    if (node.squarepantsEventHandlers[eventName]) {\n      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    }\n\n    const onEvent = (event) => dispatch(handler(event));\n    node.squarepantsEventHandlers[eventName] = onEvent;\n    node.addEventListener(eventName, onEvent);\n};\n\nconst virtualDom_jsRemoveEventListener = (eventName, handler, node) => {\n    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    node.squarepantsEventHandlers[eventName] = undefined;\n}\n\n\nconst virtualDom_setViewportOf = (id, top, left) => () => {\n    const e = document.getElementById(id);\n    if (!e) {\n        console.error('could not find element #' + id);\n        return\n    }\n\n    e.scrollTop = top;\n    e.scrollLeft = left;\n}\n\n\nconst virtualDom_drawCanvas = (canvasId, shaderFn) => () => {\n\n    const canvas = document.getElementById(canvasId);\n    if (!canvas) {\n        console.error('could not find canvas', canvasId);\n        return\n    }\n\n    const w = canvas.width;\n    const h = canvas.height;\n\n    const ctx = canvas.getContext('2d');\n    const imageData = ctx.createImageData(w, h);\n\n    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {\n\n        const frag = shaderFn(x / (w - 1), 1 - y / (h - 1));\n\n        let j = (x + y * w) * 4;\n        imageData.data[j + 0] = frag.r * 255;\n        imageData.data[j + 1] = frag.g * 255;\n        imageData.data[j + 2] = frag.b * 255;\n        imageData.data[j + 3] = 255;\n    }\n\n    ctx.putImageData(imageData, 0, 0);\n};";
+
 const $u$$src$Targets$Javascript$Runtime$$justRef = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)(($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($u$$src$Compiler$CoreDefs$$importsPath, "src", "Maybe"), "'just"));
 
 const $u$$src$Targets$Javascript$Runtime$$listConsName = ($u$$src$Targets$Javascript$EmittableToJs$$translateName)($u$$src$Compiler$CoreDefs$$consName);
@@ -19995,6 +20032,81 @@ const $u$$src$Targets$Javascript$Runtime$$listNilName = ($u$$src$Targets$Javascr
 const $u$$src$Targets$Javascript$Runtime$$nothingRef = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)(($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($u$$src$Compiler$CoreDefs$$importsPath, "src", "Maybe"), "'nothing"));
 
 const $u$$src$Targets$Javascript$Runtime$$nativeDefinitions = ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + ($u$$src$Targets$Javascript$Runtime$$listConsName + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + ($u$$src$Targets$Javascript$Runtime$$listNilName + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ? " + ($u$$src$Targets$Javascript$Runtime$$nothingRef + (" : " + ($u$$src$Targets$Javascript$Runtime$$justRef + ("(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [ " + ($u$$src$Targets$Javascript$Runtime$$justRef + ("({ first: actualKey, second: value }), hash ];\n        }\n\n        return [ " + ($u$$src$Targets$Javascript$Runtime$$nothingRef + (", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '" + ($u$$src$Targets$Javascript$Runtime$$listNilName + ("')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ? " + ($u$$src$Targets$Javascript$Runtime$$nothingRef + (" : " + ($u$$src$Targets$Javascript$Runtime$$justRef + ("(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ? " + ($u$$src$Targets$Javascript$Runtime$$justRef + ("(a.pop()) : " + ($u$$src$Targets$Javascript$Runtime$$nothingRef + (", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ? " + ($u$$src$Targets$Javascript$Runtime$$nothingRef + (" : " + ($u$$src$Targets$Javascript$Runtime$$justRef + ("(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '" + ($u$$src$Targets$Javascript$Runtime$$listNilName + ("' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '" + ($u$$src$Targets$Javascript$Runtime$$listConsName + ("', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '" + ($u$$src$Targets$Javascript$Runtime$$listNilName + ("')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '" + ($u$$src$Targets$Javascript$Runtime$$listConsName + "', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const actualTypeHumanized = sp_toHuman(pars.type);\n        if (actualTypeHumanized !== requestedTypeHumanized) {\n            return [ 'Err', pars.type ];\n        }\n\n        // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n        // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n        const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n        const js = $sd1$Platforms$Browser$compile(pars);\n\n        //   { name1, name2, name3, ... } = externals;\n        const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n        const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n        const arg = {};\n        pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n        return [ 'wwwwok', variantConstructor(Function('externs', body)(arg)) ];\n    };\n\n    "))))))))))))))))))))))))))))))))));
+
+const $u$$src$Platforms$Browser$$makeExecutable = (($platformImportsPath) => {
+  return (($out) => {
+    const $compiledStatements = ($u$$src$Platforms$Browser$$compile)($platformImportsPath, $out);
+    return ($u$$src$Platforms$Browser$$header + ($u$$src$Targets$Javascript$Runtime$$nativeDefinitions + ($u$$src$Platforms$Browser$$runtime + ($compiledStatements + ($u$$src$Platforms$Browser$$footer)($platformImportsPath, $out)))));
+  });
+});
+
+const $u$$src$Platforms$Browser$$platform = (($platformImportsPath) => {
+  return ({
+    defaultImportsFile: $u$$src$Platforms$Browser$$defaultImportsFile,
+    defaultOutputName: "index.js",
+    makeExecutable: ($u$$src$Platforms$Browser$$makeExecutable)($platformImportsPath),
+    name: "browser",
+    quickstart: "TODO",
+  });
+});
+
+const $u$$src$Main$$platformBrowser = ($u$$src$Platforms$Browser$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$Installed, "browser"));
+
+const $u$$src$Platforms$Posix$$defaultImportsFile = ($u$$src$DefaultImports$$platformDefaultImportsFile)(($c$$src$Core$$Cons)(({
+  first: "IO",
+  second: ($c$$src$Core$$Cons)("IO", $c$$src$Core$$Nil),
+}), ($c$$src$Core$$Cons)(({
+  first: "Path",
+  second: $c$$src$Core$$Nil,
+}), $c$$src$Core$$Nil)));
+
+const $u$$src$Platforms$Posix$$header = "#!/usr/bin/env -S node --stack-size=65500 --max-old-space-size=4096\n\n//Error.stackTraceLimit = 100;\n\nconst { performance } = require('perf_hooks');\n\n";
+
+const $u$$src$Platforms$Posix$$overrides = (($platformImportsPath) => {
+  const $ioModule = (($0) => {
+    return ($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($platformImportsPath, "", "IO"), $0);
+  });
+  const $pathModule = (($0) => {
+    return ($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($platformImportsPath, "", "Path"), $0);
+  });
+  return ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("parallel"),
+    second: "io_parallel",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("readDir"),
+    second: "io_readDir",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("readFile"),
+    second: "io_readFile",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("writeFile"),
+    second: "io_writeFile",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("readStdin"),
+    second: "io_readStdin",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("writeStdout"),
+    second: "io_writeStdout",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($ioModule)("writeStderr"),
+    second: "io_writeStderr",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($pathModule)("dirname"),
+    second: "path_dirname",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($pathModule)("resolve"),
+    second: "path_resolve",
+  }), ($c$$src$Core$$Cons)(({
+    first: ($pathModule)("join"),
+    second: "path_join",
+  }), $c$$src$Core$$Nil))))))))));
+});
+
+const $u$$src$Platforms$Posix$$makeErr = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)(($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($u$$src$Compiler$CoreDefs$$importsPath, "src", "Result"), "'ok"));
+
+const $u$$src$Platforms$Posix$$makeOk = ($u$$src$Targets$Javascript$EmittableToJs$$translateUsr)(($c$$src$Compiler$Meta$$USR)(($c$$src$Compiler$Meta$$UMR)($u$$src$Compiler$CoreDefs$$importsPath, "src", "Result"), "'ok"));
+
+const $u$$src$Platforms$Posix$$runtime = ("\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_readDir = (io, dirPath) => {\n    // as @IO, Text: Re [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(arrayToListLow(entries.map((dirent) => ({\n            first: dirent.isDirectory(),\n            second: dirent.name,\n        })))), null];\n    };\n\n\n    const io_readFile = (io, path) => {\n        // as @IO, Text: Re Text\n\n        var content;\n        try {\n            content = fs.readFileSync(path, 'utf8');\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(content), null];\n    };\n\n\n    const io_writeFile = (io, path, content) => {\n        // as @IO, Text, Text: Re Int\n\n        try {\n            fs.writeFileSync(path, content);\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(0), null];\n    };\n\n\n    const io_readStdin = (io) => {\n        // as @IO: Re Text\n\n        try {\n            return [" + ($u$$src$Platforms$Posix$$makeOk + ("(fs.readFileSync(0, 'utf8')), null];\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n    };\n\n\n    const io_writeStdout = (io, content) => {\n        // as @IO, Text: Re None\n\n        try {\n            fs.writeFileSync(1, content);\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + ("(null), null];\n    };\n\n\n    const io_writeStderr = (io, content) => {\n        // as @IO, Text: Re Int\n\n        try {\n            fs.writeFileSync(2, content);\n        } catch (e) {\n            return [" + ($u$$src$Platforms$Posix$$makeErr + ("(e.message), null];\n        }\n\n        return [" + ($u$$src$Platforms$Posix$$makeOk + "(null), null];\n    };\n\n\n    const path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n    const path_join = (p) => path.join(...arrayFromListLow(p));\n\n    const path_dirname = path.dirname;\n\n"))))))))))))))))))))))));
 
 const $u$$src$Platforms$Posix$$makeExecutable = (($platformImportsPath) => {
   return (($out) => {
@@ -20029,8 +20141,6 @@ const $u$$src$Platforms$Posix$$platform = (($platformImportsPath) => {
     quickstart: "TODO",
   });
 });
-
-const $u$$src$Main$$platformBrowser = ($u$$src$Platforms$Posix$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$Installed, "browser"));
 
 const $u$$src$Main$$platformPosix = ($u$$src$Platforms$Posix$$platform)(($c$$src$Compiler$Meta$$ImportsPath)($c$$src$Compiler$Meta$$Installed, "posix"));
 

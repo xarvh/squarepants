@@ -59,57 +59,46 @@ mapAttr as fn fn a: b, Attr a: Attr b =
 ###################
 
 jsCreateTextNode as fn Text: DomNode =
-    fn content:
     this_is_sp_native
 
 
 jsCreateElement as fn Text: DomNode =
-    fn tagName:
     this_is_sp_native
 
 
 jsReplaceWith as fn DomNode, DomNode: DomNode =
-    fn new, old:
     this_is_sp_native
 
 
 jsAppendChild as fn { child as DomNode, parent as DomNode }: None =
-    fn pars:
     this_is_sp_native
 
 
 jsSetProperty as fn Text, Text, DomNode: None =
-    fn name, value, domNode:
     this_is_sp_native
 
 
 jsSetAttribute as fn Text, Text, DomNode: None =
-    fn name, value, domNode:
     this_is_sp_native
 
 
 jsRemoveAttribute as fn Text, DomNode: None =
-    fn name, domNode:
     this_is_sp_native
 
 
 jsAddEventListener as fn Text, EventHandler msg, DomNode: None =
-    fn eventName, eventHandler, domNode:
     this_is_sp_native
 
 
 jsRemoveEventListener as fn Text, EventHandler msg, DomNode: None =
-    fn eventName, eventHandler, domNode:
     this_is_sp_native
 
 
 setChild as fn fn DomNode: DomNode, Int, DomNode: None =
-    fn update, index, parent:
     this_is_sp_native
 
 
 removeAllChildrenStartingFromIndex as fn Int, DomNode: None =
-    fn index, parent:
     this_is_sp_native
 
 
@@ -118,24 +107,20 @@ removeAllChildrenStartingFromIndex as fn Int, DomNode: None =
 # TODO eventually we'll support decoders
 
 eventToText as fn [ Text ], Event: Result Text Text =
-    fn path, event:
     this_is_sp_native
 
 
 eventToFloat as fn [ Text ], Event: Result Text Number =
-    fn path, event:
     this_is_sp_native
 
 
 ###################
 
 drawCanvas as fn Text, fn Number, Number: { b as Number, g as Number, r as Number }: Effect =
-    fn id, shaderFn:
     this_is_sp_native
 
 
 setViewportOf as fn Text, Number, Number: Effect =
-    fn id, top, left:
     this_is_sp_native
 
 

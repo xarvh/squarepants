@@ -5,20 +5,16 @@ sourceDir =
 
 
 library =
-    source = "core:browser"
+    source = ":browser"
 
     module =
         path = Html
-        globalTypes = Html
-        globalValues =
+        globals =
+            Html
             div
 
     module =
         path = VirtualDom
-
-
-sourceDir =
-    path = "../specs"
 
 
 sourceDir =
@@ -27,7 +23,7 @@ sourceDir =
     module =
        path = Compiler/Error
        importAs = Error
-       globalTypes =
+       globals =
           Error
           Res
 
@@ -35,15 +31,15 @@ sourceDir =
        path = Compiler/CoreDefs
        importAs = CoreDefs
 
+
     module =
        path = Types/Ast
        importAs = Ast
-       globalTypes =
+       globals =
           Name
           Ref
           UnivarId
           Uniqueness
-       globalValues =
           'refLocal
           'refGlobal
           'uni
@@ -52,109 +48,95 @@ sourceDir =
           toImm
           toUni
 
-    module =
-       path = Types/TypedAst
-       importAs = TA
+#    module =
+#       path = Types/CanonicalAst
+#       importAs = CA
+#
+#    module =
+#       path = Types/FormattableAst
+#       importAs = FA
+#
+#    module =
+#       path = Targets/Javascript/Ast
+#       importAs = JA
+#
+#    module =
+#       path = Compiler/TestHelpers
+#       importAs = TH
+#
+#    module =
+#        path = Types/Op
+#        importAs = Op
+#
+#    module =
+#       path = Types/Pos
+#       importAs = Pos
+#       globals =
+#            Pos
+#            At
+#       globals =
+#            'at
+#
+#
+#    module =
+#       path = SPLib/Parser
+#       importAs = Parser
+
+
+library =
+    source = "core"
 
     module =
-       path = Types/CanonicalAst
-       importAs = CA
-
-    module =
-       path = Types/EmittableAst
-       importAs = EA
-
-    module =
-       path = Types/FormattableAst
-       importAs = FA
-
-    module =
-       path = Targets/Javascript/Ast
-       importAs = JA
-
-    module =
-       path = Compiler/TestHelpers
-       importAs = TH
-
-    module =
-        path = Types/Meta
+        path = Compiler/Meta
         importAs = Meta
-        globalTypes =
+        globals =
             Meta
             ByUsr
             USR
             UMR
-        globalValues =
             'USR
             'UMR
 
     module =
-        path = Types/Op
-        importAs = Op
-
-    module =
-       path = Types/Pos
-       importAs = Pos
-       globalTypes =
-            Pos
-            At
-       globalValues =
-            'at
-
-    module =
-        path = Types/Token
+        path = Compiler/Token
         importAs = Token
-        globalTypes =
+        globals =
             Token
-        globalValues =
             'token
 
     module =
-       path = SPLib/Parser
-       importAs = Parser
-
-
-# This will be transformed into a platform
-library =
-    source = "core:posix"
+       path = Compiler/TypedAst
+       importAs = TA
 
     module =
-       path = IO
-       globalTypes = IO
-
-    module =
-       path = Path
-
-
-library =
-    source = "core:prelude"
+       path = Compiler/EmittableAst
+       importAs = EA
 
     module =
         path = Self
 
     module =
        path = Core
-       globalTypes =
+       globals =
           None
           Bool
           Text
           List
           Number
-       globalValues =
           'none
           'true
           'false
 
     module =
        path = Debug
-       globalValues =
+       globals =
           log
           todo
           toHuman
 
     module =
        path = Array
-       globalTypes =
+       globals =
           Array
 
     module =
@@ -162,9 +144,8 @@ library =
 
     module =
         path = Maybe
-        globalTypes =
+        globals =
             Maybe
-        globalValues =
             'just
             'nothing
 
@@ -176,8 +157,8 @@ library =
 
     module =
         path = Basics
-        globalTypes = Int
-        globalValues =
+        globals =
+            Int
             clamp
             cloneImm
             cloneUni
@@ -191,20 +172,20 @@ library =
 
     module =
         path = Hash
-        globalTypes = Hash
+        globals = Hash
 
     module =
         path = Dict
-        globalTypes = Dict
+        globals = Dict
 
     module =
         path = Set
-        globalTypes = Set
+        globals = Set
 
     module =
         path = Result
-        globalTypes = Result
-        globalValues =
+        globals =
+          Result
           'ok
           'err
           onOk

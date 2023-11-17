@@ -1,6 +1,5 @@
 default:
-	reset
-	../squarepants App.sp --platform=browser app.js
+	../squarepants App --platform=browser app.js
 #	../squarepants CompileText.sp --platform=rawjs
 
 with-unstable:

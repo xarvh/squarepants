@@ -51,11 +51,11 @@ onResSuccess as fn fn a: Result (Html msg) b: fn Res a: Result (Html msg) b =
 #
 # Meta
 #
-meta as Meta =
-    try ModulesFile.textToModulesFile "modules.sp" Platforms/Browser.platform.defaultModules as
+meta as Imports =
+    try ImportsFile.fromText "modules.sp" Platforms/Browser.platform.defaultModules as
 
         'ok m:
-            ModulesFile.toMeta m
+            ImportsFile.toImports m
 
         'err err:
             errAsText =
@@ -91,10 +91,10 @@ exposedValues as [ USR & Self.Self ] =
         ]
         >> List.map selfToExposed __
 
-    l2 =
-        [ 'USR ('UMR Meta.'Core "List") "blah" & Self.introspect (fn x: 0.1) ]
+#    l2 =
+#        [ 'USR ('UMR Meta.'Core "List") "blah" & Self.introspect (fn x: 0.1) ]
 
-    [ l1, l2 ] >> List.concat
+    [ l1 ] >> List.concat
 
 
 viewErrorWrongType as fn TA.RawType: Html msg =
@@ -126,7 +126,7 @@ main as fn Text: Result (Html msg) CompiledCode =
         "user_input"
 
     entryModule =
-        'UMR (Meta.'SourceDirId inputFileName) inputFileName
+        'UMR (Meta.'importsPath Meta.'user "") "" inputFileName
 
     {
     , entryModule

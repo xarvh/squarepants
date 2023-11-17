@@ -198,7 +198,7 @@ platformPosix =
 
 
 platformBrowser =
-    Platforms/Posix.platform (Meta.'importsPath Meta.'installed "browser")
+    Platforms/Browser.platform (Meta.'importsPath Meta.'installed "browser")
 
 
 CliState =

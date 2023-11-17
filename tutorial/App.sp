@@ -170,16 +170,12 @@ floatToPercent as fn Number: Text =
     Text.fromNumber (round (n * 100)) .. "%"
 
 
-wordToClass as fn Token.Word: Text =
-    fn word:
-    try word.name as
-        "var": "keyword"
-        _: if word.isUpper then "upper" else "lower"
-
-
 tokenToClass as fn Token.Kind: Text =
-    fn kind:
-    try kind as
+    try __ as
+
+        # Structure
+        Token.'comment:
+            "comment"
 
         # Structure
         Token.'newSiblingLine:
@@ -201,8 +197,10 @@ tokenToClass as fn Token.Kind: Text =
         Token.'numberLiteral _ _:
             "literal"
 
-        Token.'word w:
-            wordToClass w
+        Token.'lowercase _: "lower"
+        Token.'constructor _: "uppercase"
+        Token.'uppercase _: "upper"
+        Token.'recordShorthand _: "lower"
 
         Token.'argumentPlaceholder:
             "keyword"
@@ -261,6 +259,9 @@ tokenToClass as fn Token.Kind: Text =
 
         Token.'curlyBrace _:
             "paren"
+
+        Token.'native:
+            "keyword"
 
 
 viewColorToken as fn Text, Token, Int & [ Html msg ]: Int & [ Html msg ] =
