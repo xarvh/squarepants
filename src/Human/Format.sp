@@ -230,6 +230,10 @@ formatExpression as fn Env, FA.Expression: Fmt.Block =
 
         FA.'try { patterns, value }:
             formatTry env value patterns
+
+        FA.'native:
+            Fmt.textToBlock "this_is_sp_native"
+
     >> stackWithComments env comments __
 
 

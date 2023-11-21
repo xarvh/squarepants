@@ -6856,7 +6856,7 @@ const $u$$src$Human$Format$$unindentBlockComment = (($indent, $content) => {
           return (text_dropLeft)($minLead, $0);
         }), $tail));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 245:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 249:4', (sp_toHuman)($3))));
 });
 
 const $u$$src$SPLib$Format$$blankLine = ($u$$src$SPLib$Format$$lineToBlock)($u$$src$SPLib$Format$$Blank);
@@ -6937,7 +6937,7 @@ const $u$$src$Human$Format$$formatBinopChain = (($env, $priority, $1) => {
         }));
         return ($last.line > $first.line);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 666:8', (sp_toHuman)($opsAndRights))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 670:8', (sp_toHuman)($opsAndRights))));
   return ((($0) => {
     return ($u$$src$SPLib$Format$$spaceSeparatedOrStackForce)($forceMultiline, $0);
   }))(($c$$src$Core$$Cons)(($u$$src$Human$Format$$formatExpressionAndMaybeAddParens)($env, ($u$$src$Human$Format$$chainPrecedence)($opsAndRights), $left), ($c$$src$List$$map)($formatOpAndRight, $opsAndRights)));
@@ -7171,7 +7171,7 @@ const $u$$src$Human$Format$$formatCall = (($env, $ref, $args) => {
       }))()
       : (true
         ? $c$$src$Maybe$$Nothing
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 692:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 696:8', (sp_toHuman)($arg))));
   });
   const $formatArgument = (($index, $arg) => {
     let $6 = ($asContinuingFn)($index, $arg);
@@ -7184,7 +7184,7 @@ const $u$$src$Human$Format$$formatCall = (($env, $ref, $args) => {
           const $body = ($6)[1].third;
           return ($u$$src$Human$Format$$formatFunctionHeader)($env, $params);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 705:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 709:8', (sp_toHuman)($6))));
   });
   const $maybeContinuing = (($c$$src$Maybe$$onJust)((($0) => {
     return ($asContinuingFn)($lastIndex, $0);
@@ -7204,7 +7204,7 @@ const $u$$src$Human$Format$$formatCall = (($env, $ref, $args) => {
         const $body = ($maybeContinuing)[1].third;
         return ($u$$src$SPLib$Format$$stack)(($c$$src$Core$$Cons)($call, ($c$$src$Core$$Cons)((($c$$src$Basics$$applyIf)((sp_equal)($layout, $c$$src$Compiler$FormattableAst$$Indented), $u$$src$SPLib$Format$$indent))(($u$$src$Human$Format$$formatExpression)($env, $body)), $c$$src$Core$$Nil)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 724:4', (sp_toHuman)($maybeContinuing)))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 728:4', (sp_toHuman)($maybeContinuing)))));
 });
 
 const $u$$src$Human$Format$$formatConstructor = (($env, $maybeModule, $name) => {
@@ -7217,7 +7217,7 @@ const $u$$src$Human$Format$$formatConstructor = (($env, $maybeModule, $name) => 
         const $module = ($maybeModule)[1];
         return ($c$$src$Core$$Cons)($module, ($c$$src$Core$$Cons)(".", $c$$src$Core$$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 597:10', (sp_toHuman)($maybeModule)))), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($name, $c$$src$Core$$Nil), $c$$src$Core$$Nil)))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 601:10', (sp_toHuman)($maybeModule)))), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($name, $c$$src$Core$$Nil), $c$$src$Core$$Nil)))));
 });
 
 const $u$$src$Human$Format$$formatFunction = (($env, $layout, $pars, $body) => {
@@ -7244,7 +7244,7 @@ const $u$$src$Human$Format$$extractIfElses = (($env, $x) => {
           first: ($c$$src$List$$reverse)($acc),
           second: ($u$$src$Human$Format$$formatExpression)($env, $expr),
         })
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 742:8', (sp_toHuman)($expr))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 746:8', (sp_toHuman)($expr))));
   });
   return ($rec)($c$$src$Core$$Nil, $x);
 });
@@ -7293,11 +7293,11 @@ const $u$$src$Human$Format$$formatIf = (($env, $isMultiline, $expr) => {
           }))()
           : (true
             ? $c$$src$Maybe$$Nothing
-            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 764:20', (sp_toHuman)($5))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 768:20', (sp_toHuman)($5))));
       }))()
       : (true
         ? $c$$src$Maybe$$Nothing
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 758:12', (sp_toHuman)($conditionsAndValues)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 762:12', (sp_toHuman)($conditionsAndValues)))));
   return ((($maybeSingleLine)[0] === "$Just")
     ? ((() => {
       const $conditionLine = ($maybeSingleLine)[1].first;
@@ -7327,7 +7327,7 @@ const $u$$src$Human$Format$$formatIf = (($env, $isMultiline, $expr) => {
           return ($c$$src$List$$indexedMap)($formatCAndV, $0);
         }))($conditionsAndValues)), ($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$textToBlock)("else"), ($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$indent)($default), $c$$src$Core$$Nil))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 771:4', (sp_toHuman)($maybeSingleLine))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 775:4', (sp_toHuman)($maybeSingleLine))));
 });
 
 const $u$$src$Human$Format$$formatList = (($env, $isMultiline, $unpacksAndExprs) => {
@@ -7370,7 +7370,7 @@ const $u$$src$Human$Format$$formatLiteralText = ((() => {
           }))($text));
           return ($u$$src$SPLib$Format$$stack)(($c$$src$List$$concat)(($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($tripleQuote, $c$$src$Core$$Nil), ($c$$src$Core$$Cons)($rows, ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($tripleQuote, $c$$src$Core$$Nil), $c$$src$Core$$Nil)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 332:4', (sp_toHuman)($singleOrTriple))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 336:4', (sp_toHuman)($singleOrTriple))));
   });
 }))();
 
@@ -7384,7 +7384,7 @@ const $u$$src$Human$Format$$formatLowercase = (($env, $maybeType, $maybeModule, 
         const $module = ($maybeModule)[1];
         return ($c$$src$Core$$Cons)($module, ($c$$src$Core$$Cons)(".", $c$$src$Core$$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 558:10', (sp_toHuman)($maybeModule)))), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($name, $c$$src$Core$$Nil), ($c$$src$Core$$Cons)(($c$$src$List$$map)((($p) => {
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 562:10', (sp_toHuman)($maybeModule)))), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($name, $c$$src$Core$$Nil), ($c$$src$Core$$Cons)(($c$$src$List$$map)((($p) => {
     return ("." + $p);
   }), $attrPath), $c$$src$Core$$Nil))))));
   return ((($maybeType)[0] === "$Nothing")
@@ -7396,7 +7396,7 @@ const $u$$src$Human$Format$$formatLowercase = (($env, $maybeType, $maybeModule, 
           return ($u$$src$SPLib$Format$$spaceSeparatedOrIndent)($0);
         }))(($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$addSuffix)(($u$$src$SPLib$Format$$Text_)(" as"), $word), ($c$$src$Core$$Cons)(($u$$src$Human$Format$$formatExpression)($env, $type), $c$$src$Core$$Nil)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 568:4', (sp_toHuman)($maybeType))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 572:4', (sp_toHuman)($maybeType))));
 });
 
 const $u$$src$Human$Format$$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $attrs) => {
@@ -7415,7 +7415,7 @@ const $u$$src$Human$Format$$formatRecord = (($env, $isMultiline, $maybeMaybeExt,
             return ($u$$src$Human$Format$$formatExpression)($env, $0);
           }))($ext)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 494:8', (sp_toHuman)($maybeMaybeExt)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 498:8', (sp_toHuman)($maybeMaybeExt)))));
   const $formatRecordAttribute = (($5) => {
     const $maybeExpr = $5.maybeExpr;
     const $name = $5.name;
@@ -7430,7 +7430,7 @@ const $u$$src$Human$Format$$formatRecord = (($env, $isMultiline, $maybeMaybeExt,
             return ($u$$src$SPLib$Format$$addSuffix)(($u$$src$SPLib$Format$$Text_)(" ="), $0);
           }))(($u$$src$Human$Format$$formatExpression)($env, $name)), ($c$$src$Core$$Cons)(($u$$src$Human$Format$$formatExpression)($env, $expr), $c$$src$Core$$Nil)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 510:8', (sp_toHuman)($maybeExpr))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 514:8', (sp_toHuman)($maybeExpr))));
   });
   const $attributeName = (($nameExpr) => {
     const $6 = $nameExpr.name;
@@ -7441,7 +7441,7 @@ const $u$$src$Human$Format$$formatRecord = (($env, $isMultiline, $maybeMaybeExt,
       }))()
       : (true
         ? ""
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 524:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 528:8', (sp_toHuman)($6))));
   });
   return ((($0) => {
     return ($u$$src$Human$Format$$commaSeparatedList)($isMultiline, $open, "}", true, $0);
@@ -7542,7 +7542,7 @@ const $u$$src$Human$Format$$formatStatement = (($env, $stat) => {
               const $unionDef = ($stat)[1];
               return ($u$$src$Human$Format$$formatUnionDef)($env, $unionDef);
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 403:4', (sp_toHuman)($stat)))))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 407:4', (sp_toHuman)($stat)))))));
 });
 
 const $u$$src$Human$Format$$formatStatements = (($env, $sss) => {
@@ -7570,9 +7570,9 @@ const $u$$src$Human$Format$$formatStatements = (($env, $sss) => {
                 ? ($env.isRoot
                   ? (sp_cons)($u$$src$SPLib$Format$$blankLine, (sp_cons)($u$$src$SPLib$Format$$blankLine, $acc))
                   : (sp_cons)($u$$src$SPLib$Format$$blankLine, $acc))
-                : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 382:16', (sp_toHuman)($maybePrevious)))))));
+                : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 386:16', (sp_toHuman)($maybePrevious)))))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 376:8', (sp_toHuman)($stats))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 380:8', (sp_toHuman)($stats))));
   });
   return ($u$$src$SPLib$Format$$stack)(($rec)($c$$src$Maybe$$Nothing, $sss, $c$$src$Core$$Nil));
 });
@@ -7625,7 +7625,7 @@ const $u$$src$Human$Format$$formatTry = (($env, $value, $patterns) => {
           });
           return ($c$$src$List$$map)($formatIndented, $formatted);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 827:8', (sp_toHuman)($4))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 831:8', (sp_toHuman)($4))));
   }))();
   return ($u$$src$SPLib$Format$$stack)(($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$spaceSeparatedOrIndent)(($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$textToBlock)("try"), ($c$$src$Core$$Cons)(($u$$src$Human$Format$$formatExpression)($env, $value), ($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$textToBlock)("as"), $c$$src$Core$$Nil)))), ($c$$src$Core$$Cons)(($u$$src$SPLib$Format$$indent)(($u$$src$SPLib$Format$$stack)($blocks)), $c$$src$Core$$Nil)));
 });
@@ -7639,7 +7639,7 @@ const $u$$src$Human$Format$$unopToText = (($unopId) => {
         ? "!"
         : ((($unopId)[0] === "$UnopRecycle")
           ? "@"
-          : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 635:4', (sp_toHuman)($unopId))))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 639:4', (sp_toHuman)($unopId))))));
 });
 
 const $u$$src$Human$Format$$formatUnopCall = (($env, $unopId, $expr) => {
@@ -7661,7 +7661,7 @@ const $u$$src$Human$Format$$formatUppercase = (($env, $maybeModule, $name) => {
         const $module = ($maybeModule)[1];
         return ($c$$src$Core$$Cons)($module, ($c$$src$Core$$Cons)(".", $c$$src$Core$$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 584:10', (sp_toHuman)($maybeModule)))), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($name, $c$$src$Core$$Nil), $c$$src$Core$$Nil)))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 588:10', (sp_toHuman)($maybeModule)))), ($c$$src$Core$$Cons)(($c$$src$Core$$Cons)($name, $c$$src$Core$$Nil), $c$$src$Core$$Nil)))));
 });
 
 const $u$$src$Human$Format$$formatExpression = (($env, $faExpression) => {
@@ -7778,7 +7778,9 @@ const $u$$src$Human$Format$$formatExpression = (($env, $faExpression) => {
                                       const $value = ($e_)[1].value;
                                       return ($u$$src$Human$Format$$formatTry)($env, $value, $patterns);
                                     }))()
-                                    : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 176:4', (sp_toHuman)($e_))))))))))))))))))));
+                                    : ((($e_)[0] === "$Native")
+                                      ? ($u$$src$SPLib$Format$$textToBlock)("this_is_sp_native")
+                                      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 176:4', (sp_toHuman)($e_)))))))))))))))))))));
 });
 
 const $u$$src$Human$Type$$toExpression = (($0) => {
