@@ -263,10 +263,10 @@ module =
     exposes =
         Value
         Self
-        introspect
         internalRepresentation
         LoadPars
         load
+        toCaModules
 
 module =
    path = Compiler/Ast

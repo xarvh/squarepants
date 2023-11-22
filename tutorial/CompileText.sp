@@ -79,22 +79,72 @@ selfToExposed as fn Self.Self: USR & Self.Self =
         _: todo << "can't create an USR for " .. toHuman self.expression
 
 
-exposedValues as [ USR & Self.Self ] =
-    l1 =
-        [
-        , Self.introspect Html.div
-        , Self.introspect Html.button
-        , Self.introspect Html.onClick
-        , Self.introspect Html.text
-        , Self.introspect Html.style
-        , Self.introspect Html.class
-        ]
-        >> List.map selfToExposed __
-
+#exposedValues as [ USR & Self.Self ] =
+#    l1 =
+#        [
+#        , Self.introspect Html.div
+#        , Self.introspect Html.button
+#        , Self.introspect Html.onClick
+#        , Self.introspect Html.text
+#        , Self.introspect Html.style
+#        , Self.introspect Html.class
+#        ]
+#        >> List.map selfToExposed __
+#
 #    l2 =
 #        [ 'USR ('UMR Meta.'Core "List") "blah" & Self.introspect (fn x: 0.1) ]
+#
+#    [ l1 ] >> List.concat
 
-    [ l1 ] >> List.concat
+
+
+
+
+
+
+
+
+
+textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
+    fn imports, umr, fsPath, content:
+
+    errorModule as Error.Module =
+        {
+        , content
+        , fsPath
+        }
+
+    resolvePars as Meta.ResolvePars Error =
+        {
+        , currentImports = imports
+        , currentModule = umr
+        , loadExports = fn importsPath: 'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
+        , makeError = Error.'raw
+        }
+
+    ro as Compiler/MakeCanonical.ReadOnly =
+        {
+        , errorModule
+        , resolvePars
+        , umr
+        }
+
+    Compiler/MakeCanonical.textToCanonicalModule 'false ro
+
+
+
+loadCaModule as fn Dict UMR CA.Module: fn UMR: Res CA.Module =
+    fn modulesByUmr:
+    fn umr:
+
+    try Dict.get umr modulesByUmr as
+        'just m:
+            'ok m
+        'nothing:
+            [ "Cannot find module: " .. Debug.toHuman umr ]
+            >> Error.'raw
+            >> 'err
+
 
 
 viewErrorWrongType as fn TA.RawType: Html msg =
@@ -128,15 +178,32 @@ main as fn Text: Result (Html msg) CompiledCode =
     entryModule =
         'UMR (Meta.'importsPath Meta.'user "") "" inputFileName
 
+    textToCaModule imports entryModule inputFileName code
+    >> onResSuccess fn caModule:
+
+    modulesByUmr =
+        Self.toCaModules exposedNames
+        >> Dict.insert umr caModule __
+
     {
-    , entryModule
-    , exposedValues
-    , meta
-    , modules = [ entryModule & code ]
-    , umrToFsPath = fn _: inputFileName
+    , loadCaModule = loadCaModule modulesByUmr
+    , requiredUsrs = [ 'USR entryModule "program" ]
     }
-    >> Compiler/Compiler.compileModules
-    >> onResSuccess fn out:
+    >> Compiler/LazyBuild.build
+    >> onResSuccess fn { constructors, rootValues }:
+
+
+#    {
+#    , entryModule
+#    , exposedValues
+#    , meta
+#    , modules = [ entryModule & code ]
+#    , umrToFsPath = fn _: inputFileName
+#    }
+#    >> Compiler/Compiler.compileModules
+#    >> onResSuccess fn out:
+
+
     loadResult as Result TA.RawType CompiledCode =
         Self.load out 'CompiledNumber
         >> Result.onErr fn _:

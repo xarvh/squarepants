@@ -57,31 +57,30 @@ Self =
 toCaModules as fn [ Self ]: Dict UMR CA.Module =
     fn selfs:
     List.for Dict.empty selfs fn self, modulesByUmr:
-
         'USR umr name =
             self.usr
 
-        mod =
+        mod0 =
             try maybeMod as
                 'just m: mod
                 'nothing: CA.initModule "<internal>" umr ""
 
-        try self.def as
+        mod1 =
+            try self.def as
 
-            'valueDef def:
-                { mod with valueDefs = Dict.insert name { def with maybeBody = 'nothing } .valueDefs }
+                'valueDef def:
+                    { mod with valueDefs = Dict.insert name { def with maybeBody = 'nothing } .valueDefs }
 
-            'openVarType def:
-                { mod with
-                , constructorDefs = todo "constructorDefs"
-                , variantTypeDefs = Dict.insert name def .variantTypeDefs
-                }
+                'openVarType def:
+                    { mod with
+                    , constructorDefs = todo "constructorDefs"
+                    , variantTypeDefs = Dict.insert name def .variantTypeDefs
+                    }
 
-            'openAliasType def:
-                { mod with aliasDefs = Dict.insert name def .aliasDefs }
+                'openAliasType def:
+                    { mod with aliasDefs = Dict.insert name def .aliasDefs }
 
-            'opaqueType def:
-                { mod with variantTypeDefs = Dict.insert name { def with constructors = Dict.empty } .variantTypeDefs }
+                'opaqueType def:
+                    { mod with variantTypeDefs = Dict.insert name { def with constructors = Dict.empty } .variantTypeDefs }
 
-        Dict.insert umr mod modulesByUmr
-
+        Dict.insert umr mod1 modulesByUmr

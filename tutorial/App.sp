@@ -174,7 +174,7 @@ tokenToClass as fn Token.Kind: Text =
     try __ as
 
         # Structure
-        Token.'comment:
+        Token.'comment _:
             "comment"
 
         # Structure
@@ -191,7 +191,7 @@ tokenToClass as fn Token.Kind: Text =
             ""
 
         # Terms
-        Token.'textLiteral _:
+        Token.'textLiteral _ _:
             "literal"
 
         Token.'numberLiteral _ _:
@@ -212,13 +212,13 @@ tokenToClass as fn Token.Kind: Text =
         Token.'fn:
             "keyword"
 
-        Token.'if:
+        Token.'if _:
             "keyword"
 
         Token.'then:
             "keyword"
 
-        Token.'else:
+        Token.'else _:
             "keyword"
 
         Token.'try:
@@ -247,17 +247,17 @@ tokenToClass as fn Token.Kind: Text =
         Token.'unop _:
             "op"
 
-        Token.'binop _:
+        Token.'binop _ _:
             "op"
 
         # Parens
         Token.'roundParen _:
             "paren"
 
-        Token.'squareBracket _:
+        Token.'squareBracket _ _:
             "paren"
 
-        Token.'curlyBrace _:
+        Token.'curlyBrace _ _:
             "paren"
 
         Token.'native:
@@ -265,7 +265,7 @@ tokenToClass as fn Token.Kind: Text =
 
 
 viewColorToken as fn Text, Token, Int & [ Html msg ]: Int & [ Html msg ] =
-    fn code, 'token comment tStart tEnd kind, start & accum:
+    fn code, Token.'token tStart tEnd kind, start & accum:
     slice =
         Text.slice start tEnd code
 
@@ -300,7 +300,7 @@ viewEditor as fn Model: Html Msg =
         model.code
 
     highlightedContent as [ Html Msg ] =
-        try Compiler/Lexer.lexer { content = code, fsPath = "" } as
+        try Compiler/Lexer.lexer 'true { content = code, fsPath = "" } as
 
             'err _:
                 [ Html.text code ]

@@ -28,12 +28,76 @@ sourceDir =
           Res
 
     module =
+       path = SPLib/RefHierarchy
+       importAs = RefHierarchy
+
+    module =
+       path = SPLib/Format
+       importAs = Fmt
+
+    module =
+       path = SPLib/Parser
+       importAs = Parser
+
+    module =
        path = Compiler/CoreDefs
        importAs = CoreDefs
 
 
+#    module =
+#       path = Targets/Javascript/Ast
+#       importAs = JA
+#
+#    module =
+#       path = Compiler/TestHelpers
+#       importAs = TH
+#
+#    module =
+#       path = SPLib/Parser
+#       importAs = Parser
+
+
+library =
+    source = "core"
+
     module =
-       path = Types/Ast
+        path = Compiler/Meta
+        importAs = Meta
+        globals =
+            Imports
+            Exports
+            ByUsr
+            USR
+            UMR
+            Source
+            DependencyType
+            'USR
+            'UMR
+            'valueDependency
+            'constructorDependency
+            'typeDependency
+
+    module =
+       path = Compiler/Pos
+       importAs = Pos
+       globals =
+            Pos
+            At
+            'at
+
+    module =
+        path = Compiler/Op
+        importAs = Op
+
+    module =
+        path = Compiler/Token
+        importAs = Token
+        globals =
+            Token
+            'token
+
+    module =
+       path = Compiler/Ast
        importAs = Ast
        globals =
           Name
@@ -48,61 +112,13 @@ sourceDir =
           toImm
           toUni
 
-#    module =
-#       path = Types/CanonicalAst
-#       importAs = CA
-#
-#    module =
-#       path = Types/FormattableAst
-#       importAs = FA
-#
-#    module =
-#       path = Targets/Javascript/Ast
-#       importAs = JA
-#
-#    module =
-#       path = Compiler/TestHelpers
-#       importAs = TH
-#
-#    module =
-#        path = Types/Op
-#        importAs = Op
-#
-#    module =
-#       path = Types/Pos
-#       importAs = Pos
-#       globals =
-#            Pos
-#            At
-#       globals =
-#            'at
-#
-#
-#    module =
-#       path = SPLib/Parser
-#       importAs = Parser
-
-
-library =
-    source = "core"
+    module =
+       path = Compiler/FormattableAst
+       importAs = FA
 
     module =
-        path = Compiler/Meta
-        importAs = Meta
-        globals =
-            Meta
-            ByUsr
-            USR
-            UMR
-            'USR
-            'UMR
-
-    module =
-        path = Compiler/Token
-        importAs = Token
-        globals =
-            Token
-            'token
+       path = Compiler/CanonicalAst
+       importAs = CA
 
     module =
        path = Compiler/TypedAst
