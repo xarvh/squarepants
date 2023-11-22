@@ -51,7 +51,7 @@ onResSuccess as fn fn a: Result (Html msg) b: fn Res a: Result (Html msg) b =
 #
 # Meta
 #
-meta as Imports =
+defaultImports as Imports =
     try ImportsFile.fromText "modules.sp" Platforms/Browser.platform.defaultModules as
 
         'ok m:
@@ -77,6 +77,15 @@ selfToExposed as fn Self.Self: USR & Self.Self =
     try self.expression as
         EA.'variable ('RefGlobal usr): usr & self
         _: todo << "can't create an USR for " .. toHuman self.expression
+
+
+
+
+
+
+
+exposedNames = []
+
 
 
 #exposedValues as [ USR & Self.Self ] =
@@ -175,10 +184,13 @@ main as fn Text: Result (Html msg) CompiledCode =
     inputFileName =
         "user_input"
 
-    entryModule =
+    entryUmr =
         'UMR (Meta.'importsPath Meta.'user "") "" inputFileName
 
-    textToCaModule imports entryModule inputFileName code
+    entryUsr =
+        'USR entryUmr "program"
+
+    textToCaModule defaultImports entryUmr inputFileName code
     >> onResSuccess fn caModule:
 
     modulesByUmr =
@@ -187,31 +199,27 @@ main as fn Text: Result (Html msg) CompiledCode =
 
     {
     , loadCaModule = loadCaModule modulesByUmr
-    , requiredUsrs = [ 'USR entryModule "program" ]
+    , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build
     >> onResSuccess fn { constructors, rootValues }:
 
-
-#    {
-#    , entryModule
-#    , exposedValues
-#    , meta
-#    , modules = [ entryModule & code ]
-#    , umrToFsPath = fn _: inputFileName
-#    }
-#    >> Compiler/Compiler.compileModules
-#    >> onResSuccess fn out:
-
+    lp as Self.LoadPars =
+        {
+        , constructors
+        , defs = rootValues
+        , entryUsr
+        , type = todo "loadPars.type"
+        }
 
     loadResult as Result TA.RawType CompiledCode =
-        Self.load out 'CompiledNumber
+        Self.load lp 'CompiledNumber
         >> Result.onErr fn _:
-        Self.load out 'CompiledText
+        Self.load lp 'CompiledText
         >> Result.onErr fn _:
-        Self.load out 'CompiledShader
+        Self.load lp 'CompiledShader
         >> Result.onErr fn _:
-        Self.load out 'CompiledHtml
+        Self.load lp 'CompiledHtml
 
     loadResult
     >> Result.onErr fn actualCompiledType:
