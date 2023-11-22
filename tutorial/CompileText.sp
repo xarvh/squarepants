@@ -79,11 +79,6 @@ selfToExposed as fn Self.Self: USR & Self.Self =
         _: todo << "can't create an USR for " .. toHuman self.expression
 
 
-
-
-
-
-
 exposedNames = []
 
 
@@ -195,7 +190,7 @@ main as fn Text: Result (Html msg) CompiledCode =
 
     modulesByUmr =
         Self.toCaModules exposedNames
-        >> Dict.insert umr caModule __
+        >> Dict.insert entryUmr caModule __
 
     {
     , loadCaModule = loadCaModule modulesByUmr

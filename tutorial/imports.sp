@@ -28,6 +28,10 @@ sourceDir =
           Res
 
     module =
+       path = SPLib/SPON
+       importAs = SPON
+
+    module =
        path = SPLib/RefHierarchy
        importAs = RefHierarchy
 
@@ -43,11 +47,10 @@ sourceDir =
        path = Compiler/CoreDefs
        importAs = CoreDefs
 
+    module =
+       path = Targets/Javascript/Ast
+       importAs = JA
 
-#    module =
-#       path = Targets/Javascript/Ast
-#       importAs = JA
-#
 #    module =
 #       path = Compiler/TestHelpers
 #       importAs = TH
@@ -106,6 +109,7 @@ library =
           Uniqueness
           'refLocal
           'refGlobal
+          'refPlaceholder
           'uni
           'imm
           'depends
