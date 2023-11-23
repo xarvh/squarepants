@@ -4,6 +4,20 @@ Env =
     }
 
 
+State =
+    {
+    , importsAndSourceDirCount as Int
+    , importsAndSourceDirToId as Hash Text Text
+    }
+
+
+initState as State =
+    {
+    , importsAndSourceDirCount = 0
+    , importsAndSourceDirToId = Hash.fromList []
+    }
+
+
 recycleTempVariable =
     JA.'var "__re__"
 
@@ -11,14 +25,13 @@ recycleTempVariable =
 var Override =
     , 'override
           {
-          , call as fn Env, [ EA.Argument ]: JA.Expr
+          , call as fn @State, Env, [ EA.Argument ]: JA.Expr
           , value as fn Env: JA.Expr
           }
 
 
 coreOverrides as fn None: Dict USR Override =
     fn 'none:
-
     #
     corelib as fn Text, Text: USR =
         fn module, name:
@@ -28,7 +41,8 @@ coreOverrides as fn None: Dict USR Override =
     , CoreDefs.unaryPlus.usr & unaryPlus
     , CoreDefs.unaryMinus.usr & unaryMinus
     #
-    , CoreDefs.add.usr & binop "+"
+    , CoreDefs.add.usr
+    & binop "+"
     , CoreDefs.multiply.usr & binop "*"
     , CoreDefs.subtract.usr & binop "-"
     , CoreDefs.mutableAssign.usr & binop "="
@@ -42,11 +56,13 @@ coreOverrides as fn None: Dict USR Override =
     , CoreDefs.or_.usr & binop "||"
     , CoreDefs.and_.usr & binop "&&"
     #
-    , CoreDefs.trueUsr & constructor "true"
+    , CoreDefs.trueUsr
+    & constructor "true"
     , CoreDefs.falseUsr & constructor "false"
     , CoreDefs.noneConsUsr & constructor "null"
     #
-    , CoreDefs.divide.usr & function "sp_divide"
+    , CoreDefs.divide.usr
+    & function "sp_divide"
     , CoreDefs.listCons.usr & function "sp_cons"
     , CoreDefs.equal.usr & function "sp_equal"
     , CoreDefs.notEqual.usr & function "sp_not_equal"
@@ -56,13 +72,15 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Basics" "cloneUni" & function "basics_cloneUni"
     , corelib "Basics" "compare" & function "basics_compare"
     #
-    , corelib "Debug" "log" & function "sp_log"
+    , corelib "Debug" "log"
+    & function "sp_log"
     , corelib "Debug" "todo" & function "sp_todo"
     , corelib "Debug" "toHuman" & function "sp_toHuman"
     , corelib "Debug" "benchStart" & function "sp_benchStart"
     , corelib "Debug" "benchStop" & function "sp_benchStop"
     #
-    , corelib "Text" "fromNumber" & function "text_fromNumber"
+    , corelib "Text" "fromNumber"
+    & function "text_fromNumber"
     , corelib "Text" "toLower" & function "text_toLower"
     , corelib "Text" "toUpper" & function "text_toUpper"
     , corelib "Text" "toNumber" & function "text_toNumber"
@@ -76,7 +94,8 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Text" "dropLeft" & function "text_dropLeft"
     , corelib "Text" "forEach" & function "text_forEach"
     #
-    , corelib "Hash" "fromList" & function "hash_fromList"
+    , corelib "Hash" "fromList"
+    & function "hash_fromList"
     , corelib "Hash" "insert" & function "hash_insert"
     , corelib "Hash" "remove" & function "hash_remove"
     , corelib "Hash" "get" & function "hash_get"
@@ -84,7 +103,8 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Hash" "each" & function "hash_each"
     , corelib "Hash" "pop" & function "hash_pop"
     #
-    , corelib "Array" "each" & function "array_each"
+    , corelib "Array" "each"
+    & function "array_each"
     , corelib "Array" "push" & function "array_push"
     , corelib "Array" "pop" & function "array_pop"
     , corelib "Array" "get" & function "array_get"
@@ -93,9 +113,11 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Array" "fromList" & function "array_fromList"
     , corelib "Array" "toList" & function "array_toList"
     #
-    , corelib "List" "sortBy" & function "list_sortBy"
+    , corelib "List" "sortBy"
+    & function "list_sortBy"
     #
-    , corelib "Self" "load" & loadOverride
+    , corelib "Self" "load"
+    & loadOverride
     , corelib "Self" "introspect" & introspectOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
@@ -105,12 +127,12 @@ coreOverrides as fn None: Dict USR Override =
 unaryPlus as Override =
     {
     , call =
-        fn env, arguments:
+        fn @state, env, arguments:
         try arguments as
 
             [ EA.'argumentSpend fullType arg ]:
                 # Num.unaryPlus n == n
-                translateExpressionToExpression env arg
+                translateExpressionToExpression @state env arg
 
             _:
                 todo "compiler bug: wrong number of arguments for unop"
@@ -122,12 +144,12 @@ unaryPlus as Override =
 unaryMinus as Override =
     {
     , call =
-        fn env, arguments:
+        fn @state, env, arguments:
         try arguments as
 
             [ EA.'argumentSpend fullType arg ]:
                 # Num.unaryMinus n == -n
-                JA.'unop "-" (translateExpressionToExpression env arg)
+                JA.'unop "-" (translateExpressionToExpression @state env arg)
 
             _:
                 todo "compiler bug: wrong number of arguments for unop"
@@ -140,9 +162,9 @@ binop as fn Text: Override =
     fn jsOp:
     {
     , call =
-        fn env, arguments:
+        fn @state, env, arguments:
         try arguments as
-            [ right, left ]: JA.'binop jsOp (translateArg { nativeBinop = 'true } env right) (translateArg { nativeBinop = 'true } env left)
+            [ right, left ]: JA.'binop jsOp (translateArg @state { nativeBinop = 'true } env right) (translateArg @state { nativeBinop = 'true } env left)
             _: todo << "compiler bug: wrong number of arguments for binop" .. toHuman { arguments, jsOp }
     , value = fn env: todo << "binop " .. jsOp .. " has no raw value"
     }
@@ -152,7 +174,7 @@ binop as fn Text: Override =
 constructor as fn Text: Override =
     fn jsValue:
     {
-    , call = fn env, args: makeCall env (JA.'var jsValue) args
+    , call = fn @state, env, args: makeCall @state env (JA.'var jsValue) args
     , value = fn env: JA.'var jsValue
     }
     >> 'override
@@ -161,7 +183,7 @@ constructor as fn Text: Override =
 function as fn Text: Override =
     fn jaName:
     {
-    , call = fn env, args: makeCall env (JA.'var jaName) args
+    , call = fn @state, env, args: makeCall @state env (JA.'var jaName) args
     , value = fn env: JA.'var jaName
     }
     >> 'override
@@ -172,7 +194,7 @@ function as fn Text: Override =
 #
 introspectOverride as Override =
     call =
-        fn env, eaArgs:
+        fn @state, env, eaArgs:
         try eaArgs as
 
             [ EA.'argumentSpend { with  raw } e ]:
@@ -191,7 +213,7 @@ introspectOverride as Override =
                     JA.'array []
 
                 value as JA.Expr =
-                    translateExpressionToExpression env e
+                    translateExpressionToExpression @state env e
 
                 [
                 , "expression" & expression
@@ -214,9 +236,9 @@ introspectOverride as Override =
 
 loadOverride as Override =
     call =
-        fn env, eaArgs:
+        fn @state, env, eaArgs:
         jaArgs =
-            List.map (translateArg { nativeBinop = 'false } env __) eaArgs
+            List.map (translateArg @state { nativeBinop = 'false } env __) eaArgs
 
         requestedTypeHumanized as JA.Expr =
             try eaArgs as
@@ -246,15 +268,15 @@ loadOverride as Override =
 #
 # Translation
 #
-maybeOverrideUsr as fn Env, USR: JA.Expr =
-    fn env, usr:
+maybeOverrideUsr as fn @State, Env, USR: JA.Expr =
+    fn @state, env, usr:
     try Dict.get usr env.overrides as
         'just ('override { call, value }): value env
-        'nothing: JA.'var (translateUsr usr)
+        'nothing: JA.'var (translateUsr @state usr)
 
 
-maybeOverrideUsrForConstructor as fn Env, USR: JA.Expr =
-    fn env, usr:
+maybeOverrideUsrForConstructor as fn @State, Env, USR: JA.Expr =
+    fn @state, env, usr:
     try Dict.get usr env.overrides as
 
         'just ('override { call, value }):
@@ -262,7 +284,7 @@ maybeOverrideUsrForConstructor as fn Env, USR: JA.Expr =
 
         'nothing:
             usr
-            >> translateUsr
+            >> translateUsr @state __
             >> JA.'var
 
 
@@ -271,10 +293,10 @@ accessAttrs as fn [ Text ], JA.Expr: JA.Expr =
     List.for e attrPath JA.'accessWithDot
 
 
-translateArg as fn { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
-    fn stuff, env, eaExpression:
+translateArg as fn @State, { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
+    fn @state, stuff, env, eaExpression:
     try eaExpression as
-        EA.'argumentSpend fullType e: translateExpressionToExpression env e
+        EA.'argumentSpend fullType e: translateExpressionToExpression @state env e
         EA.'argumentRecycle rawType attrPath name: accessAttrs attrPath (translateName name >> JA.'var)
 
 
@@ -346,18 +368,18 @@ var TranslatedExpression =
     , 'inline JA.Expr
 
 
-translateExpressionToExpression as fn Env, EA.Expression: JA.Expr =
-    fn env, expr:
-    try translateExpression env expr as
+translateExpressionToExpression as fn @State, Env, EA.Expression: JA.Expr =
+    fn @state, env, expr:
+    try translateExpression @state env expr as
         'inline e: e
         'block block: JA.'call (JA.'blockLambda [] block) []
 
 
-makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
-    fn env, jaRef, args:
+makeCall as fn @State, Env, JA.Expr, [ EA.Argument ]: JA.Expr =
+    fn @state, env, jaRef, args:
     call =
         args
-        >> List.map (translateArg { nativeBinop = 'false } env __) __
+        >> List.map (translateArg @state { nativeBinop = 'false } env __) __
         >> JA.'call jaRef __
 
     asRecycled as fn EA.Argument: Maybe JA.Expr =
@@ -408,8 +430,8 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         >> JA.'comma
 
 
-translateExpression as fn Env, EA.Expression: TranslatedExpression =
-    fn env, eaExpression:
+translateExpression as fn @State, Env, EA.Expression: TranslatedExpression =
+    fn @state, env, eaExpression:
     try eaExpression as
 
         EA.'variable ('refLocal name):
@@ -426,7 +448,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
         EA.'variable ('refGlobal usr):
-            maybeOverrideUsr env usr >> 'inline
+            maybeOverrideUsr @state env usr >> 'inline
 
         EA.'call ref args:
             maybeNativeOverride =
@@ -435,8 +457,8 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                     _: 'nothing
 
             try maybeNativeOverride as
-                'just ('override { call, value = _ }): call env args >> 'inline
-                'nothing: makeCall env (translateExpressionToExpression env ref) args >> 'inline
+                'just ('override { call, value = _ }): call @state env args >> 'inline
+                'nothing: makeCall @state env (translateExpressionToExpression @state env ref) args >> 'inline
 
         EA.'fn eaArgs body:
             argsWithNames as [ Bool & Text ] =
@@ -454,7 +476,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                 >> List.map (fn _ & name: JA.'var name) __
 
             statementsRaw as [ JA.Statement ] =
-                try translateExpression env body as
+                try translateExpression @state env body as
                     'inline expr: [ JA.'return expr ]
                     'block block: block
 
@@ -478,21 +500,21 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
 
         EA.'letIn { inExpression, letExpression, maybeName, type }:
             inStatements =
-                try translateExpression env inExpression as
+                try translateExpression @state env inExpression as
                     'block stats: stats
                     'inline jaExpression: [ JA.'return jaExpression ]
 
             try maybeName as
 
                 'nothing:
-                    try translateExpression env letExpression as
+                    try translateExpression @state env letExpression as
                         'inline expr: 'block << JA.'eval expr :: inStatements
                         'block stats: 'block << List.concat [ stats, inStatements ]
 
                 'just name:
                     letStatement =
                         letExpression
-                        >> translateExpressionToExpression env __
+                        >> translateExpressionToExpression @state env __
                         >> JA.'define (type.uni == 'uni) (translateName name) __
 
                     'block << letStatement :: inStatements
@@ -506,11 +528,11 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
         EA.'conditional test true false:
-            JA.'conditional (translateExpressionToExpression env test) (translateExpressionToExpression env true) (translateExpressionToExpression env false) >> 'inline
+            JA.'conditional (translateExpressionToExpression @state env test) (translateExpressionToExpression @state env true) (translateExpressionToExpression @state env false) >> 'inline
 
         EA.'and eaTests:
             jaTests =
-                List.map (translateExpressionToExpression env __) eaTests
+                List.map (translateExpressionToExpression @state env __) eaTests
 
             try List.reverse jaTests as
 
@@ -523,29 +545,29 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                     >> 'inline
 
         EA.'shallowEqual a b:
-            JA.'binop "===" (translateExpressionToExpression env a) (translateExpressionToExpression env b) >> 'inline
+            JA.'binop "===" (translateExpressionToExpression @state env a) (translateExpressionToExpression @state env b) >> 'inline
 
         EA.'literalArray items:
             items
-            >> List.map (translateExpressionToExpression env __) __
+            >> List.map (translateExpressionToExpression @state env __) __
             >> JA.'array
             >> 'inline
 
         EA.'arrayAccess index array:
             array
-            >> translateExpressionToExpression env __
+            >> translateExpressionToExpression @state env __
             >> accessArrayIndex index __
             >> 'inline
 
         EA.'constructor usr:
-            maybeOverrideUsrForConstructor env usr >> 'inline
+            maybeOverrideUsrForConstructor @state env usr >> 'inline
 
         EA.'constructorAccess argIndex value:
-            accessArrayIndex (argIndex + 1) (translateExpressionToExpression env value) >> 'inline
+            accessArrayIndex (argIndex + 1) (translateExpressionToExpression @state env value) >> 'inline
 
         EA.'isConstructor usr eaValue:
             jaValue =
-                translateExpressionToExpression env eaValue
+                translateExpressionToExpression @state env eaValue
 
             if usr == CoreDefs.noneConsUsr then
                 JA.'var "true" >> 'inline
@@ -567,7 +589,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             obj =
                 Dict.empty
                 >> List.for __ attrNamesAndValues fn name & value, d:
-                    Dict.insert name (translateExpressionToExpression env value) d
+                    Dict.insert name (translateExpressionToExpression @state env value) d
                 >> JA.'record
 
             try maybeExtend as
@@ -580,27 +602,26 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                         (JA.'var "Object.assign")
                         [
                         , JA.'record Dict.empty
-                        , translateExpressionToExpression env extend
+                        , translateExpressionToExpression @state env extend
                         , obj
                         ]
                     >> 'inline
 
         EA.'recordAccess attrName value:
-            JA.'accessWithDot attrName (translateExpressionToExpression env value) >> 'inline
+            JA.'accessWithDot attrName (translateExpressionToExpression @state env value) >> 'inline
 
         EA.'missingPattern location value:
             [
             , JA.'literal "'Missing pattern in try..as'"
             , JA.'literal ("'" .. location .. "'")
-            , JA.'call (JA.'literal "sp_toHuman") [ translateExpressionToExpression env value ]
+            , JA.'call (JA.'literal "sp_toHuman") [ translateExpressionToExpression @state env value ]
             ]
             >> JA.'call (JA.'literal "sp_throw") __
             >> 'inline
 
 
-translateConstructorDef as fn USR & TA.RawType: JA.Statement =
-    fn usr & taType:
-
+translateConstructorDef as fn @State, USR & TA.RawType: JA.Statement =
+    fn @state, usr & taType:
     'USR umr nameWithApostrophe =
         usr
 
@@ -622,14 +643,14 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    JA.'define 'false (translateUsr usr) definitionBody
+    JA.'define 'false (translateUsr @state usr) definitionBody
 
 
-translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
-    fn env, def:
+translateDef as fn @State, Env, EA.GlobalDefinition: Maybe JA.Statement =
+    fn @state, env, def:
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
-        'nothing: JA.'define 'false (translateUsr def.usr) (translateExpressionToExpression env def.expr) >> 'just
+        'nothing: JA.'define 'false (translateUsr @state def.usr) (translateExpressionToExpression @state env def.expr) >> 'just
 
 
 translateRoot as fn Meta.RootDirectory: Text =
@@ -639,34 +660,40 @@ translateRoot as fn Meta.RootDirectory: Text =
         Meta.'installed: "i"
 
 
-sanitizePath as fn Text: Text =
-    fn path:
+translateUmr as fn @State, UMR: Text =
+    fn @state, 'UMR (Meta.'importsPath root importsDir) sourceDir modulePath:
+    r =
+        translateRoot root
 
-    if path /= "" and (Text.startsWithRegex "[A-Za-z_$/]*$") path == "" then
-        # TODO
-        "Invalid character in path: " .. path .. " (hopefully at some point this limit will be fixed)"
-        >> todo
-    else
-        Text.replace "/" "$" path
+    address =
+        importsDir .. "@" .. sourceDir
+
+    id =
+        try Hash.get @state.importsAndSourceDirToId address as
+
+            'just id_:
+                id_
+
+            'nothing:
+                id_ =
+                    Text.fromNumber (cloneUni @state.importsAndSourceDirCount)
+
+                @state.importsAndSourceDirCount += 1
+
+                Hash.insert @state.importsAndSourceDirToId address id_
+
+                id_
+
+    r .. id .. Text.replace "/" "$" modulePath
 
 
-translateUsr as fn USR: Text =
-    fn 'USR ('UMR (Meta.'importsPath root importsDir) sourceDir modulePath) name:
-
-    [
-    , ""
-    , translateRoot root
-    , sanitizePath importsDir
-    , sanitizePath sourceDir
-    , sanitizePath modulePath
-    , translateName name
-    ]
-    >> Text.join "$" __
+translateUsr as fn @State, USR: Text =
+    fn @state, 'USR umr name:
+    translateUmr @state umr .. "$" .. translateName name
 
 
 translateName as fn Name: Text =
     fn name:
-
     if Text.startsWith "'" name then
         head =
             Text.slice 1 2 name
@@ -675,10 +702,8 @@ translateName as fn Name: Text =
             Text.slice 2 9999 name
 
         "$" .. Text.toUpper head .. rest
-
     else
         "$" .. name
-
 
 
 TranslateAllPars =
@@ -689,13 +714,13 @@ TranslateAllPars =
     }
 
 
-translateAll as fn TranslateAllPars: [ JA.Statement ] =
-    fn pars:
+translateAll as fn @State, TranslateAllPars: [ JA.Statement ] =
+    fn @state, pars:
     { constructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [ JA.Statement ] =
-        List.map (translateConstructorDef __) constructors
+        List.map (translateConstructorDef @state __) constructors
 
     env as Env =
         {
@@ -705,6 +730,6 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         }
 
     jaStatements as [ JA.Statement ] =
-        List.filterMap (translateDef env __) eaDefs
+        List.filterMap (translateDef @state env __) eaDefs
 
     List.concat [ jaConstructors, jaStatements ]

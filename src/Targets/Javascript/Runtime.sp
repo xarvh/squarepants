@@ -1,4 +1,3 @@
-
 listConsName as Text =
     Targets/Javascript/EmittableToJs.translateName CoreDefs.consName
 
@@ -7,15 +6,14 @@ listNilName as Text =
     Targets/Javascript/EmittableToJs.translateName CoreDefs.nilName
 
 
-nothingRef as Text =
-    Targets/Javascript/EmittableToJs.translateUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
+nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
+    fn @state:
+    nothingRef as Text =
+        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
 
+    justRef as Text =
+        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
 
-justRef as Text =
-    Targets/Javascript/EmittableToJs.translateUsr ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
-
-
-nativeDefinitions as Text =
     """
     let __re__;
 
@@ -315,225 +313,286 @@ nativeDefinitions as Text =
     const text_toNumber = (t) => {
         const n = +t;
 
-        return isNaN(n) ? """ .. nothingRef .. """ : """ .. justRef .. """(n);
-    }
-
-    const text_toLower = (s) => s.toLowerCase()
-
-    const text_toUpper = (s) => s.toUpperCase()
-
-    const text_split = (separator, target) => arrayToListLow(target.split(separator));
-
-    const text_length = (s) => s.length;
-
-    const text_slice = (start, end, s) => s.slice(start, end);
-
-    const text_startsWith = (sub, s) => s.startsWith(sub);
-
-    const text_startsWithRegex = (regex) => {
-      let re;
-      try {
-        re = new RegExp('^' + regex, 's');
-      } catch (e) {
-        return () => ""
-      }
-
-      return (s) => {
-        let m = s.match(re);
-        return m ? m[0] : "";
-      }
-    }
-
-    const text_replaceRegex = (regex) => {
-      let re;
-      try {
-        re = new RegExp(regex, 'g');
-      } catch (e) {
-        return () => ""
-      }
-
-      return (replacer, s) => s.replace(re, replacer);
-    }
-
-    const text_trimLeft = (s) => s.trimLeft();
-
-    const text_dropLeft = (n, s) => s.slice(n);
-
-    const text_forEach = (s, f) => {
-      for (let i of s) f(i);
-      return null;
-    }
-
-
-    //
-    // Hashes
-    //
-
-    const hash_pop = (hash) => {
-        for (let key in hash) {
-            const [actualKey, value] = hash[key];
-            delete hash[key];
-            return [ """ .. justRef .. """({ first: actualKey, second: value }), hash ];
+        return isNaN(n) ?
+    """
+    .. nothingRef
+    .. """
+     :
+    """
+    .. justRef
+    .. """
+    (n);
         }
 
-        return [ """ .. nothingRef .. """, hash ];
-    }
+        const text_toLower = (s) => s.toLowerCase()
 
+        const text_toUpper = (s) => s.toUpperCase()
 
-    const hash_fromList = (list) => {
-      const hash = {};
+        const text_split = (separator, target) => arrayToListLow(target.split(separator));
 
-      // TODO iteration instead of recursion
-      const rec = (ls) => {
-        if (ls[0] === '""" .. listNilName .. """')
-          return hash;
+        const text_length = (s) => s.length;
 
-        const { first, second } = ls[1];
+        const text_slice = (start, end, s) => s.slice(start, end);
 
-        hash[JSON.stringify(first)] = [first, second];
+        const text_startsWith = (sub, s) => s.startsWith(sub);
 
-        return rec(ls[2]);
-      };
+        const text_startsWithRegex = (regex) => {
+          let re;
+          try {
+            re = new RegExp('^' + regex, 's');
+          } catch (e) {
+            return () => ""
+          }
 
-      return rec(list);
-    }
-
-
-    const hash_insert = (hash, key, value) => {
-        hash[JSON.stringify(key)] = [key, value];
-        return [null, hash];
-    }
-
-
-    const hash_remove = (hash, key) => {
-        delete hash[JSON.stringify(key)];
-        return [null, hash];
-    }
-
-
-    const hash_get = (hash, key) => {
-        const r = hash[JSON.stringify(key)];
-        return [r === undefined ? """ .. nothingRef .. """ : """ .. justRef .. """(r[1]), hash];
-    }
-
-
-    const hash_for = (hash, f, acc) => {
-        for (let k in hash) {
-            const kv = hash[k];
-            acc = f(kv[0], kv[1], acc);
-        }
-        return [acc, hash];
-    }
-
-
-    const hash_each = (hash, f) => {
-        for (let k in hash) {
-            const kv = hash[k];
-            f(kv[0], kv[1]);
-        }
-        return [null, hash];
-    }
-
-
-    //
-    // Arrays
-    //
-
-    const array_each = (array, f) => {
-        array.forEach(f);
-        return [null, array];
-    }
-
-    const array_push = (array, item) => {
-        array.push(item);
-        return [null, array];
-    }
-
-    const array_pop = (a) => {
-        return [a.length ? """ .. justRef .. """(a.pop()) : """ .. nothingRef .. """, a];
-    }
-
-    const array_get = (array, index) => {
-        const r = array[index];
-        return [r === undefined ? """ .. nothingRef .. """ : """ .. justRef .. """(r), array];
-    }
-
-    const array_set = (a, index, item) => {
-        if (index < 0) return false;
-        if (index >= a.length) return [false, a];
-        a[index] = item;
-        return [true, a];
-    }
-
-    const array_sortBy = (arr, f) => {
-        arr.sort((a, b) => basics_compare(f(a), f(b)));
-        return [null, arr];
-    }
-
-    const arrayToListLow = (arr) => {
-      const length = arr.length;
-      let list = [ '""" .. listNilName .. """' ];
-      for (let i = length - 1; i >= 0; i--) {
-          list = [ '""" .. listConsName .. """', arr[i], list ];
-      }
-      return list;
-    }
-
-    const array_toList = (arr) => [arrayToListLow(arr), arr];
-
-
-    const arrayFromListLow = (list) => {
-      const array = [];
-      const rec = (ls) => {
-        if (ls[0] === '""" .. listNilName .. """')
-          return array;
-
-        array.push(ls[1]);
-        return rec(ls[2]);
-      };
-
-      return rec(list);
-    }
-
-    const array_fromList = arrayFromListLow;
-
-
-    //
-    // Lists
-    //
-
-
-    const sp_cons = (item, list) => {
-      return [ '""" .. listConsName .. """', item, list];
-    }
-
-    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));
-
-
-    //
-    // Dynamic loading
-    //
-    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {
-
-        const actualTypeHumanized = sp_toHuman(pars.type);
-        if (actualTypeHumanized !== requestedTypeHumanized) {
-            return [ 'Err', pars.type ];
+          return (s) => {
+            let m = s.match(re);
+            return m ? m[0] : "";
+          }
         }
 
-        // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
-        // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
-        const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;
-        const js = $sd1$Platforms$Browser$compile(pars);
+        const text_replaceRegex = (regex) => {
+          let re;
+          try {
+            re = new RegExp(regex, 'g');
+          } catch (e) {
+            return () => ""
+          }
 
-        //   { name1, name2, name3, ... } = externals;
-        const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';
+          return (replacer, s) => s.replace(re, replacer);
+        }
 
-        const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;
+        const text_trimLeft = (s) => s.trimLeft();
 
-        const arg = {};
-        pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);
+        const text_dropLeft = (n, s) => s.slice(n);
 
-        return [ 'wwwwok', variantConstructor(Function('externs', body)(arg)) ];
-    };
+        const text_forEach = (s, f) => {
+          for (let i of s) f(i);
+          return null;
+        }
+
+
+        //
+        // Hashes
+        //
+
+        const hash_pop = (hash) => {
+            for (let key in hash) {
+                const [actualKey, value] = hash[key];
+                delete hash[key];
+                return [
+    """
+    .. justRef
+    .. """
+    ({ first: actualKey, second: value }), hash ];
+            }
+
+            return [
+    """
+    .. nothingRef
+    .. """
+    , hash ];
+        }
+
+
+        const hash_fromList = (list) => {
+          const hash = {};
+
+          // TODO iteration instead of recursion
+          const rec = (ls) => {
+            if (ls[0] === '
+    """
+    .. listNilName
+    .. """
+    ')
+              return hash;
+
+            const { first, second } = ls[1];
+
+            hash[JSON.stringify(first)] = [first, second];
+
+            return rec(ls[2]);
+          };
+
+          return rec(list);
+        }
+
+
+        const hash_insert = (hash, key, value) => {
+            hash[JSON.stringify(key)] = [key, value];
+            return [null, hash];
+        }
+
+
+        const hash_remove = (hash, key) => {
+            delete hash[JSON.stringify(key)];
+            return [null, hash];
+        }
+
+
+        const hash_get = (hash, key) => {
+            const r = hash[JSON.stringify(key)];
+            return [r === undefined ?
+    """
+    .. nothingRef
+    .. """
+     :
+    """
+    .. justRef
+    .. """
+    (r[1]), hash];
+        }
+
+
+        const hash_for = (hash, f, acc) => {
+            for (let k in hash) {
+                const kv = hash[k];
+                acc = f(kv[0], kv[1], acc);
+            }
+            return [acc, hash];
+        }
+
+
+        const hash_each = (hash, f) => {
+            for (let k in hash) {
+                const kv = hash[k];
+                f(kv[0], kv[1]);
+            }
+            return [null, hash];
+        }
+
+
+        //
+        // Arrays
+        //
+
+        const array_each = (array, f) => {
+            array.forEach(f);
+            return [null, array];
+        }
+
+        const array_push = (array, item) => {
+            array.push(item);
+            return [null, array];
+        }
+
+        const array_pop = (a) => {
+            return [a.length ?
+    """
+    .. justRef
+    .. """
+    (a.pop()) :
+    """
+    .. nothingRef
+    .. """
+    , a];
+        }
+
+        const array_get = (array, index) => {
+            const r = array[index];
+            return [r === undefined ?
+    """
+    .. nothingRef
+    .. """
+     :
+    """
+    .. justRef
+    .. """
+    (r), array];
+        }
+
+        const array_set = (a, index, item) => {
+            if (index < 0) return false;
+            if (index >= a.length) return [false, a];
+            a[index] = item;
+            return [true, a];
+        }
+
+        const array_sortBy = (arr, f) => {
+            arr.sort((a, b) => basics_compare(f(a), f(b)));
+            return [null, arr];
+        }
+
+        const arrayToListLow = (arr) => {
+          const length = arr.length;
+          let list = [ '
+    """
+    .. listNilName
+    .. """
+    ' ];
+          for (let i = length - 1; i >= 0; i--) {
+              list = [ '
+    """
+    .. listConsName
+    .. """
+    ', arr[i], list ];
+          }
+          return list;
+        }
+
+        const array_toList = (arr) => [arrayToListLow(arr), arr];
+
+
+        const arrayFromListLow = (list) => {
+          const array = [];
+          const rec = (ls) => {
+            if (ls[0] === '
+    """
+    .. listNilName
+    .. """
+    ')
+              return array;
+
+            array.push(ls[1]);
+            return rec(ls[2]);
+          };
+
+          return rec(list);
+        }
+
+        const array_fromList = arrayFromListLow;
+
+
+        //
+        // Lists
+        //
+
+
+        const sp_cons = (item, list) => {
+          return [ '
+    """
+    .. listConsName
+    .. """
+    ', item, list];
+        }
+
+        const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));
+
+
+        //
+        // Dynamic loading
+        //
+        const self_load = (requestedTypeHumanized, pars, variantConstructor) => {
+
+            const actualTypeHumanized = sp_toHuman(pars.type);
+            if (actualTypeHumanized !== requestedTypeHumanized) {
+                return [ 'Err', pars.type ];
+            }
+
+            // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
+            // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
+            const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;
+            const js = $sd1$Platforms$Browser$compile(pars);
+
+            //   { name1, name2, name3, ... } = externals;
+            const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';
+
+            const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;
+
+            const arg = {};
+            pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);
+
+            return [ 'wwwwok', variantConstructor(Function('externs', body)(arg)) ];
+        };
+
 
     """

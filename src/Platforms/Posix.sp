@@ -16,20 +16,19 @@ defaultImportsFile as ImportsFile =
         , "Path" & []
         ]
 
-
-makeOk as Text =
-    'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr
-
-
-makeErr as Text =
-    'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr
-
+State =
+    Targets/Javascript/EmittableToJs.State
 
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath:
     fn out:
+
+    !state as State =
+        cloneImm Targets/Javascript/EmittableToJs.initState
+
+
     entryName =
-        Targets/Javascript/EmittableToJs.translateUsr out.entryUsr
+        Targets/Javascript/EmittableToJs.translateUsr @state out.entryUsr
 
     callMain =
         """
@@ -43,11 +42,11 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
         (null, process.env, args)[0];
         """
 
-    compiledStatements =
+    compiledStatements as Text =
         log "Creating JS AST..." ""
 
         jaStatements =
-            Targets/Javascript/EmittableToJs.translateAll
+            Targets/Javascript/EmittableToJs.translateAll @state
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs
@@ -60,7 +59,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
         >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. callMain
+    header .. Targets/Javascript/Runtime.nativeDefinitions @state .. runtime @state .. compiledStatements .. callMain
 
 
 header as Text =
@@ -98,7 +97,16 @@ overrides as fn Meta.ImportsPath: [ USR & Text ] =
     ]
 
 
-runtime as Text =
+runtime as fn @State: Text =
+    fn @state:
+
+    makeOk as Text =
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr @state __
+
+    makeErr as Text =
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr @state __
+
+
     """
 
     //

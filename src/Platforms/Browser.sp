@@ -23,12 +23,17 @@ virtualDomUsr as fn Meta.ImportsPath: fn Name: USR =
     fn platformImportsPath:
     'USR ('UMR platformImportsPath "src/" "VirtualDom") __
 
-compile as fn Meta.ImportsPath, Self.LoadPars: Text =
-    fn platformImportsPath, out:
+
+State =
+    Targets/Javascript/EmittableToJs.State
+
+
+compile as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
+    fn @state, platformImportsPath, out:
     log "Creating JS AST..." ""
 
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll
+        Targets/Javascript/EmittableToJs.translateAll @state
             {
             , constructors = out.constructors
             , eaDefs = out.defs
@@ -44,12 +49,16 @@ compile as fn Meta.ImportsPath, Self.LoadPars: Text =
 
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath: fn out:
+
+    !state as State =
+        cloneImm Targets/Javascript/EmittableToJs.initState
+
     compiledStatements =
-        compile platformImportsPath out
+        compile @state platformImportsPath out
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer platformImportsPath out
+    header .. Targets/Javascript/Runtime.nativeDefinitions @state .. runtime .. compiledStatements .. footer @state platformImportsPath out
 
 
 overrides as fn (fn Name: USR): [ USR & Text ] =
@@ -77,15 +86,15 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn Meta.ImportsPath, Self.LoadPars: Text =
-    fn platformImportsPath, pars:
+footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
+    fn @state, platformImportsPath, pars:
     mainName =
-        Targets/Javascript/EmittableToJs.translateUsr pars.entryUsr
+        Targets/Javascript/EmittableToJs.translateUsr @state pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
         >> virtualDomUsr platformImportsPath
-        >> Targets/Javascript/EmittableToJs.translateUsr
+        >> Targets/Javascript/EmittableToJs.translateUsr @state __
 
     """
 
