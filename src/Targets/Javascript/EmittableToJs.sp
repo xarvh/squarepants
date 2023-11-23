@@ -249,8 +249,10 @@ loadOverride as Override =
 
                     compiledType
                     >> TA.normalizeType @hash __
-                    # TODO: once we have proper encoders, we can use those
+                    # TODO: This is a horrid workaround, we should use a dedicated function or a decoder, or even better, unify the types
                     >> toHuman
+                    >> Text.replace "\"" "" __
+                    >> Text.replace "\n" "" __
                     >> literalString
 
                 _:

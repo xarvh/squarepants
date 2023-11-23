@@ -498,7 +498,7 @@ const text_toNumber = (t) => {
     //
     const self_load = (requestedTypeHumanized, pars, variantConstructor) => {
 
-        const actualTypeHumanized = sp_toHuman(pars.type);
+        const actualTypeHumanized = sp_toHuman(pars.type).replace('"', '').replace('\n', '');
         if (actualTypeHumanized !== requestedTypeHumanized) {
             return [ 'Err', pars.type ];
         }
@@ -19055,7 +19055,7 @@ const u0Targets$Javascript$EmittableToJs$makeCall = (($state, $env, $jaRef, $arg
             return (u0Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, $0);
           }))((u0Targets$Javascript$Ast$Var)((u0Targets$Javascript$EmittableToJs$translateName)($name))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 387:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 389:8', (sp_toHuman)($arg))));
   });
   const $recycledArgs = (c0List$filterMap)($asRecycled, $args);
   return ([
@@ -19081,7 +19081,7 @@ const u0Targets$Javascript$EmittableToJs$translateRoot = (($0) => {
       ? "u"
       : ((($0)[0] === "$Installed")
         ? "i"
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 657:4', (sp_toHuman)($0)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 659:4', (sp_toHuman)($0)))));
 });
 
 const u0Targets$Javascript$EmittableToJs$translateUmr = (($state, $1) => {
@@ -19105,7 +19105,7 @@ const u0Targets$Javascript$EmittableToJs$translateUmr = (($state, $1) => {
           ((__re__ = (hash_insert)($state.importsAndSourceDirToId, $address, $id_)), ($state.importsAndSourceDirToId = (__re__)[1]), (__re__)[0]);
           return $id_;
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 672:8', (sp_toHuman)($3))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 674:8', (sp_toHuman)($3))));
   }))();
   return ([
     ($r + ($id + (c0Text$replace)("/", "$", $modulePath))),
@@ -19133,7 +19133,7 @@ const u0Targets$Javascript$EmittableToJs$maybeOverrideUsr = (($state, $env, $usr
       }))()
       : ((($4)[0] === "$Nothing")
         ? (u0Targets$Javascript$Ast$Var)(((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, $usr)), ($state = (__re__)[1]), (__re__)[0]))
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 273:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 275:4', (sp_toHuman)($4)))),
     $state,
   ]);
 });
@@ -19151,7 +19151,7 @@ const u0Targets$Javascript$EmittableToJs$maybeOverrideUsrForConstructor = (($sta
         ? (u0Targets$Javascript$Ast$Var)(((($0) => {
           return ((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, $0)), ($state = (__re__)[1]), (__re__)[0]);
         }))($usr))
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 280:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 282:4', (sp_toHuman)($4)))),
     $state,
   ]);
 });
@@ -19184,7 +19184,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                 }))()
                 : (true
                   ? c0Maybe$Nothing
-                  : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 455:16', (sp_toHuman)($ref))));
+                  : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 457:16', (sp_toHuman)($ref))));
               return (((($maybeNativeOverride)[0] === "$Just") && ((($maybeNativeOverride)[1])[0] === "$Override"))
                 ? ((() => {
                   const $call = (($maybeNativeOverride)[1])[1].call;
@@ -19192,7 +19192,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                 }))()
                 : ((($maybeNativeOverride)[0] === "$Nothing")
                   ? (u0Targets$Javascript$EmittableToJs$Inline)(((__re__ = (u0Targets$Javascript$EmittableToJs$makeCall)($state, $env, ((__re__ = (u0Targets$Javascript$EmittableToJs$translateExpressionToExpression)($state, $env, $ref)), ($state = (__re__)[1]), (__re__)[0]), $args)), ($state = (__re__)[1]), (__re__)[0]))
-                  : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 459:12', (sp_toHuman)($maybeNativeOverride))));
+                  : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 461:12', (sp_toHuman)($maybeNativeOverride))));
             }))()
             : ((($eaExpression)[0] === "$Fn")
               ? ((() => {
@@ -19215,7 +19215,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                           first: $re,
                           second: ("_" + (text_fromNumber)($index)),
                         })
-                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 467:20', (sp_toHuman)($maybeName))));
+                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 469:20', (sp_toHuman)($maybeName))));
                   });
                   return (c0List$indexedMap)($zzz, $eaArgs);
                 }))();
@@ -19239,7 +19239,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                         const $block = ($4)[1];
                         return $block;
                       }))()
-                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 479:16', (sp_toHuman)($4))));
+                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 481:16', (sp_toHuman)($4))));
                 }))();
                 const $statementsFinal = ((sp_equal)($recycledPars, c0Core$Nil)
                   ? $statementsRaw
@@ -19252,7 +19252,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                         }))()
                         : (true
                           ? $stat
-                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 493:24', (sp_toHuman)($stat))));
+                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 495:24', (sp_toHuman)($stat))));
                     });
                     return (c0List$map)($addRecycled, $statementsRaw);
                   }))());
@@ -19276,7 +19276,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                           const $jaExpression = ($4)[1];
                           return (c0Core$Cons)((u0Targets$Javascript$Ast$Return)($jaExpression), c0Core$Nil);
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 503:16', (sp_toHuman)($4))));
+                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 505:16', (sp_toHuman)($4))));
                   }))();
                   return ((($maybeName)[0] === "$Nothing")
                     ? ((() => {
@@ -19291,7 +19291,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                             const $stats = ($4)[1];
                             return (u0Targets$Javascript$EmittableToJs$Block)((c0List$concat)((c0Core$Cons)($stats, (c0Core$Cons)($inStatements, c0Core$Nil))));
                           }))()
-                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 510:20', (sp_toHuman)($4))));
+                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 512:20', (sp_toHuman)($4))));
                     }))()
                     : ((($maybeName)[0] === "$Just")
                       ? ((() => {
@@ -19303,7 +19303,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                         }))($letExpression));
                         return (u0Targets$Javascript$EmittableToJs$Block)((sp_cons)($letStatement, $inStatements));
                       }))()
-                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 507:12', (sp_toHuman)($maybeName))));
+                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 509:12', (sp_toHuman)($maybeName))));
                 }))()
                 : ((($eaExpression)[0] === "$LiteralText")
                   ? ((() => {
@@ -19341,7 +19341,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                                   }));
                                 }))($head));
                               }))()
-                              : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 537:12', (sp_toHuman)($4))));
+                              : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 539:12', (sp_toHuman)($4))));
                         }))()
                         : ((($eaExpression)[0] === "$ShallowEqual")
                           ? ((() => {
@@ -19416,7 +19416,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                                               const $extend = ($maybeExtend)[1];
                                               return (u0Targets$Javascript$EmittableToJs$Inline)((u0Targets$Javascript$Ast$Call)((u0Targets$Javascript$Ast$Var)("Object.assign"), (c0Core$Cons)((u0Targets$Javascript$Ast$Record)(c0Dict$empty), (c0Core$Cons)(((__re__ = (u0Targets$Javascript$EmittableToJs$translateExpressionToExpression)($state, $env, $extend)), ($state = (__re__)[1]), (__re__)[0]), (c0Core$Cons)($obj, c0Core$Nil)))));
                                             }))()
-                                            : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 595:12', (sp_toHuman)($maybeExtend))));
+                                            : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 597:12', (sp_toHuman)($maybeExtend))));
                                       }))()
                                       : ((($eaExpression)[0] === "$RecordAccess")
                                         ? ((() => {
@@ -19432,7 +19432,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpression = (($state, $env, $
                                               return (u0Targets$Javascript$Ast$Call)((u0Targets$Javascript$Ast$Literal)("sp_throw"), $0);
                                             }))((c0Core$Cons)((u0Targets$Javascript$Ast$Literal)("'Missing pattern in try..as'"), (c0Core$Cons)((u0Targets$Javascript$Ast$Literal)(("'" + ($location + "'"))), (c0Core$Cons)((u0Targets$Javascript$Ast$Call)((u0Targets$Javascript$Ast$Literal)("sp_toHuman"), (c0Core$Cons)(((__re__ = (u0Targets$Javascript$EmittableToJs$translateExpressionToExpression)($state, $env, $value)), ($state = (__re__)[1]), (__re__)[0]), c0Core$Nil)), c0Core$Nil)))));
                                           }))()
-                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 435:4', (sp_toHuman)($eaExpression))))))))))))))))))))),
+                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 437:4', (sp_toHuman)($eaExpression))))))))))))))))))))),
     $state,
   ]);
 });
@@ -19450,7 +19450,7 @@ const u0Targets$Javascript$EmittableToJs$translateExpressionToExpression = (($st
           const $block = ($4)[1];
           return (u0Targets$Javascript$Ast$Call)((u0Targets$Javascript$Ast$BlockLambda)(c0Core$Nil, $block), c0Core$Nil);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 373:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 375:4', (sp_toHuman)($4)))),
     $state,
   ]);
 });
@@ -19470,7 +19470,7 @@ const u0Targets$Javascript$EmittableToJs$translateArg = (($state, $stuff, $env, 
           const $name = ($eaExpression)[3];
           return (u0Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, (u0Targets$Javascript$Ast$Var)((u0Targets$Javascript$EmittableToJs$translateName)($name)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 298:4', (sp_toHuman)($eaExpression)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 300:4', (sp_toHuman)($eaExpression)))),
     $state,
   ]);
 });
@@ -19583,9 +19583,13 @@ const u0Targets$Javascript$EmittableToJs$loadOverride = ((() => {
         const $compiledProgram = ($eaArgs)[1];
         const $compiledType = (((((($eaArgs)[2])[1])[1].raw)[1])[1])[1].raw;
         let $hash = (hash_fromList)(c0Core$Nil);
-        return (u0Targets$Javascript$EmittableToJs$literalString)((sp_toHuman)(((($0) => {
+        return (u0Targets$Javascript$EmittableToJs$literalString)(((($0) => {
+          return (c0Text$replace)("\n", "", $0);
+        }))(((($0) => {
+          return (c0Text$replace)("\"", "", $0);
+        }))((sp_toHuman)(((($0) => {
           return ((__re__ = (c0Compiler$TypedAst$normalizeType)($hash, $0)), ($hash = (__re__)[1]), (__re__)[0]);
-        }))($compiledType)));
+        }))($compiledType)))));
       }))()
       : (true
         ? (sp_todo)("loadOverride BUG?!")
@@ -19868,7 +19872,7 @@ const u0Targets$Javascript$EmittableToJs$translateConstructorDef = (($state, $1)
     }))()
     : (true
       ? (u0Targets$Javascript$Ast$Array)((c0Core$Cons)($arrayHead, c0Core$Nil))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 633:8', (sp_toHuman)($taType))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 635:8', (sp_toHuman)($taType))));
   return ([
     (u0Targets$Javascript$Ast$Define)(false, ((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, $usr)), ($state = (__re__)[1]), (__re__)[0]), $definitionBody),
     $state,
@@ -19882,7 +19886,7 @@ const u0Targets$Javascript$EmittableToJs$translateDef = (($state, $env, $def) =>
       ? c0Maybe$Nothing
       : ((($4)[0] === "$Nothing")
         ? (c0Maybe$Just)((u0Targets$Javascript$Ast$Define)(false, ((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, $def.usr)), ($state = (__re__)[1]), (__re__)[0]), ((__re__ = (u0Targets$Javascript$EmittableToJs$translateExpressionToExpression)($state, $env, $def.expr)), ($state = (__re__)[1]), (__re__)[0])))
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 651:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 653:4', (sp_toHuman)($4)))),
     $state,
   ]);
 });
@@ -20120,7 +20124,7 @@ const u0Targets$Javascript$Runtime$nativeDefinitions = (($state) => {
   const $nothingRef = ((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, (c0Compiler$Meta$USR)((c0Compiler$Meta$UMR)(u0Compiler$CoreDefs$importsPath, "src", "Maybe"), "'nothing"))), ($state = (__re__)[1]), (__re__)[0]);
   const $justRef = ((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, (c0Compiler$Meta$USR)((c0Compiler$Meta$UMR)(u0Compiler$CoreDefs$importsPath, "src", "Maybe"), "'just"))), ($state = (__re__)[1]), (__re__)[0]);
   return ([
-    ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + (u0Targets$Javascript$Runtime$listConsName + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + (u0Targets$Javascript$Runtime$listNilName + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ?" + ($nothingRef + (":" + ($justRef + ("(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [" + ($justRef + ("({ first: actualKey, second: value }), hash ];\n        }\n\n        return [" + ($nothingRef + (", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '" + (u0Targets$Javascript$Runtime$listNilName + ("')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ?" + ($justRef + ("(a.pop()) :" + ($nothingRef + (", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '" + (u0Targets$Javascript$Runtime$listNilName + ("' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '" + (u0Targets$Javascript$Runtime$listConsName + ("', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '" + (u0Targets$Javascript$Runtime$listNilName + ("')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '" + (u0Targets$Javascript$Runtime$listConsName + "', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const actualTypeHumanized = sp_toHuman(pars.type);\n        if (actualTypeHumanized !== requestedTypeHumanized) {\n            return [ 'Err', pars.type ];\n        }\n\n        // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n        // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n        const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n        const js = $sd1$Platforms$Browser$compile(pars);\n\n        //   { name1, name2, name3, ... } = externals;\n        const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n        const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n        const arg = {};\n        pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n        return [ 'wwwwok', variantConstructor(Function('externs', body)(arg)) ];\n    };\n\n")))))))))))))))))))))))))))))))))),
+    ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + (u0Targets$Javascript$Runtime$listConsName + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + (u0Targets$Javascript$Runtime$listNilName + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ?" + ($nothingRef + (":" + ($justRef + ("(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [" + ($justRef + ("({ first: actualKey, second: value }), hash ];\n        }\n\n        return [" + ($nothingRef + (", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '" + (u0Targets$Javascript$Runtime$listNilName + ("')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ?" + ($justRef + ("(a.pop()) :" + ($nothingRef + (", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '" + (u0Targets$Javascript$Runtime$listNilName + ("' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '" + (u0Targets$Javascript$Runtime$listConsName + ("', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '" + (u0Targets$Javascript$Runtime$listNilName + ("')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '" + (u0Targets$Javascript$Runtime$listConsName + "', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const actualTypeHumanized = sp_toHuman(pars.type).replace('\"', '').replace('\\n', '');\n        if (actualTypeHumanized !== requestedTypeHumanized) {\n            return [ 'Err', pars.type ];\n        }\n\n        // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n        // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n        const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;\n        const js = $sd1$Platforms$Browser$compile(pars);\n\n        //   { name1, name2, name3, ... } = externals;\n        const unpackExterns = 'const { ' + pars.externalValues.map((e) => translateUsr(e.usr)).join(', ') + ' } = externs;';\n\n        const body = `{ ${unpackExterns}\n${js}; return ${translateUsr(pars.entryUsr)}; }`;\n\n        const arg = {};\n        pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);\n\n        return [ 'wwwwok', variantConstructor(Function('externs', body)(arg)) ];\n    };\n\n")))))))))))))))))))))))))))))))))),
     $state,
   ]);
 });
