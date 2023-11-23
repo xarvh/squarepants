@@ -38,7 +38,7 @@
 typeToHuman as fn Env, TA.RawType: Text =
     fn env, raw:
     raw
-    >> Human/Type.doRawType env __
+    >> Human/Type.doRawType env.projectImports __
     >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
     >> Fmt.render
 
@@ -125,13 +125,14 @@ Env =
     , exactTypes as ByUsr [ Name & Pos ]
     , expandedAliases as ByUsr ExpandedAlias
     , modulesByUmr as Dict UMR CA.Module
+    , projectImports as Imports
     , reversedRootValueDefs as [ USR & TA.ValueDef ]
     , variables as Dict Ref Instance
     }
 
 
-initEnv as fn Dict UMR CA.Module: Env =
-    fn modulesByUmr:
+initEnv as fn Imports, Dict UMR CA.Module: Env =
+    fn projectImports, modulesByUmr:
     {
     , annotatedTyvarsByName = Dict.empty
     , annotatedUnivarsByOriginalId = Dict.empty
@@ -141,6 +142,7 @@ initEnv as fn Dict UMR CA.Module: Env =
     , exactTypes = Dict.empty
     , expandedAliases = Dict.empty
     , modulesByUmr
+    , projectImports
     , reversedRootValueDefs = []
     , variables = Dict.empty
     }

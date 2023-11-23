@@ -359,6 +359,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
 
     {
     , loadCaModule = loadCaModule loadCaModulePars __
+    , projectImports
     , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build

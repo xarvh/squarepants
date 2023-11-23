@@ -19,10 +19,10 @@ blue as fn Text: Html msg =
 formattedToConsoleColoredText as fn Error.FormattedText: Html msg =
     fn formattedText:
     try formattedText as
-        Error.'FormattedText_Default t: Html.text t
-        Error.'FormattedText_Emphasys t: yellow t
-        Error.'FormattedText_Warning t: red t
-        Error.'FormattedText_Decoration t: blue t
+        Error.'formattedText_Default t: Html.text t
+        Error.'formattedText_Emphasys t: yellow t
+        Error.'formattedText_Warning t: red t
+        Error.'formattedText_Decoration t: blue t
 
 
 resToConsoleText as fn Res a: Result (Html msg) a =
@@ -52,10 +52,19 @@ onResSuccess as fn fn a: Result (Html msg) b: fn Res a: Result (Html msg) b =
 # Meta
 #
 defaultImports as Imports =
-    try ImportsFile.fromText "modules.sp" Platforms/Browser.platform.defaultModules as
 
-        'ok m:
-            ImportsFile.toImports m
+    name =
+        "<internal imports.sp>"
+
+    importsPath =
+        Meta.'importsPath Meta.'user name
+
+    platform =
+        Platforms/Browser.platform importsPath
+
+    try ImportsFile.toImports { importsPath, joinPath = Text.join "/" __ } platform.defaultImportsFile as
+        'ok imports:
+            imports
 
         'err err:
             errAsText =
@@ -123,13 +132,13 @@ textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
         , currentImports = imports
         , currentModule = umr
         , loadExports = fn importsPath: 'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
-        , makeError = Error.'raw
+        , makeError = Error.'raw __
         }
 
     ro as Compiler/MakeCanonical.ReadOnly =
         {
         , errorModule
-        , resolvePars
+        , resolvePars = fn pos: resolvePars
         , umr
         }
 
@@ -158,8 +167,9 @@ viewErrorWrongType as fn TA.RawType: Html msg =
         [
         , Html.text "I don't know how to use this type:"
         , type
-        >> Human/Type.doRawType {} __
-        >> Human/Type.display "" __
+        >> Human/Type.doRawType defaultImports __
+        >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
+        >> Fmt.render
         >> Html.text
         ]
 
@@ -194,6 +204,7 @@ main as fn Text: Result (Html msg) CompiledCode =
 
     {
     , loadCaModule = loadCaModule modulesByUmr
+    , projectImports = defaultImports
     , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build

@@ -1,17 +1,3 @@
-# TODO this should allow us to use the aliases and globals defined in the project's Imports
-Env =
-    Compiler/TypeCheck.Env
-
-
-#
-# Meta
-#
-
-#sourceToText as fn Meta.Source: Text =
-#    fn source:
-#    try source as
-#        Meta.'core: "core:"
-
 
 rootToPath as fn Meta.RootDirectory: Text =
     try __ as
@@ -26,23 +12,23 @@ importsPathToText as fn Meta.ImportsPath: Text =
     rootToPath root .. importsDir
 
 
-umrToText as fn Env, UMR: Text =
-    fn env, 'UMR importsPath sourceDir modulePath:
+umrToText as fn Imports, UMR: Text =
+    fn projectImports, 'UMR importsPath sourceDir modulePath:
 
     importsPathToText importsPath .. "/" .. sourceDir .. "/" .. modulePath
 
 
-usrToText as fn Env, USR: Text =
-    fn env, 'USR umr name:
+usrToText as fn Imports, USR: Text =
+    fn projectImports, 'USR umr name:
     # TODO use display umr if name is not in Imports
-    umrToText env umr .. "." .. name
+    umrToText projectImports umr .. "." .. name
 
 
-doUsr as fn Env, USR: FA.Expression =
-    fn env, usr:
+doUsr as fn Imports, USR: FA.Expression =
+    fn projectImports, usr:
     {
     , maybeModule = 'nothing
-    , name = usrToText env usr
+    , name = usrToText projectImports usr
     }
     >> FA.'uppercase
     >> toExpression
@@ -52,8 +38,8 @@ doUsr as fn Env, USR: FA.Expression =
 #
 #
 
-uniToText as fn Env, Uniqueness: Text =
-    fn env, uni:
+uniToText as fn Imports, Uniqueness: Text =
+    fn projectImports, uni:
     try uni as
         'imm: ""
         'uni: "!"
@@ -67,30 +53,30 @@ toExpression as fn FA.Expr_: FA.Expression =
     FA.'expression [] Pos.'g __
 
 
-doRawType as fn Env, TA.RawType: FA.Expression =
-    fn env, rawType:
+doRawType as fn Imports, TA.RawType: FA.Expression =
+    fn projectImports, rawType:
     try rawType as
 
         TA.'typeExact usr args:
-            FA.'call (doUsr env usr) (List.map (doRawType env __) args)
+            FA.'call (doUsr projectImports usr) (List.map (doRawType projectImports __) args)
 
         TA.'typeFn parTypes full:
-            FA.'fn FA.'inline (List.map (doParType env __) parTypes) (doFullType env full)
+            FA.'fn FA.'inline (List.map (doParType projectImports __) parTypes) (doFullType projectImports full)
 
         TA.'typeVar tyvarId:
-            doTyvarId env tyvarId
+            doTyvarId projectImports tyvarId
 
         TA.'typeRecord maybeExtId taAttrs:
             maybeExtension =
                 try maybeExtId as
                     'nothing: 'nothing
-                    'just id: doTyvarId env id >> toExpression >> 'just >> 'just
+                    'just id: doTyvarId projectImports id >> toExpression >> 'just >> 'just
 
             attrs =
                 taAttrs
                 >> Dict.toList
                 >> List.sortBy Tuple.first __
-                >> List.map (fn name & raw: { maybeExpr = 'just (doRawType env raw), name = doLowercase env name }) __
+                >> List.map (fn name & raw: { maybeExpr = 'just (doRawType projectImports raw), name = doLowercase projectImports name }) __
 
             # TODO display tuples as tuples!
 
@@ -105,21 +91,21 @@ doRawType as fn Env, TA.RawType: FA.Expression =
     >> toExpression
 
 
-doTyvarId as fn Env, TA.TyvarId: FA.Expr_ =
-    fn env, tyvarId:
+doTyvarId as fn Imports, TA.TyvarId: FA.Expr_ =
+    fn projectImports, tyvarId:
     {
     , attrPath = []
     , maybeModule = 'nothing
     , maybeType = 'nothing
-    # TODO use Env to get original name!
+    # TODO use Imports to get original name!
     , name =
         Text.fromNumber tyvarId
     }
     >> FA.'lowercase
 
 
-doLowercase as fn Env, Name: FA.Expression =
-    fn env, name:
+doLowercase as fn Imports, Name: FA.Expression =
+    fn projectImports, name:
     {
     , attrPath = []
     , maybeModule = 'nothing
@@ -130,20 +116,20 @@ doLowercase as fn Env, Name: FA.Expression =
     >> toExpression
 
 
-doFullType as fn Env, TA.FullType: FA.Expression =
-    fn env, { raw, uni }:
-    FA.'poly (uniToText env uni) (doRawType env raw) >> toExpression
+doFullType as fn Imports, TA.FullType: FA.Expression =
+    fn projectImports, { raw, uni }:
+    FA.'poly (uniToText projectImports uni) (doRawType projectImports raw) >> toExpression
 
 
-doParType as fn Env, TA.ParType: FA.Expression =
-    fn env, parType:
+doParType as fn Imports, TA.ParType: FA.Expression =
+    fn projectImports, parType:
     try parType as
 
         TA.'parSp full:
-            doFullType env full
+            doFullType projectImports full
 
         TA.'parRe raw:
             raw
-            >> doRawType env __
+            >> doRawType projectImports __
             >> FA.'unopCall Op.'unopRecycle __
             >> toExpression

@@ -215,6 +215,7 @@ usrToDependencyType as fn USR: DependencyType =
 BuildPlan =
     {
     , loadCaModule as fn UMR: Res CA.Module
+    , projectImports as Imports
     , requiredUsrs as [ USR ]
     }
 
@@ -308,7 +309,7 @@ build as fn BuildPlan: Res BuildOut =
     # Init
     #
     env0 =
-        Compiler/TypeCheck.initEnv modulesByUmr
+        Compiler/TypeCheck.initEnv pars.projectImports modulesByUmr
 
     #
     # Insert types

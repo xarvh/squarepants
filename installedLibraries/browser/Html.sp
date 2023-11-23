@@ -85,11 +85,11 @@ id as fn Text: Attr msg =
 
 
 class as fn Text: Attr msg =
-    VirtualDom.'cssClass
+    VirtualDom.'cssClass __
 
 
 style as fn Text, Text: Attr msg =
-    VirtualDom.'cssStyle
+    VirtualDom.'cssStyle __ __
 
 
 href as fn Text: Attr msg =

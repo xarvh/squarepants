@@ -40,11 +40,11 @@ Out =
 outToHuman as fn Out: Text =
     fn out:
     env =
-        Compiler/TypeCheck.initEnv Dict.empty
+        Compiler/TypeCheck.initEnv TH.imports Dict.empty
 
     type =
         out.type
-        >> Human/Type.doRawType env __
+        >> Human/Type.doRawType TH.imports __
         >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
         >> Fmt.render
 
@@ -156,6 +156,7 @@ infer as fn Text: fn Text: Result Text Out =
 
     {
     , loadCaModule
+    , projectImports = TH.imports
     , requiredUsrs
     }
     >> Compiler/LazyBuild.build

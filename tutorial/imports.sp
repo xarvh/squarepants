@@ -21,6 +21,17 @@ sourceDir =
     path = "../src"
 
     module =
+        path = ImportsFile
+        globals =
+            ImportsFile
+
+    module =
+       path = Platform
+       importAs = Platform
+       globals =
+          Platform
+
+    module =
        path = Compiler/Error
        importAs = Error
        globals =
@@ -50,15 +61,6 @@ sourceDir =
     module =
        path = Targets/Javascript/Ast
        importAs = JA
-
-#    module =
-#       path = Compiler/TestHelpers
-#       importAs = TH
-#
-#    module =
-#       path = SPLib/Parser
-#       importAs = Parser
-
 
 library =
     source = "core"
@@ -179,6 +181,7 @@ library =
         path = Basics
         globals =
             Int
+            applyIf
             clamp
             cloneImm
             cloneUni
