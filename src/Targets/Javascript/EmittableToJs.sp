@@ -689,7 +689,7 @@ translateUmr as fn @State, UMR: Text =
 
 translateUsr as fn @State, USR: Text =
     fn @state, 'USR umr name:
-    translateUmr @state umr .. "$" .. translateName name
+    translateUmr @state umr .. translateName name
 
 
 translateName as fn Name: Text =
