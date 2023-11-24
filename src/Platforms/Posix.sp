@@ -2,6 +2,7 @@ platform as Platform =
     {
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
+    , extraRequiredUsrs = fn _: []
     , makeExecutable
     , name = "posix"
     , quickstart = "TODO"

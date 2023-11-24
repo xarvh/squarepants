@@ -191,8 +191,8 @@ scanSourceDirs as fn @IO, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imp
 
 loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Exports, Meta.RootPaths, Meta.ImportsPath: Res Exports =
     fn @io, @loadedImports, @loadedExports, rootPaths, importsPath:
-
     try Hash.get @loadedExports importsPath as
+
         'just exports:
             'ok exports
 
@@ -357,10 +357,13 @@ compileMain as fn @IO, CompileMainPars: Res None =
         , rootPaths
         }
 
+    platformImportsPath =
+        Meta.'importsPath Meta.'installed pars.platform.name
+
     {
     , loadCaModule = loadCaModule loadCaModulePars __
     , projectImports
-    , requiredUsrs = [ entryUsr ]
+    , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs platformImportsPath... ]
     }
     >> Compiler/LazyBuild.build
     >> onOk fn { constructors, rootValues }:
@@ -379,7 +382,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , entryUsr
     , type
     }
-    >> pars.platform.makeExecutable (Meta.'importsPath Meta.'installed pars.platform.name)
+    >> pars.platform.makeExecutable platformImportsPath
     >> IO.writeFile @io outputFile __
     >> ioToRes
     >> onOk fn _:

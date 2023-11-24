@@ -2,6 +2,7 @@ platform as Platform =
     {
     , defaultImportsFile
     , defaultOutputName = "index.js"
+    , extraRequiredUsrs
     # TODO maybe "makeExecutable" should be a function instead? It is really annoying that everything becomes a function even when it's not needed.
     , makeExecutable
     , name = "browser"
@@ -21,7 +22,15 @@ defaultImportsFile as ImportsFile =
 
 virtualDomUsr as fn Meta.ImportsPath: fn Name: USR =
     fn platformImportsPath:
-    'USR ('UMR platformImportsPath "src/" "VirtualDom") __
+    'USR ('UMR platformImportsPath "" "VirtualDom") __
+
+
+extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
+    fn importsPath:
+    usr =
+        virtualDomUsr importsPath
+
+    [ usr "updateDomNode" ]
 
 
 State =
@@ -110,7 +119,7 @@ footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
 
             const msg = msgResult[1];
 
-            model = 
+            model =
     """
     .. mainName
     .. """
@@ -134,7 +143,7 @@ footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
     .view(model);
 
 
-        """
+    """
     .. updateDomNode
     .. """
     (newVirtualDom, oldVirtualDom, e.childNodes[0]);
@@ -149,7 +158,7 @@ footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
 
         function main(eid) {
             elementId = eid;
-            model = 
+            model =
     """
     .. mainName
     .. """
