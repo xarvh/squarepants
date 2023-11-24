@@ -11,8 +11,9 @@ platform as Platform =
 
 defaultImportsFile as ImportsFile =
     DefaultImports.platformDefaultImportsFile
+        "browser"
         [
-        , "Browser" & [ ]
+        , "Browser" & []
         , "Html" & []
         , "VirtualDom" & []
         ]
@@ -32,7 +33,8 @@ compile as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
     log "Creating JS AST..." ""
 
     jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll @state
+        Targets/Javascript/EmittableToJs.translateAll
+            @state
             {
             , constructors = out.constructors
             , eaDefs = out.defs
@@ -47,8 +49,8 @@ compile as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
 
 
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
-    fn platformImportsPath: fn out:
-
+    fn platformImportsPath:
+    fn out:
     !state as State =
         cloneImm Targets/Javascript/EmittableToJs.initState
 
@@ -60,7 +62,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     header .. Targets/Javascript/Runtime.nativeDefinitions @state .. runtime .. compiledStatements .. footer @state platformImportsPath out
 
 
-overrides as fn (fn Name: USR): [ USR & Text ] =
+overrides as fn fn Name: USR: [ USR & Text ] =
     fn usr:
     [
     , usr "jsCreateTextNode" & "virtualDom_jsCreateTextNode"
@@ -108,7 +110,7 @@ footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
 
             const msg = msgResult[1];
 
-            model =
+            model = 
     """
     .. mainName
     .. """
@@ -132,7 +134,7 @@ footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
     .view(model);
 
 
-    """
+        """
     .. updateDomNode
     .. """
     (newVirtualDom, oldVirtualDom, e.childNodes[0]);
@@ -147,7 +149,7 @@ footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
 
         function main(eid) {
             elementId = eid;
-            model =
+            model = 
     """
     .. mainName
     .. """

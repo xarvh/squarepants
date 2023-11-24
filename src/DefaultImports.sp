@@ -68,12 +68,12 @@ mod as fn Text, [ Text ]: ImportsFile.Module =
     }
 
 
-platformDefaultImportsFile as fn [ Text & [ Text ] ]: ImportsFile =
-    fn modules:
+platformDefaultImportsFile as fn Text, [ Text & [ Text ] ]: ImportsFile =
+    fn name, modules:
     platform as ImportsFile.Library =
         {
         , modules = List.map (fn path & globals: mod path globals) modules
-        , source = "platform"
+        , source = ":" .. name
         }
 
     { defaultImportsFile with libraries = [ platform, .libraries... ] }

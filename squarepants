@@ -17582,7 +17582,7 @@ const u0BuildMain$compileMain = (($io, $pars) => {
             return (u0BuildMain$ioToRes)(((__re__ = (io_writeStdout)($io, ("---> " + ($outputFile + " written. =)")))), ($io = (__re__)[1]), (__re__)[0]));
           })))((u0BuildMain$ioToRes)(((($0) => {
             return ((__re__ = (io_writeFile)($io, $outputFile, $0)), ($io = (__re__)[1]), (__re__)[0]);
-          }))(($pars.platform.makeExecutable)(({
+          }))((($pars.platform.makeExecutable)((c0Compiler$Meta$ImportsPath)(c0Compiler$Meta$Installed, $pars.platform.name)))(({
             constructors: $constructors,
             defs: $rootValues,
             entryUsr: $entryUsr,
@@ -18682,14 +18682,14 @@ const u0Compiler$TypeCheck_Test$variableTypes = (i1Test$Group)("Variable types",
 
 const u0Compiler$TypeCheck_Test$tests = (i1Test$Group)("TypeCheck", (c0Core$Cons)(u0Compiler$TypeCheck_Test$functions, (c0Core$Cons)(u0Compiler$TypeCheck_Test$statements, (c0Core$Cons)(u0Compiler$TypeCheck_Test$recursiveTypes, (c0Core$Cons)(u0Compiler$TypeCheck_Test$variableTypes, (c0Core$Cons)(u0Compiler$TypeCheck_Test$higherOrderTypes, (c0Core$Cons)(u0Compiler$TypeCheck_Test$records, (c0Core$Cons)(u0Compiler$TypeCheck_Test$patterns, (c0Core$Cons)(u0Compiler$TypeCheck_Test$try_as, (c0Core$Cons)(u0Compiler$TypeCheck_Test$if_else, (c0Core$Cons)(u0Compiler$TypeCheck_Test$nonFunction, (c0Core$Cons)(u0Compiler$TypeCheck_Test$misc, c0Core$Nil))))))))))));
 
-const u0DefaultImports$platformDefaultImportsFile = (($modules) => {
+const u0DefaultImports$platformDefaultImportsFile = (($name, $modules) => {
   const $platform = ({
-    modules: (c0List$map)((($2) => {
-      const $path = $2.first;
-      const $globals = $2.second;
+    modules: (c0List$map)((($3) => {
+      const $path = $3.first;
+      const $globals = $3.second;
       return (u0DefaultImports$mod)($path, $globals);
     }), $modules),
-    source: "platform",
+    source: (":" + $name),
   });
   const $0 = u0DefaultImports$defaultImportsFile;
   return (Object.assign)({}, $0, ({
@@ -18940,7 +18940,7 @@ const u0Targets$Emitted_Test$tests = (i1Test$Group)("Emitted", (c0Core$Cons)(u0T
 
 const u0Main$allTests = (c0Core$Cons)(u0Human$Format_Test$tests, (c0Core$Cons)(u0Compiler$Lexer_Test$tests, (c0Core$Cons)(u0Compiler$Parser_Test$tests, (c0Core$Cons)(u0Compiler$MakeCanonical_Test$tests, (c0Core$Cons)(u0Compiler$TypeCheck_Test$tests, (c0Core$Cons)(u0Targets$Emitted_Test$tests, (c0Core$Cons)(c0Hash_Test$tests, (c0Core$Cons)(c0Array_Test$tests, (c0Core$Cons)(c0List_Test$tests, (c0Core$Cons)(c0Dict_Test$tests, (c0Core$Cons)(u3Uniqueness$specs, (c0Core$Cons)(u0SPLib$Format_Test$tests, (c0Core$Cons)(u0SPLib$RefHierarchy_Test$tests, c0Core$Nil)))))))))))));
 
-const u0Platforms$Browser$defaultImportsFile = (u0DefaultImports$platformDefaultImportsFile)((c0Core$Cons)(({
+const u0Platforms$Browser$defaultImportsFile = (u0DefaultImports$platformDefaultImportsFile)("browser", (c0Core$Cons)(({
   first: "Browser",
   second: c0Core$Nil,
 }), (c0Core$Cons)(({
@@ -20102,7 +20102,7 @@ const u0Platforms$Browser$footer = (($state, $platformImportsPath, $pars) => {
     return ((__re__ = (u0Targets$Javascript$EmittableToJs$translateUsr)($state, $0)), ($state = (__re__)[1]), (__re__)[0]);
   }))(((u0Platforms$Browser$virtualDomUsr)($platformImportsPath))("updateDomNode"));
   return ([
-    ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet effects = [];\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model =" + ($mainName + (".update(effects, msg, model)[0];\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom =" + ($mainName + (".view(model);\n\n" + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n\n        effects.forEach((e) => e());\n        effects = [];\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model =" + ($mainName + ".init(effects)[0];\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n")))))))),
+    ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet effects = [];\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model = " + ($mainName + (".update(effects, msg, model)[0];\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom =" + ($mainName + (".view(model);\n\n" + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n\n        effects.forEach((e) => e());\n        effects = [];\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model = " + ($mainName + ".init(effects)[0];\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n")))))))),
     $state,
   ]);
 });
@@ -20137,19 +20137,17 @@ const u0Platforms$Browser$makeExecutable = (($platformImportsPath) => {
   });
 });
 
-const u0Platforms$Browser$platform = (($platformImportsPath) => {
-  return ({
-    defaultImportsFile: u0Platforms$Browser$defaultImportsFile,
-    defaultOutputName: "index.js",
-    makeExecutable: (u0Platforms$Browser$makeExecutable)($platformImportsPath),
-    name: "browser",
-    quickstart: "TODO",
-  });
+const u0Platforms$Browser$platform = ({
+  defaultImportsFile: u0Platforms$Browser$defaultImportsFile,
+  defaultOutputName: "index.js",
+  makeExecutable: u0Platforms$Browser$makeExecutable,
+  name: "browser",
+  quickstart: "TODO",
 });
 
-const u0Main$platformBrowser = (u0Platforms$Browser$platform)((c0Compiler$Meta$ImportsPath)(c0Compiler$Meta$Installed, "browser"));
+const u0Main$platformBrowser = u0Platforms$Browser$platform;
 
-const u0Platforms$Posix$defaultImportsFile = (u0DefaultImports$platformDefaultImportsFile)((c0Core$Cons)(({
+const u0Platforms$Posix$defaultImportsFile = (u0DefaultImports$platformDefaultImportsFile)("posix", (c0Core$Cons)(({
   first: "IO",
   second: (c0Core$Cons)("IO", c0Core$Nil),
 }), (c0Core$Cons)(({
@@ -20237,17 +20235,15 @@ const u0Platforms$Posix$makeExecutable = (($platformImportsPath) => {
   });
 });
 
-const u0Platforms$Posix$platform = (($platformImportsPath) => {
-  return ({
-    defaultImportsFile: u0Platforms$Posix$defaultImportsFile,
-    defaultOutputName: "nodeExecutable.js",
-    makeExecutable: (u0Platforms$Posix$makeExecutable)($platformImportsPath),
-    name: "posix",
-    quickstart: "TODO",
-  });
+const u0Platforms$Posix$platform = ({
+  defaultImportsFile: u0Platforms$Posix$defaultImportsFile,
+  defaultOutputName: "nodeExecutable.js",
+  makeExecutable: u0Platforms$Posix$makeExecutable,
+  name: "posix",
+  quickstart: "TODO",
 });
 
-const u0Main$platformPosix = (u0Platforms$Posix$platform)((c0Compiler$Meta$ImportsPath)(c0Compiler$Meta$Installed, "posix"));
+const u0Main$platformPosix = u0Platforms$Posix$platform;
 
 const u0Main$availablePlatforms = (c0Core$Cons)(u0Main$platformPosix, (c0Core$Cons)(u0Main$platformBrowser, c0Core$Nil));
 

@@ -9,7 +9,7 @@ platform as Platform =
 
 
 defaultImportsFile as ImportsFile =
-    DefaultImports.platformDefaultImportsFile
+    DefaultImports.platformDefaultImportsFile "posix"
         [
         , "IO" & [ "IO" ]
         , "Path" & []
