@@ -85,8 +85,12 @@ selfToExposed as fn Self.Self: USR & Self.Self =
         _: todo << "can't create an USR for " .. toHuman self.expression
 
 
-exposedNames = []
+exposedNames as [Self.Self] = []
 
+
+
+exports as Meta.Exports =
+      todo "generate from exposedNames"
 
 
 #exposedValues as [ USR & Self.Self ] =
@@ -128,7 +132,7 @@ textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
         {
         , currentImports = imports
         , currentModule = umr
-        , loadExports = fn importsPath: 'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
+        , loadExports = fn importsPath: 'ok exports #'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
         , makeError = Error.'raw __
         }
 

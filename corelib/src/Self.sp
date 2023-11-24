@@ -38,7 +38,6 @@ internalRepresentation as fn a: Text with a NonFunction =
         * Compiler complains if value is not annotated
 #]
 
-# TODO should be opaque?
 var Def =
     , 'value CA.ValueDef
     , 'openVarType CA.VariantTypeDef
@@ -46,7 +45,6 @@ var Def =
     , 'opaqueType CA.VariantTypeDef
 
 
-# TODO should be opaque?
 Self =
     {
     , def as Def
