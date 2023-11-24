@@ -1,10 +1,9 @@
-platform as fn Meta.ImportsPath: Platform =
-    fn platformImportsPath:
+platform as Platform =
     {
     , defaultImportsFile
     , defaultOutputName = "index.js"
     # TODO maybe "makeExecutable" should be a function instead? It is really annoying that everything becomes a function even when it's not needed.
-    , makeExecutable = makeExecutable platformImportsPath
+    , makeExecutable
     , name = "browser"
     , quickstart = "TODO"
     }

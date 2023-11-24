@@ -59,10 +59,7 @@ defaultImports as Imports =
     importsPath =
         Meta.'importsPath Meta.'user name
 
-    platform =
-        Platforms/Browser.platform importsPath
-
-    try ImportsFile.toImports { importsPath, joinPath = Text.join "/" __ } platform.defaultImportsFile as
+    try ImportsFile.toImports { importsPath, joinPath = Text.join "/" __ } Platforms/Browser.platform.defaultImportsFile as
         'ok imports:
             imports
 

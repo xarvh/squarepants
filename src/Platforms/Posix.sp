@@ -1,9 +1,8 @@
-platform as fn Meta.ImportsPath: Platform =
-    fn platformImportsPath:
+platform as Platform =
     {
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
-    , makeExecutable = makeExecutable platformImportsPath
+    , makeExecutable
     , name = "posix"
     , quickstart = "TODO"
     }

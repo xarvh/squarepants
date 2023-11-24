@@ -379,7 +379,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , entryUsr
     , type
     }
-    >> pars.platform.makeExecutable
+    >> pars.platform.makeExecutable (Meta.'importsPath Meta.'installed pars.platform.name)
     >> IO.writeFile @io outputFile __
     >> ioToRes
     >> onOk fn _:
