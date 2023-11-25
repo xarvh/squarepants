@@ -260,7 +260,7 @@ tokenToClass as fn Token.Kind: Text =
         Token.'curlyBrace _ _:
             "paren"
 
-        Token.'native:
+        Token.'this_is_sp_native:
             "keyword"
 
 

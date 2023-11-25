@@ -383,6 +383,7 @@ module =
         'letIn
         'if
         'try
+        'introspect
         Argument
         'argumentExpression
         'argumentRecycle

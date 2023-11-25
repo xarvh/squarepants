@@ -909,6 +909,9 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
         CA.'try pos { patternsAndExpressions, value }:
             doTry env pos (newRawType @state) value patternsAndExpressions @state
 
+        CA.'introspect pos introspect usr:
+            ...
+
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
     fn env, pos, expectedRaw, value, caPatternsAndExpressions, @state:

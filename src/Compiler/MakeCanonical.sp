@@ -191,6 +191,18 @@ expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
             >> expressionDeps valueDef.body __
             >> expressionDeps e __
 
+        CA.'introspect _ introspect usr:
+            dependencyType as DependencyType =
+                try introspect as
+                    Token.'value: 'valueDependency
+                    Token.'type: 'typeDependency
+                    Token.'typeOpen: 'typeDependency
+
+            # TODO should somehow use the fact that the type is open or not,
+            # forcing the deps to have its innards if it is open?
+
+            Dict.insert usr dependencyType deps
+
 
 argumentDeps as fn CA.Argument, CA.Deps: CA.Deps =
     fn arg, deps:
@@ -792,6 +804,11 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         FA.'native:
             error env pos [ "`this_is_sp_native` can be used only for root level value defs" ]
+
+        FA.'introspect introspect maybeModule name:
+            resolveToUsr env.ro pos maybeModule name
+            >> onOk fn usr:
+            CA.'introspect pos introspect usr >> 'ok
 
         _:
             error env pos [ "something's wrong here...", toHuman expr_ ]

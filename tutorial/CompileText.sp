@@ -52,7 +52,6 @@ onResSuccess as fn fn a: Result (Html msg) b: fn Res a: Result (Html msg) b =
 # Meta
 #
 defaultImports as Imports =
-
     name =
         "<internal imports.sp>"
 
@@ -60,6 +59,7 @@ defaultImports as Imports =
         Meta.'importsPath Meta.'user name
 
     try ImportsFile.toImports { importsPath, joinPath = Text.join "/" __ } Platforms/Browser.platform.defaultImportsFile as
+
         'ok imports:
             imports
 
@@ -85,43 +85,24 @@ selfToExposed as fn Self.Self: USR & Self.Self =
         _: todo << "can't create an USR for " .. toHuman self.expression
 
 
-exposedNames as [Self.Self] = []
-
+exposedNames as [ Self.Self ] =
+    [
+    , sp_introspect_value Html.div
+    , sp_introspect_value Html.button
+    , sp_introspect_value Html.onClick
+    , sp_introspect_value Html.text
+    , sp_introspect_value Html.style
+    , sp_introspect_value Html.class
+    , sp_introspect_type Html
+    ]
 
 
 exports as Meta.Exports =
-      todo "generate from exposedNames"
-
-
-#exposedValues as [ USR & Self.Self ] =
-#    l1 =
-#        [
-#        , Self.introspect Html.div
-#        , Self.introspect Html.button
-#        , Self.introspect Html.onClick
-#        , Self.introspect Html.text
-#        , Self.introspect Html.style
-#        , Self.introspect Html.class
-#        ]
-#        >> List.map selfToExposed __
-#
-#    l2 =
-#        [ 'USR ('UMR Meta.'Core "List") "blah" & Self.introspect (fn x: 0.1) ]
-#
-#    [ l1 ] >> List.concat
-
-
-
-
-
-
-
-
+    todo "generate from exposedNames"
 
 
 textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
     fn imports, umr, fsPath, content:
-
     errorModule as Error.Module =
         {
         , content
@@ -132,8 +113,10 @@ textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
         {
         , currentImports = imports
         , currentModule = umr
-        , loadExports = fn importsPath: 'ok exports #'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
-        , makeError = Error.'raw __
+        , loadExports = fn importsPath: 'ok exports
+        #'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
+        , makeError =
+            Error.'raw __
         }
 
     ro as Compiler/MakeCanonical.ReadOnly =
@@ -146,19 +129,18 @@ textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
     Compiler/MakeCanonical.textToCanonicalModule 'false ro
 
 
-
 loadCaModule as fn Dict UMR CA.Module: fn UMR: Res CA.Module =
     fn modulesByUmr:
     fn umr:
-
     try Dict.get umr modulesByUmr as
+
         'just m:
             'ok m
+
         'nothing:
             [ "Cannot find module: " .. Debug.toHuman umr ]
             >> Error.'raw
             >> 'err
-
 
 
 viewErrorWrongType as fn TA.RawType: Html msg =
@@ -198,10 +180,8 @@ main as fn Text: Result (Html msg) CompiledCode =
 
     textToCaModule defaultImports entryUmr inputFileName code
     >> onResSuccess fn caModule:
-
     modulesByUmr =
-        Self.toCaModules exposedNames
-        >> Dict.insert entryUmr caModule __
+        Self.toCaModules exposedNames >> Dict.insert entryUmr caModule __
 
     {
     , loadCaModule = loadCaModule modulesByUmr
@@ -210,7 +190,6 @@ main as fn Text: Result (Html msg) CompiledCode =
     }
     >> Compiler/LazyBuild.build
     >> onResSuccess fn { constructors, rootValues }:
-
     lp as Self.LoadPars =
         {
         , constructors
