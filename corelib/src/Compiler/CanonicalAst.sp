@@ -46,6 +46,7 @@ var Expression =
           , patternsAndExpressions as [ Uniqueness & Pattern & Expression ]
           , value as Expression
           }
+    , 'introspect Token.Introspect USR
 
 
 var Argument =

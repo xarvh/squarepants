@@ -137,6 +137,7 @@ var Expr_ =
           , value as Expression
           }
     , 'native
+    , 'introspect Token.Introspect (Maybe Name) Name
 
 
 RecordAttribute =

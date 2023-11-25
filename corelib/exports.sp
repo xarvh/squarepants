@@ -484,6 +484,7 @@ module =
         'if
         'try
         'native
+        'introspect
         RecordAttribute
         BinopChain
         binopChainExpressions
@@ -580,6 +581,10 @@ module =
         SingleOrTriple
         'singleQuote
         'tripleQuote
+        Introspect
+        'type
+        'typeOpen
+        'value
         Kind
         'comment
         'newSiblingLine
@@ -612,4 +617,5 @@ module =
         'roundParen
         'squareBracket
         'curlyBrace
-        'native
+        'this_is_sp_native
+        'sp_introspect

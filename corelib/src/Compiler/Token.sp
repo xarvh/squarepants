@@ -16,6 +16,12 @@ var SingleOrTriple =
     , 'tripleQuote
 
 
+var Introspect =
+    , 'type
+    , 'typeOpen
+    , 'value
+
+
 var Kind =
     , 'comment { indent as Int, isBlock as Bool, isFollowedByBlank as Bool }
     , # Structure
@@ -58,4 +64,5 @@ var Kind =
       'roundParen OpenOrClosed
     , 'squareBracket LineNumber OpenOrClosed
     , 'curlyBrace LineNumber OpenOrClosed
-    , 'native
+    , 'this_is_sp_native
+    , 'sp_introspect Introspect
