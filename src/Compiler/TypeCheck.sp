@@ -910,7 +910,73 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
             doTry env pos (newRawType @state) value patternsAndExpressions @state
 
         CA.'introspect pos introspect usr:
-            ...
+            doIntrospect env pos introspect usr @state
+
+
+doIntrospect as fn Pos, Token.Introspect, USR: TA.Expression
+    fn pos, introspect, usr:
+
+    selfUsr =
+        'USR ('UMR CoreDefs.importsPath "src" "Self") "Self"
+
+    selfType =
+        try Dict.get selfUsr env.expandedAliases as
+            'nothing:
+                bug "no self?"
+
+            'just { type }:
+                type
+
+
+    'USR umr name =
+        usr
+
+
+    expression =
+        try introspect as
+            Token.'value:
+                search variables
+                      >> Self.'value
+                      >> TA.Introspect usr __
+
+            Token.'type:
+                - ensure that type exists
+                - create a varType definition (for aliases too)
+                >> Self.'opaqueType
+                >> TA.Introspect usr __
+
+            Token.'typeOpen:
+                - ensure that type is not opaque
+
+                try Dict.get umr env.modulesByUmr as
+                    'nothing:
+                        addError ...
+                        TA.Error pos
+
+                    'just module:
+                        try Dict.get name module.aliasDefs as
+                            'just def:
+                                def
+                                >> Self.'openAliasType
+                                >> TA.Introspect usr __
+
+                            'nothing:
+                                try Dict.get name module.variantTypeDefs as
+                                    'just def:
+                                        def
+                                        >> Self.'openVarType
+                                        >> TA.Introspect usr __
+
+                                    'nothing:
+                                        addError ...
+                                        TA.Error pos
+
+    expression & { uni = 'uni, raw = selfType }
+
+
+
+
+
 
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
