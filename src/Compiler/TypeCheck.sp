@@ -159,8 +159,8 @@ var Error_ =
     , 'errorConstructorNotFound USR
     , 'errorNotCompatibleWithRecord
     , 'errorRecordDoesNotHaveAttribute Name
-    , 'errorRecordHasAttributesNotInAnnotation [Name]
-    , 'errorRecordIsMissingAttibutesInAnnotation [Name]
+    , 'errorRecordHasAttributesNotInAnnotation [ Name ]
+    , 'errorRecordIsMissingAttibutesInAnnotation [ Name ]
     , 'errorTryingToAccessAttributeOfNonRecord Name TA.RawType
     , 'errorIncompatibleTypes CA.Expression TA.FullType
     , 'errorIncompatiblePattern CA.Pattern TA.FullType
@@ -182,6 +182,7 @@ var Error_ =
     , 'errorUniInTypeArg
     , 'errorUniInRecordAttribute Name
     , 'errorUniqueGlobal
+    , 'errorModuleNotFound UMR
 
 
 var Context =
@@ -913,70 +914,85 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
             doIntrospect env pos introspect usr @state
 
 
-doIntrospect as fn Pos, Token.Introspect, USR: TA.Expression
-    fn pos, introspect, usr:
-
+doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.FullType =
+    fn env, pos, introspect, usr, @state:
     selfUsr =
         'USR ('UMR CoreDefs.importsPath "src" "Self") "Self"
 
     selfType =
         try Dict.get selfUsr env.expandedAliases as
-            'nothing:
-                bug "no self?"
-
-            'just { type }:
-                type
-
+            'nothing: bug "no self?"
+            'just { type }: type
 
     'USR umr name =
         usr
 
-
     expression =
         try introspect as
+
             Token.'value:
-                search variables
-                      >> Self.'value
-                      >> TA.Introspect usr __
+                todo "search variables"
+                >> Self.'value
+                >> TA.'introspect usr __
 
             Token.'type:
-                - ensure that type exists
-                - create a varType definition (for aliases too)
-                >> Self.'opaqueType
-                >> TA.Introspect usr __
+                try Dict.get usr env.expandedAliases as
+
+                    'just d:
+                        'just d.pars
+
+                    'nothing:
+                        try Dict.get usr env.exactTypes as
+                            'just d: 'just d.pars
+                            'nothing: 'nothing
+                >> try __ as
+
+                    'nothing:
+                        addError env pos ('errorTypeNotFound usr) @state
+
+                        TA.'error pos
+
+                    'just pars:
+                        {
+                        , constructors = Dict.empty
+                        , pars
+                        , usr
+                        }
+                        >> Self.'opaqueType
+                        >> TA.'introspect usr __
 
             Token.'typeOpen:
-                - ensure that type is not opaque
+                #TODO!!!! - ensure that type is not opaque
 
                 try Dict.get umr env.modulesByUmr as
+
                     'nothing:
-                        addError ...
-                        TA.Error pos
+                        addError env pos ('errorModuleNotFound umr) @state
+
+                        TA.'error pos
 
                     'just module:
                         try Dict.get name module.aliasDefs as
+
                             'just def:
                                 def
                                 >> Self.'openAliasType
-                                >> TA.Introspect usr __
+                                >> TA.'introspect usr __
 
                             'nothing:
                                 try Dict.get name module.variantTypeDefs as
+
                                     'just def:
                                         def
                                         >> Self.'openVarType
-                                        >> TA.Introspect usr __
+                                        >> TA.'introspect usr __
 
                                     'nothing:
-                                        addError ...
-                                        TA.Error pos
+                                        addError env pos ('errorTypeNotFound usr) @state
 
-    expression & { uni = 'uni, raw = selfType }
+                                        TA.'error pos
 
-
-
-
-
+    expression & { raw = selfType, uni = 'uni }
 
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
@@ -1420,7 +1436,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                     try Dict.get attrName typeByName as
 
                         'nothing:
-                            addError env pos ('errorRecordHasAttributesNotInAnnotation [attrName]) @state
+                            addError env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
 
                             # This is not super clean, but since it's an error condition, it's probably fine
                             Tuple.first (inferExpression env attrExpr @state)
@@ -1442,7 +1458,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                 Dict.onlyBothOnly valueByName typeByName
 
             if aOnly /= Dict.empty then
-                addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly))@state
+                addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly)) @state
             else if bOnly /= Dict.empty then
                 addError env pos ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys bOnly)) @state
             else
@@ -1898,8 +1914,9 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
                 (typeOnly /= Dict.empty and completeness == CA.'complete)
                 env
                 pos
-                # TODO "add `with` if you don't want to use all attrs"
-                ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys typeOnly))
+                (# TODO "add `with` if you don't want to use all attrs"
+                 'errorRecordIsMissingAttibutesInAnnotation (Dict.keys typeOnly)
+                )
                 @state
 
             taPas & envF =

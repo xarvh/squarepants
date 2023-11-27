@@ -263,6 +263,11 @@ module =
     exposes =
         Value
         Self
+        Def
+        'value
+        'openVarType
+        'openAliasType
+        'opaqueType
         internalRepresentation
         LoadPars
         load
@@ -315,6 +320,7 @@ module =
         'try
         'destroyIn
         'error
+        'introspect
 
         Pattern
         'patternAny
