@@ -445,6 +445,7 @@ module =
         'literalRecord
         'recordAccess
         'missingPattern
+        'introspect
         Argument
         'argumentRecycle
         'argumentSpend

@@ -714,6 +714,9 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'error _:
             re
 
+        TA.'introspect _:
+            re
+
 
 doVariable as fn Env, @Array Error, Pos, Name, e: UniOut e =
     fn env, @errors, pos, name, e:

@@ -37,6 +37,7 @@ var Expression =
     , 'literalRecord (Maybe Expression) [ AttrName & Expression ]
     , 'recordAccess AttrName Expression
     , 'missingPattern Text Expression
+    , 'introspect Self.Self
 
 
 var Argument =

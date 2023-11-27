@@ -308,5 +308,6 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'destroyIn name e:
             translateExpression env e
 
-
+        TA.'introspect self:
+            EA.'introspect self
 

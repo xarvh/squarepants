@@ -118,7 +118,6 @@ coreOverrides as fn None: Dict USR Override =
     #
     , corelib "Self" "load"
     & loadOverride
-    , corelib "Self" "introspect" & introspectOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
     >> Dict.fromList
@@ -192,48 +191,6 @@ function as fn Text: Override =
 #
 # Dynamic loading
 #
-introspectOverride as Override =
-    call =
-        fn @state, env, eaArgs:
-        try eaArgs as
-
-            [ EA.'argumentSpend { with  raw } e ]:
-                expression as JA.Expr =
-                    e
-                    >> Self.internalRepresentation
-                    >> JA.'literal
-
-                type as JA.Expr =
-                    raw
-                    >> Self.internalRepresentation
-                    >> JA.'literal
-
-                nonFn as JA.Expr =
-                    # TODO!!!
-                    JA.'array []
-
-                value as JA.Expr =
-                    translateExpressionToExpression @state env e
-
-                [
-                , "expression" & expression
-                , "raw" & type
-                , "nonFn" & nonFn
-                , "value" & value
-                ]
-                >> Dict.fromList
-                >> JA.'record
-
-            _:
-                todo "introspectOverride BUG?!"
-
-    {
-    , call
-    , value = fn env: todo "TODO: monomorphization is not yet implemented so `introspect` can only be called directly"
-    }
-    >> 'override
-
-
 loadOverride as Override =
     call =
         fn @state, env, eaArgs:
@@ -619,6 +576,12 @@ translateExpression as fn @State, Env, EA.Expression: TranslatedExpression =
             , JA.'call (JA.'literal "sp_toHuman") [ translateExpressionToExpression @state env value ]
             ]
             >> JA.'call (JA.'literal "sp_throw") __
+            >> 'inline
+
+        EA.'introspect self:
+            self
+            >> Self.internalRepresentation
+            >> JA.'literal
             >> 'inline
 
 

@@ -55,7 +55,7 @@ var Expression =
           }
     , 'destroyIn Name Expression
     , 'error Pos
-    , 'introspect USR Self.Def
+    , 'introspect Self.Self
 
 
 var Pattern =
@@ -269,6 +269,9 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'destroyIn n (rec e)
 
         'error p:
+            expression
+
+        'introspect _:
             expression
 
 

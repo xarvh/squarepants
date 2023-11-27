@@ -994,9 +994,7 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
                         if def.maybeAnnotation == 'nothing then
                             todo "cannot introspect non-annotated values"
                         else
-                            { def with maybeBody = 'nothing }
-                            >> Self.'value
-                            >> TA.'introspect usr __
+                            TA.'introspect { usr, def = Self.'value { def with maybeBody = 'nothing }}
 
             Token.'type:
                 try getTypeDef env pos usr @state as
@@ -1006,19 +1004,23 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
 
                     'just (pars & _):
                         {
-                        , constructors = Dict.empty
-                        , pars
                         , usr
+                        , def =
+                            Self.'opaqueType
+                                {
+                                , constructors = Dict.empty
+                                , pars
+                                , usr
+                                }
                         }
-                        >> Self.'opaqueType
-                        >> TA.'introspect usr __
+                        >> TA.'introspect
 
             Token.'typeOpen:
                 #TODO!!!! - ensure that type is not opaque
 
                 try getTypeDef env pos usr @state as
                     'nothing: TA.'error pos
-                    'just (_ & def): TA.'introspect usr def
+                    'just (_ & def): TA.'introspect { usr,  def }
 
     expression & { raw = selfType, uni = 'uni }
 
