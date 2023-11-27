@@ -122,6 +122,7 @@ Env =
     , constructors as ByUsr Instance
     , context as Context
     , currentRootUsr as USR
+    # TODO merge these two in a single Dict
     , exactTypes as ByUsr [ Name & Pos ]
     , expandedAliases as ByUsr ExpandedAlias
     , modulesByUmr as Dict UMR CA.Module
@@ -914,45 +915,96 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
             doIntrospect env pos introspect usr @state
 
 
+getTypeDef as fn Env, Pos, USR, @State: Maybe ([ Name & Pos ] & Self.Def) =
+    fn env, pos, usr, @state:
+    'USR umr name =
+        usr
+
+    try Dict.get umr env.modulesByUmr as
+
+        'nothing:
+            addError env pos ('errorModuleNotFound umr) @state
+
+            'nothing
+
+        'just module:
+            try Dict.get name module.aliasDefs as
+
+                'just def:
+                    'just << def.pars & Self.'openAliasType def
+
+                'nothing:
+                    try Dict.get name module.variantTypeDefs as
+
+                        'nothing:
+                            addError env pos ('errorTypeNotFound usr) @state
+
+                            'nothing
+
+                        'just def:
+                            'just << def.pars & Self.'openVarType def
+
+
+getValueDef as fn Env, Pos, USR, @State: Maybe CA.ValueDef =
+    fn env, pos, usr, @state:
+    'USR umr name =
+        usr
+
+    try Dict.get umr env.modulesByUmr as
+
+        'nothing:
+            addError env pos ('errorModuleNotFound umr) @state
+
+            'nothing
+
+        'just module:
+            try Dict.get name module.valueDefs as
+
+                'just def:
+                    'just def
+
+                'nothing:
+                    # TODO message should be "module X does not contain...."
+                    # Which should be caught by MakeCanonical... Can it actually happen here?
+                    addError env pos ('errorVariableNotFound ('refGlobal usr)) @state
+
+                    'nothing
+
+
 doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.FullType =
     fn env, pos, introspect, usr, @state:
     selfUsr =
         'USR ('UMR CoreDefs.importsPath "src" "Self") "Self"
 
-    selfType =
+    selfType as TA.RawType =
         try Dict.get selfUsr env.expandedAliases as
             'nothing: bug "no self?"
-            'just { type }: type
-
-    'USR umr name =
-        usr
+            'just expandedAlias: expandedAlias.type
 
     expression =
         try introspect as
 
             Token.'value:
-                todo "search variables"
-                >> Self.'value
-                >> TA.'introspect usr __
-
-            Token.'type:
-                try Dict.get usr env.expandedAliases as
-
-                    'just d:
-                        'just d.pars
+                try getValueDef env pos usr @state as
 
                     'nothing:
-                        try Dict.get usr env.exactTypes as
-                            'just d: 'just d.pars
-                            'nothing: 'nothing
-                >> try __ as
-
-                    'nothing:
-                        addError env pos ('errorTypeNotFound usr) @state
-
                         TA.'error pos
 
-                    'just pars:
+                    'just def:
+                        if def.maybeAnnotation == 'nothing then
+                            todo "cannot introspect non-annotated values"
+                        else
+                            { def with maybeBody = 'nothing }
+                            >> Self.'value
+                            >> TA.'introspect usr __
+
+            Token.'type:
+                try getTypeDef env pos usr @state as
+
+                    'nothing:
+                        TA.'error pos
+
+                    'just (pars & _):
                         {
                         , constructors = Dict.empty
                         , pars
@@ -964,33 +1016,9 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
             Token.'typeOpen:
                 #TODO!!!! - ensure that type is not opaque
 
-                try Dict.get umr env.modulesByUmr as
-
-                    'nothing:
-                        addError env pos ('errorModuleNotFound umr) @state
-
-                        TA.'error pos
-
-                    'just module:
-                        try Dict.get name module.aliasDefs as
-
-                            'just def:
-                                def
-                                >> Self.'openAliasType
-                                >> TA.'introspect usr __
-
-                            'nothing:
-                                try Dict.get name module.variantTypeDefs as
-
-                                    'just def:
-                                        def
-                                        >> Self.'openVarType
-                                        >> TA.'introspect usr __
-
-                                    'nothing:
-                                        addError env pos ('errorTypeNotFound usr) @state
-
-                                        TA.'error pos
+                try getTypeDef env pos usr @state as
+                    'nothing: TA.'error pos
+                    'just (_ & def): TA.'introspect usr def
 
     expression & { raw = selfType, uni = 'uni }
 
