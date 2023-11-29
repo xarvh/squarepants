@@ -98,7 +98,16 @@ exposedNames as [ Self.Self ] =
 
 
 exports as Meta.Exports =
-    todo "generate from exposedNames"
+    List.for Dict.empty exposedNames fn self, exp:
+
+        'USR ('UMR importsPath sourceDir modulePath) name = self.usr
+
+        module =
+            Dict.get modulePath exp
+            >> Maybe.withDefault Dict.empty __
+
+        # TODO isOpen = ?
+        Dict.insert modulePath (Dict.insert name { isOpen = 'false, usr = self.usr } module) exp
 
 
 textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
@@ -169,16 +178,16 @@ var CompiledCode =
 
 main as fn Text: Result (Html msg) CompiledCode =
     fn code:
-    inputFileName =
-        "user_input"
+    modulePath =
+        "UserInput"
 
     entryUmr =
-        'UMR (Meta.'importsPath Meta.'user "") "" inputFileName
+        'UMR (Meta.'importsPath Meta.'user "") "" modulePath
 
     entryUsr =
         'USR entryUmr "program"
 
-    textToCaModule defaultImports entryUmr inputFileName code
+    textToCaModule defaultImports entryUmr modulePath code
     >> onResSuccess fn caModule:
     modulesByUmr =
         Self.toCaModules exposedNames >> Dict.insert entryUmr caModule __
@@ -190,6 +199,14 @@ main as fn Text: Result (Html msg) CompiledCode =
     }
     >> Compiler/LazyBuild.build
     >> onResSuccess fn { constructors, rootValues }:
+
+    try List.find (fn v: v.usr == entryUsr) rootValues as
+        'nothing:
+            log "" (List.map (fn s: s.usr) rootValues)
+            'err (Html.text "internal bug: cannot find entryUsr!?")
+        'just t: 'ok t
+    >> onOk fn type:
+
     lp as Self.LoadPars =
         {
         , constructors

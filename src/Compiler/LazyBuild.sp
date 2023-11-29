@@ -1,8 +1,3 @@
-# TODO this is only for debugging
-env_ as Compiler/TypeCheck.Env =
-    Compiler/TypeCheck.initEnv Dict.empty
-
-
 var Def =
     , 'valueDef CA.ValueDef
     , 'constructorDef CA.ConstructorDef
@@ -249,6 +244,20 @@ build as fn BuildPlan: Res BuildOut =
 
     collectRequiredUsrs pars @state
     >> onOk fn 'none:
+    missingDefs =
+        Hash.for_ [] @state.done fn usr, { def, deps }, errs:
+            if def == 'missingDef then [ usr, errs... ] else errs
+
+    if missingDefs /= [] then
+        [
+        , "Cannot find definitions for:"
+        , List.map (Human/Type.usrToText pars.projectImports __) missingDefs...
+        ]
+        >> Error.'raw
+        >> 'err
+    else
+        'ok 'none
+    >> onOk fn 'none:
     #
     # Reorder all usrs
     #
@@ -265,7 +274,7 @@ build as fn BuildPlan: Res BuildOut =
         RefHierarchy.reorder nodeToEdges nodesById
 
 #    List.each orderedUsrs fn usr:
-#        log "*" (usrToText env_ usr)
+#        log "*" (Human/Type.usrToText pars.projectImports usr)
 #        'none
 
 #    log "CIRC" ""

@@ -14,7 +14,7 @@ textQuickExample as Text =
 
 htmlQuickExample as Text =
     """
-    main =
+    program =
        Html.div
           [ Html.class "col" ]
           [
