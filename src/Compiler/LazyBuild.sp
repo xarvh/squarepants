@@ -54,7 +54,7 @@ collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, Dependen
             'ok caModule
 
         'nothing:
-            env.loadCaModule umr
+            env.loadCaModule usr
             >> onOk fn caModule:
             Hash.insert @state.loadedModulesByUmr umr caModule
 
@@ -209,7 +209,7 @@ usrToDependencyType as fn USR: DependencyType =
 
 BuildPlan =
     {
-    , loadCaModule as fn UMR: Res CA.Module
+    , loadCaModule as fn USR: Res CA.Module
     , projectImports as Imports
     , requiredUsrs as [ USR ]
     }

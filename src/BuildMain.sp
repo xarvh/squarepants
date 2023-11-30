@@ -44,8 +44,9 @@ LoadCaModulePars =
     }
 
 
-loadCaModule as fn LoadCaModulePars, UMR: Res CA.Module =
-    fn pars, umr:
+loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
+    fn pars, 'USR umr name:
+
     if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
     else

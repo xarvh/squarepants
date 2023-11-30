@@ -8,6 +8,15 @@ listNilName as Text =
 
 nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
     fn @state:
+
+
+    okRef as Text =
+        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
+
+    errRef as Text =
+        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'err")
+
+
     nothingRef as Text =
         Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
 
@@ -575,7 +584,7 @@ nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
 
             const actualTypeHumanized = sp_toHuman(pars.type).replace('"', '').replace('\\n', '');
             if (actualTypeHumanized !== requestedTypeHumanized) {
-                return [ 'Err', pars.type ];
+                return """ .. errRef .. """(pars.type);
             }
 
             // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
@@ -591,7 +600,7 @@ nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
             const arg = {};
             pars.externalValues.forEach((e) => arg[translateUsr(e.usr)] = e.self.value);
 
-            return [ 'wwwwok', variantConstructor(Function('externs', body)(arg)) ];
+            return """ .. okRef .. """ (variantConstructor(Function('externs', body)(arg)));
         };
 
 

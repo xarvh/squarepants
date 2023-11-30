@@ -94,6 +94,7 @@ exposedNames as [ Self.Self ] =
     , sp_introspect_value Html.style
     , sp_introspect_value Html.class
     , sp_introspect_type Html
+    , sp_introspect_type Html.Attr
     ]
 
 
@@ -138,16 +139,22 @@ textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
     Compiler/MakeCanonical.textToCanonicalModule 'false ro
 
 
-loadCaModule as fn Dict UMR CA.Module: fn UMR: Res CA.Module =
+loadCaModule as fn Dict UMR CA.Module: fn USR: Res CA.Module =
     fn modulesByUmr:
-    fn umr:
+    fn usr:
+
+    'USR umr name = usr
+
     try Dict.get umr modulesByUmr as
 
         'just m:
             'ok m
 
         'nothing:
-            [ "Cannot find module: " .. Debug.toHuman umr ]
+            [
+            , "Cannot find module: " .. Debug.toHuman umr
+            , "Which is needed because it defines " .. name
+            ]
             >> Error.'raw
             >> 'err
 
@@ -205,14 +212,14 @@ main as fn Text: Result (Html msg) CompiledCode =
             log "" (List.map (fn s: s.usr) rootValues)
             'err (Html.text "internal bug: cannot find entryUsr!?")
         'just t: 'ok t
-    >> onOk fn type:
+    >> onOk fn entryValue:
 
     lp as Self.LoadPars =
         {
         , constructors
         , defs = rootValues
         , entryUsr
-        , type = todo "loadPars.type"
+        , type = entryValue.type
         }
 
     loadResult as Result TA.RawType CompiledCode =
@@ -225,7 +232,4 @@ main as fn Text: Result (Html msg) CompiledCode =
         Self.load lp 'CompiledHtml
 
     loadResult
-    >> Result.onErr fn actualCompiledType:
-    actualCompiledType
-    >> viewErrorWrongType
-    >> 'err
+    >> Result.onErr (__ >> viewErrorWrongType >> 'err)

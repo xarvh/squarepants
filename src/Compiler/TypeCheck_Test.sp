@@ -143,8 +143,8 @@ infer as fn Text: fn Text: Result Text Out =
         ]
         >> List.concat
 
-    loadCaModule as fn UMR: Res CA.Module =
-        fn umr:
+    loadCaModule as fn USR: Res CA.Module =
+        fn 'USR umr _:
         if umr == TH.moduleUmr then
             'ok caModule
         else if umr == CoreDefs.umr then

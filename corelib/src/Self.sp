@@ -67,7 +67,14 @@ toCaModules as fn [ Self ]: Dict UMR CA.Module =
             try self.def as
 
                 'value def:
-                    { mod0 with valueDefs = Dict.insert name { def with maybeBody = 'nothing } .valueDefs }
+                    maybeBody =
+                        'nothing
+
+                    directDeps =
+                        # TODO split between "annotation dependencies" and "definition dependencies"?
+                        Dict.filter (fn k, v: v == Meta.'typeDependency) def.directDeps
+
+                    { mod0 with valueDefs = Dict.insert name { def with directDeps, maybeBody } .valueDefs }
 
                 'openVarType def:
                     { mod0 with
