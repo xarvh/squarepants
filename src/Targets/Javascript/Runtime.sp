@@ -582,8 +582,10 @@ nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
         //
         const self_load = (requestedTypeHumanized, pars, variantConstructor) => {
 
-            const actualTypeHumanized = sp_toHuman(pars.type).replace('"', '').replace('\\n', '');
-            if (actualTypeHumanized !== requestedTypeHumanized) {
+            const re = (s) => s.replace(/[" \\n]/g, '');
+
+            const actualTypeHumanized = sp_toHuman(pars.type);
+            if (re(actualTypeHumanized) !== re(requestedTypeHumanized)) {
                 return """ .. errRef .. """(pars.type);
             }
 

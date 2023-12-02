@@ -93,8 +93,10 @@ exposedNames as [ Self.Self ] =
     , sp_introspect_value Html.text
     , sp_introspect_value Html.style
     , sp_introspect_value Html.class
-    , sp_introspect_type Html
-    , sp_introspect_type Html.Attr
+    , sp_introspect_type VirtualDom.VirtualNode
+    , sp_introspect_type VirtualDom.Attr
+    , sp_introspect_type_open Html
+    , sp_introspect_type_open Html.Attr
     ]
 
 
