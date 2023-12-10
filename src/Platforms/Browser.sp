@@ -99,12 +99,12 @@ header as Text =
 footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
     fn @state, platformImportsPath, pars:
     mainName =
-        Targets/Javascript/EmittableToJs.translateUsr @state pars.entryUsr
+        EA.translateUsr @state pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
         >> virtualDomUsr platformImportsPath
-        >> Targets/Javascript/EmittableToJs.translateUsr @state __
+        >> EA.translateUsr @state __
 
     """
 

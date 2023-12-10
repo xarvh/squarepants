@@ -28,7 +28,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
 
 
     entryName =
-        Targets/Javascript/EmittableToJs.translateUsr @state out.entryUsr
+        EA.translateUsr @state out.entryUsr
 
     callMain =
         """
@@ -101,10 +101,10 @@ runtime as fn @State: Text =
     fn @state:
 
     makeOk as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr @state __
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> EA.translateUsr @state __
 
     makeErr as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsr @state __
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> EA.translateUsr @state __
 
 
     """

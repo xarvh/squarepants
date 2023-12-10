@@ -11,17 +11,23 @@ nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
 
 
     okRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
+        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
 
     errRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'err")
+        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'err")
 
 
     nothingRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
+        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
 
     justRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
+        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
+
+#    translateUsrSelf =
+#        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr
+#
+#    translateUsrRef as Text =
+#        Targets/Javascript/EmittableToJs.translateUsr @state translateUsrSelf.usr
 
     """
     let __re__;
@@ -589,9 +595,19 @@ nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
                 return """ .. errRef .. """(pars.type);
             }
 
+
+            -------> Pass all functions as args!
+                u0Targets$Javascript$EmittableToJs$translateUsr;
+                $sd1$Platforms$Browser$compile(pars);
+            -------> Can we pass already all necessary usrs translated already?
+                * externalValues usrs as text
+                * entry usr as text
+                * platform makeExecutable
+
+
             // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
             // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
-            const translateUsr = $sd1$Targets$Javascript$EmittableToJs$translateUsr;
+            const translateUsr = u0Targets$Javascript$EmittableToJs$translateUsr;
             const js = $sd1$Platforms$Browser$compile(pars);
 
             //   { name1, name2, name3, ... } = externals;

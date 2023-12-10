@@ -5,17 +5,7 @@ Env =
 
 
 State =
-    {
-    , importsAndSourceDirCount as Int
-    , importsAndSourceDirToId as Hash Text Text
-    }
-
-
-initState as State =
-    {
-    , importsAndSourceDirCount = 0
-    , importsAndSourceDirToId = Hash.fromList []
-    }
+    EA.TranslationState
 
 
 recycleTempVariable =
@@ -200,13 +190,17 @@ loadOverride as Override =
         requestedTypeHumanized as JA.Expr =
             try eaArgs as
 
-                [ compiledProgram, EA.'argumentSpend { with  raw = TA.'typeFn [ TA.'parSp { with  raw = compiledType } ] _ } _ ]:
+                [
+                , loadPars
+                , EA.'argumentSpend { with  raw = TA.'typeFn [ TA.'parSp { with  raw = compiledType } ] _ } _
+                ]:
                     !hash =
                         Hash.fromList []
 
                     compiledType
                     >> TA.normalizeType @hash __
                     # TODO: This is a horrid workaround, we should use a dedicated function or a decoder, or even better, unify the types
+                    # Actually no, fuck unification, we can't have tyvars!
                     >> toHuman
                     >> Text.replace "\"" "" __
                     >> Text.replace "\n" "" __
@@ -215,7 +209,14 @@ loadOverride as Override =
                 _:
                     todo "loadOverride BUG?!"
 
-        JA.'call (JA.'var "self_load") [ requestedTypeHumanized, jaArgs... ]
+#        injectedArgs =
+#            {
+#            , translateUsr = ""
+#            , makeExecutable = ""
+#            , requestedTypeHumanized
+#            }
+
+        JA.'call (JA.'var "self_load") [ [#injectedArgs,#] jaArgs... ]
 
     {
     , call
@@ -250,6 +251,12 @@ maybeOverrideUsrForConstructor as fn @State, Env, USR: JA.Expr =
 accessAttrs as fn [ Text ], JA.Expr: JA.Expr =
     fn attrPath, e:
     List.for e attrPath JA.'accessWithDot
+
+
+translateName as fn Name: Text =
+    __
+    >> EA.translateName
+    >> "$" .. __
 
 
 translateArg as fn @State, { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
@@ -393,26 +400,26 @@ translateExpression as fn @State, Env, EA.Expression: TranslatedExpression =
     fn @state, env, eaExpression:
     try eaExpression as
 
-        EA.'variable ('refLocal name):
+        EA.'localVariable name:
             name
             >> translateName
             >> JA.'var
             >> 'inline
 
-        EA.'variable ('refPlaceholder n):
+        EA.'placeholderVariable n:
             n
             >> Text.fromNumber
             >> translateName
             >> JA.'var
             >> 'inline
 
-        EA.'variable ('refGlobal usr):
+        EA.'globalVariable usr:
             maybeOverrideUsr @state env usr >> 'inline
 
         EA.'call ref args:
             maybeNativeOverride =
                 try ref as
-                    EA.'variable ('refGlobal usr): Dict.get usr env.overrides
+                    EA.'globalVariable usr: Dict.get usr env.overrides
                     _: 'nothing
 
             try maybeNativeOverride as
@@ -616,59 +623,6 @@ translateDef as fn @State, Env, EA.GlobalDefinition: Maybe JA.Statement =
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
         'nothing: JA.'define 'false (translateUsr @state def.usr) (translateExpressionToExpression @state env def.expr) >> 'just
-
-
-translateRoot as fn Meta.RootDirectory: Text =
-    try __ as
-        Meta.'core: "c"
-        Meta.'user: "u"
-        Meta.'installed: "i"
-
-
-translateUmr as fn @State, UMR: Text =
-    fn @state, 'UMR (Meta.'importsPath root importsDir) sourceDir modulePath:
-    r =
-        translateRoot root
-
-    address =
-        importsDir .. "@" .. sourceDir
-
-    id =
-        try Hash.get @state.importsAndSourceDirToId address as
-
-            'just id_:
-                id_
-
-            'nothing:
-                id_ =
-                    Text.fromNumber (cloneUni @state.importsAndSourceDirCount)
-
-                @state.importsAndSourceDirCount += 1
-
-                Hash.insert @state.importsAndSourceDirToId address id_
-
-                id_
-
-    r .. id .. Text.replace "/" "$" modulePath
-
-
-translateUsr as fn @State, USR: Text =
-    fn @state, 'USR umr name:
-    translateUmr @state umr .. translateName name
-
-
-translateName as fn Name: Text =
-    fn name:
-    if Text.startsWith "'" name then
-        head =
-            Text.slice 1 2 name
-
-        rest =
-            Text.slice 2 9999 name
-
-        "$" .. Text.toUpper head .. rest
-    else
-        "$" .. name
 
 
 TranslateAllPars =

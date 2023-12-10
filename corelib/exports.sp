@@ -430,7 +430,9 @@ module =
         Expression
         'literalText
         'literalNumber
-        'variable
+        'localVariable
+        'globalVariable
+        'placeholderVariable
         'call
         'fn
         'conditional
@@ -450,6 +452,14 @@ module =
         'argumentRecycle
         'argumentSpend
         GlobalDefinition
+        #
+        TranslationState
+        initTranslationState
+        translateRoot
+        translateUmr
+        translateUsr
+        translateName
+
 
 module =
    path = Compiler/FormattableAst
