@@ -6,22 +6,22 @@ listNilName as Text =
     Targets/Javascript/EmittableToJs.translateName CoreDefs.nilName
 
 
-nativeDefinitions as fn @Targets/Javascript/EmittableToJs.State: Text =
+nativeDefinitions as fn @EA.TranslationState: Text =
     fn @state:
 
 
     okRef as Text =
-        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
+        Targets/Javascript/EmittableToJs.translateUsrToText @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
 
     errRef as Text =
-        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'err")
+        Targets/Javascript/EmittableToJs.translateUsrToText @state ('USR ('UMR CoreDefs.importsPath "src" "Result") "'err")
 
 
     nothingRef as Text =
-        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
+        Targets/Javascript/EmittableToJs.translateUsrToText @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
 
     justRef as Text =
-        EA.translateUsr @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
+        Targets/Javascript/EmittableToJs.translateUsrToText @state ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
 
 #    translateUsrSelf =
 #        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr

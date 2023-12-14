@@ -1,11 +1,7 @@
 Env =
     {
-    , overrides as Dict USR Override
+    , overrides as Dict EA.TranslatedUsr Override
     }
-
-
-State =
-    EA.TranslationState
 
 
 recycleTempVariable =
@@ -15,7 +11,7 @@ recycleTempVariable =
 var Override =
     , 'override
           {
-          , call as fn @State, Env, [ EA.Argument ]: JA.Expr
+          , call as fn @EA.TranslationState, Env, [ EA.Argument ]: JA.Expr
           , value as fn Env: JA.Expr
           }
 
@@ -228,14 +224,14 @@ loadOverride as Override =
 #
 # Translation
 #
-maybeOverrideUsr as fn @State, Env, USR: JA.Expr =
+maybeOverrideUsr as fn @EA.TranslationState, Env, EA.TranslatedUsr: JA.Expr =
     fn @state, env, usr:
     try Dict.get usr env.overrides as
         'just ('override { call, value }): value env
-        'nothing: JA.'var (translateUsr @state usr)
+        'nothing: JA.'var (translateUsrToText @state usr)
 
 
-maybeOverrideUsrForConstructor as fn @State, Env, USR: JA.Expr =
+maybeOverrideUsrForConstructor as fn @EA.TranslationState, Env, USR: JA.Expr =
     fn @state, env, usr:
     try Dict.get usr env.overrides as
 
@@ -244,7 +240,7 @@ maybeOverrideUsrForConstructor as fn @State, Env, USR: JA.Expr =
 
         'nothing:
             usr
-            >> translateUsr @state __
+            >> translateUsrToText @state __
             >> JA.'var
 
 
@@ -259,7 +255,17 @@ translateName as fn Name: Text =
     >> "$" .. __
 
 
-translateArg as fn @State, { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
+translateUsrToText as fn @EA.TranslationState, USR: Text =
+    fn @state, usr:
+
+    EA.translateUsr @state usr >> usrToText
+
+
+usrToText as fn [Text]: Text =
+    Text.join "$" __
+
+
+translateArg as fn @EA.TranslationState, { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
     fn @state, stuff, env, eaExpression:
     try eaExpression as
         EA.'argumentSpend fullType e: translateExpressionToExpression @state env e
@@ -334,14 +340,14 @@ var TranslatedExpression =
     , 'inline JA.Expr
 
 
-translateExpressionToExpression as fn @State, Env, EA.Expression: JA.Expr =
+translateExpressionToExpression as fn @EA.TranslationState, Env, EA.Expression: JA.Expr =
     fn @state, env, expr:
     try translateExpression @state env expr as
         'inline e: e
         'block block: JA.'call (JA.'blockLambda [] block) []
 
 
-makeCall as fn @State, Env, JA.Expr, [ EA.Argument ]: JA.Expr =
+makeCall as fn @EA.TranslationState, Env, JA.Expr, [ EA.Argument ]: JA.Expr =
     fn @state, env, jaRef, args:
     call =
         args
@@ -396,7 +402,7 @@ makeCall as fn @State, Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         >> JA.'comma
 
 
-translateExpression as fn @State, Env, EA.Expression: TranslatedExpression =
+translateExpression as fn @EA.TranslationState, Env, EA.Expression: TranslatedExpression =
     fn @state, env, eaExpression:
     try eaExpression as
 
@@ -592,7 +598,7 @@ translateExpression as fn @State, Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
 
-translateConstructorDef as fn @State, USR & TA.RawType: JA.Statement =
+translateConstructorDef as fn @EA.TranslationState, USR & TA.RawType: JA.Statement =
     fn @state, usr & taType:
     'USR umr nameWithApostrophe =
         usr
@@ -615,14 +621,14 @@ translateConstructorDef as fn @State, USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    JA.'define 'false (translateUsr @state usr) definitionBody
+    JA.'define 'false (translateUsrToText @state usr) definitionBody
 
 
-translateDef as fn @State, Env, EA.GlobalDefinition: Maybe JA.Statement =
+translateDef as fn @EA.TranslationState, Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn @state, env, def:
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
-        'nothing: JA.'define 'false (translateUsr @state def.usr) (translateExpressionToExpression @state env def.expr) >> 'just
+        'nothing: JA.'define 'false (usrToText def.usr) (translateExpressionToExpression @state env def.expr) >> 'just
 
 
 TranslateAllPars =
@@ -633,7 +639,7 @@ TranslateAllPars =
     }
 
 
-translateAll as fn @State, TranslateAllPars: [ JA.Statement ] =
+translateAll as fn @EA.TranslationState, TranslateAllPars: [ JA.Statement ] =
     fn @state, pars:
     { constructors, eaDefs, platformOverrides } =
         pars

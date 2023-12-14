@@ -81,8 +81,8 @@ translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.E
                 translatePatternRec pa (EA.'recordAccess name accessExpr) a
 
 
-testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression ] =
-    fn pattern, valueToTest, accum:
+testPattern as fn @EA.TranslationState, TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression ] =
+    fn @state, pattern, valueToTest, accum:
     try pattern as
 
         TA.'patternAny _ _:
@@ -97,12 +97,12 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
         TA.'patternConstructor _ usr pas:
             EA.'isConstructor (EA.translateUsr @state usr) valueToTest :: accum
             >> List.indexedFor __ pas fn index, argPattern, a:
-                testPattern argPattern (EA.'constructorAccess index valueToTest) a
+                testPattern @state argPattern (EA.'constructorAccess index valueToTest) a
 
         TA.'patternRecord _ attrs:
             accum
             >> Dict.for __ attrs fn name, pa & type, a:
-                testPattern pa (EA.'recordAccess name valueToTest) a
+                testPattern @state pa (EA.'recordAccess name valueToTest) a
 
 
 translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool & Maybe Name) =
@@ -144,14 +144,14 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
                     List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & ('false & 'just mainName)
 
 
-translateArgAndType as fn Env, @State, TA.Argument: EA.Argument =
+translateArgAndType as fn Env, @EA.TranslationState, TA.Argument: EA.Argument =
     fn env, @state, taArg:
     try taArg as
         TA.'argumentExpression fullType exp: EA.'argumentSpend fullType (translateExpression @state env exp)
         TA.'argumentRecycle pos rawType attrPath name: EA.'argumentRecycle rawType attrPath name
 
 
-translateExpression as fn Env, @State, TA.Expression: EA.Expression =
+translateExpression as fn Env, @EA.TranslationState, TA.Expression: EA.Expression =
     fn env, @state, expression:
     try expression as
 
@@ -215,7 +215,7 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
                         EA.'localVariable name & identity & env
 
                     TA.'variable _ ('refGlobal usr) & 'imm:
-                        EA.'globalVariable (translateUsr @state usr) & identity & env
+                        EA.'globalVariable (EA.translateUsr @state usr) & identity & env
 
                     TA.'variable _ ('refPlaceholder n) & 'imm:
                         EA.'placeholderVariable n & identity & env
@@ -240,7 +240,7 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
             addTryPatternAndBlock as fn TA.Pattern & TA.Expression, EA.Expression: EA.Expression =
                 fn pattern & block, nextTryExpression:
                 testIfPatternMatches as EA.Expression =
-                    testPattern pattern valueExpression []
+                    testPattern @state pattern valueExpression []
                     >> List.reverse
                     >> EA.'and
 

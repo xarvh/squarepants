@@ -16,19 +16,16 @@ defaultImportsFile as ImportsFile =
         , "Path" & []
         ]
 
-State =
-    Targets/Javascript/EmittableToJs.State
 
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath:
     fn out:
 
-    !state as State =
-        cloneImm Targets/Javascript/EmittableToJs.initState
-
+    !state as EA.TranslationState =
+        cloneImm EA.initTranslationState
 
     entryName =
-        EA.translateUsr @state out.entryUsr
+        Targets/Javascript/EmittableToJs.translateUsrToText @state out.entryUsr
 
     callMain =
         """
@@ -97,14 +94,14 @@ overrides as fn Meta.ImportsPath: [ USR & Text ] =
     ]
 
 
-runtime as fn @State: Text =
+runtime as fn @EA.TranslationState: Text =
     fn @state:
 
     makeOk as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> EA.translateUsr @state __
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText @state __
 
     makeErr as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> EA.translateUsr @state __
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText @state __
 
 
     """

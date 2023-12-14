@@ -33,11 +33,7 @@ extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
     [ usr "updateDomNode" ]
 
 
-State =
-    Targets/Javascript/EmittableToJs.State
-
-
-compile as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
+compile as fn @EA.TranslationState, Meta.ImportsPath, Self.LoadPars: Text =
     fn @state, platformImportsPath, out:
     log "Creating JS AST..." ""
 
@@ -60,8 +56,8 @@ compile as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath:
     fn out:
-    !state as State =
-        cloneImm Targets/Javascript/EmittableToJs.initState
+    !state as EA.TranslationState =
+        cloneImm EA.initTranslationState
 
     compiledStatements =
         compile @state platformImportsPath out
@@ -96,15 +92,15 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn @State, Meta.ImportsPath, Self.LoadPars: Text =
+footer as fn @EA.TranslationState, Meta.ImportsPath, Self.LoadPars: Text =
     fn @state, platformImportsPath, pars:
     mainName =
-        EA.translateUsr @state pars.entryUsr
+        Targets/Javascript/EmittableToJs.translateUsrToText @state pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
         >> virtualDomUsr platformImportsPath
-        >> EA.translateUsr @state __
+        >> Targets/Javascript/EmittableToJs.translateUsrToText @state __
 
     """
 
