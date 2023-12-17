@@ -16,8 +16,8 @@ var Override =
           }
 
 
-coreOverrides as fn None: Dict USR Override =
-    fn 'none:
+coreOverrides as fn @EA.TranslationState: Dict EA.TranslatedUsr Override =
+    fn @state:
     #
     corelib as fn Text, Text: USR =
         fn module, name:
@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict USR Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> Dict.fromList
+    >> List.for Dict.empty __ fn usr & override, d: Dict.insert (EA.translateUsr @state usr) override d
 
 
 unaryPlus as Override =
@@ -224,14 +224,14 @@ loadOverride as Override =
 #
 # Translation
 #
-maybeOverrideUsr as fn @EA.TranslationState, Env, EA.TranslatedUsr: JA.Expr =
-    fn @state, env, usr:
+maybeOverrideUsr as fn Env, EA.TranslatedUsr: JA.Expr =
+    fn env, usr:
     try Dict.get usr env.overrides as
         'just ('override { call, value }): value env
-        'nothing: JA.'var (translateUsrToText @state usr)
+        'nothing: JA.'var (_usrToText usr)
 
 
-maybeOverrideUsrForConstructor as fn @EA.TranslationState, Env, USR: JA.Expr =
+maybeOverrideUsrForConstructor as fn @EA.TranslationState, Env, EA.TranslatedUsr: JA.Expr =
     fn @state, env, usr:
     try Dict.get usr env.overrides as
 
@@ -240,7 +240,7 @@ maybeOverrideUsrForConstructor as fn @EA.TranslationState, Env, USR: JA.Expr =
 
         'nothing:
             usr
-            >> translateUsrToText @state __
+            >> _usrToText
             >> JA.'var
 
 
@@ -258,10 +258,10 @@ translateName as fn Name: Text =
 translateUsrToText as fn @EA.TranslationState, USR: Text =
     fn @state, usr:
 
-    EA.translateUsr @state usr >> usrToText
+    EA.translateUsr @state usr >> _usrToText
 
 
-usrToText as fn [Text]: Text =
+_usrToText as fn EA.TranslatedUsr: Text =
     Text.join "$" __
 
 
@@ -420,7 +420,7 @@ translateExpression as fn @EA.TranslationState, Env, EA.Expression: TranslatedEx
             >> 'inline
 
         EA.'globalVariable usr:
-            maybeOverrideUsr @state env usr >> 'inline
+            maybeOverrideUsr env usr >> 'inline
 
         EA.'call ref args:
             maybeNativeOverride =
@@ -628,7 +628,7 @@ translateDef as fn @EA.TranslationState, Env, EA.GlobalDefinition: Maybe JA.Stat
     fn @state, env, def:
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
-        'nothing: JA.'define 'false (usrToText def.usr) (translateExpressionToExpression @state env def.expr) >> 'just
+        'nothing: JA.'define 'false (_usrToText def.usr) (translateExpressionToExpression @state env def.expr) >> 'just
 
 
 TranslateAllPars =
@@ -650,8 +650,8 @@ translateAll as fn @EA.TranslationState, TranslateAllPars: [ JA.Statement ] =
     env as Env =
         {
         , overrides =
-            List.for (coreOverrides 'none) platformOverrides fn usr & runtimeName, d:
-                Dict.insert usr (function runtimeName) d
+            List.for (coreOverrides @state) platformOverrides fn usr & runtimeName, d:
+                Dict.insert (EA.translateUsr @state usr) (function runtimeName) d
         }
 
     jaStatements as [ JA.Statement ] =

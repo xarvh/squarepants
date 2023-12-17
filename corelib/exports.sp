@@ -453,6 +453,7 @@ module =
         'argumentSpend
         GlobalDefinition
         #
+        TranslatedUsr
         TranslationState
         initTranslationState
         translateRoot

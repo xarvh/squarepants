@@ -95,7 +95,7 @@ testPattern as fn @EA.TranslationState, TA.Pattern, EA.Expression, [ EA.Expressi
             EA.'shallowEqual (EA.'literalNumber num) valueToTest :: accum
 
         TA.'patternConstructor _ usr pas:
-            EA.'isConstructor (EA.translateUsr @state usr) valueToTest :: accum
+            EA.'isConstructor usr valueToTest :: accum
             >> List.indexedFor __ pas fn index, argPattern, a:
                 testPattern @state argPattern (EA.'constructorAccess index valueToTest) a
 
