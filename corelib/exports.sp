@@ -530,6 +530,7 @@ module =
         ModulePath
         UMR
         'UMR
+        sourceDirectoryKey
         USR
         'USR
         ByUsr

@@ -228,6 +228,26 @@ stopOnError as fn BuildPlan, @Array Error: Res None =
             >> 'err
 
 
+makeSourceDirectoryKeyToId as fn [ USR ]: Dict Text Int =
+    fn usrs:
+        !counter =
+            0
+
+        update as fn Maybe Int: Maybe Int =
+            try __ as
+
+                'just v:
+                    'just v
+
+                'nothing:
+                    @counter += 1
+
+                    'just (cloneUni @counter)
+
+        List.for Dict.empty usrs fn usr, d:
+            Dict.update (Meta.sourceDirectoryKey usr) update d
+
+
 BuildOut =
     {
     , constructors as [ USR & TA.RawType ]
@@ -357,6 +377,9 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Emit
     #
+    sourceDirectoryKeyToId as Dict Text Int =
+        makeSourceDirectoryKeyToId orderedUsrs
+
     translateDef as fn USR & TA.ValueDef: EA.GlobalDefinition =
         fn usr & def:
         {
@@ -380,4 +403,4 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Done!
     #
-    'ok { constructors, rootValues }
+    'ok { constructors, rootValues, sourceDirectoryKeyToId }

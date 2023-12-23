@@ -69,7 +69,6 @@ GlobalDefinition =
 # At least until I find a more reliable way to reference them from within the code itself.
 #
 
-
 TranslationState =
     {
     , importsAndSourceDirCount as Int
@@ -91,39 +90,6 @@ translateRoot as fn Meta.RootDirectory: Text =
         Meta.'installed: "i"
 
 
-translateUmr as fn @TranslationState, UMR: [Text] =
-    fn @state, 'UMR (Meta.'importsPath root importsDir) sourceDir modulePath:
-    r =
-        translateRoot root
-
-    address =
-        importsDir .. "@" .. sourceDir
-
-    id =
-        try Hash.get @state.importsAndSourceDirToId address as
-
-            'just id_:
-                id_
-
-            'nothing:
-                id_ =
-                    Text.fromNumber (cloneUni @state.importsAndSourceDirCount)
-
-                @state.importsAndSourceDirCount += 1
-
-                Hash.insert @state.importsAndSourceDirToId address id_
-
-                id_
-
-    [ r .. id, Text.split "/" modulePath... ]
-
-
-translateUsr as fn @TranslationState, USR: TranslatedUsr =
-    fn @state, 'USR umr name:
-
-    List.concat [ translateUmr @state umr, [ translateName name ] ]
-
-
 translateName as fn Name: Text =
     fn name:
     if Text.startsWith "'" name then
@@ -137,3 +103,18 @@ translateName as fn Name: Text =
     else
         name
 
+
+translateUsr as fn Dict Text Int, USR: TranslatedUsr =
+    fn sourceDirectoryKeyToId, usr:
+    'USR ('UMR (Meta.'importsPath root importsDir) sourceDir modulePath) name =
+        usr
+
+    key =
+        Meta.sourceDirectoryKey usr
+
+    id =
+        try Dict.get key sourceDirectoryKeyToId as
+            'just i: i
+            'nothing: todo << "compiler bug: translateUsr@" .. key
+
+    List.concat [ [ translateRoot root .. Text.fromNumber id ], Text.split "/" modulePath, [ translateName name ] ]

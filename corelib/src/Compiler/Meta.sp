@@ -142,6 +142,7 @@ var UMR =
     , 'UMR ImportsPath SourceDir ModulePath
 
 
+
 #
 # Unique Symbol Reference
 #
@@ -153,6 +154,22 @@ var USR =
 
 ByUsr a =
     Dict USR a
+
+
+#
+# Source Directory Key
+#
+# importsPath and sourceDir should never appear in the emittable AST.
+# This is a practical matter, because they will contain characters that cannot be used in the variable names of the target language
+# but also a matter of consistency and security: we don't want information on the source environment to leak into the output.
+#
+# So to avoid this, we replace the importsPath + sourceDir combination with an incremental id.
+# To keep the translation simple, we use the importsPath + sourceDir as a "sourceDirectoryKey" for whatever Dict/Hash we use for the translation.
+#
+sourceDirectoryKey as fn USR: Text =
+    fn 'USR ('UMR ('importsPath rootDirectory importsPath) sourceDir modulePath) name:
+
+    importsPath .. "@" .. sourceDir
 
 
 #
