@@ -12,7 +12,7 @@ recycleTempVariable =
 var Override =
     , 'override
           {
-          , call as fn @EA.TranslationState, Env, [ EA.Argument ]: JA.Expr
+          , call as fn Env, [ EA.Argument ]: JA.Expr
           , value as fn Env: JA.Expr
           }
 
@@ -232,7 +232,7 @@ maybeOverrideUsr as fn Env, EA.TranslatedUsr: JA.Expr =
         'nothing: JA.'var (_usrToText usr)
 
 
-maybeOverrideUsrForConstructor as fn @EA.TranslationState, Env, EA.TranslatedUsr: JA.Expr =
+maybeOverrideUsrForConstructor as fn Env, EA.TranslatedUsr: JA.Expr =
     fn env, usr:
     try Dict.get usr env.overrides as
 
@@ -625,7 +625,7 @@ translateConstructorDef as fn Dict Text Int, USR & TA.RawType: JA.Statement =
     JA.'define 'false (translateUsrToText sourceDirectoryKeyToId usr) definitionBody
 
 
-translateDef as fn @EA.TranslationState, Env, EA.GlobalDefinition: Maybe JA.Statement =
+translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn env, def:
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
@@ -658,6 +658,6 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         }
 
     jaStatements as [ JA.Statement ] =
-        List.filterMap (translateDef sourceDirectoryKeyToId env __) eaDefs
+        List.filterMap (translateDef env __) eaDefs
 
     List.concat [ jaConstructors, jaStatements ]

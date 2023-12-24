@@ -33,17 +33,17 @@ extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
     [ usr "updateDomNode" ]
 
 
-compile as fn @EA.TranslationState, Meta.ImportsPath, Self.LoadPars: Text =
-    fn @state, platformImportsPath, out:
+compile as fn Meta.ImportsPath, Self.LoadPars: Text =
+    fn platformImportsPath, loadPars:
     log "Creating JS AST..." ""
 
     jaStatements =
         Targets/Javascript/EmittableToJs.translateAll
-            @state
             {
-            , constructors = out.constructors
-            , eaDefs = out.defs
+            , constructors = loadPars.constructors
+            , eaDefs = loadPars.defs
             , platformOverrides = overrides (virtualDomUsr platformImportsPath)
+            , sourceDirectoryKeyToId = loadPars.sourceDirectoryKeyToId
             }
 
     log "Emitting JS..." ""
@@ -55,16 +55,13 @@ compile as fn @EA.TranslationState, Meta.ImportsPath, Self.LoadPars: Text =
 
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath:
-    fn out:
-    !state as EA.TranslationState =
-        cloneImm EA.initTranslationState
-
+    fn loadPars:
     compiledStatements =
-        compile @state platformImportsPath out
+        compile platformImportsPath loadPars
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions @state .. runtime .. compiledStatements .. footer @state platformImportsPath out
+    header .. Targets/Javascript/Runtime.nativeDefinitions loadPars.sourceDirectoryKeyToId .. runtime .. compiledStatements .. footer platformImportsPath loadPars
 
 
 overrides as fn fn Name: USR: [ USR & Text ] =
@@ -92,15 +89,15 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn @EA.TranslationState, Meta.ImportsPath, Self.LoadPars: Text =
-    fn @state, platformImportsPath, pars:
+footer as fn Meta.ImportsPath, Self.LoadPars: Text =
+    fn platformImportsPath, pars:
     mainName =
-        Targets/Javascript/EmittableToJs.translateUsrToText @state pars.entryUsr
+        Targets/Javascript/EmittableToJs.translateUsrToText pars.sourceDirectoryKeyToId pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
         >> virtualDomUsr platformImportsPath
-        >> Targets/Javascript/EmittableToJs.translateUsrToText @state __
+        >> Targets/Javascript/EmittableToJs.translateUsrToText pars.sourceDirectoryKeyToId __
 
     """
 

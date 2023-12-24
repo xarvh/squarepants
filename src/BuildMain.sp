@@ -367,7 +367,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs platformImportsPath... ]
     }
     >> Compiler/LazyBuild.build
-    >> onOk fn { constructors, rootValues }:
+    >> onOk fn { constructors, rootValues, sourceDirectoryKeyToId }:
     outputFile =
         Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
 
@@ -382,6 +382,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , defs = rootValues
     , entryUsr
     , type
+    , sourceDirectoryKeyToId
     }
     >> pars.platform.makeExecutable platformImportsPath
     >> IO.writeFile @io outputFile __

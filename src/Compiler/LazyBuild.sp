@@ -252,6 +252,7 @@ BuildOut =
     {
     , constructors as [ USR & TA.RawType ]
     , rootValues as [ EA.GlobalDefinition ]
+    , sourceDirectoryKeyToId as Dict Text Int
     }
 
 
@@ -384,11 +385,11 @@ build as fn BuildPlan: Res BuildOut =
         fn usr & def:
         {
         , deps = def.directDeps
-        , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) def.body
+        , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr sourceDirectoryKeyToId) def.body
         , freeTyvars = def.freeTyvars
         , freeUnivars = def.freeUnivars
         , type = def.type.raw
-        , usr
+        , usr = EA.translateUsr sourceDirectoryKeyToId usr
         }
 
     rootValues as [ EA.GlobalDefinition ] =

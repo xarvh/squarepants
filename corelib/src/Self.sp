@@ -10,6 +10,7 @@ LoadPars =
     , constructors as [ USR & TA.RawType ]
     , defs as [ EA.GlobalDefinition ]
     , entryUsr as USR
+    , sourceDirectoryKeyToId as Dict Text Int
     , type as TA.RawType
     }
 

@@ -95,7 +95,7 @@ overrides as fn Meta.ImportsPath: [ USR & Text ] =
     ]
 
 
-runtime as fn @EA.TranslationState: Text =
+runtime as fn Dict Text Int: Text =
     fn sourceDirectoryKeyToId:
     makeOk as Text =
         'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
