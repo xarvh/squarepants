@@ -161,8 +161,12 @@ infer as fn Text: fn Text: Result Text Out =
     }
     >> Compiler/LazyBuild.build
     >> TH.resErrorToStrippedText
-    >> onOk fn { constructors, rootValues }:
-    try List.find (fn rv: rv.usr == 'USR TH.moduleUmr targetName) rootValues as
+    >> onOk fn { constructors, rootValues, sourceDirectoryKeyToId }:
+
+    targetUsr =
+        EA.translateUsr sourceDirectoryKeyToId ('USR TH.moduleUmr targetName)
+
+    try List.find (fn rv: rv.usr == targetUsr) rootValues as
         'nothing: 'err "find fail"
         'just def: 'ok def
     >> onOk fn def:
