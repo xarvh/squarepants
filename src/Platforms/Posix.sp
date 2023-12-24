@@ -10,7 +10,8 @@ platform as Platform =
 
 
 defaultImportsFile as ImportsFile =
-    DefaultImports.platformDefaultImportsFile "posix"
+    DefaultImports.platformDefaultImportsFile
+        "posix"
         [
         , "IO" & [ "IO" ]
         , "Path" & []
@@ -20,12 +21,11 @@ defaultImportsFile as ImportsFile =
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath:
     fn out:
-
-    !state as EA.TranslationState =
-        cloneImm EA.initTranslationState
+    { with  sourceDirectoryKeyToId } =
+        out
 
     entryName =
-        Targets/Javascript/EmittableToJs.translateUsrToText @state out.entryUsr
+        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId out.entryUsr
 
     callMain =
         """
@@ -43,11 +43,12 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
         log "Creating JS AST..." ""
 
         jaStatements =
-            Targets/Javascript/EmittableToJs.translateAll @state
+            Targets/Javascript/EmittableToJs.translateAll
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs
                 , platformOverrides = overrides platformImportsPath
+                , sourceDirectoryKeyToId
                 }
 
         log "Emitting JS..." ""
@@ -56,7 +57,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
         >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions @state .. runtime @state .. compiledStatements .. callMain
+    header .. Targets/Javascript/Runtime.nativeDefinitions sourceDirectoryKeyToId .. runtime sourceDirectoryKeyToId .. compiledStatements .. callMain
 
 
 header as Text =
@@ -95,14 +96,12 @@ overrides as fn Meta.ImportsPath: [ USR & Text ] =
 
 
 runtime as fn @EA.TranslationState: Text =
-    fn @state:
-
+    fn sourceDirectoryKeyToId:
     makeOk as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText @state __
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
 
     makeErr as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText @state __
-
+        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
 
     """
 
