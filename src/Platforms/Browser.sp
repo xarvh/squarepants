@@ -92,7 +92,7 @@ header as Text =
 footer as fn Meta.ImportsPath, Self.LoadPars: Text =
     fn platformImportsPath, pars:
     mainName =
-        Targets/Javascript/EmittableToJs.translateUsrToText pars.sourceDirectoryKeyToId pars.entryUsr
+        Targets/Javascript/EmittableToJs._usrToText pars.entryUsr
 
     updateDomNode =
         "updateDomNode"

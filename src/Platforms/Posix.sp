@@ -25,7 +25,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
         out
 
     entryName =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId out.entryUsr
+        Targets/Javascript/EmittableToJs._usrToText out.entryUsr
 
     callMain =
         """

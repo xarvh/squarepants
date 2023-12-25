@@ -209,11 +209,11 @@ loadOverride as Override =
 #        injectedArgs =
 #            {
 #            , translateUsr = ""
-#            , makeExecutable = ""
-#            , requestedTypeHumanized
+            , makeExecutable = ""
+#            , 
 #            }
 
-        JA.'call (JA.'var "self_load") [ [#injectedArgs,#] jaArgs... ]
+        JA.'call (JA.'var "self_load") [ requestedTypeHumanized, jaArgs... ]
 
     {
     , call

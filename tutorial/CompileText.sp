@@ -81,7 +81,7 @@ defaultImports as Imports =
 selfToExposed as fn Self.Self: USR & Self.Self =
     fn self:
     try self.expression as
-        EA.'variable ('RefGlobal usr): usr & self
+        EA.'globalVariable usr: usr & self
         _: todo << "can't create an USR for " .. toHuman self.expression
 
 
@@ -207,9 +207,12 @@ main as fn Text: Result (Html msg) CompiledCode =
     , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build
-    >> onResSuccess fn { constructors, rootValues }:
+    >> onResSuccess fn { constructors, rootValues, sourceDirectoryKeyToId }:
 
-    try List.find (fn v: v.usr == entryUsr) rootValues as
+    entryTUsr =
+      EA.translateUsr sourceDirectoryKeyToId entryUsr
+
+    try List.find (fn v: v.usr == entryTUsr) rootValues as
         'nothing:
             log "" (List.map (fn s: s.usr) rootValues)
             'err (Html.text "internal bug: cannot find entryUsr!?")
@@ -220,8 +223,9 @@ main as fn Text: Result (Html msg) CompiledCode =
         {
         , constructors
         , defs = rootValues
-        , entryUsr
+        , entryUsr = entryTUsr
         , type = entryValue.type
+        , sourceDirectoryKeyToId
         }
 
     loadResult as Result TA.RawType CompiledCode =

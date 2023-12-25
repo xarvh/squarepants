@@ -372,15 +372,18 @@ compileMain as fn @IO, CompileMainPars: Res None =
         Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
 
     # Should be the last
+    _entryUsr as EA.TranslatedUsr =
+        EA.translateUsr sourceDirectoryKeyToId entryUsr
+
     type =
-        try List.find (fn rv: rv.usr == entryUsr) rootValues as
+        try List.find (fn rv: rv.usr == _entryUsr) rootValues as
             'just rv: rv.type
             'nothing: todo "no type!?"
 
     {
     , constructors
     , defs = rootValues
-    , entryUsr
+    , entryUsr = _entryUsr
     , type
     , sourceDirectoryKeyToId
     }
