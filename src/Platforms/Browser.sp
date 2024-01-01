@@ -33,31 +33,30 @@ extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
     [ usr "updateDomNode" ]
 
 
-compile as fn Meta.ImportsPath, Self.LoadPars: Text =
-    fn platformImportsPath, loadPars:
-    log "Creating JS AST..." ""
+compile as fn [ Usr & Text ], Self.LoadPars: Text =
+    fn platformOverrides, loadPars:
 
-    jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll
-            {
-            , constructors = loadPars.constructors
-            , eaDefs = loadPars.defs
-            , platformOverrides = overrides (virtualDomUsr platformImportsPath)
-            , sourceDirectoryKeyToId = loadPars.sourceDirectoryKeyToId
-            }
-
-    log "Emitting JS..." ""
-
-    jaStatements
+    {
+    , constructors = loadPars.constructors
+    , eaDefs = loadPars.defs
+    , platformOverrides
+    , sourceDirectoryKeyToId = loadPars.sourceDirectoryKeyToId
+    }
+    >> Targets/Javascript/EmittableToJs.translateAll
     >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
     >> Text.join "\n\n" __
 
 
 makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     fn platformImportsPath:
+
+    platformOverrides =
+        overrides (virtualDomUsr platformImportsPath)
+
     fn loadPars:
+
     compiledStatements =
-        compile platformImportsPath loadPars
+        compile platformOverrides loadPars
 
     # TODO check that type is ....?
 

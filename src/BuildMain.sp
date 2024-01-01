@@ -35,20 +35,45 @@ getEntryUsr as fn Imports, Text: Res USR =
         "main"
 
 
+buildInfoModule as fn Platform: CA.Module =
+    fn platform:
+
+    compile as CA.ValueDef =
+        {
+        , directDeps = Dict.ofOne platform.compileUsr Meta.'valueDependency
+        , maybeBody = CA.'variable Pos.'n ('refGlobal platform.compileUsr)
+        , name = "compile"
+        , maybeAnnotation = 'nothing
+        , namePos = Pos.'n
+        }
+
+    {
+    , aliasDefs = Dict.empty
+    , asText = "<buildInfo module>"
+    , constructorDefs = Dict.empty
+    , fsPath = "<buildInfo module>"
+    , umr = 'UMR CoreDefs.importsPath "src" "BuildInfo"
+    , valueDefs = Dict.ofOne "compile" compile
+    , variantTypeDefs = Dict.empty
+    }
+
+
 LoadCaModulePars =
     {
     , loadExports as fn Meta.ImportsPath: Res Exports
     , loadImports as fn Meta.ImportsPath: Res Imports
     , readFile as fn Text: IO.Re Text
     , rootPaths as Meta.RootPaths
+    , buildInfoModule as CA.Module
     }
 
 
 loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
     fn pars, 'USR umr name:
-
     if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
+    else if umr == pars.buildInfoModule.umr then
+        'ok pars.buildInfoModule
     else
         'UMR importsPath sourceDir modulePath =
             umr
@@ -384,8 +409,8 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , constructors
     , defs = rootValues
     , entryUsr = _entryUsr
-    , type
     , sourceDirectoryKeyToId
+    , type
     }
     >> pars.platform.makeExecutable platformImportsPath
     >> IO.writeFile @io outputFile __
