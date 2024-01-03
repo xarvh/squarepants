@@ -1,5 +1,8 @@
 platform as Platform =
+    self = sp_introspect_value Platforms/Browser.compile
+
     {
+    , compileUsr = self.usr
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
     , extraRequiredUsrs = fn _: []

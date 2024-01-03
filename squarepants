@@ -2641,7 +2641,12 @@ const c1$Compiler$CanonicalAst$expressionPos = (($exp) => {
                           const $p = ($exp)[1];
                           return $p;
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 281:4', (sp_toHuman)($exp)))))))))))));
+                        : ((($exp)[0] === "$Introspect")
+                          ? ((() => {
+                            const $p = ($exp)[1];
+                            return $p;
+                          }))()
+                          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 281:4', (sp_toHuman)($exp))))))))))))));
 });
 
 const c1$Dict$empty = c1$Dict$RBEmpty_elm_builtin;
@@ -17282,6 +17287,25 @@ const u1$BuildMain$asModuleDirectory = (($tuple) => {
     : c1$Maybe$Nothing);
 });
 
+const u1$BuildMain$buildInfoModule = (($platform) => {
+  const $compile = ({
+    directDeps: (c1$Dict$ofOne)($platform.compileUsr, c1$Compiler$Meta$ValueDependency),
+    maybeAnnotation: c1$Maybe$Nothing,
+    maybeBody: (c1$Maybe$Just)((c1$Compiler$CanonicalAst$Variable)(c1$Compiler$Pos$N, (c1$Compiler$Ast$RefGlobal)($platform.compileUsr))),
+    name: "compile",
+    namePos: c1$Compiler$Pos$N,
+  });
+  return ({
+    aliasDefs: c1$Dict$empty,
+    asText: "<buildInfo module>",
+    constructorDefs: c1$Dict$empty,
+    fsPath: "<buildInfo module>",
+    umr: (c1$Compiler$Meta$UMR)(u1$Compiler$CoreDefs$importsPath, "src", "BuildInfo"),
+    valueDefs: (c1$Dict$ofOne)("compile", $compile),
+    variantTypeDefs: c1$Dict$empty,
+  });
+});
+
 const u1$BuildMain$defaultCorelibDir = "corelib";
 
 const u1$BuildMain$getEntryUsr = (($projectImports, $entryModule) => {
@@ -17310,43 +17334,45 @@ const u1$BuildMain$loadCaModule = (($pars, $1) => {
   const $name = ($1)[2];
   return ((sp_equal)($umr, u1$Compiler$CoreDefs$umr)
     ? (c1$Result$Ok)(u1$Compiler$CoreDefs$coreModule)
-    : ((() => {
-      const $3 = $umr;
-      const $modulePath = ($3)[3];
-      const $sourceDir = ($3)[2];
-      const $importsPath = ($3)[1];
-      const $4 = $importsPath;
-      const $importsDir = ($4)[2];
-      const $rootDirectory = ($4)[1];
-      return ((c1$Result$onOk)((($imports) => {
-        const $rootPath = (c1$Compiler$Meta$rootDirectoryToPath)($pars.rootPaths, $rootDirectory);
-        const $fileName = ((($0) => {
-          return ($0 + ".sp");
-        }))((path_join)((c1$Core$Cons)($rootPath, (c1$Core$Cons)($importsDir, (c1$Core$Cons)($sourceDir, (c1$Core$Cons)($modulePath, c1$Core$Nil))))));
-        return ((c1$Result$onOk)((($moduleAsText) => {
-          const $errorModule = ({
-            content: $moduleAsText,
-            fsPath: $fileName,
-          });
-          const $resolvePars = (($pos) => {
-            return ({
-              currentImports: $imports,
-              currentModule: $umr,
-              loadExports: $pars.loadExports,
-              makeError: (($0) => {
-                return (u1$Compiler$Error$Simple)($errorModule, $pos, $0);
-              }),
+    : ((sp_equal)($umr, $pars.buildInfoModule.umr)
+      ? (c1$Result$Ok)($pars.buildInfoModule)
+      : ((() => {
+        const $3 = $umr;
+        const $modulePath = ($3)[3];
+        const $sourceDir = ($3)[2];
+        const $importsPath = ($3)[1];
+        const $4 = $importsPath;
+        const $importsDir = ($4)[2];
+        const $rootDirectory = ($4)[1];
+        return ((c1$Result$onOk)((($imports) => {
+          const $rootPath = (c1$Compiler$Meta$rootDirectoryToPath)($pars.rootPaths, $rootDirectory);
+          const $fileName = ((($0) => {
+            return ($0 + ".sp");
+          }))((path_join)((c1$Core$Cons)($rootPath, (c1$Core$Cons)($importsDir, (c1$Core$Cons)($sourceDir, (c1$Core$Cons)($modulePath, c1$Core$Nil))))));
+          return ((c1$Result$onOk)((($moduleAsText) => {
+            const $errorModule = ({
+              content: $moduleAsText,
+              fsPath: $fileName,
             });
-          });
-          const $params = ({
-            errorModule: $errorModule,
-            resolvePars: $resolvePars,
-            umr: $umr,
-          });
-          return (u1$Compiler$MakeCanonical$textToCanonicalModule)(false, $params);
-        })))((u1$BuildMain$ioToRes)(($pars.readFile)($fileName)));
-      })))(($pars.loadImports)($importsPath));
-    }))());
+            const $resolvePars = (($pos) => {
+              return ({
+                currentImports: $imports,
+                currentModule: $umr,
+                loadExports: $pars.loadExports,
+                makeError: (($0) => {
+                  return (u1$Compiler$Error$Simple)($errorModule, $pos, $0);
+                }),
+              });
+            });
+            const $params = ({
+              errorModule: $errorModule,
+              resolvePars: $resolvePars,
+              umr: $umr,
+            });
+            return (u1$Compiler$MakeCanonical$textToCanonicalModule)(false, $params);
+          })))((u1$BuildMain$ioToRes)(($pars.readFile)($fileName)));
+        })))(($pars.loadImports)($importsPath));
+      }))()));
 });
 
 const u1$BuildMain$exportsFileName = "exports.sp";
@@ -17395,7 +17421,7 @@ const u1$BuildMain$updateSourceDir = (($fileNames, $orig) => {
             }), $0.modules),
           }));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 161:8', (sp_toHuman)($5))));
+        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 186:8', (sp_toHuman)($5))));
   });
   return (c1$List$for)($orig, $fileNames, $insertModuleName);
 });
@@ -17822,7 +17848,7 @@ const u1$BuildMain$loadImports = (($io, $loadedImports, $rootPaths, $importsPath
             })))((u1$ImportsFile$fromText)($filePath, $fileContent));
           })))((u1$BuildMain$ioToRes)(((__re__ = (io_readFile)($io, $filePath)), ($io = (__re__)[1]), (__re__)[0])));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 223:4', (sp_toHuman)($5)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 248:4', (sp_toHuman)($5)))),
     $io,
     $loadedImports,
   ]);
@@ -17935,7 +17961,7 @@ const u1$BuildMain$loadExports = (($io, $loadedImports, $loadedExports, $rootPat
             })))((u1$ExportsFile$fromText)($filePath, $fileContent));
           })))((u1$BuildMain$ioToRes)(((__re__ = (io_readFile)($io, $filePath)), ($io = (__re__)[1]), (__re__)[0])));
         })))(((__re__ = (u1$BuildMain$loadImports)($io, $loadedImports, $rootPaths, $importsPath)), ($io = (__re__)[1]), ($loadedImports = (__re__)[2]), (__re__)[0]))
-        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 195:4', (sp_toHuman)($6)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 220:4', (sp_toHuman)($6)))),
     $io,
     $loadedImports,
     $loadedExports,
@@ -17959,7 +17985,7 @@ const u1$BuildMain$searchAncestorDirectories = (($io, $isWantedFile, $searchDir)
                 : ((__re__ = (u1$BuildMain$searchAncestorDirectories)($io, $isWantedFile, $parent)), ($io = (__re__)[1]), (__re__)[0]));
             }))());
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 249:4', (sp_toHuman)($4)))),
+        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 274:4', (sp_toHuman)($4)))),
     $io,
   ]);
 });
@@ -17988,7 +18014,7 @@ const u1$BuildMain$compileMain = (($io, $pars) => {
           const $executablePath = (path_dirname)((path_resolve)((c1$Core$Cons)($pars.selfPath, c1$Core$Nil)));
           return (path_join)((c1$Core$Cons)($executablePath, (c1$Core$Cons)(u1$BuildMain$defaultCorelibDir, c1$Core$Nil)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 301:8', (sp_toHuman)($3))));
+        : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 326:8', (sp_toHuman)($3))));
   }))();
   const $rootPaths = ({
     core: $corelibPath,
@@ -18001,6 +18027,7 @@ const u1$BuildMain$compileMain = (($io, $pars) => {
     ((c1$Result$onOk)((($projectImports) => {
       return ((c1$Result$onOk)((($entryUsr) => {
         const $loadCaModulePars = ({
+          buildInfoModule: (u1$BuildMain$buildInfoModule)($pars.platform),
           loadExports: (($0) => {
             return ((__re__ = (u1$BuildMain$loadExports)($io, $loadedImports, $loadedExports, $rootPaths, $0)), ($io = (__re__)[1]), ($loadedImports = (__re__)[2]), ($loadedExports = (__re__)[3]), (__re__)[0]);
           }),
@@ -18030,7 +18057,7 @@ const u1$BuildMain$compileMain = (($io, $pars) => {
               }))()
               : ((($6)[0] === "$Nothing")
                 ? (sp_todo)("no type!?")
-                : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 379:8', (sp_toHuman)($6))));
+                : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 405:8', (sp_toHuman)($6))));
           }))();
           return ((c1$Result$onOk)(((_0) => {
             return (u1$BuildMain$ioToRes)(((__re__ = (io_writeStdout)($io, ("---> " + ($outputFile + " written. =)")))), ($io = (__re__)[1]), (__re__)[0]));
@@ -19395,77 +19422,6 @@ const u1$Targets$Emitted_Test$tests = (i2$Test$Group)("Emitted", (c1$Core$Cons)(
 
 const u1$Main$allTests = (c1$Core$Cons)(u1$Human$Format_Test$tests, (c1$Core$Cons)(u1$Compiler$Lexer_Test$tests, (c1$Core$Cons)(u1$Compiler$Parser_Test$tests, (c1$Core$Cons)(u1$Compiler$MakeCanonical_Test$tests, (c1$Core$Cons)(u1$Compiler$TypeCheck_Test$tests, (c1$Core$Cons)(u1$Targets$Emitted_Test$tests, (c1$Core$Cons)(c1$Hash_Test$tests, (c1$Core$Cons)(c1$Array_Test$tests, (c1$Core$Cons)(c1$List_Test$tests, (c1$Core$Cons)(c1$Dict_Test$tests, (c1$Core$Cons)(u4$Uniqueness$specs, (c1$Core$Cons)(u1$SPLib$Format_Test$tests, (c1$Core$Cons)(u1$SPLib$RefHierarchy_Test$tests, c1$Core$Nil)))))))))))));
 
-const u1$Platforms$Browser$defaultImportsFile = (u1$DefaultImports$platformDefaultImportsFile)("browser", (c1$Core$Cons)(({
-  first: "Browser",
-  second: c1$Core$Nil,
-}), (c1$Core$Cons)(({
-  first: "Html",
-  second: c1$Core$Nil,
-}), (c1$Core$Cons)(({
-  first: "VirtualDom",
-  second: c1$Core$Nil,
-}), c1$Core$Nil))));
-
-const u1$Platforms$Browser$virtualDomUsr = (($platformImportsPath) => {
-  return (($0) => {
-    return (c1$Compiler$Meta$USR)((c1$Compiler$Meta$UMR)($platformImportsPath, "", "VirtualDom"), $0);
-  });
-});
-
-const u1$Platforms$Browser$extraRequiredUsrs = (($importsPath) => {
-  const $usr = (u1$Platforms$Browser$virtualDomUsr)($importsPath);
-  return (c1$Core$Cons)(($usr)("updateDomNode"), c1$Core$Nil);
-});
-
-const u1$Platforms$Browser$overrides = (($usr) => {
-  return (c1$Core$Cons)(({
-    first: ($usr)("jsCreateTextNode"),
-    second: "virtualDom_jsCreateTextNode",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsCreateElement"),
-    second: "virtualDom_jsCreateElement",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsReplaceWith"),
-    second: "virtualDom_jsReplaceWith",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsAppendChild"),
-    second: "virtualDom_jsAppendChild",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsSetProperty"),
-    second: "virtualDom_jsSetProperty",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsSetAttribute"),
-    second: "virtualDom_jsSetAttribute",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsRemoveAttribute"),
-    second: "virtualDom_jsRemoveAttribute",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsAddEventListener"),
-    second: "virtualDom_jsAddEventListener",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("jsRemoveEventListener"),
-    second: "virtualDom_jsRemoveEventListener",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("eventToText"),
-    second: "virtualDom_eventToText",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("eventToFloat"),
-    second: "virtualDom_eventToFloat",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("setChild"),
-    second: "virtualDom_setChild",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("removeAllChildrenStartingFromIndex"),
-    second: "virtualDom_removeAllChildrenStartingFromIndex",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("drawCanvas"),
-    second: "virtualDom_drawCanvas",
-  }), (c1$Core$Cons)(({
-    first: ($usr)("setViewportOf"),
-    second: "virtualDom_setViewportOf",
-  }), c1$Core$Nil)))))))))))))));
-});
-
 const u1$Targets$Javascript$EmittableToJs$accessAttrs = (($attrPath, $e) => {
   return (c1$List$for)($e, $attrPath, u1$Targets$Javascript$Ast$AccessWithDot);
 });
@@ -20416,22 +20372,41 @@ const u1$Targets$Javascript$JsToText$emitStatement = (($l, $stat) => {
           : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/JsToText.sp 12:4', (sp_toHuman)($stat))))));
 });
 
-const u1$Platforms$Browser$compile = (($platformImportsPath, $loadPars) => {
-  (sp_log)("Creating JS AST...", "");
-  const $jaStatements = (u1$Targets$Javascript$EmittableToJs$translateAll)(({
-    constructors: $loadPars.constructors,
-    eaDefs: $loadPars.defs,
-    platformOverrides: (u1$Platforms$Browser$overrides)((u1$Platforms$Browser$virtualDomUsr)($platformImportsPath)),
-    sourceDirectoryKeyToId: $loadPars.sourceDirectoryKeyToId,
-  }));
-  (sp_log)("Emitting JS...", "");
+const u1$Platforms$Browser$compile = (($platformOverrides, $loadPars) => {
   return ((($0) => {
     return (c1$Text$join)("\n\n", $0);
   }))(((($0) => {
     return (c1$List$map)((($0) => {
       return (u1$Targets$Javascript$JsToText$emitStatement)(0, $0);
     }), $0);
-  }))($jaStatements));
+  }))((u1$Targets$Javascript$EmittableToJs$translateAll)(({
+    constructors: $loadPars.constructors,
+    eaDefs: $loadPars.defs,
+    platformOverrides: $platformOverrides,
+    sourceDirectoryKeyToId: $loadPars.sourceDirectoryKeyToId,
+  }))));
+});
+
+const u1$Platforms$Browser$defaultImportsFile = (u1$DefaultImports$platformDefaultImportsFile)("browser", (c1$Core$Cons)(({
+  first: "Browser",
+  second: c1$Core$Nil,
+}), (c1$Core$Cons)(({
+  first: "Html",
+  second: c1$Core$Nil,
+}), (c1$Core$Cons)(({
+  first: "VirtualDom",
+  second: c1$Core$Nil,
+}), c1$Core$Nil))));
+
+const u1$Platforms$Browser$virtualDomUsr = (($platformImportsPath) => {
+  return (($0) => {
+    return (c1$Compiler$Meta$USR)((c1$Compiler$Meta$UMR)($platformImportsPath, "", "VirtualDom"), $0);
+  });
+});
+
+const u1$Platforms$Browser$extraRequiredUsrs = (($importsPath) => {
+  const $usr = (u1$Platforms$Browser$virtualDomUsr)($importsPath);
+  return (c1$Core$Cons)(($usr)("updateDomNode"), c1$Core$Nil);
 });
 
 const u1$Platforms$Browser$footer = (($platformImportsPath, $pars) => {
@@ -20443,6 +20418,55 @@ const u1$Platforms$Browser$footer = (($platformImportsPath, $pars) => {
 });
 
 const u1$Platforms$Browser$header = "(function (win) {\n";
+
+const u1$Platforms$Browser$overrides = (($usr) => {
+  return (c1$Core$Cons)(({
+    first: ($usr)("jsCreateTextNode"),
+    second: "virtualDom_jsCreateTextNode",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsCreateElement"),
+    second: "virtualDom_jsCreateElement",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsReplaceWith"),
+    second: "virtualDom_jsReplaceWith",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsAppendChild"),
+    second: "virtualDom_jsAppendChild",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsSetProperty"),
+    second: "virtualDom_jsSetProperty",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsSetAttribute"),
+    second: "virtualDom_jsSetAttribute",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsRemoveAttribute"),
+    second: "virtualDom_jsRemoveAttribute",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsAddEventListener"),
+    second: "virtualDom_jsAddEventListener",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("jsRemoveEventListener"),
+    second: "virtualDom_jsRemoveEventListener",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("eventToText"),
+    second: "virtualDom_eventToText",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("eventToFloat"),
+    second: "virtualDom_eventToFloat",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("setChild"),
+    second: "virtualDom_setChild",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("removeAllChildrenStartingFromIndex"),
+    second: "virtualDom_removeAllChildrenStartingFromIndex",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("drawCanvas"),
+    second: "virtualDom_drawCanvas",
+  }), (c1$Core$Cons)(({
+    first: ($usr)("setViewportOf"),
+    second: "virtualDom_setViewportOf",
+  }), c1$Core$Nil)))))))))))))));
+});
 
 const u1$Platforms$Browser$runtime = "const crawlObject = (path, type, object) => {\n\n    while(path[0] === 'Cons') {\n\n        const head = path[1];\n        const tail = path[2];\n\n        const o = object[head];\n\n        if (o === undefined) {\n            return [ 'Err', 'no field named: ' + head ];\n        }\n\n        object = o;\n        path = path[2];\n    }\n\n    return typeof object === type\n        ? [ 'Ok', object ]\n        : [ 'Err', 'wrong type: ' + typeof object ]\n        ;\n}\n\n\nconst virtualDom_eventToText = (path, event) => crawlObject(path, 'string', event);\nconst virtualDom_eventToFloat = (path, event) => crawlObject(path, 'number', event);\n\n// TODO ensure that those who must return None actually return None (ie, null)\nconst virtualDom_jsCreateTextNode = (content) => document.createTextNode(content);\nconst virtualDom_jsCreateElement = (tag) => document.createElement(tag);\nconst virtualDom_jsReplaceWith = (new_, old) => { old.replaceWith(new_); return new_; }\nconst virtualDom_jsAppendChild = (pars) => pars.parent.appendChild(pars.child);\nconst virtualDom_jsSetAttribute = (name, value, node) => node.setAttribute(name, value);\nconst virtualDom_jsRemoveAttribute = (name, node) => node.removeAttribute(name);\nconst virtualDom_jsSetProperty = (name, value, node) => node[name] = value;\n\n\nconst virtualDom_setChild = (upd, index, parentNode) => {\n    const child = parentNode.childNodes[index];\n    child && upd(child);\n};\n\n\nconst virtualDom_removeAllChildrenStartingFromIndex = (index, parentNode) => {\n    while(parentNode.childNodes[index]) {\n      parentNode.removeChild(parentNode.childNodes[index]);\n    }\n}\n\n\n// an EventHandler is a function that takes an Event and produces a msg\nconst virtualDom_jsAddEventListener = (eventName, handler, node) => {\n\n    node.squarepantsEventHandlers = node.squarepantsEventHandlers || {};\n\n    if (node.squarepantsEventHandlers[eventName]) {\n      node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    }\n\n    const onEvent = (event) => dispatch(handler(event));\n    node.squarepantsEventHandlers[eventName] = onEvent;\n    node.addEventListener(eventName, onEvent);\n};\n\nconst virtualDom_jsRemoveEventListener = (eventName, handler, node) => {\n    node.removeEventListener(eventName, node.squarepantsEventHandlers[eventName]);\n    node.squarepantsEventHandlers[eventName] = undefined;\n}\n\n\nconst virtualDom_setViewportOf = (id, top, left) => () => {\n    const e = document.getElementById(id);\n    if (!e) {\n        console.error('could not find element #' + id);\n        return\n    }\n\n    e.scrollTop = top;\n    e.scrollLeft = left;\n}\n\n\nconst virtualDom_drawCanvas = (canvasId, shaderFn) => () => {\n\n    const canvas = document.getElementById(canvasId);\n    if (!canvas) {\n        console.error('could not find canvas', canvasId);\n        return\n    }\n\n    const w = canvas.width;\n    const h = canvas.height;\n\n    const ctx = canvas.getContext('2d');\n    const imageData = ctx.createImageData(w, h);\n\n    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {\n\n        const frag = shaderFn(x / (w - 1), 1 - y / (h - 1));\n\n        let j = (x + y * w) * 4;\n        imageData.data[j + 0] = frag.r * 255;\n        imageData.data[j + 1] = frag.g * 255;\n        imageData.data[j + 2] = frag.b * 255;\n        imageData.data[j + 3] = 255;\n    }\n\n    ctx.putImageData(imageData, 0, 0);\n};";
 
@@ -20459,20 +20483,25 @@ const u1$Targets$Javascript$Runtime$nativeDefinitions = (($sourceDirectoryKeyToI
 });
 
 const u1$Platforms$Browser$makeExecutable = (($platformImportsPath) => {
+  const $platformOverrides = (u1$Platforms$Browser$overrides)((u1$Platforms$Browser$virtualDomUsr)($platformImportsPath));
   return (($loadPars) => {
-    const $compiledStatements = (u1$Platforms$Browser$compile)($platformImportsPath, $loadPars);
+    const $compiledStatements = (u1$Platforms$Browser$compile)($platformOverrides, $loadPars);
     return (u1$Platforms$Browser$header + ((u1$Targets$Javascript$Runtime$nativeDefinitions)($loadPars.sourceDirectoryKeyToId) + (u1$Platforms$Browser$runtime + ($compiledStatements + (u1$Platforms$Browser$footer)($platformImportsPath, $loadPars)))));
   });
 });
 
-const u1$Platforms$Browser$platform = ({
-  defaultImportsFile: u1$Platforms$Browser$defaultImportsFile,
-  defaultOutputName: "index.js",
-  extraRequiredUsrs: u1$Platforms$Browser$extraRequiredUsrs,
-  makeExecutable: u1$Platforms$Browser$makeExecutable,
-  name: "browser",
-  quickstart: "TODO",
-});
+const u1$Platforms$Browser$platform = ((() => {
+  const $self = {"def":["$Value",{"directDeps":["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Text"],"join"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$TypeDependency"],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$TypeDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","List"],"map"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/JsToText"],"emitStatement"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/EmittableToJs"],"translateAll"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],"maybeAnnotation":["$Just",{"raw":["$TypeFn",["$P",902,904],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$N"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$Cons",["$TypeRecord",["$P",907,917],["$RBNode_elm_builtin",["$Black"],"second",["$TypeNamed",["$P",913,917],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],["$RBNode_elm_builtin",["$Red"],"first",["$TypeNamed",["$P",907,910],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$Nil"]],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$Nil"]]],"uni":["$Imm"]}],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$P",921,934],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$Nil"]],"uni":["$Imm"]}],["$Nil"]]],{"raw":["$TypeNamed",["$P",936,940],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],"uni":["$Imm"]}],"tyvars":["$RBEmpty_elm_builtin"],"univars":["$RBEmpty_elm_builtin"]}],"maybeBody":["$Nothing"],"name":"compile","namePos":["$P",891,898]}],"usr":["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Platforms/Browser"],"compile"]};
+  return ({
+    compileUsr: $self.usr,
+    defaultImportsFile: u1$Platforms$Browser$defaultImportsFile,
+    defaultOutputName: "index.js",
+    extraRequiredUsrs: u1$Platforms$Browser$extraRequiredUsrs,
+    makeExecutable: u1$Platforms$Browser$makeExecutable,
+    name: "browser",
+    quickstart: "TODO",
+  });
+}))();
 
 const u1$Main$platformBrowser = u1$Platforms$Browser$platform;
 
@@ -20563,16 +20592,20 @@ const u1$Platforms$Posix$makeExecutable = (($platformImportsPath) => {
   });
 });
 
-const u1$Platforms$Posix$platform = ({
-  defaultImportsFile: u1$Platforms$Posix$defaultImportsFile,
-  defaultOutputName: "nodeExecutable.js",
-  extraRequiredUsrs: ((_0) => {
-    return c1$Core$Nil;
-  }),
-  makeExecutable: u1$Platforms$Posix$makeExecutable,
-  name: "posix",
-  quickstart: "TODO",
-});
+const u1$Platforms$Posix$platform = ((() => {
+  const $self = {"def":["$Value",{"directDeps":["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Text"],"join"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$TypeDependency"],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$TypeDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","List"],"map"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/JsToText"],"emitStatement"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/EmittableToJs"],"translateAll"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],"maybeAnnotation":["$Just",{"raw":["$TypeFn",["$P",902,904],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$N"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$Cons",["$TypeRecord",["$P",907,917],["$RBNode_elm_builtin",["$Black"],"second",["$TypeNamed",["$P",913,917],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],["$RBNode_elm_builtin",["$Red"],"first",["$TypeNamed",["$P",907,910],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$Nil"]],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$Nil"]]],"uni":["$Imm"]}],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$P",921,934],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$Nil"]],"uni":["$Imm"]}],["$Nil"]]],{"raw":["$TypeNamed",["$P",936,940],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],"uni":["$Imm"]}],"tyvars":["$RBEmpty_elm_builtin"],"univars":["$RBEmpty_elm_builtin"]}],"maybeBody":["$Nothing"],"name":"compile","namePos":["$P",891,898]}],"usr":["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Platforms/Browser"],"compile"]};
+  return ({
+    compileUsr: $self.usr,
+    defaultImportsFile: u1$Platforms$Posix$defaultImportsFile,
+    defaultOutputName: "nodeExecutable.js",
+    extraRequiredUsrs: ((_0) => {
+      return c1$Core$Nil;
+    }),
+    makeExecutable: u1$Platforms$Posix$makeExecutable,
+    name: "posix",
+    quickstart: "TODO",
+  });
+}))();
 
 const u1$Main$platformPosix = u1$Platforms$Posix$platform;
 

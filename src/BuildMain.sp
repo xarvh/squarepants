@@ -41,7 +41,7 @@ buildInfoModule as fn Platform: CA.Module =
     compile as CA.ValueDef =
         {
         , directDeps = Dict.ofOne platform.compileUsr Meta.'valueDependency
-        , maybeBody = CA.'variable Pos.'n ('refGlobal platform.compileUsr)
+        , maybeBody = 'just << CA.'variable Pos.'n ('refGlobal platform.compileUsr)
         , name = "compile"
         , maybeAnnotation = 'nothing
         , namePos = Pos.'n
@@ -377,6 +377,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #
     loadCaModulePars as LoadCaModulePars =
         {
+        , buildInfoModule = buildInfoModule pars.platform
         , loadExports = loadExports @io @loadedImports @loadedExports rootPaths __
         , loadImports = loadImports @io @loadedImports rootPaths __
         , readFile = IO.readFile @io __

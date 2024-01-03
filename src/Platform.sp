@@ -1,6 +1,7 @@
 # Each platform should expose one of these inside a Platform.sp
 Platform =
     {
+    , compileUsr as USR
     # TODO at some point, we'll be able to generate a text file from Imports
     # to be used when the user wants to initialize a new project (or library?)
     , defaultImportsFile as ImportsFile

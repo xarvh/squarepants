@@ -1,5 +1,8 @@
 platform as Platform =
+    self = sp_introspect_value compile
+
     {
+    , compileUsr = self.usr
     , defaultImportsFile
     , defaultOutputName = "index.js"
     , extraRequiredUsrs
@@ -33,7 +36,7 @@ extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
     [ usr "updateDomNode" ]
 
 
-compile as fn [ Usr & Text ], Self.LoadPars: Text =
+compile as fn [ USR & Text ], Self.LoadPars: Text =
     fn platformOverrides, loadPars:
 
     {
