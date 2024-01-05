@@ -115,6 +115,6 @@ translateUsr as fn Dict Text Int, USR: TranslatedUsr =
     id =
         try Dict.get key sourceDirectoryKeyToId as
             'just i: i
-            'nothing: todo << "compiler bug: translateUsr@" .. key
+            'nothing: todo << "compiler bug: translateUsr@:" .. toHuman usr
 
     List.concat [ [ translateRoot root .. Text.fromNumber id ], Text.split "/" modulePath, [ translateName name ] ]

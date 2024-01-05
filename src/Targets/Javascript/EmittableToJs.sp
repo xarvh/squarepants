@@ -103,8 +103,7 @@ coreOverrides as fn Dict Text Int: Dict EA.TranslatedUsr Override =
     , corelib "List" "sortBy"
     & function "list_sortBy"
     #
-    , corelib "Self" "load"
-    & loadOverride
+    , corelib "Self" "load" & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
     >> List.for Dict.empty __ fn usr & override, d: Dict.insert (EA.translateUsr sourceDirectoryKeyToId usr) override d
@@ -205,13 +204,6 @@ loadOverride as Override =
 
                 _:
                     todo "loadOverride BUG?!"
-
-#        injectedArgs =
-#            {
-#            , translateUsr = ""
-#            , makeExecutable = ""
-#            , 
-#            }
 
         JA.'call (JA.'var "self_load") [ requestedTypeHumanized, jaArgs... ]
 

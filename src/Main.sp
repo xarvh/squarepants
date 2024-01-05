@@ -10,6 +10,7 @@ allTests as [ Test ] =
     , Array_Test.tests
     , List_Test.tests
     , Dict_Test.tests
+    , Self_Test.tests
     , Uniqueness.specs
     , SPLib/Format_Test.tests
     , SPLib/RefHierarchy_Test.tests

@@ -98,6 +98,8 @@ library =
         path = Hash_Test
     module =
         path = List_Test
+    module =
+        path = Self_Test
 
     module =
        path = Core

@@ -14,6 +14,11 @@ sourceDir =
           'true
           'false
 
+
+    module =
+       path = BuildInfo
+
+
     module =
        path = Debug
        globals =

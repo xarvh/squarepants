@@ -1,0 +1,62 @@
+valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
+    Test.valueTest Debug.toHuman __ __ __
+
+
+tests as Test =
+    Test.'group
+        "Self"
+        [
+        , base
+        ]
+
+
+var IntegerOnly =
+    , 'integer Int
+
+
+load as fn a: Result TA.RawType IntegerOnly =
+    fn _:
+    usr as USR =
+        'USR ('UMR (Meta.'importsPath Meta.'user "") "" "DynamicLoad") "aNumberValue"
+
+    sourceDirectoryKeyToId as Dict Text Int =
+        Dict.ofOne (Meta.sourceDirectoryKey usr) 5
+
+    translatedUsr =
+        EA.translateUsr sourceDirectoryKeyToId usr
+
+    numberSelf =
+        sp_introspect_type Number
+
+    numberType as TA.RawType =
+        TA.'typeExact numberSelf.usr []
+
+    def as EA.GlobalDefinition =
+        {
+        , deps = Dict.empty
+        , expr = EA.'literalNumber 3
+        , freeTyvars = Dict.empty
+        , freeUnivars = Dict.empty
+        , type = numberType
+        , usr = translatedUsr
+        }
+
+    pars as Self.LoadPars =
+        {
+        , constructors = []
+        , defs = [ def ]
+        , entryUsr = translatedUsr
+        , sourceDirectoryKeyToId
+        , type = numberType
+        }
+
+    Self.load pars 'integer
+
+
+base as Test =
+    valueTest
+        """
+        Can actually sort stuff
+        """
+        load
+        (Test.isOkAndEqualTo ('ok ('integer 1)))

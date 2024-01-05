@@ -6,8 +6,11 @@ listNilName as Text =
     Targets/Javascript/EmittableToJs.translateName CoreDefs.nilName
 
 
-nativeDefinitions as fn Dict Text Int: Text =
-    fn sourceDirectoryKeyToId:
+nativeDefinitions as fn USR, Dict Text Int: Text =
+    fn compileUsr, sourceDirectoryKeyToId:
+
+    compileUsrAsText =
+        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId compileUsr
 
     okRef as Text =
         Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
@@ -594,22 +597,9 @@ nativeDefinitions as fn Dict Text Int: Text =
                 return """ .. errRef .. """(pars.type);
             }
 
-
-            /*
-            -------> Pass all functions as args!
-                u0Targets$Javascript$EmittableToJs$translateUsr;
-                $sd1$Platforms$Browser$compile(pars);
-            -------> Can we pass already all necessary usrs translated already?
-                * externalValues usrs as text
-                * entry usr as text
-                * platform makeExecutable
-            */
-
             const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');
 
-            // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
-            // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
-            const js = $sd1$Platforms$Browser$compile(pars);
+            const js = """ .. compileUsrAsText .. """(arrayToListLow([]), pars);
 
             //   { name1, name2, name3, ... } = externals;
             const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';

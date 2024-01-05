@@ -1,8 +1,6 @@
 platform as Platform =
-    self = sp_introspect_value compile
-
     {
-    , compileUsr = self.usr
+    , compileUsr = compileSelf.usr
     , defaultImportsFile
     , defaultOutputName = "index.js"
     , extraRequiredUsrs
@@ -36,6 +34,11 @@ extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
     [ usr "updateDomNode" ]
 
 
+
+compileSelf =
+    sp_introspect_value compile
+
+
 compile as fn [ USR & Text ], Self.LoadPars: Text =
     fn platformOverrides, loadPars:
 
@@ -63,7 +66,10 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions loadPars.sourceDirectoryKeyToId .. runtime .. compiledStatements .. footer platformImportsPath loadPars
+    natives =
+        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr loadPars.sourceDirectoryKeyToId
+
+    header .. natives .. runtime .. compiledStatements .. footer platformImportsPath loadPars
 
 
 overrides as fn fn Name: USR: [ USR & Text ] =

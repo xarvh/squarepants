@@ -258,6 +258,13 @@ module =
       fromMaybe
       withDefault
 
+
+module =
+    path = Self_Test
+    exposes =
+        tests
+
+
 module =
     path = Self
     exposes =

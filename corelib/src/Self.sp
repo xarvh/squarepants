@@ -1,10 +1,6 @@
 #
 # Introspection & dynamic loading
 #
-
-# If this type was in Compiler/Compiler we'd run the risk of changing it
-# forgetting to also change the native implementation of `load`, which is
-# not protected by the type check.
 LoadPars =
     {
     , constructors as [ USR & TA.RawType ]
@@ -17,6 +13,14 @@ LoadPars =
 
 load as fn LoadPars, fn specific: general: Result TA.RawType general =
     this_is_sp_native
+
+#    # This is here to add the dependency
+#    BuildInfo.compile
+#
+#    load_internal
+#
+#
+#load_internal as fn LoadPars, fn specific: general: Result TA.RawType general =
 
 
 internalRepresentation as fn a: Text with a NonFunction =

@@ -505,22 +505,9 @@ const text_toNumber = (t) => {
             return c1$Result$Err(pars.type);
             }
 
-
-            /*
-            -------> Pass all functions as args!
-                u0Targets$Javascript$EmittableToJs$translateUsr;
-                $sd1$Platforms$Browser$compile(pars);
-            -------> Can we pass already all necessary usrs translated already?
-                * externalValues usrs as text
-                * entry usr as text
-                * platform makeExecutable
-            */
-
             const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');
 
-            // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`
-            // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?
-            const js = $sd1$Platforms$Browser$compile(pars);
+            const js = u1$Platforms$Browser$compile(arrayToListLow([]), pars);
 
             //   { name1, name2, name3, ... } = externals;
             const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';
@@ -1684,6 +1671,11 @@ const c1$Self$OpenVarType = (($1) => ([
 
 const c1$Self$Value = (($1) => ([
   "$Value",
+  $1,
+]));
+
+const c1$Self_Test$Integer = (($1) => ([
+  "$Integer",
   $1,
 ]));
 
@@ -5205,6 +5197,26 @@ const c1$Result$mapError = (($f, $result) => {
       }))()
       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Result.sp 31:4', (sp_toHuman)($result))));
 });
+
+const c1$Self_Test$load = ((_0) => {
+  const $numberSelf = {"def":["$OpaqueType",{"constructors":["$RBEmpty_elm_builtin"],"pars":["$Nil"],"usr":["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Number"]}],"usr":["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Number"]};
+  const $pars = ({
+    constructors: c1$Core$Nil,
+    defs: c1$Core$Nil,
+    entryUsr: (sp_todo)(""),
+    sourceDirectoryKeyToId: c1$Dict$empty,
+    type: (c1$Compiler$TypedAst$TypeExact)($numberSelf.usr, c1$Core$Nil),
+  });
+  return (self_load)("$TypeExact    ($USR        ($UMR            ($ImportsPath                $Core                            )            src            Core        )        Number    )    []", $pars, c1$Self_Test$Integer);
+});
+
+const c1$Self_Test$valueTest = (($0, $1, $2) => {
+  return (i2$Test$valueTest)(sp_toHuman, $0, $1, $2);
+});
+
+const c1$Self_Test$base = (c1$Self_Test$valueTest)("Can actually sort stuff", c1$Self_Test$load, (i2$Test$isOkAndEqualTo)((c1$Result$Ok)((c1$Self_Test$Integer)(1))));
+
+const c1$Self_Test$tests = (i2$Test$Group)("Self", (c1$Core$Cons)(c1$Self_Test$base, c1$Core$Nil));
 
 const c1$Set$empty = c1$Dict$empty;
 
@@ -19420,7 +19432,7 @@ const u1$Targets$Emitted_Test$javascript = (i2$Test$Group)("JavaScript", (c1$Cor
 
 const u1$Targets$Emitted_Test$tests = (i2$Test$Group)("Emitted", (c1$Core$Cons)(u1$Targets$Emitted_Test$javascript, c1$Core$Nil));
 
-const u1$Main$allTests = (c1$Core$Cons)(u1$Human$Format_Test$tests, (c1$Core$Cons)(u1$Compiler$Lexer_Test$tests, (c1$Core$Cons)(u1$Compiler$Parser_Test$tests, (c1$Core$Cons)(u1$Compiler$MakeCanonical_Test$tests, (c1$Core$Cons)(u1$Compiler$TypeCheck_Test$tests, (c1$Core$Cons)(u1$Targets$Emitted_Test$tests, (c1$Core$Cons)(c1$Hash_Test$tests, (c1$Core$Cons)(c1$Array_Test$tests, (c1$Core$Cons)(c1$List_Test$tests, (c1$Core$Cons)(c1$Dict_Test$tests, (c1$Core$Cons)(u4$Uniqueness$specs, (c1$Core$Cons)(u1$SPLib$Format_Test$tests, (c1$Core$Cons)(u1$SPLib$RefHierarchy_Test$tests, c1$Core$Nil)))))))))))));
+const u1$Main$allTests = (c1$Core$Cons)(u1$Human$Format_Test$tests, (c1$Core$Cons)(u1$Compiler$Lexer_Test$tests, (c1$Core$Cons)(u1$Compiler$Parser_Test$tests, (c1$Core$Cons)(u1$Compiler$MakeCanonical_Test$tests, (c1$Core$Cons)(u1$Compiler$TypeCheck_Test$tests, (c1$Core$Cons)(u1$Targets$Emitted_Test$tests, (c1$Core$Cons)(c1$Hash_Test$tests, (c1$Core$Cons)(c1$Array_Test$tests, (c1$Core$Cons)(c1$List_Test$tests, (c1$Core$Cons)(c1$Dict_Test$tests, (c1$Core$Cons)(c1$Self_Test$tests, (c1$Core$Cons)(u4$Uniqueness$specs, (c1$Core$Cons)(u1$SPLib$Format_Test$tests, (c1$Core$Cons)(u1$SPLib$RefHierarchy_Test$tests, c1$Core$Nil))))))))))))));
 
 const u1$Targets$Javascript$EmittableToJs$accessAttrs = (($attrPath, $e) => {
   return (c1$List$for)($e, $attrPath, u1$Targets$Javascript$Ast$AccessWithDot);
@@ -19467,7 +19479,7 @@ const u1$Targets$Javascript$EmittableToJs$makeCall = (($env, $jaRef, $args) => {
             return (u1$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, $0);
           }))((u1$Targets$Javascript$Ast$Var)((u1$Targets$Javascript$EmittableToJs$translateName)($name))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 360:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 352:8', (sp_toHuman)($arg))));
   });
   const $recycledArgs = (c1$List$filterMap)($asRecycled, $args);
   return ((sp_equal)($recycledArgs, c1$Core$Nil)
@@ -19497,7 +19509,7 @@ const u1$Targets$Javascript$EmittableToJs$maybeOverrideUsr = (($env, $usr) => {
     }))()
     : ((($3)[0] === "$Nothing")
       ? (u1$Targets$Javascript$Ast$Var)((u1$Targets$Javascript$EmittableToJs$_usrToText)($usr))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 230:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 222:4', (sp_toHuman)($3))));
 });
 
 const u1$Targets$Javascript$EmittableToJs$maybeOverrideUsrForConstructor = (($env, $usr) => {
@@ -19510,7 +19522,7 @@ const u1$Targets$Javascript$EmittableToJs$maybeOverrideUsrForConstructor = (($en
     }))()
     : ((($3)[0] === "$Nothing")
       ? (u1$Targets$Javascript$Ast$Var)((u1$Targets$Javascript$EmittableToJs$_usrToText)($usr))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 237:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 229:4', (sp_toHuman)($3))));
 });
 
 const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpression) => {
@@ -19540,7 +19552,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
               }))()
               : (true
                 ? c1$Maybe$Nothing
-                : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 428:16', (sp_toHuman)($ref))));
+                : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 420:16', (sp_toHuman)($ref))));
             return (((($maybeNativeOverride)[0] === "$Just") && ((($maybeNativeOverride)[1])[0] === "$Override"))
               ? ((() => {
                 const $call = (($maybeNativeOverride)[1])[1].call;
@@ -19548,7 +19560,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
               }))()
               : ((($maybeNativeOverride)[0] === "$Nothing")
                 ? (u1$Targets$Javascript$EmittableToJs$Inline)((u1$Targets$Javascript$EmittableToJs$makeCall)($env, (u1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $ref), $args))
-                : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 432:12', (sp_toHuman)($maybeNativeOverride))));
+                : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 424:12', (sp_toHuman)($maybeNativeOverride))));
           }))()
           : ((($eaExpression)[0] === "$Fn")
             ? ((() => {
@@ -19571,7 +19583,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                         first: $re,
                         second: ("_" + (text_fromNumber)($index)),
                       })
-                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 440:20', (sp_toHuman)($maybeName))));
+                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 432:20', (sp_toHuman)($maybeName))));
                 });
                 return (c1$List$indexedMap)($zzz, $eaArgs);
               }))();
@@ -19595,7 +19607,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                       const $block = ($3)[1];
                       return $block;
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 452:16', (sp_toHuman)($3))));
+                    : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 444:16', (sp_toHuman)($3))));
               }))();
               const $statementsFinal = ((sp_equal)($recycledPars, c1$Core$Nil)
                 ? $statementsRaw
@@ -19608,7 +19620,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                       }))()
                       : (true
                         ? $stat
-                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 466:24', (sp_toHuman)($stat))));
+                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 458:24', (sp_toHuman)($stat))));
                   });
                   return (c1$List$map)($addRecycled, $statementsRaw);
                 }))());
@@ -19632,7 +19644,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                         const $jaExpression = ($3)[1];
                         return (c1$Core$Cons)((u1$Targets$Javascript$Ast$Return)($jaExpression), c1$Core$Nil);
                       }))()
-                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 476:16', (sp_toHuman)($3))));
+                      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 468:16', (sp_toHuman)($3))));
                 }))();
                 return ((($maybeName)[0] === "$Nothing")
                   ? ((() => {
@@ -19647,7 +19659,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                           const $stats = ($3)[1];
                           return (u1$Targets$Javascript$EmittableToJs$Block)((c1$List$concat)((c1$Core$Cons)($stats, (c1$Core$Cons)($inStatements, c1$Core$Nil))));
                         }))()
-                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 483:20', (sp_toHuman)($3))));
+                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 475:20', (sp_toHuman)($3))));
                   }))()
                   : ((($maybeName)[0] === "$Just")
                     ? ((() => {
@@ -19659,7 +19671,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                       }))($letExpression));
                       return (u1$Targets$Javascript$EmittableToJs$Block)((sp_cons)($letStatement, $inStatements));
                     }))()
-                    : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 480:12', (sp_toHuman)($maybeName))));
+                    : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 472:12', (sp_toHuman)($maybeName))));
               }))()
               : ((($eaExpression)[0] === "$LiteralText")
                 ? ((() => {
@@ -19697,7 +19709,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                                 }));
                               }))($head));
                             }))()
-                            : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 510:12', (sp_toHuman)($3))));
+                            : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 502:12', (sp_toHuman)($3))));
                       }))()
                       : ((($eaExpression)[0] === "$ShallowEqual")
                         ? ((() => {
@@ -19772,7 +19784,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                                             const $extend = ($maybeExtend)[1];
                                             return (u1$Targets$Javascript$EmittableToJs$Inline)((u1$Targets$Javascript$Ast$Call)((u1$Targets$Javascript$Ast$Var)("Object.assign"), (c1$Core$Cons)((u1$Targets$Javascript$Ast$Record)(c1$Dict$empty), (c1$Core$Cons)((u1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $extend), (c1$Core$Cons)($obj, c1$Core$Nil)))));
                                           }))()
-                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 568:12', (sp_toHuman)($maybeExtend))));
+                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 560:12', (sp_toHuman)($maybeExtend))));
                                     }))()
                                     : ((($eaExpression)[0] === "$RecordAccess")
                                       ? ((() => {
@@ -19793,7 +19805,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                                             const $self = ($eaExpression)[1];
                                             return (u1$Targets$Javascript$EmittableToJs$Inline)((u1$Targets$Javascript$Ast$Literal)((JSON.stringify)($self)));
                                           }))()
-                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 408:4', (sp_toHuman)($eaExpression))))))))))))))))))))));
+                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 400:4', (sp_toHuman)($eaExpression))))))))))))))))))))));
 });
 
 const u1$Targets$Javascript$EmittableToJs$translateExpressionToExpression = (($env, $expr) => {
@@ -19808,7 +19820,7 @@ const u1$Targets$Javascript$EmittableToJs$translateExpressionToExpression = (($e
         const $block = ($3)[1];
         return (u1$Targets$Javascript$Ast$Call)((u1$Targets$Javascript$Ast$BlockLambda)(c1$Core$Nil, $block), c1$Core$Nil);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 346:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 338:4', (sp_toHuman)($3))));
 });
 
 const u1$Targets$Javascript$EmittableToJs$translateArg = (($stuff, $env, $eaExpression) => {
@@ -19825,7 +19837,7 @@ const u1$Targets$Javascript$EmittableToJs$translateArg = (($stuff, $env, $eaExpr
         const $name = ($eaExpression)[3];
         return (u1$Targets$Javascript$EmittableToJs$accessAttrs)($attrPath, (u1$Targets$Javascript$Ast$Var)((u1$Targets$Javascript$EmittableToJs$translateName)($name)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 271:4', (sp_toHuman)($eaExpression))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 263:4', (sp_toHuman)($eaExpression))));
 });
 
 const u1$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
@@ -19846,7 +19858,7 @@ const u1$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
             arguments: $arguments,
             jsOp: $jsOp,
           }))))
-          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 152:8', (sp_toHuman)($arguments))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 151:8', (sp_toHuman)($arguments))));
     }),
     value: (($env) => {
       return (sp_todo)(("binop " + ($jsOp + " has no raw value")));
@@ -19898,7 +19910,7 @@ const u1$Targets$Javascript$EmittableToJs$loadOverride = ((() => {
       }))()
       : (true
         ? (sp_todo)("loadOverride BUG?!")
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 188:12', (sp_toHuman)($eaArgs))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 187:12', (sp_toHuman)($eaArgs))));
     return (u1$Targets$Javascript$Ast$Call)((u1$Targets$Javascript$Ast$Var)("self_load"), (c1$Core$Cons)($requestedTypeHumanized, $jaArgs));
   });
   return (u1$Targets$Javascript$EmittableToJs$Override)(({
@@ -19919,7 +19931,7 @@ const u1$Targets$Javascript$EmittableToJs$unaryMinus = (u1$Targets$Javascript$Em
       }))()
       : (true
         ? (sp_todo)("compiler bug: wrong number of arguments for unop")
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 134:8', (sp_toHuman)($arguments))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 133:8', (sp_toHuman)($arguments))));
   }),
   value: (($env) => {
     return (sp_todo)("unaryMinus has no raw value");
@@ -19936,7 +19948,7 @@ const u1$Targets$Javascript$EmittableToJs$unaryPlus = (u1$Targets$Javascript$Emi
       }))()
       : (true
         ? (sp_todo)("compiler bug: wrong number of arguments for unop")
-        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 117:8', (sp_toHuman)($arguments))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 116:8', (sp_toHuman)($arguments))));
   }),
   value: (($env) => {
     return (sp_todo)("unaryPlus has no raw value");
@@ -20175,7 +20187,7 @@ const u1$Targets$Javascript$EmittableToJs$translateConstructorDef = (($sourceDir
     }))()
     : (true
       ? (u1$Targets$Javascript$Ast$Array)((c1$Core$Cons)($arrayHead, c1$Core$Nil))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 612:8', (sp_toHuman)($taType))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 604:8', (sp_toHuman)($taType))));
   return (u1$Targets$Javascript$Ast$Define)(false, (u1$Targets$Javascript$EmittableToJs$translateUsrToText)($sourceDirectoryKeyToId, $usr), $definitionBody);
 });
 
@@ -20185,7 +20197,7 @@ const u1$Targets$Javascript$EmittableToJs$translateDef = (($env, $def) => {
     ? c1$Maybe$Nothing
     : ((($3)[0] === "$Nothing")
       ? (c1$Maybe$Just)((u1$Targets$Javascript$Ast$Define)(false, (u1$Targets$Javascript$EmittableToJs$_usrToText)($def.usr), (u1$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $def.expr)))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 630:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 622:4', (sp_toHuman)($3))));
 });
 
 const u1$Targets$Javascript$EmittableToJs$translateAll = (($pars) => {
@@ -20387,6 +20399,8 @@ const u1$Platforms$Browser$compile = (($platformOverrides, $loadPars) => {
   }))));
 });
 
+const u1$Platforms$Browser$compileSelf = {"def":["$Value",{"directDeps":["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Text"],"join"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$TypeDependency"],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$TypeDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","List"],"map"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/JsToText"],"emitStatement"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/EmittableToJs"],"translateAll"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],"maybeAnnotation":["$Just",{"raw":["$TypeFn",["$P",918,920],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$N"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$Cons",["$TypeRecord",["$P",923,933],["$RBNode_elm_builtin",["$Black"],"second",["$TypeNamed",["$P",929,933],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],["$RBNode_elm_builtin",["$Red"],"first",["$TypeNamed",["$P",923,926],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$Nil"]],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$Nil"]]],"uni":["$Imm"]}],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$P",937,950],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$Nil"]],"uni":["$Imm"]}],["$Nil"]]],{"raw":["$TypeNamed",["$P",952,956],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],"uni":["$Imm"]}],"tyvars":["$RBEmpty_elm_builtin"],"univars":["$RBEmpty_elm_builtin"]}],"maybeBody":["$Nothing"],"name":"compile","namePos":["$P",907,914]}],"usr":["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Platforms/Browser"],"compile"]};
+
 const u1$Platforms$Browser$defaultImportsFile = (u1$DefaultImports$platformDefaultImportsFile)("browser", (c1$Core$Cons)(({
   first: "Browser",
   second: c1$Core$Nil,
@@ -20474,36 +20488,37 @@ const u1$Targets$Javascript$Runtime$listConsName = (u1$Targets$Javascript$Emitta
 
 const u1$Targets$Javascript$Runtime$listNilName = (u1$Targets$Javascript$EmittableToJs$translateName)(u1$Compiler$CoreDefs$nilName);
 
-const u1$Targets$Javascript$Runtime$nativeDefinitions = (($sourceDirectoryKeyToId) => {
+const u1$Targets$Javascript$Runtime$nativeDefinitions = (($compileUsr, $sourceDirectoryKeyToId) => {
+  const $compileUsrAsText = (u1$Targets$Javascript$EmittableToJs$translateUsrToText)($sourceDirectoryKeyToId, $compileUsr);
   const $okRef = (u1$Targets$Javascript$EmittableToJs$translateUsrToText)($sourceDirectoryKeyToId, (c1$Compiler$Meta$USR)((c1$Compiler$Meta$UMR)(u1$Compiler$CoreDefs$importsPath, "src", "Result"), "'ok"));
   const $errRef = (u1$Targets$Javascript$EmittableToJs$translateUsrToText)($sourceDirectoryKeyToId, (c1$Compiler$Meta$USR)((c1$Compiler$Meta$UMR)(u1$Compiler$CoreDefs$importsPath, "src", "Result"), "'err"));
   const $nothingRef = (u1$Targets$Javascript$EmittableToJs$translateUsrToText)($sourceDirectoryKeyToId, (c1$Compiler$Meta$USR)((c1$Compiler$Meta$UMR)(u1$Compiler$CoreDefs$importsPath, "src", "Maybe"), "'nothing"));
   const $justRef = (u1$Targets$Javascript$EmittableToJs$translateUsrToText)($sourceDirectoryKeyToId, (c1$Compiler$Meta$USR)((c1$Compiler$Meta$UMR)(u1$Compiler$CoreDefs$importsPath, "src", "Maybe"), "'just"));
-  return ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + (u1$Targets$Javascript$Runtime$listConsName + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + (u1$Targets$Javascript$Runtime$listNilName + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ?" + ($nothingRef + (":" + ($justRef + ("(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [" + ($justRef + ("({ first: actualKey, second: value }), hash ];\n        }\n\n        return [" + ($nothingRef + (", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '" + (u1$Targets$Javascript$Runtime$listNilName + ("')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ?" + ($justRef + ("(a.pop()) :" + ($nothingRef + (", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '" + (u1$Targets$Javascript$Runtime$listNilName + ("' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '" + (u1$Targets$Javascript$Runtime$listConsName + ("', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '" + (u1$Targets$Javascript$Runtime$listNilName + ("')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '" + (u1$Targets$Javascript$Runtime$listConsName + ("', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const re = (s) => s.replace(/[\" \\n]/g, '');\n\n        const actualTypeHumanized = sp_toHuman(pars.type);\n        if (re(actualTypeHumanized) !== re(requestedTypeHumanized)) {\n            return " + ($errRef + ("(pars.type);\n            }\n\n\n            /*\n            -------> Pass all functions as args!\n                u0Targets$Javascript$EmittableToJs$translateUsr;\n                $sd1$Platforms$Browser$compile(pars);\n            -------> Can we pass already all necessary usrs translated already?\n                * externalValues usrs as text\n                * entry usr as text\n                * platform makeExecutable\n            */\n\n            const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');\n\n            // TODO using directly the source name sd1 is super fragile: must revisit this as soon as I have `Load.expose`\n            // TODO hoping that the state won't be mutated, once we have `Load.expose` maybe we don't need to lug the state around any more?\n            const js = $sd1$Platforms$Browser$compile(pars);\n\n            //   { name1, name2, name3, ... } = externals;\n            const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';\n\n            const body = `{ ${unpackExterns}\n${js}; return ${tUsrToString(pars.entryUsr)}; }`;\n\n            const arg = {};\n            //pars.externalValues.forEach((e) => arg[tUsrToString(e.usr)] = e.self.value);\n\n            return " + ($okRef + " (variantConstructor(Function('externs', body)(arg)));\n        };\n\n\n    "))))))))))))))))))))))))))))))))))))));
+  return ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + (u1$Targets$Javascript$Runtime$listConsName + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + (u1$Targets$Javascript$Runtime$listNilName + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ?" + ($nothingRef + (":" + ($justRef + ("(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [" + ($justRef + ("({ first: actualKey, second: value }), hash ];\n        }\n\n        return [" + ($nothingRef + (", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '" + (u1$Targets$Javascript$Runtime$listNilName + ("')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ?" + ($justRef + ("(a.pop()) :" + ($nothingRef + (", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '" + (u1$Targets$Javascript$Runtime$listNilName + ("' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '" + (u1$Targets$Javascript$Runtime$listConsName + ("', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '" + (u1$Targets$Javascript$Runtime$listNilName + ("')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '" + (u1$Targets$Javascript$Runtime$listConsName + ("', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const re = (s) => s.replace(/[\" \\n]/g, '');\n\n        const actualTypeHumanized = sp_toHuman(pars.type);\n        if (re(actualTypeHumanized) !== re(requestedTypeHumanized)) {\n            return " + ($errRef + ("(pars.type);\n            }\n\n            const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');\n\n            const js = " + ($compileUsrAsText + ("(arrayToListLow([]), pars);\n\n            //   { name1, name2, name3, ... } = externals;\n            const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';\n\n            const body = `{ ${unpackExterns}\n${js}; return ${tUsrToString(pars.entryUsr)}; }`;\n\n            const arg = {};\n            //pars.externalValues.forEach((e) => arg[tUsrToString(e.usr)] = e.self.value);\n\n            return " + ($okRef + " (variantConstructor(Function('externs', body)(arg)));\n        };\n\n\n    "))))))))))))))))))))))))))))))))))))))));
 });
 
 const u1$Platforms$Browser$makeExecutable = (($platformImportsPath) => {
   const $platformOverrides = (u1$Platforms$Browser$overrides)((u1$Platforms$Browser$virtualDomUsr)($platformImportsPath));
   return (($loadPars) => {
     const $compiledStatements = (u1$Platforms$Browser$compile)($platformOverrides, $loadPars);
-    return (u1$Platforms$Browser$header + ((u1$Targets$Javascript$Runtime$nativeDefinitions)($loadPars.sourceDirectoryKeyToId) + (u1$Platforms$Browser$runtime + ($compiledStatements + (u1$Platforms$Browser$footer)($platformImportsPath, $loadPars)))));
+    const $natives = (u1$Targets$Javascript$Runtime$nativeDefinitions)(u1$Platforms$Browser$compileSelf.usr, $loadPars.sourceDirectoryKeyToId);
+    return (u1$Platforms$Browser$header + ($natives + (u1$Platforms$Browser$runtime + ($compiledStatements + (u1$Platforms$Browser$footer)($platformImportsPath, $loadPars)))));
   });
 });
 
-const u1$Platforms$Browser$platform = ((() => {
-  const $self = {"def":["$Value",{"directDeps":["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Text"],"join"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$TypeDependency"],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$TypeDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","List"],"map"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/JsToText"],"emitStatement"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/EmittableToJs"],"translateAll"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],"maybeAnnotation":["$Just",{"raw":["$TypeFn",["$P",902,904],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$N"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$Cons",["$TypeRecord",["$P",907,917],["$RBNode_elm_builtin",["$Black"],"second",["$TypeNamed",["$P",913,917],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],["$RBNode_elm_builtin",["$Red"],"first",["$TypeNamed",["$P",907,910],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$Nil"]],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$Nil"]]],"uni":["$Imm"]}],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$P",921,934],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$Nil"]],"uni":["$Imm"]}],["$Nil"]]],{"raw":["$TypeNamed",["$P",936,940],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],"uni":["$Imm"]}],"tyvars":["$RBEmpty_elm_builtin"],"univars":["$RBEmpty_elm_builtin"]}],"maybeBody":["$Nothing"],"name":"compile","namePos":["$P",891,898]}],"usr":["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Platforms/Browser"],"compile"]};
-  return ({
-    compileUsr: $self.usr,
-    defaultImportsFile: u1$Platforms$Browser$defaultImportsFile,
-    defaultOutputName: "index.js",
-    extraRequiredUsrs: u1$Platforms$Browser$extraRequiredUsrs,
-    makeExecutable: u1$Platforms$Browser$makeExecutable,
-    name: "browser",
-    quickstart: "TODO",
-  });
-}))();
+const u1$Platforms$Browser$platform = ({
+  compileUsr: u1$Platforms$Browser$compileSelf.usr,
+  defaultImportsFile: u1$Platforms$Browser$defaultImportsFile,
+  defaultOutputName: "index.js",
+  extraRequiredUsrs: u1$Platforms$Browser$extraRequiredUsrs,
+  makeExecutable: u1$Platforms$Browser$makeExecutable,
+  name: "browser",
+  quickstart: "TODO",
+});
 
 const u1$Main$platformBrowser = u1$Platforms$Browser$platform;
+
+const u1$Platforms$Posix$compileSelf = {"def":["$Value",{"directDeps":["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Text"],"join"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$TypeDependency"],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$TypeDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","List"],"map"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/JsToText"],"emitStatement"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/EmittableToJs"],"translateAll"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],"maybeAnnotation":["$Just",{"raw":["$TypeFn",["$P",918,920],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$N"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$Cons",["$TypeRecord",["$P",923,933],["$RBNode_elm_builtin",["$Black"],"second",["$TypeNamed",["$P",929,933],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],["$RBNode_elm_builtin",["$Red"],"first",["$TypeNamed",["$P",923,926],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$Nil"]],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$Nil"]]],"uni":["$Imm"]}],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$P",937,950],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$Nil"]],"uni":["$Imm"]}],["$Nil"]]],{"raw":["$TypeNamed",["$P",952,956],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],"uni":["$Imm"]}],"tyvars":["$RBEmpty_elm_builtin"],"univars":["$RBEmpty_elm_builtin"]}],"maybeBody":["$Nothing"],"name":"compile","namePos":["$P",907,914]}],"usr":["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Platforms/Browser"],"compile"]};
 
 const u1$Platforms$Posix$defaultImportsFile = (u1$DefaultImports$platformDefaultImportsFile)("posix", (c1$Core$Cons)(({
   first: "IO",
@@ -20588,24 +20603,22 @@ const u1$Platforms$Posix$makeExecutable = (($platformImportsPath) => {
         }), $0);
       }))($jaStatements));
     }))();
-    return (u1$Platforms$Posix$header + ((u1$Targets$Javascript$Runtime$nativeDefinitions)($sourceDirectoryKeyToId) + ((u1$Platforms$Posix$runtime)($sourceDirectoryKeyToId) + ($compiledStatements + $callMain))));
+    const $natives = (u1$Targets$Javascript$Runtime$nativeDefinitions)(u1$Platforms$Posix$compileSelf.usr, $sourceDirectoryKeyToId);
+    return (u1$Platforms$Posix$header + ($natives + ((u1$Platforms$Posix$runtime)($sourceDirectoryKeyToId) + ($compiledStatements + $callMain))));
   });
 });
 
-const u1$Platforms$Posix$platform = ((() => {
-  const $self = {"def":["$Value",{"directDeps":["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Text"],"join"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$TypeDependency"],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$TypeDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$TypeDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","List"],"map"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$RBNode_elm_builtin",["$Black"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/JsToText"],"emitStatement"],["$ValueDependency"],["$RBNode_elm_builtin",["$Red"],["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Targets/Javascript/EmittableToJs"],"translateAll"],["$ValueDependency"],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],"maybeAnnotation":["$Just",{"raw":["$TypeFn",["$P",902,904],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$N"],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"List"],["$Cons",["$TypeRecord",["$P",907,917],["$RBNode_elm_builtin",["$Black"],"second",["$TypeNamed",["$P",913,917],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],["$RBNode_elm_builtin",["$Red"],"first",["$TypeNamed",["$P",907,910],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Compiler/Meta"],"USR"],["$Nil"]],["$RBEmpty_elm_builtin"],["$RBEmpty_elm_builtin"]],["$RBEmpty_elm_builtin"]]],["$Nil"]]],"uni":["$Imm"]}],["$Cons",["$ParSp",{"raw":["$TypeNamed",["$P",921,934],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Self"],"LoadPars"],["$Nil"]],"uni":["$Imm"]}],["$Nil"]]],{"raw":["$TypeNamed",["$P",936,940],["$USR",["$UMR",["$ImportsPath",["$Core"],""],"src","Core"],"Text"],["$Nil"]],"uni":["$Imm"]}],"tyvars":["$RBEmpty_elm_builtin"],"univars":["$RBEmpty_elm_builtin"]}],"maybeBody":["$Nothing"],"name":"compile","namePos":["$P",891,898]}],"usr":["$USR",["$UMR",["$ImportsPath",["$User"],""],"src","Platforms/Browser"],"compile"]};
-  return ({
-    compileUsr: $self.usr,
-    defaultImportsFile: u1$Platforms$Posix$defaultImportsFile,
-    defaultOutputName: "nodeExecutable.js",
-    extraRequiredUsrs: ((_0) => {
-      return c1$Core$Nil;
-    }),
-    makeExecutable: u1$Platforms$Posix$makeExecutable,
-    name: "posix",
-    quickstart: "TODO",
-  });
-}))();
+const u1$Platforms$Posix$platform = ({
+  compileUsr: u1$Platforms$Posix$compileSelf.usr,
+  defaultImportsFile: u1$Platforms$Posix$defaultImportsFile,
+  defaultOutputName: "nodeExecutable.js",
+  extraRequiredUsrs: ((_0) => {
+    return c1$Core$Nil;
+  }),
+  makeExecutable: u1$Platforms$Posix$makeExecutable,
+  name: "posix",
+  quickstart: "TODO",
+});
 
 const u1$Main$platformPosix = u1$Platforms$Posix$platform;
 
@@ -20629,7 +20642,7 @@ const u1$Main$parseCorelibPath = (($maybeValue, $cliState) => {
           }));
         }))());
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 255:4', (sp_toHuman)($maybeValue))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 256:4', (sp_toHuman)($maybeValue))));
 });
 
 const u1$Main$parsePlatformName = (($maybeValue, $cliState) => {
@@ -20657,9 +20670,9 @@ const u1$Main$parsePlatformName = (($maybeValue, $cliState) => {
                 }));
               }))());
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 233:12', (sp_toHuman)($3))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 234:12', (sp_toHuman)($3))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 227:4', (sp_toHuman)($maybeValue))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 228:4', (sp_toHuman)($maybeValue))));
 });
 
 const u1$Main$cliOptions = (c1$Core$Cons)(({
@@ -20705,7 +20718,7 @@ const u1$Main$formattedToConsoleColoredText = (($formattedText) => {
             const $t = ($formattedText)[1];
             return (u1$Term$blue)($t);
           }))()
-          : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 25:4', (sp_toHuman)($formattedText))))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 26:4', (sp_toHuman)($formattedText))))));
 });
 
 const u1$Main$errorToText = (($0) => {
@@ -20727,7 +20740,7 @@ const u1$Main$resToIo = (($res) => {
         const $e = ($res)[1];
         return (c1$Result$Err)((u1$Main$errorToText)($e));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 42:4', (sp_toHuman)($res))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 43:4', (sp_toHuman)($res))));
 });
 
 const u1$Main$formatMain = (($io, $targets) => {
@@ -20808,9 +20821,9 @@ const u1$Main$parseArguments = (($options, $args, $initState) => {
                   : (c1$Maybe$Just)((c1$Text$join)("=", $rest)));
                 return ($option.parser)($value, $state);
               }))()
-              : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 77:16', (sp_toHuman)($8))));
+              : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 78:16', (sp_toHuman)($8))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 71:8', (sp_toHuman)($7))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 72:8', (sp_toHuman)($7))));
   });
   return ((($0) => {
     return (c1$Result$map)((($0) => {
@@ -20828,7 +20841,7 @@ const u1$Main$order = (($outcome) => {
       ? 1
       : ((($outcome)[0] === "$Error")
         ? 2
-        : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 115:4', (sp_toHuman)($outcome)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 116:4', (sp_toHuman)($outcome)))));
 });
 
 const u1$Term$green = (u1$Term$color)("\x1b[32m");
@@ -20843,7 +20856,7 @@ const u1$Main$testOutcomeToText = (($name, $code, $outcome) => {
           const $error = ($outcome)[1];
           return ((u1$Term$red)(("FAIL ! " + $name)) + ("\n" + ((u1$Main$indent)($code) + ("\n" + (u1$Main$indent)($error)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 107:4', (sp_toHuman)($outcome)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 108:4', (sp_toHuman)($outcome)))));
 });
 
 const u1$Main$selftestMain = (($io) => {
@@ -20915,9 +20928,9 @@ const u1$Main$main = (($io, $env, $rawArgs) => {
                     ? ((($0) => {
                       return ((__re__ = (io_writeStdout)($io, $0)), ($io = (__re__)[1]), (__re__)[0]);
                     }))("\nHi! This is the Squarepants compiler!\n\nTo compile something, write:\n\n    squarepants pathToMainModule.sp\n\n")
-                    : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 290:12', (sp_toHuman)($args))))));
+                    : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 291:12', (sp_toHuman)($args))))));
           }))()
-          : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 284:4', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 285:4', (sp_toHuman)($4))));
     }))()),
     $io,
     $env,

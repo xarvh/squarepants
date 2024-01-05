@@ -1,8 +1,11 @@
-platform as Platform =
-    self = sp_introspect_value Platforms/Browser.compile
 
+compileSelf =
+    sp_introspect_value Platforms/Browser.compile
+
+
+platform as Platform =
     {
-    , compileUsr = self.usr
+    , compileUsr = compileSelf.usr
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
     , extraRequiredUsrs = fn _: []
@@ -60,7 +63,10 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
         >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions sourceDirectoryKeyToId .. runtime sourceDirectoryKeyToId .. compiledStatements .. callMain
+    natives =
+        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr sourceDirectoryKeyToId
+
+    header .. natives .. runtime sourceDirectoryKeyToId .. compiledStatements .. callMain
 
 
 header as Text =
