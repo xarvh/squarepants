@@ -88,7 +88,7 @@ insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
     fn pars, @errors, sourceDir, imports:
     modulePathToLocation as fn Text: Meta.Location =
         __
-        >> 'UMR pars.importsPath sourceDir.path __
+        >> 'UMR (pars.importsPath sourceDir.path) __
         >> Meta.'locationSourceDir
 
     insertModules modulePathToLocation @errors sourceDir.modules imports

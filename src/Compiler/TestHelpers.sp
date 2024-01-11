@@ -15,7 +15,7 @@ importsPath as Meta.ImportsPath =
 
 
 moduleUmr as UMR =
-    'UMR importsPath "<testSourceDir/>" "<TestModulePath>"
+    'UMR Meta.'user 0 "<TestModulePath>"
 
 
 moduleUsr as fn Name: USR =

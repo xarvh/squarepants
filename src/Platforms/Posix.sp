@@ -24,8 +24,8 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
-    fn platformImportsPath:
+makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
+    fn makePlatformUmr:
     fn out:
     { with  sourceDirectoryKeyToId } =
         out
@@ -53,7 +53,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs
-                , platformOverrides = overrides platformImportsPath
+                , platformOverrides = overrides makePlatformUmr
                 , sourceDirectoryKeyToId
                 }
 
@@ -82,13 +82,13 @@ header as Text =
     """
 
 
-overrides as fn Meta.ImportsPath: [ USR & Text ] =
-    fn platformImportsPath:
+overrides as fn MakeUmr: [ USR & Text ] =
+    fn makePlatformUmr:
     ioModule =
-        'USR ('UMR platformImportsPath "" "IO") __
+        'USR (makePlatformUmr "IO") __
 
     pathModule =
-        'USR ('UMR platformImportsPath "" "Path") __
+        'USR (makePlatformUmr "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"
@@ -107,10 +107,10 @@ overrides as fn Meta.ImportsPath: [ USR & Text ] =
 runtime as fn Dict Text Int: Text =
     fn sourceDirectoryKeyToId:
     makeOk as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
+        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
 
     makeErr as Text =
-        'USR ('UMR CoreDefs.importsPath "src" "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
+        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
 
     """
 

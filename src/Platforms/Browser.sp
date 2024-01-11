@@ -21,18 +21,15 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-virtualDomUsr as fn Meta.ImportsPath: fn Name: USR =
-    fn platformImportsPath:
-    'USR ('UMR platformImportsPath "" "VirtualDom") __
+virtualDomUsr as fn MakeUmr: fn Name: USR =
+    fn makePlatformUmr:
+    'USR (makePlatformUmr "VirtualDom") __
 
 
-extraRequiredUsrs as fn Meta.ImportsPath: [ USR ] =
-    fn importsPath:
-    usr =
-        virtualDomUsr importsPath
+extraRequiredUsrs as fn MakeUmr: [ USR ] =
+    fn makePlatformUmr:
 
-    [ usr "updateDomNode" ]
-
+    [ (virtualDomUsr makePlatformUmr) "updateDomNode" ]
 
 
 compileSelf =
@@ -53,11 +50,11 @@ compile as fn [ USR & Text ], Self.LoadPars: Text =
     >> Text.join "\n\n" __
 
 
-makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
-    fn platformImportsPath:
+makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
+    fn makePlatformUmr:
 
     platformOverrides =
-        overrides (virtualDomUsr platformImportsPath)
+        overrides (virtualDomUsr makePlatformUmr)
 
     fn loadPars:
 
@@ -69,7 +66,7 @@ makeExecutable as fn Meta.ImportsPath: fn Self.LoadPars: Text =
     natives =
         Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr loadPars.sourceDirectoryKeyToId
 
-    header .. natives .. runtime .. compiledStatements .. footer platformImportsPath loadPars
+    header .. natives .. runtime .. compiledStatements .. footer makePlatformUmr loadPars
 
 
 overrides as fn fn Name: USR: [ USR & Text ] =
@@ -97,14 +94,14 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn Meta.ImportsPath, Self.LoadPars: Text =
-    fn platformImportsPath, pars:
+footer as fn MakeUmr, Self.LoadPars: Text =
+    fn makePlatformUmr, pars:
     mainName =
         Targets/Javascript/EmittableToJs._usrToText pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
-        >> virtualDomUsr platformImportsPath
+        >> virtualDomUsr makePlatformUmr
         >> Targets/Javascript/EmittableToJs.translateUsrToText pars.sourceDirectoryKeyToId __
 
     """

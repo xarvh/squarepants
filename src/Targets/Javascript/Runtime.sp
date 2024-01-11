@@ -13,17 +13,17 @@ nativeDefinitions as fn USR, Dict Text Int: Text =
         Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId compileUsr
 
     okRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR ('UMR CoreDefs.importsPath "src" "Result") "'ok")
+        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Result") "'ok")
 
     errRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR ('UMR CoreDefs.importsPath "src" "Result") "'err")
+        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Result") "'err")
 
 
     nothingRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'nothing")
+        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Maybe") "'nothing")
 
     justRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR ('UMR CoreDefs.importsPath "src" "Maybe") "'just")
+        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Maybe") "'just")
 
 #    translateUsrSelf =
 #        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr

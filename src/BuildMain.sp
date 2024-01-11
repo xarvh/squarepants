@@ -52,7 +52,7 @@ buildInfoModule as fn Platform: CA.Module =
     , asText = "<buildInfo module>"
     , constructorDefs = Dict.empty
     , fsPath = "<buildInfo module>"
-    , umr = 'UMR CoreDefs.importsPath "src" "BuildInfo"
+    , umr = CoreDefs.makeUmr "BuildInfo"
     , valueDefs = Dict.ofOne "compile" compile
     , variantTypeDefs = Dict.empty
     }
@@ -60,6 +60,7 @@ buildInfoModule as fn Platform: CA.Module =
 
 LoadCaModulePars =
     {
+    , idToDirs as fn Int: { importsDir as Text, sourceDir as Text }
     , loadExports as fn Meta.ImportsPath: Res Exports
     , loadImports as fn Meta.ImportsPath: Res Imports
     , readFile as fn Text: IO.Re Text
@@ -75,13 +76,14 @@ loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
     else if umr == pars.buildInfoModule.umr then
         'ok pars.buildInfoModule
     else
-        'UMR importsPath sourceDir modulePath =
+        'UMR rootDirectory id modulePath =
             umr
 
-        Meta.'importsPath rootDirectory importsDir =
-            importsPath
+        { importsDir, sourceDir } =
+            pars.idToDirs id
 
-        pars.loadImports importsPath
+        Meta.'importsPath rootDirectory importsDir
+        >> pars.loadImports
         >> onOk fn imports:
         rootPath =
             Meta.rootDirectoryToPath pars.rootPaths rootDirectory
@@ -377,6 +379,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #
     loadCaModulePars as LoadCaModulePars =
         {
+        , idToDirs = todo "idToDirs"
         , buildInfoModule = buildInfoModule pars.platform
         , loadExports = loadExports @io @loadedImports @loadedExports rootPaths __
         , loadImports = loadImports @io @loadedImports rootPaths __
@@ -384,13 +387,13 @@ compileMain as fn @IO, CompileMainPars: Res None =
         , rootPaths
         }
 
-    platformImportsPath =
-        Meta.'importsPath Meta.'installed pars.platform.name
+    makePlatformUmr as MakeUmr =
+        'UMR Meta.'installed 1 __
 
     {
     , loadCaModule = loadCaModule loadCaModulePars __
     , projectImports
-    , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs platformImportsPath... ]
+    , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs makePlatformUmr... ]
     }
     >> Compiler/LazyBuild.build
     >> onOk fn { constructors, rootValues, sourceDirectoryKeyToId }:
@@ -413,7 +416,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , sourceDirectoryKeyToId
     , type
     }
-    >> pars.platform.makeExecutable platformImportsPath
+    >> pars.platform.makeExecutable makePlatformUmr
     >> IO.writeFile @io outputFile __
     >> ioToRes
     >> onOk fn _:

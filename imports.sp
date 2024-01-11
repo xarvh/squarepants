@@ -63,6 +63,7 @@ sourceDir =
        path = Platform
        importAs = Platform
        globals =
+          MakeUmr
           Platform
 
 

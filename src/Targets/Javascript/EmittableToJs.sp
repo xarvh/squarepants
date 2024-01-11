@@ -22,7 +22,7 @@ coreOverrides as fn Dict Text Int: Dict EA.TranslatedUsr Override =
     #
     corelib as fn Text, Text: USR =
         fn module, name:
-        'USR ('UMR CoreDefs.importsPath "src" module) name
+        'USR (CoreDefs.makeUmr module) name
 
     [
     , CoreDefs.unaryPlus.usr & unaryPlus

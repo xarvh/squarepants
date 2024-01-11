@@ -6,8 +6,13 @@ importsPath as Meta.ImportsPath =
     Meta.'importsPath Meta.'core ""
 
 
+makeUmr as fn Text: UMR =
+    'UMR Meta.'core 0 __
+
+
 umr as UMR =
-    'UMR importsPath "src" "Core"
+    makeUmr "Core"
+    #'UMR importsPath "src" "Core"
 
 
 usr as fn Name: USR =
