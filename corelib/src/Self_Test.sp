@@ -17,13 +17,10 @@ var IntegerOnly =
 load as fn a: Result TA.RawType IntegerOnly =
     fn _:
     usr as USR =
-        'USR ('UMR (Meta.'importsPath Meta.'user "") "" "DynamicLoad") "aNumberValue"
-
-    sourceDirectoryKeyToId as Dict Text Int =
-        Dict.ofOne (Meta.sourceDirectoryKey usr) 5
+        'USR ('UMR Meta.'user 5 "DynamicLoad") "aNumberValue"
 
     translatedUsr =
-        EA.translateUsr sourceDirectoryKeyToId usr
+        EA.translateUsr usr
 
     numberSelf =
         sp_introspect_type Number
@@ -34,7 +31,7 @@ load as fn a: Result TA.RawType IntegerOnly =
     def as EA.GlobalDefinition =
         {
         , deps = Dict.empty
-        , expr = EA.'literalNumber 3
+        , expr = EA.'literalNumber 42
         , freeTyvars = Dict.empty
         , freeUnivars = Dict.empty
         , type = numberType
@@ -46,7 +43,6 @@ load as fn a: Result TA.RawType IntegerOnly =
         , constructors = []
         , defs = [ def ]
         , entryUsr = translatedUsr
-        , sourceDirectoryKeyToId
         , type = numberType
         }
 
@@ -59,4 +55,4 @@ base as Test =
         Can actually sort stuff
         """
         load
-        (Test.isOkAndEqualTo ('ok ('integer 1)))
+        (Test.isOkAndEqualTo ('ok ('integer 42)))

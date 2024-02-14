@@ -207,10 +207,10 @@ main as fn Text: Result (Html msg) CompiledCode =
     , requiredUsrs = [ entryUsr ]
     }
     >> Compiler/LazyBuild.build
-    >> onResSuccess fn { constructors, rootValues, sourceDirectoryKeyToId }:
+    >> onResSuccess fn { constructors, rootValues }:
 
     entryTUsr =
-      EA.translateUsr sourceDirectoryKeyToId entryUsr
+      EA.translateUsr entryUsr
 
     try List.find (fn v: v.usr == entryTUsr) rootValues as
         'nothing:
@@ -225,7 +225,6 @@ main as fn Text: Result (Html msg) CompiledCode =
         , defs = rootValues
         , entryUsr = entryTUsr
         , type = entryValue.type
-        , sourceDirectoryKeyToId
         }
 
     loadResult as Result TA.RawType CompiledCode =

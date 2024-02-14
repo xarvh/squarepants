@@ -63,6 +63,7 @@ imports as Imports =
         {
         , importsPath
         , joinPath = Path.join
+        , getSourceDirId = fn importsDir, sourceDir: 1
         }
 
     try ImportsFile.toImports pars DefaultImports.defaultImportsFile as

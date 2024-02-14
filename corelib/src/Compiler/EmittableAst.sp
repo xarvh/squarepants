@@ -104,17 +104,10 @@ translateName as fn Name: Text =
         name
 
 
-translateUsr as fn Dict Text Int, USR: TranslatedUsr =
-    fn sourceDirectoryKeyToId, usr:
-    'USR ('UMR (Meta.'importsPath root importsDir) sourceDir modulePath) name =
+translateUsr as fn USR: TranslatedUsr =
+    fn usr:
+    'USR ('UMR root sourceDirId modulePath) name =
         usr
 
-    key =
-        Meta.sourceDirectoryKey usr
+    List.concat [ [ translateRoot root .. Text.fromNumber sourceDirId ], Text.split "/" modulePath, [ translateName name ] ]
 
-    id =
-        try Dict.get key sourceDirectoryKeyToId as
-            'just i: i
-            'nothing: todo << "compiler bug: translateUsr@:" .. toHuman usr
-
-    List.concat [ [ translateRoot root .. Text.fromNumber id ], Text.split "/" modulePath, [ translateName name ] ]

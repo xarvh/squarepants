@@ -1,16 +1,14 @@
 Env =
     {
-    , sourceDirectoryKeyToId as Dict Text Int
     , genVarCounter as Int
     , module as CA.Module
     }
 
-mkEnv as fn USR, Dict UMR CA.Module, Dict Text Int: Env =
-    fn 'USR umr name, modulesByUmr, sourceDirectoryKeyToId:
+mkEnv as fn USR, Dict UMR CA.Module: Env =
+    fn 'USR umr name, modulesByUmr:
 
     {
     , genVarCounter = 0
-    , sourceDirectoryKeyToId
     , module =
           try Dict.get umr modulesByUmr as
               'just m: m
@@ -168,13 +166,13 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             EA.'localVariable name
 
         TA.'variable _ ('refGlobal usr):
-            EA.'globalVariable (EA.translateUsr env.sourceDirectoryKeyToId usr)
+            EA.'globalVariable (EA.translateUsr usr)
 
         TA.'variable _ ('refPlaceholder n):
             EA.'placeholderVariable n
 
         TA.'constructor _ usr:
-            EA.'constructor (EA.translateUsr env.sourceDirectoryKeyToId usr)
+            EA.'constructor (EA.translateUsr usr)
 
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
@@ -218,7 +216,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'localVariable name & identity & env
 
                     TA.'variable _ ('refGlobal usr) & 'imm:
-                        EA.'globalVariable (EA.translateUsr env.sourceDirectoryKeyToId usr) & identity & env
+                        EA.'globalVariable (EA.translateUsr usr) & identity & env
 
                     TA.'variable _ ('refPlaceholder n) & 'imm:
                         EA.'placeholderVariable n & identity & env

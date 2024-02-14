@@ -58,6 +58,7 @@ ToImportsPars =
     {
     , importsPath as Meta.ImportsPath
     , joinPath as fn [ Text ]: Text
+    , getSourceDirId as fn Text, Text: Int
     }
 
 
@@ -86,9 +87,16 @@ insertModules as fn fn Text: Meta.Location, @Array Text, [ Module ], Imports: Im
 
 insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
     fn pars, @errors, sourceDir, imports:
+
+    Meta.'importsPath rootDirectory importsDir =
+        pars.importsPath
+
+    sourceDirId =
+        pars.getSourceDirId importsDir sourceDir.path
+
     modulePathToLocation as fn Text: Meta.Location =
         __
-        >> 'UMR (pars.importsPath sourceDir.path) __
+        >> 'UMR rootDirectory sourceDirId __
         >> Meta.'locationSourceDir
 
     insertModules modulePathToLocation @errors sourceDir.modules imports

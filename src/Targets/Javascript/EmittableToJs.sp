@@ -1,7 +1,6 @@
 Env =
     {
     , overrides as Dict EA.TranslatedUsr Override
-    , sourceDirectoryKeyToId as Dict Text Int
     }
 
 
@@ -17,8 +16,8 @@ var Override =
           }
 
 
-coreOverrides as fn Dict Text Int: Dict EA.TranslatedUsr Override =
-    fn sourceDirectoryKeyToId:
+coreOverrides as fn None: Dict EA.TranslatedUsr Override =
+    fn 'none:
     #
     corelib as fn Text, Text: USR =
         fn module, name:
@@ -106,7 +105,7 @@ coreOverrides as fn Dict Text Int: Dict EA.TranslatedUsr Override =
     , corelib "Self" "load" & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ fn usr & override, d: Dict.insert (EA.translateUsr sourceDirectoryKeyToId usr) override d
+    >> List.for Dict.empty __ fn usr & override, d: Dict.insert (EA.translateUsr usr) override d
 
 
 unaryPlus as Override =
@@ -248,10 +247,10 @@ translateName as fn Name: Text =
     >> "$" .. __
 
 
-translateUsrToText as fn Dict Text Int, USR: Text =
-    fn sourceDirectoryKeyToId, usr:
+translateUsrToText as fn USR: Text =
+    fn usr:
 
-    EA.translateUsr sourceDirectoryKeyToId usr >> _usrToText
+    EA.translateUsr usr >> _usrToText
 
 
 _usrToText as fn EA.TranslatedUsr: Text =
@@ -591,8 +590,8 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
 
-translateConstructorDef as fn Dict Text Int, USR & TA.RawType: JA.Statement =
-    fn sourceDirectoryKeyToId, usr & taType:
+translateConstructorDef as fn USR & TA.RawType: JA.Statement =
+    fn, usr & taType:
     'USR umr nameWithApostrophe =
         usr
 
@@ -614,7 +613,7 @@ translateConstructorDef as fn Dict Text Int, USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    JA.'define 'false (translateUsrToText sourceDirectoryKeyToId usr) definitionBody
+    JA.'define 'false (translateUsrToText usr) definitionBody
 
 
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
@@ -629,24 +628,22 @@ TranslateAllPars =
     , constructors as [ USR & TA.RawType ]
     , eaDefs as [ EA.GlobalDefinition ]
     , platformOverrides as [ USR & Text ]
-    , sourceDirectoryKeyToId as Dict Text Int
     }
 
 
 translateAll as fn TranslateAllPars: [ JA.Statement ] =
     fn pars:
-    { constructors, eaDefs, platformOverrides, sourceDirectoryKeyToId } =
+    { constructors, eaDefs, platformOverrides } =
         pars
 
     jaConstructors as [ JA.Statement ] =
-        List.map (translateConstructorDef sourceDirectoryKeyToId __) constructors
+        List.map (translateConstructorDef __) constructors
 
     env as Env =
         {
-        , sourceDirectoryKeyToId
         , overrides =
-            List.for (coreOverrides sourceDirectoryKeyToId) platformOverrides fn usr & runtimeName, d:
-                Dict.insert (EA.translateUsr sourceDirectoryKeyToId usr) (function runtimeName) d
+            List.for (coreOverrides 'none) platformOverrides fn usr & runtimeName, d:
+                Dict.insert (EA.translateUsr usr) (function runtimeName) d
         }
 
     jaStatements as [ JA.Statement ] =

@@ -27,8 +27,6 @@ defaultImportsFile as ImportsFile =
 makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
     fn makePlatformUmr:
     fn out:
-    { with  sourceDirectoryKeyToId } =
-        out
 
     entryName =
         Targets/Javascript/EmittableToJs._usrToText out.entryUsr
@@ -54,7 +52,6 @@ makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
                 , constructors = out.constructors
                 , eaDefs = out.defs
                 , platformOverrides = overrides makePlatformUmr
-                , sourceDirectoryKeyToId
                 }
 
         log "Emitting JS..." ""
@@ -64,9 +61,9 @@ makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
         >> Text.join "\n\n" __
 
     natives =
-        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr sourceDirectoryKeyToId
+        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr
 
-    header .. natives .. runtime sourceDirectoryKeyToId .. compiledStatements .. callMain
+    header .. natives .. runtime .. compiledStatements .. callMain
 
 
 header as Text =
@@ -104,13 +101,12 @@ overrides as fn MakeUmr: [ USR & Text ] =
     ]
 
 
-runtime as fn Dict Text Int: Text =
-    fn sourceDirectoryKeyToId:
+runtime as Text =
     makeOk as Text =
-        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
+        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText __
 
     makeErr as Text =
-        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId __
+        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.translateUsrToText __
 
     """
 

@@ -192,8 +192,8 @@ updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     List.for orig fileNames insertModuleName
 
 
-scanSourceDirs as fn @IO, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
-    fn @io, rootPaths, importsPath, importsFile:
+scanSourceDirs as fn @IO, (fn Text, Text: Int), Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
+    fn @io, getSourceDirId, rootPaths, importsPath, importsFile:
     Meta.'importsPath root importsDir =
         importsPath
 
@@ -213,19 +213,32 @@ scanSourceDirs as fn @IO, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imp
         {
         , importsPath
         , joinPath = Path.join
+        , getSourceDirId
         }
         { importsFile with sourceDirs = updatedSourceDirs }
 
 
-loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Exports, Meta.RootPaths, Meta.ImportsPath: Res Exports =
-    fn @io, @loadedImports, @loadedExports, rootPaths, importsPath:
-    try Hash.get @loadedExports importsPath as
+#
+#
+#
+State =
+    {
+    , loadedImports as Hash Meta.ImportsPath Imports
+    , loadedExports as Hash Meta.ImportsPath Exports
+    , sourcePathToId as Hash { importsDir as Text, sourceDir as Text } Int
+    , nextId as Int
+    }
+
+
+loadExports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Exports =
+    fn @io, @state, rootPaths, importsPath:
+    try Hash.get @state.loadedExports importsPath as
 
         'just exports:
             'ok exports
 
         'nothing:
-            loadImports @io @loadedImports rootPaths importsPath
+            loadImports @io @state rootPaths importsPath
             >> onOk fn imports:
             Meta.'importsPath rootDirectory importsDir =
                 importsPath
@@ -240,14 +253,26 @@ loadExports as fn @IO, @Hash Meta.ImportsPath Imports, @Hash Meta.ImportsPath Ex
             >> onOk fn exportsFile:
             ExportsFile.toExports imports exportsFile
             >> onOk fn exports:
-            Hash.insert @loadedExports importsPath exports
+            Hash.insert @state.loadedExports importsPath exports
 
             'ok exports
 
 
-loadImports as fn @IO, @Hash Meta.ImportsPath Imports, Meta.RootPaths, Meta.ImportsPath: Res Imports =
-    fn @io, @loadedImports, rootPaths, importsPath:
-    try Hash.get @loadedImports importsPath as
+loadImports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Imports =
+    fn @io, @state, rootPaths, importsPath:
+
+    getSourceDirId as fn Text, Text: Int =
+        fn importsDir, sourceDir:
+        try Hash.get @state.sourcePathToId { importsDir, sourceDir } as
+            'nothing:
+                id = cloneUni @state.nextId
+                @state.nextId += 1
+                Hash.insert @state.sourcePathToId { importsDir, sourceDir } id
+                id
+            'just id:
+                id
+
+    try Hash.get @state.loadedImports importsPath as
 
         'just imports:
             'ok imports
@@ -264,9 +289,9 @@ loadImports as fn @IO, @Hash Meta.ImportsPath Imports, Meta.RootPaths, Meta.Impo
             >> onOk fn fileContent:
             ImportsFile.fromText filePath fileContent
             >> onOk fn importsFile:
-            scanSourceDirs @io rootPaths importsPath importsFile
+            scanSourceDirs @io getSourceDirId rootPaths importsPath importsFile
             >> onOk fn imports:
-            Hash.insert @loadedImports importsPath imports
+            Hash.insert @state.loadedImports importsPath imports
 
             'ok imports
 
@@ -364,13 +389,15 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #        'ok i:
     #            'ok i
 
-    !loadedImports as Hash Meta.ImportsPath Imports =
-        Hash.fromList []
+    !state as State =
+      {
+      , loadedImports = Hash.fromList []
+      , loadedExports = Hash.fromList []
+      , sourcePathToId = Hash.fromList []
+      , nextId = 0
+      }
 
-    !loadedExports as Hash Meta.ImportsPath Exports =
-        Hash.fromList []
-
-    loadImports @io @loadedImports rootPaths importsPath
+    loadImports @io @state rootPaths importsPath
     >> onOk fn projectImports:
     getEntryUsr projectImports pars.entryPoint
     >> onOk fn entryUsr:
@@ -381,8 +408,8 @@ compileMain as fn @IO, CompileMainPars: Res None =
         {
         , idToDirs = todo "idToDirs"
         , buildInfoModule = buildInfoModule pars.platform
-        , loadExports = loadExports @io @loadedImports @loadedExports rootPaths __
-        , loadImports = loadImports @io @loadedImports rootPaths __
+        , loadExports = loadExports @io @state rootPaths __
+        , loadImports = loadImports @io @state rootPaths __
         , readFile = IO.readFile @io __
         , rootPaths
         }
@@ -396,13 +423,13 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs makePlatformUmr... ]
     }
     >> Compiler/LazyBuild.build
-    >> onOk fn { constructors, rootValues, sourceDirectoryKeyToId }:
+    >> onOk fn { constructors, rootValues }:
     outputFile =
         Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
 
     # Should be the last
     _entryUsr as EA.TranslatedUsr =
-        EA.translateUsr sourceDirectoryKeyToId entryUsr
+        EA.translateUsr entryUsr
 
     type =
         try List.find (fn rv: rv.usr == _entryUsr) rootValues as
@@ -413,7 +440,6 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , constructors
     , defs = rootValues
     , entryUsr = _entryUsr
-    , sourceDirectoryKeyToId
     , type
     }
     >> pars.platform.makeExecutable makePlatformUmr

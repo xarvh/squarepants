@@ -228,31 +228,30 @@ stopOnError as fn BuildPlan, @Array Error: Res None =
             >> 'err
 
 
-makeSourceDirectoryKeyToId as fn [ USR ]: Dict Text Int =
-    fn usrs:
-        !counter =
-            0
-
-        update as fn Maybe Int: Maybe Int =
-            try __ as
-
-                'just v:
-                    'just v
-
-                'nothing:
-                    @counter += 1
-
-                    'just (cloneUni @counter)
-
-        List.for Dict.empty usrs fn usr, d:
-            Dict.update (Meta.sourceDirectoryKey usr) update d
+#makeSourceDirectoryKeyToId as fn [ USR ]: Dict Text Int =
+#    fn usrs:
+#        !counter =
+#            0
+#
+#        update as fn Maybe Int: Maybe Int =
+#            try __ as
+#
+#                'just v:
+#                    'just v
+#
+#                'nothing:
+#                    @counter += 1
+#
+#                    'just (cloneUni @counter)
+#
+#        List.for Dict.empty usrs fn usr, d:
+#            Dict.update (Meta.sourceDirectoryKey usr) update d
 
 
 BuildOut =
     {
     , constructors as [ USR & TA.RawType ]
     , rootValues as [ EA.GlobalDefinition ]
-    , sourceDirectoryKeyToId as Dict Text Int
     }
 
 
@@ -378,18 +377,15 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Emit
     #
-    sourceDirectoryKeyToId as Dict Text Int =
-        makeSourceDirectoryKeyToId orderedUsrs
-
     translateDef as fn USR & TA.ValueDef: EA.GlobalDefinition =
         fn usr & def:
         {
         , deps = def.directDeps
-        , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr sourceDirectoryKeyToId) def.body
+        , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) def.body
         , freeTyvars = def.freeTyvars
         , freeUnivars = def.freeUnivars
         , type = def.type.raw
-        , usr = EA.translateUsr sourceDirectoryKeyToId usr
+        , usr = EA.translateUsr usr
         }
 
     rootValues as [ EA.GlobalDefinition ] =
@@ -404,4 +400,4 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Done!
     #
-    'ok { constructors, rootValues, sourceDirectoryKeyToId }
+    'ok { constructors, rootValues }

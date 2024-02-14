@@ -973,8 +973,10 @@ getValueDef as fn Env, Pos, USR, @State: Maybe CA.ValueDef =
 
 doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.FullType =
     fn env, pos, introspect, usr, @state:
-    selfUsr =
-        'USR ('UMR CoreDefs.importsPath "src" "Self") "Self"
+
+    selfUsr as USR =
+        todo "Self"
+        #'USR ('UMR CoreDefs.importsPath "src" "Self") "Self"
 
     selfType as TA.RawType =
         try Dict.get selfUsr env.expandedAliases as

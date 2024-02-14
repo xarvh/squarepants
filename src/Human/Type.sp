@@ -6,16 +6,17 @@ rootToPath as fn Meta.RootDirectory: Text =
         Meta.'installed: "installed:"
 
 
-importsPathToText as fn Meta.ImportsPath: Text =
-    fn Meta.'importsPath root importsDir:
-
-    rootToPath root .. importsDir
+#importsPathToText as fn Meta.ImportsPath: Text =
+#    fn Meta.'importsPath root importsDir:
+#
+#    rootToPath root .. importsDir
 
 
 umrToText as fn Imports, UMR: Text =
-    fn projectImports, 'UMR importsPath sourceDir modulePath:
+    fn projectImports, 'UMR rootDirectory sourceDirId modulePath:
 
-    importsPathToText importsPath .. "/" .. sourceDir .. "/" .. modulePath
+    # TODO translate sourceDirId
+    rootToPath rootDirectory .. Text.fromNumber sourceDirId .. ":" .. modulePath
 
 
 usrToText as fn Imports, USR: Text =

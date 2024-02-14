@@ -6,30 +6,30 @@ listNilName as Text =
     Targets/Javascript/EmittableToJs.translateName CoreDefs.nilName
 
 
-nativeDefinitions as fn USR, Dict Text Int: Text =
-    fn compileUsr, sourceDirectoryKeyToId:
+nativeDefinitions as fn USR: Text =
+    fn compileUsr:
 
     compileUsrAsText =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId compileUsr
+        Targets/Javascript/EmittableToJs.translateUsrToText compileUsr
 
     okRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Result") "'ok")
+        Targets/Javascript/EmittableToJs.translateUsrToText  ('USR (CoreDefs.makeUmr "Result") "'ok")
 
     errRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Result") "'err")
+        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Result") "'err")
 
 
     nothingRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Maybe") "'nothing")
+        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'nothing")
 
     justRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText sourceDirectoryKeyToId ('USR (CoreDefs.makeUmr "Maybe") "'just")
+        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'just")
 
 #    translateUsrSelf =
 #        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr
 #
 #    translateUsrRef as Text =
-#        Targets/Javascript/EmittableToJs.translateUsr sourceDirectoryKeyToId translateUsrSelf.usr
+#        Targets/Javascript/EmittableToJs.translateUsr translateUsrSelf.usr
 
     """
     let __re__;

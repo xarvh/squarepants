@@ -43,7 +43,6 @@ compile as fn [ USR & Text ], Self.LoadPars: Text =
     , constructors = loadPars.constructors
     , eaDefs = loadPars.defs
     , platformOverrides
-    , sourceDirectoryKeyToId = loadPars.sourceDirectoryKeyToId
     }
     >> Targets/Javascript/EmittableToJs.translateAll
     >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
@@ -64,7 +63,7 @@ makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
     # TODO check that type is ....?
 
     natives =
-        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr loadPars.sourceDirectoryKeyToId
+        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr
 
     header .. natives .. runtime .. compiledStatements .. footer makePlatformUmr loadPars
 
@@ -102,7 +101,7 @@ footer as fn MakeUmr, Self.LoadPars: Text =
     updateDomNode =
         "updateDomNode"
         >> virtualDomUsr makePlatformUmr
-        >> Targets/Javascript/EmittableToJs.translateUsrToText pars.sourceDirectoryKeyToId __
+        >> Targets/Javascript/EmittableToJs.translateUsrToText
 
     """
 
