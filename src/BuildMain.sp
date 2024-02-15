@@ -226,8 +226,17 @@ State =
     , loadedImports as Hash Meta.ImportsPath Imports
     , loadedExports as Hash Meta.ImportsPath Exports
     , sourcePathToId as Hash { importsDir as Text, sourceDir as Text } Int
+    , idToSourcePath as Hash Int { importsDir as Text, sourceDir as Text }
     , nextId as Int
     }
+
+
+
+idToDirs as fn @State, Int: { importsDir as Text, sourceDir as Text } =
+    fn @state, id:
+    try Hash.get @state.idToSourcePath id as
+        'nothing: todo "compiler error: no idToSourcePath"
+        'just sourcePath: sourcePath
 
 
 loadExports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Exports =
@@ -268,6 +277,7 @@ loadImports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Imports =
                 id = cloneUni @state.nextId
                 @state.nextId += 1
                 Hash.insert @state.sourcePathToId { importsDir, sourceDir } id
+                Hash.insert @state.idToSourcePath id { importsDir, sourceDir }
                 id
             'just id:
                 id
@@ -394,6 +404,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
       , loadedImports = Hash.fromList []
       , loadedExports = Hash.fromList []
       , sourcePathToId = Hash.fromList []
+      , idToSourcePath = Hash.fromList []
       , nextId = 0
       }
 
@@ -406,7 +417,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #
     loadCaModulePars as LoadCaModulePars =
         {
-        , idToDirs = todo "idToDirs"
+        , idToDirs = idToDirs @state __
         , buildInfoModule = buildInfoModule pars.platform
         , loadExports = loadExports @io @state rootPaths __
         , loadImports = loadImports @io @state rootPaths __

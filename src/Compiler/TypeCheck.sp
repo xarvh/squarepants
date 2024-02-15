@@ -975,8 +975,7 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
     fn env, pos, introspect, usr, @state:
 
     selfUsr as USR =
-        todo "Self"
-        #'USR ('UMR CoreDefs.importsPath "src" "Self") "Self"
+        'USR (CoreDefs.makeUmr "Self") "Self"
 
     selfType as TA.RawType =
         try Dict.get selfUsr env.expandedAliases as
