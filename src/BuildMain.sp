@@ -38,14 +38,14 @@ getEntryUsr as fn Imports, Text: Res USR =
 buildInfoModule as fn Platform: CA.Module =
     fn platform:
 
-    compile as CA.ValueDef =
-        {
-        , directDeps = Dict.ofOne platform.compileUsr Meta.'valueDependency
-        , maybeBody = 'just << CA.'variable Pos.'n ('refGlobal platform.compileUsr)
-        , name = "compile"
-        , maybeAnnotation = 'nothing
-        , namePos = Pos.'n
-        }
+#    compile as CA.ValueDef =
+#        {
+#        , directDeps = Dict.ofOne platform.compileUsr Meta.'valueDependency
+#        , maybeBody = 'just << CA.'variable Pos.'n ('refGlobal platform.compileUsr)
+#        , name = "compile"
+#        , maybeAnnotation = 'nothing
+#        , namePos = Pos.'n
+#        }
 
     {
     , aliasDefs = Dict.empty
@@ -53,7 +53,7 @@ buildInfoModule as fn Platform: CA.Module =
     , constructorDefs = Dict.empty
     , fsPath = "<buildInfo module>"
     , umr = CoreDefs.makeUmr "BuildInfo"
-    , valueDefs = Dict.ofOne "compile" compile
+    , valueDefs = Dict.empty #Dict.ofOne "compile" compile
     , variantTypeDefs = Dict.empty
     }
 

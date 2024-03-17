@@ -1,11 +1,8 @@
 
-compileSelf =
-    sp_introspect_value Platforms/Browser.compile
-
 
 platform as Platform =
     {
-    , compileUsr = compileSelf.usr
+    , compile = Platforms/Browser.compile
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
     , extraRequiredUsrs = fn _: []
@@ -61,7 +58,7 @@ makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
         >> Text.join "\n\n" __
 
     natives =
-        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr
+        Targets/Javascript/Runtime.nativeDefinitions
 
     header .. natives .. runtime .. compiledStatements .. callMain
 

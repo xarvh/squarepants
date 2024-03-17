@@ -6,11 +6,7 @@ listNilName as Text =
     Targets/Javascript/EmittableToJs.translateName CoreDefs.nilName
 
 
-nativeDefinitions as fn USR: Text =
-    fn compileUsr:
-
-    compileUsrAsText =
-        Targets/Javascript/EmittableToJs.translateUsrToText compileUsr
+nativeDefinitions as Text =
 
     okRef as Text =
         Targets/Javascript/EmittableToJs.translateUsrToText  ('USR (CoreDefs.makeUmr "Result") "'ok")
@@ -599,7 +595,7 @@ nativeDefinitions as fn USR: Text =
 
             const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');
 
-            const js = """ .. compileUsrAsText .. """(arrayToListLow([]), pars);
+            const js = c0$BuildInfo$compile(arrayToListLow([]), pars);
 
             //   { name1, name2, name3, ... } = externals;
             const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';

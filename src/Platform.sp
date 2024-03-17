@@ -6,7 +6,9 @@ MakeUmr =
 Platform =
     {
     # This is used to correctly add dependencies
-    , compileUsr as USR
+
+    , compile as fn [ USR & Text ], Self.LoadPars: Text
+
     # TODO at some point, we'll be able to generate a text file from Imports
     # to be used when the user wants to initialize a new project (or library?)
     , defaultImportsFile as ImportsFile

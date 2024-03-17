@@ -1,6 +1,6 @@
 platform as Platform =
     {
-    , compileUsr = compileSelf.usr
+    , compile
     , defaultImportsFile
     , defaultOutputName = "index.js"
     , extraRequiredUsrs
@@ -32,10 +32,7 @@ extraRequiredUsrs as fn MakeUmr: [ USR ] =
     [ (virtualDomUsr makePlatformUmr) "updateDomNode" ]
 
 
-compileSelf =
-    sp_introspect_value compile
-
-
+# TODO move this in Targets/Javascript ?
 compile as fn [ USR & Text ], Self.LoadPars: Text =
     fn platformOverrides, loadPars:
 
@@ -63,7 +60,7 @@ makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
     # TODO check that type is ....?
 
     natives =
-        Targets/Javascript/Runtime.nativeDefinitions compileSelf.usr
+        Targets/Javascript/Runtime.nativeDefinitions
 
     header .. natives .. runtime .. compiledStatements .. footer makePlatformUmr loadPars
 
