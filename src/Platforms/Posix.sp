@@ -81,6 +81,8 @@ overrides as fn MakeUmr: [ USR & Text ] =
     ioModule =
         'USR (makePlatformUmr "IO") __
 
+    log "MMM" (ioModule "blah")
+
     pathModule =
         'USR (makePlatformUmr "Path") __
 

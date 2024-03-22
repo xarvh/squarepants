@@ -671,7 +671,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
         try def.maybeBody as
 
             'nothing:
-                TA.'literalText Pos.'n "native" & { raw = patternOut.patternType, uni = def.uni }
+                'nothing & { raw = patternOut.patternType, uni = def.uni }
 
             'just body:
                 try patternOut.maybeFullAnnotation as
@@ -683,7 +683,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                         full =
                             { raw, uni = def.uni }
 
-                        checkExpression localEnv full body @state & full
+                        'just (checkExpression localEnv full body @state) & full
 
                     'nothing:
                         typed & inferredType =
@@ -696,7 +696,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
 
                         checkUni localEnv pos { given = inferredType.uni, required = def.uni } @state
 
-                        typed & inferredType
+                        'just typed & inferredType
 
     defType as TA.FullType =
         {
@@ -793,7 +793,6 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     , freeTyvars
     , freeUnivars
     , isFullyAnnotated = patternOut.maybeFullAnnotation /= 'nothing
-    , native = def.maybeBody == 'nothing
     , pattern = patternOut.typedPattern
     , type = defType
     }

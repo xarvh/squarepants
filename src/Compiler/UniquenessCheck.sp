@@ -670,7 +670,13 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                 addPatternToEnv @errors valueDef.pattern env
 
             doneDefBody =
-                doExpression env1 @errors valueDef.body
+                try valueDef.body as
+                    'just body:
+                        doExpression env1 @errors body
+                        >> uniOutMap 'just __
+
+                    'nothing:
+                        uniOutInit 'nothing
 
             localEnv =
                 env1
@@ -826,16 +832,20 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
 
 updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.ValueDef: USR & TA.ValueDef =
     fn @errors, modulesByUmr, usr & def:
-    env as Env =
-        {
-        , modulesByUmr
-        , usr
-        , variables = Dict.empty
-        }
+    try def.body as
+        'nothing: usr & def
+        'just body:
 
-    doneExpression =
-        doExpression env @errors def.body
+            env as Env =
+                {
+                , modulesByUmr
+                , usr
+                , variables = Dict.empty
+                }
 
-    # TODO Should I check that spent, recycled and required are empty?
+            doneExpression =
+                doExpression env @errors body
 
-    usr & { def with body = doneExpression.resolved }
+            # TODO Should I check that spent, recycled and required are empty?
+
+            usr & { def with body = 'just doneExpression.resolved }

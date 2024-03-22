@@ -377,19 +377,30 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Emit
     #
-    translateDef as fn USR & TA.ValueDef: EA.GlobalDefinition =
-        fn usr & def:
-        {
-        , deps = def.directDeps
-        , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) def.body
-        , freeTyvars = def.freeTyvars
-        , freeUnivars = def.freeUnivars
-        , type = def.type.raw
-        , usr = EA.translateUsr usr
-        }
 
-    rootValues as [ EA.GlobalDefinition ] =
-        List.map translateDef valueDefsWithDestruction
+
+    translateDef as fn USR & TA.ValueDef: Res EA.GlobalDefinition =
+        fn usr & def:
+
+        try def.body as
+            'nothing:
+                    [ "Missing native", Debug.toHuman def ]
+                    >> Error.'raw
+                    >> 'err
+            'just body:
+                {
+                , deps = def.directDeps
+                , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
+                , freeTyvars = def.freeTyvars
+                , freeUnivars = def.freeUnivars
+                , type = def.type.raw
+                , usr = EA.translateUsr usr
+                }
+                >> 'ok
+
+    #rootValues as [ EA.GlobalDefinition ] =
+    List.mapRes translateDef valueDefsWithDestruction
+    >> onOk fn rootValues:
 
     #
     # Constructors

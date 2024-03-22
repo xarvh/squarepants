@@ -96,12 +96,11 @@ Univar =
 
 ValueDef =
     {
-    , body as Expression
+    , body as Maybe Expression
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
     , isFullyAnnotated as Bool
-    , native as Bool
     , pattern as Pattern
     , type as FullType
     }
@@ -288,7 +287,7 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
 resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
     fn saf, def:
     { def with
-    , body = resolveExpression saf .body
+    , body = Maybe.map (resolveExpression saf __) .body
     , pattern = resolvePattern saf .pattern
     , type = resolveFull saf .type
     }

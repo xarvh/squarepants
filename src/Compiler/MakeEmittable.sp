@@ -266,13 +266,19 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> wrapWithLetIn
 
         TA.'letIn valueDef e bodyType:
+
+            body =
+                try valueDef.body as
+                    'nothing: todo ("compiler bug: 'nothing body should not happen here " .. Debug.toHuman valueDef.pattern)
+                    'just b: b
+
             try pickMainName valueDef.pattern as
 
                 'noNamedVariables:
                     EA.'letIn
                         {
                         , inExpression = translateExpression env e
-                        , letExpression = translateExpression env valueDef.body
+                        , letExpression = translateExpression env body
                         , maybeName = 'nothing
                         , type = valueDef.type
                         }
@@ -281,14 +287,14 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     EA.'letIn
                         {
                         , inExpression = translateExpression env e
-                        , letExpression = translateExpression env valueDef.body
+                        , letExpression = translateExpression env body
                         , maybeName = 'just defName
                         , type
                         }
 
                 'generateName:
                     mainName & newEnv =
-                        # TODO check if valueDef.body is just a variable
+                        # TODO check if body is just a variable
                         generateName env
 
                     namesAndExpressions =
@@ -309,7 +315,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'letIn
                             {
                             , inExpression
-                            , letExpression = translateExpression newEnv valueDef.body
+                            , letExpression = translateExpression newEnv body
                             , maybeName = 'just mainName
                             , type = valueDef.type
                             }

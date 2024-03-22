@@ -426,6 +426,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
         }
 
     makePlatformUmr as MakeUmr =
+        ### TODO: can't hardcode this number!
         'UMR Meta.'installed 1 __
 
     {
