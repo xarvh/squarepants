@@ -435,7 +435,10 @@ compileMain as fn @IO, CompileMainPars: Res None =
     , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs makePlatformUmr... ]
     }
     >> Compiler/LazyBuild.build
-    >> onOk fn { constructors, rootValues }:
+    >> onOk fn { constructors, natives, rootValues }:
+
+    # TODO ensure all natives are implemented?
+
     outputFile =
         Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
 

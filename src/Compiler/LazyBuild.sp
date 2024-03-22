@@ -251,6 +251,7 @@ stopOnError as fn BuildPlan, @Array Error: Res None =
 BuildOut =
     {
     , constructors as [ USR & TA.RawType ]
+    , natives as [ USR ]
     , rootValues as [ EA.GlobalDefinition ]
     }
 
@@ -379,15 +380,11 @@ build as fn BuildPlan: Res BuildOut =
     #
 
 
-    translateDef as fn USR & TA.ValueDef: Res EA.GlobalDefinition =
+    translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
         fn usr & def:
 
-        try def.body as
-            'nothing:
-                    [ "Missing native", Debug.toHuman def ]
-                    >> Error.'raw
-                    >> 'err
-            'just body:
+        Maybe.map
+          (fn body:
                 {
                 , deps = def.directDeps
                 , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
@@ -396,11 +393,16 @@ build as fn BuildPlan: Res BuildOut =
                 , type = def.type.raw
                 , usr = EA.translateUsr usr
                 }
-                >> 'ok
+          )
+          def.body
 
-    #rootValues as [ EA.GlobalDefinition ] =
-    List.mapRes translateDef valueDefsWithDestruction
-    >> onOk fn rootValues:
+    rootValues as [ EA.GlobalDefinition ] =
+        List.filterMap translateDef valueDefsWithDestruction
+
+    natives as [ USR ] =
+        valueDefsWithDestruction
+        >> List.filter (fn usr & def: def.body == 'nothing) __
+        >> List.map Tuple.first __
 
     #
     # Constructors
@@ -411,4 +413,4 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Done!
     #
-    'ok { constructors, rootValues }
+    'ok { constructors, natives, rootValues }

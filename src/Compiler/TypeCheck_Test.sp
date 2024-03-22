@@ -161,7 +161,7 @@ infer as fn Text: fn Text: Result Text Out =
     }
     >> Compiler/LazyBuild.build
     >> TH.resErrorToStrippedText
-    >> onOk fn { constructors, rootValues }:
+    >> onOk fn { constructors, natives, rootValues }:
 
     targetUsr =
         EA.translateUsr ('USR TH.moduleUmr targetName)
