@@ -21,7 +21,7 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
+makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
     fn makePlatformUmr:
     fn out:
 
@@ -76,12 +76,10 @@ header as Text =
     """
 
 
-overrides as fn MakeUmr: [ USR & Text ] =
+overrides as fn Platform.MakeUmr: [ USR & Text ] =
     fn makePlatformUmr:
     ioModule =
         'USR (makePlatformUmr "IO") __
-
-    log "MMM" (ioModule "blah")
 
     pathModule =
         'USR (makePlatformUmr "Path") __

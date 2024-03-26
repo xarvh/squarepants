@@ -63,12 +63,12 @@ sourceDir =
        path = Platform
        importAs = Platform
        globals =
-          MakeUmr
           Platform
 
 
 # This will be transformed into a platform
 library =
+    platform = posix
     source = ":posix"
 
     module =

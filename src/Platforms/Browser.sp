@@ -21,12 +21,12 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-virtualDomUsr as fn MakeUmr: fn Name: USR =
+virtualDomUsr as fn Platform.MakeUmr: fn Name: USR =
     fn makePlatformUmr:
     'USR (makePlatformUmr "VirtualDom") __
 
 
-extraRequiredUsrs as fn MakeUmr: [ USR ] =
+extraRequiredUsrs as fn Platform.MakeUmr: [ USR ] =
     fn makePlatformUmr:
 
     [ (virtualDomUsr makePlatformUmr) "updateDomNode" ]
@@ -46,7 +46,7 @@ compile as fn [ USR & Text ], Self.LoadPars: Text =
     >> Text.join "\n\n" __
 
 
-makeExecutable as fn MakeUmr: fn Self.LoadPars: Text =
+makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
     fn makePlatformUmr:
 
     platformOverrides =
@@ -90,7 +90,7 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn MakeUmr, Self.LoadPars: Text =
+footer as fn Platform.MakeUmr, Self.LoadPars: Text =
     fn makePlatformUmr, pars:
     mainName =
         Targets/Javascript/EmittableToJs._usrToText pars.entryUsr

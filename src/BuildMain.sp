@@ -35,6 +35,8 @@ getEntryUsr as fn Imports, Text: Res USR =
         "main"
 
 
+
+
 buildInfoModule as fn Platform: CA.Module =
     fn platform:
 
@@ -412,6 +414,37 @@ compileMain as fn @IO, CompileMainPars: Res None =
     >> onOk fn projectImports:
     getEntryUsr projectImports pars.entryPoint
     >> onOk fn entryUsr:
+
+    #
+    # Figure out the platform library UMR
+    #
+    Dict.get pars.platform.name projectImports.platforms
+    >> Maybe.toResult (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform."]) __
+    >> onOk fn platformModuleLocations:
+
+    # TODO properly collect or return errors instead of crashing
+    makePlatformUmr as fn Name: UMR =
+        fn modulePath:
+
+        try Dict.get modulePath platformModuleLocations as
+            'nothing:
+                todo << "no " .. modulePath .. "in loaded platform."
+
+            'just location:
+                  try location as
+
+                      Meta.'locationSourceDir umr:
+                          umr
+
+                      Meta.'locationLibrary libraryImportsPath modulePath2:
+                          try loadImports @io @state rootPaths libraryImportsPath as
+                              'err err: todo (toHuman err)
+                              'ok libraryImports:
+                                  try Dict.get modulePath libraryImports.modulePathToLocation as
+                                      'nothing: todo << "Platform bug: no module " .. modulePath .. " the library imports for platform " .. pars.platform.name
+                                      'just (Meta.'locationLibrary _ _): todo << "Platform bug: platform wants the UMR of a library module: " .. modulePath
+                                      'just (Meta.'locationSourceDir umr): umr
+
     #
     # Compile!
     #
@@ -424,10 +457,6 @@ compileMain as fn @IO, CompileMainPars: Res None =
         , readFile = IO.readFile @io __
         , rootPaths
         }
-
-    makePlatformUmr as MakeUmr =
-        ### TODO: can't hardcode this number!
-        'UMR Meta.'installed 1 __
 
     {
     , loadCaModule = loadCaModule loadCaModulePars __

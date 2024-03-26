@@ -42,6 +42,7 @@ defaultImportsFile as ImportsFile =
             , mod "Maybe" [ "Maybe", "'just", "'nothing" ]
             , mod "Result" [ "Result", "'ok", "'err" ]
             ]
+        , platform = ""
         , source = "core"
         }
         ]
@@ -73,6 +74,7 @@ platformDefaultImportsFile as fn Text, [ Text & [ Text ] ]: ImportsFile =
     platform as ImportsFile.Library =
         {
         , modules = List.map (fn path & globals: mod path globals) modules
+        , platform = ""
         , source = ":" .. name
         }
 

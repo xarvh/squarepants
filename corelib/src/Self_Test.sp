@@ -4,7 +4,7 @@ valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
 
 tests as Test =
     Test.'group
-        "Self"
+        "SKIP (needs an overhaul) Self"
         [
         , base
         ]

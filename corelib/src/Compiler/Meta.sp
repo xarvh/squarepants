@@ -130,16 +130,11 @@ var ImportsPath =
 #
 # Uniquely identifies a module within the whole project.
 #
-SourceDir =
-    Text
-
-
 ModulePath =
     Text
 
 
 var UMR =
-    #, 'UMR ImportsPath SourceDir ModulePath
     , 'UMR RootDirectory Int ModulePath
 
 
@@ -190,6 +185,7 @@ Imports =
     , globalNameToLocation as Dict Name Location
     , moduleAliasToLocation as Dict Name Location
     , modulePathToLocation as Dict Name Location
+    , platforms as Dict Name (Dict Name Location)
     }
 
 
@@ -198,6 +194,7 @@ initImports as Imports =
     , globalNameToLocation = Dict.empty
     , moduleAliasToLocation = Dict.empty
     , modulePathToLocation = Dict.empty
+    , platforms = Dict.empty
     }
 
 

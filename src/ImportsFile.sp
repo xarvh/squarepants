@@ -22,6 +22,7 @@ SourceDir =
 Library =
     {
     , modules as [ Module ]
+    , platform as Text
     , source as Text
     }
 
@@ -54,35 +55,46 @@ parseLibrarySource as fn Text: Result Text LibrarySource =
 # ImportsFile to Imports
 #
 
+insertModules as fn fn Text: Meta.Location, @Array Text, Text, [ Module ], Imports: Imports =
+    fn modulePathToLocationFn, @errors, platformName, modules, imports:
+
+    platforms =
+        if platformName == "" then
+            imports.platforms
+        else
+            # TODO check for duplicate platforms!
+            Dict.empty
+            >> List.for __ modules fn module, dict:
+                Dict.insert module.path (modulePathToLocationFn module.path) dict
+            >> Dict.insert platformName __ imports.platforms
+
+    List.for imports modules fn module, imp:
+        location =
+            modulePathToLocationFn module.path
+
+        # Insert module alias
+        # TODO check that there is no duplication!
+        moduleAliasToLocation =
+            Dict.insert module.visibleAs location imp.moduleAliasToLocation
+
+        modulePathToLocation =
+            Dict.insert module.path location imp.modulePathToLocation
+
+        # Insert globals
+        globalNameToLocation =
+            List.for imp.globalNameToLocation module.globals fn globalName, dict:
+                # TODO check that there is no duplication
+                Dict.insert globalName location dict
+
+        { globalNameToLocation, moduleAliasToLocation, modulePathToLocation, platforms }
+
+
 ToImportsPars =
     {
     , importsPath as Meta.ImportsPath
     , joinPath as fn [ Text ]: Text
     , getSourceDirId as fn Text, Text: Int
     }
-
-
-insertModules as fn fn Text: Meta.Location, @Array Text, [ Module ], Imports: Imports =
-    fn getModulePathToLocation, @errors, modules, imports:
-        List.for imports modules fn module, imp:
-            location =
-                getModulePathToLocation module.path
-
-            # Insert module alias
-            # TODO check that there is no duplication!
-            moduleAliasToLocation =
-                Dict.insert module.visibleAs location imp.moduleAliasToLocation
-
-            modulePathToLocation =
-                Dict.insert module.path location imp.modulePathToLocation
-
-            # Insert globals
-            globalNameToLocation =
-                List.for imp.globalNameToLocation module.globals fn globalName, dict:
-                    # TODO check that there is no duplication
-                    Dict.insert globalName location dict
-
-            { globalNameToLocation, moduleAliasToLocation, modulePathToLocation }
 
 
 insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
@@ -99,7 +111,7 @@ insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
         >> 'UMR rootDirectory sourceDirId __
         >> Meta.'locationSourceDir
 
-    insertModules modulePathToLocation @errors sourceDir.modules imports
+    insertModules modulePathToLocation @errors "" sourceDir.modules imports
 
 
 insertLibrary as fn ToImportsPars, @Array Text, Library, Imports: Imports =
@@ -132,7 +144,7 @@ insertLibrary as fn ToImportsPars, @Array Text, Library, Imports: Imports =
                         pars.joinPath [ protocol, address ]
 
                     Meta.'locationLibrary (Meta.'importsPath Meta.'installed importsDir) __
-            >> insertModules __ @errors library.modules imports
+            >> insertModules __ @errors library.platform library.modules imports
 
 
 toImports as fn ToImportsPars, ImportsFile: Res Imports =
@@ -186,6 +198,8 @@ moduleReader as SPON.Reader Module =
 
 
 libraryReader as SPON.Reader Library =
+    SPON.maybe (SPON.field "platform" SPON.lowerName)
+    >> SPON.onAcc fn platform:
     SPON.field "source" SPON.text
     >> SPON.onAcc fn source:
     SPON.many (SPON.field "module" moduleReader)
@@ -193,6 +207,7 @@ libraryReader as SPON.Reader Library =
     SPON.return
         {
         , modules = modules
+        , platform = Maybe.withDefault "" platform
         , source = source
         }
 
