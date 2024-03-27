@@ -32,7 +32,7 @@ Env =
 ReadOnly =
     {
     , errorModule as Error.Module
-    , meta as Meta
+    , resolvePars as fn Pos: Meta.ResolvePars Error
     , umr as UMR
     }
 
@@ -43,9 +43,7 @@ initEnv as fn ReadOnly: Env =
     , maybeShorthandTarget = 'nothing
     , nextGeneratedVariableName = 0
     , nonFn = Dict.empty
-    #, futureNonRootValues = Dict.empty
-    , ro =
-        ro
+    , ro
     , values = Dict.empty
     }
 
@@ -67,68 +65,9 @@ error as fn Env, Pos, [ Text ]: Res a =
 #
 # Names resolution
 #
-
-maybeForeignUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: Res (Maybe USR) =
-    fn getter, ro, pos, maybeModule, name:
-    try maybeModule as
-
-        'nothing:
-            Dict.get name (getter ro.meta) >> 'ok
-
-        'just moduleName:
-            try Dict.get moduleName ro.meta.moduleVisibleAsToUmr as
-
-                'just umr:
-                    'USR umr name
-                    >> 'just
-                    >> 'ok
-
-                'nothing:
-                    ro.meta.moduleVisibleAsToUmr
-                    >> Dict.toList
-                    >> List.each __ (fn k & v: log "*" (Human/Type.umrToText (Compiler/TypeCheck.initEnv Dict.empty) v .. " -> " .. k))
-
-                    # For now we're assuming that ro.meta.moduleVisibleAsToUmr contains *all* modules, aliased or not
-                    erroro ro pos [ "I can't find the module `" .. moduleName .. "`" ]
-
-
-#                    (USR Meta.SourcePlaceholder moduleName name)
-#
-#                    List.each (Dict.keys ro.meta.moduleVisibleAsToUmr) x:
-#                        log "*" x
-#                    todo << "!!resolveToUsr can't find the module: " .. moduleName .. " (for: " .. name .. ")"
-
-resolveToUsr as fn fn Meta: Dict Text USR, ReadOnly, Pos, Maybe Name, Name: Res USR =
-    fn getter, ro, pos, maybeModule, name:
-    maybeForeignUsr getter ro pos maybeModule name >> Result.map (Maybe.withDefault ('USR ro.umr name) __) __
-
-
-resolveToValueRef as fn ReadOnly, Pos, Bool, Maybe Name, Name: Res Ref =
-    fn ro, pos, isRoot, maybeModule, name:
-    # TODO use Result.map?
-    try maybeForeignUsr (fn m: m.globalValues) ro pos maybeModule name as
-
-        'err e:
-            'err e
-
-        'ok ('just usr):
-            'refGlobal usr >> 'ok
-
-        'ok 'nothing:
-            if isRoot then
-                'USR ro.umr name
-                >> 'refGlobal
-                >> 'ok
-            else
-                'refLocal name >> 'ok
-
-
-resolveToTypeUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
-    resolveToUsr (fn m: m.globalTypes) __ __ __ __
-
-
-resolveToConstructorUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
-    resolveToUsr (fn m: m.globalValues) __ __ __ __
+resolveToUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
+    fn ro, pos, maybeModule, name:
+    Meta.resolve (ro.resolvePars pos) maybeModule name
 
 
 #
@@ -239,7 +178,8 @@ expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
             addDeps =
                 fn u & p & b, d:
                 d >> patternDeps p __ >> expressionDeps b __
-                #d >> expressionDeps b __
+
+            #d >> expressionDeps b __
 
             deps
             >> expressionDeps value __
@@ -250,6 +190,18 @@ expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
             >> patternDeps valueDef.pattern __
             >> expressionDeps valueDef.body __
             >> expressionDeps e __
+
+        CA.'introspect _ introspect usr:
+            dependencyType as DependencyType =
+                try introspect as
+                    Token.'value: 'valueDependency
+                    Token.'type: 'typeDependency
+                    Token.'typeOpen: 'typeDependency
+
+            # TODO should somehow use the fact that the type is open or not,
+            # forcing the deps to have its innards if it is open?
+
+            Dict.insert usr dependencyType deps
 
 
 argumentDeps as fn CA.Argument, CA.Deps: CA.Deps =
@@ -264,6 +216,7 @@ parameterDeps as fn CA.Parameter, CA.Deps: CA.Deps =
     try par as
         CA.'parameterPattern _ pa: patternDeps pa deps
         _: deps
+
 
 #
 # Definition
@@ -354,7 +307,7 @@ translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA
 
 translatePatternConstructor as fn Env, Pos, Maybe Name, Name, [ CA.Pattern ]: Res CA.Pattern =
     fn env, pos, maybeModule, name, args:
-    resolveToConstructorUsr env.ro pos maybeModule name
+    resolveToUsr env.ro pos maybeModule name
     >> onOk fn usr:
     CA.'patternConstructor pos usr args >> 'ok
 
@@ -694,7 +647,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "Can't reference a type or module here...?" ]
 
         FA.'constructor { maybeModule, name }:
-            resolveToConstructorUsr env.ro pos maybeModule name
+            resolveToUsr env.ro pos maybeModule name
             >> onOk fn usr:
             CA.'constructor pos usr >> 'ok
 
@@ -852,6 +805,11 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
         FA.'native:
             error env pos [ "`this_is_sp_native` can be used only for root level value defs" ]
 
+        FA.'introspect introspect maybeModule name:
+            resolveToUsr env.ro pos maybeModule name
+            >> onOk fn usr:
+            CA.'introspect pos introspect usr >> 'ok
+
         _:
             error env pos [ "something's wrong here...", toHuman expr_ ]
 
@@ -884,12 +842,36 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                     ]
 
             'nothing:
-                isUnique =
-                    try Dict.get paName.name env.ro.meta.globalValues as
-                        'nothing: 'true
-                        'just globalUsr: isRoot and globalUsr == 'USR env.ro.umr paName.name
+                resolvePars =
+                    env.ro.resolvePars paName.pos
 
-                if isUnique then
+                shadowsAGlobal =
+                    try Dict.get paName.name resolvePars.currentImports.globalNameToLocation as
+
+                        # No global with this name, all good
+                        'nothing:
+                            'false
+
+                        # There IS a global with that name!!
+                        # If here we are defining exactly that global, all good!
+                        # Otherwise we have shadowing and we want to error on that.
+                        'just location:
+                            if not isRoot then
+                                # We are defining a local, so definitely not the global. Shadowing!
+                                'true
+                            else
+                                try Meta.resolve resolvePars 'nothing paName.name as
+
+                                    'err _:
+                                        # There is a problem figuring out where the global is from.
+                                        # Because we're already reading this module, we can assume that the global is not from here
+                                        # So, shadowing.
+                                        'true
+
+                                    'ok ('USR umr name):
+                                        umr /= env.ro.umr
+
+                if not shadowsAGlobal then
                     Dict.insert paName.name { isRoot, pos = paName.pos } vs >> 'ok
                 else
                     error
@@ -897,7 +879,7 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                         paName.pos
                         [
                         , "There is already a global variable named `" .. paName.name .. "`."
-                        , "You need to find a different name, or modify modules.sp"
+                        , "You need to find a different name, or modify imports.sp"
                         ]
     >> onOk fn values:
     'ok { env with values }
@@ -908,14 +890,18 @@ translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe 
     if maybeType /= 'nothing then
         error env pos [ "no annotations on var reference" ]
     else
-        isRoot =
-            try Dict.get name env.values as
-                'nothing: 'true
-                'just paName: paName.isRoot
+        isLocal =
+            maybeModule == 'nothing
+            and try Dict.get name env.values as
+                'nothing: 'false
+                'just paName: not paName.isRoot
 
-        resolveToValueRef env.ro pos isRoot maybeModule name
-        >> onOk fn usr:
-        CA.'variable pos usr
+        if isLocal then
+            'refLocal name >> 'ok
+        else
+            resolveToUsr env.ro pos maybeModule name >> Result.map 'refGlobal __
+        >> onOk fn ref:
+        CA.'variable pos ref
         >> List.for __ attrPath (CA.'recordAccess pos __ __)
         >> 'ok
 
@@ -1357,7 +1343,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
     try expr_ as
 
         FA.'uppercase { maybeModule, name }:
-            resolveToTypeUsr ro pos maybeModule name
+            resolveToUsr ro pos maybeModule name
             >> onOk fn usr:
             CA.'typeNamed pos usr [] >> 'ok
 
@@ -1378,7 +1364,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                     faArgs
                     >> List.mapRes (translateRawType ro __) __
                     >> onOk fn caArgs:
-                    resolveToTypeUsr ro pos maybeModule name
+                    resolveToUsr ro pos maybeModule name
                     >> onOk fn usr:
                     CA.'typeNamed pos usr caArgs >> 'ok
 
@@ -1463,13 +1449,10 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
         error env pos [ "constructor " .. name .. " is duplicate" ]
     else
         'ok 'none
-
     >> onOk fn 'none:
-
     faPars
     >> List.mapRes (translateRawType env.ro __) __
     >> onOk fn ins:
-
     tyvars as Dict Name Pos =
         List.for Dict.empty ins (fn in, dict: Dict.join (CA.typeTyvars in) dict)
 
@@ -1479,19 +1462,16 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
     if undeclaredTyvars == Dict.empty then
         'ok 'none
     else
+        toError as fn Name & Pos: Error =
+            fn n & p:
+            Error.'simple env.ro.errorModule p [ "Undeclared type variable: " .. n ]
 
-      toError as fn Name & Pos: Error =
-        fn n & p:
-        Error.'simple env.ro.errorModule p [ "Undeclared type variable: " .. n ]
-
-      undeclaredTyvars
-      >> Dict.toList
-      >> List.map toError __
-      >> Error.'nested
-      >> 'err
-
+        undeclaredTyvars
+        >> Dict.toList
+        >> List.map toError __
+        >> Error.'nested
+        >> 'err
     >> onOk fn 'none:
-
     env
     >> insertPatternNames 'true (CA.'patternAny pos ('just name) 'nothing) __
     >> onOk fn newEnv:
@@ -1563,7 +1543,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 error env pos [ name .. " declared twice!" ]
             else
                 # TODO check that args are not duplicate
-                caPars as [Name & Pos] =
+                caPars as [ Name & Pos ] =
                     List.map (fn p & n: n & p) fa.args
 
                 usr =
@@ -1586,8 +1566,8 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
 
                 newModule =
                     { caModule with
-                    , variantTypeDefs = Dict.insert name varDef .variantTypeDefs
                     , constructorDefs = Dict.for .constructorDefs constructors Dict.insert
+                    , variantTypeDefs = Dict.insert name varDef .variantTypeDefs
                     }
 
                 newModule & newEnv >> 'ok

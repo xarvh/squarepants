@@ -19,10 +19,10 @@ blue as fn Text: Html msg =
 formattedToConsoleColoredText as fn Error.FormattedText: Html msg =
     fn formattedText:
     try formattedText as
-        Error.'FormattedText_Default t: Html.text t
-        Error.'FormattedText_Emphasys t: yellow t
-        Error.'FormattedText_Warning t: red t
-        Error.'FormattedText_Decoration t: blue t
+        Error.'formattedText_Default t: Html.text t
+        Error.'formattedText_Emphasys t: yellow t
+        Error.'formattedText_Warning t: red t
+        Error.'formattedText_Decoration t: blue t
 
 
 resToConsoleText as fn Res a: Result (Html msg) a =
@@ -51,11 +51,17 @@ onResSuccess as fn fn a: Result (Html msg) b: fn Res a: Result (Html msg) b =
 #
 # Meta
 #
-meta as Meta =
-    try ModulesFile.textToModulesFile "modules.sp" Platforms/Browser.platform.defaultModules as
+defaultImports as Imports =
+    name =
+        "<internal imports.sp>"
 
-        'ok m:
-            ModulesFile.toMeta m
+    importsPath =
+        Meta.'importsPath Meta.'user name
+
+    try ImportsFile.toImports { importsPath, joinPath = Text.join "/" __ } Platforms/Browser.platform.defaultImportsFile as
+
+        'ok imports:
+            imports
 
         'err err:
             errAsText =
@@ -75,26 +81,84 @@ meta as Meta =
 selfToExposed as fn Self.Self: USR & Self.Self =
     fn self:
     try self.expression as
-        EA.'variable ('RefGlobal usr): usr & self
+        EA.'globalVariable usr: usr & self
         _: todo << "can't create an USR for " .. toHuman self.expression
 
 
-exposedValues as [ USR & Self.Self ] =
-    l1 =
-        [
-        , Self.introspect Html.div
-        , Self.introspect Html.button
-        , Self.introspect Html.onClick
-        , Self.introspect Html.text
-        , Self.introspect Html.style
-        , Self.introspect Html.class
-        ]
-        >> List.map selfToExposed __
+exposedNames as [ Self.Self ] =
+    [
+    , sp_introspect_value Html.div
+    , sp_introspect_value Html.button
+    , sp_introspect_value Html.onClick
+    , sp_introspect_value Html.text
+    , sp_introspect_value Html.style
+    , sp_introspect_value Html.class
+    , sp_introspect_type VirtualDom.VirtualNode
+    , sp_introspect_type VirtualDom.Attr
+    , sp_introspect_type_open Html
+    , sp_introspect_type_open Html.Attr
+    ]
 
-    l2 =
-        [ 'USR ('UMR Meta.'Core "List") "blah" & Self.introspect (fn x: 0.1) ]
 
-    [ l1, l2 ] >> List.concat
+exports as Meta.Exports =
+    List.for Dict.empty exposedNames fn self, exp:
+
+        'USR ('UMR importsPath sourceDir modulePath) name = self.usr
+
+        module =
+            Dict.get modulePath exp
+            >> Maybe.withDefault Dict.empty __
+
+        # TODO isOpen = ?
+        Dict.insert modulePath (Dict.insert name { isOpen = 'false, usr = self.usr } module) exp
+
+
+textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
+    fn imports, umr, fsPath, content:
+    errorModule as Error.Module =
+        {
+        , content
+        , fsPath
+        }
+
+    resolvePars as Meta.ResolvePars Error =
+        {
+        , currentImports = imports
+        , currentModule = umr
+        , loadExports = fn importsPath: 'ok exports
+        #'err << Error.'raw [ "Cannot access libraries: ", Debug.toHuman importsPath ]
+        , makeError =
+            Error.'raw __
+        }
+
+    ro as Compiler/MakeCanonical.ReadOnly =
+        {
+        , errorModule
+        , resolvePars = fn pos: resolvePars
+        , umr
+        }
+
+    Compiler/MakeCanonical.textToCanonicalModule 'false ro
+
+
+loadCaModule as fn Dict UMR CA.Module: fn USR: Res CA.Module =
+    fn modulesByUmr:
+    fn usr:
+
+    'USR umr name = usr
+
+    try Dict.get umr modulesByUmr as
+
+        'just m:
+            'ok m
+
+        'nothing:
+            [
+            , "Cannot find module: " .. Debug.toHuman umr
+            , "Which is needed because it defines " .. name
+            ]
+            >> Error.'raw
+            >> 'err
 
 
 viewErrorWrongType as fn TA.RawType: Html msg =
@@ -104,8 +168,9 @@ viewErrorWrongType as fn TA.RawType: Html msg =
         [
         , Html.text "I don't know how to use this type:"
         , type
-        >> Human/Type.doRawType {} __
-        >> Human/Type.display "" __
+        >> Human/Type.doRawType defaultImports __
+        >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
+        >> Fmt.render
         >> Html.text
         ]
 
@@ -122,32 +187,54 @@ var CompiledCode =
 
 main as fn Text: Result (Html msg) CompiledCode =
     fn code:
-    inputFileName =
-        "user_input"
+    modulePath =
+        "UserInput"
 
-    entryModule =
-        'UMR (Meta.'SourceDirId inputFileName) inputFileName
+    entryUmr =
+        'UMR (Meta.'importsPath Meta.'user "") "" modulePath
+
+    entryUsr =
+        'USR entryUmr "program"
+
+    textToCaModule defaultImports entryUmr modulePath code
+    >> onResSuccess fn caModule:
+    modulesByUmr =
+        Self.toCaModules exposedNames >> Dict.insert entryUmr caModule __
 
     {
-    , entryModule
-    , exposedValues
-    , meta
-    , modules = [ entryModule & code ]
-    , umrToFsPath = fn _: inputFileName
+    , loadCaModule = loadCaModule modulesByUmr
+    , projectImports = defaultImports
+    , requiredUsrs = [ entryUsr ]
     }
-    >> Compiler/Compiler.compileModules
-    >> onResSuccess fn out:
+    >> Compiler/LazyBuild.build
+    >> onResSuccess fn { constructors, rootValues }:
+
+    entryTUsr =
+      EA.translateUsr entryUsr
+
+    try List.find (fn v: v.usr == entryTUsr) rootValues as
+        'nothing:
+            log "" (List.map (fn s: s.usr) rootValues)
+            'err (Html.text "internal bug: cannot find entryUsr!?")
+        'just t: 'ok t
+    >> onOk fn entryValue:
+
+    lp as Self.LoadPars =
+        {
+        , constructors
+        , defs = rootValues
+        , entryUsr = entryTUsr
+        , type = entryValue.type
+        }
+
     loadResult as Result TA.RawType CompiledCode =
-        Self.load out 'CompiledNumber
+        Self.load lp 'CompiledNumber
         >> Result.onErr fn _:
-        Self.load out 'CompiledText
+        Self.load lp 'CompiledText
         >> Result.onErr fn _:
-        Self.load out 'CompiledShader
+        Self.load lp 'CompiledShader
         >> Result.onErr fn _:
-        Self.load out 'CompiledHtml
+        Self.load lp 'CompiledHtml
 
     loadResult
-    >> Result.onErr fn actualCompiledType:
-    actualCompiledType
-    >> viewErrorWrongType
-    >> 'err
+    >> Result.onErr (__ >> viewErrorWrongType >> 'err)

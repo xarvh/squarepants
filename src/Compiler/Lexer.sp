@@ -453,7 +453,10 @@ addWordToken as fn Text, @ReadState: None =
             "and": 'just << Token.'binop (cloneUni @state.line) CoreDefs.and_
             "or": 'just << Token.'binop (cloneUni @state.line) CoreDefs.or_
             "__": 'just << Token.'argumentPlaceholder
-            "this_is_sp_native": 'just Token.'native
+            "this_is_sp_native": 'just Token.'this_is_sp_native
+            "sp_introspect_value": 'just (Token.'sp_introspect Token.'value)
+            "sp_introspect_type": 'just (Token.'sp_introspect Token.'type)
+            "sp_introspect_type_open": 'just (Token.'sp_introspect Token.'typeOpen)
             _: 'nothing
 
     try maybeKeywordKind as

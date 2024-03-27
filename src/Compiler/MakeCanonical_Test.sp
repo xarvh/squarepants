@@ -34,7 +34,7 @@ params as fn Error.Module: Compiler/MakeCanonical.ReadOnly =
     fn errorModule:
     {
     , errorModule
-    , meta = TH.meta
+    , resolvePars = fn pos: TH.resolvePars
     , umr = TH.moduleUmr
     }
 
@@ -520,7 +520,7 @@ annotations as Test =
         , codeTest
             "annotation of recycling function"
             """
-            b as fn @Result e a: !Result e a =
+            b as fn @List a: !List a =
               3
             """
             (firstEvaluation "b")
@@ -666,7 +666,7 @@ argumentPlaceholders as Test =
                          ]
                          (CA.'call
                               p
-                              (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "f")))
+                              (CA.'variable p ('refGlobal (TH.moduleUsr "f")))
                               [
                               , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                               , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
@@ -690,12 +690,12 @@ argumentPlaceholders as Test =
                       [ CA.'parameterPlaceholder 0 ]
                       (CA.'call
                            p
-                           (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "b")))
+                           (CA.'variable p ('refGlobal (TH.moduleUsr "b")))
                            [
                            , CA.'argumentExpression
                                (CA.'call
                                     p
-                                    (CA.'variable p ('refGlobal ('USR ('UMR (Meta.'sourceDirId "<Test>") "(test)") "a")))
+                                    (CA.'variable p ('refGlobal (TH.moduleUsr "a")))
                                     [
                                     , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                                     ]

@@ -1,108 +1,34 @@
-[# modules.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
-
-
-sourceDir =
-    path = "specs"
-
 
 sourceDir =
     path = "src"
 
     module =
-        path = Human/Type
-        globalValues =
-            usrToText
-
-    module =
-       path = Compiler/Error
-       importAs = Error
-       globalTypes =
-          Error
-          Res
-
-    module =
-       path = Compiler/CoreDefs
-       importAs = CoreDefs
-
-
-    module =
-       path = SPLib/Format
-       importAs = Fmt
-
-    module =
-       path = SPLib/Parser
-       importAs = Parser
-
-    module =
-       path = SPLib/RefHierarchy
-       importAs = RefHierarchy
-
-    module =
-       path = SPLib/SPON
-       importAs = SPON
-
-    module =
-       path = SPLib/Test
-       importAs = Test
-       globalTypes = Test
-
-    module =
-       path = Targets/Javascript/Ast
-       importAs = JA
-
-    module =
-       path = Compiler/TestHelpers
-       importAs = TH
-
-
-# This will be transformed into a platform
-library =
-    source = "core:posix"
-
-    module =
-       path = IO
-       globalTypes = IO
-
-    module =
-       path = Path
-
-
-library =
-    source = "core:prelude"
-
-    # unlike sourceDirs, libraries don't automatically expose all available modules
-    module =
-        path = Array_Test
-    module =
-        path = Dict_Test
-    module =
-        path = Hash_Test
-    module =
-        path = List_Test
-
-    module =
        path = Core
-       globalTypes =
+       globals =
           None
           Bool
           Text
           List
           Number
-       globalValues =
           'none
           'true
           'false
 
+
+    module =
+       path = BuildInfo
+
+
     module =
        path = Debug
-       globalValues =
+       globals =
           log
           todo
           toHuman
 
     module =
        path = Array
-       globalTypes =
+       globals =
           Array
 
     module =
@@ -110,9 +36,8 @@ library =
 
     module =
         path = Maybe
-        globalTypes =
+        globals =
             Maybe
-        globalValues =
             'just
             'nothing
 
@@ -124,8 +49,8 @@ library =
 
     module =
         path = Basics
-        globalTypes = Int
-        globalValues =
+        globals =
+            Int
             clamp
             cloneImm
             cloneUni
@@ -139,20 +64,20 @@ library =
 
     module =
         path = Hash
-        globalTypes = Hash
+        globals = Hash
 
     module =
         path = Dict
-        globalTypes = Dict
+        globals = Dict
 
     module =
         path = Set
-        globalTypes = Set
+        globals = Set
 
     module =
         path = Result
-        globalTypes = Result
-        globalValues =
+        globals =
+          Result
           'ok
           'err
           onOk
@@ -163,12 +88,11 @@ library =
     module =
        path = Compiler/Ast
        importAs = Ast
-       globalTypes =
+       globals =
           Name
           Ref
           UnivarId
           Uniqueness
-       globalValues =
           'refLocal
           'refGlobal
           'refPlaceholder
@@ -181,12 +105,6 @@ library =
     module =
        path = Compiler/TypedAst
        importAs = TA
-
-    module =
-       path = Compiler/Platform
-       importAs = Platform
-       globalTypes =
-          Platform
 
     module =
        path = Compiler/CanonicalAst
@@ -203,14 +121,14 @@ library =
     module =
         path = Compiler/Meta
         importAs = Meta
-        globalTypes =
-            Meta
+        globals =
+            Imports
+            Exports
             ByUsr
             USR
             UMR
-            LibrarySource
+            Source
             DependencyType
-        globalValues =
             'USR
             'UMR
             'valueDependency
@@ -224,17 +142,23 @@ library =
     module =
        path = Compiler/Pos
        importAs = Pos
-       globalTypes =
+       globals =
             Pos
             At
-       globalValues =
             'at
 
     module =
         path = Compiler/Token
         importAs = Token
-        globalTypes =
+        globals =
             Token
-        globalValues =
             'token
+
+
+library =
+    source = ":test"
+    module =
+       path = Test
+       importAs = Test
+       globals = Test
 

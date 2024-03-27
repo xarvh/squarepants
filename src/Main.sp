@@ -10,10 +10,45 @@ allTests as [ Test ] =
     , Array_Test.tests
     , List_Test.tests
     , Dict_Test.tests
+    , Self_Test.tests
     , Uniqueness.specs
     , SPLib/Format_Test.tests
     , SPLib/RefHierarchy_Test.tests
     ]
+
+
+
+#
+# Res to IO.Re
+#
+formattedToConsoleColoredText as fn Error.FormattedText: Text =
+    fn formattedText:
+    try formattedText as
+        Error.'formattedText_Default t: t
+        Error.'formattedText_Emphasys t: Term.yellow t
+        Error.'formattedText_Warning t: Term.red t
+        Error.'formattedText_Decoration t: Term.blue t
+
+
+errorToText as fn Error: Text =
+    __
+    >> Error.toFormattedText
+    >> List.map formattedToConsoleColoredText __
+    >> Text.join "" __
+
+
+
+resToIo as fn Res a: IO.Re a =
+    fn res:
+    try res as
+
+        'ok a:
+            'ok a
+
+        'err e:
+            e
+            >> errorToText
+            >> 'err
 
 
 #
@@ -105,7 +140,7 @@ formatMain as fn @IO, [ Text ]: IO.Re None =
             , keepComments = 'true
             , stripLocations = 'false
             }
-        >> BuildMain.resToIo
+        >> resToIo
         >> onOk fn formattableAst:
         formattableAst
         >> Human/Format.formatStatements { isRoot = 'true, originalContent = content } __
@@ -159,22 +194,32 @@ formatMain as fn @IO, [ Text ]: IO.Re None =
 #        , maybeOutputPath as Maybe Text
 #        }
 
+platformPosix =
+    Platforms/Posix.platform
+
+
+platformBrowser =
+    Platforms/Browser.platform
+
+
 CliState =
     {
     , platform as Platform.Platform
+    , corelib as Maybe Text
     }
 
 
 cliDefaults as CliState =
     {
-    , platform = Platforms/Posix.platform
+    , platform = platformPosix
+    , corelib = 'nothing
     }
 
 
 availablePlatforms as [ Platform.Platform ] =
     [
-    , Platforms/Posix.platform
-    , Platforms/Browser.platform
+    , platformPosix
+    , platformBrowser
     ]
 
 
@@ -206,6 +251,15 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
                 'just platform:
                     'ok { cliState with platform }
 
+parseCorelibPath as fn Maybe Text, CliState: Result Text CliState =
+    fn maybeValue, cliState:
+    try maybeValue as
+        'nothing:
+            'err "Please specify the path where your corelib is."
+
+        'just value:
+            'ok { cliState with corelib = 'just value }
+
 
 cliOptions as [ Option CliState ] =
     [
@@ -213,6 +267,11 @@ cliOptions as [ Option CliState ] =
     , info = "select build platform"
     , name = "--platform"
     , parser = parsePlatformName
+    }
+    , {
+    , info = "specify the path for for the corelib"
+    , name = "--corelib"
+    , parser = parseCorelibPath
     }
     ]
 
@@ -226,7 +285,7 @@ main as IO.Program =
     try parseArguments cliOptions rawArgs cliDefaults as
 
         'err message:
-            IO.writeStderr @io message
+            IO.writeStderr @io (message .."\n")
 
         'ok (args & cliState):
             try args as
@@ -237,22 +296,20 @@ main as IO.Program =
                 self :: "format" :: tail:
                     formatMain @io tail
 
-                self :: head :: tail:
-                    #TODO check that `Text.startsWithRegex ".*[.]sp$" head`?
-                    mainModulePath =
-                        head
-
+                self :: entryPoint :: tail:
                     maybeOutputPath =
                         List.head tail
 
                     BuildMain.compileMain
                         @io
                         {
-                        , entryModulePath = mainModulePath
+                        , entryPoint
                         , maybeOutputPath
                         , platform = cliState.platform
                         , selfPath = self
+                        , corelib = cliState.corelib
                         }
+                    >> resToIo
 
                 _:
                     """
@@ -262,6 +319,7 @@ main as IO.Program =
                     To compile something, write:
 
                         squarepants pathToMainModule.sp
+
 
                     """
                     >> IO.writeStdout @io __

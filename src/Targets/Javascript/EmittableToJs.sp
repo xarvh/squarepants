@@ -1,6 +1,6 @@
 Env =
     {
-    , overrides as Dict USR Override
+    , overrides as Dict EA.TranslatedUsr Override
     }
 
 
@@ -16,19 +16,19 @@ var Override =
           }
 
 
-coreOverrides as fn None: Dict USR Override =
+coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     fn 'none:
-
     #
     corelib as fn Text, Text: USR =
-        fn m, n:
-        'USR ('UMR Meta.'core m) n
+        fn module, name:
+        'USR (CoreDefs.makeUmr module) name
 
     [
     , CoreDefs.unaryPlus.usr & unaryPlus
     , CoreDefs.unaryMinus.usr & unaryMinus
     #
-    , CoreDefs.add.usr & binop "+"
+    , CoreDefs.add.usr
+    & binop "+"
     , CoreDefs.multiply.usr & binop "*"
     , CoreDefs.subtract.usr & binop "-"
     , CoreDefs.mutableAssign.usr & binop "="
@@ -42,11 +42,13 @@ coreOverrides as fn None: Dict USR Override =
     , CoreDefs.or_.usr & binop "||"
     , CoreDefs.and_.usr & binop "&&"
     #
-    , CoreDefs.trueUsr & constructor "true"
+    , CoreDefs.trueUsr
+    & constructor "true"
     , CoreDefs.falseUsr & constructor "false"
     , CoreDefs.noneConsUsr & constructor "null"
     #
-    , CoreDefs.divide.usr & function "sp_divide"
+    , CoreDefs.divide.usr
+    & function "sp_divide"
     , CoreDefs.listCons.usr & function "sp_cons"
     , CoreDefs.equal.usr & function "sp_equal"
     , CoreDefs.notEqual.usr & function "sp_not_equal"
@@ -56,13 +58,15 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Basics" "cloneUni" & function "basics_cloneUni"
     , corelib "Basics" "compare" & function "basics_compare"
     #
-    , corelib "Debug" "log" & function "sp_log"
+    , corelib "Debug" "log"
+    & function "sp_log"
     , corelib "Debug" "todo" & function "sp_todo"
     , corelib "Debug" "toHuman" & function "sp_toHuman"
     , corelib "Debug" "benchStart" & function "sp_benchStart"
     , corelib "Debug" "benchStop" & function "sp_benchStop"
     #
-    , corelib "Text" "fromNumber" & function "text_fromNumber"
+    , corelib "Text" "fromNumber"
+    & function "text_fromNumber"
     , corelib "Text" "toLower" & function "text_toLower"
     , corelib "Text" "toUpper" & function "text_toUpper"
     , corelib "Text" "toNumber" & function "text_toNumber"
@@ -76,7 +80,8 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Text" "dropLeft" & function "text_dropLeft"
     , corelib "Text" "forEach" & function "text_forEach"
     #
-    , corelib "Hash" "fromList" & function "hash_fromList"
+    , corelib "Hash" "fromList"
+    & function "hash_fromList"
     , corelib "Hash" "insert" & function "hash_insert"
     , corelib "Hash" "remove" & function "hash_remove"
     , corelib "Hash" "get" & function "hash_get"
@@ -84,7 +89,8 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Hash" "each" & function "hash_each"
     , corelib "Hash" "pop" & function "hash_pop"
     #
-    , corelib "Array" "each" & function "array_each"
+    , corelib "Array" "each"
+    & function "array_each"
     , corelib "Array" "push" & function "array_push"
     , corelib "Array" "pop" & function "array_pop"
     , corelib "Array" "get" & function "array_get"
@@ -93,13 +99,13 @@ coreOverrides as fn None: Dict USR Override =
     , corelib "Array" "fromList" & function "array_fromList"
     , corelib "Array" "toList" & function "array_toList"
     #
-    , corelib "List" "sortBy" & function "list_sortBy"
+    , corelib "List" "sortBy"
+    & function "list_sortBy"
     #
     , corelib "Self" "load" & loadOverride
-    , corelib "Self" "introspect" & introspectOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> Dict.fromList
+    >> List.for Dict.empty __ fn usr & override, d: Dict.insert (EA.translateUsr usr) override d
 
 
 unaryPlus as Override =
@@ -170,48 +176,6 @@ function as fn Text: Override =
 #
 # Dynamic loading
 #
-introspectOverride as Override =
-    call =
-        fn env, eaArgs:
-        try eaArgs as
-
-            [ EA.'argumentSpend { with  raw } e ]:
-                expression as JA.Expr =
-                    e
-                    >> Self.internalRepresentation
-                    >> JA.'literal
-
-                type as JA.Expr =
-                    raw
-                    >> Self.internalRepresentation
-                    >> JA.'literal
-
-                nonFn as JA.Expr =
-                    # TODO!!!
-                    JA.'array []
-
-                value as JA.Expr =
-                    translateExpressionToExpression env e
-
-                [
-                , "expression" & expression
-                , "raw" & type
-                , "nonFn" & nonFn
-                , "value" & value
-                ]
-                >> Dict.fromList
-                >> JA.'record
-
-            _:
-                todo "introspectOverride BUG?!"
-
-    {
-    , call
-    , value = fn env: todo "TODO: monomorphization is not yet implemented so `introspect` can only be called directly"
-    }
-    >> 'override
-
-
 loadOverride as Override =
     call =
         fn env, eaArgs:
@@ -221,14 +185,20 @@ loadOverride as Override =
         requestedTypeHumanized as JA.Expr =
             try eaArgs as
 
-                [ compiledProgram, EA.'argumentSpend { with  raw = TA.'typeFn [ TA.'parSp { with  raw = compiledType } ] _ } _ ]:
+                [
+                , loadPars
+                , EA.'argumentSpend { with  raw = TA.'typeFn [ TA.'parSp { with  raw = compiledType } ] _ } _
+                ]:
                     !hash =
                         Hash.fromList []
 
                     compiledType
                     >> TA.normalizeType @hash __
-                    # TODO: once we have proper encoders, we can use those
+                    # TODO: This is a horrid workaround, we should use a dedicated function or a decoder, or even better, unify the types
+                    # Actually no, fuck unification, we can't have tyvars!
                     >> toHuman
+                    >> Text.replace "\"" "" __
+                    >> Text.replace "\n" "" __
                     >> literalString
 
                 _:
@@ -246,33 +216,14 @@ loadOverride as Override =
 #
 # Translation
 #
-translateConstructorName as fn Text: Text =
-    fn x:
-    head =
-        Text.slice 1 2 x
-
-    rest =
-        Text.slice 2 9999 x
-
-    Text.toUpper head .. rest
-
-
-translateConstructorUsr as fn USR: Text =
-    fn 'USR umr raw:
-    raw
-    >> translateConstructorName
-    >> 'USR umr __
-    >> translateUsr
-
-
-maybeOverrideUsr as fn Env, USR: JA.Expr =
+maybeOverrideUsr as fn Env, EA.TranslatedUsr: JA.Expr =
     fn env, usr:
     try Dict.get usr env.overrides as
         'just ('override { call, value }): value env
-        'nothing: JA.'var (translateUsr usr)
+        'nothing: JA.'var (_usrToText usr)
 
 
-maybeOverrideUsrForConstructor as fn Env, USR: JA.Expr =
+maybeOverrideUsrForConstructor as fn Env, EA.TranslatedUsr: JA.Expr =
     fn env, usr:
     try Dict.get usr env.overrides as
 
@@ -281,13 +232,29 @@ maybeOverrideUsrForConstructor as fn Env, USR: JA.Expr =
 
         'nothing:
             usr
-            >> translateConstructorUsr
+            >> _usrToText
             >> JA.'var
 
 
 accessAttrs as fn [ Text ], JA.Expr: JA.Expr =
     fn attrPath, e:
     List.for e attrPath JA.'accessWithDot
+
+
+translateName as fn Name: Text =
+    __
+    >> EA.translateName
+    >> "$" .. __
+
+
+translateUsrToText as fn USR: Text =
+    fn usr:
+
+    EA.translateUsr usr >> _usrToText
+
+
+_usrToText as fn EA.TranslatedUsr: Text =
+    Text.join "$" __
 
 
 translateArg as fn { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
@@ -431,26 +398,26 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
     fn env, eaExpression:
     try eaExpression as
 
-        EA.'variable ('refLocal name):
+        EA.'localVariable name:
             name
             >> translateName
             >> JA.'var
             >> 'inline
 
-        EA.'variable ('refPlaceholder n):
+        EA.'placeholderVariable n:
             n
             >> Text.fromNumber
             >> translateName
             >> JA.'var
             >> 'inline
 
-        EA.'variable ('refGlobal usr):
+        EA.'globalVariable usr:
             maybeOverrideUsr env usr >> 'inline
 
         EA.'call ref args:
             maybeNativeOverride =
                 try ref as
-                    EA.'variable ('refGlobal usr): Dict.get usr env.overrides
+                    EA.'globalVariable usr: Dict.get usr env.overrides
                     _: 'nothing
 
             try maybeNativeOverride as
@@ -577,7 +544,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                     usr
 
                 name
-                >> translateConstructorName
+                >> translateName
                 >> literalString
                 >> JA.'binop "===" (accessArrayIndex 0 jaValue) __
                 >> 'inline
@@ -616,19 +583,21 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> JA.'call (JA.'literal "sp_throw") __
             >> 'inline
 
+        EA.'introspect self:
+            self
+            >> Self.internalRepresentation
+            >> JA.'literal
+            >> 'inline
 
-translateConstructor as fn USR & TA.RawType: JA.Statement =
-    fn usr & taType:
 
-    'USR umr apoName =
+translateConstructorDef as fn USR & TA.RawType: JA.Statement =
+    fn, usr & taType:
+    'USR umr nameWithApostrophe =
         usr
-
-    slug =
-        translateConstructorName apoName
 
     # `(($1, $2, $3) => [ "theConstructorName", $1, $2, $3, ... ])`
     arrayHead =
-        literalString slug
+        literalString (translateName nameWithApostrophe)
 
     definitionBody =
         try taType as
@@ -644,36 +613,14 @@ translateConstructor as fn USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    usrAsText =
-        translateUsr ('USR umr slug)
-
-    JA.'define 'false usrAsText definitionBody
+    JA.'define 'false (translateUsrToText usr) definitionBody
 
 
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn env, def:
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
-        'nothing: JA.'define 'false (translateUsr def.usr) (translateExpressionToExpression env def.expr) >> 'just
-
-
-translateSource as fn Meta.Source: Text =
-    fn src:
-    try src as
-        Meta.'core: "core"
-        Meta.'posix: "posix"
-        Meta.'browser: "browser"
-        Meta.'sourceDirId id: id
-
-
-translateUsr as fn USR: Text =
-    fn 'USR ('UMR source modulePath) name:
-    "$" .. translateSource source .. "$" .. Text.replace "/" "$" modulePath .. "$" .. name
-
-
-translateName as fn Name: Text =
-    fn n:
-    "$" .. n
+        'nothing: JA.'define 'false (_usrToText def.usr) (translateExpressionToExpression env def.expr) >> 'just
 
 
 TranslateAllPars =
@@ -690,13 +637,13 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         pars
 
     jaConstructors as [ JA.Statement ] =
-        List.map (translateConstructor __) constructors
+        List.map (translateConstructorDef __) constructors
 
     env as Env =
         {
         , overrides =
             List.for (coreOverrides 'none) platformOverrides fn usr & runtimeName, d:
-                Dict.insert usr (function runtimeName) d
+                Dict.insert (EA.translateUsr usr) (function runtimeName) d
         }
 
     jaStatements as [ JA.Statement ] =

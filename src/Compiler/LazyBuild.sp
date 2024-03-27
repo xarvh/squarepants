@@ -1,8 +1,3 @@
-# TODO this is only for debugging
-env_ as Compiler/TypeCheck.Env =
-    Compiler/TypeCheck.initEnv Dict.empty
-
-
 var Def =
     , 'valueDef CA.ValueDef
     , 'constructorDef CA.ConstructorDef
@@ -47,7 +42,7 @@ initCollectDependenciesState as fn [ USR & DependencyType ]: !CollectDependencie
     }
 
 
-collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, DependencyType: Result Text None =
+collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, DependencyType: Res None =
     fn env, @state, usr, depType:
 #
     'USR umr name =
@@ -59,12 +54,7 @@ collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, Dependen
             'ok caModule
 
         'nothing:
-            eee as fn Text: Text =
-                fn message:
-                "I need " .. toHuman usr .. " but I could not load module " .. toHuman umr .. ":\n\n" .. message
-
-            env.loadCaModule umr
-            >> Result.mapError eee __
+            env.loadCaModule usr
             >> onOk fn caModule:
             Hash.insert @state.loadedModulesByUmr umr caModule
 
@@ -110,7 +100,7 @@ collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, Dependen
     'ok 'none
 
 
-collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Result Text None =
+collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Res None =
     fn env, @state:
     try Hash.pop @state.pending as
 
@@ -219,15 +209,13 @@ usrToDependencyType as fn USR: DependencyType =
 
 BuildPlan =
     {
-    , errorToError as fn Error: Text
-    # TODO should loadCaModule return `Res CA.Module` instead?
-    # It would make errors more consistent and remove the need of errorToError
-    , loadCaModule as fn UMR: Result Text CA.Module
+    , loadCaModule as fn USR: Res CA.Module
+    , projectImports as Imports
     , requiredUsrs as [ USR ]
     }
 
 
-stopOnError as fn BuildPlan, @Array Error: Result Text None =
+stopOnError as fn BuildPlan, @Array Error: Res None =
     fn pars, @errors:
     try Array.toList @errors as
 
@@ -237,18 +225,18 @@ stopOnError as fn BuildPlan, @Array Error: Result Text None =
         errorsAsList:
             errorsAsList
             >> Error.'nested
-            >> pars.errorToError
             >> 'err
 
 
 BuildOut =
     {
     , constructors as [ USR & TA.RawType ]
+    , natives as [ USR ]
     , rootValues as [ EA.GlobalDefinition ]
     }
 
 
-build as fn BuildPlan: Result Text BuildOut =
+build as fn BuildPlan: Res BuildOut =
     fn pars:
     !state as CollectDependenciesState =
         pars.requiredUsrs
@@ -256,6 +244,20 @@ build as fn BuildPlan: Result Text BuildOut =
         >> initCollectDependenciesState
 
     collectRequiredUsrs pars @state
+    >> onOk fn 'none:
+    missingDefs =
+        Hash.for_ [] @state.done fn usr, { def, deps }, errs:
+            if def == 'missingDef then [ usr, errs... ] else errs
+
+    if missingDefs /= [] then
+        [
+        , "Cannot find definitions for:"
+        , List.map (Human/Type.usrToText pars.projectImports __) missingDefs...
+        ]
+        >> Error.'raw
+        >> 'err
+    else
+        'ok 'none
     >> onOk fn 'none:
     #
     # Reorder all usrs
@@ -273,7 +275,7 @@ build as fn BuildPlan: Result Text BuildOut =
         RefHierarchy.reorder nodeToEdges nodesById
 
 #    List.each orderedUsrs fn usr:
-#        log "*" (usrToText env_ usr)
+#        log "*" (Human/Type.usrToText pars.projectImports usr)
 #        'none
 
 #    log "CIRC" ""
@@ -317,7 +319,7 @@ build as fn BuildPlan: Result Text BuildOut =
     # Init
     #
     env0 =
-        Compiler/TypeCheck.initEnv modulesByUmr
+        Compiler/TypeCheck.initEnv pars.projectImports modulesByUmr
 
     #
     # Insert types
@@ -356,19 +358,31 @@ build as fn BuildPlan: Result Text BuildOut =
     #
     # Emit
     #
-    translateDef as fn USR & TA.ValueDef: EA.GlobalDefinition =
+
+
+    translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
         fn usr & def:
-        {
-        , deps = def.directDeps
-        , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) def.body
-        , freeTyvars = def.freeTyvars
-        , freeUnivars = def.freeUnivars
-        , type = def.type.raw
-        , usr
-        }
+
+        Maybe.map
+          (fn body:
+                {
+                , deps = def.directDeps
+                , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
+                , freeTyvars = def.freeTyvars
+                , freeUnivars = def.freeUnivars
+                , type = def.type.raw
+                , usr = EA.translateUsr usr
+                }
+          )
+          def.body
 
     rootValues as [ EA.GlobalDefinition ] =
-        List.map translateDef valueDefsWithDestruction
+        List.filterMap translateDef valueDefsWithDestruction
+
+    natives as [ USR ] =
+        valueDefsWithDestruction
+        >> List.filter (fn usr & def: def.body == 'nothing) __
+        >> List.map Tuple.first __
 
     #
     # Constructors
@@ -379,4 +393,4 @@ build as fn BuildPlan: Result Text BuildOut =
     #
     # Done!
     #
-    'ok { constructors, rootValues }
+    'ok { constructors, natives, rootValues }

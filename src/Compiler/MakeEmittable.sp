@@ -7,7 +7,8 @@ Env =
 mkEnv as fn USR, Dict UMR CA.Module: Env =
     fn 'USR umr name, modulesByUmr:
 
-    { genVarCounter = 0
+    {
+    , genVarCounter = 0
     , module =
           try Dict.get umr modulesByUmr as
               'just m: m
@@ -129,7 +130,7 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
                         generateName env
 
                     namesAndExpressions =
-                        translatePattern pa (EA.'variable ('refLocal mainName))
+                        translatePattern pa (EA.'localVariable mainName)
 
                     wrapWithArgumentLetIn =
                         fn type & varName & letExpression, inExpression:
@@ -161,11 +162,17 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'literalText _ text:
             EA.'literalText text
 
-        TA.'variable _ ref:
-            EA.'variable ref
+        TA.'variable _ ('refLocal name):
+            EA.'localVariable name
+
+        TA.'variable _ ('refGlobal usr):
+            EA.'globalVariable (EA.translateUsr usr)
+
+        TA.'variable _ ('refPlaceholder n):
+            EA.'placeholderVariable n
 
         TA.'constructor _ usr:
-            EA.'constructor usr
+            EA.'constructor (EA.translateUsr usr)
 
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
@@ -205,8 +212,14 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             valueExpression & wrapWithLetIn & newEnv =
                 try value & valueType.uni as
 
-                    TA.'variable _ ref & 'imm:
-                        EA.'variable ref & identity & env
+                    TA.'variable _ ('refLocal name) & 'imm:
+                        EA.'localVariable name & identity & env
+
+                    TA.'variable _ ('refGlobal usr) & 'imm:
+                        EA.'globalVariable (EA.translateUsr usr) & identity & env
+
+                    TA.'variable _ ('refPlaceholder n) & 'imm:
+                        EA.'placeholderVariable n & identity & env
 
                     _:
                         tryName & env_ =
@@ -222,7 +235,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                                 , type = valueType
                                 }
 
-                        EA.'variable ('refLocal tryName) & wrap & env_
+                        EA.'localVariable tryName & wrap & env_
 
             # 2. if-elses
             addTryPatternAndBlock as fn TA.Pattern & TA.Expression, EA.Expression: EA.Expression =
@@ -253,13 +266,19 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> wrapWithLetIn
 
         TA.'letIn valueDef e bodyType:
+
+            body =
+                try valueDef.body as
+                    'nothing: todo ("compiler bug: 'nothing body should not happen here " .. Debug.toHuman valueDef.pattern)
+                    'just b: b
+
             try pickMainName valueDef.pattern as
 
                 'noNamedVariables:
                     EA.'letIn
                         {
                         , inExpression = translateExpression env e
-                        , letExpression = translateExpression env valueDef.body
+                        , letExpression = translateExpression env body
                         , maybeName = 'nothing
                         , type = valueDef.type
                         }
@@ -268,18 +287,18 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     EA.'letIn
                         {
                         , inExpression = translateExpression env e
-                        , letExpression = translateExpression env valueDef.body
+                        , letExpression = translateExpression env body
                         , maybeName = 'just defName
                         , type
                         }
 
                 'generateName:
                     mainName & newEnv =
-                        # TODO check if valueDef.body is just a variable
+                        # TODO check if body is just a variable
                         generateName env
 
                     namesAndExpressions =
-                        translatePattern valueDef.pattern (EA.'variable ('refLocal mainName))
+                        translatePattern valueDef.pattern (EA.'localVariable mainName)
 
                     wrapWithUnpackedPatternVar as fn TA.FullType & Name & EA.Expression, EA.Expression: EA.Expression =
                         fn type & name & letExpression, inExpression:
@@ -296,7 +315,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'letIn
                             {
                             , inExpression
-                            , letExpression = translateExpression newEnv valueDef.body
+                            , letExpression = translateExpression newEnv body
                             , maybeName = 'just mainName
                             , type = valueDef.type
                             }
@@ -308,5 +327,6 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'destroyIn name e:
             translateExpression env e
 
-
+        TA.'introspect self:
+            EA.'introspect self
 

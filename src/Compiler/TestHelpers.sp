@@ -10,15 +10,15 @@ errorModule as fn Text: Error.Module =
     { content, fsPath = "<Test>" }
 
 
-source as Meta.Source =
-    Meta.'sourceDirId "<Test>"
+importsPath as Meta.ImportsPath =
+    Meta.'importsPath Meta.'user "<testImportsPath/>"
 
 
 moduleUmr as UMR =
-    'UMR source moduleName
+    'UMR Meta.'user 0 "<TestModulePath>"
 
 
-localType as fn Name: USR =
+moduleUsr as fn Name: USR =
     'USR moduleUmr __
 
 
@@ -58,21 +58,76 @@ resErrorToStrippedText as fn Res a: Result Text a =
 #
 # Meta
 #
-meta as Meta =
-    metaResult =
-        DefaultModules.asText
-        >> ModulesFile.textToMeta "DefaultModules" __
-        >> Result.mapError (fn e: e >> Error.toFormattedText >> formattedToStrippedText) __
+imports as Imports =
+    pars as ImportsFile.ToImportsPars =
+        {
+        , importsPath
+        , joinPath = Path.join
+        , getSourceDirId = fn importsDir, sourceDir: 1
+        }
 
-    try metaResult as
+    try ImportsFile.toImports pars DefaultImports.defaultImportsFile as
 
         'err e:
-            log ("Error in DefaultModules.sp: " .. e) 'none
+            log "Error in DefaultImports.sp: " e
 
-            todo "error loading DefaultModules.sp"
+            todo "error loading DefaultImports.sp"
 
         'ok m:
             m
+
+
+#
+# Resolve Pars
+#
+exports as Meta.Exports =
+    isOpen = 'false
+
+    [
+    , "None" & { isOpen = 'true, usr = CoreDefs.noneTypeUsr }
+    , "'none"  & { isOpen, usr = CoreDefs.noneConsUsr }
+    #
+    , "Bool" & { isOpen = 'true, usr = CoreDefs.boolUsr }
+    , "'true" & { isOpen, usr = CoreDefs.trueUsr }
+    , "'false" & { isOpen, usr = CoreDefs.falseUsr }
+    #
+    , "List" & { isOpen = 'true, usr = CoreDefs.listUsr }
+    , "'nil" & { isOpen, usr = CoreDefs.nilUsr }
+    , "'cons" & { isOpen, usr = CoreDefs.consUsr }
+    #
+    , "Text" & { isOpen, usr = CoreDefs.textUsr }
+    , "Number" & { isOpen, usr = CoreDefs.numberUsr }
+    ]
+    >> Dict.fromList
+    >> Dict.ofOne "Core" __
+
+
+
+loadExports as fn Meta.ImportsPath: Res Meta.Exports =
+    fn ip:
+
+    try ip as
+        Meta.'importsPath Meta.'core "":
+            'ok exports
+
+        _:
+            [
+            , "TestHelpers: trying to load an unknown export:"
+            , ""
+            , Debug.toHuman ip
+            , ""
+            ]
+            >> Error.'raw
+            >> 'err
+
+
+resolvePars as Meta.ResolvePars Error =
+    {
+    , currentImports = imports
+    , currentModule = moduleUmr
+    , loadExports
+    , makeError = Error.'raw __
+    }
 
 
 #
@@ -81,20 +136,20 @@ meta as Meta =
 # These are necessary because some tests will expect Pos T instead of N
 #
 caBool as CA.RawType =
-    CA.'typeNamed Pos.'t (Meta.spCoreUSR "Bool") []
+    CA.'typeNamed Pos.'t (CoreDefs.usr "Bool") []
 
 
 caNumber as CA.RawType =
-    CA.'typeNamed Pos.'t (Meta.spCoreUSR "Number") []
+    CA.'typeNamed Pos.'t (CoreDefs.usr "Number") []
 
 
 caNone as CA.RawType =
-    CA.'typeNamed Pos.'t (Meta.spCoreUSR "None") []
+    CA.'typeNamed Pos.'t (CoreDefs.usr "None") []
 
 
 caList as fn CA.RawType: CA.RawType =
     fn itemType:
-    CA.'typeNamed Pos.'t (Meta.spCoreUSR "List") [ itemType ]
+    CA.'typeNamed Pos.'t (CoreDefs.usr "List") [ itemType ]
 
 
 caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
@@ -114,20 +169,20 @@ taTyvarImm as fn Int: TA.RawType =
 
 
 taNumber as TA.RawType =
-    TA.'typeExact ("Number" >> Meta.spCoreUSR) []
+    TA.'typeExact (CoreDefs.usr "Number") []
 
 
 taNone as TA.RawType =
-    TA.'typeExact ("None" >> Meta.spCoreUSR) []
+    TA.'typeExact (CoreDefs.usr "None") []
 
 
 taBool as TA.RawType =
-    TA.'typeExact ("Bool" >> Meta.spCoreUSR) []
+    TA.'typeExact (CoreDefs.usr "Bool") []
 
 
 taList as fn TA.RawType: TA.RawType =
     fn item:
-    TA.'typeExact ("List" >> Meta.spCoreUSR) [ item ]
+    TA.'typeExact (CoreDefs.usr "List") [ item ]
 
 
 taFunction as fn [ TA.RawType ], TA.RawType: TA.RawType =

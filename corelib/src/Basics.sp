@@ -62,11 +62,8 @@ clamp as fn Number, Number, Number: Number =
 
 
 round as fn Number: Int =
-    fn n:
-    todo "round"
+    this_is_sp_native
 
 
 modBy as fn Int, Int: Int =
-    fn a, b:
-    # Native
-    todo "modBy is native"
+    this_is_sp_native

@@ -3,38 +3,31 @@
 #
 
 forEach as fn Text, fn Text: None: None =
-    fn text, f:
-    todo "native"
+    this_is_sp_native
 
 
 length as fn Text: Int =
-    fn s:
-    todo "native"
+    this_is_sp_native
 
 
 slice as fn Int, Int, Text: Text =
-    fn start, end, s:
-    todo "native"
+    this_is_sp_native
 
 
 fromNumber as fn Number: Text =
-    fn n:
-    todo "native"
+    this_is_sp_native
 
 
 toNumber as fn Text: Maybe Number =
-    fn s:
-    todo "native"
+    this_is_sp_native
 
 
 startsWith as fn Text, Text: Bool =
-    fn sub, s:
-    todo "native"
+    this_is_sp_native
 
 
 trimLeft as fn Text: Text =
-    fn s:
-    todo "native"
+    this_is_sp_native
 
 
 trimRight as fn Text: Text =
@@ -45,18 +38,15 @@ trimRight as fn Text: Text =
 
 
 toLower as fn Text: Text =
-    fn t:
-    todo "native"
+    this_is_sp_native
 
 
 toUpper as fn Text: Text =
-    fn t:
-    todo "native"
+    this_is_sp_native
 
 
 dropLeft as fn Int, Text: Text =
-    fn n, s:
-    todo "native"
+    this_is_sp_native
 
 
 dropRight as fn Int, Text: Text =
@@ -111,21 +101,17 @@ replace as fn Text, Text, Text: Text =
 # HACK
 # Produces "" if it can't match anything, or if the regex is invalid.
 # Good enough for what I need, but shouldn't probably be part of any API that wants to be solid.
+# TODO: also, why "startsWithRegex" rather than just "findRegex"?
 startsWithRegex as fn Text: fn Text: Text =
-    fn regex:
-    fn s:
-    todo "native"
+    this_is_sp_native
 
 
 replaceRegex as fn Text: fn Text, Text: Text =
-    fn regex:
-    fn replaceWith, s:
-    todo "native"
+    this_is_sp_native
 
 
 split as fn Text, Text: [ Text ] =
-    fn separator, target:
-    todo "native"
+    this_is_sp_native
 
 
 contains as fn Text, Text: Bool =

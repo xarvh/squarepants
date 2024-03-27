@@ -22,35 +22,30 @@ reToStderr as fn @IO, Re a: Int =
             0
 
         'err error:
-            writeStderr @io error
+            writeStderr @io (error .. "\n")
 
             1
 
 
 readDir as fn @IO, Text: Re [ Bool & Text ] =
-    fn @_, _:
-    todo "io.readDir"
+    this_is_sp_native
 
 
 readFile as fn @IO, Text: Re Text =
-    fn @_, _:
-    todo "io.readFile"
+    this_is_sp_native
 
 
 readStdin as fn @IO: Re Text =
-    todo "compiler error, IO.readStdin not overridden"
+    this_is_sp_native
 
 
 writeFile as fn @IO, Text, Text: Re None =
-    fn @_, _, _:
-    todo "io.writeFile"
+    this_is_sp_native
 
 
 writeStdout as fn @IO, Text: Re None =
-    fn @_, _:
-    todo "io.writeStdout"
+    this_is_sp_native
 
 
 writeStderr as fn @IO, Text: Re None =
-    fn @_, _:
-    todo "io.writeStderr"
+    this_is_sp_native

@@ -40,11 +40,11 @@ Out =
 outToHuman as fn Out: Text =
     fn out:
     env =
-        Compiler/TypeCheck.initEnv Dict.empty
+        Compiler/TypeCheck.initEnv TH.imports Dict.empty
 
     type =
         out.type
-        >> Human/Type.doRawType env __
+        >> Human/Type.doRawType TH.imports __
         >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
         >> Fmt.render
 
@@ -113,7 +113,7 @@ infer as fn Text: fn Text: Result Text Out =
     params as Compiler/MakeCanonical.ReadOnly =
         {
         , errorModule = TH.errorModule code
-        , meta = TH.meta
+        , resolvePars = fn pos: TH.resolvePars
         , umr = TH.moduleUmr
         }
 
@@ -143,26 +143,30 @@ infer as fn Text: fn Text: Result Text Out =
         ]
         >> List.concat
 
-    errorToError as fn Error: Text =
-        TH.errorToStrippedText
-
-    loadCaModule as fn UMR: Result Text CA.Module =
-        fn umr:
+    loadCaModule as fn USR: Res CA.Module =
+        fn 'USR umr _:
         if umr == TH.moduleUmr then
             'ok caModule
-        else if umr == 'UMR Meta.'core "Core" then
+        else if umr == CoreDefs.umr then
             'ok CoreDefs.coreModule
         else
-            'err << "no module " .. toHuman umr
+            [ "no module " .. toHuman umr ]
+            >> Error.'raw
+            >> 'err
 
     {
-    , errorToError
     , loadCaModule
+    , projectImports = TH.imports
     , requiredUsrs
     }
     >> Compiler/LazyBuild.build
-    >> onOk fn { constructors, rootValues }:
-    try List.find (fn rv: rv.usr == 'USR TH.moduleUmr targetName) rootValues as
+    >> TH.resErrorToStrippedText
+    >> onOk fn { constructors, natives, rootValues }:
+
+    targetUsr =
+        EA.translateUsr ('USR TH.moduleUmr targetName)
+
+    try List.find (fn rv: rv.usr == targetUsr) rootValues as
         'nothing: 'err "find fail"
         'just def: 'ok def
     >> onOk fn def:
@@ -506,7 +510,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction [ TA.'typeExact (TH.localType "T") [ tyvar 1 ] ] (TA.'typeExact (TH.localType "T") [ tyvar 1 ])
+                 , type = TH.taFunction [ TA.'typeExact (TH.moduleUsr "T") [ tyvar 1 ] ] (TA.'typeExact (TH.moduleUsr "T") [ tyvar 1 ])
                  }
             )
         , codeTest
@@ -521,7 +525,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TA.'typeExact (TH.localType "X") [ tyvar 1 ]
+                 , type = TA.'typeExact (TH.moduleUsr "X") [ tyvar 1 ]
                  }
             )
         , codeTest

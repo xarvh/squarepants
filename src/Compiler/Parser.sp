@@ -517,8 +517,25 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 >> on fn e:
                 FA.'unopCall op e >> expressionOk
 
-            Token.'native:
+            Token.'this_is_sp_native:
                 FA.'native >> expressionOk
+
+            Token.'sp_introspect introspect:
+                oneToken
+                >> on fn 'token start2 end2 kind2:
+
+                try introspect & kind2 as
+                    Token.'type & Token.'uppercase { maybeModule, name }:
+                        FA.'introspect introspect maybeModule name >> expressionOk
+
+                    Token.'typeOpen & Token.'uppercase { maybeModule, name }:
+                        FA.'introspect introspect maybeModule name >> expressionOk
+
+                    Token.'value & Token.'lowercase { attrPath = [], maybeModule, name }:
+                        FA.'introspect introspect maybeModule name >> expressionOk
+
+                    _:
+                        Parser.abort "innvalid introspect expression"
 
             _:
                 Parser.reject

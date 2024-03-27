@@ -49,68 +49,60 @@ map as fn fn a: b, VirtualNode a: VirtualNode b =
         'elementNode name attrs children: 'elementNode name (List.map (mapAttr f __) attrs) (List.map (map f __) children)
 
 
-mapAttr as fn fn a: b, Attr a: Attr b =
+mapAttr as fn (fn a: b), Attr a: Attr b =
     fn f, a:
     try a as
         'listener n handler: 'listener n (fn ev: Result.map f (handler ev))
-        _: a
+        'cssClass b: 'cssClass b
+        'cssStyle b c: 'cssStyle b c
+        'domAttribute c b: 'domAttribute c b
+        'domProperty c b: 'domProperty c b
 
 
 ###################
 
 jsCreateTextNode as fn Text: DomNode =
-    fn content:
-    todo "jsCreateTextNode"
+    this_is_sp_native
 
 
 jsCreateElement as fn Text: DomNode =
-    fn tagName:
-    todo "jsCreateElement"
+    this_is_sp_native
 
 
 jsReplaceWith as fn DomNode, DomNode: DomNode =
-    fn new, old:
-    todo "jsReplaceWith"
+    this_is_sp_native
 
 
 jsAppendChild as fn { child as DomNode, parent as DomNode }: None =
-    fn pars:
-    todo "jsAppendChild"
+    this_is_sp_native
 
 
 jsSetProperty as fn Text, Text, DomNode: None =
-    fn name, value, domNode:
-    todo "jsSetProperty"
+    this_is_sp_native
 
 
 jsSetAttribute as fn Text, Text, DomNode: None =
-    fn name, value, domNode:
-    todo "jsSetAttribute"
+    this_is_sp_native
 
 
 jsRemoveAttribute as fn Text, DomNode: None =
-    fn name, domNode:
-    todo "jsRemoveAttribute"
+    this_is_sp_native
 
 
 jsAddEventListener as fn Text, EventHandler msg, DomNode: None =
-    fn eventName, eventHandler, domNode:
-    todo "jsAddEventListener"
+    this_is_sp_native
 
 
 jsRemoveEventListener as fn Text, EventHandler msg, DomNode: None =
-    fn eventName, eventHandler, domNode:
-    todo "jsRemoveEventListener"
+    this_is_sp_native
 
 
 setChild as fn fn DomNode: DomNode, Int, DomNode: None =
-    fn update, index, parent:
-    todo "setChild"
+    this_is_sp_native
 
 
 removeAllChildrenStartingFromIndex as fn Int, DomNode: None =
-    fn index, parent:
-    todo "removeAllChildrenStartingFromIndex"
+    this_is_sp_native
 
 
 ##################
@@ -118,25 +110,21 @@ removeAllChildrenStartingFromIndex as fn Int, DomNode: None =
 # TODO eventually we'll support decoders
 
 eventToText as fn [ Text ], Event: Result Text Text =
-    fn path, event:
-    todo "eventToText"
+    this_is_sp_native
 
 
 eventToFloat as fn [ Text ], Event: Result Text Number =
-    fn path, event:
-    todo "eventToFloat"
+    this_is_sp_native
 
 
 ###################
 
 drawCanvas as fn Text, fn Number, Number: { b as Number, g as Number, r as Number }: Effect =
-    fn id, shaderFn:
-    todo "drawCanvas"
+    this_is_sp_native
 
 
 setViewportOf as fn Text, Number, Number: Effect =
-    fn id, top, left:
-    todo "setViewportOf"
+    this_is_sp_native
 
 
 ###################

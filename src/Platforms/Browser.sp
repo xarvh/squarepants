@@ -1,80 +1,88 @@
 platform as Platform =
     {
-    , defaultModules = DefaultModules.asText .. modules
-    , defaultOutputPath = "index.js"
+    , compile
+    , defaultImportsFile
+    , defaultOutputName = "index.js"
+    , extraRequiredUsrs
+    # TODO maybe "makeExecutable" should be a function instead? It is really annoying that everything becomes a function even when it's not needed.
     , makeExecutable
     , name = "browser"
     , quickstart = "TODO"
     }
 
 
-modules as Text =
-    """
-
-    library =
-        source = "core:browser"
-
-        module =
-            path = Browser
-
-        module =
-            path = Html
-
-        module =
-            path = VirtualDom
-    """
+defaultImportsFile as ImportsFile =
+    DefaultImports.platformDefaultImportsFile
+        "browser"
+        [
+        , "Browser" & []
+        , "Html" & []
+        , "VirtualDom" & []
+        ]
 
 
-virtualDomModule as fn Text: USR =
-    'USR ('UMR Meta.'browser "VirtualDom") __
+virtualDomUsr as fn Platform.MakeUmr: fn Name: USR =
+    fn makePlatformUmr:
+    'USR (makePlatformUmr "VirtualDom") __
 
 
-compile as fn Self.LoadPars: Text =
-    fn out:
-    log "Creating JS AST..." ""
+extraRequiredUsrs as fn Platform.MakeUmr: [ USR ] =
+    fn makePlatformUmr:
 
-    jaStatements =
-        Targets/Javascript/EmittableToJs.translateAll
-            {
-            , constructors = out.constructors
-            , eaDefs = out.defs
-            , platformOverrides = overrides
-            }
+    [ (virtualDomUsr makePlatformUmr) "updateDomNode" ]
 
-    log "Emitting JS..." ""
 
-    jaStatements
+# TODO move this in Targets/Javascript ?
+compile as fn [ USR & Text ], Self.LoadPars: Text =
+    fn platformOverrides, loadPars:
+
+    {
+    , constructors = loadPars.constructors
+    , eaDefs = loadPars.defs
+    , platformOverrides
+    }
+    >> Targets/Javascript/EmittableToJs.translateAll
     >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
     >> Text.join "\n\n" __
 
 
-makeExecutable as fn Self.LoadPars: Text =
-    fn out:
+makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
+    fn makePlatformUmr:
+
+    platformOverrides =
+        overrides (virtualDomUsr makePlatformUmr)
+
+    fn loadPars:
+
     compiledStatements =
-        compile out
+        compile platformOverrides loadPars
 
     # TODO check that type is ....?
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. footer out.entryUsr
+    natives =
+        Targets/Javascript/Runtime.nativeDefinitions
+
+    header .. natives .. runtime .. compiledStatements .. footer makePlatformUmr loadPars
 
 
-overrides as [ USR & Text ] =
+overrides as fn fn Name: USR: [ USR & Text ] =
+    fn usr:
     [
-    , virtualDomModule "jsCreateTextNode" & "virtualDom_jsCreateTextNode"
-    , virtualDomModule "jsCreateElement" & "virtualDom_jsCreateElement"
-    , virtualDomModule "jsReplaceWith" & "virtualDom_jsReplaceWith"
-    , virtualDomModule "jsAppendChild" & "virtualDom_jsAppendChild"
-    , virtualDomModule "jsSetProperty" & "virtualDom_jsSetProperty"
-    , virtualDomModule "jsSetAttribute" & "virtualDom_jsSetAttribute"
-    , virtualDomModule "jsRemoveAttribute" & "virtualDom_jsRemoveAttribute"
-    , virtualDomModule "jsAddEventListener" & "virtualDom_jsAddEventListener"
-    , virtualDomModule "jsRemoveEventListener" & "virtualDom_jsRemoveEventListener"
-    , virtualDomModule "eventToText" & "virtualDom_eventToText"
-    , virtualDomModule "eventToFloat" & "virtualDom_eventToFloat"
-    , virtualDomModule "setChild" & "virtualDom_setChild"
-    , virtualDomModule "removeAllChildrenStartingFromIndex" & "virtualDom_removeAllChildrenStartingFromIndex"
-    , virtualDomModule "drawCanvas" & "virtualDom_drawCanvas"
-    , virtualDomModule "setViewportOf" & "virtualDom_setViewportOf"
+    , usr "jsCreateTextNode" & "virtualDom_jsCreateTextNode"
+    , usr "jsCreateElement" & "virtualDom_jsCreateElement"
+    , usr "jsReplaceWith" & "virtualDom_jsReplaceWith"
+    , usr "jsAppendChild" & "virtualDom_jsAppendChild"
+    , usr "jsSetProperty" & "virtualDom_jsSetProperty"
+    , usr "jsSetAttribute" & "virtualDom_jsSetAttribute"
+    , usr "jsRemoveAttribute" & "virtualDom_jsRemoveAttribute"
+    , usr "jsAddEventListener" & "virtualDom_jsAddEventListener"
+    , usr "jsRemoveEventListener" & "virtualDom_jsRemoveEventListener"
+    , usr "eventToText" & "virtualDom_eventToText"
+    , usr "eventToFloat" & "virtualDom_eventToFloat"
+    , usr "setChild" & "virtualDom_setChild"
+    , usr "removeAllChildrenStartingFromIndex" & "virtualDom_removeAllChildrenStartingFromIndex"
+    , usr "drawCanvas" & "virtualDom_drawCanvas"
+    , usr "setViewportOf" & "virtualDom_setViewportOf"
     ]
 
 
@@ -82,13 +90,15 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn USR: Text =
-    fn mainUsr:
+footer as fn Platform.MakeUmr, Self.LoadPars: Text =
+    fn makePlatformUmr, pars:
     mainName =
-        Targets/Javascript/EmittableToJs.translateUsr mainUsr
+        Targets/Javascript/EmittableToJs._usrToText pars.entryUsr
 
     updateDomNode =
-        Targets/Javascript/EmittableToJs.translateUsr (virtualDomModule "updateDomNode")
+        "updateDomNode"
+        >> virtualDomUsr makePlatformUmr
+        >> Targets/Javascript/EmittableToJs.translateUsrToText
 
     """
 

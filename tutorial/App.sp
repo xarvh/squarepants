@@ -14,7 +14,7 @@ textQuickExample as Text =
 
 htmlQuickExample as Text =
     """
-    main =
+    program =
        Html.div
           [ Html.class "col" ]
           [
@@ -170,16 +170,12 @@ floatToPercent as fn Number: Text =
     Text.fromNumber (round (n * 100)) .. "%"
 
 
-wordToClass as fn Token.Word: Text =
-    fn word:
-    try word.name as
-        "var": "keyword"
-        _: if word.isUpper then "upper" else "lower"
-
-
 tokenToClass as fn Token.Kind: Text =
-    fn kind:
-    try kind as
+    try __ as
+
+        # Structure
+        Token.'comment _:
+            "comment"
 
         # Structure
         Token.'newSiblingLine:
@@ -195,14 +191,16 @@ tokenToClass as fn Token.Kind: Text =
             ""
 
         # Terms
-        Token.'textLiteral _:
+        Token.'textLiteral _ _:
             "literal"
 
         Token.'numberLiteral _ _:
             "literal"
 
-        Token.'word w:
-            wordToClass w
+        Token.'lowercase _: "lower"
+        Token.'constructor _: "uppercase"
+        Token.'uppercase _: "upper"
+        Token.'recordShorthand _: "lower"
 
         Token.'argumentPlaceholder:
             "keyword"
@@ -214,13 +212,13 @@ tokenToClass as fn Token.Kind: Text =
         Token.'fn:
             "keyword"
 
-        Token.'if:
+        Token.'if _:
             "keyword"
 
         Token.'then:
             "keyword"
 
-        Token.'else:
+        Token.'else _:
             "keyword"
 
         Token.'try:
@@ -249,22 +247,25 @@ tokenToClass as fn Token.Kind: Text =
         Token.'unop _:
             "op"
 
-        Token.'binop _:
+        Token.'binop _ _:
             "op"
 
         # Parens
         Token.'roundParen _:
             "paren"
 
-        Token.'squareBracket _:
+        Token.'squareBracket _ _:
             "paren"
 
-        Token.'curlyBrace _:
+        Token.'curlyBrace _ _:
             "paren"
+
+        Token.'this_is_sp_native:
+            "keyword"
 
 
 viewColorToken as fn Text, Token, Int & [ Html msg ]: Int & [ Html msg ] =
-    fn code, 'token comment tStart tEnd kind, start & accum:
+    fn code, Token.'token tStart tEnd kind, start & accum:
     slice =
         Text.slice start tEnd code
 
@@ -299,7 +300,7 @@ viewEditor as fn Model: Html Msg =
         model.code
 
     highlightedContent as [ Html Msg ] =
-        try Compiler/Lexer.lexer { content = code, fsPath = "" } as
+        try Compiler/Lexer.lexer 'true { content = code, fsPath = "" } as
 
             'err _:
                 [ Html.text code ]

@@ -1,51 +1,46 @@
+
+
 platform as Platform =
     {
-    , defaultModules = DefaultModules.asText .. posixModules
-    , defaultOutputPath = "nodeExecutable.js"
+    , compile = Platforms/Browser.compile
+    , defaultImportsFile
+    , defaultOutputName = "nodeExecutable.js"
+    , extraRequiredUsrs = fn _: []
     , makeExecutable
     , name = "posix"
     , quickstart = "TODO"
     }
 
 
-posixModules as Text =
-    """
-
-    library =
-        source = "core:posix"
-
-        module =
-            path = IO
-            globalTypes = IO
-
-        module =
-            path = Path
-    """
+defaultImportsFile as ImportsFile =
+    DefaultImports.platformDefaultImportsFile
+        "posix"
+        [
+        , "IO" & [ "IO" ]
+        , "Path" & []
+        ]
 
 
-ok as Text = "'Ok'"
-
-makeOk as Text = "$core$Result$Ok"
-makeErr as Text = "$core$Result$Err"
-
-
-makeExecutable as fn Self.LoadPars: Text =
+makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
+    fn makePlatformUmr:
     fn out:
 
     entryName =
-        Targets/Javascript/EmittableToJs.translateUsr out.entryUsr
+        Targets/Javascript/EmittableToJs._usrToText out.entryUsr
 
     callMain =
         """
 
 
         const args = arrayToListLow(process.argv.slice(1));
-        process.exitCode = 
-        """ .. entryName .. """
+        process.exitCode =
+        """
+        .. entryName
+        .. """
         (null, process.env, args)[0];
         """
 
-    compiledStatements =
+    compiledStatements as Text =
         log "Creating JS AST..." ""
 
         jaStatements =
@@ -53,7 +48,7 @@ makeExecutable as fn Self.LoadPars: Text =
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs
-                , platformOverrides = overrides
+                , platformOverrides = overrides makePlatformUmr
                 }
 
         log "Emitting JS..." ""
@@ -62,7 +57,10 @@ makeExecutable as fn Self.LoadPars: Text =
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
         >> Text.join "\n\n" __
 
-    header .. Targets/Javascript/Runtime.nativeDefinitions .. runtime .. compiledStatements .. callMain
+    natives =
+        Targets/Javascript/Runtime.nativeDefinitions
+
+    header .. natives .. runtime .. compiledStatements .. callMain
 
 
 header as Text =
@@ -78,12 +76,13 @@ header as Text =
     """
 
 
-overrides as [ USR & Text ] =
+overrides as fn Platform.MakeUmr: [ USR & Text ] =
+    fn makePlatformUmr:
     ioModule =
-        'USR ('UMR Meta.'posix "IO") __
+        'USR (makePlatformUmr "IO") __
 
     pathModule =
-        'USR ('UMR Meta.'posix "Path") __
+        'USR (makePlatformUmr "Path") __
 
     [
     , ioModule "parallel" & "io_parallel"
@@ -95,10 +94,17 @@ overrides as [ USR & Text ] =
     , ioModule "writeStderr" & "io_writeStderr"
     , pathModule "dirname" & "path_dirname"
     , pathModule "resolve" & "path_resolve"
+    , pathModule "join" & "path_join"
     ]
 
 
 runtime as Text =
+    makeOk as Text =
+        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText __
+
+    makeErr as Text =
+        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.translateUsrToText __
+
     """
 
     //
@@ -114,83 +120,133 @@ runtime as Text =
         try {
             entries = fs.readdirSync(dirPath, { withFileTypes: true });
         } catch (e) {
-            return [""" .. makeErr .. """(e.message), null];
-        }
+            return [
+    """
+    .. makeErr
+    .. """
+    (e.message), null];
+            }
 
-        return [""" .. makeOk .. """(arrayToListLow(entries.map((dirent) => ({
-            first: dirent.isDirectory(),
-            second: dirent.name,
-        })))), null];
-    };
-
-
-    const io_readFile = (io, path) => {
-        // as @IO, Text: Re Text
-
-        var content;
-        try {
-            content = fs.readFileSync(path, 'utf8');
-        } catch (e) {
-            return [""" .. makeErr .. """(e.message), null];
-        }
-
-        return [""" .. makeOk .. """(content), null];
-    };
+            return [
+    """
+    .. makeOk
+    .. """
+    (arrayToListLow(entries.map((dirent) => ({
+                first: dirent.isDirectory(),
+                second: dirent.name,
+            })))), null];
+        };
 
 
-    const io_writeFile = (io, path, content) => {
-        // as @IO, Text, Text: Re Int
+        const io_readFile = (io, path) => {
+            // as @IO, Text: Re Text
 
-        try {
-            fs.writeFileSync(path, content);
-        } catch (e) {
-            return [""" .. makeErr .. """(e.message), null];
-        }
+            var content;
+            try {
+                content = fs.readFileSync(path, 'utf8');
+            } catch (e) {
+                return [
+    """
+    .. makeErr
+    .. """
+    (e.message), null];
+            }
 
-        return [""" .. makeOk .. """(0), null];
-    };
-
-
-    const io_readStdin = (io) => {
-        // as @IO: Re Text
-
-        try {
-            return [""" .. makeOk .. """(fs.readFileSync(0, 'utf8')), null];
-        } catch (e) {
-            return [""" .. makeErr .. """(e.message), null];
-        }
-    };
+            return [
+    """
+    .. makeOk
+    .. """
+    (content), null];
+        };
 
 
-    const io_writeStdout = (io, content) => {
-        // as @IO, Text: Re None
+        const io_writeFile = (io, path, content) => {
+            // as @IO, Text, Text: Re Int
 
-        try {
-            fs.writeFileSync(1, content);
-        } catch (e) {
-            return [""" .. makeErr .. """(e.message), null];
-        }
+            try {
+                fs.writeFileSync(path, content);
+            } catch (e) {
+                return [
+    """
+    .. makeErr
+    .. """
+    (e.message), null];
+            }
 
-        return [""" .. makeOk .. """(null), null];
-    };
-
-
-    const io_writeStderr = (io, content) => {
-        // as @IO, Text: Re Int
-
-        try {
-            fs.writeFileSync(2, content);
-        } catch (e) {
-            return [""" .. makeErr .. """(e.message), null];
-        }
-
-        return [""" .. makeOk .. """(null), null];
-    };
+            return [
+    """
+    .. makeOk
+    .. """
+    (0), null];
+        };
 
 
-    const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
+        const io_readStdin = (io) => {
+            // as @IO: Re Text
+
+            try {
+                return [
+    """
+    .. makeOk
+    .. """
+    (fs.readFileSync(0, 'utf8')), null];
+            } catch (e) {
+                return [
+    """
+    .. makeErr
+    .. """
+    (e.message), null];
+            }
+        };
 
 
-    const path_dirname = path.dirname;
+        const io_writeStdout = (io, content) => {
+            // as @IO, Text: Re None
+
+            try {
+                fs.writeFileSync(1, content);
+            } catch (e) {
+                return [
+    """
+    .. makeErr
+    .. """
+    (e.message), null];
+            }
+
+            return [
+    """
+    .. makeOk
+    .. """
+    (null), null];
+        };
+
+
+        const io_writeStderr = (io, content) => {
+            // as @IO, Text: Re Int
+
+            try {
+                fs.writeFileSync(2, content);
+            } catch (e) {
+                return [
+    """
+    .. makeErr
+    .. """
+    (e.message), null];
+            }
+
+            return [
+    """
+    .. makeOk
+    .. """
+    (null), null];
+        };
+
+
+        const path_resolve = (p) => path.resolve(...arrayFromListLow(p));
+
+        const path_join = (p) => path.join(...arrayFromListLow(p));
+
+        const path_dirname = path.dirname;
+
 
     """

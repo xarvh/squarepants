@@ -38,7 +38,7 @@
 typeToHuman as fn Env, TA.RawType: Text =
     fn env, raw:
     raw
-    >> Human/Type.doRawType env __
+    >> Human/Type.doRawType env.projectImports __
     >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
     >> Fmt.render
 
@@ -122,25 +122,28 @@ Env =
     , constructors as ByUsr Instance
     , context as Context
     , currentRootUsr as USR
+    # TODO merge these two in a single Dict
     , exactTypes as ByUsr [ Name & Pos ]
     , expandedAliases as ByUsr ExpandedAlias
     , modulesByUmr as Dict UMR CA.Module
+    , projectImports as Imports
     , reversedRootValueDefs as [ USR & TA.ValueDef ]
     , variables as Dict Ref Instance
     }
 
 
-initEnv as fn Dict UMR CA.Module: Env =
-    fn modulesByUmr:
+initEnv as fn Imports, Dict UMR CA.Module: Env =
+    fn projectImports, modulesByUmr:
     {
     , annotatedTyvarsByName = Dict.empty
     , annotatedUnivarsByOriginalId = Dict.empty
     , constructors = Dict.empty
     , context = 'context_Global
-    , currentRootUsr = 'USR ('UMR Meta.'core "") ""
+    , currentRootUsr = CoreDefs.usr "error"
     , exactTypes = Dict.empty
     , expandedAliases = Dict.empty
     , modulesByUmr
+    , projectImports
     , reversedRootValueDefs = []
     , variables = Dict.empty
     }
@@ -157,8 +160,8 @@ var Error_ =
     , 'errorConstructorNotFound USR
     , 'errorNotCompatibleWithRecord
     , 'errorRecordDoesNotHaveAttribute Name
-    , 'errorRecordHasAttributesNotInAnnotation [Name]
-    , 'errorRecordIsMissingAttibutesInAnnotation [Name]
+    , 'errorRecordHasAttributesNotInAnnotation [ Name ]
+    , 'errorRecordIsMissingAttibutesInAnnotation [ Name ]
     , 'errorTryingToAccessAttributeOfNonRecord Name TA.RawType
     , 'errorIncompatibleTypes CA.Expression TA.FullType
     , 'errorIncompatiblePattern CA.Pattern TA.FullType
@@ -180,6 +183,7 @@ var Error_ =
     , 'errorUniInTypeArg
     , 'errorUniInRecordAttribute Name
     , 'errorUniqueGlobal
+    , 'errorModuleNotFound UMR
 
 
 var Context =
@@ -667,7 +671,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
         try def.maybeBody as
 
             'nothing:
-                TA.'literalText Pos.'n "native" & { raw = patternOut.patternType, uni = def.uni }
+                'nothing & { raw = patternOut.patternType, uni = def.uni }
 
             'just body:
                 try patternOut.maybeFullAnnotation as
@@ -679,7 +683,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                         full =
                             { raw, uni = def.uni }
 
-                        checkExpression localEnv full body @state & full
+                        'just (checkExpression localEnv full body @state) & full
 
                     'nothing:
                         typed & inferredType =
@@ -692,7 +696,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
 
                         checkUni localEnv pos { given = inferredType.uni, required = def.uni } @state
 
-                        typed & inferredType
+                        'just typed & inferredType
 
     defType as TA.FullType =
         {
@@ -789,7 +793,6 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     , freeTyvars
     , freeUnivars
     , isFullyAnnotated = patternOut.maybeFullAnnotation /= 'nothing
-    , native = def.maybeBody == 'nothing
     , pattern = patternOut.typedPattern
     , type = defType
     }
@@ -906,6 +909,120 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
 
         CA.'try pos { patternsAndExpressions, value }:
             doTry env pos (newRawType @state) value patternsAndExpressions @state
+
+        CA.'introspect pos introspect usr:
+            doIntrospect env pos introspect usr @state
+
+
+getTypeDef as fn Env, Pos, USR, @State: Maybe ([ Name & Pos ] & Self.Def) =
+    fn env, pos, usr, @state:
+    'USR umr name =
+        usr
+
+    try Dict.get umr env.modulesByUmr as
+
+        'nothing:
+            addError env pos ('errorModuleNotFound umr) @state
+
+            'nothing
+
+        'just module:
+            try Dict.get name module.aliasDefs as
+
+                'just def:
+                    'just << def.pars & Self.'openAliasType def
+
+                'nothing:
+                    try Dict.get name module.variantTypeDefs as
+
+                        'nothing:
+                            addError env pos ('errorTypeNotFound usr) @state
+
+                            'nothing
+
+                        'just def:
+                            'just << def.pars & Self.'openVarType def
+
+
+getValueDef as fn Env, Pos, USR, @State: Maybe CA.ValueDef =
+    fn env, pos, usr, @state:
+    'USR umr name =
+        usr
+
+    try Dict.get umr env.modulesByUmr as
+
+        'nothing:
+            addError env pos ('errorModuleNotFound umr) @state
+
+            'nothing
+
+        'just module:
+            try Dict.get name module.valueDefs as
+
+                'just def:
+                    'just def
+
+                'nothing:
+                    # TODO message should be "module X does not contain...."
+                    # Which should be caught by MakeCanonical... Can it actually happen here?
+                    addError env pos ('errorVariableNotFound ('refGlobal usr)) @state
+
+                    'nothing
+
+
+doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.FullType =
+    fn env, pos, introspect, usr, @state:
+
+    selfUsr as USR =
+        'USR (CoreDefs.makeUmr "Self") "Self"
+
+    selfType as TA.RawType =
+        try Dict.get selfUsr env.expandedAliases as
+            'nothing: bug "no self?"
+            'just expandedAlias: expandedAlias.type
+
+    expression =
+        try introspect as
+
+            Token.'value:
+                try getValueDef env pos usr @state as
+
+                    'nothing:
+                        TA.'error pos
+
+                    'just def:
+                        if def.maybeAnnotation == 'nothing then
+                            todo "cannot introspect non-annotated values"
+                        else
+                            TA.'introspect { usr, def = Self.'value { def with maybeBody = 'nothing }}
+
+            Token.'type:
+                try getTypeDef env pos usr @state as
+
+                    'nothing:
+                        TA.'error pos
+
+                    'just (pars & _):
+                        {
+                        , usr
+                        , def =
+                            Self.'opaqueType
+                                {
+                                , constructors = Dict.empty
+                                , pars
+                                , usr
+                                }
+                        }
+                        >> TA.'introspect
+
+            Token.'typeOpen:
+                #TODO!!!! - ensure that type is not opaque
+
+                try getTypeDef env pos usr @state as
+                    'nothing: TA.'error pos
+                    'just (_ & def): TA.'introspect { usr,  def }
+
+    expression & { raw = selfType, uni = 'uni }
 
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
@@ -1349,7 +1466,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                     try Dict.get attrName typeByName as
 
                         'nothing:
-                            addError env pos ('errorRecordHasAttributesNotInAnnotation [attrName]) @state
+                            addError env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
 
                             # This is not super clean, but since it's an error condition, it's probably fine
                             Tuple.first (inferExpression env attrExpr @state)
@@ -1371,7 +1488,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                 Dict.onlyBothOnly valueByName typeByName
 
             if aOnly /= Dict.empty then
-                addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly))@state
+                addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly)) @state
             else if bOnly /= Dict.empty then
                 addError env pos ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys bOnly)) @state
             else
@@ -1827,8 +1944,9 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
                 (typeOnly /= Dict.empty and completeness == CA.'complete)
                 env
                 pos
-                # TODO "add `with` if you don't want to use all attrs"
-                ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys typeOnly))
+                (# TODO "add `with` if you don't want to use all attrs"
+                 'errorRecordIsMissingAttibutesInAnnotation (Dict.keys typeOnly)
+                )
                 @state
 
             taPas & envF =

@@ -46,6 +46,7 @@ var Expression =
           , patternsAndExpressions as [ Uniqueness & Pattern & Expression ]
           , value as Expression
           }
+    , 'introspect Pos Token.Introspect USR
 
 
 var Argument =
@@ -289,4 +290,4 @@ expressionPos as fn Expression: Pos =
         'letIn def e: expressionPos e
         'if p _: p
         'try p _: p
-#        'destroyIn _ _: Pos.'g
+        'introspect p _ _: p

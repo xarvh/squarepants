@@ -55,6 +55,7 @@ var Expression =
           }
     , 'destroyIn Name Expression
     , 'error Pos
+    , 'introspect Self.Self
 
 
 var Pattern =
@@ -95,12 +96,11 @@ Univar =
 
 ValueDef =
     {
-    , body as Expression
+    , body as Maybe Expression
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
     , isFullyAnnotated as Bool
-    , native as Bool
     , pattern as Pattern
     , type as FullType
     }
@@ -270,6 +270,9 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'error p:
             expression
 
+        'introspect _:
+            expression
+
 
 resolvePattern as fn SubsAsFns, Pattern: Pattern =
     fn saf, pattern:
@@ -284,7 +287,7 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
 resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
     fn saf, def:
     { def with
-    , body = resolveExpression saf .body
+    , body = Maybe.map (resolveExpression saf __) .body
     , pattern = resolvePattern saf .pattern
     , type = resolveFull saf .type
     }
