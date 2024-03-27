@@ -88,6 +88,15 @@ var DependencyType =
           The actual module, possibly with uppercased directory name.
           The modulePath is also what the user writes in the code to refer to a non-aliased sourceDir module, so needs to look nice.
 
+
+
+  TODO
+  Should I call them RISM so that then I can name types according to what they exactly contain?
+      Imports Path -> RI
+      UMR -> RISM where-the-IS-is-an-integer?
+
+  I could even add an E the End-value, so that USR becomes RISME. =|
+
 #]
 
 #
