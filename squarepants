@@ -3245,7 +3245,7 @@ const c0$Compiler$Meta$resolveLocation = (($pars, $location, $maybeReferencedMod
               }))()
               : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
                 ? (c0$Result$Err)(($pars.makeError)((c0$Core$Cons)(("Library cannot find: " + ($modulePath + (" which contains " + $referencedName))), c0$Core$Nil)))
-                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 273:24', (sp_toHuman)($maybeReferencedModuleAlias))))
+                : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 282:24', (sp_toHuman)($maybeReferencedModuleAlias))))
             : ((($6)[0] === "$Just")
               ? ((() => {
                 const $moduleUsrByName = ($6)[1];
@@ -3265,13 +3265,13 @@ const c0$Compiler$Meta$resolveLocation = (($pars, $location, $maybeReferencedMod
                       }))()
                       : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
                         ? (c0$Result$Err)(($pars.makeError)((c0$Core$Cons)(($referencedName + (" is not in " + $modulePath)), c0$Core$Nil)))
-                        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 301:32', (sp_toHuman)($maybeReferencedModuleAlias))))
-                    : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 295:24', (sp_toHuman)($7))));
+                        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 310:32', (sp_toHuman)($maybeReferencedModuleAlias))))
+                    : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 304:24', (sp_toHuman)($7))));
               }))()
-              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 270:16', (sp_toHuman)($6))));
+              : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 279:16', (sp_toHuman)($6))));
         })))(($pars.loadExports)($importsPath));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 254:4', (sp_toHuman)($location))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 263:4', (sp_toHuman)($location))));
 });
 
 const c0$Compiler$Meta$resolve = (($pars, $maybeReferencedModuleAlias, $referencedName) => {
@@ -3286,7 +3286,7 @@ const c0$Compiler$Meta$resolve = (($pars, $maybeReferencedModuleAlias, $referenc
             const $location = ($4)[1];
             return (c0$Compiler$Meta$resolveLocation)($pars, $location, $maybeReferencedModuleAlias, $referencedName);
           }))()
-          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 234:12', (sp_toHuman)($4))));
+          : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 243:12', (sp_toHuman)($4))));
     }))()
     : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
       ? ((() => {
@@ -3298,9 +3298,9 @@ const c0$Compiler$Meta$resolve = (($pars, $maybeReferencedModuleAlias, $referenc
               const $location = ($4)[1];
               return (c0$Compiler$Meta$resolveLocation)($pars, $location, $maybeReferencedModuleAlias, $referencedName);
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 247:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 256:12', (sp_toHuman)($4))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 231:4', (sp_toHuman)($maybeReferencedModuleAlias))));
+      : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 240:4', (sp_toHuman)($maybeReferencedModuleAlias))));
 });
 
 const c0$Compiler$Meta$rootDirectoryToPath = (($paths, $rootDirectory) => {
@@ -3310,7 +3310,7 @@ const c0$Compiler$Meta$rootDirectoryToPath = (($paths, $rootDirectory) => {
       ? $paths.project
       : ((($rootDirectory)[0] === "$Installed")
         ? $paths.installed
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 118:4', (sp_toHuman)($rootDirectory)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 127:4', (sp_toHuman)($rootDirectory)))));
 });
 
 const c0$Compiler$Op$precedence_addittive = 7;
@@ -5499,8 +5499,10 @@ const u0$BuildMain$asModuleDirectory = (($tuple) => {
     : c0$Maybe$Nothing);
 });
 
+const u0$Compiler$CoreDefs$pathId = 0;
+
 const u0$Compiler$CoreDefs$makeUmr = (($0) => {
-  return (c0$Compiler$Meta$UMR)(c0$Compiler$Meta$Core, 0, $0);
+  return (c0$Compiler$Meta$UMR)(c0$Compiler$Meta$Core, u0$Compiler$CoreDefs$pathId, $0);
 });
 
 const u0$BuildMain$buildInfoModule = (($platform) => {
@@ -10250,7 +10252,9 @@ const u0$BuildMain$updateSourceDir = (($fileNames, $orig) => {
   return (c0$List$for)($orig, $fileNames, $insertModuleName);
 });
 
-const u0$Compiler$CoreDefs$importsPath = (c0$Compiler$Meta$ImportsPath)(c0$Compiler$Meta$Core, "");
+const u0$Compiler$CoreDefs$importsDir = "";
+
+const u0$Compiler$CoreDefs$importsPath = (c0$Compiler$Meta$ImportsPath)(c0$Compiler$Meta$Core, u0$Compiler$CoreDefs$importsDir);
 
 const u0$ImportsFile$insertModules = (($modulePathToLocationFn, $errors, $platformName, $modules, $imports) => {
   const $platforms = ((sp_equal)($platformName, "")
@@ -10992,6 +10996,8 @@ const u0$BuildMain$searchAncestorDirectories = (($io, $isWantedFile, $searchDir)
     $io,
   ]);
 });
+
+const u0$Compiler$CoreDefs$sourceDir = "src";
 
 const u0$Compiler$LazyBuild$collectUsrDependencies = (($env, $state, $usr, $depType) => {
   const $5 = $usr;
@@ -17562,7 +17568,7 @@ const u0$Compiler$LazyBuild$build = (($pars) => {
               const $deps = ($5)[1].deps;
               return $deps;
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'src/Compiler/LazyBuild.sp 287:8', (sp_toHuman)($5))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Compiler/LazyBuild.sp 267:8', (sp_toHuman)($5))));
       });
       const $nodesById = ((__re__ = (c0$Hash$for_)(c0$Dict$empty, $state.done, (($usr, _1, $dict) => {
         return (c0$Dict$insert)($usr, $usr, $dict);
@@ -17584,7 +17590,7 @@ const u0$Compiler$LazyBuild$build = (($pars) => {
           }))()
           : (true
             ? null
-            : (sp_throw)('Missing pattern in try..as', 'src/Compiler/LazyBuild.sp 314:8', (sp_toHuman)($circular))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Compiler/LazyBuild.sp 294:8', (sp_toHuman)($circular))));
       }));
       return ((c0$Result$onOk)(((_0) => {
         const $modulesByUmr = (c0$Dict$fromList)(((__re__ = (c0$Hash$toList)($state.loadedModulesByUmr)), ($state.loadedModulesByUmr = (__re__)[1]), (__re__)[0]));
@@ -17683,11 +17689,23 @@ const u0$BuildMain$compileMain = (($io, $pars) => {
     project: $projectRoot,
   });
   let $state = ({
-    idToSourcePath: (hash_fromList)(c0$Core$Nil),
+    idToSourcePath: (hash_fromList)((c0$Core$Cons)(({
+      first: u0$Compiler$CoreDefs$pathId,
+      second: ({
+        importsDir: u0$Compiler$CoreDefs$importsDir,
+        sourceDir: u0$Compiler$CoreDefs$sourceDir,
+      }),
+    }), c0$Core$Nil)),
     loadedExports: (hash_fromList)(c0$Core$Nil),
     loadedImports: (hash_fromList)(c0$Core$Nil),
-    nextId: 0,
-    sourcePathToId: (hash_fromList)(c0$Core$Nil),
+    nextId: (u0$Compiler$CoreDefs$pathId + 1),
+    sourcePathToId: (hash_fromList)((c0$Core$Cons)(({
+      first: ({
+        importsDir: u0$Compiler$CoreDefs$importsDir,
+        sourceDir: u0$Compiler$CoreDefs$sourceDir,
+      }),
+      second: u0$Compiler$CoreDefs$pathId,
+    }), c0$Core$Nil)),
   });
   return ([
     ((c0$Result$onOk)((($projectImports) => {

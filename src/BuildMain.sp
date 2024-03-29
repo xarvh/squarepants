@@ -35,11 +35,8 @@ getEntryUsr as fn Imports, Text: Res USR =
         "main"
 
 
-
-
 buildInfoModule as fn Platform: CA.Module =
     fn platform:
-
 #    compile as CA.ValueDef =
 #        {
 #        , directDeps = Dict.ofOne platform.compileUsr Meta.'valueDependency
@@ -55,19 +52,21 @@ buildInfoModule as fn Platform: CA.Module =
     , constructorDefs = Dict.empty
     , fsPath = "<buildInfo module>"
     , umr = CoreDefs.makeUmr "BuildInfo"
-    , valueDefs = Dict.empty #Dict.ofOne "compile" compile
-    , variantTypeDefs = Dict.empty
+    , valueDefs = Dict.empty
+    #Dict.ofOne "compile" compile
+    , variantTypeDefs =
+        Dict.empty
     }
 
 
 LoadCaModulePars =
     {
+    , buildInfoModule as CA.Module
     , idToDirs as fn Int: { importsDir as Text, sourceDir as Text }
     , loadExports as fn Meta.ImportsPath: Res Exports
     , loadImports as fn Meta.ImportsPath: Res Imports
     , readFile as fn Text: IO.Re Text
     , rootPaths as Meta.RootPaths
-    , buildInfoModule as CA.Module
     }
 
 
@@ -194,7 +193,7 @@ updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     List.for orig fileNames insertModuleName
 
 
-scanSourceDirs as fn @IO, (fn Text, Text: Int), Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
+scanSourceDirs as fn @IO, fn Text, Text: Int, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
     fn @io, getSourceDirId, rootPaths, importsPath, importsFile:
     Meta.'importsPath root importsDir =
         importsPath
@@ -213,9 +212,9 @@ scanSourceDirs as fn @IO, (fn Text, Text: Int), Meta.RootPaths, Meta.ImportsPath
 
     ImportsFile.toImports
         {
+        , getSourceDirId
         , importsPath
         , joinPath = Path.join
-        , getSourceDirId
         }
         { importsFile with sourceDirs = updatedSourceDirs }
 
@@ -225,13 +224,12 @@ scanSourceDirs as fn @IO, (fn Text, Text: Int), Meta.RootPaths, Meta.ImportsPath
 #
 State =
     {
-    , loadedImports as Hash Meta.ImportsPath Imports
-    , loadedExports as Hash Meta.ImportsPath Exports
-    , sourcePathToId as Hash { importsDir as Text, sourceDir as Text } Int
     , idToSourcePath as Hash Int { importsDir as Text, sourceDir as Text }
+    , loadedExports as Hash Meta.ImportsPath Exports
+    , loadedImports as Hash Meta.ImportsPath Imports
     , nextId as Int
+    , sourcePathToId as Hash { importsDir as Text, sourceDir as Text } Int
     }
-
 
 
 idToDirs as fn @State, Int: { importsDir as Text, sourceDir as Text } =
@@ -271,16 +269,22 @@ loadExports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Exports =
 
 loadImports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Imports =
     fn @io, @state, rootPaths, importsPath:
-
     getSourceDirId as fn Text, Text: Int =
         fn importsDir, sourceDir:
         try Hash.get @state.sourcePathToId { importsDir, sourceDir } as
+
             'nothing:
-                id = cloneUni @state.nextId
+                id =
+                    cloneUni @state.nextId
+
                 @state.nextId += 1
+
                 Hash.insert @state.sourcePathToId { importsDir, sourceDir } id
+
                 Hash.insert @state.idToSourcePath id { importsDir, sourceDir }
+
                 id
+
             'just id:
                 id
 
@@ -402,56 +406,57 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #            'ok i
 
     !state as State =
-      {
-      , loadedImports = Hash.fromList []
-      , loadedExports = Hash.fromList []
-      , sourcePathToId = Hash.fromList []
-      , idToSourcePath = Hash.fromList []
-      , nextId = 0
-      }
+        {
+        , idToSourcePath = Hash.fromList [ CoreDefs.pathId & { importsDir = CoreDefs.importsDir, sourceDir = CoreDefs.sourceDir } ]
+        , loadedExports = Hash.fromList []
+        , loadedImports = Hash.fromList []
+        , nextId = CoreDefs.pathId + 1
+        , sourcePathToId = Hash.fromList [ { importsDir = CoreDefs.importsDir, sourceDir = CoreDefs.sourceDir } & CoreDefs.pathId ]
+        }
 
     loadImports @io @state rootPaths importsPath
     >> onOk fn projectImports:
     getEntryUsr projectImports pars.entryPoint
     >> onOk fn entryUsr:
-
     #
     # Figure out the platform library UMR
     #
     Dict.get pars.platform.name projectImports.platforms
-    >> Maybe.toResult (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform."]) __
+    >> Maybe.toResult (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform." ]) __
     >> onOk fn platformModuleLocations:
-
     # TODO properly collect or return errors instead of crashing
     makePlatformUmr as fn Name: UMR =
         fn modulePath:
-
         try Dict.get modulePath platformModuleLocations as
+
             'nothing:
                 todo << "no " .. modulePath .. "in loaded platform."
 
             'just location:
-                  try location as
+                try location as
 
-                      Meta.'locationSourceDir umr:
-                          umr
+                    Meta.'locationSourceDir umr:
+                        umr
 
-                      Meta.'locationLibrary libraryImportsPath modulePath2:
-                          try loadImports @io @state rootPaths libraryImportsPath as
-                              'err err: todo (toHuman err)
-                              'ok libraryImports:
-                                  try Dict.get modulePath libraryImports.modulePathToLocation as
-                                      'nothing: todo << "Platform bug: no module " .. modulePath .. " the library imports for platform " .. pars.platform.name
-                                      'just (Meta.'locationLibrary _ _): todo << "Platform bug: platform wants the UMR of a library module: " .. modulePath
-                                      'just (Meta.'locationSourceDir umr): umr
+                    Meta.'locationLibrary libraryImportsPath modulePath2:
+                        try loadImports @io @state rootPaths libraryImportsPath as
+
+                            'err err:
+                                todo (toHuman err)
+
+                            'ok libraryImports:
+                                try Dict.get modulePath libraryImports.modulePathToLocation as
+                                    'nothing: todo << "Platform bug: no module " .. modulePath .. " the library imports for platform " .. pars.platform.name
+                                    'just (Meta.'locationLibrary _ _): todo << "Platform bug: platform wants the UMR of a library module: " .. modulePath
+                                    'just (Meta.'locationSourceDir umr): umr
 
     #
     # Compile!
     #
     loadCaModulePars as LoadCaModulePars =
         {
-        , idToDirs = idToDirs @state __
         , buildInfoModule = buildInfoModule pars.platform
+        , idToDirs = idToDirs @state __
         , loadExports = loadExports @io @state rootPaths __
         , loadImports = loadImports @io @state rootPaths __
         , readFile = IO.readFile @io __
@@ -465,7 +470,6 @@ compileMain as fn @IO, CompileMainPars: Res None =
     }
     >> Compiler/LazyBuild.build
     >> onOk fn { constructors, natives, rootValues }:
-
     # TODO ensure all natives are implemented?
 
     outputFile =

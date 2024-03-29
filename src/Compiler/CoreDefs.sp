@@ -2,17 +2,28 @@
 # This module contains all the definitions that are necessary for the syntax.
 #
 
+importsDir as Text =
+    ""
+
+
+sourceDir as Text =
+    "src"
+
+
+pathId as Int =
+    0
+
+
 importsPath as Meta.ImportsPath =
-    Meta.'importsPath Meta.'core ""
+    Meta.'importsPath Meta.'core importsDir
 
 
 makeUmr as fn Text: UMR =
-    'UMR Meta.'core 0 __
+    'UMR Meta.'core pathId __
 
 
 umr as UMR =
     makeUmr "Core"
-    #'UMR importsPath "src" "Core"
 
 
 usr as fn Name: USR =
