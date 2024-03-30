@@ -270,17 +270,17 @@ functions as Test =
             (Test.errorContains [])
         , codeTest
             """
-            [reg] Should complain that a Tuple is not a Text
+            [reg] Should unify bound tyvars when needed
             """
             """
-            for as fn a, [b], (fn b, a: a): a =
-                fn a, bs, f: a
+            for as fn a, b, (fn b, a: a): a =
+                fn a, b, f: a
 
-            end =
-                for "" ["" & 1] fn tuple, _:
-                    tuple
+            z =
+                for "" 1 fn b, a:
+                    b
             """
-            (infer "end")
+            (infer "z")
             (Test.errorContains ["Text"])
         ]
 
