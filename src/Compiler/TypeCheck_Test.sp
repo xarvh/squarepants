@@ -282,24 +282,6 @@ functions as Test =
             """
             (infer "z")
             (Test.errorContains ["Text"])
-        , codeTest
-            """
-            [reg] Inferring an extensible record should not be unified with whatever type!
-            """
-            """
-            sortBy as fn (fn a: Text), a: a =
-                fn f, xs: xs
-
-            attributeName =
-                fn record:
-                try record.attr as
-                    "": "aaa"
-
-            main =
-                sortBy attributeName { attr = 'true }
-            """
-            (infer "main")
-            (Test.errorContains ["Bool", "Text"])
         ]
 
 
@@ -793,6 +775,20 @@ records as Test =
             """
             (infer "r")
             (Test.errorContains [ "Missing" ])
+        , codeTest
+            """
+            [reg] Inferring and then generalizing an extensible record should still constrain the tyvar to a record!
+            """
+            """
+            f =
+                fn record:
+                record.attr
+
+            main =
+                f 'true
+            """
+            (infer "main")
+            (Test.errorContains ["record"])
         ]
 
 
