@@ -47,10 +47,6 @@ More or less established features
 * Documentation is a multi-line string starting with `[# DOC:`
 
 
-* Module path is delimited by `/`, ie `List/Extra.find`
-  (Tokens starting with uppercase letter can't be used in a division, so there is no ambiguity)
-
-
 * `(expr).attr` is not supported nor necessary (expr |> fn.attr), but it would be a nice-to-have?
   - tokenization is a mess
   - makes `@var.attr` mut values more complicated
@@ -65,13 +61,6 @@ More or less established features
 
 * Functions
   * Evaluating an expression that produces a function without returning it is an error
-
-
-* Operators
-    * Algebraic binops are overloaded per GLSL, no other ops can be overloaded and no other overloading can be defined.
-    * Assignment ops are not binops and are not valid expressions
-    * `=` is for declaring a new symbol
-    * use `and`, `or` instead of `&&` `||`
 
 
 * imperative blocks
@@ -97,21 +86,6 @@ More or less established features
 * Support `0 < x < 10`
 
 
-* do notation
-  Nice explanation of monad: https://stackoverflow.com/questions/44965/what-is-a-monad
-
-  bind: "chains two operations so that they look like a single one"
-  bind: "take a computation, pretend you have its result already, and use that result to produce a new computation"
-
-  - A computation is anything that results in a value
-
-  ```
-  to = Result.andThen
-  blah blah blah >> to fn blahOutput =
-  someotherline >> to fn otherThingy =
-  doStuffWith blahOutput otherThingy
-  ```
-
 * imperative if, try
   Allow the branches to have different types if the block is not evaluated
 
@@ -126,92 +100,11 @@ So, allow a file to be indented entirely with tabs or entirely with spaces, but 
 
 
 
-### Numeric types
-
-  (+) : Num a -> Num b -> Num a b
-  logN : Num F32 -> Num F32
-
-  `Num` has a variable number of args, and means "the smallest numeric type that can contain the arguments".
-
-  `U32` can only be unified with another `U32`
-  `Num U32` can be unified with any type that can contain an `U32`
-
-  Unsigned types: U8, U16, U32, U128
-  Signed types: I8, I16, I32, I128
-  Vec types: {Vec2, Vec3, Vec4}{32, 64}
-  Mat types: Mat4-32, Mat4-64
-
-  Aliases can be created for each type, then exposed as globals.
-
-  Operations on vectors and matrices will be applied element-by-element
-  => `*` is the vector dot product).
-  => mat4 / vec3 means that first the vector is promoted to a mat4, then each element is divided.
-
-
-  Promotion should work on both the class and the size.
-
-  ```
-  promote : NumType -> NumType -> NumType
-  promote a b =
-    class_c = max (class a) (class b)
-
-    size_c = max (size a) (size b)
-
-    # should we promote an extra to ensure that the result is contained?
-    example: signed + unsigned
-
-    makeNumType class_c size_c
-  ```
-
-Note about unsigned: https://www.reddit.com/r/ProgrammingLanguages/comments/ub5vij/what_was_considered_problematic_with_unsigned/
-Unsigned might be needed for shaders or for external compatibility.
-If we decide they are needed, we might make them safer by:
-  * Allow conversion to and from unsigned types only via explicit call to conversion functions
-  * Instead of `U*` the type names should be `Unsigned*` to discourage usage.
-
-
-
-
-
 Stuff that seems good but needs thinking
 ----------------------------------------
 
 
-* Shamefully copy Roc's tagged types, but without opaque constructors.
-
-  Instead, opacity should implemented via modules.sp, so that an exposed type can be tagged as "opaque".
-  This way any type alias or union or whatever can be treated, outside the library that implements it,
-  as an entirely opaque type.
-
-  --> These opaque types should probably not be extensible (but otherwise accept parameters).
-
-
-* Remove the `alias` keyword entirely
-  We don't declare variables as `var x = 1`, so why should we use `alias X = Int`?
-
-      Blah x = Maybe x
-
-  Pros: one less keyword, more concise, more elegant
-  Con: less readable for noobs? The pros are very small.
-
-
-
 https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontrivial_hashing_algorithm_in_your/
-
-* record & patterns
-
-  To be entirely consistent, `{ a }` should match only `{ a : a }` and not `{ r with a : a }`
-
-  Reading the pattern match `{ a }` one *may* intuitively think that that's all the record contains.
-
-  If this is the case, we could have
-    * `{ a }` matching only `{ a : a }`
-    * `{ with a }` matching any  `{ e with a : a }`
-
-  But is this the case?
-
-
-
 
 * Collect-then-solve type inference:
   https://www.researchgate.net/publication/2528716_Generalizing_Hindley-Milner_Type_Inference_Algorithms
@@ -227,18 +120,7 @@ https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontri
 
 * Thorin Intermediate representation? https://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf
 
-* Keep currying.
-  Because it's fun and makes you feel smart and fall in love with functional programming.
-  It's easier to implement.
-  It can also make code less readable, but I hope the advantages above will offset this.
-
-
 * Remove left pipes?
-
-* Remove point-free pipes?
-    probably not, function composition is core to functional programming
-
-
 
 
 
@@ -256,33 +138,9 @@ https://www.reddit.com/r/ProgrammingLanguages/comments/m5sfzb/implement_a_nontri
   ---> But what about closures? Maybe we can consider those closure values as arguments (that do not affect comparison?), like I was doing with elm-glsl?
 
 
-
-
 * Union Types
   * Constructors are scoped to the type: `type Blah = A | B` => `Blah.A, Blah.B`
   -> But then can we obscure them?
-
-
-
-Game Platform
--------------
-
-* Libraries
-    LocalStorage: readable and writable
-    BulkStorage: read only
-
-
-
-GLSL
-----
-
-* Swizzling
-    Allowed, as exception, for all Vector types
-    (and all records where it would be unambiguous?)
-
-* Function overloading
-    Not available.
-    One Vector constructor for each possibility, probably called vec4_121 or something like that.
 
 
 
@@ -317,22 +175,6 @@ Limit union type constructors to no more than two arguments?
   -> More than 2 you need to name them
 
 
-Halting problem:
- https://www.reddit.com/r/ProgrammingLanguages/comments/k0hrpx/what_is_your_idea_of_a_perfect_programming/gdir42n/
- "Idris deals with this by having a class of proven-to-terminate functions. Unprovably terminating functions are still intractable, but a lot of things can be built that are provably terminating."
-
-
-
-Modules:
-  "Adding things to a module must never stop any program from compiling. That means no starred imports: every symbol is imported either explicitly, or qualified. Also no auto-importing of typeclass instances or other such implicit crap. Every little element must be imported explicitly. Modula-2 had it right,"
-  https://www.reddit.com/r/ProgrammingLanguages/comments/k0hrpx/what_is_your_idea_of_a_perfect_programming/gdj455b/
-
-
-No currying?
-  (`List.map (blah param) list` -> `List.map (fn i = blah param i) list`)
-
-
-
 GLSL: https://github.com/EmbarkStudios/rust-gpu
 
 
@@ -340,78 +182,10 @@ GLSL: https://github.com/EmbarkStudios/rust-gpu
   as in: `someAnnotatedFunction : SomeType -> ? -> SomeReturnType`
 
 
-* Is it a good idea to overload ops?
-  toFloat is a pain in the ass to use, but it does avoid some problems.
-
-
-
-
-
-* `(-) a b == b - a`?
-  `(- blah)` is a function?
-  `(blah -) is also a function?
-
 * Imperative blocks can contain recursive pure expressions
   How do I handle that?
   I can be smart and divide the code in "imperative blocks" and allow hoisting/recursive definitions only across pure expressions within an "impreative block"?
   How does JavaScript deal with it?
-
-
-* Currying
-    doesn't solve too many problems and creates a few, so for the time being don't support it?
-    it is really nice for combinators tho
-
-
-* Compatible with Elm libraries?
-
-
-
-
-
-? System for string interpolation?
-
-
-? Do we want opaque types? Can we find a better solution?
-
-
-? type alias vs alias vs type...? `type SomeAlias = SomeType`?
-
-
-
-
-# for-loops
-  - Use functions
-  - They should be used only for performance
-  - These function should stay in some module like Fast. or GLSL. ?
-```
-
-loop : state -> (state -> Bool) -> (state -> state) -> (state -> BreakOrContinue) -> Empty
-
-
-loopFrom 0 (until 10) (adding 1) (fn x =
-  print x
-)
-
-
-loopAlong (List.length list) (fn index =
-  ....
-)
-
-loop 0 (fn x = x < 10) (fn x = x + 1) (fn x =
-  if someCondition x then
-    return Break
-  else
-    doStuffWith x
-    return Continue
-
-
-
-
-repeat 10 (fn x =
-  print x
-)
-```
-
 
 
 # Examples
