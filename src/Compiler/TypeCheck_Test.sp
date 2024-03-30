@@ -284,7 +284,7 @@ functions as Test =
             (Test.errorContains ["Text"])
         , codeTest
             """
-            ONLY [reg] Inferring an extensible record should not be unified with whatever type!
+            [reg] Inferring an extensible record should not be unified with whatever type!
             """
             """
             sortBy as fn (fn a: Text), a: a =
