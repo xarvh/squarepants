@@ -282,6 +282,24 @@ functions as Test =
             """
             (infer "z")
             (Test.errorContains ["Text"])
+        , codeTest
+            """
+            ONLY [reg] Inferring an extensible record should not be unified with whatever type!
+            """
+            """
+            sortBy as fn (fn a: Text), a: a =
+                fn f, xs: xs
+
+            attributeName =
+                fn record:
+                try record.attr as
+                    "": "aaa"
+
+            main =
+                sortBy attributeName { attr = 'true }
+            """
+            (infer "main")
+            (Test.errorContains ["Bool", "Text"])
         ]
 
 
