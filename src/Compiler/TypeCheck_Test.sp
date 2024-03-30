@@ -268,6 +268,20 @@ functions as Test =
             """
             (infer "f")
             (Test.errorContains [])
+        , codeTest
+            """
+            [reg] Should complain that a Tuple is not a Text
+            """
+            """
+            for as fn a, [b], (fn b, a: a): a =
+                fn a, bs, f: a
+
+            end =
+                for "" ["" & 1] fn tuple, _:
+                    tuple
+            """
+            (infer "end")
+            (Test.errorContains ["Text"])
         ]
 
 
