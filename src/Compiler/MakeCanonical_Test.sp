@@ -76,9 +76,10 @@ firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
 # TODO move this to Helpers?
 transformAB as fn Text: Result Text (CA.ValueDef & CA.ValueDef) =
     fn code:
-    findAB =
+
+    findAB as fn CA.Module: Maybe (CA.ValueDef & CA.ValueDef) =
         fn mod:
-        try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.pattern) __ as
+        try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.name) __ as
             [ a, b ]: 'just (a & b)
             _: 'nothing
 
