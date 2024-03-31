@@ -787,8 +787,8 @@ records as Test =
             main =
                 f 'true
             """
-            (infer "main")
-            (Test.errorContains ["record"])
+            (infer "f")
+            (Test.errorContains ["Bool", "attr"])
         ]
 
 

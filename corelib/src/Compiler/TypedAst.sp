@@ -191,13 +191,28 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
         'typeFn pars out:
             'typeFn (List.map (resolveParType saf __) pars) (resolveFull saf out)
 
-        'typeRecord 'nothing attrs:
-            'typeRecord 'nothing (Dict.map (fn k, v: rec v) attrs)
+        'typeRecord maybeId attrs0:
+            attrs1 =
+                Dict.map (fn k, v: rec v) attrs0
 
-        'typeRecord ('just id) attrs:
-            try saf.ty id as
-                'just replacement: replacement
-                'nothing: 'typeRecord ('just id) (Dict.map (fn k, v: rec v) attrs)
+            try maybeId as
+                'nothing:
+                    'typeRecord 'nothing attrs1
+
+                'just id:
+                    try saf.ty id as
+                        'nothing:
+                            'typeRecord ('just id) attrs1
+
+                        'just ('typeRecord maybeNewId newAttrs):
+                            # TODO not sure joining the attrs is the correct thing to do
+                            'typeRecord maybeNewId (Dict.join newAttrs attrs1)
+
+                        'just ('typeVar newId):
+                            'typeRecord ('just newId) attrs1
+
+                        _:
+                            'typeError
 
         'typeError:
             'typeError
