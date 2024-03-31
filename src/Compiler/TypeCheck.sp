@@ -296,6 +296,8 @@ getErrorModule as fn Env: Error.Module =
 
 addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
     fn env, pos, why, t1, t2, @state:
+    #log "EQ" { why , type1 = applyAllSubs @state t1 , type2 = applyAllSubs @state t2 }
+
     solveEquality
         env
         {
@@ -972,7 +974,6 @@ getValueDef as fn Env, Pos, USR, @State: Maybe CA.ValueDef =
 
 doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.FullType =
     fn env, pos, introspect, usr, @state:
-
     selfUsr as USR =
         'USR (CoreDefs.makeUmr "Self") "Self"
 
@@ -994,7 +995,7 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
                         if def.maybeAnnotation == 'nothing then
                             todo "cannot introspect non-annotated values"
                         else
-                            TA.'introspect { usr, def = Self.'value { def with maybeBody = 'nothing }}
+                            TA.'introspect { def = Self.'value { def with maybeBody = 'nothing }, usr }
 
             Token.'type:
                 try getTypeDef env pos usr @state as
@@ -1004,7 +1005,6 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
 
                     'just (pars & _):
                         {
-                        , usr
                         , def =
                             Self.'opaqueType
                                 {
@@ -1012,6 +1012,7 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
                                 , pars
                                 , usr
                                 }
+                        , usr
                         }
                         >> TA.'introspect
 
@@ -1020,7 +1021,7 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
 
                 try getTypeDef env pos usr @state as
                     'nothing: TA.'error pos
-                    'just (_ & def): TA.'introspect { usr,  def }
+                    'just (_ & def): TA.'introspect { def, usr }
 
     expression & { raw = selfType, uni = 'uni }
 
@@ -2357,15 +2358,23 @@ compareParTypes as fn Env, Equality, Int, TA.ParType, TA.ParType, @State: None =
     try p1 & p2 as
 
         TA.'parRe raw1 & TA.'parRe raw2:
-            { context, expandedRecursives, pos, type1 = raw1, type2 = raw2, why = 'why_FunctionInput index why } >> solveEquality env __ @state
+            {
+            , context
+            , expandedRecursives
+            , pos
+            , type1 = applyAllSubs @state raw1
+            , type2 = applyAllSubs @state raw2
+            , why = 'why_FunctionInput index why
+            }
+            >> solveEquality env __ @state
 
         TA.'parSp full1 & TA.'parSp full2:
             {
             , context
             , expandedRecursives
             , pos
-            , type1 = full1.raw
-            , type2 = full2.raw
+            , type1 = applyAllSubs @state full1.raw
+            , type2 = applyAllSubs @state full2.raw
             , why = 'why_FunctionInput index why
             }
             >> solveEquality env __ @state
