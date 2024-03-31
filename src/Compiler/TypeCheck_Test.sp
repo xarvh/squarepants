@@ -406,10 +406,10 @@ recursiveTypes as Test =
             Variant types can be recursive
             """
             """
-            var A = 'a2 B
+            var A = 'a1, 'a2 B
             B = { a as A }
-            a as A = this_is_sp_native
-            b as B = this_is_sp_native
+            a as A = 'a2 b
+            b as B = { a = 'a1 }
             """
             (infer "a")
             Test.isOk
