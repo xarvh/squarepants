@@ -162,7 +162,6 @@ infer as fn Text: fn Text: Result Text Out =
     >> Compiler/LazyBuild.build
     >> TH.resErrorToStrippedText
     >> onOk fn { constructors, natives, rootValues }:
-
     targetUsr =
         EA.translateUsr ('USR TH.moduleUmr targetName)
 
@@ -281,7 +280,7 @@ functions as Test =
                     b
             """
             (infer "z")
-            (Test.errorContains ["Text"])
+            (Test.errorContains [ "Text" ])
         ]
 
 
@@ -788,7 +787,47 @@ records as Test =
                 f 'true
             """
             (infer "f")
-            (Test.errorContains ["Bool", "attr"])
+            (Test.errorContains [ "Bool", "attr" ])
+        , codeTest
+            """
+            Inferred records are correctly merged
+            """
+            """
+            f =
+                fn record:
+                record.attr
+
+            g =
+                fn record:
+                record.blah
+
+            meh as fn a, (fn a: Bool), (fn a: Number): Bool =
+                fn a, ff, gg:
+                'false
+
+            main =
+                fn r:
+                meh r f g
+            """
+            (infer "main")
+            (Test.isOkAndEqualTo
+                 {
+                 , freeTyvars = freeTyvars [ 3 ]
+                 , type =
+                     TH.taFunction
+                         [
+                         , TA.'typeRecord
+                             ('just 3)
+                             (Dict.fromList
+                                  [
+                                  , "attr" & TH.taBool
+                                  , "blah" & TH.taNumber
+                                  ]
+                             )
+                         ]
+                         TH.taBool
+                 }
+            )
         ]
 
 
