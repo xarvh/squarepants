@@ -151,7 +151,7 @@ fmtBlock as fn Int, [ Highlight ], [ Text ]: Text =
             'just (s & e):
                 "\n"
                 .. Text.repeat pad " "
-                .. "   "
+                .. "    "
                 .. Text.repeat (s - 1) " "
                 .. warn (Text.repeat (max 1 (e - s)) "^")
 
