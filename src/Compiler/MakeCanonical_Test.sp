@@ -173,6 +173,14 @@ binops as Test =
             transformAB
             (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
+            "[reg] minus should be left-associative"
+            """
+            a = x - y - z
+            b = (x - y) - z
+            """
+            transformAB
+            (shouldHaveSameAB (fn x: x.maybeBody))
+        , codeTest
             "right associativity"
             """
             a = v :: f :: g

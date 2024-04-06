@@ -1110,6 +1110,10 @@ translateBinopChain as fn Env, Pos, Int, FA.BinopChain: Res CA.Expression =
         translateLogical env pos opChain
     else if group == Op.precedence_mutop then
         translateMutop env pos opChain
+    else if group == Op.precedence_addittive then
+        translateLeftAssociativeBinopChain env pos opChain
+    else if group == Op.precedence_multiplicative then
+        translateLeftAssociativeBinopChain env pos opChain
     else
         translateRightAssociativeBinopChain env pos opChain
 
@@ -1261,6 +1265,34 @@ translateRightAssociativeBinopChain as fn Env, Pos, FA.BinopChain: Res CA.Expres
                 CA.'variable op.pos ('refGlobal op.usr)
 
             CA.'call pos caRef [ caLeft, CA.'argumentExpression caRight ] >> 'ok
+
+
+translateLeftAssociativeBinopChain as fn Env, Pos, FA.BinopChain: Res CA.Expression =
+    fn env, pos, left & opsAndRight:
+    translateExpression env left
+    >> onOk fn caLeft:
+    translateBinopChainRec env pos caLeft opsAndRight
+
+
+translateBinopChainRec as fn Env, Pos, CA.Expression, [ FA.Binop & FA.Expression ]: Res CA.Expression =
+    fn env, pos, leftAccum, opsAndRight:
+    try opsAndRight as
+
+        []:
+            'ok leftAccum
+
+        [ op & faRight, tail... ]:
+            translateArgument env faRight
+            >> onOk fn caRight:
+
+            CA.'call pos
+                  (CA.'variable op.pos ('refGlobal op.usr))
+                  [ CA.'argumentExpression leftAccum
+                  , caRight
+                  ]
+            >> translateBinopChainRec env pos __ tail
+
+
 
 
 #
