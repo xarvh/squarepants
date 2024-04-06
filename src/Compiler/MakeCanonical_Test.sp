@@ -76,7 +76,6 @@ firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
 # TODO move this to Helpers?
 transformAB as fn Text: Result Text (CA.ValueDef & CA.ValueDef) =
     fn code:
-
     findAB as fn CA.Module: Maybe (CA.ValueDef & CA.ValueDef) =
         fn mod:
         try mod.valueDefs >> Dict.values >> List.sortBy (fn def: def.name) __ as
@@ -181,6 +180,14 @@ binops as Test =
             transformAB
             (shouldHaveSameAB (fn x: x.maybeBody))
         , codeTest
+            "[reg] division should be left-associative"
+            """
+            a = x / y / z
+            b = (x / y) / z
+            """
+            transformAB
+            (shouldHaveSameAB (fn x: x.maybeBody))
+        , codeTest
             "right associativity"
             """
             a = v :: f :: g
@@ -236,24 +243,24 @@ binops as Test =
                            p
                            (CA.'variable p ('refGlobal CoreDefs.add.usr))
                            [
-                           , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
                            , CA.'argumentExpression
                                (CA.'call
                                     p
                                     (CA.'variable p ('refGlobal CoreDefs.add.usr))
                                     [
-                                    , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
                                     , CA.'argumentExpression
                                         (CA.'call
                                              p
                                              (CA.'variable p ('refGlobal CoreDefs.add.usr))
                                              [
-                                             , CA.'argumentExpression (CA.'literalNumber p 3)
-                                             , CA.'argumentExpression (CA.'variable p ('refPlaceholder 2))
+                                             , CA.'argumentExpression (CA.'variable p ('refPlaceholder 0))
+                                             , CA.'argumentExpression (CA.'variable p ('refPlaceholder 1))
                                              ]
                                         )
+                                    , CA.'argumentExpression (CA.'literalNumber p 3)
                                     ]
                                )
+                           , CA.'argumentExpression (CA.'variable p ('refPlaceholder 2))
                            ]
                       )
                  )
@@ -789,7 +796,7 @@ polymorphicUniques as Test =
                  >> firstDefinitionStripDeps
                  >> onOk fn def:
                  try def.maybeAnnotation as
-                     ('just ann): 'ok ann.univars
+                     'just ann: 'ok ann.univars
                      _: 'err "no ann"
             )
             (Test.isOkAndEqualTo << Set.fromList [ 1, 2 ])
