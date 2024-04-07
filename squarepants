@@ -2426,7 +2426,7 @@ const c0$Text$join = (($sep, $listOfText) => {
               ? ((() => {
                 const $h = ($ls)[1];
                 const $t = ($ls)[2];
-                return ($rec)($t, ($acc + ($sep + $h)));
+                return ($rec)($t, (($acc + $sep) + $h));
               }))()
               : (sp_throw)('Missing pattern in try..as', 'corelib/src/Text.sp 139:16', (sp_toHuman)($ls))));
         });
@@ -3241,10 +3241,10 @@ const c0$Compiler$Meta$resolveLocation = (($pars, $location, $maybeReferencedMod
                   return (c0$List$filterMap)(c0$Basics$identity, $0);
                 }))((c0$Core$Cons)(((sp_equal)($referencedModuleAlias, $modulePath)
                   ? c0$Maybe$Nothing
-                  : (c0$Maybe$Just)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))))), (c0$Core$Cons)((c0$Maybe$Just)(("However, library $directoryPathOfLibrary does not expose any " + ($modulePath + " module."))), c0$Core$Nil)))));
+                  : (c0$Maybe$Just)((((("imports.sp translates `" + $referencedModuleAlias) + "` as `") + $modulePath) + "`"))), (c0$Core$Cons)((c0$Maybe$Just)((("However, library $directoryPathOfLibrary does not expose any " + $modulePath) + " module.")), c0$Core$Nil)))));
               }))()
               : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
-                ? (c0$Result$Err)(($pars.makeError)((c0$Core$Cons)(("Library cannot find: " + ($modulePath + (" which contains " + $referencedName))), c0$Core$Nil)))
+                ? (c0$Result$Err)(($pars.makeError)((c0$Core$Cons)(((("Library cannot find: " + $modulePath) + " which contains ") + $referencedName), c0$Core$Nil)))
                 : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 282:24', (sp_toHuman)($maybeReferencedModuleAlias))))
             : ((($6)[0] === "$Just")
               ? ((() => {
@@ -3260,11 +3260,11 @@ const c0$Compiler$Meta$resolveLocation = (($pars, $location, $maybeReferencedMod
                       ? ((() => {
                         const $referencedModuleAlias = ($maybeReferencedModuleAlias)[1];
                         return (c0$Result$Err)(($pars.makeError)(((sp_equal)($referencedModuleAlias, $modulePath)
-                          ? (c0$Core$Cons)(($modulePath + (" in library $directoryPathOfLibrary does not expose any `" + ($referencedName + "`."))), c0$Core$Nil)
-                          : (c0$Core$Cons)(("imports.sp translates `" + ($referencedModuleAlias + ("` as `" + ($modulePath + "`")))), (c0$Core$Cons)(("However, " + ($modulePath + (" in library $directoryPathOfLibrary does not expose any `" + ($referencedName + "`.")))), c0$Core$Nil)))));
+                          ? (c0$Core$Cons)(((($modulePath + " in library $directoryPathOfLibrary does not expose any `") + $referencedName) + "`."), c0$Core$Nil)
+                          : (c0$Core$Cons)((((("imports.sp translates `" + $referencedModuleAlias) + "` as `") + $modulePath) + "`"), (c0$Core$Cons)((((("However, " + $modulePath) + " in library $directoryPathOfLibrary does not expose any `") + $referencedName) + "`."), c0$Core$Nil)))));
                       }))()
                       : ((($maybeReferencedModuleAlias)[0] === "$Nothing")
-                        ? (c0$Result$Err)(($pars.makeError)((c0$Core$Cons)(($referencedName + (" is not in " + $modulePath)), c0$Core$Nil)))
+                        ? (c0$Result$Err)(($pars.makeError)((c0$Core$Cons)((($referencedName + " is not in ") + $modulePath), c0$Core$Nil)))
                         : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 310:32', (sp_toHuman)($maybeReferencedModuleAlias))))
                     : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/Meta.sp 304:24', (sp_toHuman)($7))));
               }))()
@@ -5342,7 +5342,7 @@ const i2$Test$errorContains = (($snippets) => {
               }))(((($0) => {
                 return (text_split)("\n", $0);
               }))($e)));
-              return (c0$Maybe$Just)(("Error message:\n\n" + ($indentedError + ("\n\nis missing snippets: " + (c0$Text$join)(", ", $missing)))));
+              return (c0$Maybe$Just)(((("Error message:\n\n" + $indentedError) + "\n\nis missing snippets: ") + (c0$Text$join)(", ", $missing)));
             }))());
         }))()
         : (sp_throw)('Missing pattern in try..as', 'installedLibraries/test/Test.sp 96:8', (sp_toHuman)($result))));
@@ -5400,7 +5400,7 @@ const i2$Test$outcomesRec = (($path, $test, $accum) => {
           const $pathSegment = ($test)[1];
           const $ts = ($test)[2];
           return (c0$List$for)($accum, $ts, (($0, $1) => {
-            return (i2$Test$outcomesRec)(($path + ($pathSegment + " / ")), $0, $1);
+            return (i2$Test$outcomesRec)((($path + $pathSegment) + " / "), $0, $1);
           }));
         }))()
         : (sp_throw)('Missing pattern in try..as', 'installedLibraries/test/Test.sp 128:4', (sp_toHuman)($test)))));
@@ -6100,7 +6100,7 @@ const u0$Compiler$MakeCanonical$insertPatternNames = (($isRoot, $pattern, $env) 
     return ((($6)[0] === "$Just")
       ? ((() => {
         const $duplicateName = ($6)[1];
-        return (u0$Compiler$MakeCanonical$error)($env, $paName.pos, (c0$Core$Cons)(("A variable named `" + ($paName.name + "` has already been defined.")), (c0$Core$Cons)("You need to find a less ambiguous name.", c0$Core$Nil)));
+        return (u0$Compiler$MakeCanonical$error)($env, $paName.pos, (c0$Core$Cons)((("A variable named `" + $paName.name) + "` has already been defined."), (c0$Core$Cons)("You need to find a less ambiguous name.", c0$Core$Nil)));
       }))()
       : ((($6)[0] === "$Nothing")
         ? ((() => {
@@ -6134,7 +6134,7 @@ const u0$Compiler$MakeCanonical$insertPatternNames = (($isRoot, $pattern, $env) 
               isRoot: $isRoot,
               pos: $paName.pos,
             }), $vs))
-            : (u0$Compiler$MakeCanonical$error)($env, $paName.pos, (c0$Core$Cons)(("There is already a global variable named `" + ($paName.name + "`.")), (c0$Core$Cons)("You need to find a different name, or modify imports.sp", c0$Core$Nil))));
+            : (u0$Compiler$MakeCanonical$error)($env, $paName.pos, (c0$Core$Cons)((("There is already a global variable named `" + $paName.name) + "`."), (c0$Core$Cons)("You need to find a different name, or modify imports.sp", c0$Core$Nil))));
         }))()
         : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 832:8', (sp_toHuman)($6))));
   })));
@@ -6180,7 +6180,7 @@ const u0$Compiler$MakeCanonical$translateAndInsertRecordAttributeType = (($ro, $
     return ((c0$Dict$member)($name, $caAttrs)
       ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)(("Duplicate attribute name: " + $name), c0$Core$Nil))
       : ((($maybeFaType)[0] === "$Nothing")
-        ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)(("I need to see the type of this attribute, `" + ($name + " as TheType`")), c0$Core$Nil))
+        ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)((("I need to see the type of this attribute, `" + $name) + " as TheType`"), c0$Core$Nil))
         : ((($maybeFaType)[0] === "$Just")
           ? ((() => {
             const $faType = ($maybeFaType)[1];
@@ -6194,7 +6194,7 @@ const u0$Compiler$MakeCanonical$translateAndInsertRecordAttributeType = (($ro, $
               return (u0$Compiler$MakeCanonical$translateRawType)($ro, $0);
             }))($faType));
           }))()
-          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1277:8', (sp_toHuman)($maybeFaType)))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1309:8', (sp_toHuman)($maybeFaType)))));
   })))((u0$Compiler$MakeCanonical$translateAttributeName)($ro, $faAttr.name));
 });
 
@@ -6225,14 +6225,14 @@ const u0$Compiler$MakeCanonical$translatePoly = (($ro, $expr) => {
                 second: $e,
               }));
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1323:12', (sp_toHuman)($4))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1355:12', (sp_toHuman)($4))));
       }))()
       : (true
         ? (c0$Result$Ok)(({
           first: c0$Compiler$Ast$Imm,
           second: $expr,
         }))
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1317:4', (sp_toHuman)($expr_)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1349:4', (sp_toHuman)($expr_)))));
 });
 
 const u0$Compiler$MakeCanonical$translateFullType = (($ro, $expr) => {
@@ -6306,7 +6306,7 @@ const u0$Compiler$MakeCanonical$translateTypeFunctionParameter = (($ro, $express
       }))(((($0) => {
         return (u0$Compiler$MakeCanonical$translateFullType)($ro, $0);
       }))($expression))
-      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1299:4', (sp_toHuman)($expr_))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1331:4', (sp_toHuman)($expr_))));
 });
 
 const u0$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
@@ -6355,7 +6355,7 @@ const u0$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
             }))()
             : (true
               ? (u0$Compiler$MakeCanonical$erroro)($ro, $refPos, (c0$Core$Cons)("I need an Uppercase type name here", c0$Core$Nil))
-              : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1361:12', (sp_toHuman)($ref))));
+              : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1393:12', (sp_toHuman)($ref))));
         }))()
         : ((($expr_)[0] === "$List")
           ? ((() => {
@@ -6374,7 +6374,7 @@ const u0$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
                 }))()
                 : (true
                   ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)("List items must all have the same type, so you can specify only one type", c0$Core$Nil))
-                  : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1375:12', (sp_toHuman)($dotsAndItems)))));
+                  : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1407:12', (sp_toHuman)($dotsAndItems)))));
           }))()
           : ((($expr_)[0] === "$Record")
             ? ((() => {
@@ -6424,7 +6424,7 @@ const u0$Compiler$MakeCanonical$translateRawType = (($ro, $1) => {
                 }))()
                 : (true
                   ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)("Not sure what's up with this type =|", (c0$Core$Cons)((sp_toHuman)($expr_), c0$Core$Nil)))
-                  : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1343:4', (sp_toHuman)($expr_))))))))));
+                  : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1375:4', (sp_toHuman)($expr_))))))))));
 });
 
 const u0$Compiler$MakeCanonical$translateConstructor = (($varType, $varUsr, $varPars, $2, $1) => {
@@ -6482,7 +6482,7 @@ const u0$Compiler$MakeCanonical$translateConstructor = (($varType, $varUsr, $var
         }), $0);
       }))($faPars));
     })))(((c0$Dict$member)($name, $constructors)
-      ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)(("constructor " + ($name + " is duplicate")), c0$Core$Nil))
+      ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)((("constructor " + $name) + " is duplicate"), c0$Core$Nil))
       : (c0$Result$Ok)(null)));
   })))((((($expr_)[0] === "$Constructor") && ((($expr_)[1].maybeModule)[0] === "$Nothing"))
     ? ((() => {
@@ -6503,7 +6503,7 @@ const u0$Compiler$MakeCanonical$translateConstructor = (($varType, $varUsr, $var
       }))()
       : (true
         ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("I need a 'constructor name here!", c0$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1431:4', (sp_toHuman)($expr_))))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1463:4', (sp_toHuman)($expr_))))));
 });
 
 const u0$Compiler$MakeCanonical$argumentDeps = (($arg, $deps) => {
@@ -6812,7 +6812,7 @@ const u0$Compiler$MakeCanonical$sameDirectionAs = (($a, $b) => {
               ? (sp_equal)($b.symbol, "<")
               : (true
                 ? false
-                : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1240:8', (sp_toHuman)($3)))))));
+                : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1244:8', (sp_toHuman)($3)))))));
     }))());
 });
 
@@ -6836,7 +6836,7 @@ const u0$Compiler$MakeCanonical$translateRightAssociativeBinopChain = (($env, $p
           })));
         })))((u0$Compiler$MakeCanonical$translateArgument)($env, $faLeft));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1250:4', (sp_toHuman)($faOpsAndRight))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1254:4', (sp_toHuman)($faOpsAndRight))));
 });
 
 const u0$Compiler$MakeCanonical$translateComparison = (($env, $pos, $opChain) => {
@@ -6860,7 +6860,32 @@ const u0$Compiler$MakeCanonical$translateComparison = (($env, $pos, $opChain) =>
             ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("TODO: not (yet) implemented: compops expansion", c0$Core$Nil))
             : (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("can't mix comparison ops with different direction", c0$Core$Nil)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1187:4', (sp_toHuman)($4)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1191:4', (sp_toHuman)($4)))));
+});
+
+const u0$Compiler$MakeCanonical$translateBinopChainRec = (($env, $pos, $leftAccum, $opsAndRight) => {
+  return ((($opsAndRight)[0] === "$Nil")
+    ? (c0$Result$Ok)($leftAccum)
+    : ((($opsAndRight)[0] === "$Cons")
+      ? ((() => {
+        const $op = ($opsAndRight)[1].first;
+        const $faRight = ($opsAndRight)[1].second;
+        const $tail = ($opsAndRight)[2];
+        return ((c0$Result$onOk)((($caRight) => {
+          return ((($0) => {
+            return (u0$Compiler$MakeCanonical$translateBinopChainRec)($env, $pos, $0, $tail);
+          }))((c0$Compiler$CanonicalAst$Call)($pos, (c0$Compiler$CanonicalAst$Variable)($op.pos, (c0$Compiler$Ast$RefGlobal)($op.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)($leftAccum), (c0$Core$Cons)($caRight, c0$Core$Nil))));
+        })))((u0$Compiler$MakeCanonical$translateArgument)($env, $faRight));
+      }))()
+      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1279:4', (sp_toHuman)($opsAndRight))));
+});
+
+const u0$Compiler$MakeCanonical$translateLeftAssociativeBinopChain = (($env, $pos, $1) => {
+  const $left = $1.first;
+  const $opsAndRight = $1.second;
+  return ((c0$Result$onOk)((($caLeft) => {
+    return (u0$Compiler$MakeCanonical$translateBinopChainRec)($env, $pos, $caLeft, $opsAndRight);
+  })))((u0$Compiler$MakeCanonical$translateExpression)($env, $left));
 });
 
 const u0$Compiler$MakeCanonical$translateLogical = (($env, $pos, $opChain) => {
@@ -6894,7 +6919,7 @@ const u0$Compiler$MakeCanonical$translateMutop = (($env, $pos, $1) => {
       }))()
       : (true
         ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("mutops can't be chained", c0$Core$Nil))
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1217:4', (sp_toHuman)($chainTail)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1221:4', (sp_toHuman)($chainTail)))));
 });
 
 const u0$Compiler$MakeCanonical$translateTupleExpression = (($env, $pos, $1) => {
@@ -6939,7 +6964,7 @@ const u0$Compiler$MakeCanonical$translateTupleExpression = (($env, $pos, $1) => 
         }))()
         : (true
           ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("Tuples can't have more than 3 items, use a record instead.", c0$Core$Nil))
-          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1151:4', (sp_toHuman)($chainTail))))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1155:4', (sp_toHuman)($chainTail))))));
 });
 
 const u0$Compiler$MakeCanonical$translateBinopChain = (($env, $pos, $group, $opChain) => {
@@ -7007,13 +7032,17 @@ const u0$Compiler$MakeCanonical$translateBinopChain = (($env, $pos, $group, $opC
             ? (u0$Compiler$MakeCanonical$translateLogical)($env, $pos, $opChain)
             : ((sp_equal)($group, c0$Compiler$Op$precedence_mutop)
               ? (u0$Compiler$MakeCanonical$translateMutop)($env, $pos, $opChain)
-              : (u0$Compiler$MakeCanonical$translateRightAssociativeBinopChain)($env, $pos, $opChain)))))));
+              : ((sp_equal)($group, c0$Compiler$Op$precedence_addittive)
+                ? (u0$Compiler$MakeCanonical$translateLeftAssociativeBinopChain)($env, $pos, $opChain)
+                : ((sp_equal)($group, c0$Compiler$Op$precedence_multiplicative)
+                  ? (u0$Compiler$MakeCanonical$translateLeftAssociativeBinopChain)($env, $pos, $opChain)
+                  : (u0$Compiler$MakeCanonical$translateRightAssociativeBinopChain)($env, $pos, $opChain)))))))));
 });
 
 const u0$Compiler$MakeCanonical$translateNumber = (($ro, $isPercent, $constructor, $pos, $numberAsText) => {
   const $6 = (text_toNumber)((c0$Text$replace)("_", "", $numberAsText));
   return ((($6)[0] === "$Nothing")
-    ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)(("invalid number: `" + ($numberAsText + "`")), (c0$Core$Cons)("TODO link to documentation on valid number formats", c0$Core$Nil)))
+    ? (u0$Compiler$MakeCanonical$erroro)($ro, $pos, (c0$Core$Cons)((("invalid number: `" + $numberAsText) + "`"), (c0$Core$Cons)("TODO link to documentation on valid number formats", c0$Core$Nil)))
     : ((($6)[0] === "$Just")
       ? ((() => {
         const $n = ($6)[1];
@@ -7468,7 +7497,7 @@ const u0$Compiler$MakeCanonical$translateRecord = (($env, $pos, $maybeMaybeExten
 const u0$Compiler$MakeCanonical$translateRecordShorthand = (($env, $pos, $attrPath, $name) => {
   const $5 = $env.maybeShorthandTarget;
   return ((($5)[0] === "$Nothing")
-    ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("Record update shorthands must be used inside a record update such as", (c0$Core$Cons)(("    { aRecord with anAttribute = doSomethingWith ." + ((c0$Text$join)(".", $attrPath) + " }")), (c0$Core$Cons)("but we are not inside a record update!", c0$Core$Nil))))
+    ? (u0$Compiler$MakeCanonical$error)($env, $pos, (c0$Core$Cons)("Record update shorthands must be used inside a record update such as", (c0$Core$Cons)((("    { aRecord with anAttribute = doSomethingWith ." + (c0$Text$join)(".", $attrPath)) + " }"), (c0$Core$Cons)("but we are not inside a record update!", c0$Core$Nil))))
     : ((($5)[0] === "$Just")
       ? ((() => {
         const $shorthandTarget = ($5)[1];
@@ -8077,7 +8106,7 @@ const u0$Compiler$MakeCanonical$insertRootStatement = (($faStatement, $1) => {
                 })));
               }))());
           }))()
-          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1504:4', (sp_toHuman)($faStatement))))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical.sp 1536:4', (sp_toHuman)($faStatement))))));
 });
 
 const u0$Compiler$MakeCanonical$translateModule = (($ro, $faModule) => {
@@ -8281,7 +8310,7 @@ const u0$Compiler$Lexer$addParenOrCommaToken = (($char, $state) => {
                 : (("," === $char)
                   ? ($add)(c0$Compiler$Token$Comma)
                   : (true
-                    ? ((__re__ = (u0$Compiler$Lexer$addError)(("I can't make sense of this piece of text: `" + ($char + "`")), $state)), ($state = (__re__)[1]), (__re__)[0])
+                    ? ((__re__ = (u0$Compiler$Lexer$addError)((("I can't make sense of this piece of text: `" + $char) + "`"), $state)), ($state = (__re__)[1]), (__re__)[0])
                     : (sp_throw)('Missing pattern in try..as', 'src/Compiler/Lexer.sp 564:4', (sp_toHuman)($char)))))))))),
     $state,
   ]);
@@ -8328,7 +8357,7 @@ const u0$Compiler$Lexer$addSquiggleToken = (($buffer, $nextIsSpace, $state) => {
                           return ($add)((c0$Compiler$Token$Binop)(((__re__ = (basics_cloneUni)($state.line)), ($state.line = (__re__)[1]), (__re__)[0]), $binop));
                         }))()
                         : ((($5)[0] === "$Nothing")
-                          ? ((__re__ = (u0$Compiler$Lexer$addError)(("Invalid operator: `" + ($chunk + "`")), $state)), ($state = (__re__)[1]), (__re__)[0])
+                          ? ((__re__ = (u0$Compiler$Lexer$addError)((("Invalid operator: `" + $chunk) + "`"), $state)), ($state = (__re__)[1]), (__re__)[0])
                           : (sp_throw)('Missing pattern in try..as', 'src/Compiler/Lexer.sp 548:12', (sp_toHuman)($5))));
                     }))()
                     : (sp_throw)('Missing pattern in try..as', 'src/Compiler/Lexer.sp 524:4', (sp_toHuman)($chunk)))))))))),
@@ -8628,7 +8657,7 @@ const u0$Compiler$Lexer$setMode = (($mode, $state) => {
 
 const u0$Compiler$Lexer$thereIsABlankAhead = (($offset, $buffer, $state) => {
   const $start = (text_fromNumber)((((__re__ = (basics_cloneUni)($state.nextPos)), ($state.nextPos = (__re__)[1]), (__re__)[0]) + $offset));
-  const $regex = (".{" + ($start + "}\n[ ]*(\n|$)"));
+  const $regex = ((".{" + $start) + "}\n[ ]*(\n|$)");
   return ([
     (sp_not_equal)(((text_startsWithRegex)($regex))($buffer), ""),
     $state,
@@ -10213,7 +10242,7 @@ const u0$BuildMain$loadCaModule = (($pars, $1) => {
 const u0$BuildMain$exportsFileName = "exports.sp";
 
 const u0$BuildMain$listSourceDir = (($io, $sourceDirRoot, $modulePathWithTrailingSlash) => {
-  const $path = ($sourceDirRoot + ("/" + $modulePathWithTrailingSlash));
+  const $path = (($sourceDirRoot + "/") + $modulePathWithTrailingSlash);
   return ([
     ((c0$Result$onOk)((($dirContents) => {
       const $directChildren = ((($0) => {
@@ -10228,7 +10257,7 @@ const u0$BuildMain$listSourceDir = (($io, $sourceDirRoot, $modulePathWithTrailin
         return (c0$Result$Ok)($x);
       })))(((($0) => {
         return (c0$List$mapRes)((($subDir) => {
-          return ((__re__ = (u0$BuildMain$listSourceDir)($io, $sourceDirRoot, ($modulePathWithTrailingSlash + ($subDir + "/")))), ($io = (__re__)[1]), (__re__)[0]);
+          return ((__re__ = (u0$BuildMain$listSourceDir)($io, $sourceDirRoot, (($modulePathWithTrailingSlash + $subDir) + "/"))), ($io = (__re__)[1]), (__re__)[0]);
         }), $0);
       }))(((($0) => {
         return (c0$List$filterMap)(u0$BuildMain$asModuleDirectory, $0);
@@ -10526,7 +10555,7 @@ const u0$SPLib$SPON$field = (($fieldName, $fieldReader) => {
                       const $head = ($unreadStatements)[1];
                       return (u0$SPLib$SPON$Failed)(((($0) => {
                         return (c0$Compiler$Pos$At)((c0$Compiler$FormattableAst$statementPos)($head), $0);
-                      }))(("Could not make sense of all the statements in field `" + ($fieldName + "`."))));
+                      }))((("Could not make sense of all the statements in field `" + $fieldName) + "`.")));
                     }))()
                     : (sp_throw)('Missing pattern in try..as', 'src/SPLib/SPON.sp 239:24', (sp_toHuman)($unreadStatements))));
               }))()
@@ -10539,7 +10568,7 @@ const u0$SPLib$SPON$field = (($fieldName, $fieldReader) => {
           }))()
           : (u0$SPLib$SPON$Rejected)(((($0) => {
             return (c0$Compiler$Pos$At)($pos, $0);
-          }))(("expecting `" + ($fieldName + " =`")))));
+          }))((("expecting `" + $fieldName) + " =`"))));
       }))()
       : ((($0)[0] === "$Cons")
         ? ((() => {
@@ -10920,7 +10949,7 @@ const u0$ExportsFile$toExports = (($imports, $exportsFile) => {
       const $7 = (c0$Dict$get)($modulePath, $imports.modulePathToLocation);
       return ((($7)[0] === "$Nothing")
         ? ((() => {
-          ($addError)((c0$Core$Cons)(("TODO exports refers to a module with path " + ($modulePath + " but that is not in imports.")), (c0$Core$Cons)(((($0) => {
+          ($addError)((c0$Core$Cons)((("TODO exports refers to a module with path " + $modulePath) + " but that is not in imports."), (c0$Core$Cons)(((($0) => {
             return (c0$Text$join)(", ", $0);
           }))((c0$Dict$keys)($imports.modulePathToLocation)), c0$Core$Nil)));
           return $d;
@@ -11493,8 +11522,8 @@ const u0$Compiler$LazyBuild$evaluateCircularValues = (($state, $errors, $lastUni
                       ((($0) => {
                         return ((__re__ = (array_push)($errors, $0)), ($errors = (__re__)[1]), (__re__)[0]);
                       }))((u0$Compiler$Error$Raw)(((sp_equal)($others, c0$Core$Nil)
-                        ? (c0$Core$Cons)(("Value " + ($def.name + "  is recursive, so I need a type annotation for it.")), c0$Core$Nil)
-                        : (c0$Core$Cons)(("Value " + ($def.name + (" depends is mutually recursive with " + ((sp_toHuman)($circular) + " so I need it to be annotated.")))), c0$Core$Nil))));
+                        ? (c0$Core$Cons)((("Value " + $def.name) + "  is recursive, so I need a type annotation for it."), c0$Core$Nil)
+                        : (c0$Core$Cons)((((("Value " + $def.name) + " depends is mutually recursive with ") + (sp_toHuman)($circular)) + " so I need it to be annotated."), c0$Core$Nil))));
                       return $envX;
                     }))()
                     : (sp_throw)('Missing pattern in try..as', 'src/Compiler/LazyBuild.sp 171:32', (sp_toHuman)($9))));
@@ -12518,7 +12547,7 @@ const u0$Human$Format$formatLiteralText = ((() => {
   const $tripleQuote = (u0$SPLib$Format$textToBlock)("\"\"\"");
   return (($singleOrTriple, $text) => {
     return ((($singleOrTriple)[0] === "$SingleQuote")
-      ? (u0$SPLib$Format$textToBlock)(($singleQuote + ($text + $singleQuote)))
+      ? (u0$SPLib$Format$textToBlock)((($singleQuote + $text) + $singleQuote))
       : ((($singleOrTriple)[0] === "$TripleQuote")
         ? ((() => {
           const $rows = ((($0) => {
@@ -13014,13 +13043,13 @@ const u0$Human$Type$umrToText = (($projectImports, $1) => {
   const $rootDirectory = ($1)[1];
   const $sourceDirId = ($1)[2];
   const $modulePath = ($1)[3];
-  return ((u0$Human$Type$rootToPath)($rootDirectory) + ((text_fromNumber)($sourceDirId) + (":" + $modulePath)));
+  return ((((u0$Human$Type$rootToPath)($rootDirectory) + (text_fromNumber)($sourceDirId)) + ":") + $modulePath);
 });
 
 const u0$Human$Type$usrToText = (($projectImports, $1) => {
   const $umr = ($1)[1];
   const $name = ($1)[2];
-  return ((u0$Human$Type$umrToText)($projectImports, $umr) + ("." + $name));
+  return (((u0$Human$Type$umrToText)($projectImports, $umr) + ".") + $name);
 });
 
 const u0$Human$Type$doUsr = (($projectImports, $usr) => {
@@ -13360,7 +13389,7 @@ const u0$Compiler$TypeCheck$compareParTypes = (($env, $currentEquality, $index, 
           return ((($9)[0] === "$CanBeCastYes")
             ? null
             : (((($9)[0] === "$CanBeCastNo") && ((($9)[1])[0] === "$Nil"))
-              ? ((__re__ = (u0$Compiler$TypeCheck$addErError)($env, $currentEquality, ("Function call par " + ((text_fromNumber)($index) + " with wrong uniqueness")), $state)), ($state = (__re__)[1]), (__re__)[0])
+              ? ((__re__ = (u0$Compiler$TypeCheck$addErError)($env, $currentEquality, (("Function call par " + (text_fromNumber)($index)) + " with wrong uniqueness"), $state)), ($state = (__re__)[1]), (__re__)[0])
               : (((($9)[0] === "$CanBeCastNo") && ((($9)[1])[0] === "$Cons"))
                 ? ((() => {
                   const $id = (($9)[1])[1].first;
@@ -15982,7 +16011,7 @@ const u0$Compiler$Error$formatSeparator = "$|$|$";
 const u0$Compiler$Error$formatSuffix = "$`$`$";
 
 const u0$Compiler$Error$formatWrap = (($fmtName, $text) => {
-  return (u0$Compiler$Error$formatSeparator + ($fmtName + (u0$Compiler$Error$formatSuffix + ($text + u0$Compiler$Error$formatSeparator))));
+  return ((((u0$Compiler$Error$formatSeparator + $fmtName) + u0$Compiler$Error$formatSuffix) + $text) + u0$Compiler$Error$formatSeparator);
 });
 
 const u0$Compiler$Error$warn = (($0) => {
@@ -16005,7 +16034,7 @@ const u0$Compiler$Error$fmtBlock = (($start, $highlights, $ls) => {
         ? ((() => {
           const $s = ($6)[1].first;
           const $e = ($6)[1].second;
-          return ("\n" + ((c0$Text$repeat)($pad, " ") + ("   " + ((c0$Text$repeat)(($s - 1), " ") + (u0$Compiler$Error$warn)((c0$Text$repeat)((c0$Basics$max)(1, ($e - $s)), "^"))))));
+          return (((("\n" + (c0$Text$repeat)($pad, " ")) + "    ") + (c0$Text$repeat)(($s - 1), " ")) + (u0$Compiler$Error$warn)((c0$Text$repeat)((c0$Basics$max)(1, ($e - $s)), "^")));
         }))()
         : (sp_throw)('Missing pattern in try..as', 'src/Compiler/Error.sp 146:8', (sp_toHuman)($6))));
   });
@@ -16019,7 +16048,7 @@ const u0$Compiler$Error$fmtBlock = (($start, $highlights, $ls) => {
     const $s = ((($0) => {
       return (c0$Text$padLeft)($pad, " ", $0);
     }))((text_fromNumber)($index));
-    return ($s + (($lineDem)($index) + ($line + ($wordHighlight)($index))));
+    return ((($s + ($lineDem)($index)) + $line) + ($wordHighlight)($index));
   });
   return ((($s) => {
     return ($s + "\n");
@@ -16047,7 +16076,7 @@ const u0$Compiler$Error$showCodeBlock = (($code, $start, $end) => {
       const $extraLines = 2;
       const $lines = (text_split)("\n", $code);
       const $maxLines = (c0$List$length)($lines);
-      const $startLine = (c0$Basics$clamp)(0, ($maxLines - 1), ($start.line - ($extraLines - 1)));
+      const $startLine = (c0$Basics$clamp)(0, ($maxLines - 1), (($start.line - $extraLines) - 1));
       const $endLine = (c0$Basics$clamp)(0, ($maxLines - 1), ($end.line + $extraLines));
       const $size = (c0$Basics$max)(1, ($endLine - $startLine));
       return ((($0) => {
@@ -16075,7 +16104,7 @@ const u0$Compiler$Error$posToHuman = (($mod, $pos) => {
       const $end = (u0$Compiler$Error$positionToLineAndColumn)($mod.content, $endAsInt);
       return ({
         block: (u0$Compiler$Error$showCodeBlock)($mod.content, $start, $end),
-        location: ($mod.fsPath + (" " + ((text_fromNumber)($start.line) + (":" + (text_fromNumber)($start.col))))),
+        location: (((($mod.fsPath + " ") + (text_fromNumber)($start.line)) + ":") + (text_fromNumber)($start.col)),
       });
     }))()
     : ((($pos)[0] === "$End")
@@ -16087,7 +16116,7 @@ const u0$Compiler$Error$posToHuman = (($mod, $pos) => {
         });
         return ({
           block: (u0$Compiler$Error$showCodeBlock)($mod.content, $start, $end),
-          location: ($mod.fsPath + (" " + ((text_fromNumber)($end.line) + ":0 (end of file)"))),
+          location: ((($mod.fsPath + " ") + (text_fromNumber)($end.line)) + ":0 (end of file)"),
         });
       }))()
       : ((($pos)[0] === "$N")
@@ -16099,7 +16128,7 @@ const u0$Compiler$Error$posToHuman = (($mod, $pos) => {
             : ((($pos)[0] === "$I")
               ? ((() => {
                 const $n = ($pos)[1];
-                return ($noBlock)(("<inferred " + ((text_fromNumber)($n) + ">")));
+                return ($noBlock)((("<inferred " + (text_fromNumber)($n)) + ">"));
               }))()
               : ((($pos)[0] === "$G")
                 ? ($noBlock)("<generated>")
@@ -16710,7 +16739,7 @@ const u0$Compiler$UniquenessCheck$errorMutatingAConsumed = (($env, $name, $p2, $
   const $location = $6.location;
   const $block = $6.block;
   return ([
-    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $p1, $errors, (c0$Core$Cons)(("This code spends the unique variable `" + ($name + ("`, but `" + ($name + "` is being used again here:")))), (c0$Core$Cons)("", (c0$Core$Cons)($block, (c0$Core$Cons)("", (c0$Core$Cons)("If you want to use a unique more than once, you need to use a function that recycles it.", (c0$Core$Cons)("TODO: link to uniqueness wiki page", c0$Core$Nil)))))))), ($errors = (__re__)[1]), (__re__)[0]),
+    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $p1, $errors, (c0$Core$Cons)((((("This code spends the unique variable `" + $name) + "`, but `") + $name) + "` is being used again here:"), (c0$Core$Cons)("", (c0$Core$Cons)($block, (c0$Core$Cons)("", (c0$Core$Cons)("If you want to use a unique more than once, you need to use a function that recycles it.", (c0$Core$Cons)("TODO: link to uniqueness wiki page", c0$Core$Nil)))))))), ($errors = (__re__)[1]), (__re__)[0]),
     $errors,
   ]);
 });
@@ -16738,7 +16767,7 @@ const u0$Compiler$UniquenessCheck$errorReferencingConsumedVariable = (($env, $na
   const $block = $6.block;
   const $cons = (u0$Compiler$Error$posToHuman)((u0$Compiler$UniquenessCheck$getErrorModule)($env), $consumedPos);
   return ([
-    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $pos, $errors, (c0$Core$Cons)(("You can't reference again the variable `" + ($name + "` because it was used already here:")), (c0$Core$Cons)($cons.block, c0$Core$Nil)))), ($errors = (__re__)[1]), (__re__)[0]),
+    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $pos, $errors, (c0$Core$Cons)((("You can't reference again the variable `" + $name) + "` because it was used already here:"), (c0$Core$Cons)($cons.block, c0$Core$Nil)))), ($errors = (__re__)[1]), (__re__)[0]),
     $errors,
   ]);
 });
@@ -16827,9 +16856,9 @@ const u0$Compiler$UniquenessCheck$doArgument = (($env, $errors, $pos, $doneSoFar
 
 const u0$Compiler$UniquenessCheck$errorTaintedCallRecyclesFunctions = (($env, $callPos, $name, $required, $errors) => {
   return ([
-    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $callPos, $errors, (c0$Core$Cons)(("This function call could allow some unique values (" + (((($0) => {
+    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $callPos, $errors, (c0$Core$Cons)((("This function call could allow some unique values (" + ((($0) => {
       return (c0$Text$join)(", ", $0);
-    }))((c0$Dict$keys)($required)) + ")")), (c0$Core$Cons)(("to be recycled by a functions contained in the argument `" + ($name + "` outside of the scope where they were declared.")), (c0$Core$Cons)("This would be BAD. [TODO link to wiki]", (c0$Core$Cons)("TODO improve this explanation.", c0$Core$Nil)))))), ($errors = (__re__)[1]), (__re__)[0]),
+    }))((c0$Dict$keys)($required))) + ")"), (c0$Core$Cons)((("to be recycled by a functions contained in the argument `" + $name) + "` outside of the scope where they were declared."), (c0$Core$Cons)("This would be BAD. [TODO link to wiki]", (c0$Core$Cons)("TODO improve this explanation.", c0$Core$Nil)))))), ($errors = (__re__)[1]), (__re__)[0]),
     $errors,
   ]);
 });
@@ -16995,9 +17024,9 @@ const u0$Compiler$UniquenessCheck$errorFunctionsCannotConsumeParentUniques = (($
   return ([
     ((($0) => {
       return ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $functionPos, $errors, $0)), ($errors = (__re__)[1]), (__re__)[0]);
-    }))((c0$List$concat)((c0$Core$Cons)((c0$Core$Cons)(("This function is spending the unique variable `" + (((($0) => {
+    }))((c0$List$concat)((c0$Core$Cons)((c0$Core$Cons)((("This function is spending the unique variable `" + ((($0) => {
       return (c0$Text$join)("`, `", $0);
-    }))((c0$Dict$keys)($spentFromParent)) + "`")), c0$Core$Nil), (c0$Core$Cons)((c0$Core$Cons)("", c0$Core$Nil), (c0$Core$Cons)($blocks, (c0$Core$Cons)((c0$Core$Cons)("However, functions cannot spend uniques that were declared outside their body.", c0$Core$Nil), c0$Core$Nil)))))),
+    }))((c0$Dict$keys)($spentFromParent))) + "`"), c0$Core$Nil), (c0$Core$Cons)((c0$Core$Cons)("", c0$Core$Nil), (c0$Core$Cons)($blocks, (c0$Core$Cons)((c0$Core$Cons)("However, functions cannot spend uniques that were declared outside their body.", c0$Core$Nil), c0$Core$Nil)))))),
     $errors,
   ]);
 });
@@ -17009,7 +17038,7 @@ const u0$Compiler$UniquenessCheck$errorReturnExpressionRequiresUniquesDefinedInT
   const $location = $5.location;
   const $block = $5.block;
   return ([
-    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $fnPos, $errors, (c0$Core$Cons)(("This expression needs to access the unique variable `" + ($name + "` because it uses it here:")), (c0$Core$Cons)("", (c0$Core$Cons)($block, (c0$Core$Cons)("", (c0$Core$Cons)(("The problem is that returning a function from the expression could allow accessing `" + ($name + ("` from outside of where `" + ($name + "` was declared.")))), (c0$Core$Cons)("This would be BAD. [TODO link to wiki]", c0$Core$Nil)))))))), ($errors = (__re__)[1]), (__re__)[0]),
+    ((__re__ = (u0$Compiler$UniquenessCheck$addError)($env, $fnPos, $errors, (c0$Core$Cons)((("This expression needs to access the unique variable `" + $name) + "` because it uses it here:"), (c0$Core$Cons)("", (c0$Core$Cons)($block, (c0$Core$Cons)("", (c0$Core$Cons)((((("The problem is that returning a function from the expression could allow accessing `" + $name) + "` from outside of where `") + $name) + "` was declared."), (c0$Core$Cons)("This would be BAD. [TODO link to wiki]", c0$Core$Nil)))))))), ($errors = (__re__)[1]), (__re__)[0]),
     $errors,
   ]);
 });
@@ -17676,7 +17705,7 @@ const u0$BuildMain$compileMain = (($io, $pars) => {
   }), ".")), ($io = (__re__)[1]), (__re__)[0]));
   ((($0) => {
     return ((__re__ = (io_writeStdout)($io, $0)), ($io = (__re__)[1]), (__re__)[0]);
-  }))(("Project root is " + ((path_resolve)((c0$Core$Cons)($projectRoot, c0$Core$Nil)) + "\n")));
+  }))((("Project root is " + (path_resolve)((c0$Core$Cons)($projectRoot, c0$Core$Nil))) + "\n"));
   const $importsPath = (c0$Compiler$Meta$ImportsPath)(c0$Compiler$Meta$User, "");
   const $corelibPath = ((() => {
     const $3 = $pars.corelib;
@@ -17723,7 +17752,7 @@ const u0$BuildMain$compileMain = (($io, $pars) => {
           const $makePlatformUmr = (($modulePath) => {
             const $7 = (c0$Dict$get)($modulePath, $platformModuleLocations);
             return ((($7)[0] === "$Nothing")
-              ? (sp_todo)(("no " + ($modulePath + "in loaded platform.")))
+              ? (sp_todo)((("no " + $modulePath) + "in loaded platform."))
               : ((($7)[0] === "$Just")
                 ? ((() => {
                   const $location = ($7)[1];
@@ -17747,7 +17776,7 @@ const u0$BuildMain$compileMain = (($io, $pars) => {
                               const $libraryImports = ($8)[1];
                               const $9 = (c0$Dict$get)($modulePath, $libraryImports.modulePathToLocation);
                               return ((($9)[0] === "$Nothing")
-                                ? (sp_todo)(("Platform bug: no module " + ($modulePath + (" the library imports for platform " + $pars.platform.name))))
+                                ? (sp_todo)(((("Platform bug: no module " + $modulePath) + " the library imports for platform ") + $pars.platform.name))
                                 : (((($9)[0] === "$Just") && ((($9)[1])[0] === "$LocationLibrary"))
                                   ? (sp_todo)(("Platform bug: platform wants the UMR of a library module: " + $modulePath))
                                   : (((($9)[0] === "$Just") && ((($9)[1])[0] === "$LocationSourceDir"))
@@ -17799,7 +17828,7 @@ const u0$BuildMain$compileMain = (($io, $pars) => {
                   : (sp_throw)('Missing pattern in try..as', 'src/BuildMain.sp 483:8', (sp_toHuman)($7))));
             }))();
             return ((c0$Result$onOk)(((_0) => {
-              return (u0$BuildMain$ioToRes)(((__re__ = (io_writeStdout)($io, ("---> " + ($outputFile + " written. =)")))), ($io = (__re__)[1]), (__re__)[0]));
+              return (u0$BuildMain$ioToRes)(((__re__ = (io_writeStdout)($io, (("---> " + $outputFile) + " written. =)"))), ($io = (__re__)[1]), (__re__)[0]));
             })))((u0$BuildMain$ioToRes)(((($0) => {
               return ((__re__ = (io_writeFile)($io, $outputFile, $0)), ($io = (__re__)[1]), (__re__)[0]);
             }))((($pars.platform.makeExecutable)($makePlatformUmr))(({
@@ -17816,7 +17845,7 @@ const u0$BuildMain$compileMain = (($io, $pars) => {
             requiredUsrs: (c0$Core$Cons)($entryUsr, ($pars.platform.extraRequiredUsrs)($makePlatformUmr)),
           })));
         })))(((($0) => {
-          return (c0$Maybe$toResult)((u0$Compiler$Error$Raw)((c0$Core$Cons)(("project imports.sp does not specify a '" + ($pars.platform.name + "' platform.")), c0$Core$Nil)), $0);
+          return (c0$Maybe$toResult)((u0$Compiler$Error$Raw)((c0$Core$Cons)((("project imports.sp does not specify a '" + $pars.platform.name) + "' platform."), c0$Core$Nil)), $0);
         }))((c0$Dict$get)($pars.platform.name, $projectImports.platforms)));
       })))((u0$BuildMain$getEntryUsr)($projectImports, $pars.entryPoint));
     })))(((__re__ = (u0$BuildMain$loadImports)($io, $state, $rootPaths, $importsPath)), ($io = (__re__)[1]), ($state = (__re__)[2]), (__re__)[0])),
@@ -18469,7 +18498,7 @@ const u0$Compiler$MakeCanonical_Test$transformAB = (($code) => {
       }))()
       : (true
         ? c0$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical_Test.sp 82:8', (sp_toHuman)($3))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical_Test.sp 81:8', (sp_toHuman)($3))));
   });
   return ((c0$Result$onOk)((($x) => {
     return ((($0) => {
@@ -18480,6 +18509,10 @@ const u0$Compiler$MakeCanonical_Test$transformAB = (($code) => {
 
 const u0$Compiler$MakeCanonical_Test$binops = (i2$Test$Group)("Binops", (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("left associativity", "a = v >> f >> g\nb = (v >> f) >> g", u0$Compiler$MakeCanonical_Test$transformAB, (u0$Compiler$MakeCanonical_Test$shouldHaveSameAB)((($x) => {
   return $x.maybeBody;
+}))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("[reg] minus should be left-associative", "a = x - y - z\nb = (x - y) - z", u0$Compiler$MakeCanonical_Test$transformAB, (u0$Compiler$MakeCanonical_Test$shouldHaveSameAB)((($x) => {
+  return $x.maybeBody;
+}))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("[reg] division should be left-associative", "a = x / y / z\nb = (x / y) / z", u0$Compiler$MakeCanonical_Test$transformAB, (u0$Compiler$MakeCanonical_Test$shouldHaveSameAB)((($x) => {
+  return $x.maybeBody;
 }))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("right associativity", "a = v :: f :: g\nb = v :: (f :: g)", u0$Compiler$MakeCanonical_Test$transformAB, (u0$Compiler$MakeCanonical_Test$shouldHaveSameAB)((($x) => {
   return $x.maybeBody;
 }))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("precedence", "a = 1 + 2 * 3 + 4\nb = 1 + (2 * 3) + 4", u0$Compiler$MakeCanonical_Test$transformAB, (u0$Compiler$MakeCanonical_Test$shouldHaveSameAB)((($x) => {
@@ -18488,7 +18521,7 @@ const u0$Compiler$MakeCanonical_Test$binops = (i2$Test$Group)("Binops", (c0$Core
   return $x.maybeBody;
 }))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("SKIP (burned out) Pipe optimization 2", "a = (__ >> __ >> __) a b c\nb = a >> b >> c", u0$Compiler$MakeCanonical_Test$transformAB, (u0$Compiler$MakeCanonical_Test$shouldHaveSameAB)((($x) => {
   return $x.maybeBody;
-}))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("Op chain definition and optimization", "a = __ + __ + 3 + __", (u0$Compiler$MakeCanonical_Test$firstEvaluation)("a"), (i2$Test$isOkAndEqualTo)((c0$Compiler$CanonicalAst$Fn)(u0$Compiler$MakeCanonical_Test$p, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParameterPlaceholder)(0), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParameterPlaceholder)(1), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParameterPlaceholder)(2), c0$Core$Nil))), (c0$Compiler$CanonicalAst$Call)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefGlobal)(u0$Compiler$CoreDefs$add.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefPlaceholder)(0))), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Call)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefGlobal)(u0$Compiler$CoreDefs$add.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefPlaceholder)(1))), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Call)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefGlobal)(u0$Compiler$CoreDefs$add.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$LiteralNumber)(u0$Compiler$MakeCanonical_Test$p, 3)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefPlaceholder)(2))), c0$Core$Nil)))), c0$Core$Nil)))), c0$Core$Nil)))))), c0$Core$Nil)))))));
+}))), (c0$Core$Cons)((u0$Compiler$MakeCanonical_Test$codeTest)("Op chain definition and optimization", "a = __ + __ + 3 + __", (u0$Compiler$MakeCanonical_Test$firstEvaluation)("a"), (i2$Test$isOkAndEqualTo)((c0$Compiler$CanonicalAst$Fn)(u0$Compiler$MakeCanonical_Test$p, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParameterPlaceholder)(0), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParameterPlaceholder)(1), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParameterPlaceholder)(2), c0$Core$Nil))), (c0$Compiler$CanonicalAst$Call)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefGlobal)(u0$Compiler$CoreDefs$add.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Call)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefGlobal)(u0$Compiler$CoreDefs$add.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Call)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefGlobal)(u0$Compiler$CoreDefs$add.usr)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefPlaceholder)(0))), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefPlaceholder)(1))), c0$Core$Nil)))), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$LiteralNumber)(u0$Compiler$MakeCanonical_Test$p, 3)), c0$Core$Nil)))), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ArgumentExpression)((c0$Compiler$CanonicalAst$Variable)(u0$Compiler$MakeCanonical_Test$p, (c0$Compiler$Ast$RefPlaceholder)(2))), c0$Core$Nil)))))), c0$Core$Nil)))))))));
 
 const u0$Compiler$TestHelpers$rootLocal = (($name) => {
   return (c0$Compiler$Ast$RefGlobal)((c0$Compiler$Meta$USR)(u0$Compiler$TestHelpers$moduleUmr, $name));
@@ -18568,7 +18601,7 @@ const u0$Compiler$MakeCanonical_Test$polymorphicUniques = (i2$Test$Group)("Polym
       }))()
       : (true
         ? (c0$Result$Err)("no ann")
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical_Test.sp 783:17', (sp_toHuman)($3))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeCanonical_Test.sp 798:17', (sp_toHuman)($3))));
   })))((u0$Compiler$MakeCanonical_Test$firstDefinitionStripDeps)($t));
 }), (i2$Test$isOkAndEqualTo)((c0$Set$fromList)((c0$Core$Cons)(1, (c0$Core$Cons)(2, c0$Core$Nil))))), c0$Core$Nil)));
 
@@ -19347,7 +19380,7 @@ const u0$Human$Format_Test$format = (($input) => {
 
 const u0$Human$Format_Test$formatTest = (($title, $input, $expectedOutput) => {
   const $quote = (($0) => {
-    return ("```\n" + ($0 + "\n```"));
+    return (("```\n" + $0) + "\n```");
   });
   const $4 = (i2$Test$isOkAndEqualTo)($expectedOutput);
   const $toMaybeError = ($4)[1];
@@ -19615,7 +19648,7 @@ const u0$Targets$Javascript$EmittableToJs$accessArrayIndex = (($index, $j) => {
 
 const u0$Targets$Javascript$EmittableToJs$literalString = (($str) => {
   const $escaped = $str;
-  return (u0$Targets$Javascript$Ast$Literal)(("\"" + ($escaped + "\"")));
+  return (u0$Targets$Javascript$Ast$Literal)((("\"" + $escaped) + "\""));
 });
 
 const u0$Targets$Javascript$EmittableToJs$recycleTempVariable = (u0$Targets$Javascript$Ast$Var)("__re__");
@@ -19967,7 +20000,7 @@ const u0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $eaExpre
                                           const $value = ($eaExpression)[2];
                                           return (u0$Targets$Javascript$EmittableToJs$Inline)(((($0) => {
                                             return (u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_throw"), $0);
-                                          }))((c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)("'Missing pattern in try..as'"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)(("'" + ($location + "'"))), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_toHuman"), (c0$Core$Cons)((u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $value), c0$Core$Nil)), c0$Core$Nil)))));
+                                          }))((c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)("'Missing pattern in try..as'"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)((("'" + $location) + "'")), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_toHuman"), (c0$Core$Cons)((u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, $value), c0$Core$Nil)), c0$Core$Nil)))));
                                         }))()
                                         : ((($eaExpression)[0] === "$Introspect")
                                           ? ((() => {
@@ -20030,7 +20063,7 @@ const u0$Targets$Javascript$EmittableToJs$binop = (($jsOp) => {
           : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 150:8', (sp_toHuman)($arguments))));
     }),
     value: (($env) => {
-      return (sp_todo)(("binop " + ($jsOp + " has no raw value")));
+      return (sp_todo)((("binop " + $jsOp) + " has no raw value"));
     }),
   }));
 });
@@ -20402,7 +20435,7 @@ const u0$Targets$Javascript$JsToText$emitBlock = (($l, $block) => {
       return (u0$Targets$Javascript$JsToText$emitStatement)(($l + 1), $0);
     }), $0);
   }))($block));
-  return ("{\n" + ($lines + ("\n" + ((u0$Targets$Javascript$JsToText$id)($l) + "}"))));
+  return (((("{\n" + $lines) + "\n") + (u0$Targets$Javascript$JsToText$id)($l)) + "}");
 });
 
 const u0$Targets$Javascript$JsToText$emitExpr = (($l, $expression) => {
@@ -20420,22 +20453,22 @@ const u0$Targets$Javascript$JsToText$emitExpr = (($l, $expression) => {
         ? ((() => {
           const $ref = ($expression)[1];
           const $args = ($expression)[2];
-          return ("(" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $ref) + (")(" + ((c0$Text$join)(", ", (c0$List$map)((($0) => {
+          return (((("(" + (u0$Targets$Javascript$JsToText$emitExpr)($l, $ref)) + ")(") + (c0$Text$join)(", ", (c0$List$map)((($0) => {
             return (u0$Targets$Javascript$JsToText$emitExpr)($l, $0);
-          }), $args)) + ")"))));
+          }), $args))) + ")");
         }))()
         : ((($expression)[0] === "$Unop")
           ? ((() => {
             const $op = ($expression)[1];
             const $left = ($expression)[2];
-            return ($op + ("(" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $left) + ")")));
+            return ((($op + "(") + (u0$Targets$Javascript$JsToText$emitExpr)($l, $left)) + ")");
           }))()
           : ((($expression)[0] === "$Binop")
             ? ((() => {
               const $op = ($expression)[1];
               const $left = ($expression)[2];
               const $right = ($expression)[3];
-              return ("(" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $left) + (" " + ($op + (" " + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $right) + ")"))))));
+              return (((((("(" + (u0$Targets$Javascript$JsToText$emitExpr)($l, $left)) + " ") + $op) + " ") + (u0$Targets$Javascript$JsToText$emitExpr)($l, $right)) + ")");
             }))()
             : ((($expression)[0] === "$Mutop")
               ? ((() => {
@@ -20443,19 +20476,19 @@ const u0$Targets$Javascript$JsToText$emitExpr = (($l, $expression) => {
                 const $yield = ($expression)[2];
                 const $left = ($expression)[3];
                 const $right = ($expression)[4];
-                return ("(" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $left) + (" " + ($op + (" " + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $right) + (", " + ($yield + ")"))))))));
+                return (((((((("(" + (u0$Targets$Javascript$JsToText$emitExpr)($l, $left)) + " ") + $op) + " ") + (u0$Targets$Javascript$JsToText$emitExpr)($l, $right)) + ", ") + $yield) + ")");
               }))()
               : ((($expression)[0] === "$SimpleLambda")
                 ? ((() => {
                   const $params = ($expression)[1];
                   const $expr = ($expression)[2];
-                  return ("((" + ((c0$Text$join)(", ", $params) + (") => " + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $expr) + ")"))));
+                  return (((("((" + (c0$Text$join)(", ", $params)) + ") => ") + (u0$Targets$Javascript$JsToText$emitExpr)($l, $expr)) + ")");
                 }))()
                 : ((($expression)[0] === "$BlockLambda")
                   ? ((() => {
                     const $params = ($expression)[1];
                     const $stats = ($expression)[2];
-                    return ("((" + ((c0$Text$join)(", ", $params) + (") => " + ((u0$Targets$Javascript$JsToText$emitBlock)($l, $stats) + ")"))));
+                    return (((("((" + (c0$Text$join)(", ", $params)) + ") => ") + (u0$Targets$Javascript$JsToText$emitBlock)($l, $stats)) + ")");
                   }))()
                   : ((($expression)[0] === "$Record")
                     ? ((() => {
@@ -20463,12 +20496,12 @@ const u0$Targets$Javascript$JsToText$emitExpr = (($l, $expression) => {
                       return ((sp_equal)($attrs, c0$Dict$empty)
                         ? "{}"
                         : ((($a) => {
-                          return ("({\n" + ((c0$Text$join)("\n", $a) + ("\n" + ((u0$Targets$Javascript$JsToText$id)($l) + "})"))));
+                          return (((("({\n" + (c0$Text$join)("\n", $a)) + "\n") + (u0$Targets$Javascript$JsToText$id)($l)) + "})");
                         }))(((($0) => {
                           return (c0$List$map)((($4) => {
                             const $key = $4.first;
                             const $value = $4.second;
-                            return ((u0$Targets$Javascript$JsToText$id)(($l + 1)) + ($key + (": " + ((u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $value) + ","))));
+                            return (((((u0$Targets$Javascript$JsToText$id)(($l + 1)) + $key) + ": ") + (u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $value)) + ",");
                           }), $0);
                         }))(((($0) => {
                           return (list_sortBy)(c0$Tuple$first, $0);
@@ -20478,20 +20511,20 @@ const u0$Targets$Javascript$JsToText$emitExpr = (($l, $expression) => {
                       ? ((() => {
                         const $name = ($expression)[1];
                         const $e = ($expression)[2];
-                        return ((u0$Targets$Javascript$JsToText$emitExpr)($l, $e) + ("." + $name));
+                        return (((u0$Targets$Javascript$JsToText$emitExpr)($l, $e) + ".") + $name);
                       }))()
                       : ((($expression)[0] === "$AccessWithBrackets")
                         ? ((() => {
                           const $i = ($expression)[1];
                           const $expr = ($expression)[2];
-                          return ("(" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $expr) + (")[" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $i) + "]"))));
+                          return (((("(" + (u0$Targets$Javascript$JsToText$emitExpr)($l, $expr)) + ")[") + (u0$Targets$Javascript$JsToText$emitExpr)($l, $i)) + "]");
                         }))()
                         : ((($expression)[0] === "$Conditional")
                           ? ((() => {
                             const $p = ($expression)[1];
                             const $true = ($expression)[2];
                             const $false = ($expression)[3];
-                            return (("(" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $p) + "\n")) + (((u0$Targets$Javascript$JsToText$id)(($l + 1)) + ("? " + (u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $true))) + ("\n" + (((u0$Targets$Javascript$JsToText$id)(($l + 1)) + (": " + (u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $false))) + ")"))));
+                            return (((((("(" + (u0$Targets$Javascript$JsToText$emitExpr)($l, $p)) + "\n") + (((u0$Targets$Javascript$JsToText$id)(($l + 1)) + "? ") + (u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $true))) + "\n") + (((u0$Targets$Javascript$JsToText$id)(($l + 1)) + ": ") + (u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $false))) + ")");
                           }))()
                           : ((($expression)[0] === "$Array")
                             ? ((() => {
@@ -20500,27 +20533,27 @@ const u0$Targets$Javascript$JsToText$emitExpr = (($l, $expression) => {
                                 ? "[]"
                                 : ((($0) => {
                                   return ((($a) => {
-                                    return ("([\n" + ((c0$Text$join)("\n", $a) + ("\n" + ((u0$Targets$Javascript$JsToText$id)($l) + "])"))));
+                                    return (((("([\n" + (c0$Text$join)("\n", $a)) + "\n") + (u0$Targets$Javascript$JsToText$id)($l)) + "])");
                                   }))($0);
                                 }))(((($0) => {
                                   return (c0$List$map)((($i) => {
-                                    return ((u0$Targets$Javascript$JsToText$id)(($l + 1)) + ((u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $i) + ","));
+                                    return (((u0$Targets$Javascript$JsToText$id)(($l + 1)) + (u0$Targets$Javascript$JsToText$emitExpr)(($l + 1), $i)) + ",");
                                   }), $0);
                                 }))($items)));
                             }))()
                             : ((($expression)[0] === "$Comma")
                               ? ((() => {
                                 const $expr = ($expression)[1];
-                                return ("(" + ((c0$Text$join)(", ", (c0$List$map)((($0) => {
+                                return (("(" + (c0$Text$join)(", ", (c0$List$map)((($0) => {
                                   return (u0$Targets$Javascript$JsToText$emitExpr)($l, $0);
-                                }), $expr)) + ")"));
+                                }), $expr))) + ")");
                               }))()
                               : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/JsToText.sp 43:4', (sp_toHuman)($expression))))))))))))))));
 });
 
 const u0$Targets$Javascript$JsToText$emitStatement = (($l, $stat) => {
   const $std = (($mid, $expr) => {
-    return ((u0$Targets$Javascript$JsToText$id)($l) + ($mid + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $expr) + ";")));
+    return ((((u0$Targets$Javascript$JsToText$id)($l) + $mid) + (u0$Targets$Javascript$JsToText$emitExpr)($l, $expr)) + ";");
   });
   return ((($stat)[0] === "$Eval")
     ? ((() => {
@@ -20540,13 +20573,13 @@ const u0$Targets$Javascript$JsToText$emitStatement = (($l, $stat) => {
           const $modifier = ($isReassignable
             ? "let"
             : "const");
-          return ($std)(($modifier + (" " + ($name + " = "))), $e);
+          return ($std)(((($modifier + " ") + $name) + " = "), $e);
         }))()
         : ((($stat)[0] === "$If")
           ? ((() => {
             const $condition = ($stat)[1];
             const $block = ($stat)[2];
-            return ((u0$Targets$Javascript$JsToText$id)($l) + ("if (" + ((u0$Targets$Javascript$JsToText$emitExpr)($l, $condition) + (") " + (u0$Targets$Javascript$JsToText$emitBlock)($l, $block)))));
+            return (((((u0$Targets$Javascript$JsToText$id)($l) + "if (") + (u0$Targets$Javascript$JsToText$emitExpr)($l, $condition)) + ") ") + (u0$Targets$Javascript$JsToText$emitBlock)($l, $block));
           }))()
           : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/JsToText.sp 12:4', (sp_toHuman)($stat))))));
 });
@@ -20589,7 +20622,7 @@ const u0$Platforms$Browser$extraRequiredUsrs = (($makePlatformUmr) => {
 const u0$Platforms$Browser$footer = (($makePlatformUmr, $pars) => {
   const $mainName = (u0$Targets$Javascript$EmittableToJs$_usrToText)($pars.entryUsr);
   const $updateDomNode = (u0$Targets$Javascript$EmittableToJs$translateUsrToText)(((u0$Platforms$Browser$virtualDomUsr)($makePlatformUmr))("updateDomNode"));
-  return ("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet effects = [];\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model =" + ($mainName + (".update(effects, msg, model)[0];\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom =" + ($mainName + (".view(model);\n\n" + ($updateDomNode + ("(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n\n        effects.forEach((e) => e());\n        effects = [];\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model =" + ($mainName + ".init(effects)[0];\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n"))))))));
+  return (((((((("\n// TODO these globals will be a hell of trouble if we want to run more than one app\nlet effects = [];\nlet oldVirtualDom = {}; // TODO this should be properly initialized\nlet model = null;\nlet elementId = null;\n\nfunction dispatch(msgResult) {\n    if (msgResult[0] === \"Ok\") {\n\n        const msg = msgResult[1];\n\n        model =" + $mainName) + ".update(effects, msg, model)[0];\n\n            // TODO set a flag and use requestAnimationFrame\n            updateDom();\n        } else {\n            console.log('rejecting msg: ', msgResult[1]);\n        }\n    }\n\n\n    function updateDom() {\n        const e = win.document.getElementById(elementId);\n\n        const newVirtualDom =") + $mainName) + ".view(model);\n\n") + $updateDomNode) + "(newVirtualDom, oldVirtualDom, e.childNodes[0]);\n\n        oldVirtualDom = newVirtualDom;\n\n        effects.forEach((e) => e());\n        effects = [];\n    }\n\n\n\n    function main(eid) {\n        elementId = eid;\n        model =") + $mainName) + ".init(effects)[0];\n        updateDom();\n    }\n\n\n\n\n\n    win.Squarepants = {\n        main: main,\n    };\n\n})(this);\n");
 });
 
 const u0$Platforms$Browser$header = "(function (win) {\n";
@@ -20654,7 +20687,7 @@ const u0$Targets$Javascript$Runtime$nativeDefinitions = ((() => {
   const $errRef = (u0$Targets$Javascript$EmittableToJs$translateUsrToText)((c0$Compiler$Meta$USR)((u0$Compiler$CoreDefs$makeUmr)("Result"), "'err"));
   const $nothingRef = (u0$Targets$Javascript$EmittableToJs$translateUsrToText)((c0$Compiler$Meta$USR)((u0$Compiler$CoreDefs$makeUmr)("Maybe"), "'nothing"));
   const $justRef = (u0$Targets$Javascript$EmittableToJs$translateUsrToText)((c0$Compiler$Meta$USR)((u0$Compiler$CoreDefs$makeUmr)("Maybe"), "'just"));
-  return ("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + (u0$Targets$Javascript$Runtime$listConsName + ("' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '" + (u0$Targets$Javascript$Runtime$listNilName + ("')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ?" + ($nothingRef + (":" + ($justRef + ("(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [" + ($justRef + ("({ first: actualKey, second: value }), hash ];\n        }\n\n        return [" + ($nothingRef + (", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '" + (u0$Targets$Javascript$Runtime$listNilName + ("')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ?" + ($justRef + ("(a.pop()) :" + ($nothingRef + (", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ?" + ($nothingRef + (":" + ($justRef + ("(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '" + (u0$Targets$Javascript$Runtime$listNilName + ("' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '" + (u0$Targets$Javascript$Runtime$listConsName + ("', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '" + (u0$Targets$Javascript$Runtime$listNilName + ("')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '" + (u0$Targets$Javascript$Runtime$listConsName + ("', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const re = (s) => s.replace(/[\" \\n]/g, '');\n\n        const actualTypeHumanized = sp_toHuman(pars.type);\n        if (re(actualTypeHumanized) !== re(requestedTypeHumanized)) {\n            return " + ($errRef + ("(pars.type);\n            }\n\n            const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');\n\n            const js = c0$BuildInfo$compile(arrayToListLow([]), pars);\n\n            //   { name1, name2, name3, ... } = externals;\n            const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';\n\n            const body = `{ ${unpackExterns}\n${js}; return ${tUsrToString(pars.entryUsr)}; }`;\n\n            const arg = {};\n            //pars.externalValues.forEach((e) => arg[tUsrToString(e.usr)] = e.self.value);\n\n            return " + ($okRef + " (variantConstructor(Function('externs', body)(arg)));\n        };\n\n\n    "))))))))))))))))))))))))))))))))))))));
+  return (((((((((((((((((((((((((((((((((((((("let __re__;\n\n\nconst sp_clone = (src) => {\n if (Array.isArray(src))\n   return src.map(sp_clone);\n\n if (typeof(src) === 'object') {\n   const dest = {};\n   for (let k in src) { dest[k] = sp_clone(src[k]); }\n   return dest;\n }\n\n return src;\n}\n\n\n//\n// Basic ops\n//\n\n\nconst sp_equal = (a, b) => {\n  if (a === b)\n    return true\n\n  if (Array.isArray(a)) {\n    if (!Array.isArray(b)) return false;\n\n    const l = a.length;\n    if (l !== b.length) return false;\n\n    let i = 0;\n    while (i < l) {\n      if (!sp_equal(a[i], b[i])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  if (typeof(a) === 'object') {\n    if (typeof(b) !== 'object') return false;\n\n    const keys = Object.keys(a);\n    const l = keys.length;\n    if (l !== Object.keys(b).length) return false;\n\n    let i = 0;\n    while (i < l) {\n      let k = keys[i];\n      if (!sp_equal(a[k], b[k])) return false;\n      ++i;\n    }\n\n    return true;\n  }\n\n  return false;\n}\n\n\nconst sp_not_equal = (a, b) => {\n  return !sp_equal(a, b);\n}\n\n\nconst basics_compare = (a, b) => {\n\n  // union type\n  if (Array.isArray(a)) {\n    // compare constructor names\n    if (a[0] > b[0]) return 1;\n    if (b[0] > a[0]) return -1;\n    for (let i = 1; i < a.length; i++) {\n        const cmp = basics_compare(a[i], b[i]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  // None is represented as null\n  if (a === null)\n      return 0;\n\n  if (typeof a === 'object') {\n    const keys = Object.keys(a).sort();\n    for (let k of keys) {\n        const cmp = basics_compare(a[k], b[k]);\n        if (cmp) return cmp;\n    }\n    return 0;\n  }\n\n  if (a > b) return 1;\n  if (a < b) return -1;\n  return 0;\n}\n\nconst sp_divide = (left, right) => {\n  if (right === 0) return 0;\n  return left / right;\n}\n\n\n// TODO remove this and handle it like any other op?\nconst basics_modBy = (a, b) => b % a;\n\n\nconst basics_cloneImm = sp_clone;\n\n\nconst basics_cloneUni = (uni) =>\n    [ sp_clone(uni), uni ];\n\n\n//\n// Debug\n//\n\n\nconst sp_todo = (message) => {\n  throw new Error(\"TODO: \" + message);\n}\n\n\nconst sp_log = (message, thing) => {\n  console.log(message, sp_toHuman(thing));\n  return thing;\n}\n\n\nconst sp_throw = function (errorName) {\n    console.error(...arguments);\n    throw new Error(errorName);\n}\n\n\n//\n// Benchmarking\n//\n\n\nvar debug_benchStartTime = null;\nvar debug_benchStartStack = null;\nvar debug_benchEntries = {};\n\n\nconst pad = (l, s) => ' '.repeat(Math.max(0, l - s.length)) + s;\n\n\nconst fmt = (n) => {\n    const s = Math.floor(n) + '';\n    return s.slice(0, -3) + '.' + pad(3, s.slice(-3));\n}\n\n\n// TODO how should benchmark work in a browser?\ntypeof process !== 'undefined' && process.on('beforeExit', (code) => {\n    if (debug_benchStartStack !== null)\n        console.error(`ERROR: a benchmark has been started but not stopped!\nStart was at:${debug_benchStartStack}`);\n\n    const ks = Object.keys(debug_benchEntries);\n    if (ks.length) {\n        console.error(\"\");\n        console.error(\"Benchmark results:\");\n        ks.sort().forEach(k => {\n            const entry = debug_benchEntries[k];\n            console.error(\n                    'TotalTime:', pad(10, fmt(entry.dt )) + 's',\n                    '   ',\n                    'Runs:', pad(6, '' + entry.n),\n                    '   ',\n                    'Key:', k,\n            );\n        });\n    }\n});\n\n\nconst sp_benchStart = (none) => {\n    if (debug_benchStartStack !== null)\n        throw new Error(`\nbenchStart called when a benchmark is already ongoing!\nPrevious benchStart call was ${debug_benchStartStack}\n`);\n\n    debug_benchStartStack = new Error().stack;\n    debug_benchStartTime = performance.now();\n}\n\n\nconst sp_benchStop = (name) => {\n    const now = performance.now();\n\n    if (debug_benchStartStack === null)\n        throw new Error(\"benchStop called while no benchmark is ongoing!\");\n\n    debug_benchStartStack = null;\n\n    const dt = now - debug_benchStartTime;\n\n    const entry = debug_benchEntries[name] || { dt: 0, n: 0 };\n    entry.dt += dt;\n    entry.n += 1;\n    debug_benchEntries[name] = entry;\n}\n\n\n\n\n//\n// To Human\n//\n\n\nconst id = (n) => '    '.repeat(n);\n\n\nconst sp_toHuman = (a, l = 0) => {\n\n  if (Array.isArray(a))\n    return sp_toHumanAsList([], a, l) || sp_toHumanAsDict(a, l) || sp_toHumanAsUnion(a, l);\n\n  if (typeof a === 'function') {\n    return '<fn ' + a.length + '>';\n  }\n\n  if (typeof a === 'object') {\n    let acc = '{\\n';\n    for (let key in a)\n        acc += id(l + 1) + key + ' = ' + sp_toHuman(a[key], l + 1) + '\\n';\n\n    return acc + id(l) + '}';\n  }\n\n  return JSON.stringify(a, null, 0);\n}\n\n\nconst sp_toHumanAsUnion = (a, l) => {\n\n  if (a.length === 1) {\n      return a[0];\n  }\n\n  let acc = a[0] + '\\n';\n\n  a.slice(1).forEach(arg => {\n\n      const sub = sp_toHuman(arg, l + 1);\n      if (!sub.startsWith('{') && sub.indexOf('\\n') > -1)\n          acc += id(l + 1) + '(' + sub + id(l + 1) + ')\\n';\n      else\n          acc += id(l + 1) + sub + '\\n';\n\n  })\n\n  return acc;\n}\n\n\nconst sp_toHumanAsList = (arrayAccum, list, l) => {\n  if (list[0] === '" + u0$Targets$Javascript$Runtime$listConsName) + "' && list.length === 3) {\n    arrayAccum.push(sp_toHuman(list[1], l));\n    return sp_toHumanAsList(arrayAccum, list[2], l);\n  }\n\n  if (list[0] === '") + u0$Targets$Javascript$Runtime$listNilName) + "')\n    return '[' + arrayAccum.join(', ') + ']';\n\n  return false;\n}\n\nconst sp_toHumanAsDict = (dict, l) => {\n  if (dict[0] === 'RBNode_elm_builtin') {\n      return 'DICT' + sp_toHumanAsList([], $core$Dict$toList(dict), l);\n  }\n\n  return false;\n}\n\n\n//\n// Text\n//\n\n\nconst text_fromNumber = (n) => '' + n;\n\nconst text_toNumber = (t) => {\n    const n = +t;\n\n    return isNaN(n) ?") + $nothingRef) + ":") + $justRef) + "(n);\n    }\n\n    const text_toLower = (s) => s.toLowerCase()\n\n    const text_toUpper = (s) => s.toUpperCase()\n\n    const text_split = (separator, target) => arrayToListLow(target.split(separator));\n\n    const text_length = (s) => s.length;\n\n    const text_slice = (start, end, s) => s.slice(start, end);\n\n    const text_startsWith = (sub, s) => s.startsWith(sub);\n\n    const text_startsWithRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp('^' + regex, 's');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (s) => {\n        let m = s.match(re);\n        return m ? m[0] : \"\";\n      }\n    }\n\n    const text_replaceRegex = (regex) => {\n      let re;\n      try {\n        re = new RegExp(regex, 'g');\n      } catch (e) {\n        return () => \"\"\n      }\n\n      return (replacer, s) => s.replace(re, replacer);\n    }\n\n    const text_trimLeft = (s) => s.trimLeft();\n\n    const text_dropLeft = (n, s) => s.slice(n);\n\n    const text_forEach = (s, f) => {\n      for (let i of s) f(i);\n      return null;\n    }\n\n\n    //\n    // Hashes\n    //\n\n    const hash_pop = (hash) => {\n        for (let key in hash) {\n            const [actualKey, value] = hash[key];\n            delete hash[key];\n            return [") + $justRef) + "({ first: actualKey, second: value }), hash ];\n        }\n\n        return [") + $nothingRef) + ", hash ];\n    }\n\n\n    const hash_fromList = (list) => {\n      const hash = {};\n\n      // TODO iteration instead of recursion\n      const rec = (ls) => {\n        if (ls[0] === '") + u0$Targets$Javascript$Runtime$listNilName) + "')\n          return hash;\n\n        const { first, second } = ls[1];\n\n        hash[JSON.stringify(first)] = [first, second];\n\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n\n    const hash_insert = (hash, key, value) => {\n        hash[JSON.stringify(key)] = [key, value];\n        return [null, hash];\n    }\n\n\n    const hash_remove = (hash, key) => {\n        delete hash[JSON.stringify(key)];\n        return [null, hash];\n    }\n\n\n    const hash_get = (hash, key) => {\n        const r = hash[JSON.stringify(key)];\n        return [r === undefined ?") + $nothingRef) + ":") + $justRef) + "(r[1]), hash];\n    }\n\n\n    const hash_for = (hash, f, acc) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            acc = f(kv[0], kv[1], acc);\n        }\n        return [acc, hash];\n    }\n\n\n    const hash_each = (hash, f) => {\n        for (let k in hash) {\n            const kv = hash[k];\n            f(kv[0], kv[1]);\n        }\n        return [null, hash];\n    }\n\n\n    //\n    // Arrays\n    //\n\n    const array_each = (array, f) => {\n        array.forEach(f);\n        return [null, array];\n    }\n\n    const array_push = (array, item) => {\n        array.push(item);\n        return [null, array];\n    }\n\n    const array_pop = (a) => {\n        return [a.length ?") + $justRef) + "(a.pop()) :") + $nothingRef) + ", a];\n    }\n\n    const array_get = (array, index) => {\n        const r = array[index];\n        return [r === undefined ?") + $nothingRef) + ":") + $justRef) + "(r), array];\n    }\n\n    const array_set = (a, index, item) => {\n        if (index < 0) return false;\n        if (index >= a.length) return [false, a];\n        a[index] = item;\n        return [true, a];\n    }\n\n    const array_sortBy = (arr, f) => {\n        arr.sort((a, b) => basics_compare(f(a), f(b)));\n        return [null, arr];\n    }\n\n    const arrayToListLow = (arr) => {\n      const length = arr.length;\n      let list = [ '") + u0$Targets$Javascript$Runtime$listNilName) + "' ];\n      for (let i = length - 1; i >= 0; i--) {\n          list = [ '") + u0$Targets$Javascript$Runtime$listConsName) + "', arr[i], list ];\n      }\n      return list;\n    }\n\n    const array_toList = (arr) => [arrayToListLow(arr), arr];\n\n\n    const arrayFromListLow = (list) => {\n      const array = [];\n      const rec = (ls) => {\n        if (ls[0] === '") + u0$Targets$Javascript$Runtime$listNilName) + "')\n          return array;\n\n        array.push(ls[1]);\n        return rec(ls[2]);\n      };\n\n      return rec(list);\n    }\n\n    const array_fromList = arrayFromListLow;\n\n\n    //\n    // Lists\n    //\n\n\n    const sp_cons = (item, list) => {\n      return [ '") + u0$Targets$Javascript$Runtime$listConsName) + "', item, list];\n    }\n\n    const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));\n\n\n    //\n    // Dynamic loading\n    //\n    const self_load = (requestedTypeHumanized, pars, variantConstructor) => {\n\n        const re = (s) => s.replace(/[\" \\n]/g, '');\n\n        const actualTypeHumanized = sp_toHuman(pars.type);\n        if (re(actualTypeHumanized) !== re(requestedTypeHumanized)) {\n            return ") + $errRef) + "(pars.type);\n            }\n\n            const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');\n\n            const js = c0$BuildInfo$compile(arrayToListLow([]), pars);\n\n            //   { name1, name2, name3, ... } = externals;\n            const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';\n\n            const body = `{ ${unpackExterns}\n${js}; return ${tUsrToString(pars.entryUsr)}; }`;\n\n            const arg = {};\n            //pars.externalValues.forEach((e) => arg[tUsrToString(e.usr)] = e.self.value);\n\n            return ") + $okRef) + " (variantConstructor(Function('externs', body)(arg)));\n        };\n\n\n    ");
 }))();
 
 const u0$Platforms$Browser$makeExecutable = (($makePlatformUmr) => {
@@ -20662,7 +20695,7 @@ const u0$Platforms$Browser$makeExecutable = (($makePlatformUmr) => {
   return (($loadPars) => {
     const $compiledStatements = (u0$Platforms$Browser$compile)($platformOverrides, $loadPars);
     const $natives = u0$Targets$Javascript$Runtime$nativeDefinitions;
-    return (u0$Platforms$Browser$header + ($natives + (u0$Platforms$Browser$runtime + ($compiledStatements + (u0$Platforms$Browser$footer)($makePlatformUmr, $loadPars)))));
+    return ((((u0$Platforms$Browser$header + $natives) + u0$Platforms$Browser$runtime) + $compiledStatements) + (u0$Platforms$Browser$footer)($makePlatformUmr, $loadPars));
   });
 });
 
@@ -20735,13 +20768,13 @@ const u0$Platforms$Posix$runtime = ((() => {
   const $makeErr = ((($0) => {
     return (u0$Targets$Javascript$EmittableToJs$translateUsrToText)($0);
   }))((c0$Compiler$Meta$USR)((u0$Compiler$CoreDefs$makeUmr)("Result"), "'err"));
-  return ("\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_readDir = (io, dirPath) => {\n    // as @IO, Text: Re [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return [" + ($makeErr + ("(e.message), null];\n        }\n\n        return [" + ($makeOk + ("(arrayToListLow(entries.map((dirent) => ({\n            first: dirent.isDirectory(),\n            second: dirent.name,\n        })))), null];\n    };\n\n\n    const io_readFile = (io, path) => {\n        // as @IO, Text: Re Text\n\n        var content;\n        try {\n            content = fs.readFileSync(path, 'utf8');\n        } catch (e) {\n            return [" + ($makeErr + ("(e.message), null];\n        }\n\n        return [" + ($makeOk + ("(content), null];\n    };\n\n\n    const io_writeFile = (io, path, content) => {\n        // as @IO, Text, Text: Re Int\n\n        try {\n            fs.writeFileSync(path, content);\n        } catch (e) {\n            return [" + ($makeErr + ("(e.message), null];\n        }\n\n        return [" + ($makeOk + ("(0), null];\n    };\n\n\n    const io_readStdin = (io) => {\n        // as @IO: Re Text\n\n        try {\n            return [" + ($makeOk + ("(fs.readFileSync(0, 'utf8')), null];\n        } catch (e) {\n            return [" + ($makeErr + ("(e.message), null];\n        }\n    };\n\n\n    const io_writeStdout = (io, content) => {\n        // as @IO, Text: Re None\n\n        try {\n            fs.writeFileSync(1, content);\n        } catch (e) {\n            return [" + ($makeErr + ("(e.message), null];\n        }\n\n        return [" + ($makeOk + ("(null), null];\n    };\n\n\n    const io_writeStderr = (io, content) => {\n        // as @IO, Text: Re Int\n\n        try {\n            fs.writeFileSync(2, content);\n        } catch (e) {\n            return [" + ($makeErr + ("(e.message), null];\n        }\n\n        return [" + ($makeOk + "(null), null];\n    };\n\n\n    const path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n    const path_join = (p) => path.join(...arrayFromListLow(p));\n\n    const path_dirname = path.dirname;\n\n"))))))))))))))))))))))));
+  return (((((((((((((((((((((((("\n//\n// Platform: IO\n//\nconst fs = require('fs');\nconst path = require('path');\n\nconst io_readDir = (io, dirPath) => {\n    // as @IO, Text: Re [Bool & Text]\n\n    var entries;\n    try {\n        entries = fs.readdirSync(dirPath, { withFileTypes: true });\n    } catch (e) {\n        return [" + $makeErr) + "(e.message), null];\n        }\n\n        return [") + $makeOk) + "(arrayToListLow(entries.map((dirent) => ({\n            first: dirent.isDirectory(),\n            second: dirent.name,\n        })))), null];\n    };\n\n\n    const io_readFile = (io, path) => {\n        // as @IO, Text: Re Text\n\n        var content;\n        try {\n            content = fs.readFileSync(path, 'utf8');\n        } catch (e) {\n            return [") + $makeErr) + "(e.message), null];\n        }\n\n        return [") + $makeOk) + "(content), null];\n    };\n\n\n    const io_writeFile = (io, path, content) => {\n        // as @IO, Text, Text: Re Int\n\n        try {\n            fs.writeFileSync(path, content);\n        } catch (e) {\n            return [") + $makeErr) + "(e.message), null];\n        }\n\n        return [") + $makeOk) + "(0), null];\n    };\n\n\n    const io_readStdin = (io) => {\n        // as @IO: Re Text\n\n        try {\n            return [") + $makeOk) + "(fs.readFileSync(0, 'utf8')), null];\n        } catch (e) {\n            return [") + $makeErr) + "(e.message), null];\n        }\n    };\n\n\n    const io_writeStdout = (io, content) => {\n        // as @IO, Text: Re None\n\n        try {\n            fs.writeFileSync(1, content);\n        } catch (e) {\n            return [") + $makeErr) + "(e.message), null];\n        }\n\n        return [") + $makeOk) + "(null), null];\n    };\n\n\n    const io_writeStderr = (io, content) => {\n        // as @IO, Text: Re Int\n\n        try {\n            fs.writeFileSync(2, content);\n        } catch (e) {\n            return [") + $makeErr) + "(e.message), null];\n        }\n\n        return [") + $makeOk) + "(null), null];\n    };\n\n\n    const path_resolve = (p) => path.resolve(...arrayFromListLow(p));\n\n    const path_join = (p) => path.join(...arrayFromListLow(p));\n\n    const path_dirname = path.dirname;\n\n");
 }))();
 
 const u0$Platforms$Posix$makeExecutable = (($makePlatformUmr) => {
   return (($out) => {
     const $entryName = (u0$Targets$Javascript$EmittableToJs$_usrToText)($out.entryUsr);
-    const $callMain = ("\n\nconst args = arrayToListLow(process.argv.slice(1));\nprocess.exitCode =" + ($entryName + "(null, process.env, args)[0];"));
+    const $callMain = (("\n\nconst args = arrayToListLow(process.argv.slice(1));\nprocess.exitCode =" + $entryName) + "(null, process.env, args)[0];");
     const $compiledStatements = ((() => {
       (sp_log)("Creating JS AST...", "");
       const $jaStatements = (u0$Targets$Javascript$EmittableToJs$translateAll)(({
@@ -20759,7 +20792,7 @@ const u0$Platforms$Posix$makeExecutable = (($makePlatformUmr) => {
       }))($jaStatements));
     }))();
     const $natives = u0$Targets$Javascript$Runtime$nativeDefinitions;
-    return (u0$Platforms$Posix$header + ($natives + (u0$Platforms$Posix$runtime + ($compiledStatements + $callMain))));
+    return ((((u0$Platforms$Posix$header + $natives) + u0$Platforms$Posix$runtime) + $compiledStatements) + $callMain);
   });
 });
 
@@ -20810,11 +20843,11 @@ const u0$Main$parsePlatformName = (($maybeValue, $cliState) => {
           return (sp_equal)($p.name, $value);
         }), u0$Main$availablePlatforms);
         return ((($3)[0] === "$Nothing")
-          ? (c0$Result$Err)(("I don't know this platform name: `" + ($value + ("`\n\n                    Valid platform names are:\n\n" + ((($0) => {
+          ? (c0$Result$Err)(((("I don't know this platform name: `" + $value) + "`\n\n                    Valid platform names are:\n\n") + ((($0) => {
             return (c0$Text$join)("\n", $0);
           }))((c0$List$map)((($p) => {
             return ("    " + $p.name);
-          }), u0$Main$availablePlatforms))))))
+          }), u0$Main$availablePlatforms))))
           : ((($3)[0] === "$Just")
             ? ((() => {
               const $platform = ($3)[1];
@@ -20842,7 +20875,7 @@ const u0$Main$cliOptions = (c0$Core$Cons)(({
 
 const u0$Term$color = (($code) => {
   return (($text) => {
-    return ($code + ($text + "\x1b[0m"));
+    return (($code + $text) + "\x1b[0m");
   });
 });
 
@@ -21009,7 +21042,7 @@ const u0$Main$testOutcomeToText = (($name, $code, $outcome) => {
       : ((($outcome)[0] === "$Error")
         ? ((() => {
           const $error = ($outcome)[1];
-          return ((u0$Term$red)(("FAIL ! " + $name)) + ("\n" + ((u0$Main$indent)($code) + ("\n" + (u0$Main$indent)($error)))));
+          return (((((u0$Term$red)(("FAIL ! " + $name)) + "\n") + (u0$Main$indent)($code)) + "\n") + (u0$Main$indent)($error));
         }))()
         : (sp_throw)('Missing pattern in try..as', 'src/Main.sp 108:4', (sp_toHuman)($outcome)))));
 });
