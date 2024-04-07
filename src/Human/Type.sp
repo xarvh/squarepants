@@ -58,16 +58,16 @@ doRawType as fn Imports, TA.RawType: FA.Expression =
     fn projectImports, rawType:
     try rawType as
 
-        TA.'typeExact usr args:
+        TA.'typeExact _ usr args:
             FA.'call (doUsr projectImports usr) (List.map (doRawType projectImports __) args)
 
-        TA.'typeFn parTypes full:
+        TA.'typeFn _ parTypes full:
             FA.'fn FA.'inline (List.map (doParType projectImports __) parTypes) (doFullType projectImports full)
 
-        TA.'typeVar tyvarId:
+        TA.'typeVar _ tyvarId:
             doTyvarId projectImports tyvarId
 
-        TA.'typeRecord maybeExtId taAttrs:
+        TA.'typeRecord _ maybeExtId taAttrs:
             maybeExtension =
                 try maybeExtId as
                     'nothing: 'nothing

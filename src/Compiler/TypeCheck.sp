@@ -188,8 +188,6 @@ var Error_ =
 
 var Context =
     , 'context_Global
-    , # this is never actually used =|
-      'context_Module UMR
     , 'context_Argument Name Context
     , 'context_LetInBody [ Name ]
     , 'context_FnPar Int Context
@@ -249,15 +247,15 @@ UnivarEquality =
 # Core types
 #
 coreTypeBool as TA.RawType =
-    TA.'typeExact CoreDefs.boolUsr []
+    TA.'typeExact Pos.'n CoreDefs.boolUsr []
 
 
 coreTypeNumber as TA.RawType =
-    TA.'typeExact CoreDefs.numberDef.usr []
+    TA.'typeExact Pos.'n CoreDefs.numberDef.usr []
 
 
 coreTypeText as TA.RawType =
-    TA.'typeExact CoreDefs.textDef.usr []
+    TA.'typeExact Pos.'n CoreDefs.textDef.usr []
 
 
 fullTypeError as TA.FullType =
@@ -281,7 +279,7 @@ newTyvarId as fn @State: TA.TyvarId =
 
 newRawType as fn @State: TA.RawType =
     fn @state:
-    TA.'typeVar (newTyvarId @state)
+    TA.'typeVar Pos.'g (newTyvarId @state)
 
 
 getErrorModule as fn Env: Error.Module =
@@ -369,7 +367,7 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
 
             # { tyvar with generalizedAt = pos, generalizedFor = ref }
 
-            applySubstitutionToType originalTyvarId (TA.'typeVar generalizedTyvarId) a
+            applySubstitutionToType originalTyvarId (TA.'typeVar Pos.'g generalizedTyvarId) a
 
     { instance.type with raw }
 
@@ -381,19 +379,19 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
 
     try raw as
 
-        TA.'typeExact usr args:
-            TA.'typeExact usr (List.map doRaw args)
+        TA.'typeExact p usr args:
+            TA.'typeExact p usr (List.map doRaw args)
 
-        TA.'typeRecord maybeExt attrs:
-            TA.'typeRecord maybeExt (Dict.map (fn k, v: doRaw v) attrs)
+        TA.'typeRecord p maybeExt attrs:
+            TA.'typeRecord p maybeExt (Dict.map (fn k, v: doRaw v) attrs)
 
         TA.'typeError:
             TA.'typeError
 
-        TA.'typeVar id:
-            TA.'typeVar id
+        TA.'typeVar p id:
+            TA.'typeVar p id
 
-        TA.'typeFn ins out:
+        TA.'typeFn p ins out:
             doUni as fn Uniqueness: Uniqueness =
                 fn uni:
                 try uni as
@@ -406,7 +404,7 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
                     TA.'parRe r: TA.'parRe (doRaw r)
                     TA.'parSp f: TA.'parSp { raw = doRaw f.raw, uni = doUni f.uni }
 
-            TA.'typeFn (List.map mapPar ins) { raw = doRaw out.raw, uni = doUni out.uni }
+            TA.'typeFn p (List.map mapPar ins) { raw = doRaw out.raw, uni = doUni out.uni }
 
 
 #
@@ -421,22 +419,22 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
 
     try type as
 
-        TA.'typeExact usr args:
-            TA.'typeExact usr (List.map rec args)
+        TA.'typeExact p usr args:
+            TA.'typeExact p usr (List.map rec args)
 
-        TA.'typeFn ins out:
-            TA.'typeFn (TA.mapPars rec ins) { out with raw = rec .raw }
+        TA.'typeFn p ins out:
+            TA.'typeFn p (TA.mapPars rec ins) { out with raw = rec .raw }
 
-        TA.'typeRecord 'nothing attrs:
-            TA.'typeRecord 'nothing (Dict.map (fn k, v: rec v) attrs)
+        TA.'typeRecord p 'nothing attrs:
+            TA.'typeRecord p 'nothing (Dict.map (fn k, v: rec v) attrs)
 
-        TA.'typeVar id:
+        TA.'typeVar p id:
             try Dict.get id tyvarIdsToType as
                 'nothing: bug "this is not supposed to happen"
                 'just ty: ty
 
-        TA.'typeRecord ('just id) attrs:
-            TA.'typeRecord ('just id) (Dict.map (fn k, v: rec v) attrs)
+        TA.'typeRecord p ('just id) attrs:
+            TA.'typeRecord p ('just id) (Dict.map (fn k, v: rec v) attrs)
 
         TA.'typeError:
             TA.'typeError
@@ -481,10 +479,10 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
             taArgs as [ TA.ParType ] =
                 List.map zzz caPars
 
-            TA.'typeFn taArgs (translateFullType env argsByName originalIdToNewId @errors caOut)
+            TA.'typeFn pos taArgs (translateFullType env argsByName originalIdToNewId @errors caOut)
 
         CA.'typeRecord pos caAttrs:
-            TA.'typeRecord 'nothing (Dict.map (fn name, v: rec v) caAttrs)
+            TA.'typeRecord pos 'nothing (Dict.map (fn name, v: rec v) caAttrs)
 
         CA.'typeAnnotationVariable pos name:
             try Dict.get name argsByName as
@@ -507,7 +505,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
                     try Dict.get usr env.exactTypes as
 
                         'just exact:
-                            TA.'typeExact usr expandedPars
+                            TA.'typeExact pos usr expandedPars
 
                         'nothing:
                             addErrorE env pos ('errorTypeNotFound usr) @errors
@@ -529,7 +527,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
 translateAnnotationType as fn Env, @State, CA.RawType: TA.RawType =
     fn env, @state, ca:
     nameToType =
-        Dict.map (fn k, v: TA.'typeVar v) env.annotatedTyvarsByName
+        Dict.map (fn k, v: TA.'typeVar Pos.'g v) env.annotatedTyvarsByName
 
     translateRawType env nameToType env.annotatedUnivarsByOriginalId @state.errors ca
 
@@ -685,6 +683,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                         full =
                             { raw, uni = def.uni }
 
+                        #TTODO "The type annotatoin says that {$name / the pattern} should be a \n\n\t{$raw}"
                         'just (checkExpression localEnv full body @state) & full
 
                     'nothing:
@@ -1077,7 +1076,7 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             Hash.insert @state.boundTyvars tyvarId 'none
 
             raw =
-                TA.'typeVar tyvarId
+                TA.'typeVar Pos.'g tyvarId
 
             instance as Instance =
                 {
@@ -1111,7 +1110,7 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             Hash.insert @state.boundTyvars tyvarId 'none
 
             raw =
-                TA.'typeVar tyvarId
+                TA.'typeVar Pos.'g tyvarId
 
             univarId =
                 newTyvarId @state
@@ -1171,7 +1170,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
         inferExpression { newEnv with context = 'context_FnBody pos env.context } body @state
 
     type as TA.RawType =
-        TA.'typeFn (Array.toList @parTypes) bodyType
+        TA.'typeFn pos (Array.toList @parTypes) bodyType
 
     exp =
         TA.'fn pos (Array.toList @typedPars) typedBody bodyType
@@ -1183,7 +1182,7 @@ inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
     fn env, pos, attrName, inferredType, @state:
     try inferredType as
 
-        TA.'typeRecord 'nothing attrTypes:
+        TA.'typeRecord _ 'nothing attrTypes:
             try Dict.get attrName attrTypes as
 
                 'just type:
@@ -1194,7 +1193,7 @@ inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
 
                     TA.'typeError
 
-        TA.'typeRecord ('just tyvarId) extensionAttrTypes:
+        TA.'typeRecord p ('just tyvarId) extensionAttrTypes:
             try Dict.get attrName extensionAttrTypes as
 
                 'just type:
@@ -1208,22 +1207,22 @@ inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
                         newRawType @state
 
                     type =
-                        TA.'typeRecord ('just newExtId) (Dict.insert attrName newAttrType extensionAttrTypes)
+                        TA.'typeRecord p ('just newExtId) (Dict.insert attrName newAttrType extensionAttrTypes)
 
-                    addEquality env pos 'why_RecordAccess (TA.'typeVar tyvarId) type @state
+                    addEquality env pos 'why_RecordAccess (TA.'typeVar p tyvarId) type @state
 
                     newAttrType
 
-        TA.'typeVar id:
+        TA.'typeVar p id:
             newExtId =
                 newTyvarId @state
 
             # Attrs have always the same default uni as the record
             newAttrType =
-                TA.'typeVar (newTyvarId @state)
+                TA.'typeVar p (newTyvarId @state)
 
             type as TA.RawType =
-                TA.'typeRecord ('just newExtId) (Dict.ofOne attrName newAttrType)
+                TA.'typeRecord p ('just newExtId) (Dict.ofOne attrName newAttrType)
 
             addEquality env pos 'why_RecordAccess inferredType type @state
 
@@ -1254,7 +1253,7 @@ inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State
     try maybeExt as
 
         'nothing:
-            TA.'record pos 'nothing typedAttrs & { raw = TA.'typeRecord 'nothing attrTypes, uni }
+            TA.'record pos 'nothing typedAttrs & { raw = TA.'typeRecord pos 'nothing attrTypes, uni }
 
         'just caExt:
             typedExt & extType =
@@ -1263,7 +1262,7 @@ inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State
             finalType as TA.RawType =
                 try extType.raw as
 
-                    TA.'typeRecord 'nothing fixedTypes:
+                    TA.'typeRecord _ 'nothing fixedTypes:
                         Dict.each attrTypes fn name, valueType:
                             try Dict.get name fixedTypes as
                                 'nothing: addError env pos ('errorRecordDoesNotHaveAttribute name) @state
@@ -1271,7 +1270,7 @@ inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State
 
                         extType.raw
 
-                    TA.'typeRecord ('just tyvarId) extensionAttrTypes:
+                    TA.'typeRecord p ('just tyvarId) extensionAttrTypes:
                         expressionOnly & both & extensionOnly =
                             Dict.onlyBothOnly attrTypes extensionAttrTypes
 
@@ -1282,11 +1281,11 @@ inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State
                         newExtId =
                             newTyvarId @state
 
-                        TA.'typeRecord ('just newExtId) (Dict.join attrTypes extensionOnly)
+                        TA.'typeRecord p ('just newExtId) (Dict.join attrTypes extensionOnly)
 
-                    TA.'typeVar id:
+                    TA.'typeVar p id:
                         ty =
-                            TA.'typeRecord ('just << newTyvarId @state) attrTypes
+                            TA.'typeRecord p ('just << newTyvarId @state) attrTypes
 
                         addEquality env pos 'why_RecordExt extType.raw ty @state
 
@@ -1378,12 +1377,12 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
     fn env, expectedType, caExpression, @state:
     try caExpression & expectedType.raw as
 
-        CA.'literalNumber pos n & TA.'typeExact typeUsr []:
+        CA.'literalNumber pos n & TA.'typeExact _ typeUsr []:
             addErrorIf (typeUsr /= CoreDefs.numberDef.usr) env pos ('errorIncompatibleTypes caExpression expectedType) @state
 
             TA.'literalNumber pos n
 
-        CA.'literalText pos text & TA.'typeExact typeUsr []:
+        CA.'literalText pos text & TA.'typeExact _ typeUsr []:
             addErrorIf (typeUsr /= CoreDefs.textDef.usr) env pos ('errorIncompatibleTypes caExpression expectedType) @state
 
             TA.'literalText pos text
@@ -1405,7 +1404,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
             TA.'variable pos ref
 
-        CA.'constructor pos usr & TA.'typeExact _ _:
+        CA.'constructor pos usr & TA.'typeExact _ _ _:
             bleh =
                 try getConstructorByUsr usr env as
 
@@ -1423,7 +1422,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
             TA.'constructor pos usr
 
-        CA.'fn pos pars body & TA.'typeFn parTypes out:
+        CA.'fn pos pars body & TA.'typeFn _ parTypes out:
             if List.length pars /= List.length parTypes then
                 addError env pos 'errorWrongNumberOfParameters @state
 
@@ -1449,6 +1448,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                         { envX1 with context = envX.context }
 
                 typedBody =
+                    #TTODO "the annotation says that this function should return...."
                     checkExpression localEnv out body @state
 
                 TA.'fn pos (Array.toList @typedPars) typedBody out
@@ -1456,10 +1456,11 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
         CA.'call pos reference args & _:
             doCall env pos ('just expectedType) reference args @state >> Tuple.first
 
-        CA.'record pos ('just ext) valueByName & TA.'typeRecord 'nothing typeByName:
+        CA.'record pos ('just ext) valueByName & TA.'typeRecord _ 'nothing typeByName:
             # ext must have type expectedType
             # TODO: add context
             typedExt =
+                #TTODO "The annotation says that the record should have type..."
                 checkExpression env expectedType ext @state
 
             zzz =
@@ -1476,6 +1477,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                             fullAttrType =
                                 { raw = attrType, uni = expectedType.uni }
 
+                            #TTODO "The annotation says that the attribute $attribute should have type..."
                             checkExpression { env with context = 'context_AttributeName attrName .context } fullAttrType attrExpr @state
 
             # all valueByName attrs must be in typeByName
@@ -1484,7 +1486,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
             TA.'record pos ('just typedExt) typedValueByName
 
-        CA.'record pos 'nothing valueByName & TA.'typeRecord 'nothing typeByName:
+        CA.'record pos 'nothing valueByName & TA.'typeRecord _ 'nothing typeByName:
             aOnly & both & bOnly =
                 Dict.onlyBothOnly valueByName typeByName
 
@@ -1497,6 +1499,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
             typedAttrs =
                 # TODO add attribute name to env!?
+                #TTODO "The annotation says that the attribute $attribute should have type..."
                 both >> Dict.map (fn name, value & type: checkExpression env { raw = type, uni = expectedType.uni } value @state) __
 
             TA.'record pos 'nothing typedAttrs
@@ -1511,7 +1514,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             requiredType =
                 expectedType.raw
                 >> Dict.ofOne attrName __
-                >> TA.'typeRecord ('just newId) __
+                >> TA.'typeRecord pos ('just newId) __
 
             addEquality env pos 'why_RecordAccess expressionType.raw requiredType @state
 
@@ -1530,6 +1533,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                 >> doDefinition 'refLocal env __ @state
 
             typedRest =
+                #TTODO same context as origial
                 checkExpression defEnv expectedType rest @state
 
             TA.'letIn typedDef typedRest expectedType
@@ -1541,9 +1545,11 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             addEquality env pos 'why_IfCondition coreTypeBool conditionType.raw @state
 
             typedTrue =
+                #TTODO "The type annotation says that both `if` branches should have type ..., however when the condition is true, it yields..."
                 checkExpression { env with context = 'context_IfTrue } expectedType true @state
 
             typedFalse =
+                #TTODO as above but false
                 checkExpression { env with context = 'context_IfFalse } expectedType false @state
 
             TA.'if
@@ -1593,7 +1599,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
     expectedReturnType =
         try inferredReferenceType.raw as
 
-            TA.'typeFn parTypes outType:
+            TA.'typeFn _ parTypes outType:
                 given =
                     List.length typedArguments
 
@@ -1641,7 +1647,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
 
                             e
 
-            TA.'typeVar id:
+            TA.'typeVar p id:
                 returnType =
                     try maybeExpectedType as
 
@@ -1653,7 +1659,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
                             { raw = newRawType @state, uni = 'imm }
 
                 refTy =
-                    TA.'typeFn (List.map toTypeArg typedArguments) returnType
+                    TA.'typeFn p (List.map toTypeArg typedArguments) returnType
 
                 addEquality env pos 'why_CalledAsFunction refTy inferredReferenceType.raw @state
 
@@ -1768,7 +1774,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
 
                         parTypes & returnType =
                             try x.raw as
-                                TA.'typeFn ins out: ins & out.raw
+                                TA.'typeFn _ ins out: ins & out.raw
                                 _: [] & x.raw
 
                         addErrorIf (List.length parTypes /= List.length arguments) env pos 'errorWrongNumberOfConstructorArguments @state
@@ -1808,7 +1814,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
                     CA.'partial: 'just (newTyvarId @state)
 
             raw =
-                TA.'typeRecord patternExt (outs >> Dict.map (fn name, out: out.patternType) __)
+                TA.'typeRecord pos patternExt (outs >> Dict.map (fn name, out: out.patternType) __)
 
             {
             , env = newEnv
@@ -1911,12 +1917,12 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
 
             TA.'patternAny pos { maybeName, type = expectedType } & newEnv
 
-        CA.'patternLiteralText pos text & TA.'typeExact typeUsr []:
+        CA.'patternLiteralText pos text & TA.'typeExact _ typeUsr []:
             addErrorIf (typeUsr /= CoreDefs.textDef.usr) env pos ('errorIncompatiblePattern pattern expectedType) @state
 
             TA.'patternLiteralText pos text & env
 
-        CA.'patternLiteralNumber pos text & TA.'typeExact typeUsr []:
+        CA.'patternLiteralNumber pos text & TA.'typeExact _ typeUsr []:
             addErrorIf (typeUsr /= CoreDefs.numberDef.usr) env pos ('errorIncompatiblePattern pattern expectedType) @state
 
             TA.'patternLiteralNumber pos text & env
@@ -1935,7 +1941,7 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 
     try expectedType.raw as
 
-        TA.'typeRecord 'nothing attrs:
+        TA.'typeRecord _ 'nothing attrs:
             paOnly & both & typeOnly =
                 Dict.onlyBothOnly pas attrs
 
@@ -1960,7 +1966,7 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 
             TA.'patternRecord pos taPas & envF
 
-        TA.'typeRecord ('just tyvarId) a:
+        TA.'typeRecord _ ('just tyvarId) a:
             bug "can't annotate extensible types"
 
         _:
@@ -2004,7 +2010,7 @@ checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State
 
             (requiredParTypes as [ TA.ParType ]) & (requiredOut as TA.FullType) =
                 try fullType.raw as
-                    TA.'typeFn ax o: ax & o
+                    TA.'typeFn _ ax o: ax & o
                     _: [] & fullType
 
             if List.length arguments /= List.length requiredParTypes then
@@ -2133,7 +2139,7 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
         >> Maybe.withDefault Dict.empty __
 
     nameToType as Dict Name TA.RawType =
-        Dict.map (fn k, id & classes: TA.'typeVar id) nameToIdAndClasses
+        Dict.map (fn k, id & classes: TA.'typeVar Pos.'g id) nameToIdAndClasses
 
     tyvarIdToClasses as Dict TA.TyvarId TA.Tyvar =
         nameToIdAndClasses
@@ -2228,7 +2234,7 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         >> List.indexedMap (fn index, n: n & -index) __
 
     paramsByName as Dict Name TA.RawType =
-        List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert n (TA.'typeVar id) d)
+        List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert n (TA.'typeVar Pos.'g id) d)
 
     raw =
         translateRawType env paramsByName Dict.empty @errors caRaw
@@ -2269,7 +2275,7 @@ namedParsToIdParsAndDict as fn [ Name & Pos ]: [ TA.TyvarId ] & Dict Name TA.Raw
 
     typeByName =
         atPars
-        >> List.indexedMap (fn index, name & pos: name & TA.'typeVar -index) __
+        >> List.indexedMap (fn index, name & pos: name & TA.'typeVar pos -index) __
         >> Dict.fromList
 
     idPars & typeByName
@@ -2400,13 +2406,13 @@ solveEquality as fn Env, Equality, @State: None =
 
     try type1 & type2 as
 
-        TA.'typeVar tyvarId & t2:
+        TA.'typeVar _ tyvarId & t2:
             replaceUnificationVariable env head tyvarId t2 @state
 
-        t1 & TA.'typeVar tyvarId:
+        t1 & TA.'typeVar _ tyvarId:
             replaceUnificationVariable env head tyvarId t1 @state
 
-        TA.'typeExact usr1 args1 & TA.'typeExact usr2 args2:
+        TA.'typeExact _ usr1 args1 & TA.'typeExact _ usr2 args2:
             if usr1 /= usr2 then
                 addErError env head "types are incompatible2" @state
             else
@@ -2420,7 +2426,7 @@ solveEquality as fn Env, Equality, @State: None =
 
                 'none
 
-        TA.'typeFn pars1 out1 & TA.'typeFn pars2 out2:
+        TA.'typeFn _ pars1 out1 & TA.'typeFn _ pars2 out2:
             if List.length pars1 /= List.length pars2 then
                 addErError env head "functions expect a different number of arguments" @state
             else
@@ -2435,7 +2441,7 @@ solveEquality as fn Env, Equality, @State: None =
 
                 List.indexedEach2 pars1 pars2 (compareParTypes env head __ __ __ @state)
 
-        TA.'typeRecord 'nothing attrs1 & TA.'typeRecord 'nothing attrs2:
+        TA.'typeRecord _ 'nothing attrs1 & TA.'typeRecord _ 'nothing attrs2:
             only1 & both & only2 =
                 Dict.onlyBothOnly attrs1 attrs2
 
@@ -2444,14 +2450,14 @@ solveEquality as fn Env, Equality, @State: None =
 
             addErErrorIf env (only1 /= Dict.empty or only2 /= Dict.empty) head "record attrs don't match" @state
 
-        TA.'typeRecord ('just tyvar1) attrs1 & TA.'typeRecord 'nothing attrs2:
+        TA.'typeRecord _ ('just tyvar1) attrs1 & TA.'typeRecord _ 'nothing attrs2:
             solveRecordExt env head 'false tyvar1 attrs1 attrs2 @state
 
-        TA.'typeRecord 'nothing attrs1 & TA.'typeRecord ('just tyvar2) attrs2:
+        TA.'typeRecord _ 'nothing attrs1 & TA.'typeRecord _ ('just tyvar2) attrs2:
             # The True is to swap the terms when we insert the equality, so that we don't mix given and required
             solveRecordExt env head 'true tyvar2 attrs2 attrs1 @state
 
-        TA.'typeRecord ('just tyvar1) attrs1 & TA.'typeRecord ('just tyvar2) attrs2:
+        TA.'typeRecord p ('just tyvar1) attrs1 & TA.'typeRecord _ ('just tyvar2) attrs2:
             only1 & both & only2 =
                 Dict.onlyBothOnly attrs1 attrs2
 
@@ -2459,7 +2465,7 @@ solveEquality as fn Env, Equality, @State: None =
                 newTyvarId @state
 
             newType =
-                TA.'typeRecord ('just newExtId) (Dict.join attrs1 only2)
+                TA.'typeRecord p ('just newExtId) (Dict.join attrs1 only2)
 
             replaceUnificationVariable env head tyvar1 newType @state
 
@@ -2508,14 +2514,14 @@ solveRecordExt as fn Env, Equality, Bool, TA.TyvarId, Dict Name TA.RawType, Dict
                 }
                 >> solveEquality env __ @state
 
-    replaceUnificationVariable env equality tyvar1 (TA.'typeRecord 'nothing attrs2) @state
+    replaceUnificationVariable env equality tyvar1 (TA.'typeRecord pos 'nothing attrs2) @state
 
 
 replaceUnificationVariable as fn Env, Equality, TA.TyvarId, TA.RawType, @State: None =
     fn env, equality, tyvarId, replacingType, @state:
     isSame =
         try replacingType as
-            TA.'typeVar tyvarId2: tyvarId == tyvarId2
+            TA.'typeVar _ tyvarId2: tyvarId == tyvarId2
             _: 'false
 
     if isSame then
@@ -2540,10 +2546,10 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         occurs tyvarId __
 
     try type as
-        TA.'typeFn ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
-        TA.'typeVar id: id == tyvarId
-        TA.'typeExact usr args: List.any rec args
-        TA.'typeRecord _ attrs: Dict.any (fn k, v: rec v) attrs
+        TA.'typeFn _ ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
+        TA.'typeVar _ id: id == tyvarId
+        TA.'typeExact _ usr args: List.any rec args
+        TA.'typeRecord _ _ attrs: Dict.any (fn k, v: rec v) attrs
         TA.'typeError: 'false
 
 

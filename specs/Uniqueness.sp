@@ -516,7 +516,7 @@ polymorphism as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.ofOne 1 { maybeAnnotated = 'nothing }
-                 , type = TA.'typeFn [ TA.'parSp { raw = TA.'typeVar 1, uni = 'depends 0 } ] { raw = TA.'typeVar 1, uni = 'depends 0 }
+                 , type = TA.'typeFn Pos.'t [ TA.'parSp { raw = TA.'typeVar Pos.'t 1, uni = 'depends 0 } ] { raw = TA.'typeVar Pos.'t 1, uni = 'depends 0 }
                  }
             )
         , codeTest
@@ -569,7 +569,7 @@ unions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.'typeExact (TH.moduleUsr "Z") [ TH.taNumber ]
+                 , type = TA.'typeExact Pos.'t (TH.moduleUsr "Z") [ TH.taNumber ]
                  }
             )
         , codeTest
