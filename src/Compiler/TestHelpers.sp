@@ -161,30 +161,30 @@ caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
 # TA Types
 #
 taTyvar as fn Int: TA.RawType =
-    TA.'typeVar __
+    TA.'typeVar Pos.'t __
 
 
 taTyvarImm as fn Int: TA.RawType =
-    TA.'typeVar __
+    TA.'typeVar Pos.'t __
 
 
 taNumber as TA.RawType =
-    TA.'typeExact (CoreDefs.usr "Number") []
+    TA.'typeExact Pos.'t (CoreDefs.usr "Number") []
 
 
 taNone as TA.RawType =
-    TA.'typeExact (CoreDefs.usr "None") []
+    TA.'typeExact Pos.'t (CoreDefs.usr "None") []
 
 
 taBool as TA.RawType =
-    TA.'typeExact (CoreDefs.usr "Bool") []
+    TA.'typeExact Pos.'t (CoreDefs.usr "Bool") []
 
 
 taList as fn TA.RawType: TA.RawType =
     fn item:
-    TA.'typeExact (CoreDefs.usr "List") [ item ]
+    TA.'typeExact Pos.'t (CoreDefs.usr "List") [ item ]
 
 
 taFunction as fn [ TA.RawType ], TA.RawType: TA.RawType =
     fn from, to:
-    TA.'typeFn (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)
+    TA.'typeFn Pos.'t (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)

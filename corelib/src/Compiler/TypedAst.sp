@@ -3,10 +3,10 @@ TyvarId =
 
 
 var RawType =
-    , 'typeExact USR [ RawType ]
-    , 'typeFn [ ParType ] FullType
-    , 'typeVar TyvarId
-    , 'typeRecord (Maybe TyvarId) (Dict Name RawType)
+    , 'typeExact Pos USR [ RawType ]
+    , 'typeFn Pos [ ParType ] FullType
+    , 'typeVar Pos TyvarId
+    , 'typeRecord Pos (Maybe TyvarId) (Dict Name RawType)
     , 'typeError
 
 
@@ -180,36 +180,36 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
 
     try raw as
 
-        'typeVar id:
+        'typeVar _ id:
             try saf.ty id as
                 'nothing: raw
                 'just replacement: replacement
 
-        'typeExact usr pars:
-            'typeExact usr (List.map rec pars)
+        'typeExact p usr pars:
+            'typeExact p usr (List.map rec pars)
 
-        'typeFn pars out:
-            'typeFn (List.map (resolveParType saf __) pars) (resolveFull saf out)
+        'typeFn p pars out:
+            'typeFn p (List.map (resolveParType saf __) pars) (resolveFull saf out)
 
-        'typeRecord maybeId attrs0:
+        'typeRecord p maybeId attrs0:
             attrs1 =
                 Dict.map (fn k, v: rec v) attrs0
 
             try maybeId as
                 'nothing:
-                    'typeRecord 'nothing attrs1
+                    'typeRecord p 'nothing attrs1
 
                 'just id:
                     try saf.ty id as
                         'nothing:
-                            'typeRecord ('just id) attrs1
+                            'typeRecord p ('just id) attrs1
 
-                        'just ('typeRecord maybeNewId newAttrs):
+                        'just ('typeRecord _ maybeNewId newAttrs):
                             # TODO not sure joining the attrs is the correct thing to do
-                            'typeRecord maybeNewId (Dict.join newAttrs attrs1)
+                            'typeRecord p maybeNewId (Dict.join newAttrs attrs1)
 
-                        'just ('typeVar newId):
-                            'typeRecord ('just newId) attrs1
+                        'just ('typeVar _ newId):
+                            'typeRecord p ('just newId) attrs1
 
                         _:
                             'typeError
@@ -345,21 +345,21 @@ patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
 typeTyvars as fn RawType: Dict TyvarId None =
     fn type:
     try type as
-        'typeExact usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
-        'typeVar id: Dict.ofOne id 'none
-        'typeRecord 'nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
-        'typeRecord ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
+        'typeExact _ usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
+        'typeVar _ id: Dict.ofOne id 'none
+        'typeRecord _ 'nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
+        'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
+        'typeFn _ ins out: typeTyvars out.raw >> List.for __ ins (fn in, a: Dict.join (in >> toRaw >> typeTyvars) a)
         'typeError: Dict.empty
-        'typeFn ins out: typeTyvars out.raw >> List.for __ ins (fn in, a: Dict.join (in >> toRaw >> typeTyvars) a)
 
 
 typeAllowsFunctions as fn fn TyvarId: Bool, RawType: Bool =
     fn testId, type:
     try type as
-        'typeFn ins out: 'true
-        'typeVar id: testId id
-        'typeExact usr args: List.any (typeAllowsFunctions testId __) args
-        'typeRecord _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
+        'typeFn _ ins out: 'true
+        'typeVar _ id: testId id
+        'typeExact _ usr args: List.any (typeAllowsFunctions testId __) args
+        'typeRecord _ _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
         'typeError: 'true
 
 
@@ -391,9 +391,9 @@ normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
 normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     fn @hash, type:
     try type as
-        'typeExact usr args: 'typeExact usr (List.map (normalizeType @hash __) args)
-        'typeFn pars out: 'typeFn (mapPars (normalizeType @hash __) pars) { out with raw = normalizeType @hash .raw }
-        'typeRecord 'nothing attrs: 'typeRecord 'nothing (Dict.map (fn k, v: normalizeType @hash v) attrs)
-        'typeRecord ('just id) attrs: 'typeRecord ('just << normalizeTyvarId @hash id) (Dict.map (fn k, v: normalizeType @hash v) attrs)
-        'typeVar id: 'typeVar (normalizeTyvarId @hash id)
+        'typeExact p usr args: 'typeExact p usr (List.map (normalizeType @hash __) args)
+        'typeFn p pars out: 'typeFn p (mapPars (normalizeType @hash __) pars) { out with raw = normalizeType @hash .raw }
+        'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map (fn k, v: normalizeType @hash v) attrs)
+        'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map (fn k, v: normalizeType @hash v) attrs)
+        'typeVar p id: 'typeVar p (normalizeTyvarId @hash id)
         'typeError: 'typeError

@@ -187,7 +187,7 @@ loadOverride as Override =
 
                 [
                 , loadPars
-                , EA.'argumentSpend { with  raw = TA.'typeFn [ TA.'parSp { with  raw = compiledType } ] _ } _
+                , EA.'argumentSpend { with  raw = TA.'typeFn _ [ TA.'parSp { with  raw = compiledType } ] _ } _
                 ]:
                     !hash =
                         Hash.fromList []
@@ -602,7 +602,7 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
     definitionBody =
         try taType as
 
-            TA.'typeFn pars out:
+            TA.'typeFn _ pars out:
                 argNames as [ Text ] =
                     pars >> List.indexedMap (fn index, name: constructorArgumentName (index + 1)) __
 
