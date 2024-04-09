@@ -196,11 +196,13 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 Dict.map (fn k, v: rec v) attrs0
 
             try maybeId as
+
                 'nothing:
                     'typeRecord p 'nothing attrs1
 
                 'just id:
                     try saf.ty id as
+
                         'nothing:
                             'typeRecord p ('just id) attrs1
 
@@ -396,4 +398,20 @@ normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
         'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map (fn k, v: normalizeType @hash v) attrs)
         'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map (fn k, v: normalizeType @hash v) attrs)
         'typeVar p id: 'typeVar p (normalizeTyvarId @hash id)
+        'typeError: 'typeError
+
+
+stripTypePos as fn RawType: RawType =
+    fn raw:
+    rec as fn RawType: RawType =
+        stripTypePos
+
+    pos =
+        Pos.'t
+
+    try raw as
+        'typeVar _ id: 'typeVar pos id
+        'typeExact _ usr pars: 'typeExact pos usr (List.map rec pars)
+        'typeFn _ pars out: 'typeFn pos (mapPars rec pars) { out with raw = rec .raw }
+        'typeRecord _ maybeId attrs0: 'typeRecord pos maybeId (Dict.map (fn k, v: rec v) attrs0)
         'typeError: 'typeError

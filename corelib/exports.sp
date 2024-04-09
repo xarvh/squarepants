@@ -362,6 +362,7 @@ module =
         resolveExpression
         resolvePattern
         resolveValueDef
+        stripTypePos
 
         toRaw
         mapPars
