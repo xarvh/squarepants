@@ -51,6 +51,7 @@ outToHuman as fn Out: Text =
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
     , "  type = " .. type
+    #, "  type = " .. Debug.toHuman out.type
     ]
     >> Text.join "\n" __
 
@@ -175,10 +176,14 @@ infer as fn Text: fn Text: Result Text Out =
     ft as Dict TA.TyvarId TA.Tyvar =
         Dict.for Dict.empty def.freeTyvars (fn id, tc, d: Dict.insert (TA.normalizeTyvarId @hash id) tc d)
 
-    type =
-        TA.normalizeType @hash def.type
-
-    'ok { freeTyvars = ft, type }
+    'ok
+        {
+        , freeTyvars = ft
+        , type =
+            def.type
+            >> TA.normalizeType @hash __
+            >> TA.stripTypePos
+        }
 
 
 #
@@ -630,7 +635,8 @@ records as Test =
                  {
                  , freeTyvars = freeTyvars [ 1, 2 ]
                  , type =
-                     TA.'typeFn Pos.'t
+                     TA.'typeFn
+                         Pos.'t
                          [
                          , TA.'parRe << TA.'typeRecord Pos.'t ('just 1) (Dict.ofOne "meh" (TA.'typeRecord Pos.'t ('just 2) (Dict.ofOne "blah" TH.taNumber)))
                          ]
@@ -816,7 +822,8 @@ records as Test =
                  , type =
                      TH.taFunction
                          [
-                         , TA.'typeRecord Pos.'t
+                         , TA.'typeRecord
+                             Pos.'t
                              ('just 3)
                              (Dict.fromList
                                   [

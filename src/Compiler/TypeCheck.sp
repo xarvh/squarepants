@@ -683,8 +683,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                         full =
                             { raw, uni = def.uni }
 
-                        #TTODO "The type annotatoin says that {$name / the pattern} should be a \n\n\t{$raw}"
-                        'just (checkExpression localEnv full body @state) & full
+                        'just (checkExpression localEnv patternOut.typedPattern full body @state) & full
 
                     'nothing:
                         typed & inferredType =
@@ -1373,8 +1372,8 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
             TA.'parameterRecycle pos expectedRaw name & localEnv
 
 
-checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
-    fn env, expectedType, caExpression, @state:
+checkExpression as fn Env, TA.Pattern, TA.FullType, CA.Expression, @State: TA.Expression =
+    fn env, annotatedPattern, expectedType, caExpression, @state:
     try caExpression & expectedType.raw as
 
         CA.'literalNumber pos n & TA.'typeExact _ typeUsr []:
@@ -1449,7 +1448,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
                 typedBody =
                     #TTODO "the annotation says that this function should return...."
-                    checkExpression localEnv out body @state
+                    checkExpression localEnv annotatedPattern out body @state
 
                 TA.'fn pos (Array.toList @typedPars) typedBody out
 
@@ -1461,7 +1460,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             # TODO: add context
             typedExt =
                 #TTODO "The annotation says that the record should have type..."
-                checkExpression env expectedType ext @state
+                checkExpression env annotatedPattern expectedType ext @state
 
             zzz =
                 fn attrName, attrExpr:
@@ -1478,7 +1477,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
                                 { raw = attrType, uni = expectedType.uni }
 
                             #TTODO "The annotation says that the attribute $attribute should have type..."
-                            checkExpression { env with context = 'context_AttributeName attrName .context } fullAttrType attrExpr @state
+                            checkExpression { env with context = 'context_AttributeName attrName .context } annotatedPattern fullAttrType attrExpr @state
 
             # all valueByName attrs must be in typeByName
             typedValueByName =
@@ -1500,7 +1499,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
             typedAttrs =
                 # TODO add attribute name to env!?
                 #TTODO "The annotation says that the attribute $attribute should have type..."
-                both >> Dict.map (fn name, value & type: checkExpression env { raw = type, uni = expectedType.uni } value @state) __
+                both >> Dict.map (fn name, value & type: checkExpression env annotatedPattern { raw = type, uni = expectedType.uni } value @state) __
 
             TA.'record pos 'nothing typedAttrs
 
@@ -1534,7 +1533,7 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
             typedRest =
                 #TTODO same context as origial
-                checkExpression defEnv expectedType rest @state
+                checkExpression defEnv annotatedPattern expectedType rest @state
 
             TA.'letIn typedDef typedRest expectedType
 
@@ -1546,11 +1545,11 @@ checkExpression as fn Env, TA.FullType, CA.Expression, @State: TA.Expression =
 
             typedTrue =
                 #TTODO "The type annotation says that both `if` branches should have type ..., however when the condition is true, it yields..."
-                checkExpression { env with context = 'context_IfTrue } expectedType true @state
+                checkExpression { env with context = 'context_IfTrue } annotatedPattern expectedType true @state
 
             typedFalse =
                 #TTODO as above but false
-                checkExpression { env with context = 'context_IfFalse } expectedType false @state
+                checkExpression { env with context = 'context_IfFalse } annotatedPattern expectedType false @state
 
             TA.'if
                 pos
