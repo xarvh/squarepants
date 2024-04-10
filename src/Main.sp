@@ -17,7 +17,6 @@ allTests as [ Test ] =
     ]
 
 
-
 #
 # Res to IO.Re
 #
@@ -31,11 +30,20 @@ formattedToConsoleColoredText as fn Error.FormattedText: Text =
 
 
 errorToText as fn Error: Text =
-    __
-    >> Error.toFormattedText
-    >> List.map formattedToConsoleColoredText __
-    >> Text.join "" __
+    fn error:
+    errors =
+        error
+        >> Error.toFormattedText
+        >> List.map formattedToConsoleColoredText __
+        >> Text.join "" __
 
+    count =
+        error
+        >> Error.count
+        >> Text.fromNumber
+        >> Term.red
+
+    errors .. "\n\nNumber of errors: " .. count
 
 
 resToIo as fn Res a: IO.Re a =
@@ -204,15 +212,15 @@ platformBrowser =
 
 CliState =
     {
-    , platform as Platform.Platform
     , corelib as Maybe Text
+    , platform as Platform.Platform
     }
 
 
 cliDefaults as CliState =
     {
-    , platform = platformPosix
     , corelib = 'nothing
+    , platform = platformPosix
     }
 
 
@@ -251,14 +259,12 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
                 'just platform:
                     'ok { cliState with platform }
 
+
 parseCorelibPath as fn Maybe Text, CliState: Result Text CliState =
     fn maybeValue, cliState:
     try maybeValue as
-        'nothing:
-            'err "Please specify the path where your corelib is."
-
-        'just value:
-            'ok { cliState with corelib = 'just value }
+        'nothing: 'err "Please specify the path where your corelib is."
+        'just value: 'ok { cliState with corelib = 'just value }
 
 
 cliOptions as [ Option CliState ] =
@@ -285,7 +291,7 @@ main as IO.Program =
     try parseArguments cliOptions rawArgs cliDefaults as
 
         'err message:
-            IO.writeStderr @io (message .."\n")
+            IO.writeStderr @io (message .. "\n")
 
         'ok (args & cliState):
             try args as
@@ -303,11 +309,11 @@ main as IO.Program =
                     BuildMain.compileMain
                         @io
                         {
+                        , corelib = cliState.corelib
                         , entryPoint
                         , maybeOutputPath
                         , platform = cliState.platform
                         , selfPath = self
-                        , corelib = cliState.corelib
                         }
                     >> resToIo
 

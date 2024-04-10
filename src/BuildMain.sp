@@ -494,4 +494,4 @@ compileMain as fn @IO, CompileMainPars: Res None =
     >> IO.writeFile @io outputFile __
     >> ioToRes
     >> onOk fn _:
-    IO.writeStdout @io ("---> " .. outputFile .. " written. =)") >> ioToRes
+    IO.writeStdout @io ("---> " .. outputFile .. " written. =)\n") >> ioToRes

@@ -683,7 +683,14 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                         full =
                             { raw, uni = def.uni }
 
-                        'just (checkExpression localEnv patternOut.typedPattern full body @state) & full
+                        pars as CheckExpressionPars =
+                            {
+                            , annotatedPattern = patternOut.typedPattern
+                            , annotation = annotation.raw
+                            , env = localEnv
+                            }
+
+                        'just (checkExpression pars full body @state) & full
 
                     'nothing:
                         typed & inferredType =
@@ -1372,22 +1379,82 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
             TA.'parameterRecycle pos expectedRaw name & localEnv
 
 
-checkExpression as fn Env, TA.Pattern, TA.FullType, CA.Expression, @State: TA.Expression =
-    fn env, annotatedPattern, expectedType, caExpression, @state:
-    try caExpression & expectedType.raw as
+CheckExpressionPars =
+    {
+    , annotatedPattern as TA.Pattern
+    , annotation as CA.RawType
+    , env as Env
+    }
 
-        CA.'literalNumber pos n & TA.'typeExact _ typeUsr []:
-            addErrorIf (typeUsr /= CoreDefs.numberDef.usr) env pos ('errorIncompatibleTypes caExpression expectedType) @state
+
+checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: TA.Expression =
+    fn pars, expectedType, caExpression, @state:
+    #
+    addErrorLocal as fn Text: None =
+        fn typeConstraint:
+        module =
+            getErrorModule pars.env
+
+        annotatedPatternName =
+            try pars.annotatedPattern as
+                TA.'patternAny _ { with  maybeName = 'just name }: "`" .. name .. "`"
+                _: "the pattern"
+
+        annotatedPatternLocation =
+            Error.posToHuman module (CA.typePos pars.annotation)
+
+        [
+        #
+        # astPiece code location is displayed here
+        #
+        , typeConstraint
+        , ""
+        , "However the annotation for " .. annotatedPatternName .. ":"
+        , ""
+        , annotatedPatternLocation.block
+        , "says that it must have type"
+        , ""
+        , "    " .. typeToHuman pars.env expectedType.raw
+        , "I need the annotation and the value to have the same type!"
+        # TODO have suggestions for specific type combinations:
+        #   Number <=> Text
+        #   fn :a => a
+        #   ...
+        ]
+        >> Error.'simple module (CA.expressionPos caExpression) __
+        >> Array.push @state.errors __
+
+    assertLocal as fn Bool, Text: None =
+        fn test, typeConstraint:
+        if test then 'none else addErrorLocal typeConstraint
+
+    try caExpression as
+
+        CA.'literalNumber pos n:
+            isOk =
+                try expectedType.raw as
+                    TA.'typeExact _ typeUsr []: typeUsr == CoreDefs.numberDef.usr
+                    _: 'false
+
+            assertLocal isOk "This is a literal number, which means its type is always `Number`."
 
             TA.'literalNumber pos n
 
-        CA.'literalText pos text & TA.'typeExact _ typeUsr []:
-            addErrorIf (typeUsr /= CoreDefs.textDef.usr) env pos ('errorIncompatibleTypes caExpression expectedType) @state
+        CA.'literalText pos text:
+            isOk =
+                try expectedType.raw as
+                    TA.'typeExact _ typeUsr []: typeUsr == CoreDefs.textDef.usr
+                    _: 'false
+
+            assertLocal isOk "This is a literal text, which means its type is always `Text`."
 
             TA.'literalText pos text
 
-        CA.'variable pos ref & _:
+        CA.'variable pos ref:
             __bleh__ =
+                { with  env } =
+                    pars
+
                 try getVariableByRef ref env as
 
                     'nothing:
@@ -1403,109 +1470,135 @@ checkExpression as fn Env, TA.Pattern, TA.FullType, CA.Expression, @State: TA.Ex
 
             TA.'variable pos ref
 
-        CA.'constructor pos usr & TA.'typeExact _ _ _:
-            bleh =
-                try getConstructorByUsr usr env as
+        CA.'constructor pos usr:
+            __bleh__ =
+                try expectedType.raw as
 
-                    'nothing:
-                        addError env pos ('errorConstructorNotFound usr) @state
+                    TA.'typeExact _ _ _:
+                        bleh =
+                            { with  env } =
+                                pars
 
-                    'just cons:
-                        full as TA.FullType =
-                            generalize env pos ('refGlobal usr) cons @state
+                            try getConstructorByUsr usr env as
 
-                        addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+                                'nothing:
+                                    addError env pos ('errorConstructorNotFound usr) @state
 
-            # TODO is there any point in doing this when we know that cons literal must be Uni?
-            # checkUni env pos { fix = expectedType.uni, mut = cons.type.uni } @state
+                                'just cons:
+                                    full as TA.FullType =
+                                        generalize env pos ('refGlobal usr) cons @state
+
+                                    addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+
+                    _:
+                        addErrorLocal "This is a literal variant, which means its type must always be a variant type."
+
+            # Constructor literal is always unique, so no need to check uniqueness
 
             TA.'constructor pos usr
 
-        CA.'fn pos pars body & TA.'typeFn _ parTypes out:
-            if List.length pars /= List.length parTypes then
-                addError env pos 'errorWrongNumberOfParameters @state
+        CA.'fn pos fnPars body:
+            try expectedType.raw as
 
-                TA.'error pos
-            else
-                !typedPars =
-                    Array.fromList []
+                TA.'typeFn _ parTypes out:
+                    if List.length fnPars /= List.length parTypes then
+                        addError pars.env pos 'errorWrongNumberOfParameters @state
 
-                !parIndex =
-                    0
+                        TA.'error pos
+                    else
+                        !typedPars =
+                            Array.fromList []
 
-                localEnv as Env =
-                    env
-                    >> List.for __ (List.map2 Tuple.pair pars parTypes) fn par & parType, envX:
-                        typedPar & envX1 =
-                            checkParameter { envX with context = 'context_FnPar (cloneUni @parIndex) .context } parType par @state
+                        !parIndex =
+                            0
 
-                        Array.push @typedPars typedPar
+                        localEnv as Env =
+                            pars.env
+                            >> List.for __ (List.map2 Tuple.pair fnPars parTypes) fn par & parType, envX:
+                                typedPar & envX1 =
+                                    checkParameter envX parType par @state
 
-                        @parIndex += 1
+                                Array.push @typedPars typedPar
 
-                        # TODO uglyyy
-                        { envX1 with context = envX.context }
+                                @parIndex += 1
 
-                typedBody =
-                    #TTODO "the annotation says that this function should return...."
-                    checkExpression localEnv annotatedPattern out body @state
+                                envX1
 
-                TA.'fn pos (Array.toList @typedPars) typedBody out
+                        typedBody =
+                            checkExpression { pars with env = localEnv } out body @state
 
-        CA.'call pos reference args & _:
-            doCall env pos ('just expectedType) reference args @state >> Tuple.first
+                        TA.'fn pos (Array.toList @typedPars) typedBody out
 
-        CA.'record pos ('just ext) valueByName & TA.'typeRecord _ 'nothing typeByName:
-            # ext must have type expectedType
-            # TODO: add context
-            typedExt =
-                #TTODO "The annotation says that the record should have type..."
-                checkExpression env annotatedPattern expectedType ext @state
+                _:
+                    addErrorLocal "This expression is a function, which means its type is always a `fn` type."
 
-            zzz =
-                fn attrName, attrExpr:
-                    try Dict.get attrName typeByName as
+                    TA.'error pos
 
-                        'nothing:
-                            addError env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
+        CA.'call pos reference args:
+            doCall pars.env pos ('just expectedType) reference args @state >> Tuple.first
 
-                            # This is not super clean, but since it's an error condition, it's probably fine
-                            Tuple.first (inferExpression env attrExpr @state)
+        CA.'record pos ('just ext) valueByName:
+            try expectedType.raw as
 
-                        'just attrType:
-                            fullAttrType =
-                                { raw = attrType, uni = expectedType.uni }
+                TA.'typeRecord _ 'nothing typeByName:
+                    # ext must have type expectedType
+                    typedExt =
+                        checkExpression pars expectedType ext @state
 
-                            #TTODO "The annotation says that the attribute $attribute should have type..."
-                            checkExpression { env with context = 'context_AttributeName attrName .context } annotatedPattern fullAttrType attrExpr @state
+                    zzz =
+                        fn attrName, attrExpr:
+                            try Dict.get attrName typeByName as
 
-            # all valueByName attrs must be in typeByName
-            typedValueByName =
-                Dict.map zzz valueByName
+                                'nothing:
+                                    addError pars.env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
 
-            TA.'record pos ('just typedExt) typedValueByName
+                                    # This is not super clean, but since it's an error condition, it's probably fine
+                                    Tuple.first (inferExpression pars.env attrExpr @state)
 
-        CA.'record pos 'nothing valueByName & TA.'typeRecord _ 'nothing typeByName:
-            aOnly & both & bOnly =
-                Dict.onlyBothOnly valueByName typeByName
+                                'just attrType:
+                                    fullAttrType =
+                                        { raw = attrType, uni = expectedType.uni }
 
-            if aOnly /= Dict.empty then
-                addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly)) @state
-            else if bOnly /= Dict.empty then
-                addError env pos ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys bOnly)) @state
-            else
-                'none
+                                    checkExpression pars fullAttrType attrExpr @state
 
-            typedAttrs =
-                # TODO add attribute name to env!?
-                #TTODO "The annotation says that the attribute $attribute should have type..."
-                both >> Dict.map (fn name, value & type: checkExpression env annotatedPattern { raw = type, uni = expectedType.uni } value @state) __
+                    # all valueByName attrs must be in typeByName
+                    typedValueByName =
+                        Dict.map zzz valueByName
 
-            TA.'record pos 'nothing typedAttrs
+                    TA.'record pos ('just typedExt) typedValueByName
 
-        CA.'recordAccess pos attrName exp & _:
+                _:
+                    addErrorLocal "This is a literal record, which means its type is always a record type."
+
+                    TA.'error pos
+
+        CA.'record pos 'nothing valueByName:
+            try expectedType.raw as
+
+                TA.'typeRecord _ 'nothing typeByName:
+                    aOnly & both & bOnly =
+                        Dict.onlyBothOnly valueByName typeByName
+
+                    if aOnly /= Dict.empty then
+                        addError pars.env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly)) @state
+                    else if bOnly /= Dict.empty then
+                        addError pars.env pos ('errorRecordIsMissingAttibutesInAnnotation (Dict.keys bOnly)) @state
+                    else
+                        'none
+
+                    typedAttrs =
+                        both >> Dict.map (fn name, value & type: checkExpression pars { raw = type, uni = expectedType.uni } value @state) __
+
+                    TA.'record pos 'nothing typedAttrs
+
+                _:
+                    addErrorLocal "This is a literal record, which means its type is always a record type."
+
+                    TA.'error pos
+
+        CA.'recordAccess pos attrName exp:
             typedExpression & expressionType =
-                inferExpression env exp @state
+                inferExpression pars.env exp @state
 
             newId =
                 newTyvarId @state
@@ -1515,13 +1608,13 @@ checkExpression as fn Env, TA.Pattern, TA.FullType, CA.Expression, @State: TA.Ex
                 >> Dict.ofOne attrName __
                 >> TA.'typeRecord pos ('just newId) __
 
-            addEquality env pos 'why_RecordAccess expressionType.raw requiredType @state
+            addEquality pars.env pos 'why_RecordAccess expressionType.raw requiredType @state
 
-            checkUni env pos { given = expressionType.uni, required = expectedType.uni } @state
+            checkUni pars.env pos { given = expressionType.uni, required = expectedType.uni } @state
 
             TA.'recordAccess pos attrName typedExpression
 
-        CA.'letIn def rest & _:
+        CA.'letIn def rest:
             typedDef & defEnv =
                 {
                 , directDeps = Dict.empty
@@ -1529,27 +1622,24 @@ checkExpression as fn Env, TA.Pattern, TA.FullType, CA.Expression, @State: TA.Ex
                 , pattern = def.pattern
                 , uni = def.uni
                 }
-                >> doDefinition 'refLocal env __ @state
+                >> doDefinition 'refLocal pars.env __ @state
 
             typedRest =
-                #TTODO same context as origial
-                checkExpression defEnv annotatedPattern expectedType rest @state
+                checkExpression { pars with env = defEnv } expectedType rest @state
 
             TA.'letIn typedDef typedRest expectedType
 
-        CA.'if pos { condition, false, true } & _:
+        CA.'if pos { condition, false, true }:
             typedCondition & conditionType =
-                inferExpression { env with context = 'context_IfCondition } condition @state
+                inferExpression pars.env condition @state
 
-            addEquality env pos 'why_IfCondition coreTypeBool conditionType.raw @state
+            addEquality pars.env pos 'why_IfCondition coreTypeBool conditionType.raw @state
 
             typedTrue =
-                #TTODO "The type annotation says that both `if` branches should have type ..., however when the condition is true, it yields..."
-                checkExpression { env with context = 'context_IfTrue } annotatedPattern expectedType true @state
+                checkExpression pars expectedType true @state
 
             typedFalse =
-                #TTODO as above but false
-                checkExpression { env with context = 'context_IfFalse } annotatedPattern expectedType false @state
+                checkExpression pars expectedType false @state
 
             TA.'if
                 pos
@@ -1559,24 +1649,16 @@ checkExpression as fn Env, TA.Pattern, TA.FullType, CA.Expression, @State: TA.Ex
                 , true = typedTrue
                 }
 
-        CA.'try pos { patternsAndExpressions, value } & _:
+        CA.'try pos { patternsAndExpressions, value }:
             typedExp & fullType =
-                doTry env pos expectedType.raw value patternsAndExpressions @state
+                doTry pars.env pos expectedType.raw value patternsAndExpressions @state
 
-            checkUni env pos { given = fullType.uni, required = expectedType.uni } @state
+            checkUni pars.env pos { given = fullType.uni, required = expectedType.uni } @state
 
             typedExp
 
-        _ & TA.'typeError:
-            TA.'error (CA.expressionPos caExpression)
-
-        _:
-            pos =
-                CA.expressionPos caExpression
-
-            addError env pos ('errorIncompatibleTypes caExpression expectedType) @state
-
-            TA.'error pos
+        CA.'introspect pos _ _:
+            todo "checkExpression 'introspect"
 
 
 doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State: TA.Expression & TA.FullType =
@@ -2079,7 +2161,7 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
 #                    # TODO -----> addErrorIf (TA.typeAllowsFunctions testId taType) env tyvar.generalizedAt (ErrorTypeAllowsFunctions taType tyvar caModule.umr) @state
 #                    None
 
-    Debug.benchStart 'none
+    #Debug.benchStart 'none
 
     typedDef & env1 =
         {
@@ -2090,9 +2172,9 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
         }
         >> doDefinition nameToRef env0 __ @state
 
-    Debug.benchStop "type inference"
+    #Debug.benchStop "type inference"
 
-    Debug.benchStart 'none
+    #Debug.benchStart 'none
 
     subsAsFns as TA.SubsAsFns =
         {
@@ -2103,7 +2185,7 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
     resolvedValueDef as TA.ValueDef =
         TA.resolveValueDef subsAsFns typedDef
 
-    Debug.benchStop "def resolution"
+    #Debug.benchStop "def resolution"
 
     # Update lastUnificationVarId!!
     # TODO we can make this safer once we have a 'reassign' op?

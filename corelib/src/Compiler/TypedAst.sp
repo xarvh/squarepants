@@ -333,6 +333,16 @@ mapPars as fn fn RawType: RawType, [ ParType ]: [ ParType ] =
     List.map zzz pars
 
 
+patternPos as fn Pattern: Pos =
+    fn p:
+    try p as
+        'patternAny pos _: pos
+        'patternLiteralNumber pos _: pos
+        'patternLiteralText pos _: pos
+        'patternConstructor pos usr ps: pos
+        'patternRecord pos ps: pos
+
+
 patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
     fn p:
     try p as

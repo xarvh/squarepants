@@ -245,20 +245,6 @@ build as fn BuildPlan: Res BuildOut =
 
     collectRequiredUsrs pars @state
     >> onOk fn 'none:
-    missingDefs =
-        Hash.for_ [] @state.done fn usr, { def, deps }, errs:
-            if def == 'missingDef then [ usr, errs... ] else errs
-
-    if missingDefs /= [] then
-        [
-        , "Cannot find definitions for:"
-        , List.map (Human/Type.usrToText pars.projectImports __) missingDefs...
-        ]
-        >> Error.'raw
-        >> 'err
-    else
-        'ok 'none
-    >> onOk fn 'none:
     #
     # Reorder all usrs
     #
@@ -356,25 +342,40 @@ build as fn BuildPlan: Res BuildOut =
     stopOnError pars @errors
     >> onOk fn 'none:
     #
+    # Ensure that entryUsr and platform usrs are available?
+    #
+    missingDefs =
+        Hash.for_ [] @state.done fn usr, { def, deps }, errs:
+            if def == 'missingDef then [ usr, errs... ] else errs
+
+    if missingDefs /= [] then
+        [
+        , "Cannot find definitions for:"
+        , List.map (Human/Type.usrToText pars.projectImports __) missingDefs...
+        ]
+        >> Error.'raw
+        >> 'err
+    else
+        'ok 'none
+    >> onOk fn 'none:
+    #
     # Emit
     #
 
-
     translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
         fn usr & def:
-
         Maybe.map
-          (fn body:
-                {
-                , deps = def.directDeps
-                , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
-                , freeTyvars = def.freeTyvars
-                , freeUnivars = def.freeUnivars
-                , type = def.type.raw
-                , usr = EA.translateUsr usr
-                }
-          )
-          def.body
+            (fn body:
+                 {
+                 , deps = def.directDeps
+                 , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
+                 , freeTyvars = def.freeTyvars
+                 , freeUnivars = def.freeUnivars
+                 , type = def.type.raw
+                 , usr = EA.translateUsr usr
+                 }
+            )
+            def.body
 
     rootValues as [ EA.GlobalDefinition ] =
         List.filterMap translateDef valueDefsWithDestruction

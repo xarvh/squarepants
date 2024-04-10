@@ -1607,7 +1607,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
 
 translateModule as fn ReadOnly, FA.Module: Res CA.Module =
     fn ro, faModule:
-    Debug.benchStart 'none
+    #Debug.benchStart 'none
 
     module =
         CA.initModule ro.errorModule.fsPath ro.umr ro.errorModule.content
@@ -1616,7 +1616,7 @@ translateModule as fn ReadOnly, FA.Module: Res CA.Module =
     module & initEnv ro
     >> List.forRes __ faModule (insertRootStatement __ __)
     >> Result.map Tuple.first __
-    >> btw Debug.benchStop "translateModule" __
+    #>> btw Debug.benchStop "translateModule" __
 
 
 textToCanonicalModule as fn Bool, ReadOnly: Res CA.Module =

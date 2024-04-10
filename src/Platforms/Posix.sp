@@ -41,7 +41,7 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
         """
 
     compiledStatements as Text =
-        log "Creating JS AST..." ""
+        #log "Creating JS AST..." ""
 
         jaStatements =
             Targets/Javascript/EmittableToJs.translateAll
@@ -51,7 +51,7 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
                 , platformOverrides = overrides makePlatformUmr
                 }
 
-        log "Emitting JS..." ""
+        #log "Emitting JS..." ""
 
         jaStatements
         >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
