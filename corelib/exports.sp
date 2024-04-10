@@ -366,6 +366,7 @@ module =
 
         toRaw
         mapPars
+        patternPos
         patternNames
         typeTyvars
         typeAllowsFunctions
@@ -424,6 +425,7 @@ module =
         Module
         initModule
         parTypeToRaw
+        typePos
         typeTyvars
         typeUnivars
         patternPos

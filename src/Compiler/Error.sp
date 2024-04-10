@@ -42,6 +42,14 @@ flatten as fn Error, [ FormattedText ]: [ FormattedText ] =
         'nested ls: List.for accum ls flatten
 
 
+count as fn Error: Int =
+    fn e:
+    try e as
+        'simple mod pos desc: 1
+        'raw desc: 1
+        'nested ls: List.for 0 ls fn err, total: total + count err
+
+
 #
 # It would be more reliable to declare errors diectly in FormattedText, but I tried it and it was a pain.
 # So until I have a better idea, errors are declared as strings and we'll need to transform them back to FormattedText
@@ -153,7 +161,7 @@ fmtBlock as fn Int, [ Highlight ], [ Text ]: Text =
                 .. Text.repeat pad " "
                 .. "    "
                 .. Text.repeat (s - 1) " "
-                .. warn (Text.repeat (max 1 (e - s)) "^")
+                .. warn (Text.repeat (max 1 (e - s)) "`")
 
     lineDem =
         fn lineIndex:
@@ -286,7 +294,7 @@ simpleToText as fn Module, Pos, [ Text ]: [ FormattedText ] =
     [
     , ""
     , ""
-    , deco << Text.padRight 50 "-" (location .. " ")
+    , Text.padLeft 79 "=" (" " .. location) >> deco
     , ""
     , description
     , ""

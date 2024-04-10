@@ -100,9 +100,9 @@ LocalDef =
 ValueDef =
     {
     , directDeps as Dict USR DependencyType
+    , maybeAnnotation as Maybe Annotation
     , maybeBody as Maybe Expression
     , name as Name
-    , maybeAnnotation as Maybe Annotation
     , namePos as Pos
     }
 
@@ -126,13 +126,13 @@ VariantTypeDef =
 
 ConstructorDef =
     {
-    , name as Name
+    , constructorUsr as USR
     , directDeps as Dict USR DependencyType
     , ins as [ RawType ]
+    , name as Name
     , out as RawType
     , pos as Pos
     , variantTypeUsr as USR
-    , constructorUsr as USR
     }
 
 
@@ -184,6 +184,15 @@ typeTyvars as fn RawType: Dict Name Pos =
         'typeRecord _ attrs: fromList (Dict.values attrs)
         'typeAnnotationVariable pos name: Dict.ofOne name pos
         'typeError _: Dict.empty
+
+
+typePos as fn RawType: Pos =
+    try __ as
+        'typeNamed p _ _: p
+        'typeFn p _ _: p
+        'typeRecord p _: p
+        'typeAnnotationVariable p _: p
+        'typeError p: p
 
 
 typeUnivars as fn RawType: Dict UnivarId None =
@@ -291,3 +300,20 @@ expressionPos as fn Expression: Pos =
         'if p _: p
         'try p _: p
         'introspect p _ _: p
+
+
+expressionName as fn Expression: Text =
+    fn exp:
+    try exp as
+        'literalNumber p _: "literal number"
+        'literalText p _: "literal text"
+        'variable p _: "variable"
+        'constructor p _: "constructor"
+        'fn p _ _: "function definition"
+        'call p _ _: "function call"
+        'record p _ _: "record literal"
+        'recordAccess p _ _: "record access"
+        'letIn _ e: expressionName e
+        'if p _: "if-expression"
+        'try p _: "try-expression"
+        'introspect p _ _: "introspection"

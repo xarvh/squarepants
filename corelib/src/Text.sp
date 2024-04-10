@@ -64,7 +64,7 @@ padLeft as fn Int, Text, Text: Text =
 
     if textLength < minLength then
         times =
-            (textLength - minLength) / Text.length pad
+            (minLength - textLength) / Text.length pad
 
         repeat times pad .. s
     else
@@ -78,7 +78,7 @@ padRight as fn Int, Text, Text: Text =
 
     if textLength < minLength then
         times =
-            (textLength - minLength) / Text.length pad
+            (minLength - textLength) / Text.length pad
 
         s .. repeat times pad
     else
