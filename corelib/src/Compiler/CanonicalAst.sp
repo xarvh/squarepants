@@ -143,6 +143,8 @@ Module =
     , constructorDefs as Dict Name ConstructorDef
     , fsPath as Text
     , umr as UMR
+    , umrToAlias as Dict UMR Name
+    , usrToGlobal as Dict USR Name
     , valueDefs as Dict Name ValueDef
     , variantTypeDefs as Dict Name VariantTypeDef
     }
@@ -156,6 +158,8 @@ initModule as fn Text, UMR, Text: Module =
     , constructorDefs = Dict.empty
     , fsPath
     , umr
+    , umrToAlias = Dict.empty
+    , usrToGlobal = Dict.empty
     , valueDefs = Dict.empty
     , variantTypeDefs = Dict.empty
     }

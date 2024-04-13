@@ -114,7 +114,8 @@ infer as fn Text: fn Text: Result Text Out =
     params as Compiler/MakeCanonical.ReadOnly =
         {
         , errorModule = TH.errorModule code
-        , resolvePars = fn pos: TH.resolvePars
+        , imports = TH.imports
+        , resolveToUsr = TH.resolveToUsr
         , umr = TH.moduleUmr
         }
 

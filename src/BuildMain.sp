@@ -61,7 +61,7 @@ buildInfoModule as fn Platform: CA.Module =
 
 LoadCaModulePars =
     {
-    , buildInfoModule as CA.Module
+#    , buildInfoModule as CA.Module
     , idToDirs as fn Int: { importsDir as Text, sourceDir as Text }
     , loadExports as fn Meta.ImportsPath: Res Exports
     , loadImports as fn Meta.ImportsPath: Res Imports
@@ -74,8 +74,8 @@ loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
     fn pars, 'USR umr name:
     if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
-    else if umr == pars.buildInfoModule.umr then
-        'ok pars.buildInfoModule
+#    else if umr == pars.buildInfoModule.umr then
+#        'ok pars.buildInfoModule
     else
         'UMR rootDirectory id modulePath =
             umr
@@ -115,14 +115,49 @@ loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
             , makeError = Error.'simple errorModule pos __
             }
 
+        !globals as Hash USR Name =
+            Hash.fromList []
+
+        !aliases as Hash UMR Name =
+            Hash.fromList []
+
+        # Here we're hijacking the resolution to build the reverse imports hashes
+        # TODO we're re-adding the same entries every time we resolve them: there's probably a cleaner and more efficient way to do this
+        resolveToUsr =
+            fn pos, maybeModuleName, name_:
+            try Meta.resolve (resolvePars pos) maybeModuleName name_ as
+
+                'err e:
+                    'err e
+
+                'ok usr:
+                    Hash.insert @globals usr name_
+
+                    'USR umr_ _ =
+                        usr
+
+                    __xxx__ =
+                        try maybeModuleName as
+                            'just moduleName: Hash.insert @aliases umr_ moduleName
+                            'nothing: 'none
+
+                    'ok usr
+
         params as Compiler/MakeCanonical.ReadOnly =
             {
             , errorModule
-            , resolvePars
+            , imports
+            , resolveToUsr
             , umr
             }
 
         Compiler/MakeCanonical.textToCanonicalModule 'false params
+        >> onOk fn mod:
+        { mod with
+        , umrToAlias = Hash.toList @aliases >> Dict.fromList
+        , usrToGlobal = Hash.toList @globals >> Dict.fromList
+        }
+        >> 'ok
 
 
 #
@@ -455,7 +490,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     #
     loadCaModulePars as LoadCaModulePars =
         {
-        , buildInfoModule = buildInfoModule pars.platform
+#        , buildInfoModule = buildInfoModule pars.platform
         , idToDirs = idToDirs @state __
         , loadExports = loadExports @io @state rootPaths __
         , loadImports = loadImports @io @state rootPaths __
