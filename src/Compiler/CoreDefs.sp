@@ -656,6 +656,8 @@ coreModule as CA.Module =
     , constructorDefs
     , fsPath = "<core module>"
     , umr
+    , umrToAlias = Dict.empty
+    , usrToGlobal = Dict.empty
     , valueDefs
     , variantTypeDefs
     }

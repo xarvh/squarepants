@@ -61,9 +61,9 @@ resErrorToStrippedText as fn Res a: Result Text a =
 imports as Imports =
     pars as ImportsFile.ToImportsPars =
         {
+        , getSourceDirId = fn importsDir, sourceDir: 1
         , importsPath
         , joinPath = Path.join
-        , getSourceDirId = fn importsDir, sourceDir: 1
         }
 
     try ImportsFile.toImports pars DefaultImports.defaultImportsFile as
@@ -81,32 +81,35 @@ imports as Imports =
 # Resolve Pars
 #
 exports as Meta.Exports =
-    isOpen = 'false
+    isOpen =
+        'false
 
     [
     , "None" & { isOpen = 'true, usr = CoreDefs.noneTypeUsr }
-    , "'none"  & { isOpen, usr = CoreDefs.noneConsUsr }
+    , "'none" & { isOpen, usr = CoreDefs.noneConsUsr }
     #
-    , "Bool" & { isOpen = 'true, usr = CoreDefs.boolUsr }
+    , "Bool"
+    & { isOpen = 'true, usr = CoreDefs.boolUsr }
     , "'true" & { isOpen, usr = CoreDefs.trueUsr }
     , "'false" & { isOpen, usr = CoreDefs.falseUsr }
     #
-    , "List" & { isOpen = 'true, usr = CoreDefs.listUsr }
+    , "List"
+    & { isOpen = 'true, usr = CoreDefs.listUsr }
     , "'nil" & { isOpen, usr = CoreDefs.nilUsr }
     , "'cons" & { isOpen, usr = CoreDefs.consUsr }
     #
-    , "Text" & { isOpen, usr = CoreDefs.textUsr }
+    , "Text"
+    & { isOpen, usr = CoreDefs.textUsr }
     , "Number" & { isOpen, usr = CoreDefs.numberUsr }
     ]
     >> Dict.fromList
     >> Dict.ofOne "Core" __
 
 
-
 loadExports as fn Meta.ImportsPath: Res Meta.Exports =
     fn ip:
-
     try ip as
+
         Meta.'importsPath Meta.'core "":
             'ok exports
 
@@ -128,6 +131,11 @@ resolvePars as Meta.ResolvePars Error =
     , loadExports
     , makeError = Error.'raw __
     }
+
+
+resolveToUsr as fn Pos, Maybe Name, Name: Res USR =
+    fn pos, maybeModule, name:
+    Meta.resolve resolvePars maybeModule name
 
 
 #

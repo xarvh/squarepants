@@ -32,7 +32,8 @@ Env =
 ReadOnly =
     {
     , errorModule as Error.Module
-    , resolvePars as fn Pos: Meta.ResolvePars Error
+    , imports as Meta.Imports
+    , resolveToUsr as fn Pos, Maybe Name, Name: Res USR
     , umr as UMR
     }
 
@@ -60,14 +61,6 @@ erroro as fn ReadOnly, Pos, [ Text ]: Res a =
 error as fn Env, Pos, [ Text ]: Res a =
     fn env, pos, msg:
     Error.res env.ro.errorModule pos msg
-
-
-#
-# Names resolution
-#
-resolveToUsr as fn ReadOnly, Pos, Maybe Name, Name: Res USR =
-    fn ro, pos, maybeModule, name:
-    Meta.resolve (ro.resolvePars pos) maybeModule name
 
 
 #
@@ -307,7 +300,7 @@ translateAttributeName as fn ReadOnly, FA.Expression: Res (Pos & Name & Maybe FA
 
 translatePatternConstructor as fn Env, Pos, Maybe Name, Name, [ CA.Pattern ]: Res CA.Pattern =
     fn env, pos, maybeModule, name, args:
-    resolveToUsr env.ro pos maybeModule name
+    env.ro.resolveToUsr pos maybeModule name
     >> onOk fn usr:
     CA.'patternConstructor pos usr args >> 'ok
 
@@ -647,7 +640,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "Can't reference a type or module here...?" ]
 
         FA.'constructor { maybeModule, name }:
-            resolveToUsr env.ro pos maybeModule name
+            env.ro.resolveToUsr pos maybeModule name
             >> onOk fn usr:
             CA.'constructor pos usr >> 'ok
 
@@ -806,7 +799,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             error env pos [ "`this_is_sp_native` can be used only for root level value defs" ]
 
         FA.'introspect introspect maybeModule name:
-            resolveToUsr env.ro pos maybeModule name
+            env.ro.resolveToUsr pos maybeModule name
             >> onOk fn usr:
             CA.'introspect pos introspect usr >> 'ok
 
@@ -842,11 +835,8 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                     ]
 
             'nothing:
-                resolvePars =
-                    env.ro.resolvePars paName.pos
-
                 shadowsAGlobal =
-                    try Dict.get paName.name resolvePars.currentImports.globalNameToLocation as
+                    try Dict.get paName.name env.ro.imports.globalNameToLocation as
 
                         # No global with this name, all good
                         'nothing:
@@ -860,7 +850,7 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                                 # We are defining a local, so definitely not the global. Shadowing!
                                 'true
                             else
-                                try Meta.resolve resolvePars 'nothing paName.name as
+                                try env.ro.resolveToUsr Pos.'g 'nothing paName.name as
 
                                     'err _:
                                         # There is a problem figuring out where the global is from.
@@ -899,7 +889,7 @@ translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe 
         if isLocal then
             'refLocal name >> 'ok
         else
-            resolveToUsr env.ro pos maybeModule name >> Result.map 'refGlobal __
+            env.ro.resolveToUsr pos maybeModule name >> Result.map 'refGlobal __
         >> onOk fn ref:
         CA.'variable pos ref
         >> List.for __ attrPath (CA.'recordAccess pos __ __)
@@ -1284,15 +1274,14 @@ translateBinopChainRec as fn Env, Pos, CA.Expression, [ FA.Binop & FA.Expression
         [ op & faRight, tail... ]:
             translateArgument env faRight
             >> onOk fn caRight:
-
-            CA.'call pos
-                  (CA.'variable op.pos ('refGlobal op.usr))
-                  [ CA.'argumentExpression leftAccum
-                  , caRight
-                  ]
+            CA.'call
+                pos
+                (CA.'variable op.pos ('refGlobal op.usr))
+                [
+                , CA.'argumentExpression leftAccum
+                , caRight
+                ]
             >> translateBinopChainRec env pos __ tail
-
-
 
 
 #
@@ -1375,7 +1364,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
     try expr_ as
 
         FA.'uppercase { maybeModule, name }:
-            resolveToUsr ro pos maybeModule name
+            ro.resolveToUsr pos maybeModule name
             >> onOk fn usr:
             CA.'typeNamed pos usr [] >> 'ok
 
@@ -1396,7 +1385,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                     faArgs
                     >> List.mapRes (translateRawType ro __) __
                     >> onOk fn caArgs:
-                    resolveToUsr ro pos maybeModule name
+                    ro.resolveToUsr pos maybeModule name
                     >> onOk fn usr:
                     CA.'typeNamed pos usr caArgs >> 'ok
 
@@ -1616,8 +1605,9 @@ translateModule as fn ReadOnly, FA.Module: Res CA.Module =
     module & initEnv ro
     >> List.forRes __ faModule (insertRootStatement __ __)
     >> Result.map Tuple.first __
-    #>> btw Debug.benchStop "translateModule" __
 
+
+#>> btw Debug.benchStop "translateModule" __
 
 textToCanonicalModule as fn Bool, ReadOnly: Res CA.Module =
     fn stripLocations, ro:
