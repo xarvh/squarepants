@@ -102,10 +102,11 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     , corelib "List" "sortBy"
     & function "list_sortBy"
     #
-    , corelib "Self" "load" & loadOverride
+    , corelib "Self" "load"
+    & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ fn usr & override, d: Dict.insert (EA.translateUsr usr) override d
+    >> List.for Dict.empty __ (fn usr & override, d: Dict.insert (EA.translateUsr usr) override d)
 
 
 unaryPlus as Override =
@@ -249,7 +250,6 @@ translateName as fn Name: Text =
 
 translateUsrToText as fn USR: Text =
     fn usr:
-
     EA.translateUsr usr >> _usrToText
 
 
@@ -324,6 +324,11 @@ literalString as fn Text: JA.Expr =
     "\"" .. escaped .. "\"" >> JA.'literal
 
 
+wrapInAutoLambda as fn [ JA.Statement ]: JA.Expr =
+    fn statements:
+    JA.'call (JA.'blockLambda [] statements) []
+
+
 #
 #
 #
@@ -336,7 +341,7 @@ translateExpressionToExpression as fn Env, EA.Expression: JA.Expr =
     fn env, expr:
     try translateExpression env expr as
         'inline e: e
-        'block block: JA.'call (JA.'blockLambda [] block) []
+        'block block: wrapInAutoLambda block
 
 
 makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
@@ -591,7 +596,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
 
 
 translateConstructorDef as fn USR & TA.RawType: JA.Statement =
-    fn, usr & taType:
+    fn usr & taType:
     'USR umr nameWithApostrophe =
         usr
 
