@@ -37,14 +37,13 @@
 
 typeToHuman as fn Env, TA.RawType: Text =
     fn env, raw:
-
     'USR umr _ =
         env.currentRootUsr
 
     module =
-      try Dict.get umr env.modulesByUmr as
-          'nothing: CoreDefs.coreModule
-          'just m: m
+        try Dict.get umr env.modulesByUmr as
+            'nothing: CoreDefs.coreModule
+            'just m: m
 
     raw
     >> Human/Type.doRawType module __
@@ -1425,11 +1424,11 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
         , ""
         , "    " .. typeToHuman pars.env expectedType.raw
         , "I need the annotation and the value to have the same type!"
+        ]
         # TODO have suggestions for specific type combinations:
         #   Number <=> Text
         #   fn :a => a
         #   ...
-        ]
         >> Error.'simple module (CA.expressionPos caExpression) __
         >> Array.push @state.errors __
 
@@ -1460,47 +1459,44 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
             TA.'literalText pos text
 
         CA.'variable pos ref:
-            __bleh__ =
-                { with  env } =
-                    pars
+            { with  env } =
+                pars
 
-                try getVariableByRef ref env as
+            try getVariableByRef ref env as
 
-                    'nothing:
-                        addError env pos ('errorVariableNotFound ref) @state
+                'nothing:
+                    addError env pos ('errorVariableNotFound ref) @state
 
-                    'just var:
-                        full =
-                            generalize env pos ref var @state
+                'just var:
+                    full =
+                        generalize env pos ref var @state
 
-                        checkUni env pos { given = full.uni, required = expectedType.uni } @state
+                    checkUni env pos { given = full.uni, required = expectedType.uni } @state
 
-                        addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+                    addEquality env pos 'why_Annotation full.raw expectedType.raw @state
 
             TA.'variable pos ref
 
         CA.'constructor pos usr:
-            __bleh__ =
-                try expectedType.raw as
+            try expectedType.raw as
 
-                    TA.'typeExact _ _ _:
-                        bleh =
-                            { with  env } =
-                                pars
+                TA.'typeExact _ _ _:
+                    { with  env } =
+                        pars
 
-                            try getConstructorByUsr usr env as
+                    try getConstructorByUsr usr env as
 
-                                'nothing:
-                                    addError env pos ('errorConstructorNotFound usr) @state
+                        'nothing:
+                            addError env pos ('errorConstructorNotFound usr) @state
 
-                                'just cons:
-                                    full as TA.FullType =
-                                        generalize env pos ('refGlobal usr) cons @state
+                        'just cons:
+                            full as TA.FullType =
+                                generalize env pos ('refGlobal usr) cons @state
 
-                                    addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+                            addEquality env pos 'why_Annotation full.raw expectedType.raw @state
 
-                    _:
-                        addErrorLocal "This is a literal variant, which means its type must always be a variant type."
+                _:
+                    addErrorLocal "This is a literal variant, which means its type must always be a variant type."
 
             # Constructor literal is always unique, so no need to check uniqueness
 
