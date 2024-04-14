@@ -351,7 +351,7 @@ build as fn BuildPlan: Res BuildOut =
     if missingDefs /= [] then
         [
         , "Cannot find definitions for:"
-        , List.map (Human/Type.usrToText pars.projectImports __) missingDefs...
+        , List.map (Human/Type.usrToText CoreDefs.coreModule __) missingDefs...
         ]
         >> Error.'raw
         >> 'err

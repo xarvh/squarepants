@@ -1,4 +1,3 @@
-
 rootToPath as fn Meta.RootDirectory: Text =
     try __ as
         Meta.'core: "core:"
@@ -11,25 +10,40 @@ rootToPath as fn Meta.RootDirectory: Text =
 #
 #    rootToPath root .. importsDir
 
+umrToText as fn CA.Module, UMR: Text =
+    fn contextModule, umr:
+    try Dict.get umr contextModule.umrToAlias as
 
-umrToText as fn Imports, UMR: Text =
-    fn projectImports, 'UMR rootDirectory sourceDirId modulePath:
+        'just alias:
+            alias
 
-    # TODO translate sourceDirId
-    rootToPath rootDirectory .. Text.fromNumber sourceDirId .. ":" .. modulePath
+        'nothing:
+            'UMR rootDirectory sourceDirId modulePath =
+                umr
 
-
-usrToText as fn Imports, USR: Text =
-    fn projectImports, 'USR umr name:
-    # TODO use display umr if name is not in Imports
-    umrToText projectImports umr .. "." .. name
+            #rootToPath rootDirectory .. Text.fromNumber sourceDirId .. ":" .. modulePath
+            modulePath
 
 
-doUsr as fn Imports, USR: FA.Expression =
-    fn projectImports, usr:
+usrToText as fn CA.Module, USR: Text =
+    fn contextModule, usr:
+    try Dict.get usr contextModule.usrToGlobal as
+
+        'just globalName:
+            globalName
+
+        'nothing:
+            'USR umr name =
+                usr
+
+            umrToText contextModule umr .. "." .. name
+
+
+doUsr as fn CA.Module, USR: FA.Expression =
+    fn contextModule, usr:
     {
     , maybeModule = 'nothing
-    , name = usrToText projectImports usr
+    , name = usrToText contextModule usr
     }
     >> FA.'uppercase
     >> toExpression
@@ -39,8 +53,8 @@ doUsr as fn Imports, USR: FA.Expression =
 #
 #
 
-uniToText as fn Imports, Uniqueness: Text =
-    fn projectImports, uni:
+uniToText as fn CA.Module, Uniqueness: Text =
+    fn contextModule, uni:
     try uni as
         'imm: ""
         'uni: "!"
@@ -54,30 +68,30 @@ toExpression as fn FA.Expr_: FA.Expression =
     FA.'expression [] Pos.'g __
 
 
-doRawType as fn Imports, TA.RawType: FA.Expression =
-    fn projectImports, rawType:
+doRawType as fn CA.Module, TA.RawType: FA.Expression =
+    fn contextModule, rawType:
     try rawType as
 
         TA.'typeExact _ usr args:
-            FA.'call (doUsr projectImports usr) (List.map (doRawType projectImports __) args)
+            FA.'call (doUsr contextModule usr) (List.map (doRawType contextModule __) args)
 
         TA.'typeFn _ parTypes full:
-            FA.'fn FA.'inline (List.map (doParType projectImports __) parTypes) (doFullType projectImports full)
+            FA.'fn FA.'inline (List.map (doParType contextModule __) parTypes) (doFullType contextModule full)
 
         TA.'typeVar _ tyvarId:
-            doTyvarId projectImports tyvarId
+            doTyvarId contextModule tyvarId
 
         TA.'typeRecord _ maybeExtId taAttrs:
             maybeExtension =
                 try maybeExtId as
                     'nothing: 'nothing
-                    'just id: doTyvarId projectImports id >> toExpression >> 'just >> 'just
+                    'just id: doTyvarId contextModule id >> toExpression >> 'just >> 'just
 
             attrs =
                 taAttrs
                 >> Dict.toList
                 >> List.sortBy Tuple.first __
-                >> List.map (fn name & raw: { maybeExpr = 'just (doRawType projectImports raw), name = doLowercase projectImports name }) __
+                >> List.map (fn name & raw: { maybeExpr = 'just (doRawType contextModule raw), name = doLowercase contextModule name }) __
 
             # TODO display tuples as tuples!
 
@@ -92,8 +106,8 @@ doRawType as fn Imports, TA.RawType: FA.Expression =
     >> toExpression
 
 
-doTyvarId as fn Imports, TA.TyvarId: FA.Expr_ =
-    fn projectImports, tyvarId:
+doTyvarId as fn CA.Module, TA.TyvarId: FA.Expr_ =
+    fn contextModule, tyvarId:
     {
     , attrPath = []
     , maybeModule = 'nothing
@@ -105,8 +119,8 @@ doTyvarId as fn Imports, TA.TyvarId: FA.Expr_ =
     >> FA.'lowercase
 
 
-doLowercase as fn Imports, Name: FA.Expression =
-    fn projectImports, name:
+doLowercase as fn CA.Module, Name: FA.Expression =
+    fn contextModule, name:
     {
     , attrPath = []
     , maybeModule = 'nothing
@@ -117,20 +131,20 @@ doLowercase as fn Imports, Name: FA.Expression =
     >> toExpression
 
 
-doFullType as fn Imports, TA.FullType: FA.Expression =
-    fn projectImports, { raw, uni }:
-    FA.'poly (uniToText projectImports uni) (doRawType projectImports raw) >> toExpression
+doFullType as fn CA.Module, TA.FullType: FA.Expression =
+    fn contextModule, { raw, uni }:
+    FA.'poly (uniToText contextModule uni) (doRawType contextModule raw) >> toExpression
 
 
-doParType as fn Imports, TA.ParType: FA.Expression =
-    fn projectImports, parType:
+doParType as fn CA.Module, TA.ParType: FA.Expression =
+    fn contextModule, parType:
     try parType as
 
         TA.'parSp full:
-            doFullType projectImports full
+            doFullType contextModule full
 
         TA.'parRe raw:
             raw
-            >> doRawType projectImports __
+            >> doRawType contextModule __
             >> FA.'unopCall Op.'unopRecycle __
             >> toExpression

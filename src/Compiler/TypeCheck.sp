@@ -37,8 +37,17 @@
 
 typeToHuman as fn Env, TA.RawType: Text =
     fn env, raw:
+
+    'USR umr _ =
+        env.currentRootUsr
+
+    module =
+      try Dict.get umr env.modulesByUmr as
+          'nothing: CoreDefs.coreModule
+          'just m: m
+
     raw
-    >> Human/Type.doRawType env.projectImports __
+    >> Human/Type.doRawType module __
     >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
     >> Fmt.render
 
