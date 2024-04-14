@@ -117,7 +117,7 @@ unaryPlus as Override =
 
             [ EA.'argumentSpend fullType arg ]:
                 # Num.unaryPlus n == n
-                translateExpressionToExpression env arg
+                translateExpressionToExpression env 'true arg
 
             _:
                 todo "compiler bug: wrong number of arguments for unop"
@@ -134,7 +134,7 @@ unaryMinus as Override =
 
             [ EA.'argumentSpend fullType arg ]:
                 # Num.unaryMinus n == -n
-                JA.'unop "-" (translateExpressionToExpression env arg)
+                JA.'unop "-" (translateExpressionToExpression env 'true arg)
 
             _:
                 todo "compiler bug: wrong number of arguments for unop"
@@ -260,7 +260,7 @@ _usrToText as fn EA.TranslatedUsr: Text =
 translateArg as fn { nativeBinop as Bool }, Env, EA.Argument: JA.Expr =
     fn stuff, env, eaExpression:
     try eaExpression as
-        EA.'argumentSpend fullType e: translateExpressionToExpression env e
+        EA.'argumentSpend fullType e: translateExpressionToExpression env 'true e
         EA.'argumentRecycle rawType attrPath name: accessAttrs attrPath (translateName name >> JA.'var)
 
 
@@ -337,9 +337,9 @@ var TranslatedExpression =
     , 'inline JA.Expr
 
 
-translateExpressionToExpression as fn Env, EA.Expression: JA.Expr =
-    fn env, expr:
-    try translateExpression env expr as
+translateExpressionToExpression as fn Env, Bool, EA.Expression: JA.Expr =
+    fn env, mustReturnValue, expr:
+    try translateExpression env mustReturnValue expr as
         'inline e: e
         'block block: wrapInAutoLambda block
 
@@ -399,8 +399,16 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         >> JA.'comma
 
 
-translateExpression as fn Env, EA.Expression: TranslatedExpression =
-    fn env, eaExpression:
+translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
+    fn env, mustReturnValue, eaExpression:
+    perhapsReturn =
+        # This is necessary because stray return statements could make the function return when it shouldn't.
+        # (This was happening when translating imperative try..as)
+        if mustReturnValue then
+            JA.'return
+        else
+            JA.'eval
+
     try eaExpression as
 
         EA.'localVariable name:
@@ -427,7 +435,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
 
             try maybeNativeOverride as
                 'just ('override { call, value = _ }): call env args >> 'inline
-                'nothing: makeCall env (translateExpressionToExpression env ref) args >> 'inline
+                'nothing: makeCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
         EA.'fn eaArgs body:
             argsWithNames as [ Bool & Text ] =
@@ -445,7 +453,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                 >> List.map (fn _ & name: JA.'var name) __
 
             statementsRaw as [ JA.Statement ] =
-                try translateExpression env body as
+                try translateExpression env 'true body as
                     'inline expr: [ JA.'return expr ]
                     'block block: block
 
@@ -469,21 +477,21 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
 
         EA.'letIn { inExpression, letExpression, maybeName, type }:
             inStatements =
-                try translateExpression env inExpression as
+                try translateExpression env 'true inExpression as
                     'block stats: stats
-                    'inline jaExpression: [ JA.'return jaExpression ]
+                    'inline jaExpression: [ perhapsReturn jaExpression ]
 
             try maybeName as
 
                 'nothing:
-                    try translateExpression env letExpression as
+                    try translateExpression env 'false letExpression as
                         'inline expr: 'block << JA.'eval expr :: inStatements
                         'block stats: 'block << List.concat [ stats, inStatements ]
 
                 'just name:
                     letStatement =
                         letExpression
-                        >> translateExpressionToExpression env __
+                        >> translateExpressionToExpression env 'true __
                         >> JA.'define (type.uni == 'uni) (translateName name) __
 
                     'block << letStatement :: inStatements
@@ -497,11 +505,11 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             >> 'inline
 
         EA.'conditional test true false:
-            JA.'conditional (translateExpressionToExpression env test) (translateExpressionToExpression env true) (translateExpressionToExpression env false) >> 'inline
+            JA.'conditional (translateExpressionToExpression env 'true test) (translateExpressionToExpression env 'true true) (translateExpressionToExpression env 'true false) >> 'inline
 
         EA.'and eaTests:
             jaTests =
-                List.map (translateExpressionToExpression env __) eaTests
+                List.map (translateExpressionToExpression env 'true __) eaTests
 
             try List.reverse jaTests as
 
@@ -514,17 +522,17 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                     >> 'inline
 
         EA.'shallowEqual a b:
-            JA.'binop "===" (translateExpressionToExpression env a) (translateExpressionToExpression env b) >> 'inline
+            JA.'binop "===" (translateExpressionToExpression env 'true a) (translateExpressionToExpression env 'true b) >> 'inline
 
         EA.'literalArray items:
             items
-            >> List.map (translateExpressionToExpression env __) __
+            >> List.map (translateExpressionToExpression env 'true __) __
             >> JA.'array
             >> 'inline
 
         EA.'arrayAccess index array:
             array
-            >> translateExpressionToExpression env __
+            >> translateExpressionToExpression env 'true __
             >> accessArrayIndex index __
             >> 'inline
 
@@ -532,11 +540,11 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             maybeOverrideUsrForConstructor env usr >> 'inline
 
         EA.'constructorAccess argIndex value:
-            accessArrayIndex (argIndex + 1) (translateExpressionToExpression env value) >> 'inline
+            accessArrayIndex (argIndex + 1) (translateExpressionToExpression env 'true value) >> 'inline
 
         EA.'isConstructor usr eaValue:
             jaValue =
-                translateExpressionToExpression env eaValue
+                translateExpressionToExpression env 'true eaValue
 
             if usr == CoreDefs.noneConsUsr then
                 JA.'var "true" >> 'inline
@@ -558,7 +566,7 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
             obj =
                 Dict.empty
                 >> List.for __ attrNamesAndValues fn name & value, d:
-                    Dict.insert name (translateExpressionToExpression env value) d
+                    Dict.insert name (translateExpressionToExpression env 'true value) d
                 >> JA.'record
 
             try maybeExtend as
@@ -571,19 +579,19 @@ translateExpression as fn Env, EA.Expression: TranslatedExpression =
                         (JA.'var "Object.assign")
                         [
                         , JA.'record Dict.empty
-                        , translateExpressionToExpression env extend
+                        , translateExpressionToExpression env 'true extend
                         , obj
                         ]
                     >> 'inline
 
         EA.'recordAccess attrName value:
-            JA.'accessWithDot attrName (translateExpressionToExpression env value) >> 'inline
+            JA.'accessWithDot attrName (translateExpressionToExpression env 'true value) >> 'inline
 
         EA.'missingPattern location value:
             [
             , JA.'literal "'Missing pattern in try..as'"
             , JA.'literal ("'" .. location .. "'")
-            , JA.'call (JA.'literal "sp_toHuman") [ translateExpressionToExpression env value ]
+            , JA.'call (JA.'literal "sp_toHuman") [ translateExpressionToExpression env 'true value ]
             ]
             >> JA.'call (JA.'literal "sp_throw") __
             >> 'inline
@@ -625,7 +633,7 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn env, def:
     try Dict.get def.usr env.overrides as
         'just _: 'nothing
-        'nothing: JA.'define 'false (_usrToText def.usr) (translateExpressionToExpression env def.expr) >> 'just
+        'nothing: JA.'define 'false (_usrToText def.usr) (translateExpressionToExpression env 'true def.expr) >> 'just
 
 
 TranslateAllPars =
