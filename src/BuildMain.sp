@@ -131,15 +131,13 @@ loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
                     'err e
 
                 'ok usr:
-                    Hash.insert @globals usr name_
-
                     'USR umr_ _ =
                         usr
 
                     __xxx__ =
                         try maybeModuleName as
                             'just moduleName: Hash.insert @aliases umr_ moduleName
-                            'nothing: 'none
+                            'nothing: Hash.insert @globals usr name_
 
                     'ok usr
 

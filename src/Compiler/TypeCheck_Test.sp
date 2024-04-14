@@ -21,10 +21,6 @@ tests as Test =
 # TODO test rejection of circular aliases
 # TODO test rejection of arguments with the same name
 
-#
-#
-#
-
 codeTest =
     Test.codeTest outToHuman __ __ __ __
 
@@ -44,14 +40,14 @@ outToHuman as fn Out: Text =
 
     type =
         out.type
-        >> Human/Type.doRawType TH.imports __
+        >> Human/Type.doRawType CoreDefs.coreModule __
         >> Human/Format.formatExpression { isRoot = 'true, originalContent = "" } __
         >> Fmt.render
 
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
-    , "  type = " .. type
     #, "  type = " .. Debug.toHuman out.type
+    , "  type = " .. type
     ]
     >> Text.join "\n" __
 
