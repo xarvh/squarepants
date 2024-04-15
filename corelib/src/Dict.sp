@@ -6,22 +6,22 @@ var NColor =
 
 
 var Dict key v =
-    , 'RBNode_elm_builtin NColor key v (Dict key v) (Dict key v)
-    , 'RBEmpty_elm_builtin
+    , 'node NColor key v (Dict key v) (Dict key v)
+    , 'empty
 
 
 empty as Dict key v with key NonFunction =
-    'RBEmpty_elm_builtin
+    'empty
 
 
 get as fn key, Dict key v: Maybe v with key NonFunction =
     fn targetKey, dict:
     try dict as
 
-        'RBEmpty_elm_builtin:
+        'empty:
             'nothing
 
-        'RBNode_elm_builtin _ key value left right:
+        'node _ key value left right:
             try Basics.compare targetKey key as
                 1: get targetKey right
                 0: 'just value
@@ -39,8 +39,8 @@ size as fn Dict key v: Int with key NonFunction =
     sizeHelp as fn Int, Dict key v: Int =
         fn n, dict:
         try dict as
-            'RBEmpty_elm_builtin: n
-            'RBNode_elm_builtin _ _ _ left right: sizeHelp (sizeHelp (n + 1) right) left
+            'empty: n
+            'node _ _ _ left right: sizeHelp (sizeHelp (n + 1) right) left
 
     sizeHelp 0 __
 
@@ -48,15 +48,15 @@ size as fn Dict key v: Int with key NonFunction =
 isEmpty as fn Dict key v: Bool =
     fn dict:
     try dict as
-        'RBEmpty_elm_builtin: 'true
-        'RBNode_elm_builtin _ _ _ _ _: 'false
+        'empty: 'true
+        'node _ _ _ _ _: 'false
 
 
 insert as fn key, v, Dict key v: Dict key v with key NonFunction =
     fn key, value, dict:
     # Root node as always Black
     try insertHelp key value dict as
-        'RBNode_elm_builtin 'red k v l r: 'RBNode_elm_builtin 'black k v l r
+        'node 'red k v l r: 'node 'black k v l r
         x: x
 
 
@@ -64,15 +64,15 @@ insertHelp as fn key, v, Dict key v: Dict key v with key NonFunction =
     fn key, value, dict:
     try dict as
 
-        'RBEmpty_elm_builtin:
+        'empty:
             # New nodes are always red. If it violates the rules, it will be fixed
             # when balancing.
-            'RBNode_elm_builtin 'red key value 'RBEmpty_elm_builtin 'RBEmpty_elm_builtin
+            'node 'red key value 'empty 'empty
 
-        'RBNode_elm_builtin nColor nKey nValue nLeft nRight:
+        'node nColor nKey nValue nLeft nRight:
             try Basics.compare key nKey as
                 1: balance nColor nKey nValue nLeft (insertHelp key value nRight)
-                0: 'RBNode_elm_builtin nColor nKey value nLeft nRight
+                0: 'node nColor nKey value nLeft nRight
                 _: balance nColor nKey nValue (insertHelp key value nLeft) nRight
 
 
@@ -80,22 +80,22 @@ balance as fn NColor, key, v, Dict key v, Dict key v: Dict key v =
     fn color, key, value, left, right:
     try right as
 
-        'RBNode_elm_builtin 'red rK rV rLeft rRight:
+        'node 'red rK rV rLeft rRight:
             try left as
-                'RBNode_elm_builtin 'red lK lV lLeft lRight: 'RBNode_elm_builtin 'red key value ('RBNode_elm_builtin 'black lK lV lLeft lRight) ('RBNode_elm_builtin 'black rK rV rLeft rRight)
-                _: 'RBNode_elm_builtin color rK rV ('RBNode_elm_builtin 'red key value left rLeft) rRight
+                'node 'red lK lV lLeft lRight: 'node 'red key value ('node 'black lK lV lLeft lRight) ('node 'black rK rV rLeft rRight)
+                _: 'node color rK rV ('node 'red key value left rLeft) rRight
 
         _:
             try left as
-                'RBNode_elm_builtin 'red lK lV ('RBNode_elm_builtin 'red llK llV llLeft llRight) lRight: 'RBNode_elm_builtin 'red lK lV ('RBNode_elm_builtin 'black llK llV llLeft llRight) ('RBNode_elm_builtin 'black key value lRight right)
-                _: 'RBNode_elm_builtin color key value left right
+                'node 'red lK lV ('node 'red llK llV llLeft llRight) lRight: 'node 'red lK lV ('node 'black llK llV llLeft llRight) ('node 'black key value lRight right)
+                _: 'node color key value left right
 
 
 remove as fn key, Dict key v: Dict key v with key NonFunction =
     fn key, dict:
     # Root node as always Black
     try removeHelp key dict as
-        'RBNode_elm_builtin 'red k v l r: 'RBNode_elm_builtin 'black k v l r
+        'node 'red k v l r: 'node 'black k v l r
         x: x
 
 
@@ -103,26 +103,26 @@ removeHelp as fn key, Dict key v: Dict key v with key NonFunction =
     fn targetKey, dict:
     try dict as
 
-        'RBEmpty_elm_builtin:
-            'RBEmpty_elm_builtin
+        'empty:
+            'empty
 
-        'RBNode_elm_builtin color key value left right:
+        'node color key value left right:
             if Basics.compare targetKey key == 0 - 1 then
                 try left as
 
-                    'RBNode_elm_builtin 'black _ _ lLeft _:
+                    'node 'black _ _ lLeft _:
                         try lLeft as
 
-                            'RBNode_elm_builtin 'red _ _ _ _:
-                                'RBNode_elm_builtin color key value (removeHelp targetKey left) right
+                            'node 'red _ _ _ _:
+                                'node color key value (removeHelp targetKey left) right
 
                             _:
                                 try moveRedLeft dict as
-                                    'RBNode_elm_builtin nColor nKey nValue nLeft nRight: balance nColor nKey nValue (removeHelp targetKey nLeft) nRight
-                                    'RBEmpty_elm_builtin: 'RBEmpty_elm_builtin
+                                    'node nColor nKey nValue nLeft nRight: balance nColor nKey nValue (removeHelp targetKey nLeft) nRight
+                                    'empty: 'empty
 
                     _:
-                        'RBNode_elm_builtin color key value (removeHelp targetKey left) right
+                        'node color key value (removeHelp targetKey left) right
             else
                 removeHelpEQGT targetKey (removeHelpPrepEQGT targetKey dict color key value left right)
 
@@ -131,13 +131,13 @@ removeHelpPrepEQGT as fn key, Dict key v, NColor, key, v, Dict key v, Dict key v
     fn targetKey, dict, color, key, value, left, right:
     try left as
 
-        'RBNode_elm_builtin 'red lK lV lLeft lRight:
-            'RBNode_elm_builtin color lK lV lLeft ('RBNode_elm_builtin 'red key value lRight right)
+        'node 'red lK lV lLeft lRight:
+            'node color lK lV lLeft ('node 'red key value lRight right)
 
         _:
             try right as
-                'RBNode_elm_builtin 'black _ _ ('RBNode_elm_builtin 'black _ _ _ _) _: moveRedRight dict
-                'RBNode_elm_builtin 'black _ _ 'RBEmpty_elm_builtin _: moveRedRight dict
+                'node 'black _ _ ('node 'black _ _ _ _) _: moveRedRight dict
+                'node 'black _ _ 'empty _: moveRedRight dict
                 _: dict
 
 
@@ -145,25 +145,25 @@ removeHelpEQGT as fn key, Dict key v: Dict key v with key NonFunction =
     fn targetKey, dict:
     try dict as
 
-        'RBNode_elm_builtin color key value left right:
+        'node color key value left right:
             if targetKey == key then
                 try getMin right as
-                    'RBNode_elm_builtin _ minKey minValue _ _: balance color minKey minValue left (removeMin right)
-                    'RBEmpty_elm_builtin: 'RBEmpty_elm_builtin
+                    'node _ minKey minValue _ _: balance color minKey minValue left (removeMin right)
+                    'empty: 'empty
             else
                 balance color key value left (removeHelp targetKey right)
 
-        'RBEmpty_elm_builtin:
-            'RBEmpty_elm_builtin
+        'empty:
+            'empty
 
 
 getMin as fn Dict key v: Dict key v =
     fn dict:
     try dict as
 
-        'RBNode_elm_builtin _ _ _ left _:
+        'node _ _ _ left _:
             try left as
-                'RBNode_elm_builtin _ _ _ _ _: getMin left
+                'node _ _ _ _ _: getMin left
                 _: dict
 
         _:
@@ -174,44 +174,44 @@ removeMin as fn Dict key v: Dict key v =
     fn dict:
     try dict as
 
-        'RBNode_elm_builtin color key value left right:
+        'node color key value left right:
             try left as
 
-                'RBNode_elm_builtin lColor _ _ lLeft _:
+                'node lColor _ _ lLeft _:
                     try lColor as
 
                         'black:
                             try lLeft as
 
-                                'RBNode_elm_builtin 'red _ _ _ _:
-                                    'RBNode_elm_builtin color key value (removeMin left) right
+                                'node 'red _ _ _ _:
+                                    'node color key value (removeMin left) right
 
                                 _:
                                     try moveRedLeft dict as
-                                        'RBNode_elm_builtin nColor nKey nValue nLeft nRight: balance nColor nKey nValue (removeMin nLeft) nRight
-                                        'RBEmpty_elm_builtin: 'RBEmpty_elm_builtin
+                                        'node nColor nKey nValue nLeft nRight: balance nColor nKey nValue (removeMin nLeft) nRight
+                                        'empty: 'empty
 
                         _:
-                            'RBNode_elm_builtin color key value (removeMin left) right
+                            'node color key value (removeMin left) right
 
                 _:
-                    'RBEmpty_elm_builtin
+                    'empty
 
         _:
-            'RBEmpty_elm_builtin
+            'empty
 
 
 moveRedLeft as fn Dict key v: Dict key v =
     fn dict:
     try dict as
 
-        'RBNode_elm_builtin clr k v ('RBNode_elm_builtin lClr lK lV lLeft lRight) ('RBNode_elm_builtin rClr rK rV ('RBNode_elm_builtin 'red rlK rlV rlL rlR) rRight):
-            'RBNode_elm_builtin 'red rlK rlV ('RBNode_elm_builtin 'black k v ('RBNode_elm_builtin 'red lK lV lLeft lRight) rlL) ('RBNode_elm_builtin 'black rK rV rlR rRight)
+        'node clr k v ('node lClr lK lV lLeft lRight) ('node rClr rK rV ('node 'red rlK rlV rlL rlR) rRight):
+            'node 'red rlK rlV ('node 'black k v ('node 'red lK lV lLeft lRight) rlL) ('node 'black rK rV rlR rRight)
 
-        'RBNode_elm_builtin clr k v ('RBNode_elm_builtin lClr lK lV lLeft lRight) ('RBNode_elm_builtin rClr rK rV rLeft rRight):
+        'node clr k v ('node lClr lK lV lLeft lRight) ('node rClr rK rV rLeft rRight):
             try clr as
-                'black: 'RBNode_elm_builtin 'black k v ('RBNode_elm_builtin 'red lK lV lLeft lRight) ('RBNode_elm_builtin 'red rK rV rLeft rRight)
-                'red: 'RBNode_elm_builtin 'black k v ('RBNode_elm_builtin 'red lK lV lLeft lRight) ('RBNode_elm_builtin 'red rK rV rLeft rRight)
+                'black: 'node 'black k v ('node 'red lK lV lLeft lRight) ('node 'red rK rV rLeft rRight)
+                'red: 'node 'black k v ('node 'red lK lV lLeft lRight) ('node 'red rK rV rLeft rRight)
 
         _:
             dict
@@ -221,13 +221,13 @@ moveRedRight as fn Dict key v: Dict key v =
     fn dict:
     try dict as
 
-        'RBNode_elm_builtin clr k v ('RBNode_elm_builtin lClr lK lV ('RBNode_elm_builtin 'red llK llV llLeft llRight) lRight) ('RBNode_elm_builtin rClr rK rV rLeft rRight):
-            'RBNode_elm_builtin 'red lK lV ('RBNode_elm_builtin 'black llK llV llLeft llRight) ('RBNode_elm_builtin 'black k v lRight ('RBNode_elm_builtin 'red rK rV rLeft rRight))
+        'node clr k v ('node lClr lK lV ('node 'red llK llV llLeft llRight) lRight) ('node rClr rK rV rLeft rRight):
+            'node 'red lK lV ('node 'black llK llV llLeft llRight) ('node 'black k v lRight ('node 'red rK rV rLeft rRight))
 
-        'RBNode_elm_builtin clr k v ('RBNode_elm_builtin lClr lK lV lLeft lRight) ('RBNode_elm_builtin rClr rK rV rLeft rRight):
+        'node clr k v ('node lClr lK lV lLeft lRight) ('node rClr rK rV rLeft rRight):
             try clr as
-                'black: 'RBNode_elm_builtin 'black k v ('RBNode_elm_builtin 'red lK lV lLeft lRight) ('RBNode_elm_builtin 'red rK rV rLeft rRight)
-                'red: 'RBNode_elm_builtin 'black k v ('RBNode_elm_builtin 'red lK lV lLeft lRight) ('RBNode_elm_builtin 'red rK rV rLeft rRight)
+                'black: 'node 'black k v ('node 'red lK lV lLeft lRight) ('node 'red rK rV rLeft rRight)
+                'red: 'node 'black k v ('node 'red lK lV lLeft lRight) ('node 'red rK rV rLeft rRight)
 
         _:
             dict
@@ -243,7 +243,7 @@ update as fn key, fn Maybe v: Maybe v, Dict key v: Dict key v with key NonFuncti
 ofOne as fn key, v: Dict key v with key NonFunction =
     fn key, value:
     # Root node as always Black
-    'RBNode_elm_builtin 'black key value 'RBEmpty_elm_builtin 'RBEmpty_elm_builtin
+    'node 'black key value 'empty 'empty
 
 
 # COMBINE
@@ -315,25 +315,25 @@ onlyBothOnly as fn Dict key a, Dict key b: Dict key a & Dict key (a & b) & Dict 
 map as fn fn k, a: b, Dict k a: Dict k b =
     fn func, dict:
     try dict as
-        'RBEmpty_elm_builtin: 'RBEmpty_elm_builtin
-        'RBNode_elm_builtin color key value left right: 'RBNode_elm_builtin color key (func key value) (map func left) (map func right)
+        'empty: 'empty
+        'node color key value left right: 'node color key (func key value) (map func left) (map func right)
 
 
 mapRes as fn fn k, a: Result e b, Dict k a: Result e (Dict k b) =
     fn func, dict:
     try dict as
 
-        'RBEmpty_elm_builtin:
-            'ok 'RBEmpty_elm_builtin
+        'empty:
+            'ok 'empty
 
-        'RBNode_elm_builtin color key value left right:
+        'node color key value left right:
             func key value
             >> Result.onOk fn one:
             mapRes func left
             >> Result.onOk fn two:
             mapRes func right
             >> Result.onOk fn three:
-            'ok << 'RBNode_elm_builtin color key one two three
+            'ok << 'node color key one two three
 
 
 mapKeys as fn fn k: j, Dict k a: Dict j a =
@@ -345,10 +345,10 @@ each as fn Dict k v, fn k, v: None: None =
     fn dict, func:
     try dict as
 
-        'RBEmpty_elm_builtin:
+        'empty:
             'none
 
-        'RBNode_elm_builtin _ key value left right:
+        'node _ key value left right:
             func key value
 
             each left func
@@ -359,18 +359,18 @@ each as fn Dict k v, fn k, v: None: None =
 for as fn b, Dict k v, fn k, v, b: b: b =
     fn acc, dict, func:
     try dict as
-        'RBEmpty_elm_builtin: acc
-        'RBNode_elm_builtin _ key value left right: for (func key value (for acc left func)) right func
+        'empty: acc
+        'node _ key value left right: for (func key value (for acc left func)) right func
 
 
 forRes as fn b, Dict k v, fn k, v, b: Result e b: Result e b =
     fn acc, dict, func:
     try dict as
 
-        'RBEmpty_elm_builtin:
+        'empty:
             'ok acc
 
-        'RBNode_elm_builtin _ key value left right:
+        'node _ key value left right:
             forRes acc left func
             >> Result.onOk fn l:
             func key value l
@@ -381,8 +381,8 @@ forRes as fn b, Dict k v, fn k, v, b: Result e b: Result e b =
 forReversed as fn b, Dict k v, fn k, v, b: b: b =
     fn acc, t, func:
     try t as
-        'RBEmpty_elm_builtin: acc
-        'RBNode_elm_builtin _ key value left right: forReversed (func key value (forReversed acc right func)) left func
+        'empty: acc
+        'node _ key value left right: forReversed (func key value (forReversed acc right func)) left func
 
 
 filter as fn fn key, v: Bool, Dict key v: Dict key v with key NonFunction =
@@ -411,13 +411,13 @@ any as fn fn k, v: Bool, Dict k v: Bool =
     fn f, dict:
     try dict as
 
-        'RBNode_elm_builtin color key v left right:
+        'node color key v left right:
             if f key v then
                 'true
             else
                 any f left or any f right
 
-        'RBEmpty_elm_builtin:
+        'empty:
             'false
 
 

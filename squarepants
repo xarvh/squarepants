@@ -1618,22 +1618,22 @@ const c0$Core$True = ([
   "$True",
 ]);
 
-const c0$Dict$RBEmpty_elm_builtin = ([
-  "$RBEmpty_elm_builtin",
+const c0$Dict$Black = ([
+  "$Black",
 ]);
 
-const c0$Dict$RBNode_elm_builtin = (($1, $2, $3, $4, $5) => ([
-  "$RBNode_elm_builtin",
+const c0$Dict$Empty = ([
+  "$Empty",
+]);
+
+const c0$Dict$Node = (($1, $2, $3, $4, $5) => ([
+  "$Node",
   $1,
   $2,
   $3,
   $4,
   $5,
 ]));
-
-const c0$Dict$Black = ([
-  "$Black",
-]);
 
 const c0$Dict$Red = ([
   "$Red",
@@ -2628,7 +2628,7 @@ const c0$Compiler$CanonicalAst$expressionPos = (($exp) => {
                           : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/CanonicalAst.sp 294:4', (sp_toHuman)($exp))))))))))))));
 });
 
-const c0$Dict$empty = c0$Dict$RBEmpty_elm_builtin;
+const c0$Dict$empty = c0$Dict$Empty;
 
 const c0$Compiler$CanonicalAst$initModule = (($fsPath, $umr, $asText) => {
   return ({
@@ -2659,9 +2659,9 @@ const c0$Compiler$CanonicalAst$parTypeToRaw = (($p) => {
 });
 
 const c0$Dict$for = (($acc, $dict, $func) => {
-  return ((($dict)[0] === "$RBEmpty_elm_builtin")
+  return ((($dict)[0] === "$Empty")
     ? $acc
-    : ((($dict)[0] === "$RBNode_elm_builtin")
+    : ((($dict)[0] === "$Node")
       ? ((() => {
         const $key = ($dict)[2];
         const $value = ($dict)[3];
@@ -2793,26 +2793,26 @@ const c0$Compiler$CanonicalAst$typePos = (($0) => {
 });
 
 const c0$Dict$balance = (($color, $key, $value, $left, $right) => {
-  return (((($right)[0] === "$RBNode_elm_builtin") && ((($right)[1])[0] === "$Red"))
+  return (((($right)[0] === "$Node") && ((($right)[1])[0] === "$Red"))
     ? ((() => {
       const $rK = ($right)[2];
       const $rV = ($right)[3];
       const $rLeft = ($right)[4];
       const $rRight = ($right)[5];
-      return (((($left)[0] === "$RBNode_elm_builtin") && ((($left)[1])[0] === "$Red"))
+      return (((($left)[0] === "$Node") && ((($left)[1])[0] === "$Red"))
         ? ((() => {
           const $lK = ($left)[2];
           const $lV = ($left)[3];
           const $lLeft = ($left)[4];
           const $lRight = ($left)[5];
-          return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $key, $value, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $lK, $lV, $lLeft, $lRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $rK, $rV, $rLeft, $rRight));
+          return (c0$Dict$Node)(c0$Dict$Red, $key, $value, (c0$Dict$Node)(c0$Dict$Black, $lK, $lV, $lLeft, $lRight), (c0$Dict$Node)(c0$Dict$Black, $rK, $rV, $rLeft, $rRight));
         }))()
         : (true
-          ? (c0$Dict$RBNode_elm_builtin)($color, $rK, $rV, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $key, $value, $left, $rLeft), $rRight)
+          ? (c0$Dict$Node)($color, $rK, $rV, (c0$Dict$Node)(c0$Dict$Red, $key, $value, $left, $rLeft), $rRight)
           : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 84:12', (sp_toHuman)($left))));
     }))()
     : (true
-      ? (((($left)[0] === "$RBNode_elm_builtin") && (((($left)[1])[0] === "$Red") && (((($left)[4])[0] === "$RBNode_elm_builtin") && (((($left)[4])[1])[0] === "$Red"))))
+      ? (((($left)[0] === "$Node") && (((($left)[1])[0] === "$Red") && (((($left)[4])[0] === "$Node") && (((($left)[4])[1])[0] === "$Red"))))
         ? ((() => {
           const $lK = ($left)[2];
           const $lV = ($left)[3];
@@ -2821,18 +2821,18 @@ const c0$Dict$balance = (($color, $key, $value, $left, $right) => {
           const $llLeft = (($left)[4])[4];
           const $llRight = (($left)[4])[5];
           const $lRight = ($left)[5];
-          return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $llK, $llV, $llLeft, $llRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $key, $value, $lRight, $right));
+          return (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, (c0$Dict$Node)(c0$Dict$Black, $llK, $llV, $llLeft, $llRight), (c0$Dict$Node)(c0$Dict$Black, $key, $value, $lRight, $right));
         }))()
         : (true
-          ? (c0$Dict$RBNode_elm_builtin)($color, $key, $value, $left, $right)
+          ? (c0$Dict$Node)($color, $key, $value, $left, $right)
           : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 89:12', (sp_toHuman)($left))))
       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 81:4', (sp_toHuman)($right))));
 });
 
 const c0$Dict$insertHelp = (($key, $value, $dict) => {
-  return ((($dict)[0] === "$RBEmpty_elm_builtin")
-    ? (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $key, $value, c0$Dict$RBEmpty_elm_builtin, c0$Dict$RBEmpty_elm_builtin)
-    : ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Empty")
+    ? (c0$Dict$Node)(c0$Dict$Red, $key, $value, c0$Dict$Empty, c0$Dict$Empty)
+    : ((($dict)[0] === "$Node")
       ? ((() => {
         const $nColor = ($dict)[1];
         const $nKey = ($dict)[2];
@@ -2843,7 +2843,7 @@ const c0$Dict$insertHelp = (($key, $value, $dict) => {
         return ((1 === $4)
           ? (c0$Dict$balance)($nColor, $nKey, $nValue, $nLeft, (c0$Dict$insertHelp)($key, $value, $nRight))
           : ((0 === $4)
-            ? (c0$Dict$RBNode_elm_builtin)($nColor, $nKey, $value, $nLeft, $nRight)
+            ? (c0$Dict$Node)($nColor, $nKey, $value, $nLeft, $nRight)
             : (true
               ? (c0$Dict$balance)($nColor, $nKey, $nValue, (c0$Dict$insertHelp)($key, $value, $nLeft), $nRight)
               : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 73:12', (sp_toHuman)($4)))));
@@ -2853,13 +2853,13 @@ const c0$Dict$insertHelp = (($key, $value, $dict) => {
 
 const c0$Dict$insert = (($key, $value, $dict) => {
   const $4 = (c0$Dict$insertHelp)($key, $value, $dict);
-  return (((($4)[0] === "$RBNode_elm_builtin") && ((($4)[1])[0] === "$Red"))
+  return (((($4)[0] === "$Node") && ((($4)[1])[0] === "$Red"))
     ? ((() => {
       const $k = ($4)[2];
       const $v = ($4)[3];
       const $l = ($4)[4];
       const $r = ($4)[5];
-      return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, $l, $r);
+      return (c0$Dict$Node)(c0$Dict$Black, $k, $v, $l, $r);
     }))()
     : (true
       ? ((() => {
@@ -2874,13 +2874,13 @@ const c0$Dict$join = (($0, $1) => {
 });
 
 const c0$Dict$ofOne = (($key, $value) => {
-  return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $key, $value, c0$Dict$RBEmpty_elm_builtin, c0$Dict$RBEmpty_elm_builtin);
+  return (c0$Dict$Node)(c0$Dict$Black, $key, $value, c0$Dict$Empty, c0$Dict$Empty);
 });
 
 const c0$Dict$forReversed = (($acc, $t, $func) => {
-  return ((($t)[0] === "$RBEmpty_elm_builtin")
+  return ((($t)[0] === "$Empty")
     ? $acc
-    : ((($t)[0] === "$RBNode_elm_builtin")
+    : ((($t)[0] === "$Node")
       ? ((() => {
         const $key = ($t)[2];
         const $value = ($t)[3];
@@ -3188,9 +3188,9 @@ const c0$Compiler$Meta$initImports = ({
 });
 
 const c0$Dict$get = (($targetKey, $dict) => {
-  return ((($dict)[0] === "$RBEmpty_elm_builtin")
+  return ((($dict)[0] === "$Empty")
     ? c0$Maybe$Nothing
-    : ((($dict)[0] === "$RBNode_elm_builtin")
+    : ((($dict)[0] === "$Node")
       ? ((() => {
         const $key = ($dict)[2];
         const $value = ($dict)[3];
@@ -3419,16 +3419,16 @@ const c0$Compiler$TypedAst$normalizeTyvarId = (($hash, $id) => {
 });
 
 const c0$Dict$map = (($func, $dict) => {
-  return ((($dict)[0] === "$RBEmpty_elm_builtin")
-    ? c0$Dict$RBEmpty_elm_builtin
-    : ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Empty")
+    ? c0$Dict$Empty
+    : ((($dict)[0] === "$Node")
       ? ((() => {
         const $color = ($dict)[1];
         const $key = ($dict)[2];
         const $value = ($dict)[3];
         const $left = ($dict)[4];
         const $right = ($dict)[5];
-        return (c0$Dict$RBNode_elm_builtin)($color, $key, ($func)($key, $value), (c0$Dict$map)($func, $left), (c0$Dict$map)($func, $right));
+        return (c0$Dict$Node)($color, $key, ($func)($key, $value), (c0$Dict$map)($func, $left), (c0$Dict$map)($func, $right));
       }))()
       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 317:4', (sp_toHuman)($dict))));
 });
@@ -3921,7 +3921,7 @@ const c0$Compiler$TypedAst$toRaw = (($par) => {
 });
 
 const c0$Dict$any = (($f, $dict) => {
-  return ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Node")
     ? ((() => {
       const $color = ($dict)[1];
       const $key = ($dict)[2];
@@ -3932,7 +3932,7 @@ const c0$Dict$any = (($f, $dict) => {
         ? true
         : ((c0$Dict$any)($f, $left) || (c0$Dict$any)($f, $right)));
     }))()
-    : ((($dict)[0] === "$RBEmpty_elm_builtin")
+    : ((($dict)[0] === "$Empty")
       ? false
       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 412:4', (sp_toHuman)($dict))));
 });
@@ -4030,7 +4030,7 @@ const c0$Compiler$TypedAst$typeTyvars = (($type) => {
 });
 
 const c0$Dict$moveRedLeft = (($dict) => {
-  return (((($dict)[0] === "$RBNode_elm_builtin") && (((($dict)[4])[0] === "$RBNode_elm_builtin") && (((($dict)[5])[0] === "$RBNode_elm_builtin") && ((((($dict)[5])[4])[0] === "$RBNode_elm_builtin") && ((((($dict)[5])[4])[1])[0] === "$Red")))))
+  return (((($dict)[0] === "$Node") && (((($dict)[4])[0] === "$Node") && (((($dict)[5])[0] === "$Node") && ((((($dict)[5])[4])[0] === "$Node") && ((((($dict)[5])[4])[1])[0] === "$Red")))))
     ? ((() => {
       const $clr = ($dict)[1];
       const $k = ($dict)[2];
@@ -4048,9 +4048,9 @@ const c0$Dict$moveRedLeft = (($dict) => {
       const $rlL = ((($dict)[5])[4])[4];
       const $rlR = ((($dict)[5])[4])[5];
       const $rRight = (($dict)[5])[5];
-      return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $rlK, $rlV, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), $rlL), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $rK, $rV, $rlR, $rRight));
+      return (c0$Dict$Node)(c0$Dict$Red, $rlK, $rlV, (c0$Dict$Node)(c0$Dict$Black, $k, $v, (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), $rlL), (c0$Dict$Node)(c0$Dict$Black, $rK, $rV, $rlR, $rRight));
     }))()
-    : (((($dict)[0] === "$RBNode_elm_builtin") && (((($dict)[4])[0] === "$RBNode_elm_builtin") && ((($dict)[5])[0] === "$RBNode_elm_builtin")))
+    : (((($dict)[0] === "$Node") && (((($dict)[4])[0] === "$Node") && ((($dict)[5])[0] === "$Node")))
       ? ((() => {
         const $clr = ($dict)[1];
         const $k = ($dict)[2];
@@ -4066,9 +4066,9 @@ const c0$Dict$moveRedLeft = (($dict) => {
         const $rLeft = (($dict)[5])[4];
         const $rRight = (($dict)[5])[5];
         return ((($clr)[0] === "$Black")
-          ? (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
+          ? (c0$Dict$Node)(c0$Dict$Black, $k, $v, (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$Node)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
           : ((($clr)[0] === "$Red")
-            ? (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
+            ? (c0$Dict$Node)(c0$Dict$Black, $k, $v, (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$Node)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
             : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 212:12', (sp_toHuman)($clr))));
       }))()
       : (true
@@ -4077,10 +4077,10 @@ const c0$Dict$moveRedLeft = (($dict) => {
 });
 
 const c0$Dict$getMin = (($dict) => {
-  return ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Node")
     ? ((() => {
       const $left = ($dict)[4];
-      return ((($left)[0] === "$RBNode_elm_builtin")
+      return ((($left)[0] === "$Node")
         ? (c0$Dict$getMin)($left)
         : (true
           ? $dict
@@ -4092,24 +4092,24 @@ const c0$Dict$getMin = (($dict) => {
 });
 
 const c0$Dict$removeMin = (($dict) => {
-  return ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Node")
     ? ((() => {
       const $color = ($dict)[1];
       const $key = ($dict)[2];
       const $value = ($dict)[3];
       const $left = ($dict)[4];
       const $right = ($dict)[5];
-      return ((($left)[0] === "$RBNode_elm_builtin")
+      return ((($left)[0] === "$Node")
         ? ((() => {
           const $lColor = ($left)[1];
           const $lLeft = ($left)[4];
           return ((($lColor)[0] === "$Black")
-            ? (((($lLeft)[0] === "$RBNode_elm_builtin") && ((($lLeft)[1])[0] === "$Red"))
-              ? (c0$Dict$RBNode_elm_builtin)($color, $key, $value, (c0$Dict$removeMin)($left), $right)
+            ? (((($lLeft)[0] === "$Node") && ((($lLeft)[1])[0] === "$Red"))
+              ? (c0$Dict$Node)($color, $key, $value, (c0$Dict$removeMin)($left), $right)
               : (true
                 ? ((() => {
                   const $2 = (c0$Dict$moveRedLeft)($dict);
-                  return ((($2)[0] === "$RBNode_elm_builtin")
+                  return ((($2)[0] === "$Node")
                     ? ((() => {
                       const $nColor = ($2)[1];
                       const $nKey = ($2)[2];
@@ -4118,26 +4118,26 @@ const c0$Dict$removeMin = (($dict) => {
                       const $nRight = ($2)[5];
                       return (c0$Dict$balance)($nColor, $nKey, $nValue, (c0$Dict$removeMin)($nLeft), $nRight);
                     }))()
-                    : ((($2)[0] === "$RBEmpty_elm_builtin")
-                      ? c0$Dict$RBEmpty_elm_builtin
+                    : ((($2)[0] === "$Empty")
+                      ? c0$Dict$Empty
                       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 190:36', (sp_toHuman)($2))));
                 }))()
                 : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 184:28', (sp_toHuman)($lLeft))))
             : (true
-              ? (c0$Dict$RBNode_elm_builtin)($color, $key, $value, (c0$Dict$removeMin)($left), $right)
+              ? (c0$Dict$Node)($color, $key, $value, (c0$Dict$removeMin)($left), $right)
               : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 181:20', (sp_toHuman)($lColor))));
         }))()
         : (true
-          ? c0$Dict$RBEmpty_elm_builtin
+          ? c0$Dict$Empty
           : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 178:12', (sp_toHuman)($left))));
     }))()
     : (true
-      ? c0$Dict$RBEmpty_elm_builtin
+      ? c0$Dict$Empty
       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 175:4', (sp_toHuman)($dict))));
 });
 
 const c0$Dict$removeHelpEQGT = (($targetKey, $dict) => {
-  return ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Node")
     ? ((() => {
       const $color = ($dict)[1];
       const $key = ($dict)[2];
@@ -4147,25 +4147,25 @@ const c0$Dict$removeHelpEQGT = (($targetKey, $dict) => {
       return ((sp_equal)($targetKey, $key)
         ? ((() => {
           const $3 = (c0$Dict$getMin)($right);
-          return ((($3)[0] === "$RBNode_elm_builtin")
+          return ((($3)[0] === "$Node")
             ? ((() => {
               const $minKey = ($3)[2];
               const $minValue = ($3)[3];
               return (c0$Dict$balance)($color, $minKey, $minValue, $left, (c0$Dict$removeMin)($right));
             }))()
-            : ((($3)[0] === "$RBEmpty_elm_builtin")
-              ? c0$Dict$RBEmpty_elm_builtin
+            : ((($3)[0] === "$Empty")
+              ? c0$Dict$Empty
               : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 150:16', (sp_toHuman)($3))));
         }))()
         : (c0$Dict$balance)($color, $key, $value, $left, (c0$Dict$removeHelp)($targetKey, $right)));
     }))()
-    : ((($dict)[0] === "$RBEmpty_elm_builtin")
-      ? c0$Dict$RBEmpty_elm_builtin
+    : ((($dict)[0] === "$Empty")
+      ? c0$Dict$Empty
       : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 146:4', (sp_toHuman)($dict))));
 });
 
 const c0$Dict$moveRedRight = (($dict) => {
-  return (((($dict)[0] === "$RBNode_elm_builtin") && (((($dict)[4])[0] === "$RBNode_elm_builtin") && ((((($dict)[4])[4])[0] === "$RBNode_elm_builtin") && (((((($dict)[4])[4])[1])[0] === "$Red") && ((($dict)[5])[0] === "$RBNode_elm_builtin")))))
+  return (((($dict)[0] === "$Node") && (((($dict)[4])[0] === "$Node") && ((((($dict)[4])[4])[0] === "$Node") && (((((($dict)[4])[4])[1])[0] === "$Red") && ((($dict)[5])[0] === "$Node")))))
     ? ((() => {
       const $clr = ($dict)[1];
       const $k = ($dict)[2];
@@ -4183,9 +4183,9 @@ const c0$Dict$moveRedRight = (($dict) => {
       const $rV = (($dict)[5])[3];
       const $rLeft = (($dict)[5])[4];
       const $rRight = (($dict)[5])[5];
-      return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $llK, $llV, $llLeft, $llRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, $lRight, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight)));
+      return (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, (c0$Dict$Node)(c0$Dict$Black, $llK, $llV, $llLeft, $llRight), (c0$Dict$Node)(c0$Dict$Black, $k, $v, $lRight, (c0$Dict$Node)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight)));
     }))()
-    : (((($dict)[0] === "$RBNode_elm_builtin") && (((($dict)[4])[0] === "$RBNode_elm_builtin") && ((($dict)[5])[0] === "$RBNode_elm_builtin")))
+    : (((($dict)[0] === "$Node") && (((($dict)[4])[0] === "$Node") && ((($dict)[5])[0] === "$Node")))
       ? ((() => {
         const $clr = ($dict)[1];
         const $k = ($dict)[2];
@@ -4201,9 +4201,9 @@ const c0$Dict$moveRedRight = (($dict) => {
         const $rLeft = (($dict)[5])[4];
         const $rRight = (($dict)[5])[5];
         return ((($clr)[0] === "$Black")
-          ? (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
+          ? (c0$Dict$Node)(c0$Dict$Black, $k, $v, (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$Node)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
           : ((($clr)[0] === "$Red")
-            ? (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
+            ? (c0$Dict$Node)(c0$Dict$Black, $k, $v, (c0$Dict$Node)(c0$Dict$Red, $lK, $lV, $lLeft, $lRight), (c0$Dict$Node)(c0$Dict$Red, $rK, $rV, $rLeft, $rRight))
             : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 228:12', (sp_toHuman)($clr))));
       }))()
       : (true
@@ -4212,18 +4212,18 @@ const c0$Dict$moveRedRight = (($dict) => {
 });
 
 const c0$Dict$removeHelpPrepEQGT = (($targetKey, $dict, $color, $key, $value, $left, $right) => {
-  return (((($left)[0] === "$RBNode_elm_builtin") && ((($left)[1])[0] === "$Red"))
+  return (((($left)[0] === "$Node") && ((($left)[1])[0] === "$Red"))
     ? ((() => {
       const $lK = ($left)[2];
       const $lV = ($left)[3];
       const $lLeft = ($left)[4];
       const $lRight = ($left)[5];
-      return (c0$Dict$RBNode_elm_builtin)($color, $lK, $lV, $lLeft, (c0$Dict$RBNode_elm_builtin)(c0$Dict$Red, $key, $value, $lRight, $right));
+      return (c0$Dict$Node)($color, $lK, $lV, $lLeft, (c0$Dict$Node)(c0$Dict$Red, $key, $value, $lRight, $right));
     }))()
     : (true
-      ? (((($right)[0] === "$RBNode_elm_builtin") && (((($right)[1])[0] === "$Black") && (((($right)[4])[0] === "$RBNode_elm_builtin") && (((($right)[4])[1])[0] === "$Black"))))
+      ? (((($right)[0] === "$Node") && (((($right)[1])[0] === "$Black") && (((($right)[4])[0] === "$Node") && (((($right)[4])[1])[0] === "$Black"))))
         ? (c0$Dict$moveRedRight)($dict)
-        : (((($right)[0] === "$RBNode_elm_builtin") && (((($right)[1])[0] === "$Black") && ((($right)[4])[0] === "$RBEmpty_elm_builtin")))
+        : (((($right)[0] === "$Node") && (((($right)[1])[0] === "$Black") && ((($right)[4])[0] === "$Empty")))
           ? (c0$Dict$moveRedRight)($dict)
           : (true
             ? $dict
@@ -4232,9 +4232,9 @@ const c0$Dict$removeHelpPrepEQGT = (($targetKey, $dict, $color, $key, $value, $l
 });
 
 const c0$Dict$removeHelp = (($targetKey, $dict) => {
-  return ((($dict)[0] === "$RBEmpty_elm_builtin")
-    ? c0$Dict$RBEmpty_elm_builtin
-    : ((($dict)[0] === "$RBNode_elm_builtin")
+  return ((($dict)[0] === "$Empty")
+    ? c0$Dict$Empty
+    : ((($dict)[0] === "$Node")
       ? ((() => {
         const $color = ($dict)[1];
         const $key = ($dict)[2];
@@ -4242,15 +4242,15 @@ const c0$Dict$removeHelp = (($targetKey, $dict) => {
         const $left = ($dict)[4];
         const $right = ($dict)[5];
         return ((sp_equal)((basics_compare)($targetKey, $key), (0 - 1))
-          ? (((($left)[0] === "$RBNode_elm_builtin") && ((($left)[1])[0] === "$Black"))
+          ? (((($left)[0] === "$Node") && ((($left)[1])[0] === "$Black"))
             ? ((() => {
               const $lLeft = ($left)[4];
-              return (((($lLeft)[0] === "$RBNode_elm_builtin") && ((($lLeft)[1])[0] === "$Red"))
-                ? (c0$Dict$RBNode_elm_builtin)($color, $key, $value, (c0$Dict$removeHelp)($targetKey, $left), $right)
+              return (((($lLeft)[0] === "$Node") && ((($lLeft)[1])[0] === "$Red"))
+                ? (c0$Dict$Node)($color, $key, $value, (c0$Dict$removeHelp)($targetKey, $left), $right)
                 : (true
                   ? ((() => {
                     const $3 = (c0$Dict$moveRedLeft)($dict);
-                    return ((($3)[0] === "$RBNode_elm_builtin")
+                    return ((($3)[0] === "$Node")
                       ? ((() => {
                         const $nColor = ($3)[1];
                         const $nKey = ($3)[2];
@@ -4259,14 +4259,14 @@ const c0$Dict$removeHelp = (($targetKey, $dict) => {
                         const $nRight = ($3)[5];
                         return (c0$Dict$balance)($nColor, $nKey, $nValue, (c0$Dict$removeHelp)($targetKey, $nLeft), $nRight);
                       }))()
-                      : ((($3)[0] === "$RBEmpty_elm_builtin")
-                        ? c0$Dict$RBEmpty_elm_builtin
+                      : ((($3)[0] === "$Empty")
+                        ? c0$Dict$Empty
                         : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 120:32', (sp_toHuman)($3))));
                   }))()
                   : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 114:24', (sp_toHuman)($lLeft))));
             }))()
             : (true
-              ? (c0$Dict$RBNode_elm_builtin)($color, $key, $value, (c0$Dict$removeHelp)($targetKey, $left), $right)
+              ? (c0$Dict$Node)($color, $key, $value, (c0$Dict$removeHelp)($targetKey, $left), $right)
               : (sp_throw)('Missing pattern in try..as', 'corelib/src/Dict.sp 111:16', (sp_toHuman)($left))))
           : (c0$Dict$removeHelpEQGT)($targetKey, (c0$Dict$removeHelpPrepEQGT)($targetKey, $dict, $color, $key, $value, $left, $right)));
       }))()
@@ -4275,13 +4275,13 @@ const c0$Dict$removeHelp = (($targetKey, $dict) => {
 
 const c0$Dict$remove = (($key, $dict) => {
   const $3 = (c0$Dict$removeHelp)($key, $dict);
-  return (((($3)[0] === "$RBNode_elm_builtin") && ((($3)[1])[0] === "$Red"))
+  return (((($3)[0] === "$Node") && ((($3)[1])[0] === "$Red"))
     ? ((() => {
       const $k = ($3)[2];
       const $v = ($3)[3];
       const $l = ($3)[4];
       const $r = ($3)[5];
-      return (c0$Dict$RBNode_elm_builtin)(c0$Dict$Black, $k, $v, $l, $r);
+      return (c0$Dict$Node)(c0$Dict$Black, $k, $v, $l, $r);
     }))()
     : (true
       ? ((() => {
@@ -4298,9 +4298,9 @@ const c0$Dict$diff = (($t1, $t2) => {
 });
 
 const c0$Dict$each = (($dict, $func) => {
-  return ((($dict)[0] === "$RBEmpty_elm_builtin")
+  return ((($dict)[0] === "$Empty")
     ? null
-    : ((($dict)[0] === "$RBNode_elm_builtin")
+    : ((($dict)[0] === "$Node")
       ? ((() => {
         const $key = ($dict)[2];
         const $value = ($dict)[3];
@@ -4453,9 +4453,9 @@ const c0$Dict$onlyBothOnly = (($da, $db) => {
 
 const c0$Dict$size = ((() => {
   const $sizeHelp = (($n, $dict) => {
-    return ((($dict)[0] === "$RBEmpty_elm_builtin")
+    return ((($dict)[0] === "$Empty")
       ? $n
-      : ((($dict)[0] === "$RBNode_elm_builtin")
+      : ((($dict)[0] === "$Node")
         ? ((() => {
           const $left = ($dict)[4];
           const $right = ($dict)[5];
@@ -5255,7 +5255,7 @@ const c0$Result$mapError = (($f, $result) => {
 const c0$Self_Test$load = ((_0) => {
   const $usr = (c0$Compiler$Meta$USR)((c0$Compiler$Meta$UMR)(c0$Compiler$Meta$User, 5, "DynamicLoad"), "aNumberValue");
   const $translatedUsr = (c0$Compiler$EmittableAst$translateUsr)($usr);
-  const $numberSelf = {"def":["$OpaqueType",{"constructors":["$RBEmpty_elm_builtin"],"pars":["$Nil"],"usr":["$USR",["$UMR",["$Core"],0,"Core"],"Number"]}],"usr":["$USR",["$UMR",["$Core"],0,"Core"],"Number"]};
+  const $numberSelf = {"def":["$OpaqueType",{"constructors":["$Empty"],"pars":["$Nil"],"usr":["$USR",["$UMR",["$Core"],0,"Core"],"Number"]}],"usr":["$USR",["$UMR",["$Core"],0,"Core"],"Number"]};
   const $numberType = (c0$Compiler$TypedAst$TypeExact)(c0$Compiler$Pos$T, $numberSelf.usr, c0$Core$Nil);
   const $def = ({
     deps: c0$Dict$empty,
