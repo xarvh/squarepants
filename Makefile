@@ -1,10 +1,16 @@
 
-default:
+default: build
 	./squarepants Main build/unstable
+	@chmod +x build/unstable
 
 
-with-unstable:
+with-unstable: build
 	./build/unstable Main --corelib=./corelib build/made-with-unstable
+	@chmod +x build/made-with-unstable
+
+
+build:
+	mkdir -p build
 
 
 # https://nodejs.org/en/docs/guides/simple-profiling/
