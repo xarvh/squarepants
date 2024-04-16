@@ -742,6 +742,36 @@ argumentPlaceholders as Test =
                       )
                  )
             )
+        , codeTest
+            """
+            Simple placeholder gets inlined
+            """
+            """
+            a = v >> blah __
+            b = blah v
+            """
+            transformAB
+            (shouldHaveSameAB (fn x: x.maybeBody))
+        , codeTest
+            """
+            Pipeline with placeholders gets inlined
+            """
+            """
+            a = v >> blah x __ y >> z a __
+            b = z a (blah x v y)
+            """
+            transformAB
+            (shouldHaveSameAB (fn x: x.maybeBody))
+        , codeTest
+            """
+            Multiple placeholders get inlined
+            """
+            """
+            a = (blah x __ y __) p q
+            b = blah x p y q
+            """
+            transformAB
+            (shouldHaveSameAB (fn x: x.maybeBody))
         ]
 
 
