@@ -700,7 +700,9 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                 faArgs
                 >> List.mapRes (translateArgument env __) __
                 >> onOk fn caArgs:
-                CA.'call pos caRef caArgs >> 'ok
+                try maybeInlinePlaceholders caRef caArgs as
+                    'just call: 'ok call
+                    _: CA.'call pos caRef caArgs >> 'ok
 
         FA.'if { with  condition, false, true }:
             translateExpression env condition
@@ -817,6 +819,40 @@ makePartiallyAppliedFunction as fn Env, Pos, Int, FA.Expr_: Res CA.Expression =
     >> FA.'fn FA.'inline __ (ex body)
     >> ex
     >> translateExpression env __
+
+
+maybeInlinePlaceholders as fn CA.Expression, [ CA.Argument ]: Maybe CA.Expression =
+    fn ref, outerArgs:
+    #
+    #      (fn placeholder1, placeholder2: someFunc placeholder1 x placeholder2 y z) p q
+    #      |
+    #      v
+    #      someFunc p x q y z
+    #
+    try ref as
+
+        CA.'fn _ params (CA.'call pos nestedRef innerArgs):
+            replaceArg as fn CA.Argument, [ CA.Argument ] & [ CA.Argument ]: [ CA.Argument ] & [ CA.Argument ] =
+                fn innerArg, remainingOuterArgs & argsAccum:
+                try innerArg & remainingOuterArgs as
+
+                    CA.'argumentExpression (CA.'variable _ ('refPlaceholder _)) & [ next, restOuterArgs... ]:
+                        #
+                        restOuterArgs & [ next, argsAccum... ]
+
+                    arg & _:
+                        remainingOuterArgs & [ arg, argsAccum... ]
+
+            remainingOuterArgs & reversedNewArgs =
+                List.for (outerArgs & []) innerArgs replaceArg
+
+            if remainingOuterArgs == [] then
+                CA.'call pos nestedRef (List.reverse reversedNewArgs) >> 'just
+            else
+                'nothing
+
+        _:
+            'nothing
 
 
 insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
