@@ -850,12 +850,6 @@ const c0$Compiler$EmittableAst$ArgumentSpend = (($1, $2) => ([
   $2,
 ]));
 
-const c0$Compiler$EmittableAst$ArrayAccess = (($1, $2) => ([
-  "$ArrayAccess",
-  $1,
-  $2,
-]));
-
 const c0$Compiler$EmittableAst$Call = (($1, $2) => ([
   "$Call",
   $1,
@@ -902,13 +896,20 @@ const c0$Compiler$EmittableAst$IsConstructor = (($1, $2) => ([
   $2,
 ]));
 
-const c0$Compiler$EmittableAst$LetIn = (($1) => ([
-  "$LetIn",
+const c0$Compiler$EmittableAst$IsLiteralNumber = (($1, $2) => ([
+  "$IsLiteralNumber",
   $1,
+  $2,
 ]));
 
-const c0$Compiler$EmittableAst$LiteralArray = (($1) => ([
-  "$LiteralArray",
+const c0$Compiler$EmittableAst$IsLiteralText = (($1, $2) => ([
+  "$IsLiteralText",
+  $1,
+  $2,
+]));
+
+const c0$Compiler$EmittableAst$LetIn = (($1) => ([
+  "$LetIn",
   $1,
 ]));
 
@@ -946,12 +947,6 @@ const c0$Compiler$EmittableAst$PlaceholderVariable = (($1) => ([
 
 const c0$Compiler$EmittableAst$RecordAccess = (($1, $2) => ([
   "$RecordAccess",
-  $1,
-  $2,
-]));
-
-const c0$Compiler$EmittableAst$ShallowEqual = (($1, $2) => ([
-  "$ShallowEqual",
   $1,
   $2,
 ]));
@@ -3048,7 +3043,7 @@ const c0$Compiler$EmittableAst$translateRoot = (($0) => {
       ? "u"
       : ((($0)[0] === "$Installed")
         ? "i"
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/EmittableAst.sp 87:4', (sp_toHuman)($0)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/EmittableAst.sp 86:4', (sp_toHuman)($0)))));
 });
 
 const c0$List$append = (($xs, $ys) => {
@@ -15639,7 +15634,7 @@ const u0$Compiler$MakeEmittable$mkEnv = (($2, $modulesByUmr) => {
         }))()
         : ((($3)[0] === "$Nothing")
           ? (sp_todo)(("compiler bug: no module for " + $name))
-          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 13:10', (sp_toHuman)($3))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 13:8', (sp_toHuman)($3))));
     }))(),
   });
 });
@@ -15677,12 +15672,12 @@ const u0$Compiler$MakeEmittable$testPattern = (($pattern, $valueToTest, $accum) 
     : ((($pattern)[0] === "$PatternLiteralText")
       ? ((() => {
         const $text = ($pattern)[2];
-        return (sp_cons)((c0$Compiler$EmittableAst$ShallowEqual)((c0$Compiler$EmittableAst$LiteralText)($text), $valueToTest), $accum);
+        return (sp_cons)((c0$Compiler$EmittableAst$IsLiteralText)($text, $valueToTest), $accum);
       }))()
       : ((($pattern)[0] === "$PatternLiteralNumber")
         ? ((() => {
           const $num = ($pattern)[2];
-          return (sp_cons)((c0$Compiler$EmittableAst$ShallowEqual)((c0$Compiler$EmittableAst$LiteralNumber)($num), $valueToTest), $accum);
+          return (sp_cons)((c0$Compiler$EmittableAst$IsLiteralNumber)($num, $valueToTest), $accum);
         }))()
         : ((($pattern)[0] === "$PatternConstructor")
           ? ((() => {
@@ -16050,7 +16045,7 @@ const u0$Compiler$MakeEmittable$translateExpression = (($env, $expression) => {
                                       const $b = ($3)[1];
                                       return $b;
                                     }))()
-                                    : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 271:16', (sp_toHuman)($3))));
+                                    : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 270:16', (sp_toHuman)($3))));
                               }))();
                               const $3 = (u0$Compiler$MakeEmittable$pickMainName)($valueDef.pattern);
                               return ((($3)[0] === "$NoNamedVariables")
@@ -16098,7 +16093,7 @@ const u0$Compiler$MakeEmittable$translateExpression = (($env, $expression) => {
                                       });
                                       return ($wrapWithActualLetIn)((c0$List$forReversed)((u0$Compiler$MakeEmittable$translateExpression)($newEnv, $e), $namesAndExpressions, $wrapWithUnpackedPatternVar));
                                     }))()
-                                    : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 275:12', (sp_toHuman)($3)))));
+                                    : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 274:12', (sp_toHuman)($3)))));
                             }))()
                             : ((($expression)[0] === "$DestroyIn")
                               ? ((() => {
@@ -18406,7 +18401,7 @@ const u0$Compiler$TypeCheck_Test$functions = (i2$Test$Group)("functions", (c0$Co
 }))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] fn had type None", "a = fn x: 1", (u0$Compiler$TypeCheck_Test$infer)("a"), (i2$Test$isOkAndEqualTo)(({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars)((c0$Core$Cons)(1, c0$Core$Nil)),
   type: (c0$Compiler$TypedAst$TypeFn)(c0$Compiler$Pos$T, (c0$Core$Cons)((c0$Compiler$TypedAst$ParSp)((c0$Compiler$Ast$toImm)((u0$Compiler$TypeCheck_Test$tyvar)(1))), c0$Core$Nil), (c0$Compiler$Ast$toUni)(u0$Compiler$TestHelpers$taNumber)),
-}))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Multiple arguments are correctly inferred", "a = fn x, y, z: x + y + z", (u0$Compiler$TypeCheck_Test$infer)("a"), i2$Test$isOk), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("Annotation should be consistent with mutability", "f as fn @Number: Number = fn a:\n  a", (u0$Compiler$TypeCheck_Test$infer)("f"), (i2$Test$errorContains)((c0$Core$Cons)("RecyclingDoesNotMatch", c0$Core$Nil))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Free tyvar should not be compatible with constructor", "listCons as fn item: item =\n    fn item:\n    []", (u0$Compiler$TypeCheck_Test$infer)("listCons"), (i2$Test$errorContains)((c0$Core$Cons)("Incompatible", c0$Core$Nil))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("Annotations that are too general should be rejected", "f as fn a: b =\n    fn a: a", (u0$Compiler$TypeCheck_Test$infer)("f"), (i2$Test$errorContains)(c0$Core$Nil)), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Should unify bound tyvars when needed", "for as fn a, b, (fn b, a: a): a =\n    fn a, b, f: a\n\nz =\n    for \"\" 1 fn b, a:\n        b", (u0$Compiler$TypeCheck_Test$infer)("z"), (i2$Test$errorContains)((c0$Core$Cons)("Text", c0$Core$Nil))), c0$Core$Nil))))))))))));
+}))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Multiple arguments are correctly inferred", "a = fn x, y, z: x + y + z", (u0$Compiler$TypeCheck_Test$infer)("a"), i2$Test$isOk), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("Annotation should be consistent with mutability", "f as fn @Number: Number = fn a:\n  a", (u0$Compiler$TypeCheck_Test$infer)("f"), (i2$Test$errorContains)((c0$Core$Cons)("RecyclingDoesNotMatch", c0$Core$Nil))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Free tyvar should not be compatible with constructor", "listCons as fn item: item =\n    fn item:\n    []", (u0$Compiler$TypeCheck_Test$infer)("listCons"), (i2$Test$errorContains)((c0$Core$Cons)("I need the annotation and the value to have the same type", c0$Core$Nil))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("Annotations that are too general should be rejected", "f as fn a: b =\n    fn a: a", (u0$Compiler$TypeCheck_Test$infer)("f"), (i2$Test$errorContains)(c0$Core$Nil)), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Should unify bound tyvars when needed", "for as fn a, b, (fn b, a: a): a =\n    fn a, b, f: a\n\nz =\n    for \"\" 1 fn b, a:\n        b", (u0$Compiler$TypeCheck_Test$infer)("z"), (i2$Test$errorContains)((c0$Core$Cons)("Text", c0$Core$Nil))), c0$Core$Nil))))))))))));
 
 const u0$Compiler$TypeCheck_Test$higherOrderTypes = (i2$Test$Group)("higher order types", (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("Parse precedence", "var T a = 't a\n\na as fn T a: T a =\n    fn l: l", (u0$Compiler$TypeCheck_Test$infer)("a"), (i2$Test$isOkAndEqualTo)(({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvarsAnnotated)((c0$Core$Cons)(({
@@ -19050,89 +19045,82 @@ const u0$Targets$Javascript$EmittableToJs$translateExpression = (($env, $mustRet
                             }))()
                             : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 514:12', (sp_toHuman)($4))));
                       }))()
-                      : ((($eaExpression)[0] === "$ShallowEqual")
+                      : ((($eaExpression)[0] === "$IsLiteralText")
                         ? ((() => {
-                          const $a = ($eaExpression)[1];
+                          const $text = ($eaExpression)[1];
                           const $b = ($eaExpression)[2];
-                          return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Binop)("===", (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $a), (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $b)));
+                          return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Binop)("===", (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, (c0$Compiler$EmittableAst$LiteralText)($text)), (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $b)));
                         }))()
-                        : ((($eaExpression)[0] === "$LiteralArray")
+                        : ((($eaExpression)[0] === "$IsLiteralNumber")
                           ? ((() => {
-                            const $items = ($eaExpression)[1];
-                            return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Array)((c0$List$map)((($0) => {
-                              return (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $0);
-                            }), $items)));
+                            const $number = ($eaExpression)[1];
+                            const $b = ($eaExpression)[2];
+                            return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Binop)("===", (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, (c0$Compiler$EmittableAst$LiteralNumber)($number)), (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $b)));
                           }))()
-                          : ((($eaExpression)[0] === "$ArrayAccess")
+                          : ((($eaExpression)[0] === "$Constructor")
                             ? ((() => {
-                              const $index = ($eaExpression)[1];
-                              const $array = ($eaExpression)[2];
-                              return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$EmittableToJs$accessArrayIndex)($index, (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $array)));
+                              const $usr = ($eaExpression)[1];
+                              return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$EmittableToJs$maybeOverrideUsrForConstructor)($env, $usr));
                             }))()
-                            : ((($eaExpression)[0] === "$Constructor")
+                            : ((($eaExpression)[0] === "$ConstructorAccess")
                               ? ((() => {
-                                const $usr = ($eaExpression)[1];
-                                return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$EmittableToJs$maybeOverrideUsrForConstructor)($env, $usr));
+                                const $argIndex = ($eaExpression)[1];
+                                const $value = ($eaExpression)[2];
+                                return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$EmittableToJs$accessArrayIndex)(($argIndex + 1), (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value)));
                               }))()
-                              : ((($eaExpression)[0] === "$ConstructorAccess")
+                              : ((($eaExpression)[0] === "$IsConstructor")
                                 ? ((() => {
-                                  const $argIndex = ($eaExpression)[1];
-                                  const $value = ($eaExpression)[2];
-                                  return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$EmittableToJs$accessArrayIndex)(($argIndex + 1), (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value)));
+                                  const $usr = ($eaExpression)[1];
+                                  const $eaValue = ($eaExpression)[2];
+                                  const $jaValue = (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $eaValue);
+                                  return ((sp_equal)($usr, u0$Compiler$CoreDefs$noneConsUsr)
+                                    ? (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Var)("true"))
+                                    : ((sp_equal)($usr, u0$Compiler$CoreDefs$trueUsr)
+                                      ? (u0$Targets$Javascript$EmittableToJs$Inline)($jaValue)
+                                      : ((sp_equal)($usr, u0$Compiler$CoreDefs$falseUsr)
+                                        ? (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Unop)("!", $jaValue))
+                                        : ((() => {
+                                          const $4 = $usr;
+                                          const $name = ($4)[2];
+                                          return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Binop)("===", (u0$Targets$Javascript$EmittableToJs$accessArrayIndex)(0, $jaValue), (u0$Targets$Javascript$EmittableToJs$literalString)((u0$Targets$Javascript$EmittableToJs$translateName)($name))));
+                                        }))())));
                                 }))()
-                                : ((($eaExpression)[0] === "$IsConstructor")
+                                : ((($eaExpression)[0] === "$LiteralRecord")
                                   ? ((() => {
-                                    const $usr = ($eaExpression)[1];
-                                    const $eaValue = ($eaExpression)[2];
-                                    const $jaValue = (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $eaValue);
-                                    return ((sp_equal)($usr, u0$Compiler$CoreDefs$noneConsUsr)
-                                      ? (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Var)("true"))
-                                      : ((sp_equal)($usr, u0$Compiler$CoreDefs$trueUsr)
-                                        ? (u0$Targets$Javascript$EmittableToJs$Inline)($jaValue)
-                                        : ((sp_equal)($usr, u0$Compiler$CoreDefs$falseUsr)
-                                          ? (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Unop)("!", $jaValue))
-                                          : ((() => {
-                                            const $4 = $usr;
-                                            const $name = ($4)[2];
-                                            return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Binop)("===", (u0$Targets$Javascript$EmittableToJs$accessArrayIndex)(0, $jaValue), (u0$Targets$Javascript$EmittableToJs$literalString)((u0$Targets$Javascript$EmittableToJs$translateName)($name))));
-                                          }))())));
-                                  }))()
-                                  : ((($eaExpression)[0] === "$LiteralRecord")
-                                    ? ((() => {
-                                      const $maybeExtend = ($eaExpression)[1];
-                                      const $attrNamesAndValues = ($eaExpression)[2];
-                                      const $obj = (u0$Targets$Javascript$Ast$Record)((c0$List$for)(c0$Dict$empty, $attrNamesAndValues, (($5, $d) => {
-                                        const $name = $5.first;
-                                        const $value = $5.second;
-                                        return (c0$Dict$insert)($name, (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value), $d);
-                                      })));
-                                      return ((($maybeExtend)[0] === "$Nothing")
-                                        ? (u0$Targets$Javascript$EmittableToJs$Inline)($obj)
-                                        : ((($maybeExtend)[0] === "$Just")
-                                          ? ((() => {
-                                            const $extend = ($maybeExtend)[1];
-                                            return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Var)("Object.assign"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Record)(c0$Dict$empty), (c0$Core$Cons)((u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $extend), (c0$Core$Cons)($obj, c0$Core$Nil)))));
-                                          }))()
-                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 572:12', (sp_toHuman)($maybeExtend))));
-                                    }))()
-                                    : ((($eaExpression)[0] === "$RecordAccess")
-                                      ? ((() => {
-                                        const $attrName = ($eaExpression)[1];
-                                        const $value = ($eaExpression)[2];
-                                        return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$AccessWithDot)($attrName, (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value)));
-                                      }))()
-                                      : ((($eaExpression)[0] === "$MissingPattern")
+                                    const $maybeExtend = ($eaExpression)[1];
+                                    const $attrNamesAndValues = ($eaExpression)[2];
+                                    const $obj = (u0$Targets$Javascript$Ast$Record)((c0$List$for)(c0$Dict$empty, $attrNamesAndValues, (($5, $d) => {
+                                      const $name = $5.first;
+                                      const $value = $5.second;
+                                      return (c0$Dict$insert)($name, (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value), $d);
+                                    })));
+                                    return ((($maybeExtend)[0] === "$Nothing")
+                                      ? (u0$Targets$Javascript$EmittableToJs$Inline)($obj)
+                                      : ((($maybeExtend)[0] === "$Just")
                                         ? ((() => {
-                                          const $location = ($eaExpression)[1];
-                                          const $value = ($eaExpression)[2];
-                                          return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_throw"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)("'Missing pattern in try..as'"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)((("'" + $location) + "'")), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_toHuman"), (c0$Core$Cons)((u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value), c0$Core$Nil)), c0$Core$Nil)))));
+                                          const $extend = ($maybeExtend)[1];
+                                          return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Var)("Object.assign"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Record)(c0$Dict$empty), (c0$Core$Cons)((u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $extend), (c0$Core$Cons)($obj, c0$Core$Nil)))));
                                         }))()
-                                        : ((($eaExpression)[0] === "$Introspect")
-                                          ? ((() => {
-                                            const $self = ($eaExpression)[1];
-                                            return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Literal)((JSON.stringify)($self)));
-                                          }))()
-                                          : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 412:4', (sp_toHuman)($eaExpression))))))))))))))))))))));
+                                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 563:12', (sp_toHuman)($maybeExtend))));
+                                  }))()
+                                  : ((($eaExpression)[0] === "$RecordAccess")
+                                    ? ((() => {
+                                      const $attrName = ($eaExpression)[1];
+                                      const $value = ($eaExpression)[2];
+                                      return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$AccessWithDot)($attrName, (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value)));
+                                    }))()
+                                    : ((($eaExpression)[0] === "$MissingPattern")
+                                      ? ((() => {
+                                        const $location = ($eaExpression)[1];
+                                        const $value = ($eaExpression)[2];
+                                        return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_throw"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)("'Missing pattern in try..as'"), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Literal)((("'" + $location) + "'")), (c0$Core$Cons)((u0$Targets$Javascript$Ast$Call)((u0$Targets$Javascript$Ast$Literal)("sp_toHuman"), (c0$Core$Cons)((u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $value), c0$Core$Nil)), c0$Core$Nil)))));
+                                      }))()
+                                      : ((($eaExpression)[0] === "$Introspect")
+                                        ? ((() => {
+                                          const $self = ($eaExpression)[1];
+                                          return (u0$Targets$Javascript$EmittableToJs$Inline)((u0$Targets$Javascript$Ast$Literal)((JSON.stringify)($self)));
+                                        }))()
+                                        : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 412:4', (sp_toHuman)($eaExpression)))))))))))))))))))));
 });
 
 const u0$Targets$Javascript$EmittableToJs$wrapInAutoLambda = (($statements) => {
@@ -19506,7 +19494,7 @@ const u0$Targets$Javascript$EmittableToJs$translateConstructorDef = (($1) => {
     }))()
     : (true
       ? (u0$Targets$Javascript$Ast$Array)((c0$Core$Cons)($arrayHead, c0$Core$Nil))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 616:8', (sp_toHuman)($taType))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 607:8', (sp_toHuman)($taType))));
   return (u0$Targets$Javascript$Ast$Define)(false, (u0$Targets$Javascript$EmittableToJs$translateUsrToText)($usr), $definitionBody);
 });
 
@@ -19516,7 +19504,7 @@ const u0$Targets$Javascript$EmittableToJs$translateDef = (($env, $def) => {
     ? c0$Maybe$Nothing
     : ((($3)[0] === "$Nothing")
       ? (c0$Maybe$Just)((u0$Targets$Javascript$Ast$Define)(false, (u0$Targets$Javascript$EmittableToJs$_usrToText)($def.usr), (u0$Targets$Javascript$EmittableToJs$translateExpressionToExpression)($env, true, $def.expr)))
-      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 634:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Targets/Javascript/EmittableToJs.sp 625:4', (sp_toHuman)($3))));
 });
 
 const u0$Targets$Javascript$EmittableToJs$translateAll = (($pars) => {

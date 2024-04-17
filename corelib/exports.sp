@@ -447,10 +447,9 @@ module =
         'fn
         'conditional
         'and
-        'shallowEqual
+        'isLiteralText
+        'isLiteralNumber
         'letIn
-        'literalArray
-        'arrayAccess
         'constructor
         'constructorAccess
         'isConstructor

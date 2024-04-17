@@ -4,15 +4,15 @@ Env =
     , module as CA.Module
     }
 
+
 mkEnv as fn USR, Dict UMR CA.Module: Env =
     fn 'USR umr name, modulesByUmr:
-
     {
     , genVarCounter = 0
     , module =
-          try Dict.get umr modulesByUmr as
-              'just m: m
-              'nothing: todo ("compiler bug: no module for " .. name)
+        try Dict.get umr modulesByUmr as
+            'just m: m
+            'nothing: todo ("compiler bug: no module for " .. name)
     }
 
 
@@ -90,10 +90,10 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
             accum
 
         TA.'patternLiteralText _ text:
-            EA.'shallowEqual (EA.'literalText text) valueToTest :: accum
+            EA.'isLiteralText text valueToTest :: accum
 
         TA.'patternLiteralNumber _ num:
-            EA.'shallowEqual (EA.'literalNumber num) valueToTest :: accum
+            EA.'isLiteralNumber num valueToTest :: accum
 
         TA.'patternConstructor _ usr pas:
             EA.'isConstructor usr valueToTest :: accum
@@ -266,7 +266,6 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> wrapWithLetIn
 
         TA.'letIn valueDef e bodyType:
-
             body =
                 try valueDef.body as
                     'nothing: todo ("compiler bug: 'nothing body should not happen here " .. Debug.toHuman valueDef.pattern)
@@ -329,4 +328,3 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
         TA.'introspect self:
             EA.'introspect self
-

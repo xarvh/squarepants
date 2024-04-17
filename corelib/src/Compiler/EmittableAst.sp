@@ -27,7 +27,8 @@ var Expression =
     , 'fn [ Bool & Maybe Name ] Expression
     , 'conditional Expression Expression Expression
     , 'and [ Expression ]
-    , 'shallowEqual Expression Expression
+    , 'isLiteralText Text Expression
+    , 'isLiteralNumber Number Expression
     , 'letIn
           {
           , inExpression as Expression
@@ -108,4 +109,3 @@ translateUsr as fn USR: TranslatedUsr =
         usr
 
     List.concat [ [ translateRoot root .. Text.fromNumber sourceDirId ], Text.split "/" modulePath, [ translateName name ] ]
-

@@ -521,8 +521,11 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
                     >> List.for __ tail (fn test, expr: JA.'binop "&&" test expr)
                     >> 'inline
 
-        EA.'shallowEqual a b:
-            JA.'binop "===" (translateExpressionToExpression env 'true a) (translateExpressionToExpression env 'true b) >> 'inline
+        EA.'isLiteralText text b:
+            JA.'binop "===" (translateExpressionToExpression env 'true (EA.'literalText text)) (translateExpressionToExpression env 'true b) >> 'inline
+
+        EA.'isLiteralNumber number b:
+            JA.'binop "===" (translateExpressionToExpression env 'true (EA.'literalNumber number)) (translateExpressionToExpression env 'true b) >> 'inline
 
         EA.'constructor usr:
             maybeOverrideUsrForConstructor env usr >> 'inline
