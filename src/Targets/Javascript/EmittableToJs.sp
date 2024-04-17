@@ -524,18 +524,6 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
         EA.'shallowEqual a b:
             JA.'binop "===" (translateExpressionToExpression env 'true a) (translateExpressionToExpression env 'true b) >> 'inline
 
-        EA.'literalArray items:
-            items
-            >> List.map (translateExpressionToExpression env 'true __) __
-            >> JA.'array
-            >> 'inline
-
-        EA.'arrayAccess index array:
-            array
-            >> translateExpressionToExpression env 'true __
-            >> accessArrayIndex index __
-            >> 'inline
-
         EA.'constructor usr:
             maybeOverrideUsrForConstructor env usr >> 'inline
 

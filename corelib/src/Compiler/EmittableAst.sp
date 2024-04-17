@@ -35,8 +35,6 @@ var Expression =
           , maybeName as Maybe Name
           , type as TA.FullType
           }
-    , 'literalArray [ Expression ]
-    , 'arrayAccess Int Expression
     , 'constructor TranslatedUsr
     , 'constructorAccess Int Expression
     , 'isConstructor USR Expression
