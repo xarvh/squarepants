@@ -364,25 +364,39 @@ build as fn BuildPlan: Res BuildOut =
 
     translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
         fn usr & def:
-        Maybe.map
-            (fn body:
-                 {
-                 , deps = def.directDeps
-                 , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
-                 , freeTyvars = def.freeTyvars
-                 , freeUnivars = def.freeUnivars
-                 , type = def.type.raw
-                 , usr = EA.translateUsr usr
-                 }
-            )
-            def.body
+        try def.body as
+
+            TA.'bodyNative:
+                'nothing
+
+            TA.'bodyValue body:
+                {
+                , deps = def.directDeps
+                , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
+                , freeTyvars = def.freeTyvars
+                , freeUnivars = def.freeUnivars
+                , type = def.type.raw
+                , usr = EA.translateUsr usr
+                }
+                >> 'just
+
+            TA.'bodyFunction closure parameters body:
+                {
+                , deps = def.directDeps
+                , expr = todo "Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body"
+                , freeTyvars = def.freeTyvars
+                , freeUnivars = def.freeUnivars
+                , type = def.type.raw
+                , usr = EA.translateUsr usr
+                }
+                >> 'just
 
     rootValues as [ EA.GlobalDefinition ] =
         List.filterMap translateDef valueDefsWithDestruction
 
     natives as [ USR ] =
         valueDefsWithDestruction
-        >> List.filter (fn usr & def: def.body == 'nothing) __
+        >> List.filter (fn usr & def: def.body == TA.'bodyNative) __
         >> List.map Tuple.first __
 
     #

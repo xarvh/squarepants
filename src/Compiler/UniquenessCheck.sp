@@ -509,9 +509,6 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'fn pos pars body bodyType:
-            doFn env pos @errors pars body bodyType
-
         TA.'call pos reference arguments:
             doCall env @errors pos reference arguments
 
@@ -670,13 +667,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                 addPatternToEnv @errors valueDef.pattern env
 
             doneDefBody =
-                try valueDef.body as
-                    'just body:
-                        doExpression env1 @errors body
-                        >> uniOutMap 'just __
-
-                    'nothing:
-                        uniOutInit 'nothing
+                doExpression env1 @errors valueDef.body
 
             localEnv =
                 env1
@@ -833,9 +824,11 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
 updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.ValueDef: USR & TA.ValueDef =
     fn @errors, modulesByUmr, usr & def:
     try def.body as
-        'nothing: usr & def
-        'just body:
 
+        TA.'bodyNative:
+            usr & def
+
+        TA.'bodyValue body:
             env as Env =
                 {
                 , modulesByUmr
@@ -848,4 +841,10 @@ updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.ValueDef: USR & 
 
             # TODO Should I check that spent, recycled and required are empty?
 
-            usr & { def with body = 'just doneExpression.resolved }
+            usr & { def with body = TA.'bodyValue doneExpression.resolved }
+
+        TA.'bodyFunction closure parameters body:
+            #TA.'fn pos pars body bodyType:
+            #doFn env pos @errors pars body bodyType
+
+            todo "uniquenessCheck bodyFunction"

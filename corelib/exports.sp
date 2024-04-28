@@ -347,7 +347,12 @@ module =
 
         Tyvar
         Univar
+        LocalDef
         ValueDef
+        Body
+        'bodyNative
+        'bodyValue
+        'bodyFunction
 
         Substitutions
         Module

@@ -1505,7 +1505,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
         CA.'fn pos fnPars body:
             try expectedType.raw as
 
-                TA.'typeFn _ parTypes out:
+                TA.'typeFn _ instances parTypes out:
                     if List.length fnPars /= List.length parTypes then
                         addError pars.env pos 'errorWrongNumberOfParameters @state
 
@@ -1532,7 +1532,8 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                         typedBody =
                             checkExpression { pars with env = localEnv } out body @state
 
-                        TA.'fn pos (Array.toList @typedPars) typedBody out
+                        # TODO DEFU if this is a local function, extract it to state as (env.currentRootUsr, state.increment)
+                        todo "TA.'fn pos (Array.toList @typedPars) typedBody out"
 
                 _:
                     addErrorLocal "This expression is a function, which means its type is always a `fn` type."

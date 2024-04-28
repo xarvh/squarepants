@@ -4,7 +4,7 @@ TyvarId =
 
 var RawType =
     , 'typeExact Pos USR [ RawType ]
-    , 'typeFn Pos [ ParType ] FullType
+    , 'typeFn Pos (Set USR) [ ParType ] FullType
     , 'typeVar Pos TyvarId
     , 'typeRecord Pos (Maybe TyvarId) (Dict Name RawType)
     , 'typeError
@@ -28,7 +28,6 @@ var Expression =
     , 'literalText Pos Text
     , 'variable Pos Ref
     , 'constructor Pos USR
-    , 'fn Pos [ Parameter ] Expression FullType
     , 'call Pos Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
@@ -38,7 +37,7 @@ var Expression =
       # This is because there are a lot of LetIns and each requires its resolution.
       # At the same time, most of them are repeated, because nested LetIns have the same value.
       # So maybe there is a way to optimize this?
-      'letIn ValueDef Expression FullType
+      'letIn LocalDef Expression FullType
     , 'if
           Pos
           {
@@ -94,15 +93,28 @@ Univar =
     }
 
 
+var Body =
+    , 'bodyNative
+    , 'bodyValue Expression
+    , 'bodyFunction (Set Name) [ Parameter ] Expression
+
+
 ValueDef =
     {
-    , body as Maybe Expression
+    , body as Body
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
     , isFullyAnnotated as Bool
-    , pattern as Pattern
     , type as FullType
+    }
+
+
+LocalDef =
+    {
+    , body as Expression
+    , pattern as Pattern
+    , uni as Uniqueness
     }
 
 
@@ -121,7 +133,7 @@ Module =
     , asText as Text
     , fsPath as Text
     , umr as UMR
-    , valueDefs as Dict Name ValueDef
+    , valueDefs as Dict (Name & Int) ValueDef
     }
 
 
