@@ -135,7 +135,7 @@ Env =
     , expandedAliases as ByUsr ExpandedAlias
     , modulesByUmr as Dict UMR CA.Module
     , projectImports as Imports
-    , reversedRootValueDefs as [ USR & TA.ValueDef ]
+    , reversedRootValueDefs as [ USR & TA.RootDef ]
     , variables as Dict Ref Instance
     }
 
@@ -793,7 +793,7 @@ doLocalDefinition as fn fn Name: Ref, Env, CA.LocalDef, @State: TA.LocalDef & En
     & { baseEnv with variables }
 
 
-doRootDefinition_ as fn fn Name: Ref, Env, CA.ValueDef, @State: TA.ValueDef & Env =
+doRootDefinition_ as fn fn Name: Ref, Env, CA.ValueDef, @State: TA.RootDef & Env =
     fn nameToRef, baseEnv, def, @state:
     pattern =
         CA.'patternAny def.namePos ('just def.name) def.maybeAnnotation
@@ -928,7 +928,7 @@ doRootDefinition_ as fn fn Name: Ref, Env, CA.ValueDef, @State: TA.ValueDef & En
     , freeUnivars
     , isFullyAnnotated = patternOut.maybeFullAnnotation /= 'nothing
     , name = def.name
-    , type = defType
+    , type = defType.raw
     }
     & { baseEnv with variables }
 
@@ -2290,8 +2290,8 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
         , uni = fn univarId: Hash.get @state.univarSubs univarId
         }
 
-    resolvedValueDef as TA.ValueDef =
-        todo "TA.resolveValueDef subsAsFns typedDef"
+    resolvedValueDef as TA.RootDef =
+        TA.resolveRootDef subsAsFns typedDef
 
     #Debug.benchStop "def resolution"
 

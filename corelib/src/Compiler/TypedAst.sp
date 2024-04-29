@@ -99,7 +99,7 @@ var Body =
     , 'bodyFunction (Set Name) [ Parameter ] Expression
 
 
-ValueDef =
+RootDef =
     {
     , body as Body
     , directDeps as CA.Deps
@@ -107,7 +107,7 @@ ValueDef =
     , freeUnivars as Dict UnivarId Univar
     , isFullyAnnotated as Bool
     , name as Name
-    , type as FullType
+    , type as RawType
     }
 
 
@@ -134,7 +134,7 @@ Module =
     , asText as Text
     , fsPath as Text
     , umr as UMR
-    , valueDefs as Dict (Name & Int) ValueDef
+    , valueDefs as Dict (Name & Int) RootDef
     }
 
 
@@ -280,7 +280,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'recordAccess p name (rec exp)
 
         'letIn def rest restType:
-            'letIn (resolveValueDef saf def) (rec rest) (resolveFull saf restType)
+            'letIn (resolveLocalDef saf def) (rec rest) (resolveFull saf restType)
 
         'if p { condition, false, true }:
             'if p { condition = rec condition, false = rec false, true = rec true }
@@ -314,12 +314,24 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
         'patternRecord pos ps: 'patternRecord pos (Dict.map (fn k, p & t: resolvePattern saf p & resolveRaw saf t) ps)
 
 
-resolveValueDef as fn SubsAsFns, LocalDef: LocalDef =
+resolveLocalDef as fn SubsAsFns, LocalDef: LocalDef =
     fn saf, def:
     { def with
-    , body = Maybe.map (resolveExpression saf __) .body
+    , body = resolveExpression saf .body
     , pattern = resolvePattern saf .pattern
     , type = resolveFull saf .type
+    }
+
+
+resolveRootDef as fn SubsAsFns, RootDef: RootDef =
+    fn saf, def:
+    { def with
+    , body =
+        try .body as
+            'bodyNative: 'bodyNative
+            'bodyValue exp: 'bodyValue (resolveExpression saf exp)
+            'bodyFunction instances pars exp: 'bodyFunction instances (List.map (resolvePar saf __) pars) (resolveExpression saf exp)
+    , type = resolveRaw saf .type
     }
 
 

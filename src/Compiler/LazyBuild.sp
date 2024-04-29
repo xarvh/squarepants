@@ -334,7 +334,7 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Uniqueness check
     #
-    valueDefsWithDestruction as [ USR & TA.ValueDef ] =
+    valueDefsWithDestruction as [ USR & TA.RootDef ] =
         envF.reversedRootValueDefs
         >> List.reverse
         >> List.map (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __) __
@@ -362,7 +362,7 @@ build as fn BuildPlan: Res BuildOut =
     # Emit
     #
 
-    translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
+    translateDef as fn USR & TA.RootDef: Maybe EA.GlobalDefinition =
         fn usr & def:
         try def.body as
 
@@ -375,7 +375,7 @@ build as fn BuildPlan: Res BuildOut =
                 , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
                 , freeTyvars = def.freeTyvars
                 , freeUnivars = def.freeUnivars
-                , type = def.type.raw
+                , type = def.type
                 , usr = EA.translateUsr usr
                 }
                 >> 'just
@@ -386,7 +386,7 @@ build as fn BuildPlan: Res BuildOut =
                 , expr = todo "Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body"
                 , freeTyvars = def.freeTyvars
                 , freeUnivars = def.freeUnivars
-                , type = def.type.raw
+                , type = def.type
                 , usr = EA.translateUsr usr
                 }
                 >> 'just

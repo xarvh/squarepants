@@ -821,7 +821,7 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
     }
 
 
-updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.ValueDef: USR & TA.ValueDef =
+updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.RootDef: USR & TA.RootDef =
     fn @errors, modulesByUmr, usr & def:
     try def.body as
 

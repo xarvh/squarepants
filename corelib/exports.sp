@@ -348,7 +348,7 @@ module =
         Tyvar
         Univar
         LocalDef
-        ValueDef
+        RootDef
         Body
         'bodyNative
         'bodyValue
@@ -366,7 +366,8 @@ module =
         resolvePar
         resolveExpression
         resolvePattern
-        resolveValueDef
+        resolveLocalDef
+        resolveRootDef
         stripTypePos
 
         toRaw
