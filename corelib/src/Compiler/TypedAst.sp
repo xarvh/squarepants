@@ -1,10 +1,12 @@
 TyvarId =
     Int
 
+# This reference can uniquely reference lambdas nested inside a definition
+LambdaRef = USR & Int
 
 var RawType =
     , 'typeExact Pos USR [ RawType ]
-    , 'typeFn Pos [ ParType ] FullType
+    , 'typeFn Pos (Set LambdaRef) [ ParType ] FullType
     , 'typeVar Pos TyvarId
     , 'typeRecord Pos (Maybe TyvarId) (Dict Name RawType)
     , 'typeError
@@ -28,7 +30,7 @@ var Expression =
     , 'literalText Pos Text
     , 'variable Pos Ref
     , 'constructor Pos USR
-    , 'fn Pos [ Parameter ] Expression FullType
+    , 'fn Pos LambdaRef [ Parameter ] Expression FullType
     , 'call Pos Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?

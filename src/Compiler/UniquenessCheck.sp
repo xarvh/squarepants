@@ -509,8 +509,8 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'fn pos pars body bodyType:
-            doFn env pos @errors pars body bodyType
+        TA.'fn pos lambdaRefs pars body bodyType:
+            doFn env pos @errors lambdaRefs pars body bodyType
 
         TA.'call pos reference arguments:
             doCall env @errors pos reference arguments
@@ -763,8 +763,8 @@ doVariable as fn Env, @Array Error, Pos, Name, e: UniOut e =
                     }
 
 
-doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
-    fn env, pos, @errors, pars, body, bodyType:
+doFn as fn Env, Pos, @Array Error, TA.LambdaRef, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
+    fn env, pos, @errors, lambdaRef, pars, body, bodyType:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
         { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter @errors __ __)
 
@@ -825,7 +825,7 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
-    , resolved = TA.'fn pos pars exprWithDestruction bodyType
+    , resolved = TA.'fn pos lambdaRef pars exprWithDestruction bodyType
     , spent = Dict.empty
     }
 

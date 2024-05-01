@@ -300,6 +300,7 @@ module =
    path = Compiler/TypedAst
    exposes =
         TyvarId
+        LambdaRef
         RawType
         'typeExact
         'typeFn

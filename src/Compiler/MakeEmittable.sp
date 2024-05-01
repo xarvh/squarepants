@@ -177,7 +177,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
 
-        TA.'fn pos taPars body bodyT:
+        TA.'fn pos _ taPars body bodyT:
             eaBody =
                 translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
 

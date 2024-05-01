@@ -86,6 +86,7 @@ State =
     #]
     , boundTyvars as Hash TA.TyvarId None
     , errors as Array Error
+    , lastLambdaRefId as Int
     , lastUnificationVarId as Int
     , tyvarSubs as Hash TA.TyvarId TA.RawType
     , tyvarsById as Hash TA.TyvarId TA.Tyvar
@@ -99,6 +100,7 @@ initState as fn !Int: !State =
     {
     , boundTyvars = Hash.fromList []
     , errors = Array.fromList []
+    , lastLambdaRefId = -1
     , lastUnificationVarId
     , tyvarSubs = Hash.fromList []
     , tyvarsById = Hash.fromList []
@@ -675,7 +677,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
         , context = 'context_LetInBody (TA.patternNames patternOut.typedPattern >> Dict.keys)
         }
 
-    typedBody & bodyType =
+    (typedBody as Maybe TA.Expression) & (bodyType as TA.FullType) =
         try def.maybeBody as
 
             'nothing:
@@ -698,7 +700,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                             , env = localEnv
                             }
 
-                        'just (checkExpression pars full body @state) & full
+                        checkExpression pars full body @state >> Tuple.mapFirst 'just __
 
                     'nothing:
                         typed & inferredType =
@@ -1395,7 +1397,10 @@ CheckExpressionPars =
     }
 
 
-checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: TA.Expression =
+[#
+# TODO make expectedType a Maybe and merge with inferExpression?
+#]
+checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: TA.Expression & TA.FullType =
     fn pars, expectedType, caExpression, @state:
     #
     addErrorLocal as fn Text: None =
@@ -1446,7 +1451,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             assertLocal isOk "This is a literal number, which means its type is always `Number`."
 
-            TA.'literalNumber pos n
+            TA.'literalNumber pos n & expectedType
 
         CA.'literalText pos text:
             isOk =
@@ -1456,60 +1461,72 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             assertLocal isOk "This is a literal text, which means its type is always `Text`."
 
-            TA.'literalText pos text
+            TA.'literalText pos text & expectedType
 
         CA.'variable pos ref:
             { with  env } =
                 pars
 
-            try getVariableByRef ref env as
+            type =
+                try getVariableByRef ref env as
 
-                'nothing:
-                    addError env pos ('errorVariableNotFound ref) @state
+                    'nothing:
+                        addError env pos ('errorVariableNotFound ref) @state
 
-                'just var:
-                    full =
-                        generalize env pos ref var @state
+                        expectedType
 
-                    checkUni env pos { given = full.uni, required = expectedType.uni } @state
+                    'just var:
+                        full =
+                            generalize env pos ref var @state
 
-                    addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+                        checkUni env pos { given = full.uni, required = expectedType.uni } @state
 
-            TA.'variable pos ref
+                        addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+
+                        full
+
+            TA.'variable pos ref & type
 
         CA.'constructor pos usr:
-            try expectedType.raw as
+            type =
+                try expectedType.raw as
 
-                TA.'typeExact _ _ _:
-                    { with  env } =
-                        pars
+                    TA.'typeExact _ _ _:
+                        { with  env } =
+                            pars
 
-                    try getConstructorByUsr usr env as
+                        try getConstructorByUsr usr env as
 
-                        'nothing:
-                            addError env pos ('errorConstructorNotFound usr) @state
+                            'nothing:
+                                addError env pos ('errorConstructorNotFound usr) @state
 
-                        'just cons:
-                            full as TA.FullType =
-                                generalize env pos ('refGlobal usr) cons @state
+                                expectedType
 
-                            addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+                            'just cons:
+                                full as TA.FullType =
+                                    generalize env pos ('refGlobal usr) cons @state
 
-                _:
-                    addErrorLocal "This is a literal variant, which means its type must always be a variant type."
+                                addEquality env pos 'why_Annotation full.raw expectedType.raw @state
+
+                                full
+
+                    _:
+                        addErrorLocal "This is a literal variant, which means its type must always be a variant type."
+
+                        expectedType
 
             # Constructor literal is always unique, so no need to check uniqueness
 
-            TA.'constructor pos usr
+            TA.'constructor pos usr & type
 
         CA.'fn pos fnPars body:
             try expectedType.raw as
 
-                TA.'typeFn _ parTypes out:
+                TA.'typeFn typePos _ parTypes out:
                     if List.length fnPars /= List.length parTypes then
                         addError pars.env pos 'errorWrongNumberOfParameters @state
 
-                        TA.'error pos
+                        TA.'error pos & expectedType
                     else
                         !typedPars =
                             Array.fromList []
@@ -1529,25 +1546,33 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                                 envX1
 
-                        typedBody =
+                        typedBody & bodyType =
                             checkExpression { pars with env = localEnv } out body @state
 
-                        TA.'fn pos (Array.toList @typedPars) typedBody out
+                        @state.lastLambdaRefId += 1
+
+                        lambdaRef =
+                            pars.env.currentRootUsr & cloneUni @state.lastLambdaRefId
+
+                        finalType =
+                            TA.'typeFn typePos (Set.ofOne lambdaRef) (todo "parTypes") bodyType
+
+                        TA.'fn pos lambdaRef (Array.toList @typedPars) typedBody out & { raw = finalType, uni = expectedType.uni }
 
                 _:
                     addErrorLocal "This expression is a function, which means its type is always a `fn` type."
 
-                    TA.'error pos
+                    TA.'error pos & expectedType
 
         CA.'call pos reference args:
-            doCall pars.env pos ('just expectedType) reference args @state >> Tuple.first
+            doCall pars.env pos ('just expectedType) reference args @state
 
         CA.'record pos ('just ext) valueByName:
             try expectedType.raw as
 
-                TA.'typeRecord _ 'nothing typeByName:
+                TA.'typeRecord typePos 'nothing typeByName:
                     # ext must have type expectedType
-                    typedExt =
+                    typedExt & extType =
                         checkExpression pars expectedType ext @state
 
                     zzz =
@@ -1570,17 +1595,26 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                     typedValueByName =
                         Dict.map zzz valueByName
 
-                    TA.'record pos ('just typedExt) typedValueByName
+                    type =
+                        mergeFunctionTypes extType (TA.'typeRecord typePos 'nothing typedValueByName)
+
+                    finalExpr as TA.Expression =
+                        TA.'record pos ('just typedExt) typedValueByName
+
+                    finalType as TA.FullType =
+                        { uni = expectedType.uni, raw = type }
+
+                    finalExpr & finalType
 
                 _:
                     addErrorLocal "This is a literal record, which means its type is always a record type."
 
-                    TA.'error pos
+                    TA.'error pos & expectedType
 
         CA.'record pos 'nothing valueByName:
             try expectedType.raw as
 
-                TA.'typeRecord _ 'nothing typeByName:
+                TA.'typeRecord typePos 'nothing typeByName:
                     aOnly & both & bOnly =
                         Dict.onlyBothOnly valueByName typeByName
 
@@ -1591,10 +1625,14 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                     else
                         'none
 
-                    typedAttrs =
-                        both >> Dict.map (fn name, value & type: checkExpression pars { raw = type, uni = expectedType.uni } value @state) __
+                    typedAttrs & attrTypes =
+                        Dict.for (Dict.empty & Dict.empty) both fn name, value & type, valuesDict & typesDict:
+                            v & t =
+                                checkExpression pars { raw = type, uni = expectedType.uni } value @state
 
-                    TA.'record pos 'nothing typedAttrs
+                            Dict.insert name v valueDict & Dict.insert name t typesDict
+
+                    TA.'record pos 'nothing typedAttrs & TA.'typeRecord typePos 'nothing attrTypes
 
                 _:
                     addErrorLocal "This is a literal record, which means its type is always a record type."
@@ -1617,7 +1655,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             checkUni pars.env pos { given = expressionType.uni, required = expectedType.uni } @state
 
-            TA.'recordAccess pos attrName typedExpression
+            TA.'recordAccess pos attrName typedExpression & todo "recordAccessXXXX"
 
         CA.'letIn def rest:
             typedDef & defEnv =
@@ -1629,10 +1667,10 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                 }
                 >> doDefinition 'refLocal pars.env __ @state
 
-            typedRest =
+            typedRest & restType =
                 checkExpression { pars with env = defEnv } expectedType rest @state
 
-            TA.'letIn typedDef typedRest expectedType
+            TA.'letIn typedDef typedRest expectedType & restType
 
         CA.'if pos { condition, false, true }:
             typedCondition & conditionType =
@@ -1640,19 +1678,25 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             addEquality pars.env pos 'why_IfCondition coreTypeBool conditionType.raw @state
 
-            typedTrue =
+            typedTrue & trueType =
                 checkExpression pars expectedType true @state
 
-            typedFalse =
+            typedFalse & falseType =
                 checkExpression pars expectedType false @state
 
-            TA.'if
-                pos
-                {
-                , condition = typedCondition
-                , false = typedFalse
-                , true = typedTrue
-                }
+            finalExpr =
+                TA.'if
+                    pos
+                    {
+                    , condition = typedCondition
+                    , false = typedFalse
+                    , true = typedTrue
+                    }
+
+            finalType =
+                mergeFunctionTypes trueType falseType
+
+            finalExpr & finalType
 
         CA.'try pos { patternsAndExpressions, value }:
             typedExp & fullType =
@@ -1660,7 +1704,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             checkUni pars.env pos { given = fullType.uni, required = expectedType.uni } @state
 
-            typedExp
+            typedExp & fullType
 
         CA.'introspect pos _ _:
             todo "checkExpression 'introspect"
@@ -2212,6 +2256,7 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
     # Tyvars
     #
 
+    #??? Why am I reinitializing the state here!?
     !state as State =
         initState (cloneUni @lastUnificationVarId)
 
