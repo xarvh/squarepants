@@ -1389,6 +1389,10 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
             TA.'parameterRecycle pos expectedRaw name & localEnv
 
 
+mergeFunctionRawTypes as fn TA.RawType, TA.RawType: TA.RawType =
+    todo "mergeFunctionRawTypes"
+
+
 CheckExpressionPars =
     {
     , annotatedPattern as TA.Pattern
@@ -1570,39 +1574,36 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
         CA.'record pos ('just ext) valueByName:
             try expectedType.raw as
 
-                TA.'typeRecord typePos 'nothing typeByName:
+                TA.'typeRecord typePos 'nothing annotatedTypeByName:
                     # ext must have type expectedType
                     typedExt & extType =
                         checkExpression pars expectedType ext @state
 
-                    zzz =
-                        fn attrName, attrExpr:
-                            try Dict.get attrName typeByName as
+                    typedValueByName & populatedTypeByName =
+                        Dict.for (Dict.empty & Dict.empty) valueByName fn attrName, attrExpr, vs & ts:
+                            # all valueByName attrs must be in annotatedTypeByName
+                            v & t =
+                                try Dict.get attrName annotatedTypeByName as
 
-                                'nothing:
-                                    addError pars.env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
+                                    'nothing:
+                                        addError pars.env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
 
-                                    # This is not super clean, but since it's an error condition, it's probably fine
-                                    Tuple.first (inferExpression pars.env attrExpr @state)
+                                        # This is not super clean, but since we're throwing an error anyway it's probably fine
+                                        inferExpression pars.env attrExpr @state
 
-                                'just attrType:
-                                    fullAttrType =
-                                        { raw = attrType, uni = expectedType.uni }
+                                    'just attrType:
+                                        checkExpression pars { raw = attrType, uni = expectedType.uni } attrExpr @state
 
-                                    checkExpression pars fullAttrType attrExpr @state
+                            Dict.insert attrName v vs & Dict.insert attrName t.raw ts
 
-                    # all valueByName attrs must be in typeByName
-                    typedValueByName =
-                        Dict.map zzz valueByName
-
-                    type =
-                        mergeFunctionTypes extType (TA.'typeRecord typePos 'nothing typedValueByName)
+                    type as TA.RawType =
+                        mergeFunctionRawTypes extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)
 
                     finalExpr as TA.Expression =
                         TA.'record pos ('just typedExt) typedValueByName
 
                     finalType as TA.FullType =
-                        { uni = expectedType.uni, raw = type }
+                        { raw = type, uni = expectedType.uni }
 
                     finalExpr & finalType
 
@@ -1626,18 +1627,18 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                         'none
 
                     typedAttrs & attrTypes =
-                        Dict.for (Dict.empty & Dict.empty) both fn name, value & type, valuesDict & typesDict:
+                        Dict.for (Dict.empty & Dict.empty) both fn name, value & type, vs & ts:
                             v & t =
                                 checkExpression pars { raw = type, uni = expectedType.uni } value @state
 
-                            Dict.insert name v valueDict & Dict.insert name t typesDict
+                            Dict.insert name v vs & Dict.insert name t.raw ts
 
-                    TA.'record pos 'nothing typedAttrs & TA.'typeRecord typePos 'nothing attrTypes
+                    TA.'record pos 'nothing typedAttrs & { uni = expectedType.uni, raw = TA.'typeRecord typePos 'nothing attrTypes }
 
                 _:
                     addErrorLocal "This is a literal record, which means its type is always a record type."
 
-                    TA.'error pos
+                    TA.'error pos & expectedType
 
         CA.'recordAccess pos attrName exp:
             typedExpression & expressionType =
@@ -1694,7 +1695,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                     }
 
             finalType =
-                mergeFunctionTypes trueType falseType
+                todo "mergeFunctionRawTypes trueType falseType"
 
             finalExpr & finalType
 
@@ -1729,7 +1730,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
     expectedReturnType =
         try inferredReferenceType.raw as
 
-            TA.'typeFn _ parTypes outType:
+            TA.'typeFn _ _ parTypes outType:
                 given =
                     List.length typedArguments
 
