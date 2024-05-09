@@ -476,18 +476,35 @@ translateUni as fn Dict UnivarId UnivarId, Uniqueness: Uniqueness =
             originalUni
 
 
-translateFullType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array Error, CA.FullType: TA.FullType =
-    fn env, argsByName, originalIdToNewId, @errors, caFull:
+TranslateTypePars =
     {
-    , raw = translateRawType env argsByName originalIdToNewId @errors caFull.raw
-    , uni = translateUni originalIdToNewId caFull.uni
+    , argsByName as Dict Name TA.RawType
+    , env as Env
+    , freshLambdaSetId as Maybe (fn None: Int)
+    , originalIdToNewId as Dict UnivarId UnivarId
+    , pushError as fn Error: None
     }
 
 
-translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array Error, CA.RawType: TA.RawType =
-    fn env, argsByName, originalIdToNewId, @errors, caType:
+translateFullType as fn TranslateTypePars, CA.FullType: TA.FullType =
+    fn pars, caFull:
+    {
+    , raw = translateRawType pars caFull.raw
+    , uni = translateUni pars.originalIdToNewId caFull.uni
+    }
+
+
+translateRawType as fn TranslateTypePars, CA.RawType: TA.RawType =
+    fn pars, caType:
+    #
+    addErr =
+        fn pos, error:
+        [ error ]
+        >> Error.'simple (getErrorModule pars.env) pos __
+        >> pars.pushError
+
     rec as fn CA.RawType: TA.RawType =
-        translateRawType env argsByName originalIdToNewId @errors __
+        translateRawType pars __
 
     try caType as
 
@@ -496,7 +513,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
                 fn caPar:
                     try caPar as
                         CA.'parRe caRaw: TA.'parRe (rec caRaw)
-                        CA.'parSp caFull: TA.'parSp (translateFullType env argsByName originalIdToNewId @errors caFull)
+                        CA.'parSp caFull: TA.'parSp (translateFullType pars caFull)
 
             taArgs as [ TA.ParType ] =
                 List.map zzz caPars
@@ -504,42 +521,43 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
             lSet =
                 todo "fresh"
 
-            TA.'typeFn pos lSet taArgs (translateFullType env argsByName originalIdToNewId @errors caOut)
+            TA.'typeFn pos lSet taArgs (translateFullType pars caOut)
 
         CA.'typeRecord pos caAttrs:
             TA.'typeRecord pos 'nothing (Dict.map (fn name, v: rec v) caAttrs)
 
         CA.'typeAnnotationVariable pos name:
-            try Dict.get name argsByName as
+            try Dict.get name pars.argsByName as
 
                 'nothing:
-                    addErrorE env pos ('errorUndefinedTypeVariable name) @errors
+                    addErr pos ("Undeclared type variable: " .. name)
 
                     TA.'typeError
 
                 'just raw:
                     raw
 
-        CA.'typeNamed pos usr pars:
+        CA.'typeNamed pos usr args:
             expandedPars as [ TA.RawType ] =
-                List.map rec pars
+                List.map rec args
 
-            try Dict.get usr env.expandedAliases as
+            try Dict.get usr pars.env.expandedAliases as
 
                 'nothing:
-                    try Dict.get usr env.exactTypes as
+                    try Dict.get usr pars.env.exactTypes as
 
                         'just exact:
                             TA.'typeExact pos usr expandedPars
 
                         'nothing:
-                            addErrorE env pos ('errorTypeNotFound usr) @errors
+                            addErr pos ("Type not found: " .. Debug.toHuman usr)
 
                             TA.'typeError
 
                 'just expandedAlias:
                     if List.length expandedAlias.pars /= List.length expandedPars then
-                        addErrorE env pos ('errorWrongNumberOfTypeArguments usr expandedAlias.pars expandedPars) @errors
+                        # TODO show expandedAlias.pars vs expandedPars
+                        addErr pos ("Wrong number of type arguments for " .. Debug.toHuman usr)
 
                         TA.'typeError
                     else
@@ -554,7 +572,15 @@ translateAnnotationType as fn Env, @State, CA.RawType: TA.RawType =
     nameToType =
         Dict.map (fn k, v: TA.'typeVar Pos.'g v) env.annotatedTyvarsByName
 
-    translateRawType env nameToType env.annotatedUnivarsByOriginalId @state.errors ca
+    translateRawType
+        {
+        , originalIdToNewId = env.annotatedUnivarsByOriginalId
+        , env
+        , freshLambdaSetId = 'just fn _: nextId @state.lastLambdaSetId
+        , nameToType
+        , pushError = Array.push @state.errors __
+        }
+        ca
 
 
 var CanBeCast =
@@ -2370,7 +2396,14 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
 
             'just annotation:
                 raw =
-                    translateRawType env nameToType originalIdToUniqueness @state.errors annotation.raw
+                    translateRawType
+                        {
+                        , env
+                        , nameToType
+                        , originalIdToUniqueness
+                        , pushError = Array.push @state.errors __
+                        }
+                        annotation.raw
 
                 instance as Instance =
                     {
@@ -2428,7 +2461,15 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert n (TA.'typeVar Pos.'g id) d)
 
     raw =
-        translateRawType env paramsByName Dict.empty @errors caRaw
+        translateRawType
+            {
+            , argsByName = paramsByName
+            , env
+            , freshLambdaSetId = blah
+            , originalIdToNewId = Dict.empty
+            , pushError = Array.push @errors __
+            }
+            caRaw
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
         List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name = n } } d)
@@ -2454,7 +2495,15 @@ expandAndInsertAlias as fn @Array Error, Env, CA.AliasDef, ByUsr ExpandedAlias: 
         Dict.empty
 
     type as TA.RawType =
-        translateRawType { env with expandedAliases = aliasAccum } typeByName originalIdToNewId @errors aliasDef.type
+        translateRawType
+            {
+            , env = { env with expandedAliases = aliasAccum }
+            , freshLambdaSetId = blah
+            , originalIdToNewId
+            , pushError = Array.push @errors __
+            , typeByName
+            }
+            aliasDef.type
 
     Dict.insert aliasDef.usr { pars, type } aliasAccum
 
