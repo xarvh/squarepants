@@ -87,8 +87,8 @@ State =
     , boundTyvars as Hash TA.TyvarId None
     , errors as Array Error
     , lastLambdaRefId as Int
-    , lastUnificationVarId as Int
     , lastLambdaSetId as Int
+    , lastUnificationVarId as Int
     , tyvarSubs as Hash TA.TyvarId TA.RawType
     , tyvarsById as Hash TA.TyvarId TA.Tyvar
     , univarSubs as Hash UnivarId Uniqueness
@@ -102,8 +102,8 @@ initState as fn !Int: !State =
     , boundTyvars = Hash.fromList []
     , errors = Array.fromList []
     , lastLambdaRefId = 0 - 1
-    , lastUnificationVarId
     , lastLambdaSetId = 0
+    , lastUnificationVarId
     , tyvarSubs = Hash.fromList []
     , tyvarsById = Hash.fromList []
     , univarSubs = Hash.fromList []
@@ -282,11 +282,16 @@ patternError as fn Pos: TA.Pattern =
 #
 #
 #
+nextId as fn @Int: Int =
+    fn @last:
+    @last += 1
+
+    cloneUni @last
+
+
 newTyvarId as fn @State: TA.TyvarId =
     fn @state:
-    @state.lastUnificationVarId += 1
-
-    cloneUni @state.lastUnificationVarId
+    nextId @state.lastUnificationVarId
 
 
 newRawType as fn @State: TA.RawType =
@@ -302,6 +307,11 @@ getErrorModule as fn Env: Error.Module =
     try Dict.get umr env.modulesByUmr as
         'nothing: { content = "", fsPath = "N/A" }
         'just { with  asText = content, fsPath }: { content, fsPath }
+
+
+addLambdaSetConstraint as fn @State, Text: None =
+    fn @state, _:
+    'none
 
 
 addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
@@ -1153,13 +1163,6 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
-nextId as fn @Int: Int =
-    fn @last:
-    @last += 1
-
-    cloneUni @last
-
-
 inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, caPars, body, @state:
     [#
@@ -1199,7 +1202,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
     lambdaSet =
         TA.'lVar (nextId @state.lastLambdaSetId)
 
-    addLambdaSetConstraint "lambdaSet must include lambdaRef"
+    addLambdaSetConstraint @state "lambdaSet must include lambdaRef"
 
     type as TA.RawType =
         TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
@@ -1604,15 +1607,13 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                         typedBody & bodyType =
                             checkExpression { pars with env = localEnv } out body @state
 
-                        @state.lastLambdaRefId += 1
-
                         lambdaRef =
-                            pars.env.currentRootUsr & cloneUni @state.lastLambdaRefId
+                            pars.env.currentRootUsr & nextId @state.lastLambdaRefId
 
                         finalType =
                             TA.'typeFn typePos lambdaSet parTypes bodyType
 
-                        addLambdaSetConstraint "lambdaSet must include lambdaRef"
+                        addLambdaSetConstraint @state "lambdaSet must include lambdaRef"
 
                         TA.'fn pos lambdaSet lambdaRef (Array.toList @typedPars) typedBody out & { raw = finalType, uni = expectedType.uni }
 
