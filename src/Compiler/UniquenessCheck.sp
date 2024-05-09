@@ -336,8 +336,8 @@ addPatternToEnv as fn @Array Error, TA.Pattern, Env: [ Name ] & Dict Name Pos & 
     Dict.keys names & uniques & localEnv
 
 
-doCall as fn Env, @Array Error, Pos, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
-    fn env, @errors, pos, reference, arguments:
+doCall as fn Env, @Array Error, Pos, TA.LambdaSet, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
+    fn env, @errors, pos, lambdaSet, reference, arguments:
     doneReference =
         doExpression env @errors reference
 
@@ -375,7 +375,7 @@ doCall as fn Env, @Array Error, Pos, TA.Expression, [ TA.Argument ]: UniOut TA.E
     #
     , required =
         doneArgs.required
-    , resolved = TA.'call pos doneReference.resolved doneArgs.resolved
+    , resolved = TA.'call pos lambdaSet doneReference.resolved doneArgs.resolved
     , spent = Dict.join doneReference.spent doneArgs.spent
     }
 
@@ -509,11 +509,11 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'fn pos lambdaRefs pars body bodyType:
-            doFn env pos @errors lambdaRefs pars body bodyType
+        TA.'fn pos lambdaSet lambdaRefs pars body bodyType:
+            doFn env pos @errors lambdaSet lambdaRefs pars body bodyType
 
-        TA.'call pos reference arguments:
-            doCall env @errors pos reference arguments
+        TA.'call pos lambdaSet reference arguments:
+            doCall env @errors pos lambdaSet reference arguments
 
         TA.'if pos { condition, false, true }:
             doneCondition =
@@ -763,8 +763,8 @@ doVariable as fn Env, @Array Error, Pos, Name, e: UniOut e =
                     }
 
 
-doFn as fn Env, Pos, @Array Error, TA.LambdaRef, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
-    fn env, pos, @errors, lambdaRef, pars, body, bodyType:
+doFn as fn Env, Pos, @Array Error, TA.LambdaSet, TA.LambdaRef, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
+    fn env, pos, @errors, lambdaSet, lambdaRef, pars, body, bodyType:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
         { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter @errors __ __)
 
@@ -825,7 +825,7 @@ doFn as fn Env, Pos, @Array Error, TA.LambdaRef, [ TA.Parameter ], TA.Expression
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
-    , resolved = TA.'fn pos lambdaRef pars exprWithDestruction bodyType
+    , resolved = TA.'fn pos lambdaSet lambdaRef pars exprWithDestruction bodyType
     , spent = Dict.empty
     }
 

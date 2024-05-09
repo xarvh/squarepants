@@ -88,6 +88,7 @@ State =
     , errors as Array Error
     , lastLambdaRefId as Int
     , lastUnificationVarId as Int
+    , lastLambdaSetId as Int
     , tyvarSubs as Hash TA.TyvarId TA.RawType
     , tyvarsById as Hash TA.TyvarId TA.Tyvar
     , univarSubs as Hash UnivarId Uniqueness
@@ -100,8 +101,9 @@ initState as fn !Int: !State =
     {
     , boundTyvars = Hash.fromList []
     , errors = Array.fromList []
-    , lastLambdaRefId = -1
+    , lastLambdaRefId = 0 - 1
     , lastUnificationVarId
+    , lastLambdaSetId = 0
     , tyvarSubs = Hash.fromList []
     , tyvarsById = Hash.fromList []
     , univarSubs = Hash.fromList []
@@ -401,7 +403,7 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
         TA.'typeVar p id:
             TA.'typeVar p id
 
-        TA.'typeFn p ins out:
+        TA.'typeFn p instances ins out:
             doUni as fn Uniqueness: Uniqueness =
                 fn uni:
                 try uni as
@@ -414,7 +416,7 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
                     TA.'parRe r: TA.'parRe (doRaw r)
                     TA.'parSp f: TA.'parSp { raw = doRaw f.raw, uni = doUni f.uni }
 
-            TA.'typeFn p (List.map mapPar ins) { raw = doRaw out.raw, uni = doUni out.uni }
+            TA.'typeFn p instances (List.map mapPar ins) { raw = doRaw out.raw, uni = doUni out.uni }
 
 
 #
@@ -432,8 +434,8 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
         TA.'typeExact p usr args:
             TA.'typeExact p usr (List.map rec args)
 
-        TA.'typeFn p ins out:
-            TA.'typeFn p (TA.mapPars rec ins) { out with raw = rec .raw }
+        TA.'typeFn p instances ins out:
+            TA.'typeFn p instances (TA.mapPars rec ins) { out with raw = rec .raw }
 
         TA.'typeRecord p 'nothing attrs:
             TA.'typeRecord p 'nothing (Dict.map (fn k, v: rec v) attrs)
@@ -489,7 +491,10 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
             taArgs as [ TA.ParType ] =
                 List.map zzz caPars
 
-            TA.'typeFn pos taArgs (translateFullType env argsByName originalIdToNewId @errors caOut)
+            lSet =
+                todo "fresh"
+
+            TA.'typeFn pos lSet taArgs (translateFullType env argsByName originalIdToNewId @errors caOut)
 
         CA.'typeRecord pos caAttrs:
             TA.'typeRecord pos 'nothing (Dict.map (fn name, v: rec v) caAttrs)
@@ -1148,6 +1153,13 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
+nextId as fn @Int: Int =
+    fn @last:
+    @last += 1
+
+    cloneUni @last
+
+
 inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, caPars, body, @state:
     [#
@@ -1160,11 +1172,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
 
     #]
 
-    [# TODO
-        Urgh. This is gross.
-        Do I really want to enable mixing imm and mut this way?
-        Is there really an advantage?
-    #]
+    # I'm not sure how I feel about mixing imm and mut this way.
     !typedPars =
         Array.fromList []
 
@@ -1185,11 +1193,19 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
     typedBody & bodyType =
         inferExpression { newEnv with context = 'context_FnBody pos env.context } body @state
 
+    lambdaRef =
+        env.currentRootUsr & nextId @state.lastLambdaRefId
+
+    lambdaSet =
+        TA.'lVar (nextId @state.lastLambdaSetId)
+
+    addLambdaSetConstraint "lambdaSet must include lambdaRef"
+
     type as TA.RawType =
-        TA.'typeFn pos (Array.toList @parTypes) bodyType
+        TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
 
     exp =
-        TA.'fn pos (Array.toList @typedPars) typedBody bodyType
+        TA.'fn pos lambdaSet lambdaRef (Array.toList @typedPars) typedBody bodyType
 
     exp & { raw = type, uni = 'uni }
 
@@ -1389,8 +1405,48 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
             TA.'parameterRecycle pos expectedRaw name & localEnv
 
 
+mergeFunctionFullTypes as fn TA.FullType, TA.FullType: TA.FullType =
+    fn a, b:
+    { a with raw = mergeFunctionRawTypes a.raw b.raw }
+
+
+mergeFunctionParsTypes as fn TA.ParType, TA.ParType: TA.ParType =
+    fn a, b:
+    try a & b as
+        TA.'parRe r1 & TA.'parRe r2: TA.'parRe (mergeFunctionRawTypes r1 r2)
+        TA.'parSp f1 & TA.'parSp f2: TA.'parSp (mergeFunctionFullTypes f1 f2)
+        _: a
+
+
 mergeFunctionRawTypes as fn TA.RawType, TA.RawType: TA.RawType =
-    todo "mergeFunctionRawTypes"
+    fn a, b:
+    try a & b as
+
+        TA.'typeExact pos usr pars1 & TA.'typeExact _ _ pars2:
+            TA.'typeExact pos usr (List.map2 mergeFunctionRawTypes pars1 pars2)
+
+        TA.'typeFn pos instances1 ins1 out1 & TA.'typeFn _ instances2 ins2 out2:
+            TA.'typeFn pos (todo "Set.join instances1 instances2") (List.map2 mergeFunctionParsTypes ins1 ins2) (mergeFunctionFullTypes out1 out2)
+
+        TA.'typeVar pos tyvarId & _:
+            b
+
+        _ & TA.'typeVar pos tyvarId:
+            a
+
+        TA.'typeRecord pos maybeExtId1 attrsByType1 & TA.'typeRecord _ maybeExtId2 attrsByType2:
+            maybeExtId =
+                try maybeExtId1 & maybeExtId2 as
+                    'just i1 & _: maybeExtId1
+                    _: maybeExtId2
+
+            attrsByType =
+                Dict.merge (fn key, v, res: Dict.insert key v res) (fn key, v1, v2, res: Dict.insert key (mergeFunctionRawTypes v1 v2) res) (fn key, v, res: Dict.insert key v res) attrsByType1 attrsByType2 Dict.empty
+
+            TA.'typeRecord pos maybeExtId attrsByType
+
+        _:
+            a
 
 
 CheckExpressionPars =
@@ -1526,7 +1582,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
         CA.'fn pos fnPars body:
             try expectedType.raw as
 
-                TA.'typeFn typePos _ parTypes out:
+                TA.'typeFn typePos lambdaSet parTypes out:
                     if List.length fnPars /= List.length parTypes then
                         addError pars.env pos 'errorWrongNumberOfParameters @state
 
@@ -1535,9 +1591,6 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                         !typedPars =
                             Array.fromList []
 
-                        !parIndex =
-                            0
-
                         localEnv as Env =
                             pars.env
                             >> List.for __ (List.map2 Tuple.pair fnPars parTypes) fn par & parType, envX:
@@ -1545,8 +1598,6 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                                     checkParameter envX parType par @state
 
                                 Array.push @typedPars typedPar
-
-                                @parIndex += 1
 
                                 envX1
 
@@ -1559,9 +1610,11 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                             pars.env.currentRootUsr & cloneUni @state.lastLambdaRefId
 
                         finalType =
-                            TA.'typeFn typePos (Set.ofOne lambdaRef) (todo "parTypes") bodyType
+                            TA.'typeFn typePos lambdaSet parTypes bodyType
 
-                        TA.'fn pos lambdaRef (Array.toList @typedPars) typedBody out & { raw = finalType, uni = expectedType.uni }
+                        addLambdaSetConstraint "lambdaSet must include lambdaRef"
+
+                        TA.'fn pos lambdaSet lambdaRef (Array.toList @typedPars) typedBody out & { raw = finalType, uni = expectedType.uni }
 
                 _:
                     addErrorLocal "This expression is a function, which means its type is always a `fn` type."
@@ -1633,7 +1686,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                             Dict.insert name v vs & Dict.insert name t.raw ts
 
-                    TA.'record pos 'nothing typedAttrs & { uni = expectedType.uni, raw = TA.'typeRecord typePos 'nothing attrTypes }
+                    TA.'record pos 'nothing typedAttrs & { raw = TA.'typeRecord typePos 'nothing attrTypes, uni = expectedType.uni }
 
                 _:
                     addErrorLocal "This is a literal record, which means its type is always a record type."
@@ -1695,7 +1748,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                     }
 
             finalType =
-                todo "mergeFunctionRawTypes trueType falseType"
+                mergeFunctionFullTypes trueType falseType
 
             finalExpr & finalType
 
@@ -1727,10 +1780,10 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
             TA.'argumentExpression full _: TA.'parSp full
             TA.'argumentRecycle _ raw _ _: TA.'parRe raw
 
-    expectedReturnType =
+    expectedReturnType & finalLambdaSet =
         try inferredReferenceType.raw as
 
-            TA.'typeFn _ _ parTypes outType:
+            TA.'typeFn _ lambdaSet parTypes outType:
                 given =
                     List.length typedArguments
 
@@ -1740,7 +1793,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
                 if expected /= given then
                     addError env pos ('errorWrongNumberOfArguments { expected, given, reference }) @state
 
-                    fullTypeError
+                    fullTypeError & lambdaSet
                 else
                     List.indexedEach2 typedArguments parTypes fn index, givenArg, parType:
                         try givenArg & parType as
@@ -1769,14 +1822,14 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
                     try maybeExpectedType as
 
                         'nothing:
-                            outType
+                            outType & lambdaSet
 
                         'just e:
                             checkUni env pos { given = outType.uni, required = e.uni } @state
 
                             addEquality env pos 'why_Annotation outType.raw e.raw @state
 
-                            e
+                            e & lambdaSet
 
             TA.'typeVar p id:
                 returnType =
@@ -1789,22 +1842,25 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
                             # TODO: `Imm` here is completely arbitrary
                             { raw = newRawType @state, uni = 'imm }
 
+                lambdaSet =
+                    todo "create fresh?"
+
                 refTy =
-                    TA.'typeFn p (List.map toTypeArg typedArguments) returnType
+                    TA.'typeFn p lambdaSet (List.map toTypeArg typedArguments) returnType
 
                 addEquality env pos 'why_CalledAsFunction refTy inferredReferenceType.raw @state
 
-                returnType
+                returnType & lambdaSet
 
             TA.'typeError:
-                fullTypeError
+                fullTypeError & todo "dummy lambdaSet?"
 
             z:
                 addError env pos ('errorCallingANonFunction z) @state
 
-                fullTypeError
+                fullTypeError & todo "dummy lambdaSet?"
 
-    TA.'call pos typedReference typedArguments & expectedReturnType
+    TA.'call pos finalLambdaSet typedReference typedArguments & expectedReturnType
 
 
 inferArgument as fn Env, CA.Argument, @State: TA.Argument =
@@ -1905,7 +1961,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
 
                         parTypes & returnType =
                             try x.raw as
-                                TA.'typeFn _ ins out: ins & out.raw
+                                TA.'typeFn _ _ ins out: ins & out.raw
                                 _: [] & x.raw
 
                         addErrorIf (List.length parTypes /= List.length arguments) env pos 'errorWrongNumberOfConstructorArguments @state
@@ -2141,7 +2197,7 @@ checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State
 
             (requiredParTypes as [ TA.ParType ]) & (requiredOut as TA.FullType) =
                 try fullType.raw as
-                    TA.'typeFn _ ax o: ax & o
+                    TA.'typeFn _ _ ax o: ax & o
                     _: [] & fullType
 
             if List.length arguments /= List.length requiredParTypes then
@@ -2252,6 +2308,8 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
 
 
 addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
+    # TODO I'm not sure why we need to keep track of lastUnificationVarId here.
+    # Any tyvar here is going to be free, which means it gets generalized/refreshed whenever we reference the instance. =|
     fn @lastUnificationVarId, @errors, umr, def, env:
     #
     # Tyvars
@@ -2558,7 +2616,7 @@ solveEquality as fn Env, Equality, @State: None =
 
                 'none
 
-        TA.'typeFn _ pars1 out1 & TA.'typeFn _ pars2 out2:
+        TA.'typeFn _ instances1 pars1 out1 & TA.'typeFn _ instances2 pars2 out2:
             if List.length pars1 /= List.length pars2 then
                 addErError env head "functions expect a different number of arguments" @state
             else
@@ -2570,6 +2628,9 @@ solveEquality as fn Env, Equality, @State: None =
                         'canBeCastYes: 'none
                         'canBeCastNo []: addErError env head "the function return type have different uniqueness" @state
                         'canBeCastNo [ id & uni, tail... ]: solveUniquenessConstraint env { context, id, pos, uni, why = "fn out" } @state
+
+                # FIX THIS
+                #todo "I need to do something with instances1 and instances2 O_O"
 
                 List.indexedEach2 pars1 pars2 (compareParTypes env head __ __ __ @state)
 
@@ -2678,7 +2739,7 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         occurs tyvarId __
 
     try type as
-        TA.'typeFn _ ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
+        TA.'typeFn _ _ ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
         TA.'typeVar _ id: id == tyvarId
         TA.'typeExact _ usr args: List.any rec args
         TA.'typeRecord _ _ attrs: Dict.any (fn k, v: rec v) attrs

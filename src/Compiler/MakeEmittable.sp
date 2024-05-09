@@ -177,7 +177,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
 
-        TA.'fn pos _ taPars body bodyT:
+        TA.'fn pos _ _ taPars body bodyT:
             eaBody =
                 translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
 
@@ -201,7 +201,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> List.map (Tuple.mapSecond (translateExpression env __) __) __
             >> EA.'literalRecord (Maybe.map (translateExpression env __) extends) __
 
-        TA.'call _ ref argsAndTypes:
+        TA.'call _ _ ref argsAndTypes:
             EA.'call (translateExpression env ref) (List.map (translateArgAndType env __) argsAndTypes)
 
         TA.'if _ ar:
