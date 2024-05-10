@@ -434,18 +434,18 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
 # CA to TA translation
 #
 #
-expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
-    fn tyvarIdsToType, type:
+expandTyvarsInType as fn (fn None: TA.LambdaSet), Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
+    fn newLambdaSet, tyvarIdsToType, type:
     rec =
-        expandTyvarsInType tyvarIdsToType __
+        expandTyvarsInType newLambdaSet tyvarIdsToType __
 
     try type as
 
         TA.'typeExact p usr args:
             TA.'typeExact p usr (List.map rec args)
 
-        TA.'typeFn p instances ins out:
-            TA.'typeFn p instances (TA.mapPars rec ins) { out with raw = rec .raw }
+        TA.'typeFn p _ ins out:
+            TA.'typeFn p (newLambdaSet 'none) (TA.mapPars rec ins) { out with raw = rec .raw }
 
         TA.'typeRecord p 'nothing attrs:
             TA.'typeRecord p 'nothing (Dict.map (fn k, v: rec v) attrs)
@@ -480,7 +480,7 @@ TranslateTypePars =
     {
     , argsByName as Dict Name TA.RawType
     , env as Env
-    , freshLambdaSetId as Maybe (fn None: Int)
+    , newLambdaSetId as Maybe (fn None: Int)
     , originalIdToNewId as Dict UnivarId UnivarId
     , pushError as fn Error: None
     }
@@ -503,6 +503,13 @@ translateRawType as fn TranslateTypePars, CA.RawType: TA.RawType =
         >> Error.'simple (getErrorModule pars.env) pos __
         >> pars.pushError
 
+    newLambdaSet as fn None: TA.LambdaSet =
+        __
+        # Aliases and variant constructors need to be freshened every time they are instanced, so no point in doing it now
+        >> Maybe.withDefault (fn _: 0) pars.newLambdaSetId
+        >> TA.'lVar
+
+
     rec as fn CA.RawType: TA.RawType =
         translateRawType pars __
 
@@ -518,10 +525,7 @@ translateRawType as fn TranslateTypePars, CA.RawType: TA.RawType =
             taArgs as [ TA.ParType ] =
                 List.map zzz caPars
 
-            lSet =
-                todo "fresh"
-
-            TA.'typeFn pos lSet taArgs (translateFullType pars caOut)
+            TA.'typeFn pos (newLambdaSet 'none) taArgs (translateFullType pars caOut)
 
         CA.'typeRecord pos caAttrs:
             TA.'typeRecord pos 'nothing (Dict.map (fn name, v: rec v) caAttrs)
@@ -564,20 +568,17 @@ translateRawType as fn TranslateTypePars, CA.RawType: TA.RawType =
                         tyvarIdsToType as Dict TA.TyvarId TA.RawType =
                             List.map2 Tuple.pair expandedAlias.pars expandedPars >> Dict.fromList
 
-                        expandTyvarsInType tyvarIdsToType expandedAlias.type
+                        expandTyvarsInType newLambdaSet tyvarIdsToType expandedAlias.type
 
 
 translateAnnotationType as fn Env, @State, CA.RawType: TA.RawType =
     fn env, @state, ca:
-    nameToType =
-        Dict.map (fn k, v: TA.'typeVar Pos.'g v) env.annotatedTyvarsByName
-
     translateRawType
         {
-        , originalIdToNewId = env.annotatedUnivarsByOriginalId
+        , argsByName = Dict.map (fn k, v: TA.'typeVar Pos.'g v) env.annotatedTyvarsByName
         , env
-        , freshLambdaSetId = 'just fn _: nextId @state.lastLambdaSetId
-        , nameToType
+        , newLambdaSetId = 'just (fn _: nextId @state.lastLambdaSetId)
+        , originalIdToNewId = env.annotatedUnivarsByOriginalId
         , pushError = Array.push @state.errors __
         }
         ca
@@ -1434,6 +1435,7 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
             TA.'parameterRecycle pos expectedRaw name & localEnv
 
 
+[#
 mergeFunctionFullTypes as fn TA.FullType, TA.FullType: TA.FullType =
     fn a, b:
     { a with raw = mergeFunctionRawTypes a.raw b.raw }
@@ -1455,7 +1457,7 @@ mergeFunctionRawTypes as fn TA.RawType, TA.RawType: TA.RawType =
             TA.'typeExact pos usr (List.map2 mergeFunctionRawTypes pars1 pars2)
 
         TA.'typeFn pos instances1 ins1 out1 & TA.'typeFn _ instances2 ins2 out2:
-            TA.'typeFn pos (todo "Set.join instances1 instances2") (List.map2 mergeFunctionParsTypes ins1 ins2) (mergeFunctionFullTypes out1 out2)
+            TA.'typeFn pos (todo "TA.lSetMerge instances1 instances2") (List.map2 mergeFunctionParsTypes ins1 ins2) (mergeFunctionFullTypes out1 out2)
 
         TA.'typeVar pos tyvarId & _:
             b
@@ -1476,6 +1478,7 @@ mergeFunctionRawTypes as fn TA.RawType, TA.RawType: TA.RawType =
 
         _:
             a
+#]
 
 
 CheckExpressionPars =
@@ -1676,16 +1679,12 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                             Dict.insert attrName v vs & Dict.insert attrName t.raw ts
 
-                    type as TA.RawType =
-                        mergeFunctionRawTypes extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)
+                    addLambdaSetConstraint @state "extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)"
 
                     finalExpr as TA.Expression =
                         TA.'record pos ('just typedExt) typedValueByName
 
-                    finalType as TA.FullType =
-                        { raw = type, uni = expectedType.uni }
-
-                    finalExpr & finalType
+                    finalExpr & expectedType
 
                 _:
                     addErrorLocal "This is a literal record, which means its type is always a record type."
@@ -1736,7 +1735,9 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             checkUni pars.env pos { given = expressionType.uni, required = expectedType.uni } @state
 
-            TA.'recordAccess pos attrName typedExpression & todo "recordAccessXXXX"
+            # TODO too burned out to think right now: are we missing any lambda set constraint here?
+
+            TA.'recordAccess pos attrName typedExpression & expectedType
 
         CA.'letIn def rest:
             typedDef & defEnv =
@@ -1774,10 +1775,9 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                     , true = typedTrue
                     }
 
-            finalType =
-                mergeFunctionFullTypes trueType falseType
+            addLambdaSetConstraint @state "trueType falseType"
 
-            finalExpr & finalType
+            finalExpr & expectedType
 
         CA.'try pos { patternsAndExpressions, value }:
             typedExp & fullType =
@@ -1870,7 +1870,7 @@ doCall as fn Env, Pos, Maybe TA.FullType, CA.Expression, [ CA.Argument ], @State
                             { raw = newRawType @state, uni = 'imm }
 
                 lambdaSet =
-                    todo "create fresh?"
+                    TA.'lVar (nextId @state.lastLambdaSetId)
 
                 refTy =
                     TA.'typeFn p lambdaSet (List.map toTypeArg typedArguments) returnType
@@ -2398,9 +2398,10 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
                 raw =
                     translateRawType
                         {
+                        , argsByName = nameToType
                         , env
-                        , nameToType
-                        , originalIdToUniqueness
+                        , newLambdaSetId = 'nothing
+                        , originalIdToNewId = originalIdToUniqueness
                         , pushError = Array.push @state.errors __
                         }
                         annotation.raw
@@ -2465,7 +2466,7 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
             {
             , argsByName = paramsByName
             , env
-            , freshLambdaSetId = blah
+            , newLambdaSetId = 'nothing
             , originalIdToNewId = Dict.empty
             , pushError = Array.push @errors __
             }
@@ -2497,11 +2498,11 @@ expandAndInsertAlias as fn @Array Error, Env, CA.AliasDef, ByUsr ExpandedAlias: 
     type as TA.RawType =
         translateRawType
             {
+            , argsByName = typeByName
             , env = { env with expandedAliases = aliasAccum }
-            , freshLambdaSetId = blah
+            , newLambdaSetId = 'nothing
             , originalIdToNewId
             , pushError = Array.push @errors __
-            , typeByName
             }
             aliasDef.type
 
