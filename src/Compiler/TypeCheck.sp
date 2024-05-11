@@ -86,6 +86,7 @@ State =
     #]
     , boundTyvars as Hash TA.TyvarId None
     , errors as Array Error
+    , lambdaSetUnionFind as UnionFind
     , lastLambdaRefId as Int
     , lastLambdaSetId as Int
     , lastUnificationVarId as Int
@@ -101,6 +102,7 @@ initState as fn !Int: !State =
     {
     , boundTyvars = Hash.fromList []
     , errors = Array.fromList []
+    , lambdaSetUnionFind = UnionFind.fromList []
     , lastLambdaRefId = 0 - 1
     , lastLambdaSetId = 0
     , lastUnificationVarId
@@ -321,7 +323,13 @@ lambdaSetsMustBeEqual as fn @State, TA.RawType, TA.RawType: None =
             List.indexedEach2 args1 args2 (fn _, a1, a2: rec a1 a2)
 
         TA.'typeFn _ lSet1 pars1 out1 & TA.'typeFn _ lSet2 pars2 out2:
-            #Array.push @state.lambdaSetEqualities (lSet1 & lSet2)
+            TA.'lVar id1 =
+                lSet1
+
+            TA.'lVar id2 =
+                lSet2
+
+            UnionFind.union @state.lambdaSetUnionFind id1 id2
 
             List.indexedEach2 pars1 pars1 (fn _, p1, p2: rec (TA.toRaw p1) (TA.toRaw p2))
 

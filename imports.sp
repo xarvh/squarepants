@@ -52,6 +52,11 @@ sourceDir =
        importAs = SPON
 
     module =
+       path = SPLib/UnionFind
+       importAs = UnionFind
+       globals = UnionFind
+
+    module =
        path = Targets/Javascript/Ast
        importAs = JA
 
