@@ -309,8 +309,36 @@ getErrorModule as fn Env: Error.Module =
         'just { with  asText = content, fsPath }: { content, fsPath }
 
 
-addLambdaSetConstraint as fn @State, Text: None =
-    fn @state, _:
+lambdaSetsMustBeEqual as fn @State, TA.RawType, TA.RawType: None =
+    fn @state, t1, t2:
+    rec =
+        lambdaSetsMustBeEqual @state __ __
+
+    try t1 & t2 as
+
+        TA.'typeExact _ _ args1 & TA.'typeExact _ _ args2:
+            # TODO create a List.each2
+            List.indexedEach2 args1 args2 (fn _, a1, a2: rec a1 a2)
+
+        TA.'typeFn _ lSet1 pars1 out1 & TA.'typeFn _ lSet2 pars2 out2:
+            #Array.push @state.lambdaSetEqualities (lSet1 & lSet2)
+
+            List.indexedEach2 pars1 pars1 (fn _, p1, p2: rec (TA.toRaw p1) (TA.toRaw p2))
+
+            rec out1.raw out2.raw
+
+        TA.'typeRecord _ _ attrs1 & TA.'typeRecord _ _ attrs2:
+            _ & both & _ =
+                Dict.onlyBothOnly attrs1 attrs2
+
+            Dict.each both (fn k, a1 & a2: rec a1 a2)
+
+        _:
+            'none
+
+
+lambdaSetMustInclude as fn @State, TA.LambdaSet, TA.LambdaRef: None =
+    fn @state, set, ref:
     'none
 
 
@@ -434,7 +462,7 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
 # CA to TA translation
 #
 #
-expandTyvarsInType as fn (fn None: TA.LambdaSet), Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
+expandTyvarsInType as fn fn None: TA.LambdaSet, Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
     fn newLambdaSet, tyvarIdsToType, type:
     rec =
         expandTyvarsInType newLambdaSet tyvarIdsToType __
@@ -508,7 +536,6 @@ translateRawType as fn TranslateTypePars, CA.RawType: TA.RawType =
         # Aliases and variant constructors need to be freshened every time they are instanced, so no point in doing it now
         >> Maybe.withDefault (fn _: 0) pars.newLambdaSetId
         >> TA.'lVar
-
 
     rec as fn CA.RawType: TA.RawType =
         translateRawType pars __
@@ -1229,7 +1256,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
     lambdaSet =
         TA.'lVar (nextId @state.lastLambdaSetId)
 
-    addLambdaSetConstraint @state "lambdaSet must include lambdaRef"
+    lambdaSetMustInclude @state lambdaSet lambdaRef
 
     type as TA.RawType =
         TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
@@ -1480,7 +1507,6 @@ mergeFunctionRawTypes as fn TA.RawType, TA.RawType: TA.RawType =
             a
 #]
 
-
 CheckExpressionPars =
     {
     , annotatedPattern as TA.Pattern
@@ -1642,7 +1668,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                         finalType =
                             TA.'typeFn typePos lambdaSet parTypes bodyType
 
-                        addLambdaSetConstraint @state "lambdaSet must include lambdaRef"
+                        lambdaSetMustInclude @state lambdaSet lambdaRef
 
                         TA.'fn pos lambdaSet lambdaRef (Array.toList @typedPars) typedBody out & { raw = finalType, uni = expectedType.uni }
 
@@ -1679,7 +1705,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                             Dict.insert attrName v vs & Dict.insert attrName t.raw ts
 
-                    addLambdaSetConstraint @state "extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)"
+                    lambdaSetsMustBeEqual @state extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)
 
                     finalExpr as TA.Expression =
                         TA.'record pos ('just typedExt) typedValueByName
@@ -1766,6 +1792,8 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
             typedFalse & falseType =
                 checkExpression pars expectedType false @state
 
+            lambdaSetsMustBeEqual @state trueType.raw falseType.raw
+
             finalExpr =
                 TA.'if
                     pos
@@ -1774,8 +1802,6 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                     , false = typedFalse
                     , true = typedTrue
                     }
-
-            addLambdaSetConstraint @state "trueType falseType"
 
             finalExpr & expectedType
 

@@ -9,7 +9,7 @@ LambdaRef =
 
 var LambdaSet =
     #, 'lOther ???
-    , 'lSet [ LambdaRef ]
+    #, 'lSet [ LambdaRef ]
     , 'lVar Int
 
 
