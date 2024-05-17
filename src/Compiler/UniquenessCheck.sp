@@ -336,7 +336,7 @@ addPatternToEnv as fn @Array Error, TA.Pattern, Env: [ Name ] & Dict Name Pos & 
     Dict.keys names & uniques & localEnv
 
 
-doCall as fn Env, @Array Error, Pos, TA.LambdaSet, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
+doCall as fn Env, @Array Error, Pos, TA.LambdaSetId, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
     fn env, @errors, pos, lambdaSet, reference, arguments:
     doneReference =
         doExpression env @errors reference
@@ -763,7 +763,7 @@ doVariable as fn Env, @Array Error, Pos, Name, e: UniOut e =
                     }
 
 
-doFn as fn Env, Pos, @Array Error, TA.LambdaSet, TA.LambdaRef, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
+doFn as fn Env, Pos, @Array Error, TA.LambdaSetId, TA.LambdaRef, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
     fn env, pos, @errors, lambdaSet, lambdaRef, pars, body, bodyType:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
         { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter @errors __ __)

@@ -302,7 +302,7 @@ module =
         TyvarId
         LambdaRef
         LambdaSet
-        'lSet
+        LambdaSetId
         'lVar
         RawType
         'typeExact
@@ -374,6 +374,7 @@ module =
         patternNames
         typeTyvars
         typeAllowsFunctions
+        typeLambdaSets
         normalizeTyvarId
         normalizeType
 

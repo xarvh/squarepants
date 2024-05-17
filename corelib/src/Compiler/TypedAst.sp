@@ -2,21 +2,18 @@ TyvarId =
     Int
 
 
+LambdaSetId =
+    Int
+
+
 # This reference can uniquely reference lambdas nested inside a definition
 LambdaRef =
     USR & Int
 
 
-var LambdaSet =
-    #, 'lOther ???
-    #, 'lSet [ LambdaRef ]
-    , 'lVar Int
-
-
-
 var RawType =
     , 'typeExact Pos USR [ RawType ]
-    , 'typeFn Pos LambdaSet [ ParType ] FullType
+    , 'typeFn Pos LambdaSetId [ ParType ] FullType
     , 'typeVar Pos TyvarId
     , 'typeRecord Pos (Maybe TyvarId) (Dict Name RawType)
     , 'typeError
@@ -40,9 +37,9 @@ var Expression =
     , 'literalText Pos Text
     , 'variable Pos Ref
     , 'constructor Pos USR
-    , # We have LambdaSet here so that during specialization we can replace the lambda with a constructor of that set
-      'fn Pos LambdaSet LambdaRef [ Parameter ] Expression FullType
-    , 'call Pos LambdaSet Expression [ Argument ]
+    , # We have LambdaSetId here so that during specialization we can replace the lambda with a constructor of that set
+      'fn Pos LambdaSetId LambdaRef [ Parameter ] Expression FullType
+    , 'call Pos LambdaSetId Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
       'record Pos (Maybe Expression) (Dict Name Expression)
@@ -113,7 +110,9 @@ ValueDef =
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
+    # Do we even use this?
     , isFullyAnnotated as Bool
+    , lambdaSetConstraints as Dict LambdaSetId (Set LambdaRef)
     , pattern as Pattern
     , type as FullType
     }
@@ -153,6 +152,7 @@ initModule as fn Text, Text, UMR: Module =
 #
 SubsAsFns =
     {
+    , lSet as fn LambdaSetId: LambdaSetId
     , ty as fn TyvarId: Maybe RawType
     , uni as fn UnivarId: Maybe Uniqueness
     }
@@ -201,8 +201,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
         'typeExact p usr pars:
             'typeExact p usr (List.map rec pars)
 
-        'typeFn p instances pars out:
-            'typeFn p instances (List.map (resolveParType saf __) pars) (resolveFull saf out)
+        'typeFn p setId pars out:
+            'typeFn p (saf.lSet setId) (List.map (resolveParType saf __) pars) (resolveFull saf out)
 
         'typeRecord p maybeId attrs0:
             attrs1 =
@@ -267,11 +267,11 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'constructor _ _:
             expression
 
-        'fn p lSet lambdaRef pars body bodyType:
-            'fn p lSet lambdaRef (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
+        'fn p setId lambdaRef pars body bodyType:
+            'fn p (saf.lSet setId) lambdaRef (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
 
-        'call p lSet ref args:
-            'call p lSet (rec ref) (List.map (resolveArg saf __) args)
+        'call p setId ref args:
+            'call p (saf.lSet setId) (rec ref) (List.map (resolveArg saf __) args)
 
         'record p maybeExt attrs:
             'record p (Maybe.map rec maybeExt) (Dict.map (fn k, v: rec v) attrs)
@@ -376,6 +376,15 @@ typeTyvars as fn RawType: Dict TyvarId None =
         'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         'typeFn _ _ ins out: typeTyvars out.raw >> List.for __ ins (fn in, a: Dict.join (in >> toRaw >> typeTyvars) a)
         'typeError: Dict.empty
+
+
+typeLambdaSets as fn RawType: Set LambdaSetId =
+    try __ as
+        'typeExact _ usr args: List.for Set.empty args (fn a, acc: Set.join (typeLambdaSets a) acc)
+        'typeVar _ _: Set.empty
+        'typeRecord _ _ attrs: Dict.for Set.empty attrs (fn k, a, acc: Set.join (typeLambdaSets a) acc)
+        'typeError: Set.empty
+        'typeFn _ setId ins out: Set.join (Set.ofOne setId) (typeLambdaSets out.raw) >> List.for __ ins (fn in, acc: Set.join (in >> toRaw >> typeLambdaSets) acc)
 
 
 typeAllowsFunctions as fn fn TyvarId: Bool, RawType: Bool =
