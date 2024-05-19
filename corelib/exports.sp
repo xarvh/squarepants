@@ -487,6 +487,7 @@ module =
         Comment
         Layout
         'inline
+        'inlineWithId
         'aligned
         'indented
         Statement

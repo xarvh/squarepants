@@ -193,6 +193,6 @@ taList as fn TA.RawType: TA.RawType =
     TA.'typeExact Pos.'t (CoreDefs.usr "List") [ item ]
 
 
-taFunction as fn [ TA.RawType ], TA.RawType: TA.RawType =
-    fn from, to:
-    TA.'typeFn Pos.'t (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)
+taFunction as fn Int, [ TA.RawType ], TA.RawType: TA.RawType =
+    fn id, from, to:
+    TA.'typeFn Pos.'t id (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)

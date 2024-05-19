@@ -47,7 +47,8 @@ outToHuman as fn Out: Text =
     [
     , "  tyvars = " .. Debug.toHuman (Dict.toList out.freeTyvars)
     #, "  type = " .. Debug.toHuman out.type
-    , "  type = " .. type
+    , "  type = "
+    .. type
     ]
     >> Text.join "\n" __
 
@@ -210,7 +211,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TH.taFunction [ TH.taNumber ] TH.taNumber
+                 , type = TH.taFunction 2 [ TH.taNumber ] TH.taNumber
                  }
             )
         , codeTest
@@ -220,7 +221,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TH.taFunction [ TH.taNumber ] TH.taNumber
+                 , type = TH.taFunction 2 [ TH.taNumber ] TH.taNumber
                  }
             )
         , codeTest
@@ -230,7 +231,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TA.'typeFn Pos.'t [ tyvar 1 >> toImm >> TA.'parSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn Pos.'t 1 [ tyvar 1 >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         , codeTest
@@ -437,7 +438,7 @@ variableTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction 1 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -452,7 +453,7 @@ variableTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction 1 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -525,7 +526,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction [ TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ] ] (TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ])
+                 , type = TH.taFunction 1 [ TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ] ] (TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ])
                  }
             )
         , codeTest
@@ -614,6 +615,7 @@ records as Test =
                  , freeTyvars = freeTyvars [ 1, 2, 3 ]
                  , type =
                      TH.taFunction
+                         1
                          [
                          , TA.'typeRecord Pos.'t ('just 1) (Dict.ofOne "meh" (TA.'typeRecord Pos.'t ('just 2) (Dict.ofOne "blah" (tyvar 3))))
                          ]
@@ -634,6 +636,7 @@ records as Test =
                  , type =
                      TA.'typeFn
                          Pos.'t
+                         2
                          [
                          , TA.'parRe << TA.'typeRecord Pos.'t ('just 1) (Dict.ofOne "meh" (TA.'typeRecord Pos.'t ('just 2) (Dict.ofOne "blah" TH.taNumber)))
                          ]
@@ -679,7 +682,7 @@ records as Test =
                   >> (fn re:
                        {
                        , freeTyvars = freeTyvars [ 1 ]
-                       , type = TH.taFunction [ re ] re
+                       , type = TH.taFunction 1 [ re ] re
                        }
                   )
                  )
@@ -696,7 +699,7 @@ records as Test =
                   >> (fn re:
                        {
                        , freeTyvars = Dict.empty
-                       , type = TH.taFunction [ re ] re
+                       , type = TH.taFunction 1 [ re ] re
                        }
                   )
                  )
@@ -715,7 +718,7 @@ records as Test =
                   >> (fn re:
                        {
                        , freeTyvars = freeTyvars [ 1, 2 ]
-                       , type = TH.taFunction [ re ] (tyvar 2)
+                       , type = TH.taFunction 1 [ re ] (tyvar 2)
                        }
                   )
                  )
@@ -815,13 +818,14 @@ records as Test =
             (infer "main")
             (Test.isOkAndEqualTo
                  {
-                 , freeTyvars = freeTyvars [ 3 ]
+                 , freeTyvars = freeTyvars [ 1 ]
                  , type =
                      TH.taFunction
+                         6
                          [
                          , TA.'typeRecord
                              Pos.'t
-                             ('just 3)
+                             ('just 1)
                              (Dict.fromList
                                   [
                                   , "attr" & TH.taBool
@@ -859,7 +863,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction 3 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -876,7 +880,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction [ TH.taList (tyvar 1) ] (tyvar 1)
+                 , type = TH.taFunction 3 [ TH.taList (tyvar 1) ] (tyvar 1)
                  }
             )
         , codeTest
@@ -894,7 +898,7 @@ patterns as Test =
              Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction [ TA.'typeRecord Pos.'t 'nothing (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
+                 , type = TH.taFunction 1 [ TA.'typeRecord Pos.'t 'nothing (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
                  }
             )
         , codeTest
@@ -908,11 +912,10 @@ patterns as Test =
                 first
             """
             (infer "x")
-            (#
-             Test.isOkAndEqualTo
+            (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1, 2 ]
-                 , type = TH.taFunction [ TA.'typeRecord Pos.'t ('just 2) (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
+                 , type = TH.taFunction 1 [ TA.'typeRecord Pos.'t ('just 2) (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
                  }
             )
         [# TODO
@@ -985,7 +988,7 @@ try_as as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.'typeFn Pos.'t [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn Pos.'t 1 [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         #
@@ -1052,7 +1055,7 @@ if_else as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.'typeFn Pos.'t [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn Pos.'t 1 [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         #

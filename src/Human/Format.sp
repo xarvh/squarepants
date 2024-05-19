@@ -615,20 +615,30 @@ formatRecordShorthand as fn Env, Name, [ Name ]: Fmt.Block =
         >> Fmt.textToBlock
 
 
-formatFunctionHeader as fn Env, [ FA.Expression ]: Fmt.Block =
-    fn env, pars:
+formatFunctionHeader as fn Env, Maybe Int, [ FA.Expression ]: Fmt.Block =
+    fn env, maybeId, pars:
+
+    head =
+      try maybeId as
+          'nothing: "fn"
+          'just id: "fn(" .. Text.fromNumber id .. ")"
+
     pars
     >> List.map (formatExpression env __) __
-    >> commaSeparatedList 'false (Fmt.textToBlock "fn") ":" 'false __
+    >> commaSeparatedList 'false (Fmt.textToBlock head) ":" 'false __
 
 
 formatFunction as fn Env, FA.Layout, [ FA.Expression ], FA.Expression: Fmt.Block =
     fn env, layout, pars, body:
-    forceStack =
-        layout /= FA.'inline
+
+    forceStack & maybeId =
+        try layout as
+            FA.'inline: 'false & 'nothing
+            FA.'inlineWithId id: 'false & 'just id
+            _: 'true & 'nothing
 
     [
-    , formatFunctionHeader env pars
+    , formatFunctionHeader env maybeId pars
     , formatExpression env body >> applyIf (layout == FA.'indented) Fmt.indent
     ]
     >> Fmt.spaceSeparatedOrStackForce forceStack __
@@ -708,7 +718,7 @@ formatCall as fn Env, FA.Expression, [ FA.Expression ]: Fmt.Block =
         fn index, arg:
         try asContinuingFn index arg as
             'nothing: formatExpressionAndMaybeAddParens env Op.precedence_application arg
-            'just (layout & params & body): formatFunctionHeader env params
+            'just (layout & params & body): formatFunctionHeader env 'nothing params
 
     maybeContinuing =
         args

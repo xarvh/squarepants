@@ -172,10 +172,7 @@ evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ US
 
                                     'just ann:
                                         # TODO we should do the "initializable" check here rather than when emitting
-                                        'USR umr _ =
-                                            u
-
-                                        Compiler/TypeCheck.addInstance @lastUnificationVarId @errors umr def envX
+                                        Compiler/TypeCheck.addRootRecursiveInstance @errors def.namePos u ann envX
 
                                     'nothing:
                                         # TODO use Error.'simple

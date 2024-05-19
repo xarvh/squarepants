@@ -432,7 +432,7 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
         setId =
             nextId @state.lastLambdaSetId
 
-        log "gen" { setId, constraints }
+#        log "gen" { setId, constraints }
 
         Hash.insert @state.lambdaSetConstraints setId constraints
 
@@ -909,9 +909,10 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
 
         # TODO Also check that all uniqueness vars are independent
 
-        lambdaSetConstraints = getLambdaSetConstraints @state type.raw
+        lambdaSetConstraints =
+            getLambdaSetConstraints @state type.raw
 
-        log "ADDING INSTANCE" { name, lambdaSetConstraints, raw = type.raw }
+#        log "ADDING INSTANCE" { name, lambdaSetConstraints, raw = type.raw }
 
         {
         , definedAt = pos
@@ -939,6 +940,51 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     & { baseEnv with variables }
 
 
+addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
+    fn @errors, pos, usr, annotation, env:
+    !lastLambdaSetId =
+        0
+
+    # FRAGILE! we are assuming that the indices here and in freeTyvars are the same!
+    argsByName =
+        annotation.tyvars
+        >> Dict.keys
+        >> List.indexedMap (fn index, name: name & TA.'typeVar pos index) __
+        >> Dict.fromList
+
+    # FRAGILE! see above
+    freeTyvars =
+        annotation.tyvars
+        >> Dict.toList
+        >> List.indexedMap (fn index, name & { nonFn }: index & { maybeAnnotated = 'just { allowFunctions = nonFn /= 'nothing, name } }) __
+        >> Dict.fromList
+
+    freeUnivars =
+        annotation.univars >> Dict.map (fn id, 'none: { annotatedId = id }) __
+
+    raw =
+        translateRawType
+            {
+            , argsByName
+            , env
+            , newLambdaSetId = 'just (fn _: nextId @lastLambdaSetId)
+            , originalIdToNewId = Dict.empty
+            , pushError = Array.push @errors __
+            }
+            annotation.raw
+
+    instance as Instance =
+        {
+        , definedAt = pos
+        , freeTyvars
+        , freeUnivars
+        , lambdaSetConstraints = Dict.empty
+        , type = { raw, uni = 'imm }
+        }
+
+    { env with variables = Dict.insert ('refGlobal usr) instance .variables }
+
+
 #
 #
 # Expressions
@@ -964,7 +1010,7 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
                         fullTypeError
 
                     'just instance:
-                        log "GENERALIZE" { aaa_ref = ref, instance }
+#                        log "GENERALIZE" { aaa_ref = ref, instance }
 
                         t =
                             generalize env pos ref instance @state
@@ -1655,10 +1701,11 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                         expectedType
 
                     'just var:
-                        log "GEN" ref
+#                        log "GEN" ref
                         full =
                             generalize env pos ref var @state
-                        log "GEN" "^^^^^^^^^"
+
+#                        log "GEN" "^^^^^^^^^"
 
                         checkUni env pos { given = full.uni, required = expectedType.uni } @state
 
@@ -2358,7 +2405,7 @@ insertAnnotatedAndNonAnnotated as fn Name, CA.ValueDef, [ CA.ValueDef ] & [ CA.V
 
 doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
     fn @lastUnificationVarId, @errors, usr, envRaw, def:
-    log "==================================" def.name
+#    log "==================================" def.name
 
     env0 =
         { envRaw with currentRootUsr = usr }
@@ -2415,12 +2462,12 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
 
     #Debug.benchStop "def resolution"
 
-    Hash.each @state.lambdaSetUnionFind fn k, v:
-        log ("unionFind: " .. Text.fromNumber k) v
+#    Hash.each @state.lambdaSetUnionFind fn k, v:
+#        log ("unionFind: " .. Text.fromNumber k) v
+#
+#        'none
 
-        'none
-
-    log "RESOLVED VALUE DEF constraints" (resolvedValueDef.lambdaSetConstraints >> Dict.map (fn k, v: Set.toList v) __ >> Dict.toList)
+#    log "RESOLVED VALUE DEF constraints" (resolvedValueDef.lambdaSetConstraints >> Dict.map (fn k, v: Set.toList v) __ >> Dict.toList)
 
 #    log "TYPE----------" resolvedValueDef.type
 #    log "BODY----------" resolvedValueDef.body
