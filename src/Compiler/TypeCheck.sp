@@ -2405,8 +2405,6 @@ insertAnnotatedAndNonAnnotated as fn Name, CA.ValueDef, [ CA.ValueDef ] & [ CA.V
 
 doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
     fn @lastUnificationVarId, @errors, usr, envRaw, def:
-#    log "==================================" def.name
-
     env0 =
         { envRaw with currentRootUsr = usr }
 
@@ -2468,11 +2466,6 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
 #        'none
 
 #    log "RESOLVED VALUE DEF constraints" (resolvedValueDef.lambdaSetConstraints >> Dict.map (fn k, v: Set.toList v) __ >> Dict.toList)
-
-#    log "TYPE----------" resolvedValueDef.type
-#    log "BODY----------" resolvedValueDef.body
-
-#    log "PATTERN-------" typedDef.pattern
 
     # Update lastUnificationVarId!!
     # TODO we can make this safer once we have a 'reassign' op?

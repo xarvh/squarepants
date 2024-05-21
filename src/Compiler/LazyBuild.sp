@@ -172,7 +172,7 @@ evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ US
 
                                     'just ann:
                                         # TODO we should do the "initializable" check here rather than when emitting
-                                        Compiler/TypeCheck.addRootRecursiveInstance @errors def.namePos u ann envX
+                                        Compiler/TypeCheck.addRootRecursiveInstance @errors def.namePos usr ann envX
 
                                     'nothing:
                                         # TODO use Error.'simple
@@ -180,7 +180,7 @@ evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ US
                                             [ "Value " .. def.name .. "  is recursive, so I need a type annotation for it." ]
                                         else
                                             # TODO print `circular` better
-                                            [ "Value " .. def.name .. " depends is mutually recursive with " .. toHuman circular .. " so I need it to be annotated." ]
+                                            [ "Value " .. def.name .. " is mutually recursive with " .. toHuman circular .. " so I need it to be annotated." ]
                                         >> Error.'raw
                                         >> Array.push @errors __
 
