@@ -271,6 +271,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'fn p (saf.lSet setId) lambdaRef (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
 
         'call p setId ref args:
+            #log "call" (saf.lSet setId)
             'call p (saf.lSet setId) (rec ref) (List.map (resolveArg saf __) args)
 
         'record p maybeExt attrs:

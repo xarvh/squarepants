@@ -432,7 +432,7 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
         setId =
             nextId @state.lastLambdaSetId
 
-#        log "gen" { setId, constraints }
+#        log "INSERT CONSTRAINT" { setId, constraints }
 
         Hash.insert @state.lambdaSetConstraints setId constraints
 
@@ -751,12 +751,20 @@ getLambdaSetConstraints as fn @State, TA.RawType: Dict TA.LambdaSetId (Set TA.La
     resolveSetId =
         UnionFind.find @state.lambdaSetUnionFind __
 
+    insert as fn Set TA.LambdaRef: fn Maybe (Set TA.LambdaRef): Maybe (Set TA.LambdaRef) =
+        fn setConstraints:
+        fn maybeSet:
+        try maybeSet as
+            'nothing: setConstraints
+            'just previousConstraints: Set.join previousConstraints setConstraints
+        >> 'just
+
     Dict.empty
     # add all setIds
     >> Set.for __ (TA.typeLambdaSets raw) (fn setId, acc: Dict.insert (resolveSetId setId) Set.empty acc)
     # add constraints
     >> Hash.for_ __ @state.lambdaSetConstraints fn setId, setConstraints, acc:
-        Dict.update (resolveSetId setId) (Maybe.map (Set.join setConstraints __) __) acc
+        Dict.update (resolveSetId setId) (insert setConstraints) acc
 
 
 #
@@ -1015,7 +1023,7 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
                         t =
                             generalize env pos ref instance @state
 
-                        #log ("GEN---> " .. toHuman ref) { var, type = t }
+#                        log ("GEN---> " .. toHuman ref) { instance, type = t }
                         t
 
             TA.'variable pos ref & ty
@@ -2411,8 +2419,10 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
     !state as State =
         initState (cloneUni @lastUnificationVarId)
 
-    'USR umr _ =
+    'USR umr _name =
         usr
+
+#    log "===========================" _name
 
     nameToRef as fn Name: Ref =
         fn name:
@@ -2455,16 +2465,20 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
         , uni = fn univarId: Hash.get @state.univarSubs univarId
         }
 
+
     resolvedValueDef as TA.ValueDef =
         TA.resolveValueDef subsAsFns typedDef
 
     #Debug.benchStop "def resolution"
 
+#    resolvedValueDef as TA.ValueDef =
+#        {resolvedValueDef_ with lambdaSetConstraints = getLambdaSetConstraints @state .type.raw }
+
 #    Hash.each @state.lambdaSetUnionFind fn k, v:
 #        log ("unionFind: " .. Text.fromNumber k) v
-#
-#        'none
 
+#        'none
+#
 #    log "RESOLVED VALUE DEF constraints" (resolvedValueDef.lambdaSetConstraints >> Dict.map (fn k, v: Set.toList v) __ >> Dict.toList)
 
     # Update lastUnificationVarId!!
