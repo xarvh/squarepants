@@ -322,7 +322,7 @@ module =
         'literalText
         'variable
         'constructor
-        'fn
+        'lambda
         'call
         'record
         'recordAccess
@@ -351,7 +351,9 @@ module =
 
         Tyvar
         Univar
-        ValueDef
+        Lambda
+        RootDef
+        LocalDef
 
         Substitutions
         Module

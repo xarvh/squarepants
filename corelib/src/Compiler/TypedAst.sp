@@ -36,9 +36,8 @@ var Expression =
     , 'literalNumber Pos Number
     , 'literalText Pos Text
     , 'variable Pos Ref
+    , 'lambda Pos LambdaRef
     , 'constructor Pos USR
-    , # We have LambdaSetId here so that during specialization we can replace the lambda with a constructor of that set
-      'fn Pos LambdaSetId LambdaRef [ Parameter ] Expression FullType
     , 'call Pos LambdaSetId Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
@@ -48,7 +47,7 @@ var Expression =
       # This is because there are a lot of LetIns and each requires its resolution.
       # At the same time, most of them are repeated, because nested LetIns have the same value.
       # So maybe there is a way to optimize this?
-      'letIn ValueDef Expression FullType
+      'letIn LocalDef Expression FullType
     , 'if
           Pos
           {
@@ -104,15 +103,33 @@ Univar =
     }
 
 
-ValueDef =
+Lambda =
+    {
+    , body as Expression
+    , context as Dict Name FullType
+    # We have LambdaSetId here so that during specialization we can replace the lambda with a constructor of that set
+    , lambdaSetId as LambdaSetId
+    , pars as [ Parameter ]
+    , returnType as FullType
+    }
+
+
+RootDef =
     {
     , body as Maybe Expression
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
-    # Do we even use this?
-    , isFullyAnnotated as Bool
     , lambdaSetConstraints as Dict LambdaSetId (Set LambdaRef)
+    , lambdas as Dict Int Lambda
+    , name as Name
+    , type as RawType
+    }
+
+
+LocalDef =
+    {
+    , body as Expression
     , pattern as Pattern
     , type as FullType
     }
@@ -133,7 +150,7 @@ Module =
     , asText as Text
     , fsPath as Text
     , umr as UMR
-    , valueDefs as Dict Name ValueDef
+    , rootDefs as Dict Name RootDef
     }
 
 
@@ -143,7 +160,7 @@ initModule as fn Text, Text, UMR: Module =
     , asText
     , fsPath
     , umr
-    , valueDefs = Dict.empty
+    , rootDefs = Dict.empty
     }
 
 
@@ -315,17 +332,22 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
         'patternRecord pos ps: 'patternRecord pos (Dict.map (fn k, p & t: resolvePattern saf p & resolveRaw saf t) ps)
 
 
-resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
-    fn saf, def:
-    { def with
-    , body = Maybe.map (resolveExpression saf __) .body
-    , pattern = resolvePattern saf .pattern
-    , type = resolveFull saf .type
-    }
+resolveLocalDef as fn SubsAsFns, LocalDef: LocalDef =
+    #    fn saf, def:
+    #    { def with
+    #    , body = Maybe.map (resolveExpression saf __) .body
+    #    , pattern = resolvePattern saf .pattern
+    #    , type = resolveFull saf .type
+    #    }
+    todo "resolveLocalDef"
 
 
-# TODO?, freeTyvars
-# TODO?, freeUnivars
+resolveRoofDef as fn SubsAsFns, RootDef: RootDef =
+    # TODO?, freeTyvars
+    # TODO?, freeUnivars
+    todo "resolveRootDef"
+
+
 #
 # helpers
 #

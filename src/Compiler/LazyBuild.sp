@@ -331,7 +331,7 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Uniqueness check
     #
-    valueDefsWithDestruction as [ USR & TA.ValueDef ] =
+    valueDefsWithDestruction as [ USR & TA.RootDef ] =
         envF.reversedRootValueDefs
         >> List.reverse
         >> List.map (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __) __
@@ -359,7 +359,7 @@ build as fn BuildPlan: Res BuildOut =
     # Emit
     #
 
-    translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
+    translateDef as fn USR & TA.RootDef: Maybe EA.GlobalDefinition =
         fn usr & def:
         Maybe.map
             (fn body:

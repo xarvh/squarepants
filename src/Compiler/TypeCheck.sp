@@ -144,7 +144,7 @@ Env =
     , expandedAliases as ByUsr ExpandedAlias
     , modulesByUmr as Dict UMR CA.Module
     , projectImports as Imports
-    , reversedRootValueDefs as [ USR & TA.ValueDef ]
+    , reversedRootValueDefs as [ USR & TA.RootDef ]
     , variables as Dict Ref Instance
     }
 
@@ -773,23 +773,37 @@ getLambdaSetConstraints as fn @State, TA.RawType: Dict TA.LambdaSetId (Set TA.La
 #
 #
 
-CA_ValueDef =
+DoDefinitionIn =
     {
     , directDeps as Dict USR DependencyType
+    , env as Env
     , maybeBody as Maybe CA.Expression
+    , nameToRef as fn Name: Ref
     , pattern as CA.Pattern
     , uni as Uniqueness
     }
 
 
-doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
-    fn nameToRef, baseEnv, def, @state:
+DoDefinitionOut =
+    {
+    , body as Maybe TA.Expression
+    , env as Env
+    , freeTyvars as Dict TA.TyvarId TA.Tyvar
+    , freeUnivars as Dict TA.UnivarId TA.Univar
+    , lambdaSetConstraints as Dict LambdaSetId (Set LambdaRef)
+    , pattern as TA.Pattern
+    , type as TA.FullType
+    }
+
+
+doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
+    fn @state, pars:
     # TODO explain why we need this...
     !parentBoundTyvars =
         cloneUni @state.boundTyvars
 
     patternOut =
-        inferPattern baseEnv def.uni def.pattern @state
+        inferPattern pars.env pars.uni pars.pattern @state
 
     localEnv =
         { patternOut.env with
@@ -797,10 +811,10 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
         }
 
     (typedBody as Maybe TA.Expression) & (bodyType as TA.FullType) =
-        try def.maybeBody as
+        try pars.maybeBody as
 
             'nothing:
-                'nothing & { raw = patternOut.patternType, uni = def.uni }
+                'nothing & { raw = patternOut.patternType, uni = pars.uni }
 
             'just body:
                 try patternOut.maybeFullAnnotation as
@@ -810,7 +824,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                             translateAnnotationType localEnv @state annotation.raw
 
                         full =
-                            { raw, uni = def.uni }
+                            { raw, uni = pars.uni }
 
                         pars as CheckExpressionPars =
                             {
@@ -831,11 +845,11 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                             inferExpression localEnv body @state
 
                         pos =
-                            CA.patternPos def.pattern
+                            CA.patternPos pars.pattern
 
                         addEquality localEnv pos 'why_LetIn patternOut.patternType inferredType.raw @state
 
-                        checkUni localEnv pos { given = inferredType.uni, required = def.uni } @state
+                        checkUni localEnv pos { given = inferredType.uni, required = pars.uni } @state
 
                         lambdaSetsMustBeEqual @state inferredType.raw patternOut.patternType
 
@@ -844,13 +858,13 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     defType as TA.FullType =
         {
         , raw = applyAllSubs @state bodyType.raw
-        , uni = def.uni
+        , uni = pars.uni
         }
 
     # Univars are not inferred.
     # If they are not annotated, values are assumed to be immutable
     freeUnivars as Dict UnivarId TA.Univar =
-        def.pattern
+        pars.pattern
         >> CA.patternNames
         >> List.filterMap (fn entry: entry.maybeAnnotation) __
         >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
@@ -898,7 +912,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     # Add instance
     #
     caNames =
-        CA.patternNames def.pattern >> List.indexBy (fn e: e.name) __
+        CA.patternNames pars.pattern >> List.indexBy (fn e: e.name) __
 
     instance as fn Name, { pos as Pos, type as TA.FullType }: Instance =
         fn name, { pos, type = unresolvedType }:
@@ -933,19 +947,17 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     variables =
         patternOut.env.variables
         >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn name, stuff, vars:
-            Dict.insert (nameToRef name) (instance name stuff) vars
+            Dict.insert (pars.nameToRef name) (instance name stuff) vars
 
     {
     , body = typedBody
-    , directDeps = def.directDeps
+    , env = { pars.env with variables }
     , freeTyvars
     , freeUnivars
-    , isFullyAnnotated = patternOut.maybeFullAnnotation /= 'nothing
     , lambdaSetConstraints = getLambdaSetConstraints @state defType.raw
     , pattern = patternOut.typedPattern
     , type = defType
     }
-    & { baseEnv with variables }
 
 
 addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
@@ -1059,19 +1071,29 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
             TA.'recordAccess pos attrName typedExpr & { inferredType with raw = inferRecordAccess env pos attrName .raw @state }
 
         CA.'letIn def rest:
-            typedDef & defEnv =
-                {
-                , directDeps = Dict.empty
-                , maybeBody = 'just def.body
-                , pattern = def.pattern
-                , uni = def.uni
-                }
-                >> doDefinition 'refLocal env __ @state
+            out =
+                doDefinition
+                    @state
+                    {
+                    , directDeps = Dict.empty
+                    , env
+                    , maybeBody = 'just def.body
+                    , nameToRef = 'refLocal
+                    , pattern = def.pattern
+                    , uni = def.uni
+                    }
 
             typedRest & restType =
-                inferExpression defEnv rest @state
+                inferExpression out.def rest @state
 
-            TA.'letIn typedDef typedRest restType & restType
+            localDef as TA.LocalDef =
+                {
+                , body = out.body
+                , pattern = out.pattern
+                , type = out.type
+                }
+
+            TA.'letIn localDef typedRest restType & restType
 
         CA.'if pos { condition, false, true }:
             typedCondition & conditionType =
@@ -1885,17 +1907,27 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
             TA.'recordAccess pos attrName typedExpression & expectedType
 
         CA.'letIn def rest:
-            typedDef & defEnv =
-                {
-                , directDeps = Dict.empty
-                , maybeBody = 'just def.body
-                , pattern = def.pattern
-                , uni = def.uni
-                }
-                >> doDefinition 'refLocal pars.env __ @state
+            out =
+                doDefinition
+                    @state
+                    {
+                    , directDeps = Dict.empty
+                    , env = pars.env
+                    , maybeBody = 'just def.body
+                    , nameToRef = 'refLocal
+                    , pattern = def.pattern
+                    , uni = def.uni
+                    }
 
             typedRest & restType =
-                checkExpression { pars with env = defEnv } expectedType rest @state
+                checkExpression { pars with env = out.env } expectedType rest @state
+
+            localDef as TA.LocalDef =
+                {
+                , body = out.body
+                , pattern = out.pattern
+                , type = out.type
+                }
 
             TA.'letIn typedDef typedRest expectedType & restType
 
@@ -2445,14 +2477,17 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
 
     #Debug.benchStart 'none
 
-    typedDef & env1 =
-        {
-        , directDeps = def.directDeps
-        , maybeBody = def.maybeBody
-        , pattern = CA.'patternAny def.namePos ('just def.name) def.maybeAnnotation
-        , uni = 'imm
-        }
-        >> doDefinition nameToRef env0 __ @state
+    out =
+        doDefinition
+            @state
+            {
+            , directDeps = def.directDeps
+            , env = env0
+            , maybeBody = def.maybeBody
+            , nameToRef
+            , pattern = CA.'patternAny def.namePos ('just def.name) def.maybeAnnotation
+            , uni = 'imm
+            }
 
     #Debug.benchStop "type inference"
 
@@ -2465,9 +2500,19 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
         , uni = fn univarId: Hash.get @state.univarSubs univarId
         }
 
-
-    resolvedValueDef as TA.ValueDef =
-        TA.resolveValueDef subsAsFns typedDef
+    rootDef as TA.RootDef =
+        TA.resolveRoofDef
+            subsAsFns
+            {
+            , body = out.body
+            , directDeps = out.directDeps
+            , freeTyvars = out.freeTyvars
+            , freeUnivars = out.freeUnivars
+            , lambdaSetConstraints = out.lambdaSetConstraints
+            , lambdas = todo "get them from state"
+            , name = def.name
+            , type = out.type.raw
+            }
 
     #Debug.benchStop "def resolution"
 
@@ -2492,7 +2537,7 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
     Array.each @state.errors fn err:
         Array.push @errors err
 
-    { env1 with reversedRootValueDefs = [ usr & resolvedValueDef, .reversedRootValueDefs... ] }
+    { out.env with reversedRootValueDefs = [ usr & rootDef, .reversedRootValueDefs... ] }
 
 
 addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env =

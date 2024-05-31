@@ -509,8 +509,8 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'fn pos lambdaSet lambdaRefs pars body bodyType:
-            doFn env pos @errors lambdaSet lambdaRefs pars body bodyType
+        TA.'lambda pos lambdaId: #lambdaSet lambdaRefs pars body bodyType:
+            todo "doFn env pos @errors lambdaSet lambdaRefs pars body bodyType"
 
         TA.'call pos lambdaSet reference arguments:
             doCall env @errors pos lambdaSet reference arguments

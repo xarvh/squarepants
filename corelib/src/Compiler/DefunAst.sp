@@ -37,9 +37,12 @@ var Expression =
     , 'literalNumber Number
     , 'literalText Text
     , 'localVariable Name
+    # This can't point to a function.
+    # While, in principle, we could pass function references around, in practice most of the times
+    # those functions will need a context.
     , 'globalVariable USR
     , 'constructor USR
-    , 'call LambdaRef [ Argument ]
+    , 'call { ref as LambdaRef, context as Dict Name FullType, args as  [ Argument ] }
     , 'record (Maybe Expression) (Dict Name Expression)
     , 'recordAccess Name Expression
     , 'letIn LocalDef Expression FullType
@@ -74,6 +77,7 @@ var Parameter =
 FunctionDef =
     {
     , lambdaRef as LambdaRef
+    , context as Dict Name FullType
     , parameters [ Parameter ]
     , body as Expression
     , returnType as FullType
