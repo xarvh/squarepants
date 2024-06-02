@@ -29,6 +29,7 @@ Variable =
 Env =
     {
     , modulesByUmr as Dict UMR CA.Module
+    , rootDef as TA.RootDef
     , usr as USR
     , variables as Dict Name Variable
     }
@@ -509,8 +510,11 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'lambda pos lambdaId: #lambdaSet lambdaRefs pars body bodyType:
-            todo "doFn env pos @errors lambdaSet lambdaRefs pars body bodyType"
+        TA.'lambda pos lambdaId:
+            #lambdaSet lambdaRefs pars body bodyType:
+            try Dict.get lambdaId env.rootDef.lambdas as
+                'nothing: todo "compiler bug: lambda not found"
+                'just lambda: doFn env pos @errors lambda
 
         TA.'call pos lambdaSet reference arguments:
             doCall env @errors pos lambdaSet reference arguments
@@ -650,7 +654,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
         TA.'recordAccess pos name expr:
             doExpression env @errors expr >> uniOutMap (TA.'recordAccess pos name __) __
 
-        TA.'letIn valueDef rest restType:
+        TA.'letIn localDef rest restType:
             # TODO clean up these notes
             #
             #            !x = 0
@@ -667,16 +671,10 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
             #            only problem: what if
 
             addedVars & uniques & env1 =
-                addPatternToEnv @errors valueDef.pattern env
+                addPatternToEnv @errors localDef.pattern env
 
             doneDefBody =
-                try valueDef.body as
-                    'just body:
-                        doExpression env1 @errors body
-                        >> uniOutMap 'just __
-
-                    'nothing:
-                        uniOutInit 'nothing
+                doExpression env1 @errors localDef.body >> uniOutMap 'just __
 
             localEnv =
                 env1
@@ -695,7 +693,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                 'none
 
             finalExpression =
-                TA.'letIn { valueDef with body = doneDefBody.resolved } doneExpression.resolved restType
+                TA.'letIn { localDef with body = doneDefBody.resolved } doneExpression.resolved restType
                 >> Dict.for __ uniques fn name, pos, exp:
                     try Dict.get name doneExpression.spent as
                         'just _: exp
@@ -763,13 +761,13 @@ doVariable as fn Env, @Array Error, Pos, Name, e: UniOut e =
                     }
 
 
-doFn as fn Env, Pos, @Array Error, TA.LambdaSetId, TA.LambdaRef, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
-    fn env, pos, @errors, lambdaSet, lambdaRef, pars, body, bodyType:
+doFn as fn Env, Pos, @Array Error, TA.Lambda: UniOut TA.Lambda =
+    fn env, pos, @errors, lambda, body:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
-        { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter @errors __ __)
+        { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ lambda.pars (doParameter @errors __ __)
 
     doneBody =
-        doExpression localEnv @errors body
+        doExpression localEnv @errors lambda.body
 
     #
     # Variables that are not spent by the body need to be explicitly destroyed
@@ -814,7 +812,7 @@ doFn as fn Env, Pos, @Array Error, TA.LambdaSetId, TA.LambdaRef, [ TA.Parameter 
         >> Dict.join doneBody.required __
         >> Dict.diff __ parsToBeRecycled
 
-    if TA.typeAllowsFunctions (fn tyvarId: 'false) bodyType.raw then
+    if TA.typeAllowsFunctions (fn tyvarId: 'false) lambda.returnType.raw then
         Dict.each (Dict.join parsToBeRecycled parsToBeSpent) fn varName, parPos:
             try Dict.get varName doneBody.required as
                 'nothing: 'none
@@ -825,20 +823,23 @@ doFn as fn Env, Pos, @Array Error, TA.LambdaSetId, TA.LambdaRef, [ TA.Parameter 
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
-    , resolved = TA.'fn pos lambdaSet lambdaRef pars exprWithDestruction bodyType
+    , resolved = { lambda with body = exprWithDestruction }
     , spent = Dict.empty
     }
 
 
-updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.ValueDef: USR & TA.ValueDef =
+updateRootDef as fn @Array Error, Dict UMR CA.Module, USR & TA.RootDef: USR & TA.RootDef =
     fn @errors, modulesByUmr, usr & def:
     try def.body as
-        'nothing: usr & def
-        'just body:
 
+        'nothing:
+            usr & def
+
+        'just body:
             env as Env =
                 {
                 , modulesByUmr
+                , rootDef = def
                 , usr
                 , variables = Dict.empty
                 }
