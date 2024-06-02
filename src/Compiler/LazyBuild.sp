@@ -334,7 +334,7 @@ build as fn BuildPlan: Res BuildOut =
     valueDefsWithDestruction as [ USR & TA.RootDef ] =
         envF.reversedRootValueDefs
         >> List.reverse
-        >> List.map (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __) __
+        >> List.map (Compiler/UniquenessCheck.updateRootDef @errors modulesByUmr __) __
 
     stopOnError pars @errors
     >> onOk fn 'none:
@@ -368,7 +368,7 @@ build as fn BuildPlan: Res BuildOut =
                  , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
                  , freeTyvars = def.freeTyvars
                  , freeUnivars = def.freeUnivars
-                 , type = def.type.raw
+                 , type = todo "def.type.raw"
                  , usr = EA.translateUsr usr
                  }
             )

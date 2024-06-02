@@ -88,6 +88,7 @@ State =
     , errors as Array Error
     , lambdaSetConstraints as Hash TA.LambdaSetId (Set TA.LambdaRef)
     , lambdaSetUnionFind as UnionFind
+    , lambdas as Hash Int TA.Lambda
     , lastLambdaRefId as Int
     , lastLambdaSetId as Int
     , lastUnificationVarId as Int
@@ -789,8 +790,8 @@ DoDefinitionOut =
     , body as Maybe TA.Expression
     , env as Env
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
-    , freeUnivars as Dict TA.UnivarId TA.Univar
-    , lambdaSetConstraints as Dict LambdaSetId (Set LambdaRef)
+    , freeUnivars as Dict UnivarId TA.Univar
+    , lambdaSetConstraints as Dict TA.LambdaSetId (Set TA.LambdaRef)
     , pattern as TA.Pattern
     , type as TA.FullType
     }
@@ -826,15 +827,13 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
                         full =
                             { raw, uni = pars.uni }
 
-                        pars as CheckExpressionPars =
+                        typedExpr & exprType =
                             {
                             , annotatedPattern = patternOut.typedPattern
                             , annotation = annotation.raw
                             , env = localEnv
                             }
-
-                        typedExpr & exprType =
-                            checkExpression pars full body @state
+                            >> checkExpression __ full body @state
 
                         lambdaSetsMustBeEqual @state exprType.raw patternOut.patternType
 
@@ -1382,8 +1381,11 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
             envX1
 
     # This goes before the body check, so that lambdaRefs appear in the correct nesting order
+    lambdaId =
+        nextId @state.lastLambdaRefId
+
     lambdaRef =
-        env.currentRootUsr & nextId @state.lastLambdaRefId
+        env.currentRootUsr & lambdaId
 
     typedBody & bodyType =
         inferExpression { newEnv with context = 'context_FnBody pos env.context } body @state
@@ -1396,10 +1398,18 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
     type as TA.RawType =
         TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
 
-    exp =
-        TA.'fn pos lambdaSet lambdaRef (Array.toList @typedPars) typedBody bodyType
+    Hash.insert
+        @state.lambdas
+        lambdaId
+        {
+        , body = typedBody
+        , context = todo "context"
+        , lambdaSetId = lambdaSet
+        , pars = Array.toList @typedPars
+        , returnType = bodyType
+        }
 
-    exp & { raw = type, uni = 'uni }
+    TA.'lambda pos lambdaRef & { raw = type, uni = 'uni }
 
 
 inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
@@ -1800,8 +1810,11 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                                 envX1
 
                         # This goes before the body check, so that lambdaRefs appear in the correct nesting order
+                        lambdaId =
+                            nextId @state.lastLambdaRefId
+
                         lambdaRef =
-                            pars.env.currentRootUsr & nextId @state.lastLambdaRefId
+                            pars.env.currentRootUsr & lambdaId
 
                         typedBody & bodyType =
                             checkExpression { pars with env = localEnv } out body @state
@@ -1811,7 +1824,18 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                         lambdaSetMustInclude @state lambdaSet lambdaRef
 
-                        TA.'fn pos lambdaSet lambdaRef (Array.toList @typedPars) typedBody out & { raw = finalType, uni = expectedType.uni }
+                        Hash.insert
+                            @state.lambdas
+                            lambdaId
+                            {
+                            , body = typedBody
+                            , context = todo "context"
+                            , lambdaSetId = lambdaSet
+                            , pars = Array.toList @typedPars
+                            , returnType = out
+                            }
+
+                        TA.'lambda pos lambdaRef & { raw = finalType, uni = expectedType.uni }
 
                 _:
                     addErrorLocal "This expression is a function, which means its type is always a `fn` type."
@@ -2501,7 +2525,7 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
         }
 
     rootDef as TA.RootDef =
-        TA.resolveRoofDef
+        TA.resolveRootDef
             subsAsFns
             {
             , body = out.body

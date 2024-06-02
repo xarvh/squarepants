@@ -367,7 +367,8 @@ module =
         resolvePar
         resolveExpression
         resolvePattern
-        resolveValueDef
+        resolveLocalDef
+        resolveRootDef
         stripTypePos
 
         toRaw

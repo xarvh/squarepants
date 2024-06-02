@@ -177,22 +177,22 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
 
-        TA.'fn pos _ _ taPars body bodyT:
-            eaBody =
-                translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
-
-            wrappedBody & eaPars =
-                eaBody & []
-                >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
-                    bodyX & eaPar =
-                        newEnv =
-                            { env with genVarCounter = List.length eaParsAcc + .genVarCounter }
-
-                        translateParameter newEnv bodyAcc taPar
-
-                    bodyX & (eaPar :: eaParsAcc)
-
-            EA.'fn eaPars wrappedBody
+#        TA.'fn pos _ _ taPars body bodyT:
+#            eaBody =
+#                translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
+#
+#            wrappedBody & eaPars =
+#                eaBody & []
+#                >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
+#                    bodyX & eaPar =
+#                        newEnv =
+#                            { env with genVarCounter = List.length eaParsAcc + .genVarCounter }
+#
+#                        translateParameter newEnv bodyAcc taPar
+#
+#                    bodyX & (eaPar :: eaParsAcc)
+#
+#            EA.'fn eaPars wrappedBody
 
         TA.'record _ extends attrs:
             attrs

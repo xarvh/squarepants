@@ -342,7 +342,7 @@ resolveLocalDef as fn SubsAsFns, LocalDef: LocalDef =
     todo "resolveLocalDef"
 
 
-resolveRoofDef as fn SubsAsFns, RootDef: RootDef =
+resolveRootDef as fn SubsAsFns, RootDef: RootDef =
     # TODO?, freeTyvars
     # TODO?, freeUnivars
     todo "resolveRootDef"
