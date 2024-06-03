@@ -674,7 +674,7 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
                 addPatternToEnv @state localDef.pattern env
 
             doneDefBody =
-                doExpression env1 @state localDef.body >> uniOutMap 'just __
+                doExpression env1 @state localDef.body
 
             localEnv =
                 env1
@@ -761,8 +761,8 @@ doVariable as fn Env, @State, Pos, Name, e: UniOut e =
                     }
 
 
-doFn as fn Env, Pos, @State, TA.Lambda: UniOut TA.Lambda =
-    fn env, pos, @state, lambda, body:
+doFn as fn Env, Pos, @State, TA.Lambda: UniOut TA.Expression =
+    fn env, pos, @state, lambda:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
         { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ lambda.pars (doParameter @state __ __)
 
@@ -820,22 +820,25 @@ doFn as fn Env, Pos, @State, TA.Lambda: UniOut TA.Lambda =
     else
         'none
 
+    Hash.insert @state.lambdas ... { lambda with body = exprWithDestruction }
+
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
-    , resolved = TA.'lambda pos { lambda with body = exprWithDestruction }
+    , resolved = TA.'lambda pos ...
     , spent = Dict.empty
     }
 
 
 updateRootDef as fn @Array Error, Dict UMR CA.Module, USR & TA.RootDef: USR & TA.RootDef =
     fn @errors, modulesByUmr, usr & def:
-
     !state =
-      {
-      , errors
-      , lambdas = Hash.fromList []
-      }
+        {
+        # TODO really need the reassignment op
+        , errors =
+            cloneUni @errors
+        , lambdas = Hash.fromList []
+        }
 
     return =
         try def.body as
@@ -858,10 +861,12 @@ updateRootDef as fn @Array Error, Dict UMR CA.Module, USR & TA.RootDef: USR & TA
                 # TODO Should I check that spent, recycled and required are empty?
 
                 lambdas =
-                    Hash.toDict @state.lambdas
+                    @state.lambdas
+                    >> Hash.toList
+                    >> Dict.fromList
 
                 usr & { def with body = 'just doneExpression.resolved }
 
-      errors @= state.errors
+    @errors := state.errors
 
-      return
+    return
