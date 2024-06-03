@@ -511,10 +511,10 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'lambda pos (usr & lambdaId):
-            try Dict.get lambdaId env.rootDef.lambdas as
+        TA.'lambda pos lambdaRef:
+            try Dict.get (Tuple.second lambdaRef) env.rootDef.lambdas as
                 'nothing: todo "compiler bug: lambda not found"
-                'just lambda: doFn env pos @state lambda
+                'just lambda: doFn env pos @state lambdaRef lambda
 
         TA.'call pos lambdaSet reference arguments:
             doCall env @state pos lambdaSet reference arguments
@@ -761,8 +761,8 @@ doVariable as fn Env, @State, Pos, Name, e: UniOut e =
                     }
 
 
-doFn as fn Env, Pos, @State, TA.Lambda: UniOut TA.Expression =
-    fn env, pos, @state, lambda:
+doFn as fn Env, Pos, @State, TA.LambdaRef, TA.Lambda: UniOut TA.Expression =
+    fn env, pos, @state, lambdaRef, lambda:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
         { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ lambda.pars (doParameter @state __ __)
 
@@ -820,12 +820,12 @@ doFn as fn Env, Pos, @State, TA.Lambda: UniOut TA.Expression =
     else
         'none
 
-    Hash.insert @state.lambdas ... { lambda with body = exprWithDestruction }
+    Hash.insert @state.lambdas (Tuple.second lambdaRef) { lambda with body = exprWithDestruction }
 
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
-    , resolved = TA.'lambda pos ...
+    , resolved = TA.'lambda pos lambdaRef
     , spent = Dict.empty
     }
 
