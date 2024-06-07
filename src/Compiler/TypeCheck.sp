@@ -1,5 +1,14 @@
 [#
 
+This module turns Canonical AST into Typed AST.
+
+It checks annotated definitions and infers non-annotated definitions.
+
+Also extracts all local functions into root functions.
+
+
+
+
     Takeaways from:
     https://www.youtube.com/watch?v=x3evzO8O9e8
     https://drive.google.com/file/d/1NRkP0hz-0Yo49Rto70b2nUwxjPiGD9Ci/view
@@ -106,7 +115,8 @@ initState as fn !Int: !State =
     , errors = Array.fromList []
     , lambdaSetConstraints = Hash.fromList []
     , lambdaSetUnionFind = UnionFind.fromList []
-    , lastLambdaRefId = 0 - 1
+    , lambdas = Hash.fromList []
+    , lastLambdaRefId = cloneImm -1
     , lastLambdaSetId = 0
     , lastUnificationVarId
     , tyvarSubs = Hash.fromList []
@@ -797,6 +807,9 @@ DoDefinitionOut =
     }
 
 
+#
+# TODO this function is huge, would be nice to break it down
+#
 doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
     fn @state, pars:
     # TODO explain why we need this...
@@ -1083,11 +1096,14 @@ inferExpression as fn Env, CA.Expression, @State: TA.Expression & TA.FullType =
                     }
 
             typedRest & restType =
-                inferExpression out.def rest @state
+                inferExpression out.env rest @state
 
             localDef as TA.LocalDef =
                 {
-                , body = out.body
+                , body =
+                    try out.body as
+                        'just b: b
+                        'nothing: bug "local def missing body"
                 , pattern = out.pattern
                 , type = out.type
                 }
@@ -1948,12 +1964,15 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
             localDef as TA.LocalDef =
                 {
-                , body = out.body
+                , body =
+                    try out.body as
+                        'just b: b
+                        'nothing: bug "local def with no body"
                 , pattern = out.pattern
                 , type = out.type
                 }
 
-            TA.'letIn typedDef typedRest expectedType & restType
+            TA.'letIn localDef typedRest expectedType & restType
 
         CA.'if pos { condition, false, true }:
             typedCondition & conditionType =
@@ -2529,7 +2548,7 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
             subsAsFns
             {
             , body = out.body
-            , directDeps = out.directDeps
+            , directDeps = def.directDeps
             , freeTyvars = out.freeTyvars
             , freeUnivars = out.freeUnivars
             , lambdaSetConstraints = out.lambdaSetConstraints

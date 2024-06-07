@@ -266,18 +266,13 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> wrapWithLetIn
 
         TA.'letIn valueDef e bodyType:
-            body =
-                try valueDef.body as
-                    'nothing: todo ("compiler bug: 'nothing body should not happen here " .. Debug.toHuman valueDef.pattern)
-                    'just b: b
-
             try pickMainName valueDef.pattern as
 
                 'noNamedVariables:
                     EA.'letIn
                         {
                         , inExpression = translateExpression env e
-                        , letExpression = translateExpression env body
+                        , letExpression = translateExpression env valueDef.body
                         , maybeName = 'nothing
                         , type = valueDef.type
                         }
@@ -286,7 +281,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     EA.'letIn
                         {
                         , inExpression = translateExpression env e
-                        , letExpression = translateExpression env body
+                        , letExpression = translateExpression env valueDef.body
                         , maybeName = 'just defName
                         , type
                         }
@@ -314,7 +309,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'letIn
                             {
                             , inExpression
-                            , letExpression = translateExpression newEnv body
+                            , letExpression = translateExpression newEnv valueDef.body
                             , maybeName = 'just mainName
                             , type = valueDef.type
                             }
