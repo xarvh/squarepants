@@ -171,6 +171,9 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'variable _ ('refPlaceholder n):
             EA.'placeholderVariable n
 
+        TA.'lambda _ (usr & id):
+            EA.'lambda (EA.translateUsr usr) id
+
         TA.'constructor _ usr:
             EA.'constructor (EA.translateUsr usr)
 

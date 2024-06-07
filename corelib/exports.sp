@@ -452,7 +452,7 @@ module =
         'globalVariable
         'placeholderVariable
         'call
-        'fn
+        'lambda
         'conditional
         'and
         'isLiteralText

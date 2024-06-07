@@ -248,6 +248,11 @@ translateName as fn Name: Text =
     >> "$" .. __
 
 
+translateLambda as fn EA.TranslatedUsr, Int: Text =
+    fn usr, id:
+    _usrToText usr .. "$$" .. Text.fromNumber id
+
+
 translateUsrToText as fn USR: Text =
     fn usr:
     EA.translateUsr usr >> _usrToText
@@ -437,43 +442,48 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
                 'just ('override { call, value = _ }): call env args >> 'inline
                 'nothing: makeCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
-        EA.'fn eaArgs body:
-            argsWithNames as [ Bool & Text ] =
-                zzz =
-                    fn index, re & maybeName:
-                    try maybeName as
-                        'just name: re & translateName name
-                        'nothing: re & "_" .. Text.fromNumber index
+        EA.'lambda usr id:
+            translateLambda usr id
+            >> JA.'var
+            >> 'inline
 
-                List.indexedMap zzz eaArgs
+#            todo "lambda"
+#            argsWithNames as [ Bool & Text ] =
+#                zzz =
+#                    fn index, re & maybeName:
+#                    try maybeName as
+#                        'just name: re & translateName name
+#                        'nothing: re & "_" .. Text.fromNumber index
+#
+#                List.indexedMap zzz eaArgs
+#
+#            recycledPars as [ JA.Expr ] =
+#                argsWithNames
+#                >> List.filter Tuple.first __
+#                >> List.map (fn _ & name: JA.'var name) __
+#
+#            statementsRaw as [ JA.Statement ] =
+#                try translateExpression env 'true body as
+#                    'inline expr: [ JA.'return expr ]
+#                    'block block: block
 
-            recycledPars as [ JA.Expr ] =
-                argsWithNames
-                >> List.filter Tuple.first __
-                >> List.map (fn _ & name: JA.'var name) __
-
-            statementsRaw as [ JA.Statement ] =
-                try translateExpression env 'true body as
-                    'inline expr: [ JA.'return expr ]
-                    'block block: block
-
-            #
-            # Per EA.Call above, recycling functions must return also the new values for the recycled variables
-            #
-            statementsFinal =
-                if recycledPars == [] then
-                    statementsRaw
-                else
-                    # Replace all `return x` statements with `return [x, ...recycledPars]`
-                    addRecycled =
-                        fn stat:
-                        try stat as
-                            JA.'return e: JA.'return (JA.'array (e :: recycledPars))
-                            _: stat
-
-                    List.map addRecycled statementsRaw
-
-            'inline << JA.'blockLambda (List.map Tuple.second argsWithNames) statementsFinal
+        #
+        # Per EA.Call above, recycling functions must return also the new values for the recycled variables
+        #
+#            statementsFinal =
+#                if recycledPars == [] then
+#                    statementsRaw
+#                else
+#                    # Replace all `return x` statements with `return [x, ...recycledPars]`
+#                    addRecycled =
+#                        fn stat:
+#                        try stat as
+#                            JA.'return e: JA.'return (JA.'array (e :: recycledPars))
+#                            _: stat
+#
+#                    List.map addRecycled statementsRaw
+#
+#            'inline << JA.'blockLambda (List.map Tuple.second argsWithNames) statementsFinal
 
         EA.'letIn { inExpression, letExpression, maybeName, type }:
             inStatements =
