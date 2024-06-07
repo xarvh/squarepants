@@ -149,8 +149,8 @@ Module =
     {
     , asText as Text
     , fsPath as Text
-    , umr as UMR
     , rootDefs as Dict Name RootDef
+    , umr as UMR
     }
 
 
@@ -159,8 +159,8 @@ initModule as fn Text, Text, UMR: Module =
     {
     , asText
     , fsPath
-    , umr
     , rootDefs = Dict.empty
+    , umr
     }
 
 
@@ -333,19 +333,38 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
 
 
 resolveLocalDef as fn SubsAsFns, LocalDef: LocalDef =
-    #    fn saf, def:
-    #    { def with
-    #    , body = Maybe.map (resolveExpression saf __) .body
-    #    , pattern = resolvePattern saf .pattern
-    #    , type = resolveFull saf .type
-    #    }
-    todo "resolveLocalDef"
+    fn saf, def:
+    {
+    , body = (resolveExpression saf __) def.body
+    , pattern = resolvePattern saf def.pattern
+    , type = resolveFull saf def.type
+    }
+
+
+resolveLambda as fn SubsAsFns, Lambda: Lambda =
+    fn saf, lam:
+    {
+    , body = resolveExpression saf lam.body
+    , context = Dict.map (fn name, type: resolveFull saf type) lam.context
+    , lambdaSetId = saf.lset lam.lambdaSetId
+    , pars = List.map (resolvePar saf __) lam.pars
+    , returnType = resolveFull saf lam.returnType
+    }
 
 
 resolveRootDef as fn SubsAsFns, RootDef: RootDef =
-    # TODO?, freeTyvars
-    # TODO?, freeUnivars
-    todo "resolveRootDef"
+    fn saf, def:
+    # TODO resolve freeTyvars and freeUnivars too!
+    {
+    , body = Maybe.map (resolveExpression saf __) def.body
+    , directDeps = def.directDeps
+    , freeTyvars = def.freeTyvars
+    , freeUnivars = def.freeUnivars
+    , lambdaSetConstraints = resolveLambdaSetConstraints saf def.lambdaSetConstraints
+    , lambdas = Dict.map (fn id, lambda: resolveLambda saf __) def.lambdas
+    , name = def.name
+    , type = resolveRaw saf def.type
+    }
 
 
 #
