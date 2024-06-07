@@ -368,7 +368,7 @@ build as fn BuildPlan: Res BuildOut =
                  , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
                  , freeTyvars = def.freeTyvars
                  , freeUnivars = def.freeUnivars
-                 , type = todo "def.type.raw"
+                 , type = def.type
                  , usr = EA.translateUsr usr
                  }
             )

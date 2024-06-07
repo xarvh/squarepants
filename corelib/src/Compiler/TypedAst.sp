@@ -284,8 +284,10 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'constructor _ _:
             expression
 
-        'fn p setId lambdaRef pars body bodyType:
-            'fn p (saf.lSet setId) lambdaRef (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
+        'lambda _ _:
+            expression
+#        'fn p setId lambdaRef pars body bodyType:
+#            'fn p (saf.lSet setId) lambdaRef (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
 
         'call p setId ref args:
             #log "call" (saf.lSet setId)
@@ -298,7 +300,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'recordAccess p name (rec exp)
 
         'letIn def rest restType:
-            'letIn (resolveValueDef saf def) (rec rest) (resolveFull saf restType)
+            'letIn (resolveLocalDef saf def) (rec rest) (resolveFull saf restType)
 
         'if p { condition, false, true }:
             'if p { condition = rec condition, false = rec false, true = rec true }
@@ -346,10 +348,19 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
     {
     , body = resolveExpression saf lam.body
     , context = Dict.map (fn name, type: resolveFull saf type) lam.context
-    , lambdaSetId = saf.lset lam.lambdaSetId
+    , lambdaSetId = saf.lSet lam.lambdaSetId
     , pars = List.map (resolvePar saf __) lam.pars
     , returnType = resolveFull saf lam.returnType
     }
+
+
+resolveLambdaSetConstraints as fn SubsAsFns, Dict TA.LambdaSetId (Set TA.LambdaRef): Dict TA.LambdaSetId (Set TA.LambdaRef) =
+    fn saf, constraints:
+    Dict.for Dict.empty constraints fn oldId, requiredLambdas, resolvedConstraints:
+        newId =
+            saf.lSet oldId
+
+        Dict.update newId (__ >> Maybe.withDefault Set.empty __ >> Set.join requiredLambdas __ >> 'just) resolvedConstraints
 
 
 resolveRootDef as fn SubsAsFns, RootDef: RootDef =
@@ -361,7 +372,7 @@ resolveRootDef as fn SubsAsFns, RootDef: RootDef =
     , freeTyvars = def.freeTyvars
     , freeUnivars = def.freeUnivars
     , lambdaSetConstraints = resolveLambdaSetConstraints saf def.lambdaSetConstraints
-    , lambdas = Dict.map (fn id, lambda: resolveLambda saf __) def.lambdas
+    , lambdas = Dict.map (fn id, lambda: resolveLambda saf lambda) def.lambdas
     , name = def.name
     , type = resolveRaw saf def.type
     }

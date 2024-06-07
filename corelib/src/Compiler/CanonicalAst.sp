@@ -321,3 +321,19 @@ expressionName as fn Expression: Text =
         'if p _: "if-expression"
         'try p _: "try-expression"
         'introspect p _ _: "introspection"
+
+expressionDeps as fn Expression: Text =
+    fn exp:
+    try exp as
+        'literalNumber p _: "literal number"
+        'literalText p _: "literal text"
+        'variable p _: "variable"
+        'constructor p _: "constructor"
+        'fn p _ _: "function definition"
+        'call p _ _: "function call"
+        'record p _ _: "record literal"
+        'recordAccess p _ _: "record access"
+        'letIn _ e: expressionName e
+        'if p _: "if-expression"
+        'try p _: "try-expression"
+        'introspect p _ _: "introspection"

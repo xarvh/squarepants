@@ -1366,6 +1366,72 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
+getContext as fn Env, TA.Expression: Dict Name TA.FullType =
+    fn env, expression:
+    rec =
+        getContext env __
+
+    insert =
+        fn name, context:
+        try Dict.get ('refLocal name) env.variables as
+            'nothing: context
+            'just instance: Dict.insert name instance.type context
+
+    try expression as
+
+        TA.'literalNumber _ _:
+            Dict.empty
+
+        TA.'literalText _ _:
+            Dict.empty
+
+        TA.'constructor _ _:
+            Dict.empty
+
+        TA.'variable _ ('refGlobal _):
+            Dict.empty
+
+        TA.'variable _ ('refLocal name):
+            insert name Dict.empty
+
+        TA.'call p setId ref args:
+            List.for (rec ref) args fn arg, context:
+                try arg as
+                    TA.'argumentRecycle _ raw _ name: insert name context
+                    TA.'argumentExpression fullType exp: Dict.join context (rec exp)
+
+        TA.'record p maybeExt attrs:
+            try maybeExt as
+                'nothing: Dict.empty
+                'just ext: rec ext
+            >> Dict.for __ attrs (fn _, exp, context: Dict.join context (rec exp))
+
+        TA.'recordAccess p name exp:
+            rec exp
+
+        TA.'letIn def rest restType:
+            Dict.join (rec def.body) (rec rest)
+
+        TA.'if p { condition, false, true }:
+            rec condition
+            >> Dict.join __ (rec true)
+            >> Dict.join __ (rec false)
+
+        TA.'try p { patternsAndExpressions, value, valueType }:
+            List.for (rec value) patternsAndExpressions fn _ & exp, context:
+                Dict.join context (rec exp)
+
+        TA.'destroyIn n e:
+            #'destroyIn n (rec e)
+            Dict.empty
+
+        TA.'error p:
+            Dict.empty
+
+        TA.'introspect _:
+            Dict.empty
+
+
 inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, caPars, body, @state:
     [#
@@ -1419,7 +1485,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
         lambdaId
         {
         , body = typedBody
-        , context = todo "context"
+        , context = getContext env typedBody
         , lambdaSetId = lambdaSet
         , pars = Array.toList @typedPars
         , returnType = bodyType
@@ -2552,7 +2618,7 @@ doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
             , freeTyvars = out.freeTyvars
             , freeUnivars = out.freeUnivars
             , lambdaSetConstraints = out.lambdaSetConstraints
-            , lambdas = todo "get them from state"
+            , lambdas = @state.lambdas >> Hash.toList >> Dict.fromList
             , name = def.name
             , type = out.type.raw
             }
