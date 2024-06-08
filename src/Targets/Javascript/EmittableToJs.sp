@@ -442,7 +442,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
                 'just ('override { call, value = _ }): call env args >> 'inline
                 'nothing: makeCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
-        EA.'lambda usr id:
+        EA.'lambda usr id context:
             translateLambda usr id
             >> JA.'var
             >> 'inline

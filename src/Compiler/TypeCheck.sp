@@ -1366,10 +1366,10 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
-getContext as fn Env, TA.Expression: Dict Name TA.FullType =
-    fn env, expression:
+getContext as fn Env, [ CA.Parameter ], TA.Expression: Dict Name TA.FullType =
+    fn env, pars, expression:
     rec =
-        getContext env __
+        getContext env pars __
 
     insert =
         fn name, context:
@@ -1393,6 +1393,20 @@ getContext as fn Env, TA.Expression: Dict Name TA.FullType =
 
         TA.'variable _ ('refLocal name):
             insert name Dict.empty
+
+        TA.'lambda _ _ subContext:
+            List.for subContext pars fn par, context:
+                try par as
+
+                    CA.'parameterPattern _ pattern:
+                        List.for context (CA.patternNames pattern) fn out, context1:
+                            Dict.remove out.name context1
+
+                    CA.'parameterRecycle _ name:
+                        Dict.remove name context
+
+                    CA.'parameterPlaceholder index:
+                        todo "placeholder"
 
         TA.'call p setId ref args:
             List.for (rec ref) args fn arg, context:
@@ -1480,18 +1494,20 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
     type as TA.RawType =
         TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
 
+    context =
+        getContext env caPars typedBody
+
     Hash.insert
         @state.lambdas
         lambdaId
         {
         , body = typedBody
-        , context = getContext env typedBody
         , lambdaSetId = lambdaSet
         , pars = Array.toList @typedPars
         , returnType = bodyType
         }
 
-    TA.'lambda pos lambdaRef & { raw = type, uni = 'uni }
+    TA.'lambda pos lambdaRef context & { raw = type, uni = 'uni }
 
 
 inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
@@ -1906,18 +1922,20 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                         lambdaSetMustInclude @state lambdaSet lambdaRef
 
+                        context =
+                            getContext pars.env fnPars typedBody
+
                         Hash.insert
                             @state.lambdas
                             lambdaId
                             {
                             , body = typedBody
-                            , context = todo "context"
                             , lambdaSetId = lambdaSet
                             , pars = Array.toList @typedPars
                             , returnType = out
                             }
 
-                        TA.'lambda pos lambdaRef & { raw = finalType, uni = expectedType.uni }
+                        TA.'lambda pos lambdaRef context & { raw = finalType, uni = expectedType.uni }
 
                 _:
                     addErrorLocal "This expression is a function, which means its type is always a `fn` type."

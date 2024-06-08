@@ -36,7 +36,7 @@ var Expression =
     , 'literalNumber Pos Number
     , 'literalText Pos Text
     , 'variable Pos Ref
-    , 'lambda Pos LambdaRef
+    , 'lambda Pos LambdaRef (Dict Name FullType)
     , 'constructor Pos USR
     , 'call Pos LambdaSetId Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -106,7 +106,7 @@ Univar =
 Lambda =
     {
     , body as Expression
-    , context as Dict Name FullType
+    #, context as Dict Name FullType
     # We have LambdaSetId here so that during specialization we can replace the lambda with a constructor of that set
     , lambdaSetId as LambdaSetId
     , pars as [ Parameter ]
@@ -284,10 +284,10 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'constructor _ _:
             expression
 
-        'lambda _ _:
-            expression
-#        'fn p setId lambdaRef pars body bodyType:
-#            'fn p (saf.lSet setId) lambdaRef (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
+        'lambda pos id context:
+            context
+            >> Dict.map (fn name, type: resolveFull saf type) __
+            >> 'lambda pos id __
 
         'call p setId ref args:
             #log "call" (saf.lSet setId)
@@ -347,7 +347,7 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
     fn saf, lam:
     {
     , body = resolveExpression saf lam.body
-    , context = Dict.map (fn name, type: resolveFull saf type) lam.context
+    #, context = Dict.map (fn name, type: resolveFull saf type) lam.context
     , lambdaSetId = saf.lSet lam.lambdaSetId
     , pars = List.map (resolvePar saf __) lam.pars
     , returnType = resolveFull saf lam.returnType
