@@ -3,7 +3,7 @@ allTests as [ Test ] =
     , Human/Format_Test.tests
     , Compiler/Lexer_Test.tests
     , Compiler/Parser_Test.tests
-#    , Compiler/MakeCanonical_Test.tests
+    , Compiler/MakeCanonical_Test.tests
     , Compiler/TypeCheck_Test.tests
     , Targets/Emitted_Test.tests
     , Hash_Test.tests

@@ -863,7 +863,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction 3 [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction 5 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -880,7 +880,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction 3 [ TH.taList (tyvar 1) ] (tyvar 1)
+                 , type = TH.taFunction 5 [ TH.taList (tyvar 1) ] (tyvar 1)
                  }
             )
         , codeTest
