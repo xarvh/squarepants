@@ -762,20 +762,21 @@ getLambdaSetConstraints as fn @State, TA.RawType: Dict TA.LambdaSetId (Set TA.La
     resolveSetId =
         UnionFind.find @state.lambdaSetUnionFind __
 
-    insert as fn Set TA.LambdaRef: fn Maybe (Set TA.LambdaRef): Maybe (Set TA.LambdaRef) =
-        fn setConstraints:
-        fn maybeSet:
-        try maybeSet as
-            'nothing: setConstraints
-            'just previousConstraints: Set.join previousConstraints setConstraints
-        >> 'just
+    !acc =
+        Hash.fromList []
 
-    Dict.empty
-    # add all setIds
-    >> Set.for __ (TA.typeLambdaSets raw) (fn setId, acc: Dict.insert (resolveSetId setId) Set.empty acc)
-    # add constraints
-    >> Hash.for_ __ @state.lambdaSetConstraints fn setId, setConstraints, acc:
-        Dict.update (resolveSetId setId) (insert setConstraints) acc
+    Dict.each (TA.typeLambdaSets raw) fn setId, _:
+        Hash.insert @acc (resolveSetId setId) Set.empty
+
+    Hash.each @state.lambdaSetConstraints fn setId, setConstraints:
+        key =
+            resolveSetId setId
+
+        try Hash.get @acc key as
+            'nothing: 'none
+            'just previousConstraints: Hash.insert @acc key (Set.join previousConstraints setConstraints)
+
+    Dict.fromList (Hash.toList @acc)
 
 
 #
@@ -946,8 +947,6 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
         lambdaSetConstraints =
             getLambdaSetConstraints @state type.raw
 
-#        log "ADDING INSTANCE" { name, lambdaSetConstraints, raw = type.raw }
-
         {
         , definedAt = pos
         , freeTyvars = actualTyvars
@@ -961,12 +960,15 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
         >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn name, stuff, vars:
             Dict.insert (pars.nameToRef name) (instance name stuff) vars
 
+    lambdaSetConstraints =
+        getLambdaSetConstraints @state defType.raw
+
     {
     , body = typedBody
     , env = { pars.env with variables }
     , freeTyvars
     , freeUnivars
-    , lambdaSetConstraints = getLambdaSetConstraints @state defType.raw
+    , lambdaSetConstraints
     , pattern = patternOut.typedPattern
     , type = defType
     }
@@ -1391,6 +1393,9 @@ getContext as fn Env, [ CA.Parameter ], TA.Expression: Dict Name TA.FullType =
         TA.'variable _ ('refGlobal _):
             Dict.empty
 
+        TA.'variable _ ('refPlaceholder index):
+            Dict.empty
+
         TA.'variable _ ('refLocal name):
             insert name Dict.empty
 
@@ -1406,7 +1411,7 @@ getContext as fn Env, [ CA.Parameter ], TA.Expression: Dict Name TA.FullType =
                         Dict.remove name context
 
                     CA.'parameterPlaceholder index:
-                        todo "placeholder"
+                        context
 
         TA.'call p setId ref args:
             List.for (rec ref) args fn arg, context:
