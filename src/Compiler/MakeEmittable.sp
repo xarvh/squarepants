@@ -5,17 +5,6 @@ Env =
     }
 
 
-mkEnv as fn USR, Dict UMR CA.Module: Env =
-    fn 'USR umr name, modulesByUmr:
-    {
-    , genVarCounter = 0
-    , module =
-        try Dict.get umr modulesByUmr as
-            'just m: m
-            'nothing: todo ("compiler bug: no module for " .. name)
-    }
-
-
 #
 # Translation
 #
@@ -326,3 +315,57 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
         TA.'introspect self:
             EA.'introspect self
+
+
+translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinition ] =
+    fn modulesByUmr, usr, def:
+    'usr umr name =
+        usr
+
+    env as Env =
+        {
+        , genVarCounter = 0
+        , module =
+            try Dict.get umr modulesByUmr as
+                'just m: m
+                'nothing: todo ("compiler bug: no module for " .. name)
+        }
+
+    try def.body as
+
+        'nothing:
+            []
+
+        'just body:
+            valueDef as EA.GlobalDefinition =
+                {
+                , deps = def.directDeps
+                , expr = translateExpression env body
+                , freeTyvars = def.freeTyvars
+                , freeUnivars = def.freeUnivars
+                , parameters = []
+                , returnType = def.type
+                , usr = EA.translateUsr usr
+                }
+
+            Dict.for [valueDef] def.lambdas fn index, lambda, defs:
+
+                  if lambdaSetId /= index then
+                      log "MISMATCH" { lambdaSetId, index }
+                      'none
+                  else
+                      'none
+
+                  def as EA.GlobalDefinition =
+                      {
+                      , deps = Dict.empty
+                      , expr = translateExpression env lambda.body
+                      , freeTyvars = def.freeTyvars
+                      , freeUnivars = def.freeUnivars
+                      , parameters = ... lambda.pars
+                      , returnType = lambda.returnType
+                      , usr = ... EA.translateUsr usr
+                      }
+
+                  [def, defs...]
+

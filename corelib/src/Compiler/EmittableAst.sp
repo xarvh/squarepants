@@ -58,7 +58,8 @@ GlobalDefinition =
     , expr as Expression
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     , freeUnivars as Dict UnivarId TA.Univar
-    , type as TA.RawType
+    , parameters as [???]
+    , returnType as TA.RawType
     , usr as TranslatedUsr
     }
 

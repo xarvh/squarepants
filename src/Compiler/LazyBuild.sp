@@ -359,23 +359,8 @@ build as fn BuildPlan: Res BuildOut =
     # Emit
     #
 
-    translateDef as fn USR & TA.RootDef: Maybe EA.GlobalDefinition =
-        fn usr & def:
-        Maybe.map
-            (fn body:
-                 {
-                 , deps = def.directDeps
-                 , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
-                 , freeTyvars = def.freeTyvars
-                 , freeUnivars = def.freeUnivars
-                 , type = def.type
-                 , usr = EA.translateUsr usr
-                 }
-            )
-            def.body
-
     rootValues as [ EA.GlobalDefinition ] =
-        List.filterMap translateDef valueDefsWithDestruction
+        List.concat (fn usr & def: Compiler/MakeEmittable.translateRootDef modulesByUmr usr def) valueDefsWithDestruction
 
     natives as [ USR ] =
         valueDefsWithDestruction
