@@ -162,7 +162,7 @@ infer as fn Text: fn Text: Result Text Out =
     >> TH.resErrorToStrippedText
     >> onOk fn { constructors, natives, rootValues }:
     targetUsr =
-        EA.translateUsr ('USR TH.moduleUmr targetName)
+        EA.translateUsr ('USR TH.moduleUmr targetName) 0
 
     try List.find (fn rv: rv.usr == targetUsr) rootValues as
         'nothing: 'err "find fail"
@@ -178,7 +178,7 @@ infer as fn Text: fn Text: Result Text Out =
         {
         , freeTyvars = ft
         , type =
-            def.type
+            def.returnType
             >> TA.normalizeType @hash __
             >> TA.stripTypePos
         }

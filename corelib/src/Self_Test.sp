@@ -20,7 +20,7 @@ load as fn a: Result TA.RawType IntegerOnly =
         'USR ('UMR Meta.'user 5 "DynamicLoad") "aNumberValue"
 
     translatedUsr =
-        EA.translateUsr usr
+        EA.translateUsr usr 0
 
     numberSelf =
         sp_introspect_type Number

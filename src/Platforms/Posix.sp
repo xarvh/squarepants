@@ -100,10 +100,10 @@ overrides as fn Platform.MakeUmr: [ USR & Text ] =
 
 runtime as Text =
     makeOk as Text =
-        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText __
+        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.constructorUsrToText
 
     makeErr as Text =
-        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.translateUsrToText __
+        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.constructorUsrToText
 
     """
 

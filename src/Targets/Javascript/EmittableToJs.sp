@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ (fn usr & override, d: Dict.insert (EA.translateUsr usr) override d)
+    >> List.for Dict.empty __ (fn usr & override, d: Dict.insert (EA.translateUsr usr 0) override d)
 
 
 unaryPlus as Override =
@@ -253,9 +253,9 @@ translateLambda as fn EA.TranslatedUsr, Int: Text =
     _usrToText usr .. "$$" .. Text.fromNumber id
 
 
-translateUsrToText as fn USR: Text =
+constructorUsrToText as fn USR: Text =
     fn usr:
-    EA.translateUsr usr >> _usrToText
+    EA.translateUsr usr 0 >> _usrToText
 
 
 _usrToText as fn EA.TranslatedUsr: Text =
@@ -627,7 +627,7 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    JA.'define 'false (translateUsrToText usr) definitionBody
+    JA.'define 'false (constructorUsrToText usr) definitionBody
 
 
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
@@ -657,7 +657,7 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         {
         , overrides =
             List.for (coreOverrides 'none) platformOverrides fn usr & runtimeName, d:
-                Dict.insert (EA.translateUsr usr) (function runtimeName) d
+                Dict.insert (EA.translateUsr usr 0) (function runtimeName) d
         }
 
     jaStatements as [ JA.Statement ] =

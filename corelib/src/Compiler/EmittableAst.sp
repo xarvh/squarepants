@@ -58,7 +58,7 @@ GlobalDefinition =
     , expr as Expression
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     , freeUnivars as Dict UnivarId TA.Univar
-    , parameters as [???]
+    , parameters as [ TA.FullType & Maybe Name ]
     , returnType as TA.RawType
     , usr as TranslatedUsr
     }
@@ -104,9 +104,15 @@ translateName as fn Name: Text =
         name
 
 
-translateUsr as fn USR: TranslatedUsr =
-    fn usr:
+translateUsr as fn USR, Int: TranslatedUsr =
+    fn usr, id:
     'USR ('UMR root sourceDirId modulePath) name =
         usr
 
-    List.concat [ [ translateRoot root .. Text.fromNumber sourceDirId ], Text.split "/" modulePath, [ translateName name ] ]
+    [
+    , [ translateRoot root .. Text.fromNumber sourceDirId ]
+    , Text.split "/" modulePath
+    , [ translateName name ]
+    , [ Text.fromNumber id ]
+    ]
+    >> List.concat

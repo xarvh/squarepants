@@ -9,17 +9,17 @@ listNilName as Text =
 nativeDefinitions as Text =
 
     okRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText  ('USR (CoreDefs.makeUmr "Result") "'ok")
+        Targets/Javascript/EmittableToJs.constructorUsrToText  ('USR (CoreDefs.makeUmr "Result") "'ok")
 
     errRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Result") "'err")
+        Targets/Javascript/EmittableToJs.constructorUsrToText ('USR (CoreDefs.makeUmr "Result") "'err")
 
 
     nothingRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'nothing")
+        Targets/Javascript/EmittableToJs.constructorUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'nothing")
 
     justRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'just")
+        Targets/Javascript/EmittableToJs.constructorUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'just")
 
 #    translateUsrSelf =
 #        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr

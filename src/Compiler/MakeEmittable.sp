@@ -95,24 +95,24 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
                 testPattern pa (EA.'recordAccess name valueToTest) a
 
 
-translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool & Maybe Name) =
+translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (TA.FullType & Maybe Name) =
     fn env, bodyAcc, param:
     try param as
 
-        TA.'parameterRecycle pos rawType name:
-            bodyAcc & ('true & 'just name)
+        TA.'parameterRecycle pos raw name:
+            bodyAcc & ({ raw, uni = 'uni } & 'just name)
 
         TA.'parameterPlaceholder fullType n:
-            bodyAcc & ('false & 'just (Text.fromNumber n))
+            bodyAcc & (fullType & 'just (Text.fromNumber n))
 
         TA.'parameterPattern fullType pa:
             try pickMainName pa as
 
                 'noNamedVariables:
-                    bodyAcc & ('false & 'nothing)
+                    bodyAcc & (fullType & 'nothing)
 
                 'trivialPattern argName type:
-                    bodyAcc & ('false & 'just argName)
+                    bodyAcc & (fullType & 'just argName)
 
                 'generateName:
                     mainName & newEnv =
@@ -131,7 +131,7 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
                             , type
                             }
 
-                    List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & ('false & 'just mainName)
+                    List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & (fullType & 'just mainName)
 
 
 translateArgAndType as fn Env, TA.Argument: EA.Argument =
@@ -155,7 +155,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             EA.'localVariable name
 
         TA.'variable _ ('refGlobal usr):
-            EA.'globalVariable (EA.translateUsr usr)
+            EA.'globalVariable (EA.translateUsr usr TA.rootLambdaRef)
 
         TA.'variable _ ('refPlaceholder n):
             EA.'placeholderVariable n
@@ -345,27 +345,37 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
                 , freeUnivars = def.freeUnivars
                 , parameters = []
                 , returnType = def.type
-                , usr = EA.translateUsr usr
+                , usr = EA.translateUsr usr TA.rootLambdaRef
                 }
 
-            Dict.for [valueDef] def.lambdas fn index, lambda, defs:
+            Dict.for [ valueDef ] def.lambdas fn index, lambda, defs:
+                if lambdaSetId /= index then
+                    log "MISMATCH" { index, lambdaSetId }
 
-                  if lambdaSetId /= index then
-                      log "MISMATCH" { lambdaSetId, index }
-                      'none
-                  else
-                      'none
+                    'none
+                else
+                    'none
 
-                  def as EA.GlobalDefinition =
-                      {
-                      , deps = Dict.empty
-                      , expr = translateExpression env lambda.body
-                      , freeTyvars = def.freeTyvars
-                      , freeUnivars = def.freeUnivars
-                      , parameters = ... lambda.pars
-                      , returnType = lambda.returnType
-                      , usr = ... EA.translateUsr usr
-                      }
+                baseBody =
+                    translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } lambda.body
 
-                  [def, defs...]
+                wrappedBody & parameters =
+                    baseExpr & []
+                    >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
+                        bodyX & eaPar =
+                            translateParameter { env with genVarCounter = List.length eaParsAcc + .genVarCounter } bodyAcc taPar
 
+                        bodyX & [ eaPar, eaParsAcc... ]
+
+                eaDef as EA.GlobalDefinition =
+                    {
+                    , deps = Dict.empty
+                    , expr = wrappedBody
+                    , freeTyvars = def.freeTyvars
+                    , freeUnivars = def.freeUnivars
+                    , parameters
+                    , returnType = lambda.returnType
+                    , usr = EA.translateUsr usr index
+                    }
+
+                [ eaDef, defs... ]

@@ -116,7 +116,7 @@ initState as fn !Int: !State =
     , lambdaSetConstraints = Hash.fromList []
     , lambdaSetUnionFind = UnionFind.fromList []
     , lambdas = Hash.fromList []
-    , lastLambdaRefId = cloneImm -1
+    , lastLambdaRefId = cloneImm TA.rootLambdaRef
     , lastLambdaSetId = 0
     , lastUnificationVarId
     , tyvarSubs = Hash.fromList []

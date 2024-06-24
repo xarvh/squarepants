@@ -301,6 +301,7 @@ module =
    exposes =
         TyvarId
         LambdaRef
+        rootLambdaRef
         LambdaSet
         LambdaSetId
         'lVar

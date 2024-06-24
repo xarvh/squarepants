@@ -11,6 +11,11 @@ LambdaRef =
     USR & Int
 
 
+# This is used for the base root definition.
+rootLambdaRef as Int =
+    0
+
+
 var RawType =
     , 'typeExact Pos USR [ RawType ]
     , 'typeFn Pos LambdaSetId [ ParType ] FullType
@@ -348,7 +353,8 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
     {
     , body = resolveExpression saf lam.body
     #, context = Dict.map (fn name, type: resolveFull saf type) lam.context
-    , lambdaSetId = saf.lSet lam.lambdaSetId
+    , lambdaSetId =
+        saf.lSet lam.lambdaSetId
     , pars = List.map (resolvePar saf __) lam.pars
     , returnType = resolveFull saf lam.returnType
     }
