@@ -360,7 +360,7 @@ build as fn BuildPlan: Res BuildOut =
     #
 
     rootValues as [ EA.GlobalDefinition ] =
-        List.concat (fn usr & def: Compiler/MakeEmittable.translateRootDef modulesByUmr usr def) valueDefsWithDestruction
+        List.concatMap (fn usr & def: Compiler/MakeEmittable.translateRootDef modulesByUmr usr def) valueDefsWithDestruction
 
     natives as [ USR ] =
         valueDefsWithDestruction

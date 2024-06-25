@@ -59,7 +59,7 @@ GlobalDefinition =
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     , freeUnivars as Dict UnivarId TA.Univar
     , parameters as [ TA.FullType & Maybe Name ]
-    , returnType as TA.RawType
+    , returnType as TA.FullType
     , usr as TranslatedUsr
     }
 

@@ -161,10 +161,10 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             EA.'placeholderVariable n
 
         TA.'lambda _ (usr & id) context:
-            EA.'lambda (EA.translateUsr usr) id context
+            EA.'lambda (EA.translateUsr usr id) id context
 
         TA.'constructor _ usr:
-            EA.'constructor (EA.translateUsr usr)
+            EA.'constructor (EA.translateUsr usr 0)
 
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
@@ -208,7 +208,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'localVariable name & identity & env
 
                     TA.'variable _ ('refGlobal usr) & 'imm:
-                        EA.'globalVariable (EA.translateUsr usr) & identity & env
+                        EA.'globalVariable (EA.translateUsr usr 0) & identity & env
 
                     TA.'variable _ ('refPlaceholder n) & 'imm:
                         EA.'placeholderVariable n & identity & env
@@ -319,7 +319,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
 translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinition ] =
     fn modulesByUmr, usr, def:
-    'usr umr name =
+    'USR umr name =
         usr
 
     env as Env =
@@ -344,24 +344,24 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
                 , freeTyvars = def.freeTyvars
                 , freeUnivars = def.freeUnivars
                 , parameters = []
-                , returnType = def.type
+                , returnType = { uni = 'imm, raw = def.type }
                 , usr = EA.translateUsr usr TA.rootLambdaRef
                 }
 
             Dict.for [ valueDef ] def.lambdas fn index, lambda, defs:
-                if lambdaSetId /= index then
-                    log "MISMATCH" { index, lambdaSetId }
+                if lambda.lambdaSetId /= index then
+                    log "MISMATCH" { index, lambdaSetId = lambda.lambdaSetId }
 
                     'none
                 else
                     'none
 
                 baseBody =
-                    translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } lambda.body
+                    translateExpression { env with genVarCounter = List.length lambda.pars + .genVarCounter } lambda.body
 
                 wrappedBody & parameters =
-                    baseExpr & []
-                    >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
+                    baseBody & []
+                    >> List.forReversed __ lambda.pars fn taPar, bodyAcc & eaParsAcc:
                         bodyX & eaPar =
                             translateParameter { env with genVarCounter = List.length eaParsAcc + .genVarCounter } bodyAcc taPar
 

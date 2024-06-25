@@ -34,7 +34,8 @@ load as fn a: Result TA.RawType IntegerOnly =
         , expr = EA.'literalNumber 42
         , freeTyvars = Dict.empty
         , freeUnivars = Dict.empty
-        , type = numberType
+        , parameters = []
+        , returnType = { uni = 'imm, raw = numberType }
         , usr = translatedUsr
         }
 

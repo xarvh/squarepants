@@ -178,7 +178,7 @@ infer as fn Text: fn Text: Result Text Out =
         {
         , freeTyvars = ft
         , type =
-            def.returnType
+            def.returnType.raw
             >> TA.normalizeType @hash __
             >> TA.stripTypePos
         }
