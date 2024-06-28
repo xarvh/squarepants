@@ -24,7 +24,7 @@ var Expression =
     , 'globalVariable TranslatedUsr
     , 'placeholderVariable Int
     , 'call Expression [ Argument ]
-    , 'lambda TranslatedUsr Int (Dict Name TA.FullType)
+    , 'lambda TranslatedUsr (Dict Name TA.FullType)
     , 'conditional Expression Expression Expression
     , 'and [ Expression ]
     , 'isLiteralText Text Expression

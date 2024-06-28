@@ -6,15 +6,19 @@ var Def =
     , 'missingDef
 
 
-CollectDependenciesState =
+State =
     {
+    # Dependency collection
     , done as Hash USR { def as Def, deps as Dict USR DependencyType }
     , loadedModulesByUmr as Hash UMR CA.Module
     , pending as Hash USR DependencyType
+
+    # Unification
+    , lastUnificationVarId as Int
     }
 
 
-initCollectDependenciesState as fn [ USR & DependencyType ]: !CollectDependenciesState =
+initState as fn [ USR & DependencyType ]: !State =
     fn pendingList:
     !pending =
         Hash.fromList pendingList
@@ -39,10 +43,11 @@ initCollectDependenciesState as fn [ USR & DependencyType ]: !CollectDependencie
     , done = Hash.fromList []
     , loadedModulesByUmr = Hash.fromList [ CoreDefs.umr & CoreDefs.coreModule ]
     , pending
+    , lastUnificationVarId = 0
     }
 
 
-collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, DependencyType: Res None =
+collectUsrDependencies as fn BuildPlan, @State, USR, DependencyType: Res None =
     fn env, @state, usr, depType:
 #
     'USR umr name =
@@ -100,7 +105,7 @@ collectUsrDependencies as fn BuildPlan, @CollectDependenciesState, USR, Dependen
     'ok 'none
 
 
-collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Res None =
+collectRequiredUsrs as fn BuildPlan, @State: Res None =
     fn env, @state:
     try Hash.pop @state.pending as
 
@@ -115,7 +120,7 @@ collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Res None =
             collectRequiredUsrs env @state
 
 
-expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
+expandAndInsertType as fn @State, @Array Error, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
     fn @state, @errors, usr, env0:
     try Hash.get @state.done usr as
 
@@ -137,8 +142,8 @@ expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler
                     env0
 
 
-typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, @lastUnificationVarId, usr, env0:
+typecheckDefinition as fn @State, @Array Error, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
+    fn @state, @errors, usr, env0:
 #    log "typechecking:" (Human/Type.usrToText env0 usr)
 
     try Hash.get @state.done usr as
@@ -148,13 +153,13 @@ typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, USR, Co
 
         'just { def, deps }:
             try def as
-                'valueDef valueDef: Compiler/TypeCheck.doRootDefinition @lastUnificationVarId @errors usr env0 valueDef
+                'valueDef valueDef: Compiler/TypeCheck.doRootDefinition @state.lastUnificationVarId @errors usr env0 valueDef
                 'constructorDef constructorDef: Compiler/TypeCheck.addConstructorToGlobalEnv @errors constructorDef.name constructorDef env0
                 _: env0
 
 
-evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ USR ], Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, @lastUnificationVarId, circular, env0:
+evaluateCircularValues as fn @State, @Array Error, [ USR ], Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
+    fn @state, @errors, circular, env0:
         # TODO do all aliases first, then all values, otherwise Compiler/TypeCheck.translateRaw will go infinite
 
         try circular as
@@ -235,10 +240,10 @@ BuildOut =
 
 build as fn BuildPlan: Res BuildOut =
     fn pars:
-    !state as CollectDependenciesState =
+    !state as State =
         pars.requiredUsrs
         >> List.map (fn usr: usr & usrToDependencyType usr) __
-        >> initCollectDependenciesState
+        >> initState
 
     collectRequiredUsrs pars @state
     >> onOk fn 'none:
@@ -317,16 +322,13 @@ build as fn BuildPlan: Res BuildOut =
     #
     # Typecheck and build global env
     #
-    !lastUnificationVarId =
-        cloneImm 0
-
     env2 =
-        List.for env1 circulars (evaluateCircularValues @state @errors @lastUnificationVarId __ __)
+        List.for env1 circulars (evaluateCircularValues @state @errors __ __)
 
     stopOnError pars @errors
     >> onOk fn 'none:
     envF =
-        List.for env2 orderedUsrs (typecheckDefinition @state @errors @lastUnificationVarId __ __)
+        List.for env2 orderedUsrs (typecheckDefinition @state @errors __ __)
 
     #
     # Uniqueness check

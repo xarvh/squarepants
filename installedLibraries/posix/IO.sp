@@ -7,8 +7,12 @@ Re b =
     Result Text b
 
 
-var IO =
-    , 'never IO
+var IO_ =
+    , 'never IO_
+
+
+IO =
+    { never as IO_ }
 
 
 #

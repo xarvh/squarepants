@@ -21,11 +21,12 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
 
         Fmt.'stack head tail:
             !done =
-                'false
+                # HACK is needed to be able to compile to JS
+                { hack = 'false }
 
             doLine =
                 fn indentedLine:
-                if cloneUni @done then
+                if cloneUni @done.hack then
                     indentedLine
                 else
                     try indentedLine as
@@ -42,7 +43,7 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
                             if isDecoration then
                                 indentedLine
                             else
-                                @done := 'true
+                                @done.hack := 'true
 
                                 Fmt.'row (Fmt.'text_ prefix) line >> Fmt.'indented i __
 
@@ -55,7 +56,7 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
                     block
 
                 h :: t:
-                    if cloneUni @done then
+                    if cloneUni @done.hack then
                         Fmt.'stack h t
                     else
                         Fmt.prefix (Text.length prefix) (Fmt.'text_ prefix) block

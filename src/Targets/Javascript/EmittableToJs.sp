@@ -248,11 +248,6 @@ translateName as fn Name: Text =
     >> "$" .. __
 
 
-translateLambda as fn EA.TranslatedUsr, Int: Text =
-    fn usr, id:
-    _usrToText usr .. "$$" .. Text.fromNumber id
-
-
 constructorUsrToText as fn USR: Text =
     fn usr:
     EA.translateUsr usr 0 >> _usrToText
@@ -404,6 +399,44 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         >> JA.'comma
 
 
+typeIsPointy as fn TA.RawType: Bool =
+    fn raw:
+    try raw as
+
+        TA.'typeRecord _ _ _:
+            'true
+
+        TA.'typeExact _ ('USR ('UMR Meta.'core pathId moduleName) typeName) _:
+            try moduleName & typeName as
+                "Array" & "Array": 'true
+                "Hash" & "Hash": 'true
+                _: 'false
+
+        _:
+            'false
+
+
+assertThatContextIsPointy as fn EA.TranslatedUsr, Dict Name TA.FullType: None =
+    fn usr, context:
+    Dict.each context fn name, { raw, uni }:
+        try uni as
+
+            'imm:
+                'none
+
+            'uni:
+                if typeIsPointy raw then
+                    'none
+                else
+                    log "JS does not support this type as mutable: " raw
+
+                    log "Please wrap it into a record or soemthing in" usr
+
+                    log "sorry for this T_T" ""
+
+                    todo "aborting"
+
+
 translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
     fn env, mustReturnValue, eaExpression:
     perhapsReturn =
@@ -442,48 +475,23 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
                 'just ('override { call, value = _ }): call env args >> 'inline
                 'nothing: makeCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
-        EA.'lambda usr id context:
-            translateLambda usr id
-            >> JA.'var
+        EA.'lambda usr context:
+            assertThatContextIsPointy usr context
+
+            jsContextObject as Dict Name JA.Expr =
+                Dict.for Dict.empty context fn name, type, obj:
+                    name
+                    >> translateName
+                    >> JA.'var
+                    >> Dict.insert name __ obj
+
+            [
+            , "usr" & JA.'var (_usrToText usr)
+            , "ctx" & JA.'record jsContextObject
+            ]
+            >> Dict.fromList
+            >> JA.'record
             >> 'inline
-
-#            todo "lambda"
-#            argsWithNames as [ Bool & Text ] =
-#                zzz =
-#                    fn index, re & maybeName:
-#                    try maybeName as
-#                        'just name: re & translateName name
-#                        'nothing: re & "_" .. Text.fromNumber index
-#
-#                List.indexedMap zzz eaArgs
-#
-#            recycledPars as [ JA.Expr ] =
-#                argsWithNames
-#                >> List.filter Tuple.first __
-#                >> List.map (fn _ & name: JA.'var name) __
-#
-#            statementsRaw as [ JA.Statement ] =
-#                try translateExpression env 'true body as
-#                    'inline expr: [ JA.'return expr ]
-#                    'block block: block
-
-        #
-        # Per EA.Call above, recycling functions must return also the new values for the recycled variables
-        #
-#            statementsFinal =
-#                if recycledPars == [] then
-#                    statementsRaw
-#                else
-#                    # Replace all `return x` statements with `return [x, ...recycledPars]`
-#                    addRecycled =
-#                        fn stat:
-#                        try stat as
-#                            JA.'return e: JA.'return (JA.'array (e :: recycledPars))
-#                            _: stat
-#
-#                    List.map addRecycled statementsRaw
-#
-#            'inline << JA.'blockLambda (List.map Tuple.second argsWithNames) statementsFinal
 
         EA.'letIn { inExpression, letExpression, maybeName, type }:
             inStatements =
@@ -633,8 +641,62 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn env, def:
     try Dict.get def.usr env.overrides as
-        'just _: 'nothing
-        'nothing: JA.'define 'false (_usrToText def.usr) (translateExpressionToExpression env 'true def.expr) >> 'just
+
+        'just _:
+            'nothing
+
+        'nothing:
+            if def.parameters == [] then
+                body =
+                    translateExpressionToExpression env 'true def.expr
+
+                JA.'define 'false (_usrToText def.usr) body >> 'just
+            else
+                body =
+                    translateExpression env 'true def.expr
+
+                argsWithNames as [ Bool & Text ] =
+                    zzz =
+                        fn index, fullType & maybeName:
+                        re =
+                            fullType.uni == 'uni
+
+                        try maybeName as
+                            'just name: re & translateName name
+                            'nothing: re & "_" .. Text.fromNumber index
+
+                    List.indexedMap zzz def.parameters
+
+                recycledPars as [ JA.Expr ] =
+                    argsWithNames
+                    >> List.filter Tuple.first __
+                    >> List.map (fn _ & name: JA.'var name) __
+
+                statementsRaw as [ JA.Statement ] =
+                    try body as
+                        'inline expr: [ JA.'return expr ]
+                        'block block: block
+
+                #
+                # Per EA.Call above, recycling functions must return also the new values for the recycled variables
+                #
+                statementsFinal =
+                    if recycledPars == [] then
+                        statementsRaw
+                    else
+                        # Replace all `return x` statements with `return [x, ...recycledPars]`
+                        addRecycled =
+                            fn stat:
+                            try stat as
+                                JA.'return e: JA.'return (JA.'array [ e, recycledPars... ])
+                                _: stat
+
+                        List.map addRecycled statementsRaw
+
+                statementsFinal
+                >> JA.'blockLambda (List.map Tuple.second argsWithNames) __
+                >> JA.'define 'false (_usrToText def.usr) __
+                >> 'just
 
 
 TranslateAllPars =

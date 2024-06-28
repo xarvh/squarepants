@@ -465,16 +465,16 @@ normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
 
         'nothing:
             !maxId =
-                0
+                { hack = 0 }
 
             Hash.each @hash fn k, v:
-                if v > cloneUni @maxId then
-                    @maxId := cloneImm v
+                if v > cloneUni @maxId.hack then
+                    @maxId.hack := cloneImm v
                 else
                     'none
 
             nid =
-                maxId + 1
+                maxId.hack + 1
 
             Hash.insert @hash id nid
 

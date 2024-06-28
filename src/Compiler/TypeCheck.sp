@@ -977,7 +977,8 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
 addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
     fn @errors, pos, usr, annotation, env:
     !lastLambdaSetId =
-        0
+        # HACK compiling to JS does not support unwrapped unique Ints
+        { hack = 0 }
 
     # FRAGILE! we are assuming that the indices here and in freeTyvars are the same!
     argsByName =
@@ -1001,7 +1002,7 @@ addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
             {
             , argsByName
             , env
-            , newLambdaSetId = 'just (fn _: nextId @lastLambdaSetId)
+            , newLambdaSetId = 'just (fn _: nextId @lastLambdaSetId.hack)
             , originalIdToNewId = Dict.empty
             , pushError = Array.push @errors __
             }
