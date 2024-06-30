@@ -1369,16 +1369,10 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
             TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
-getContext as fn Env, [ CA.Parameter ], TA.Expression: Dict Name TA.FullType =
-    fn env, pars, expression:
+getLocalRefs as fn TA.Expression: Set Name =
+    fn expression:
     rec =
-        getContext env pars __
-
-    insert =
-        fn name, context:
-        try Dict.get ('refLocal name) env.variables as
-            'nothing: context
-            'just instance: Dict.insert name instance.type context
+        getLocalRefs
 
     try expression as
 
@@ -1394,43 +1388,36 @@ getContext as fn Env, [ CA.Parameter ], TA.Expression: Dict Name TA.FullType =
         TA.'variable _ ('refGlobal _):
             Dict.empty
 
-        TA.'variable _ ('refPlaceholder index):
+        TA.'variable _ ('refPlaceholder _):
             Dict.empty
 
         TA.'variable _ ('refLocal name):
-            insert name Dict.empty
+            # TODO: if we had the type here we could build the context already
+            # But getting it from env is probably not worth it?
+            Set.ofOne name
 
         TA.'lambda _ _ subContext:
-            List.for subContext pars fn par, context:
-                try par as
-
-                    CA.'parameterPattern _ pattern:
-                        List.for context (CA.patternNames pattern) fn out, context1:
-                            Dict.remove out.name context1
-
-                    CA.'parameterRecycle _ name:
-                        Dict.remove name context
-
-                    CA.'parameterPlaceholder index:
-                        context
+            Dict.map (fn n, _: 'none) subContext
 
         TA.'call p setId ref args:
-            List.for (rec ref) args fn arg, context:
+            List.for (rec ref) args fn arg, acc:
                 try arg as
-                    TA.'argumentRecycle _ raw _ name: insert name context
-                    TA.'argumentExpression fullType exp: Dict.join context (rec exp)
+                    TA.'argumentRecycle _ raw _ name: Set.insert name acc
+                    TA.'argumentExpression fullType exp: Dict.join acc (rec exp)
 
         TA.'record p maybeExt attrs:
             try maybeExt as
                 'nothing: Dict.empty
                 'just ext: rec ext
-            >> Dict.for __ attrs (fn _, exp, context: Dict.join context (rec exp))
+            >> Dict.for __ attrs (fn _, exp, acc: Dict.join acc (rec exp))
 
         TA.'recordAccess p name exp:
             rec exp
 
         TA.'letIn def rest restType:
             Dict.join (rec def.body) (rec rest)
+            >> Dict.for __ (TA.patternNames def.pattern) fn name, _, acc:
+                Set.remove name acc
 
         TA.'if p { condition, false, true }:
             rec condition
@@ -1438,18 +1425,45 @@ getContext as fn Env, [ CA.Parameter ], TA.Expression: Dict Name TA.FullType =
             >> Dict.join __ (rec false)
 
         TA.'try p { patternsAndExpressions, value, valueType }:
-            List.for (rec value) patternsAndExpressions fn _ & exp, context:
-                Dict.join context (rec exp)
+            List.for (rec value) patternsAndExpressions fn pattern & exp, acc:
+                rec exp
+                >> Dict.for __ (TA.patternNames pattern) fn name, _, accX:
+                    Set.remove name accX
+                >> Dict.join acc __
 
         TA.'destroyIn n e:
-            #'destroyIn n (rec e)
-            Dict.empty
+            rec e
 
         TA.'error p:
             Dict.empty
 
         TA.'introspect _:
             Dict.empty
+
+
+getContext as fn Env, [ TA.Parameter ], TA.Expression: Dict Name TA.FullType =
+    fn env, pars, expression:
+    #
+    getType as fn Name, None: TA.FullType =
+        fn name, 'none:
+            try Dict.get ('refLocal name) env.variables as
+                'nothing: bug ("bleh " .. name .. "\n\n" .. Debug.toHuman expression)
+                'just instance: instance.type
+
+    getLocalRefs expression
+    >> List.for __ pars fn par, acc:
+        try par as
+
+            TA.'parameterPattern _ pattern:
+                Dict.for acc (TA.patternNames pattern) fn name, _, accX:
+                    Set.remove name accX
+
+            TA.'parameterRecycle _ _ name:
+                Set.remove name acc
+
+            TA.'parameterPlaceholder _ _:
+                acc
+    >> Dict.map getType __
 
 
 inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression & TA.FullType =
@@ -1500,8 +1514,11 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
     type as TA.RawType =
         TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
 
+    pars =
+        Array.toList @typedPars
+
     context =
-        getContext env caPars typedBody
+        getContext newEnv pars typedBody
 
     Hash.insert
         @state.lambdas
@@ -1509,7 +1526,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
         {
         , body = typedBody
         , lambdaSetId = lambdaSet
-        , pars = Array.toList @typedPars
+        , pars
         , returnType = bodyType
         }
 
@@ -1928,8 +1945,11 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                         lambdaSetMustInclude @state lambdaSet lambdaRef
 
+                        taPars =
+                            Array.toList @typedPars
+
                         context =
-                            getContext pars.env fnPars typedBody
+                            getContext pars.env taPars typedBody
 
                         Hash.insert
                             @state.lambdas
@@ -1937,7 +1957,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
                             {
                             , body = typedBody
                             , lambdaSetId = lambdaSet
-                            , pars = Array.toList @typedPars
+                            , pars = taPars
                             , returnType = out
                             }
 

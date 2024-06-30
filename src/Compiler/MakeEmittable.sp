@@ -4,6 +4,7 @@ Env =
     , module as CA.Module
     }
 
+
 State =
     {
     , lambdaContextes as Hash EA.TranslatedUsr (Dict Name TA.FullType)
@@ -166,8 +167,11 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
             EA.'placeholderVariable n
 
         TA.'lambda _ (usr & id) context:
-            tUsr = (EA.translateUsr usr id)
+            tUsr =
+                EA.translateUsr usr id
+
             Hash.insert @state.lambdaContextes tUsr context
+
             EA.'lambda tUsr context
 
         TA.'constructor _ usr:
@@ -326,15 +330,12 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
 
 translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinition ] =
     fn modulesByUmr, usr, def:
-
-
     try def.body as
 
         'nothing:
             []
 
         'just body:
-
             'USR umr name =
                 usr
 
@@ -352,21 +353,19 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
                 , lambdaContextes = Hash.fromList []
                 }
 
-
-
             valueDef as EA.GlobalDefinition =
                 {
+                , context = Dict.empty
                 , deps = def.directDeps
                 , expr = translateExpression env @state body
                 , freeTyvars = def.freeTyvars
                 , freeUnivars = def.freeUnivars
                 , parameters = []
-                , returnType = { uni = 'imm, raw = def.type }
+                , returnType = { raw = def.type, uni = 'imm }
                 , usr = EA.translateUsr usr TA.rootLambdaRef
                 }
 
             Dict.for [ valueDef ] def.lambdas fn index, lambda, defs:
-
                 baseBody =
                     translateExpression { env with genVarCounter = List.length lambda.pars + .genVarCounter } @state lambda.body
 
@@ -378,7 +377,8 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
 
                         bodyX & [ eaPar, eaParsAcc... ]
 
-                tUsr = EA.translateUsr usr index
+                tUsr =
+                    EA.translateUsr usr index
 
                 context =
                     try Hash.get @state.lambdaContextes tUsr as
@@ -387,6 +387,7 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
 
                 eaDef as EA.GlobalDefinition =
                     {
+                    , context
                     , deps = Dict.empty
                     , expr = wrappedBody
                     , freeTyvars = def.freeTyvars

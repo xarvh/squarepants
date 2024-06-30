@@ -52,6 +52,7 @@ var Argument =
 
 GlobalDefinition =
     {
+    , context as Dict Name TA.FullType
     # We need deps to be able to put defs in the right order
     # TODO no we don't need them any more. =|
     , deps as CA.Deps

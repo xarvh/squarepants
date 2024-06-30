@@ -30,6 +30,7 @@ load as fn a: Result TA.RawType IntegerOnly =
 
     def as EA.GlobalDefinition =
         {
+        , context = Dict.empty
         , deps = Dict.empty
         , expr = EA.'literalNumber 42
         , freeTyvars = Dict.empty
