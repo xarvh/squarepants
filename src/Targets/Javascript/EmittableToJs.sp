@@ -159,7 +159,7 @@ binop as fn Text: Override =
 constructor as fn Text: Override =
     fn jsValue:
     {
-    , call = fn env, args: makeCall env (JA.'var jsValue) args
+    , call = fn env, args: simpleCall env (JA.'var jsValue) args
     , value = fn env: JA.'var jsValue
     }
     >> 'override
@@ -168,7 +168,7 @@ constructor as fn Text: Override =
 function as fn Text: Override =
     fn jaName:
     {
-    , call = fn env, args: makeCall env (JA.'var jaName) args
+    , call = fn env, args: simpleCall env (JA.'var jaName) args
     , value = fn env: JA.'var jaName
     }
     >> 'override
@@ -344,13 +344,28 @@ translateExpressionToExpression as fn Env, Bool, EA.Expression: JA.Expr =
         'block block: wrapInAutoLambda block
 
 
-makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
-    fn env, jaRef, args:
-    call =
-        args
-        >> List.map (translateArg { nativeBinop = 'false } env __) __
-        >> JA.'call jaRef __
+simpleCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
+    fn env, jaRef, eaArgs:
+    eaArgs
+    >> List.map (translateArg { nativeBinop = 'false } env __) __
+    >> JA.'call jaRef __
+    >> maybeWrapMutable eaArgs __
 
+
+contextCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
+    fn env, jaRef, eaArgs:
+    [
+    , JA.'threeDots (JA.'accessWithDot "ctx" jaRef)
+    , List.map (translateArg { nativeBinop = 'false } env __) eaArgs...
+    ]
+    >> JA.'call (JA.'accessWithDot "usr" jaRef) __
+    >> maybeWrapMutable eaArgs __
+
+
+[# TODO Once we update the runtime functions, this won't be ecessary any more
+#]
+maybeWrapMutable as fn [ EA.Argument ], JA.Expr: JA.Expr =
+    fn args, call:
     asRecycled as fn EA.Argument: Maybe JA.Expr =
         fn arg:
         try arg as
@@ -374,6 +389,7 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         #
         call
     else
+        [#
         zzz =
             fn index, arg:
             bracketIndex =
@@ -397,6 +413,8 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         ]
         >> List.concat
         >> JA.'comma
+        #]
+        JA.'accessWithBrackets (JA.'literal "0") call
 
 
 typeIsPointy as fn TA.RawType: Bool =
@@ -473,21 +491,19 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
 
             try maybeNativeOverride as
                 'just ('override { call, value = _ }): call env args >> 'inline
-                'nothing: makeCall env (translateExpressionToExpression env 'true ref) args >> 'inline
+                'nothing: contextCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
         EA.'lambda usr context:
             assertThatContextIsPointy usr context
 
-            jsContextObject as Dict Name JA.Expr =
-                Dict.for Dict.empty context fn name, type, obj:
-                    name
-                    >> translateName
-                    >> JA.'var
-                    >> Dict.insert name __ obj
+            contextItems as [ JA.Expr ] =
+                context
+                >> Dict.keys
+                >> List.map (__ >> translateName >> JA.'var) __
 
             [
             , "usr" & JA.'var (_usrToText usr)
-            , "ctx" & JA.'record jsContextObject
+            , "ctx" & JA.'array contextItems
             ]
             >> Dict.fromList
             >> JA.'record
@@ -546,7 +562,13 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
             JA.'binop "===" (translateExpressionToExpression env 'true (EA.'literalNumber number)) (translateExpressionToExpression env 'true b) >> 'inline
 
         EA.'constructor usr:
-            maybeOverrideUsrForConstructor env usr >> 'inline
+            [
+            , "usr" & maybeOverrideUsrForConstructor env usr
+            , "ctx" & JA.'array []
+            ]
+            >> Dict.fromList
+            >> JA.'record
+            >> 'inline
 
         EA.'constructorAccess argIndex value:
             accessArrayIndex (argIndex + 1) (translateExpressionToExpression env 'true value) >> 'inline

@@ -59,3 +59,6 @@ var Expr =
     , #
       # (a, b, c)
       'comma [ Expr ]
+    , #
+      # ...a
+      'threeDots Expr
