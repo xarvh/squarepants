@@ -1,5 +1,7 @@
 Env =
     {
+    # The Dict value here is not used, but it's faster to have it than not to have it.
+    , currentLetInNames as Dict Name { pos as Pos, type as TA.FullType }
     , genVarCounter as Int
     , module as CA.Module
     }
@@ -269,13 +271,16 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
             >> wrapWithLetIn
 
         TA.'letIn valueDef e bodyType:
+            env1 =
+                { env with currentLetInNames = Dict.join (TA.patternNames valueDef.pattern) .currentLetInNames }
+
             try pickMainName valueDef.pattern as
 
                 'noNamedVariables:
                     EA.'letIn
                         {
-                        , inExpression = translateExpression env @state e
-                        , letExpression = translateExpression env @state valueDef.body
+                        , inExpression = translateExpression env1 @state e
+                        , letExpression = translateExpression env1 @state valueDef.body
                         , maybeName = 'nothing
                         , type = valueDef.type
                         }
@@ -283,8 +288,8 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
                 'trivialPattern defName type:
                     EA.'letIn
                         {
-                        , inExpression = translateExpression env @state e
-                        , letExpression = translateExpression env @state valueDef.body
+                        , inExpression = translateExpression env1 @state e
+                        , letExpression = translateExpression env1 @state valueDef.body
                         , maybeName = 'just defName
                         , type
                         }
@@ -292,7 +297,7 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
                 'generateName:
                     mainName & newEnv =
                         # TODO check if body is just a variable
-                        generateName env
+                        generateName env1
 
                     namesAndExpressions =
                         translatePattern valueDef.pattern (EA.'localVariable mainName)
@@ -341,6 +346,7 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
 
             env as Env =
                 {
+                , currentLetInNames = Dict.empty
                 , genVarCounter = 0
                 , module =
                     try Dict.get umr modulesByUmr as

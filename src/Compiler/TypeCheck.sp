@@ -1466,6 +1466,53 @@ getContext as fn Env, [ TA.Parameter ], TA.Expression: Dict Name TA.FullType =
     >> Dict.map getType __
 
 
+DoLambdaPars =
+    {
+    , env as Env
+    , lambdaPos as Pos
+    , lambdaSet as TA.LambdaSetId
+    , parTypes as [ TA.ParType ]
+    , runBodyCheck as fn @State: TA.Expression & TA.FullType
+    , typePos as Pos
+    , typedPars as [ TA.Parameter ]
+    }
+
+
+doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
+    fn pars, @state:
+    # This goes before the body check, so that lambdaRefs appear in the correct nesting order
+    lambdaId =
+        nextId @state.lastLambdaRefId
+
+    typedBody & bodyType =
+        pars.runBodyCheck @state
+
+    lambdaRef =
+        pars.env.currentRootUsr & lambdaId
+
+    lambdaSetMustInclude @state pars.lambdaSet lambdaRef
+
+    context =
+        getContext pars.env pars.typedPars typedBody
+
+    #... check & break recursion
+
+    Hash.insert
+        @state.lambdas
+        lambdaId
+        {
+        , body = typedBody
+        , lambdaSetId = pars.lambdaSet
+        , pars = pars.typedPars
+        , returnType = bodyType
+        }
+
+    raw as TA.RawType =
+        TA.'typeFn pars.typePos pars.lambdaSet pars.parTypes bodyType
+
+    TA.'lambda pars.lambdaPos lambdaRef context & { raw, uni = 'uni }
+
+
 inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, caPars, body, @state:
     [#
@@ -1496,42 +1543,54 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
 
             envX1
 
-    # This goes before the body check, so that lambdaRefs appear in the correct nesting order
-    lambdaId =
-        nextId @state.lastLambdaRefId
-
-    lambdaRef =
-        env.currentRootUsr & lambdaId
-
-    typedBody & bodyType =
-        inferExpression { newEnv with context = 'context_FnBody pos env.context } body @state
-
-    lambdaSet =
-        nextId @state.lastLambdaSetId
-
-    lambdaSetMustInclude @state lambdaSet lambdaRef
-
-    type as TA.RawType =
-        TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
-
-    pars =
-        Array.toList @typedPars
-
-    context =
-        getContext newEnv pars typedBody
-
-    Hash.insert
-        @state.lambdas
-        lambdaId
+    doLambda
         {
-        , body = typedBody
-        , lambdaSetId = lambdaSet
-        , pars
-        , returnType = bodyType
+        , env = newEnv
+        , lambdaPos = pos
+        , lambdaSet = nextId @state.lastLambdaSetId
+        , parTypes = Array.toList @parTypes
+        , runBodyCheck = fn @s: inferExpression { newEnv with context = 'context_FnBody pos env.context } body @s
+        , typePos = pos
+        , typedPars = Array.toList @typedPars
         }
+        @state
 
-    TA.'lambda pos lambdaRef context & { raw = type, uni = 'uni }
 
+#    # This goes before the body check, so that lambdaRefs appear in the correct nesting order
+#    lambdaId =
+#        nextId @state.lastLambdaRefId
+#
+#    lambdaRef =
+#        env.currentRootUsr & lambdaId
+#
+#    typedBody & bodyType =
+#        inferExpression { newEnv with context = 'context_FnBody pos env.context } body @state
+#
+#    lambdaSet =
+#        nextId @state.lastLambdaSetId
+#
+#    lambdaSetMustInclude @state lambdaSet lambdaRef
+#
+#    type as TA.RawType =
+#        TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
+#
+#    pars =
+#        Array.toList @typedPars
+#
+#    context =
+#        getContext newEnv pars typedBody
+#
+#    Hash.insert
+#        @state.lambdas
+#        lambdaId
+#        {
+#        , body = typedBody
+#        , lambdaSetId = lambdaSet
+#        , pars
+#        , returnType = bodyType
+#        }
+#
+#    TA.'lambda pos lambdaRef context & { raw = type, uni = 'uni }
 
 inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
     fn env, pos, attrName, inferredType, @state:
@@ -1930,38 +1989,50 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
 
                                 envX1
 
-                        # This goes before the body check, so that lambdaRefs appear in the correct nesting order
-                        lambdaId =
-                            nextId @state.lastLambdaRefId
-
-                        lambdaRef =
-                            pars.env.currentRootUsr & lambdaId
-
-                        typedBody & bodyType =
-                            checkExpression { pars with env = localEnv } out body @state
-
-                        finalType =
-                            TA.'typeFn typePos lambdaSet parTypes bodyType
-
-                        lambdaSetMustInclude @state lambdaSet lambdaRef
-
-                        taPars =
-                            Array.toList @typedPars
-
-                        context =
-                            getContext pars.env taPars typedBody
-
-                        Hash.insert
-                            @state.lambdas
-                            lambdaId
+                        doLambda
                             {
-                            , body = typedBody
-                            , lambdaSetId = lambdaSet
-                            , pars = taPars
-                            , returnType = out
+                            , env = localEnv
+                            , lambdaPos = pos
+                            , lambdaSet
+                            , parTypes
+                            , runBodyCheck = fn @s: checkExpression { pars with env = localEnv } out body @s
+                            , typePos = typePos
+                            , typedPars = Array.toList @typedPars
                             }
+                            @state
 
-                        TA.'lambda pos lambdaRef context & { raw = finalType, uni = expectedType.uni }
+#                        # This goes before the body check, so that lambdaRefs appear in the correct nesting order
+#                        lambdaId =
+#                            nextId @state.lastLambdaRefId
+#
+#                        lambdaRef =
+#                            pars.env.currentRootUsr & lambdaId
+#
+#                        typedBody & bodyType =
+#                            checkExpression { pars with env = localEnv } out body @state
+#
+#                        finalType =
+#                            TA.'typeFn typePos lambdaSet parTypes bodyType
+#
+#                        lambdaSetMustInclude @state lambdaSet lambdaRef
+#
+#                        taPars =
+#                            Array.toList @typedPars
+#
+#                        context =
+#                            getContext pars.env taPars typedBody
+#
+#                        Hash.insert
+#                            @state.lambdas
+#                            lambdaId
+#                            {
+#                            , body = typedBody
+#                            , lambdaSetId = lambdaSet
+#                            , pars = taPars
+#                            , returnType = out
+#                            }
+#
+#                        TA.'lambda pos lambdaRef context & { raw = finalType, uni = expectedType.uni }
 
                 _:
                     addErrorLocal "This expression is a function, which means its type is always a `fn` type."
