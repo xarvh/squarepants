@@ -149,6 +149,8 @@ Env =
     , annotatedUnivarsByOriginalId as Dict UnivarId UnivarId
     , constructors as ByUsr Instance
     , context as Context
+    # The Dict value here is not used, but it's faster to have it than not to have it.
+    , currentLetInNames as Dict Name { pos as Pos, type as TA.FullType }
     , currentRootUsr as USR
     # TODO merge these two in a single Dict
     , exactTypes as ByUsr [ Name & Pos ]
@@ -167,6 +169,7 @@ initEnv as fn Imports, Dict UMR CA.Module: Env =
     , annotatedUnivarsByOriginalId = Dict.empty
     , constructors = Dict.empty
     , context = 'context_Global
+    , currentLetInNames = Dict.empty
     , currentRootUsr = CoreDefs.usr "error"
     , exactTypes = Dict.empty
     , expandedAliases = Dict.empty
@@ -378,19 +381,23 @@ addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
         @state
 
 
+addErrorText as fn Env, Pos, @State, [ Text ]: None =
+    fn env, pos, @state, lines:
+    lines
+    >> Error.'simple (getErrorModule env) pos __
+    >> Array.push @state.errors __
+
+
 addError as fn Env, Pos, Error_, @State: None =
     fn env, pos, error, @state:
-    addErrorE env pos error @state.errors
-
-
-addErrorE as fn Env, Pos, Error_, @Array Error: None =
-    fn env, pos, error, @errors:
-    [
-    , Debug.toHuman error
-    , Debug.toHuman env.context
-    ]
-    >> Error.'simple (getErrorModule env) pos __
-    >> Array.push @errors __
+    addErrorText
+        env
+        pos
+        @state
+        [
+        , Debug.toHuman error
+        , Debug.toHuman env.context
+        ]
 
 
 addErrorIf as fn Bool, Env, Pos, Error_, @State: None =
@@ -1487,21 +1494,51 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
     typedBody & bodyType =
         pars.runBodyCheck @state
 
+    originalContext =
+        getContext pars.env pars.typedPars typedBody
+
     lambdaRef =
         pars.env.currentRootUsr & lambdaId
 
+    context & body =
+        try Dict.toList (Dict.intersect originalContext pars.env.currentLetInNames) as
+
+            []:
+                originalContext & typedBody
+
+            [ name & { pos, type } ]:
+                context0 =
+                    Dict.remove name originalContext
+
+                body0 =
+                    TA.'letIn
+                        {
+                        , body = TA.'lambda pars.lambdaPos lambdaRef context
+                        , pattern = TA.'patternAny pos { maybeName = 'just name, type }
+                        , type = { raw = type, uni = 'imm }
+                        }
+                        typedBody
+                        bodyType
+
+                context0 & body0
+
+            _:
+                [
+                #TODO
+                , "This kind of messy recursion is not supported."
+                , "Better error messages coming at some point."
+                ]
+                >> addErrorText pars.env pars.lambdaPos @state __
+
+                originalContext & typedBody
+
     lambdaSetMustInclude @state pars.lambdaSet lambdaRef
-
-    context =
-        getContext pars.env pars.typedPars typedBody
-
-    #... check & break recursion
 
     Hash.insert
         @state.lambdas
         lambdaId
         {
-        , body = typedBody
+        , body
         , lambdaSetId = pars.lambdaSet
         , pars = pars.typedPars
         , returnType = bodyType
@@ -1555,42 +1592,6 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
         }
         @state
 
-
-#    # This goes before the body check, so that lambdaRefs appear in the correct nesting order
-#    lambdaId =
-#        nextId @state.lastLambdaRefId
-#
-#    lambdaRef =
-#        env.currentRootUsr & lambdaId
-#
-#    typedBody & bodyType =
-#        inferExpression { newEnv with context = 'context_FnBody pos env.context } body @state
-#
-#    lambdaSet =
-#        nextId @state.lastLambdaSetId
-#
-#    lambdaSetMustInclude @state lambdaSet lambdaRef
-#
-#    type as TA.RawType =
-#        TA.'typeFn pos lambdaSet (Array.toList @parTypes) bodyType
-#
-#    pars =
-#        Array.toList @typedPars
-#
-#    context =
-#        getContext newEnv pars typedBody
-#
-#    Hash.insert
-#        @state.lambdas
-#        lambdaId
-#        {
-#        , body = typedBody
-#        , lambdaSetId = lambdaSet
-#        , pars
-#        , returnType = bodyType
-#        }
-#
-#    TA.'lambda pos lambdaRef context & { raw = type, uni = 'uni }
 
 inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
     fn env, pos, attrName, inferredType, @state:
@@ -1879,8 +1880,7 @@ checkExpression as fn CheckExpressionPars, TA.FullType, CA.Expression, @State: T
         #   Number <=> Text
         #   fn :a => a
         #   ...
-        >> Error.'simple module (CA.expressionPos caExpression) __
-        >> Array.push @state.errors __
+        >> addErrorText pars.env (CA.expressionPos caExpression) @state __
 
     assertLocal as fn Bool, Text: None =
         fn test, typeConstraint:
@@ -2915,8 +2915,7 @@ addErError as fn Env, Equality, Text, @State: None =
     , "TYPE 2 -----------------------"
     , typeToHuman env type2
     ]
-    >> Error.'simple (getErrorModule env) pos __
-    >> Array.push @state.errors __
+    >> addErrorText env pos @state __
 
 
 addErErrorIf as fn Env, Bool, Equality, Text, @State: None =
