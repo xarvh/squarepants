@@ -830,6 +830,7 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
     localEnv =
         { patternOut.env with
         , context = 'context_LetInBody (TA.patternNames patternOut.typedPattern >> Dict.keys)
+        , currentLetInNames = Dict.join (TA.patternNames patternOut.typedPattern) .currentLetInNames
         }
 
     (typedBody as Maybe TA.Expression) & (bodyType as TA.FullType) =
@@ -1514,12 +1515,10 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
                 context0 =
                     Dict.remove name originalContext
 
-                log "rem" name
-
                 body0 =
                     TA.'letIn
                         {
-                        , body = TA.'lambda pars.lambdaPos lambdaRef context
+                        , body = TA.'lambda pars.lambdaPos lambdaRef context0
                         , pattern = TA.'patternAny pos { maybeName = 'just name, type }
                         , type
                         }
