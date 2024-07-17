@@ -168,13 +168,16 @@ translateExpression as fn Env, @State, TA.Expression: EA.Expression =
         TA.'variable _ ('refPlaceholder n):
             EA.'placeholderVariable n
 
-        TA.'lambda _ (usr & id) context:
+        TA.'lambda _ pars:
+            usr & id =
+                pars.ref
+
             tUsr =
                 EA.translateUsr usr id
 
-            Hash.insert @state.lambdaContextes tUsr context
+            Hash.insert @state.lambdaContextes tUsr pars.context
 
-            EA.'lambda tUsr context
+            EA.'lambda tUsr pars.context
 
         TA.'constructor _ usr:
             EA.'constructor (EA.translateUsr usr 0)

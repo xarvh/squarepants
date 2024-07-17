@@ -562,12 +562,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
             JA.'binop "===" (translateExpressionToExpression env 'true (EA.'literalNumber number)) (translateExpressionToExpression env 'true b) >> 'inline
 
         EA.'constructor usr:
-            [
-            , "usr" & maybeOverrideUsrForConstructor env usr
-            , "ctx" & JA.'array []
-            ]
-            >> Dict.fromList
-            >> JA.'record
+            maybeOverrideUsrForConstructor env usr
             >> 'inline
 
         EA.'constructorAccess argIndex value:
@@ -650,9 +645,17 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
                 argNames as [ Text ] =
                     pars >> List.indexedMap (fn index, name: constructorArgumentName (index + 1)) __
 
-                arrayHead :: List.map JA.'var argNames
-                >> JA.'array
-                >> JA.'simpleLambda argNames __
+                fun =
+                    arrayHead :: List.map JA.'var argNames
+                    >> JA.'array
+                    >> JA.'simpleLambda argNames __
+
+                [
+                , "usr" & fun
+                , "ctx" & JA.'array []
+                ]
+                >> Dict.fromList
+                >> JA.'record
 
             _:
                 JA.'array [ arrayHead ]
@@ -677,7 +680,12 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
                 body =
                     translateExpression env 'true def.expr
 
-                argsWithNames as [ Bool & Text ] =
+                contextParameters as [ Bool & Text ]=
+                    def.context
+                        >> Dict.toList
+                        >> List.map (fn name & full: full.uni == 'uni & translateName name) __
+
+                directParameters as [ Bool & Text ] =
                     zzz =
                         fn index, fullType & maybeName:
                         re =
@@ -689,8 +697,11 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
 
                     List.indexedMap zzz def.parameters
 
+                parsWithNames as [ Bool & Text ] =
+                    List.concat [ contextParameters, directParameters ]
+
                 recycledPars as [ JA.Expr ] =
-                    argsWithNames
+                    parsWithNames
                     >> List.filter Tuple.first __
                     >> List.map (fn _ & name: JA.'var name) __
 
@@ -716,7 +727,7 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
                         List.map addRecycled statementsRaw
 
                 statementsFinal
-                >> JA.'blockLambda (List.map Tuple.second argsWithNames) __
+                >> JA.'blockLambda (List.map Tuple.second parsWithNames) __
                 >> JA.'define 'false (_usrToText def.usr) __
                 >> 'just
 

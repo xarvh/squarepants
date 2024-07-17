@@ -511,10 +511,22 @@ doExpression as fn Env, @State, TA.Expression: UniOut TA.Expression =
         TA.'constructor pos usr:
             re
 
-        TA.'lambda pos lambdaRef context:
-            try Dict.get (Tuple.second lambdaRef) env.rootDef.lambdas as
-                'nothing: todo "compiler bug: lambda not found"
-                'just lambda: doFn env pos @state lambdaRef lambda context
+        TA.'lambda pos pars:
+            try Dict.get (Tuple.second pars.ref) env.rootDef.lambdas as
+
+                'nothing:
+                    todo "compiler bug: lambda not found"
+
+                'just lambda:
+                    if pars.definition then
+                        doFn env pos @state pars.ref lambda pars.context
+                    else
+                        {
+                        , recycled = Dict.empty
+                        , required = Dict.empty
+                        , resolved = expression
+                        , spent = Dict.empty
+                        }
 
         TA.'call pos lambdaSet reference arguments:
             doCall env @state pos lambdaSet reference arguments
@@ -763,8 +775,14 @@ doVariable as fn Env, @State, Pos, Name, e: UniOut e =
 
 doFn as fn Env, Pos, @State, TA.LambdaRef, TA.Lambda, Dict Name TA.FullType: UniOut TA.Expression =
     fn env, pos, @state, lambdaRef, lambda, context:
+    #
     { localEnv, parsToBeRecycled, parsToBeSpent } =
-        { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ lambda.pars (doParameter @state __ __)
+        {
+        , localEnv = env
+        , parsToBeRecycled = Dict.empty
+        , parsToBeSpent = Dict.empty
+        }
+        >> List.for __ lambda.pars (doParameter @state __ __)
 
     doneBody =
         doExpression localEnv @state lambda.body
@@ -825,7 +843,7 @@ doFn as fn Env, Pos, @State, TA.LambdaRef, TA.Lambda, Dict Name TA.FullType: Uni
     {
     , recycled = Dict.diff doneBody.recycled parsToBeRecycled
     , required
-    , resolved = TA.'lambda pos lambdaRef context
+    , resolved = TA.'lambda pos { context, definition = 'true, ref = lambdaRef }
     , spent = Dict.empty
     }
 

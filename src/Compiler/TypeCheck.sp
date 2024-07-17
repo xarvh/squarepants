@@ -1376,8 +1376,8 @@ getLocalRefs as fn TA.Expression: Set Name =
             # But getting it from env is probably not worth it?
             Set.ofOne name
 
-        TA.'lambda _ _ subContext:
-            Dict.map (fn n, _: 'none) subContext
+        TA.'lambda _ pars:
+            Dict.map (fn n, _: 'none) pars.context
 
         TA.'call p setId ref args:
             List.for (rec ref) args fn arg, acc:
@@ -1518,7 +1518,7 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
                 body0 =
                     TA.'letIn
                         {
-                        , body = TA.'lambda pars.lambdaPos lambdaRef context0
+                        , body = TA.'lambda pars.lambdaPos { context = context0, definition = 'false, ref = lambdaRef }
                         , pattern = TA.'patternAny pos { maybeName = 'just name, type }
                         , type
                         }
@@ -1552,7 +1552,7 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
     raw as TA.RawType =
         TA.'typeFn pars.typePos pars.lambdaSet pars.parTypes bodyType
 
-    TA.'lambda pars.lambdaPos lambdaRef context & { raw, uni = 'uni }
+    TA.'lambda pars.lambdaPos { context, definition = 'true, ref = lambdaRef } & { raw, uni = 'uni }
 
 
 inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression & TA.FullType =

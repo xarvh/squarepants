@@ -41,7 +41,7 @@ var Expression =
     , 'literalNumber Pos Number
     , 'literalText Pos Text
     , 'variable Pos Ref
-    , 'lambda Pos LambdaRef (Dict Name FullType)
+    , 'lambda Pos { context as Dict Name FullType, definition as Bool, ref as LambdaRef }
     , 'constructor Pos USR
     , 'call Pos LambdaSetId Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -289,10 +289,8 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'constructor _ _:
             expression
 
-        'lambda pos id context:
-            context
-            >> Dict.map (fn name, type: resolveFull saf type) __
-            >> 'lambda pos id __
+        'lambda pos pars:
+            'lambda pos { pars with context = Dict.map (fn name, type: resolveFull saf type) .context }
 
         'call p setId ref args:
             #log "call" (saf.lSet setId)
