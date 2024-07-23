@@ -33,10 +33,10 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
 
 
         const args = arrayToListLow(process.argv.slice(1));
-        process.exitCode =
+        process.exitCode = 
         """
         .. entryName
-        .. """
+        .. """.usr
         (null, process.env, args)[0];
         """
 
@@ -100,10 +100,14 @@ overrides as fn Platform.MakeUmr: [ USR & Text ] =
 
 runtime as Text =
     makeOk as Text =
-        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.constructorUsrToText
+        'USR (CoreDefs.makeUmr "Result") "'ok"
+        >> Targets/Javascript/EmittableToJs.constructorUsrToText
+        >> __ .. ".usr"
 
     makeErr as Text =
-        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.constructorUsrToText
+        'USR (CoreDefs.makeUmr "Result") "'err"
+        >> Targets/Javascript/EmittableToJs.constructorUsrToText
+        >> __ .. ".usr"
 
     """
 
@@ -120,21 +124,21 @@ runtime as Text =
         try {
             entries = fs.readdirSync(dirPath, { withFileTypes: true });
         } catch (e) {
-            return [
+            return 
     """
     .. makeErr
     .. """
-    (e.message), null];
+    (e.message);
             }
 
-            return [
+            return 
     """
     .. makeOk
     .. """
     (arrayToListLow(entries.map((dirent) => ({
                 first: dirent.isDirectory(),
                 second: dirent.name,
-            })))), null];
+            }))));
         };
 
 
@@ -145,18 +149,18 @@ runtime as Text =
             try {
                 content = fs.readFileSync(path, 'utf8');
             } catch (e) {
-                return [
+                return 
     """
     .. makeErr
     .. """
-    (e.message), null];
+    (e.message);
             }
 
-            return [
+            return 
     """
     .. makeOk
     .. """
-    (content), null];
+    (content);
         };
 
 
@@ -166,18 +170,18 @@ runtime as Text =
             try {
                 fs.writeFileSync(path, content);
             } catch (e) {
-                return [
+                return 
     """
     .. makeErr
     .. """
-    (e.message), null];
+    (e.message);
             }
 
-            return [
+            return 
     """
     .. makeOk
     .. """
-    (0), null];
+    (0);
         };
 
 
@@ -185,17 +189,17 @@ runtime as Text =
             // as @IO: Re Text
 
             try {
-                return [
+                return 
     """
     .. makeOk
     .. """
-    (fs.readFileSync(0, 'utf8')), null];
+    (fs.readFileSync(0, 'utf8'));
             } catch (e) {
-                return [
+                return 
     """
     .. makeErr
     .. """
-    (e.message), null];
+    (e.message);
             }
         };
 
@@ -206,18 +210,18 @@ runtime as Text =
             try {
                 fs.writeFileSync(1, content);
             } catch (e) {
-                return [
+                return 
     """
     .. makeErr
     .. """
-    (e.message), null];
+    (e.message);
             }
 
-            return [
+            return 
     """
     .. makeOk
     .. """
-    (null), null];
+    (null);
         };
 
 
@@ -227,18 +231,18 @@ runtime as Text =
             try {
                 fs.writeFileSync(2, content);
             } catch (e) {
-                return [
+                return 
     """
     .. makeErr
     .. """
-    (e.message), null];
+    (e.message);
             }
 
-            return [
+            return 
     """
     .. makeOk
     .. """
-    (null), null];
+    (null);
         };
 
 

@@ -168,8 +168,17 @@ constructor as fn Text: Override =
 function as fn Text: Override =
     fn jaName:
     {
-    , call = fn env, args: simpleCall env (JA.'var jaName) args
-    , value = fn env: JA.'var jaName
+    , call =
+        fn env, args:
+        simpleCall env (JA.'var jaName) args
+    , value =
+        fn env:
+            [
+            , "ctx" & JA.'array []
+            , "usr" & JA.'var jaName
+            ]
+            >> Dict.fromList
+            >> JA.'record
     }
     >> 'override
 
@@ -349,7 +358,6 @@ simpleCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
     eaArgs
     >> List.map (translateArg { nativeBinop = 'false } env __) __
     >> JA.'call jaRef __
-    >> maybeWrapMutable eaArgs __
 
 
 contextCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
@@ -359,62 +367,6 @@ contextCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
     , List.map (translateArg { nativeBinop = 'false } env __) eaArgs...
     ]
     >> JA.'call (JA.'accessWithDot "usr" jaRef) __
-    >> maybeWrapMutable eaArgs __
-
-
-[# TODO Once we update the runtime functions, this won't be ecessary any more
-#]
-maybeWrapMutable as fn [ EA.Argument ], JA.Expr: JA.Expr =
-    fn args, call:
-    asRecycled as fn EA.Argument: Maybe JA.Expr =
-        fn arg:
-        try arg as
-
-            EA.'argumentSpend _ _:
-                'nothing
-
-            EA.'argumentRecycle rawType attrPath name:
-                name
-                >> translateName
-                >> JA.'var
-                >> accessAttrs attrPath __
-                >> 'just
-
-    recycledArgs =
-        List.filterMap asRecycled args
-
-    if recycledArgs == [] then
-        #
-        # ref(arg1, arg2, ...)
-        #
-        call
-    else
-        [#
-        zzz =
-            fn index, arg:
-            bracketIndex =
-                index + 1
-                >> Text.fromNumber
-                >> JA.'literal
-
-            JA.'binop "=" arg (JA.'accessWithBrackets bracketIndex recycleTempVariable)
-
-        #
-        # (t = ref(arg1, re1, arg3, re2, ....), re1 = t[1], re2 = t[2], t[0]);
-        #
-        [
-        # t = ref(arg1, re0, arg3, re1, ....)
-        , [ JA.'binop "=" recycleTempVariable call ]
-        # re1 = t[1], re2 = t[2]
-        , recycledArgs
-        >> List.indexedMap zzz __
-        # t[2]
-        , [ JA.'accessWithBrackets (JA.'literal "0") recycleTempVariable ]
-        ]
-        >> List.concat
-        >> JA.'comma
-        #]
-        JA.'accessWithBrackets (JA.'literal "0") call
 
 
 typeIsPointy as fn TA.RawType: Bool =
@@ -562,8 +514,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
             JA.'binop "===" (translateExpressionToExpression env 'true (EA.'literalNumber number)) (translateExpressionToExpression env 'true b) >> 'inline
 
         EA.'constructor usr:
-            maybeOverrideUsrForConstructor env usr
-            >> 'inline
+            maybeOverrideUsrForConstructor env usr >> 'inline
 
         EA.'constructorAccess argIndex value:
             accessArrayIndex (argIndex + 1) (translateExpressionToExpression env 'true value) >> 'inline
@@ -680,10 +631,10 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
                 body =
                     translateExpression env 'true def.expr
 
-                contextParameters as [ Bool & Text ]=
+                contextParameters as [ Bool & Text ] =
                     def.context
-                        >> Dict.toList
-                        >> List.map (fn name & full: full.uni == 'uni & translateName name) __
+                    >> Dict.toList
+                    >> List.map (fn name & full: full.uni == 'uni & translateName name) __
 
                 directParameters as [ Bool & Text ] =
                     zzz =
@@ -700,33 +651,12 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
                 parsWithNames as [ Bool & Text ] =
                     List.concat [ contextParameters, directParameters ]
 
-                recycledPars as [ JA.Expr ] =
-                    parsWithNames
-                    >> List.filter Tuple.first __
-                    >> List.map (fn _ & name: JA.'var name) __
-
                 statementsRaw as [ JA.Statement ] =
                     try body as
                         'inline expr: [ JA.'return expr ]
                         'block block: block
 
-                #
-                # Per EA.Call above, recycling functions must return also the new values for the recycled variables
-                #
-                statementsFinal =
-                    if recycledPars == [] then
-                        statementsRaw
-                    else
-                        # Replace all `return x` statements with `return [x, ...recycledPars]`
-                        addRecycled =
-                            fn stat:
-                            try stat as
-                                JA.'return e: JA.'return (JA.'array [ e, recycledPars... ])
-                                _: stat
-
-                        List.map addRecycled statementsRaw
-
-                statementsFinal
+                statementsRaw
                 >> JA.'blockLambda (List.map Tuple.second parsWithNames) __
                 >> JA.'define 'false (_usrToText def.usr) __
                 >> 'just

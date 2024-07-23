@@ -10,9 +10,11 @@ nativeDefinitions as Text =
 
     okRef as Text =
         Targets/Javascript/EmittableToJs.constructorUsrToText  ('USR (CoreDefs.makeUmr "Result") "'ok")
+        >> __ .. ".usr"
 
     errRef as Text =
         Targets/Javascript/EmittableToJs.constructorUsrToText ('USR (CoreDefs.makeUmr "Result") "'err")
+        >> __ .. ".usr"
 
 
     nothingRef as Text =
@@ -20,6 +22,7 @@ nativeDefinitions as Text =
 
     justRef as Text =
         Targets/Javascript/EmittableToJs.constructorUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'just")
+        >> __ .. ".usr"
 
 #    translateUsrSelf =
 #        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr
@@ -140,8 +143,7 @@ nativeDefinitions as Text =
     const basics_cloneImm = sp_clone;
 
 
-    const basics_cloneUni = (uni) =>
-        [ sp_clone(uni), uni ];
+    const basics_cloneUni = sp_clone;
 
 
     //
@@ -350,28 +352,32 @@ nativeDefinitions as Text =
         const text_startsWith = (sub, s) => s.startsWith(sub);
 
         const text_startsWithRegex = (regex) => {
-          let re;
+          let re, f;
           try {
             re = new RegExp('^' + regex, 's');
           } catch (e) {
-            return () => ""
+            f = () => "";
           }
 
-          return (s) => {
+          f = (s) => {
             let m = s.match(re);
             return m ? m[0] : "";
-          }
+          };
+
+          return { ctx: [], usr: f };
         }
 
         const text_replaceRegex = (regex) => {
-          let re;
+          let re, f;
           try {
             re = new RegExp(regex, 'g');
           } catch (e) {
-            return () => ""
+            f = () => ""
           }
 
-          return (replacer, s) => s.replace(re, replacer);
+          f = (replacer, s) => s.replace(re, replacer);
+
+          return { ctx: [], usr: f };
         }
 
         const text_trimLeft = (s) => s.trimLeft();
@@ -379,7 +385,7 @@ nativeDefinitions as Text =
         const text_dropLeft = (n, s) => s.slice(n);
 
         const text_forEach = (s, f) => {
-          for (let i of s) f(i);
+          for (let i of s) f.usr(...f.ctx, i);
           return null;
         }
 
@@ -392,18 +398,17 @@ nativeDefinitions as Text =
             for (let key in hash) {
                 const [actualKey, value] = hash[key];
                 delete hash[key];
-                return [
+                return 
     """
     .. justRef
     .. """
-    ({ first: actualKey, second: value }), hash ];
+    ({ first: actualKey, second: value });
             }
 
-            return [
+            return 
     """
     .. nothingRef
-    .. """
-    , hash ];
+    .. """;
         }
 
 
@@ -412,11 +417,9 @@ nativeDefinitions as Text =
 
           // TODO iteration instead of recursion
           const rec = (ls) => {
-            if (ls[0] === '
-    """
+            if (ls[0] === '"""
     .. listNilName
-    .. """
-    ')
+    .. """')
               return hash;
 
             const { first, second } = ls[1];
@@ -432,19 +435,19 @@ nativeDefinitions as Text =
 
         const hash_insert = (hash, key, value) => {
             hash[JSON.stringify(key)] = [key, value];
-            return [null, hash];
+            return null;
         }
 
 
         const hash_remove = (hash, key) => {
             delete hash[JSON.stringify(key)];
-            return [null, hash];
+            return null;
         }
 
 
         const hash_get = (hash, key) => {
             const r = hash[JSON.stringify(key)];
-            return [r === undefined ?
+            return r === undefined ?
     """
     .. nothingRef
     .. """
@@ -452,25 +455,25 @@ nativeDefinitions as Text =
     """
     .. justRef
     .. """
-    (r[1]), hash];
+    (r[1]);
         }
 
 
         const hash_for = (hash, f, acc) => {
             for (let k in hash) {
                 const kv = hash[k];
-                acc = f(kv[0], kv[1], acc);
+                acc = f.usr(...f.ctx, kv[0], kv[1], acc);
             }
-            return [acc, hash];
+            return acc;
         }
 
 
         const hash_each = (hash, f) => {
             for (let k in hash) {
                 const kv = hash[k];
-                f(kv[0], kv[1]);
+                f.usr(...f.ctx, kv[0], kv[1]);
             }
-            return [null, hash];
+            return null;
         }
 
 
@@ -479,17 +482,17 @@ nativeDefinitions as Text =
         //
 
         const array_each = (array, f) => {
-            array.forEach(f);
-            return [null, array];
+            array.forEach((e) => f.usr(...f.ctx, e));
+            return null;
         }
 
         const array_push = (array, item) => {
             array.push(item);
-            return [null, array];
+            return null;
         }
 
         const array_pop = (a) => {
-            return [a.length ?
+            return a.length ?
     """
     .. justRef
     .. """
@@ -497,12 +500,12 @@ nativeDefinitions as Text =
     """
     .. nothingRef
     .. """
-    , a];
+    ;
         }
 
         const array_get = (array, index) => {
             const r = array[index];
-            return [r === undefined ?
+            return r === undefined ?
     """
     .. nothingRef
     .. """
@@ -510,19 +513,19 @@ nativeDefinitions as Text =
     """
     .. justRef
     .. """
-    (r), array];
+    (r);
         }
 
         const array_set = (a, index, item) => {
             if (index < 0) return false;
             if (index >= a.length) return [false, a];
             a[index] = item;
-            return [true, a];
+            return true;
         }
 
         const array_sortBy = (arr, f) => {
             arr.sort((a, b) => basics_compare(f(a), f(b)));
-            return [null, arr];
+            return null;
         }
 
         const arrayToListLow = (arr) => {
@@ -542,7 +545,7 @@ nativeDefinitions as Text =
           return list;
         }
 
-        const array_toList = (arr) => [arrayToListLow(arr), arr];
+        const array_toList = arrayToListLow;
 
 
         const arrayFromListLow = (list) => {
@@ -578,7 +581,7 @@ nativeDefinitions as Text =
     ', item, list];
         }
 
-        const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f(a), f(b))));
+        const list_sortBy = (f, list) => arrayToListLow(arrayFromListLow(list).sort((a, b) => basics_compare(f.usr(...f.ctx, a), f.usr(...f.ctx, b))));
 
 
         //
