@@ -830,7 +830,7 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
     localEnv =
         { patternOut.env with
         , context = 'context_LetInBody (TA.patternNames patternOut.typedPattern >> Dict.keys)
-        , currentLetInNames = Dict.join (TA.patternNames patternOut.typedPattern) .currentLetInNames
+        , currentLetInNames = TA.patternNames patternOut.typedPattern
         }
 
     (typedBody as Maybe TA.Expression) & (bodyType as TA.FullType) =
@@ -1506,6 +1506,7 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
         pars.env.currentRootUsr & lambdaId
 
     context & body =
+
         try Dict.toList (Dict.intersect pars.env.currentLetInNames originalContext) as
 
             []:
@@ -1591,7 +1592,7 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
         , lambdaPos = pos
         , lambdaSet = nextId @state.lastLambdaSetId
         , parTypes = Array.toList @parTypes
-        , runBodyCheck = fn @s: inferExpression { newEnv with context = 'context_FnBody pos env.context } body @s
+        , runBodyCheck = fn @s: inferExpression { newEnv with context = 'context_FnBody pos env.context, currentLetInNames = Dict.empty } body @s
         , typePos = pos
         , typedPars = Array.toList @typedPars
         }
@@ -1991,7 +1992,7 @@ checkExpression as fn Env, CheckExpressionPars, CA.Expression, @State: TA.Expres
                             , lambdaPos = pos
                             , lambdaSet
                             , parTypes
-                            , runBodyCheck = fn @s: checkExpression localEnv { pars with expectedType = out } body @s
+                            , runBodyCheck = fn @s: checkExpression { localEnv with currentLetInNames = Dict.empty } { pars with expectedType = out } body @s
                             , typePos = typePos
                             , typedPars = Array.toList @typedPars
                             }

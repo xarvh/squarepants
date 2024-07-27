@@ -524,7 +524,7 @@ nativeDefinitions as Text =
         }
 
         const array_sortBy = (arr, f) => {
-            arr.sort((a, b) => basics_compare(f(a), f(b)));
+            arr.sort((a, b) => basics_compare(f.usr(...f.ctx, a), f.usr(...f.ctx, b)));
             return null;
         }
 
