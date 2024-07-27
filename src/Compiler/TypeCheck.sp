@@ -65,6 +65,14 @@ bug as fn Text: a =
     todo ("Compiler bug: " .. msg)
 
 
+# HACK This is a workaround for JS's lack of pointers.
+# In theory we could implement this in the EmittableToJs module, in practice it's faster to do it here.
+Counter =
+  {
+  , n as Int
+  }
+
+
 State =
     {
     [#
@@ -98,9 +106,9 @@ State =
     , lambdaSetConstraints as Hash TA.LambdaSetId (Set TA.LambdaRef)
     , lambdaSetUnionFind as UnionFind
     , lambdas as Hash Int TA.Lambda
-    , lastLambdaRefId as Int
-    , lastLambdaSetId as Int
-    , lastUnificationVarId as Int
+    , lastLambdaRefId as Counter
+    , lastLambdaSetId as Counter
+    , lastUnificationVarId as Counter
     , tyvarSubs as Hash TA.TyvarId TA.RawType
     , tyvarsById as Hash TA.TyvarId TA.Tyvar
     , univarSubs as Hash UnivarId Uniqueness
@@ -116,9 +124,9 @@ initState as fn !Int: !State =
     , lambdaSetConstraints = Hash.fromList []
     , lambdaSetUnionFind = UnionFind.fromList []
     , lambdas = Hash.fromList []
-    , lastLambdaRefId = cloneImm TA.rootLambdaRef
-    , lastLambdaSetId = 0
-    , lastUnificationVarId
+    , lastLambdaRefId = { n = cloneImm TA.rootLambdaRef }
+    , lastLambdaSetId = { n = 0 }
+    , lastUnificationVarId = { n = lastUnificationVarId }
     , tyvarSubs = Hash.fromList []
     , tyvarsById = Hash.fromList []
     , univarSubs = Hash.fromList []
@@ -301,11 +309,11 @@ patternError as fn Pos: TA.Pattern =
 #
 #
 #
-nextId as fn @Int: Int =
+nextId as fn @Counter: Int =
     fn @last:
-    @last += 1
+    @last.n += 1
 
-    cloneUni @last
+    cloneUni @last.n
 
 
 newTyvarId as fn @State: TA.TyvarId =
@@ -983,7 +991,7 @@ addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
     fn @errors, pos, usr, annotation, env:
     !lastLambdaSetId =
         # HACK compiling to JS does not support unwrapped unique Ints
-        { hack = 0 }
+        { n = 0 }
 
     # FRAGILE! we are assuming that the indices here and in freeTyvars are the same!
     argsByName =
@@ -1007,7 +1015,7 @@ addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
             {
             , argsByName
             , env
-            , newLambdaSetId = 'just (fn _: nextId @lastLambdaSetId.hack)
+            , newLambdaSetId = 'just (fn _: nextId @lastLambdaSetId)
             , originalIdToNewId = Dict.empty
             , pushError = Array.push @errors __
             }
@@ -2606,13 +2614,13 @@ insertAnnotatedAndNonAnnotated as fn Name, CA.ValueDef, [ CA.ValueDef ] & [ CA.V
         ann & (def :: nonAnn)
 
 
-doRootDefinition as fn @Int, @Array Error, USR, Env, CA.ValueDef: Env =
+doRootDefinition as fn @Counter, @Array Error, USR, Env, CA.ValueDef: Env =
     fn @lastUnificationVarId, @errors, usr, envRaw, def:
     env0 =
         { envRaw with currentRootUsr = usr }
 
     !state as State =
-        initState (cloneUni @lastUnificationVarId)
+        initState (cloneUni @lastUnificationVarId.n)
 
     'USR umr _name =
         usr

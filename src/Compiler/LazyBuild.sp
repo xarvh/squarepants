@@ -14,7 +14,7 @@ State =
     , pending as Hash USR DependencyType
 
     # Unification
-    , lastUnificationVarId as Int
+    , lastUnificationVarId as { n as Int }
     }
 
 
@@ -43,7 +43,7 @@ initState as fn [ USR & DependencyType ]: !State =
     , done = Hash.fromList []
     , loadedModulesByUmr = Hash.fromList [ CoreDefs.umr & CoreDefs.coreModule ]
     , pending
-    , lastUnificationVarId = 0
+    , lastUnificationVarId = { n = 0 }
     }
 
 

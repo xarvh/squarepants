@@ -386,25 +386,26 @@ typeIsPointy as fn TA.RawType: Bool =
             'false
 
 
-assertThatContextIsPointy as fn EA.TranslatedUsr, Dict Name TA.FullType: None =
-    fn usr, context:
-    Dict.each context fn name, { raw, uni }:
-        try uni as
+assertThatFullIsPointy as fn a, TA.FullType: None =
+    fn ref, { raw, uni }:
+    try uni as
+        'uni: assertThatRawIsPointy ref raw
+        _: 'none
 
-            'imm:
-                'none
 
-            'uni:
-                if typeIsPointy raw then
-                    'none
-                else
-                    log "JS does not support this type as mutable: " raw
 
-                    log "Please wrap it into a record or soemthing in" usr
+assertThatRawIsPointy as fn a, TA.RawType: None =
+    fn ref, raw:
+    if typeIsPointy raw then
+        'none
+    else
+        log "JS does not support this type as mutable: " raw
 
-                    log "sorry for this T_T" ""
+        log "Please wrap it into a record or something in" ref
 
-                    todo "aborting"
+        log "sorry for this T_T" ""
+
+        todo "aborting"
 
 
 translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
@@ -446,7 +447,8 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
                 'nothing: contextCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
         EA.'lambda usr context:
-            assertThatContextIsPointy usr context
+            Dict.each context fn name, full:
+                assertThatFullIsPointy usr full
 
             contextItems as [ JA.Expr ] =
                 context
@@ -595,6 +597,11 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
             TA.'typeFn _ _ pars out:
                 argNames as [ Text ] =
                     pars >> List.indexedMap (fn index, name: constructorArgumentName (index + 1)) __
+
+                List.each pars fn par:
+                    try par as
+                        TA.'parRe raw: assertThatRawIsPointy usr raw
+                        TA.'parSp full: assertThatFullIsPointy usr full
 
                 fun =
                     arrayHead :: List.map JA.'var argNames
