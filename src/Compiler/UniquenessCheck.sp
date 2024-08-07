@@ -852,9 +852,7 @@ updateRootDef as fn @Array Error, Dict UMR CA.Module, USR & TA.RootDef: USR & TA
     fn @errors, modulesByUmr, usr & def:
     !state =
         {
-        # TODO really need the reassignment op
-        , errors =
-            cloneUni @errors
+        , errors = Array.fromList []
         , lambdas = Hash.fromList []
         }
 
@@ -885,6 +883,8 @@ updateRootDef as fn @Array Error, Dict UMR CA.Module, USR & TA.RootDef: USR & TA
 
                 usr & { def with body = 'just doneExpression.resolved }
 
-    @errors := state.errors
+    # TODO really need the reassignment op >_<
+    Array.each @state.errors fn e:
+        Array.push @errors e
 
     return

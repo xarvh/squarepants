@@ -2699,7 +2699,7 @@ doRootDefinition as fn @Counter, @Array Error, USR, Env, CA.ValueDef: Env =
 
     # Update lastUnificationVarId!!
     # TODO we can make this safer once we have a 'reassign' op?
-    @lastUnificationVarId := cloneUni @state.lastUnificationVarId
+    @lastUnificationVarId.n := cloneUni @state.lastUnificationVarId.n
 
     # Add errors
     # TODO No need to do this, just set
@@ -2808,8 +2808,9 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: CA.Deps =
 #
 addSub as fn UnivarId, Uniqueness, @Hash UnivarId Uniqueness: None =
     fn newId, newUni, @subs:
-    !newSubs as Hash UnivarId Uniqueness =
-        Hash.fromList []
+
+#    !newSubs as Hash UnivarId Uniqueness =
+#        Hash.fromList []
 
     replace =
         fn uni:
@@ -2818,11 +2819,11 @@ addSub as fn UnivarId, Uniqueness, @Hash UnivarId Uniqueness: None =
             _: uni
 
     Hash.each @subs fn univarId, uniqueness:
-        Hash.insert @newSubs univarId (replace uniqueness)
+        Hash.insert @subs univarId (replace uniqueness)
 
-    Hash.insert @newSubs newId newUni
+    Hash.insert @subs newId newUni
 
-    @subs := newSubs
+#    newSubs
 
 
 solveUniquenessConstraint as fn Env, UnivarEquality, @State: None =

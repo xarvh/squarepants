@@ -518,7 +518,7 @@ nativeDefinitions as Text =
 
         const array_set = (a, index, item) => {
             if (index < 0) return false;
-            if (index >= a.length) return [false, a];
+            if (index >= a.length) return false;
             a[index] = item;
             return true;
         }

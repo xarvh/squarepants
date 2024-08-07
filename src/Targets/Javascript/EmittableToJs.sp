@@ -31,7 +31,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & binop "+"
     , CoreDefs.multiply.usr & binop "*"
     , CoreDefs.subtract.usr & binop "-"
-    , CoreDefs.mutableAssign.usr & binop "="
+    , CoreDefs.mutableAssign.usr & binopMutableAssign
     , CoreDefs.mutableAdd.usr & binop "+="
     , CoreDefs.mutableSubtract.usr & binop "-="
     , CoreDefs.textConcat.usr & binop "+"
@@ -142,6 +142,30 @@ unaryMinus as Override =
     }
     >> 'override
 
+
+binopMutableAssign as Override =
+    call =
+        fn env, arguments:
+        try arguments as
+            [ EA.'argumentRecycle raw [] name, _ ]:
+                log ("@" .. name .. " := ...") ""
+                log "Mutable assignment without a path is not yet implemented in JS." ""
+                todo << ":= for non-paths is not (yet) supported in JS. Sorry. =( " .. toHuman { arguments }
+
+            [ right, left ]:
+                JA.'binop "="
+                    (translateArg { nativeBinop = 'true } env right)
+                    (translateArg { nativeBinop = 'true } env left)
+
+
+            _:
+                todo << "compiler bug: wrong number of arguments for :=" .. toHuman { arguments }
+
+    value =
+         fn env:
+         todo << "binop := has no raw value"
+
+    'override { call , value }
 
 binop as fn Text: Override =
     fn jsOp:
