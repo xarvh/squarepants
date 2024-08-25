@@ -5,6 +5,7 @@ tests as Test =
         """
         [
         , functions
+        , lambdaSets
         , statements
         , recursiveTypes
         , variableTypes
@@ -105,9 +106,8 @@ reset as CA.ValueDef =
     }
 
 
-infer as fn Text: fn Text: Result Text Out =
-    fn targetName:
-    fn code:
+inferRootDef as fn Text, Text: Result Text EA.GlobalDefinition =
+    fn targetName, code:
     params as Compiler/MakeCanonical.ReadOnly =
         {
         , errorModule = TH.errorModule code
@@ -167,6 +167,15 @@ infer as fn Text: fn Text: Result Text Out =
     try List.find (fn rv: rv.usr == targetUsr) rootValues as
         'nothing: 'err "find fail"
         'just def: 'ok def
+
+
+
+
+infer as fn Text: fn Text: Result Text Out =
+    fn targetName:
+    fn code:
+
+    inferRootDef targetName code
     >> onOk fn def:
     !hash =
         Hash.fromList []
@@ -285,6 +294,32 @@ functions as Test =
             (infer "z")
             (Test.errorContains [ "Text" ])
         ]
+
+
+
+lambdaSets as Test =
+    Test.'group
+        "lambdaSets"
+        [
+        , codeTest
+            """
+            ONLY Adds a lambda constraint to its argument (no annotation)
+            """
+            """
+            a =
+                fn bool, fun:
+                    if bool then fun
+                    else fn x: x
+            """
+            (infer "a")
+            (Test.isOkAndEqualTo
+                 {
+                 , freeTyvars = Dict.empty
+                 , type = TH.taNumber
+                 }
+            )
+        ]
+
 
 
 #
