@@ -37,7 +37,7 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
         """
         .. entryName
         .. """.usr
-        (null, process.env, args)[0];
+        (null, process.env, args);
         """
 
     compiledStatements as Text =

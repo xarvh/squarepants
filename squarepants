@@ -4066,7 +4066,7 @@ const c0$Compiler$EmittableAst$translateRoot$1 = (($0) => {
       ? "u"
       : ((($0)[0] === "$Installed")
         ? "i"
-        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/EmittableAst.sp 88:4', (sp_toHuman)($0)))));
+        : (sp_throw)('Missing pattern in try..as', 'corelib/src/Compiler/EmittableAst.sp 89:4', (sp_toHuman)($0)))));
 });
 
 const c0$Compiler$EmittableAst$translateRoot$0 = ({
@@ -7427,6 +7427,7 @@ const c0$Self_Test$load$1 = ((_0) => {
     expr: (c0$Compiler$EmittableAst$LiteralNumber$0.usr)(...(c0$Compiler$EmittableAst$LiteralNumber$0.ctx), 42),
     freeTyvars: c0$Dict$empty$0,
     freeUnivars: c0$Dict$empty$0,
+    lambdaSetConstraints: c0$Dict$empty$0,
     parameters: c0$Core$Nil$0,
     returnType: ({
       raw: $numberType,
@@ -25833,7 +25834,7 @@ const u0$Compiler$MakeEmittable$translateRootDef$2 = (($def, $env, $state, $usr,
           const $c = ($5)[1];
           return $c;
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 393:20', (sp_toHuman)($5))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/MakeEmittable.sp 394:20', (sp_toHuman)($5))));
   }))();
   const $eaDef = ({
     context: $context,
@@ -25841,6 +25842,7 @@ const u0$Compiler$MakeEmittable$translateRootDef$2 = (($def, $env, $state, $usr,
     expr: $wrappedBody,
     freeTyvars: $def.freeTyvars,
     freeUnivars: $def.freeUnivars,
+    lambdaSetConstraints: $def.lambdaSetConstraints,
     parameters: $parameters,
     returnType: $lambda.returnType,
     usr: $tUsr,
@@ -25882,6 +25884,7 @@ const u0$Compiler$MakeEmittable$translateRootDef$1 = (($modulesByUmr, $usr, $def
           expr: (u0$Compiler$MakeEmittable$translateExpression$0.usr)(...(u0$Compiler$MakeEmittable$translateExpression$0.ctx), $env, $state, $body),
           freeTyvars: $def.freeTyvars,
           freeUnivars: $def.freeUnivars,
+          lambdaSetConstraints: $def.lambdaSetConstraints,
           parameters: c0$Core$Nil$0,
           returnType: ({
             raw: $def.type,
@@ -29323,13 +29326,23 @@ const u0$Compiler$TypeCheck_Test$add$0 = ({
   namePos: c0$Compiler$Pos$T$0,
 });
 
-const u0$Compiler$TypeCheck_Test$outToHuman$1 = (($out) => {
+const u0$Compiler$TypeCheck_Test$outToHuman$2 = (($extraGetter, $extraName, $out) => {
   const $env = (u0$Compiler$TypeCheck$initEnv$0.usr)(...(u0$Compiler$TypeCheck$initEnv$0.ctx), u0$Compiler$TestHelpers$imports$0, c0$Dict$empty$0);
   const $type = (u0$SPLib$Format$render$0.usr)(...(u0$SPLib$Format$render$0.ctx), (u0$Human$Format$formatExpression$0.usr)(...(u0$Human$Format$formatExpression$0.ctx), ({
     isRoot: true,
     originalContent: "",
   }), (u0$Human$Type$doRawType$0.usr)(...(u0$Human$Type$doRawType$0.ctx), u0$Compiler$CoreDefs$coreModule$0, $out.type)));
-  return (c0$Text$join$0.usr)(...(c0$Text$join$0.ctx), "\n", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ("  tyvars = " + (sp_toHuman)((c0$Dict$toList$0.usr)(...(c0$Dict$toList$0.ctx), $out.freeTyvars))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ("  type = " + $type), c0$Core$Nil$0)));
+  return (c0$Text$join$0.usr)(...(c0$Text$join$0.ctx), "\n", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ((("  " + $extraName) + " = ") + (sp_toHuman)(($extraGetter.usr)(...($extraGetter.ctx), $out))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ("  type = " + $type), c0$Core$Nil$0)));
+});
+
+const u0$Compiler$TypeCheck_Test$outToHuman$1 = (($extraName, $extraGetter) => {
+  return ({
+    ctx: ([
+      $extraGetter,
+      $extraName,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$outToHuman$2,
+  });
 });
 
 const u0$Compiler$TypeCheck_Test$outToHuman$0 = ({
@@ -29337,14 +29350,206 @@ const u0$Compiler$TypeCheck_Test$outToHuman$0 = ({
   usr: u0$Compiler$TypeCheck_Test$outToHuman$1,
 });
 
+const u0$Compiler$TypeCheck_Test$codeTest$2 = (($out) => {
+  return (c0$Dict$toList$0.usr)(...(c0$Dict$toList$0.ctx), $out.freeTyvars);
+});
+
 const u0$Compiler$TypeCheck_Test$codeTest$1 = (($0, $1, $2, $3) => {
-  return (i2$Test$codeTest$0.usr)(...(i2$Test$codeTest$0.ctx), u0$Compiler$TypeCheck_Test$outToHuman$0, $0, $1, $2, $3);
+  return (i2$Test$codeTest$0.usr)(...(i2$Test$codeTest$0.ctx), (u0$Compiler$TypeCheck_Test$outToHuman$0.usr)(...(u0$Compiler$TypeCheck_Test$outToHuman$0.ctx), "tyvars", ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$codeTest$2,
+  })), $0, $1, $2, $3);
 });
 
 const u0$Compiler$TypeCheck_Test$codeTest$0 = ({
   ctx: [],
   usr: u0$Compiler$TypeCheck_Test$codeTest$1,
 });
+
+const u0$Compiler$TypeCheck_Test$reset$0 = ({
+  directDeps: c0$Dict$empty$0,
+  maybeAnnotation: (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), ({
+    raw: (u0$Compiler$TestHelpers$caFunction$0.usr)(...(u0$Compiler$TestHelpers$caFunction$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$caNumber$0, c0$Core$Nil$0), u0$Compiler$TestHelpers$caNone$0),
+    tyvars: c0$Dict$empty$0,
+    univars: c0$Dict$empty$0,
+  })),
+  maybeBody: c0$Maybe$Nothing$0,
+  name: "reset",
+  namePos: c0$Compiler$Pos$T$0,
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$7 = (($targetUsr, $rv) => {
+  return (sp_equal)($rv.usr, $targetUsr);
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$6 = (($targetName, $1) => {
+  const $constructors = $1.constructors;
+  const $natives = $1.natives;
+  const $rootValues = $1.rootValues;
+  const $targetUsr = (c0$Compiler$EmittableAst$translateUsr$0.usr)(...(c0$Compiler$EmittableAst$translateUsr$0.ctx), (c0$Compiler$Meta$USR$0.usr)(...(c0$Compiler$Meta$USR$0.ctx), u0$Compiler$TestHelpers$moduleUmr$0, $targetName), 0);
+  const $2 = (c0$List$find$0.usr)(...(c0$List$find$0.ctx), ({
+    ctx: ([
+      $targetUsr,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$7,
+  }), $rootValues);
+  return ((($2)[0] === "$Nothing")
+    ? (c0$Result$Err$0.usr)(...(c0$Result$Err$0.ctx), "find fail")
+    : ((($2)[0] === "$Just")
+      ? ((() => {
+        const $def = ($2)[1];
+        return (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), $def);
+      }))()
+      : (sp_throw)('Missing pattern in try..as', 'src/Compiler/TypeCheck_Test.sp 169:4', (sp_toHuman)($2))));
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$5 = (($caModule, $1) => {
+  const $umr = ($1)[1];
+  return ((sp_equal)($umr, u0$Compiler$TestHelpers$moduleUmr$0)
+    ? (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), $caModule)
+    : ((sp_equal)($umr, u0$Compiler$CoreDefs$umr$0)
+      ? (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), u0$Compiler$CoreDefs$coreModule$0)
+      : (c0$Result$Err$0.usr)(...(c0$Result$Err$0.ctx), (u0$Compiler$Error$Raw$0.usr)(...(u0$Compiler$Error$Raw$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ("no module " + (sp_toHuman)($umr)), c0$Core$Nil$0)))));
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$4 = (($0) => {
+  return (c0$Compiler$Meta$USR$0.usr)(...(c0$Compiler$Meta$USR$0.ctx), u0$Compiler$TestHelpers$moduleUmr$0, $0);
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$3 = (($0) => {
+  return (c0$List$map$0.usr)(...(c0$List$map$0.ctx), ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$4,
+  }), (c0$Dict$keys$0.usr)(...(c0$Dict$keys$0.ctx), $0));
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$2 = (($targetName, $caModuleRaw) => {
+  const $caModule = ((() => {
+    const $0 = $caModuleRaw;
+    return (Object.assign)({}, $0, ({
+      valueDefs: (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), "reset", u0$Compiler$TypeCheck_Test$reset$0, (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), "add", u0$Compiler$TypeCheck_Test$add$0, $0.valueDefs)),
+    }));
+  }))();
+  const $keysToUsrs = ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$3,
+  });
+  const $requiredUsrs = (c0$List$concat$0.usr)(...(c0$List$concat$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.valueDefs), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.constructorDefs), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.variantTypeDefs), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.aliasDefs), c0$Core$Nil$0)))));
+  const $loadCaModule = ({
+    ctx: ([
+      $caModule,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$5,
+  });
+  return ((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
+    ctx: ([
+      $targetName,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$6,
+  })).usr)(...((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
+    ctx: ([
+      $targetName,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$6,
+  })).ctx), (u0$Compiler$TestHelpers$resErrorToStrippedText$0.usr)(...(u0$Compiler$TestHelpers$resErrorToStrippedText$0.ctx), (u0$Compiler$LazyBuild$build$0.usr)(...(u0$Compiler$LazyBuild$build$0.ctx), ({
+    loadCaModule: $loadCaModule,
+    projectImports: u0$Compiler$TestHelpers$imports$0,
+    requiredUsrs: $requiredUsrs,
+  }))));
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$1 = (($targetName, $code) => {
+  const $params = ({
+    errorModule: (u0$Compiler$TestHelpers$errorModule$0.usr)(...(u0$Compiler$TestHelpers$errorModule$0.ctx), $code),
+    imports: u0$Compiler$TestHelpers$imports$0,
+    resolveToUsr: u0$Compiler$TestHelpers$resolveToUsr$0,
+    umr: u0$Compiler$TestHelpers$moduleUmr$0,
+  });
+  return ((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
+    ctx: ([
+      $targetName,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$2,
+  })).usr)(...((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
+    ctx: ([
+      $targetName,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$inferRootDef$2,
+  })).ctx), (u0$Compiler$TestHelpers$resErrorToStrippedText$0.usr)(...(u0$Compiler$TestHelpers$resErrorToStrippedText$0.ctx), (u0$Compiler$MakeCanonical$textToCanonicalModule$0.usr)(...(u0$Compiler$MakeCanonical$textToCanonicalModule$0.ctx), true, $params)));
+});
+
+const u0$Compiler$TypeCheck_Test$inferRootDef$0 = ({
+  ctx: [],
+  usr: u0$Compiler$TypeCheck_Test$inferRootDef$1,
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$7 = (($out) => {
+  return $out.lambdaSetConstraints;
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$6 = (($inferLambdaSets, $name, $code, $target, $test) => {
+  return (i2$Test$codeTest$0.usr)(...(i2$Test$codeTest$0.ctx), (u0$Compiler$TypeCheck_Test$outToHuman$0.usr)(...(u0$Compiler$TypeCheck_Test$outToHuman$0.ctx), "lSets", ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$7,
+  })), $name, $code, ($inferLambdaSets.usr)(...($inferLambdaSets.ctx), $target), $test);
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$5 = (($k, $v) => {
+  return (c0$Dict$keys$0.usr)(...(c0$Dict$keys$0.ctx), $v);
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$4 = (($hash, $id, $tc, $d) => {
+  return (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), (c0$Compiler$TypedAst$normalizeTyvarId$0.usr)(...(c0$Compiler$TypedAst$normalizeTyvarId$0.ctx), $hash, $id), $tc, $d);
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$3 = (($def) => {
+  let $hash = (hash_fromList)(c0$Core$Nil$0);
+  const $ft = (c0$Dict$for$0.usr)(...(c0$Dict$for$0.ctx), c0$Dict$empty$0, $def.freeTyvars, ({
+    ctx: ([
+      $hash,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$4,
+  }));
+  return (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), ({
+    lambdaSetConstraints: (c0$Dict$toList$0.usr)(...(c0$Dict$toList$0.ctx), (c0$Dict$map$0.usr)(...(c0$Dict$map$0.ctx), ({
+      ctx: [],
+      usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$5,
+    }), $def.lambdaSetConstraints)),
+    type: (c0$Compiler$TypedAst$stripTypePos$0.usr)(...(c0$Compiler$TypedAst$stripTypePos$0.ctx), (c0$Compiler$TypedAst$normalizeType$0.usr)(...(c0$Compiler$TypedAst$normalizeType$0.ctx), $hash, $def.returnType.raw)),
+  }));
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$2 = (($targetName, $code) => {
+  return ((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$3,
+  })).usr)(...((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$3,
+  })).ctx), (u0$Compiler$TypeCheck_Test$inferRootDef$0.usr)(...(u0$Compiler$TypeCheck_Test$inferRootDef$0.ctx), $targetName, $code));
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$1 = (($targetName) => {
+  return ({
+    ctx: ([
+      $targetName,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$2,
+  });
+});
+
+const u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$0 = ((() => {
+  const $inferLambdaSets = ({
+    ctx: [],
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$1,
+  });
+  return ({
+    ctx: ([
+      $inferLambdaSets,
+    ]),
+    usr: u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$6,
+  });
+}))();
 
 const u0$Compiler$TypeCheck_Test$freeTyvars$2 = (($id, $d) => {
   return (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), $id, ({
@@ -29387,33 +29592,17 @@ const u0$Compiler$TypeCheck_Test$freeTyvarsAnnotated$0 = ({
   usr: u0$Compiler$TypeCheck_Test$freeTyvarsAnnotated$1,
 });
 
-const u0$Compiler$TypeCheck_Test$reset$0 = ({
-  directDeps: c0$Dict$empty$0,
-  maybeAnnotation: (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), ({
-    raw: (u0$Compiler$TestHelpers$caFunction$0.usr)(...(u0$Compiler$TestHelpers$caFunction$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$caNumber$0, c0$Core$Nil$0), u0$Compiler$TestHelpers$caNone$0),
-    tyvars: c0$Dict$empty$0,
-    univars: c0$Dict$empty$0,
-  })),
-  maybeBody: c0$Maybe$Nothing$0,
-  name: "reset",
-  namePos: c0$Compiler$Pos$T$0,
-});
-
-const u0$Compiler$TypeCheck_Test$infer$10 = (($targetUsr, $rv) => {
-  return (sp_equal)($rv.usr, $targetUsr);
-});
-
-const u0$Compiler$TypeCheck_Test$infer$9 = (($hash, $id, $tc, $d) => {
+const u0$Compiler$TypeCheck_Test$infer$4 = (($hash, $id, $tc, $d) => {
   return (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), (c0$Compiler$TypedAst$normalizeTyvarId$0.usr)(...(c0$Compiler$TypedAst$normalizeTyvarId$0.ctx), $hash, $id), $tc, $d);
 });
 
-const u0$Compiler$TypeCheck_Test$infer$8 = (($def) => {
+const u0$Compiler$TypeCheck_Test$infer$3 = (($def) => {
   let $hash = (hash_fromList)(c0$Core$Nil$0);
   const $ft = (c0$Dict$for$0.usr)(...(c0$Dict$for$0.ctx), c0$Dict$empty$0, $def.freeTyvars, ({
     ctx: ([
       $hash,
     ]),
-    usr: u0$Compiler$TypeCheck_Test$infer$9,
+    usr: u0$Compiler$TypeCheck_Test$infer$4,
   }));
   return (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), ({
     freeTyvars: $ft,
@@ -29421,108 +29610,14 @@ const u0$Compiler$TypeCheck_Test$infer$8 = (($def) => {
   }));
 });
 
-const u0$Compiler$TypeCheck_Test$infer$7 = (($targetName, $1) => {
-  const $constructors = $1.constructors;
-  const $natives = $1.natives;
-  const $rootValues = $1.rootValues;
-  const $targetUsr = (c0$Compiler$EmittableAst$translateUsr$0.usr)(...(c0$Compiler$EmittableAst$translateUsr$0.ctx), (c0$Compiler$Meta$USR$0.usr)(...(c0$Compiler$Meta$USR$0.ctx), u0$Compiler$TestHelpers$moduleUmr$0, $targetName), 0);
-  return ((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
-    ctx: [],
-    usr: u0$Compiler$TypeCheck_Test$infer$8,
-  })).usr)(...((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
-    ctx: [],
-    usr: u0$Compiler$TypeCheck_Test$infer$8,
-  })).ctx), ((() => {
-    const $2 = (c0$List$find$0.usr)(...(c0$List$find$0.ctx), ({
-      ctx: ([
-        $targetUsr,
-      ]),
-      usr: u0$Compiler$TypeCheck_Test$infer$10,
-    }), $rootValues);
-    return ((($2)[0] === "$Nothing")
-      ? (c0$Result$Err$0.usr)(...(c0$Result$Err$0.ctx), "find fail")
-      : ((($2)[0] === "$Just")
-        ? ((() => {
-          const $def = ($2)[1];
-          return (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), $def);
-        }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Compiler/TypeCheck_Test.sp 167:4', (sp_toHuman)($2))));
-  }))());
-});
-
-const u0$Compiler$TypeCheck_Test$infer$6 = (($caModule, $1) => {
-  const $umr = ($1)[1];
-  return ((sp_equal)($umr, u0$Compiler$TestHelpers$moduleUmr$0)
-    ? (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), $caModule)
-    : ((sp_equal)($umr, u0$Compiler$CoreDefs$umr$0)
-      ? (c0$Result$Ok$0.usr)(...(c0$Result$Ok$0.ctx), u0$Compiler$CoreDefs$coreModule$0)
-      : (c0$Result$Err$0.usr)(...(c0$Result$Err$0.ctx), (u0$Compiler$Error$Raw$0.usr)(...(u0$Compiler$Error$Raw$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ("no module " + (sp_toHuman)($umr)), c0$Core$Nil$0)))));
-});
-
-const u0$Compiler$TypeCheck_Test$infer$5 = (($0) => {
-  return (c0$Compiler$Meta$USR$0.usr)(...(c0$Compiler$Meta$USR$0.ctx), u0$Compiler$TestHelpers$moduleUmr$0, $0);
-});
-
-const u0$Compiler$TypeCheck_Test$infer$4 = (($0) => {
-  return (c0$List$map$0.usr)(...(c0$List$map$0.ctx), ({
-    ctx: [],
-    usr: u0$Compiler$TypeCheck_Test$infer$5,
-  }), (c0$Dict$keys$0.usr)(...(c0$Dict$keys$0.ctx), $0));
-});
-
-const u0$Compiler$TypeCheck_Test$infer$3 = (($targetName, $caModuleRaw) => {
-  const $caModule = ((() => {
-    const $0 = $caModuleRaw;
-    return (Object.assign)({}, $0, ({
-      valueDefs: (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), "reset", u0$Compiler$TypeCheck_Test$reset$0, (c0$Dict$insert$0.usr)(...(c0$Dict$insert$0.ctx), "add", u0$Compiler$TypeCheck_Test$add$0, $0.valueDefs)),
-    }));
-  }))();
-  const $keysToUsrs = ({
-    ctx: [],
-    usr: u0$Compiler$TypeCheck_Test$infer$4,
-  });
-  const $requiredUsrs = (c0$List$concat$0.usr)(...(c0$List$concat$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.valueDefs), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.constructorDefs), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.variantTypeDefs), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ($keysToUsrs.usr)(...($keysToUsrs.ctx), $caModule.aliasDefs), c0$Core$Nil$0)))));
-  const $loadCaModule = ({
-    ctx: ([
-      $caModule,
-    ]),
-    usr: u0$Compiler$TypeCheck_Test$infer$6,
-  });
-  return ((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
-    ctx: ([
-      $targetName,
-    ]),
-    usr: u0$Compiler$TypeCheck_Test$infer$7,
-  })).usr)(...((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
-    ctx: ([
-      $targetName,
-    ]),
-    usr: u0$Compiler$TypeCheck_Test$infer$7,
-  })).ctx), (u0$Compiler$TestHelpers$resErrorToStrippedText$0.usr)(...(u0$Compiler$TestHelpers$resErrorToStrippedText$0.ctx), (u0$Compiler$LazyBuild$build$0.usr)(...(u0$Compiler$LazyBuild$build$0.ctx), ({
-    loadCaModule: $loadCaModule,
-    projectImports: u0$Compiler$TestHelpers$imports$0,
-    requiredUsrs: $requiredUsrs,
-  }))));
-});
-
 const u0$Compiler$TypeCheck_Test$infer$2 = (($targetName, $code) => {
-  const $params = ({
-    errorModule: (u0$Compiler$TestHelpers$errorModule$0.usr)(...(u0$Compiler$TestHelpers$errorModule$0.ctx), $code),
-    imports: u0$Compiler$TestHelpers$imports$0,
-    resolveToUsr: u0$Compiler$TestHelpers$resolveToUsr$0,
-    umr: u0$Compiler$TestHelpers$moduleUmr$0,
-  });
   return ((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
-    ctx: ([
-      $targetName,
-    ]),
+    ctx: [],
     usr: u0$Compiler$TypeCheck_Test$infer$3,
   })).usr)(...((c0$Result$onOk$0.usr)(...(c0$Result$onOk$0.ctx), ({
-    ctx: ([
-      $targetName,
-    ]),
+    ctx: [],
     usr: u0$Compiler$TypeCheck_Test$infer$3,
-  })).ctx), (u0$Compiler$TestHelpers$resErrorToStrippedText$0.usr)(...(u0$Compiler$TestHelpers$resErrorToStrippedText$0.ctx), (u0$Compiler$MakeCanonical$textToCanonicalModule$0.usr)(...(u0$Compiler$MakeCanonical$textToCanonicalModule$0.ctx), true, $params)));
+  })).ctx), (u0$Compiler$TypeCheck_Test$inferRootDef$0.usr)(...(u0$Compiler$TypeCheck_Test$inferRootDef$0.ctx), $targetName, $code));
 });
 
 const u0$Compiler$TypeCheck_Test$infer$1 = (($targetName) => {
@@ -29546,10 +29641,10 @@ const u0$Compiler$TypeCheck_Test$functions$0 = (i2$Test$Group$0.usr)(...(i2$Test
   type: u0$Compiler$TestHelpers$taNumber$0,
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Known function with wrong *number* of args", "a = add 'false", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Number", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Arguments", c0$Core$Nil$0)))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Known function with wrong params", "a = add 'false 1", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Bool", c0$Core$Nil$0))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Function inference 1", "a = fn x: add x 1", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: c0$Dict$empty$0,
-  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 2, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$taNumber$0, c0$Core$Nil$0), u0$Compiler$TestHelpers$taNumber$0),
+  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$taNumber$0, c0$Core$Nil$0), u0$Compiler$TestHelpers$taNumber$0),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Function inference 2: same as 1, but with swapped args", "a = fn x: add 1 x", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: c0$Dict$empty$0,
-  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 2, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$taNumber$0, c0$Core$Nil$0), u0$Compiler$TestHelpers$taNumber$0),
+  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$taNumber$0, c0$Core$Nil$0), u0$Compiler$TestHelpers$taNumber$0),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] fn had type None", "a = fn x: 1", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars$0.usr)(...(u0$Compiler$TypeCheck_Test$freeTyvars$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 1, c0$Core$Nil$0)),
   type: (c0$Compiler$TypedAst$TypeFn$0.usr)(...(c0$Compiler$TypedAst$TypeFn$0.ctx), c0$Compiler$Pos$T$0, 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$ParSp$0.usr)(...(c0$Compiler$TypedAst$ParSp$0.ctx), (c0$Compiler$Ast$toImm$0.usr)(...(c0$Compiler$Ast$toImm$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1))), c0$Core$Nil$0), (c0$Compiler$Ast$toUni$0.usr)(...(c0$Compiler$Ast$toUni$0.ctx), u0$Compiler$TestHelpers$taNumber$0)),
@@ -29571,6 +29666,59 @@ const u0$Compiler$TypeCheck_Test$if_else$0 = (i2$Test$Group$0.usr)(...(i2$Test$G
   type: (c0$Compiler$TypedAst$TypeFn$0.usr)(...(c0$Compiler$TypedAst$TypeFn$0.ctx), c0$Compiler$Pos$T$0, 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$ParSp$0.usr)(...(c0$Compiler$TypedAst$ParSp$0.ctx), (c0$Compiler$Ast$toImm$0.usr)(...(c0$Compiler$Ast$toImm$0.ctx), u0$Compiler$TestHelpers$taBool$0)), c0$Core$Nil$0), (c0$Compiler$Ast$toUni$0.usr)(...(c0$Compiler$Ast$toUni$0.ctx), u0$Compiler$TestHelpers$taNumber$0)),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "rejects non-bool conditions", "x =\n    fn q:\n    if 1 then 1\n    else 2", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Bool", c0$Core$Nil$0))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "rejects non-matching blocks", "x =\n    fn q:\n    if q then 2\n    else 'false", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Number", c0$Core$Nil$0))), c0$Core$Nil$0))));
 
+const u0$Compiler$TypeCheck_Test$lambdaSets$0 = (i2$Test$Group$0.usr)(...(i2$Test$Group$0.ctx), "lambdaSets", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$0.ctx), "Adds a lambda constraint to its argument (no annotation)", "a =\n    fn bool, fun:\n        if bool then fun\n        else fn x: x", "a", (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
+  lambdaSetConstraints: (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+    first: 1,
+    second: (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "a"),
+      second: 1,
+    }), c0$Core$Nil$0),
+  }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+    first: 2,
+    second: (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "a"),
+      second: 2,
+    }), c0$Core$Nil$0),
+  }), c0$Core$Nil$0)),
+  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TestHelpers$taBool$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 2, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)), c0$Core$Nil$0)), (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 2, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1))),
+}))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTestWithLambdaSetConstraints$0.ctx), "Calls expand lambda constraints", "a =\n    fn bool, fun1, fun2, meta:\n\n    if bool then\n        meta fun1\n    else if 'false then\n        meta fun2\n    else if 'true then\n        meta fn x: x\n    else\n        meta fn x: x\n\np = fn x: x\nq = fn x: x\nm = fn f: f\n\nb =\n    a 'false p q m\n\nc =\n    a 'false q q m\n\nz =\n    { b, c }", "z", (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
+  lambdaSetConstraints: (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+    first: 3,
+    second: (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "a"),
+      second: 1,
+    }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "a"),
+      second: 2,
+    }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "p"),
+      second: 1,
+    }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "q"),
+      second: 1,
+    }), c0$Core$Nil$0)))),
+  }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+    first: 4,
+    second: (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "a"),
+      second: 1,
+    }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "a"),
+      second: 2,
+    }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+      first: (u0$Compiler$TestHelpers$moduleUsr$0.usr)(...(u0$Compiler$TestHelpers$moduleUsr$0.ctx), "q"),
+      second: 1,
+    }), c0$Core$Nil$0))),
+  }), c0$Core$Nil$0)),
+  type: (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, c0$Maybe$Nothing$0, (c0$Dict$fromList$0.usr)(...(c0$Dict$fromList$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+    first: "b",
+    second: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 3, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 2), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 2)),
+  }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+    first: "c",
+    second: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 4, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)),
+  }), c0$Core$Nil$0)))),
+}))), c0$Core$Nil$0)));
+
 const u0$Compiler$TypeCheck_Test$misc$0 = (i2$Test$Group$0.usr)(...(i2$Test$Group$0.ctx), "Misc", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] Undefined types should be rejected", "v as ThisTypeIsNotDefined = this_is_sp_native", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "v"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "ThisTypeIsNotDefined", c0$Core$Nil$0))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Placeholder works with unique args", "stuff as fn !Number: Number = this_is_sp_native\nv =\n    1 >> stuff __", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "v"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: c0$Dict$empty$0,
   type: u0$Compiler$TestHelpers$taNumber$0,
@@ -29585,10 +29733,10 @@ const u0$Compiler$TypeCheck_Test$nonFunction$0 = (i2$Test$Group$0.usr)(...(i2$Te
 
 const u0$Compiler$TypeCheck_Test$patterns$0 = (i2$Test$Group$0.usr)(...(i2$Test$Group$0.ctx), "Patterns", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Constructor unpacking", "var Z a = 'z a\n\nidentityFunction =\n   fn a:\n   'z b = 'z a\n   b", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "identityFunction"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars$0.usr)(...(u0$Compiler$TypeCheck_Test$freeTyvars$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 1, c0$Core$Nil$0)),
-  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 5, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)),
+  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "List unpacking", "x =\n   fn q:\n   [ first, second ] = q\n   first", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars$0.usr)(...(u0$Compiler$TypeCheck_Test$freeTyvars$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 1, c0$Core$Nil$0)),
-  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 5, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TestHelpers$taList$0.usr)(...(u0$Compiler$TestHelpers$taList$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)),
+  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TestHelpers$taList$0.usr)(...(u0$Compiler$TestHelpers$taList$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Complete records are correctly unpacked", "x =\n    fn q:\n    { first } = q\n    first", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars$0.usr)(...(u0$Compiler$TypeCheck_Test$freeTyvars$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 1, c0$Core$Nil$0)),
   type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, c0$Maybe$Nothing$0, (c0$Dict$fromList$0.usr)(...(c0$Dict$fromList$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
@@ -29629,7 +29777,7 @@ const u0$Compiler$TypeCheck_Test$records$0 = (i2$Test$Group$0.usr)(...(i2$Test$G
   type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 1), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "meh", (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 2), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "blah", (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 3))))), c0$Core$Nil$0), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 3)),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Attribute mutation", "a = fn @b: @b.meh.blah += 1", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars$0.usr)(...(u0$Compiler$TypeCheck_Test$freeTyvars$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 2, c0$Core$Nil$0))),
-  type: (c0$Compiler$TypedAst$TypeFn$0.usr)(...(c0$Compiler$TypedAst$TypeFn$0.ctx), c0$Compiler$Pos$T$0, 2, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$ParRe$0.usr)(...(c0$Compiler$TypedAst$ParRe$0.ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 1), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "meh", (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 2), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "blah", u0$Compiler$TestHelpers$taNumber$0))))), c0$Core$Nil$0), (c0$Compiler$Ast$toImm$0.usr)(...(c0$Compiler$Ast$toImm$0.ctx), u0$Compiler$TestHelpers$taNone$0)),
+  type: (c0$Compiler$TypedAst$TypeFn$0.usr)(...(c0$Compiler$TypedAst$TypeFn$0.ctx), c0$Compiler$Pos$T$0, 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$ParRe$0.usr)(...(c0$Compiler$TypedAst$ParRe$0.ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 1), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "meh", (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 2), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "blah", u0$Compiler$TestHelpers$taNumber$0))))), c0$Core$Nil$0), (c0$Compiler$Ast$toImm$0.usr)(...(c0$Compiler$Ast$toImm$0.ctx), u0$Compiler$TestHelpers$taNone$0)),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Tuple3 direct item mutability", "x =\n    !a = 3 & 'false & 2\n\n    @a.third += 1", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), i2$Test$isOk$0), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Tuple2 direct item mutability, annotated", "x =\n   fn _:\n   !a as Number & Number =\n     1 & 2\n\n   @a.first += 1", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), i2$Test$isOk$0), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "functional update", "a = fn b: { b with x = 1 }", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "a"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), (({
   ctx: [],
   usr: u0$Compiler$TypeCheck_Test$records$3,
@@ -29650,7 +29798,7 @@ const u0$Compiler$TypeCheck_Test$records$0 = (i2$Test$Group$0.usr)(...(i2$Test$G
   usr: u0$Compiler$TypeCheck_Test$records$1,
 }).ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 1), (c0$Dict$ofOne$0.usr)(...(c0$Dict$ofOne$0.ctx), "first", (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 2)))))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] refineType when the record has a non-extensible alias", "A = { c as Number, d as Number }\n\nupd as fn A: A = fn a:\n  { a with c = .c + 1 }", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "upd"), i2$Test$isOk$0), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] infinite recursion on addSubstitution/unify_", "B = { l as [Text] }\n\nreadOne as fn B: (Text & B) =\n    fn b:\n    try b.l as\n         []: \"\" & b\n         [h, t...]: h & { b with l = t }", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "readOne"), i2$Test$isOk$0), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] unifyToNonExtensibleRecord correctly substitutes the record extension", "R = { x as Number, y as Number }\n\nrec as fn R: R =\n    fn s:\n\n    if 'true then\n        { s with y = .y }\n    else\n        rec { s with y = .y }", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "rec"), i2$Test$isOk$0), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] Record missing attributes", "R = { x as Number, y as Number }\n\nr as R = {\n  , x = 3\n  }", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "r"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Missing", c0$Core$Nil$0))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] Inferring and then generalizing an extensible record should still constrain the tyvar to a record!", "f =\n    fn record:\n    record.attr\n\nmain =\n    f 'true", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "f"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Bool", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "attr", c0$Core$Nil$0)))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "Inferred records are correctly merged", "f =\n    fn record:\n    record.attr\n\ng =\n    fn record:\n    record.blah\n\nmeh as fn a, (fn a: Bool), (fn a: Number): Bool =\n    fn a, ff, gg:\n    'false\n\nmain =\n    fn r:\n    meh r f g", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "main"), (i2$Test$isOkAndEqualTo$0.usr)(...(i2$Test$isOkAndEqualTo$0.ctx), ({
   freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars$0.usr)(...(u0$Compiler$TypeCheck_Test$freeTyvars$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), 1, c0$Core$Nil$0)),
-  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 6, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 1), (c0$Dict$fromList$0.usr)(...(c0$Dict$fromList$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
+  type: (u0$Compiler$TestHelpers$taFunction$0.usr)(...(u0$Compiler$TestHelpers$taFunction$0.ctx), 1, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (c0$Compiler$TypedAst$TypeRecord$0.usr)(...(c0$Compiler$TypedAst$TypeRecord$0.ctx), c0$Compiler$Pos$T$0, (c0$Maybe$Just$0.usr)(...(c0$Maybe$Just$0.ctx), 1), (c0$Dict$fromList$0.usr)(...(c0$Dict$fromList$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
     first: "attr",
     second: u0$Compiler$TestHelpers$taBool$0,
   }), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), ({
@@ -29688,7 +29836,7 @@ const u0$Compiler$TypeCheck_Test$variableTypes$0 = (i2$Test$Group$0.usr)(...(i2$
   type: (u0$Compiler$TestHelpers$taList$0.usr)(...(u0$Compiler$TestHelpers$taList$0.ctx), (u0$Compiler$TypeCheck_Test$tyvar$0.usr)(...(u0$Compiler$TypeCheck_Test$tyvar$0.ctx), 1)),
 }))), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), (u0$Compiler$TypeCheck_Test$codeTest$0.usr)(...(u0$Compiler$TypeCheck_Test$codeTest$0.ctx), "[reg] Unifying functions does not unfiy their args", "var Dict_ k v = 'empty\ndict_member as fn k, Dict_ k v: Bool = this_is_sp_native\ndict_filter as fn (fn k, v: Bool), Dict_ k v: Dict_ k v = this_is_sp_native\n\nfreeTyvars as Dict_ Number {} = this_is_sp_native\ntypeTyvars as Dict_ Number None = this_is_sp_native\n\nx = dict_filter (fn k, v: dict_member v typeTyvars) freeTyvars", (u0$Compiler$TypeCheck_Test$infer$0.usr)(...(u0$Compiler$TypeCheck_Test$infer$0.ctx), "x"), (i2$Test$errorContains$0.usr)(...(i2$Test$errorContains$0.ctx), (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "{}", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), "Number", c0$Core$Nil$0)))), c0$Core$Nil$0))))));
 
-const u0$Compiler$TypeCheck_Test$tests$0 = (i2$Test$Group$0.usr)(...(i2$Test$Group$0.ctx), "TypeCheck", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$functions$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$statements$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$recursiveTypes$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$variableTypes$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$higherOrderTypes$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$records$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$patterns$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$try_as$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$if_else$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$nonFunction$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$misc$0, c0$Core$Nil$0))))))))))));
+const u0$Compiler$TypeCheck_Test$tests$0 = (i2$Test$Group$0.usr)(...(i2$Test$Group$0.ctx), "TypeCheck", (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$functions$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$lambdaSets$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$statements$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$recursiveTypes$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$variableTypes$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$higherOrderTypes$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$records$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$patterns$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$try_as$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$if_else$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$nonFunction$0, (c0$Core$Cons$0.usr)(...(c0$Core$Cons$0.ctx), u0$Compiler$TypeCheck_Test$misc$0, c0$Core$Nil$0)))))))))))));
 
 const u0$DefaultImports$platformDefaultImportsFile$2 = (($1) => {
   const $path = $1.first;
@@ -31842,7 +31990,7 @@ const u0$Platforms$Posix$makeExecutable$3 = (($0) => {
 
 const u0$Platforms$Posix$makeExecutable$2 = (($makePlatformUmr, $out) => {
   const $entryName = (u0$Targets$Javascript$EmittableToJs$_usrToText$0.usr)(...(u0$Targets$Javascript$EmittableToJs$_usrToText$0.ctx), $out.entryUsr);
-  const $callMain = (("\n\nconst args = arrayToListLow(process.argv.slice(1));\nprocess.exitCode = " + $entryName) + ".usr\n        (null, process.env, args)[0];\n        ");
+  const $callMain = (("\n\nconst args = arrayToListLow(process.argv.slice(1));\nprocess.exitCode = " + $entryName) + ".usr\n        (null, process.env, args);\n        ");
   const $compiledStatements = ((() => {
     const $jaStatements = (u0$Targets$Javascript$EmittableToJs$translateAll$0.usr)(...(u0$Targets$Javascript$EmittableToJs$translateAll$0.ctx), ({
       constructors: $out.constructors,
@@ -32382,5 +32530,5 @@ const u0$Main$main$0 = ({
 
 const args = arrayToListLow(process.argv.slice(1));
 process.exitCode = u0$Main$main$0.usr
-        (null, process.env, args)[0];
+        (null, process.env, args);
         
