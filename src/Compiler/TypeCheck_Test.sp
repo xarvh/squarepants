@@ -358,7 +358,7 @@ lambdaSets as Test =
             )
         , codeTestWithLambdaSetConstraints
             """
-            ONLY Calls expand lambda constraints
+            Calls expand lambda constraints
             """
             """
             a =
