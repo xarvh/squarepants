@@ -56,6 +56,10 @@ outToHuman =
     >> Text.join "\n" __
 
 
+
+lset1 as TA.LambdaSet = TH.emptyLset
+
+
 tyvar as fn Int: TA.RawType =
     TH.taTyvar
 
@@ -194,7 +198,6 @@ infer as fn Text: fn Text: Result Text Out =
 
 OutWithLSC =
     {
-    , lambdaSetConstraints as [ TA.LambdaSetId & [ TA.LambdaRef ] ]
     # TODO this needs to contain also an Env, otherwise I can't print it properly
     , type as TA.RawType
     }
@@ -214,10 +217,10 @@ codeTestWithLambdaSetConstraints as fn Text, Text, Text, Test.CodeExpectation Ou
 
         'ok
             {
-            , lambdaSetConstraints =
-                def.lambdaSetConstraints
-                >> Dict.map (fn k, v: Dict.keys v) __
-                >> Dict.toList
+#            , lambdaSetConstraints =
+#                def.lambdaSetConstraints
+#                >> Dict.map (fn k, v: Dict.keys v) __
+#                >> Dict.toList
             , type =
                 def.returnType.raw
                 >> TA.normalizeType @hash __
@@ -225,7 +228,7 @@ codeTestWithLambdaSetConstraints as fn Text, Text, Text, Test.CodeExpectation Ou
             }
 
     fn name, code, target, test:
-    Test.codeTest (outToHuman "lSets" (fn out: out.lambdaSetConstraints)) name code (inferLambdaSets target) test
+    Test.codeTest (outToHuman "lSets" (fn out: out.type)) name code (inferLambdaSets target) test
 
 
 #
@@ -255,7 +258,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TH.taFunction 1 [ TH.taNumber ] TH.taNumber
+                 , type = TH.taFunction lset1 [ TH.taNumber ] TH.taNumber
                  }
             )
         , codeTest
@@ -265,7 +268,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TH.taFunction 1 [ TH.taNumber ] TH.taNumber
+                 , type = TH.taFunction lset1 [ TH.taNumber ] TH.taNumber
                  }
             )
         , codeTest
@@ -275,7 +278,7 @@ functions as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TA.'typeFn Pos.'t 1 [ tyvar 1 >> toImm >> TA.'parSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn Pos.'t TH.emptyLset [ tyvar 1 >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         , codeTest
@@ -348,12 +351,15 @@ lambdaSets as Test =
             "a"
             (Test.isOkAndEqualTo
                  {
-                 , lambdaSetConstraints =
-                     [
-                     , 1 & [ TH.moduleUsr "a" & 1 ]
-                     , 2 & [ TH.moduleUsr "a" & 2 ]
-                     ]
-                 , type = TH.taFunction 1 [ TH.taBool, TH.taFunction 2 [ tyvar 1 ] (tyvar 1) ] (TH.taFunction 2 [ tyvar 1 ] (tyvar 1))
+#                 , lambdaSetConstraints =
+#                     [
+#                     , 1 & [ TH.moduleUsr "a" & 1 ]
+#                     , 2 & [ TH.moduleUsr "a" & 2 ]
+#                     ]
+                 , type = TH.taFunction
+                        TH.emptyLset
+                        [ TH.taBool, TH.taFunction lset1 [ tyvar 1 ] (tyvar 1) ]
+                        (TH.taFunction lset1 [ tyvar 1 ] (tyvar 1))
                  }
             )
         , codeTestWithLambdaSetConstraints
@@ -403,26 +409,26 @@ lambdaSets as Test =
 
 
 
-                 , lambdaSetConstraints =
-                     [
-                     , 3
-                     & [
-                     , TH.moduleUsr "a" & 1
-                     , TH.moduleUsr "a" & 2
-                     , TH.moduleUsr "p" & 1
-                     , TH.moduleUsr "q" & 1
-                     ]
-                     , 4
-                     & [
-                     , TH.moduleUsr "a" & 1
-                     , TH.moduleUsr "a" & 2
-                     , TH.moduleUsr "q" & 1
-                     ]
-                     ]
+#                 , lambdaSetConstraints =
+#                     [
+#                     , 3
+#                     & [
+#                     , TH.moduleUsr "a" & 1
+#                     , TH.moduleUsr "a" & 2
+#                     , TH.moduleUsr "p" & 1
+#                     , TH.moduleUsr "q" & 1
+#                     ]
+#                     , 4
+#                     & [
+#                     , TH.moduleUsr "a" & 1
+#                     , TH.moduleUsr "a" & 2
+#                     , TH.moduleUsr "q" & 1
+#                     ]
+#                     ]
                  , type =
                      [
-                     , "b" & TH.taFunction 3 [ tyvar 2 ] (tyvar 2)
-                     , "c" & TH.taFunction 4 [ tyvar 1 ] (tyvar 1)
+                     , "b" & TH.taFunction TH.emptyLset [ tyvar 2 ] (tyvar 2)
+                     , "c" & TH.taFunction TH.emptyLset [ tyvar 1 ] (tyvar 1)
                      ]
                      >> Dict.fromList
                      >> TA.'typeRecord Pos.'t 'nothing __
@@ -582,7 +588,7 @@ variableTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction 1 [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction lset1 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -597,7 +603,7 @@ variableTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction 1 [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction lset1 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -670,7 +676,7 @@ higherOrderTypes as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvarsAnnotated [ 1 & "a" ]
-                 , type = TH.taFunction 1 [ TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ] ] (TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ])
+                 , type = TH.taFunction lset1 [ TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ] ] (TA.'typeExact Pos.'t (TH.moduleUsr "T") [ tyvar 1 ])
                  }
             )
         , codeTest
@@ -759,7 +765,7 @@ records as Test =
                  , freeTyvars = freeTyvars [ 1, 2, 3 ]
                  , type =
                      TH.taFunction
-                         1
+                         lset1
                          [
                          , TA.'typeRecord Pos.'t ('just 1) (Dict.ofOne "meh" (TA.'typeRecord Pos.'t ('just 2) (Dict.ofOne "blah" (tyvar 3))))
                          ]
@@ -780,7 +786,7 @@ records as Test =
                  , type =
                      TA.'typeFn
                          Pos.'t
-                         1
+                         TH.emptyLset
                          [
                          , TA.'parRe << TA.'typeRecord Pos.'t ('just 1) (Dict.ofOne "meh" (TA.'typeRecord Pos.'t ('just 2) (Dict.ofOne "blah" TH.taNumber)))
                          ]
@@ -826,7 +832,7 @@ records as Test =
                   >> (fn re:
                        {
                        , freeTyvars = freeTyvars [ 1 ]
-                       , type = TH.taFunction 1 [ re ] re
+                       , type = TH.taFunction lset1 [ re ] re
                        }
                   )
                  )
@@ -843,7 +849,7 @@ records as Test =
                   >> (fn re:
                        {
                        , freeTyvars = Dict.empty
-                       , type = TH.taFunction 1 [ re ] re
+                       , type = TH.taFunction lset1 [ re ] re
                        }
                   )
                  )
@@ -862,7 +868,7 @@ records as Test =
                   >> (fn re:
                        {
                        , freeTyvars = freeTyvars [ 1, 2 ]
-                       , type = TH.taFunction 1 [ re ] (tyvar 2)
+                       , type = TH.taFunction lset1 [ re ] (tyvar 2)
                        }
                   )
                  )
@@ -965,7 +971,7 @@ records as Test =
                  , freeTyvars = freeTyvars [ 1 ]
                  , type =
                      TH.taFunction
-                         1
+                         lset1
                          [
                          , TA.'typeRecord
                              Pos.'t
@@ -1007,7 +1013,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction 1 [ tyvar 1 ] (tyvar 1)
+                 , type = TH.taFunction lset1 [ tyvar 1 ] (tyvar 1)
                  }
             )
         , codeTest
@@ -1024,7 +1030,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction 1 [ TH.taList (tyvar 1) ] (tyvar 1)
+                 , type = TH.taFunction lset1 [ TH.taList (tyvar 1) ] (tyvar 1)
                  }
             )
         , codeTest
@@ -1042,7 +1048,7 @@ patterns as Test =
              Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1 ]
-                 , type = TH.taFunction 1 [ TA.'typeRecord Pos.'t 'nothing (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
+                 , type = TH.taFunction lset1 [ TA.'typeRecord Pos.'t 'nothing (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
                  }
             )
         , codeTest
@@ -1059,7 +1065,7 @@ patterns as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = freeTyvars [ 1, 2 ]
-                 , type = TH.taFunction 1 [ TA.'typeRecord Pos.'t ('just 2) (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
+                 , type = TH.taFunction lset1 [ TA.'typeRecord Pos.'t ('just 2) (Dict.fromList [ "first" & tyvar 1 ]) ] (tyvar 1)
                  }
             )
         [# TODO
@@ -1132,7 +1138,7 @@ try_as as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.'typeFn Pos.'t 1 [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn Pos.'t TH.emptyLset [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         #
@@ -1199,7 +1205,7 @@ if_else as Test =
             (Test.isOkAndEqualTo
                  {
                  , freeTyvars = Dict.empty
-                 , type = TA.'typeFn Pos.'t 1 [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
+                 , type = TA.'typeFn Pos.'t TH.emptyLset [ TH.taBool >> toImm >> TA.'parSp ] (toUni TH.taNumber)
                  }
             )
         #

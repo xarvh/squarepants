@@ -338,7 +338,7 @@ addPatternToEnv as fn @State, TA.Pattern, Env: [ Name ] & Dict Name Pos & Env =
     Dict.keys names & uniques & localEnv
 
 
-doCall as fn Env, @State, Pos, TA.LambdaSetId, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
+doCall as fn Env, @State, Pos, TA.LambdaSet, TA.Expression, [ TA.Argument ]: UniOut TA.Expression =
     fn env, @state, pos, lambdaSet, reference, arguments:
     doneReference =
         doExpression env @state reference

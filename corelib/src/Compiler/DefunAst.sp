@@ -2,8 +2,8 @@ TyvarId =
     Int
 
 
-LambdaSetId =
-    Int
+#LambdaSetId =
+#    Int
 
 
 # This reference can uniquely reference lambdas nested inside a definition

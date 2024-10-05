@@ -2,8 +2,16 @@ TyvarId =
     Int
 
 
-LambdaSetId =
+LambdaSetVarId =
     Int
+
+
+LambdaSet =
+    {
+    , knownFunctions as Set LambdaRef
+    # vars come from a function's arguments, we won't know what functions they represent until we specialize the code
+    , lambdaSetVars as Set LambdaSetVarId
+    }
 
 
 # This reference can uniquely reference lambdas nested inside a definition
@@ -18,7 +26,7 @@ rootLambdaRef as Int =
 
 var RawType =
     , 'typeExact Pos USR [ RawType ]
-    , 'typeFn Pos LambdaSetId [ ParType ] FullType
+    , 'typeFn Pos LambdaSet [ ParType ] FullType
     , 'typeVar Pos TyvarId
     , 'typeRecord Pos (Maybe TyvarId) (Dict Name RawType)
     , 'typeError
@@ -43,7 +51,7 @@ var Expression =
     , 'variable Pos Ref
     , 'lambda Pos { context as Dict Name FullType, definition as Bool, ref as LambdaRef }
     , 'constructor Pos USR
-    , 'call Pos LambdaSetId Expression [ Argument ]
+    , 'call Pos LambdaSet Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
       'record Pos (Maybe Expression) (Dict Name Expression)
@@ -112,8 +120,6 @@ Lambda =
     {
     , body as Expression
     #, context as Dict Name FullType
-    # We have LambdaSetId here so that during specialization we can replace the lambda with a constructor of that set
-    , lambdaSetId as LambdaSetId
     , pars as [ Parameter ]
     , returnType as FullType
     }
@@ -125,7 +131,6 @@ RootDef =
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
-    , lambdaSetConstraints as Dict LambdaSetId (Set LambdaRef)
     , lambdas as Dict Int Lambda
     , name as Name
     , type as RawType
@@ -174,7 +179,7 @@ initModule as fn Text, Text, UMR: Module =
 #
 SubsAsFns =
     {
-    , lSet as fn LambdaSetId: LambdaSetId
+    , lSet as fn LambdaSetVarId: Set LambdaRef
     , ty as fn TyvarId: Maybe RawType
     , uni as fn UnivarId: Maybe Uniqueness
     }
@@ -224,7 +229,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
             'typeExact p usr (List.map rec pars)
 
         'typeFn p setId pars out:
-            'typeFn p (saf.lSet setId) (List.map (resolveParType saf __) pars) (resolveFull saf out)
+#            'typeFn p (saf.lSet setId) (List.map (resolveParType saf __) pars) (resolveFull saf out)
+            todo "typeFn"
 
         'typeRecord p maybeId attrs0:
             attrs1 =
@@ -292,9 +298,8 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'lambda pos pars:
             'lambda pos { pars with context = Dict.map (fn name, type: resolveFull saf type) .context }
 
-        'call p setId ref args:
-            #log "call" (saf.lSet setId)
-            'call p (saf.lSet setId) (rec ref) (List.map (resolveArg saf __) args)
+        'call p set ref args:
+            'call p set (rec ref) (List.map (resolveArg saf __) args)
 
         'record p maybeExt attrs:
             'record p (Maybe.map rec maybeExt) (Dict.map (fn k, v: rec v) attrs)
@@ -351,20 +356,19 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
     {
     , body = resolveExpression saf lam.body
     #, context = Dict.map (fn name, type: resolveFull saf type) lam.context
-    , lambdaSetId =
-        saf.lSet lam.lambdaSetId
     , pars = List.map (resolvePar saf __) lam.pars
     , returnType = resolveFull saf lam.returnType
     }
 
 
-resolveLambdaSetConstraints as fn SubsAsFns, Dict TA.LambdaSetId (Set TA.LambdaRef): Dict TA.LambdaSetId (Set TA.LambdaRef) =
+resolveLambdaSetConstraints as fn SubsAsFns, Dict lambdaSetId (Set TA.LambdaRef): Dict lambdaSetId (Set TA.LambdaRef) =
     fn saf, constraints:
-    Dict.for Dict.empty constraints fn oldId, requiredLambdas, resolvedConstraints:
-        newId =
-            saf.lSet oldId
-
-        Dict.update newId (__ >> Maybe.withDefault Set.empty __ >> Set.join requiredLambdas __ >> 'just) resolvedConstraints
+    constraints
+#    Dict.for Dict.empty constraints fn oldId, requiredLambdas, resolvedConstraints:
+#        newId =
+#            saf.lSet oldId
+#
+#        Dict.update newId (__ >> Maybe.withDefault Set.empty __ >> Set.join requiredLambdas __ >> 'just) resolvedConstraints
 
 
 resolveRootDef as fn SubsAsFns, RootDef: RootDef =
@@ -435,13 +439,14 @@ typeTyvars as fn RawType: Dict TyvarId None =
         'typeError: Dict.empty
 
 
-typeLambdaSets as fn RawType: Set LambdaSetId =
-    try __ as
-        'typeExact _ usr args: List.for Set.empty args (fn a, acc: Set.join (typeLambdaSets a) acc)
-        'typeVar _ _: Set.empty
-        'typeRecord _ _ attrs: Dict.for Set.empty attrs (fn k, a, acc: Set.join (typeLambdaSets a) acc)
-        'typeError: Set.empty
-        'typeFn _ setId ins out: Set.join (Set.ofOne setId) (typeLambdaSets out.raw) >> List.for __ ins (fn in, acc: Set.join (in >> toRaw >> typeLambdaSets) acc)
+typeLambdaSets as fn RawType: Set LambdaSet =
+    todo "typeLambdaSets"
+#    try __ as
+#        'typeExact _ usr args: List.for Set.empty args (fn a, acc: Set.join (typeLambdaSets a) acc)
+#        'typeVar _ _: Set.empty
+#        'typeRecord _ _ attrs: Dict.for Set.empty attrs (fn k, a, acc: Set.join (typeLambdaSets a) acc)
+#        'typeError: Set.empty
+#        'typeFn _ setId ins out: Set.join (Set.ofOne setId) (typeLambdaSets out.raw) >> List.for __ ins (fn in, acc: Set.join (in >> toRaw >> typeLambdaSets) acc)
 
 
 typeAllowsFunctions as fn fn TyvarId: Bool, RawType: Bool =

@@ -168,6 +168,13 @@ caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
 #
 # TA Types
 #
+emptyLset as TA.LambdaSet =
+    {
+    , knownFunctions = Set.empty
+    , lambdaSetVars = Set.empty
+    }
+
+
 taTyvar as fn Int: TA.RawType =
     TA.'typeVar Pos.'t __
 
@@ -193,6 +200,6 @@ taList as fn TA.RawType: TA.RawType =
     TA.'typeExact Pos.'t (CoreDefs.usr "List") [ item ]
 
 
-taFunction as fn Int, [ TA.RawType ], TA.RawType: TA.RawType =
-    fn id, from, to:
-    TA.'typeFn Pos.'t id (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)
+taFunction as fn TA.LambdaSet, [ TA.RawType ], TA.RawType: TA.RawType =
+    fn lset, from, to:
+    TA.'typeFn Pos.'t lset (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)

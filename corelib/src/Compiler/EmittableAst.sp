@@ -59,7 +59,6 @@ GlobalDefinition =
     , expr as Expression
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     , freeUnivars as Dict UnivarId TA.Univar
-    , lambdaSetConstraints as Dict TA.LambdaSetId (Set TA.LambdaRef)
     , parameters as [ TA.FullType & Maybe Name ]
     , returnType as TA.FullType
     , usr as TranslatedUsr

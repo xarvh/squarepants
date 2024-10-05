@@ -303,7 +303,7 @@ module =
         LambdaRef
         rootLambdaRef
         LambdaSet
-        LambdaSetId
+        LambdaSetVarId
         'lVar
         RawType
         'typeExact

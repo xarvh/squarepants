@@ -369,7 +369,7 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
                 , expr = translateExpression env @state body
                 , freeTyvars = def.freeTyvars
                 , freeUnivars = def.freeUnivars
-                , lambdaSetConstraints = def.lambdaSetConstraints
+#                , lambdaSetConstraints = def.lambdaSetConstraints
                 , parameters = []
                 , returnType = { raw = def.type, uni = 'imm }
                 , usr = EA.translateUsr usr TA.rootLambdaRef
@@ -402,7 +402,7 @@ translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinitio
                     , expr = wrappedBody
                     , freeTyvars = def.freeTyvars
                     , freeUnivars = def.freeUnivars
-                    , lambdaSetConstraints = def.lambdaSetConstraints
+#                    , lambdaSetConstraints = def.lambdaSetConstraints
                     , parameters
                     , returnType = lambda.returnType
                     , usr = tUsr
