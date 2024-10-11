@@ -14,6 +14,13 @@ LambdaSet =
     }
 
 
+emptyLambdaSet as TA.LambdaSet =
+    {
+    , knownFunctions = Set.empty
+    , lambdaSetVars = Set.empty
+    }
+
+
 # This reference can uniquely reference lambdas nested inside a definition
 LambdaRef =
     USR & Int
@@ -179,7 +186,7 @@ initModule as fn Text, Text, UMR: Module =
 #
 SubsAsFns =
     {
-    , lSet as fn LambdaSetVarId: Set LambdaRef
+#    , lSet as fn LambdaSetVarId: Set LambdaRef
     , ty as fn TyvarId: Maybe RawType
     , uni as fn UnivarId: Maybe Uniqueness
     }
@@ -356,7 +363,8 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
     {
     , body = resolveExpression saf lam.body
     #, context = Dict.map (fn name, type: resolveFull saf type) lam.context
-    , pars = List.map (resolvePar saf __) lam.pars
+    , pars =
+        List.map (resolvePar saf __) lam.pars
     , returnType = resolveFull saf lam.returnType
     }
 
@@ -364,12 +372,13 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
 resolveLambdaSetConstraints as fn SubsAsFns, Dict lambdaSetId (Set TA.LambdaRef): Dict lambdaSetId (Set TA.LambdaRef) =
     fn saf, constraints:
     constraints
+
+
 #    Dict.for Dict.empty constraints fn oldId, requiredLambdas, resolvedConstraints:
 #        newId =
 #            saf.lSet oldId
 #
 #        Dict.update newId (__ >> Maybe.withDefault Set.empty __ >> Set.join requiredLambdas __ >> 'just) resolvedConstraints
-
 
 resolveRootDef as fn SubsAsFns, RootDef: RootDef =
     fn saf, def:
@@ -441,13 +450,14 @@ typeTyvars as fn RawType: Dict TyvarId None =
 
 typeLambdaSets as fn RawType: Set LambdaSet =
     todo "typeLambdaSets"
+
+
 #    try __ as
 #        'typeExact _ usr args: List.for Set.empty args (fn a, acc: Set.join (typeLambdaSets a) acc)
 #        'typeVar _ _: Set.empty
 #        'typeRecord _ _ attrs: Dict.for Set.empty attrs (fn k, a, acc: Set.join (typeLambdaSets a) acc)
 #        'typeError: Set.empty
 #        'typeFn _ setId ins out: Set.join (Set.ofOne setId) (typeLambdaSets out.raw) >> List.for __ ins (fn in, acc: Set.join (in >> toRaw >> typeLambdaSets) acc)
-
 
 typeAllowsFunctions as fn fn TyvarId: Bool, RawType: Bool =
     fn testId, type:

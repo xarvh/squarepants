@@ -168,11 +168,9 @@ caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
 #
 # TA Types
 #
+
 emptyLset as TA.LambdaSet =
-    {
-    , knownFunctions = Set.empty
-    , lambdaSetVars = Set.empty
-    }
+    TA.emptyLambdaSet
 
 
 taTyvar as fn Int: TA.RawType =
