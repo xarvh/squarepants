@@ -234,7 +234,6 @@ formatExpression as fn Env, FA.Expression: Fmt.Block =
 
         FA.'native:
             Fmt.textToBlock "this_is_sp_native"
-
     >> stackWithComments env comments __
 
 
@@ -616,13 +615,17 @@ formatRecordShorthand as fn Env, Name, [ Name ]: Fmt.Block =
         >> Fmt.textToBlock
 
 
-formatFunctionHeader as fn Env, Maybe Int, [ FA.Expression ]: Fmt.Block =
-    fn env, maybeId, pars:
+lsetToText as fn TA.LambdaSet: Text =
+    fn lset:
+    "todo lset"
 
+
+formatFunctionHeader as fn Env, Maybe TA.LambdaSet, [ FA.Expression ]: Fmt.Block =
+    fn env, maybeLset, pars:
     head =
-      try maybeId as
-          'nothing: "fn"
-          'just id: "fn(" .. Text.fromNumber id .. ")"
+        try maybeLset as
+            'nothing: "fn"
+            'just lset: "fn(" .. lsetToText lset .. ")"
 
     pars
     >> List.map (formatExpression env __) __
@@ -631,15 +634,14 @@ formatFunctionHeader as fn Env, Maybe Int, [ FA.Expression ]: Fmt.Block =
 
 formatFunction as fn Env, FA.Layout, [ FA.Expression ], FA.Expression: Fmt.Block =
     fn env, layout, pars, body:
-
-    forceStack & maybeId =
+    forceStack & maybeLset =
         try layout as
             FA.'inline: 'false & 'nothing
-            FA.'inlineWithId id: 'false & 'just id
+            FA.'inlineWithLSet lset: 'false & 'just lset
             _: 'true & 'nothing
 
     [
-    , formatFunctionHeader env maybeId pars
+    , formatFunctionHeader env maybeLset pars
     , formatExpression env body >> applyIf (layout == FA.'indented) Fmt.indent
     ]
     >> Fmt.spaceSeparatedOrStackForce forceStack __

@@ -530,7 +530,7 @@ expandTyvarsInType as fn fn None: TA.LambdaSetVarId, Dict TA.TyvarId TA.RawType,
             TA.'typeExact p usr (List.map rec args)
 
         TA.'typeFn p _ ins out:
-            TA.'typeFn p (newLambdaSet 'none) (TA.mapPars rec ins) { out with raw = rec .raw }
+            TA.'typeFn p TA.emptyLambdaSet (TA.mapPars rec ins) { out with raw = rec .raw }
 
         TA.'typeRecord p 'nothing attrs:
             TA.'typeRecord p 'nothing (Dict.map (fn k, v: rec v) attrs)
@@ -608,7 +608,7 @@ translateRawType as fn TranslateTypePars, CA.RawType: TA.RawType =
             taArgs as [ TA.ParType ] =
                 List.map zzz caPars
 
-            TA.'typeFn pos (newLambdaSet 'none) taArgs (translateFullType pars caOut)
+            TA.'typeFn pos TA.emptyLambdaSet taArgs (translateFullType pars caOut)
 
         CA.'typeRecord pos caAttrs:
             TA.'typeRecord pos 'nothing (Dict.map (fn name, v: rec v) caAttrs)
@@ -3089,7 +3089,7 @@ applyAllSubs as fn @State, TA.RawType: TA.RawType =
     fn @state, raw:
     subsAsFns as TA.SubsAsFns =
         {
-        , lSet = identity
+#        , lSet = identity
         , ty = fn id: Hash.get @state.tyvarSubs id
         , uni = fn id: Hash.get @state.univarSubs id
         }

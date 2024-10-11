@@ -369,11 +369,8 @@ resolveLambda as fn SubsAsFns, Lambda: Lambda =
     }
 
 
-resolveLambdaSetConstraints as fn SubsAsFns, Dict lambdaSetId (Set TA.LambdaRef): Dict lambdaSetId (Set TA.LambdaRef) =
-    fn saf, constraints:
-    constraints
-
-
+#resolveLambdaSetConstraints as fn SubsAsFns, Dict lambdaSetId (Set TA.LambdaRef): Dict lambdaSetId (Set TA.LambdaRef) =
+#    fn saf, constraints:
 #    Dict.for Dict.empty constraints fn oldId, requiredLambdas, resolvedConstraints:
 #        newId =
 #            saf.lSet oldId
@@ -388,7 +385,7 @@ resolveRootDef as fn SubsAsFns, RootDef: RootDef =
     , directDeps = def.directDeps
     , freeTyvars = def.freeTyvars
     , freeUnivars = def.freeUnivars
-    , lambdaSetConstraints = resolveLambdaSetConstraints saf def.lambdaSetConstraints
+#    , lambdaSetConstraints = resolveLambdaSetConstraints saf def.lambdaSetConstraints
     , lambdas = Dict.map (fn id, lambda: resolveLambda saf lambda) def.lambdas
     , name = def.name
     , type = resolveRaw saf def.type

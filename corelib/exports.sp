@@ -492,7 +492,7 @@ module =
         Comment
         Layout
         'inline
-        'inlineWithId
+        'inlineWithLSet
         'aligned
         'indented
         Statement

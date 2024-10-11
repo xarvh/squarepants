@@ -63,7 +63,7 @@ Comment =
 var Layout =
     , 'inline
     # This is a HACK to allow display lambdaSetIds...
-    , 'inlineWithId Int
+    , 'inlineWithLSet TA.LambdaSet
     , 'aligned
     , 'indented
 

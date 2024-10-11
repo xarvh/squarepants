@@ -75,8 +75,8 @@ doRawType as fn CA.Module, TA.RawType: FA.Expression =
         TA.'typeExact _ usr args:
             FA.'call (doUsr contextModule usr) (List.map (doRawType contextModule __) args)
 
-        TA.'typeFn _ id parTypes full:
-            FA.'fn (FA.'inlineWithId id) (List.map (doParType contextModule __) parTypes) (doFullType contextModule full)
+        TA.'typeFn _ lset parTypes full:
+            FA.'fn (FA.'inlineWithLSet lset) (List.map (doParType contextModule __) parTypes) (doFullType contextModule full)
 
         TA.'typeVar _ tyvarId:
             doTyvarId contextModule tyvarId
