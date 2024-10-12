@@ -56,7 +56,16 @@ var Expression =
     , 'literalNumber Pos Number
     , 'literalText Pos Text
     , 'variable Pos Ref
-    , 'lambda Pos { context as Dict Name FullType, definition as Bool, ref as LambdaRef }
+    , 'lambda
+          Pos
+          {
+          , context as Dict Name FullType
+          , definition as Bool
+          # Every lset will be translated into its own variant type
+          # So every time there is a lambda, I need to know the lset it will be translated into
+          , lset as LambdaSet
+          , ref as LambdaRef
+          }
     , 'constructor Pos USR
     , 'call Pos LambdaSet Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
@@ -235,9 +244,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
         'typeExact p usr pars:
             'typeExact p usr (List.map rec pars)
 
-        'typeFn p setId pars out:
-#            'typeFn p (saf.lSet setId) (List.map (resolveParType saf __) pars) (resolveFull saf out)
-            todo "typeFn"
+        'typeFn p lset pars out:
+            'typeFn p lset (List.map (resolveParType saf __) pars) (resolveFull saf out)
 
         'typeRecord p maybeId attrs0:
             attrs1 =
@@ -386,7 +394,8 @@ resolveRootDef as fn SubsAsFns, RootDef: RootDef =
     , freeTyvars = def.freeTyvars
     , freeUnivars = def.freeUnivars
 #    , lambdaSetConstraints = resolveLambdaSetConstraints saf def.lambdaSetConstraints
-    , lambdas = Dict.map (fn id, lambda: resolveLambda saf lambda) def.lambdas
+    , lambdas =
+        Dict.map (fn id, lambda: resolveLambda saf lambda) def.lambdas
     , name = def.name
     , type = resolveRaw saf def.type
     }
@@ -445,10 +454,7 @@ typeTyvars as fn RawType: Dict TyvarId None =
         'typeError: Dict.empty
 
 
-typeLambdaSets as fn RawType: Set LambdaSet =
-    todo "typeLambdaSets"
-
-
+#typeLambdaSets as fn RawType: Set LambdaSet =
 #    try __ as
 #        'typeExact _ usr args: List.for Set.empty args (fn a, acc: Set.join (typeLambdaSets a) acc)
 #        'typeVar _ _: Set.empty

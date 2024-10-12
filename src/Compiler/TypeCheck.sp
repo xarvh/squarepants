@@ -68,9 +68,9 @@ bug as fn Text: a =
 # HACK This is a workaround for JS's lack of pointers.
 # In theory we could implement this in the EmittableToJs module, in practice it's faster to do it here.
 Counter =
-  {
-  , n as Int
-  }
+    {
+    , n as Int
+    }
 
 
 State =
@@ -105,8 +105,8 @@ State =
     , errors as Array Error
     , lambdaSetUnionFind as UnionFind
     , lambdas as Hash Int TA.Lambda
-    , lastLambdaRefId as Counter
     , lastLSetVarId as Counter
+    , lastLambdaRefId as Counter
     , lastUnificationVarId as Counter
     , tyvarSubs as Hash TA.TyvarId TA.RawType
     , tyvarsById as Hash TA.TyvarId TA.Tyvar
@@ -121,10 +121,11 @@ initState as fn !Int: !State =
     , boundTyvars = Hash.fromList []
     , errors = Array.fromList []
 #    , lambdaSetConstraints = Hash.fromList []
-    , lambdaSetUnionFind = UnionFind.fromList []
+    , lambdaSetUnionFind =
+        UnionFind.fromList []
     , lambdas = Hash.fromList []
-    , lastLambdaRefId = { n = cloneImm TA.rootLambdaRef }
     , lastLSetVarId = { n = 0 }
+    , lastLambdaRefId = { n = cloneImm TA.rootLambdaRef }
     , lastUnificationVarId = { n = lastUnificationVarId }
     , tyvarSubs = Hash.fromList []
     , tyvarsById = Hash.fromList []
@@ -334,9 +335,8 @@ getErrorModule as fn Env: Error.Module =
         'just { with  asText = content, fsPath }: { content, fsPath }
 
 
-lambdaSetsMustBeEqual as fn @State, TA.RawType, TA.RawType: None =
-    fn @state, t1, t2:
-    todo "lambdaSetsMustBeEqual"
+#lambdaSetsMustBeEqual as fn @State, TA.RawType, TA.RawType: None =
+#    fn @state, t1, t2:
 #    rec =
 #        lambdaSetsMustBeEqual @state __ __
 #
@@ -362,14 +362,12 @@ lambdaSetsMustBeEqual as fn @State, TA.RawType, TA.RawType: None =
 #        _:
 #            'none
 
-
 #lambdaSetMustInclude as fn @State, TA.LambdaSetVarId, TA.LambdaRef: None =
 #    fn @state, setId, ref:
 #    Hash.get @state.lambdaSetConstraints setId
 #    >> Maybe.withDefault Set.empty __
 #    >> Set.insert ref __
 #    >> Hash.insert @state.lambdaSetConstraints setId __
-
 
 addEquality as fn Env, Pos, Why, TA.RawType, TA.RawType, @State: None =
     fn env, pos, why, t1, t2, @state:
@@ -453,27 +451,28 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
         applySubstitutionToType originalTyvarId (TA.'typeVar Pos.'g generalizedTyvarId) a
 
     [#
-    replaceLambdaSet =
-        fn originalSetId, constraints, a:
-        setId =
-            nextId @state.lastLSetVarId
+        replaceLambdaSet =
+            fn originalSetId, constraints, a:
+            setId =
+                nextId @state.lastLSetVarId
 
-#        log "INSERT CONSTRAINT" { setId, constraints }
+    #        log "INSERT CONSTRAINT" { setId, constraints }
 
-        Hash.insert @state.lambdaSetConstraints setId constraints
+            Hash.insert @state.lambdaSetConstraints setId constraints
 
-        {
-        , lSet = fn id: if id == originalSetId then setId else id
-        , ty = fn _: 'nothing
-        , uni = fn _: 'nothing
-        }
-        >> TA.resolveRaw __ a
-        #]
+            {
+            , lSet = fn id: if id == originalSetId then setId else id
+            , ty = fn _: 'nothing
+            , uni = fn _: 'nothing
+            }
+            >> TA.resolveRaw __ a
+            #]
 
     raw =
         instance.type.raw
         >> Dict.for __ instance.freeUnivars replaceUnivar
         >> Dict.for __ instance.freeTyvars replaceTyvar
+
 #        >> Dict.for __ instance.lambdaSetConstraints replaceLambdaSet
 
     { instance.type with raw }
@@ -794,7 +793,6 @@ inferUni as fn Uniqueness, Uniqueness: Uniqueness =
 #
 #    Dict.fromList (Hash.toList @acc)
 
-
 #
 #
 # Definitions
@@ -862,7 +860,7 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
                             }
                             >> checkExpression localEnv __ body @state
 
-                        todo "lambdaSetsMustBeEqual @state exprType.raw patternOut.patternType"
+#                        todo "lambdaSetsMustBeEqual @state exprType.raw patternOut.patternType"
 
                         'just typedExpr & exprType
 
@@ -877,7 +875,7 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
 
                         checkUni localEnv pos { given = inferredType.uni, required = pars.uni } @state
 
-                        todo "lambdaSetsMustBeEqual @state inferredType.raw patternOut.patternType"
+#                        todo "lambdaSetsMustBeEqual @state inferredType.raw patternOut.patternType"
 
                         'just typed & inferredType
 
@@ -982,7 +980,8 @@ doDefinition as fn @State, DoDefinitionIn: DoDefinitionOut =
     , freeTyvars
     , freeUnivars
 #    , lambdaSetConstraints
-    , pattern = patternOut.typedPattern
+    , pattern =
+        patternOut.typedPattern
     , type = defType
     }
 
@@ -1027,7 +1026,8 @@ addRootRecursiveInstance as fn @Array Error, Pos, USR, CA.Annotation, Env: Env =
         , freeTyvars
         , freeUnivars
 #        , lambdaSetConstraints = Dict.empty
-        , type = { raw, uni = 'imm }
+        , type =
+            { raw, uni = 'imm }
         }
 
     { env with variables = Dict.insert ('refGlobal usr) instance .variables }
@@ -1307,7 +1307,8 @@ inferParam as fn Env, Int, CA.Parameter, @State: TA.Parameter & TA.ParType & Env
                 , freeTyvars = Dict.empty
                 , freeUnivars = Dict.empty
 #                , lambdaSetConstraints = Dict.empty
-                , type = { raw, uni = 'uni }
+                , type =
+                    { raw, uni = 'uni }
                 }
 
             newEnv as Env =
@@ -1513,7 +1514,6 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
         pars.env.currentRootUsr & lambdaId
 
     context & body =
-
         try Dict.toList (Dict.intersect pars.env.currentLetInNames originalContext) as
 
             []:
@@ -1526,7 +1526,15 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
                 body0 =
                     TA.'letIn
                         {
-                        , body = TA.'lambda pars.lambdaPos { context = context0, definition = 'false, ref = lambdaRef }
+                        , body =
+                            TA.'lambda
+                                pars.lambdaPos
+                                {
+                                , context = context0
+                                , definition = 'false
+                                , lset = aaaaaaaaaaaa
+                                , ref = lambdaRef
+                                }
                         , pattern = TA.'patternAny pos { maybeName = 'just name, type }
                         , type
                         }
@@ -1545,7 +1553,7 @@ doLambda as fn DoLambdaPars, @State: TA.Expression & TA.FullType =
 
                 originalContext & typedBody
 
-    todo "lambdaSetMustInclude @state pars.lambdaSet lambdaRef"
+#    todo "lambdaSetMustInclude @state pars.lambdaSet lambdaRef"
 
     Hash.insert
         @state.lambdas
@@ -1603,7 +1611,8 @@ inferFn as fn Env, Pos, [ CA.Parameter ], CA.Expression, @State: TA.Expression &
         , env = newEnv
         , lambdaPos = pos
 #        , lambdaSet = nextId @state.lastLSetVarId
-        , parTypes = Array.toList @parTypes
+        , parTypes =
+            Array.toList @parTypes
         , runBodyCheck = fn @s: inferExpression { newEnv with context = 'context_FnBody pos env.context, currentLetInNames = Dict.empty } body @s
         , typePos = pos
         , typedPars = Array.toList @typedPars
@@ -1798,7 +1807,8 @@ checkParameter as fn Env, TA.ParType, CA.Parameter, @State: TA.Parameter & Env =
                 , freeTyvars = Dict.empty
                 , freeUnivars = Dict.empty
 #                , lambdaSetConstraints = Dict.empty
-                , type = { raw = expectedRaw, uni = 'uni }
+                , type =
+                    { raw = expectedRaw, uni = 'uni }
                 }
 
             localEnv as Env =
@@ -2043,7 +2053,7 @@ checkExpression as fn Env, CheckExpressionPars, CA.Expression, @State: TA.Expres
 
                             Dict.insert attrName v vs & Dict.insert attrName t.raw ts
 
-                    lambdaSetsMustBeEqual @state extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)
+#                    lambdaSetsMustBeEqual @state extType.raw (TA.'typeRecord typePos 'nothing populatedTypeByName)
 
                     finalExpr as TA.Expression =
                         TA.'record pos ('just typedExt) typedValueByName
@@ -2118,7 +2128,7 @@ checkExpression as fn Env, CheckExpressionPars, CA.Expression, @State: TA.Expres
             typedFalse & falseType =
                 checkExpression env pars false @state
 
-            lambdaSetsMustBeEqual @state trueType.raw falseType.raw
+#            lambdaSetsMustBeEqual @state trueType.raw falseType.raw
 
             finalExpr =
                 TA.'if
@@ -2475,7 +2485,8 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
                             , freeTyvars = Dict.empty
                             , freeUnivars = Dict.empty
 #                            , lambdaSetConstraints = Dict.empty
-                            , type = expectedType
+                            , type =
+                                expectedType
                             }
 
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
@@ -2671,7 +2682,8 @@ doRootDefinition as fn @Counter, @Array Error, USR, Env, CA.ValueDef: Env =
     subsAsFns as TA.SubsAsFns =
         {
 #        , lSet = UnionFind.find @state.lambdaSetUnionFind __
-        , ty = fn tyvarId: Hash.get @state.tyvarSubs tyvarId
+        , ty =
+            fn tyvarId: Hash.get @state.tyvarSubs tyvarId
         , uni = fn univarId: Hash.get @state.univarSubs univarId
         }
 
@@ -2684,7 +2696,8 @@ doRootDefinition as fn @Counter, @Array Error, USR, Env, CA.ValueDef: Env =
             , freeTyvars = out.freeTyvars
             , freeUnivars = out.freeUnivars
 #            , lambdaSetConstraints = out.lambdaSetConstraints
-            , lambdas = @state.lambdas >> Hash.toList >> Dict.fromList
+            , lambdas =
+                @state.lambdas >> Hash.toList >> Dict.fromList
             , name = def.name
             , type = out.type.raw
             }
@@ -2758,7 +2771,8 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         , freeTyvars
         , freeUnivars = Dict.ofOne 1 { annotatedId = 1 }
 #        , lambdaSetConstraints = raw >> TA.typeLambdaSets >> Dict.map (fn k, v: Set.empty) __
-        , type = toImm raw
+        , type =
+            toImm raw
         }
 
     { env with constructors = Dict.insert ('USR umr name) taConstructor .constructors }
@@ -2812,7 +2826,6 @@ getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: CA.Deps =
 #
 addSub as fn UnivarId, Uniqueness, @Hash UnivarId Uniqueness: None =
     fn newId, newUni, @subs:
-
 #    !newSubs as Hash UnivarId Uniqueness =
 #        Hash.fromList []
 
@@ -2827,8 +2840,8 @@ addSub as fn UnivarId, Uniqueness, @Hash UnivarId Uniqueness: None =
 
     Hash.insert @subs newId newUni
 
-#    newSubs
 
+#    newSubs
 
 solveUniquenessConstraint as fn Env, UnivarEquality, @State: None =
     fn env, eq, @state:
@@ -3078,7 +3091,8 @@ applySubstitutionToType as fn TA.TyvarId, TA.RawType, TA.RawType: TA.RawType =
     subsAsFns as TA.SubsAsFns =
         {
 #        , lSet = identity
-        , ty = fn id: if id == tyvarId then 'just replacingType else 'nothing
+        , ty =
+            fn id: if id == tyvarId then 'just replacingType else 'nothing
         , uni = fn _: 'nothing
         }
 
@@ -3090,7 +3104,8 @@ applyAllSubs as fn @State, TA.RawType: TA.RawType =
     subsAsFns as TA.SubsAsFns =
         {
 #        , lSet = identity
-        , ty = fn id: Hash.get @state.tyvarSubs id
+        , ty =
+            fn id: Hash.get @state.tyvarSubs id
         , uni = fn id: Hash.get @state.univarSubs id
         }
 
