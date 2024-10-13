@@ -24,7 +24,7 @@ var Expression =
     , 'globalVariable TranslatedUsr
     , 'placeholderVariable Int
     , 'call Expression [ Argument ]
-    , 'fn [ Bool & Maybe Name ] Expression
+    , 'lambda TranslatedUsr (Dict Name TA.FullType)
     , 'conditional Expression Expression Expression
     , 'and [ Expression ]
     , 'isLiteralText Text Expression
@@ -52,13 +52,15 @@ var Argument =
 
 GlobalDefinition =
     {
+    , context as Dict Name TA.FullType
     # We need deps to be able to put defs in the right order
     # TODO no we don't need them any more. =|
     , deps as CA.Deps
     , expr as Expression
     , freeTyvars as Dict TA.TyvarId TA.Tyvar
     , freeUnivars as Dict UnivarId TA.Univar
-    , type as TA.RawType
+    , parameters as [ TA.FullType & Maybe Name ]
+    , returnType as TA.FullType
     , usr as TranslatedUsr
     }
 
@@ -103,9 +105,15 @@ translateName as fn Name: Text =
         name
 
 
-translateUsr as fn USR: TranslatedUsr =
-    fn usr:
+translateUsr as fn USR, Int: TranslatedUsr =
+    fn usr, id:
     'USR ('UMR root sourceDirId modulePath) name =
         usr
 
-    List.concat [ [ translateRoot root .. Text.fromNumber sourceDirId ], Text.split "/" modulePath, [ translateName name ] ]
+    [
+    , [ translateRoot root .. Text.fromNumber sourceDirId ]
+    , Text.split "/" modulePath
+    , [ translateName name ]
+    , [ Text.fromNumber id ]
+    ]
+    >> List.concat

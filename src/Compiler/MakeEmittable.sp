@@ -1,18 +1,15 @@
 Env =
     {
+    # The Dict value here is not used, but it's faster to have it than not to have it.
+    , currentLetInNames as Dict Name { pos as Pos, type as TA.FullType }
     , genVarCounter as Int
     , module as CA.Module
     }
 
 
-mkEnv as fn USR, Dict UMR CA.Module: Env =
-    fn 'USR umr name, modulesByUmr:
+State =
     {
-    , genVarCounter = 0
-    , module =
-        try Dict.get umr modulesByUmr as
-            'just m: m
-            'nothing: todo ("compiler bug: no module for " .. name)
+    , lambdaContextes as Hash EA.TranslatedUsr (Dict Name TA.FullType)
     }
 
 
@@ -106,24 +103,24 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
                 testPattern pa (EA.'recordAccess name valueToTest) a
 
 
-translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool & Maybe Name) =
+translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (TA.FullType & Maybe Name) =
     fn env, bodyAcc, param:
     try param as
 
-        TA.'parameterRecycle pos rawType name:
-            bodyAcc & ('true & 'just name)
+        TA.'parameterRecycle pos raw name:
+            bodyAcc & ({ raw, uni = 'uni } & 'just name)
 
         TA.'parameterPlaceholder fullType n:
-            bodyAcc & ('false & 'just (Text.fromNumber n))
+            bodyAcc & (fullType & 'just (Text.fromNumber n))
 
         TA.'parameterPattern fullType pa:
             try pickMainName pa as
 
                 'noNamedVariables:
-                    bodyAcc & ('false & 'nothing)
+                    bodyAcc & (fullType & 'nothing)
 
                 'trivialPattern argName type:
-                    bodyAcc & ('false & 'just argName)
+                    bodyAcc & (fullType & 'just argName)
 
                 'generateName:
                     mainName & newEnv =
@@ -142,18 +139,18 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
                             , type
                             }
 
-                    List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & ('false & 'just mainName)
+                    List.for bodyAcc namesAndExpressions wrapWithArgumentLetIn & (fullType & 'just mainName)
 
 
-translateArgAndType as fn Env, TA.Argument: EA.Argument =
-    fn env, taArg:
+translateArgAndType as fn Env, @State, TA.Argument: EA.Argument =
+    fn env, @state, taArg:
     try taArg as
-        TA.'argumentExpression fullType exp: EA.'argumentSpend fullType (translateExpression env exp)
+        TA.'argumentExpression fullType exp: EA.'argumentSpend fullType (translateExpression env @state exp)
         TA.'argumentRecycle pos rawType attrPath name: EA.'argumentRecycle rawType attrPath name
 
 
-translateExpression as fn Env, TA.Expression: EA.Expression =
-    fn env, expression:
+translateExpression as fn Env, @State, TA.Expression: EA.Expression =
+    fn env, @state, expression:
     try expression as
 
         TA.'literalNumber _ num:
@@ -166,46 +163,57 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             EA.'localVariable name
 
         TA.'variable _ ('refGlobal usr):
-            EA.'globalVariable (EA.translateUsr usr)
+            EA.'globalVariable (EA.translateUsr usr TA.rootLambdaRef)
 
         TA.'variable _ ('refPlaceholder n):
             EA.'placeholderVariable n
 
+        TA.'lambda _ pars:
+            usr & id =
+                pars.ref
+
+            tUsr =
+                EA.translateUsr usr id
+
+            Hash.insert @state.lambdaContextes tUsr pars.context
+
+            EA.'lambda tUsr pars.context
+
         TA.'constructor _ usr:
-            EA.'constructor (EA.translateUsr usr)
+            EA.'constructor (EA.translateUsr usr 0)
 
         TA.'recordAccess _ attrName exp:
-            EA.'recordAccess attrName (translateExpression env exp)
+            EA.'recordAccess attrName (translateExpression env @state exp)
 
-        TA.'fn pos taPars body bodyT:
-            eaBody =
-                translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
-
-            wrappedBody & eaPars =
-                eaBody & []
-                >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
-                    bodyX & eaPar =
-                        newEnv =
-                            { env with genVarCounter = List.length eaParsAcc + .genVarCounter }
-
-                        translateParameter newEnv bodyAcc taPar
-
-                    bodyX & (eaPar :: eaParsAcc)
-
-            EA.'fn eaPars wrappedBody
+#        TA.'fn pos _ _ taPars body bodyT:
+#            eaBody =
+#                translateExpression { env with genVarCounter = List.length taPars + .genVarCounter } body
+#
+#            wrappedBody & eaPars =
+#                eaBody & []
+#                >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
+#                    bodyX & eaPar =
+#                        newEnv =
+#                            { env with genVarCounter = List.length eaParsAcc + .genVarCounter }
+#
+#                        translateParameter newEnv bodyAcc taPar
+#
+#                    bodyX & (eaPar :: eaParsAcc)
+#
+#            EA.'fn eaPars wrappedBody
 
         TA.'record _ extends attrs:
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first __
-            >> List.map (Tuple.mapSecond (translateExpression env __) __) __
-            >> EA.'literalRecord (Maybe.map (translateExpression env __) extends) __
+            >> List.map (Tuple.mapSecond (translateExpression env @state __) __) __
+            >> EA.'literalRecord (Maybe.map (translateExpression env @state __) extends) __
 
-        TA.'call _ ref argsAndTypes:
-            EA.'call (translateExpression env ref) (List.map (translateArgAndType env __) argsAndTypes)
+        TA.'call _ _ ref argsAndTypes:
+            EA.'call (translateExpression env @state ref) (List.map (translateArgAndType env @state __) argsAndTypes)
 
         TA.'if _ ar:
-            EA.'conditional (translateExpression env ar.condition) (translateExpression env ar.true) (translateExpression env ar.false)
+            EA.'conditional (translateExpression env @state ar.condition) (translateExpression env @state ar.true) (translateExpression env @state ar.false)
 
         TA.'try pos { patternsAndExpressions, value, valueType }:
             # 1. create a name for the value (unless it's already a variable)
@@ -216,7 +224,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'localVariable name & identity & env
 
                     TA.'variable _ ('refGlobal usr) & 'imm:
-                        EA.'globalVariable (EA.translateUsr usr) & identity & env
+                        EA.'globalVariable (EA.translateUsr usr 0) & identity & env
 
                     TA.'variable _ ('refPlaceholder n) & 'imm:
                         EA.'placeholderVariable n & identity & env
@@ -230,7 +238,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                             EA.'letIn
                                 {
                                 , inExpression = tryExpression
-                                , letExpression = translateExpression env_ value
+                                , letExpression = translateExpression env_ @state value
                                 , maybeName = 'just tryName
                                 , type = valueType
                                 }
@@ -249,7 +257,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
-                    translateExpression newEnv block
+                    translateExpression newEnv @state block
                     >> List.for __ namesAndExpressions fn type & name & letExpression, inExpression:
                         EA.'letIn { inExpression, letExpression, maybeName = 'just name, type }
 
@@ -266,18 +274,16 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> wrapWithLetIn
 
         TA.'letIn valueDef e bodyType:
-            body =
-                try valueDef.body as
-                    'nothing: todo ("compiler bug: 'nothing body should not happen here " .. Debug.toHuman valueDef.pattern)
-                    'just b: b
+            env1 =
+                { env with currentLetInNames = Dict.join (TA.patternNames valueDef.pattern) .currentLetInNames }
 
             try pickMainName valueDef.pattern as
 
                 'noNamedVariables:
                     EA.'letIn
                         {
-                        , inExpression = translateExpression env e
-                        , letExpression = translateExpression env body
+                        , inExpression = translateExpression env1 @state e
+                        , letExpression = translateExpression env1 @state valueDef.body
                         , maybeName = 'nothing
                         , type = valueDef.type
                         }
@@ -285,8 +291,8 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                 'trivialPattern defName type:
                     EA.'letIn
                         {
-                        , inExpression = translateExpression env e
-                        , letExpression = translateExpression env body
+                        , inExpression = translateExpression env1 @state e
+                        , letExpression = translateExpression env1 @state valueDef.body
                         , maybeName = 'just defName
                         , type
                         }
@@ -294,7 +300,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                 'generateName:
                     mainName & newEnv =
                         # TODO check if body is just a variable
-                        generateName env
+                        generateName env1
 
                     namesAndExpressions =
                         translatePattern valueDef.pattern (EA.'localVariable mainName)
@@ -314,17 +320,92 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'letIn
                             {
                             , inExpression
-                            , letExpression = translateExpression newEnv body
+                            , letExpression = translateExpression newEnv @state valueDef.body
                             , maybeName = 'just mainName
                             , type = valueDef.type
                             }
 
-                    translateExpression newEnv e
+                    translateExpression newEnv @state e
                     >> List.forReversed __ namesAndExpressions wrapWithUnpackedPatternVar
                     >> wrapWithActualLetIn
 
         TA.'destroyIn name e:
-            translateExpression env e
+            translateExpression env @state e
 
         TA.'introspect self:
             EA.'introspect self
+
+
+translateRootDef as fn Dict UMR CA.Module, USR, TA.RootDef: [ EA.GlobalDefinition ] =
+    fn modulesByUmr, usr, def:
+    try def.body as
+
+        'nothing:
+            []
+
+        'just body:
+            'USR umr name =
+                usr
+
+            env as Env =
+                {
+                , currentLetInNames = Dict.empty
+                , genVarCounter = 0
+                , module =
+                    try Dict.get umr modulesByUmr as
+                        'just m: m
+                        'nothing: todo ("compiler bug: no module for " .. name)
+                }
+
+            !state as State =
+                {
+                , lambdaContextes = Hash.fromList []
+                }
+
+            valueDef as EA.GlobalDefinition =
+                {
+                , context = Dict.empty
+                , deps = def.directDeps
+                , expr = translateExpression env @state body
+                , freeTyvars = def.freeTyvars
+                , freeUnivars = def.freeUnivars
+#                , lambdaSetConstraints = def.lambdaSetConstraints
+                , parameters = []
+                , returnType = { raw = def.type, uni = 'imm }
+                , usr = EA.translateUsr usr TA.rootLambdaRef
+                }
+
+            Dict.for [ valueDef ] def.lambdas fn index, lambda, defs:
+                baseBody =
+                    translateExpression { env with genVarCounter = List.length lambda.pars + .genVarCounter } @state lambda.body
+
+                wrappedBody & parameters =
+                    baseBody & []
+                    >> List.forReversed __ lambda.pars fn taPar, bodyAcc & eaParsAcc:
+                        bodyX & eaPar =
+                            translateParameter { env with genVarCounter = List.length eaParsAcc + .genVarCounter } bodyAcc taPar
+
+                        bodyX & [ eaPar, eaParsAcc... ]
+
+                tUsr =
+                    EA.translateUsr usr index
+
+                context =
+                    try Hash.get @state.lambdaContextes tUsr as
+                        'nothing: todo "Missing lambda context"
+                        'just c: c
+
+                eaDef as EA.GlobalDefinition =
+                    {
+                    , context
+                    , deps = Dict.empty
+                    , expr = wrappedBody
+                    , freeTyvars = def.freeTyvars
+                    , freeUnivars = def.freeUnivars
+#                    , lambdaSetConstraints = def.lambdaSetConstraints
+                    , parameters
+                    , returnType = lambda.returnType
+                    , usr = tUsr
+                    }
+
+                [ eaDef, defs... ]

@@ -99,3 +99,6 @@ emitExpr as fn Int, JA.Expr: Text =
 
         JA.'comma expr:
             "(" .. Text.join ", " (List.map (emitExpr l __) expr) .. ")"
+
+        JA.'threeDots expr:
+            "...(" .. emitExpr l expr .. ")"

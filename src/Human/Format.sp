@@ -21,11 +21,12 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
 
         Fmt.'stack head tail:
             !done =
-                'false
+                # HACK is needed to be able to compile to JS
+                { hack = 'false }
 
             doLine =
                 fn indentedLine:
-                if cloneUni @done then
+                if cloneUni @done.hack then
                     indentedLine
                 else
                     try indentedLine as
@@ -42,7 +43,7 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
                             if isDecoration then
                                 indentedLine
                             else
-                                @done := 'true
+                                @done.hack := 'true
 
                                 Fmt.'row (Fmt.'text_ prefix) line >> Fmt.'indented i __
 
@@ -55,7 +56,7 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
                     block
 
                 h :: t:
-                    if cloneUni @done then
+                    if cloneUni @done.hack then
                         Fmt.'stack h t
                     else
                         Fmt.prefix (Text.length prefix) (Fmt.'text_ prefix) block
@@ -233,7 +234,6 @@ formatExpression as fn Env, FA.Expression: Fmt.Block =
 
         FA.'native:
             Fmt.textToBlock "this_is_sp_native"
-
     >> stackWithComments env comments __
 
 
@@ -615,20 +615,33 @@ formatRecordShorthand as fn Env, Name, [ Name ]: Fmt.Block =
         >> Fmt.textToBlock
 
 
-formatFunctionHeader as fn Env, [ FA.Expression ]: Fmt.Block =
-    fn env, pars:
+lsetToText as fn TA.LambdaSet: Text =
+    fn lset:
+    "todo lset"
+
+
+formatFunctionHeader as fn Env, Maybe TA.LambdaSet, [ FA.Expression ]: Fmt.Block =
+    fn env, maybeLset, pars:
+    head =
+        try maybeLset as
+            'nothing: "fn"
+            'just lset: "fn(" .. lsetToText lset .. ")"
+
     pars
     >> List.map (formatExpression env __) __
-    >> commaSeparatedList 'false (Fmt.textToBlock "fn") ":" 'false __
+    >> commaSeparatedList 'false (Fmt.textToBlock head) ":" 'false __
 
 
 formatFunction as fn Env, FA.Layout, [ FA.Expression ], FA.Expression: Fmt.Block =
     fn env, layout, pars, body:
-    forceStack =
-        layout /= FA.'inline
+    forceStack & maybeLset =
+        try layout as
+            FA.'inline: 'false & 'nothing
+            FA.'inlineWithLSet lset: 'false & 'just lset
+            _: 'true & 'nothing
 
     [
-    , formatFunctionHeader env pars
+    , formatFunctionHeader env maybeLset pars
     , formatExpression env body >> applyIf (layout == FA.'indented) Fmt.indent
     ]
     >> Fmt.spaceSeparatedOrStackForce forceStack __
@@ -708,7 +721,7 @@ formatCall as fn Env, FA.Expression, [ FA.Expression ]: Fmt.Block =
         fn index, arg:
         try asContinuingFn index arg as
             'nothing: formatExpressionAndMaybeAddParens env Op.precedence_application arg
-            'just (layout & params & body): formatFunctionHeader env params
+            'just (layout & params & body): formatFunctionHeader env 'nothing params
 
     maybeContinuing =
         args

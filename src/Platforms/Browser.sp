@@ -98,7 +98,7 @@ footer as fn Platform.MakeUmr, Self.LoadPars: Text =
     updateDomNode =
         "updateDomNode"
         >> virtualDomUsr makePlatformUmr
-        >> Targets/Javascript/EmittableToJs.translateUsrToText
+        >> Targets/Javascript/EmittableToJs.constructorUsrToText
 
     """
 

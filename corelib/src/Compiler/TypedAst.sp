@@ -2,9 +2,38 @@ TyvarId =
     Int
 
 
+LambdaSetVarId =
+    Int
+
+
+LambdaSet =
+    {
+    , knownFunctions as Set LambdaRef
+    # vars come from a function's arguments, we won't know what functions they represent until we specialize the code
+    , lambdaSetVars as Set LambdaSetVarId
+    }
+
+
+emptyLambdaSet as TA.LambdaSet =
+    {
+    , knownFunctions = Set.empty
+    , lambdaSetVars = Set.empty
+    }
+
+
+# This reference can uniquely reference lambdas nested inside a definition
+LambdaRef =
+    USR & Int
+
+
+# This is used for the base root definition.
+rootLambdaRef as Int =
+    0
+
+
 var RawType =
     , 'typeExact Pos USR [ RawType ]
-    , 'typeFn Pos [ ParType ] FullType
+    , 'typeFn Pos LambdaSet [ ParType ] FullType
     , 'typeVar Pos TyvarId
     , 'typeRecord Pos (Maybe TyvarId) (Dict Name RawType)
     , 'typeError
@@ -27,9 +56,18 @@ var Expression =
     , 'literalNumber Pos Number
     , 'literalText Pos Text
     , 'variable Pos Ref
+    , 'lambda
+          Pos
+          {
+          , context as Dict Name FullType
+          , definition as Bool
+          # Every lset will be translated into its own variant type
+          # So every time there is a lambda, I need to know the lset it will be translated into
+          , lset as LambdaSet
+          , ref as LambdaRef
+          }
     , 'constructor Pos USR
-    , 'fn Pos [ Parameter ] Expression FullType
-    , 'call Pos Expression [ Argument ]
+    , 'call Pos LambdaSet Expression [ Argument ]
     , # maybeExpr can be, in principle, any expression, but in practice I should probably limit it
       # to nested RecordAccess? Maybe function calls too?
       'record Pos (Maybe Expression) (Dict Name Expression)
@@ -38,7 +76,7 @@ var Expression =
       # This is because there are a lot of LetIns and each requires its resolution.
       # At the same time, most of them are repeated, because nested LetIns have the same value.
       # So maybe there is a way to optimize this?
-      'letIn ValueDef Expression FullType
+      'letIn LocalDef Expression FullType
     , 'if
           Pos
           {
@@ -94,13 +132,30 @@ Univar =
     }
 
 
-ValueDef =
+Lambda =
+    {
+    , body as Expression
+    #, context as Dict Name FullType
+    , pars as [ Parameter ]
+    , returnType as FullType
+    }
+
+
+RootDef =
     {
     , body as Maybe Expression
     , directDeps as CA.Deps
     , freeTyvars as Dict TyvarId Tyvar
     , freeUnivars as Dict UnivarId Univar
-    , isFullyAnnotated as Bool
+    , lambdas as Dict Int Lambda
+    , name as Name
+    , type as RawType
+    }
+
+
+LocalDef =
+    {
+    , body as Expression
     , pattern as Pattern
     , type as FullType
     }
@@ -120,8 +175,8 @@ Module =
     {
     , asText as Text
     , fsPath as Text
+    , rootDefs as Dict Name RootDef
     , umr as UMR
-    , valueDefs as Dict Name ValueDef
     }
 
 
@@ -130,8 +185,8 @@ initModule as fn Text, Text, UMR: Module =
     {
     , asText
     , fsPath
+    , rootDefs = Dict.empty
     , umr
-    , valueDefs = Dict.empty
     }
 
 
@@ -140,6 +195,7 @@ initModule as fn Text, Text, UMR: Module =
 #
 SubsAsFns =
     {
+#    , lSet as fn LambdaSetVarId: Set LambdaRef
     , ty as fn TyvarId: Maybe RawType
     , uni as fn UnivarId: Maybe Uniqueness
     }
@@ -188,8 +244,8 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
         'typeExact p usr pars:
             'typeExact p usr (List.map rec pars)
 
-        'typeFn p pars out:
-            'typeFn p (List.map (resolveParType saf __) pars) (resolveFull saf out)
+        'typeFn p lset pars out:
+            'typeFn p lset (List.map (resolveParType saf __) pars) (resolveFull saf out)
 
         'typeRecord p maybeId attrs0:
             attrs1 =
@@ -254,11 +310,11 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
         'constructor _ _:
             expression
 
-        'fn p pars body bodyType:
-            'fn p (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
+        'lambda pos pars:
+            'lambda pos { pars with context = Dict.map (fn name, type: resolveFull saf type) .context }
 
-        'call p ref args:
-            'call p (rec ref) (List.map (resolveArg saf __) args)
+        'call p set ref args:
+            'call p set (rec ref) (List.map (resolveArg saf __) args)
 
         'record p maybeExt attrs:
             'record p (Maybe.map rec maybeExt) (Dict.map (fn k, v: rec v) attrs)
@@ -267,7 +323,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'recordAccess p name (rec exp)
 
         'letIn def rest restType:
-            'letIn (resolveValueDef saf def) (rec rest) (resolveFull saf restType)
+            'letIn (resolveLocalDef saf def) (rec rest) (resolveFull saf restType)
 
         'if p { condition, false, true }:
             'if p { condition = rec condition, false = rec false, true = rec true }
@@ -301,17 +357,50 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
         'patternRecord pos ps: 'patternRecord pos (Dict.map (fn k, p & t: resolvePattern saf p & resolveRaw saf t) ps)
 
 
-resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
+resolveLocalDef as fn SubsAsFns, LocalDef: LocalDef =
     fn saf, def:
-    { def with
-    , body = Maybe.map (resolveExpression saf __) .body
-    , pattern = resolvePattern saf .pattern
-    , type = resolveFull saf .type
+    {
+    , body = (resolveExpression saf __) def.body
+    , pattern = resolvePattern saf def.pattern
+    , type = resolveFull saf def.type
     }
 
 
-# TODO?, freeTyvars
-# TODO?, freeUnivars
+resolveLambda as fn SubsAsFns, Lambda: Lambda =
+    fn saf, lam:
+    {
+    , body = resolveExpression saf lam.body
+    #, context = Dict.map (fn name, type: resolveFull saf type) lam.context
+    , pars =
+        List.map (resolvePar saf __) lam.pars
+    , returnType = resolveFull saf lam.returnType
+    }
+
+
+#resolveLambdaSetConstraints as fn SubsAsFns, Dict lambdaSetId (Set TA.LambdaRef): Dict lambdaSetId (Set TA.LambdaRef) =
+#    fn saf, constraints:
+#    Dict.for Dict.empty constraints fn oldId, requiredLambdas, resolvedConstraints:
+#        newId =
+#            saf.lSet oldId
+#
+#        Dict.update newId (__ >> Maybe.withDefault Set.empty __ >> Set.join requiredLambdas __ >> 'just) resolvedConstraints
+
+resolveRootDef as fn SubsAsFns, RootDef: RootDef =
+    fn saf, def:
+    # TODO resolve freeTyvars and freeUnivars too!
+    {
+    , body = Maybe.map (resolveExpression saf __) def.body
+    , directDeps = def.directDeps
+    , freeTyvars = def.freeTyvars
+    , freeUnivars = def.freeUnivars
+#    , lambdaSetConstraints = resolveLambdaSetConstraints saf def.lambdaSetConstraints
+    , lambdas =
+        Dict.map (fn id, lambda: resolveLambda saf lambda) def.lambdas
+    , name = def.name
+    , type = resolveRaw saf def.type
+    }
+
+
 #
 # helpers
 #
@@ -361,14 +450,22 @@ typeTyvars as fn RawType: Dict TyvarId None =
         'typeVar _ id: Dict.ofOne id 'none
         'typeRecord _ 'nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
         'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
-        'typeFn _ ins out: typeTyvars out.raw >> List.for __ ins (fn in, a: Dict.join (in >> toRaw >> typeTyvars) a)
+        'typeFn _ _ ins out: typeTyvars out.raw >> List.for __ ins (fn in, a: Dict.join (in >> toRaw >> typeTyvars) a)
         'typeError: Dict.empty
 
+
+#typeLambdaSets as fn RawType: Set LambdaSet =
+#    try __ as
+#        'typeExact _ usr args: List.for Set.empty args (fn a, acc: Set.join (typeLambdaSets a) acc)
+#        'typeVar _ _: Set.empty
+#        'typeRecord _ _ attrs: Dict.for Set.empty attrs (fn k, a, acc: Set.join (typeLambdaSets a) acc)
+#        'typeError: Set.empty
+#        'typeFn _ setId ins out: Set.join (Set.ofOne setId) (typeLambdaSets out.raw) >> List.for __ ins (fn in, acc: Set.join (in >> toRaw >> typeLambdaSets) acc)
 
 typeAllowsFunctions as fn fn TyvarId: Bool, RawType: Bool =
     fn testId, type:
     try type as
-        'typeFn _ ins out: 'true
+        'typeFn _ _ ins out: 'true
         'typeVar _ id: testId id
         'typeExact _ usr args: List.any (typeAllowsFunctions testId __) args
         'typeRecord _ _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
@@ -384,16 +481,16 @@ normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
 
         'nothing:
             !maxId =
-                0
+                { hack = 0 }
 
             Hash.each @hash fn k, v:
-                if v > cloneUni @maxId then
-                    @maxId := cloneImm v
+                if v > cloneUni @maxId.hack then
+                    @maxId.hack := cloneImm v
                 else
                     'none
 
             nid =
-                maxId + 1
+                maxId.hack + 1
 
             Hash.insert @hash id nid
 
@@ -404,7 +501,7 @@ normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     fn @hash, type:
     try type as
         'typeExact p usr args: 'typeExact p usr (List.map (normalizeType @hash __) args)
-        'typeFn p pars out: 'typeFn p (mapPars (normalizeType @hash __) pars) { out with raw = normalizeType @hash .raw }
+        'typeFn p instances pars out: 'typeFn p instances (mapPars (normalizeType @hash __) pars) { out with raw = normalizeType @hash .raw }
         'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map (fn k, v: normalizeType @hash v) attrs)
         'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map (fn k, v: normalizeType @hash v) attrs)
         'typeVar p id: 'typeVar p (normalizeTyvarId @hash id)
@@ -422,6 +519,6 @@ stripTypePos as fn RawType: RawType =
     try raw as
         'typeVar _ id: 'typeVar pos id
         'typeExact _ usr pars: 'typeExact pos usr (List.map rec pars)
-        'typeFn _ pars out: 'typeFn pos (mapPars rec pars) { out with raw = rec .raw }
+        'typeFn _ instances pars out: 'typeFn pos instances (mapPars rec pars) { out with raw = rec .raw }
         'typeRecord _ maybeId attrs0: 'typeRecord pos maybeId (Dict.map (fn k, v: rec v) attrs0)
         'typeError: 'typeError

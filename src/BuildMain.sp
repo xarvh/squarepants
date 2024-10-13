@@ -510,11 +510,11 @@ compileMain as fn @IO, CompileMainPars: Res None =
 
     # Should be the last
     _entryUsr as EA.TranslatedUsr =
-        EA.translateUsr entryUsr
+        EA.translateUsr entryUsr 0
 
     type =
         try List.find (fn rv: rv.usr == _entryUsr) rootValues as
-            'just rv: rv.type
+            'just rv: rv.returnType
             'nothing: todo "no type!?"
 
     {

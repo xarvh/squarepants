@@ -300,6 +300,12 @@ module =
    path = Compiler/TypedAst
    exposes =
         TyvarId
+        LambdaRef
+        rootLambdaRef
+        LambdaSet
+        emptyLambdaSet
+        LambdaSetVarId
+        'lVar
         RawType
         'typeExact
         'typeFn
@@ -318,7 +324,7 @@ module =
         'literalText
         'variable
         'constructor
-        'fn
+        'lambda
         'call
         'record
         'recordAccess
@@ -347,7 +353,9 @@ module =
 
         Tyvar
         Univar
-        ValueDef
+        Lambda
+        RootDef
+        LocalDef
 
         Substitutions
         Module
@@ -361,7 +369,8 @@ module =
         resolvePar
         resolveExpression
         resolvePattern
-        resolveValueDef
+        resolveLocalDef
+        resolveRootDef
         stripTypePos
 
         toRaw
@@ -370,6 +379,7 @@ module =
         patternNames
         typeTyvars
         typeAllowsFunctions
+        typeLambdaSets
         normalizeTyvarId
         normalizeType
 
@@ -444,7 +454,7 @@ module =
         'globalVariable
         'placeholderVariable
         'call
-        'fn
+        'lambda
         'conditional
         'and
         'isLiteralText
@@ -482,6 +492,7 @@ module =
         Comment
         Layout
         'inline
+        'inlineWithLSet
         'aligned
         'indented
         Statement

@@ -31,7 +31,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & binop "+"
     , CoreDefs.multiply.usr & binop "*"
     , CoreDefs.subtract.usr & binop "-"
-    , CoreDefs.mutableAssign.usr & binop "="
+    , CoreDefs.mutableAssign.usr & binopMutableAssign
     , CoreDefs.mutableAdd.usr & binop "+="
     , CoreDefs.mutableSubtract.usr & binop "-="
     , CoreDefs.textConcat.usr & binop "+"
@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ (fn usr & override, d: Dict.insert (EA.translateUsr usr) override d)
+    >> List.for Dict.empty __ (fn usr & override, d: Dict.insert (EA.translateUsr usr 0) override d)
 
 
 unaryPlus as Override =
@@ -143,6 +143,30 @@ unaryMinus as Override =
     >> 'override
 
 
+binopMutableAssign as Override =
+    call =
+        fn env, arguments:
+        try arguments as
+            [ EA.'argumentRecycle raw [] name, _ ]:
+                log ("@" .. name .. " := ...") ""
+                log "Mutable assignment without a path is not yet implemented in JS." ""
+                todo << ":= for non-paths is not (yet) supported in JS. Sorry. =( " .. toHuman { arguments }
+
+            [ right, left ]:
+                JA.'binop "="
+                    (translateArg { nativeBinop = 'true } env right)
+                    (translateArg { nativeBinop = 'true } env left)
+
+
+            _:
+                todo << "compiler bug: wrong number of arguments for :=" .. toHuman { arguments }
+
+    value =
+         fn env:
+         todo << "binop := has no raw value"
+
+    'override { call , value }
+
 binop as fn Text: Override =
     fn jsOp:
     {
@@ -159,7 +183,7 @@ binop as fn Text: Override =
 constructor as fn Text: Override =
     fn jsValue:
     {
-    , call = fn env, args: makeCall env (JA.'var jsValue) args
+    , call = fn env, args: simpleCall env (JA.'var jsValue) args
     , value = fn env: JA.'var jsValue
     }
     >> 'override
@@ -168,8 +192,17 @@ constructor as fn Text: Override =
 function as fn Text: Override =
     fn jaName:
     {
-    , call = fn env, args: makeCall env (JA.'var jaName) args
-    , value = fn env: JA.'var jaName
+    , call =
+        fn env, args:
+        simpleCall env (JA.'var jaName) args
+    , value =
+        fn env:
+            [
+            , "ctx" & JA.'array []
+            , "usr" & JA.'var jaName
+            ]
+            >> Dict.fromList
+            >> JA.'record
     }
     >> 'override
 
@@ -188,7 +221,7 @@ loadOverride as Override =
 
                 [
                 , loadPars
-                , EA.'argumentSpend { with  raw = TA.'typeFn _ [ TA.'parSp { with  raw = compiledType } ] _ } _
+                , EA.'argumentSpend { with  raw = TA.'typeFn _ _ [ TA.'parSp { with  raw = compiledType } ] _ } _
                 ]:
                     !hash =
                         Hash.fromList []
@@ -248,9 +281,9 @@ translateName as fn Name: Text =
     >> "$" .. __
 
 
-translateUsrToText as fn USR: Text =
+constructorUsrToText as fn USR: Text =
     fn usr:
-    EA.translateUsr usr >> _usrToText
+    EA.translateUsr usr 0 >> _usrToText
 
 
 _usrToText as fn EA.TranslatedUsr: Text =
@@ -344,59 +377,59 @@ translateExpressionToExpression as fn Env, Bool, EA.Expression: JA.Expr =
         'block block: wrapInAutoLambda block
 
 
-makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
-    fn env, jaRef, args:
-    call =
-        args
-        >> List.map (translateArg { nativeBinop = 'false } env __) __
-        >> JA.'call jaRef __
+simpleCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
+    fn env, jaRef, eaArgs:
+    eaArgs
+    >> List.map (translateArg { nativeBinop = 'false } env __) __
+    >> JA.'call jaRef __
 
-    asRecycled as fn EA.Argument: Maybe JA.Expr =
-        fn arg:
-        try arg as
 
-            EA.'argumentSpend _ _:
-                'nothing
+contextCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
+    fn env, jaRef, eaArgs:
+    [
+    , JA.'threeDots (JA.'accessWithDot "ctx" jaRef)
+    , List.map (translateArg { nativeBinop = 'false } env __) eaArgs...
+    ]
+    >> JA.'call (JA.'accessWithDot "usr" jaRef) __
 
-            EA.'argumentRecycle rawType attrPath name:
-                name
-                >> translateName
-                >> JA.'var
-                >> accessAttrs attrPath __
-                >> 'just
 
-    recycledArgs =
-        List.filterMap asRecycled args
+typeIsPointy as fn TA.RawType: Bool =
+    fn raw:
+    try raw as
 
-    if recycledArgs == [] then
-        #
-        # ref(arg1, arg2, ...)
-        #
-        call
+        TA.'typeRecord _ _ _:
+            'true
+
+        TA.'typeExact _ ('USR ('UMR Meta.'core pathId moduleName) typeName) _:
+            try moduleName & typeName as
+                "Array" & "Array": 'true
+                "Hash" & "Hash": 'true
+                _: 'false
+
+        _:
+            'false
+
+
+assertThatFullIsPointy as fn a, TA.FullType: None =
+    fn ref, { raw, uni }:
+    try uni as
+        'uni: assertThatRawIsPointy ref raw
+        _: 'none
+
+
+
+assertThatRawIsPointy as fn a, TA.RawType: None =
+    fn ref, raw:
+    if typeIsPointy raw then
+        'none
     else
-        zzz =
-            fn index, arg:
-            bracketIndex =
-                index + 1
-                >> Text.fromNumber
-                >> JA.'literal
+        log "JS does not support this type as mutable: " raw
 
-            JA.'binop "=" arg (JA.'accessWithBrackets bracketIndex recycleTempVariable)
+        log "Please wrap it into a record or something in" ref
 
-        #
-        # (t = ref(arg1, re1, arg3, re2, ....), re1 = t[1], re2 = t[2], t[0]);
-        #
-        [
-        # t = ref(arg1, re0, arg3, re1, ....)
-        , [ JA.'binop "=" recycleTempVariable call ]
-        # re1 = t[1], re2 = t[2]
-        , recycledArgs
-        >> List.indexedMap zzz __
-        # t[2]
-        , [ JA.'accessWithBrackets (JA.'literal "0") recycleTempVariable ]
-        ]
-        >> List.concat
-        >> JA.'comma
+        log "sorry for this T_T" ""
+
+        todo "aborting"
 
 
 translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
@@ -435,45 +468,24 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
 
             try maybeNativeOverride as
                 'just ('override { call, value = _ }): call env args >> 'inline
-                'nothing: makeCall env (translateExpressionToExpression env 'true ref) args >> 'inline
+                'nothing: contextCall env (translateExpressionToExpression env 'true ref) args >> 'inline
 
-        EA.'fn eaArgs body:
-            argsWithNames as [ Bool & Text ] =
-                zzz =
-                    fn index, re & maybeName:
-                    try maybeName as
-                        'just name: re & translateName name
-                        'nothing: re & "_" .. Text.fromNumber index
+        EA.'lambda usr context:
+            Dict.each context fn name, full:
+                assertThatFullIsPointy usr full
 
-                List.indexedMap zzz eaArgs
+            contextItems as [ JA.Expr ] =
+                context
+                >> Dict.keys
+                >> List.map (__ >> translateName >> JA.'var) __
 
-            recycledPars as [ JA.Expr ] =
-                argsWithNames
-                >> List.filter Tuple.first __
-                >> List.map (fn _ & name: JA.'var name) __
-
-            statementsRaw as [ JA.Statement ] =
-                try translateExpression env 'true body as
-                    'inline expr: [ JA.'return expr ]
-                    'block block: block
-
-            #
-            # Per EA.Call above, recycling functions must return also the new values for the recycled variables
-            #
-            statementsFinal =
-                if recycledPars == [] then
-                    statementsRaw
-                else
-                    # Replace all `return x` statements with `return [x, ...recycledPars]`
-                    addRecycled =
-                        fn stat:
-                        try stat as
-                            JA.'return e: JA.'return (JA.'array (e :: recycledPars))
-                            _: stat
-
-                    List.map addRecycled statementsRaw
-
-            'inline << JA.'blockLambda (List.map Tuple.second argsWithNames) statementsFinal
+            [
+            , "usr" & JA.'var (_usrToText usr)
+            , "ctx" & JA.'array contextItems
+            ]
+            >> Dict.fromList
+            >> JA.'record
+            >> 'inline
 
         EA.'letIn { inExpression, letExpression, maybeName, type }:
             inStatements =
@@ -606,25 +618,79 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
     definitionBody =
         try taType as
 
-            TA.'typeFn _ pars out:
+            TA.'typeFn _ _ pars out:
                 argNames as [ Text ] =
                     pars >> List.indexedMap (fn index, name: constructorArgumentName (index + 1)) __
 
-                arrayHead :: List.map JA.'var argNames
-                >> JA.'array
-                >> JA.'simpleLambda argNames __
+                List.each pars fn par:
+                    try par as
+                        TA.'parRe raw: assertThatRawIsPointy usr raw
+                        TA.'parSp full: assertThatFullIsPointy usr full
+
+                fun =
+                    arrayHead :: List.map JA.'var argNames
+                    >> JA.'array
+                    >> JA.'simpleLambda argNames __
+
+                [
+                , "usr" & fun
+                , "ctx" & JA.'array []
+                ]
+                >> Dict.fromList
+                >> JA.'record
 
             _:
                 JA.'array [ arrayHead ]
 
-    JA.'define 'false (translateUsrToText usr) definitionBody
+    JA.'define 'false (constructorUsrToText usr) definitionBody
 
 
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
     fn env, def:
     try Dict.get def.usr env.overrides as
-        'just _: 'nothing
-        'nothing: JA.'define 'false (_usrToText def.usr) (translateExpressionToExpression env 'true def.expr) >> 'just
+
+        'just _:
+            'nothing
+
+        'nothing:
+            if def.parameters == [] then
+                body =
+                    translateExpressionToExpression env 'true def.expr
+
+                JA.'define 'false (_usrToText def.usr) body >> 'just
+            else
+                body =
+                    translateExpression env 'true def.expr
+
+                contextParameters as [ Bool & Text ] =
+                    def.context
+                    >> Dict.toList
+                    >> List.map (fn name & full: full.uni == 'uni & translateName name) __
+
+                directParameters as [ Bool & Text ] =
+                    zzz =
+                        fn index, fullType & maybeName:
+                        re =
+                            fullType.uni == 'uni
+
+                        try maybeName as
+                            'just name: re & translateName name
+                            'nothing: re & "_" .. Text.fromNumber index
+
+                    List.indexedMap zzz def.parameters
+
+                parsWithNames as [ Bool & Text ] =
+                    List.concat [ contextParameters, directParameters ]
+
+                statementsRaw as [ JA.Statement ] =
+                    try body as
+                        'inline expr: [ JA.'return expr ]
+                        'block block: block
+
+                statementsRaw
+                >> JA.'blockLambda (List.map Tuple.second parsWithNames) __
+                >> JA.'define 'false (_usrToText def.usr) __
+                >> 'just
 
 
 TranslateAllPars =
@@ -647,7 +713,7 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         {
         , overrides =
             List.for (coreOverrides 'none) platformOverrides fn usr & runtimeName, d:
-                Dict.insert (EA.translateUsr usr) (function runtimeName) d
+                Dict.insert (EA.translateUsr usr 0) (function runtimeName) d
         }
 
     jaStatements as [ JA.Statement ] =
