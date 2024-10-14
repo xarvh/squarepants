@@ -5537,10 +5537,16 @@ const u0$Compiler$CoreDefs$numberDef = ({
   usr: u0$Compiler$CoreDefs$numberUsr,
 });
 
-const u0$Compiler$CoreDefs$number = (u0$Compiler$CoreDefs$defToType)(u0$Compiler$CoreDefs$numberDef, c0$Core$Nil);
+const u0$Compiler$CoreDefs$numberType = (u0$Compiler$CoreDefs$defToType)(u0$Compiler$CoreDefs$numberDef, c0$Core$Nil);
 
-const u0$Compiler$CoreDefs$typeBinopUnique = (($ty) => {
-  return (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParSp)((c0$Compiler$Ast$toImm)($ty)), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParSp)((c0$Compiler$Ast$toImm)($ty)), c0$Core$Nil)), (c0$Compiler$Ast$toUni)($ty));
+const u0$Compiler$CoreDefs$tyFn = (($pars, $to) => {
+  return (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$List$map)((($p) => {
+    return (c0$Compiler$CanonicalAst$ParSp)((c0$Compiler$Ast$toImm)($p));
+  }), $pars), $to);
+});
+
+const u0$Compiler$CoreDefs$typeBinopUni = (($left, $right, $return) => {
+  return (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)($left, (c0$Core$Cons)($right, c0$Core$Nil)), (c0$Compiler$Ast$toUni)($return));
 });
 
 const u0$Compiler$CoreDefs$add = ({
@@ -5548,7 +5554,7 @@ const u0$Compiler$CoreDefs$add = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_addittive,
   symbol: "+",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$number),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType),
   usr: (u0$Compiler$CoreDefs$usr)("add"),
 });
 
@@ -5565,7 +5571,7 @@ const u0$Compiler$CoreDefs$and_ = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_logical,
   symbol: "and",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$boolType, u0$Compiler$CoreDefs$boolType, u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("and_"),
 });
 
@@ -5574,7 +5580,7 @@ const u0$Compiler$CoreDefs$divide = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_multiplicative,
   symbol: "/",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$number),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType),
   usr: (u0$Compiler$CoreDefs$usr)("divide"),
 });
 
@@ -5582,22 +5588,12 @@ const u0$Compiler$CoreDefs$tyVar = (($0) => {
   return (c0$Compiler$CanonicalAst$TypeAnnotationVariable)(c0$Compiler$Pos$N, $0);
 });
 
-const u0$Compiler$CoreDefs$tyFn = (($pars, $to) => {
-  return (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$List$map)((($p) => {
-    return (c0$Compiler$CanonicalAst$ParSp)((c0$Compiler$Ast$toImm)($p));
-  }), $pars), (c0$Compiler$Ast$toImm)($to));
-});
-
-const u0$Compiler$CoreDefs$typeBinop = (($left, $right, $return) => {
-  return (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)($left, (c0$Core$Cons)($right, c0$Core$Nil)), $return);
-});
-
 const u0$Compiler$CoreDefs$equal = ({
   associativity: c0$Compiler$Op$Left,
   nonFn: (c0$Core$Cons)("a", c0$Core$Nil),
   precedence: c0$Compiler$Op$precedence_comparison,
   symbol: "==",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("equal"),
 });
 
@@ -5606,7 +5602,7 @@ const u0$Compiler$CoreDefs$greaterOrEqualThan = ({
   nonFn: (c0$Core$Cons)("a", c0$Core$Nil),
   precedence: c0$Compiler$Op$precedence_comparison,
   symbol: ">=",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("greaterOrEqualThan"),
 });
 
@@ -5615,7 +5611,7 @@ const u0$Compiler$CoreDefs$greaterThan = ({
   nonFn: (c0$Core$Cons)("a", c0$Core$Nil),
   precedence: c0$Compiler$Op$precedence_comparison,
   symbol: ">",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("greaterThan"),
 });
 
@@ -5624,7 +5620,7 @@ const u0$Compiler$CoreDefs$lesserOrEqualThan = ({
   nonFn: (c0$Core$Cons)("a", c0$Core$Nil),
   precedence: c0$Compiler$Op$precedence_comparison,
   symbol: "<=",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("lesserOrEqualThan"),
 });
 
@@ -5633,7 +5629,7 @@ const u0$Compiler$CoreDefs$lesserThan = ({
   nonFn: (c0$Core$Cons)("a", c0$Core$Nil),
   precedence: c0$Compiler$Op$precedence_comparison,
   symbol: "<",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("lesserThan"),
 });
 
@@ -5643,6 +5639,10 @@ const u0$Compiler$CoreDefs$listType = (($item) => {
   return (u0$Compiler$CoreDefs$nameToType)(u0$Compiler$CoreDefs$listName, (c0$Core$Cons)($item, c0$Core$Nil));
 });
 
+const u0$Compiler$CoreDefs$typeBinopImm = (($left, $right, $return) => {
+  return (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)($left, (c0$Core$Cons)($right, c0$Core$Nil)), (c0$Compiler$Ast$toImm)($return));
+});
+
 const u0$Compiler$CoreDefs$listCons = ((() => {
   const $item = (u0$Compiler$CoreDefs$tyVar)("item");
   return ({
@@ -5650,7 +5650,7 @@ const u0$Compiler$CoreDefs$listCons = ((() => {
     nonFn: c0$Core$Nil,
     precedence: c0$Compiler$Op$precedence_cons,
     symbol: "::",
-    type: (u0$Compiler$CoreDefs$typeBinop)($item, (u0$Compiler$CoreDefs$listType)($item), (u0$Compiler$CoreDefs$listType)($item)),
+    type: (u0$Compiler$CoreDefs$typeBinopImm)($item, (u0$Compiler$CoreDefs$listType)($item), (u0$Compiler$CoreDefs$listType)($item)),
     usr: (u0$Compiler$CoreDefs$usr)("stack"),
   });
 }))();
@@ -5660,7 +5660,7 @@ const u0$Compiler$CoreDefs$multiply = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_multiplicative,
   symbol: "*",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$number),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType),
   usr: (u0$Compiler$CoreDefs$usr)("multiply"),
 });
 
@@ -5673,8 +5673,8 @@ const u0$Compiler$CoreDefs$mutableAdd = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_mutop,
   symbol: "+=",
-  type: (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParRe)(u0$Compiler$CoreDefs$number), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParSp)(({
-    raw: u0$Compiler$CoreDefs$number,
+  type: (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParRe)(u0$Compiler$CoreDefs$numberType), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParSp)(({
+    raw: u0$Compiler$CoreDefs$numberType,
     uni: c0$Compiler$Ast$Imm,
   })), c0$Core$Nil)), ({
     raw: u0$Compiler$CoreDefs$noneType,
@@ -5703,8 +5703,8 @@ const u0$Compiler$CoreDefs$mutableSubtract = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_mutop,
   symbol: "-=",
-  type: (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParRe)(u0$Compiler$CoreDefs$number), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParSp)(({
-    raw: u0$Compiler$CoreDefs$number,
+  type: (c0$Compiler$CanonicalAst$TypeFn)(c0$Compiler$Pos$N, (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParRe)(u0$Compiler$CoreDefs$numberType), (c0$Core$Cons)((c0$Compiler$CanonicalAst$ParSp)(({
+    raw: u0$Compiler$CoreDefs$numberType,
     uni: c0$Compiler$Ast$Imm,
   })), c0$Core$Nil)), ({
     raw: u0$Compiler$CoreDefs$noneType,
@@ -5718,7 +5718,7 @@ const u0$Compiler$CoreDefs$notEqual = ({
   nonFn: (c0$Core$Cons)("a", c0$Core$Nil),
   precedence: c0$Compiler$Op$precedence_comparison,
   symbol: "/=",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("a"), u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("notEqual"),
 });
 
@@ -5727,7 +5727,7 @@ const u0$Compiler$CoreDefs$or_ = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_logical,
   symbol: "or",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$boolType),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$boolType, u0$Compiler$CoreDefs$boolType, u0$Compiler$CoreDefs$boolType),
   usr: (u0$Compiler$CoreDefs$usr)("or_"),
 });
 
@@ -5736,7 +5736,7 @@ const u0$Compiler$CoreDefs$sendLeft = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_pipe,
   symbol: "<<",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)((u0$Compiler$CoreDefs$tyVar)("a"), c0$Core$Nil), (u0$Compiler$CoreDefs$tyVar)("b")), (u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("b")),
+  type: u0$Compiler$CoreDefs$numberType,
   usr: (u0$Compiler$CoreDefs$usr)("sendLeft"),
 });
 
@@ -5745,7 +5745,7 @@ const u0$Compiler$CoreDefs$sendRight = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_pipe,
   symbol: ">>",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)((u0$Compiler$CoreDefs$tyVar)("a"), c0$Core$Nil), (u0$Compiler$CoreDefs$tyVar)("b")), (u0$Compiler$CoreDefs$tyVar)("b")),
+  type: u0$Compiler$CoreDefs$numberType,
   usr: (u0$Compiler$CoreDefs$usr)("sendRight"),
 });
 
@@ -5754,7 +5754,7 @@ const u0$Compiler$CoreDefs$subtract = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_addittive,
   symbol: "-",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$number),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType, u0$Compiler$CoreDefs$numberType),
   usr: (u0$Compiler$CoreDefs$usr)("subtract"),
 });
 
@@ -5773,7 +5773,7 @@ const u0$Compiler$CoreDefs$textConcat = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_addittive,
   symbol: "..",
-  type: (u0$Compiler$CoreDefs$typeBinopUnique)(u0$Compiler$CoreDefs$text),
+  type: (u0$Compiler$CoreDefs$typeBinopUni)(u0$Compiler$CoreDefs$text, u0$Compiler$CoreDefs$text, u0$Compiler$CoreDefs$text),
   usr: (u0$Compiler$CoreDefs$usr)("concat"),
 });
 
@@ -5782,7 +5782,7 @@ const u0$Compiler$CoreDefs$tuple = ({
   nonFn: c0$Core$Nil,
   precedence: c0$Compiler$Op$precedence_tuple,
   symbol: "&",
-  type: (u0$Compiler$CoreDefs$typeBinop)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("b"), (c0$Compiler$CanonicalAst$TypeRecord)(c0$Compiler$Pos$N, (c0$Dict$insert)("second", (u0$Compiler$CoreDefs$tyVar)("b"), (c0$Dict$insert)("first", (u0$Compiler$CoreDefs$tyVar)("a"), c0$Dict$empty)))),
+  type: (u0$Compiler$CoreDefs$typeBinopImm)((u0$Compiler$CoreDefs$tyVar)("a"), (u0$Compiler$CoreDefs$tyVar)("b"), (c0$Compiler$CanonicalAst$TypeRecord)(c0$Compiler$Pos$N, (c0$Dict$insert)("second", (u0$Compiler$CoreDefs$tyVar)("b"), (c0$Dict$insert)("first", (u0$Compiler$CoreDefs$tyVar)("a"), c0$Dict$empty)))),
   usr: (u0$Compiler$CoreDefs$usr)("<& is just sugar>"),
 });
 
@@ -5951,13 +5951,13 @@ const u0$Compiler$CoreDefs$noneTypeDef = ({
 
 const u0$Compiler$CoreDefs$unaryMinus = ({
   symbol: "0 -",
-  type: (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)(u0$Compiler$CoreDefs$number, c0$Core$Nil), u0$Compiler$CoreDefs$number),
+  type: (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)(u0$Compiler$CoreDefs$numberType, c0$Core$Nil), (c0$Compiler$Ast$toUni)(u0$Compiler$CoreDefs$numberType)),
   usr: (u0$Compiler$CoreDefs$usr)("unaryMinus"),
 });
 
 const u0$Compiler$CoreDefs$unaryPlus = ({
   symbol: "0 +",
-  type: (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)(u0$Compiler$CoreDefs$number, c0$Core$Nil), u0$Compiler$CoreDefs$number),
+  type: (u0$Compiler$CoreDefs$tyFn)((c0$Core$Cons)(u0$Compiler$CoreDefs$numberType, c0$Core$Nil), (c0$Compiler$Ast$toUni)(u0$Compiler$CoreDefs$numberType)),
   usr: (u0$Compiler$CoreDefs$usr)("unaryPlus"),
 });
 
@@ -18473,8 +18473,8 @@ const u0$Compiler$TypeCheck_Test$records = (i2$Test$Group)("Records", (c0$Core$C
     type: (u0$Compiler$TestHelpers$taFunction)((c0$Core$Cons)($re, c0$Core$Nil), (u0$Compiler$TypeCheck_Test$tyvar)(2)),
   });
 }))((c0$Compiler$TypedAst$TypeRecord)(c0$Compiler$Pos$T, (c0$Maybe$Just)(1), (c0$Dict$ofOne)("first", (u0$Compiler$TypeCheck_Test$tyvar)(2)))))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] refineType when the record has a non-extensible alias", "A = { c as Number, d as Number }\n\nupd as fn A: A = fn a:\n  { a with c = .c + 1 }", (u0$Compiler$TypeCheck_Test$infer)("upd"), i2$Test$isOk), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] infinite recursion on addSubstitution/unify_", "B = { l as [Text] }\n\nreadOne as fn B: (Text & B) =\n    fn b:\n    try b.l as\n         []: \"\" & b\n         [h, t...]: h & { b with l = t }", (u0$Compiler$TypeCheck_Test$infer)("readOne"), i2$Test$isOk), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] unifyToNonExtensibleRecord correctly substitutes the record extension", "R = { x as Number, y as Number }\n\nrec as fn R: R =\n    fn s:\n\n    if 'true then\n        { s with y = .y }\n    else\n        rec { s with y = .y }", (u0$Compiler$TypeCheck_Test$infer)("rec"), i2$Test$isOk), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Record missing attributes", "R = { x as Number, y as Number }\n\nr as R = {\n  , x = 3\n  }", (u0$Compiler$TypeCheck_Test$infer)("r"), (i2$Test$errorContains)((c0$Core$Cons)("Missing", c0$Core$Nil))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("[reg] Inferring and then generalizing an extensible record should still constrain the tyvar to a record!", "f =\n    fn record:\n    record.attr\n\nmain =\n    f 'true", (u0$Compiler$TypeCheck_Test$infer)("f"), (i2$Test$errorContains)((c0$Core$Cons)("Bool", (c0$Core$Cons)("attr", c0$Core$Nil)))), (c0$Core$Cons)((u0$Compiler$TypeCheck_Test$codeTest)("Inferred records are correctly merged", "f =\n    fn record:\n    record.attr\n\ng =\n    fn record:\n    record.blah\n\nmeh as fn a, (fn a: Bool), (fn a: Number): Bool =\n    fn a, ff, gg:\n    'false\n\nmain =\n    fn r:\n    meh r f g", (u0$Compiler$TypeCheck_Test$infer)("main"), (i2$Test$isOkAndEqualTo)(({
-  freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars)((c0$Core$Cons)(3, c0$Core$Nil)),
-  type: (u0$Compiler$TestHelpers$taFunction)((c0$Core$Cons)((c0$Compiler$TypedAst$TypeRecord)(c0$Compiler$Pos$T, (c0$Maybe$Just)(3), (c0$Dict$fromList)((c0$Core$Cons)(({
+  freeTyvars: (u0$Compiler$TypeCheck_Test$freeTyvars)((c0$Core$Cons)(1, c0$Core$Nil)),
+  type: (u0$Compiler$TestHelpers$taFunction)((c0$Core$Cons)((c0$Compiler$TypedAst$TypeRecord)(c0$Compiler$Pos$T, (c0$Maybe$Just)(1), (c0$Dict$fromList)((c0$Core$Cons)(({
     first: "attr",
     second: u0$Compiler$TestHelpers$taBool,
   }), (c0$Core$Cons)(({
