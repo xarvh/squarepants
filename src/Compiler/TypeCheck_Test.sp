@@ -815,13 +815,13 @@ records as Test =
             (infer "main")
             (Test.isOkAndEqualTo
                  {
-                 , freeTyvars = freeTyvars [ 3 ]
+                 , freeTyvars = freeTyvars [ 1 ]
                  , type =
                      TH.taFunction
                          [
                          , TA.'typeRecord
                              Pos.'t
-                             ('just 3)
+                             ('just 1)
                              (Dict.fromList
                                   [
                                   , "attr" & TH.taBool
