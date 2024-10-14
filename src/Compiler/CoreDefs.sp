@@ -576,9 +576,7 @@ sendRight as Op.Binop =
     , precedence = Op.precedence_pipe
     , symbol = ">>"
     , type = numberType
-    #typeBinop (tyVar "a") (tyFn [ tyVar "a" ] (tyVar "b")) (tyVar "b")
-    , usr =
-        usr "sendRight"
+    , usr = usr "sendRight"
     }
 
 
@@ -589,9 +587,7 @@ sendLeft as Op.Binop =
     , precedence = Op.precedence_pipe
     , symbol = "<<"
     , type = numberType
-    #typeBinop (tyFn [ tyVar "a" ] (tyVar "b")) (tyVar "a") (tyVar "b")
-    , usr =
-        usr "sendLeft"
+    , usr = usr "sendLeft"
     }
 
 
